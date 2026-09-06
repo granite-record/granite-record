@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+# GRANITE_VERSION: 2026-09-06.1
+"""
+What is actually in the General Court's public database.
+
+    python3 probe_db.py              # connect, count, report; writes nothing
+    python3 probe_db.py --raw        # also save the raw output for reading later
+
+WHY THIS EXISTS
+
+gc.nh.gov/downloads publishes "ODBC and Data Table Structure.pdf", which gives
+read-only credentials to a SQL Server holding the tables behind the bill status
+system. The bulk .txt files this project already downloads are dumps of those
+same tables. The database may or may not hold more than the current session,
+and that single fact decides the shape of the archive:
+
+  if it keeps past sessions   term-keyed identifiers are a column, not a
+                              migration, and the 2005/2023 page-structure
+                              probes are unnecessary for docket, votes,
+                              sponsors and members
+  if it does not              the archive is the project already planned
+
+Nothing else about the archive can be settled until that is known, so this asks
+and stops.
+
+WHAT IT WILL NOT DO
+
+Only SELECT. It never writes, never creates, never drops, and does not test
+whether it could -- an account being read-only is the agency's business to
+enforce, not this script's to probe. It opens one connection with a short
+timeout and closes it.
+
+The credentials are published by the General Court in that PDF for public use,
+so they are not a secret being handled here. They are named once, below, with
+the source cited.
+
+HOW IT CONNECTS
+
+There is no Python SQL Server driver on this machine and none is installed for
+this. Windows PowerShell can open a connection through .NET's SqlClient with
+nothing added, so that is what this shells out to. The PDF notes the instance
+name may not be needed, so both forms are tried, plainest first.
+"""
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+# From gc.nh.gov/downloads/ODBC and Data Table Structure.pdf, which publishes
+# these for public use. Read-only account.
+HOST = "66.211.150.69"
+INSTANCE = "sqlexpress"
+DATABASE = "NHLegislatureDB"
+USER = "publicuser"
+PASSWORD = "PublicAccess"
+
+# Every question worth one round trip, and nothing that changes anything.
+QUERIES = [
+    ("server", "SELECT @@VERSION AS v"),
+    ("tables",
+     "SELECT TABLE_NAME AS t FROM INFORMATION_SCHEMA.TABLES "
+     "WHERE TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME"),
+    # The one that decides the archive.
+    ("docket span",
+     "SELECT MIN(SessionYear) AS first_year, MAX(SessionYear) AS last_year, "
+     "COUNT(*) AS rows FROM docket"),
+    # "Retained" and "one stale row survived" look identical in a MIN/MAX.
+    ("docket rows per session",
+     "SELECT SessionYear AS yr, COUNT(*) AS rows FROM docket "
+     "GROUP BY SessionYear ORDER BY SessionYear"),
+    ("sponsors span",
+     "SELECT MIN(SessionYear) AS first_year, MAX(SessionYear) AS last_year, "
+     "COUNT(*) AS rows FROM sponsors"),
+    ("rollcall span",
+     "SELECT MIN(sessionYear) AS first_year, MAX(sessionYear) AS last_year, "
+     "COUNT(*) AS rows FROM rollcallsummary"),
+    # The site has sign-in counts for 565 of 1,237 bills and no testimony text.
+    ("testimony",
+     "SELECT COUNT(*) AS rows, "
+     "SUM(CASE WHEN testimonyText IS NULL OR LEN(testimonyText) = 0 "
+     "THEN 0 ELSE 1 END) AS with_text FROM houseRemoteTestify"),
+    ("docket columns",
+     "SELECT COLUMN_NAME AS c, DATA_TYPE AS ty FROM INFORMATION_SCHEMA.COLUMNS "
+     "WHERE TABLE_NAME = 'docket' ORDER BY ORDINAL_POSITION"),
+]
+
+PS = r"""
+$ErrorActionPreference = 'Stop'
+$conn = New-Object System.Data.SqlClient.SqlConnection
+$conn.ConnectionString = $env:GR_CONNSTR
+try { $conn.Open() } catch {
+  Write-Output ("CONNECT_FAIL " + $_.Exception.Message); exit 3 }
+$out = @()
+foreach ($pair in ($env:GR_QUERIES -split '~~')) {
+  $bits = $pair -split '::', 2
+  $cmd = $conn.CreateCommand()
+  $cmd.CommandText = $bits[1]
+  $cmd.CommandTimeout = 60
+  try {
+    $rdr = $cmd.ExecuteReader()
+    $rows = @()
+    while ($rdr.Read()) {
+      $row = @{}
+      for ($i = 0; $i -lt $rdr.FieldCount; $i++) {
+        $row[$rdr.GetName($i)] = [string]$rdr.GetValue($i)
+      }
+      $rows += $row
+    }
+    $rdr.Close()
+    $out += @{ name = $bits[0]; rows = $rows }
+  } catch {
+    $out += @{ name = $bits[0]; error = $_.Exception.Message }
+  }
+}
+$conn.Close()
+$out | ConvertTo-Json -Depth 6 -Compress
+"""
+
+
+def run(connstr):
+    """One PowerShell process, one connection, every query."""
+    payload = "~~".join(f"{n}::{q}" for n, q in QUERIES)
+    p = subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command", PS],
+        capture_output=True, text=True, timeout=300,
+        env={**__import__("os").environ,
+             "GR_CONNSTR": connstr, "GR_QUERIES": payload})
+    txt = (p.stdout or "").strip()
+    if txt.startswith("CONNECT_FAIL"):
+        return None, txt[len("CONNECT_FAIL"):].strip()
+    if not txt:
+        return None, (p.stderr or "no output").strip()[:300]
+    try:
+        d = json.loads(txt)
+    except ValueError:
+        return None, txt[:300]
+    return (d if isinstance(d, list) else [d]), None
+
+
+def show(results):
+    for block in results:
+        name = block.get("name", "?")
+        if block.get("error"):
+            print(f"\n  {name}: FAILED -- {block['error'][:160]}")
+            continue
+        rows = block.get("rows") or []
+        if isinstance(rows, dict):
+            rows = [rows]
+        print(f"\n  {name}: {len(rows)} row(s)")
+        for r in rows[:60]:
+            print("    " + "  ".join(f"{k}={v}" for k, v in r.items())[:150])
+        if len(rows) > 60:
+            print(f"    ... {len(rows) - 60} more")
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--raw", action="store_true",
+                    help="save the JSON reply to probe_db.json")
+    a = ap.parse_args()
+
+    base = (f"Database={DATABASE};User ID={USER};Password={PASSWORD};"
+            "Encrypt=False;TrustServerCertificate=True;Connect Timeout=20")
+    # The PDF says the instance name may not be needed. Plainest first.
+    attempts = [("host only", f"Server={HOST};{base}"),
+                ("named instance",
+                 "Server=" + HOST + chr(92) + INSTANCE + ";" + base)]
+
+    print("=" * 70)
+    print("The General Court's public database")
+    print("=" * 70)
+    print(f"  host      {HOST}")
+    print(f"  database  {DATABASE}")
+    print(f"  user      {USER}  (published for public use in "
+          "ODBC and Data Table Structure.pdf)")
+    print("  SELECT only. Nothing is written, here or there.")
+
+    for label, cs in attempts:
+        print(f"\nconnecting, {label} ...")
+        try:
+            results, err = run(cs)
+        except subprocess.TimeoutExpired:
+            print("  timed out after 5 minutes")
+            continue
+        except FileNotFoundError:
+            sys.exit("  powershell is not on PATH; this needs Windows "
+                     "PowerShell to reach SqlClient")
+        if results is None:
+            print(f"  no: {err}")
+            continue
+        print(f"  connected ({label})")
+        show(results)
+        if a.raw:
+            Path("probe_db.json").write_text(
+                json.dumps(results, indent=1), encoding="utf-8")
+            print("\n  wrote probe_db.json")
+        print("\n" + "=" * 70)
+        print("The number that matters is the docket span. If it reaches back")
+        print("past this term, the archive is a different project: term keying")
+        print("becomes a column and the page-structure probes are only needed")
+        print("for calendars, journals, bill text and committee reports, none")
+        print("of which are in this database.")
+        print("=" * 70)
+        return 0
+
+    print("\nCould not connect either way. That is an answer too -- the")
+    print("published endpoint may be firewalled to the outside, in which case")
+    print("the bulk .txt files remain the only route and the archive plan")
+    print("stands as written. netcheck.py diagnoses a refusal without making")
+    print("anything worse.")
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
