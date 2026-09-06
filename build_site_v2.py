@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.6
+# GRANITE_VERSION: 2026-09-05.7
 """
 Generate the faceted site from real General Court data.
 
@@ -1453,24 +1453,6 @@ def main():
     latest_session = latest_by_body.get("H")   # kept for older page versions
 
     # ---- party composition and vacancies -----------------------------------
-    # Seat totals are fixed by the state constitution: 400 representatives and
-    # 24 senators. The roster lists sitting members, so the difference is seats
-    # currently unfilled -- resignations, deaths, and members who never took
-    # office. The site states the number without speculating about causes.
-    SEATS = {"H": 400, "S": 24}
-    comp = {}
-    for ch, total in SEATS.items():
-        members = [m for m in legs.values() if m["chamber"] == ch]
-        by_party = Counter(m.get("party") or "Unknown" for m in members)
-        comp[ch] = {
-            "chamber": "House" if ch == "H" else "Senate",
-            "seats": total, "filled": len(members),
-            "vacant": max(total - len(members), 0),
-            "parties": [{"party": k, "code": (k or "?")[0], "n": v}
-                        for k, v in sorted(by_party.items(), key=lambda x: -x[1])],
-        }
-
-    # ---- party composition and vacancies -----------------------------------
     # Seat totals come from the district files where available, since those sum
     # to the constitutional membership exactly. The roster holds only sitting
     # members, so the difference is vacancies -- which accumulate through a term
@@ -1627,7 +1609,7 @@ def main():
          "url": "https://www.youtube.com/@NewHampshireSenate/live"}]
 
     (out / "home.json").write_text(json.dumps({
-        "status": status, "composition": comp, "composition": comp,
+        "status": status, "composition": comp,
         "generated": today,
         "counts": {"bills": len(index), "legislators": len(lg) if 'lg' in dir() else 0,
                    "votes": sum(len(x) for x in votes_by_member.values()),
