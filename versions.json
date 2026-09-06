@@ -49,7 +49,7 @@
     "resolve_members.py": "2026-09-04.1",
     "rollcall_parser.py": "2026-09-04.2",
     "score_alignment.py": "2026-09-04.2",
-    "segment_markers.py": "2026-09-05.26",
+    "segment_markers.py": "2026-09-05.27",
     "senate_check.py": "2026-09-04.6",
     "setup_archive.py": "2026-09-04.1",
     "snapshot_gencourt.py": "2026-09-04.1",

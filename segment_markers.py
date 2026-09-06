@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.26
+# GRANITE_VERSION: 2026-09-05.27
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -58,10 +58,12 @@ import argparse
 import proceedings as P
 import bisect
 import hashlib
+import io
 import json
 import re
 import sys
 import time
+import tokenize
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -188,23 +190,46 @@ def norm(s):
 
 
 def pattern_signature():
-    """A fingerprint of every pattern this file matches with.
+    """A fingerprint of everything in this file that can change an answer.
 
-    The cache must expire when the patterns change and not otherwise. Hashing
-    the patterns themselves makes that automatic: add a phrase and every
-    recording is reconsidered; change nothing and none is. No version number
-    to remember to bump, which is exactly the sort of thing that gets
-    forgotten and then serves stale output that looks fresh.
+    The cache must expire when the method changes and not otherwise. This
+    used to hash the patterns and the stop list, on the stated assumption
+    that "nothing else in this file affects the result". That was false, and
+    it is the second time this file has had a cache that keys on the wrong
+    thing. Change the dedupe rule, the window size, the bill-matching
+    threshold or any branch of find_markers, and every recording kept the
+    answer the old code gave -- served back looking fresh, and, worse,
+    scored as though it were the new method's work.
+
+    So: the whole module, with comments and blank lines stripped out by the
+    tokeniser. Anything that can alter behaviour alters this; a comment, a
+    docstring rewrite or a reflow does not, which matters in a file that is
+    documented as heavily as this one and would otherwise re-read 10 GB of
+    captions every time a sentence was clarified.
+
+    Crude and correct, in ARCHITECTURE's words. If the source cannot be read
+    -- frozen, zipped -- it falls back to the patterns, which is the old
+    behaviour and better than no key at all.
     """
-    pats = [OPEN_RE, CLOSE_RE, OPEN_DIRECT_RE, NEXT_RE, NEXT2_RE,
-            FLOOR_OPEN_RE, FLOOR_CLOSE_RE, BILL_SPOKEN, BARE_NUM]
-    blob = "|".join(r.pattern for r in pats) + "|".join(sorted(STOP))
+    try:
+        src = Path(__file__).resolve().read_text(encoding="utf-8")
+        parts = []
+        for tok in tokenize.generate_tokens(io.StringIO(src).readline):
+            if tok.type in (tokenize.COMMENT, tokenize.NL):
+                continue
+            parts.append(tok.string)
+        blob = "".join(parts)
+    except (OSError, ValueError, tokenize.TokenError, SyntaxError):
+        pats = [OPEN_RE, CLOSE_RE, OPEN_DIRECT_RE, NEXT_RE, NEXT2_RE,
+                FLOOR_OPEN_RE, FLOOR_CLOSE_RE, BILL_SPOKEN, BARE_NUM]
+        blob = "|".join(r.pattern for r in pats) + "|".join(sorted(STOP))
     return hashlib.sha1(blob.encode()).hexdigest()[:12]
 
 
 def cache_key(folder, candidates, sig):
     """What can make a recording's answer stale: its captions, its bill list,
-    the patterns. Nothing else in this file affects the result."""
+    and this module's own code -- see pattern_signature, which is where the
+    claim that nothing else mattered used to live."""
     p = Path(folder)
     for name in WORK_FILES:
         f = p / name
