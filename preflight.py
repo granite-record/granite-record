@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.20
+# GRANITE_VERSION: 2026-09-04.21
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -744,7 +744,7 @@ require("./stub.js");
 const src = require("fs").readFileSync("./page.js", "utf8");
 let scope;
 try { scope = (0, eval)(src +
-    "; ({render, IDX, renderDetail, setFocused:(x)=>{focused=x;}, getFocused:()=>focused});"); }
+    "; ({render, IDX, renderDetail, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message);
             process.exit(1); }
 scope.IDX.length = 0;
@@ -781,22 +781,58 @@ try { scope.render(); } catch (e) {
   console.log("RENDER unfocused " + e.constructor.name + ": " + e.message);
   process.exit(1); }
 
-// Typing a bill number into the search box while one bill is focused. The
-// results list is that bill and nothing else, so the query changed and the
-// screen did not: the box looked broken. Someone searching has stopped
-// reading this one, so the search backs out of it.
+// The search box, in both of the places it appears.
+//
+// On the list, typing narrows the list -- no key to press, which is what a
+// search box over a list should do.
+const box = document.querySelector("#q");
+if (!(box._on.input || []).length) {
+  console.log("SEARCH: nothing listens to the search box"); process.exit(1); }
+box.value = "insurance";
+box.fire("input");
+if (scope.getQuery() !== "insurance") {
+  console.log("SEARCH: typing on the list view did not run the search");
+  process.exit(1); }
+box.value = ""; box.fire("input");
+
+// On one bill's own view it must not. The reader is reading that bill, and
+// running the search takes it off the screen, so it waits to be told: the
+// Return key, or the button beside the box.
 scope.setFocused("HB1442");
 try { scope.render(); } catch (e) {
   console.log("RENDER refocus " + e.constructor.name + ": " + e.message);
   process.exit(1); }
-const box = document.querySelector("#q");
 box.value = "hb1442";
-if (!(box._on.input || []).length) {
-  console.log("SEARCH: nothing listens to the search box"); process.exit(1); }
 box.fire("input");
+if (!scope.getFocused()) {
+  console.log("SEARCH: typing in the box left the bill the reader was reading");
+  process.exit(1); }
+if (scope.getQuery() === "hb1442") {
+  console.log("SEARCH: the half-typed query was run before it was confirmed");
+  process.exit(1); }
+box.fire("keydown", {key: "Enter"});
 if (scope.getFocused()) {
-  console.log("SEARCH: typing in the box left the bill focused, so the search "
-              + "changed nothing on screen"); process.exit(1); }
+  console.log("SEARCH: Return did not confirm the search and leave the bill");
+  process.exit(1); }
+if (scope.getQuery() !== "hb1442") {
+  console.log("SEARCH: Return left the bill without running the search");
+  process.exit(1); }
+
+// And the button, which is the same thing for anyone not using a keyboard.
+const go = document.querySelector("#qgo");
+if (!(go._on.click || []).length) {
+  console.log("SEARCH: the search button does nothing"); process.exit(1); }
+scope.setFocused("HB1442");
+try { scope.render(); } catch (e) {
+  console.log("RENDER rerefocus " + e.constructor.name + ": " + e.message);
+  process.exit(1); }
+box.value = "insurance";
+box.fire("input");
+go.fire("click");
+if (scope.getFocused() || scope.getQuery() !== "insurance") {
+  console.log("SEARCH: the search button did not run the search");
+  process.exit(1); }
+scope.setFocused(null); box.value = ""; go.fire("click");
 
 // And the inside of a card, which render() alone never touches. Every bill on
 // the site sat on "Loading..." with its data already fetched, because

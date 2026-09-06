@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.13 -->
+<!-- GRANITE_VERSION: 2026-09-05.14 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -47,6 +47,13 @@ border-radius:7px;background:var(--surface);cursor:pointer}
 #q{flex:1;height:42px;padding:0 14px;font:inherit;font-size:15px;border:1px solid var(--edge);
 border-radius:7px;background:var(--paper)}
 #q:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft);background:var(--surface)}
+/* The search list narrows as you type and needs no button. On one bill's own
+   view it must not: re-running the search there takes the bill off the screen
+   the reader is reading. So the query is held until they say so, and this and
+   the Return key are how they say it. */
+#qgo{height:42px;min-width:44px;font-size:15px;border:1px solid var(--edge);
+border-radius:7px;background:var(--surface);cursor:pointer}
+#qgo:hover{border-color:var(--pine);background:var(--wash)}
 .qhint{font-size:12.5px;color:var(--ink-3);margin:7px 2px 0;display:flex;gap:16px;flex-wrap:wrap}
 .link{color:var(--pine);font-size:12.5px}
 .shell{max-width:1180px;margin:0 auto;padding:20px 24px 80px;display:grid;
@@ -390,6 +397,7 @@ clip:rect(0 0 0 0);white-space:nowrap;border:0}
   <label for="q" style="position:absolute;left:-9999px">Search bills</label>
   <input id="q" type="search" spellcheck="false" autocomplete="off" disabled
    placeholder="Bill number, key phrase, or several numbers separated by commas">
+  <button id="qgo" type="button" disabled title="Search" aria-label="Search">&#128269;</button>
 </div>
 <div class="qhint"><span id="count">Loading…</span>
 <label for="sort" style="position:absolute;left:-9999px">Sort order</label>
@@ -586,6 +594,9 @@ Promise.all([need("index.json"),need("meta.json")])
    const so=$("#sort");
    if(so)so.addEventListener("change",e=>{sortBy=e.target.value;render();});
    $("#q").disabled=false;
+   // The button next to it does the same job on the focused view, so it waits
+   // for the same data.
+   $("#qgo").disabled=false;
    // Arriving from the home page search box, with the query in the URL.
    const pre=new URLSearchParams(location.search).get("q");
    if(pre){ $("#q").value=pre; query=pre; }
@@ -1770,14 +1781,25 @@ document.addEventListener("change",e=>{const f=e.target.dataset.f;if(!f)return;
 document.addEventListener("input",e=>{
   if(e.target.id==="sbox"){sponsorFilter=e.target.value;renderFacets();
     const b=document.getElementById("sbox");if(b){b.focus();b.setSelectionRange(b.value.length,b.value.length);}}});
+// Running a search from one bill's own view means leaving that bill, so it
+// waits to be told. Everywhere else the list narrows as you type, which is
+// what a search box on a list should do.
+function submitSearch(){
+  query=$("#q").value;
+  // Back out to the top: the scroll position from before the bill was opened
+  // belongs to a list that is no longer the one on screen.
+  if(focused){unfocus(0);return;}
+  render();
+}
 $("#q").addEventListener("input",e=>{
+  if(focused)return;
   query=e.target.value;
-  // Focused on one bill, the results list is that bill and nothing else, so
-  // typing a different bill number changed the query and left the screen
-  // exactly as it was. Someone searching has stopped reading this one.
-  if(focused&&query){unfocus(0);return;}
   render();
 });
+$("#q").addEventListener("keydown",e=>{
+  if(e.key==="Enter"){e.preventDefault();submitSearch();}
+});
+$("#qgo").addEventListener("click",submitSearch);
 document.addEventListener("keydown",e=>{
   if(e.key==="/"&&document.activeElement!==$("#q")){e.preventDefault();$("#q").focus();$("#q").select();}
   // Tabs carry role="tab", and a screen reader user is told they are tabs, so
