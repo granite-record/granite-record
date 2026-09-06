@@ -172,8 +172,9 @@ have caught.
 In order. The first two are consolidation; the last two gate the archive.
 `ARCHITECTURE.md` has the reasoning.
 
-**1. Split `renderDetail` and `build_site_v2.main`.** `renderDetail` is 472
-lines with 26 `const` declarations and had three dead-zone crashes in one day;
+**1. Split `build_site_v2.main`.** `renderDetail` was the other half and was
+split on 6 September into nine hoisted functions, one per tab, its output
+verified byte-identical against the pre-split page over ten renders.
 `build_site_v2.main` is where the floor-marker miss lived, because the
 committee and floor station code sit 90 lines apart in one function. One
 function per tab, each small enough that declaration order is obvious.
@@ -184,15 +185,19 @@ recording so a shared convention appears as a number. That loop took coverage
 from 40% to 71% in an evening and is not exhausted. Add a phrase to
 `tests/test_markers.py` only if it was actually spoken.
 
-**3. Term-keyed identifiers.** Bill numbers repeat every two years and nothing
-outside `proceedings.csv` knows it. `committee_reports.json`, `bill_text.json`,
-`narratives.json` and the per-bill site files are all keyed on `HB396` alone.
-Fetch anything from 2024 today and it merges into 2026. This gates the archive.
+**3. The file cap.** Cloudflare Pages allows 20,000 files; one term already
+occupies 8,045. It is three files per bill, not two -- `bill/`, `bills/` and
+`feed/bill/` -- which is 6,701 a term, so the cap breaks partway through the
+THIRD term. Decide before term-keying is built: fewer static pages for older
+terms, or per-bill data in R2 behind a Worker. The two imply different keying
+paths, which is why this one comes first.
 
-**4. The file cap.** Cloudflare Pages allows 20,000 files; the site is at
-8,046. A page and a JSON per bill breaks the cap at the fourth term. Decide
-before back-filling: fewer static pages for older terms, or per-bill data in R2
-behind a Worker.
+**4. Term-keyed identifiers.** Bill numbers repeat every two years and nothing
+outside `proceedings.csv` knows it. `committee_reports.json`, `bill_text.json`,
+`narratives.json`, the per-bill site files and the 2,233 feeds under
+`site/feed/bill/` are all keyed on `HB396` alone; `build_feeds.py` has no
+notion of a term at all. Fetch anything from 2024 today and it merges into
+2026. This gates the archive.
 
 ---
 

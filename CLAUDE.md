@@ -133,10 +133,10 @@ Increment the `.N`; leave the date alone.
 
 In order. `ARCHITECTURE.md` has the full reasoning.
 
-1. **Split `renderDetail` and `build_site_v2.main`.** `renderDetail` is 472
-   lines with 26 `const` declarations and had three dead-zone crashes in one
-   day — the failure mode is a blank page for a visitor arriving from a link,
-   with the data already loaded. One function per tab. `build_site_v2.main`
+1. **Split `build_site_v2.main`.** `renderDetail` was the other half of this
+   and was split on 6 September: 472 lines and 26 `const` declarations became
+   nine hoisted functions, one per tab, with the output verified
+   byte-identical against the pre-split page. `build_site_v2.main`
    has the same problem: the floor-marker miss happened because the committee
    and floor station code sit 90 lines apart in one function.
 
@@ -149,15 +149,19 @@ In order. `ARCHITECTURE.md` has the full reasoning.
    whole day before anyone ran them on a floor caption file.
 
 3. **A decision on the file cap**, before term-keying is built. Cloudflare
-   Pages allows 20,000 files. A static page and a JSON per bill breaks that at
-   the fourth term. Fewer static pages for older terms, or per-bill data in R2
+   Pages allows 20,000 files and one term already occupies 8,045 of them --
+   three files per bill, not two, because `feed/bill/` is a third. That is
+   6,701 per term in bill files alone, so the cap breaks partway through the
+   THIRD term. Fewer static pages for older terms, or per-bill data in R2
    behind a Worker — the two imply different paths, so deciding first stops
    term-keying being built twice.
 
 4. **Term-keyed identifiers.** Bill numbers repeat every two years and nothing
    outside `proceedings.csv` knows it. `committee_reports.json`,
-   `bill_text.json`, `narratives.json` and the per-bill site files are keyed on
-   `HB396` alone. Fetch anything from 2024 today and it merges into 2026. This
+   `bill_text.json`, `narratives.json`, the per-bill site files and the 2,233
+   files under `site/feed/bill/` are keyed on `HB396` alone -- `build_feeds.py`
+   has no notion of a term at all. Fetch anything from 2024 today and it merges
+   into 2026. This
    gates the archive.
 
 ---

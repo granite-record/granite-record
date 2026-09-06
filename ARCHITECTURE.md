@@ -86,7 +86,9 @@ generator ever writes.
 ### 3. Bill numbers repeat every two years, and nothing knows it
 
 `committee_reports.json`, `bill_text.json`, `narratives.json`, the per-bill
-site files: all keyed by `HB396`. Run any fetch for 2024 and its HB 396 merges
+site files, and the 2,233 feeds under `site/feed/bill/`: all keyed by
+`HB396`. `build_feeds.py` contains no notion of a term at all, and is a
+quarter of the site by file count. Run any fetch for 2024 and its HB 396 merges
 into 2026's. Today's merge guard keys on the year in a source line, which stops
 one year overwriting another but cannot stop two different bills sharing a key.
 
@@ -97,11 +99,13 @@ carry a term, and the calendars back to 1997 are two requests a year away.
 already sketch this. Today's year-keyed journal and calendar citations were
 part of the same job without my recognising it.
 
-### 4. The deployment has a file cap, and the archive hits it at four terms
+### 4. The deployment has a file cap, and the archive hits it at three terms
 
-Cloudflare Pages allows 20,000 files. The site is at 8,046. A static page and a
-JSON per bill, times 2,234 bills a term, breaks the cap at the fourth term
-regardless of anything else. This needs deciding before any archive work,
+Cloudflare Pages allows 20,000 files. The site is at 8,045 for a single term.
+It is three files per bill, not two -- `bill/` 2,234, `bills/` 2,234 and
+`feed/bill/` 2,233 -- which is 6,701 a term, so the cap breaks partway through
+the THIRD term regardless of anything else. This needs deciding before any
+archive work,
 because it changes the shape of what gets built: either older terms get no
 static page each, or per-bill data moves to R2 with a Worker in front of it.
 
@@ -184,8 +188,11 @@ nightly becomes fifty requests, not two thousand. Old terms get a link.
 In order. Each depends on the one before it.
 
 1. **One proceedings table** (item 1). Everything downstream reads it.
-2. **Term-keyed identifiers** (item 3). Nothing archival can start without it.
-3. **A decision on the file cap** (item 4). Changes the shape of the build.
+2. **A decision on the file cap** (item 4). Changes the shape of the build,
+   and the two options imply different keying paths -- so it comes before
+   term keying, not after. An earlier draft of this list had them the other
+   way round, which contradicted the closing section of this same document.
+3. **Term-keyed identifiers** (item 3). Nothing archival can start without it.
 4. **One term back-filled end to end** -- 2023–2024 -- as the proof. Calendars
    and journals are two requests a year; votes and dockets are bulk files;
    videos and captions are the same pipeline that runs now. Bill text is a
@@ -207,8 +214,11 @@ done -- this section is kept so the reasoning survives, with the state marked.
 `proceedings.csv`, built by `build_proceedings.py`, read through
 `proceedings.py` by all four tools that used to read the two old files.
 
-**Split `renderDetail` and `build_site_v2.main`.** A day. **Still outstanding,
-and now the first thing to do.** Removes the class of bug that cost the second
+**Split `renderDetail` and `build_site_v2.main`.** `renderDetail` was split
+into one function per tab on 6 September, its output verified byte-identical
+against the pre-split page over ten renders. `build_site_v2.main` is **still
+outstanding, and now the first thing to do.** Removes the class of bug that
+cost the second
 most, and it is the one that breaks the page for a visitor arriving from a
 link.
 
