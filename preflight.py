@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.26
+# GRANITE_VERSION: 2026-09-04.27
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -495,6 +495,15 @@ def _bills_html():
         "estimate still carries a tolerance": "estimated within \\u00b1",
         "consent bills get no timestamp": 's.state==="consent"',
         "member sort key": "(a.s||a.n||\"\")",
+        # A jump button pressed before the player exists must build the
+        # player AT that time. Clicking the stub instead builds it at the
+        # opening offset -- up to five minutes earlier -- and then posts
+        # seekTo into an iframe created a line before, which YouTube is not
+        # listening on yet. The video then sits at a different time from the
+        # button that was pressed, which is what a reader sees as the player
+        # and the printed timestamps disagreeing.
+        "a cold jump loads the player at the time asked for":
+            "st.dataset.embed=`${vid}|${Math.max(0,Math.floor(Number(t)))}|${p2}`",
         "tab panels": 'role="tabpanel"',
         "visually hidden class": ".sr{position:absolute",
     }

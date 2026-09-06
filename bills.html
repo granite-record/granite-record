@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.17 -->
+<!-- GRANITE_VERSION: 2026-09-05.18 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1759,8 +1759,22 @@ document.addEventListener("click",e=>{
     const box=document.querySelector(`[data-player="${pid}"]`);
     let f=document.getElementById("yt_"+pid);
     if(!f){
+      // Load it AT the time that was asked for. This used to click the stub,
+      // which builds the player at the opening offset -- a few seconds to five
+      // minutes before the bill -- and then post seekTo to an iframe created
+      // one line earlier. YouTube's API is not listening until the frame has
+      // loaded, so the message went nowhere and the video sat at a different
+      // time from the button that had just been pressed. That is the mismatch
+      // between the player's own clock and the times printed beside it.
       const st=box&&box.querySelector("[data-embed]");
-      if(st){st.click(); f=document.getElementById("yt_"+pid);}
+      if(st){
+        const [vid,,p2]=st.dataset.embed.split("|");
+        st.dataset.embed=`${vid}|${Math.max(0,Math.floor(Number(t)))}|${p2}`;
+        st.click();
+        f=document.getElementById("yt_"+pid);
+        if(f)f.scrollIntoView({block:"nearest"});
+        return;
+      }
     }
     if(f){
       // seekTo over postMessage keeps playback going instead of reloading.
