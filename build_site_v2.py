@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.19
+# GRANITE_VERSION: 2026-09-05.20
 """
 Generate the faceted site from real General Court data.
 
@@ -741,10 +741,10 @@ CLOSING = {
     # report, not an ending, and it suppressed the paragraph on all 111.
     "Died when the session ended": (
         ("session ended", "died when the session", "died on the table"),
-        "No further action was recorded, and the bill died when the session "
-        "ended. A bill that has not cleared both chambers by the end of the "
-        "two-year term does not carry over -- it would have to be filed again "
-        "in a later term as a new bill."),
+        "No vote was ever taken on it, and the bill died when the session "
+        "ended. That is a procedural end rather than a decision -- much like a "
+        "bill left on the table, it ran out of time -- and it would have to be "
+        "filed again as a new bill in a later term."),
     "Indefinitely postponed": (
         ("indefinitely postpone",),
         "The chamber voted to indefinitely postpone it. That ends the bill for "
