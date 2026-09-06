@@ -59,7 +59,7 @@ WS = re.compile(r"\s+")
 # Both address shapes, and the name that goes with them.
 CMTE_LINK = re.compile(
     r"<a\b[^>]*href=[\"'](?P<href>[^\"']*committee_?details\.aspx\?"
-    r"(?:cc|code)=(?P<code>[^\"'&]+))[\"'][^>]*>(?P<name>[^<]{2,70})</a>",
+    r"(?:cc|code|id)=(?P<code>[^\"'&]+))[\"'][^>]*>(?P<name>[^<]{2,70})</a>",
     re.I)
 # A member, however the chamber addresses them.
 MEMBER_LINK = re.compile(
@@ -81,6 +81,24 @@ def get(url):
 
 def clean(s):
     return WS.sub(" ", _html.unescape(re.sub(r"<[^>]+>", " ", s or ""))).strip()
+
+
+def labelled(block, *labels):
+    """The value after one of these labels, however the page spaces it.
+
+    The two chambers write the same facts differently. The Senate uses
+    "Committee Aide:"; the House writes "Committee Assistant:" and separates
+    label from value with a literal &nbsp; rather than a space, which is why
+    a pattern expecting whitespace found nothing on 27 House committees.
+    """
+    for lab in labels:
+        m = re.search(re.escape(lab) + r"\s*:(?:&nbsp;|&#160;|\s|<[^>]+>)*"
+                      r"([^<\n]{2,60})", block, re.I)
+        if m:
+            v = clean(m.group(1))
+            if v and v not in (":", "-"):
+                return v
+    return ""
 
 
 def parse(page, chamber):
@@ -111,21 +129,44 @@ def parse(page, chamber):
             if who and who not in members:
                 members.append(who)
 
+        # The two chambers publish different amounts here, and the record
+        # says which. The Senate page carries a full roster with the chair
+        # and vice chair marked on the member links. The House page carries
+        # leadership and the room only -- "Chairman:", "Vice Chairman:",
+        # "Committee Assistant:", separated from their values by a literal
+        # &nbsp; -- and its roster lives on 27 separate detail pages.
+        #
+        # So House committees get members == [] rather than a two-name list
+        # that would read as the whole committee, and `roster` says whether
+        # the list is everybody or nobody.
+        chair = (next((w for w in members if roles.get(w) == "Chair"), "")
+                 or labelled(block, "Chairman", "Chair"))
+        vice = (next((w for w in members if roles.get(w) == "Vice Chair"), "")
+                or labelled(block, "Vice Chairman", "Vice Chair"))
         rec = {"chamber": chamber, "name": name, "code": code,
                "url": urllib.parse.urljoin(
                    "https://gc.nh.gov/senate/committees/" if chamber == "S"
                    else "https://gc.nh.gov/house/committees/", href),
                "members": [{"name": w, "position": roles.get(w, "Member")}
-                           for w in members]}
-        a = AIDE.search(block)
-        if a:
-            rec["aide"] = clean(a.group(1))
+                           for w in members],
+               "roster": "full" if members else "leadership only",
+               "chair": chair, "vice_chair": vice}
+        aide = labelled(block, "Committee Aide", "Committee Assistant")
+        if aide:
+            rec["aide"] = aide
+        researcher = labelled(block, "Researcher")
+        if researcher:
+            rec["researcher"] = researcher
         ph = PHONE.search(block)
         if ph:
             rec["phone"] = f"({ph.group(1)}) {ph.group(2)}-{ph.group(3)}"
-        pl = PLACE.search(block)
-        if pl and clean(pl.group(1)).upper() not in ("NA", "N/A", ""):
-            rec["location"] = clean(pl.group(1))
+        else:
+            ph2 = labelled(block, "Phone")
+            if ph2:
+                rec["phone"] = ph2
+        place = labelled(block, "Location", "Room")
+        if place and place.upper() not in ("NA", "N/A", ""):
+            rec["location"] = place
         out.append(rec)
     return out
 
@@ -166,6 +207,7 @@ def main():
                   "are a shape\n  this does not read; run again with "
                   "--raw and the patterns can be written against the page "
                   "itself.")
+        for r in recs:
             chair = next((m["name"] for m in r["members"]
                           if m["position"] == "Chair"), "")
             print(f"    {r['name']:<44} {len(r['members']):>2} members"
@@ -177,6 +219,15 @@ def main():
     nochair = [r["name"] for v in found.values() for r in v
                if not any(m["position"] == "Chair" for m in r["members"])]
     print(f"\n{total} committees in all")
+    lead_only = [r["name"] for v in found.values() for r in v
+                 if r.get("roster") != "full"]
+    if lead_only:
+        print(f"{len(lead_only)} of them carry leadership and room only, no "
+              "member roster:")
+        print("  the House standing-committees page does not list members; "
+              "they are on")
+        print("  27 separate detail pages, which is 27 more requests and is "
+              "not done here.")
     if nochair:
         print(f"{len(nochair)} with no chair identified: "
               + ", ".join(nochair[:4]))
