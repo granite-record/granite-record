@@ -165,7 +165,7 @@ In order. `ARCHITECTURE.md` has the full reasoning.
 ## Environment
 
 Windows, `cmd`. Python 3.14 as `python3`. Node is installed and `preflight`
-uses it. The working folder is the repository root; `work/` holds ~7.6 GB of
+uses it. The working folder is the repository root; `work/` holds ~10.5 GB of
 caption files and `site/` is the built output.
 
 `publish` is a local command that builds, checks and deploys with wrangler.
