@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 What is the live site actually serving?
 
@@ -230,6 +230,8 @@ def one_bill(base, site, bid, year, tries=3):
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--gate", action="store_true",
+                    help="exit non-zero only if the deploy did not land")
     ap.add_argument("--base", default="https://graniterecord.org")
     ap.add_argument("--site", default="site")
     ap.add_argument("--bill", help="one bill, e.g. HB396")
@@ -413,6 +415,31 @@ def main():
         print(f"\n  {head}")
         for ln in _wrap(body_, 66):
             print(f"    {ln}")
+
+    # Two kinds of problem, and publish.bat cares about only one of them.
+    #
+    # A deploy that did not land is a publish failure: the version served is
+    # not the version built, a path 404s, or every path returns the same
+    # page. Twice on 6 September publish printed "Deployment complete" for a
+    # deployment the production domain never took, and nothing said so.
+    #
+    # Cloudflare rewriting pages is real and worth fixing, but it is a
+    # standing dashboard setting rather than something this run did. Failing
+    # every publish on it would make the guard noise, and a guard that always
+    # fires is a guard nobody reads.
+    landed = not any(("not the file" in x) or ("could not be fetched" in x)
+                     or ("returned HTTP" in x) or ("same page" in x)
+                     or ("served as a web page" in x)
+                     for x in problems)
+    if a.gate:
+        if landed:
+            print()
+            print("  The deploy landed. The problems above are dashboard "
+                  "settings, not this publish.")
+            return 0
+        print()
+        print("  THE DEPLOY DID NOT LAND. What is live is not what was built.")
+        return 1
     return 1
 
 

@@ -48,9 +48,27 @@ npx wrangler pages deploy site --project-name=%PROJECT% --commit-dirty=true
 if errorlevel 1 goto :failed
 
 echo.
+echo === Confirming the world is getting what was just built ===
+REM wrangler reporting success is not the same as the deploy landing. On
+REM 6 September it printed "Deployment complete" twice for deployments the
+REM production domain never took, because the project's production branch
+REM was main while this repo is on master. --gate fails only when what is
+REM served is not what was built; dashboard settings are reported but do
+REM not fail the publish.
+python3 check_live.py --gate --base %BASE% --site site
+if errorlevel 1 goto :notlanded
+
+echo.
 echo === Live at %BASE% ===
 echo A previous version can be restored from the Deployments tab in Cloudflare.
 goto :done
+
+:notlanded
+echo.
+echo *** Uploaded, but the site is still serving the previous build. ***
+echo Check the Pages project's production branch, or promote the newest
+echo deployment from the Deployments tab, then run publish again.
+exit /b 1
 
 :failed
 echo.
