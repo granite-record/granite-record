@@ -91,3 +91,6 @@ check.txt
 !ground_truth.csv
 !status/officials.txt
 !versions.json
+
+# ---- probe output: a snapshot of one page, re-fetchable in one request ---
+probe_calendars*.html
