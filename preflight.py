@@ -771,6 +771,8 @@ var detail = {
              start_stated:true,date:"2026-02-03",time:"10:00"}],
   reports:[{majority_recommendation:"OUGHT TO PASS",minority_recommendation:null,
             source:"House Calendar 9, 2026",
+            date:"2026-02-24",dated:"signed",cite:"HC 9",
+            cite_url:"https://gc.nh.gov/hc9.pdf",
             reports:[{side:"Committee",author:"Rep. Jodi Nelson",committee:"Commerce",
                       text:"Consistent with RSA 91-A:4.",vote_yeas:19,vote_nays:0}]},
            // A divided report where the MAJORITY wants the bill killed and the
@@ -781,10 +783,25 @@ var detail = {
            {majority_recommendation:"INEXPEDIENT TO LEGISLATE",
             minority_recommendation:"OUGHT TO PASS",
             source:"House Calendar 11, 2026",
+            // Dated only from the day the calendar was printed, because no
+            // docket line cites HC 11. The page has to say which of the two
+            // dates it is showing rather than presenting both as the same.
+            date:"2026-03-13",dated:"printed",cite:"HC 11",cite_url:"",
             reports:[{side:"Majority",author:"Rep. A",committee:"Commerce",
                       text:"Against it.",vote_yeas:11,vote_nays:9},
                      {side:"Minority",author:"Rep. B",committee:"Commerce",
                       text:"For it."}]}],
+  // The Senate's shape: one report, a vote, no minority, and no written
+  // reasoning anywhere -- 1,531 of them, and the only report at all on 319
+  // bills, which the tab used to answer with "not loaded yet".
+  docket_reports:[{date:"2026-04-16",dated:"signed",body:"S",
+                   committee:"Senate Commerce",side:"",
+                   recommendation:"REFERRED TO INTERIM STUDY",
+                   vote_yeas:5,vote_nays:0,amendment:"2026-1201s",
+                   new_title:false,cite:"SC 14",cite_url:""}],
+  // Why a committee that has already reported reports again.
+  report_actions:[{before:"2026-03-13",date:"2026-03-05",
+                   text:"Recommit (Rep. Berry): MA VV 03/05/2026"}],
   sponsors:[{name:"Nelson, Jodi",party:"R",chamber:"H",prime:true,
              display_full:"Rep. Jodi Nelson (R - Rock. 13)"}],
   documents:[{label:"Bill text",url:"https://gc.nh.gov/x.pdf",kind:"text"}],
@@ -812,7 +829,18 @@ var fixtures = [
   // chip is coloured by what was moved.
   {name:"full", d:detail,
    want:['class="cstat s-done">INEXPEDIENT TO LEGISLATE',
-         'class="cstat s-law">OUGHT TO PASS']},
+         'class="cstat s-law">OUGHT TO PASS',
+         // Each report says when, and whether that is the day the committee
+         // signed or the day the calendar carrying it was printed.
+         "Feb 24, 2026",
+         "as printed",
+         // The Senate's report is drawn at all, coloured by its motion, and
+         // says why there is no reasoning under it.
+         'class="cstat s-study">REFERRED TO INTERIM STUDY',
+         "Senate Commerce",
+         "does not publish the written reasoning",
+         // And what happened between the two House reports.
+         "Between these reports the docket"]},
   // A bill with nothing on it yet. The fixture above populates every field, so
   // it only ever runs the arm of each ternary that HAS data -- and every one
   // of those has an else. That is what most bills look like early in a
@@ -994,7 +1022,38 @@ def _site_fixture(root):
                                "cancelled": False, "action": "Ought to Pass",
                                "motion": "MA", "vote_kind": "RC", "yeas": "214",
                                "nays": "119",
-                               "raw": "Ought to Pass: MA RC 214-119 03/06/2026  HJ 7  P. 55"}]},
+                               # As narrative.py writes it: clean() has taken
+                               # the citation off the line, and cite_of() has
+                               # put it in a field. The fixture used to leave
+                               # "HJ 7 P. 55" on the raw line, which no built
+                               # narrative ever contains, and so tested a
+                               # lookup against a string that is never there.
+                               "cite": "HJ 7", "cite_page": "55",
+                               "raw": "Ought to Pass: MA RC 214-119 03/06/2026"},
+                              # A committee report as the docket records it,
+                              # with no calendar prose behind it. This is the
+                              # Senate's whole shape -- one report, a vote, no
+                              # minority -- and 319 bills have nothing else.
+                              {"date": "2026-04-16", "type": "report", "body": "S",
+                               "cancelled": False, "side": "",
+                               "committee": "Senate Commerce",
+                               "recommendation": "Referred to Interim Study",
+                               "amendment": "", "report_date": "04/16/2026",
+                               "yeas": "5", "nays": "0", "new_title": False,
+                               "cite": "SC 14", "cite_page": "",
+                               "raw": "Committee Report: Referred to Interim "
+                                      "Study, 04/16/2026, Vote 5-0, CC"},
+                              # And the House report the calendar did print, so
+                              # the two are joined on the calendar they cite.
+                              {"date": "2026-02-27", "type": "report", "body": "H",
+                               "cancelled": False, "side": "",
+                               "committee": "Commerce",
+                               "recommendation": "Ought to Pass",
+                               "amendment": "", "report_date": "02/24/2026",
+                               "yeas": "19", "nays": "0", "new_title": False,
+                               "cite": "HC 9", "cite_page": "12",
+                               "raw": "Committee Report: Ought to Pass "
+                                      "02/24/2026 (Vote 19-0; CC)"}]},
         "HR10": {"narrative": "The House adopted it.", "stages": [], "notes": [],
                  "unrecognised": [],
                  "events": [{"date": "2026-03-05", "type": "floor", "body": "H",
@@ -1045,6 +1104,11 @@ def _site_fixture(root):
     w("candidate_segments.json", {"VID2": {"HB1442": [
         {"start": 600, "end": None, "what": "floor debate",
          "how": "the clerk reads the committee report"}]}})
+    w("calendars.json", {
+        "HC 9": "https://gc.nh.gov/house/calendars_journals/viewer.aspx"
+                "?fileName=calendars%5C2026%5CNo9%20February%2027%202026.pdf",
+        "HC 9 2026": "https://gc.nh.gov/house/calendars_journals/viewer.aspx"
+                     "?fileName=calendars%5C2026%5CNo9%20February%2027%202026.pdf"})
     w("journals.json", {"HJ 7": "https://gc.nh.gov/hj7.pdf",
                         "HJ 7 2026": "https://gc.nh.gov/hj7.pdf"})
     w("calendars.json", {"HC 9 2026": "https://gc.nh.gov/hc9.pdf"})
@@ -1200,6 +1264,26 @@ def _chain_output():
             (hb["stations"][0].get("tolerance") == 30, "the tolerance was not carried"),
             (hb["reports"][0]["reports"][0].get("vote_yeas") == 19,
              "the committee vote was not carried"),
+            # A written report takes its date from the docket line citing the
+            # same calendar -- the day the committee signed, which is 24
+            # February here and three days before the calendar carrying it.
+            # Without this the nine bills a single committee reported twice
+            # show two blocks a reader cannot tell apart.
+            (hb["reports"][0].get("date") == "2026-02-24",
+             f"the report is dated {hb['reports'][0].get('date')!r}, not the day "
+             "the committee signed"),
+            (hb["reports"][0].get("dated") == "signed",
+             "the report does not say where its date came from"),
+            (hb["reports"][0].get("cite_url"),
+             "the report does not link the calendar it was printed in"),
+            # And the Senate's, which no calendar prints the reasoning for.
+            (len(hb.get("docket_reports") or []) == 1,
+             f"{len(hb.get('docket_reports') or [])} docket reports, expected the "
+             "Senate's one; a House report whose calendar IS on file must not "
+             "appear twice"),
+            ((hb.get("docket_reports") or [{}])[0].get("committee")
+             == "Senate Commerce",
+             "the reporting committee was not carried onto the docket report"),
             (hb["events"][0].get("cite_url"), "the journal citation did not resolve"),
             # A House Resolution is adopted by the House and that is the end
             # of it. Reading it as "Passed one chamber" implies a Senate stage

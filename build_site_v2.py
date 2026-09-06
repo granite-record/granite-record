@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.11
+# GRANITE_VERSION: 2026-09-05.12
 """
 Generate the faceted site from real General Court data.
 
@@ -45,7 +45,6 @@ def load(p, default):
         return default
 
 
-CITE = re.compile(r"\b([HS][JC])\s*(\d+)\b(?:\s*P\.\s*(\d+))?")
 
 # Sign-ins are filed for a public hearing, so the count belongs on that line.
 PUBLIC_HEARING = re.compile(r"public hearing", re.I)
@@ -267,19 +266,27 @@ def vote_chronology(rcs, narr):
     return order, names
 
 
-def _cite(raw, sources, year=""):
-    """Pull the journal or calendar citation off the end of a docket line.
+def _cite(ev, sources, year=""):
+    """The journal or calendar one docket action is printed in, as a link.
 
     A docket line cites "HJ 7" with no year, because within one session there
     is only one. Across sessions there is one per year, so the lookup is tried
     with the year first and falls back to the bare key for anything fetched
     before the keys carried one.
+
+    This used to take the line and search it. The line it was given had already
+    been through narrative.clean(), which removes the citation so that the
+    hearing pattern's venue group does not swallow "SC 4" -- so the search
+    found nothing, on every event of every bill, and the comment below saying
+    each action keeps its citation described something that never happened.
+    narrative.py now takes it off the raw line and carries it on the event,
+    which is where this reads it.
     """
-    m = CITE.search(raw or "")
-    if not m:
+    key = (ev.get("cite") or "").strip()
+    if not key:
         return {}
-    key = f"{m.group(1)} {int(m.group(2))}"
-    out = {"cite": key + (f", page {m.group(3)}" if m.group(3) else "")}
+    page = (ev.get("cite_page") or "").strip()
+    out = {"cite": key + (f", page {page}" if page else "")}
     url = sources.get(f"{key} {year}") if year else None
     if url or key in sources:
         out["cite_url"] = url or sources[key]
@@ -1165,6 +1172,152 @@ def build_status(a, index, procs, floor, today, latest_by_body, upcoming):
     return status
 
 
+# A calendar's publication date, out of the filename the viewer link carries:
+# "calendars%5C2026%5CNo10%20March%206%202026.pdf". Every one of the 24
+# calendars a committee report cites resolves this way, so a report that the
+# docket does not date can still be placed on the day it was printed.
+CAL_DATE = re.compile(
+    r"(January|February|March|April|May|June|July|August|September|October"
+    r"|November|December)%20(\d{1,2})%20(\d{4})", re.I)
+MONTHS = ["january", "february", "march", "april", "may", "june", "july",
+          "august", "september", "october", "november", "december"]
+# "House Calendar 51, 2025" is how a report names the calendar it was printed
+# in; "HC 51" is how the docket cites the same volume. One key for both.
+REPORT_CAL = re.compile(r"House Calendar (\d+[A-Za-z]?)(?:,\s*(\d{4}))?", re.I)
+# What the chamber did between one report and the next. These are the three
+# ways a bill goes back to a committee that has already reported it, and one
+# of them sits between the two reports on eight of the nine bills whose
+# reports all come from a single committee -- which is the answer to "what
+# does the second report mean". Interim study is deliberately not here: it
+# ends a bill for the session rather than sending it back for another report.
+REPORT_AGAIN = re.compile(r"recommit|re-?refer|retained in committee", re.I)
+
+
+def _cal_key(source):
+    """"House Calendar 51, 2025" as the docket writes it: ("HC 51", "2025")."""
+    m = REPORT_CAL.search(source or "")
+    return (f"HC {m.group(1)}", m.group(2) or "") if m else ("", "")
+
+
+def _cal_date(url):
+    """The day a calendar was published, from the filename in its link."""
+    m = CAL_DATE.search(url or "")
+    if not m:
+        return ""
+    return (f"{int(m.group(3)):04d}-{MONTHS.index(m.group(1).lower()) + 1:02d}"
+            f"-{int(m.group(2)):02d}")
+
+
+def _mdy(s):
+    """The docket's 03/17/2026 as 2026-03-17."""
+    m = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})$", (s or "").strip())
+    return f"{m.group(3)}-{int(m.group(1)):02d}-{int(m.group(2)):02d}" if m else ""
+
+
+def committee_reports(recs, narr, sources, house_cmte, senate_cmte):
+    """Every committee report on a bill, dated, in the order they were signed.
+
+    Two sources hold different halves of this and neither is enough alone.
+
+    The House Calendar prints why a committee decided as it did, signed by
+    name, and that is the only place the reasoning exists. It says nothing
+    about when, and a bill reported twice by one committee -- 9 of the 108
+    with more than one report -- came out as two identical-looking blocks with
+    no way to tell which was which, or that on HB104 they are one report
+    printed in two calendars.
+
+    The docket records that a committee reported, the day it signed, what it
+    moved, by what vote, and the volume and page it was printed in. It has no
+    prose. It also has the Senate: 1,708 reports the tab used to answer with
+    "Senate reports use a different format and are not loaded yet". The format
+    is one report, with a vote and no minority -- which is what the Senate
+    does.
+
+    So each written report is dated from the docket line citing the same
+    calendar, or failing that from the day that calendar was published, and
+    every report the docket has that no calendar printed is carried alongside
+    it. The page says which of the two dates it is showing.
+    """
+    events = [e for e in (narr or {}).get("events", [])
+              if e.get("type") == "report" and not e.get("cancelled")]
+    # The date the committee signed, per calendar volume, from the docket.
+    signed = {}
+    for e in events:
+        d = _mdy(e.get("report_date"))
+        if e.get("cite") and d:
+            signed.setdefault(e["cite"], d)
+
+    out, seen_cal = [], set()
+    for r in recs:
+        key, year = _cal_key(r.get("source"))
+        seen_cal.add(key)
+        url = sources.get(f"{key} {year}") if year else None
+        url = url or sources.get(key, "")
+        rr = dict(r)
+        if signed.get(key):
+            rr["date"], rr["dated"] = signed[key], "signed"
+        elif _cal_date(url):
+            rr["date"], rr["dated"] = _cal_date(url), "printed"
+        else:
+            rr["date"], rr["dated"] = "", ""
+        rr["cite"] = key
+        rr["cite_url"] = url
+        out.append(rr)
+    out.sort(key=lambda x: x.get("date") or "9999")
+
+    # Reports the docket has and no calendar printed. A House report reaches
+    # this list when it was printed in a calendar this site has not read; a
+    # Senate report always does, because the Senate prints no reasoning.
+    docket = []
+    for e in events:
+        if e.get("cite") and e["cite"] in seen_cal:
+            continue
+        # A minority report carries no vote and no volume of its own; where the
+        # calendar's version of it is already above, showing the docket's bare
+        # line again says nothing new.
+        if e.get("side") and any(x.get("side") == e["side"]
+                                 for r in recs for x in (r.get("reports") or [])):
+            continue
+        docket.append({
+            "date": _mdy(e.get("report_date")) or e.get("date", ""),
+            "dated": "signed" if _mdy(e.get("report_date")) else "recorded",
+            "body": e.get("body", ""),
+            # The committee that reported, which narrative.py carries forward
+            # from the referral line. The bill record holds only the committee
+            # it is with now, so a report from an earlier one had no name.
+            "committee": (e.get("committee")
+                          or (senate_cmte if e.get("body") == "S" else house_cmte)),
+            "side": e.get("side", ""),
+            "recommendation": (e.get("recommendation") or "").upper(),
+            "vote_yeas": int(e["yeas"]) if e.get("yeas") else None,
+            "vote_nays": int(e["nays"]) if e.get("nays") else None,
+            "amendment": e.get("amendment", ""),
+            "new_title": bool(e.get("new_title")),
+            "cite": e.get("cite", ""),
+            "cite_url": (sources.get(f"{e['cite']} {(e.get('date') or '')[:4]}")
+                         or sources.get(e.get("cite", ""), "")),
+        })
+    docket.sort(key=lambda x: x.get("date") or "9999")
+
+    # Why there is a second report. Taken from the docket between one report
+    # and the next, so it is the chamber's own record of what it did rather
+    # than an inference from the two reports looking different.
+    dates = sorted(x["date"] for x in out + docket if x.get("date"))
+    between = []
+    for a, z in zip(dates, dates[1:]):
+        for e in (narr or {}).get("events", []):
+            if e.get("cancelled") or e.get("type") == "report":
+                continue
+            # Strictly before the later report: an action on the same day
+            # is the floor acting on that report, not the reason for it.
+            if a < (e.get("date") or "") < z and REPORT_AGAIN.search(
+                    e.get("raw", "")):
+                between.append({"before": z, "date": e["date"],
+                                "text": e.get("raw", "")})
+                break
+    return out, docket, between
+
+
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, procs, floor, segs,
                 marks, sources, legs, leg_by_sort,
@@ -1307,6 +1460,13 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # committee report -- and somebody who wants the source rather than
         # the summary has to hunt for them. Gathered in one place, with the
         # thing each one actually is written next to it.
+        # Every committee report on this bill, dated and in order, with
+        # the Senate's alongside the House's. Computed here because the
+        # Documents list below cites the same calendars.
+        rep_written, rep_docket, rep_actions = committee_reports(
+            reports.get(bid, []), narr, sources,
+            b.get("house_committee", ""), b.get("senate_committee", ""))
+
         docs, seen_doc = [], set()
 
         def add_doc(label, url, kind):
@@ -1343,18 +1503,19 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         for e in (narr or {}).get("events", []):
             if e.get("cancelled"):
                 continue
-            c = _cite(e.get("raw", ""), sources, (e.get("date") or "")[:4])
+            c = _cite(e, sources, (e.get("date") or "")[:4])
             if c.get("cite_url"):
                 add_doc(c["cite"], c["cite_url"], "record")
         # The calendar a committee report was printed in.
-        for r in reports.get(bid, []):
-            src = r.get("source") or ""
-            m = re.match(r"House Calendar (\d+)(?:,\s*(\d{4}))?", src)
-            if m:
-                key = f"HC {m.group(1)}" + (f" {m.group(2)}" if m.group(2) else "")
-                add_doc(f"{src}, committee report",
-                        sources.get(key) or sources.get(f"HC {m.group(1)}", ""),
-                        "report")
+        # committee_reports() has already turned each report's calendar into
+        # a key and a URL, so this cites what the report itself is citing
+        # rather than parsing "House Calendar 51, 2025" a second time.
+        for r in rep_written:
+            add_doc(f"{r.get('source') or r.get('cite')}, committee report",
+                    r.get("cite_url", ""), "report")
+        for r in rep_docket:
+            if r.get("cite_url"):
+                add_doc(f"{r['cite']}, committee report", r["cite_url"], "report")
 
         bill_amds = bill_amendments(narr, amend_texts)
         btext = bill_text_block(bill_texts.get(bid))
@@ -1449,8 +1610,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                         **({"testimony": testimony[bid]}
                            if bid in testimony and PUBLIC_HEARING.search(
                                e.get("raw", "")) else {}),
-                        **_cite(e.get("raw", ""), sources,
-                                (e.get("date") or "")[:4])}
+                        **_cite(e, sources, (e.get("date") or "")[:4])}
                        for e in (narr or {}).get("events", []) if not e.get("cancelled")],
             # Prefer what the General Court says over what we would infer.
             # Where the docket has settled the bill, the per-chamber fields
@@ -1476,7 +1636,14 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                        "senate_status", "date_introduced", "floor_date",
                        "committee_code") if st.get(k)},
             "sponsors": sp_list, "rollcalls": rc_out, "stations": stations,
-            "reports": reports.get(bid, []),
+            "reports": rep_written,
+            # Reports the docket records that no calendar this site has
+            # read printed the reasoning for. Almost all of them are the
+            # Senate's, which files one report with a vote and no
+            # minority -- the shape the tab used to say was not loaded.
+            "docket_reports": rep_docket,
+            # What the chamber did between one report and the next.
+            "report_actions": rep_actions,
             "subject": b.get("subject", ""),
             "house_committee": b.get("house_committee", ""),
             "senate_committee": b.get("senate_committee", ""),
@@ -1500,7 +1667,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # how one opens -- so leaving it out meant the linker missed the
             # place it was most useful.
             "rsa": rsa_links(b.get("title", ""),
-                             *[e.get("text", "") for r in reports.get(bid, [])
+                             *[e.get("text", "") for r in rep_written
                                for e in r.get("reports", [])],
                              *[x.get("text", "") for x in bill_amds],
                              # And the bill, which is mostly statute citations

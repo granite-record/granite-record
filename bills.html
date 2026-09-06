@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.11 -->
+<!-- GRANITE_VERSION: 2026-09-05.12 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1266,7 +1266,33 @@ function renderHearings(b,d){
 function renderReports(b,d,rsa){
   const recFor=(r,side)=>side==="Minority"
       ? (r.minority_recommendation||"") : (r.majority_recommendation||"");
-  return (d.reports||[]).length?d.reports.map(r=>{
+  // What the chamber did between one report and the next, keyed on the report
+  // it comes before. A bill sent back to a committee that has already reported
+  // it comes out reported again, and without this the second report reads as
+  // an unexplained repeat of the first -- which is what a committee reporting
+  // twice looked like on the nine bills it happens to.
+  const acts={};
+  (d.report_actions||[]).forEach(a=>{(acts[a.before]=acts[a.before]||[]).push(a);});
+  const between=key=>(acts[key]||[]).map(a=>
+    `<p class="note" style="margin:0 0 16px">Between these reports the docket
+      records, on ${esc(fdate(a.date))}: <em>${esc(a.text)}</em></p>`).join("");
+  // The day the committee signed its report, where the docket states it; the
+  // day the calendar carrying it was published, where it does not. Saying
+  // which is the difference between a fact and a stand-in for one.
+  const when=r=>!r.date?"":`<span class="secsub">${esc(fdate(r.date))}</span>`
+      +(r.dated==="printed"?` <span class="note" style="font-size:11.5px">as printed</span>`:"");
+  const cited=r=>{
+    if(!r.cite)return "";
+    const t=esc(r.source||r.cite);
+    return r.cite_url?` · <a href="${esc(r.cite_url)}" rel="noopener">${t}</a>`
+                     :` · ${t}`;
+  };
+  const head=(r,cmte,body)=>`<div style="display:flex;gap:9px;align-items:baseline;
+      flex-wrap:wrap;border-top:1px solid var(--rule);padding-top:11px;margin-bottom:9px">
+      ${when(r)}<span class="note" style="font-size:12px">${
+        esc([body,cmte].filter(Boolean).join(" "))}${cited(r)}</span></div>`;
+
+  const written=(d.reports||[]).map(r=>{
     const divided=!!r.minority_recommendation;
     // The committee's vote is printed at the end of the report body in the
     // calendar, where it reads as a footnote to a paragraph of prose. It
@@ -1277,17 +1303,15 @@ function renderReports(b,d,rsa){
     // Where one report was filed, neither number belongs to anybody else, so
     // the whole tally sits with it -- 19-0, or 18-1.
     const tally=(r.reports||[]).map(x=>x).find(x=>x.vote_yeas!=null);
-    // Named for what it is. It used to be called votes, which shadowed the
-    // roll call votes built further up the same function; they are now in
-    // two functions and the shadow is gone, but the name was never right.
     const committeeTally=e=>{
       if(e.vote_yeas==null&&!tally)return "";
       const y=e.vote_yeas!=null?e.vote_yeas:tally.vote_yeas;
       const nn=e.vote_nays!=null?e.vote_nays:tally.vote_nays;
-      const full=`Committee vote ${y}\u2013${nn}`;
+      const full=`Committee vote ${y}–${nn}`;
       return `<span class="cvote" title="${full}">${
-        divided?(e.side==="Minority"?nn:y):`${y}\u2013${nn}`}</span>`;
+        divided?(e.side==="Minority"?nn:y):`${y}–${nn}`}</span>`;
     };
+    const cmte=((r.reports||[])[0]||{}).committee||"";
     const blocks=(r.reports||[]).map(e=>{
       const rec=recFor(r,e.side);
       return `<div style="margin-bottom:20px">
@@ -1295,17 +1319,37 @@ function renderReports(b,d,rsa){
           <span class="secsub">${esc(e.side)}</span>
           ${committeeTally(e)}
           ${rec?`<span class="cstat ${recColour(rec)}">${esc(rec)}</span>`:""}</div>
-        <p style="font-size:12.5px;color:var(--ink-3);margin:3px 0 8px">${esc(e.author)}${
-          e.committee?` — ${esc(e.committee)}`:""}</p>
+        <p style="font-size:12.5px;color:var(--ink-3);margin:3px 0 8px">${esc(e.author)}</p>
         <p style="font-family:var(--serif);font-size:16px;line-height:1.6;margin:0">${rsa(esc(e.text))}</p>
         </div>`;}).join("");
-    return `${divided?`<p class="note">The committee split. Both reports are printed
-      below in the committee's own words.</p>`:""}${blocks}
-      ${r.source?`<p style="font-size:12px;color:var(--ink-3);margin:0 0 18px">
-        Source: ${esc(r.source)}</p>`:""}`;}).join("")
-    :`<p class="note">No committee report on file. Majority and minority reports are printed
-      in the House Calendar rather than the docket, and are added as calendars are processed.
-      Senate reports use a different format and are not loaded yet.</p>`;
+    return between(r.date)+head(r,cmte,"House")
+      +(divided?`<p class="note">The committee split. Both reports are printed
+        below in the committee's own words.</p>`:"")+blocks;}).join("");
+
+  // Reports the docket records and no calendar this site has read printed the
+  // reasoning for. Nearly all are the Senate's: it files one report with a
+  // vote and no minority, and the tab used to answer the 319 bills whose only
+  // report is one of these with "not loaded yet".
+  const docket=(d.docket_reports||[]).map(r=>{
+    const vote=r.vote_yeas!=null&&r.vote_nays!=null
+      ? `<span class="cvote" title="Committee vote ${r.vote_yeas}–${r.vote_nays}"
+          >${r.vote_yeas}–${r.vote_nays}</span>` : "";
+    const amd=r.amendment?` <span class="note" style="font-size:12px">amendment ${
+      esc(r.amendment)}${r.new_title?", with a new title":""}</span>`:"";
+    return between(r.date)+head(r,r.committee,r.body==="S"?"Senate":"House")
+      +`<div style="display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px">
+        ${r.side?`<span class="secsub">${esc(r.side)}</span>`:""}${vote}
+        <span class="cstat ${recColour(r.recommendation)}">${esc(r.recommendation)}</span></div>
+      <p class="note" style="margin:0 0 20px">${amd}${amd?" · ":""}Recorded in the docket.
+        ${r.body==="S"?`The Senate reports a bill once, with the committee’s vote and
+        no minority report, and does not publish the written reasoning the House prints
+        in its calendar.`:`The calendar carrying this report has not been read into the
+        site yet, so only what the docket states is shown.`}</p>`;}).join("");
+
+  return (written||docket)?written+docket
+    :`<p class="note">No committee report on file. A report is recorded in the docket
+      when a committee reports the bill out, and the written reasoning behind it is
+      printed in the House Calendar; neither has happened here yet.</p>`;
 }
 
 // Sponsors, grouped by chamber with the originating one first. A House bill

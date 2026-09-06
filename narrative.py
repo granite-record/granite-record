@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.17
+# GRANITE_VERSION: 2026-09-04.18
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -918,6 +918,20 @@ def build(bill, rows):
         evs.append(ev)
     evs.sort(key=lambda e: e["when"])
 
+    # Which committee held the bill when each thing happened. Only the referral
+    # line names one, so it is carried forward until the next referral -- the
+    # rule stage_of already uses to label a stage, applied to every event so a
+    # committee report knows whose report it is. The site had been taking the
+    # committee off the bill record instead, which holds only the current one:
+    # 858 of 1,929 reports had no committee against them, including every
+    # report on a bill that had since moved on.
+    held = {}
+    for ev in evs:
+        c = (ev.get("committee") or "").strip()
+        if c:
+            held[ev["body"]] = c
+        ev["committee_now"] = held.get(ev["body"], "")
+
     sentences, notes, unknown = [], [], []
     last_cmte = {}
     stages = []   # [{"label": ..., "text": ...}] in the order they happened
@@ -1033,6 +1047,7 @@ def build(bill, rows):
                        # the vote, in the docket, and were being read and
                        # discarded at this door.
                        {"side": report_side(e.get("side")),
+                        "committee": e.get("committee_now", ""),
                         "recommendation": (e.get("rec") or "").strip(),
                         "amendment": (e.get("amend") or "").strip(),
                         # The day the committee signed, not the day the clerk

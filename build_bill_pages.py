@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.28
+# GRANITE_VERSION: 2026-09-04.29
 """
 Write a real HTML page for every bill.
 
@@ -325,6 +325,34 @@ def page(b, d, generated):
         + "</ul>") if docs else (
         '<p class="src">No official documents on file for this bill yet.</p>')
 
+    # Committee reports, in the order they were signed, with the Senate's
+    # beside the House's. What each of the four sections below is used to be
+    # unsayable: the record's calendar and the reporting committee were both
+    # dropped here, so a bill a committee reported twice printed two headings
+    # reading "Majority" and "Minority" twice over with nothing between them.
+    acts = {}
+    for a in (d.get("report_actions") or []):
+        acts.setdefault(a["before"], []).append(a)
+
+    def between(key):
+        return "".join(
+            '<p class="src">Between these reports the docket records, on '
+            f'{E(fdate(a["date"]))}: <em>{E(a["text"])}</em></p>'
+            for a in acts.get(key, []))
+
+    def head(r, cmte, body):
+        # The day the committee signed, where the docket states it; the day the
+        # calendar carrying the report was published, where it does not.
+        when = E(fdate(r.get("date"))) if r.get("date") else ""
+        if when and r.get("dated") == "printed":
+            when += " <span class=\"src\">as printed</span>"
+        cite = E(r.get("source") or r.get("cite") or "")
+        if cite and r.get("cite_url"):
+            cite = f'<a href="{E(r["cite_url"])}" rel="noopener">{cite}</a>'
+        bits = [x for x in (" ".join(y for y in (body, cmte) if y), cite) if x]
+        return (f'<h3 class="rephead">{when}</h3>'
+                f'<p class="meta">{" &#183; ".join(bits)}</p>' if when or bits else "")
+
     reports = ""
     for r in (d.get("reports") or []):
         # The committee's vote goes beside the label it is a vote on, matching
@@ -333,7 +361,10 @@ def page(b, d, generated):
         divided = bool(r.get("minority_recommendation"))
         tally = next((x for x in (r.get("reports") or [])
                       if x.get("vote_yeas") is not None), None)
-        for e in (r.get("reports") or []):
+        inner = (r.get("reports") or [])
+        reports += between(r.get("date") or "")
+        reports += head(r, (inner[0] or {}).get("committee", ""), "House")
+        for e in inner:
             rec = (r.get("minority_recommendation") if e.get("side") == "Minority"
                    else r.get("majority_recommendation")) or ""
             y = e.get("vote_yeas", (tally or {}).get("vote_yeas"))
@@ -343,14 +374,42 @@ def page(b, d, generated):
                 vote = (f' <span class="cvote">'
                         f'{nn if e.get("side") == "Minority" else y}</span>'
                         if divided else
-                        f' <span class="cvote">{y}\u2013{nn}</span>')
-            reports += (f'<section><h3>{E(e.get("side",""))}{vote}'
-                        + (f" — {E(rec)}" if rec else "") + "</h3>"
+                        f' <span class="cvote">{y}–{nn}</span>')
+            reports += (f'<section><h4>{E(e.get("side",""))}{vote}'
+                        + (f" &#8212; {E(rec)}" if rec else "") + "</h4>"
                         f'<p class="meta">{E(e.get("author",""))}</p>'
                         f'<p class="report">{rsa(E(e.get("text","")))}</p></section>')
+
+    # Reports the docket records that no calendar on file printed. Nearly all
+    # are the Senate's, which reports a bill once with a vote and no minority
+    # and publishes no reasoning -- so this is the whole of a Senate report,
+    # and on 319 bills it is the only report there is.
+    for r in (d.get("docket_reports") or []):
+        reports += between(r.get("date") or "")
+        reports += head(r, r.get("committee", ""),
+                        "Senate" if r.get("body") == "S" else "House")
+        y, nn = r.get("vote_yeas"), r.get("vote_nays")
+        vote = (f' <span class="cvote">{y}–{nn}</span>'
+                if y is not None and nn is not None else "")
+        amd = (f' Amendment {E(r["amendment"])}'
+               + (", with a new title." if r.get("new_title") else ".")
+               if r.get("amendment") else "")
+        said = ("The Senate reports a bill once, with the committee’s vote and "
+                "no minority report, and does not publish the written reasoning "
+                "the House prints in its calendar."
+                if r.get("body") == "S" else
+                "The calendar carrying this report has not been read into the "
+                "site yet, so only what the docket states is shown.")
+        reports += (f'<section><h4>{E(r.get("side") or "Committee")}{vote}'
+                    + (f" &#8212; {E(r.get('recommendation',''))}"
+                       if r.get("recommendation") else "") + "</h4>"
+                    f'<p class="src">{amd} {said}</p></section>')
+
     if reports:
-        reports = ('<p class="src">Reproduced from the House Calendar in the '
-                   "committee\u2019s own words.</p>" + reports)
+        reports = ('<p class="src">The recommendation, the vote and the day it '
+                   "was signed come from the docket; the reasoning, where there "
+                   "is any, is reproduced from the House Calendar in the "
+                   "committee’s own words.</p>" + reports)
 
     hearings = ""
     for s in (d.get("stations") or []):
@@ -445,6 +504,13 @@ a.cite{{color:var(--pine)}}
 .rc h3{{margin:0 0 4px;font-size:15px}}
 .meta{{font-size:13px;color:var(--ink-2);margin:0 0 8px}}
 .report{{font-family:var(--serif);font-size:16px;line-height:1.62}}
+/* One committee report, headed by the day it was signed. Nine bills on this
+   site were reported twice by the same committee and printed two blocks a
+   reader could not tell apart, because neither the date nor the calendar
+   reached the page. */
+.rephead{{margin:22px 0 2px;font-size:15px;border-top:1px solid var(--rule);
+padding-top:12px}}
+#reports h4{{margin:14px 0 2px;font-size:14px}}
 .facts{{width:auto;border-collapse:collapse;font-size:14px;margin:8px 0}}
 .facts th,.facts td{{padding:6px 16px 6px 0;border-bottom:1px solid var(--rule);
 text-align:left;vertical-align:top}}
@@ -673,7 +739,7 @@ still here and the start time is work in progress.</p>
 <ul class="tl">{hearings or '<li>No proceedings on file.</li>'}</ul></section>
 
 <section id="reports"><h2>Committee reports</h2>
-{reports or '<p class="src">No committee report on file. House majority and minority reports are printed in the House Calendar rather than the docket, and are added as calendars are processed. Senate reports use a different format and are not loaded yet.</p>'}</section>
+{reports or '<p class="src">No committee report on file. A report is recorded in the docket when a committee reports the bill out, and the written reasoning behind it is printed in the House Calendar; neither has happened here yet.</p>'}</section>
 
 <section id="amendments"><h2>Amendments</h2>
 {amend_block}</section>
