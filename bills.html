@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.7 -->
+<!-- GRANITE_VERSION: 2026-09-05.8 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1012,7 +1012,13 @@ function renderHearings(b,d){
           <a href="${esc(s.watch||('https://www.youtube.com/watch?v='+s.video_id))}"
              target="_blank" rel="noopener">Open on YouTube</a>
           <span class="tolnote">${note}</span></div></div>`;};
-    if(s.state==="located"){
+    // "stated" is "located" with the boundary in the chair's own words. It
+    // was its own state string and matched no branch here, so the best data
+    // this site has -- 3,829 proceedings, a median of one second -- fell
+    // through to "the moment was not identified". The branch below already
+    // reads start_stated and words itself accordingly; it only ever needed to
+    // be reached.
+    if(s.state==="located"||s.state==="stated"){
       // Open the player a little before the mark, because arriving late
       // means missing the opening of the hearing while arriving early costs a
       // few seconds of scrubbing. A stated boundary still gets a lead: it is
@@ -1071,7 +1077,12 @@ function renderHearings(b,d){
         s.candidate?` An automatic pass suggested ${hms(s.candidate)}, but not
         confidently enough to publish as fact.`:""}</p>`;
     }
-    if(s.state==="whole_video"){
+    // else if, not if. Opening a second chain here meant every station that
+    // matched the FIRST chain -- located, stated, approximate -- fell through
+    // this one to the "s.video_id" catch-all below, which overwrote the inner
+    // that had just been built correctly. 5,453 stations carried a real
+    // timestamp the page then threw away.
+    else if(s.state==="whole_video"){
       // The recording covers exactly this bill, so it plays from the start and
       // there is nothing to estimate.
       const pid=`${esc(s.video_id)}_w`;
@@ -1098,7 +1109,7 @@ function renderHearings(b,d){
            target="_blank" rel="noopener">The session is here</a> if you want
         the day as a whole.</p>`;
     }
-    else if(s.state==="floor_precise"){
+    else if(s.state==="floor_precise"||s.state==="floor_stated"){
       // A roll call closes the item, so its timestamp is the END of the
       // debate, good to a few seconds. The window opens at the PREVIOUS bill's
       // last vote, and everything in between is other bills -- on one real
@@ -1113,6 +1124,12 @@ function renderHearings(b,d){
       // the previous bill's roll call and can be half an hour of other
       // business earlier, so it is only a fallback -- and ten minutes before
       // the vote is a worse fallback still, just a less wrong one.
+      // floor_stated has a start and an end the chair said, and no roll call
+      // at all. Everything below is the same except what may be claimed about
+      // the end: "timed to the second" is true of a roll call clock and false
+      // of a caption line, and the difference is the whole point of the
+      // wording on this site.
+      const voted=s.state==="floor_precise";
       const ws=Math.max(Math.floor(s.window_start||0),0);
       // One number, shown and used. The header said debate_start while the
       // player seeked to debate_start-15 and the jump buttons showed two other
@@ -1132,12 +1149,15 @@ function renderHearings(b,d){
           ${ws<from?`<button class="jump" data-seek="${pid}|${ws}">${
             hms(ws)} window opens</button>`:""}
           <button class="jump" data-seek="${pid}|${Math.floor(s.debate_end)}">
-            ${hms(s.debate_end)} the vote</button>
+            ${hms(s.debate_end)} ${voted?"the vote":"ends"}</button>
           <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}&t=${from}s"
              target="_blank" rel="noopener">Open on YouTube</a>
-          <span class="tolnote">${s.debate_start!=null
-            ? "the clerk takes it up here; the vote is timed to the second"
-            : "vote timed to the second"}</span></div>
+          <span class="tolnote">${voted
+            ? (s.debate_start!=null
+               ? "the clerk takes it up here; the vote is timed to the second"
+               : "vote timed to the second")
+            : "the chair opens and closes it; no roll call on this one"
+            }</span></div>
         ${(s.motions||[]).length?`<div class="pbar" style="border-top:none">
           <span style="color:var(--ink-3)">Motions: ${s.motions.map(esc).join(" · ")}</span>
           </div>`:""}</div>`;

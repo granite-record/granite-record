@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.15
+# GRANITE_VERSION: 2026-09-04.16
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -852,6 +852,54 @@ console.log("ok");
                       "on three shapes of bill, collapsed and focused")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "every station state the builder emits has a branch on the page")
+def _states_covered():
+    """The states build_site_v2 can produce, against the states bills.html draws.
+
+    This exists because of a specific failure. renderHearings tested `located`
+    and `approximate` in one if/else chain and then opened a SECOND chain with
+    `if (whole_video)`, so a station that matched the first chain fell through
+    the second to its `s.video_id` catch-all, which overwrote the inner it had
+    just built. Separately, the builder emitted `stated` and `floor_stated`,
+    which matched no branch at all. Between them, 5,453 stations carried a real
+    timestamp that the page replaced with "the moment was not identified" --
+    the site drew 742 of the 6,195 timestamps it held, and every check passed.
+
+    Two halves, because either alone would have missed it: the states must be
+    covered, and the chain must be a single chain.
+    """
+    b, h = Path("build_site_v2.py"), Path("bills.html")
+    if not (b.exists() and h.exists()):
+        return "skip", "build_site_v2.py or bills.html not here"
+    src = b.read_text(encoding="utf-8")
+    page = h.read_text(encoding="utf-8")
+
+    emitted = set(re.findall(r'"state":\s*"(\w+)"', src))
+    emitted |= set(re.findall(r'\["state"\]\s*=\s*"(\w+)"', src))
+    emitted |= set(re.findall(r'"state",\s*"(\w+)"', src))
+    # Ternaries: "state": "stated" if said else state -- the else arm is a
+    # variable holding one of these, set just above.
+    emitted |= set(re.findall(r'state,\s*start\s*=\s*"(\w+)"', src))
+    assert emitted, "no station states found in build_site_v2.py"
+
+    drawn = set(re.findall(r's\.state\s*===\s*"(\w+)"', page))
+    assert drawn, "no state tests found in bills.html"
+
+    # novideo and prestream mean there is nothing to play; the page handles
+    # prestream by name and novideo by falling through to its final else.
+    missing = sorted(emitted - drawn - {"novideo"})
+    assert not missing, ("the builder emits " + ", ".join(missing)
+                         + " and the page draws no branch for it")
+
+    # One chain. A second `if (s.state===...)` after the first restarts the
+    # else-ladder and lets a later catch-all overwrite an earlier match.
+    opens = [m.start() for m in re.finditer(r'(?<!else )if\s*\(s\.state\s*===', page)]
+    assert len(opens) <= 1, (f"{len(opens)} separate if-chains test s.state; a "
+                             "station matching an earlier chain is overwritten "
+                             "by the catch-all in a later one")
+    return "ok", f"{len(emitted)} states emitted, all drawn, one chain"
 
 
 @check("frontend", "no const is read before the line that declares it")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.8
+# GRANITE_VERSION: 2026-09-05.9
 """
 Generate the faceted site from real General Court data.
 
@@ -845,6 +845,10 @@ def station_for_floor(f, bid, marks):
                                                []):
         st["state"] = "consent"
         st["start"] = None
+        # Not a debate. The heading read "House floor debate" over a paragraph
+        # explaining the bill was never debated, which is the page contradicting
+        # itself in two lines.
+        st["what"] = "consent calendar"
         return st
 
     said_f = None
