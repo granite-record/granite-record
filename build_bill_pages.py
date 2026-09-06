@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.30
+# GRANITE_VERSION: 2026-09-04.31
 """
 Write a real HTML page for every bill.
 
@@ -310,7 +310,9 @@ def page(b, d, generated):
                        "into this site yet. The Documents section links to it "
                        "on the General Court's own site.</p>")
 
-    nrep = sum(len(r.get("reports") or []) for r in (d.get("reports") or []))
+    # Counted the way the section draws them, the Senate's included.
+    nrep = (sum(len(r.get("reports") or []) for r in (d.get("reports") or []))
+            + len(d.get("docket_reports") or []))
     nvotes = len(d.get("rollcalls") or [])
     # The same links the card's Documents tab shows, said the same way.
     DOCWHAT = {"text": "the bill as it currently stands",

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.16 -->
+<!-- GRANITE_VERSION: 2026-09-05.17 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1296,6 +1296,13 @@ function renderHearings(b,d){
 // committee split, the minority's. The two are different motions and must
 // not both show the majority's -- on a divided report that would read as
 // though the dissenters agreed.
+// Every report the tab draws, counted the same way it draws them. This used
+// to count only the written ones, so HB686 read "(4)" above five blocks, and
+// the 319 bills whose only report is one the docket recorded showed no count
+// at all above a report that was plainly there.
+const reportCount=d=>(d.reports||[]).reduce((n,r)=>n+((r.reports||[]).length),0)
+                     +(d.docket_reports||[]).length;
+
 function renderReports(b,d,rsa){
   const recFor=(r,side)=>side==="Minority"
       ? (r.minority_recommendation||"") : (r.majority_recommendation||"");
@@ -1562,7 +1569,7 @@ function renderDetail(b,d){
     <button class="tab" role="tab" id="tab_${b.id}_1" aria-controls="pane_${b.id}_1" aria-selected="false" data-t="1">Votes${b.nrc?` (${b.nrc})`:""}</button>
     <button class="tab" role="tab" id="tab_${b.id}_2" aria-controls="pane_${b.id}_2" aria-selected="false" data-t="2">Videos</button>
     <button class="tab" role="tab" id="tab_${b.id}_3" aria-controls="pane_${b.id}_3" aria-selected="false" data-t="3">Committee reports${
-      (d.reports||[]).length?` (${d.reports.reduce((n,r)=>n+((r.reports||[]).length),0)})`:""}</button>
+      reportCount(d)?` (${reportCount(d)})`:""}</button>
     <button class="tab" role="tab" id="tab_${b.id}_4" aria-controls="pane_${b.id}_4" aria-selected="false" data-t="4">Sponsors${(d.sponsors||[]).length?` (${(d.sponsors||[]).length})`:""}</button>
 
     <button class="tab" role="tab" id="tab_${b.id}_5" aria-controls="pane_${b.id}_5"

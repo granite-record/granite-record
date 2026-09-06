@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.27
+# GRANITE_VERSION: 2026-09-05.28
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -153,6 +153,40 @@ FLOOR_OPEN_RE = re.compile(
     r"(?P<cmte>[\w ,\-]{4,70}?)\s*,?\s*"
     r"(?:to\s+)?which\s+(?:was|is|has\s+been|has|had)?\s*"
     r"(?:referr?ed|referr?al)", re.I)
+
+# TRIED AND REJECTED: the chair putting the question.
+#
+# The floor script has a second fixed form besides the clerk's reading above,
+# and it is the one that names the bill outright:
+#
+#   "Motion before us is majority committee report of ought to pass on
+#    house bill 198."
+#   "Question is on the majority committee report of ought to pass as amended
+#    on Senate Bill 586."
+#
+# 346 of these across 20 of the 41 floor recordings with captions on disk, 95%
+# followed immediately by a bill number. By the standard this file uses -- a
+# convention shows up as a number rather than a hunch -- it qualifies, and it
+# was added as an opening.
+#
+# It is not an opening. Measured against the clerk's reading of the same bill,
+# it comes a median of 512 seconds AFTER it (2 of 230 before). It is the
+# moment the vote is called, near the END of the debate.
+#
+# It is not usable as a close either. Against the 90 bills that already have a
+# close the chair stated, it is off by a median of 204 seconds and lands
+# within 30 seconds exactly once. The stated ends on this site score 4 seconds
+# against the hand-marked record; adopting this would have replaced a
+# four-second claim with a three-and-a-half-minute one on the 71 bills it
+# would otherwise have "gained".
+#
+# As an opening it also destroyed data. A second open marker for a bill 20
+# minutes after the first took the close away from the first, and 9 floor
+# appearances dropped from a stated span to a date alone -- which is how this
+# was caught, since the hand-marked record is all committee proceedings and
+# scored 0m 01s either way.
+#
+# The phrase is real and worth knowing about. It is not a boundary.
 
 # The outcome, which closes the item. The House says "the committee report is
 # adopted"; the Senate says "the motion of ought to pass is adopted". A voice
