@@ -75,43 +75,66 @@ function that is being taken apart.
 
 ---
 
-## Then: decide the archive shape
+## Then: the archive, re-planned on what the database actually holds
 
-In this order. Each depends on the one before.
+Settled 6 September by querying the General Court's own SQL Server, whose
+read-only credentials are published at gc.nh.gov/downloads. It exposes 28
+views, not the 13 its PDF documents. Coverage, measured:
 
-**1. Probe two past terms.** 2023–2024 and 2005–2006. What is the same, what
-moved, what does not exist that far back. Four requests, gentle, one at a
-time. **This script does not exist yet.** `probe_archive.py` answers a
-different question — whether a year's Secretary of State PDFs carry a text
-layer or are scans needing OCR — and its defaults are 108 requests, most of
-them 404s on constructed filenames, which is one of the two things that got
-this address blocked. Run it narrowed to a single year and sample.
-`setup_archive.py` is local only and touches no network.
+| era | what exists |
+|---|---|
+| **1989-2016** | `Docket` only, 292,532 rows, 783 bills in 2005 alone; roll calls from 1999 |
+| **2017-2024** | **nothing** |
+| **2025-2026** | everything: bill text, committee reports, committee membership, hearings, 402,908 testimony rows of which 128,854 carry text |
 
-Probed 6 September, one request each: 2005 and 2023 both returned 404 at
-`/BillHistory/SofS_Archives/{year}/{chamber}/{bill}.pdf`. `netcheck.py`
-immediately after showed every ordinary request answering 200, so this is not
-a block and not the firewall -- the constructed URL pattern simply does not
-resolve. (The 403s netcheck reports are a WAF rule against HTTP/1.0
-specifically; HTTP/1.1 answers 200 on the same URLs.) The pattern in the
-docstring is cited from a 2001 example, so the next step is one request
-against that exact example to tell a stale pattern from patchy year coverage.
-Do not sweep years looking for a hit: probing filenames that do not exist is
-one of the two things that got this address blocked.
+The 1989-2016 era is close to the agreed minimum for an archived bill --
+number, title, docket, status, and a link out for the rest -- for 28 years,
+with no scraping at all. That was going to be the expensive half of this and
+it is now a query.
 
-**2. Decide the file cap.** Cloudflare Pages allows 20,000 files. One term is
-at 8,045 — already 40%, which *contradicts* the fourth-term arithmetic rather
-than confirming it. That figure assumed two files per bill; there are three,
-because `feed/bill/` is one per bill too. 6,701 a term in bill files alone
-means the cap breaks partway through the THIRD term. Either older terms get
-fewer static pages each, or per-bill data moves to R2 behind a Worker. The
-probe informs this: if 2005 has no roll call
-detail, older terms need far less per bill.
+The gap is real and is not hiding elsewhere. `Docket`'s own `[DataBase]`
+column reads `BillStatusDB` for 1989-2016 and `NHLMS` for 2025-2026, and the
+view unions exactly those two systems. `NHLegislatureDB2` carries none of the
+views; `PublicNHLMS` is the live current-session store only.
 
-**3. Term-keyed identifiers.** `(term, bill)` everywhere. Cannot start before
-2, because the two cap options imply different paths.
+**1. The 2017-2024 years, at one request.** `probe_legacy.py --year 2019`
+asks whether `/bill_status/legacy/bs2016/Bill_status.aspx` answers for a whole
+session year. `fetch_bill_status.py` already uses that endpoint per bill, and
+two of its parameters -- `sortoption` and `txtsessionyear` -- are search
+fields rather than lookup fields. If it lists a year, eight years cost eight
+requests. If it does not, they cost one request per bill and are not worth it
+now -- but the term key below means they can be filled in later without
+rebuilding anything.
 
-**4. Back-fill one term end to end**, 2023–2024, as the proof.
+**2. Term-keyed identifiers, regardless of the answer.** `(term, bill)`
+everywhere. This is now the gate on everything archival and does not depend on
+the file-cap decision the way the earlier plan assumed: the database hands
+back `SessionYear` on every docket row, so the key exists in the source and
+only has to be carried. `build_feeds.py` still has no notion of a term and is
+2,233 of the site's files.
+
+**3. The file cap.** Unchanged and unaffected by any of this -- it is about
+how many files the site emits, not where the data comes from. Cloudflare Pages
+allows 20,000; one term is 8,045, three files per bill, so the cap breaks
+partway through the THIRD term. An archived term built from `Docket` alone
+needs far fewer files per bill than a current one, which makes the cheaper
+option easier rather than harder.
+
+**4. Back-fill one term end to end** as the proof. 2005-2006 now, not
+2023-2024: the database covers it and the scraping does not.
+
+**What the database does not have, so the PDF path stays:** calendars,
+journals, and anything about video or timestamps. The Secretary of State
+archive probe is no longer needed for docket or votes -- 2005 and 2023 both
+returned 404 on the constructed `/BillHistory/SofS_Archives/` pattern anyway,
+with `netcheck.py` clean immediately after, so that URL shape is simply wrong
+rather than blocked.
+
+**One limit worth deciding before building.** `Sponsors` is 2025-2026 only.
+An archived 1995 bill would carry its docket and its roll calls and no
+sponsors at all. That constrains what an archived bill page can honestly
+claim, and the page should say so rather than leave an empty section that
+reads as "nobody sponsored this".
 
 ---
 
