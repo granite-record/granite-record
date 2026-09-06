@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.16
+# GRANITE_VERSION: 2026-09-05.17
 """
 Generate the faceted site from real General Court data.
 
@@ -364,7 +364,7 @@ STATED = [
     ("signed by governor", "law", "Signed into law"),
     # The field says "LAW WITHOUT SIGNATURE"; the needle wanted "became law
     # without signature" and so never matched it. Nine bills. Masked until
-    # now because docket_veto rescued every one of them from the docket.
+    # now because docket_outcome rescued every one of them from the docket.
     ("law without signature", "law", "Became law unsigned"),
     # The three outcomes of a veto, most specific first. A bill awaiting the
     # override vote, one where the override failed, and one where it succeeded
@@ -714,8 +714,16 @@ def classify_stated(st, prefix=""):
     return None
 
 
-def docket_veto(narr):
-    """The veto outcome as the DOCKET states it, or None.
+# The docket writes the signature two ways -- "Signed by Governor Ayotte
+# 7/10/2026" and "Signed by the Governor on 7/10/2026" -- and the second is
+# 233 of the 632. Reading only the first left those bills showing whatever
+# they were before it: 137 "Passed one chamber", 82 "Passed, awaiting the
+# governor", nine "In committee" and five "Killed", for bills that are law.
+SIGNED_RE = re.compile(r"signed by (?:the )?governor", re.I)
+
+
+def docket_outcome(narr):
+    """The outcome as the DOCKET states it, or None.
 
     classify_stated already knows the status page lags: its own note records a
     bill whose override had failed still reading VETOED BY GOVERNOR because
@@ -740,6 +748,15 @@ def docket_veto(narr):
     if ("without the signature of the governor" in text
             or "law without signature" in text):
         return "law", "Became law unsigned"
+    # And the signature itself, for the same reason and on the same evidence.
+    # The status page carries no governor field for 219 bills whose docket
+    # records the day the governor signed them and the chapter number they
+    # became -- so they read "Passed one chamber", "Passed, awaiting the
+    # governor", "In committee" or, for five of them, "Killed". The page is
+    # describing the last thing it was told; the docket is describing what
+    # happened.
+    if SIGNED_RE.search(text):
+        return "law", "Signed into law"
     return None
 
 
@@ -762,7 +779,7 @@ def classify(narr, rcs, prefix=""):
     if ("without the signature of the governor" in text
             or "law without signature" in text):
         return "law", "Became law unsigned"
-    if "signed by governor" in text:
+    if SIGNED_RE.search(text):
         return "law", "Signed into law"
     if "vetoed" in text:
         return "veto", "Vetoed"
@@ -778,7 +795,21 @@ def classify(narr, rcs, prefix=""):
         return "done", "Died on table"
     if "retained in committee" in text:
         return "active", "Retained in committee"
-    if any(r.get("passed") for r in rcs):
+    # A floor motion the chamber carried, however the vote was taken. This
+    # asked the roll calls and nothing else, so a resolution adopted on a VOICE
+    # vote -- which is how most of them are adopted -- fell past it. HR16 sat
+    # on "In committee" with "Ought to Pass with Amendment: MA VV" in its
+    # docket and the House's adoption of it on the page above.
+    #
+    # The motion has to be an adoption. Thirteen of these resolutions carried a
+    # motion of Inexpedient to Legislate and two carried one to lay on the
+    # table; both are caught further up, and naming the motion here means they
+    # stay caught if that order ever changes.
+    adopted_floor = any(
+        e.get("type") == "floor" and (e.get("motion") or "").upper() == "MA"
+        and re.search(r"ought to pass|adopted", e.get("action") or "", re.I)
+        for e in (narr or {}).get("events", []) if not e.get("cancelled"))
+    if adopted_floor or any(r.get("passed") for r in rcs):
         # A resolution of one chamber that has carried a vote is finished.
         # There is no other chamber for it to be in progress towards.
         if prefix in SINGLE_CHAMBER:
@@ -806,10 +837,20 @@ def next_step(narr, bill, prefix=""):
     if ("without the signature of the governor" in every
             or "law without signature" in every):
         return "Became law without the governor's signature"
-    if "signed by governor" in raw:
+    if SIGNED_RE.search(raw):
         return "Signed into law"
     if "vetoed" in raw:
         return "Vetoed. Awaiting a possible override vote"
+    # A resolution of one chamber is finished the moment that chamber adopts
+    # it, and the line recording that is not always the last one: HR16's floor
+    # vote is followed by the roll call on the amendment it adopted, so the
+    # chain below read "amendment" and answered "In progress" for a resolution
+    # the House had passed a month earlier.
+    if prefix in SINGLE_CHAMBER and any(
+            e.get("type") == "floor" and (e.get("motion") or "").upper() == "MA"
+            and re.search(r"ought to pass|adopted", e.get("action") or "", re.I)
+            for e in evs if not e.get("cancelled")):
+        return "Adopted. A resolution of one chamber goes no further"
     if t == "introduced":
         return f"Pending public hearing in {bill.get('house_committee') or 'committee'}"
     if t == "hearing":
@@ -1460,7 +1501,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         st = status_pages.get(bid, {})
         prefix = bill_prefix(bid)
         told = classify_stated(st, prefix)
-        settled = docket_veto(narr)
+        settled = docket_outcome(narr)
         if settled:
             # A dated docket line beats a status field that has not caught up.
             kind, status = settled

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.19
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -364,7 +364,12 @@ PATTERNS = [
     ("died", DIED_RE),
     ("rereferred", REREF_RE),
     ("governor", re.compile(
-        r"(?P<what>Signed by Governor|Vetoed by Governor|Sent to Governor)"
+        # The clerk writes it both with and without the article: "Signed by
+        # Governor Ayotte 7/10/2026" 400 times and "Signed by the Governor on
+        # 7/10/2026" 233 times. Only the first was recognised, so a third of
+        # the signatures on the record arrived as unclassified text.
+        r"(?P<what>Signed by (?:the )?Governor|Vetoed by (?:the )?Governor"
+        r"|Sent to (?:the )?Governor)"
         r"[,;]?\s*(?P<date>\d{1,2}/\d{1,2}/\d{4})?"
         r"(?:.*?Chapter\s*(?P<chapter>\d+))?"
         r"(?:.*?Effective\s*(?P<eff>\d{1,2}/\d{1,2}/\d{4}))?", re.I)),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.28
+# GRANITE_VERSION: 2026-09-04.29
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1647,6 +1647,41 @@ def _report_rec():
         f"only {voted:,} of {sum(recs.values()):,} report lines yield a vote")
     return "ok", (f"{sum(recs.values()):,} report lines, {len(recs)} distinct "
                   f"recommendations, {voted:,} with a vote")
+
+
+@check("data", "a bill the governor signed says so")
+def _signed():
+    if not (Path("narratives.json").exists() and Path("build_site_v2.py").exists()):
+        return "skip", "narratives.json or build_site_v2.py not here"
+    bs = imp("build_site_v2")
+    assert bs, "build_site_v2.py will not import"
+    nv = json.loads(Path("narratives.json").read_text(encoding="utf-8"))
+    # The clerk writes it two ways -- "Signed by Governor Ayotte 7/10/2026" and
+    # "Signed by the Governor on 7/10/2026" -- and the pattern knew only the
+    # first. 233 of the 632 signatures on the record went unrecognised, and the
+    # status page carries no governor field at all for those bills, so they
+    # kept whatever they had been before: "Passed one chamber" for 137,
+    # "Passed, awaiting the governor" for 82, "In committee" for nine and
+    # "Killed" for five bills that are law.
+    signed = getattr(bs, "SIGNED_RE", None)
+    assert signed is not None, ("build_site_v2 has no SIGNED_RE, so the two "
+                               "spellings of the signature are not both read")
+    both = {"signed by governor": 0, "signed by the governor": 0}
+    missed = []
+    for bill, v in nv.items():
+        text = " ".join(e.get("raw", "") for e in v.get("events", []))
+        m = re.search(r"signed by (?:the )?governor", text, re.I)
+        if not m:
+            continue
+        both[m.group(0).lower()] = both.get(m.group(0).lower(), 0) + 1
+        if not signed.search(text.lower()):
+            missed.append(bill)
+    assert not missed, (f"{len(missed):,} bills the docket says were signed are "
+                        f"not matched, e.g. {missed[:5]}")
+    assert all(both.values()), (
+        f"only one spelling is present, so this check proves nothing: {both}")
+    return "ok", (f"{sum(both.values()):,} signatures, "
+                  + " and ".join(f"{v:,} {k!r}" for k, v in both.items()))
 
 
 @check("data", "a sponsor is named the same way whether or not they still serve")
