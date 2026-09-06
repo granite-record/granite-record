@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.4
+# GRANITE_VERSION: 2026-09-06.8
 """
 What is actually in the General Court's public database.
 
@@ -128,6 +128,58 @@ QUERIES = [
 # HTMLText is `text` and PDFImage is `image`. Both are cast and clipped --
 # nothing here pulls a megabyte, and PDFImage is never selected at all.
 SAMPLES = [
+    # Proof, not assumption: RollCallHistory.txt's first 2026 row pairs
+    # EmployeeNumber 332247 with roster id 960. If the legislators view puts
+    # PersonID 960 against Employeeno 332247, the two id spaces are joined and
+    # any year in the database can be named against the roster.
+    ("legislators: does PersonID 960 carry Employeeno 332247",
+     "SELECT PersonID, Employeeno, LastName, FirstName, LegislativeBody, Active "
+     "FROM legislators WHERE Employeeno = '332247' OR PersonID = 960"),
+    ("legislators: how many, and how many still sitting",
+     "SELECT Active, COUNT(*) AS rows, COUNT(DISTINCT PersonID) AS people "
+     "FROM legislators GROUP BY Active"),
+    # rollcallhistory identifies a member by EmployeeNumber (376972);
+    # legislators.txt and every roster on this site use a different id
+    # (11332). RollCallHistory.txt carries BOTH, so the join exists somewhere.
+    # If the legislators view holds the pair, an archived year can be joined
+    # to the roster; if it does not, only members who also voted in a year
+    # already on disk can be named.
+    ("legislators: its columns",
+     "SELECT COLUMN_NAME AS c, DATA_TYPE AS ty FROM INFORMATION_SCHEMA.COLUMNS "
+     "WHERE TABLE_NAME = 'legislators' ORDER BY ORDINAL_POSITION"),
+    ("legislators: a real row",
+     "SELECT TOP 2 * FROM legislators"),
+    # RollCallHistory.txt stores the vote as a word -- "Yea", "Not
+    # Voting/Excused" -- and this view stores a tinyint. The mapping is not
+    # documented anywhere, so it is read off the 2026 rows the site already
+    # has both halves of: match the counts and the codes name themselves.
+    ("rollcallhistory: 2026 vote codes",
+     "SELECT Vote AS code, COUNT(*) AS rows FROM rollcallhistory "
+     "WHERE sessionYear = 2026 GROUP BY Vote ORDER BY Vote"),
+    ("rollcallhistory: a real 2026 row",
+     "SELECT TOP 3 * FROM rollcallhistory WHERE sessionYear = 2026 "
+     "AND LegislativeBody = 'H' AND VoteSequenceNumber = 1"),
+    # The roll calls. RollCallSummary.txt and RollCallHistory.txt on disk are
+    # the CURRENT session only -- 419 summary rows and 131,199 member votes,
+    # every one of them 2026 -- so the site shows no recorded vote for any of
+    # 2025. HB56 says the House killed it on a roll call 216-154 and lists
+    # none. The views here span 1999-2026, so the gap is a fetch rather than a
+    # loss, and these ask what shape it would arrive in.
+    ("rollcallsummary: rows per year",
+     "SELECT sessionYear AS yr, COUNT(*) AS rows FROM rollcallsummary "
+     "GROUP BY sessionYear ORDER BY sessionYear DESC"),
+    ("rollcallsummary: its columns",
+     "SELECT COLUMN_NAME AS c, DATA_TYPE AS ty FROM INFORMATION_SCHEMA.COLUMNS "
+     "WHERE TABLE_NAME = 'rollcallsummary' ORDER BY ORDINAL_POSITION"),
+    ("rollcallsummary: a real 2025 row",
+     "SELECT TOP 3 * FROM rollcallsummary WHERE sessionYear = 2025 "
+     "ORDER BY voteSequenceNumber"),
+    ("rollcallhistory: its columns",
+     "SELECT COLUMN_NAME AS c, DATA_TYPE AS ty FROM INFORMATION_SCHEMA.COLUMNS "
+     "WHERE TABLE_NAME = 'rollcallhistory' ORDER BY ORDINAL_POSITION"),
+    ("rollcallhistory: rows for this term only",
+     "SELECT sessionYear AS yr, COUNT(*) AS rows FROM rollcallhistory "
+     "WHERE sessionYear IN (2025, 2026) GROUP BY sessionYear ORDER BY sessionYear"),
     ("CandH_Reports: what a Senate one looks like",
      "SELECT TOP 3 BillNbr, ChamberCode, CommitteeType, ReleaseDate, "
      "LEFT(CAST(HTMLText AS varchar(max)), 300) AS text_head "
