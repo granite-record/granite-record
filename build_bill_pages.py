@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.29
+# GRANITE_VERSION: 2026-09-04.30
 """
 Write a real HTML page for every bill.
 
@@ -423,7 +423,15 @@ def page(b, d, generated):
         # proceedings on the site showed "start time not identified yet" on
         # the page a search engine indexes and a shared link lands on.
         if s.get("state") in ("located", "stated") and s.get("start") is not None:
-            span = (f'{hms(s["start"])}\u2013{hms(s["end"])}'
+            # An end the chair announced and an end the clustering guessed
+            # are not the same claim, and drawing them the same way makes
+            # the guess as authoritative as the quotation. 3,896 of the
+            # 5,283 placed proceedings on this site have the second kind,
+            # and end_stated has been in the data all along, read by
+            # nothing.
+            _endsaid = bool(s.get("end_stated"))
+            span = ((f'{hms(s["start"])}\u2013{hms(s["end"])}' if _endsaid
+                     else f'{hms(s["start"])}, ending about {hms(s["end"])}')
                     if s.get("end") and s["end"] > s["start"]
                     else f'from {hms(s["start"])}')
             # Guard on the seconds. round() on a sub-30-second span gives 0,
@@ -442,6 +450,8 @@ def page(b, d, generated):
             tol = s.get("tolerance") or 300
             prov = (f"\u00b1{round(tol)} sec" if s.get("start_stated")
                     else f"estimated, \u00b1{max(1, round(tol / 60))} min")
+            if s.get("end") and s["end"] > s["start"] and not _endsaid:
+                prov += "; end estimated"
             link = (f' <a href="https://www.youtube.com/watch?v={E(s["video_id"])}'
                     f'&t={int(s["start"])}s" rel="noopener">recording {span}</a>'
                     f'{mins} ({prov})')

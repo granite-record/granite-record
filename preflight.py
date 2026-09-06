@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.21
+# GRANITE_VERSION: 2026-09-04.22
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -850,9 +850,16 @@ var detail = {
               passed:true,vote_kind:"RC",amendment:"2026-0503h",threshold_needed:167,
               tally:{R:{Yea:200,Nay:12},D:{Yea:14,Nay:107}},
               members:[{n:"Rep. Jodi Nelson (R)",p:"R",v:"Yea",s:"nelson, jodi"}]}],
+  // Two proceedings that differ in one field. The first has an end the chair
+  // announced; the second has one the clustering guessed. They used to draw
+  // the same range, which made the guess as strong a claim as the quotation
+  // on 3,896 of the 5,283 placed proceedings.
   stations:[{state:"located",bill:"HB1442",kind:"public hearing",tolerance:30,
              start:150,end:900,video_id:"VID1",watch:"https://youtu.be/VID1",
-             start_stated:true,date:"2026-02-03",time:"10:00"}],
+             start_stated:true,end_stated:true,date:"2026-02-03",time:"10:00"},
+            {state:"located",bill:"HB1442",kind:"executive session",tolerance:30,
+             start:1500,end:2400,video_id:"VID3",watch:"https://youtu.be/VID3",
+             start_stated:true,end_stated:false,date:"2026-02-10",time:"13:00"}],
   reports:[{majority_recommendation:"OUGHT TO PASS",minority_recommendation:null,
             source:"House Calendar 9, 2026",
             date:"2026-02-24",dated:"signed",cite:"HC 9",
@@ -924,7 +931,15 @@ var fixtures = [
          "Senate Commerce",
          "does not publish the written reasoning",
          // And what happened between the two House reports.
-         "Between these reports the docket"]},
+         "Between these reports the docket",
+         // A boundary the chair announced is quoted; one the clustering
+         // guessed says so. Both stations here start at a stated boundary,
+         // so only the end can produce the difference.
+         "and closes it at 00:15:00",
+         "00:15:00 ends",
+         "ending about 00:40:00",
+         ", end estimated",
+         "00:40:00 about where it ends"]},
   // A bill with nothing on it yet. The fixture above populates every field, so
   // it only ever runs the arm of each ternary that HAS data -- and every one
   // of those has an else. That is what most bills look like early in a

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.14 -->
+<!-- GRANITE_VERSION: 2026-09-05.15 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1095,19 +1095,29 @@ function renderHearings(b,d){
       // publish a transcription error as a citation -- and a reader hears the
       // real words a second after clicking anyway. The timestamp is the claim;
       // the recording is the evidence.
-      const tolnote=s.start_stated
+      // The end is a second claim and usually a weaker one. 3,896 of the
+      // 5,283 placed proceedings on this site end where the clustering
+      // put them rather than where the chair said, and the range drew
+      // both the same way -- so a guess carried the authority of a
+      // quotation. end_stated has been in the data all along and was
+      // read by nothing.
+      const endsaid=!!s.end_stated, hasend=s.end&&s.end>s.start;
+      const tolnote=(s.start_stated
         ? `the chair opens it at ${hms(s.start)}`
-        : `estimated within \u00b1${Math.max(1,Math.round(tol/60))} min`;
+        : `estimated within \u00b1${Math.max(1,Math.round(tol/60))} min`)
+        +(hasend?(endsaid?` and closes it at ${hms(s.end)}`:", end estimated"):"");
       placed=true;
       const pid=`${esc(s.video_id)}_${si}_${Math.floor(s.start)}`;
       // Guard on the seconds, not on the rounded string: "0 min" is
       // truthy, so a twenty-second segment printed "about 0 min" beside a
       // range that showed a real span.
-      const span=(s.end&&s.end>s.start)?s.end-s.start:0;
+      const span=hasend?s.end-s.start:0;
       const mins=Math.round(span/60);
       const dur=mins>=1?`${mins} min`:(span>0?`${Math.round(span)} sec`:"");
-      const range=s.end&&s.end>s.start
-        ? `${hms(s.start)}\u2013${hms(s.end)}` : `from ${hms(s.start)}`;
+      const range=hasend
+        ? (endsaid?`${hms(s.start)}\u2013${hms(s.end)}`
+                  :`${hms(s.start)}, ending about ${hms(s.end)}`)
+        : `from ${hms(s.start)}`;
       inner=`<div class="player" data-player="${pid}">
         <button type="button" class="pstub" data-embed="${esc(s.video_id)}|${from}|${pid}">
           <span>▶</span><span>Play ${esc(s.what)} on this bill — ${range}${
@@ -1120,8 +1130,9 @@ function renderHearings(b,d){
         <div class="pbar">
           <button class="jump" data-seek="${pid}|${from}">${hms(from)} open player</button>
           <button class="jump" data-seek="${pid}|${Math.floor(s.start)}">${hms(s.start)} bill starts</button>
-          ${s.end&&s.end>s.start?`<button class="jump"
-            data-seek="${pid}|${Math.floor(s.end)}">${hms(s.end)} ends</button>`:""}
+          ${hasend?`<button class="jump"
+            data-seek="${pid}|${Math.floor(s.end)}">${hms(s.end)} ${
+              endsaid?"ends":"about where it ends"}</button>`:""}
           <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}&t=${from}s"
              target="_blank" rel="noopener">Open on YouTube</a>
           <span class="tolnote">${tolnote}</span>
