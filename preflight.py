@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.13
+# GRANITE_VERSION: 2026-09-04.14
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -787,31 +787,69 @@ var detail = {
   rsa:{"RSA 91-A:4":"https://gc.nh.gov/rsa/html/VI/91-A/91-A-4.htm"}};
 if (typeof scope.renderDetail !== "function") {
   console.log("renderDetail is not reachable from the harness"); process.exit(1); }
-// BOTH ways a detail can be drawn. The expanded view runs code the collapsed
-// one never touches -- the bill text section is behind a focused===b.id guard,
-// and a template that reads a const declared further down does not throw until
-// something makes it evaluate. Testing only the collapsed view passed a page
-// that broke the moment a bill was opened.
-for (var pass = 0; pass < 2; pass++) {
-  var mode = pass ? "focused" : "collapsed";
-  if (pass) { try { scope.setFocused && scope.setFocused("HB1442"); } catch (_) {} }
-  try {
-    var html = scope.renderDetail(scope.IDX[0], detail);
-    if (!html || html.length < 500) {
-      console.log("RENDERDETAIL (" + mode + ") produced "
-                  + (html ? html.length : 0) + " chars");
+// Length alone does not prove a branch ran: the tabs and panes are ~1,600
+// characters of markup before a single field is read, so a renderDetail that
+// silently dropped every body would still clear the threshold below. Each
+// fixture therefore names sentences only its own branches can produce.
+// "want" is required in both views; "wantFocused" only in the expanded one,
+// because the bill text section is the one thing the collapsed card omits.
+var fixtures = [
+  {name:"full", d:detail, want:[]},
+  // A bill with nothing on it yet. The fixture above populates every field, so
+  // it only ever runs the arm of each ternary that HAS data -- and every one
+  // of those has an else. That is what most bills look like early in a
+  // session, and nothing here had ever drawn one.
+  {name:"empty", d:{next_step:"Introduced"},
+   want:["No roll call votes on this bill",
+         "No scheduled proceedings on file",
+         "No committee report on file",
+         "No sponsors on file"]},
+  // Amendments filed, text not read in yet. This is the only way to reach the
+  // middle arm of the bill text block: the section is behind a
+  // focused===b.id guard that ALSO requires text or amendments, so the arm
+  // for "neither" is unreachable and is not asserted anywhere.
+  {name:"amendments only",
+   d:{next_step:"Introduced", amendments:detail.amendments},
+   want:[], wantFocused:["site yet, but the amendments to it have"]}
+];
+
+// BOTH ways a detail can be drawn, on EVERY shape of bill. The expanded view
+// runs code the collapsed one never touches -- and a template that reads a
+// const declared further down does not throw until something makes it
+// evaluate. Testing only the collapsed view passed a page that broke the
+// moment a bill was opened.
+for (var fi = 0; fi < fixtures.length; fi++) {
+  for (var pass = 0; pass < 2; pass++) {
+    var fx = fixtures[fi];
+    var mode = fx.name + "/" + (pass ? "focused" : "collapsed");
+    try { scope.setFocused && scope.setFocused(pass ? "HB1442" : null); }
+    catch (_) {}
+    try {
+      var html = scope.renderDetail(scope.IDX[0], fx.d);
+      if (!html || html.length < 500) {
+        console.log("RENDERDETAIL (" + mode + ") produced "
+                    + (html ? html.length : 0) + " chars");
+        process.exit(1); }
+      var want = (fx.want || []).concat(pass ? (fx.wantFocused || []) : []);
+      for (var wi = 0; wi < want.length; wi++) {
+        if (html.indexOf(want[wi]) < 0) {
+          console.log("RENDERDETAIL (" + mode + ") drew " + html.length
+                      + " chars but not " + JSON.stringify(want[wi]));
+          process.exit(1); }
+      }
+    } catch (e) {
+      console.log("RENDERDETAIL (" + mode + ") " + e.constructor.name + ": "
+                  + e.message);
       process.exit(1); }
-  } catch (e) {
-    console.log("RENDERDETAIL (" + mode + ") " + e.constructor.name + ": "
-                + e.message);
-    process.exit(1); }
+  }
 }
 console.log("ok");
 """, encoding="utf-8")
         r = subprocess.run(["node", "go.js"], cwd=root, capture_output=True,
                            text=True, timeout=90)
         assert r.returncode == 0, (r.stdout + r.stderr).strip().splitlines()[0][:150]
-        return "ok", "loaded in node, drew a bill and rendered its detail"
+        return "ok", ("loaded in node, drew a bill and rendered its detail "
+                      "on three shapes of bill, collapsed and focused")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
