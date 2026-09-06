@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.9
+# GRANITE_VERSION: 2026-09-05.10
 """
 Generate the faceted site from real General Court data.
 
@@ -28,7 +28,8 @@ import csv
 import json
 import re
 import unicodedata
-from collections import defaultdict
+from collections import Counter, defaultdict
+from datetime import date as _date, timedelta as _td
 from pathlib import Path
 
 STATUS_ORDER = ["law", "veto", "done", "active"]
@@ -873,179 +874,242 @@ def station_for_floor(f, bid, marks):
     return st
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default="data")
-    ap.add_argument("--narratives", default="narratives.json")
-    ap.add_argument("--rollcalls", default="rollcalls.json")
-    ap.add_argument("--markers", default="candidate_segments.json",
-                    help="boundaries a chair stated, from segment_markers.py")
-    ap.add_argument("--allow-no-manifest", action="store_true",
-                    help="build anyway, with no committee proceedings at all")
-    # "work", not "segments". The aligner writes work/<videoid>/segments.json
-    # and every other default here names the file it will actually find, so a
-    # bare run of this script quietly built a site with no video timestamps on
-    # it at all -- and then reported the cause as a session-year mismatch,
-    # which sent the diagnosis in the wrong direction entirely.
-    ap.add_argument("--segments", default="work")
-    ap.add_argument("--reports", default="committee_reports.json")
+def build_legislators(out, legs, votes_by_member, towns, unnamed):
+    """One JSON per member, plus the index and the town map.
 
-    ap.add_argument("--status", default="status/status.txt")
-    ap.add_argument("--districts", default="site/districts.json")
-    ap.add_argument("--officials", default="status/officials.txt")
-    ap.add_argument("--out", default="site")
-    a = ap.parse_args()
+    Split out of main(). main() was 808 lines even after the station
+    builders came out, and the bug that cost 611 bills their facts was two
+    different things sharing the name `st` 350 lines apart in this scope.
+    """
+    lg = []
+    for mid, m in legs.items():
+        mv = sorted(votes_by_member.get(mid, []), key=lambda v: v["date"], reverse=True)
+        counts = defaultdict(int)
+        for v in mv:
+            counts[v["vote"]] += 1
+        lab = member_labels(m.get("name"), chamber=m.get("chamber"),
+                            party=m.get("party_code") or m.get("party"),
+                            district=m.get("district"), county=m.get("county"),
+                            county_abbr=m.get("county_abbr"))
+        lg.append({**{k: m.get(k) for k in ("id", "name", "chamber", "party", "county",
+                                            "county_abbr", "district", "label", "email",
+                                            "url", "url_past", "towns",
+                                            "committees", "title", "phone")},
+                   **lab, "n_votes": len(mv), "counts": dict(counts),
+                   "slug": member_slug(m, lab)})
+        (out / "legislators" / f"{mid}.json").write_text(json.dumps({
+            **m, **lab, "counts": dict(counts),
+            "votes": [{"d": v["date"], "b": v["bill"], "q": v["question"],
+                       "v": v["vote"]} for v in mv],
+        }), encoding="utf-8")
+    if unnamed:
+        print(f"{len(unnamed):,} member id(s) still have no name and appear as "
+              '"Member #id" in roll calls:')
+        print("  " + ", ".join(sorted(unnamed)[:12])
+              + (" ..." if len(unnamed) > 12 else ""))
+        print("  resolve_members.py looks these up and writes "
+              "former_members.json in")
+        print("  the project root, which build_data.py reads on its second "
+              "pass. If that")
+        print("  file exists and these are still unnamed, build_data ran "
+              "before it did.")
+    (out / "legislators.json").write_text(json.dumps(lg), encoding="utf-8")
+    (out / "towns.json").write_text(json.dumps(towns), encoding="utf-8")
+    print(f"{len(lg):,} legislator pages, {len(towns):,} towns")
+    return lg
 
-    D, out = Path(a.data), Path(a.out)
-    (out / "bills").mkdir(parents=True, exist_ok=True)
-    (out / "legislators").mkdir(parents=True, exist_ok=True)
 
-    bills = load(D / "bills.json", {})
-    sponsors = load(D / "sponsors.json", {})
-    legs = {m["id"]: m for m in load(D / "legislators.json", [])}
-    # Sponsor records carry a name but not a party or a district. The roster
-    # has both, so they are joined on the surname-first form of the name --
-    # never on a member id, because there are three id spaces in these files
-    # and a sponsor's is not necessarily the roster's. A sponsor who matches
-    # nobody keeps a bare name rather than borrowing somebody else's party.
-    leg_by_sort = {}
-    for _m in legs.values():
-        leg_by_sort.setdefault(sort_name(_m.get("name") or ""), _m)
+def build_composition(a, legs):
+    """Party composition, vacancies, the Executive Council and the governor.
 
-    # Members who left mid-term are already named upstream: resolve_members.py
-    # writes former_members.json to the project root, build_data.py reads it
-    # there, and every member_votes row therefore carries a resolved "name"
-    # whether the member is sitting or not. That is what the double build_data
-    # pass in build_all.py exists for. Reading the file a second time here
-    # would only add a way for the two to disagree -- and the copy this looked
-    # for, under the data directory, is not where the pipeline writes it.
-    from collections import Counter
-    towns = load(D / "towns.json", {})
-    narratives = load(a.narratives, {})
-    rollcalls = load(a.rollcalls, {})
-    reports = load(a.reports, {})
-    # Written by extract_amendments.py out of the cached calendars. Absent is
-    # fine: the amendments are still listed, without their text.
-    amend_texts = load("amendments.json", {})
-    if amend_texts:
-        print(f"{len(amend_texts):,} amendment texts loaded")
-    bill_texts = load("bill_text.json", {})
-    if bill_texts:
-        print(f"{len(bill_texts):,} bill texts loaded")
-    # Journal and calendar URLs, so every docket line can cite its source.
-    sources = {**load("calendars.json", {}), **load("journals.json", {})}
-    # Sign-in counts, attached to the hearing they were filed for.
-    testimony = load("testimony.json", {})
-    if testimony:
-        print(f"testimony counts for {len(testimony):,} bills")
-    if sources:
-        print(f"source links available for {len(sources)} journals and calendars")
-    # One table for every proceeding on the site: committee hearings, executive
-    # sessions, work sessions, floor debates. Presented below in the two shapes
-    # the station code was written against -- manifest columns for committee
-    # rows, floor-index keys for floor rows -- so that code did not change.
-    # It is the SOURCE that changed. Committee and floor proceedings used to be
-    # loaded from two files here, ninety lines apart, and the floor half never
-    # saw the markers that had been wired into the committee half.
-    prows = P.load()
-    if not prows:
-        print("=" * 74)
-        print("NO proceedings.csv. Every hearing, executive session and floor")
-        print("debate on this site comes from that one file. Without it the")
-        print("build will finish and publish a site with none of them, and no")
-        print("error anywhere to say why.")
-        print("")
-        print("Run: python3 build_proceedings.py")
-        print("=" * 74)
-        if not a.allow_no_manifest:
-            raise SystemExit("Refusing to build without it. Pass "
-                             "--allow-no-manifest to override.")
+    Returns (comp, vac). Split out of main(); this block already carried a
+    dead duplicate of itself once -- two versions of the same work eighteen
+    lines apart, the second silently discarding the first.
+    """
+    # Seat totals come from the district files where available, since those sum
+    # to the constitutional membership exactly. The roster holds only sitting
+    # members, so the difference is vacancies -- which accumulate through a term
+    # as people resign or die, and which nothing else reports.
+    dj = load(a.districts, {})
+    seats_by = defaultdict(int)
+    for wards in dj.values():
+        for v in wards.values():
+            for h in v.get("house", []):
+                seats_by[("H", h["county"], h["district"])] = h.get("seats") or 1
+    house_seats = sum(seats_by.values()) or 400
 
-    procs = defaultdict(list)
-    for r in P.committee_only(prows):
-        procs[r["bill"]].append({
-            "bill": r["bill"], "body": r["body"], "committee": r["committee"],
-            "proceeding": r["kind"], "sched_date": r["date"],
-            "sched_time": r["time"], "venue": r["venue"], "match": r["match"],
-            "video_id": r["video_id"], "video_title": r["video_title"],
-            "stream_start": r["stream_start"],
-            "predicted_offset": ("" if r["predicted_offset"] is None
-                                 else r["predicted_offset"]),
-        })
-    floor = defaultdict(list)
-    for r in P.floor_only(prows):
-        floor[r["bill"]].append({
-            "date": r["date"], "body": r["body"], "video_id": r["video_id"],
-            "motions": r["motions"], "tallies": r["tallies"],
-            "kind": r["kind"], "debate_end": r["debate_end"],
-            "window_start": r["window_start"], "precise": r["precise"],
-            "whole_video": r["whole_video"], "title": r["video_title"],
-        })
-    print(f"{sum(len(v) for v in procs.values()):,} committee proceedings and "
-          f"{sum(len(v) for v in floor.values()):,} floor appearances from "
-          f"{P.PATH.name}")
+    PARTY_FULL = {"R": "Republican", "D": "Democrat", "I": "Independent",
+                  "L": "Libertarian"}
+    comp = {}
+    for ch, label, total in (("H", "House", house_seats), ("S", "Senate", 24)):
+        members = [m for m in legs.values() if m["chamber"] == ch]
+        counts = Counter(m["party_code"] or "?" for m in members)
+        comp[ch] = {
+            "chamber": label, "seats": total, "sitting": len(members),
+            "vacant": max(total - len(members), 0),
+            "parties": [{"code": k, "name": PARTY_FULL.get(k, k), "n": v}
+                        for k, v in sorted(counts.items(), key=lambda x: -x[1])],
+            # Reference thresholds, stated as arithmetic rather than as any
+            # party's distance from them.
+            "majority": total // 2 + 1,
+            "two_thirds_note": "two thirds of those voting, so it moves with turnout",
+            "three_fifths": -(-3 * total // 5),
+        }
 
-    votes_by_bill = defaultdict(lambda: defaultdict(list))
-    votes_by_member = defaultdict(list)
-    for v in load(D / "member_votes.json", []):
-        key = f"{v['body']}-{v['vote_number']}"
-        votes_by_bill[v["bill"]][key].append(v)
-        votes_by_member[v["member_id"]].append(v)
-    print(f"{len(bills):,} bills, {len(legs):,} legislators, "
-          f"{sum(len(x) for x in votes_by_member.values()):,} member votes")
+    # Which districts are short a member. Only possible where the district files
+    # give seat counts.
+    vac = []
+    if seats_by:
+        held = Counter()
+        for m in legs.values():
+            if m["chamber"] == "H":
+                held[("H", m["county"], int(m["district"] or 0))] += 1
+        for key, n in sorted(seats_by.items()):
+            gap = n - held.get((key[0], key[1], int(key[2])), 0)
+            if gap > 0:
+                vac.append({"county": key[1], "district": key[2], "seats": n,
+                            "vacant": gap})
+    comp["vacancies"] = vac
 
-    # The aligner writes work/<videoid>/segments.json; an earlier layout used
-    # segments/<videoid>.json. Accept either so the site picks them up wherever
-    # they are.
-    segs = {}
-    sp = Path(a.segments)
+    # Executive branch: hand-maintained, because the Council and the governor
+    # are not the General Court and appear in none of its files. An unedited
+    # file yields nothing, so the section is absent rather than wrong.
+    op = Path(a.officials)
+    if op.exists():
+        council, gov, onote, oupd = [], None, "", ""
+        last = None
+        for raw in op.read_text(encoding="utf-8").splitlines():
+            if raw.strip().startswith("#"):
+                continue
+            line = raw.split("#")[0].rstrip()
+            if not line.strip():
+                last = None
+                continue
+            if raw[:1] in " \t" and last == "note":
+                onote = (onote + " " + line.strip()).strip()
+                continue
+            if ":" not in line:
+                continue
+            k, v = line.split(":", 1)
+            k, v = k.strip().lower(), v.strip()
+            last = k
+            if k == "councilor":
+                parts = [x.strip() for x in v.split("|")]
+                if parts and parts[0]:
+                    council.append({"district": parts[0],
+                                    "name": parts[1] if len(parts) > 1 else "",
+                                    "party": (parts[2] if len(parts) > 2 else "").upper()})
+            elif k == "governor" and v:
+                parts = [x.strip() for x in v.split("|")]
+                gov = {"name": parts[0],
+                       "party": (parts[1] if len(parts) > 1 else "").upper()}
+            elif k == "note":
+                onote = v
+            elif k == "updated":
+                oupd = v
+        named = [c for c in council if c["name"]]
+        if named or gov:
+            cc = Counter(c["party"] or "?" for c in named)
+            comp["council"] = {
+                "chamber": "Executive Council", "seats": len(council) or 5,
+                "sitting": len(named), "vacant": len(council) - len(named),
+                "members": council,
+                "parties": [{"code": k, "name": PARTY_FULL.get(k, k), "n": v}
+                            for k, v in sorted(cc.items(), key=lambda x: -x[1])],
+                "majority": (len(council) or 5) // 2 + 1,
+                "note": onote, "updated": oupd}
+            print(f"  Executive Council: {len(named)} of {len(council)} seats named")
+        if gov:
+            comp["governor"] = gov
+        if not named and not gov:
+            print("  status/officials.txt is unedited \u2014 the Executive Council "
+                  "and governor are omitted from the page")
+
+    return comp, vac
+
+
+def build_status(a, index, procs, floor, today, latest_by_body, upcoming):
+    """The site's "where the session is" panel.
+
+    Hand-maintained facts from status/session.txt merged with what the data
+    can show. Split out of main(); returns the status dict.
+    """
+    # Hand-maintained facts merged with what the data can show. The phase, the
+    # session calendar and veto day are set by the chambers and published only
+    # in the calendars, so they are edited rather than derived; the last session
+    # date and the count of scheduled hearings come from the data.
+    status = {"milestones": []}
+    sp = Path(a.status)
     if sp.exists():
-        for f in sp.glob("*.json"):
-            segs[f.stem] = json.loads(f.read_text(encoding="utf-8"))
-        for d_ in sp.iterdir():
-            f = d_ / "segments.json"
-            if d_.is_dir() and f.exists():
-                segs[d_.name] = json.loads(f.read_text(encoding="utf-8"))
-    print(f"segments loaded for {len(segs):,} videos")
+        last_key = None
+        for raw in sp.read_text(encoding="utf-8").splitlines():
+            if raw.strip().startswith("#"):
+                continue
+            line = raw.split("#")[0].rstrip()
+            if not line.strip():
+                last_key = None
+                continue
+            # An indented line continues the previous value, so a note can be
+            # written as a paragraph instead of one unreadable line.
+            if raw[:1] in " \t" and last_key in ("note", "headline"):
+                status[last_key] = (status.get(last_key, "") + " "
+                                    + line.strip()).strip()
+                continue
+            if ":" not in line:
+                continue
+            k, v = line.split(":", 1)
+            k, v = k.strip().lower(), v.strip()
+            last_key = k
+            if k == "milestone":
+                parts = [x.strip() for x in v.split("|")]
+                if parts and parts[0] >= today:
+                    status["milestones"].append({
+                        "date": parts[0],
+                        "label": parts[1] if len(parts) > 1 else "",
+                        "note": parts[2] if len(parts) > 2 else ""})
+            elif k in ("updated", "phase", "headline", "note"):
+                status[k] = v
+        status["milestones"].sort(key=lambda m: m["date"])
+        if status.get("updated"):
+            age = (_date.today() - _date.fromisoformat(status["updated"])).days
+            status["stale_days"] = age
+            if age > 45:
+                print(f"  status/status.txt was last updated {age} days ago "
+                      "\u2014 the page will say so")
+    # Latest sitting of either chamber, from the per-chamber map that replaced
+    # the old single "most recent session".
+    status["last_session"] = (max(v["date"] for v in latest_by_body.values())
+                              if latest_by_body else None)
+    status["hearings_next_14"] = len(upcoming)
+    # Always-correct live links: these URLs resolve to whatever is streaming now,
+    # or to the channel if nothing is, so no polling is needed.
+    status["live"] = [
+        {"chamber": "House",
+         "url": "https://www.youtube.com/@NHHouseofRepresentatives/live"},
+        {"chamber": "Senate",
+         "url": "https://www.youtube.com/@NewHampshireSenate/live"}]
 
-    # Boundaries a chair stated aloud, from segment_markers.py. Measured
-    # against the 35 hand-marked proceedings at a median of ONE SECOND, with
-    # ends at four -- against 1m 27s for the clustering estimate and 17m 05s
-    # for the schedule. Where one of these exists it is not an improvement on
-    # the estimate, it is a different kind of claim: a quotation rather than an
-    # inference, and the page says so.
-    mp2 = Path(a.markers)
-    marks = {}
-    if mp2.exists():
-        try:
-            marks = json.loads(mp2.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            marks = {}
-    if marks:
-        nb = sum(len(v) for v in marks.values())
-        print(f"{nb:,} stated boundaries across {len(marks):,} recordings "
-              f"from {mp2.name}")
-    # A silent mismatch here looks exactly like poor alignment accuracy: every
-    # hearing reads "start time not identified" because the transcripts are for
-    # a different set of videos than the manifest now points at.
-    if procs:
-        man_vids = {r["video_id"] for rs in procs.values() for r in rs
-                    if r.get("video_id")}
-        overlap = man_vids & set(segs)
-        print(f"  manifest references {len(man_vids):,} videos; "
-              f"{len(overlap):,} of them have transcripts")
-        if man_vids and not overlap:
-            print(f"  NONE overlap. Either --segments is pointing somewhere "
-                  f"with no transcripts\n  in it (it is {a.segments!r}; the "
-                  "aligner writes work/<videoid>/segments.json),\n  or the "
-                  "transcripts cover a different set of videos than the "
-                  "manifest --\n  most likely a different session year.")
-        elif len(overlap) < len(man_vids) * 0.5:
-            print(f"  {len(man_vids) - len(overlap):,} manifest videos have no "
-                  "transcript; those proceedings get a recording link with no "
-                  "start time.")
+    return status
 
 
+def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
+                bill_texts, amend_texts, testimony, procs, floor, segs,
+                marks, sources, legs, leg_by_sort,
+                votes_by_bill):
+    """One JSON per bill, and the index row for each.
+
+    This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
+    main(), which is how `st` came to mean the bill's status record at the
+    top and a video station 350 lines later -- costing 611 bills their
+    facts, their bill-text link and, for 496, their status line.
+
+    Every input is named in the signature rather than inherited from an
+    enclosing scope, so a name can no longer be quietly reused.
+
+    Returns (index, years, unnamed) -- unnamed being the member ids the
+    roll calls reference that the roster cannot name, which
+    build_legislators reports.
+    """
     unnamed = set()
 
     def _vote_name(m, body):
@@ -1074,8 +1138,6 @@ def main():
                             party=m.get("party"))
         return {"n": lab["display"], "s": lab["sort"] or sort_name(raw),
                 "p": m.get("party") or "X", "v": m.get("vote")}
-
-    # -------------------------------------------------------------- index --
     index, years = [], set()
     status_pages = load("bill_status.json", {})
     if status_pages:
@@ -1375,52 +1437,198 @@ def main():
     if status_pages:
         print(f"  {n_stated:,} bills take their status from the page; "
               f"{len(index) - n_stated:,} still derive it from the docket")
+    return index, years, unnamed
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--data", default="data")
+    ap.add_argument("--narratives", default="narratives.json")
+    ap.add_argument("--rollcalls", default="rollcalls.json")
+    ap.add_argument("--markers", default="candidate_segments.json",
+                    help="boundaries a chair stated, from segment_markers.py")
+    ap.add_argument("--allow-no-manifest", action="store_true",
+                    help="build anyway, with no committee proceedings at all")
+    # "work", not "segments". The aligner writes work/<videoid>/segments.json
+    # and every other default here names the file it will actually find, so a
+    # bare run of this script quietly built a site with no video timestamps on
+    # it at all -- and then reported the cause as a session-year mismatch,
+    # which sent the diagnosis in the wrong direction entirely.
+    ap.add_argument("--segments", default="work")
+    ap.add_argument("--reports", default="committee_reports.json")
+
+    ap.add_argument("--status", default="status/status.txt")
+    ap.add_argument("--districts", default="site/districts.json")
+    ap.add_argument("--officials", default="status/officials.txt")
+    ap.add_argument("--out", default="site")
+    a = ap.parse_args()
+
+    D, out = Path(a.data), Path(a.out)
+    (out / "bills").mkdir(parents=True, exist_ok=True)
+    (out / "legislators").mkdir(parents=True, exist_ok=True)
+
+    bills = load(D / "bills.json", {})
+    sponsors = load(D / "sponsors.json", {})
+    legs = {m["id"]: m for m in load(D / "legislators.json", [])}
+    # Sponsor records carry a name but not a party or a district. The roster
+    # has both, so they are joined on the surname-first form of the name --
+    # never on a member id, because there are three id spaces in these files
+    # and a sponsor's is not necessarily the roster's. A sponsor who matches
+    # nobody keeps a bare name rather than borrowing somebody else's party.
+    leg_by_sort = {}
+    for _m in legs.values():
+        leg_by_sort.setdefault(sort_name(_m.get("name") or ""), _m)
+
+    # Members who left mid-term are already named upstream: resolve_members.py
+    # writes former_members.json to the project root, build_data.py reads it
+    # there, and every member_votes row therefore carries a resolved "name"
+    # whether the member is sitting or not. That is what the double build_data
+    # pass in build_all.py exists for. Reading the file a second time here
+    # would only add a way for the two to disagree -- and the copy this looked
+    # for, under the data directory, is not where the pipeline writes it.
+    towns = load(D / "towns.json", {})
+    narratives = load(a.narratives, {})
+    rollcalls = load(a.rollcalls, {})
+    reports = load(a.reports, {})
+    # Written by extract_amendments.py out of the cached calendars. Absent is
+    # fine: the amendments are still listed, without their text.
+    amend_texts = load("amendments.json", {})
+    if amend_texts:
+        print(f"{len(amend_texts):,} amendment texts loaded")
+    bill_texts = load("bill_text.json", {})
+    if bill_texts:
+        print(f"{len(bill_texts):,} bill texts loaded")
+    # Journal and calendar URLs, so every docket line can cite its source.
+    sources = {**load("calendars.json", {}), **load("journals.json", {})}
+    # Sign-in counts, attached to the hearing they were filed for.
+    testimony = load("testimony.json", {})
+    if testimony:
+        print(f"testimony counts for {len(testimony):,} bills")
+    if sources:
+        print(f"source links available for {len(sources)} journals and calendars")
+    # One table for every proceeding on the site: committee hearings, executive
+    # sessions, work sessions, floor debates. Presented below in the two shapes
+    # the station code was written against -- manifest columns for committee
+    # rows, floor-index keys for floor rows -- so that code did not change.
+    # It is the SOURCE that changed. Committee and floor proceedings used to be
+    # loaded from two files here, ninety lines apart, and the floor half never
+    # saw the markers that had been wired into the committee half.
+    prows = P.load()
+    if not prows:
+        print("=" * 74)
+        print("NO proceedings.csv. Every hearing, executive session and floor")
+        print("debate on this site comes from that one file. Without it the")
+        print("build will finish and publish a site with none of them, and no")
+        print("error anywhere to say why.")
+        print("")
+        print("Run: python3 build_proceedings.py")
+        print("=" * 74)
+        if not a.allow_no_manifest:
+            raise SystemExit("Refusing to build without it. Pass "
+                             "--allow-no-manifest to override.")
+
+    procs = defaultdict(list)
+    for r in P.committee_only(prows):
+        procs[r["bill"]].append({
+            "bill": r["bill"], "body": r["body"], "committee": r["committee"],
+            "proceeding": r["kind"], "sched_date": r["date"],
+            "sched_time": r["time"], "venue": r["venue"], "match": r["match"],
+            "video_id": r["video_id"], "video_title": r["video_title"],
+            "stream_start": r["stream_start"],
+            "predicted_offset": ("" if r["predicted_offset"] is None
+                                 else r["predicted_offset"]),
+        })
+    floor = defaultdict(list)
+    for r in P.floor_only(prows):
+        floor[r["bill"]].append({
+            "date": r["date"], "body": r["body"], "video_id": r["video_id"],
+            "motions": r["motions"], "tallies": r["tallies"],
+            "kind": r["kind"], "debate_end": r["debate_end"],
+            "window_start": r["window_start"], "precise": r["precise"],
+            "whole_video": r["whole_video"], "title": r["video_title"],
+        })
+    print(f"{sum(len(v) for v in procs.values()):,} committee proceedings and "
+          f"{sum(len(v) for v in floor.values()):,} floor appearances from "
+          f"{P.PATH.name}")
+
+    votes_by_bill = defaultdict(lambda: defaultdict(list))
+    votes_by_member = defaultdict(list)
+    for v in load(D / "member_votes.json", []):
+        key = f"{v['body']}-{v['vote_number']}"
+        votes_by_bill[v["bill"]][key].append(v)
+        votes_by_member[v["member_id"]].append(v)
+    print(f"{len(bills):,} bills, {len(legs):,} legislators, "
+          f"{sum(len(x) for x in votes_by_member.values()):,} member votes")
+
+    # The aligner writes work/<videoid>/segments.json; an earlier layout used
+    # segments/<videoid>.json. Accept either so the site picks them up wherever
+    # they are.
+    segs = {}
+    sp = Path(a.segments)
+    if sp.exists():
+        for f in sp.glob("*.json"):
+            segs[f.stem] = json.loads(f.read_text(encoding="utf-8"))
+        for d_ in sp.iterdir():
+            f = d_ / "segments.json"
+            if d_.is_dir() and f.exists():
+                segs[d_.name] = json.loads(f.read_text(encoding="utf-8"))
+    print(f"segments loaded for {len(segs):,} videos")
+
+    # Boundaries a chair stated aloud, from segment_markers.py. Measured
+    # against the 35 hand-marked proceedings at a median of ONE SECOND, with
+    # ends at four -- against 1m 27s for the clustering estimate and 17m 05s
+    # for the schedule. Where one of these exists it is not an improvement on
+    # the estimate, it is a different kind of claim: a quotation rather than an
+    # inference, and the page says so.
+    mp2 = Path(a.markers)
+    marks = {}
+    if mp2.exists():
+        try:
+            marks = json.loads(mp2.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            marks = {}
+    if marks:
+        nb = sum(len(v) for v in marks.values())
+        print(f"{nb:,} stated boundaries across {len(marks):,} recordings "
+              f"from {mp2.name}")
+    # A silent mismatch here looks exactly like poor alignment accuracy: every
+    # hearing reads "start time not identified" because the transcripts are for
+    # a different set of videos than the manifest now points at.
+    if procs:
+        man_vids = {r["video_id"] for rs in procs.values() for r in rs
+                    if r.get("video_id")}
+        overlap = man_vids & set(segs)
+        print(f"  manifest references {len(man_vids):,} videos; "
+              f"{len(overlap):,} of them have transcripts")
+        if man_vids and not overlap:
+            print(f"  NONE overlap. Either --segments is pointing somewhere "
+                  f"with no transcripts\n  in it (it is {a.segments!r}; the "
+                  "aligner writes work/<videoid>/segments.json),\n  or the "
+                  "transcripts cover a different set of videos than the "
+                  "manifest --\n  most likely a different session year.")
+        elif len(overlap) < len(man_vids) * 0.5:
+            print(f"  {len(man_vids) - len(overlap):,} manifest videos have no "
+                  "transcript; those proceedings get a recording link with no "
+                  "start time.")
+
+
+
+    # -------------------------------------------------------------- index --
+    index, years, unnamed = build_bills(out, bills, narratives, rollcalls, reports,
+                               sponsors, bill_texts, amend_texts, testimony,
+                               procs, floor, segs, marks, sources,
+                               legs, leg_by_sort,
+                               votes_by_bill)
     (out / "index.json").write_text(json.dumps(index), encoding="utf-8")
     size = (out / "index.json").stat().st_size / 1024
     print(f"index.json: {size:.0f} KB for {len(index):,} bills "
           f"(roughly {size/4:.0f} KB gzipped, which is what a static host sends)")
 
-    # -------------------------------------------------------- legislators --
-    lg = []
-    for mid, m in legs.items():
-        mv = sorted(votes_by_member.get(mid, []), key=lambda v: v["date"], reverse=True)
-        counts = defaultdict(int)
-        for v in mv:
-            counts[v["vote"]] += 1
-        lab = member_labels(m.get("name"), chamber=m.get("chamber"),
-                            party=m.get("party_code") or m.get("party"),
-                            district=m.get("district"), county=m.get("county"),
-                            county_abbr=m.get("county_abbr"))
-        lg.append({**{k: m.get(k) for k in ("id", "name", "chamber", "party", "county",
-                                            "county_abbr", "district", "label", "email",
-                                            "url", "url_past", "towns",
-                                            "committees", "title", "phone")},
-                   **lab, "n_votes": len(mv), "counts": dict(counts),
-                   "slug": member_slug(m, lab)})
-        (out / "legislators" / f"{mid}.json").write_text(json.dumps({
-            **m, **lab, "counts": dict(counts),
-            "votes": [{"d": v["date"], "b": v["bill"], "q": v["question"],
-                       "v": v["vote"]} for v in mv],
-        }), encoding="utf-8")
-    if unnamed:
-        print(f"{len(unnamed):,} member id(s) still have no name and appear as "
-              '"Member #id" in roll calls:')
-        print("  " + ", ".join(sorted(unnamed)[:12])
-              + (" ..." if len(unnamed) > 12 else ""))
-        print("  resolve_members.py looks these up and writes "
-              "former_members.json in")
-        print("  the project root, which build_data.py reads on its second "
-              "pass. If that")
-        print("  file exists and these are still unnamed, build_data ran "
-              "before it did.")
-    (out / "legislators.json").write_text(json.dumps(lg), encoding="utf-8")
-    (out / "towns.json").write_text(json.dumps(towns), encoding="utf-8")
-    print(f"{len(lg):,} legislator pages, {len(towns):,} towns")
+    lg = build_legislators(out, legs, votes_by_member, towns, unnamed)
 
     # ---- home page data ----------------------------------------------------
     # Everything the landing page needs, precomputed here where the full records
     # are already in memory rather than making the browser fetch 2,000 files.
-    from datetime import date as _date, timedelta as _td
     today = _date.today().isoformat()
     soon = (_date.today() + _td(days=14)).isoformat()
     recent_cut = (_date.today() - _td(days=3650)).isoformat()
@@ -1484,162 +1692,9 @@ def main():
                                      "chamber": "House" if b == "H" else "Senate"}
     latest_session = latest_by_body.get("H")   # kept for older page versions
 
-    # ---- party composition and vacancies -----------------------------------
-    # Seat totals come from the district files where available, since those sum
-    # to the constitutional membership exactly. The roster holds only sitting
-    # members, so the difference is vacancies -- which accumulate through a term
-    # as people resign or die, and which nothing else reports.
-    dj = load(a.districts, {})
-    seats_by = defaultdict(int)
-    for wards in dj.values():
-        for v in wards.values():
-            for h in v.get("house", []):
-                seats_by[("H", h["county"], h["district"])] = h.get("seats") or 1
-    house_seats = sum(seats_by.values()) or 400
-
-    PARTY_FULL = {"R": "Republican", "D": "Democrat", "I": "Independent",
-                  "L": "Libertarian"}
-    comp = {}
-    for ch, label, total in (("H", "House", house_seats), ("S", "Senate", 24)):
-        members = [m for m in legs.values() if m["chamber"] == ch]
-        counts = Counter(m["party_code"] or "?" for m in members)
-        comp[ch] = {
-            "chamber": label, "seats": total, "sitting": len(members),
-            "vacant": max(total - len(members), 0),
-            "parties": [{"code": k, "name": PARTY_FULL.get(k, k), "n": v}
-                        for k, v in sorted(counts.items(), key=lambda x: -x[1])],
-            # Reference thresholds, stated as arithmetic rather than as any
-            # party's distance from them.
-            "majority": total // 2 + 1,
-            "two_thirds_note": "two thirds of those voting, so it moves with turnout",
-            "three_fifths": -(-3 * total // 5),
-        }
-
-    # Which districts are short a member. Only possible where the district files
-    # give seat counts.
-    vac = []
-    if seats_by:
-        held = Counter()
-        for m in legs.values():
-            if m["chamber"] == "H":
-                held[("H", m["county"], int(m["district"] or 0))] += 1
-        for key, n in sorted(seats_by.items()):
-            gap = n - held.get((key[0], key[1], int(key[2])), 0)
-            if gap > 0:
-                vac.append({"county": key[1], "district": key[2], "seats": n,
-                            "vacant": gap})
-    comp["vacancies"] = vac
-
-    # Executive branch: hand-maintained, because the Council and the governor
-    # are not the General Court and appear in none of its files. An unedited
-    # file yields nothing, so the section is absent rather than wrong.
-    op = Path(a.officials)
-    if op.exists():
-        council, gov, onote, oupd = [], None, "", ""
-        last = None
-        for raw in op.read_text(encoding="utf-8").splitlines():
-            if raw.strip().startswith("#"):
-                continue
-            line = raw.split("#")[0].rstrip()
-            if not line.strip():
-                last = None
-                continue
-            if raw[:1] in " \t" and last == "note":
-                onote = (onote + " " + line.strip()).strip()
-                continue
-            if ":" not in line:
-                continue
-            k, v = line.split(":", 1)
-            k, v = k.strip().lower(), v.strip()
-            last = k
-            if k == "councilor":
-                parts = [x.strip() for x in v.split("|")]
-                if parts and parts[0]:
-                    council.append({"district": parts[0],
-                                    "name": parts[1] if len(parts) > 1 else "",
-                                    "party": (parts[2] if len(parts) > 2 else "").upper()})
-            elif k == "governor" and v:
-                parts = [x.strip() for x in v.split("|")]
-                gov = {"name": parts[0],
-                       "party": (parts[1] if len(parts) > 1 else "").upper()}
-            elif k == "note":
-                onote = v
-            elif k == "updated":
-                oupd = v
-        named = [c for c in council if c["name"]]
-        if named or gov:
-            cc = Counter(c["party"] or "?" for c in named)
-            comp["council"] = {
-                "chamber": "Executive Council", "seats": len(council) or 5,
-                "sitting": len(named), "vacant": len(council) - len(named),
-                "members": council,
-                "parties": [{"code": k, "name": PARTY_FULL.get(k, k), "n": v}
-                            for k, v in sorted(cc.items(), key=lambda x: -x[1])],
-                "majority": (len(council) or 5) // 2 + 1,
-                "note": onote, "updated": oupd}
-            print(f"  Executive Council: {len(named)} of {len(council)} seats named")
-        if gov:
-            comp["governor"] = gov
-        if not named and not gov:
-            print("  status/officials.txt is unedited \u2014 the Executive Council "
-                  "and governor are omitted from the page")
-
-    # ---- current state of the legislature ----------------------------------
-    # Hand-maintained facts merged with what the data can show. The phase, the
-    # session calendar and veto day are set by the chambers and published only
-    # in the calendars, so they are edited rather than derived; the last session
-    # date and the count of scheduled hearings come from the data.
-    status = {"milestones": []}
-    sp = Path(a.status)
-    if sp.exists():
-        last_key = None
-        for raw in sp.read_text(encoding="utf-8").splitlines():
-            if raw.strip().startswith("#"):
-                continue
-            line = raw.split("#")[0].rstrip()
-            if not line.strip():
-                last_key = None
-                continue
-            # An indented line continues the previous value, so a note can be
-            # written as a paragraph instead of one unreadable line.
-            if raw[:1] in " \t" and last_key in ("note", "headline"):
-                status[last_key] = (status.get(last_key, "") + " "
-                                    + line.strip()).strip()
-                continue
-            if ":" not in line:
-                continue
-            k, v = line.split(":", 1)
-            k, v = k.strip().lower(), v.strip()
-            last_key = k
-            if k == "milestone":
-                parts = [x.strip() for x in v.split("|")]
-                if parts and parts[0] >= today:
-                    status["milestones"].append({
-                        "date": parts[0],
-                        "label": parts[1] if len(parts) > 1 else "",
-                        "note": parts[2] if len(parts) > 2 else ""})
-            elif k in ("updated", "phase", "headline", "note"):
-                status[k] = v
-        status["milestones"].sort(key=lambda m: m["date"])
-        if status.get("updated"):
-            age = (_date.today() - _date.fromisoformat(status["updated"])).days
-            status["stale_days"] = age
-            if age > 45:
-                print(f"  status/status.txt was last updated {age} days ago "
-                      "\u2014 the page will say so")
-    # Latest sitting of either chamber, from the per-chamber map that replaced
-    # the old single "most recent session".
-    status["last_session"] = (max(v["date"] for v in latest_by_body.values())
-                              if latest_by_body else None)
-    status["hearings_next_14"] = len(upcoming)
-    # Always-correct live links: these URLs resolve to whatever is streaming now,
-    # or to the channel if nothing is, so no polling is needed.
-    status["live"] = [
-        {"chamber": "House",
-         "url": "https://www.youtube.com/@NHHouseofRepresentatives/live"},
-        {"chamber": "Senate",
-         "url": "https://www.youtube.com/@NewHampshireSenate/live"}]
-
+    comp, vac = build_composition(a, legs)
+    status = build_status(a, index, procs, floor, today,
+                          latest_by_body, upcoming)
     (out / "home.json").write_text(json.dumps({
         "status": status, "composition": comp,
         "generated": today,
