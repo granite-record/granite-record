@@ -1,98 +1,125 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.1
+# GRANITE_VERSION: 2026-09-06.2
 """
-Does the legacy bill status app answer for a whole session year at once?
+The years the database does not have, from the search the site already offers.
 
-    python3 probe_legacy.py --year 2019          # ONE request
-    python3 probe_legacy.py --year 2019 --raw    # and keep the page
+    python3 probe_legacy.py --year 2019           # two requests
+    python3 probe_legacy.py --year 2019 --raw     # and keep the results page
 
 WHY THIS EXISTS
 
-The public database covers 1989-2016 and 2025-2026 and has nothing at all for
-2017-2024. Those eight years are wanted -- bill numbers, titles, dockets and
-status, with links out to the General Court for the rest.
+The General Court's public database covers 1989-2016 and 2025-2026 and has
+nothing for 2017-2024. Those eight years are wanted: bill numbers, titles,
+dockets and status, with links out for the rest.
 
-fetch_bill_status.py already talks to the legacy app for the current term:
+They are not missing from the web. The Advanced Bill Status Search at
+/bill_status/legacy/bs2016/ takes a session year, says "1989-Current" beside
+the box, and answers 2019 with 768 bills -- each with its title, general and
+per-chamber status, last committee, last hearing, and links to its docket,
+status, text and history. That is the whole of what an archived bill needs.
 
-    /bill_status/legacy/bs2016/Bill_status.aspx
-        ?lsr=<n>&sy=<year>&sortoption=billnumber
-        &txtsessionyear=<year>&txtbillnumber=<bill>
+WHAT THE FIRST ATTEMPT GOT WRONG
 
-Two of those parameters -- sortoption and txtsessionyear -- are the fields of
-a SEARCH form rather than of a single-bill lookup, and the app is named for
-2016, which is where the database's own BillStatusDB era ends. So the question
-is whether the same page, asked without an lsr, returns the year's bill LIST.
+It sent a GET with invented query parameters and got HTTP 500. The page is an
+ASP.NET WebForm: it wants a POST carrying __VIEWSTATE, and the year lives in
+txtsessionyear. Guessing the shape of a request is the same mistake as
+guessing the shape of a filename, and it produced the same useless answer.
 
-If it does, eight years cost eight requests. If it does not, they cost one
-request per bill per year -- roughly 16,000 -- which is the pattern that got
-this address blocked twice and would not be worth it.
+So this does what a browser does. Load the form, take the hidden fields it
+gives you, post them back with the year filled in. The same pattern
+probe_calendars.py uses for the calendar index, and for the same reason.
 
 WHAT IT WILL NOT DO
 
-One request. One year. It does not sweep years, does not retry, and does not
-construct filenames. It reports what came back and stops; nothing is written
-unless --raw is given.
-
-This asks one documented endpoint one question with parameters it already
-uses. That is a different thing from the directory scan that got this address
-blocked, and it is deliberately kept to a single request so it stays that way.
+Two requests. One year. It does not sweep years and does not retry. Whether
+eight years are worth sixteen requests is a decision for a person, and this
+exists to inform it rather than to act on it.
 """
 
 import argparse
+import html as _html
 import re
 import sys
-import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
 
-BASE = "https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"
+URL = "https://gc.nh.gov/bill_status/legacy/bs2016/"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
                     "corrections@graniterecord.org)"}
 
-BILLNO = re.compile(r"\b((?:CACR|HB|SB|HR|SR|HCR|SCR|HJR|SJR)\s?0*\d{1,4})\b", re.I)
-ROW = re.compile(r"<tr\b", re.I)
-BILLLINK = re.compile(r"billinfo\.aspx\?id=(\d+)[^\"']*", re.I)
+HIDDEN = re.compile(r"<input\b[^>]*type=[\"']hidden[\"'][^>]*>", re.I)
+ATTR = re.compile(r"(\w[\w:-]*)\s*=\s*[\"']([^\"']*)[\"']")
+FOUND = re.compile(r"Bills?\s+Found\s*:?\s*([\d,]+)", re.I)
+BILLNO = re.compile(r"\b(CACR|HB|SB|HR|SR|HCR|SCR|HJR|SJR)\s?0*(\d{1,4})\b")
+# The links each result offers. These are what an archived bill would cite.
+LINKS = re.compile(r"(billdocket|bill_status|billText|billHistory)\.aspx"
+                   r"\?[^\"'<>\s]*", re.I)
 
 
-def get(url, timeout=60):
-    req = urllib.request.Request(url, headers=UA)
-    with urllib.request.urlopen(req, timeout=timeout) as r:
+def get(url, data=None):
+    req = urllib.request.Request(
+        url, data=data,
+        headers=dict(UA, **({"Content-Type":
+                             "application/x-www-form-urlencoded"} if data else {})))
+    with urllib.request.urlopen(req, timeout=90) as r:
         return r.read().decode("utf-8", errors="replace"), r.status
+
+
+def hidden_fields(page):
+    out = {}
+    for m in HIDDEN.finditer(page):
+        a = {k.lower(): v for k, v in ATTR.findall(m.group(0))}
+        if a.get("name"):
+            out[a["name"]] = _html.unescape(a.get("value", ""))
+    return out
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--year", required=True,
-                    help="a session year with no database coverage, e.g. 2019")
-    ap.add_argument("--raw", action="store_true", help="save the page")
+                    help="a session year, e.g. 2019. The form says 1989-Current")
+    ap.add_argument("--raw", action="store_true", help="save the results page")
     a = ap.parse_args()
 
-    q = urllib.parse.urlencode({"sy": a.year, "txtsessionyear": a.year,
-                                "sortoption": "billnumber"})
-    url = f"{BASE}?{q}"
-    print(f"one request: {url}\n")
+    print(f"1/2  loading the search form: {URL}")
     try:
-        page, status = get(url)
-    except urllib.error.HTTPError as e:
-        sys.exit(f"HTTP {e.code}. That is an answer: this route does not "
-                 f"serve {a.year}.")
+        form, _ = get(URL)
     except Exception as e:
-        sys.exit(f"{type(e).__name__}: {e}\n"
-                 "netcheck.py diagnoses a refusal without making it worse.")
+        sys.exit(f"  failed: {type(e).__name__}: {e}\n"
+                 "  netcheck.py diagnoses a refusal without making it worse.")
+    fields = hidden_fields(form)
+    print(f"     {len(fields)} hidden field(s): {', '.join(fields) or 'none'}")
 
-    bills = sorted({re.sub(r"\s+", "", m.group(1)).upper()
+    # Everything else on the form may be left empty; these three are what the
+    # browser sends when you type a year and press Submit.
+    fields["txtsessionyear"] = str(a.year)
+    fields["sortoption"] = "billnumber"
+    fields["cmdsubmit"] = "Submit"
+
+    print(f"2/2  posting txtsessionyear={a.year}")
+    try:
+        page, status = get(URL, urllib.parse.urlencode(fields).encode())
+    except urllib.error.HTTPError as e:
+        sys.exit(f"  HTTP {e.code}. The form did not accept that.")
+    except Exception as e:
+        sys.exit(f"  failed: {type(e).__name__}: {e}")
+
+    found = FOUND.search(page)
+    bills = sorted({f"{m.group(1).upper()}{int(m.group(2))}"
                     for m in BILLNO.finditer(page)})
-    links = sorted(set(BILLLINK.findall(page)))
-    rows = len(ROW.findall(page))
-    print(f"HTTP {status}, {len(page):,} chars, {rows:,} table rows")
-    print(f"  {len(bills):,} distinct bill numbers on the page")
-    print(f"  {len(links):,} billinfo.aspx links")
+    links = LINKS.findall(page)
+    print(f"\n  HTTP {status}, {len(page):,} chars")
+    if found:
+        print(f"  the page says: Bills Found : {found.group(1)}")
+    print(f"  {len(bills):,} distinct bill numbers")
+    print(f"  {len(links):,} per-bill links (docket, status, text, history)")
     if bills:
-        print("  first few: " + ", ".join(bills[:12]))
-    if a.year in page:
-        print(f"  the page does mention {a.year}")
+        print("  first few: " + ", ".join(bills[:14]))
+    for label in ("Title:", "G-Status:", "House Status:", "Senate Status:",
+                  "Next/Last Comm:", "Next/Last Hearing:"):
+        print(f"    {label:<20} {'present' if label in page else 'ABSENT'}")
 
     if a.raw:
         out = Path(f"probe_legacy_{a.year}.html")
@@ -100,18 +127,14 @@ def main():
         print(f"\n  wrote {out}")
 
     print()
-    if len(bills) > 50:
-        print("A list. Eight missing years are eight requests, and the bill")
-        print("numbers and titles for 2017-2024 come from here rather than")
-        print("from one request per bill.")
-    elif bills:
-        print("Something came back, but not a full year. Read the page before")
-        print("concluding anything -- rerun with --raw.")
+    n = int((found.group(1) if found else "0").replace(",", "") or 0)
+    if n > 100:
+        print(f"  {n:,} bills for {a.year}, from two requests. The eight years")
+        print("  the database is missing cost sixteen requests in total, and")
+        print("  they carry title, status and the links an archived bill cites.")
+        print("  Read the saved page before writing a parser against it.")
     else:
-        print("No bill numbers. This route does not list a year, so 2017-2024")
-        print("would cost one request per bill and is not worth it now. The")
-        print("architecture should carry a term key regardless, so the years")
-        print("can be filled in later without rebuilding anything.")
+        print("  Not a year listing. Save it and look before concluding.")
     return 0
 
 
