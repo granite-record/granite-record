@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -40,6 +40,30 @@ from pathlib import Path
 
 PARTY = {"R": "Republican", "D": "Democrat", "I": "Independent", "L": "Libertarian"}
 
+
+
+def _unquote(v):
+    """One field of Members.txt, with the quoting the file actually uses.
+
+    Members.txt is tab-separated, but it also quotes any field containing a
+    comma -- a CSV convention leaking into a TSV. Splitting on tab and
+    stripping only whitespace therefore left the quote marks in the value.
+    Measured on the 408-row file: 68 Committee1 values, 29 Address and 1
+    Committee2 arrive wrapped in double quotes.
+
+    The visible cost was four House committees whose names contain a comma --
+    Labor, Industrial and Rehabilitative Services; Health, Human Services and
+    Elderly Affairs; Science, Technology and Energy; Resources, Recreation and
+    Development -- carrying a quote character in every one of their 68 member
+    links, so they matched nothing in Committees.txt.
+
+    A doubled quote inside a quoted field is that convention's escape for a
+    literal one, so it is collapsed here rather than left doubled.
+    """
+    v = (v or "").strip()
+    if len(v) > 1 and v.startswith('"') and v.endswith('"'):
+        v = v[1:-1].replace('""', '"').strip()
+    return v
 
 def rows(path, expect=None):
     p = Path(path)
@@ -127,7 +151,7 @@ def main():
                 f = line.rstrip("\n").split("\t")
                 if len(f) < len(head):
                     continue
-                get = lambda name: (f[col[name]].strip()
+                get = lambda name: (_unquote(f[col[name]])
                                     if name in col and col[name] < len(f) else "")
                 m = by_email.get(get("workemail").lower()) or \
                     by_name.get(f"{get('lastname')}|{get('firstname')}".lower())
