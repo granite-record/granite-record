@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.2
+# GRANITE_VERSION: 2026-09-06.3
 """
 What is actually in the General Court's public database.
 
@@ -106,9 +106,18 @@ QUERIES = [
     ("rollcall history span",
      "SELECT MIN(sessionYear) AS first_year, MAX(sessionYear) AS last_year, "
      "COUNT(*) AS rows FROM rollcallhistory"),
-    ("docket columns",
-     "SELECT COLUMN_NAME AS c, DATA_TYPE AS ty FROM INFORMATION_SCHEMA.COLUMNS "
-     "WHERE TABLE_NAME = 'docket' ORDER BY ORDINAL_POSITION"),
+    # The PDF documents 13 objects; the server exposes 28, all views, and
+    # several are things this project currently scrapes a page at a time.
+    ("all columns",
+     "SELECT TABLE_NAME AS v, COLUMN_NAME AS c, DATA_TYPE AS ty "
+     "FROM INFORMATION_SCHEMA.COLUMNS ORDER BY TABLE_NAME, ORDINAL_POSITION"),
+    ("LegislationText", "SELECT COUNT(*) AS rows FROM LegislationText"),
+    ("Legislation", "SELECT COUNT(*) AS rows FROM Legislation"),
+    ("CandH_Reports", "SELECT COUNT(*) AS rows FROM CandH_Reports"),
+    ("CommitteeMembers", "SELECT COUNT(*) AS rows FROM CommitteeMembers"),
+    ("VHearings", "SELECT COUNT(*) AS rows FROM VHearings"),
+    ("DocumentVersion", "SELECT COUNT(*) AS rows FROM DocumentVersion"),
+    ("NH_RSA", "SELECT COUNT(*) AS rows FROM NH_RSA"),
 ]
 
 PS = r"""
@@ -182,11 +191,15 @@ def show(results):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--raw", action="store_true",
-                    help="save the JSON reply to probe_db.json")
+    ap.add_argument("--raw", action="store_true", help="save the JSON reply")
+    # docket's [DataBase] column shows two source systems -- BillStatusDB for
+    # 1989-2016 and NHLMS for 2025-2026 -- and nothing at all for 2017-2024.
+    # The server also lists NHLegislatureDB2 and PublicNHLMS.
+    ap.add_argument("--database", default=DATABASE,
+                    help="another database on the same server")
     a = ap.parse_args()
 
-    base = (f"Database={DATABASE};User ID={USER};Password={PASSWORD};"
+    base = (f"Database={a.database};User ID={USER};Password={PASSWORD};"
             "Encrypt=False;TrustServerCertificate=True;Connect Timeout=20")
     # The PDF says the instance name may not be needed. Plainest first.
     attempts = [("host only", f"Server={HOST};{base}"),
@@ -197,7 +210,7 @@ def main():
     print("The General Court's public database")
     print("=" * 70)
     print(f"  host      {HOST}")
-    print(f"  database  {DATABASE}")
+    print(f"  database  {a.database}")
     print(f"  user      {USER}  (published for public use in "
           "ODBC and Data Table Structure.pdf)")
     print("  SELECT only. Nothing is written, here or there.")
@@ -218,9 +231,9 @@ def main():
         print(f"  connected ({label})")
         show(results)
         if a.raw:
-            Path("probe_db.json").write_text(
+            Path(f"probe_db_{a.database}.json").write_text(
                 json.dumps(results, indent=1), encoding="utf-8")
-            print("\n  wrote probe_db.json")
+            print(f"\n  wrote probe_db_{a.database}.json")
         print("\n" + "=" * 70)
         print("The number that matters is the docket span. If it reaches back")
         print("past this term, the archive is a different project: term keying")

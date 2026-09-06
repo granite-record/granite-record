@@ -97,3 +97,4 @@ probe_calendars*.html
 
 # ---- probe output: page snapshots, re-fetchable in one request --------
 committees_*.html
+probe_db*.json
