@@ -941,7 +941,13 @@ var fixtures = [
          // says why there is no reasoning under it.
          'class="cstat s-study">REFERRED TO INTERIM STUDY',
          "Senate Commerce",
-         "does not publish the written reasoning",
+         // The Senate's report carries the same three-part heading as the
+         // House's -- who, by what vote, for what motion -- rather than a
+         // bare tally, and its amendment is a fact of its own rather than
+         // part of the footnote explaining what is missing.
+         '<span class="secsub">Committee</span>',
+         "Amendment 2026-1201s",
+         "does not print written reasoning",
          // And what happened between the two House reports.
          "Between these reports the docket",
          // The tab counts what the tab draws: three written blocks and the

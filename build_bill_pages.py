@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.31
+# GRANITE_VERSION: 2026-09-04.32
 """
 Write a real HTML page for every bill.
 
@@ -393,19 +393,19 @@ def page(b, d, generated):
         y, nn = r.get("vote_yeas"), r.get("vote_nays")
         vote = (f' <span class="cvote">{y}–{nn}</span>'
                 if y is not None and nn is not None else "")
-        amd = (f' Amendment {E(r["amendment"])}'
-               + (", with a new title." if r.get("new_title") else ".")
+        amd = (f'<p class="meta">Amendment {E(r["amendment"])}'
+               + (", which also changes the bill’s title." if r.get("new_title")
+                  else ".") + "</p>"
                if r.get("amendment") else "")
-        said = ("The Senate reports a bill once, with the committee’s vote and "
-                "no minority report, and does not publish the written reasoning "
-                "the House prints in its calendar."
+        said = ("The Senate does not print written reasoning. This is its report "
+                "in full, as the docket records it."
                 if r.get("body") == "S" else
                 "The calendar carrying this report has not been read into the "
                 "site yet, so only what the docket states is shown.")
         reports += (f'<section><h4>{E(r.get("side") or "Committee")}{vote}'
                     + (f" &#8212; {E(r.get('recommendation',''))}"
                        if r.get("recommendation") else "") + "</h4>"
-                    f'<p class="src">{amd} {said}</p></section>')
+                    f'{amd}<p class="src">{said}</p></section>')
 
     if reports:
         reports = ('<p class="src">The recommendation, the vote and the day it '

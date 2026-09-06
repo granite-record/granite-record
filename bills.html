@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.19 -->
+<!-- GRANITE_VERSION: 2026-09-05.20 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -245,10 +245,14 @@ background:var(--pine-soft);color:var(--pine);border-radius:5px;padding:3px 9px}
 /* Set apart from the tabbed area rather than continuing it. The tabs are one
    object -- views of the record -- and the bill itself is another, sitting
    below them. A single rule read as one more section inside a tab. */
-.btsec{margin:34px -18px 0;padding:22px 18px 6px;background:var(--paper);
-border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
-.btsec > .amdsec{font-size:15px;letter-spacing:.06em;color:var(--ink);
-border-bottom:0;margin-bottom:14px}
+.btsec{margin:40px 2px 8px;padding:20px 20px 10px;background:var(--paper);
+border:1px solid var(--rule-2);border-radius:9px}
+.btsec > .amdsec{font-size:16px;letter-spacing:.06em;color:var(--ink);
+border-bottom:0;margin:0 0 2px}
+/* A line under the heading saying what this is. The tabs above are views OF
+   the record; this is the document itself, and bleeding it to the card's edge
+   under a small heading made it read as one more tab that had run on. */
+.btwhat{font-size:12.5px;color:var(--ink-3);margin:0 0 16px}
 /* The same heading shape for a report side and for a recording. Each was set
    by hand and each looked slightly different from the others and from the tab
    it sits in. */
@@ -1384,17 +1388,20 @@ function renderReports(b,d,rsa){
     const vote=r.vote_yeas!=null&&r.vote_nays!=null
       ? `<span class="cvote" title="Committee vote ${r.vote_yeas}–${r.vote_nays}"
           >${r.vote_yeas}–${r.vote_nays}</span>` : "";
-    const amd=r.amendment?` <span class="note" style="font-size:12px">amendment ${
-      esc(r.amendment)}${r.new_title?", with a new title":""}</span>`:"";
+    // The same three-part heading the written reports use -- who, by what vote,
+    // for what motion. The Senate files one report and does not label it, and
+    // leaving the label out left a bare "3-2" hanging where every block above
+    // it reads "MAJORITY 10" or "COMMITTEE 17-0".
+    const amd=r.amendment?`<p class="note" style="margin:0 0 7px">Amendment ${
+      esc(r.amendment)}${r.new_title?", which also changes the bill’s title":""}.</p>`:"";
     return between(r.date)+head(r,r.committee,r.body==="S"?"Senate":"House")
       +`<div style="display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px">
-        ${r.side?`<span class="secsub">${esc(r.side)}</span>`:""}${vote}
+        <span class="secsub">${esc(r.side||"Committee")}</span>${vote}
         <span class="cstat ${recColour(r.recommendation)}">${esc(r.recommendation)}</span></div>
-      <p class="note" style="margin:0 0 20px">${amd}${amd?" · ":""}Recorded in the docket.
-        ${r.body==="S"?`The Senate reports a bill once, with the committee’s vote and
-        no minority report, and does not publish the written reasoning the House prints
-        in its calendar.`:`The calendar carrying this report has not been read into the
-        site yet, so only what the docket states is shown.`}</p>`;}).join("");
+      ${amd}
+      <p class="note" style="margin:0 0 20px">${r.body==="S"
+        ? "The Senate does not print written reasoning. This is its report in full, as the docket records it."
+        : "The calendar carrying this report has not been read into the site yet, so only what the docket states is shown."}</p>`;}).join("");
 
   return (written||docket)?written+docket
     :`<p class="note">No committee report on file. A report is recorded in the docket
@@ -1569,7 +1576,8 @@ function renderDetail(b,d){
   // where it is used, so there is nothing left to order wrongly.
   const btsec=(focused===b.id&&((d.billtext&&d.billtext.body)
     ||(d.amendments||[]).length))
-    ? `<section class="btsec"><h3 class="amdsec">Bill text</h3>${
+    ? `<section class="btsec"><h3 class="amdsec">Bill text</h3>
+        <p class="btwhat">The bill and its amendments, as the General Court publishes them. Everything above is this site’s account of the record; this is the document.</p>${
         renderBillText(b,d,rsa)}</section>`
     : "";
 
