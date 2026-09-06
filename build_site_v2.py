@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.7
+# GRANITE_VERSION: 2026-09-05.8
 """
 Generate the faceted site from real General Court data.
 
@@ -694,6 +694,181 @@ def next_step(narr, bill):
     return "In progress"
 
 
+def station_for_proceeding(p, bid, segs, marks):
+    """One committee proceeding -- a hearing or an executive session -- as the
+    station the page draws.
+
+    Split out of main() with station_for_floor below it. The two used to sit
+    ninety lines apart inside one 955-line function, which is how a lookup
+    added to one of them silently missed the other.
+    """
+    seg = None
+    for s in segs.get(p.get("video_id", ""), []):
+        if s.get("bill", "").upper() == bid and s.get("kind") == p["proceeding"]:
+            seg = s
+            break
+    # Three states, and the middle one is the point. A recording matched
+    # to the proceeding with only an approximate starting point is still
+    # far more useful than no link at all: the reader scrubs a few
+    # minutes instead of hunting through 331 videos. Exact timestamps
+    # are an upgrade to this, not a precondition for it.
+    if seg and seg.get("located"):
+        state, start = "located", seg["start"]
+    elif p.get("video_id"):
+        state, start = "approximate", None
+    elif p["sched_date"] < "2020-03-01":
+        state, start = "prestream", None
+    else:
+        state, start = "novideo", None
+    # A stated boundary replaces the estimate outright.
+    said = None
+    for cand in (marks.get(p.get("video_id") or "") or {}).get(bid, []):
+        if not isinstance(cand, dict) or cand.get("start") is None:
+            continue
+        want = str(p.get("proceeding") or "").lower()
+        what = str(cand.get("what") or "")
+        if want and what and what.split()[-1] not in want \
+                and want.split()[-1] not in what:
+            continue
+        said = cand
+        break
+
+    return {
+        "when": p["sched_date"], "time": p.get("sched_time"),
+        "what": p["proceeding"], "committee": p.get("committee"),
+        "venue": p.get("venue"), "video_id": p.get("video_id"),
+        "watch": p.get("watch_url"), "predicted": p.get("predicted_offset"),
+        "start": said["start"] if said else start,
+        "state": "stated" if said else state,
+        # The aligner sets a tolerance per segment from how much
+        # evidence it had -- 3 minutes with many bill mentions, 30 with
+        # a short span and few. Dropping it here made every hearing on
+        # the site claim the same +/-5 minutes, understating the good
+        # ones and, worse, overstating the weak ones.
+        "tolerance": (5 if said else
+                      (seg.get("tolerance") if seg else None)),
+        "short": bool(seg.get("short")) if seg else False,
+        # The aligner produces a span, not a point. Showing only the
+        # start throws away half of it -- and the duration is what tells
+        # a reader whether a proceeding was a five-minute executive
+        # session or a two-hour hearing before they click anything.
+        # A stated close outranks a clustered one: four seconds at the
+        # median against whatever the cluster's tail happened to be.
+        "end": (said.get("end") if said and said.get("end")
+                else (seg.get("end") if seg and seg.get("located")
+                      else None)),
+        "end_stated": bool(said and said.get("end")),
+        "candidate": seg["start"] if seg and not seg.get("located") else None,
+        # Which ends of this span were stated by the chair rather than
+        # inferred, written by apply_markers.py. The page does not say
+        # so in words -- the tolerance carries that -- but it decides
+        # the tolerance's unit and how early the player opens, and it
+        # is what a methodology page would count.
+        #
+        # Per end, not per segment: a Senate chair announces the close
+        # and not the opening, so a proceeding can have a quoted end
+        # and an estimated start.
+        #
+        # The caption lines themselves stay in work/<id>/segments.json
+        # as the audit trail and are not shipped to the browser.
+        # Seconds, not minutes: a boundary the chair said is good to
+        # about a second, and calling that "+/- 1 min" would understate
+        # it as badly as the old tolerances overstated theirs.
+        "start_stated": bool(said) or (bool(seg.get("start_stated"))
+                                       if seg else False),
+        # The words are deliberately NOT published. Captions mangle
+        # bill numbers constantly, and a garbled quote presented as the
+        # chair's own words is a transcription error wearing the
+        # clothes of a citation. How it was found is kept, because that
+        # is a fact about this site's method rather than a claim about
+        # what anyone said.
+        "said_how": said.get("how") if said else None,
+        "end_stated_cluster": bool(seg.get("end_stated")) if seg else False,
+    }
+
+
+def station_for_floor(f, bid, marks):
+    """One floor appearance as a station.
+
+    Returns a finished dict. The consent case and the stated-boundary upgrade
+    are applied before returning, rather than by reaching back into
+    stations[-1] after appending.
+    """
+    precise = f.get("precise") and f.get("debate_end")
+    if f.get("whole_video"):
+        # The title names the bill, so the entire recording is this
+        # proceeding. No timestamp to estimate and none needed.
+        return {
+            "when": f["date"], "time": None,
+            "what": f.get("kind", "committee of conference"),
+            "committee": None, "venue": None,
+            "video_id": f["video_id"],
+            "watch": f"https://www.youtube.com/watch?v={f['video_id']}",
+            "predicted": None, "start": 0, "debate_end": None,
+            "window_start": None, "motions": [], "tallies": [],
+            "title": f.get("title", ""),
+            "state": "whole_video", "candidate": None}
+    st = {
+        "when": f["date"], "time": None,
+        "what": "floor debate",
+        "committee": "House" if f.get("body") == "H" else "Senate",
+        "venue": None, "video_id": f["video_id"],
+        "watch": (f"https://www.youtube.com/watch?v={f['video_id']}"
+                  f"&t={max(int(f.get('window_start') or 0) - 60, 0)}s"),
+        "predicted": None,
+        "start": (max(f.get("window_start", 0),
+                      f["debate_end"] - 1800) if precise else None),
+        "debate_end": f.get("debate_end") if precise else None,
+        "window_start": f.get("window_start") if precise else None,
+        "motions": f.get("motions", []), "tallies": f.get("tallies", []),
+        "state": "floor_precise" if precise else "floor_dated",
+        "candidate": None,
+    }
+    # The clerk reads a committee report to open every bill, and
+    # segment_markers.py finds it. That is the START of the debate --
+    # exact, and from the clerk's own words. Without it the player fell
+    # back to the window, which opens at the PREVIOUS bill's roll call
+    # and can be half an hour of other business away.
+    #
+    # This branch once did not consult the markers at all: they were
+    # found, written, and ignored, because floor stations were built in
+    # one place and the lookup was added in another, ninety lines away
+    # in the same function. The same manifest-and-floor-index split, for
+    # the fifth time. Both halves are now one short function each, and
+    # the station is finished before it is returned rather than adjusted
+    # through stations[-1] after the fact.
+    # A bill never named on its own floor recording passed on the
+    # consent calendar: adopted as part of a block, never read out,
+    # never debated. Offering to play a nine-hour session for it invites
+    # a reader to listen for something that is not there.
+    if bid in (marks.get("_absent") or {}).get(f.get("video_id") or "",
+                                               []):
+        st["state"] = "consent"
+        st["start"] = None
+        return st
+
+    said_f = None
+    for cand in (marks.get(f.get("video_id") or "") or {}).get(bid, []):
+        if not isinstance(cand, dict) or cand.get("start") is None:
+            continue
+        if str(cand.get("what") or "") not in ("", "floor debate"):
+            continue
+        end = f.get("debate_end")
+        if precise and end and not (0 <= end - cand["start"] <= 7200):
+            continue      # not this sitting's debate
+        said_f = cand
+        break
+    if said_f:
+        st["start"] = said_f["start"]
+        st["debate_start"] = said_f["start"]
+        st["start_stated"] = True
+        st["said_how"] = said_f.get("how")
+        if not precise and said_f.get("end"):
+            st["debate_end"] = said_f["end"]
+            st["state"] = "floor_stated"
+    return st
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
@@ -1104,167 +1279,20 @@ def main():
         for r in rc_out:
             r.pop("_ord", None)
 
-        stations = []
-        for p in sorted(procs.get(bid, []), key=lambda x: (x["sched_date"], x["sched_time"] or "")):
-            seg = None
-            for s in segs.get(p.get("video_id", ""), []):
-                if s.get("bill", "").upper() == bid and s.get("kind") == p["proceeding"]:
-                    seg = s
-                    break
-            # Three states, and the middle one is the point. A recording matched
-            # to the proceeding with only an approximate starting point is still
-            # far more useful than no link at all: the reader scrubs a few
-            # minutes instead of hunting through 331 videos. Exact timestamps
-            # are an upgrade to this, not a precondition for it.
-            if seg and seg.get("located"):
-                state, start = "located", seg["start"]
-            elif p.get("video_id"):
-                state, start = "approximate", None
-            elif p["sched_date"] < "2020-03-01":
-                state, start = "prestream", None
-            else:
-                state, start = "novideo", None
-            # A stated boundary replaces the estimate outright.
-            said = None
-            for cand in (marks.get(p.get("video_id") or "") or {}).get(bid, []):
-                if not isinstance(cand, dict) or cand.get("start") is None:
-                    continue
-                want = str(p.get("proceeding") or "").lower()
-                what = str(cand.get("what") or "")
-                if want and what and what.split()[-1] not in want \
-                        and want.split()[-1] not in what:
-                    continue
-                said = cand
-                break
-
-            stations.append({
-                "when": p["sched_date"], "time": p.get("sched_time"),
-                "what": p["proceeding"], "committee": p.get("committee"),
-                "venue": p.get("venue"), "video_id": p.get("video_id"),
-                "watch": p.get("watch_url"), "predicted": p.get("predicted_offset"),
-                "start": said["start"] if said else start,
-                "state": "stated" if said else state,
-                # The aligner sets a tolerance per segment from how much
-                # evidence it had -- 3 minutes with many bill mentions, 30 with
-                # a short span and few. Dropping it here made every hearing on
-                # the site claim the same +/-5 minutes, understating the good
-                # ones and, worse, overstating the weak ones.
-                "tolerance": (5 if said else
-                              (seg.get("tolerance") if seg else None)),
-                "short": bool(seg.get("short")) if seg else False,
-                # The aligner produces a span, not a point. Showing only the
-                # start throws away half of it -- and the duration is what tells
-                # a reader whether a proceeding was a five-minute executive
-                # session or a two-hour hearing before they click anything.
-                # A stated close outranks a clustered one: four seconds at the
-                # median against whatever the cluster's tail happened to be.
-                "end": (said.get("end") if said and said.get("end")
-                        else (seg.get("end") if seg and seg.get("located")
-                              else None)),
-                "end_stated": bool(said and said.get("end")),
-                "candidate": seg["start"] if seg and not seg.get("located") else None,
-                # Which ends of this span were stated by the chair rather than
-                # inferred, written by apply_markers.py. The page does not say
-                # so in words -- the tolerance carries that -- but it decides
-                # the tolerance's unit and how early the player opens, and it
-                # is what a methodology page would count.
-                #
-                # Per end, not per segment: a Senate chair announces the close
-                # and not the opening, so a proceeding can have a quoted end
-                # and an estimated start.
-                #
-                # The caption lines themselves stay in work/<id>/segments.json
-                # as the audit trail and are not shipped to the browser.
-                # Seconds, not minutes: a boundary the chair said is good to
-                # about a second, and calling that "+/- 1 min" would understate
-                # it as badly as the old tolerances overstated theirs.
-                "start_stated": bool(said) or (bool(seg.get("start_stated"))
-                                               if seg else False),
-                # The words are deliberately NOT published. Captions mangle
-                # bill numbers constantly, and a garbled quote presented as the
-                # chair's own words is a transcription error wearing the
-                # clothes of a citation. How it was found is kept, because that
-                # is a fact about this site's method rather than a claim about
-                # what anyone said.
-                "said_how": said.get("how") if said else None,
-                "end_stated_cluster": bool(seg.get("end_stated")) if seg else False,
-            })
-
+        # Two short builders, defined together above main(). Committee
+        # proceedings and floor appearances are different enough to need
+        # different code and close enough that a change to one usually belongs
+        # in the other; adjacent functions make that visible, which one long
+        # function did not.
+        stations = [station_for_proceeding(p, bid, segs, marks)
+                    for p in sorted(procs.get(bid, []),
+                                    key=lambda x: (x["sched_date"],
+                                                   x["sched_time"] or ""))]
         # Floor debates, stacked with the committee proceedings and sorted by
         # date so a bill's whole journey reads in order: hearing, executive
         # session, floor, then the second chamber.
-        for f in floor.get(bid, []):
-            precise = f.get("precise") and f.get("debate_end")
-            if f.get("whole_video"):
-                # The title names the bill, so the entire recording is this
-                # proceeding. No timestamp to estimate and none needed.
-                stations.append({
-                    "when": f["date"], "time": None,
-                    "what": f.get("kind", "committee of conference"),
-                    "committee": None, "venue": None,
-                    "video_id": f["video_id"],
-                    "watch": f"https://www.youtube.com/watch?v={f['video_id']}",
-                    "predicted": None, "start": 0, "debate_end": None,
-                    "window_start": None, "motions": [], "tallies": [],
-                    "title": f.get("title", ""),
-                    "state": "whole_video", "candidate": None})
-                continue
-            stations.append({
-                "when": f["date"], "time": None,
-                "what": "floor debate",
-                "committee": "House" if f.get("body") == "H" else "Senate",
-                "venue": None, "video_id": f["video_id"],
-                "watch": (f"https://www.youtube.com/watch?v={f['video_id']}"
-                          f"&t={max(int(f.get('window_start') or 0) - 60, 0)}s"),
-                "predicted": None,
-                "start": (max(f.get("window_start", 0),
-                              f["debate_end"] - 1800) if precise else None),
-                "debate_end": f.get("debate_end") if precise else None,
-                "window_start": f.get("window_start") if precise else None,
-                "motions": f.get("motions", []), "tallies": f.get("tallies", []),
-                "state": "floor_precise" if precise else "floor_dated",
-                "candidate": None,
-            })
-            # The clerk reads a committee report to open every bill, and
-            # segment_markers.py finds it. That is the START of the debate --
-            # exact, and from the clerk's own words. Without it the player fell
-            # back to the window, which opens at the PREVIOUS bill's roll call
-            # and can be half an hour of other business away.
-            #
-            # This branch never consulted the markers at all: they were found,
-            # written, and ignored, because floor stations are built here and
-            # the lookup was added over there. The same manifest-and-floor-index
-            # split, for the fifth time.
-            # A bill never named on its own floor recording passed on the
-            # consent calendar: adopted as part of a block, never read out,
-            # never debated. Offering to play a nine-hour session for it invites
-            # a reader to listen for something that is not there.
-            if bid in (marks.get("_absent") or {}).get(f.get("video_id") or "",
-                                                       []):
-                stations[-1]["state"] = "consent"
-                stations[-1]["start"] = None
-                continue
-
-            said_f = None
-            for cand in (marks.get(f.get("video_id") or "") or {}).get(bid, []):
-                if not isinstance(cand, dict) or cand.get("start") is None:
-                    continue
-                if str(cand.get("what") or "") not in ("", "floor debate"):
-                    continue
-                end = f.get("debate_end")
-                if precise and end and not (0 <= end - cand["start"] <= 7200):
-                    continue      # not this sitting's debate
-                said_f = cand
-                break
-            if said_f:
-                st = stations[-1]
-                st["start"] = said_f["start"]
-                st["debate_start"] = said_f["start"]
-                st["start_stated"] = True
-                st["said_how"] = said_f.get("how")
-                if not precise and said_f.get("end"):
-                    st["debate_end"] = said_f["end"]
-                    st["state"] = "floor_stated"
+        stations += [station_for_floor(f, bid, marks)
+                     for f in floor.get(bid, [])]
         stations.sort(key=lambda x: (x["when"], x.get("time") or ""))
 
         (out / "bills" / f"{bid}.json").write_text(json.dumps({
