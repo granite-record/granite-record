@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Read the calendar list instead of guessing at it.
 
@@ -113,7 +113,11 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-URL = "https://gc.nh.gov/house/calendars_journals/"
+BASE = "https://gc.nh.gov/{chamber}/calendars_journals/"
+# Kept as the default so anything importing URL still works. The Senate
+# serves the same page at its own address and answered HTTP 500 to
+# fetch_journals on 6 September, which is why --chamber exists.
+URL = BASE.format(chamber="house")
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
                     "corrections@graniterecord.org)"}
 
@@ -225,7 +229,7 @@ def type_select(page):
     return None
 
 
-def post(page, changes, target, label, raw_name=None):
+def post(page, changes, target, label, raw_name=None, url=URL):
     """One postback. Returns the new page, or None if it failed."""
     fields = form_fields(page)
     fields.update(changes)
@@ -237,7 +241,7 @@ def post(page, changes, target, label, raw_name=None):
     shown = ", ".join(f"{k}={v}" for k, v in changes.items())
     print(f"\n  posting {shown} ...")
     try:
-        out = get(URL, urllib.parse.urlencode(fields).encode())
+        out = get(url, urllib.parse.urlencode(fields).encode())
     except Exception as e:
         print(f"  postback failed: {type(e).__name__}: {e}")
         return None
@@ -253,12 +257,16 @@ def main():
     ap.add_argument("--year", help="also switch the year, to see what changes")
     ap.add_argument("--type", dest="doctype", choices=["Calendar", "Journal"],
                     help="switch Calendars/Journals before switching year")
+    ap.add_argument("--chamber", default="house",
+                    choices=["house", "senate"],
+                    help="which chamber's page to read")
     ap.add_argument("--raw", action="store_true", help="save the HTML")
     a = ap.parse_args()
+    url = BASE.format(chamber=a.chamber)
 
-    print(f"fetching {URL}")
+    print(f"fetching {url}")
     try:
-        page = get(URL)
+        page = get(url)
     except Exception as e:
         sys.exit(f"failed: {type(e).__name__}: {e}")
     if a.raw:
@@ -276,7 +284,8 @@ def main():
             return
         page = post(page, {tsel: a.doctype}, tsel,
                     f"AFTER SWITCHING TO {a.doctype.upper()}S",
-                    "probe_calendars_type.html" if a.raw else None)
+                    "probe_calendars_type.html" if a.raw else None,
+                    url=url)
         if page is None:
             return
 
@@ -294,7 +303,8 @@ def main():
         if tsel and a.doctype:
             changes[tsel] = a.doctype
         if post(page, changes, ysel, f"AFTER SWITCHING TO {a.year}",
-                "probe_calendars_year.html" if a.raw else None) is None:
+                "probe_calendars_year.html" if a.raw else None,
+                url=url) is None:
             print("  If the year cannot be switched this way, the list for "
                   "earlier\n  years may live at its own address instead.")
 

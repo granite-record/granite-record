@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Find the journal and calendar PDFs so docket citations become links.
 
@@ -173,13 +173,16 @@ def main():
         found = json.loads(Path(a.out).read_text(encoding="utf-8"))
         print(f"{len(found)} already known in {a.out}")
 
+    failed, counts = [], {}
     for body, chamber, letter in (("H", "house", "H"), ("S", "senate", "S")):
         try:
             urls = journal_urls(chamber, letter, a.year, a.delay)
         except Exception as e:
             print(f"  {chamber}: could not read the list: "
                   f"{type(e).__name__}: {e}")
+            failed.append(chamber)
             continue
+        counts[chamber] = len(urls)
         for num, url in sorted(urls.items(), key=lambda x: str(x[0])):
             # Keyed with the year as well as the number, because the same
             # journal number comes round every session and one key for both
@@ -189,10 +192,26 @@ def main():
 
     Path(a.out).write_text(json.dumps(found, indent=2, sort_keys=True),
                            encoding="utf-8")
-    print(f"\n{len(found)} journal links -> {a.out}")
+    print()
+    print(f"{len(found)} journal links -> {a.out}")
+    for chamber, n in counts.items():
+        print(f"  {chamber}: {n} listed for {a.year}")
     print("build_site_v2.py reads this and turns 'HJ 7 P. 55' in a docket line")
     print("into a link to that journal, which is the official record of the")
     print("action being described.")
+
+    # A chamber that could not be read leaves this file looking finished. The
+    # count above is the whole file, not the whole year, so one chamber missing
+    # is invisible in it -- the Senate 500 on 6 September left every Senate
+    # journal on its bare key while the House gained year-keyed ones, and the
+    # closing line still said 46 links. Say so, and exit non-zero.
+    if failed:
+        print()
+        print(f"INCOMPLETE: {', '.join(failed)} could not be read, so {a.out}")
+        print(f"holds nothing new for that chamber in {a.year} and the total")
+        print("above is not the whole of it. This merges, so re-running when")
+        print("the server answers loses nothing already fetched.")
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
