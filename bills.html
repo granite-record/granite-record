@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.21 -->
+<!-- GRANITE_VERSION: 2026-09-05.22 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -39,7 +39,10 @@ nav.top a{font-size:13.5px;text-decoration:none;color:var(--ink-2)}
 nav.top a[aria-current]{color:var(--ink);font-weight:500;box-shadow:0 2px 0 var(--pine)}
 .searchrow{background:var(--surface);border-bottom:1px solid var(--rule)}
 .searchrow .in{max-width:1180px;margin:0 auto;padding:14px 24px}
-.qline{display:flex;gap:10px}
+/* Capped. At 1440 the field was 962px of empty box; the placeholder ends
+   long before that and the eye has nothing to land on. The hint line
+   under it is capped to match so the two read as one control. */
+.qline{display:flex;gap:10px;max-width:840px}
 #sort{height:26px;padding:0 4px;font:inherit;font-size:12.5px;border:1px solid var(--edge);
 border-radius:5px;background:var(--surface);color:var(--ink-2);cursor:pointer}
 #year{height:42px;padding:0 10px;font:inherit;font-size:14px;border:1px solid var(--edge);
@@ -61,17 +64,18 @@ line-height:1;border:1px solid transparent;border-radius:6px;background:none;
 color:var(--ink-3);cursor:pointer}
 #qgo:hover{border-color:var(--edge);background:var(--wash);color:var(--pine)}
 #qgo:disabled{opacity:.35;cursor:default}
-.qhint{font-size:12.5px;color:var(--ink-3);margin:7px 2px 0;display:flex;gap:16px;flex-wrap:wrap}
+.qhint{font-size:12.5px;color:var(--ink-3);margin:7px 2px 0;display:flex;gap:16px;flex-wrap:wrap;max-width:840px}
 .link{color:var(--pine);font-size:12.5px}
 .shell{max-width:1180px;margin:0 auto;padding:20px 24px 80px;display:grid;
 grid-template-columns:250px 1fr;gap:30px;align-items:start}
-.facets{position:sticky;top:16px;max-height:calc(100vh - 40px);overflow-y:auto}
+.facets{position:sticky;top:16px;max-height:calc(100vh - 40px);
+overflow-y:auto;overflow-x:hidden}
 .fgroup{border-bottom:1px solid var(--rule)}
 .fhead{width:100%;display:flex;align-items:center;gap:8px;padding:11px 2px;font-size:13px;font-weight:600}
 .fhead .chev{margin-left:auto;color:var(--ink-3);font-size:11px}
 .fgroup.open .chev{transform:rotate(90deg)}
 .fhead .badge{background:var(--pine);color:#fff;font-size:10.5px;padding:1px 6px;border-radius:9px;font-weight:500}
-.fbody{padding:0 2px 12px;max-height:340px;overflow-y:auto}.fbody[hidden]{display:none}
+.fbody{padding:0 2px 12px;max-height:340px;overflow-y:auto;overflow-x:hidden}.fbody[hidden]{display:none}
 .fopt{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:13.5px;cursor:pointer}
 .fopt input{accent-color:var(--pine);margin:0;flex:0 0 auto}
 .fopt .c{margin-left:auto;font-size:11.5px;color:var(--ink-3)}
@@ -85,8 +89,15 @@ border:1px solid var(--edge);border-radius:5px;margin-bottom:7px}
 .pill{font-size:12px;background:var(--pine-soft);color:var(--pine);border-radius:12px;padding:2px 8px}
 .pill button{margin-left:4px;color:var(--pine)}
 .count{font-size:13px;color:var(--ink-3);margin:0 0 12px}
-.card{position:relative;background:var(--surface);border:1px solid var(--rule);border-radius:9px;margin-bottom:11px;overflow:hidden}
-.card.open{box-shadow:0 1px 3px rgba(0,0,0,.05)}
+/* A bill has to read as an object, not as a band of the page. The card was
+   white on #F6F6F4 behind a #E2E3E0 rule -- about three percent of lightness
+   between the two -- so a screen of them ran together into one column of
+   text. A firmer rule, a shadow soft enough not to be seen as a shadow, and
+   a little more air between them. */
+.card{position:relative;background:var(--surface);border:1px solid var(--rule-2);
+border-radius:10px;margin-bottom:14px;overflow:hidden;
+box-shadow:0 1px 2px rgba(25,28,29,.05)}
+.card.open{box-shadow:0 3px 10px rgba(25,28,29,.08)}
 .chead{width:100%;text-align:left;padding:15px 46px 15px 18px;display:block;cursor:pointer}
 /* The link to a bill's own page used to sit INSIDE the .chead button.
    Nesting a link in a button is invalid and browsers disagree about
@@ -105,7 +116,9 @@ text-decoration:none;font-size:15px;color:var(--ink-3);border-radius:6px}
    the same bill, which from a reader's seat is the page they are already on. */
 .chead:hover{background:var(--paper)}
 .crow{display:flex;gap:9px;align-items:center}
-.cnum{font-size:14px;font-weight:600;color:var(--pine)}
+/* The thing the reader is looking for. It was a point smaller than the
+   title beside it, which is the wrong way round on a page of bills. */
+.cnum{font-size:15.5px;font-weight:600;color:var(--pine);letter-spacing:.01em}
 .cyear{font-size:12.5px;color:var(--ink-3)}
 .cstat{margin-left:auto;font-size:11.5px;font-weight:500;padding:3px 10px;border-radius:20px;white-space:nowrap}
 /* The status on a card head: bigger and heavier than the chips used inside a
@@ -352,12 +365,24 @@ text-align:center;color:var(--ink-3);font-size:14px}
   .votes th,.votes td{padding:6px 8px;font-size:13px}
   .roll,.chosen{columns:1}
   .grid{grid-template-columns:1fr}
-  .tabs{flex-wrap:wrap;gap:4px}
-  .tabs button{font-size:13px;padding:6px 10px}
+  /* Six labels on a 289px card wrapped onto four rows -- 138px of tab strip
+     above a bill someone had already chosen. Tighter, and the longest label
+     shortened, rather than a sideways scroll: this file's rule is that
+     nothing reflows into horizontal scrolling, which reads as "not meant for
+     you" on a civic site. */
+  .tabs{flex-wrap:wrap;gap:2px 12px;margin-bottom:14px}
+  .tabs button{font-size:12.5px;padding:7px 0}
   .searchrow{flex-direction:column;align-items:stretch;gap:8px}
   .searchbig{flex-direction:column}
   .searchbig button{padding:11px 20px}
+  /* The term selector and the search box share a flex row, and at 375px the
+     selector was squeezed to 68px -- "2025-2026 term" showing as "2025".
+     Wrapping gives each a full row, which there is now room for since the
+     filters below them collapse on a phone. */
+  .qline{flex-wrap:wrap}
   #year{width:100%}
+  /* The last filter group's rule and the block's own rule sat together. */
+  .facets .fgroup:last-child{border-bottom:0}
   .qhint{flex-wrap:wrap;gap:8px}
   .crow{flex-wrap:wrap;gap:4px}
   .cnum{font-size:15px}
@@ -577,7 +602,13 @@ function sortRows(rows){
 }
 const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),kind:new Set(),
            voteday:new Set(),year:new Set()};
-const openGroups=new Set(["committee"]);
+// On a phone the filter column stacks ABOVE the results, and an open
+// Committee group is 340 pixels of it -- so the first bill sat past a
+// screen and a half of filters on a 375-wide screen. Someone arriving on
+// a phone came for the bills; the filters are one tap away either way.
+const wideEnough=typeof matchMedia==="function"
+  && matchMedia("(min-width:721px)").matches;
+const openGroups=new Set(wideEnough?["committee"]:[]);
 let sponsorFilter="";
 const openCards=new Set(),openTab={},detail={},segSel={},fullOpen=new Set();
 // Which bill is filling the screen, and where the reader was standing when
@@ -1602,7 +1633,7 @@ function renderDetail(b,d){
 
     <button class="tab" role="tab" id="tab_${b.id}_1" aria-controls="pane_${b.id}_1" aria-selected="false" data-t="1">Votes${b.nrc?` (${b.nrc})`:""}</button>
     <button class="tab" role="tab" id="tab_${b.id}_2" aria-controls="pane_${b.id}_2" aria-selected="false" data-t="2">Videos</button>
-    <button class="tab" role="tab" id="tab_${b.id}_3" aria-controls="pane_${b.id}_3" aria-selected="false" data-t="3">Committee reports${
+    <button class="tab" role="tab" id="tab_${b.id}_3" aria-controls="pane_${b.id}_3" aria-selected="false" data-t="3">Reports${
       reportCount(d)?` (${reportCount(d)})`:""}</button>
     <button class="tab" role="tab" id="tab_${b.id}_4" aria-controls="pane_${b.id}_4" aria-selected="false" data-t="4">Sponsors${(d.sponsors||[]).length?` (${(d.sponsors||[]).length})`:""}</button>
 

@@ -2,7 +2,7 @@
   "files": {
     "align_all.py": "2026-09-04.1",
     "apply_markers.py": "2026-09-04.8",
-    "bills.html": "2026-09-05.21",
+    "bills.html": "2026-09-05.22",
     "build_all.py": "2026-09-05.4",
     "build_bill_pages.py": "2026-09-04.33",
     "build_data.py": "2026-09-04.4",
@@ -39,7 +39,7 @@
     "netcheck.py": "2026-09-04.2",
     "nightly.py": "2026-09-04.5",
     "parse_districts.py": "2026-09-04.1",
-    "preflight.py": "2026-09-04.33",
+    "preflight.py": "2026-09-04.34",
     "probe_alignment.py": "2026-09-05.45",
     "probe_amendments.py": "2026-09-04.2",
     "probe_archive.py": "2026-09-04.1",

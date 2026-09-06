@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.33
+# GRANITE_VERSION: 2026-09-04.34
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -958,7 +958,9 @@ var fixtures = [
          "Between these reports the docket",
          // The tab counts what the tab draws: three written blocks and the
          // Senate's one. It used to count only the written ones.
-         "Committee reports (4)",
+         // Shortened from "Committee reports": six labels wrapped onto four
+         // rows on a 289px card, and this was the longest of them.
+         "Reports (4)",
          // A boundary the chair announced is quoted; one the clustering
          // guessed says so. Both stations here start at a stated boundary,
          // so only the end can produce the difference.
