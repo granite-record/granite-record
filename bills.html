@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.20 -->
+<!-- GRANITE_VERSION: 2026-09-05.21 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -534,6 +534,11 @@ const fdate=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
 const $=s=>document.querySelector(s);
 
 let IDX=[],META={},term=null,query="",sortBy="num";
+// A bill number is unique within a two-year term and not beyond it, so
+// every address for one carries its filing year: the static page has done
+// so from the start, and the detail file and this view do now.
+const yearOf=id=>{const b=IDX.find(x=>x.id===id);
+  return b&&b.year?String(b.year):"";};
 
 // House bills before Senate bills, then numerically. Bill numbers are strings
 // like "HB 1442", so a plain string sort puts HB 1000 before HB 99 and mixes
@@ -626,10 +631,21 @@ Promise.all([need("index.json"),need("meta.json")])
    // "open it in the searchable view" link on a static page -- opens it the
    // way clicking the arrow would have, rather than merely expanding the card
    // somewhere down a list of two thousand.
+   // "#2026/HB1442", and still the bare "#HB1442" that links already in
+   // circulation use. The year is what tells two terms' HB1442 apart;
+   // without it the first match in the index wins, which is only safe
+   // while one term is loaded.
    const h=decodeURIComponent(location.hash.slice(1));
-   if(h&&/^[A-Z]{2,5}\d+$/i.test(h)){
-     const id=h.toUpperCase();
-     if(IDX.some(b=>b.id===id))focused=id;
+   const hm=/^(?:(\d{4})\/)?([A-Z]{2,5}\d+)$/i.exec(h);
+   if(hm){
+     const id=hm[2].toUpperCase(),hy=hm[1]||"";
+     const row=IDX.find(b=>b.id===id&&(!hy||String(b.year)===hy));
+     if(row){
+       focused=id;
+       // A link into another term must switch the term first, or the
+       // card it names is filtered out of the list it would be drawn in.
+       if(row.term&&term&&row.term!==term){term=row.term;$("#year").value=term;}
+     }
      openBill(id);
    }
  }).catch(e=>{
@@ -1702,8 +1718,9 @@ function focusBill(id,href){
   // address for crawlers, for the sitemap, for a reader without JavaScript,
   // and for anyone opening the arrow in a new tab -- the anchor still points
   // there, so a middle click gets it.
+  const _y=yearOf(id);
   try{history.pushState({focus:id},"",
-    `?q=${encodeURIComponent(id.toLowerCase())}#${id}`);}catch(_){}
+    `?q=${encodeURIComponent(id.toLowerCase())}#${_y?_y+"/":""}${id}`);}catch(_){}
   openBill(id);
   window.scrollTo(0,0);
 }
@@ -1740,7 +1757,8 @@ function openBill(id){
   // refresh on a bill page stayed unexplained through two wrong guesses at the
   // cause. A 404, a file that is not JSON, and a refused connection all looked
   // identical from the outside, and they are three different problems.
-  const url=DATA(`bills/${id}.json`);
+  const yr=yearOf(id);
+  const url=DATA(`bills/${yr}/${id}.json`);
   const fail=(why)=>{
     detail[id]={events:[],rollcalls:[],stations:[],reports:[],sponsors:[],
       documents:[],amendments:[],next_step:"Detail unavailable",

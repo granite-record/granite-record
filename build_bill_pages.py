@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.32
+# GRANITE_VERSION: 2026-09-04.33
 """
 Write a real HTML page for every bill.
 
@@ -795,13 +795,15 @@ def main():
     written, missing, noyear = 0, 0, 0
     urls = []
     for b in idx:
-        f = site / "bills" / f"{b['id']}.json"
-        if not f.exists():
-            missing += 1
-            continue
         yr = str(b.get("year") or "")
         if not yr:
             noyear += 1
+            continue
+        # The detail file lives under its filing year too, for the reason the
+        # page does: a bill number is unique within a term and not beyond it.
+        f = site / "bills" / yr / f"{b['id']}.json"
+        if not f.exists():
+            missing += 1
             continue
         d = json.loads(f.read_text(encoding="utf-8"))
         (out / yr).mkdir(parents=True, exist_ok=True)
@@ -827,6 +829,13 @@ def main():
         f"User-agent: *\nAllow: /\nSitemap: {a.base}/sitemap.xml\n",
         encoding="utf-8")
 
+    # A run that writes nothing is the failure this project keeps meeting: the
+    # step finishes, prints a total of zero and exits clean. If the detail
+    # files moved and nobody told this, every bill is "missing" and the site
+    # publishes 2,234 pages with a title and no record on them.
+    assert written or not idx, (
+        f"no bill page was written and {missing:,} detail files were not found. "
+        f"Looked under {site / 'bills'}/<year>/<id>.json")
     total = sum(p.stat().st_size for p in out.rglob("*.html"))
     print(f"\n{written:,} bill pages -> {out}/  ({total/1e6:.1f} MB)")
     if missing:

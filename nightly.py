@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 The nightly run. Fetch what changed, rebuild, check, publish -- or don't.
 
@@ -139,7 +139,11 @@ def census(site):
 
     return {"bills": count_json("index.json"),
             "legislators": count_json("legislators.json"),
-            "bill_data": sum(1 for _ in (site / "bills").glob("*.json")),
+            # Per-bill data sits under its filing year. Both shapes are counted so
+            # that the gate reads the same number across the change rather than
+            # seeing every bill vanish at once.
+            "bill_data": (sum(1 for _ in (site / "bills").glob("*/*.json"))
+                          + sum(1 for _ in (site / "bills").glob("*.json"))),
             "bill_pages": sum(1 for _ in (site / "bill").rglob("*.html"))}
 
 

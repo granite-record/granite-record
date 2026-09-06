@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -111,7 +111,8 @@ def main():
     all_items, by_cmte, by_topic, nbill = [], {}, {}, 0
     sponsored = {}
     for b in idx:
-        f = site / "bills" / f"{b['id']}.json"
+        # Under the filing year, like the feed's own output path below.
+        f = site / "bills" / str(b.get("year") or "") / f"{b['id']}.json"
         if not f.exists():
             continue
         d = json.loads(f.read_text(encoding="utf-8"))

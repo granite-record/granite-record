@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.31
+# GRANITE_VERSION: 2026-09-04.33
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -507,6 +507,12 @@ def _bills_html():
         # listening on yet. The video then sits at a different time from the
         # button that was pressed, which is what a reader sees as the player
         # and the printed timestamps disagreeing.
+        # Per-bill data is addressed by its filing year, because a bill number
+        # is unique within a term and not beyond it. A 2027 HB686 would
+        # otherwise overwrite this one's docket, votes and recordings.
+        "the detail file is fetched under its year":
+            "DATA(`bills/${yr}/${id}.json`)",
+        "the address carries the year": '#${_y?_y+"/":""}${id}',
         "a cold jump loads the player at the time asked for":
             "st.dataset.embed=`${vid}|${Math.max(0,Math.floor(Number(t)))}|${p2}`",
         "tab panels": 'role="tabpanel"',
@@ -1437,7 +1443,8 @@ def _chain_output():
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
         s = root / "site"
-        hb = json.loads((s / "bills" / "HB1442.json").read_text(encoding="utf-8"))
+        hb = json.loads(
+            (s / "bills" / "2026" / "HB1442.json").read_text(encoding="utf-8"))
 
         def _yr(u):
             m = re.search(r"(?:%5C|/)(\d{4})(?:%5C|/)", u or "")
@@ -1451,6 +1458,11 @@ def _chain_output():
                json.loads((s / "index.json").read_text(encoding="utf-8"))}
         lg = json.loads((s / "legislators.json").read_text(encoding="utf-8"))
         checks = [
+            # And nothing is left at the flat path, which would mean the
+            # writer moved and a reader did not.
+            (not list((s / "bills").glob("*.json")),
+             "per-bill data is still being written flat as well as under its "
+             f"year: {[p.name for p in (s / 'bills').glob('*.json')][:4]}"),
             (len(hb.get("documents", [])) >= 4, "the Documents tab is empty"),
             # Every page of a volume this bill is on, not whichever came first.
             # A citation is only linked to a volume from its own year. The

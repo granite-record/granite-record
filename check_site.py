@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.1
+# GRANITE_VERSION: 2026-09-04.2
 """
 Check the site is fit to publish before uploading it.
 
@@ -104,7 +104,9 @@ def main():
     # ---- per-bill pages and feeds -------------------------------------------
     nbill = len(list((site / "bill").rglob("*.html"))) if (site / "bill").exists() else 0
     nfeed = len(list((site / "feed").rglob("*.xml"))) if (site / "feed").exists() else 0
-    njson = len(list((site / "bills").glob("*.json"))) if (site / "bills").exists() else 0
+    njson = (len(list((site / "bills").glob("*/*.json")))
+             + len(list((site / "bills").glob("*.json")))
+             if (site / "bills").exists() else 0)
     print(f"\nbill pages: {nbill:,} html, {njson:,} json, {nfeed:,} feeds")
     if njson and nbill < njson * 0.95:
         warnings.append(f"only {nbill:,} static pages for {njson:,} bills - "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.18
+# GRANITE_VERSION: 2026-09-05.19
 """
 Generate the faceted site from real General Court data.
 
@@ -1803,8 +1803,18 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                      for f in floor.get(bid, [])]
         stations.sort(key=lambda x: (x["when"], x.get("time") or ""))
 
-        (out / "bills" / f"{bid}.json").write_text(json.dumps({
-            "id": bid, "title": b.get("title", ""),
+        # Under the filing year, because a bill number is unique within a term
+        # and not beyond it. A 2027 HB686 is a different bill from this one and
+        # would have overwritten it here, taking its docket, its votes and its
+        # recordings with it. The static page and the feed have carried the
+        # year in their paths from the start -- build_bill_pages says why, in
+        # as many words -- and both of them read THIS file, so the year they
+        # were keeping the pages apart by was doing nothing for the data.
+        _bd = out / "bills" / str(year)
+        _bd.mkdir(parents=True, exist_ok=True)
+        (_bd / f"{bid}.json").write_text(json.dumps({
+            "id": bid, "year": year, "term": term,
+            "title": b.get("title", ""),
             "narrative": (narr or {}).get("narrative", ""),
             # The history, plus a closing paragraph where the bill's ending
             # is only on the status page. 120 bills showed a settled headline
@@ -2189,7 +2199,7 @@ def main():
     print(f"\nsite data: {total/1e6:.1f} MB total, {size:.0f} KB loaded up front")
     print(f"-> {out}/")
     print("\nNext: the HTML shell reads index.json and meta.json for search and")
-    print("facets, then fetches bills/<id>.json when a card is expanded.")
+    print("facets, then fetches bills/<year>/<id>.json when a card is expanded.")
 
 
 if __name__ == "__main__":

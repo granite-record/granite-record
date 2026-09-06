@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.44
+# GRANITE_VERSION: 2026-09-05.45
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
@@ -924,7 +924,8 @@ def coverage(site, manifest):  # noqa: C901
         if bill:
             want[bill].append((when, kind, str(r.get("video_id") or "")))
     have = defaultdict(list)
-    for f in (Path(site) / "bills").glob("*.json"):
+    for f in sorted(list((Path(site) / "bills").glob("*/*.json"))
+                    + list((Path(site) / "bills").glob("*.json"))):
         try:
             d = json.loads(f.read_text(encoding="utf-8"))
         except (ValueError, OSError):
@@ -1144,7 +1145,8 @@ def census(site):
     that.
     """
     kinds, states, years, bills = Counter(), Counter(), Counter(), 0
-    for f in (Path(site) / "bills").glob("*.json"):
+    for f in sorted(list((Path(site) / "bills").glob("*/*.json"))
+                    + list((Path(site) / "bills").glob("*.json"))):
         try:
             d = json.loads(f.read_text(encoding="utf-8"))
         except (ValueError, OSError):
@@ -1193,7 +1195,8 @@ def site_estimates(site, marks):
     why = Counter()
     seen_vids = set()
     for m in marks:
-        f = Path(site) / "bills" / f"{m['bill']}.json"
+        f = next((p for p in
+                  (Path(site) / "bills").glob(f"*/{m['bill']}.json")), None)             or Path(site) / "bills" / f"{m['bill']}.json"
         if not f.exists():
             why["no file for that bill"] += 1
             continue

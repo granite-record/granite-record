@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 What is the live site actually serving?
 
@@ -156,9 +156,11 @@ def one_bill(base, site, bid, year, tries=3):
     other, then with the file that produced them.
     """
     bid = bid.upper().replace(" ", "")
-    paths = [f"/bill/{year}/{bid.lower()}.html", f"/bills/{bid}.json"]
+    # Both carry the filing year, because a bill number is unique within a
+    # term and not beyond it.
+    paths = [f"/bill/{year}/{bid.lower()}.html", f"/bills/{year}/{bid}.json"]
     locals_ = [Path(site) / "bill" / year / f"{bid.lower()}.html",
-               Path(site) / "bills" / f"{bid}.json"]
+               Path(site) / "bills" / year / f"{bid}.json"]
     print(f"\n{bid}: asking {tries} times for each\n")
     steady = True
     global rewritten
