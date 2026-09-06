@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.19
+# GRANITE_VERSION: 2026-09-04.20
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -483,7 +483,11 @@ def _bills_html():
     t = p.read_text(encoding="utf-8")
     want = {
         "play control is a button": '<button type="button" class="pstub"',
-        "detail link outside the button": 'aria-label="Open the full page for',
+        # A link inside a button is not a link a keyboard or a screen reader
+        # can reach, so this one sits outside the card's expand button. What it
+        # is called changed once already; anchoring on the tag rather than the
+        # wording is what the check is actually about.
+        "detail link outside the button": '<a class="detail',
         "page heading": '<h1 class="sr">',
         # A stated boundary is a different claim from an estimate and the
         # page words it differently; the check follows the wording.
@@ -740,7 +744,7 @@ require("./stub.js");
 const src = require("fs").readFileSync("./page.js", "utf8");
 let scope;
 try { scope = (0, eval)(src +
-    "; ({render, IDX, renderDetail, setFocused:(x)=>{focused=x;}});"); }
+    "; ({render, IDX, renderDetail, setFocused:(x)=>{focused=x;}, getFocused:()=>focused});"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message);
             process.exit(1); }
 scope.IDX.length = 0;
@@ -749,6 +753,50 @@ scope.IDX.push({id:"HB1442",n:"HB 1442",title:"a bill",status:"Passed one chambe
   sponsor_label:"Rep. Jodi Nelson (R)",term:"2026",year:"2026",hay:"hb1442"});
 try { scope.render(); } catch (e) {
   console.log("RENDER " + e.constructor.name + ": " + e.message); process.exit(1); }
+const listHtml = document.querySelector("#results").innerHTML;
+
+// The arrow in a card's corner leads to the standalone page -- no JavaScript,
+// its own address. In the search list that is obvious. On the focused view the
+// reader is already reading a detail page, so a bare arrow in the corner reads
+// as a link to the one they are on; there it carries its name instead.
+scope.setFocused("HB1442");
+try { scope.render(); } catch (e) {
+  console.log("RENDER focused " + e.constructor.name + ": " + e.message);
+  process.exit(1); }
+const focusHtml = document.querySelector("#results").innerHTML;
+scope.setFocused(null);
+if (!/Standalone page/.test(focusHtml)) {
+  console.log("ARROW: on the focused view the link to the standalone page does "
+              + "not say where it goes"); process.exit(1); }
+if (/Standalone page/.test(listHtml)) {
+  console.log("ARROW: the search list labels its arrow, which only belongs on "
+              + "the focused view"); process.exit(1); }
+if (!/class="detail"/.test(listHtml)) {
+  console.log("ARROW: the search list drew no link to a standalone page");
+  process.exit(1); }
+if (!/title="A standalone page for/.test(listHtml)) {
+  console.log("ARROW: the link has no title, so hovering it says nothing about "
+              + "where it goes"); process.exit(1); }
+try { scope.render(); } catch (e) {
+  console.log("RENDER unfocused " + e.constructor.name + ": " + e.message);
+  process.exit(1); }
+
+// Typing a bill number into the search box while one bill is focused. The
+// results list is that bill and nothing else, so the query changed and the
+// screen did not: the box looked broken. Someone searching has stopped
+// reading this one, so the search backs out of it.
+scope.setFocused("HB1442");
+try { scope.render(); } catch (e) {
+  console.log("RENDER refocus " + e.constructor.name + ": " + e.message);
+  process.exit(1); }
+const box = document.querySelector("#q");
+box.value = "hb1442";
+if (!(box._on.input || []).length) {
+  console.log("SEARCH: nothing listens to the search box"); process.exit(1); }
+box.fire("input");
+if (scope.getFocused()) {
+  console.log("SEARCH: typing in the box left the bill focused, so the search "
+              + "changed nothing on screen"); process.exit(1); }
 
 // And the inside of a card, which render() alone never touches. Every bill on
 // the site sat on "Loading..." with its data already fetched, because

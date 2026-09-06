@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-04.1
+// GRANITE_VERSION: 2026-09-04.2
 // A DOM stub just deep enough to load bills.html's script and call render().
 const made = {};
 function el(tag = "div") {
@@ -7,7 +7,15 @@ function el(tag = "div") {
     textContent: "", value: "", scrollTop: 0,
     classList: { toggle(){}, add(){}, remove(){}, contains(){ return false; } },
     setAttribute(){}, getAttribute(){ return null; }, removeAttribute(){},
-    addEventListener(){}, removeEventListener(){}, focus(){}, blur(){},
+    // Listeners are kept rather than dropped, so a check can fire one. The
+    // page's behaviour lives in these -- typing in the search box, clicking a
+    // card -- and none of it was reachable from a test while they went
+    // nowhere.
+    _on: {},
+    addEventListener(t, f){ (this._on[t] = this._on[t] || []).push(f); },
+    fire(t, ev){ (this._on[t] || []).forEach(f => f(Object.assign(
+      {target: this, preventDefault(){}, stopPropagation(){}}, ev || {}))); },
+    removeEventListener(){}, focus(){}, blur(){},
     click(){}, append(){}, appendChild(){}, remove(){},
     closest(){ return null; }, contains(){ return false; },
     querySelector(){ return el(); }, querySelectorAll(){ return []; },
