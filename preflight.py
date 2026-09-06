@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.19
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1288,6 +1288,78 @@ def _dropped():
     assert ratio > 0.95, (f"{len(looks):,} rows look scheduled, {len(procs):,} "
                           f"parsed ({ratio:.0%}); the rest are dropped silently")
     return "ok", f"{len(looks):,} look scheduled, {len(procs):,} parsed ({ratio:.0%})"
+
+
+@check("data", "a committee report line gives up its recommendation and nothing else")
+def _report_rec():
+    if not (Path("Docket.txt").exists() and Path("narrative.py").exists()):
+        return "skip", "Docket.txt or narrative.py not here"
+    nv = imp("narrative")
+    assert nv, "narrative.py will not import"
+    recs, dated = Counter(), []
+    for rows in nv.parse_docket("Docket.txt").values():
+        for r in rows:
+            ev = nv.classify(r["desc"])
+            if ev["_type"] != "report":
+                continue
+            rec = (ev.get("rec") or "").strip()
+            recs[rec] += 1
+            if re.search(r"\d", rec):
+                dated.append(rec)
+    # The recommendation is a motion out of a fixed vocabulary. When the
+    # pattern ends it in the wrong place it takes the date with it, and the
+    # count goes from nine to hundreds without anything failing: the phrase
+    # table still matches on startswith, so the sentence still reads correctly
+    # and only the one line that falls past the table shows the damage.
+    assert not dated, (f"{len(dated):,} recommendations carry a date, e.g. "
+                       f"{dated[0]!r}; the pattern is ending the motion late")
+    assert len(recs) < 20, (f"{len(recs):,} distinct recommendations; a committee "
+                            "moves one of about nine things")
+    # Each of these is a motion the docket really uses; losing one means a whole
+    # class of report stopped parsing.
+    for want in ("Ought to Pass", "Ought to Pass with Amendment",
+                 "Inexpedient to Legislate", "Rereferred to Committee"):
+        assert recs.get(want), f"no report line reads {want!r} any more"
+    # Every report line carries a recommendation; most carry a vote and a date,
+    # and a minority report carries neither because it is not voted on.
+    voted = sum(1 for rows in nv.parse_docket("Docket.txt").values() for r in rows
+                if nv.classify(r["desc"]).get("y"))
+    assert voted > sum(recs.values()) * 0.7, (
+        f"only {voted:,} of {sum(recs.values()):,} report lines yield a vote")
+    return "ok", (f"{sum(recs.values()):,} report lines, {len(recs)} distinct "
+                  f"recommendations, {voted:,} with a vote")
+
+
+@check("data", "the volume a docket line cites is kept, not cleaned away")
+def _cite_survives():
+    if not (Path("Docket.txt").exists() and Path("narrative.py").exists()):
+        return "skip", "Docket.txt or narrative.py not here"
+    nv = imp("narrative")
+    assert nv, "narrative.py will not import"
+    raw = cited = 0
+    for rows in nv.parse_docket("Docket.txt").values():
+        for r in rows:
+            raw += 1
+            if re.search(r"\b(HJ|SJ|HC|SC)\s*\d", r["desc"]):
+                cited += 1
+    assert cited > raw * 0.5, (f"only {cited:,} of {raw:,} docket rows cite a "
+                               "journal or calendar; that is too few to be true")
+    # clean() removes the citation before any pattern sees the line, and has
+    # to: the hearing pattern's venue group would otherwise swallow "SC 4".
+    # For two terms it was removed and never recorded anywhere else, so
+    # _cite() in build_site_v2 -- which exists for no other purpose than to
+    # turn this into a link to the published page -- returned nothing on every
+    # event of every bill, and the Documents tab was quietly short 12,970
+    # citations. A build that publishes nothing still exits zero.
+    kept = 0
+    for bill, rows in list(nv.parse_docket("Docket.txt").items())[:400]:
+        for e in nv.build(bill, rows)["events"]:
+            if e.get("cite"):
+                kept += 1
+    assert kept, ("no event kept its citation; cite_of() is not reaching "
+                  "build(), and the Documents tab will publish no source links")
+    return "ok", (f"{cited:,} of {raw:,} rows cite a volume; "
+                  f"{kept:,} kept across the first 400 bills")
 
 
 @check("data", "what is on disk for the markers to read")

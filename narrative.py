@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.16
+# GRANITE_VERSION: 2026-09-04.17
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -62,9 +62,16 @@ RECOMMENDATION = {
     "inexpedient to legislate": "kill it",
     "interim study": "study it after the session ends",
     "refer for interim study": "study it after the session ends",
+    # The clerk writes this one both ways and the site had only the first, so
+    # 142 lines fell past the table and were printed in the docket's own
+    # wording: "The committee reported: Referred to Interim Study."
+    "referred to interim study": "study it after the session ends",
     "retain": "hold on to it for further work",
     "rerefer to committee": "send it back to committee",
+    # And this one, 65 more.
+    "rereferred to committee": "send it back to committee",
     "without recommendation": "make no recommendation",
+    "no recommendation": "make no recommendation",
     "lay on table": "set it aside without killing it",
     "table": "set it aside without killing it",
     "indefinitely postpone": "kill it and bar the subject for the rest of the term",
@@ -308,11 +315,27 @@ PATTERNS = [
     ("worksession", re.compile(
         r"(?P<kind>(?:Subcommittee|Full Committee)?\s*Work Session)\s*:\s*"
         r"(?P<date>\d{1,2}/\d{1,2}/\d{4})", re.I)),
+    # "Committee Report: Ought to Pass with Amendment # 2026-0797h (NT)
+    # 02/18/2026 (Vote 9-8; RC)", and sixteen other punctuations of the same
+    # six facts. Anchored at the start, because "Conference Committee Report"
+    # is a different body -- the committee of conference, sitting for both
+    # chambers -- and the unanchored pattern read fourteen of its lines as the
+    # policy committee's own recommendation. The side is matched loosely --
+    # Major\w*, not Majority -- because the clerk typed "Majoritiy
+    # Committee Report" on HB749, and an exact spelling drops that report.
+    #
+    # The recommendation ends at the first thing that is not part of it: an
+    # amendment number, a date, a vote, or a separator. Taking [^,(;#]+ instead
+    # ended it at a comma that is often not there, so the date came away inside
+    # it on 1,511 of 4,398 lines -- "Ought to Pass 05/06/2025" -- which turned
+    # nine recommendations into 273 and put a raw docket date into a published
+    # sentence. What follows the recommendation is picked apart by
+    # report_fields(), because those facts appear in any order.
     ("report", re.compile(
-        r"Committee Report\s*:\s*(?P<rec>[^,(;#]+)\s*"
-        r"(?:#?(?P<amend>\d{4}-\d+[a-z]*)\s*)?"
-        r"(?:[,(]\s*(?P<date>\d{1,2}/\d{1,2}/\d{4})?[,;]?\s*"
-        r"(?:Vote\s*(?P<y>\d+)-(?P<n>\d+))?)?", re.I)),
+        r"^\s*(?:(?P<side>Major\w*|Minor\w*)\s+)?Committee\s+Report\s*:\s*"
+        r"(?P<rec>.*?)"
+        r"(?=\s*(?:#|\d{1,2}/\d{1,2}/\d{4}|[,;(]|\bVote\b|$))"
+        r"(?P<rest>.*)$", re.I)),
     ("veto_override", VETO_HOUSE_RE),
     ("veto_override", VETO_SENATE_RE),
     ("unsigned_law", UNSIGNED_RE),
@@ -348,12 +371,79 @@ PATTERNS = [
 ]
 
 
+# --- the rest of a committee report line ------------------------------------
+#
+# The clerk punctuates the same six facts a dozen ways -- "; Vote 5-0; CC",
+# "(Vote 9-8; RC)", ", 01/30/2025, Vote 3-2" -- so each is found by its own
+# marker rather than by where it sits. Anything the line does not carry is
+# simply absent: a minority report has no vote of its own, and 706 of them
+# say so by omission.
+R_AMEND = re.compile(r"#\s*(?P<amend>(?:\d{4}-)?\d+[a-z]*)", re.I)
+# The date the committee signed its report, which is not the date the docket
+# row was created and is usually days earlier.
+R_RDATE = re.compile(r"(?P<date>\d{1,2}/\d{1,2}/\d{4})")
+R_RVOTE = re.compile(r"\bVote\s+(?P<y>\d+)\s*-\s*(?P<n>\d+)", re.I)
+# A new title travels with the amendment and changes what the bill is called,
+# which is why two reports on one bill can carry two different titles.
+R_NT = re.compile(r"\(NT\)", re.I)
+
+
+def report_side(raw):
+    """Majority, Minority or neither, however the clerk spelled it."""
+    w = (raw or "").lower()
+    return ("Majority" if w.startswith("major")
+            else "Minority" if w.startswith("minor") else "")
+
+
+def report_fields(rest):
+    """Amendment, date and vote off the tail of a committee report line."""
+    out = {}
+    for pat in (R_AMEND, R_RDATE, R_RVOTE):
+        m = pat.search(rest or "")
+        if m:
+            out.update({k: v for k, v in m.groupdict().items() if v})
+    if R_NT.search(rest or ""):
+        out["new_title"] = "1"
+    return out
+
+
+# --- the volume and page the clerk cited ------------------------------------
+#
+# Two thirds of the docket ends with one: "HJ 7", "SC 4", "HC 10  P. 4". It is
+# the published record of that single action -- the page of the journal where
+# the vote is printed, the calendar the report appeared in -- and it is the
+# strongest citation this site can offer for anything.
+#
+# clean() deletes it before any pattern below sees the line, and has to: every
+# pattern here was written against a line that ends at the date, and the
+# hearing pattern's venue group would otherwise swallow "SC 4" and file 132
+# hearings in a room of that name. So it is taken off the raw line first and
+# carried on the event instead of being thrown away.
+#
+# It was being thrown away. 17,290 of 25,270 docket rows carry a citation and
+# 12,970 of those name a volume already on disk, yet _cite() in build_site_v2,
+# which exists to turn exactly this into a link, was reading the cleaned line
+# and finding nothing on every event of every bill.
+CITE_RE = re.compile(r"\b(?P<vol>HJ|SJ|HC|SC)\s*(?P<num>\d+[A-Za-z]?)"
+                     r"(?:\s*P\.?\s*(?P<page>\d+))?", re.I)
+
+
+def cite_of(desc):
+    """The journal or calendar a docket line cites, as ("HC 10", "4")."""
+    m = CITE_RE.search(desc or "")
+    if not m:
+        return "", ""
+    return (f"{m.group('vol').upper()} {m.group('num')}", m.group("page") or "")
+
+
 def classify(desc):
     c = clean(desc)
     for name, pat in PATTERNS:
         m = pat.search(c)
         if m:
             d = m.groupdict()
+            if name == "report":
+                d.update(report_fields(d.pop("rest", "")))
             d["_type"] = name
             d["_raw"] = c
             return d
@@ -638,12 +728,11 @@ def describe(ev, body, seen_intro=False):
             name, _ = CALENDAR[calm.group("cal").upper()]
             cal = f", and the report was placed on {name}"
         amend = f" (amendment {ev['amend']})" if ev.get("amend") else ""
-        raw = (ev.get("_raw") or "")
-        side = ""
-        if re.search(r"\bminority\b", raw, re.I):
-            side = "the minority"
-        elif re.search(r"\bmajority\b", raw, re.I):
-            side = "the majority"
+        # The pattern already found which side signed it. Searching the
+        # line again for the word missed "Majoritiy", and would read a
+        # bill whose own title says "minority" as a minority report.
+        side = {"Majority": "the majority",
+                "Minority": "the minority"}.get(report_side(ev.get("side")), "")
         who = f"{side.capitalize()} of the committee" if side else "The committee"
         if plain:
             return (f"{who} recommended that the {chamber} {plain}"
@@ -820,6 +909,8 @@ def build(bill, rows):
     evs = []
     for r in rows:
         ev = classify(r["desc"])
+        # Off the raw line: clean() has already removed it from ev["_raw"].
+        ev["cite"], ev["cite_page"] = cite_of(r["desc"])
         ev["body"] = r["body"]
         ev["cancelled"] = "CANCELLED" in r["flags"]
         ev["recessed"] = "RECESSED" in r["flags"]
@@ -910,6 +1001,11 @@ def build(bill, rows):
         "events": [{"date": e["when"].strftime("%Y-%m-%d"), "type": e["_type"],
                     "body": e["body"], "cancelled": e["cancelled"],
                     "raw": e["_raw"],
+                    # The journal or calendar this one action is printed in.
+                    # Every event carries it, because every kind of event has
+                    # one: a hearing cites the calendar that noticed it, a
+                    # floor vote the journal page that recorded it.
+                    "cite": e.get("cite", ""), "cite_page": e.get("cite_page", ""),
                     **({"action": (e.get("action") or "").strip(),
                         "motion": (e.get("motion") or "").upper(),
                         "vote_kind": (e.get("vote") or "").upper(),
@@ -926,7 +1022,25 @@ def build(bill, rows):
                         "motion": (e.get("motion") or "").upper(),
                         "vote_kind": (e.get("vote") or "").upper(),
                         "mover": (e.get("mover") or "").strip()}
-                       if e["_type"] == "amendment" else {})}
+                       if e["_type"] == "amendment" else
+                       # A committee report's own facts, for the same reason
+                       # the two above are here. The Reports tab could show
+                       # only the 1,901 bills whose reasoning a House Calendar
+                       # printed, and told everyone else that Senate reports
+                       # "use a different format and are not loaded yet". The
+                       # format is this line: 1,708 Senate reports state their
+                       # recommendation, the date the committee signed it and
+                       # the vote, in the docket, and were being read and
+                       # discarded at this door.
+                       {"side": report_side(e.get("side")),
+                        "recommendation": (e.get("rec") or "").strip(),
+                        "amendment": (e.get("amend") or "").strip(),
+                        # The day the committee signed, not the day the clerk
+                        # entered it.
+                        "report_date": (e.get("date") or "").strip(),
+                        "yeas": e.get("y"), "nays": e.get("n"),
+                        "new_title": bool(e.get("new_title"))}
+                       if e["_type"] == "report" else {})}
                    for e in evs],
         "unrecognised": unknown,
     }
