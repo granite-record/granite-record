@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.15
+# GRANITE_VERSION: 2026-09-05.16
 """
 Generate the faceted site from real General Court data.
 
@@ -561,16 +561,23 @@ def member_slug(m, lab):
 # district with it. A member resolved from a roll call page may have neither,
 # and "(?)" beside a name is worse than a name on its own. A House district
 # with no county is likewise omitted: "Rock. 13" locates a seat, "13" does not.
+# Without the trailing point, which is the form data/legislators.json's own
+# county_abbr carries. A member drawn from the roster read "Hills 12" and
+# one drawn from here read "Hills. 6", so the punctuation tracked exactly
+# who had left office.
 COUNTY_ABBR = {
-    "belknap": "Belk.", "carroll": "Carr.", "cheshire": "Ches.",
-    "coos": "Coos", "co\u00f6s": "Coos", "grafton": "Graf.",
-    "hillsborough": "Hills.", "merrimack": "Merr.", "rockingham": "Rock.",
-    "strafford": "Straf.", "sullivan": "Sull.",
+    "belknap": "Belk", "carroll": "Carr", "cheshire": "Ches",
+    "coos": "Coos", "co\u00f6s": "Coos", "grafton": "Graf",
+    "hillsborough": "Hills", "merrimack": "Merr", "rockingham": "Rock",
+    "strafford": "Straf", "sullivan": "Sull",
 }
 HONORIFIC = {"H": "Rep.", "S": "Sen."}
 
 _TITLE_RE = re.compile(r"^(?:rep|sen|representative|senator)\.?\s+", re.I)
-_PARTY_TAIL_RE = re.compile(r"\s*\([RDILU](?:\s*[-\u2013][^)]*)?\)\s*$")
+# Case-insensitive: the bill status page writes the letter in lower case,
+# so "Howard Pearl (r)" kept its tail, sorted as "(r), howard pearl" and
+# matched nobody on the roster. 112 sponsor rows, all his.
+_PARTY_TAIL_RE = re.compile(r"\s*\([RDILU](?:\s*[-\u2013][^)]*)?\)\s*$", re.I)
 # build_data.py's "label" field is a composite -- "Nelson, Jodi(R) Rock. 13" --
 # with the party letter in the MIDDLE and the seat after it. Nothing here is
 # fed that field any more, but a formatter that mangles its input silently is
@@ -607,6 +614,31 @@ def sort_name(raw):
         return s.lower()
     bits = s.split()
     return f"{bits[-1]}, {' '.join(bits[:-1])}".lower() if len(bits) > 1 else s.lower()
+
+
+def name_key(raw):
+    """("rebecca", "kwoka") -- a member's first and last word, either way round.
+
+    sort_name treats the final word as the surname, which is right until a
+    surname has more than one word in it. "Rebecca Perkins Kwoka" becomes
+    "kwoka, rebecca perkins" while the roster holds "Perkins Kwoka, Rebecca",
+    and the two never meet. The same for "Sabourin dit Choiniere" and for the
+    particle in "de Vries" -- 217 sponsor rows across four members, drawn
+    without the district everybody else has beside their name.
+
+    Taking the first word and the last word sidesteps the split entirely: both
+    spellings of a name yield the same pair however many words sit between
+    them. It is a weaker key than a surname, so it is tried only after
+    sort_name has failed.
+    """
+    s = _PARTY_TAIL_RE.sub("", _TITLE_RE.sub("", re.sub(r"\s+", " ",
+                                                        (raw or "").strip())))
+    if "," in s:
+        last, first = [x.strip() for x in s.split(",", 1)]
+        s = f"{first} {last}"
+    w = [x for x in re.sub(r"[^\w' -]", " ", s, flags=re.UNICODE).lower().split()
+         if x]
+    return (w[0], w[-1]) if len(w) >= 2 else None
 
 
 def district_tag(chamber, district, county=None, county_abbr=None):
@@ -1372,7 +1404,7 @@ def committee_reports(recs, narr, sources, house_cmte, senate_cmte):
 
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, procs, floor, segs,
-                marks, sources, legs, leg_by_sort,
+                marks, sources, legs, leg_by_sort, leg_by_name,
                 votes_by_bill):
     """One JSON per bill, and the index row for each.
 
@@ -1445,12 +1477,20 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         sp_list = []
         for _s in sponsors.get(bid, []):
             _m = (legs.get(_s.get("member_id"))
-                  or leg_by_sort.get(sort_name(_s.get("name") or "")) or {})
+                  or leg_by_sort.get(sort_name(_s.get("name") or ""))
+                  or leg_by_name.get(name_key(_s.get("name") or "") or ("", ""))
+                  or {})
+            # The roster first, then whatever the sponsor record carries in
+            # its own right. build_data fills the county and district in for a
+            # member who has left, from former_members.json, so that they are
+            # named the same way as anyone else: "Rep. Suzanne Vail (D - Hills
+            # 6)", not a bare name under a heading about a missing chamber.
             _lab = member_labels(
                 _s.get("name"),
                 chamber=_m.get("chamber") or _s.get("chamber"),
                 party=_m.get("party_code") or _s.get("party"),
-                district=_m.get("district"), county=_m.get("county"),
+                district=_m.get("district") or _s.get("district"),
+                county=_m.get("county") or _s.get("county"),
                 county_abbr=_m.get("county_abbr"))
             # The address of this member's own page, where the sponsor was
             # matched to the roster. Where they were not -- a former member,
@@ -1787,9 +1827,12 @@ def main():
     # never on a member id, because there are three id spaces in these files
     # and a sponsor's is not necessarily the roster's. A sponsor who matches
     # nobody keeps a bare name rather than borrowing somebody else's party.
-    leg_by_sort = {}
+    leg_by_sort, leg_by_name = {}, {}
     for _m in legs.values():
         leg_by_sort.setdefault(sort_name(_m.get("name") or ""), _m)
+        _k = name_key(_m.get("name") or "")
+        if _k:
+            leg_by_name.setdefault(_k, _m)
 
     # Members who left mid-term are already named upstream: resolve_members.py
     # writes former_members.json to the project root, build_data.py reads it
@@ -1929,7 +1972,7 @@ def main():
     index, years, unnamed = build_bills(out, bills, narratives, rollcalls, reports,
                                sponsors, bill_texts, amend_texts, testimony,
                                procs, floor, segs, marks, sources,
-                               legs, leg_by_sort,
+                               legs, leg_by_sort, leg_by_name,
                                votes_by_bill)
     (out / "index.json").write_text(json.dumps(index), encoding="utf-8")
     size = (out / "index.json").stat().st_size / 1024

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -478,7 +478,22 @@ def main():
                 continue
             sponsors[bill] = [
                 {"member_id": x.get("web_member_id", ""), "name": x["name"],
-                 "party": x.get("party", ""), "chamber": x.get("chamber", ""),
+                 "party": x.get("party", ""),
+                 # The page states a chamber for members it can link and
+                 # leaves it blank for the rest -- 361 sponsor entries, all of
+                 # them people who have since left, which put them on the page
+                 # under a heading about a missing chamber rather than beside
+                 # their colleagues.
+                 #
+                 # It does give a senate district, and only ever to senators:
+                 # across the 12,659 entries whose chamber the page DOES state,
+                 # all 4,109 senators carry one and none of the 8,550
+                 # representatives does. So a blank chamber with no senate
+                 # district is a representative, which is a reading of the
+                 # page rather than an assumption about who tends to leave.
+                 "chamber": (x.get("chamber", "")
+                             or ("S" if (x.get("senate_district") or "").strip()
+                                 else "H")),
                  "label": (f"{x['name']} ({x['party']})" if x.get("party")
                            else x["name"]),
                  "sequence": i, "prime": i == 0, "url": x.get("url", ""),
@@ -520,6 +535,55 @@ def main():
     if fp.exists():
         former = json.loads(fp.read_text(encoding="utf-8"))
         print(f"former members named: {len(former)}")
+
+    # ------------------------------------------ sponsors, district and all ---
+    #
+    # A sponsor the status page could not link is a member who has since left,
+    # and the page gives their name and party and nothing else. Everyone still
+    # sitting picks up their county and district from the roster downstream;
+    # they cannot, so they were the only sponsors on the site drawn without a
+    # district beside their name.
+    #
+    # former_members.json already holds it -- resolve_members.py looked these
+    # people up to put names on their votes -- so it is joined here, in the one
+    # file that reads it. They then render exactly like anybody else. They have
+    # no member page, so their name is not a link, and that is the only
+    # difference the site draws: some of these members died in office, and
+    # their absence is not a fact to annotate.
+    def _first_last(name):
+        n = (name or "").strip()
+        if "," in n:
+            last, first = [x.strip() for x in n.split(",", 1)]
+            n = f"{first} {last}"
+        w = re.sub(r"[^A-Za-z ]", " ", n).lower().split()
+        return (w[0], w[-1]) if len(w) >= 2 else None
+
+    former_by_name = {}
+    for _mid, _f in former.items():
+        _k = _first_last(_f.get("name"))
+        if _k:
+            former_by_name[_k] = (_mid, _f)
+
+    placed = 0
+    for _sp in sponsors.values():
+        for _s in _sp:
+            if _s.get("district"):
+                continue
+            hit = former_by_name.get(_first_last(_s.get("name")))
+            if not hit:
+                continue
+            _mid, _f = hit
+            _s["member_id"] = _s.get("member_id") or _mid
+            _s["party"] = _s.get("party") or (_f.get("party") or "")[:1].upper()
+            _s["county"] = _f.get("county", "")
+            _s["district"] = _f.get("district", "")
+            placed += 1
+    if placed:
+        print(f"sponsors given a district from former_members.json: {placed:,}")
+        report.append(
+            f"{placed:,} sponsor rows took their county and district from "
+            "former_members.json, so that a member who has left is named the "
+            "same way as one who is still sitting.")
 
     def _former_label(mid):
         # Members who left mid-term are shown exactly like everyone else. Some

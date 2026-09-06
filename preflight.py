@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.27
+# GRANITE_VERSION: 2026-09-04.28
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -239,18 +239,23 @@ def _naming(build_site_v2):
     m = build_site_v2.member_labels
     cases = [
         (dict(chamber="H", party="R", district="13", county="Rockingham"),
-         "Nelson, Jodi", "Rep. Jodi Nelson (R)", "Rep. Jodi Nelson (R - Rock. 13)"),
+         "Nelson, Jodi", "Rep. Jodi Nelson (R)", "Rep. Jodi Nelson (R - Rock 13)"),
         (dict(chamber="S", party="D", district="24"),
          "Altschiller, Debra", "Sen. Debra Altschiller (D)",
          "Sen. Debra Altschiller (D - SD24)"),
         (dict(chamber="H", party="R", district="13", county="Rockingham"),
          "Rep. Jodi Nelson (R)", "Rep. Jodi Nelson (R)",
-         "Rep. Jodi Nelson (R - Rock. 13)"),
+         "Rep. Jodi Nelson (R - Rock 13)"),
+        # build_data's composite label keeps its own punctuation; what the
+        # site draws does not. The abbreviation lost its trailing point so
+        # that a member named from the roster and one named from
+        # former_members.json read alike -- the difference used to track
+        # exactly who had left office.
         (dict(chamber="H", party="R", district="13", county="Rockingham"),
-         "Nelson, Jodi(R) Rock. 13", "Rep. Jodi Nelson (R)",
-         "Rep. Jodi Nelson (R - Rock. 13)"),
+         "Nelson, Jodi(R) Rock 13", "Rep. Jodi Nelson (R)",
+         "Rep. Jodi Nelson (R - Rock 13)"),
         (dict(chamber="H", district="7", county="Merrimack"),
-         "Doe, Pat", "Rep. Pat Doe", "Rep. Pat Doe (Merr. 7)"),
+         "Doe, Pat", "Rep. Pat Doe", "Rep. Pat Doe (Merr 7)"),
         (dict(chamber="H", party="R"),
          "Doe, Pat", "Rep. Pat Doe (R)", "Rep. Pat Doe (R)"),
     ]
@@ -903,7 +908,7 @@ var detail = {
   report_actions:[{before:"2026-03-13",date:"2026-03-05",
                    text:"Recommit (Rep. Berry): MA VV 03/05/2026"}],
   sponsors:[{name:"Nelson, Jodi",party:"R",chamber:"H",prime:true,
-             display_full:"Rep. Jodi Nelson (R - Rock. 13)"}],
+             display_full:"Rep. Jodi Nelson (R - Rock 13)"}],
   documents:[{label:"Bill text",url:"https://gc.nh.gov/x.pdf",kind:"text"}],
   amendments:[{num:"2026-0503h",kind:"Committee Amendment",where:"committee",
                date:"2026-02-11",body:"H",adopted:true,vote_kind:"VV",mover:"",
@@ -1107,21 +1112,25 @@ def _site_fixture(root):
                  "senate_committee": "", "lsr": "2026-0900"}})
     w("data/legislators.json", [
         {"id": "377204", "name": "Nelson, Jodi", "chamber": "H", "party": "Republican",
-         "party_code": "R", "county": "Rockingham", "county_abbr": "Rock.",
-         "district": "13", "label": "Nelson, Jodi(R) Rock. 13", "email": "j@gc.nh.gov",
+         # As the real roster writes it. The fixture carried "Rock." with a
+         # trailing point, which data/legislators.json has never contained --
+         # all ten of its abbreviations are bare -- so this asserted a shape
+         # only the fallback table produced.
+         "party_code": "R", "county": "Rockingham", "county_abbr": "Rock",
+         "district": "13", "label": "Nelson, Jodi(R) Rock 13", "email": "j@gc.nh.gov",
          "url": "", "towns": ["Raymond"], "committees": ["Commerce"], "title": "",
          "phone": ""},
         {"id": "377207", "name": "Altschiller, Debra", "chamber": "S",
          "party": "Democrat", "party_code": "D", "county": "Rockingham",
-         "county_abbr": "Rock.", "district": "24",
+         "county_abbr": "Rock", "district": "24",
          "label": "Altschiller, Debra(D) Rock. 24", "email": "d@gc.nh.gov", "url": "",
          "towns": ["Stratham"], "committees": ["Education"], "title": "", "phone": ""}])
     w("data/sponsors.json", {"HB1442": [
         {"member_id": "377204", "name": "Nelson, Jodi", "party": "R", "chamber": "H",
-         "label": "Nelson, Jodi(R) Rock. 13", "sequence": 0, "prime": True}]})
+         "label": "Nelson, Jodi(R) Rock 13", "sequence": 0, "prime": True}]})
     w("data/member_votes.json", [
         {"member_id": "377204", "name": "Nelson, Jodi", "party": "R",
-         "label": "Nelson, Jodi(R) Rock. 13", "year": "2026", "body": "H",
+         "label": "Nelson, Jodi(R) Rock 13", "year": "2026", "body": "H",
          "vote_number": "310", "bill": "HB1442", "question": "Ought to Pass",
          "date": "2026-03-06", "vote": "Yea"}])
     w("data/towns.json", {"Raymond": [{"county": "Rockingham", "district": "13",
@@ -1497,6 +1506,13 @@ def _chain_output():
             (_exec(hb) is not None, "the executive session is not on the page"),
             ((_exec(hb) or {}).get("start") == 300,
              f"the stated start was not used: {(_exec(hb) or {}).get('start')!r}"),
+            # Every sponsor is named the same way. A member who has left has
+            # no page, so no link -- that is the only difference the site draws.
+            (all((sp.get("chamber") or "").strip() for sp in hb.get("sponsors", [])),
+             "a sponsor has no chamber, which puts them under a heading of "
+             "their own: "
+             + repr([sp.get("name") for sp in hb.get("sponsors", [])
+                     if not (sp.get("chamber") or "").strip()])),
             ((_exec(hb) or {}).get("end") is None,
              "an end from a placement 4,700 seconds away was attached to a "
              f"start the chair stated: {(_exec(hb) or {}).get('end')!r}"),
@@ -1516,7 +1532,7 @@ def _chain_output():
              f"SB434 reads {idx['SB434']['status']!r}, not the docket's outcome"),
             (idx["HB1442"].get("sponsor_label") == "Rep. Jodi Nelson (R)",
              f"sponsor reads {idx['HB1442'].get('sponsor_label')!r}"),
-            (lg[0].get("display_full") == "Rep. Jodi Nelson (R - Rock. 13)",
+            (lg[0].get("display_full") == "Rep. Jodi Nelson (R - Rock 13)",
              f"legislator reads {lg[0].get('display_full')!r}"),
             # The floor branch ran at all: the stated start reached the station.
             (any(x.get("debate_start") == 600 for x in hb["stations"]),
@@ -1631,6 +1647,34 @@ def _report_rec():
         f"only {voted:,} of {sum(recs.values()):,} report lines yield a vote")
     return "ok", (f"{sum(recs.values()):,} report lines, {len(recs)} distinct "
                   f"recommendations, {voted:,} with a vote")
+
+
+@check("data", "a sponsor is named the same way whether or not they still serve")
+def _sponsor_names():
+    if not Path("build_site_v2.py").exists():
+        return "skip", "build_site_v2.py not here"
+    bs = imp("build_site_v2")
+    assert bs, "build_site_v2.py will not import"
+    # The three ways a sponsor's name reaches the join. The status page writes
+    # the party letter in lower case, and surnames are not always one word.
+    for raw, want in (("Howard Pearl (r)", "pearl, howard"),
+                      ("Rep. Jodi Nelson (R - Rock 13)", "nelson, jodi"),
+                      ("Nelson, Jodi", "nelson, jodi")):
+        got = bs.sort_name(raw)
+        assert got == want, f"sort_name({raw!r}) is {got!r}, expected {want!r}"
+    # name_key pairs the first and last word, so a surname of any length meets
+    # its own "Last, First" spelling.
+    for a, b in (("Rebecca Perkins Kwoka", "Perkins Kwoka, Rebecca"),
+                 ("Erica de Vries", "de Vries, Erica"),
+                 ("Matt Sabourin dit Choiniere", "Sabourin dit Choiniere, Matt"),
+                 ("Howard Pearl (r)", "Pearl, Howard")):
+        ka, kb = bs.name_key(a), bs.name_key(b)
+        assert ka and ka == kb, f"name_key({a!r})={ka!r} != name_key({b!r})={kb!r}"
+    # Both spellings of a county abbreviation would let a reader tell which
+    # members had left, because only they took the second one.
+    assert not [v for v in bs.COUNTY_ABBR.values() if v.endswith(".")],         f"county abbreviations still carry a trailing point: {bs.COUNTY_ABBR}"
+    return "ok", ("surnames of any length, either spelling, and the party letter "
+                  "in either case")
 
 
 @check("data", "the volume a docket line cites is kept, not cleaned away")
