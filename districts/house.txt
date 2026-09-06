@@ -1,0 +1,406 @@
+Belknap County District 1
+Center Harbor, New Hampton
+Belknap County District 2 (2 seats)
+Meredith
+Belknap County District 3
+Sanbornton, Tilton
+Belknap County District 4
+Belmont
+Belknap County District 5 (4 seats)
+Laconia-Ward 1, Laconia-Ward 3, Laconia-Ward 4, Laconia-Ward 5, Laconia-Ward 6
+Belknap County District 6 (4 seats)
+Gilford, Gilmanton, Laconia-Ward 2
+Belknap County District 7 (3 seats)
+Alton, Barnstead
+Belknap County District 8 (2 seats) (Floterial)
+Belmont, Sanbornton, Tilton
+Carroll County District 1 (3 seats)
+Conway
+Carroll County District 2 (2 seats)
+Albany, Bartlett, Chatham, Hale's Location, Hart's Location, Jackson, Sandwich
+Carroll County District 3 (2 seats)
+Madison, Moultonborough, Tamworth
+Carroll County District 4 (2 seats)
+Brookfield, Eaton, Effingham, Freedom, Wakefield
+Carroll County District 5
+Ossipee
+Carroll County District 6 (2 seats)
+Tuftonboro, Wolfeboro
+Carroll County District 7 (Floterial)
+Ossipee, Tuftonboro, Wolfeboro
+Carroll County District 8 (2 seats) (Floterial)
+Brookfield, Eaton, Effingham, Freedom, Madison, Moultonborough, Tamworth, Wakefield
+Cheshire County District 1
+Keene-Ward 1
+Cheshire County District 2
+Keene-Ward 3
+Cheshire County District 3
+Keene-Ward 5
+Cheshire County District 4
+Keene-Ward 4
+Cheshire County District 5
+Surry, Walpole
+Cheshire County District 6 (2 seats)
+Chesterfield, Hinsdale, Westmoreland
+Cheshire County District 7
+Keene-Ward 2
+Cheshire County District 8
+Harrisville, Marlborough, Nelson, Roxbury, Sullivan
+Cheshire County District 9
+Alstead, Gilsum, Marlow, Stoddard
+Cheshire County District 10 (2 seats)
+Richmond, Swanzey
+Cheshire County District 11
+Winchester
+Cheshire County District 12
+Fitzwilliam, Troy
+Cheshire County District 13
+Dublin, Jaffrey
+Cheshire County District 14
+Rindge
+Cheshire County District 15 (2 seats) (Floterial)
+Chesterfield, Hinsdale, Keene-Ward 1, Keene-Ward 3, Keene-Ward 4, Keene-Ward 5, Surry, Walpole, Westmoreland
+Cheshire County District 16 (Floterial)
+Alstead, Gilsum, Harrisville, Keene-Ward 2, Marlborough, Marlow, Nelson, Roxbury, Stoddard, Sullivan
+Cheshire County District 17 (Floterial)
+Fitzwilliam, Richmond, Swanzey, Troy, Winchester
+Cheshire County District 18 (2 seats) (Floterial)
+Dublin, Jaffrey, Rindge
+Coos County District 1 (2 seats)
+Dalton, Lancaster, Northumberland, Stratford
+Coos County District 2
+Atk. & Gil. Academy Grant, Cambridge, Clarksville, Dix's Grant, Dixville, Dummer, Errol, Milan, Millsfield, Odell, Pittsburg, Second College Gt, Stark, Wentworth's Loc.
+Coos County District 3
+Colebrook, Columbia, Erving's Location, Stewartstown
+Coos County District 4
+Carroll, Jefferson, Kilkenny, Whitefield
+Coos County District 5 (2 seats)
+Berlin
+Coos County District 6
+Bean's Grant, Bean's Purchase, Chandler's Pur., Crawford's Pur., Cutt's Grant, Gorham, Green's Grant, Hadley's Purchase, Low & Burbank's Grant, Martin's Location, Pinkham's Grant, Randolph, Sargent's Purchase, Shelburne, Success, Thompson & Mes's Purchase
+Coos County District 7 (Floterial)
+Berlin, Carroll, Jefferson, Kilkenny, Whitefield
+Grafton County District 1 (3 seats)
+Bath, Lisbon, Littleton, Lyman, Monroe, Sugar Hill
+Grafton County District 2
+Bethlehem, Franconia
+Grafton County District 3
+Easton, Lincoln, Livermore, Woodstock
+Grafton County District 4
+Ellsworth, Thornton, Waterville Valley
+Grafton County District 5 (2 seats)
+Benton, Haverhill, Landaff, Piermont, Warren
+Grafton County District 6
+Orford, Rumney, Wentworth
+Grafton County District 7
+Campton
+Grafton County District 8 (3 seats)
+Ashland, Holderness, Plymouth
+Grafton County District 9
+Canaan, Dorchester, Orange
+Grafton County District 10
+Bridgewater, Bristol
+Grafton County District 11
+Alexandria, Grafton, Groton, Hebron
+Grafton County District 12 (4 seats)
+Hanover, Lyme
+Grafton County District 13
+Lebanon-Ward 1
+Grafton County District 14
+Lebanon-Ward 2
+Grafton County District 15
+Lebanon-Ward 3
+Grafton County District 16
+Enfield
+Grafton County District 17 (Floterial)
+Lebanon-Ward 1, Lebanon-Ward 2, Lebanon-Ward 3
+Grafton County District 18 (Floterial)
+Alexandria, Bridgewater, Bristol, Canaan, Dorchester, Enfield, Grafton, Groton, Hebron, Orange
+Hillsborough County District 1 (4 seats)
+Pelham
+Hillsborough County District 2 (7 seats)
+Bedford
+Hillsborough County District 3 (3 seats)
+Nashua-Ward 4
+Hillsborough County District 4 (3 seats)
+Nashua-Ward 2
+Hillsborough County District 5 (3 seats)
+Nashua-Ward 1
+Hillsborough County District 6 (3 seats)
+Nashua-Ward 3
+Hillsborough County District 7 (3 seats)
+Nashua-Ward 7
+Hillsborough County District 8 (3 seats)
+Nashua-Ward 6
+Hillsborough County District 9 (3 seats)
+Nashua-Ward 5
+Hillsborough County District 10 (3 seats)
+Nashua-Ward 9
+Hillsborough County District 11 (3 seats)
+Nashua-Ward 8
+Hillsborough County District 12 (8 seats)
+Merrimack
+Hillsborough County District 13 (6 seats)
+Hudson
+Hillsborough County District 14 (2 seats)
+Litchfield
+Hillsborough County District 15 (2 seats)
+Manchester-Ward 8
+Hillsborough County District 16 (2 seats)
+Manchester-Ward 6
+Hillsborough County District 17 (2 seats)
+Manchester-Ward 2
+Hillsborough County District 18 (2 seats)
+Manchester-Ward 12
+Hillsborough County District 19 (2 seats)
+Manchester-Ward 10
+Hillsborough County District 20 (2 seats)
+Manchester-Ward 9
+Hillsborough County District 21 (2 seats)
+Manchester-Ward 1
+Hillsborough County District 22 (2 seats)
+Manchester-Ward 11
+Hillsborough County District 23 (2 seats)
+Manchester-Ward 3
+Hillsborough County District 24 (2 seats)
+Manchester-Ward 4
+Hillsborough County District 25 (2 seats)
+Manchester-Ward 5
+Hillsborough County District 26 (2 seats)
+Manchester-Ward 7
+Hillsborough County District 27
+Deering, Francestown
+Hillsborough County District 28 (2 seats)
+Weare
+Hillsborough County District 29 (4 seats)
+Goffstown
+Hillsborough County District 30 (3 seats)
+Antrim, Bennington, Hillsborough, Windsor
+Hillsborough County District 31
+Greenfield, Hancock
+Hillsborough County District 32 (3 seats)
+New Ipswich, Temple, Wilton
+Hillsborough County District 33 (2 seats)
+Peterborough, Sharon
+Hillsborough County District 34 (3 seats)
+Amherst
+Hillsborough County District 35 (2 seats)
+Hollis
+Hillsborough County District 36 (2 seats)
+Brookline, Greenville, Mason
+Hillsborough County District 37 (Floterial)
+Amherst, Milford
+Hillsborough County District 38 (2 seats) (Floterial)
+Hudson, Litchfield
+Hillsborough County District 39 (2 seats) (Floterial)
+Manchester-Ward 6, Manchester-Ward 8, Manchester-Ward 9
+Hillsborough County District 40 (4 seats) (Floterial)
+Manchester-Ward 1, Manchester-Ward 3, Manchester-Ward 10, Manchester-Ward 11, Manchester-Ward 12
+Hillsborough County District 41 (3 seats) (Floterial)
+Manchester-Ward 2, Manchester-Ward 4, Manchester-Ward 5, Manchester-Ward 7
+Hillsborough County District 42 (3 seats) (Floterial)
+Lyndeborough, Mont Vernon, New Boston
+Hillsborough County District 43 (4 seats) (Floterial)
+Milford
+Hillsborough County District 44 (2 seats) (Floterial)
+Goffstown, Weare
+Hillsborough County District 45 (Floterial)
+Brookline, Greenville, Hollis, Mason
+Merrimack County District 1
+Boscawen
+Merrimack County District 2
+Northfield
+Merrimack County District 3 (2 seats)
+Franklin-Ward 1, Franklin-Ward 2, Franklin-Ward 3
+Merrimack County District 4 (2 seats)
+Canterbury, Loudon
+Merrimack County District 5 (2 seats)
+Andover, Danbury, Hill, Salisbury, Webster
+Merrimack County District 6
+Sutton, Wilmot
+Merrimack County District 7 (2 seats)
+New London, Newbury
+Merrimack County District 8 (3 seats)
+Bradford, Henniker, Warner
+Merrimack County District 9 (4 seats)
+Bow, Hopkinton
+Merrimack County District 10 (4 seats)
+Dunbarton, Hooksett
+Merrimack County District 11
+Allenstown
+Merrimack County District 12 (2 seats)
+Pembroke
+Merrimack County District 13 (2 seats)
+Chichester, Pittsfield
+Merrimack County District 14
+Epsom
+Merrimack County District 15
+Concord-Ward 1
+Merrimack County District 16
+Concord-Ward 2
+Merrimack County District 17
+Concord-Ward 3
+Merrimack County District 18
+Concord-Ward 4
+Merrimack County District 19
+Concord-Ward 5
+Merrimack County District 20
+Concord-Ward 6
+Merrimack County District 21
+Concord-Ward 7
+Merrimack County District 22
+Concord-Ward 8
+Merrimack County District 23
+Concord-Ward 9
+Merrimack County District 24
+Concord-Ward 10
+Merrimack County District 25 (Floterial)
+Franklin-Ward 1, Franklin-Ward 2, Franklin-Ward 3, Northfield
+Merrimack County District 26 (Floterial)
+Andover, Boscawen, Canterbury, Danbury, Hill, Loudon, Salisbury, Webster
+Merrimack County District 27 (2 seats) (Floterial)
+Allenstown, Dunbarton, Epsom, Hooksett
+Merrimack County District 28 (Floterial)
+Concord-Ward 1, Concord-Ward 2, Concord-Ward 3
+Merrimack County District 29 (Floterial)
+Concord-Ward 4, Concord-Ward 9, Concord-Ward 10
+Merrimack County District 30 (Floterial)
+Concord-Ward 5, Concord-Ward 6, Concord-Ward 7, Concord-Ward 8
+Rockingham County District 1 (3 seats)
+Northwood, Nottingham
+Rockingham County District 2 (3 seats)
+Auburn, Candia, Deerfield
+Rockingham County District 3
+Chester
+Rockingham County District 4 (3 seats)
+Raymond
+Rockingham County District 5 (2 seats)
+Epping
+Rockingham County District 6
+Brentwood
+Rockingham County District 7
+Fremont
+Rockingham County District 8
+Danville
+Rockingham County District 9 (2 seats)
+Sandown
+Rockingham County District 10 (3 seats)
+Newfields, Newmarket
+Rockingham County District 11 (4 seats)
+Exeter
+Rockingham County District 12 (2 seats)
+Stratham
+Rockingham County District 13 (10 seats)
+Derry
+Rockingham County District 14 (2 seats)
+East Kingston, Kingston
+Rockingham County District 15 (2 seats)
+Hampstead
+Rockingham County District 16 (7 seats)
+Londonderry
+Rockingham County District 17 (4 seats)
+Windham
+Rockingham County District 18 (2 seats)
+Atkinson
+Rockingham County District 19
+Hampton Falls, Kensington
+Rockingham County District 20 (3 seats)
+Newton, Plaistow, South Hampton
+Rockingham County District 21
+Newington, Portsmouth-Ward 1
+Rockingham County District 22
+New Castle, Portsmouth-Ward 5
+Rockingham County District 23
+North Hampton
+Rockingham County District 24 (2 seats)
+Greenland, Rye
+Rockingham County District 25 (9 seats)
+Salem
+Rockingham County District 26
+Portsmouth-Ward 3
+Rockingham County District 27
+Portsmouth-Ward 4
+Rockingham County District 28
+Portsmouth-Ward 2
+Rockingham County District 29 (4 seats)
+Hampton
+Rockingham County District 30 (2 seats)
+Seabrook
+Rockingham County District 31 (2 seats) (Floterial)
+Auburn, Candia, Chester, Deerfield
+Rockingham County District 32 (Floterial)
+Brentwood, Danville, Fremont
+Rockingham County District 33 (Floterial)
+Exeter, Newfields, Newmarket, Stratham
+Rockingham County District 34 (Floterial)
+East Kingston, Hampstead, Kingston
+Rockingham County District 35 (Floterial)
+Londonderry, Windham
+Rockingham County District 36 (Floterial)
+Hampton Falls, Kensington, Newton, Plaistow, South Hampton
+Rockingham County District 37 (Floterial)
+New Castle, Newington, Portsmouth-Ward 1, Portsmouth-Ward 5
+Rockingham County District 38 (Floterial)
+Greenland, North Hampton, Rye
+Rockingham County District 39 (Floterial)
+Portsmouth-Ward 2, Portsmouth-Ward 3, Portsmouth-Ward 4
+Rockingham County District 40 (Floterial)
+Hampton, Seabrook
+Strafford County District 1 (2 seats)
+Farmington
+Strafford County District 2 (3 seats)
+Milton, Rochester-Ward 5
+Strafford County District 3
+Middleton, New Durham
+Strafford County District 4 (3 seats)
+Barrington, Strafford
+Strafford County District 5
+Rochester-Ward 1
+Strafford County District 6
+Rochester-Ward 2
+Strafford County District 7
+Rochester-Ward 3
+Strafford County District 8
+Rochester-Ward 4
+Strafford County District 9
+Rochester-Ward 6
+Strafford County District 10 (4 seats)
+Durham
+Strafford County District 11 (3 seats)
+Dover-Ward 4, Lee, Madbury
+Strafford County District 12 (4 seats)
+Rollinsford, Somersworth-Ward 1, Somersworth-Ward 2, Somersworth-Ward 3, Somersworth-Ward 4, Somersworth-Ward 5
+Strafford County District 13
+Dover-Ward 6
+Strafford County District 14
+Dover-Ward 1
+Strafford County District 15
+Dover-Ward 2
+Strafford County District 16
+Dover-Ward 3
+Strafford County District 17
+Dover-Ward 5
+Strafford County District 18 (Floterial)
+Barrington, Middleton, New Durham, Strafford
+Strafford County District 19 (3 seats) (Floterial)
+Rochester-Ward 1, Rochester-Ward 2, Rochester-Ward 3, Rochester-Ward 4, Rochester-Ward 6
+Strafford County District 20 (Floterial)
+Dover-Ward 4, Durham, Lee, Madbury
+Strafford County District 21 (3 seats) (Floterial)
+Dover-Ward 1, Dover-Ward 2, Dover-Ward 3, Dover-Ward 5, Dover-Ward 6
+Sullivan County District 1
+Grantham
+Sullivan County District 2
+Cornish, Plainfield
+Sullivan County District 3 (3 seats)
+Charlestown, Newport, Unity
+Sullivan County District 4
+Acworth, Goshen, Langdon, Lempster, Washington
+Sullivan County District 5
+Springfield, Sunapee
+Sullivan County District 6 (3 seats)
+Claremont-Ward 1, Claremont-Ward 2, Claremont-Ward 3, Croydon
+Sullivan County District 7 (Floterial)
+Charlestown, Cornish, Newport, Plainfield, Unity
+Sullivan County District 8 (2 seats) (Floterial)
+Acworth, Claremont-Ward 1, Claremont-Ward 2, Claremont-Ward 3, Croydon, Goshen, Langdon, Lempster, Springfield, Sunapee, Washington

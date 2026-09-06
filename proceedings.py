@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+# GRANITE_VERSION: 2026-09-05.1
+"""
+Read proceedings.csv. Every tool that needs to know what happened on which
+recording imports this and nothing else.
+
+    from proceedings import load, by_video, floor_only, term_of
+
+Why one reader: for a whole day, floor debates lived in floor_index.json and
+committee proceedings in verification_manifest.csv, in different shapes with
+different keys. Five separate tools were taught the manifest and then, one at a
+time, found not to know the floor existed. Each fix was a different bug with
+the same cause. A single file with a single reader removes the cause.
+
+A row is one (bill, date, kind, recording). Times are seconds into the
+recording. Columns:
+
+  term            2025-2026 -- the biennium, because bill numbers repeat across
+                  terms and everything archival will be keyed on this
+  bill            HB1442
+  body            H or S
+  kind            public hearing | executive session | work session |
+                  subcommittee work session | full committee work session |
+                  floor debate | committee of conference
+  date            2026-02-03
+  time            10:00, or empty for the floor
+  committee       empty for the floor
+  venue
+  video_id        empty when nothing was matched
+  video_title
+  stream_start    2026-02-03 09:12:44, the livestream's start
+  predicted_offset  seconds: the schedule's guess, or the floor window's start
+  match           how the recording was chosen
+  debate_end      floor only: the roll call's clock time, seconds in
+  window_start    floor only: the previous bill's last roll call
+  precise         floor only: true when debate_end came from the clock
+  motions         floor only, joined with " | "
+  tallies         floor only, joined with " | "
+  whole_video     true when the title names the bill (conference committees)
+  source          manifest | floor_index -- where this row came from
+
+Hand-marked times are NOT here. They are in ground_truth.csv and join on
+(video_id, bill, kind).
+"""
+
+import csv
+from collections import defaultdict
+from pathlib import Path
+
+PATH = Path("proceedings.csv")
+
+COLS = ["term", "bill", "body", "kind", "date", "time", "committee", "venue",
+        "video_id", "video_title", "stream_start", "predicted_offset", "match",
+        "debate_end", "window_start", "precise", "motions", "tallies",
+        "whole_video", "source"]
+
+FLOOR_KINDS = {"floor debate", "committee of conference"}
+
+
+def term_of(date_str):
+    """'2026-02-03' -> '2025-2026'. A biennium starts in the odd year."""
+    try:
+        y = int(str(date_str)[:4])
+    except (TypeError, ValueError):
+        return ""
+    start = y if y % 2 else y - 1
+    return f"{start}-{start + 1}"
+
+
+def _num(v):
+    if v in (None, "", "None"):
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _bool(v):
+    return str(v).strip().lower() in ("1", "true", "yes", "y")
+
+
+def load(path=PATH):
+    """All rows, typed. Empty list if the file is not there."""
+    p = Path(path)
+    if not p.exists():
+        return []
+    out = []
+    with p.open(encoding="utf-8-sig", newline="") as fh:
+        for r in csv.DictReader(fh):
+            r["predicted_offset"] = _num(r.get("predicted_offset"))
+            r["debate_end"] = _num(r.get("debate_end"))
+            r["window_start"] = _num(r.get("window_start"))
+            r["precise"] = _bool(r.get("precise"))
+            r["whole_video"] = _bool(r.get("whole_video"))
+            r["motions"] = [m for m in (r.get("motions") or "").split(" | ") if m]
+            r["tallies"] = [t for t in (r.get("tallies") or "").split(" | ") if t]
+            r["bill"] = (r.get("bill") or "").strip().upper()
+            r["kind"] = (r.get("kind") or "").strip().lower()
+            r["video_id"] = (r.get("video_id") or "").strip()
+            out.append(r)
+    return out
+
+
+def by_video(rows=None):
+    """{video_id: [rows]} for rows that have a recording."""
+    rows = load() if rows is None else rows
+    out = defaultdict(list)
+    for r in rows:
+        if r["video_id"]:
+            out[r["video_id"]].append(r)
+    return dict(out)
+
+
+def bills_on(video_id, rows=None):
+    """Bills scheduled on one recording, in the file's order, no repeats."""
+    seen, out = set(), []
+    for r in (by_video(rows).get(video_id) or []):
+        if r["bill"] not in seen:
+            seen.add(r["bill"])
+            out.append(r["bill"])
+    return out
+
+
+def floor_only(rows=None):
+    rows = load() if rows is None else rows
+    return [r for r in rows if r["kind"] in FLOOR_KINDS]
+
+
+def committee_only(rows=None):
+    rows = load() if rows is None else rows
+    return [r for r in rows if r["kind"] not in FLOOR_KINDS]
+
+
+def floor_videos(rows=None):
+    """Recordings that are floor sessions to segment (not whole-video ones)."""
+    return {r["video_id"] for r in floor_only(rows)
+            if r["video_id"] and not r["whole_video"]}
+
+
+def whole_videos(rows=None):
+    """Recordings whose title names the bill -- nothing to segment."""
+    return {r["video_id"] for r in (load() if rows is None else rows)
+            if r["video_id"] and r["whole_video"]}
+
+
+def write(rows, path=PATH):
+    """Only build_proceedings.py calls this."""
+    with Path(path).open("w", encoding="utf-8", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=COLS)
+        w.writeheader()
+        for r in rows:
+            o = dict(r)
+            o["motions"] = " | ".join(r.get("motions") or [])
+            o["tallies"] = " | ".join(r.get("tallies") or [])
+            o["precise"] = "true" if r.get("precise") else ""
+            o["whole_video"] = "true" if r.get("whole_video") else ""
+            for k in ("predicted_offset", "debate_end", "window_start"):
+                if o.get(k) is None:
+                    o[k] = ""
+            w.writerow({c: o.get(c, "") for c in COLS})

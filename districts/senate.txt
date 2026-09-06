@@ -1,0 +1,48 @@
+District 1
+Atk. & Gil. Academy Grant, Bath, Benton, Berlin, Bethlehem, Cambridge, Carroll, Clarksville, Colebrook, Columbia, Dalton, Dix's Grant, Dixville, Dummer, Easton, Ellsworth, Errol, Erving's Location, Franconia, Gorham, Haverhill, Jefferson, Kilkenny, Lancaster, Landaff, Lisbon, Littleton, Low & Burbank's Grant, Lyman, Milan, Millsfield, Monroe, Northumberland, Odell, Piermont, Pittsburg, Randolph, Rumney, Second College Gt, Shelburne, Stark, Stewartstown, Stratford, Success, Sugar Hill, Warren, Wentworth's Loc., Whitefield, Woodstock
+District 2
+Ashland, Belmont, Campton, Center Harbor, Gilford, Holderness, Laconia-Ward 1, Laconia-Ward 2, Laconia-Ward 3, Laconia-Ward 4, Laconia-Ward 5, Laconia-Ward 6, Meredith, New Hampton, Sanbornton, Sandwich, Thornton
+District 3
+Albany, Bartlett, Bean's Grant, Bean's Purchase, Brookfield, Chandler's Pur., Chatham, Conway, Crawford's Pur., Cutt's Grant, Eaton, Effingham, Freedom, Green's Grant, Hadley's Purchase, Hale's Location, Hart's Location, Jackson, Lincoln, Livermore, Madison, Martin's Location, Middleton, Milton, Moultonborough, Ossipee, Pinkham's Grant, Sargent's Purchase, Tamworth, Thompson & Mes's Purchase, Tuftonboro, Wakefield, Waterville Valley, Wolfeboro
+District 4
+Barrington, Dover-Ward 1, Dover-Ward 2, Dover-Ward 3, Dover-Ward 4, Dover-Ward 5, Dover-Ward 6, Rollinsford, Somersworth-Ward 1, Somersworth-Ward 2, Somersworth-Ward 3, Somersworth-Ward 4, Somersworth-Ward 5
+District 5
+Canaan, Cornish, Dorchester, Enfield, Grantham, Groton, Hanover, Lebanon-Ward 1, Lebanon-Ward 2, Lebanon-Ward 3, Lyme, New London, Orford, Plainfield, Plymouth, Springfield, Wentworth
+District 6
+Alton, Farmington, Gilmanton, New Durham, Rochester-Ward 1, Rochester-Ward 2, Rochester-Ward 3, Rochester-Ward 4, Rochester-Ward 5, Rochester-Ward 6, Strafford
+District 7
+Alexandria, Andover, Boscawen, Bradford, Bridgewater, Bristol, Danbury, Franklin-Ward 1, Franklin-Ward 2, Franklin-Ward 3, Goshen, Grafton, Hebron, Henniker, Hill, Hillsborough, Newbury, Orange, Salisbury, Sutton, Tilton, Warner, Webster, Wilmot
+District 8
+Acworth, Antrim, Bennington, Charlestown, Claremont-Ward 1, Claremont-Ward 2, Claremont-Ward 3, Croydon, Deering, Dunbarton, Francestown, Gilsum, Langdon, Lempster, Marlow, Newport, Stoddard, Sunapee, Unity, Washington, Weare, Windsor
+District 9
+Bedford, Fitzwilliam, Greenfield, Hinsdale, Jaffrey, Lyndeborough, Mont Vernon, New Boston, Richmond, Sharon, Temple, Troy, Winchester
+District 10
+Alstead, Chesterfield, Dublin, Hancock, Harrisville, Keene-Ward 1, Keene-Ward 2, Keene-Ward 3, Keene-Ward 4, Keene-Ward 5, Marlborough, Nelson, Peterborough, Roxbury, Sullivan, Surry, Swanzey, Walpole, Westmoreland
+District 11
+Amherst, Merrimack, Milford, Wilton
+District 12
+Brookline, Greenville, Hollis, Mason, Nashua-Ward 1, Nashua-Ward 2, Nashua-Ward 5, New Ipswich, Rindge
+District 13
+Nashua-Ward 3, Nashua-Ward 4, Nashua-Ward 6, Nashua-Ward 7, Nashua-Ward 8, Nashua-Ward 9
+District 14
+Auburn, Hudson, Londonderry
+District 15
+Bow, Concord-Ward 1, Concord-Ward 2, Concord-Ward 3, Concord-Ward 4, Concord-Ward 5, Concord-Ward 6, Concord-Ward 7, Concord-Ward 8, Concord-Ward 9, Concord-Ward 10, Hopkinton
+District 16
+Candia, Goffstown, Hooksett, Manchester-Ward 1, Raymond
+District 17
+Allenstown, Barnstead, Canterbury, Chichester, Deerfield, Epsom, Loudon, Northfield, Northwood, Nottingham, Pembroke, Pittsfield
+District 18
+Litchfield, Manchester-Ward 5, Manchester-Ward 6, Manchester-Ward 7, Manchester-Ward 8, Manchester-Ward 9
+District 19
+Derry, Hampstead, Windham
+District 20
+Manchester-Ward 2, Manchester-Ward 3, Manchester-Ward 4, Manchester-Ward 10, Manchester-Ward 11, Manchester-Ward 12
+District 21
+Durham, Lee, Madbury, New Castle, Newfields, Newington, Newmarket, Portsmouth-Ward 1, Portsmouth-Ward 2, Portsmouth-Ward 3, Portsmouth-Ward 4, Portsmouth-Ward 5
+District 22
+Atkinson, Pelham, Plaistow, Salem
+District 23
+Brentwood, Chester, Danville, East Kingston, Epping, Fremont, Kensington, Kingston, Newton, Sandown, Seabrook, South Hampton
+District 24
+Exeter, Greenland, Hampton, Hampton Falls, North Hampton, Rye, Stratham

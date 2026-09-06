@@ -1,0 +1,30 @@
+# Statewide and Executive Council officeholders.
+#
+# The Executive Council and the governor are the executive branch. They appear
+# in no file the General Court publishes, so unlike the House and Senate — whose
+# membership is computed from the roster every build — these have to be entered
+# by hand and updated after an election or a vacancy.
+#
+# Format: "councilor: DISTRICT | NAME | PARTY" and "governor: NAME | PARTY".
+# Party is R, D, I or L. Leave a name blank to show the seat as vacant.
+# Delete or comment out a line to drop it from the page.
+#
+# FILL THESE IN. Until they are filled, the page omits the section rather than
+# showing placeholders, so an unedited file is invisible rather than wrong.
+
+updated:
+
+governor:
+
+councilor: 1 |  |
+councilor: 2 |  |
+councilor: 3 |  |
+councilor: 4 |  |
+councilor: 5 |  |
+
+# The Executive Council confirms judicial nominations, approves state contracts
+# over $10,000, and votes on pardons. Five members, each elected from a district
+# covering roughly a fifth of the state. This note appears on the page.
+note: The Executive Council approves state contracts, confirms judicial and
+  agency nominations, and votes on pardons. Its five members are elected from
+  districts every two years. This site does not track Council votes.

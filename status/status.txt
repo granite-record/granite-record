@@ -1,0 +1,24 @@
+# Current state of the General Court.
+#
+# Most of this cannot be derived from the published data. Session days,
+# crossover deadlines, sine die and veto day are set by the chambers and
+# announced in the calendars, not in any downloadable file. So this is edited by
+# hand, and the page shows when it was last touched so a stale note is visible
+# as stale rather than passing for current.
+#
+# Lines are "key: value". Milestones are "milestone: DATE | LABEL | NOTE".
+# Anything after # is ignored. Delete a line to drop it from the page.
+
+updated: 2026-09-03
+
+# One of: in session, between sessions, out of session, veto day pending
+phase: out of session
+
+headline: The House and Senate have finished the 2026 session.
+
+note: Both chambers adjourned in August after Veto Day. The remaining bills referred to interim study may continue to have executive or work sessions. Primary Election Day is September 8th. General Election Day is November 2nd.
+
+milestone: 2027-01-07 | 2027 session convenes | The first year of the next two-year term.
+
+# Filing for the next session usually opens in the autumn.
+milestone: 2026-09-15 | LSR filing opens | Legislators begin filing requests for 2027 bills.
