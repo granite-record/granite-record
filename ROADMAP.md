@@ -97,14 +97,35 @@ column reads `BillStatusDB` for 1989-2016 and `NHLMS` for 2025-2026, and the
 view unions exactly those two systems. `NHLegislatureDB2` carries none of the
 views; `PublicNHLMS` is the live current-session store only.
 
-**1. The 2017-2024 years, at one request.** `probe_legacy.py --year 2019`
-asks whether `/bill_status/legacy/bs2016/Bill_status.aspx` answers for a whole
-session year. `fetch_bill_status.py` already uses that endpoint per bill, and
-two of its parameters -- `sortoption` and `txtsessionyear` -- are search
-fields rather than lookup fields. If it lists a year, eight years cost eight
-requests. If it does not, they cost one request per bill and are not worth it
-now -- but the term key below means they can be filled in later without
-rebuilding anything.
+**1. The 2017-2024 years. Confirmed reachable, two requests a year.**
+
+The Advanced Bill Status Search at `/bill_status/legacy/bs2016/` takes a
+session year and says "1989-Current" beside the box. Probed 6 September:
+**2019 returns 768 bills**, each carrying its title, general status, House
+status, Senate status, last committee, last hearing, and links to its docket,
+status, text (HTML and PDF) and history. That is the whole of the agreed
+minimum for an archived bill.
+
+It is an ASP.NET WebForm, so it wants a POST carrying `__VIEWSTATE` with the
+year in `txtsessionyear` and `sortoption=billnumber`. A GET with invented
+query parameters returns HTTP 500, which is what the first attempt did -- the
+same mistake as guessing at a filename, and the same useless answer.
+
+The results page also links the identical query as a feed, by GET:
+
+    /rssFeeds/rssQueryResults.aspx?&sortoption=billnumber&txtsessionyear=2019
+
+which is a machine-readable version of a 2.9 MB HTML table and is very likely
+what a real fetcher should read. Confirm that before writing a parser against
+the table.
+
+Per-bill links are keyed `lsr=0030&sy=2019`, the same key
+`fetch_bill_status.py` already uses, so the existing docket fetcher should
+work against these years unchanged.
+
+So the gap closes: **1989-2016 from the database, 2017-2024 from this form,
+2025-2026 live.** Sixteen requests for the eight missing years, not sixteen
+thousand.
 
 **2. Term-keyed identifiers, regardless of the answer.** `(term, bill)`
 everywhere. This is now the gate on everything archival and does not depend on

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.2
+# GRANITE_VERSION: 2026-09-06.3
 """
 The years the database does not have, from the search the site already offers.
 
@@ -51,9 +51,13 @@ UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
 
 HIDDEN = re.compile(r"<input\b[^>]*type=[\"']hidden[\"'][^>]*>", re.I)
 ATTR = re.compile(r"(\w[\w:-]*)\s*=\s*[\"']([^\"']*)[\"']")
-FOUND = re.compile(r"Bills?\s+Found\s*:?\s*([\d,]+)", re.I)
+FOUND = re.compile(r"Bills?(?:&nbsp;|\s)+Found(?:&nbsp;|\s)*:?(?:&nbsp;|\s)*([\d,]+)", re.I)
 BILLNO = re.compile(r"\b(CACR|HB|SB|HR|SR|HCR|SCR|HJR|SJR)\s?0*(\d{1,4})\b")
 # The links each result offers. These are what an archived bill would cite.
+# The results page also links a feed of the SAME query, by GET. That is a
+# machine-readable version of a 2.9 MB HTML table and is very likely the
+# route a real fetcher should use.
+RSSQ = re.compile(r"[\"']([^\"']*rssQueryResults\.aspx[^\"']*)[\"']", re.I)
 LINKS = re.compile(r"(billdocket|bill_status|billText|billHistory)\.aspx"
                    r"\?[^\"'<>\s]*", re.I)
 
@@ -120,6 +124,12 @@ def main():
     for label in ("Title:", "G-Status:", "House Status:", "Senate Status:",
                   "Next/Last Comm:", "Next/Last Hearing:"):
         print(f"    {label:<20} {'present' if label in page else 'ABSENT'}")
+
+    rss = sorted(set(RSSQ.findall(page)))
+    if rss:
+        print("\n  the same query as a feed, by GET:")
+        for u in rss[:2]:
+            print("    " + urllib.parse.urljoin(URL, _html.unescape(u)))
 
     if a.raw:
         out = Path(f"probe_legacy_{a.year}.html")
