@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.29
+# GRANITE_VERSION: 2026-09-04.30
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1647,6 +1647,40 @@ def _report_rec():
         f"only {voted:,} of {sum(recs.values()):,} report lines yield a vote")
     return "ok", (f"{sum(recs.values()):,} report lines, {len(recs)} distinct "
                   f"recommendations, {voted:,} with a vote")
+
+
+@check("naming", "a bill whose ending is only on the status page says so once",
+       needs=("build_site_v2",))
+def _closing(build_site_v2):
+    cs = build_site_v2.closing_stage
+    stage = lambda t: {"stages": [{"label": "x", "text": t}]}
+    # The docket records actions, and a session ending is not one -- it just
+    # stops. 117 bills end with a committee report and a red headline the
+    # status page alone knows about.
+    got = cs("Died when the session ended",
+             stage("The committee met in executive session to vote on its "
+                   "recommendation."))
+    assert got and "died when the session ended" in got["text"].lower(), got
+    # Said once. These narratives already carry the ending, in the site's own
+    # words, and a second paragraph repeating it reads as a stutter.
+    for told in ("The bill died on the table when the session ended on "
+                 "August 19, 2026, having been set aside and never taken back up.",
+                 "It died when the session ended."):
+        assert cs("Died when the session ended", stage(told)) is None, told
+    # And not confused with a committee RECOMMENDING interim study, which is
+    # the phrase "after the session ends" and is not an ending at all. An
+    # earlier guard tested for "kill it" anywhere and matched every bill whose
+    # committee recommended the chamber kill it -- suppressing the paragraph
+    # on all 111 of them.
+    rec = stage("The majority recommended that the House study it after the "
+                "session ends, and the minority recommended that the House "
+                "kill it, by a vote of 11-7.")
+    assert cs("Died when the session ended", rec),         "a committee's recommendation was read as the bill's ending"
+    # Killed is deliberately absent: the status page reports it for bills whose
+    # docket already says what ended them.
+    assert cs("Killed", stage("anything")) is None,         "Killed is back in the table, and it misfires on bills laid on the table"
+    assert cs("Signed into law", stage("anything")) is None
+    return "ok", "the ending is added when it is missing and not when it is not"
 
 
 @check("data", "a bill the governor signed says so")

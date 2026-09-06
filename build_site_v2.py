@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.17
+# GRANITE_VERSION: 2026-09-05.18
 """
 Generate the faceted site from real General Court data.
 
@@ -720,6 +720,62 @@ def classify_stated(st, prefix=""):
 # they were before it: 137 "Passed one chamber", 82 "Passed, awaiting the
 # governor", nine "In committee" and five "Killed", for bills that are law.
 SIGNED_RE = re.compile(r"signed by (?:the )?governor", re.I)
+
+
+# How a bill ends when the docket does not say so.
+#
+# The docket records actions, and a session ending is not an action: it just
+# stops. For 111 bills the last line is a committee report and the status page
+# alone knows the bill died with the term, so the page showed a red headline
+# over a history that trailed off mid-sentence -- the status said one thing and
+# the story below it said nothing at all.
+#
+# Each of these says what happened and what it means, because "DIED, SESSION
+# ENDED" is the General Court's phrase rather than a plain-English one.
+CLOSING = {
+    # label: (phrases that mean the history ALREADY says it, the paragraph)
+    #
+    # The guards are per outcome, and they have to be. A first attempt tested
+    # for "kill it" anywhere in the narrative and matched every bill whose
+    # committee recommended that the chamber kill it -- which is a committee
+    # report, not an ending, and it suppressed the paragraph on all 111.
+    "Died when the session ended": (
+        ("session ended", "died when the session", "died on the table"),
+        "No further action was recorded, and the bill died when the session "
+        "ended. A bill that has not cleared both chambers by the end of the "
+        "two-year term does not carry over -- it would have to be filed again "
+        "in a later term as a new bill."),
+    "Indefinitely postponed": (
+        ("indefinitely postpone",),
+        "The chamber voted to indefinitely postpone it. That ends the bill for "
+        "the term and, under the rules, bars the same subject from being taken "
+        "up again before the term is out."),
+    # "Killed" is deliberately NOT here. The status page reports it for bills
+    # whose docket already says what ended them -- 28 were laid on the table
+    # and died there, and the narrative says so in as many words -- so a
+    # paragraph claiming "the docket does not record the vote that ended it"
+    # would have been false on most of the bills it appeared under.
+}
+
+
+def closing_stage(label, narr):
+    """A last paragraph for a bill whose ending the docket never narrates.
+
+    The docket records actions, and a session ending is not an action: it just
+    stops. For 111 bills the last line is a committee report and only the
+    status page knows the bill died with the term, so a settled red headline
+    sat above a history that trailed off mid-sentence.
+
+    Returns None where the history already says it.
+    """
+    hit = CLOSING.get(label)
+    if not hit:
+        return None
+    guards, text = hit
+    told = " ".join(s.get("text", "") for s in (narr or {}).get("stages", [])).lower()
+    if any(g in told for g in guards):
+        return None
+    return {"label": "How it ended", "text": text}
 
 
 def docket_outcome(narr):
@@ -1750,7 +1806,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         (out / "bills" / f"{bid}.json").write_text(json.dumps({
             "id": bid, "title": b.get("title", ""),
             "narrative": (narr or {}).get("narrative", ""),
-            "stages": (narr or {}).get("stages", []),
+            # The history, plus a closing paragraph where the bill's ending
+            # is only on the status page. 120 bills showed a settled headline
+            # over a story that stopped at the committee report.
+            "stages": ((narr or {}).get("stages", [])
+                       + [x for x in [closing_stage(status, narr)] if x]),
             "notes": (narr or {}).get("notes", []),
             # Each action keeps the citation it ends with -- "HJ 7 P. 55" -- and
             # the URL of that journal or calendar where we have it. That is the
