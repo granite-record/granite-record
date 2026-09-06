@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.14
+# GRANITE_VERSION: 2026-09-04.15
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -946,7 +946,21 @@ def _site_fixture(root):
          "reports": [{"side": "Committee", "author": "Rep. Jodi Nelson",
                       "committee": "Commerce", "text": "The committee supports this.",
                       "vote_yeas": 19, "vote_nays": 0}]}]})
-    w("floor_index.json", {})
+    # A floor appearance WITH a boundary the clerk stated. This is not
+    # decoration: build_site_v2 used to apply that boundary by rebinding `st`
+    # to stations[-1], and `st` was already the bill's status record from 350
+    # lines earlier. Every bill that took this branch -- 611 of 2,234 on the
+    # real data -- then shipped with no facts block, no text_pdf, and a
+    # next_step that fell back to "In progress". The fixture had no floor row
+    # at all, so 33 checks passed over it. It has one now.
+    w("floor_index.json", {"HB1442": [
+        {"date": "2026-03-06", "body": "H", "video_id": "VID2",
+         "title": "House Session", "precise": True, "debate_end": 1500,
+         "window_start": 100, "motions": ["Ought to Pass"], "tallies": []}]})
+    # marks: {video: {bill: [candidate, ...]}}, as segment_markers writes it.
+    w("candidate_segments.json", {"VID2": {"HB1442": [
+        {"start": 600, "end": None, "what": "floor debate",
+         "how": "the clerk reads the committee report"}]}})
     w("journals.json", {"HJ 7": "https://gc.nh.gov/hj7.pdf",
                         "HJ 7 2026": "https://gc.nh.gov/hj7.pdf"})
     w("calendars.json", {"HC 9 2026": "https://gc.nh.gov/hc9.pdf"})
@@ -1109,6 +1123,23 @@ def _chain_output():
              f"sponsor reads {idx['HB1442'].get('sponsor_label')!r}"),
             (lg[0].get("display_full") == "Rep. Jodi Nelson (R - Rock. 13)",
              f"legislator reads {lg[0].get('display_full')!r}"),
+            # The floor branch ran at all: the stated start reached the station.
+            (any(x.get("debate_start") == 600 for x in hb["stations"]),
+             "the stated floor start did not reach the station, so the branch "
+             "below was not exercised"),
+            # And taking that branch did not cost the bill its status record.
+            # These three are the fields that were lost when the floor code
+            # rebound `st`, and they are checked together because they failed
+            # together and would again.
+            (hb.get("text_pdf") == "https://gc.nh.gov/x.pdf",
+             f"text_pdf reads {hb.get('text_pdf')!r} on a bill with a stated "
+             "floor boundary"),
+            (hb.get("facts", {}).get("lsr") == "2026-0503",
+             f"facts reads {hb.get('facts')!r} on a bill with a stated floor "
+             "boundary"),
+            (hb.get("next_step", "").startswith("House:"),
+             f"next_step reads {hb.get('next_step')!r}, not the per-chamber "
+             "status the status page gives"),
         ]
         bad = [why for ok_, why in checks if not ok_]
         assert not bad, "; ".join(bad)
