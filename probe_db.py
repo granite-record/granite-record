@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.1
+# GRANITE_VERSION: 2026-09-06.2
 """
 What is actually in the General Court's public database.
 
@@ -59,9 +59,13 @@ PASSWORD = "PublicAccess"
 # Every question worth one round trip, and nothing that changes anything.
 QUERIES = [
     ("server", "SELECT @@VERSION AS v"),
+    # No filter. The first run asked for BASE TABLE and got nothing back
+    # while INFORMATION_SCHEMA.COLUMNS answered fine for docket, which says
+    # the public objects are probably views rather than tables -- and a view
+    # is a strong hint about where the 2017-2024 gap comes from.
     ("tables",
-     "SELECT TABLE_NAME AS t FROM INFORMATION_SCHEMA.TABLES "
-     "WHERE TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME"),
+     "SELECT TABLE_NAME AS t, TABLE_TYPE AS kind "
+     "FROM INFORMATION_SCHEMA.TABLES ORDER BY TABLE_NAME"),
     # The one that decides the archive.
     ("docket span",
      "SELECT MIN(SessionYear) AS first_year, MAX(SessionYear) AS last_year, "
@@ -77,10 +81,31 @@ QUERIES = [
      "SELECT MIN(sessionYear) AS first_year, MAX(sessionYear) AS last_year, "
      "COUNT(*) AS rows FROM rollcallsummary"),
     # The site has sign-in counts for 565 of 1,237 bills and no testimony text.
+    # DATALENGTH, not LEN: testimonyText is the legacy `text` type and LEN
+    # refuses it outright, which is what the first run hit.
     ("testimony",
      "SELECT COUNT(*) AS rows, "
-     "SUM(CASE WHEN testimonyText IS NULL OR LEN(testimonyText) = 0 "
+     "SUM(CASE WHEN testimonyText IS NULL OR DATALENGTH(testimonyText) = 0 "
      "THEN 0 ELSE 1 END) AS with_text FROM houseRemoteTestify"),
+    ("testimony by year",
+     "SELECT YEAR(committeeDate) AS yr, COUNT(*) AS rows "
+     "FROM houseRemoteTestify GROUP BY YEAR(committeeDate) ORDER BY yr"),
+    # docket carries a [DataBase] column the PDF does not document. If the
+    # 2017-2024 rows live under a different value, or a different database on
+    # this server, that is where they are.
+    ("docket DataBase column",
+     "SELECT [DataBase] AS src, COUNT(*) AS rows, MIN(SessionYear) AS first_year, "
+     "MAX(SessionYear) AS last_year FROM docket GROUP BY [DataBase] "
+     "ORDER BY [DataBase]"),
+    ("other databases on this server",
+     "SELECT name FROM sys.databases ORDER BY name"),
+    # Everything else that might reach back, so the archive is planned on what
+    # is actually retained rather than on docket alone.
+    ("legislators span",
+     "SELECT COUNT(*) AS rows FROM legislators"),
+    ("rollcall history span",
+     "SELECT MIN(sessionYear) AS first_year, MAX(sessionYear) AS last_year, "
+     "COUNT(*) AS rows FROM rollcallhistory"),
     ("docket columns",
      "SELECT COLUMN_NAME AS c, DATA_TYPE AS ty FROM INFORMATION_SCHEMA.COLUMNS "
      "WHERE TABLE_NAME = 'docket' ORDER BY ORDINAL_POSITION"),
