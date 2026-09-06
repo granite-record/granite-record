@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.6 -->
+<!-- GRANITE_VERSION: 2026-09-05.7 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -879,11 +879,69 @@ function fullRecord(bid,i,rc){
       ${y.length} yes, ${n.length} no, ${tot-y.length-n.length} not voting.</p>`;
 }
 
-function renderDetail(b,d){
+/* ---- the panes -------------------------------------------------------
+   One function per tab. This was one 472-line function holding 26 consts
+   in a single scope, and three times in one day a template literal read
+   one of them before its line ran: a blank card, with the bill's data
+   already fetched and sitting in hand.
+
+   These are function DECLARATIONS rather than consts holding arrows.
+   Declarations are hoisted and initialised before any of this runs, so
+   the order they appear in cannot be got wrong. Order still matters
+   inside each one, and each one is now short enough to see it.
+
+   b is the index row, d the fetched detail. rsa is passed in rather than
+   rebuilt: it compiles a RegExp from the bill's own statute citations,
+   two of these need it, and a parameter says so where scope would not. */
+
+// Pure and identical for every bill, so built once here rather than
+// rebuilt inside a map callback that runs for each of 2,234 of them.
+const AVK={VV:"voice vote",DV:"division vote",RC:"roll call"};
+const CHNAME={H:"Representatives",S:"Senators"};
+const hms=x=>new Date(x*1000).toISOString().substr(11,8);
+// "0:02:00" or "-0:05:00" as the manifest writes it.
+const secs=v=>{const m=/^(-?)(\d+):(\d{2}):(\d{2})$/.exec(String(v||""));
+  return m?(m[1]?-1:1)*(+m[2]*3600+ +m[3]*60+ +m[4]):0;};
+// The bill's own shape: a numbered section opens a block, and everything
+// under it belongs to that section. Set as one paragraph it is unreadable,
+// and anyone used to the printed version loses their footing entirely.
+const SEC=/^\s*(\d{1,3})\s+(?=[A-Z(])/;
+// The General Court puts a whole section in one paragraph. The outline a
+// reader knows from the printed bill -- I., (a), (b), II.(a), a new RSA
+// section number -- exists only in that document's typography, and is gone
+// by the time the page is read as text.
+//
+// So it is rebuilt, and only where the record is unambiguous: a break goes
+// in before a marker that OPENS after a full stop or a colon and is followed
+// by a capital or an opening quote. "either (a) all new or (b) repealed"
+// does not qualify, because what follows is lower case.
+//
+// This changes the layout and not one word. The text is the General Court's;
+// where its lines fall on this page is ours, and could not be otherwise --
+// the line breaks were never in the file.
+const OUTLINE=/(?<=[.:])\s+(?=(?:[IVXL]{1,5}\.(?:\([a-z]\))?|\([a-z]\)|\d{1,3}:\d+[-\w]*)\s+[A-Z\u201C"])/g;
+
+// Statutes cited in the committee's own words become links. Applied AFTER
+// escaping, which is safe because a citation has nothing in it to escape,
+// and longest first so "RSA 91-A" cannot eat the front of "RSA 91-A:4".
+// One pass, not one pass per citation: replacing in sequence rescans what it
+// has already written, so "RSA 91-A" matched inside the anchor just built for
+// "RSA 91-A:4". Longest first inside the alternation keeps the longer
+// citation winning where both could match.
+function makeRsa(d){
+  return (s)=>{const m=d.rsa||{},ks=Object.keys(m);
+    if(!ks.length)return s;
+    const re=new RegExp(ks.sort((a,b)=>b.length-a.length)
+      .map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|"),"g");
+    return s.replace(re,k=>`<a href="${esc(m[k])}" target="_blank" rel="noopener"`
+      +` class="rsa">${esc(k)}</a>`);};
+}
+
+function renderSummary(b,d){
   // The citation at the end of a docket line names the journal or calendar
   // that recorded the action. Linking it turns each line from something the
   // reader has to take on trust into something they can check.
-  const tl=`${d._error?`<div class="loaderr"><b>This bill's detail did not
+  return `${d._error?`<div class="loaderr"><b>This bill's detail did not
     load.</b><span>${esc(d._error)}</span></div>`:""}
     <div class="status ${KIND[b.kind]}"><div class="lab">CURRENT STATUS</div>
     <div class="val">${esc(d.next_step)}</div>
@@ -906,7 +964,10 @@ function renderDetail(b,d){
           rel="noopener">${esc(e.cite)}</a>`:esc(e.cite)}</span>`:""}</span>
         </li>`).join("")}</ul></details>`:""}
 `;
-  const votes=(d.rollcalls||[]).length?d.rollcalls.map((rc,i)=>{
+}
+
+function renderVotes(b,d){
+  return (d.rollcalls||[]).length?d.rollcalls.map((rc,i)=>{
     const vk=rc.vote_kind||"RC";
     let body;
     if(vk==="RC"){
@@ -932,12 +993,11 @@ function renderDetail(b,d){
       ${body}</section>`;}).join("")
     :`<p class="note">No roll call votes on this bill. Where a chamber acts by voice or
       division vote, no record exists of how individual members voted — not withheld, never captured.</p>`;
-  const hear=(d.stations||[]).length?d.stations.map(s=>{
+}
+
+function renderHearings(b,d){
+  return (d.stations||[]).length?d.stations.map(s=>{
     let inner;
-    const hms=x=>new Date(x*1000).toISOString().substr(11,8);
-    // "0:02:00" or "-0:05:00" as the manifest writes it.
-    const secs=v=>{const m=/^(-?)(\d+):(\d{2}):(\d{2})$/.exec(String(v||""));
-      return m?(m[1]?-1:1)*(+m[2]*3600+ +m[3]*60+ +m[4]):0;};
     // A recording we have is a recording the reader can watch, whether or not
     // we can say where in it the bill is. Pinning down start times is ongoing
     // work; sending somebody to YouTube in the meantime is a worse answer than
@@ -1105,26 +1165,16 @@ function renderDetail(b,d){
       <div class="w">${esc(s.when)}${s.time?" at "+esc(s.time):""}${s.venue?" · "+esc(s.venue):""}</div>
       <div class="t">${esc(s.committee||"")} ${esc(s.what)}</div>${inner}</div>`;}).join("")
     :`<p class="note">No scheduled proceedings on file.</p>`;
-  // Each calendar entry carries the majority's recommendation and, when the
-  // committee split, the minority's. The two are different motions and must
-  // not both show the majority's -- on a divided report that would read as
-  // though the dissenters agreed.
-  // Statutes cited in the committee's own words become links. Applied AFTER
-  // escaping, which is safe because a citation has nothing in it to escape,
-  // and longest first so "RSA 91-A" cannot eat the front of "RSA 91-A:4".
-  // One pass, not one pass per citation: replacing in sequence rescans what it
-  // has already written, so "RSA 91-A" matched inside the anchor just built for
-  // "RSA 91-A:4". Longest first inside the alternation keeps the longer
-  // citation winning where both could match.
-  const rsa=(s)=>{const m=d.rsa||{},ks=Object.keys(m);
-    if(!ks.length)return s;
-    const re=new RegExp(ks.sort((a,b)=>b.length-a.length)
-      .map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|"),"g");
-    return s.replace(re,k=>`<a href="${esc(m[k])}" target="_blank" rel="noopener"`
-      +` class="rsa">${esc(k)}</a>`);};
+}
+
+// Each calendar entry carries the majority's recommendation and, when the
+// committee split, the minority's. The two are different motions and must
+// not both show the majority's -- on a divided report that would read as
+// though the dissenters agreed.
+function renderReports(b,d,rsa){
   const recFor=(r,side)=>side==="Minority"
       ? (r.minority_recommendation||"") : (r.majority_recommendation||"");
-  const reps=(d.reports||[]).length?d.reports.map(r=>{
+  return (d.reports||[]).length?d.reports.map(r=>{
     const divided=!!r.minority_recommendation;
     // The committee's vote is printed at the end of the report body in the
     // calendar, where it reads as a footnote to a paragraph of prose. It
@@ -1135,7 +1185,10 @@ function renderDetail(b,d){
     // Where one report was filed, neither number belongs to anybody else, so
     // the whole tally sits with it -- 19-0, or 18-1.
     const tally=(r.reports||[]).map(x=>x).find(x=>x.vote_yeas!=null);
-    const votes=e=>{
+    // Named for what it is. It used to be called votes, which shadowed the
+    // roll call votes built further up the same function; they are now in
+    // two functions and the shadow is gone, but the name was never right.
+    const committeeTally=e=>{
       if(e.vote_yeas==null&&!tally)return "";
       const y=e.vote_yeas!=null?e.vote_yeas:tally.vote_yeas;
       const nn=e.vote_nays!=null?e.vote_nays:tally.vote_nays;
@@ -1148,7 +1201,7 @@ function renderDetail(b,d){
       return `<div style="margin-bottom:20px">
         <div style="display:flex;gap:9px;align-items:baseline;flex-wrap:wrap">
           <span class="secsub">${esc(e.side)}</span>
-          ${votes(e)}
+          ${committeeTally(e)}
           ${rec?`<span class="cstat ${e.side==="Minority"?"s-done":"s-law"}">${esc(rec)}</span>`:""}</div>
         <p style="font-size:12.5px;color:var(--ink-3);margin:3px 0 8px">${esc(e.author)}${
           e.committee?` — ${esc(e.committee)}`:""}</p>
@@ -1161,11 +1214,14 @@ function renderDetail(b,d){
     :`<p class="note">No committee report on file. Majority and minority reports are printed
       in the House Calendar rather than the docket, and are added as calendars are processed.
       Senate reports use a different format and are not loaded yet.</p>`;
-  // Sponsors, grouped by chamber with the originating one first. A House bill
-  // co-sponsored by two senators is a House bill, and reading the Reps first is
-  // reading it in the order it happened. Which chamber that is comes from the
-  // PRIME SPONSOR'S OWN SEAT, because that is what settles it for a concurrent
-  // resolution, where the bill number does not.
+}
+
+// Sponsors, grouped by chamber with the originating one first. A House bill
+// co-sponsored by two senators is a House bill, and reading the Reps first is
+// reading it in the order it happened. Which chamber that is comes from the
+// PRIME SPONSOR'S OWN SEAT, because that is what settles it for a concurrent
+// resolution, where the bill number does not.
+function renderSponsors(b,d){
   const spAll=d.sponsors||[];
   const spPrime=spAll.find(s=>s.prime)||spAll[0]||{};
   const chOf=s=>String(s.chamber||"").toUpperCase().slice(0,1);
@@ -1189,11 +1245,27 @@ function renderDetail(b,d){
     if(k)pc[k]=(pc[k]||0)+1;});
   const spParty=Object.keys(pc).sort().map(k=>
     `<span title="${esc(PARTY_NAME[k]||k)}">${pc[k]} ${esc(k)}</span>`).join(" \u00b7 ");
-  // Amendments, in the order the docket took them up. A committee amendment
-  // is considered before any floor amendment, and where two touch the same
-  // section the later one governs -- so the sequence carries meaning, and it
-  // is shown as the record has it rather than grouped or sorted.
-  const AVK={VV:"voice vote",DV:"division vote",RC:"roll call"};
+  const sp=spAll.length?`
+    <p class="spcount">${spAll.length} sponsor${spAll.length===1?"":"s"}${
+      spParty?` \u00b7 ${spParty}`:""}</p>
+    ${spBlock(origin)}${spBlock(origin==="S"?"H":"S")}
+    ${spRest.length?`<h3 class="spgrp">Chamber not on file <span>${spRest.length}</span></h3>
+      <div class="chosen">${spRest.map(pill).join(" ")}</div>`:""}`:"";
+  return `${sp||`<p class="note">No sponsors on file.</p>`}
+      ${(d.sponsors||[]).some(x=>x.prime_inferred)?`<p class="note"
+        style="margin-top:12px">Taken from the docket page, because the sponsor
+        files cover the current session only. The docket lists the prime sponsor
+        first but does not mark the field, so that one is inferred from the
+        order.</p>`:""}
+      <p class="note" style="margin-top:12px">Prime sponsor in bold.
+      <a href="${esc(d.docket_url)}" target="_blank" rel="noopener">Full docket and bill text on gencourt</a></p>`;
+}
+
+// Amendments, in the order the docket took them up. A committee amendment
+// is considered before any floor amendment, and where two touch the same
+// section the later one governs -- so the sequence carries meaning, and it
+// is shown as the record has it rather than grouped or sorted.
+function renderBillText(b,d,rsa){
   const brackets=(s)=>s.replace(/\[([^\]]{1,400})\]/g,
     (_,inner)=>`<del class="cut" title="removed by this amendment">${inner}</del>`);
   const amds=(d.amendments||[]).map(x=>{
@@ -1222,32 +1294,17 @@ function renderDetail(b,d){
              It was moved on the date above and the docket records the outcome.</p>`}
     </div>`;}).join("");
 
-  // AFTER brackets and amds, both of which it uses. Built above them
-  // this threw "Cannot access 'brackets' before initialization" on
-  // every bill, so renderDetail never returned and every card sat on
-  // "Loading..." with the data already fetched and in hand.
+  // AFTER brackets, which it uses. billLines built above brackets threw
+  // "Cannot access 'brackets' before initialization" on every bill, so
+  // renderDetail never returned and every card sat on "Loading..." with the
+  // data already fetched and in hand. Both now live in this one short
+  // function, eight lines apart, where the order is visible.
+  //
   // The bill as the General Court publishes it. The version label is the most
   // important thing on it: "as introduced" and "as amended by the House" are
   // different laws, and a reader who misses which one they are looking at has
-  // misread everything below.
-  // The bill's own shape: a numbered section opens a block, and everything
-  // under it belongs to that section. Set as one paragraph it is unreadable,
-  // and anyone used to the printed version loses their footing entirely.
-  const SEC=/^\s*(\d{1,3})\s+(?=[A-Z(])/;
-  // The General Court puts a whole section in one paragraph. The outline a
-  // reader knows from the printed bill -- I., (a), (b), II.(a), a new RSA
-  // section number -- exists only in that document's typography, and is gone
-  // by the time the page is read as text.
-  //
-  // So it is rebuilt, and only where the record is unambiguous: a break goes
-  // in before a marker that OPENS after a full stop or a colon and is followed
-  // by a capital or an opening quote. "either (a) all new or (b) repealed"
-  // does not qualify, because what follows is lower case.
-  //
-  // This changes the layout and not one word. The text is the General Court's;
-  // where its lines fall on this page is ours, and could not be otherwise --
-  // the line breaks were never in the file.
-  const OUTLINE=/(?<=[.:])\s+(?=(?:[IVXL]{1,5}\.(?:\([a-z]\))?|\([a-z]\)|\d{1,3}:\d+[-\w]*)\s+[A-Z\u201C"])/g;
+  // misread everything below. SEC and OUTLINE, which shape it, are module
+  // constants now: they depend on nothing and were being recompiled per bill.
   const billLines=(txt)=>String(txt||"").split("\n")
     .flatMap(l=>l.split(OUTLINE)).map(raw=>{
     const line=raw.trim();
@@ -1298,20 +1355,36 @@ function renderDetail(b,d){
   // asymmetry is stated rather than left for a reader to discover, because
   // marked deletions invite the assumption that everything unmarked is
   // unchanged, and half of it is new.
-  const sp=spAll.length?`
-    <p class="spcount">${spAll.length} sponsor${spAll.length===1?"":"s"}${
-      spParty?` \u00b7 ${spParty}`:""}</p>
-    ${spBlock(origin)}${spBlock(origin==="S"?"H":"S")}
-    ${spRest.length?`<h3 class="spgrp">Chamber not on file <span>${spRest.length}</span></h3>
-      <div class="chosen">${spRest.map(pill).join(" ")}</div>`:""}`:"";
-  // Below the tabs, outside every pane, and only in the expanded view. It has
-  // to be assembled here rather than inside a pane: btBlock is declared
-  // further down this function, and a template that reads it earlier throws
-  // the moment a bill is focused -- which is why a refresh on a bill page
-  // reported that its detail would not load when the file had arrived fine.
+  return btBlock;
+}
+
+function renderDocuments(b,d){
+  return (d.documents||[]).length
+      ? `<p class="note">Everything below is published by the General Court. This
+         site quotes and summarises these; they are the record itself.</p>
+         <ul class="docs">${d.documents.map(x=>`<li class="doc doc-${esc(x.kind)}">
+           <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)}</a>
+           <span>${DOCWHAT[x.kind]||""}</span></li>`).join("")}</ul>`
+      : `<p class="note">No official documents on file for this bill yet. The
+         bill text and docket links come from the General Court's status page,
+         which is fetched separately.</p>`;
+}
+
+// The tabs, and one call per pane. Everything this reads is either a
+// parameter or the return value of a call made on the line that uses it,
+// so there is no declaration here whose order could be got wrong.
+function renderDetail(b,d){
+  const rsa=makeRsa(d);
+  // Below the tabs, outside every pane, and only in the expanded view. The
+  // bill text used to be assembled into a const above this template while
+  // its own dependencies were declared below it, which threw the moment a
+  // bill was focused -- a refresh on a bill page reporting that its detail
+  // would not load when the file had arrived fine. It is a call now, made
+  // where it is used, so there is nothing left to order wrongly.
   const btsec=(focused===b.id&&((d.billtext&&d.billtext.body)
     ||(d.amendments||[]).length))
-    ? `<section class="btsec"><h3 class="amdsec">Bill text</h3>${btBlock}</section>`
+    ? `<section class="btsec"><h3 class="amdsec">Bill text</h3>${
+        renderBillText(b,d,rsa)}</section>`
     : "";
 
   return `<div class="tabs" role="tablist">
@@ -1326,30 +1399,15 @@ function renderDetail(b,d){
     <button class="tab" role="tab" id="tab_${b.id}_5" aria-controls="pane_${b.id}_5"
       aria-selected="false" data-t="5">Documents${
         (d.documents||[]).length?` (${d.documents.length})`:""}</button></div>
-    <div class="pane" role="tabpanel" id="pane_${b.id}_0" aria-labelledby="tab_${b.id}_0" tabindex="0" data-t="0">${tl}</div>
-    <div class="pane" role="tabpanel" id="pane_${b.id}_1" aria-labelledby="tab_${b.id}_1" tabindex="0" data-t="1" hidden>${votes}</div>
-    <div class="pane" role="tabpanel" id="pane_${b.id}_2" aria-labelledby="tab_${b.id}_2" tabindex="0" data-t="2" hidden>${hear}</div>
-    <div class="pane" role="tabpanel" id="pane_${b.id}_3" aria-labelledby="tab_${b.id}_3" tabindex="0" data-t="3" hidden>${reps}</div>
+    <div class="pane" role="tabpanel" id="pane_${b.id}_0" aria-labelledby="tab_${b.id}_0" tabindex="0" data-t="0">${renderSummary(b,d)}</div>
+    <div class="pane" role="tabpanel" id="pane_${b.id}_1" aria-labelledby="tab_${b.id}_1" tabindex="0" data-t="1" hidden>${renderVotes(b,d)}</div>
+    <div class="pane" role="tabpanel" id="pane_${b.id}_2" aria-labelledby="tab_${b.id}_2" tabindex="0" data-t="2" hidden>${renderHearings(b,d)}</div>
+    <div class="pane" role="tabpanel" id="pane_${b.id}_3" aria-labelledby="tab_${b.id}_3" tabindex="0" data-t="3" hidden>${renderReports(b,d,rsa)}</div>
 
 
-    <div class="pane" role="tabpanel" id="pane_${b.id}_4" aria-labelledby="tab_${b.id}_4" tabindex="0" data-t="4" hidden>${sp||`<p class="note">No sponsors on file.</p>`}
-      ${(d.sponsors||[]).some(x=>x.prime_inferred)?`<p class="note"
-        style="margin-top:12px">Taken from the docket page, because the sponsor
-        files cover the current session only. The docket lists the prime sponsor
-        first but does not mark the field, so that one is inferred from the
-        order.</p>`:""}
-      <p class="note" style="margin-top:12px">Prime sponsor in bold.
-      <a href="${esc(d.docket_url)}" target="_blank" rel="noopener">Full docket and bill text on gencourt</a></p></div>
+    <div class="pane" role="tabpanel" id="pane_${b.id}_4" aria-labelledby="tab_${b.id}_4" tabindex="0" data-t="4" hidden>${renderSponsors(b,d)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_5" aria-labelledby="tab_${b.id}_5"
-      tabindex="0" data-t="5" hidden>${(d.documents||[]).length
-      ? `<p class="note">Everything below is published by the General Court. This
-         site quotes and summarises these; they are the record itself.</p>
-         <ul class="docs">${d.documents.map(x=>`<li class="doc doc-${esc(x.kind)}">
-           <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)}</a>
-           <span>${DOCWHAT[x.kind]||""}</span></li>`).join("")}</ul>`
-      : `<p class="note">No official documents on file for this bill yet. The
-         bill text and docket links come from the General Court's status page,
-         which is fetched separately.</p>`}</div>${btsec}`;
+      tabindex="0" data-t="5" hidden>${renderDocuments(b,d)}</div>${btsec}`;
 }
 
 function render(){
