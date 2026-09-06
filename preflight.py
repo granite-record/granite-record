@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.22
+# GRANITE_VERSION: 2026-09-04.23
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1072,6 +1072,7 @@ def _site_fixture(root):
     """
     d = root / "data"
     (root / "work" / "VID1").mkdir(parents=True)
+    (root / "work" / "VID4").mkdir(parents=True)
     d.mkdir(parents=True)
     w = lambda p, o: (root / p).write_text(json.dumps(o), encoding="utf-8")
 
@@ -1200,23 +1201,42 @@ def _site_fixture(root):
          "title": "House Session", "precise": True, "debate_end": 1500,
          "window_start": 100, "motions": ["Ought to Pass"], "tallies": []}]})
     # marks: {video: {bill: [candidate, ...]}}, as segment_markers writes it.
-    w("candidate_segments.json", {"VID2": {"HB1442": [
-        {"start": 600, "end": None, "what": "floor debate",
-         "how": "the clerk reads the committee report"}]}})
+    w("candidate_segments.json", {
+        "VID2": {"HB1442": [
+            {"start": 600, "end": None, "what": "floor debate",
+             "how": "the clerk reads the committee report"}]},
+        # A start the chair announced, on a recording where the clustering put
+        # the same executive session 80 minutes away. Its end belongs to that
+        # other placement, not to this one, and pairing the two is how 429
+        # proceedings came to carry an end before their own start.
+        "VID4": {"HB1442": [
+            {"start": 300, "end": None, "what": "executive session",
+             "how": "the chair opens it"}]}})
+    w("journals.json", {"HJ 7": "https://gc.nh.gov/hj7.pdf",
+                        "HJ 7 2026": "https://gc.nh.gov/hj7.pdf"})
+    # The viewer link carries the calendar's date in its filename, which is
+    # what dates a report the docket did not date. Written once: this file was
+    # written twice a few lines apart, and the second copy -- which had no date
+    # in the URL -- silently replaced the first.
     w("calendars.json", {
         "HC 9": "https://gc.nh.gov/house/calendars_journals/viewer.aspx"
                 "?fileName=calendars%5C2026%5CNo9%20February%2027%202026.pdf",
         "HC 9 2026": "https://gc.nh.gov/house/calendars_journals/viewer.aspx"
                      "?fileName=calendars%5C2026%5CNo9%20February%2027%202026.pdf"})
-    w("journals.json", {"HJ 7": "https://gc.nh.gov/hj7.pdf",
-                        "HJ 7 2026": "https://gc.nh.gov/hj7.pdf"})
-    w("calendars.json", {"HC 9 2026": "https://gc.nh.gov/hc9.pdf"})
     w("testimony.json", {"HB1442": {"support": 10, "oppose": 2, "neutral": 0}})
     w("work/VID1/segments.json", [
         {"bill": "HB1442", "kind": "public hearing", "located": True, "why_not": "",
          "short": False, "tolerance": 30, "dp_start": 0, "dp_end": 900,
          "start": 150.0, "end": 900.0, "mentions_inside": 6, "mentions_total": 8,
          "purity": 0.7, "start_stated": True, "end_stated": True}])
+    # Same bill, a different day, and the clustering is 4,700 seconds from
+    # where the chair opened it -- far outside its own +/-30. Its end is
+    # describing a different span and must not be attached to this one.
+    w("work/VID4/segments.json", [
+        {"bill": "HB1442", "kind": "executive session", "located": True,
+         "why_not": "", "short": False, "tolerance": 30, "dp_start": 0,
+         "dp_end": 6000, "start": 5000.0, "end": 5600.0, "mentions_inside": 3,
+         "mentions_total": 5, "purity": 0.6}])
     row = {"bill": "HB1442", "body": "H", "committee": "Commerce",
            "proceeding": "public hearing", "sched_date": "2026-02-03",
            "sched_time": "10:00", "venue": "LOB 302", "tier": "A-unique-slot",
@@ -1225,11 +1245,21 @@ def _site_fixture(root):
            "predicted_offset": "0:02:00",
            "watch_url": "https://youtube.com/watch?v=VID1", "candidates": "",
            "observed_start": "", "observed_end": "", "notes": ""}
+    # The same bill's executive session, on a recording where the chair opened
+    # it at 0:05:00 and the clustering put it at 1:23:20. Only one of those can
+    # be where it happened, and the site takes the chair's -- so the
+    # clustering's END, which measures the other one, has nothing to do with
+    # this span.
+    row4 = dict(row, proceeding="executive session", sched_date="2026-02-10",
+                sched_time="13:00", video_id="VID4", video_title="House Commerce",
+                stream_start="12:58:00",
+                watch_url="https://youtube.com/watch?v=VID4")
     with open(root / "verification_manifest.csv", "w", newline="",
               encoding="utf-8") as fh:
         wr = csv.DictWriter(fh, fieldnames=list(row))
         wr.writeheader()
         wr.writerow(row)
+        wr.writerow(row4)
     # The site reads proceedings.csv, not the manifest. Build it the way
     # build_all does, from the two sources the fixture just wrote.
     import subprocess, sys
@@ -1353,6 +1383,11 @@ def _chain_output():
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
         s = root / "site"
         hb = json.loads((s / "bills" / "HB1442.json").read_text(encoding="utf-8"))
+
+        def _exec(d):
+            return next((x for x in d.get("stations", [])
+                         if x.get("what") == "executive session"), None)
+
         idx = {x["id"]: x for x in
                json.loads((s / "index.json").read_text(encoding="utf-8"))}
         lg = json.loads((s / "legislators.json").read_text(encoding="utf-8"))
@@ -1383,6 +1418,19 @@ def _chain_output():
             ((hb.get("docket_reports") or [{}])[0].get("committee")
              == "Senate Commerce",
              "the reporting committee was not carried onto the docket report"),
+            # A start the chair announced keeps its own placement, and takes no
+            # end from a clustering that put the proceeding somewhere else.
+            # 2,732 stations paired the two; 429 of them ended before they
+            # began, and the page dropped those ends without saying anything.
+            (_exec(hb) is not None, "the executive session is not on the page"),
+            ((_exec(hb) or {}).get("start") == 300,
+             f"the stated start was not used: {(_exec(hb) or {}).get('start')!r}"),
+            ((_exec(hb) or {}).get("end") is None,
+             "an end from a placement 4,700 seconds away was attached to a "
+             f"start the chair stated: {(_exec(hb) or {}).get('end')!r}"),
+            (all(s.get("end") is None or s.get("start") is None
+                 or s["end"] > s["start"] for s in hb["stations"]),
+             "a station ends at or before it starts"),
             (hb["events"][0].get("cite_url"), "the journal citation did not resolve"),
             # A House Resolution is adopted by the House and that is the end
             # of it. Reading it as "Passed one chamber" implies a Senate stage

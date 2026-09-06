@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.12
+# GRANITE_VERSION: 2026-09-05.13
 """
 Generate the faceted site from real General Court data.
 
@@ -814,6 +814,32 @@ def station_for_proceeding(p, bid, segs, marks):
         said = cand
         break
 
+    # The clustering's end, but only where it is describing the same span.
+    #
+    # A stated start replaces the clustered one outright, and it does that
+    # precisely in the cases where the two disagree. Reaching past it for the
+    # clustered END then pairs a quotation with an inference about somewhere
+    # else in the recording. 2,732 proceedings did that: 429 ended at or
+    # before the start they were pinned to -- which the page dropped without a
+    # word, so a wrong number became a missing one in silence -- and 743 more
+    # came from a placement further from the chair's than the clustering's own
+    # tolerance allows, giving the reader a duration that was never measured
+    # from that point.
+    #
+    # The threshold is the segment's own tolerance rather than one invented
+    # here: the aligner already says how sure it is, from 30 seconds where the
+    # evidence was thick to half an hour where it was thin, and a placement
+    # inside that is the same placement. Where it is not, the proceeding keeps
+    # its stated start and no end, which the page already draws as "from
+    # 1:19:26".
+    seg_end = None
+    if seg and seg.get("located") and seg.get("end") is not None:
+        anchor = said["start"] if said else seg.get("start")
+        near = (abs(seg["start"] - anchor) <= (seg.get("tolerance") or 300)
+                if said else True)
+        if anchor is not None and seg["end"] > anchor and near:
+            seg_end = seg["end"]
+
     return {
         "when": p["sched_date"], "time": p.get("sched_time"),
         "what": p["proceeding"], "committee": p.get("committee"),
@@ -835,9 +861,7 @@ def station_for_proceeding(p, bid, segs, marks):
         # session or a two-hour hearing before they click anything.
         # A stated close outranks a clustered one: four seconds at the
         # median against whatever the cluster's tail happened to be.
-        "end": (said.get("end") if said and said.get("end")
-                else (seg.get("end") if seg and seg.get("located")
-                      else None)),
+        "end": (said.get("end") if said and said.get("end") else seg_end),
         "end_stated": bool(said and said.get("end")),
         "candidate": seg["start"] if seg and not seg.get("located") else None,
         # Which ends of this span were stated by the chair rather than
