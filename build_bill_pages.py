@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.27
+# GRANITE_VERSION: 2026-09-04.28
 """
 Write a real HTML page for every bill.
 
@@ -469,6 +469,7 @@ border-radius:20px;white-space:nowrap;background:var(--wash);color:var(--ink-2)}
 .s-law{{background:#E3EFE7;color:#1E5B3C}}
 .s-done{{background:#FAE7E5;color:#9E2B25}}
 .s-study{{background:#FCEEDF;color:#94500E}}
+.s-adopted{{background:#E3EFE7;color:#1E5B3C}}
 .s-veto{{background:#F7E4E7;color:#7C2D3A}}
 .billhead h1{{font-size:21px;line-height:1.35;margin:8px 0 4px}}
 /* A strip of anchors, not tabs. The sections stay in the page, so the whole
@@ -488,6 +489,7 @@ background:var(--wash);border-left:3px solid var(--rule-2)}}
 .statusbox.s-law{{background:#E3EFE7;border-left-color:#1E5B3C}}
 .statusbox.s-done{{background:#FAE7E5;border-left-color:#9E2B25}}
 .statusbox.s-study{{background:#FCEEDF;border-left-color:#94500E}}
+.statusbox.s-adopted{{background:#E3EFE7;border-left-color:#1E5B3C}}
 .statusbox.s-veto{{background:#F7E4E7;border-left-color:#7C2D3A}}
 .statusbox .lab{{font-size:11.5px;font-weight:600;letter-spacing:.02em;
 text-transform:uppercase;color:var(--ink-2)}}

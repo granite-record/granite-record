@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.10
+# GRANITE_VERSION: 2026-09-05.11
 """
 Generate the faceted site from real General Court data.
 
@@ -289,9 +289,48 @@ def _cite(raw, sources, year=""):
 # The General Court's own status vocabulary, mapped to the four display states.
 # Reading the field beats inferring it from docket prose: this is the fact most
 # people come to the site for, and a wrong guess here is a wrong headline.
+# What a bill of each kind actually has to clear before it is finished.
+#
+# Reading every bill as House, then Senate, then governor is right for HB and
+# SB and wrong for everything else. A House Resolution is adopted by the House
+# and that is the end of it; a concurrent resolution needs both chambers and
+# never goes to the governor; a CACR needs both chambers and then the voters.
+# Measured on this term: 32 adopted resolutions read "Passed one chamber" and
+# three more read "In progress", one of them offering "Pending action in the
+# other chamber" for a resolution that has no other chamber.
+SINGLE_CHAMBER = {"HR": "House", "SR": "Senate"}
+NO_GOVERNOR = {"HCR", "SCR", "CACR"}
+
+
+def bill_prefix(bid):
+    """HB1442 -> HB, CACR9 -> CACR. The letters, which say what kind it is."""
+    m = re.match(r"^[A-Za-z]+", str(bid or ""))
+    return m.group(0).upper() if m else ""
+
+
+def for_bill_kind(needle, kind, label, prefix):
+    """The same status word, read against what that kind of bill needs.
+
+    "PASSED/ADOPTED" on a House Bill means one chamber down and one to go. On
+    a House Resolution it is the final action. The status page does not make
+    the distinction because it does not have to -- the reader knows which kind
+    of thing they asked about, and this site has to say so.
+    """
+    if needle == "passed/adopted" and prefix in SINGLE_CHAMBER:
+        return "adopted", f"Adopted by the {SINGLE_CHAMBER[prefix]}"
+    if needle == "concurred" and prefix in NO_GOVERNOR:
+        if prefix == "CACR":
+            return "adopted", "Passed both chambers, goes to the voters"
+        return "adopted", "Adopted by both chambers"
+    return kind, label
+
+
 STATED = [
     ("signed by governor", "law", "Signed into law"),
-    ("became law without signature", "law", "Became law unsigned"),
+    # The field says "LAW WITHOUT SIGNATURE"; the needle wanted "became law
+    # without signature" and so never matched it. Nine bills. Masked until
+    # now because docket_veto rescued every one of them from the docket.
+    ("law without signature", "law", "Became law unsigned"),
     # The three outcomes of a veto, most specific first. A bill awaiting the
     # override vote, one where the override failed, and one where it succeeded
     # are three different situations, and lumping them as "Vetoed" hides the
@@ -310,7 +349,18 @@ STATED = [
     ("indefinitely postponed", "done", "Indefinitely postponed"),
     ("laid on table", "active", "Laid on the table"),
     ("retained in committee", "active", "Retained in committee"),
+    # The docket hyphenates; BodyStatusCodes.txt code 21 does not.
     ("re-referred", "active", "Re-referred to committee"),
+    ("rereferred", "active", "Re-referred to committee"),
+    # BEFORE "concurred", which is a substring of both of these. 21 bills
+    # were live reading "Passed, awaiting the governor" when a chamber had
+    # refused to concur -- the opposite of what happened, on the field the
+    # site treats as most authoritative. BodyStatusCodes.txt has all three
+    # as separate codes: 12 CONCURRED, 13 NONCONCURRED, 14 NONCONCURRED
+    # REQUEST CONFERENCE.
+    ("nonconcurred request conference", "active",
+     "One chamber did not concur; a committee of conference was asked for"),
+    ("nonconcurred", "active", "One chamber did not concur"),
     ("concurred", "active", "Passed, awaiting the governor"),
     ("passed/adopted", "active", "Passed one chamber"),
     ("in committee", "active", "In committee"),
@@ -565,7 +615,7 @@ def is_routine(text):
     return bool(ROUTINE.search(text or ""))
 
 
-def classify_stated(st):
+def classify_stated(st, prefix=""):
     """Map the page's own status wording to a display state, or None.
 
     Scans every status field at once and takes the most specific match, rather
@@ -580,7 +630,20 @@ def classify_stated(st):
         return None
     for needle, kind, label in STATED:
         if needle in blob:
-            return kind, label
+            return for_bill_kind(needle, kind, label, prefix)
+    # Nothing in the table matched. GeneralCodes.txt code 04 is "PASSED", and
+    # the table does not carry it because for a bill it says nothing the docket
+    # does not say better -- passed the legislature, governor next. For a
+    # resolution it is the whole answer, and HR35 sat on "In progress" with
+    # gen_status PASSED and an adopted floor vote behind it. Asked last, and
+    # only of resolutions, so it cannot shadow a more specific outcome.
+    if "passed" in blob:
+        if prefix in SINGLE_CHAMBER:
+            return "adopted", f"Adopted by the {SINGLE_CHAMBER[prefix]}"
+        if prefix == "CACR":
+            return "adopted", "Passed both chambers, goes to the voters"
+        if prefix in NO_GOVERNOR:
+            return "adopted", "Adopted by both chambers"
     return None
 
 
@@ -613,7 +676,7 @@ def docket_veto(narr):
     return None
 
 
-def classify(narr, rcs):
+def classify(narr, rcs, prefix=""):
     """Map a bill to one of four display states."""
     text = " ".join(e.get("raw", "") for e in (narr or {}).get("events", [])).lower()
     # The veto outcomes are tested first, and SUSTAINED before OVERRIDDEN.
@@ -649,11 +712,15 @@ def classify(narr, rcs):
     if "retained in committee" in text:
         return "active", "Retained in committee"
     if any(r.get("passed") for r in rcs):
+        # A resolution of one chamber that has carried a vote is finished.
+        # There is no other chamber for it to be in progress towards.
+        if prefix in SINGLE_CHAMBER:
+            return "adopted", f"Adopted by the {SINGLE_CHAMBER[prefix]}"
         return "active", "In progress"
     return "active", "In committee"
 
 
-def next_step(narr, bill):
+def next_step(narr, bill, prefix=""):
     """Plain-language 'what happens next', from the last recognised event."""
     evs = (narr or {}).get("events", [])
     if not evs:
@@ -685,8 +752,14 @@ def next_step(narr, bill):
     if t == "report":
         return "Pending a vote of the full chamber"
     if t == "floor":
+        if prefix in SINGLE_CHAMBER:
+            return "Adopted. A resolution of one chamber goes no further"
         return "Pending action in the other chamber"
     if t == "enrolled":
+        if prefix == "CACR":
+            return "Goes to the voters at the next general election"
+        if prefix in NO_GOVERNOR:
+            return "Adopted by both chambers. It does not go to the governor"
         return "Enrolled. Pending the governor's signature"
     if t == "retained":
         return "Retained in committee for further work"
@@ -1148,7 +1221,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         narr = narratives.get(bid)
         rcs = rollcalls.get(bid, [])
         st = status_pages.get(bid, {})
-        told = classify_stated(st)
+        prefix = bill_prefix(bid)
+        told = classify_stated(st, prefix)
         settled = docket_veto(narr)
         if settled:
             # A dated docket line beats a status field that has not caught up.
@@ -1158,7 +1232,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             kind, status = told
             n_stated += 1
         else:
-            kind, status = classify(narr, rcs)
+            kind, status = classify(narr, rcs, prefix)
         # Sponsor records already carry member_id, party and chamber from
         # build_data.py, and for the LsrSponsors path that id IS the roster's.
         # The bill-status fallback path carries a web member id from a
@@ -1382,11 +1456,12 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # Where the docket has settled the bill, the per-chamber fields
             # are describing a superseded state and reading them beside
             # "Vetoed, override failed" is a contradiction. Say what happened.
-            "next_step": next_step(narr, b) if settled else (
+            "next_step": next_step(narr, b, prefix) if settled else (
                 " \u00b7 ".join(x for x in [
                     f"House: {st['house_status']}" if st.get("house_status") else "",
                     f"Senate: {st['senate_status']}" if st.get("senate_status") else "",
-                ] if x) or next_step(narr, b)) if told else next_step(narr, b),
+                ] if x) or next_step(narr, b, prefix)) if told
+                       else next_step(narr, b, prefix),
             "status_source": ("General Court docket" if settled
                               else "General Court bill status page" if told
                               else "derived from the docket"),

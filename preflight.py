@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.16
+# GRANITE_VERSION: 2026-09-04.17
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -938,7 +938,15 @@ def _site_fixture(root):
         "SB434": {"designation": "SB 434", "title": "relative to school materials",
                   "lsr_num": "0611", "lsr_year": "2026", "subject": "Education",
                   "chamber": "S", "senate_committee": "Education",
-                  "house_committee": "", "lsr": "2026-0611"}})
+                  "house_committee": "", "lsr": "2026-0611"},
+        # A House Resolution, which the House adopts and which then goes
+        # nowhere. Every bill in this fixture used to be an HB or an SB, so
+        # nothing here noticed that 36 adopted resolutions were being shown as
+        # still in progress, one of them "Pending action in the other chamber".
+        "HR10": {"designation": "HR 10", "title": "honouring a retirement",
+                 "lsr_num": "0900", "lsr_year": "2026", "subject": "Miscellaneous",
+                 "chamber": "H", "house_committee": "Legislative Administration",
+                 "senate_committee": "", "lsr": "2026-0900"}})
     w("data/legislators.json", [
         {"id": "377204", "name": "Nelson, Jodi", "chamber": "H", "party": "Republican",
          "party_code": "R", "county": "Rockingham", "county_abbr": "Rock.",
@@ -969,6 +977,12 @@ def _site_fixture(root):
                                "motion": "MA", "vote_kind": "RC", "yeas": "214",
                                "nays": "119",
                                "raw": "Ought to Pass: MA RC 214-119 03/06/2026  HJ 7  P. 55"}]},
+        "HR10": {"narrative": "The House adopted it.", "stages": [], "notes": [],
+                 "unrecognised": [],
+                 "events": [{"date": "2026-03-05", "type": "floor", "body": "H",
+                             "cancelled": False, "action": "Ought to Pass",
+                             "motion": "MA", "vote_kind": "VV",
+                             "raw": "Ought to Pass: MA VV 03/05/2026"}]},
         "SB434": {"narrative": "The governor vetoed it.", "stages": [], "notes": [],
                   "unrecognised": [],
                   "events": [{"date": "2026-08-19", "type": "other", "body": "H",
@@ -983,10 +997,14 @@ def _site_fixture(root):
          "not_voting": 67, "seats": 400, "seated": 400, "vacancies": 0,
          "threshold_needed": None, "threshold_rule": None, "passed": True,
          "threshold_note": None, "title": "relative to insurance coverage"}]})
-    w("bill_status.json", {"HB1442": {
-        "gen_status": "PASSED/ADOPTED", "house_status": "PASSED/ADOPTED",
-        "senate_status": "", "text_pdf": "https://gc.nh.gov/x.pdf", "chapter": "",
-        "lsr": "2026-0503", "body": "H"}})
+    w("bill_status.json", {
+        "HB1442": {
+            "gen_status": "PASSED/ADOPTED", "house_status": "PASSED/ADOPTED",
+            "senate_status": "", "text_pdf": "https://gc.nh.gov/x.pdf",
+            "chapter": "", "lsr": "2026-0503", "body": "H"},
+        "HR10": {"gen_status": "HOUSE", "house_status": "PASSED/ADOPTED",
+                 "senate_status": "", "text_pdf": "", "chapter": "",
+                 "lsr": "2026-0900", "body": "H"}})
     w("committee_reports.json", {"HB1442": [
         {"bill": "HB1442", "title": "insurance coverage",
          "majority_recommendation": "OUGHT TO PASS", "minority_recommendation": None,
@@ -1165,6 +1183,14 @@ def _chain_output():
             (hb["reports"][0]["reports"][0].get("vote_yeas") == 19,
              "the committee vote was not carried"),
             (hb["events"][0].get("cite_url"), "the journal citation did not resolve"),
+            # A House Resolution is adopted by the House and that is the end
+            # of it. Reading it as "Passed one chamber" implies a Senate stage
+            # that does not exist, and "Became law" would be worse.
+            (idx["HR10"]["status"] == "Adopted by the House",
+             f"HR10 reads {idx['HR10']['status']!r}, not the end of a "
+             "one-chamber resolution"),
+            (idx["HR10"]["kind"] == "adopted",
+             f"HR10 kind is {idx['HR10']['kind']!r}"),
             (idx["SB434"]["status"] == "Vetoed, override failed",
              f"SB434 reads {idx['SB434']['status']!r}, not the docket's outcome"),
             (idx["HB1442"].get("sponsor_label") == "Rep. Jodi Nelson (R)",

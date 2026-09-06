@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.9 -->
+<!-- GRANITE_VERSION: 2026-09-05.10 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -97,6 +97,10 @@ letter-spacing:.01em}
 .s-done{background:var(--st-done-bg);color:var(--st-done)}
 .s-veto{background:var(--st-veto-bg);color:var(--st-veto)}
 .s-study{background:var(--st-study-bg);color:var(--st-study)}
+/* An adopted resolution succeeded, so it reads like a bill that became
+   law -- but it did not become law, and saying so would be false. Same
+   colour, different word. */
+.s-adopted{background:var(--st-law-bg);color:var(--st-law)}
 .ctitle{font-size:15px;margin:6px 0 0;line-height:1.45}
 .cmeta{font-size:12.5px;color:var(--ink-3);margin-top:6px}
 .cbody{border-top:1px solid var(--rule);padding:0 18px 20px}
@@ -406,9 +410,11 @@ const PARTY_NAME={R:"Republican",D:"Democrat",I:"Independent",L:"Libertarian",
 const PARTY_COLOR={R:"var(--rep)",D:"var(--dem)",I:"var(--ind)",L:"var(--ind)",
   X:"var(--ink-3)"};
 const KIND={active:"s-active",law:"s-law",done:"s-done",veto:"s-veto",
-            study:"s-study"};
+            study:"s-study",adopted:"s-adopted"};
+// "Became law" is wrong for a resolution: an adopted House Resolution is
+// finished and successful and is not law. It needed its own word.
 const KINDL={active:"In progress",law:"Became law",done:"Killed",
-             veto:"Vetoed",study:"Interim study"};
+             veto:"Vetoed",study:"Interim study",adopted:"Adopted"};
 const OTHER=[["Presiding","Presiding",
   "One member presides over each roll call and does not vote except to break a tie. This is the role, not a missed vote."],
  ["Not Voting/Excused","Excused absence",
