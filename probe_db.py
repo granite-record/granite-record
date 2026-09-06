@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.3
+# GRANITE_VERSION: 2026-09-06.4
 """
 What is actually in the General Court's public database.
 
@@ -120,6 +120,53 @@ QUERIES = [
     ("NH_RSA", "SELECT COUNT(*) AS rows FROM NH_RSA"),
 ]
 
+# Counts say a view exists; they do not say what is in it. These read a few
+# real rows, which is the only way to know whether CandH_Reports is the
+# committee reports this site is missing for 1,254 bills, and whether
+# LegislationText is the bill text it currently spends 2,234 requests on.
+#
+# HTMLText is `text` and PDFImage is `image`. Both are cast and clipped --
+# nothing here pulls a megabyte, and PDFImage is never selected at all.
+SAMPLES = [
+    ("CandH_Reports: what a Senate one looks like",
+     "SELECT TOP 3 BillNbr, ChamberCode, CommitteeType, ReleaseDate, "
+     "LEFT(CAST(HTMLText AS varchar(max)), 300) AS text_head "
+     "FROM CandH_Reports WHERE ChamberCode = 'S' ORDER BY ReleaseDate DESC"),
+    ("CandH_Reports: and a House one",
+     "SELECT TOP 2 BillNbr, ChamberCode, CommitteeType, ReleaseDate, "
+     "LEFT(CAST(HTMLText AS varchar(max)), 300) AS text_head "
+     "FROM CandH_Reports WHERE ChamberCode = 'H' ORDER BY ReleaseDate DESC"),
+    ("CandH_Reports: by chamber and type",
+     "SELECT ChamberCode, CommitteeType, COUNT(*) AS rows, "
+     "MIN(YEAR(ReleaseDate)) AS first_year, MAX(YEAR(ReleaseDate)) AS last_year "
+     "FROM CandH_Reports GROUP BY ChamberCode, CommitteeType "
+     "ORDER BY ChamberCode, CommitteeType"),
+    ("LegislationText: versions per bill",
+     "SELECT TOP 5 * FROM (SELECT LegislationID, COUNT(*) AS versions "
+     "FROM LegislationText GROUP BY LegislationID) q ORDER BY versions DESC"),
+    ("LegislationText: columns are enough to key on?",
+     "SELECT COLUMN_NAME AS c, DATA_TYPE AS ty FROM INFORMATION_SCHEMA.COLUMNS "
+     "WHERE TABLE_NAME = 'LegislationText' ORDER BY ORDINAL_POSITION"),
+    ("CommitteeMembers: both chambers?",
+     "SELECT LEFT(CommitteeCode, 1) AS chamber_letter, COUNT(*) AS rows, "
+     "COUNT(DISTINCT CommitteeCode) AS committees "
+     "FROM CommitteeMembers GROUP BY LEFT(CommitteeCode, 1)"),
+    # What an archived bill could actually say. 2005 has docket and nothing
+    # else, so this is the honest ceiling for the 1989-2016 era.
+    ("Docket 2005: a real row",
+     "SELECT TOP 4 SessionYear, ExpandedBillNo, LegislativeBody, StatusDate, "
+     "LEFT(Description, 90) AS descr FROM Docket WHERE SessionYear = 2005 "
+     "ORDER BY ExpandedBillNo, StatusDate"),
+    ("Docket 2005: distinct bills",
+     "SELECT COUNT(DISTINCT ExpandedBillNo) AS bills FROM Docket "
+     "WHERE SessionYear = 2005"),
+    # Is a bill's TITLE anywhere for the old years, or only its number?
+    ("Legislation: columns",
+     "SELECT COLUMN_NAME AS c, DATA_TYPE AS ty FROM INFORMATION_SCHEMA.COLUMNS "
+     "WHERE TABLE_NAME = 'Legislation' ORDER BY ORDINAL_POSITION"),
+]
+
+
 PS = r"""
 $ErrorActionPreference = 'Stop'
 $conn = New-Object System.Data.SqlClient.SqlConnection
@@ -153,9 +200,9 @@ $out | ConvertTo-Json -Depth 6 -Compress
 """
 
 
-def run(connstr):
+def run(connstr, queries):
     """One PowerShell process, one connection, every query."""
-    payload = "~~".join(f"{n}::{q}" for n, q in QUERIES)
+    payload = "~~".join(f"{n}::{q}" for n, q in queries)
     p = subprocess.run(
         ["powershell", "-NoProfile", "-NonInteractive", "-Command", PS],
         capture_output=True, text=True, timeout=300,
@@ -197,6 +244,8 @@ def main():
     # The server also lists NHLegislatureDB2 and PublicNHLMS.
     ap.add_argument("--database", default=DATABASE,
                     help="another database on the same server")
+    ap.add_argument("--sample", action="store_true",
+                    help="read a few real rows instead of counting them")
     a = ap.parse_args()
 
     base = (f"Database={a.database};User ID={USER};Password={PASSWORD};"
@@ -218,7 +267,7 @@ def main():
     for label, cs in attempts:
         print(f"\nconnecting, {label} ...")
         try:
-            results, err = run(cs)
+            results, err = run(cs, SAMPLES if a.sample else QUERIES)
         except subprocess.TimeoutExpired:
             print("  timed out after 5 minutes")
             continue
