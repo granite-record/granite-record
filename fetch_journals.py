@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Find the journal and calendar PDFs so docket citations become links.
 
@@ -74,6 +74,11 @@ HIDDEN_RE = re.compile(r"<input\b[^>]*type=[\"']hidden[\"'][^>]*>", re.I)
 ATTR_RE = re.compile(r"([\w:-]+)\s*=\s*[\"']([^\"']*)[\"']")
 # "HJ 11 April 29, 2026", "No 7 February 13 2026", "J 4 January 8 2026"
 DOCNUM_RE = re.compile(r"\b(?:No|[HS]?J)\s*(\d+[A-Za-z]?)\b", re.I)
+# The one viewer.aspx link on the page names the real directory for the
+# current selection. The House writes it lowercase, 'calendars\\2026\\';
+# the Senate writes 'Calendars\\2026\\'. Building that from the chamber
+# name guesses at a path, which is the thing this file exists not to do.
+VIEWER_RE = re.compile(r"viewer\.aspx\?fileName=([^\"'&<>\s][^\"'<>]*)", re.I)
 WS_J = re.compile(r"\s+")
 
 
@@ -120,9 +125,20 @@ def journal_urls(chamber, letter, year, delay=2.0):
               f"{years[-1]}")
         return {}
 
+    # The House offers Calendar/Journal; the Senate offers
+    # SenateCalendar/SenateJournal. Posting a value the select does not carry
+    # fails ASP.NET event validation, which comes back as HTTP 500 -- exactly
+    # what the Senate returned on 6 September while the House worked.
+    kinds = _options(page, SEL_KIND)
+    kind = next((v for v, _ in kinds if "journal" in (v or "").lower()),
+                next((v for v, lbl in kinds if "journal" in (lbl or "").lower()),
+                     "Journal"))
+    if kind != "Journal":
+        print(f"    this page calls journals {kind!r}")
+
     # Journals, and the right year. One post does both.
     fields = _hidden(page)
-    fields[SEL_KIND] = "Journal"
+    fields[SEL_KIND] = kind
     fields[SEL_YEAR] = str(year)
     fields["__EVENTTARGET"] = SEL_KIND
     fields["__EVENTARGUMENT"] = ""
@@ -134,12 +150,27 @@ def journal_urls(chamber, letter, year, delay=2.0):
     # labels do not name the year asked for, ask again for the year alone.
     if docs and not any(str(year) in lbl for _, lbl in docs):
         fields = _hidden(page)
-        fields[SEL_KIND] = "Journal"
+        fields[SEL_KIND] = kind
         fields[SEL_YEAR] = str(year)
         fields["__EVENTTARGET"] = SEL_YEAR
         fields["__EVENTARGUMENT"] = ""
         time.sleep(delay)
-        docs = _options(fetch(urllib.parse.urlencode(fields).encode()), SEL_DOC)
+        page = fetch(urllib.parse.urlencode(fields).encode())
+        docs = _options(page, SEL_DOC)
+
+    # The directory as the page itself writes it, taken from its viewer link
+    # rather than assembled from the chamber name. The House says
+    # 'journals\\2026\\' and the Senate 'Journals\\2026\\', and a wrong case here
+    # is a link that 404s for every journal in the year.
+    prefix = f"journals\\{year}\\"
+    vm = VIEWER_RE.search(page)
+    if vm:
+        raw = urllib.parse.unquote(vm.group(1))
+        cut = raw.rfind('\\')
+        if cut >= 0 and str(year) in raw[:cut + 1]:
+            prefix = raw[:cut + 1]
+    if prefix.lower() != f"journals\\{year}\\".lower():
+        print(f"    directory is {prefix!r}")
 
     out = {}
     for value, label in docs:
@@ -151,7 +182,7 @@ def journal_urls(chamber, letter, year, delay=2.0):
         key = m.group(1)
         out[int(key) if key.isdigit() else key] = (
             index + "viewer.aspx?fileName="
-            + urllib.parse.quote(f"journals\\{year}\\{value}"))
+            + urllib.parse.quote(prefix + value))
     nums = [k for k in out if isinstance(k, int)]
     print(f"    {len(out)} journals listed"
           + (f", numbered {min(nums)} to {max(nums)}" if nums else ""))

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Read the calendar list instead of guessing at it.
 
@@ -222,10 +222,37 @@ def year_select(page):
 
 
 def type_select(page):
-    """The select offering exactly Calendar and Journal."""
+    """The select that switches Calendars and Journals.
+
+    Matched on what its options MEAN, not on their exact text. The House
+    offers Calendar/Journal; the Senate offers SenateCalendar/SenateJournal.
+    An exact match found the House and missed the Senate entirely.
+    """
     for nm, opts in selects(page):
-        if {(v or "").lower() for v, _ in opts} == {"calendar", "journal"}:
+        if len(opts) == 2 and all(
+                any(word in ((v or "") + " " + (lbl or "")).lower()
+                    for v, lbl in opts)
+                for word in ("calendar", "journal")):
             return nm
+    return None
+
+
+def type_value(page, want):
+    """The option value THIS page uses for "Calendar" or "Journal".
+
+    Posting a value the select does not carry fails ASP.NET event validation,
+    which comes back as HTTP 500 -- which is what the Senate returned to
+    fetch_journals on 6 September, because "Journal" is not one of its options.
+    """
+    nm = type_select(page)
+    if not nm:
+        return None
+    for n, opts in selects(page):
+        if n != nm:
+            continue
+        for v, lbl in opts:
+            if want.lower() in ((v or "") + " " + (lbl or "")).lower():
+                return v
     return None
 
 
@@ -282,7 +309,10 @@ def main():
             print("\n  Could not tell which select is Calendar/Journal. "
                   "Send --raw.")
             return
-        page = post(page, {tsel: a.doctype}, tsel,
+        tval = type_value(page, a.doctype) or a.doctype
+        if tval != a.doctype:
+            print(f"\n  this page calls {a.doctype.lower()}s {tval!r}")
+        page = post(page, {tsel: tval}, tsel,
                     f"AFTER SWITCHING TO {a.doctype.upper()}S",
                     "probe_calendars_type.html" if a.raw else None,
                     url=url)
@@ -301,7 +331,7 @@ def main():
         # change; ASP.NET would otherwise see this one as unset.
         tsel = type_select(page)
         if tsel and a.doctype:
-            changes[tsel] = a.doctype
+            changes[tsel] = type_value(page, a.doctype) or a.doctype
         if post(page, changes, ysel, f"AFTER SWITCHING TO {a.year}",
                 "probe_calendars_year.html" if a.raw else None,
                 url=url) is None:
