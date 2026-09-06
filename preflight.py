@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.25
+# GRANITE_VERSION: 2026-09-04.26
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1145,6 +1145,16 @@ def _site_fixture(root):
                                "vote_kind": "VV", "mover": "",
                                "cite": "HJ 7", "cite_page": "56",
                                "raw": "Amendment # 2026-0503h: AA VV 03/06/2026"},
+                              # The same volume number in the OTHER year of the
+                              # term. Only the 2026 HJ 7 is on file, and the
+                              # bare key points at it, so this action keeps its
+                              # citation and gets no link: HJ 7 of 2025 is a
+                              # different document and does not contain it.
+                              {"date": "2025-05-14", "type": "floor", "body": "H",
+                               "cancelled": False, "action": "Ought to Pass",
+                               "motion": "MA", "vote_kind": "VV",
+                               "cite": "HJ 7", "cite_page": "9",
+                               "raw": "Ought to Pass: MA VV 05/14/2025"},
                               # A committee report as the docket records it,
                               # with no calendar prose behind it. This is the
                               # Senate's whole shape -- one report, a vote, no
@@ -1227,8 +1237,16 @@ def _site_fixture(root):
         "VID4": {"HB1442": [
             {"start": 300, "end": None, "what": "executive session",
              "how": "the chair opens it"}]}})
-    w("journals.json", {"HJ 7": "https://gc.nh.gov/hj7.pdf",
-                        "HJ 7 2026": "https://gc.nh.gov/hj7.pdf"})
+    # Both files hold a bare key beside the year-suffixed one, because their
+    # fetchers write both -- and the bare key holds whichever year was fetched
+    # last. Here the bare HJ 7 is the 2026 journal, so a 2025 action citing
+    # HJ 7 must NOT be linked to it. That shape put 4,468 of 12,970 links on
+    # the real site onto a volume that does not contain the action.
+    w("journals.json", {
+        "HJ 7": "https://gc.nh.gov/house/calendars_journals/Journals/2026/"
+                "HJ%2007%20March%206,%202026.PDF",
+        "HJ 7 2026": "https://gc.nh.gov/house/calendars_journals/Journals/2026/"
+                     "HJ%2007%20March%206,%202026.PDF"})
     # The viewer link carries the calendar's date in its filename, which is
     # what dates a report the docket did not date. Written once: this file was
     # written twice a few lines apart, and the second copy -- which had no date
@@ -1399,6 +1417,10 @@ def _chain_output():
         s = root / "site"
         hb = json.loads((s / "bills" / "HB1442.json").read_text(encoding="utf-8"))
 
+        def _yr(u):
+            m = re.search(r"(?:%5C|/)(\d{4})(?:%5C|/)", u or "")
+            return m.group(1) if m else None
+
         def _exec(d):
             return next((x for x in d.get("stations", [])
                          if x.get("what") == "executive session"), None)
@@ -1409,6 +1431,26 @@ def _chain_output():
         checks = [
             (len(hb.get("documents", [])) >= 4, "the Documents tab is empty"),
             # Every page of a volume this bill is on, not whichever came first.
+            # A citation is only linked to a volume from its own year. The
+            # 2025 event below cites HJ 7, which is on file only as the 2026
+            # journal, so it keeps its citation and gets no link.
+            (not any((e.get("cite_url") and _yr(e["cite_url"])
+                      and _yr(e["cite_url"]) != (e.get("date") or "")[:4])
+                     for e in hb.get("events", [])),
+             "a citation links a volume from a different year than its action: "
+             + repr([(e.get("date"), e.get("cite"), e.get("cite_url"))
+                     for e in hb.get("events", [])
+                     if e.get("cite_url") and _yr(e["cite_url"])
+                     and _yr(e["cite_url"]) != (e.get("date") or "")[:4]])),
+            (any((e.get("date") or "").startswith("2025")
+                 and (e.get("cite") or "").startswith("HJ 7")
+                 and not e.get("cite_url")
+                 for e in hb.get("events", [])),
+             "the 2025 action citing HJ 7 should keep its citation and lose "
+             "its link, since only the 2026 volume is on file: "
+             + repr([(e.get("date"), e.get("cite"), e.get("cite_url"))
+                     for e in hb.get("events", [])
+                     if (e.get("cite") or "").startswith("HJ 7")])),
             (any(d["label"] == "HJ 7, pages 55 and 56"
                  for d in hb.get("documents", [])),
              "the journal entry names one page and drops the others: "

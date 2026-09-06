@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.14
+# GRANITE_VERSION: 2026-09-05.15
 """
 Generate the faceted site from real General Court data.
 
@@ -266,13 +266,36 @@ def vote_chronology(rcs, narr):
     return order, names
 
 
+# The year a published volume is from, out of the path in its own link. Two
+# shapes, because the two files were fetched by different scripts:
+#
+#   .../Journals/2026/HJ 03 February 5, 2026.PDF
+#   .../viewer.aspx?fileName=calendars%5C2026%5CNo10 March 6 2026.pdf
+#
+# Every one of the 188 keys on file yields a year this way.
+SOURCE_YEAR = re.compile(r"(?:%5C|/)(\d{4})(?:%5C|/)", re.I)
+
+
 def _cite(ev, sources, year=""):
     """The journal or calendar one docket action is printed in, as a link.
 
     A docket line cites "HJ 7" with no year, because within one session there
     is only one. Across sessions there is one per year, so the lookup is tried
-    with the year first and falls back to the bare key for anything fetched
-    before the keys carried one.
+    with the year first.
+
+    It then used to fall back to the bare key, and that was wrong. calendars.json
+    and journals.json each hold both forms -- "HC 10" beside "HC 10 2025" and
+    "HC 10 2026" -- because their fetchers write the bare key too, and the bare
+    key holds whichever year was fetched last. So a 2025 action citing HJ 3
+    resolved to the 2026 journal: 4,468 of 12,970 links, a third of them,
+    pointing at a volume that does not contain the action they claim to record.
+    SR1 cited SJ 1 on a 2024 action and opened the 2026 Senate Journal.
+
+    A missing citation is a gap. A citation to the wrong document is a false
+    one, on a site whose whole claim is that it can be checked -- so the year in
+    the resolved link is compared with the year of the action, and a link that
+    disagrees is not offered at all. The citation itself is still printed; only
+    the link is withheld.
 
     This used to take the line and search it. The line it was given had already
     been through narrative.clean(), which removes the citation so that the
@@ -288,8 +311,13 @@ def _cite(ev, sources, year=""):
     page = (ev.get("cite_page") or "").strip()
     out = {"cite": key + (f", page {page}" if page else "")}
     url = sources.get(f"{key} {year}") if year else None
-    if url or key in sources:
-        out["cite_url"] = url or sources[key]
+    if not url:
+        # The bare key, taken only where it agrees with the action's year.
+        m = SOURCE_YEAR.search(sources.get(key, ""))
+        if m and m.group(1) == year:
+            url = sources[key]
+    if url:
+        out["cite_url"] = url
     return out
 
 
