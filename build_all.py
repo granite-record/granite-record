@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.3
+# GRANITE_VERSION: 2026-09-05.4
 """
 Run the whole pipeline in the right order.
 
@@ -115,17 +115,33 @@ def plan(a):
                   "build_data.py does not read narratives.json, so nothing "
                   "before this point needs it"),
 
+        # Never a step until now, which is the only reason no chair, vice
+        # chair, aide, room or phone is anywhere on disk: fetch_committees.py
+        # has always parsed all of them, for both chambers, and has simply
+        # never been run by the pipeline. --probe prints and writes nothing.
+        Step("committee membership and leadership",
+             ["fetch_committees.py"],
+             produces=["committees.json"],
+             network=True, optional=True,
+             note="both chambers, two requests; the only source on this site "
+                  "for who chairs what"),
+
         Step("committee majority and minority reports",
              ["fetch_committee_reports.py", "--year", a.session],
              network=True, optional=True,
              note="calendars are cached; discovery only needs running once a session"),
 
+        # --summary was passed here and fetch_journals.py has never defined it,
+        # so argparse rejected the call and this step has never run in a build.
+        # Every "HJ 7 P. 55" link on the site is as old as the last time
+        # somebody ran the script by hand.
         Step("journal links for docket citations",
-             ["fetch_journals.py", "--year", a.session,
-              "--summary", "RollCallSummary.txt"],
-             needs=["RollCallSummary.txt"], produces=["journals.json"],
+             ["fetch_journals.py", "--year", a.session],
+             produces=["journals.json"],
              network=True, optional=True,
-             note="turns 'HJ 7 P. 55' into a link to the official record"),
+             note="turns 'HJ 7 P. 55' into a link to the official record; "
+                  "merges, so a chamber that fails loses nothing already "
+                  "fetched"),
 
         Step("video index",
              ["fetch_channel_index.py", "--key", key, "--chamber", "house",
