@@ -23,7 +23,7 @@
     "fetch_captions.py": "2026-09-05.10",
     "fetch_channel_index.py": "2026-09-04.1",
     "fetch_committee_reports.py": "2026-09-04.18",
-    "fetch_committees.py": "2026-09-04.1",
+    "fetch_committees.py": "2026-09-04.2",
     "fetch_journals.py": "2026-09-04.5",
     "fetch_leadership.py": "2026-09-04.2",
     "fetch_members.py": "2026-09-04.5",

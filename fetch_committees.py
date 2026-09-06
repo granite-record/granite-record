@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.1
+# GRANITE_VERSION: 2026-09-04.2
 """
 Every standing committee, from the two pages that list them.
 
@@ -134,6 +134,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="committees.json")
     ap.add_argument("--probe", action="store_true", help="print, write nothing")
+    ap.add_argument("--raw", action="store_true",
+                    help="also save each page, so a parser that "
+                         "matched nothing can be fixed against "
+                         "the real thing")
     ap.add_argument("--delay", type=float, default=2.0)
     a = ap.parse_args()
 
@@ -145,13 +149,23 @@ def main():
         except Exception as e:
             print(f"  could not fetch: {type(e).__name__}: {e}")
             continue
+        if a.raw:
+            # The House page returned 0 committees on 6 September.
+            # Guessing at a heading shape is the thing this project does
+            # not do, so the page is kept and the patterns are written
+            # against it.
+            name = ("committees_"
+                    + ("senate" if chamber == "S" else "house") + ".html")
+            with open(name, "w", encoding="utf-8") as fh:
+                fh.write(page)
+            print(f"  wrote {name} ({len(page):,} chars)")
         recs = parse(page, chamber)
         print(f"  {len(recs)} committees")
         if not recs:
-            print("  Nothing matched. The committee headings on this page are "
-                  "a shape\n  this does not read; send the page and it can be "
-                  "fixed.")
-        for r in recs:
+            print("  Nothing matched. The committee headings on this page "
+                  "are a shape\n  this does not read; run again with "
+                  "--raw and the patterns can be written against the page "
+                  "itself.")
             chair = next((m["name"] for m in r["members"]
                           if m["position"] == "Chair"), "")
             print(f"    {r['name']:<44} {len(r['members']):>2} members"

@@ -94,3 +94,6 @@ check.txt
 
 # ---- probe output: a snapshot of one page, re-fetchable in one request ---
 probe_calendars*.html
+
+# ---- probe output: page snapshots, re-fetchable in one request --------
+committees_*.html
