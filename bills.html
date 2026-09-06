@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.10 -->
+<!-- GRANITE_VERSION: 2026-09-05.11 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -903,6 +903,23 @@ function fullRecord(bid,i,rc){
 // Pure and identical for every bill, so built once here rather than
 // rebuilt inside a map callback that runs for each of 2,234 of them.
 const AVK={VV:"voice vote",DV:"division vote",RC:"roll call"};
+// A committee report's colour, from what was MOVED rather than from who won.
+//
+// It used to be chosen from `side` alone: Committee and Majority green,
+// Minority red. So a unanimous committee recommending a bill be killed got
+// the same green as one recommending it pass, and a minority that wanted it
+// to pass got the red. 1,248 of 2,637 chips read as the opposite of the
+// motion they label -- 556 of them a whole committee's Inexpedient to
+// Legislate shown in the colour of approval.
+//
+// Which side prevailed is already on the row: the Majority/Minority label
+// sits to the left of the chip and the committee's vote beside it, so
+// nothing is lost by colouring the motion instead.
+const RECCOLOUR=[[/INEXPEDIENT/i,"s-done"],
+                 [/INTERIM\s+STUDY|RE-?REFER/i,"s-study"],
+                 [/OUGHT\s+TO\s+PASS/i,"s-law"]];
+const recColour=r=>{const m=RECCOLOUR.find(([re])=>re.test(r||""));
+  return m?m[1]:"";};
 const CHNAME={H:"Representatives",S:"Senators"};
 const hms=x=>new Date(x*1000).toISOString().substr(11,8);
 // "0:02:00" or "-0:05:00" as the manifest wrote it -- and a plain number of
@@ -1277,7 +1294,7 @@ function renderReports(b,d,rsa){
         <div style="display:flex;gap:9px;align-items:baseline;flex-wrap:wrap">
           <span class="secsub">${esc(e.side)}</span>
           ${committeeTally(e)}
-          ${rec?`<span class="cstat ${e.side==="Minority"?"s-done":"s-law"}">${esc(rec)}</span>`:""}</div>
+          ${rec?`<span class="cstat ${recColour(rec)}">${esc(rec)}</span>`:""}</div>
         <p style="font-size:12.5px;color:var(--ink-3);margin:3px 0 8px">${esc(e.author)}${
           e.committee?` — ${esc(e.committee)}`:""}</p>
         <p style="font-family:var(--serif);font-size:16px;line-height:1.6;margin:0">${rsa(esc(e.text))}</p>

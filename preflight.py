@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.17
+# GRANITE_VERSION: 2026-09-04.18
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -772,7 +772,19 @@ var detail = {
   reports:[{majority_recommendation:"OUGHT TO PASS",minority_recommendation:null,
             source:"House Calendar 9, 2026",
             reports:[{side:"Committee",author:"Rep. Jodi Nelson",committee:"Commerce",
-                      text:"Consistent with RSA 91-A:4.",vote_yeas:19,vote_nays:0}]}],
+                      text:"Consistent with RSA 91-A:4.",vote_yeas:19,vote_nays:0}]},
+           // A divided report where the MAJORITY wants the bill killed and the
+           // MINORITY wants it passed. The colours used to come from which side
+           // won, so this row rendered the kill green and the pass red -- the
+           // reader's shorthand for "good news" attached to the wrong motion on
+           // 1,248 of 2,637 chips.
+           {majority_recommendation:"INEXPEDIENT TO LEGISLATE",
+            minority_recommendation:"OUGHT TO PASS",
+            source:"House Calendar 11, 2026",
+            reports:[{side:"Majority",author:"Rep. A",committee:"Commerce",
+                      text:"Against it.",vote_yeas:11,vote_nays:9},
+                     {side:"Minority",author:"Rep. B",committee:"Commerce",
+                      text:"For it."}]}],
   sponsors:[{name:"Nelson, Jodi",party:"R",chamber:"H",prime:true,
              display_full:"Rep. Jodi Nelson (R - Rock. 13)"}],
   documents:[{label:"Bill text",url:"https://gc.nh.gov/x.pdf",kind:"text"}],
@@ -794,7 +806,13 @@ if (typeof scope.renderDetail !== "function") {
 // "want" is required in both views; "wantFocused" only in the expanded one,
 // because the bill text section is the one thing the collapsed card omits.
 var fixtures = [
-  {name:"full", d:detail, want:[]},
+  // Colour follows the motion, not the side that carried it. The fixture's
+  // second report has the majority moving Inexpedient to Legislate and the
+  // minority moving Ought to Pass, so these two strings can only appear if the
+  // chip is coloured by what was moved.
+  {name:"full", d:detail,
+   want:['class="cstat s-done">INEXPEDIENT TO LEGISLATE',
+         'class="cstat s-law">OUGHT TO PASS']},
   // A bill with nothing on it yet. The fixture above populates every field, so
   // it only ever runs the arm of each ternary that HAS data -- and every one
   // of those has an else. That is what most bills look like early in a
