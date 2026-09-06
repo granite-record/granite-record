@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.18 -->
+<!-- GRANITE_VERSION: 2026-09-05.19 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -51,9 +51,16 @@ border-radius:7px;background:var(--paper)}
    view it must not: re-running the search there takes the bill off the screen
    the reader is reading. So the query is held until they say so, and this and
    the Return key are how they say it. */
-#qgo{height:42px;min-width:44px;font-size:15px;border:1px solid var(--edge);
-border-radius:7px;background:var(--surface);cursor:pointer}
-#qgo:hover{border-color:var(--pine);background:var(--wash)}
+/* Inside the box, on the right, drawn as the key that does the same thing.
+   A magnifying glass says "search"; the reader is already in a search box and
+   what they need to know is that Return will run it. */
+.qbox{position:relative;flex:1;display:flex}
+.qbox #q{flex:1;padding-right:46px}
+#qgo{position:absolute;right:4px;top:4px;width:34px;height:34px;font-size:16px;
+line-height:1;border:1px solid transparent;border-radius:6px;background:none;
+color:var(--ink-3);cursor:pointer}
+#qgo:hover{border-color:var(--edge);background:var(--wash);color:var(--pine)}
+#qgo:disabled{opacity:.35;cursor:default}
 .qhint{font-size:12.5px;color:var(--ink-3);margin:7px 2px 0;display:flex;gap:16px;flex-wrap:wrap}
 .link{color:var(--pine);font-size:12.5px}
 .shell{max-width:1180px;margin:0 auto;padding:20px 24px 80px;display:grid;
@@ -94,8 +101,8 @@ text-decoration:none;font-size:15px;color:var(--ink-3);border-radius:6px}
    bare arrow in the corner reads as a link to the one they are on. It leads
    somewhere else -- the standalone page, which needs no JavaScript and has
    its own address -- so there it says so. */
-.detail.named{font-size:12.5px;gap:5px;padding:0 10px;white-space:nowrap;
-border:1px solid var(--rule);background:var(--surface)}
+/* No corner link on the focused view. It pointed at the standalone page for
+   the same bill, which from a reader's seat is the page they are already on. */
 .chead:hover{background:var(--paper)}
 .crow{display:flex;gap:9px;align-items:center}
 .cnum{font-size:14px;font-weight:600;color:var(--pine)}
@@ -298,7 +305,7 @@ color:var(--ink-2);background:var(--wash);border-radius:5px;padding:1px 7px}
 .shell.focused{grid-template-columns:1fr}
 .shell.focused .facets{display:none}
 .card.focus{border-color:var(--rule-2);box-shadow:0 1px 3px rgba(0,0,0,.05)}
-.card.focus .chead{cursor:default;padding-top:46px}
+.card.focus .chead{cursor:default}
 /* The corner link is absolutely positioned, and .chead's 46px of right
    padding was cut to fit a 36px arrow. Named, it is four times that wide and
    sat straight over the status chip -- "Referred for i..." with the rest
@@ -400,9 +407,12 @@ clip:rect(0 0 0 0);white-space:nowrap;border:0}
   <label for="year" style="position:absolute;left:-9999px">Legislative term</label>
   <select id="year" title="Two-year term"></select>
   <label for="q" style="position:absolute;left:-9999px">Search bills</label>
-  <input id="q" type="search" spellcheck="false" autocomplete="off" disabled
-   placeholder="Bill number, key phrase, or several numbers separated by commas">
-  <button id="qgo" type="button" disabled title="Search" aria-label="Search">&#128269;</button>
+  <div class="qbox">
+    <input id="q" type="search" spellcheck="false" autocomplete="off" disabled
+     placeholder="Bill number, key phrase, or several numbers separated by commas">
+    <button id="qgo" type="button" disabled title="Search"
+     aria-label="Search">&#8629;</button>
+  </div>
 </div>
 <div class="qhint"><span id="count">Loading…</span>
 <label for="sort" style="position:absolute;left:-9999px">Sort order</label>
@@ -1632,10 +1642,9 @@ function render(){
       ?`<h2 class="grp">${esc(b.status||"No status recorded")}
          <span>${grpN[b.status||""]}</span></h2>`:""}
     <article class="card ${openCards.has(b.id)?'open':''}${fb?' focus':''}" data-id="${b.id}">
-      <a class="detail${fb?" named":""}" href="bill/${b.year}/${esc(b.id.toLowerCase())}.html"
+      ${fb?"":`<a class="detail" href="bill/${b.year}/${esc(b.id.toLowerCase())}.html"
         title="A standalone page for ${esc(b.n)}: no JavaScript, its own address, everything on one page"
-        aria-label="Open the standalone page for ${esc(b.n)}"
-        >${fb?"Standalone page ":""}&#8599;</a>
+        aria-label="Open the standalone page for ${esc(b.n)}">&#8599;</a>`}
       <button class="chead" aria-expanded="${openCards.has(b.id)}">
         <div class="crow"><span class="cnum">${esc(b.n)}</span>
         <span class="cyear">filed ${b.year}${b.carried
@@ -1823,10 +1832,17 @@ document.addEventListener("input",e=>{
 // what a search box on a list should do.
 function submitSearch(){
   query=$("#q").value;
-  // Back out to the top: the scroll position from before the bill was opened
-  // belongs to a list that is no longer the one on screen.
+  // From a bill's own view, running the search means leaving that bill. Back
+  // out to the top: the scroll position from before it was opened belongs to
+  // a list that is no longer the one on screen.
   if(focused){unfocus(0);return;}
+  // On the list the results have already narrowed as they typed, so there is
+  // nothing to run. Return means they have finished typing: let go of the
+  // keyboard and bring the first result up to where they are looking.
   render();
+  $("#q").blur();
+  const first=$("#results")&&$("#results").querySelector(".card");
+  if(first)first.scrollIntoView({block:"start",behavior:"smooth"});
 }
 $("#q").addEventListener("input",e=>{
   if(focused)return;

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.30
+# GRANITE_VERSION: 2026-09-04.31
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -492,7 +492,7 @@ def _bills_html():
         # can reach, so this one sits outside the card's expand button. What it
         # is called changed once already; anchoring on the tag rather than the
         # wording is what the check is actually about.
-        "detail link outside the button": '<a class="detail',
+        "detail link outside the button": '<a class="detail" href="bill/',
         "page heading": '<h1 class="sr">',
         # A stated boundary is a different claim from an estimate and the
         # page words it differently; the check follows the wording.
@@ -770,21 +770,19 @@ try { scope.render(); } catch (e) {
 const listHtml = document.querySelector("#results").innerHTML;
 
 // The arrow in a card's corner leads to the standalone page -- no JavaScript,
-// its own address. In the search list that is obvious. On the focused view the
-// reader is already reading a detail page, so a bare arrow in the corner reads
-// as a link to the one they are on; there it carries its name instead.
+// its own address. In the search list that is useful. On the focused view it
+// is not drawn at all: the reader is already on a detail page for that bill,
+// and a corner link to another one reads as a link to where they are.
 scope.setFocused("HB1442");
 try { scope.render(); } catch (e) {
   console.log("RENDER focused " + e.constructor.name + ": " + e.message);
   process.exit(1); }
 const focusHtml = document.querySelector("#results").innerHTML;
 scope.setFocused(null);
-if (!/Standalone page/.test(focusHtml)) {
-  console.log("ARROW: on the focused view the link to the standalone page does "
-              + "not say where it goes"); process.exit(1); }
-if (/Standalone page/.test(listHtml)) {
-  console.log("ARROW: the search list labels its arrow, which only belongs on "
-              + "the focused view"); process.exit(1); }
+if (/class="detail"/.test(focusHtml)) {
+  console.log("ARROW: the focused view still draws a corner link. It points at "
+              + "the standalone page for the same bill, which from a reader's "
+              + "seat is the page they are already on"); process.exit(1); }
 if (!/class="detail"/.test(listHtml)) {
   console.log("ARROW: the search list drew no link to a standalone page");
   process.exit(1); }
