@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.13
+# GRANITE_VERSION: 2026-09-05.14
 """
 Generate the faceted site from real General Court data.
 
@@ -1524,12 +1524,30 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # The journals and calendars the docket itself cites. These are the
         # official record of the individual actions, which is a stronger thing
         # to link than a summary of them.
+        # One entry per volume, naming every page of it this bill is on.
+        # add_doc dedupes on the URL, and a volume has one URL however many
+        # pages are cited -- so listing them per event kept whichever page came
+        # first and dropped the rest without a word. 565 of the 7,013 volumes
+        # cited on this site carry a bill on more than one page; HB686 is on
+        # HJ 7 at both 143 and 144, and the list named only 143.
+        vols = {}
         for e in (narr or {}).get("events", []):
             if e.get("cancelled"):
                 continue
             c = _cite(e, sources, (e.get("date") or "")[:4])
-            if c.get("cite_url"):
-                add_doc(c["cite"], c["cite_url"], "record")
+            if not c.get("cite_url"):
+                continue
+            key = (e.get("cite") or "").strip()
+            v = vols.setdefault(key, {"url": c["cite_url"], "pages": []})
+            pg = (e.get("cite_page") or "").strip()
+            if pg and pg not in v["pages"]:
+                v["pages"].append(pg)
+        for key, v in vols.items():
+            pages = sorted(v["pages"], key=lambda x: int(x))
+            label = key + ("" if not pages else
+                           f", page {pages[0]}" if len(pages) == 1 else
+                           ", pages " + ", ".join(pages[:-1]) + " and " + pages[-1])
+            add_doc(label, v["url"], "record")
         # The calendar a committee report was printed in.
         # committee_reports() has already turned each report's calendar into
         # a key and a URL, so this cites what the report itself is citing

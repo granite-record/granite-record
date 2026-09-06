@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.23
+# GRANITE_VERSION: 2026-09-04.24
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1130,6 +1130,18 @@ def _site_fixture(root):
                                # lookup against a string that is never there.
                                "cite": "HJ 7", "cite_page": "55",
                                "raw": "Ought to Pass: MA RC 214-119 03/06/2026"},
+                              # The same volume, a different page. Documents
+                              # dedupes on the URL, and a volume has one URL
+                              # however many pages are cited, so listing them
+                              # per event kept the first page and dropped the
+                              # rest silently -- 499 entries on the real site.
+                              {"date": "2026-03-06", "type": "amendment",
+                               "body": "H", "cancelled": False,
+                               "amendment": "2026-0503h", "amend_kind":
+                               "Committee Amendment", "motion": "AA",
+                               "vote_kind": "VV", "mover": "",
+                               "cite": "HJ 7", "cite_page": "56",
+                               "raw": "Amendment # 2026-0503h: AA VV 03/06/2026"},
                               # A committee report as the docket records it,
                               # with no calendar prose behind it. This is the
                               # Senate's whole shape -- one report, a vote, no
@@ -1393,6 +1405,12 @@ def _chain_output():
         lg = json.loads((s / "legislators.json").read_text(encoding="utf-8"))
         checks = [
             (len(hb.get("documents", [])) >= 4, "the Documents tab is empty"),
+            # Every page of a volume this bill is on, not whichever came first.
+            (any(d["label"] == "HJ 7, pages 55 and 56"
+                 for d in hb.get("documents", [])),
+             "the journal entry names one page and drops the others: "
+             + repr([d["label"] for d in hb.get("documents", [])
+                     if d.get("kind") == "record"])),
             (hb["stations"][0].get("start_stated") is True,
              "a stated boundary did not reach the station"),
             (hb["stations"][0].get("tolerance") == 30, "the tolerance was not carried"),
