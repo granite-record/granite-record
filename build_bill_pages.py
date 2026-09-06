@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.26
+# GRANITE_VERSION: 2026-09-04.27
 """
 Write a real HTML page for every bill.
 
@@ -359,12 +359,24 @@ def page(b, d, generated):
             line += f' at {E(s["time"])}'
         what = " ".join(x for x in [s.get("committee"), s.get("what")] if x)
         link = ""
-        if s.get("state") == "located" and s.get("start") is not None:
+        # "stated" is "located" with the boundary in the chair's own words.
+        # These pages tested only "located", so the 3,829 best-evidenced
+        # proceedings on the site showed "start time not identified yet" on
+        # the page a search engine indexes and a shared link lands on.
+        if s.get("state") in ("located", "stated") and s.get("start") is not None:
             span = (f'{hms(s["start"])}\u2013{hms(s["end"])}'
                     if s.get("end") and s["end"] > s["start"]
                     else f'from {hms(s["start"])}')
-            mins = (f', about {round((s["end"] - s["start"]) / 60)} min'
-                    if s.get("end") and s["end"] > s["start"] else "")
+            # Guard on the seconds. round() on a sub-30-second span gives 0,
+            # and "about 0 min" beside a real range reads as broken.
+            _span = (s["end"] - s["start"]) if (s.get("end")
+                     and s["end"] > s["start"]) else 0
+            # Decide on the rounded value, not on a threshold: a 30-second
+            # span is >= 30 but round(0.5) is 0 under banker's rounding, so a
+            # seconds threshold still printed "about 0 min".
+            _m = round(_span / 60)
+            mins = (f', about {_m} min' if _m >= 1
+                    else (f', about {round(_span)} sec' if _span > 0 else ""))
             # "(estimated)" is wrong on a span whose start the chair announced.
             # The tolerance says everything the reader needs; where it came
             # from is a methodology question, not a caption.
@@ -374,10 +386,28 @@ def page(b, d, generated):
             link = (f' <a href="https://www.youtube.com/watch?v={E(s["video_id"])}'
                     f'&t={int(s["start"])}s" rel="noopener">recording {span}</a>'
                     f'{mins} ({prov})')
-        elif s.get("state") == "floor_precise" and s.get("debate_end"):
+        elif (s.get("state") in ("floor_precise", "floor_stated")
+              and s.get("debate_end")):
+            # Where the clerk took it up, if that was heard; the window is
+            # the previous bill's roll call and can be half an hour earlier.
+            _at = (int(s["debate_start"]) if s.get("debate_start") is not None
+                   else max(int(s.get("window_start") or 0) - 60, 0))
             link = (f' <a href="https://www.youtube.com/watch?v={E(s["video_id"])}'
-                    f'&t={max(int(s.get("window_start") or 0) - 60, 0)}s"'
-                    f' rel="noopener">floor recording</a>')
+                    f'&t={_at}s" rel="noopener">floor recording</a>')
+        elif s.get("state") == "floor_dated" and s.get("debate_start") is not None:
+            # A voice or division vote leaves no roll call to time the end, but
+            # the clerk still opened the item and the marker pass heard it.
+            link = (f' <a href="https://www.youtube.com/watch?v={E(s["video_id"])}'
+                    f'&t={int(s["debate_start"])}s" rel="noopener">floor'
+                    f' recording from {hms(s["debate_start"])}</a>'
+                    " — no roll call to time the end")
+        elif s.get("state") == "consent":
+            # Nothing to find. Telling a reader to scrub a nine-hour session for
+            # a bill that was adopted in a block and never read out sends them
+            # looking for something that is not in the recording.
+            link = (f' <a href="https://www.youtube.com/watch?v={E(s["video_id"])}"'
+                    " rel=\"noopener\">the session</a> — adopted with the consent"
+                    " block, so it was never taken up separately")
         elif s.get("video_id"):
             # The recording is offered whether or not its timestamp is known.
             # Pinning down start times is ongoing work, and a proceeding with a
@@ -641,7 +671,7 @@ still here and the start time is work in progress.</p>
 <ul class="tl">{hearings or '<li>No proceedings on file.</li>'}</ul></section>
 
 <section id="reports"><h2>Committee reports</h2>
-{reports or '<p class="src">No committee report on file. Majority and minority reports are printed in the House Calendar rather than the docket.</p>'}</section>
+{reports or '<p class="src">No committee report on file. House majority and minority reports are printed in the House Calendar rather than the docket, and are added as calendars are processed. Senate reports use a different format and are not loaded yet.</p>'}</section>
 
 <section id="amendments"><h2>Amendments</h2>
 {amend_block}</section>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.8 -->
+<!-- GRANITE_VERSION: 2026-09-05.9 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -899,9 +899,14 @@ function fullRecord(bid,i,rc){
 const AVK={VV:"voice vote",DV:"division vote",RC:"roll call"};
 const CHNAME={H:"Representatives",S:"Senators"};
 const hms=x=>new Date(x*1000).toISOString().substr(11,8);
-// "0:02:00" or "-0:05:00" as the manifest writes it.
-const secs=v=>{const m=/^(-?)(\d+):(\d{2}):(\d{2})$/.exec(String(v||""));
-  return m?(m[1]?-1:1)*(+m[2]*3600+ +m[3]*60+ +m[4]):0;};
+// "0:02:00" or "-0:05:00" as the manifest wrote it -- and a plain number of
+// seconds, which is what actually arrives now. build_proceedings.py runs the
+// manifest string through as_seconds() and build_site_v2 writes the float, so
+// String(2646) matched nothing here and every estimate collapsed to zero.
+const secs=v=>{if(typeof v==="number")return v;
+  const m=/^(-?)(\d+):(\d{2}):(\d{2})$/.exec(String(v||""));
+  if(m)return (m[1]?-1:1)*(+m[2]*3600+ +m[3]*60+ +m[4]);
+  const n=parseFloat(v); return isFinite(n)?n:0;};
 // The bill's own shape: a numbered section opens a block, and everything
 // under it belongs to that section. Set as one paragraph it is unreadable,
 // and anyone used to the printed version loses their footing entirely.
@@ -996,20 +1001,30 @@ function renderVotes(b,d){
 }
 
 function renderHearings(b,d){
-  return (d.stations||[]).length?d.stations.map(s=>{
+  // si, because the pid was built from the video and the timestamp, so two
+  // proceedings on the same recording resolving to the same second shared one
+  // -- and the seek handler resolves a pid with querySelector, which returns
+  // the first match. Pressing a timestamp under the second player moved the
+  // first. 238 stations.
+  return (d.stations||[]).length?d.stations.map((s,si)=>{
     let inner;
+    // Whether this station ends up pointing at a moment. It was a list of
+    // state strings kept in a second place, which is how "stated" came to be
+    // marked pending while an estimate was marked done.
+    let placed=false;
     // A recording we have is a recording the reader can watch, whether or not
     // we can say where in it the bill is. Pinning down start times is ongoing
     // work; sending somebody to YouTube in the meantime is a worse answer than
     // handing them the tape and saying so.
     const player=(from,stub,note)=>{
-      const pid=`${esc(s.video_id)}_${Math.max(0,Math.floor(from))}`;
+      const pid=`${esc(s.video_id)}_${si}_${Math.max(0,Math.floor(from))}`;
       return `<div class="player" data-player="${pid}">
         <button type="button" class="pstub"
           data-embed="${esc(s.video_id)}|${Math.max(0,Math.floor(from))}|${pid}"
           ><span>\u25B6</span><span>${stub}</span></button>
         <div class="pbar">
-          <a href="${esc(s.watch||('https://www.youtube.com/watch?v='+s.video_id))}"
+          <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}&t=${
+             Math.max(0,Math.floor(from))}s"
              target="_blank" rel="noopener">Open on YouTube</a>
           <span class="tolnote">${note}</span></div></div>`;};
     // "stated" is "located" with the boundary in the chair's own words. It
@@ -1043,15 +1058,25 @@ function renderHearings(b,d){
       const tolnote=s.start_stated
         ? `the chair opens it at ${hms(s.start)}`
         : `estimated within \u00b1${Math.max(1,Math.round(tol/60))} min`;
-      const pid=`${esc(s.video_id)}_${Math.floor(s.start)}`;
-      const dur=s.end&&s.end>s.start
-        ? `${Math.round((s.end-s.start)/60)} min` : "";
+      placed=true;
+      const pid=`${esc(s.video_id)}_${si}_${Math.floor(s.start)}`;
+      // Guard on the seconds, not on the rounded string: "0 min" is
+      // truthy, so a twenty-second segment printed "about 0 min" beside a
+      // range that showed a real span.
+      const span=(s.end&&s.end>s.start)?s.end-s.start:0;
+      const mins=Math.round(span/60);
+      const dur=mins>=1?`${mins} min`:(span>0?`${Math.round(span)} sec`:"");
       const range=s.end&&s.end>s.start
         ? `${hms(s.start)}\u2013${hms(s.end)}` : `from ${hms(s.start)}`;
       inner=`<div class="player" data-player="${pid}">
         <button type="button" class="pstub" data-embed="${esc(s.video_id)}|${from}|${pid}">
           <span>▶</span><span>Play ${esc(s.what)} on this bill — ${range}${
-            dur?`, about ${dur}`:""}</span></button>
+            dur?`, about ${dur}`:""}${
+            // The button names the bill's span; the player opens before it
+            // so nobody arrives late. Five seconds needs no explanation,
+            // five minutes does -- and the button said neither.
+            lead>=30?`, opening ${Math.round(lead/60)} min early`:""
+            }</span></button>
         <div class="pbar">
           <button class="jump" data-seek="${pid}|${from}">${hms(from)} open player</button>
           <button class="jump" data-seek="${pid}|${Math.floor(s.start)}">${hms(s.start)} bill starts</button>
@@ -1085,7 +1110,8 @@ function renderHearings(b,d){
     else if(s.state==="whole_video"){
       // The recording covers exactly this bill, so it plays from the start and
       // there is nothing to estimate.
-      const pid=`${esc(s.video_id)}_w`;
+      placed=true;
+      const pid=`${esc(s.video_id)}_${si}_w`;
       inner=`<div class="player" data-player="${pid}">
         <button type="button" class="pstub" data-embed="${esc(s.video_id)}|0|${pid}">
           <span>&#9654;</span><span>Play the whole recording &mdash; it covers this
@@ -1129,8 +1155,14 @@ function renderHearings(b,d){
       // the end: "timed to the second" is true of a roll call clock and false
       // of a caption line, and the difference is the whole point of the
       // wording on this site.
+      placed=true;
       const voted=s.state==="floor_precise";
-      const ws=Math.max(Math.floor(s.window_start||0),0);
+      // Guard on the field, not the coerced value. `||0` turned a missing
+      // window into a button reading "00:00:00 window opens" that seeked to
+      // the gavel-in -- the absence of data printed as a timestamp. A
+      // window_start of exactly 0 is real for the first roll call of a
+      // session, so the test has to be against null, not against zero.
+      const ws=s.window_start!=null?Math.max(Math.floor(s.window_start),0):null;
       // One number, shown and used. The header said debate_start while the
       // player seeked to debate_start-15 and the jump buttons showed two other
       // values again -- four numbers for one moment, and a reader has no way
@@ -1138,7 +1170,7 @@ function renderHearings(b,d){
       const from=s.debate_start!=null
         ? Math.max(Math.floor(s.debate_start),0)
         : Math.max(ws,Math.floor(s.debate_end)-600);
-      const pid=`${esc(s.video_id)}_f${Math.floor(s.debate_end)}`;
+      const pid=`${esc(s.video_id)}_${si}_f${Math.floor(s.debate_end)}`;
       inner=`<div class="player" data-player="${pid}">
         <button type="button" class="pstub" data-embed="${esc(s.video_id)}|${from}|${pid}">
           <span>▶</span><span>${s.debate_start!=null
@@ -1146,7 +1178,7 @@ function renderHearings(b,d){
             : `Play the floor session from ${hms(from)}`} — debate on
           this bill ends at ${hms(s.debate_end)}</span></button>
         <div class="pbar">
-          ${ws<from?`<button class="jump" data-seek="${pid}|${ws}">${
+          ${ws!=null&&ws<from?`<button class="jump" data-seek="${pid}|${ws}">${
             hms(ws)} window opens</button>`:""}
           <button class="jump" data-seek="${pid}|${Math.floor(s.debate_end)}">
             ${hms(s.debate_end)} ${voted?"the vote":"ends"}</button>
@@ -1161,6 +1193,20 @@ function renderHearings(b,d){
         ${(s.motions||[]).length?`<div class="pbar" style="border-top:none">
           <span style="color:var(--ink-3)">Motions: ${s.motions.map(esc).join(" · ")}</span>
           </div>`:""}</div>`;
+    }
+    // A voice or division vote leaves no roll call to time the end, but the
+    // clerk still opened the item and segment_markers still heard it. 393 of
+    // these carried debate_start and were being told they had no moment. Its
+    // own arm rather than the branch above, which dereferences debate_end in
+    // three places and would print "ends at 00:00:00".
+    else if(s.state==="floor_dated"&&s.debate_start!=null){
+      placed=true;
+      const from=Math.max(Math.floor(s.debate_start),0);
+      inner=player(from,
+        `Play from ${hms(from)}, where the clerk takes it up`,
+        "the clerk takes it up here; no roll call to time the end")
+        +`<p class="note" style="margin-top:8px">A voice or division vote leaves
+        no timestamp for the end, so this points at the opening only.</p>`;
     }
     else if(s.state==="floor_dated")inner=player(0,
       "Play the floor session \u2014 this bill was taken up that day",
@@ -1180,8 +1226,11 @@ function renderHearings(b,d){
       +`<p class="note" style="margin-top:8px">This proceeding has a recording but
       no timestamp yet. That work is ongoing.</p>`;
     else inner=`<div class="vbox"><p>No recording matched to this proceeding.</p></div>`;
-    return `<div class="stn ${["located","approximate","floor_precise","floor_dated",
-      "whole_video"].includes(s.state)?"done":"pend"}">
+    // Was a second list of state strings, which never gained "stated" or
+    // "floor_stated" -- so the site's best-evidenced proceedings wore the
+    // pending dot while an unlocated estimate wore the finished one. It now
+    // follows the branch that actually ran.
+    return `<div class="stn ${placed?"done":"pend"}">
       <div class="w">${esc(s.when)}${s.time?" at "+esc(s.time):""}${s.venue?" · "+esc(s.venue):""}</div>
       <div class="t">${esc(s.committee||"")} ${esc(s.what)}</div>${inner}</div>`;}).join("")
     :`<p class="note">No scheduled proceedings on file.</p>`;

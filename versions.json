@@ -2,9 +2,9 @@
   "files": {
     "align_all.py": "2026-09-04.1",
     "apply_markers.py": "2026-09-04.8",
-    "bills.html": "2026-09-05.8",
+    "bills.html": "2026-09-05.9",
     "build_all.py": "2026-09-05.3",
-    "build_bill_pages.py": "2026-09-04.26",
+    "build_bill_pages.py": "2026-09-04.27",
     "build_data.py": "2026-09-04.2",
     "build_feeds.py": "2026-09-04.4",
     "build_floor_index.py": "2026-09-04.1",
