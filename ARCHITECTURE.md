@@ -122,20 +122,38 @@ fetched the 2026 one's record and showed it under the 2023 heading.
 **The 2023-2024 term is live**, which is the proof this all worked: 4,230 bills
 across two terms, and no per-bill file of one term reachable from the other.
 
-Two are left: `bill_text.json` and `bill_status.json`. Both have writers that
-need the network. That is the whole reason they are still here -- reshaping one
-without regenerating it leaves the site unbuildable, and regenerating means a
-fetch. Do them when a fetch for the current term is happening anyway. `build_feeds.py` contains no notion of a term at all, and is a
-quarter of the site by file count. Run any fetch for 2024 and its HB 396 merges
-into 2026's. Today's merge guard keys on the year in a source line, which stops
-one year overwriting another but cannot stop two different bills sharing a key.
+`bill_text.json` and `bill_status.json` are done, 7 September, and they closed
+the gate. Both were held back because their writers need the network and
+reshaping one without regenerating it leaves the site unbuildable. That turned
+out to be the wrong way round: the writers could be taught the term first and
+the files migrated in place, with the readers tolerating either shape, so no
+fetch was needed at all. The whole site rebuilt byte-identical.
 
-This is the gate on the archive. Nothing archival can be fetched until keys
-carry a term, and the calendars back to 1997 are two requests a year away.
+The general shape is now in `proceedings.py`, so the next file to convert is
+half a dozen lines rather than a judgement call each time:
 
-**Fix: `(term, bill)` everywhere.** `setup_archive.py` and `probe_archive.py`
-already sketch this. Today's year-keyed journal and calendar citations were
-part of the same job without my recognising it.
+- `per_term(data, term, current)` reads one term and tolerates the flat shape,
+  handing an archived term **nothing** out of a file that has not been
+  converted -- the wrong term's sponsors being worse than none.
+- `in_term(data, current_term)` is its counterpart for a writer, so a run over
+  one term keeps every other. This is the failure that cost the manifest its
+  hand-marked times twice, and `--reparse` is where it hides: rebuilding from
+  a cache that holds one term's pages must not delete the terms it cannot
+  rebuild.
+
+`preflight` holds both directions: an archived bill must read its own term's
+status and text, and must not read the current term's. A lookup that ignores
+the term passes the first half by accident, which is why the check asserts the
+second.
+
+**Still flat: `testimony.json` and `sponsors.json`.** Both are read through the
+`own` guard in `build_site_v2`, so an archived bill gets nothing from them,
+which is correct but is also why an archived bill has no sponsors on the page.
+Converting them is what the 2023-2024 fill needs next.
+
+**Fix, for what is left: `(term, bill)` everywhere.** `setup_archive.py` and
+`probe_archive.py` already sketch this. The year-keyed journal and calendar
+citations were part of the same job without my recognising it.
 
 ### 4. The deployment has a file cap, and the archive hits it at five terms
 
@@ -156,13 +174,38 @@ It is still the constraint on the archive as a whole -- nineteen terms back to
 1989 is not reachable one file per bill by any arrangement -- so the decision
 below stands. It is just not urgent until a third archived term is wanted.
 
-Cloudflare Pages allows 20,000 files. The site is at 8,045 for a single term.
-It is three files per bill, not two -- `bill/` 2,234, `bills/` 2,234 and
-`feed/bill/` 2,233 -- which is 6,701 a term, so the cap breaks partway through
-the THIRD term regardless of anything else. This needs deciding before any
-archive work,
-because it changes the shape of what gets built: either older terms get no
-static page each, or per-bill data moves to R2 with a Worker in front of it.
+The one-term estimate this section used to carry -- 8,045 files, 6,701 a term,
+the cap breaking partway through the third -- was made before a second term
+existed and is superseded by the measurement above. It was wrong in the
+direction that matters: it counted a per-bill RSS feed for every term, and an
+archived term has none.
+
+What has not changed is that the cap is real for the archive as a whole.
+Nineteen terms back to 1989, at two files a bill, is roughly 76,000 files. The
+options are the same three:
+
+1. **Fewer static pages for older terms.** Dropping `bill/<year>/<id>.html`
+   for archived terms halves the cost to ~2,000 a term and buys about eight
+   terms. It costs those bills their own indexable address, which is the
+   entire reason those pages exist.
+2. **One file per term rather than per bill**, read by the search page.
+   Roughly ten files a term, so every term ever fits. Archived bills then have
+   no address of their own at all, and the reader downloads a term to read one
+   bill.
+3. **Per-bill data in R2 behind a Worker.** No cap, at the cost of the
+   constraint the whole site is built on: files on a CDN, no runtime.
+
+A fourth looked promising and is not: **a page only for bills that were
+actually taken up.** Measured on the current term, where the record is
+complete, **2,220 of 2,234 bills have a hearing on the record -- 99.4%**, and
+2,144 have a roll call. New Hampshire gives every bill a public hearing, so
+"the ones anybody acted on" is very nearly all of them and this saves nothing.
+Worth writing down because it is the option that sounds best before it is
+measured: on the 2023-2024 term it looks like a 79% saving, but only because
+that term's hearings have not been fetched yet and 416 roll calls are all the
+site currently knows about. Selecting on what has been *fetched* rather than on
+what *happened* would have been a rule that tightened every time the data got
+better.
 
 ### 5. Two thousand-line functions where declaration order is load-bearing
 
