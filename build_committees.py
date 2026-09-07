@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.8
+# GRANITE_VERSION: 2026-09-07.9
 """
 A page's worth of data for every committee.
 
@@ -145,8 +145,13 @@ def narrate(name, chamber, date, items, reports):
     out = []
     first = kinds[0]
     bills = andlist(spaced(i["n"] or i["bill"]) for i in by_kind[first])
-    noun = PLURAL[first] if len(by_kind[first]) > 1 and first in PLURAL else first
-    out.append(f"{who} met on {fdate(date)} for {noun} on {bills}.")
+    many = len(by_kind[first]) > 1
+    noun = PLURAL[first] if many and first in PLURAL else first
+    # "met on April 30, 2026 for public hearing on SB 624-FN" -- the singular
+    # needs its article. 248 sitting days of the current term read that way,
+    # which is the site speaking in its own voice and getting it wrong.
+    art = "" if many else ("an " if noun[:1] in "aeiou" else "a ")
+    out.append(f"{who} met on {fdate(date)} for {art}{noun} on {bills}.")
 
     for k in kinds[1:]:
         bs = andlist(spaced(i["n"] or i["bill"]) for i in by_kind[k])
