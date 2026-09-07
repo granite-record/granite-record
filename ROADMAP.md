@@ -118,17 +118,39 @@ Not started. The counts that make it worth having landed on 6 September:
 
 These are in flight or next, and most other work is easier after them.
 
-**Split `build_site_v2.main`.** `renderDetail` is done — split 6 September
-into nine hoisted functions, one per tab, output verified byte-identical
-against the pre-split page over ten renders covering every station state.
-`build_site_v2.main` remains. The failure mode was a blank page for someone
-arriving from a shared link, the worst possible one for a site you are about
-to publicise.
+**Done, 7 September** — recorded here because the list below assumed they were
+outstanding:
 
-**Finish the timestamp work.** Coverage is at 66% of proceedings actually
-taken up. `--gaps` and `--phrases` still have room, floor ends are only
-partly precise, and committees of conference are not properly modelled.
-Everything on the site that points at a recording depends on this.
+- **Term keying is finished.** `bill_status.json`, `bill_text.json` and
+  `data/sponsors.json` were the last three flat per-bill files. Only
+  `testimony.json` is left and it is superseded by `testimony_db.json`, which
+  is keyed already. A search for a prime sponsor works before 2025 as a
+  result: 1,865 of the 1,996 bills of 2023-2024 carry one.
+- **The second renderer is gone.** `build_bill_pages.py` was 909 lines drawing
+  every bill again in Python; it is 259 and draws nothing. A bill's page is
+  `bills.html` with one bill open, so the two views cannot disagree. The site
+  went from 290.8 MB to 189.2 MB at the same file count.
+- **Every voter in the 2023-2024 roll calls is named and has a party**, bar
+  two. It was 63,065 votes without one, 32% of the term.
+
+**Split `build_site_v2.main`.** Still outstanding, and now the only one of the
+three left: `renderDetail` was split on 6 September and `build_bill_pages.py`
+was deleted rather than split on the 7th. The failure mode was a blank page for
+someone arriving from a shared link, the worst possible one for a site you are
+about to publicise.
+
+**Finish the timestamp work.** Measured 7 September: of 10,810 proceedings,
+4,994 carry a boundary the chair or clerk said out loud, 209 a roll call's own
+clock time, and 1,427 an inferred start shown as *approximate*. 4,180 carry no
+time — 2,522 of those passed on a consent calendar and were never taken up
+separately, 1,068 have no recording, and 590 are floor actions the site can
+date but not place. Against the 35 hand-timed proceedings: 19 placed, median
+out by one second, worst 5m 47s.
+
+The Whisper run for the 19 recordings with no captions finished on the 7th and
+those have not been through the marker pass yet, so the next gain is free.
+`--gaps` still has room, floor ends are only partly precise, and committees of
+conference are not properly modelled.
 
 ---
 
@@ -164,6 +186,16 @@ function that is being taken apart.
 ---
 
 ## Then: the archive, re-planned on what the database actually holds
+
+**Two things settled on 7 September, before this section's reasoning.** The
+file cap is payable — a Cloudflare paid plan raises it from 20,000 to 100,000,
+which fits every term the database can supply with room over. And
+`probe_archive_shape.py` sampled a couple of bills from each session year back
+to 1989: the status pages serve 1989 in the same shape as 2026, but **sponsors
+are absent before the mid-2000s** and are not available from the database or
+the LSR files either. So the constraint on how far back a term is worth
+publishing as full records is sponsor data, not disk. ARCHITECTURE.md has the
+measurements.
 
 Settled 6 September by querying the General Court's own SQL Server, whose
 read-only credentials are published at gc.nh.gov/downloads. It exposes 28

@@ -146,10 +146,24 @@ status and text, and must not read the current term's. A lookup that ignores
 the term passes the first half by accident, which is why the check asserts the
 second.
 
-**Still flat: `testimony.json` and `sponsors.json`.** Both are read through the
-`own` guard in `build_site_v2`, so an archived bill gets nothing from them,
-which is correct but is also why an archived bill has no sponsors on the page.
-Converting them is what the 2023-2024 fill needs next.
+`data/sponsors.json` is done as well, 7 September, and with it a search for a
+prime sponsor works before 2025: 1,865 of the 1,996 bills of 2023-2024 carry
+one. An archived term's sponsors come from that term's slice of
+`bill_status.json`, which is why this had to wait for that file.
+
+The first attempt at the split was the bug the keying exists to prevent, which
+is worth keeping written down. It built a bill -> term map from
+`data/bills.json` and divided the flat dict with it -- but a bill number is in
+more than one term, so every repeated number took whichever term the loop
+reached last. 1,849 of 2,220 bills' sponsors landed under 2023-2024, read out
+of the 2025-2026 files, and **the site still built byte-identical**, because
+`build_site_v2` then found nothing for the current term and drew no sponsors
+rather than wrong ones. Silence again. `preflight` now asserts that the term
+whose own files were read has sponsors on more than 75% of its bills.
+
+**Still flat: `testimony.json`**, and it is superseded by `testimony_db.json`,
+which is keyed on the term already. It is read through the `own` guard in
+`build_site_v2`, so an archived bill gets nothing from it.
 
 **Fix, for what is left: `(term, bill)` everywhere.** `setup_archive.py` and
 `probe_archive.py` already sketch this. The year-keyed journal and calendar
@@ -195,6 +209,23 @@ options are the same three:
 3. **Per-bill data in R2 behind a Worker.** No cap, at the cost of the
    constraint the whole site is built on: files on a CDN, no runtime.
 
+**Settled 7 September: pay Cloudflare instead.** A paid plan raises the limit
+from 20,000 files to 100,000 -- "Paid plans (such as Pro, Business, and
+Enterprise plans) can have up to 100,000 files per site", which needs the
+environment variable `PAGES_WRANGLER_MAJOR_VERSION=4` set in the Pages project.
+It is the Pro *zone* plan, not Workers Paid; several people have reported the
+20,000 limit still enforced after upgrading the latter, which is the trap.
+
+The arithmetic, at 3,992 files per archived term and 8,021 for the shell plus
+the current term: 20,000 buys three archived terms and reaches back to
+2018-2019; 100,000 buys twenty-three and reaches back to 1978-1979. Every term
+the General Court's database can supply -- 1989 to 2026, nineteen terms -- is
+**83,869 files with 16,131 to spare.** So the cap stops being the constraint,
+and options 1 to 3 above stop being forced choices.
+
+What replaces it as the constraint is **data**, not files. See the section on
+what a year's page actually carries, below.
+
 A fourth looked promising and is not: **a page only for bills that were
 actually taken up.** Measured on the current term, where the record is
 complete, **2,220 of 2,234 bills have a hearing on the record -- 99.4%**, and
@@ -208,6 +239,22 @@ what *happened* would have been a rule that tightened every time the data got
 better.
 
 ### 5. Two thousand-line functions where declaration order is load-bearing
+
+**One of the three is gone rather than split.** `build_bill_pages.py` was 909
+lines rendering every bill a second time in Python, beside `app.js` rendering
+the same bill from the same JSON in the browser. It is 259 lines now and
+renders nothing: a bill's page is `bills.html` with one bill open. That is why
+a bill reached from a legislator page used to look unlike the one you had been
+reading, and why a fix to one view never reached the other.
+
+The audit before deleting it is the part worth keeping. `app.js` read neither
+`d.notes` nor `d.facts`, so the swap would have silently removed the
+explanatory notes from **2,065 of 4,230 bills** and the "On the record" status
+table from **all 4,230**. Both are in `renderSummary` now. A refactor that
+deletes a renderer has to be preceded by an inventory of what only that
+renderer drew, and reading the two files side by side is not enough -- the
+notes were invisible because nothing in `app.js` mentions the word.
+
 
 `renderDetail` in `bills.html` is 472 lines and one function, with 26 `const`
 declarations. Three times today a template literal read one of them before its
@@ -333,6 +380,68 @@ So:
 That last point is the one that changes the plan: the archive is not "one query
 per term". A term before 2025 can have its votes and its docket cheaply, and
 needs another source for what a bill is called and who filed it.
+
+---
+
+## What a year's page actually carries, measured 7 September
+
+`probe_archive_shape.py` takes a couple of bills per session year, fetches each
+one's status page once into `archive_samples/`, and reports what
+`fetch_bill_status.parse()` -- the parser that will actually run -- gets out of
+it. Eighty requests, and it settles the questions that decide the build.
+
+- **`Bill_status.aspx` serves a 1989 bill**, in the same shape as a 2026 one:
+  title, LSR, body, both chamber statuses, committee, dates, chapter and the
+  local-government flag. The archive is reachable.
+- **Sponsors are the exception, and they are the finding that matters.** 8 of
+  8 bills sampled from 1989 carry none; 1992 and 1995 carry one each across
+  seven and six bills. They become reliable only in the mid-2000s. Neither the
+  database's `Sponsors` table nor the LSR files go back either -- both are the
+  current session only. So an early term published at current depth shows
+  bills with nobody's name on them.
+- **Bill text links appear from 2016.** Before that, "Bill Text" and "Bill
+  Docket" are ASP.NET postbacks with no address to link.
+
+Two cautions about the method, both learned the hard way. The first version
+matched its own regexes and reported that no year carries sponsors, *including
+2026*, whose pages had yielded 1,865 bills' sponsors an hour earlier -- a
+confident, tabulated, wrong answer. And two bills a year cannot tell "the field
+does not exist" from "this bill never reached the Senate", so the year-to-year
+flicker in that table is sample noise; the sponsor question only became an
+answer when four years were widened to seven or eight bills each.
+
+**The consequence for the archive:** the file cap is payable, but sponsor data
+is not purchasable. How far back a term is worth publishing as full records
+rather than cards is set by the mid-2000s, not by 1989.
+
+---
+
+## Members the record cannot name
+
+Three members of the 2023-2024 House cast 1,470 votes and have **no row in the
+General Court's `legislators` table**, so no SELECT names them. The roll call
+files identify a voter by Employeeno and the roster's PersonID is joined in on
+it; that join comes back empty, and until 7 September `build_data` wrote all
+three with a blank id, putting three people's votes in one row of the grid.
+
+`resolve_members.py` deduces a name where the database cannot: the roll call
+page gives the NAMES who voted a certain way, the history file gives the IDS,
+and removing everyone already identified leaves two sets that must be the same
+people. It named one of the three. The other two over-constrain to nothing,
+because the page and the history disagree by a few members on each roll call.
+
+This will recur through the archive, so the general fixes matter more than the
+two members: it reads an archived year's roll call files, it no longer skips a
+blank PersonID, and "already known" now includes the 675 members in
+`former_members.json` rather than the sitting roster alone.
+
+**A separate limitation, not yet fixed.** The site stores **one party per
+person, not per term**, and applies it to every vote they ever cast. A member
+who changed party is shown under their current one on votes from when they sat
+with the other. Zero members show two party letters anywhere in the record, and
+that is the symptom rather than the reassurance. The General Court's
+`legislators` table has a single party column too, so this needs a per-term
+source that has not been found.
 
 ---
 
