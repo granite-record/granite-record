@@ -12,7 +12,7 @@
     "build_manifest.py": "2026-09-05.4",
     "build_pages.py": "2026-09-04.14",
     "build_proceedings.py": "2026-09-05.2",
-    "build_site_v2.py": "2026-09-05.30",
+    "build_site_v2.py": "2026-09-05.31",
     "check_live.py": "2026-09-04.10",
     "check_site.py": "2026-09-04.2",
     "docket_parser.py": "2026-09-04.3",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.30
+# GRANITE_VERSION: 2026-09-05.31
 """
 Generate the faceted site from real General Court data.
 
@@ -1235,12 +1235,30 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
               '"Member #id" in roll calls:')
         print("  " + ", ".join(sorted(unnamed)[:12])
               + (" ..." if len(unnamed) > 12 else ""))
-        print("  resolve_members.py looks these up and writes "
-              "former_members.json in")
-        print("  the project root, which build_data.py reads on its second "
-              "pass. If that")
-        print("  file exists and these are still unnamed, build_data ran "
-              "before it did.")
+        # A six-digit id is an Employeeno that build_data fell back to because
+        # the legislators table has no row for that person -- not a PersonID
+        # nobody has looked up yet. fetch_members_db.py has already read every
+        # inactive legislator the database holds, so re-running it will not
+        # name these; the General Court's own roster does not carry them.
+        #
+        # resolve_members.py could, in principle: rc_yeahnay.aspx lists the
+        # names who voted each way, and the leftovers after removing everyone
+        # identified must be these people. It reads the current session's
+        # RollCallHistory.txt only, and skips a blank id outright, so it needs
+        # both of those changed first. Three members of the 2023-2024 House,
+        # 1,470 votes, is what that would buy.
+        orphans = [u for u in unnamed if u.isdigit() and len(u) >= 6]
+        if orphans:
+            print(f"  {len(orphans)} of these are an Employeeno, used because "
+                  "the legislators table")
+            print("  has no row for them at all. fetch_members_db.py has read "
+                  "every inactive")
+            print("  member it holds, so it will not name them; only "
+                  "rc_yeahnay.aspx would.")
+        if len(orphans) < len(unnamed):
+            print("  The rest are PersonIDs: run fetch_members_db.py, which "
+                  "writes")
+            print("  former_members.json, then build_data.py, which reads it.")
     (out / "legislators.json").write_text(json.dumps(lg), encoding="utf-8")
     (out / "towns.json").write_text(json.dumps(towns), encoding="utf-8")
     print(f"{len(lg):,} legislator pages, {len(towns):,} towns")
