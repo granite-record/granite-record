@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.17
+# GRANITE_VERSION: 2026-09-04.18
 """
 The text of each bill, as text rather than as a link to a PDF.
 
@@ -55,6 +55,7 @@ rather than in another one.
 
 import argparse
 import json
+import proceedings as P
 import random
 import re
 from collections import Counter
@@ -729,7 +730,10 @@ def main():
 
     st = json.loads(Path(a.status).read_text(encoding="utf-8")) \
         if Path(a.status).exists() else {}
-    bills = json.loads((Path(a.data) / "bills.json").read_text(encoding="utf-8")) \
+    # bills.json is {term: {bill: record}} now; this fetches the current
+    # session, which is for_term's default.
+    bills = P.for_term(json.loads(
+        (Path(a.data) / "bills.json").read_text(encoding="utf-8"))) \
         if (Path(a.data) / "bills.json").exists() else {}
 
     if a.embed_check:

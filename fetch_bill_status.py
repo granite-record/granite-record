@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Fetch the bill STATUS page for bills the current-session files no longer cover.
 
@@ -29,6 +29,7 @@ session can be tied to a person rather than left as a name.
 
 import argparse
 import json
+import proceedings as P
 import re
 import time
 import urllib.error
@@ -317,7 +318,10 @@ def main():
                     help="only bills lacking a title or sponsors, the old default")
     a = ap.parse_args()
 
-    bills = json.loads((Path(a.data) / "bills.json").read_text(encoding="utf-8"))
+    # bills.json is {term: {bill: record}}; this fetches the current session,
+    # which is for_term's default.
+    bills = P.for_term(json.loads(
+        (Path(a.data) / "bills.json").read_text(encoding="utf-8")))
     sponsors_now = json.loads(
         (Path(a.data) / "sponsors.json").read_text(encoding="utf-8"))
 

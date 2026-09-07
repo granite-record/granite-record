@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -33,6 +33,7 @@ Standard library only.
 
 import argparse
 import json
+import proceedings as P
 import re
 import sys
 from collections import Counter, defaultdict
@@ -686,7 +687,22 @@ def main():
         json.dumps(sorted(legs.values(), key=lambda m: m["name"]), indent=2), encoding="utf-8")
     (out / "member_votes.json").write_text(json.dumps(member_votes), encoding="utf-8")
     (out / "towns.json").write_text(json.dumps(towns, indent=2), encoding="utf-8")
-    (out / "bills.json").write_text(json.dumps(bills, indent=2), encoding="utf-8")
+    # {term: {bill: record}}. A bill number is unique within a term and not
+    # across terms, and this is the file every other per-bill lookup is driven
+    # from -- the loop in build_site_v2.build_bills iterates it. Keyed on the
+    # bill alone, adding an archived term would put two different bills under
+    # one key at the very top of the pipeline.
+    by_term = defaultdict(dict)
+    for bid, rec in bills.items():
+        by_term[P.term_of(str(rec.get("lsr_year") or ""))][bid] = rec
+    stray = by_term.pop("", None)
+    if stray:
+        print(f"  {len(stray):,} bills have no filing year and are left out of "
+              f"bills.json: {sorted(stray)[:5]}")
+    (out / "bills.json").write_text(
+        json.dumps(dict(by_term), indent=2), encoding="utf-8")
+    for t in sorted(by_term):
+        print(f"  bills.json {t}: {len(by_term[t]):,}")
     (out / "sponsors.json").write_text(json.dumps(sponsors, indent=2), encoding="utf-8")
     (out / "subjects.json").write_text(json.dumps(subjects, indent=2), encoding="utf-8")
     (out / "committees.json").write_text(json.dumps(committees, indent=2), encoding="utf-8")

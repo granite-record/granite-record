@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.1
+# GRANITE_VERSION: 2026-09-05.2
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -44,6 +44,7 @@ Hand-marked times are NOT here. They are in ground_truth.csv and join on
 """
 
 import csv
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -65,6 +66,30 @@ def term_of(date_str):
         return ""
     start = y if y % 2 else y - 1
     return f"{start}-{start + 1}"
+
+
+# A term as this project writes one. Several derived files are {term: {...}}
+# because a bill number is unique within a term and not across terms, and the
+# test for "is this the new shape" belongs in one place rather than in each of
+# them.
+TERM_RE = re.compile(r"^\d{4}-\d{4}$")
+
+
+def term_keyed(data):
+    """Is this a {term: {...}} file rather than one keyed on bill number?"""
+    return bool(data) and all(TERM_RE.match(k) for k in data)
+
+
+def for_term(data, term=None):
+    """One term out of a {term: {...}} file; the most recent by default.
+
+    The default is what every tool working on the current session wants, and
+    is the reason a reader that has no notion of terms keeps working once the
+    file it reads grows a second one.
+    """
+    if not data:
+        return {}
+    return data.get(term or max(data), {})
 
 
 def _num(v):

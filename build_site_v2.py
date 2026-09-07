@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.26
+# GRANITE_VERSION: 2026-09-05.27
 """
 Generate the faceted site from real General Court data.
 
@@ -1668,7 +1668,17 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         print(f"stated status available for {len(status_pages):,} bills")
     n_stated = 0
 
-    for bid, b in bills.items():
+    # Every bill of every term the file holds. The term is still taken from the
+    # bill's own filing year rather than from the key, so the two can be
+    # compared if they ever disagree.
+    #
+    # The per-bill files that are still keyed on bill number alone --
+    # bill_text.json, testimony.json, sponsors.json, bill_status.json -- are
+    # read ONLY for the term they describe. HB100 exists in every biennium, so
+    # consulting them for an archived bill would put the current term's text
+    # and sponsors on it, which is worse than showing neither.
+    current = max(bills) if bills else ""
+    for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
         # numbers are unique across the whole term, so the term -- not the year
         # -- is the unit a number identifies within, and it has to be known
@@ -1678,7 +1688,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         rcs = rollcalls.get(term, {}).get(bid, [])
         tdb = testimony_db.get(term, {}).get(bid)
         narr = narratives.get(term, {}).get(bid)
-        st = status_pages.get(bid, {})
+        # Only for the term these files describe; see the loop header.
+        own = term == current
+        st = status_pages.get(bid, {}) if own else {}
         prefix = bill_prefix(bid)
         told = classify_stated(st, prefix)
         settled = docket_outcome(narr)
@@ -1706,7 +1718,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # The bill-status fallback path carries a web member id from a
         # different space, so that one falls back to matching on the name.
         sp_list = []
-        for _s in sponsors.get(bid, []):
+        for _s in (sponsors.get(bid, []) if own else []):
             _m = (legs.get(_s.get("member_id"))
                   or leg_by_sort.get(sort_name(_s.get("name") or ""))
                   or leg_by_name.get(name_key(_s.get("name") or "") or ("", ""))
@@ -1853,7 +1865,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 add_doc(f"{r['cite']}, committee report", r["cite_url"], "report")
 
         bill_amds = bill_amendments(narr, amend_texts)
-        btext = bill_text_block(bill_texts.get(bid))
+        btext = bill_text_block(bill_texts.get(bid) if own else None)
 
         rc_out = []
         rc_order, rc_names = vote_chronology(rcs, narr)
@@ -1956,7 +1968,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # that makes a claim on this site checkable rather than trusted.
             "events": [{"date": e["date"], "text": e.get("raw", ""),
                         "routine": is_routine(e.get("raw", "")),
-                        **hearing_testimony(e, tdb, testimony.get(bid)),
+                        **hearing_testimony(
+                            e, tdb, testimony.get(bid) if own else None),
                         **_cite(e, sources, (e.get("date") or "")[:4])}
                        for e in (narr or {}).get("events", []) if not e.get("cancelled")],
             # Prefer what the General Court says over what we would infer.
@@ -2058,6 +2071,11 @@ def main():
     (out / "legislators").mkdir(parents=True, exist_ok=True)
 
     bills = load(D / "bills.json", {})
+    # {term: {bill: record}} -- the file the whole per-bill loop is driven from.
+    # Read flat and the loop would run over term names instead of bills.
+    if bills and not P.term_keyed(bills):
+        sys.exit(f"{D / 'bills.json'} is keyed on bill number, not on term. "
+                 "Rebuild it: python3 build_data.py --dir . --out data")
     sponsors = load(D / "sponsors.json", {})
     legs = {m["id"]: m for m in load(D / "legislators.json", [])}
     # Sponsor records carry a name but not a party or a district. The roster

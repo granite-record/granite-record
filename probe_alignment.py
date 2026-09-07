@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.45
+# GRANITE_VERSION: 2026-09-05.46
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
@@ -1556,7 +1556,11 @@ def main():
     if reports:
         print(f"{len(reports):,} bills with committee reports loaded")
     bills = json.loads((Path(a.data) / "bills.json").read_text(encoding="utf-8"))
-    if isinstance(bills, dict):
+    if P.term_keyed(bills):
+        # Every term, since a title is a title whichever term it is from and
+        # this only builds a lookup for display.
+        bills = [r for byb in bills.values() for r in byb.values()]
+    elif isinstance(bills, dict):
         bills = list(bills.values())
     titles = {b.get("id") or b.get("bill"): b.get("title", "") for b in bills}
 

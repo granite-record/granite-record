@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.45
+# GRANITE_VERSION: 2026-09-04.46
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1169,7 +1169,10 @@ def _site_fixture(root):
     d.mkdir(parents=True)
     w = lambda p, o: (root / p).write_text(json.dumps(o), encoding="utf-8")
 
-    w("data/bills.json", {
+    # {term: {bill: record}}: the file the whole per-bill loop is driven
+    # from, so a bill number alone at the top of the pipeline puts two
+    # different bills under one key.
+    w("data/bills.json", {"2025-2026": {
         "HB1442": {"designation": "HB 1442", "title": "relative to insurance coverage",
                    "lsr_num": "0503", "lsr_year": "2026", "subject": "Insurance",
                    "chamber": "H", "house_committee": "Commerce",
@@ -1190,7 +1193,7 @@ def _site_fixture(root):
         "SB900": {"designation": "SB 900", "title": "relative to a study",
                   "lsr_num": "0901", "lsr_year": "2026", "subject": "Miscellaneous",
                   "chamber": "S", "senate_committee": "Judiciary",
-                  "house_committee": "", "lsr": "2026-0901"}})
+                  "house_committee": "", "lsr": "2026-0901"}}})
     w("data/legislators.json", [
         {"id": "377204", "name": "Nelson, Jodi", "chamber": "H", "party": "Republican",
          # As the real roster writes it. The fixture carried "Rock." with a
@@ -1736,6 +1739,58 @@ def _reports_old_shape():
         finally:
             shutil.rmtree(root, ignore_errors=True)
     return "ok", "both reports files must name their term"
+
+
+@check("build", "an archived term's bill cannot borrow the current term's text")
+def _bills_by_term():
+    """The last file the whole pipeline was driven from by bill number alone.
+
+    data/bills.json is what build_bills loops over, so a bare bill number there
+    puts two terms' bills under one key at the very top. It is {term: {bill:
+    record}} now, and the loop runs over every term the file holds.
+
+    Four per-bill files are still flat -- bill_text.json, testimony.json,
+    sponsors.json, bill_status.json -- and HB100 exists in every biennium, so
+    they are read ONLY for the term they describe. Showing an archived bill the
+    CURRENT bill's text would be worse than showing it none.
+    """
+    here = Path(".").resolve()
+    if not (here / "build_site_v2.py").exists():
+        return "skip", "build_site_v2.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        _site_fixture(root)
+        bills = json.loads((root / "data" / "bills.json").read_text(encoding="utf-8"))
+        # The same number in an earlier term, which the flat files also carry.
+        old = dict(bills["2025-2026"]["HB1442"])
+        old.update({"lsr_year": "2024", "lsr": "2024-0503",
+                    "title": "an entirely different bill of the same number"})
+        bills["2023-2024"] = {"HB1442": old}
+        (root / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
+        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+                            "--data", "data", "--out", "site", "--segments", "work"],
+                           cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-160:]
+        idx = {(x["term"], x["id"]): x for x in
+               json.loads((root / "site" / "index.json").read_text(encoding="utf-8"))}
+        assert ("2023-2024", "HB1442") in idx, "the archived term produced no row"
+        assert ("2025-2026", "HB1442") in idx, "the current term lost its row"
+
+        a = json.loads((root / "site" / "bills" / "2024" / "HB1442.json")
+                       .read_text(encoding="utf-8"))
+        n = json.loads((root / "site" / "bills" / "2026" / "HB1442.json")
+                       .read_text(encoding="utf-8"))
+        # sponsors.json and bill_status.json are the two flat files the
+        # fixture carries, and text_pdf comes from the second.
+        assert n.get("sponsors"), "the current term's bill lost its sponsors"
+        assert not a.get("sponsors"), (
+            "the archived bill is showing the current term's sponsors")
+        assert n.get("text_pdf"), "the current term's bill lost its text link"
+        assert not a.get("text_pdf"), (
+            "the archived bill is showing the current term's bill text link")
+        return "ok", "two terms, one number, and neither borrows the other"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
 
 
 @check("build", "a narratives.json keyed on bill number is refused, not ignored")

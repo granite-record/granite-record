@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -283,25 +283,22 @@ def main():
         # qualifications and a 2018 bill about registers of probate. Nothing
         # downstream can resolve it, so nothing downstream shows it; saying so
         # is better than an orphan key nobody ever looks up.
-        known, bills_index = set(), {}
+        # {term: set(bills)}. Checked WITHIN a term: bills.json holds the terms
+        # it holds, and once an archived term's votes are read in, every one of
+        # its bills would be "not in the list" if the check ignored the term.
+        known = {}
         bp = Path(a.bills)
         if bp.exists():
             try:
-                bills_index = json.loads(bp.read_text(encoding="utf-8"))
-                known = set(bills_index)
+                idx = json.loads(bp.read_text(encoding="utf-8"))
+                if P.term_keyed(idx):
+                    known = {t: set(byb) for t, byb in idx.items()}
             except ValueError:
-                bills_index, known = {}, set()
+                known = {}
         if known:
-            # Only for the term the bill list covers. data/bills.json is the
-            # current term, so once an archived term is read in every one of
-            # its bills is "not in the list" and the report is noise rather
-            # than a finding.
-            covered = {P.term_of(str(r.get("lsr_year") or ""))
-                       for r in bills_index.values()} if bills_index else set()
-            covered.discard("")
-            stray = sorted({b for t, byb in by_term.items() for b in byb
-                            if b != "_procedural" and b not in known
-                            and (not covered or t in covered)})
+            stray = sorted({b for t, byb in by_term.items() if t in known
+                            for b in byb
+                            if b != "_procedural" and b not in known[t]})
             if stray:
                 print()
                 print(f"{len(stray)} roll call bill number(s) are not a bill "
