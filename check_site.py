@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Check the site is fit to publish before uploading it.
 
@@ -81,6 +81,14 @@ def main():
         # href="${esc(d.docket_url)}", which are code that builds a link at
         # runtime, not a link to a file on disk.
         txt = re.sub(r"<script\b.*?</script>", " ", txt, flags=re.S | re.I)
+        # A <base href="/"> makes every relative link on the page resolve from
+        # the site root instead of from the folder the page sits in. A bill's
+        # page carries one, because it is bills.html -- written to sit at the
+        # root -- served two folders down. Without honouring it this reported
+        # six broken links on each of 4,230 pages that a browser resolves
+        # perfectly well, and a checker that cries wolf gets switched off.
+        mb = re.search(r'<base\s+href="([^"]*)"', txt, re.I)
+        base = (mb.group(1) if mb else "") or ""
         for href in re.findall(r'(?:href|src)="([^"]+)"', txt):
             if href.startswith(("http", "mailto:", "#", "data:", "//")):
                 continue
@@ -90,8 +98,12 @@ def main():
             if not clean:
                 continue
             # A leading slash means the site root, not the filesystem root.
-            target = ((site / clean.lstrip("/")) if clean.startswith("/")
-                      else (p.parent / clean)).resolve()
+            if clean.startswith("/"):
+                target = (site / clean.lstrip("/")).resolve()
+            elif base.startswith("/"):
+                target = (site / base.lstrip("/") / clean).resolve()
+            else:
+                target = (p.parent / clean).resolve()
             checked += 1
             if not target.exists():
                 bad[f"{p.name} -> {href}"] += 1
