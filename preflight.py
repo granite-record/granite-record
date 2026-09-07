@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.59
+# GRANITE_VERSION: 2026-09-04.60
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2809,6 +2809,67 @@ def _writers_merge():
                 bad.append(f"{f.name} writes {name} and never reads it")
     assert not bad, "; ".join(bad)
     return "ok", f"{len(shared)} shared files, every writer of one reads it first"
+
+
+@check("data", "a committee is credited only with its own recommendations")
+def _committee_attribution():
+    """The day narrative says what a committee decided. It must be that one.
+
+    A bill is reported by a House committee and then, if it passes, by a
+    Senate one, and several are re-referred and reported twice within a
+    chamber. The narrative took the first report on file for the bill, so a
+    committee could be credited with a decision made by another -- sometimes
+    across the building.
+
+    Two causes, both fixed: the lookup ignored the committee, and the merge of
+    committee_reports.json with senate_reports.json used setdefault, so a bill
+    with a House report never kept its Senate one at all.
+
+    This is the site putting a claim in its own voice about who decided what.
+    It is the last thing that should be approximately right.
+    """
+    root = Path("site/committee")
+    if not root.exists():
+        return "skip", "no committee pages built"
+    reps = {}
+    for name in ("committee_reports.json", "senate_reports.json"):
+        f = Path(name)
+        if not f.exists():
+            continue
+        for t, byb in json.loads(f.read_text(encoding="utf-8")).items():
+            for b, v in byb.items():
+                reps.setdefault(t, {}).setdefault(b, []).extend(
+                    v if isinstance(v, list) else [v])
+    if not reps:
+        return "skip", "no committee report files here"
+
+    total, bad = 0, []
+    for f in sorted(root.glob("*.json")):
+        c = json.loads(f.read_text(encoding="utf-8"))
+        want = (c.get("name") or "").strip().lower()
+        for sess in c.get("sessions", []):
+            narr = sess.get("narrative", "")
+            for it in sess.get("items", []):
+                if it.get("kind") != "executive session":
+                    continue
+                # The claim as the page makes it, so this checks the sentence
+                # rather than the intent behind it.
+                if f"On {it.get('n') or it.get('bill')} it recommended" not in narr:
+                    continue
+                total += 1
+                mine = any(
+                    want in [(r.get("committee") or "").strip().lower()
+                             for r in (rec.get("reports") or [])]
+                    for rec in (reps.get(it.get("term"), {}) or {})
+                    .get(it.get("bill"), []) or [])
+                if not mine:
+                    bad.append(f"{c.get('code')} {c.get('name')!r} claims "
+                               f"{it.get('bill')}")
+    assert not bad, (
+        f"{len(bad)} of {total:,} recommendation claims are not backed by a "
+        f"report of that committee's own: {'; '.join(bad[:3])}")
+    return "ok", (f"{total:,} recommendation claims, every one backed by that "
+                  "committee's own report")
 
 
 @check("data", "a term's sponsors came from that term's own files")

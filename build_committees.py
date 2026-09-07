@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.4
+# GRANITE_VERSION: 2026-09-07.5
 """
 A page's worth of data for every committee.
 
@@ -94,12 +94,31 @@ def spaced(bill):
     return f"{m.group(1)} {m.group(2)}" if m else (bill or "")
 
 
-def recommendation(reports, term, bill):
-    """What the committee recommended, and the vote, if it is on file."""
+def recommendation(reports, term, bill, committee=""):
+    """What THIS committee recommended, and the vote, if it is on file.
+
+    The committee name is not optional. A bill is reported by a House
+    committee and then, if it passes, by a Senate one; several bills are also
+    re-referred and reported twice by different committees of the same
+    chamber. Taking the first report on file gave a committee another
+    committee's recommendation -- 8 executive sessions of the current term,
+    including one where a House committee was credited with a decision made
+    across the building.
+
+    Where no report on file is this committee's, nothing is said. A sitting
+    day with a hearing and no attributable report is the ordinary case, and
+    silence is the honest form of it.
+    """
+    want = (committee or "").strip().lower()
     for rec in (reports.get(term, {}) or {}).get(bill, []) or []:
         maj = (rec.get("majority_recommendation") or "").strip()
         if not maj:
             continue
+        if want:
+            said = [(r.get("committee") or "").strip().lower()
+                    for r in rec.get("reports") or []]
+            if said and want not in said:
+                continue
         vote = ""
         for r in rec.get("reports") or []:
             if (r.get("side") or "").lower().startswith(("majority", "committee")):
@@ -140,7 +159,7 @@ def narrate(name, chamber, date, items, reports):
     # a recommendation, and only some of those have a report on file yet.
     said = []
     for it in by_kind.get("executive session", []):
-        maj, minor, vote = recommendation(reports, it["term"], it["bill"])
+        maj, minor, vote = recommendation(reports, it["term"], it["bill"], name)
         if not maj:
             continue
         body = "House" if chamber == "H" else "Senate"
@@ -182,11 +201,17 @@ def main():
     web = load("committees.json", {})
     seats = load(data / "committee_members.json", {})
     codes = load(data / "committees.json", {})
-    reports = {**load("committee_reports.json", {})}
-    srep = load("senate_reports.json", {})
-    for t, byb in srep.items():
-        for b, v in byb.items():
-            reports.setdefault(t, {}).setdefault(b, v)
+    # Both files, CONCATENATED per bill rather than one shadowing the other.
+    # setdefault kept only the first: a bill reported by a House committee and
+    # then by a Senate one -- which is most bills that pass a chamber -- lost
+    # the Senate's report entirely, so a Senate committee narrating its own
+    # executive session had nothing of its own to quote and quoted the House's.
+    reports = {}
+    for src in (load("committee_reports.json", {}), load("senate_reports.json", {})):
+        for t, byb in src.items():
+            for b, v in byb.items():
+                reports.setdefault(t, {}).setdefault(b, []).extend(
+                    v if isinstance(v, list) else [v])
     legs = {str(m.get("id")): m for m in load(site / "legislators.json", [])}
 
     # (chamber, name) -> code. NOT name alone: both chambers have a
