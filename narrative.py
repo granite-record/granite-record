@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.20
+# GRANITE_VERSION: 2026-09-04.21
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -1125,8 +1125,28 @@ def main():
     results = dict(results)
 
     if a.out:
+        # MERGE. A run over one term's docket must not remove another's: this
+        # file is {term: {bill: record}}, and a docket file covers one term.
+        # Terms this run did build are replaced whole, because it rebuilt them
+        # from their own docket and its answer is the current one.
+        prior, kept = {}, []
+        _op = Path(a.out)
+        if _op.exists():
+            try:
+                prior = json.loads(_op.read_text(encoding="utf-8"))
+            except ValueError:
+                prior = {}
+        if isinstance(prior, dict):
+            kept = [t for t in prior if t not in results]
+            merged = {**{t: prior[t] for t in kept}, **results}
+        else:
+            merged = results
         with open(a.out, "w", encoding="utf-8") as fh:
-            json.dump(results, fh, indent=2)
+            json.dump(merged, fh, indent=2)
+        if kept:
+            print("  kept, because this run's docket does not cover them: "
+                  + ", ".join(f"{t} ({len(prior[t]):,} bills)"
+                              for t in sorted(kept)))
         flat = [r for byb in results.values() for r in byb.values()]
         unk = sum(len(r["unrecognised"]) for r in flat)
         for t in sorted(results):

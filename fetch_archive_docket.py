@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+# GRANITE_VERSION: 2026-09-07.1
+"""
+The docket of every bill of an archived term, in Docket.txt's own format.
+
+    python3 fetch_archive_docket.py --term 2023-2024 --limit 10   # try it
+    python3 fetch_archive_docket.py --term 2023-2024              # the term
+    python3 fetch_archive_docket.py --term 2023-2024 --reparse    # no network
+
+WHY
+
+An archived term has titles, statuses, sponsors and every recorded vote, and no
+DOCKET -- the General Court's own line-by-line list of what happened to a bill.
+Without it there is no event timeline, no narrative, no committee report
+reasoning and no journal citation, so a 2023 bill reads as a title and a status
+where a 2025 one reads as a story.
+
+The docket is not in the bulk download for a past session and not in the
+database either: Docket holds 1989-2016 and 2025-2026, and 2017-2024 is in
+neither. It is on the legacy web page, one bill at a time.
+
+WHAT IT WRITES
+
+Docket_<term>.txt, in exactly the seven-column shape Docket.txt has --
+
+    session|lsr|created|bill|body|description|modified
+
+-- because narrative.py already parses that, and has for every bill of the
+current term. Emitting a new shape would mean a second parser for the same
+vocabulary, which is the mistake this project has spent a week undoing.
+
+GENTLE BY CONSTRUCTION
+
+One request at a time, a delay between each, a hard --limit, and a cache: a
+page already on disk is never asked for again, so a stopped run resumes for
+free and --reparse re-reads the lot with no network at all. This address has
+been blocked twice.
+"""
+
+import argparse
+import html
+import json
+import re
+import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from collections import Counter
+from pathlib import Path
+
+BASE = "https://gc.nh.gov/bill_status/legacy/bs2016/bill_docket.aspx"
+UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
+                    "corrections@graniterecord.org)"}
+
+# One docket line: three cells, date / body / description.
+ROW = re.compile(
+    r"<tr[^>]*>\s*<td[^>]*>(?P<date>[^<]*?)</td>\s*"
+    r"<td[^>]*>(?P<body>[^<]*?)</td>\s*"
+    r"<td[^>]*>(?P<desc>.*?)</td>\s*</tr>", re.S | re.I)
+TAGS = re.compile(r"<[^>]+>")
+WS = re.compile(r"[\s ]+")
+
+
+def text(s):
+    return WS.sub(" ", html.unescape(TAGS.sub(" ", s))).strip()
+
+
+def rows_of(page):
+    """Every docket line on the page, as (date, body, description)."""
+    out = []
+    for m in ROW.finditer(page):
+        d, b, desc = text(m.group("date")), text(m.group("body")), \
+            text(m.group("desc"))
+        # The header row, and any row that is not a dated action.
+        if not re.match(r"^\d{1,2}/\d{1,2}/\d{4}$", d):
+            continue
+        if not desc:
+            continue
+        out.append((d, b, desc))
+    return out
+
+
+def get(url, timeout):
+    req = urllib.request.Request(url, headers=UA)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.read().decode("utf-8", errors="replace"), None
+    except (urllib.error.URLError, urllib.error.HTTPError, OSError) as e:
+        return None, e
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--term", required=True)
+    ap.add_argument("--data", default="data")
+    ap.add_argument("--cache", default="docket_pages")
+    ap.add_argument("--out")
+    ap.add_argument("--limit", type=int, default=0,
+                    help="stop after this many REQUESTS; 0 means the term")
+    ap.add_argument("--delay", type=float, default=1.5)
+    ap.add_argument("--timeout", type=float, default=60.0)
+    ap.add_argument("--reparse", action="store_true",
+                    help="re-read the cached pages, ask the server nothing")
+    a = ap.parse_args()
+
+    bills = json.loads((Path(a.data) / "bills.json").read_text(encoding="utf-8"))
+    if a.term not in bills:
+        sys.exit(f"data/bills.json has no term {a.term!r}. It holds: "
+                 + ", ".join(sorted(bills)))
+    todo = sorted(bills[a.term])
+    out_path = Path(a.out or f"Docket_{a.term}.txt")
+    cache = Path(a.cache)
+    cache.mkdir(exist_ok=True)
+
+    print(f"{a.term}: {len(todo):,} bills"
+          + (f", capped at {a.limit} requests" if a.limit else "")
+          + (", no network" if a.reparse else f", {a.delay}s apart"))
+
+    lines, fetched, cached_n, failed, empty = [], 0, 0, Counter(), 0
+    for i, bid in enumerate(todo, 1):
+        rec = bills[a.term][bid]
+        yr, lsr = str(rec.get("lsr_year") or ""), str(rec.get("lsr_num") or "")
+        if not yr or not lsr:
+            continue
+        f = cache / f"{yr}_{lsr}_{bid.upper()}.html"
+        if f.exists():
+            page = f.read_text(encoding="utf-8", errors="replace")
+            cached_n += 1
+        elif a.reparse:
+            continue
+        else:
+            if a.limit and fetched >= a.limit:
+                print(f"\nstopped at the {a.limit}-request cap. Nothing "
+                      "already on disk is asked for again, so raising it "
+                      "continues from here.")
+                break
+            q = urllib.parse.urlencode({
+                "lsr": lsr, "sy": yr, "txtsessionyear": yr,
+                "txtbillnumber": bid.lower(), "sortoption": "billnumber"})
+            time.sleep(a.delay)
+            page, err = get(f"{BASE}?{q}", a.timeout)
+            fetched += 1
+            if page is None:
+                failed[type(err).__name__] += 1
+                continue
+            f.write_text(page, encoding="utf-8")
+
+        got = rows_of(page)
+        if not got:
+            empty += 1
+            continue
+        for d, body, desc in got:
+            # Docket.txt's own columns, so narrative.py needs no second parser.
+            # The created and modified stamps are the action's date at midnight:
+            # the page states a day and no clock time, and inventing one would
+            # be a precision the record does not have.
+            lines.append("|".join([
+                yr, lsr.zfill(4), f"{d} 12:00:00 AM", bid.upper(),
+                body or "H", desc.replace("|", "/"), f"{d} 12:00:00 AM"]))
+        if fetched and fetched % 100 == 0:
+            print(f"  {i}/{len(todo)}  {fetched} fetched, {cached_n} cached, "
+                  f"{len(lines):,} docket lines", flush=True)
+            out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    # Silence is not success: a run that asked for pages and parsed nothing out
+    # of them is a parser that stopped matching, and looks identical from the
+    # outside to a term with no docket.
+    if (fetched or cached_n) and not lines:
+        sys.exit(f"\n{fetched + cached_n:,} pages read and NOT ONE docket line "
+                 f"parsed out of them. The pages are in {a.cache}/, so "
+                 "--reparse re-reads them once the pattern is fixed.")
+
+    out_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    bills_seen = len({l.split("|")[3] for l in lines})
+    print(f"\n{len(lines):,} docket lines across {bills_seen:,} bills "
+          f"-> {out_path}")
+    print(f"  {fetched:,} fetched, {cached_n:,} from cache, {empty:,} pages "
+          "with no docket line on them")
+    if failed:
+        print("  failures: " + ", ".join(f"{k} x{v}" for k, v in failed.items()))
+    print("\nSame seven columns as Docket.txt, so narrative.py reads it with "
+          "no change:\n  python3 narrative.py --docket "
+          f"{out_path} --all --out narratives_{a.term}.json "
+          "--members data/legislators.json")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

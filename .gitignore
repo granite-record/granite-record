@@ -113,3 +113,5 @@ probe_legacy_*.html
 archive_samples/
 archive_sample_ids.json
 committees.json
+docket_pages/
+Docket_*.txt
