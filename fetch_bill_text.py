@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.19
 """
 The text of each bill, as text rather than as a link to a PDF.
 
@@ -694,6 +694,8 @@ def embed_check(url, timeout=120):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--status", default="bill_status.json")
+    ap.add_argument("--term", help="which term of data/bills.json to fetch, "
+                                   "e.g. 2023-2024; the newest by default")
     ap.add_argument("--data", default="data")
     ap.add_argument("--cache", default="bill_text")
     ap.add_argument("--out", default="bill_text.json")
@@ -728,13 +730,25 @@ def main():
                     help="stop after this long, whatever else happens")
     a = ap.parse_args()
 
-    st = json.loads(Path(a.status).read_text(encoding="utf-8")) \
-        if Path(a.status).exists() else {}
-    # bills.json is {term: {bill: record}} now; this fetches the current
-    # session, which is for_term's default.
-    bills = P.for_term(json.loads(
-        (Path(a.data) / "bills.json").read_text(encoding="utf-8"))) \
+    # Both files are {term: {bill: record}}. A bill number is unique within a
+    # term and not across them, so the term has to be settled before anything
+    # is looked up: HB100 of 2023 and HB100 of 2025 are different bills with
+    # different texts, and fetching one under the other's key is silent.
+    all_bills = json.loads(
+        (Path(a.data) / "bills.json").read_text(encoding="utf-8")) \
         if (Path(a.data) / "bills.json").exists() else {}
+    newest = max(all_bills) if all_bills else ""
+    term = a.term or newest
+    if all_bills and term not in all_bills:
+        sys.exit(f"data/bills.json has no term {term!r}. It holds: "
+                 + ", ".join(sorted(all_bills)))
+    bills = all_bills.get(term, {})
+    st_all = json.loads(Path(a.status).read_text(encoding="utf-8")) \
+        if Path(a.status).exists() else {}
+    st = P.per_term(st_all, term, newest)
+    if term != newest:
+        print(f"term {term}: {len(bills):,} bills, "
+              f"{len(st):,} with a status page on file")
 
     if a.embed_check:
         b = (a.probe or "HB1123").upper().replace(" ", "")
@@ -875,24 +889,38 @@ def main():
                                                for k, v in gaps.most_common()))
 
     op = Path(a.out)
+    # bill_text.json is {term: {bill: record}}. `out_all` is what gets written
+    # and `out` is this term's slice, so a run over one term cannot drop
+    # another -- the count guard below compares this term against this term,
+    # not against every term on file, which would let a complete 2023-2024 run
+    # look like a failed one next to a full 2025-2026.
+    out_all = {}
     if op.exists():
         try:
-            had = len(json.loads(op.read_text(encoding="utf-8")))
-        except Exception:
-            had = 0
+            out_all = P.in_term(
+                json.loads(op.read_text(encoding="utf-8")), newest)
+        except ValueError:
+            out_all = {}
+        had = len(out_all.get(term, {}))
         if had and len(out) < had * 0.5 and not stopped:
             print(f"\nNOT WRITING {a.out}: {len(out):,} against {had:,} on "
-                  "file.\nThat is a run that failed, not bills that lost their "
-                  "text.")
+                  f"file for {term}.\nThat is a run that failed, not bills "
+                  "that lost their text.")
             return
         if had and len(out) < had:
             # A partial run should add to the file, not replace it with less.
-            prior = json.loads(op.read_text(encoding="utf-8"))
+            prior = dict(out_all.get(term, {}))
             prior.update(out)
             out = prior
             print(f"merged with what was already there: {len(out):,} bills")
-    op.write_text(json.dumps(out, indent=2), encoding="utf-8")
-    print(f"\n-> {a.out}")
+    if out:
+        out_all[term] = out
+    else:
+        out_all.pop(term, None)
+    op.write_text(json.dumps(out_all, indent=2), encoding="utf-8")
+    print(f"\n-> {a.out}  ("
+          + ", ".join(f"{t}: {len(v):,}" for t, v in sorted(out_all.items()))
+          + ")")
 
 
 if __name__ == "__main__":

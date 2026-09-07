@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.31
+# GRANITE_VERSION: 2026-09-05.32
 """
 Generate the faceted site from real General Court data.
 
@@ -1715,18 +1715,23 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     index, years = [], set()
     status_pages = load("bill_status.json", {})
     if status_pages:
-        print(f"stated status available for {len(status_pages):,} bills")
+        n = (sum(len(v) for v in status_pages.values())
+             if P.term_keyed(status_pages) else len(status_pages))
+        terms = (", ".join(sorted(status_pages)) if P.term_keyed(status_pages)
+                 else "one term, not keyed")
+        print(f"stated status available for {n:,} bills ({terms})")
     n_stated = 0
 
     # Every bill of every term the file holds. The term is still taken from the
     # bill's own filing year rather than from the key, so the two can be
     # compared if they ever disagree.
     #
-    # The per-bill files that are still keyed on bill number alone --
-    # bill_text.json, testimony.json, sponsors.json, bill_status.json -- are
-    # read ONLY for the term they describe. HB100 exists in every biennium, so
-    # consulting them for an archived bill would put the current term's text
-    # and sponsors on it, which is worse than showing neither.
+    # bill_status.json and bill_text.json are keyed on the term. Either may
+    # still be in the flat shape, in which case it holds the current term and
+    # P.per_term hands an archived term nothing -- HB100 exists in every
+    # biennium, so the current term's text on an archived bill is worse than
+    # no text. testimony.json and sponsors.json are still flat and are read
+    # through the `own` guard below for the same reason.
     current = max(bills) if bills else ""
     for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
@@ -1740,13 +1745,15 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         narr = narratives.get(term, {}).get(bid)
         # Only for the term these files describe; see the loop header.
         own = term == current
-        # An archived term has no bill_status.json of its own and must not
-        # read the current term's, so its statuses travel on the bill record
-        # itself -- put there by build_data from the General Court's own
-        # search, in the same vocabulary classify_stated already reads.
-        st = status_pages.get(bid, {}) if own else {
-            k: b.get(k, "") for k in ("gen_status", "house_status",
-                                      "senate_status", "text_pdf")}
+        # An archived term reads its own term out of bill_status.json, and
+        # falls back to the statuses carried on the bill record itself -- put
+        # there by build_data from the General Court's own search, in the same
+        # vocabulary classify_stated already reads -- for a term the file does
+        # not hold yet.
+        st = P.per_term(status_pages, term, current).get(bid, {})
+        if not st and not own:
+            st = {k: b.get(k, "") for k in ("gen_status", "house_status",
+                                            "senate_status", "text_pdf")}
         prefix = bill_prefix(bid)
         told = classify_stated(st, prefix)
         settled = docket_outcome(narr)
@@ -1933,7 +1940,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 add_doc(f"{r['cite']}, committee report", r["cite_url"], "report")
 
         bill_amds = bill_amendments(narr, amend_texts)
-        btext = bill_text_block(bill_texts.get(bid) if own else None)
+        btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid))
 
         rc_out = []
         rc_order, rc_names = vote_chronology(rcs, narr)
@@ -2219,7 +2226,9 @@ def main():
         print(f"{len(amend_texts):,} amendment texts loaded")
     bill_texts = load("bill_text.json", {})
     if bill_texts:
-        print(f"{len(bill_texts):,} bill texts loaded")
+        n = (sum(len(v) for v in bill_texts.values())
+             if P.term_keyed(bill_texts) else len(bill_texts))
+        print(f"{n:,} bill texts loaded")
     # Journal and calendar URLs, so every docket line can cite its source.
     sources = {**load("calendars.json", {}), **load("journals.json", {})}
     # Sign-in counts, attached to the hearing they were filed for.

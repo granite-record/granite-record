@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.1
+# GRANITE_VERSION: 2026-09-06.2
 """
 Fill in what the bill status pages did not say, from the General Court's
 own database.
@@ -66,6 +66,7 @@ import tempfile
 from pathlib import Path
 
 import probe_db
+import proceedings as P
 
 SQL = """
 SELECT ISNULL(CondensedBillNo,''),
@@ -185,13 +186,20 @@ def main():
         sys.exit("  nothing came back. Legislation held 2,234 on 6 September.")
 
     gen, body = codes("GeneralCodes.txt"), codes("BodyStatusCodes.txt")
-    db = {}
+    # {term: {bill: row}}. A bill number is unique within a term and not across
+    # them, so the term the row's own session year puts it in is what it has to
+    # be filed under. Legislation holds the current session only today, but the
+    # grouping costs nothing and is what stops a future run of two terms
+    # merging HB100 of one into HB100 of the other.
+    db = collections.defaultdict(dict)
     for line in raw.open(encoding="utf-8", errors="replace"):
         p = line.rstrip("\n").split("|")
         if len(p) == len(COLS):
             r = dict(zip(COLS, p))
-            db[r["bill"].upper()] = r
+            db[P.term_of(r.get("year") or "")][r["bill"].upper()] = r
     tmp.cleanup()
+    db.pop("", None)
+    print("  " + ", ".join(f"{t}: {len(v):,}" for t, v in sorted(db.items())))
 
     out_path = Path(a.out)
     have = {}
@@ -200,28 +208,37 @@ def main():
             have = json.loads(out_path.read_text(encoding="utf-8"))
         except ValueError:
             have = {}
-    print(f"  {len(have):,} bills already on file")
+    # bill_status.json is {term: {bill: record}}. A file still in the flat
+    # shape is the newest term's, which is what it was.
+    newest = max(db) if db else ""
+    have = P.in_term(have, newest)
+    print("  already on file: "
+          + (", ".join(f"{t}: {len(v):,}" for t, v in sorted(have.items()))
+             or "nothing"))
 
     filled = collections.Counter()
     added, kept = [], collections.Counter()
-    for bid, r in db.items():
-        want = record(r, gen, body)
-        cur = have.get(bid)
-        if cur is None:
-            have[bid] = want
-            added.append(bid)
-            continue
-        for f in FILLS:
-            if (cur.get(f) or "").strip():
-                # A field the pages filled is the pages' answer. On the 21
-                # chamber statuses that disagree the database is the one
-                # that is behind, so this is not a tie being broken at random.
-                if (want.get(f) or "").strip() and differs(want[f], cur[f]):
-                    kept[f] += 1
+    for term, rows in db.items():
+        slot = have.setdefault(term, {})
+        for bid, r in rows.items():
+            want = record(r, gen, body)
+            cur = slot.get(bid)
+            if cur is None:
+                slot[bid] = want
+                added.append(bid)
                 continue
-            if (want.get(f) or "").strip():
-                cur[f] = want[f]
-                filled[f] += 1
+            for f in FILLS:
+                if (cur.get(f) or "").strip():
+                    # A field the pages filled is the pages' answer. On the
+                    # 21 chamber statuses that disagree the database is the
+                    # one that is behind, so this is not a tie being broken at
+                    # random.
+                    if (want.get(f) or "").strip() and differs(want[f], cur[f]):
+                        kept[f] += 1
+                    continue
+                if (want.get(f) or "").strip():
+                    cur[f] = want[f]
+                    filled[f] += 1
 
     print(f"\n  {len(added):,} bills the pages do not have, added whole")
     if filled:
@@ -245,7 +262,8 @@ def main():
         print(f"\n{a.out} is unchanged.")
         return 0
     out_path.write_text(json.dumps(have, indent=1), encoding="utf-8")
-    print(f"\n  -> {a.out}  ({len(have):,} bills)")
+    print(f"\n  -> {a.out}  ("
+          + ", ".join(f"{t}: {len(v):,}" for t, v in sorted(have.items())) + ")")
     print("Re-running fetch_bill_status.py rebuilds this file from the pages "
           "and drops what was filled here, so run this after it, not before.")
     return 0

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.2
+# GRANITE_VERSION: 2026-09-05.3
 """
 Write STATE.md from what is actually on disk.
 
@@ -24,10 +24,14 @@ person should write them.
 import argparse
 import csv
 import json
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+TERM_RE = re.compile(r"^\d{4}-\d{4}$")
 
 
 def n(x):
@@ -95,7 +99,15 @@ def section_data(out):
                      ("bill_text.json", "bill texts")):
         d = jload(f)
         if isinstance(d, dict):
-            out.append(f"- `{f}`: {n(len(d))} bills ({label})")
+            # Several of these are {term: {bill: record}} now, so len() counts
+            # terms rather than bills. Both shapes are still in the tree while
+            # they are converted one at a time, so both are reported.
+            if d and all(TERM_RE.match(k) for k in d):
+                per = ", ".join(f"{t} {n(len(v))}" for t, v in sorted(d.items()))
+                out.append(f"- `{f}`: {n(sum(len(v) for v in d.values()))} "
+                           f"bills ({label}) -- {per}")
+            else:
+                out.append(f"- `{f}`: {n(len(d))} bills ({label})")
 
     work = Path("work")
     if work.is_dir():

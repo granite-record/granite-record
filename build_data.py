@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -488,7 +488,11 @@ def main():
     # than leaving them to be sifted out of docket prose.
     bsp = Path("bill_status.json")
     if bsp.exists():
-        st = json.loads(bsp.read_text(encoding="utf-8"))
+        # Keyed on the term. `bills` here is the current session's, so it is
+        # the newest term that belongs on it; a file still in the flat shape
+        # is that term already.
+        raw = json.loads(bsp.read_text(encoding="utf-8"))
+        st = P.for_term(raw) if P.term_keyed(raw) else raw
         added_sp = added_t = 0
         for bill, v in st.items():
             if bill in bills:

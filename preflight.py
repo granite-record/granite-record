@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.50
+# GRANITE_VERSION: 2026-09-04.51
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1817,10 +1817,11 @@ def _bills_by_term():
     puts two terms' bills under one key at the very top. It is {term: {bill:
     record}} now, and the loop runs over every term the file holds.
 
-    Four per-bill files are still flat -- bill_text.json, testimony.json,
-    sponsors.json, bill_status.json -- and HB100 exists in every biennium, so
-    they are read ONLY for the term they describe. Showing an archived bill the
-    CURRENT bill's text would be worse than showing it none.
+    testimony.json and sponsors.json are still flat, and HB100 exists in every
+    biennium, so they are read ONLY for the term they describe. Showing an
+    archived bill the CURRENT bill's sponsors would be worse than showing it
+    none. bill_status.json and bill_text.json are keyed on the term now; the
+    check below this one covers what an archived bill reads OUT of them.
     """
     here = Path(".").resolve()
     if not (here / "build_site_v2.py").exists():
@@ -1848,8 +1849,9 @@ def _bills_by_term():
                        .read_text(encoding="utf-8"))
         n = json.loads((root / "site" / "bills" / "2026" / "HB1442.json")
                        .read_text(encoding="utf-8"))
-        # sponsors.json and bill_status.json are the two flat files the
-        # fixture carries, and text_pdf comes from the second.
+        # sponsors.json is the flat file the fixture carries. text_pdf comes
+        # from bill_status.json, which is keyed on the term: the fixture holds
+        # only the current one, so the archived bill must still get nothing.
         assert n.get("sponsors"), "the current term's bill lost its sponsors"
         assert not a.get("sponsors"), (
             "the archived bill is showing the current term's sponsors")
@@ -1857,6 +1859,85 @@ def _bills_by_term():
         assert not a.get("text_pdf"), (
             "the archived bill is showing the current term's bill text link")
         return "ok", "two terms, one number, and neither borrows the other"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "an archived bill reads its own term's status and text")
+def _termed_status_and_text():
+    """The other half of the two-terms check, once the files can hold two.
+
+    bill_status.json and bill_text.json were keyed on the bill number alone,
+    and everything downstream leaned on that: an archived bill was given
+    NOTHING from them, deliberately, because HB100 exists in every biennium and
+    the current term's sponsors on a 2023 bill is worse than no sponsors.
+
+    They are {term: {bill: record}} now, so an archived bill must read its own
+    term out of them -- and still must not read the current term's. Both halves
+    are asserted here, because a lookup that ignores the term passes the first
+    half by accident: it hands back whatever record the flat file had.
+    """
+    here = Path(".").resolve()
+    if not (here / "build_site_v2.py").exists():
+        return "skip", "build_site_v2.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        _site_fixture(root)
+        bills = json.loads((root / "data" / "bills.json").read_text(encoding="utf-8"))
+        old = dict(bills["2025-2026"]["HB1442"])
+        old.update({"lsr_year": "2024", "lsr": "2024-0503",
+                    "title": "an entirely different bill of the same number"})
+        # text_pdf off the bill record is the fallback for a term the status
+        # file does not hold. Clearing it is what makes the assertion below
+        # about the FILE rather than about the fallback.
+        old.pop("text_pdf", None)
+        bills["2023-2024"] = {"HB1442": old}
+        (root / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
+
+        st = json.loads((root / "bill_status.json").read_text(encoding="utf-8"))
+        if not all(re.match(r"^\d{4}-\d{4}$", k) for k in st):
+            st = {"2025-2026": st}
+        st["2023-2024"] = {"HB1442": {
+            "gen_status": "SIGNED BY GOVERNOR", "house_status": "",
+            "senate_status": "", "text_pdf": "https://gc.nh.gov/archived.pdf",
+            "chapter": "", "lsr": "2024-0503", "body": "H"}}
+        (root / "bill_status.json").write_text(json.dumps(st), encoding="utf-8")
+
+        (root / "bill_text.json").write_text(json.dumps({
+            "2025-2026": {"HB1442": {
+                "version": "as introduced", "title": "the current bill",
+                "text": "ANALYSIS\nThe current term's analysis.\n"
+                        "Be it Enacted by the Senate and House"}},
+            "2023-2024": {"HB1442": {
+                "version": "as amended", "title": "the archived bill",
+                "text": "ANALYSIS\nThe archived term's analysis.\n"
+                        "Be it Enacted by the Senate and House"}},
+        }), encoding="utf-8")
+
+        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+                            "--data", "data", "--out", "site", "--segments", "work"],
+                           cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
+
+        a = json.loads((root / "site" / "bills" / "2024" / "HB1442.json")
+                       .read_text(encoding="utf-8"))
+        n = json.loads((root / "site" / "bills" / "2026" / "HB1442.json")
+                       .read_text(encoding="utf-8"))
+
+        assert a.get("text_pdf") == "https://gc.nh.gov/archived.pdf", (
+            "the archived bill did not read its own term out of "
+            f"bill_status.json; text_pdf is {a.get('text_pdf')!r}")
+        assert n.get("text_pdf") != "https://gc.nh.gov/archived.pdf", (
+            "the current bill took the ARCHIVED term's text link")
+
+        at = (a.get("billtext") or {}).get("analysis", "")
+        nt = (n.get("billtext") or {}).get("analysis", "")
+        assert "archived term" in at, (
+            f"the archived bill's text came from the wrong term: {at[:60]!r}")
+        assert "current term" in nt, (
+            f"the current bill's text came from the wrong term: {nt[:60]!r}")
+        return "ok", ("status and text both follow the term, in both "
+                      "directions")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 

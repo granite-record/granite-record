@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Fetch the bill STATUS page for bills the current-session files no longer cover.
 
@@ -302,6 +302,8 @@ def main():
     ap.add_argument("--out", default="bill_status.json")
     ap.add_argument("--cache", default="status_pages")
     ap.add_argument("--year")
+    ap.add_argument("--term", help="which term of data/bills.json to fetch, "
+                                   "e.g. 2023-2024; the newest by default")
     ap.add_argument("--delay", type=float, default=1.0)
     ap.add_argument("--timeout", type=float, default=90.0)
     ap.add_argument("--limit", type=int, default=0)
@@ -318,10 +320,19 @@ def main():
                     help="only bills lacking a title or sponsors, the old default")
     a = ap.parse_args()
 
-    # bills.json is {term: {bill: record}}; this fetches the current session,
-    # which is for_term's default.
-    bills = P.for_term(json.loads(
-        (Path(a.data) / "bills.json").read_text(encoding="utf-8")))
+    # bills.json is {term: {bill: record}}. The newest term by default, which
+    # is what a run during a session wants; --term names an archived one. The
+    # archived records carry lsr_num and lsr_year like any other, which is
+    # everything the status-page URL needs.
+    all_bills = json.loads(
+        (Path(a.data) / "bills.json").read_text(encoding="utf-8"))
+    newest = max(all_bills) if all_bills else ""
+    term = a.term or newest
+    if term not in all_bills:
+        raise SystemExit(f"data/bills.json has no term {term!r}. It holds: "
+                         + ", ".join(sorted(all_bills)))
+    bills = all_bills[term]
+    print(f"term {term}: {len(bills):,} bills on file")
     sponsors_now = json.loads(
         (Path(a.data) / "sponsors.json").read_text(encoding="utf-8"))
 
@@ -391,11 +402,39 @@ def main():
 
     cache = Path(a.cache)
     cache.mkdir(parents=True, exist_ok=True)
-    out = {}
-    if Path(a.out).exists() and not a.reparse:
-        out = json.loads(Path(a.out).read_text(encoding="utf-8"))
+    # bill_status.json is {term: {bill: record}}. A bill number is unique
+    # within a term and not across them, so a flat file could only ever hold
+    # one; it is read as the newest term's, which is what it was.
+    #
+    # `out_all` is what gets written and `out` is this term's slice of it, so
+    # a run over 2023-2024 cannot drop 2025-2026 on its way out. A writer run
+    # on a subset that replaces the whole file is how the manifest lost its
+    # hand-marked times, twice.
+    out_all, out = {}, {}
+    if Path(a.out).exists():
+        out_all = P.in_term(
+            json.loads(Path(a.out).read_text(encoding="utf-8")), newest)
+        # --reparse rebuilds THIS term from the cached pages, so this term's
+        # records are dropped and re-derived. Every other term is kept: they
+        # were fetched from pages this run has no cache of and cannot rebuild,
+        # and a writer run on a subset that replaces the whole file is how the
+        # manifest lost its hand-marked times, twice.
+        out = {} if a.reparse else out_all.get(term, {})
         have = sum(1 for b in todo if b in out)
-        print(f"{len(out):,} already on file; {len(todo) - have:,} still to fetch")
+        others = sum(len(v) for k, v in out_all.items() if k != term)
+        if a.reparse:
+            print(f"--reparse: rebuilding {term} from the cache"
+                  + (f"; {others:,} bills of other terms kept" if others else ""))
+        else:
+            print(f"{len(out):,} already on file for {term}; "
+                  f"{len(todo) - have:,} still to fetch"
+                  + (f"; {others:,} bills of other terms kept" if others else ""))
+    # An empty term is noise in the file and reads as "fetched, found none"
+    # rather than "not fetched yet". Only a term with records is written.
+    if out:
+        out_all[term] = out
+    else:
+        out_all.pop(term, None)
 
     fetched = cached = 0
     fails = Counter()
@@ -439,14 +478,17 @@ def main():
         if i % 25 == 0:
             print(f"  {i}/{len(todo)}  {fetched} fetched, {cached} cached",
                   flush=True)
-            Path(a.out).write_text(json.dumps(out, indent=2), encoding="utf-8")
+            Path(a.out).write_text(json.dumps(out_all, indent=2),
+                                   encoding="utf-8")
 
-    Path(a.out).write_text(json.dumps(out, indent=2), encoding="utf-8")
+    Path(a.out).write_text(json.dumps(out_all, indent=2), encoding="utf-8")
 
     withtitle = sum(1 for v in out.values() if v.get("title"))
     withsp = sum(1 for v in out.values() if v.get("sponsors"))
     withtext = sum(1 for v in out.values() if v.get("text_id"))
-    print(f"\n{len(out):,} bills -> {a.out}")
+    print(f"\n{len(out):,} bills of {term} -> {a.out} "
+          f"({sum(len(v) for v in out_all.values()):,} across "
+          f"{len(out_all)} term(s))")
     print(f"  {withtitle:,} with a title, {withsp:,} with sponsors, "
           f"{withtext:,} with a bill-text link")
     print(f"  {fetched:,} pages fetched, {cached:,} from cache")

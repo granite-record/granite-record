@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.2
+# GRANITE_VERSION: 2026-09-05.3
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -78,6 +78,41 @@ TERM_RE = re.compile(r"^\d{4}-\d{4}$")
 def term_keyed(data):
     """Is this a {term: {...}} file rather than one keyed on bill number?"""
     return bool(data) and all(TERM_RE.match(k) for k in data)
+
+
+def per_term(data, term, current=""):
+    """One term's rows out of a per-bill file, tolerating the flat old shape.
+
+    Every per-bill file here was keyed on the bill number alone before a second
+    term existed, and they are being converted one at a time. A file still in
+    the flat shape holds the CURRENT term and nothing else, so an archived term
+    must read nothing from it rather than the current term's record for the
+    same number: HB100 exists in every biennium, and the wrong sponsors are
+    worse than no sponsors. Passing no `current` treats a flat file as
+    answering for whatever term is asked, which is what a tool that knows it is
+    working on one term wants.
+    """
+    if not data:
+        return {}
+    if term_keyed(data):
+        return data.get(term, {})
+    return data if (not current or term == current) else {}
+
+
+def in_term(data, current_term):
+    """A flat-or-termed file rewritten as {term: {...}}, ready to merge into.
+
+    The counterpart of per_term for a writer. A flat file is taken to be the
+    current term's, which is what it was; a file already keyed on the term is
+    returned as it is. Neither loses a term the caller is not writing -- a
+    writer run on a subset that replaces the whole file is how the manifest
+    lost its hand-marked times twice.
+    """
+    if not data:
+        return {}
+    if term_keyed(data):
+        return dict(data)
+    return {current_term: dict(data)} if current_term else {}
 
 
 def for_term(data, term=None):
