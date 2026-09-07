@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.2
+# GRANITE_VERSION: 2026-09-06.3
 """
 Senate committee reports, with their reasoning, from the General Court's
 own database.
@@ -70,6 +70,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+import proceedings as P
 import probe_db
 
 SQL = """
@@ -263,14 +264,21 @@ def main():
             if rec is None:
                 failed.append((p[0].strip(), why))
                 continue
-            out.setdefault(rec["bill"], []).append(rec)
+            # {term: {bill: [reports]}}: a bill number is unique within a term
+            # and not across terms, and this file holds more than one as soon
+            # as an archived term is read in.
+            byb = out.setdefault(P.term_of(rec["date"]), {})
+            byb.setdefault(rec["bill"], []).append(rec)
     tmp.cleanup()
 
-    prose = sum(1 for v in out.values() for r in v
+    flat = [r for byb in out.values() for v in byb.values() for r in v]
+    nbills = sum(len(byb) for byb in out.values())
+    prose = sum(1 for r in flat
                 if len(r["reports"][0]["text"].split()) >= 15)
-    total = sum(len(v) for v in out.values())
-    print(f"  {total:,} parsed across {len(out):,} bills, "
-          f"{prose:,} carrying the committee's reasoning")
+    print(f"  {len(flat):,} parsed across {nbills:,} bills in {len(out)} "
+          f"term(s), {prose:,} carrying the committee's reasoning")
+    for t in sorted(out):
+        print(f"    {t}: {len(out[t]):,} bills")
     if failed:
         print(f"  {len(failed):,} could not be read:")
         for bill, why in failed[:8]:
@@ -278,26 +286,30 @@ def main():
 
     # A parse that quietly drops most of what it read is the failure this
     # project keeps meeting, so it is refused rather than written.
-    if total < n * 0.9 and not a.force_write:
-        sys.exit(f"\nNOT WRITING {a.out}: {total:,} of {n:,} reports parsed. "
-                 "That is a format change, not a session with fewer reports. "
-                 "Pass --force-write to override.")
+    if len(flat) < n * 0.9 and not a.force_write:
+        sys.exit(f"\nNOT WRITING {a.out}: {len(flat):,} of {n:,} reports "
+                 "parsed. That is a format change, not a session with fewer "
+                 "reports. Pass --force-write to override.")
 
     if a.sample:
-        for bid in sorted(out)[:a.sample]:
-            print("\n" + "=" * 70)
-            print(json.dumps(out[bid], indent=1)[:1400])
+        for t in sorted(out):
+            for bid in sorted(out[t])[:a.sample]:
+                print("\n" + "=" * 70)
+                print(json.dumps({t: {bid: out[t][bid]}}, indent=1)[:1400])
         print(f"\n--sample: nothing written to {a.out}")
         return 0
 
     p = Path(a.out)
     if p.exists():
         try:
-            had = len(json.loads(p.read_text(encoding="utf-8")))
+            prev = json.loads(p.read_text(encoding="utf-8"))
+            had = (sum(len(v) for v in prev.values())
+                   if prev and all(isinstance(v, dict) for v in prev.values())
+                   else len(prev))
         except ValueError:
             had = 0
-        if had and len(out) < had * 0.5 and not a.force_write:
-            sys.exit(f"\nNOT WRITING {a.out}: this run found {len(out):,} bills "
+        if had and nbills < had * 0.5 and not a.force_write:
+            sys.exit(f"\nNOT WRITING {a.out}: this run found {nbills:,} bills "
                      f"against {had:,} already on file.")
     p.write_text(json.dumps(out, indent=1), encoding="utf-8")
     print(f"  -> {a.out}")

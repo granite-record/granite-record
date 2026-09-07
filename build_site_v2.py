@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.25
+# GRANITE_VERSION: 2026-09-05.26
 """
 Generate the faceted site from real General Court data.
 
@@ -1781,7 +1781,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # the Senate's alongside the House's. Computed here because the
         # Documents list below cites the same calendars.
         rep_written, rep_docket, rep_actions = committee_reports(
-            reports.get(bid, []), narr, sources,
+            reports.get(term, {}).get(bid, []), narr, sources,
             b.get("house_committee", ""), b.get("senate_committee", ""))
 
         docs, seen_doc = [], set()
@@ -2105,13 +2105,25 @@ def main():
     # from a calendar has no business inside that. Merged here instead, which
     # is the one place that has to know both exist.
     senate = load(a.senate_reports, {})
+    # Both are {term: {bill: [reports]}} now, for the reason every per-bill file
+    # is: a bill number is unique within a term and not across terms. Reading
+    # the old flat shape with a term lookup gives every bill no reports and
+    # still exits zero, so it is refused.
+    for name, data in ((a.reports, reports), (a.senate_reports, senate)):
+        if data and not N.is_term_keyed(data):
+            sys.exit(f"{name} is keyed on bill number, not on term. Rebuild it: "
+                     "delete it and run its fetcher once for each year of the "
+                     "term.")
     if senate:
-        for bid, recs in senate.items():
-            reports.setdefault(bid, []).extend(recs)
-        n_prose = sum(1 for v in senate.values() for r in v
-                      for x in r.get("reports", [])
+        for term, byb in senate.items():
+            into = reports.setdefault(term, {})
+            for bid, recs in byb.items():
+                into.setdefault(bid, []).extend(recs)
+        n_prose = sum(1 for byb in senate.values() for v in byb.values()
+                      for r in v for x in r.get("reports", [])
                       if len((x.get("text") or "").split()) >= 15)
-        print(f"Senate committee reports: {len(senate):,} bills, "
+        n_bills = sum(len(byb) for byb in senate.values())
+        print(f"Senate committee reports: {n_bills:,} bills, "
               f"{n_prose:,} with the committee's reasoning")
     # Written by extract_amendments.py out of the cached calendars. Absent is
     # fine: the amendments are still listed, without their text.

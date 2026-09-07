@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.44
+# GRANITE_VERSION: 2026-09-04.45
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1353,7 +1353,8 @@ def _site_fixture(root):
     # docket line of its own: joining these to the docket on the wording alone
     # gave 364 real Senate reports a House Calendar citation and the day the
     # House committee signed.
-    w("senate_reports.json", {"HB1442": [
+    # {term: {bill: [reports]}}: bill numbers repeat every biennium.
+    w("senate_reports.json", {"2025-2026": {"HB1442": [
         {"bill": "HB1442", "title": "AN ACT relative to insurance coverage.",
          "source": "Senate committee report, released 2026-04-17",
          "date": "2026-04-17", "dated": "printed", "body": "S",
@@ -1374,7 +1375,7 @@ def _site_fixture(root):
          "minority_recommendation": "",
          "reports": [{"side": "Committee", "author": "Senator Tara Reardon",
                       "committee": "Judiciary", "vote_yeas": 4, "vote_nays": 1,
-                      "amendment": "", "text": "The study answered it."}]}]})
+                      "amendment": "", "text": "The study answered it."}]}]}})
     w("bill_status.json", {
         # The database's chamber status is not always advanced once a bill is
         # finished: 21 real ones still read REPORT FILED or NO ACTION on bills
@@ -1391,13 +1392,14 @@ def _site_fixture(root):
         "HR10": {"gen_status": "HOUSE", "house_status": "PASSED/ADOPTED",
                  "senate_status": "", "text_pdf": "", "chapter": "",
                  "lsr": "2026-0900", "body": "H"}})
-    w("committee_reports.json", {"HB1442": [
+    # {term: {bill: [reports]}}: bill numbers repeat every biennium.
+    w("committee_reports.json", {"2025-2026": {"HB1442": [
         {"bill": "HB1442", "title": "insurance coverage",
          "majority_recommendation": "OUGHT TO PASS", "minority_recommendation": None,
          "source": "House Calendar 9, 2026",
          "reports": [{"side": "Committee", "author": "Rep. Jodi Nelson",
                       "committee": "Commerce", "text": "The committee supports this.",
-                      "vote_yeas": 19, "vote_nays": 0}]}]})
+                      "vote_yeas": 19, "vote_nays": 0}]}]}})
     # A floor appearance WITH a boundary the clerk stated. This is not
     # decoration: build_site_v2 used to apply that boundary by rebinding `st`
     # to stations[-1], and `st` was already the bill's status record from 350
@@ -1700,6 +1702,40 @@ def _feed_needs_a_year():
         return "ok", "no year, no feed; and the guid names the term"
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a reports file keyed on bill number is refused, not ignored")
+def _reports_old_shape():
+    """The third and fourth files off ARCHITECTURE item 3, same silence.
+
+    committee_reports.json and senate_reports.json are {term: {bill: [reports]}}
+    now. Read either in the old flat shape with a term lookup and every bill
+    comes back with no committee report -- no recommendation, no vote, no
+    reasoning -- and the build exits zero.
+    """
+    here = Path(".").resolve()
+    if not (here / "build_site_v2.py").exists():
+        return "skip", "build_site_v2.py not here"
+    for name in ("committee_reports.json", "senate_reports.json"):
+        root = Path(tempfile.mkdtemp())
+        try:
+            _site_fixture(root)
+            nested = json.loads((root / name).read_text(encoding="utf-8"))
+            flat = {b: r for byb in nested.values() for b, r in byb.items()}
+            (root / name).write_text(json.dumps(flat), encoding="utf-8")
+            r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+                                "--data", "data", "--out", "site",
+                                "--segments", "work"],
+                               cwd=root, capture_output=True, text=True,
+                               timeout=180)
+            assert r.returncode != 0, (
+                f"the build accepted a {name} keyed on bill number and "
+                "produced a site whose bills have no committee reports")
+            said = (r.stdout + r.stderr).lower()
+            assert "keyed on bill number" in said, (r.stdout + r.stderr)[-160:]
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+    return "ok", "both reports files must name their term"
 
 
 @check("build", "a narratives.json keyed on bill number is refused, not ignored")

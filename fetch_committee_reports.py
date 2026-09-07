@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.19
+# GRANITE_VERSION: 2026-09-04.20
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -24,6 +24,7 @@ Text extraction, best first:
 
 import argparse
 import json
+import proceedings as P
 import re
 import shutil
 import subprocess
@@ -523,15 +524,24 @@ def main():
     #
     # So: everything already on file is kept, except records that came from
     # THIS year's calendars, which the run has just rebuilt.
+    # The file is {term: {bill: [reports]}}. A calendar year identifies the
+    # year; the TERM is what a bill number is unique within, and both years of
+    # a biennium print reports on the same bills.
+    term = P.term_of(str(a.year))
     out_path = Path(a.out)
-    year_mark = re.compile(rf",\s*{a.year}\b")
+    year_mark = re.compile(r",\s*" + str(a.year) + r"\b")
+    prior = {}
     if out_path.exists():
         try:
             prior = json.loads(out_path.read_text(encoding="utf-8"))
         except Exception:
             prior = {}
+        if prior and not all(re.match(r"^\d{4}-\d{4}$", k) for k in prior):
+            sys.exit(f"{a.out} is keyed on bill number, not on term. Delete it "
+                     "and re-run this once for each year of the term.")
+        mine = prior.get(term, {})
         kept = 0
-        for bid, recs in prior.items():
+        for bid, recs in mine.items():
             older = [r for r in recs
                      if not year_mark.search(r.get("source") or "")]
             if older:
@@ -539,27 +549,28 @@ def main():
                     r for r in allrep.get(bid, [])
                     if r.get("source") not in {x.get("source") for x in older}]
                 kept += len(older)
-            elif bid not in allrep:
-                pass
         if kept:
-            print(f"\n{kept:,} reports from other years kept; this run "
-                  f"rebuilt {a.year}")
+            print(f"\n{kept:,} reports from the other year of {term} kept; "
+                  f"this run rebuilt {a.year}")
 
-    if out_path.exists():
-        try:
-            had = len(json.loads(out_path.read_text(encoding="utf-8")))
-        except Exception:
-            had = 0
+        had = len(mine)
         if had and len(allrep) < had * 0.5:
             print(f"\nNOT WRITING {a.out}: this run found reports for "
-                  f"{len(allrep):,} bills,\nagainst {had:,} already on file. "
+                  f"{len(allrep):,} bills,\nagainst {had:,} on file for {term}. "
                   "That is a fetch that failed, not a session\nthat lost its "
                   "committee reports. The existing file is untouched.\n"
                   "Re-run when the General Court is answering, or pass "
                   "--force-write.")
             if not a.force_write:
                 return
-    out_path.write_text(json.dumps(allrep, indent=2), encoding="utf-8")
+
+    # Other terms are left exactly as they are. This run saw one year of one
+    # term and has nothing to say about any other.
+    prior[term] = allrep
+    out_path.write_text(json.dumps(prior, indent=2), encoding="utf-8")
+    others = sorted(k for k in prior if k != term)
+    print(f"\n{term}: {len(allrep):,} bills"
+          + (f"; other terms on file: {', '.join(others)}" if others else ""))
 
     total = sum(len(v) for v in allrep.values())
     with_min = sum(1 for v in allrep.values() for r in v if r["minority_recommendation"])
