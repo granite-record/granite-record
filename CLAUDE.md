@@ -1,7 +1,7 @@
 # Granite Record
 
 A public record of the New Hampshire General Court, live at graniterecord.org.
-2,234 bills, 406 legislators, 131,199 votes, and every committee hearing and
+2,234 bills, 406 legislators, 238,317 votes, and every committee hearing and
 floor debate linked to the moment in the recording where it happened.
 
 Static site: files on a CDN, no runtime. That constraint is deliberate.
@@ -36,6 +36,14 @@ time. Getting blocked again costs days and an email to a Clerk's office.
 If a fetch is genuinely needed, say so and let the person start it. Never run
 two at once. `python3 netcheck.py` diagnoses a refusal without making things
 worse.
+
+`fetch_rollcalls_db.py` and `fetch_reports_db.py` are the exception worth
+knowing about: they read the SQL host the General Court publishes credentials
+for at gc.nh.gov/downloads, not the web server that did the blocking. Still
+ask -- they are somebody else's server -- but a refusal there is a different
+problem with a different cause. `probe_db.py` reports what is in it;
+`probe_db.run_to_file` streams an answer too big for the JSON bridge, which is
+anything past a few thousand rows.
 
 **`publish`.** It deploys to the live site.
 
@@ -157,12 +165,14 @@ In order. `ARCHITECTURE.md` has the full reasoning.
    term-keying being built twice.
 
 4. **Term-keyed identifiers.** Bill numbers repeat every two years and nothing
-   outside `proceedings.csv` knows it. `committee_reports.json`,
-   `bill_text.json`, `narratives.json`, the per-bill site files and the 2,233
-   files under `site/feed/bill/` are keyed on `HB396` alone -- `build_feeds.py`
-   has no notion of a term at all. Fetch anything from 2024 today and it merges
-   into 2026. This
-   gates the archive.
+   outside `proceedings.csv` knew it. `rollcalls.json` is done -- it is
+   `{term: {bill: [votes]}}` and `preflight` fails if it is fed the old shape
+   or if two terms' votes reach one bill. The rest are not:
+   `committee_reports.json`, `senate_reports.json`, `bill_text.json`,
+   `narratives.json`, the per-bill site files and the 2,233 files under
+   `site/feed/bill/` are keyed on `HB396` alone -- `build_feeds.py` has no
+   notion of a term at all. Fetch anything from 2024 today and it merges into
+   2026. This gates the archive.
 
 ---
 

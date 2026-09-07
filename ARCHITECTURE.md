@@ -85,9 +85,17 @@ generator ever writes.
 
 ### 3. Bill numbers repeat every two years, and nothing knows it
 
-`committee_reports.json`, `bill_text.json`, `narratives.json`, the per-bill
-site files, and the 2,233 feeds under `site/feed/bill/`: all keyed by
-`HB396`. `build_feeds.py` contains no notion of a term at all, and is a
+**Partly done, 6 September.** `rollcalls.json` is now `{term: {bill: [votes]}}`
+and two `preflight` checks hold it there: one builds the fixture with the same
+bill number in two terms and fails if their votes merge, the other fails the
+build outright if it is handed the old flat shape rather than reading it and
+finding nothing. The member-vote key gained its year at the same time, because
+vote sequence numbers restart each session and "H-310" named two different roll
+calls the moment 2025 arrived beside 2026.
+
+The rest still are not. `committee_reports.json`, `senate_reports.json`,
+`bill_text.json`, `narratives.json`, the per-bill site files, and the 2,233
+feeds under `site/feed/bill/`: all keyed by `HB396`. `build_feeds.py` contains no notion of a term at all, and is a
 quarter of the site by file count. Run any fetch for 2024 and its HB 396 merges
 into 2026's. Today's merge guard keys on the year in a source line, which stops
 one year overwriting another but cannot stop two different bills sharing a key.
@@ -180,6 +188,29 @@ that is one link away and better in its original form.
 **Fix: fetch text for the current term only, and only bills whose docket has
 moved since last time.** `narratives.json` knows the last action date. A
 nightly becomes fifty requests, not two thousand. Old terms get a link.
+
+**Better fix, found 6 September: the General Court's own SQL host has all of
+it.** `LegislationText` holds the full text of every version of every bill --
+"Introduced", "As Amended by the House", "Version adopted by both bodies",
+"CHAPTERED FINAL VERSION" -- as HTML, in one query. `Legislation` holds the 48
+columns behind the bill status page, statuses with their dates included.
+`sponsors` holds them on the roster's own PersonID rather than the web member
+id the scrape returns. That is 2,234 requests to the server that blocked this
+address twice, replaced by one SELECT to a service published for public use.
+
+Two things done this way already: 2025's roll calls, which the General Court
+publishes for the current session only and which the site therefore did not
+have at all (197 bills gained a recorded vote), and the Senate's committee
+reports (1,254 bills, 1,096 with the committee's reasoning, where the site had
+been showing a bare docket line).
+
+**The one thing the database does not carry is the PDF link.** `text_pdf` is
+built from a `text_id` in the legacy bill-text URL, and
+`LegislationText.LegislationTextID` is a different id space -- HB1442 is 1937
+scraped and 23441 in the database. So a status source swap either keeps the
+scrape for that one field, links the General Court's current bill status page
+instead, or renders the database's own text. That is a decision, not a
+detail.
 
 ---
 

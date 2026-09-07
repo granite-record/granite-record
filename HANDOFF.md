@@ -72,7 +72,7 @@ that a file with an earlier date predates one with a later date.
 ## What this is
 
 graniterecord.org: a public record of the New Hampshire General Court. 2,234
-bills, 406 legislators, 131,199 votes, every committee hearing and floor debate
+bills, 406 legislators, 238,317 votes, every committee hearing and floor debate
 linked to the moment in the recording where it happened.
 
 It is a static site. Files on a CDN, no runtime, nothing to go down. That is a
