@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 One page per sitting legislator, that a search engine can find.
 
@@ -175,7 +175,13 @@ def page(m, detail, base, css):
 <style>{css}</style>
 <script type="application/ld+json">{json.dumps(ld)}</script>
 </head><body>
-<div class="wrap">
+<a class="skip" href="#main">Skip to the content</a>
+<nav class="top"><div class="in"><span class="brand">Granite Record</span>
+<a href="../index.html">Home</a><a href="../bills.html">Bills</a>
+<a href="../legislators.html" aria-current="page">Legislators</a>
+<a href="../learn.html">How it works</a><a href="../about.html">About</a>
+</div></nav>
+<div class="wrap" id="main">
 <a class="backsearch" href="../legislators.html">&#8592; Back to search</a>
 <h1>{E(name)}</h1>
 <p class="meta">{E(chamber)}
@@ -206,7 +212,11 @@ Hampshire General Court. This site is not affiliated with the General Court.
 The official record always takes precedence.
 <a href="../feed/legislator/{E(m.get('id',''))}.xml">Follow this member by
 RSS</a>.</p>
-</div></body></html>
+</div>
+<footer><div class="in">Built from public records published by the New Hampshire
+General Court. Not affiliated with the General Court.
+<a href="../about.html">How this is made</a>.</div></footer>
+</body></html>
 """
 
 
@@ -216,6 +226,7 @@ CSS = """
    search whether the reader arrived from it, from a bill's sponsor list, or
    from a search engine. */
 .backsearch{float:right;font-size:13.5px;margin:2px 0 0 16px}
+@media(max-width:620px){.backsearch{float:none;display:block;margin:0 0 10px}}
 h1{clear:none}
 h1{font-size:24px;margin:6px 0 4px}
 h2{font-size:14px;font-weight:600;color:var(--ink-2);letter-spacing:.05em;
