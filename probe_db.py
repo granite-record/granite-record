@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.9
+# GRANITE_VERSION: 2026-09-06.10
 """
 What is actually in the General Court's public database.
 
@@ -221,6 +221,7 @@ SAMPLES = [
 
 PS = r"""
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 $conn = New-Object System.Data.SqlClient.SqlConnection
 $conn.ConnectionString = $env:GR_CONNSTR
 try { $conn.Open() } catch {
@@ -258,6 +259,7 @@ def run(connstr, queries):
     p = subprocess.run(
         ["powershell", "-NoProfile", "-NonInteractive", "-Command", PS],
         capture_output=True, text=True, timeout=300,
+        encoding="utf-8", errors="replace",
         env={**__import__("os").environ,
              "GR_CONNSTR": connstr, "GR_QUERIES": payload})
     txt = (p.stdout or "").strip()
@@ -297,6 +299,7 @@ $cmd.CommandText = $env:GR_SQL
 $cmd.CommandTimeout = [int]$env:GR_TIMEOUT
 $CR = [string][char]13
 $LF = [string][char]10
+$NL = $env:GR_NEWLINE
 $every = [int]$env:GR_EVERY
 $enc = New-Object System.Text.UTF8Encoding($false)
 $w = New-Object System.IO.StreamWriter($env:GR_OUT, $false, $enc)
@@ -308,7 +311,7 @@ try {
     $vals = for ($i = 0; $i -lt $f; $i++) {
       $v = $rdr.GetValue($i)
       if ($v -eq $null -or $v -is [System.DBNull]) { '' }
-      else { ([string]$v).Replace('|',' ').Replace($CR,'').Replace($LF,'') }
+      else { ([string]$v).Replace('|',' ').Replace($CR,$NL).Replace($LF,$NL) }
     }
     $w.WriteLine([string]::Join('|', [string[]]$vals))
     $n++
@@ -327,7 +330,8 @@ Write-Output ("DONE " + $n)
 """
 
 
-def run_to_file(connstr, sql, path, timeout=1800, every=20000, label=""):
+def run_to_file(connstr, sql, path, timeout=1800, every=20000, label="",
+                newline=""):
     """Stream one SELECT to a pipe-delimited file. Returns (rows, error).
 
     The file is written by PowerShell, not by Python: the rows never cross the
@@ -338,7 +342,8 @@ def run_to_file(connstr, sql, path, timeout=1800, every=20000, label=""):
     call titles, where a title runs "laws." then a space, then a newline, then
     "Providing", and the file holds "laws. Providing" on one line with a single
     space. Deleting reproduced 328 of the 419 rows exactly; replacing with a
-    space reproduced 317.
+    space reproduced 317. Pass newline=" " for a column that holds HTML, where
+    a line break between two words is the only space between them.
     """
     import os
     path = Path(path)
@@ -348,7 +353,7 @@ def run_to_file(connstr, sql, path, timeout=1800, every=20000, label=""):
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         env={**os.environ, "GR_CONNSTR": connstr, "GR_SQL": sql,
              "GR_OUT": str(path.resolve()), "GR_TIMEOUT": str(int(timeout)),
-             "GR_EVERY": str(int(every))})
+             "GR_EVERY": str(int(every)), "GR_NEWLINE": newline})
     rows, err = None, None
     try:
         for line in proc.stdout:

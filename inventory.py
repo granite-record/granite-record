@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Report what is actually on disk, and which scripts are out of date.
 
@@ -43,7 +43,8 @@ DATA = ["Docket.txt", "LSRs.txt", "LsrsOnly.txt", "LsrSponsors.txt",
         "Members.txt", "HouseDistricts.txt", "Counties.txt", "Committees.txt",
         "SubjectCodes.txt",
         "narratives.json", "rollcalls.json", "bill_status.json",
-        "committee_reports.json", "floor_index.json", "journals.json",
+        "committee_reports.json", "senate_reports.json",
+        "floor_index.json", "journals.json",
         "calendars.json", "former_members.json", "verification_manifest.csv"]
 
 # A superseded SCRIPT does not always mean a superseded FILE. fetch_bill_titles.py

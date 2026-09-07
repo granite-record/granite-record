@@ -47,6 +47,7 @@ data/
 narratives.json
 bill_status.json
 committee_reports.json
+senate_reports.json
 floor_index.json
 journals.json
 calendars.json

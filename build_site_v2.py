@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.21
+# GRANITE_VERSION: 2026-09-05.22
 """
 Generate the faceted site from real General Court data.
 
@@ -1375,6 +1375,22 @@ REPORT_CAL = re.compile(r"House Calendar (\d+[A-Za-z]?)(?:,\s*(\d{4}))?", re.I)
 REPORT_AGAIN = re.compile(r"recommit|re-?refer|retained in committee", re.I)
 
 
+def rec_key(s):
+    """A recommendation as the two sources agree on it.
+
+    The docket writes "Ought to Pass with Amendment"; the Senate's own report
+    writes "OUGHT TO PASS WITH AMENDMENT", and sometimes "IS INEXPEDIENT TO
+    LEGISLATE" where the docket says "Inexpedient to Legislate". Stripping the
+    leading verb, the case and the punctuation makes them one string -- the
+    punctuation being what separates "Re-referred" from "rereferred". Measured
+    on every Senate report the database holds: 1,443 of the 1,443 bills whose
+    docket records a Senate report agree with the report's own wording, with
+    no disagreements.
+    """
+    s = re.sub(r"^(?:is|be|has)\s+", "", (s or "").strip().lower())
+    return re.sub(r"[^a-z ]", "", s).strip()
+
+
 def _cal_key(source):
     """"House Calendar 51, 2025" as the docket writes it: ("HC 51", "2025")."""
     m = REPORT_CAL.search(source or "")
@@ -1429,6 +1445,24 @@ def committee_reports(recs, narr, sources, house_cmte, senate_cmte):
         if e.get("cite") and d:
             signed.setdefault(e["cite"], d)
 
+    # The Senate's reports come from the database, not from a House Calendar,
+    # and carry their own printed date. Where the docket records the same
+    # recommendation it has the day the committee SIGNED and the journal page
+    # it was printed in, which are better than the day it was released -- so
+    # those are taken, and that docket line is then not shown a second time
+    # saying what the report above it already says.
+    #
+    # Keyed on the CHAMBER as well as the recommendation. On the wording alone
+    # it matched the wrong chamber 364 times out of 1,446 -- both chambers say
+    # "Ought to Pass" -- and gave a Senate report a House Calendar citation and
+    # the day the House committee signed. A citation to the wrong document is
+    # worse than none on a site whose whole claim is that it can be checked.
+    by_rec, used = {}, set()
+    for e in events:
+        if e.get("recommendation"):
+            by_rec.setdefault((e.get("body") or "",
+                               rec_key(e["recommendation"])), []).append(e)
+
     out, seen_cal = [], set()
     for r in recs:
         key, year = _cal_key(r.get("source"))
@@ -1440,10 +1474,26 @@ def committee_reports(recs, narr, sources, house_cmte, senate_cmte):
             rr["date"], rr["dated"] = signed[key], "signed"
         elif _cal_date(url):
             rr["date"], rr["dated"] = _cal_date(url), "printed"
+        elif r.get("date"):
+            rr["date"], rr["dated"] = r["date"], r.get("dated") or "printed"
         else:
             rr["date"], rr["dated"] = "", ""
         rr["cite"] = key
         rr["cite_url"] = url
+        if not key and r.get("date") and r.get("body"):
+            match = next((e for e in
+                          by_rec.get((r["body"],
+                                      rec_key(r.get("majority_recommendation"))), [])
+                          if id(e) not in used), None)
+            if match:
+                used.add(id(match))
+                when = _mdy(match.get("report_date"))
+                if when:
+                    rr["date"], rr["dated"] = when, "signed"
+                cite = match.get("cite", "")
+                rr["cite"] = cite
+                rr["cite_url"] = (sources.get(f"{cite} {rr['date'][:4]}")
+                                  or sources.get(cite, "")) if cite else ""
         out.append(rr)
     out.sort(key=lambda x: x.get("date") or "9999")
 
@@ -1452,6 +1502,8 @@ def committee_reports(recs, narr, sources, house_cmte, senate_cmte):
     # Senate report always does, because the Senate prints no reasoning.
     docket = []
     for e in events:
+        if id(e) in used:
+            continue          # a written report above is this same report
         if e.get("cite") and e["cite"] in seen_cal:
             continue
         # A minority report carries no vote and no volume of its own; where the
@@ -1920,6 +1972,7 @@ def main():
     # which sent the diagnosis in the wrong direction entirely.
     ap.add_argument("--segments", default="work")
     ap.add_argument("--reports", default="committee_reports.json")
+    ap.add_argument("--senate-reports", default="senate_reports.json")
 
     ap.add_argument("--status", default="status/status.txt")
     ap.add_argument("--districts", default="site/districts.json")
@@ -1964,6 +2017,22 @@ def main():
         sys.exit(f"{a.rollcalls} is keyed on bill number, not on term. Rebuild "
                  "it: python3 rollcall_parser.py --all --out rollcalls.json")
     reports = load(a.reports, {})
+    # The Senate's committee reports, with their reasoning, from the General
+    # Court's database -- the half the House Calendar PDFs cannot cover. Kept
+    # in its own file because fetch_committee_reports.py rebuilds
+    # committee_reports.json a calendar year at a time and decides what to keep
+    # by looking for ", <year>" in each record's source; a record that is not
+    # from a calendar has no business inside that. Merged here instead, which
+    # is the one place that has to know both exist.
+    senate = load(a.senate_reports, {})
+    if senate:
+        for bid, recs in senate.items():
+            reports.setdefault(bid, []).extend(recs)
+        n_prose = sum(1 for v in senate.values() for r in v
+                      for x in r.get("reports", [])
+                      if len((x.get("text") or "").split()) >= 15)
+        print(f"Senate committee reports: {len(senate):,} bills, "
+              f"{n_prose:,} with the committee's reasoning")
     # Written by extract_amendments.py out of the cached calendars. Absent is
     # fine: the amendments are still listed, without their text.
     amend_texts = load("amendments.json", {})

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.4
+# GRANITE_VERSION: 2026-09-05.5
 """
 Run the whole pipeline in the right order.
 
@@ -130,6 +130,13 @@ def plan(a):
              ["fetch_committee_reports.py", "--year", a.session],
              network=True, optional=True,
              note="calendars are cached; discovery only needs running once a session"),
+
+        Step("the Senate's committee reports, with their reasoning",
+             ["fetch_reports_db.py"],
+             produces=["senate_reports.json"],
+             network=True, optional=True,
+             note="the General Court's SQL host, not gc.nh.gov; 1,446 reports "
+                  "in one SELECT, 1,096 of them explaining the vote"),
 
         # --summary was passed here and fetch_journals.py has never defined it,
         # so argparse rejected the call and this step has never run in a build.

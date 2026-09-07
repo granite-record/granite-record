@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.35
+# GRANITE_VERSION: 2026-09-04.36
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1207,6 +1207,20 @@ def _site_fixture(root):
                                "cite": "SC 14", "cite_page": "",
                                "raw": "Committee Report: Referred to Interim "
                                       "Study, 04/16/2026, Vote 5-0, CC"},
+                              # A second Senate report, from the day the
+                              # committee sent it back. The database has no
+                              # written report for this one, so it stays a
+                              # docket line -- which is the case the absorbing
+                              # of the OTHER one must not break.
+                              {"date": "2026-03-10", "type": "report",
+                               "body": "S", "committee": "Senate Commerce",
+                               "recommendation":
+                                   "Re-referred to Committee",
+                               "report_date": "03/10/2026", "cite": "SC 9",
+                               "side": "", "yeas": "5", "nays": "0",
+                               "cancelled": False,
+                               "raw": "Committee Report: Re-referred to "
+                                      "Committee, 03/10/2026; SC 9"},
                               # And the House report the calendar did print, so
                               # the two are joined on the calendar they cite.
                               {"date": "2026-02-27", "type": "report", "body": "H",
@@ -1253,6 +1267,35 @@ def _site_fixture(root):
          "not_voting": 67, "seats": 400, "seated": 400, "vacancies": 0,
          "threshold_needed": None, "threshold_rule": None, "passed": True,
          "threshold_note": None, "title": "relative to insurance coverage"}]}})
+    # The Senate's own committee reports, from the General Court's database.
+    # Two of them on one bill, which is what a bill re-referred to committee
+    # and reported again looks like. The second deliberately shares its
+    # recommendation with the HOUSE report event above and has no Senate
+    # docket line of its own: joining these to the docket on the wording alone
+    # gave 364 real Senate reports a House Calendar citation and the day the
+    # House committee signed.
+    w("senate_reports.json", {"HB1442": [
+        {"bill": "HB1442", "title": "AN ACT relative to insurance coverage.",
+         "source": "Senate committee report, released 2026-04-17",
+         "date": "2026-04-17", "dated": "printed", "body": "S",
+         "calendar": "Regular Calendar",
+         "majority_recommendation": "BE REFERRED TO INTERIM STUDY",
+         "minority_recommendation": "",
+         "reports": [{"side": "Committee", "author": "Senator Debra Altschiller",
+                      "committee": "Judiciary", "vote_yeas": 5, "vote_nays": 0,
+                      "amendment": "",
+                      "text": "The committee heard testimony that the coverage "
+                              "question turns on federal rules still in flux, "
+                              "and would rather study it than guess."}]},
+        {"bill": "HB1442", "title": "AN ACT relative to insurance coverage.",
+         "source": "Senate committee report, released 2026-06-02",
+         "date": "2026-06-02", "dated": "printed", "body": "S",
+         "calendar": "Consent Calendar",
+         "majority_recommendation": "OUGHT TO PASS",
+         "minority_recommendation": "",
+         "reports": [{"side": "Committee", "author": "Senator Tara Reardon",
+                      "committee": "Judiciary", "vote_yeas": 4, "vote_nays": 1,
+                      "amendment": "", "text": "The study answered it."}]}]})
     w("bill_status.json", {
         "HB1442": {
             "gen_status": "PASSED/ADOPTED", "house_status": "PASSED/ADOPTED",
@@ -1452,6 +1495,65 @@ def _chain():
         bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
         assert not bad, "check_site: " + "; ".join(bad)[:140]
         return "ok", "5 builders, then check_site, on a 2-bill fixture"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "the Senate's own report reaches the page, dated from its own chamber")
+def _senate_reports():
+    """1,254 bills had a bare docket line where the Senate had written a report.
+
+    build_site_v2.committee_reports said "a Senate report always [lands in the
+    docket list], because the Senate prints no reasoning". That is true of the
+    docket and false of the record: the General Court's database holds 1,446
+    Senate committee reports and 1,096 of them explain the committee's
+    thinking.
+
+    The join back to the docket -- which supplies the day the committee signed
+    and the journal page -- has to know the chamber. On the recommendation
+    alone it matched the wrong one 364 times, because "Ought to Pass" is what
+    both chambers say.
+    """
+    here = Path(".").resolve()
+    if not (here / "build_site_v2.py").exists():
+        return "skip", "build_site_v2.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        _site_fixture(root)
+        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+                            "--data", "data", "--out", "site", "--segments", "work"],
+                           cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
+        hb = json.loads((root / "site" / "bills" / "2026" / "HB1442.json")
+                        .read_text(encoding="utf-8"))
+        sen = [x for x in hb.get("reports", [])
+               if (x.get("source") or "").startswith("Senate committee report")]
+        assert len(sen) == 2, f"{len(sen)} Senate reports on the page, not 2"
+        by_rec = {x["majority_recommendation"]: x for x in sen}
+
+        # The one the docket also records: it takes the signing date and the
+        # Senate Calendar page, not the day it was released.
+        study = by_rec["BE REFERRED TO INTERIM STUDY"]
+        assert (study["dated"], study["date"]) == ("signed", "2026-04-16"),             (study["dated"], study["date"])
+        assert study["cite"] == "SC 14", study["cite"]
+        assert "federal rules still in flux" in study["reports"][0]["text"],             "the committee's reasoning did not reach the page"
+
+        # The one the docket does not: it must not borrow the House's.
+        otp = by_rec["OUGHT TO PASS"]
+        assert not (otp.get("cite") or "").startswith("HC"),             (f"a Senate report cites {otp['cite']}, a House Calendar -- the "
+             "join matched on the recommendation without the chamber")
+        assert otp["date"] != "2026-02-24",             "a Senate report is dated from the day the House committee signed"
+
+        # The docket line it replaces is not shown underneath it as well --
+        # and the OTHER Senate report, which the database does not cover, still
+        # is. Absorbing has to be targeted; dropping every Senate docket line
+        # once any written report exists would lose the second report entirely.
+        dk = [x.get("cite") for x in hb.get("docket_reports", [])
+              if x.get("body") == "S"]
+        assert "SC 14" not in dk, "the docket line the written report replaces "                                  "is shown underneath it as well"
+        assert "SC 9" in dk, (f"Senate docket lines are {dk}; the report the "
+                              "database does not cover has been dropped")
+        return "ok", "2 written, 1 docket line kept, dated from the Senate"
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
