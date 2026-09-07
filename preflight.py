@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.47
+# GRANITE_VERSION: 2026-09-04.48
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -431,6 +431,39 @@ def _run_markers(root, *flags):
         [sys.executable, "apply_markers.py", "--workdir", str(root / "work"),
          "--manifest", str(root / "manifest.csv"), *flags],
         capture_output=True, text=True, timeout=180)
+
+
+@check("markers", "a whisper transcript is read, not counted as silence",
+       needs=("segment_markers",))
+def _whisper_transcript(segment_markers):
+    """Every whisper-transcribed recording read as zero words.
+
+    read_words parsed only YouTube's json3 {"events": [...]} shape.
+    transcribe_and_align writes whisper's output as a LIST of
+    {"start","end","text"}, so those folders returned nothing and were counted
+    under "no captions" -- silence and failure looking the same again. Twelve
+    folders were already dark this way, and the recordings YouTube has no
+    captions for can only ever arrive in this shape.
+    """
+    d = Path(tempfile.mkdtemp())
+    try:
+        (d / "transcript.json").write_text(json.dumps([
+            {"start": 462.8, "end": 465.2,
+             "text": "If you would please rise for the pledge"},
+            {"start": 610.0, "end": 616.0,
+             "text": "we will open the hearing on House Bill 1123"},
+        ]), encoding="utf-8")
+        w = segment_markers.read_words(d)
+        assert w, "a whisper transcript still reads as zero words"
+        assert len(w) == 17, f"{len(w)} words, expected 17"
+        assert w[0] == (462.8, "If"), w[0]
+        # Per LINE, not per word: every word of a sentence carries the
+        # sentence's start, which is the honest resolution whisper gives.
+        assert w[7][0] == 462.8, w[7]
+        assert w[8] == (610.0, "we"), w[8]
+        return "ok", f"{len(w)} words off a whisper transcript"
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
 
 
 @check("markers", "apply_markers runs and changes nothing without --apply")

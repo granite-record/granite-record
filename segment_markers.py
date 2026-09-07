@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.28
+# GRANITE_VERSION: 2026-09-05.29
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -291,6 +291,31 @@ def read_words(folder):
                     w = (s.get("utf8") or "").strip()
                     if w and w != "\n":
                         out.append(((base + (s.get("tOffsetMs") or 0)) / 1000.0, w))
+            if out:
+                return out
+        # Whisper's own output, which transcribe_and_align.py writes as a LIST
+        # of {"start","end","text"} rather than YouTube's {"events": [...]}.
+        # The parser above skipped it silently, so every whisper-transcribed
+        # recording read as zero words and was counted under "no captions" --
+        # the exact case the note further down warns about, where silence and
+        # failure look the same. Eight folders were already dark this way, and
+        # the recordings YouTube has no captions for can ONLY come this way.
+        #
+        # The timing is per LINE, not per word: whisper gives one start for a
+        # whole sentence. So a marker found here is accurate to the line it sits
+        # in, not to the word, and callers are told by the second return value.
+        if isinstance(doc, list) and doc and isinstance(doc[0], dict) \
+                and "text" in doc[0]:
+            out = []
+            for seg in doc:
+                t = seg.get("start")
+                if t is None:
+                    continue
+                # Every word of the line carries the line's start. That is the
+                # honest resolution: pretending to know where inside a sentence
+                # a word fell would be inventing precision.
+                for w in str(seg.get("text") or "").split():
+                    out.append((float(t), w))
             if out:
                 return out
     return []
