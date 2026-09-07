@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.1
+# GRANITE_VERSION: 2026-09-05.2
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -76,6 +76,32 @@ MUST_MATCH = [
     ("I'm here to introduce House Bill 1082", "the sponsor, not the chair"),
     ("our first bill is Senate Bill 435", "first bill is"),
     ("First one we'll take up is Senate Bill 481", "first one we'll take up"),
+
+    # -- from --gaps, read on recordings where nothing fired at all -----
+    #
+    # Every one of these is an opening no pattern caught, and they share a
+    # shape rather than a vocabulary: the verb takes the BILL directly, with
+    # no proceeding noun after it. That is the case OPEN_DIRECT_RE exists for,
+    # and its verb list was too short.
+    ("I'll open HP 369. Representative Patenza, good to see you",
+     "open, with the bill straight after"),
+    ("we're going to start HB 602 requiring certain offenders to participate",
+     "start, with the bill straight after"),
+    ("Senator Eler is going to introduce SB 269", "introduce, by the sponsor"),
+    ("from the Department of Health and Human Services as I introduce "
+     "Senate Bill 264", "introduce, mid-sentence"),
+    ("The next bill up on the docket is 1586 allowing the commissioner",
+     "next bill up on the docket"),
+    ("first up we have Senate I'm sorry, House Bill 206 and 204",
+     "first up we have"),
+    ("So we'll move now to HB 1398, establishing a committee to study",
+     "move now to, not 'move on to'"),
+    # And one the noun list missed by a single word: the chair said "session"
+    # on its own, where SUBJECT knew only "executive session" and "hearing".
+    ("And uh we're opening the session on House Bill 1123 requiring certain "
+     "companies to post expected salary ranges", "bare 'session' as the noun"),
+    ("With that, we're going to close down the hearing for this bill 1574",
+     "close down, where CLOSE_RE knew close out and close up"),
 
     # -- the floor: the clerk's script ----------------------------------
     ("Majority of the Committee on Finance to which was referred Senate Bill 408, "

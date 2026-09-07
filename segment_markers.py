@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.29
+# GRANITE_VERSION: 2026-09-05.30
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -73,8 +73,12 @@ NONWORD = re.compile(r"[^a-z0-9 ]+")
 
 # The thing being opened or closed. "hearing" alone is common; so is
 # "executive session"; "public hearing" is the formal version of the first.
+# "session" on its own is last, so the longer names still win the alternation.
+# It is here because one chair says "we're opening the session on House Bill
+# 1123" and nothing else in this list is the word they used -- the whole
+# recording came back with no boundary for want of it.
 SUBJECT = (r"(?P<what>public\s+hearing|executive\s+session|exec\s+session|"
-           r"exact\s+session|exec\s+session|hearing|work\s+session|testimony)")
+           r"exact\s+session|hearing|work\s+session|testimony|session)")
 SUBJECT_BARE = r"(?:public\s+hearing|executive\s+session|hearing|work\s+session)"
 # "we'll open up the um executive session" -- the filler sits between the
 # article and the noun, and a pattern with no room for it misses the marker
@@ -104,8 +108,8 @@ OPEN_RE = re.compile(
 
 CLOSE_RE = re.compile(
     r"(?:will\s+close|going\s+to\s+close|closing|i'?ll\s+close|we'?ll\s+close|"
-    r"close\s+out|close\s+up|that'?ll\s+end|end\s+the)\s+(?:up\s+)?"
-    r"(?:the\s+|a\s+)?" + FILLER + SUBJECT + r"(?:\s+(?:for|on|of))?", re.I)
+    r"close\s+out|close\s+up|close\s+down|that'?ll\s+end|end\s+the)\s+(?:up\s+|down\s+)?"
+    r"(?:the\s+|a\s+|this\s+)?" + FILLER + SUBJECT + r"(?:\s+(?:for|on|of))?", re.I)
 
 # Looser openings that name no proceeding. Real, and weaker: "Next up" also
 # introduces a speaker, a document, or a recess.
@@ -114,9 +118,28 @@ CLOSE_RE = re.compile(
 # testimony on HB 138". The first version required a noun after the verb and
 # so could not match any of these, which is a shape rather than a vocabulary
 # problem -- and three real openings fell through it.
+# Read on recordings that came back with nothing at all. Each of these opens a
+# real proceeding and none of them names one, so OPEN_RE -- which demands the
+# noun -- could not reach any of them:
+#
+#   "I'll open HP 369. Representative Patenza, good to see you"
+#   "we're going to start HB 602 requiring certain offenders to participate"
+#   "Senator Eler is going to introduce SB 269"
+#   "The next bill up on the docket is 1586 allowing the commissioner"
+#   "first up we have Senate I'm sorry, House Bill 206 and 204"
+#   "So we'll move now to HB 1398, establishing a committee to study"
+#
+# The bill still has to be named right after, and the agenda-readout guard
+# still applies, so these cannot fire on a chair listing the day's business.
 OPEN_DIRECT_RE = re.compile(
     r"(?:going\s+to\s+turn\s+to|now\s+turn\s+to|turn(?:ing)?\s+to|"
     r"take\s+testimony\s+on|taking\s+testimony\s+on|"
+    r"(?:i'?ll|we'?ll|will|going\s+to|now)\s+open(?:\s+up)?|"
+    r"going\s+to\s+start|we'?re\s+going\s+to\s+start|"
+    r"introduc(?:e|ing)|"
+    r"next\s+bill\s+up(?:\s+on\s+the\s+docket)?\s+is|"
+    r"first\s+up\s+we\s+have|"
+    r"mov(?:e|ing)\s+now\s+(?:to|on\s+to)|"
     r"next\s+(?P<what2>public\s+hearing|executive\s+session|hearing|"
     r"work\s+session)\s+is(?:\s+on)?)", re.I)
 
