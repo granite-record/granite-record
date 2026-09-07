@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.1
+# GRANITE_VERSION: 2026-09-04.2
 """
 Build a per-bill index of floor debates, keyed to the session recordings.
 
@@ -32,6 +32,7 @@ Senate floor debates get the recording and no offset.
 import argparse
 import csv
 import json
+import narrative
 import re
 import re
 from collections import defaultdict
@@ -168,8 +169,9 @@ def main():
     # date, so the right recording is still known.
     seen = {(b, e["date"]) for b, es in index.items() for e in es}
     novote = 0
-    nar = json.loads(Path(a.narratives).read_text(encoding="utf-8")) \
-        if Path(a.narratives).exists() else {}
+    # One term's worth: narratives.json is keyed on the term now, and this
+    # tool works on the session it was pointed at.
+    nar = narrative.load_narratives(a.narratives)
     for bill, rec in nar.items():
         b = bill.upper()
         for e in rec.get("events", []):

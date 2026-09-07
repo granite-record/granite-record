@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Amendment text, out of the calendars already on this disk.
 
@@ -47,6 +47,7 @@ here. An amendment nobody cites is still recorded; it simply goes unused.
 
 import argparse
 import json
+import narrative
 import re
 import sys
 from collections import Counter
@@ -168,7 +169,7 @@ def amendments_in(text, source):
 def cited(path):
     if not Path(path).exists():
         return {}
-    narr = json.loads(Path(path).read_text(encoding="utf-8"))
+    narr = narrative.load_narratives(path)
     by_bill = {}
     for bid, rec in narr.items():
         nums = set()

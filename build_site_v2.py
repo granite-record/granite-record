@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.23
+# GRANITE_VERSION: 2026-09-05.24
 """
 Generate the faceted site from real General Court data.
 
@@ -23,6 +23,7 @@ Standard library only.
 """
 
 import argparse
+import narrative as N
 import proceedings as P
 import csv
 import json
@@ -1640,7 +1641,6 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     n_stated = 0
 
     for bid, b in bills.items():
-        narr = narratives.get(bid)
         # New Hampshire sits in two-year terms beginning in odd years. Bill
         # numbers are unique across the whole term, so the term -- not the year
         # -- is the unit a number identifies within, and it has to be known
@@ -1648,6 +1648,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         year = int(b.get("lsr_year") or 0)
         term = P.term_of(str(year)) if year else ""
         rcs = rollcalls.get(term, {}).get(bid, [])
+        narr = narratives.get(term, {}).get(bid)
         st = status_pages.get(bid, {})
         prefix = bill_prefix(bid)
         told = classify_stated(st, prefix)
@@ -2053,6 +2054,13 @@ def main():
     # for, under the data directory, is not where the pipeline writes it.
     towns = load(D / "towns.json", {})
     narratives = load(a.narratives, {})
+    # {term: {bill: record}}, for the reason rollcalls.json is: a bill number
+    # is unique within a term and not across terms. Reading the old flat shape
+    # with a term lookup finds nothing for every bill and still exits zero.
+    if narratives and not N.is_term_keyed(narratives):
+        sys.exit(f"{a.narratives} is keyed on bill number, not on term. "
+                 "Rebuild it: python3 narrative.py --docket Docket.txt --all "
+                 f"--out {a.narratives}")
     rollcalls = load(a.rollcalls, {})
     # {term: {bill: [votes]}}, since rollcall_parser started reading past
     # sessions. The older shape was {bill: [votes]}, and reading one with the
@@ -2228,7 +2236,7 @@ def main():
 
     actions = []
     for b in index:
-        narr = narratives.get(b["id"])
+        narr = narratives.get(b["term"], {}).get(b["id"])
         for e in (narr or {}).get("events", []):
             if e.get("cancelled") or not e.get("date") or e["date"] > today:
                 continue

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.39
+# GRANITE_VERSION: 2026-09-04.40
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1195,7 +1195,9 @@ def _site_fixture(root):
          "date": "2024-03-06", "vote": "Nay"}])
     w("data/towns.json", {"Raymond": [{"county": "Rockingham", "district": "13",
                                        "ward": "0", "seats": 2}]})
-    w("narratives.json", {
+    # {term: {bill: record}}: bill numbers repeat every biennium, so the
+    # file is keyed on the term and a bare bill number is not a key.
+    w("narratives.json", {"2025-2026": {
         "SB900": {"narrative": "The Senate voted it down.", "stages": [],
                   "notes": [], "unrecognised": [],
                   "events": [{"date": "2026-02-19", "type": "floor", "body": "S",
@@ -1290,7 +1292,7 @@ def _site_fixture(root):
                   "events": [{"date": "2026-08-19", "type": "other", "body": "H",
                               "cancelled": False,
                               "raw": "Veto Sustained 08/19/2026: RC 165-140 "
-                                     "Lacking Necessary Two-Thirds Vote"}]}})
+                                     "Lacking Necessary Two-Thirds Vote"}]}}})
     # {term: {bill: [votes]}}. A bill number is unique within a term and not
     # across terms, so the fixture carries the SAME number in two of them --
     # HB1442 in 2025-2026 with 214-119, and an older HB1442 in 2023-2024 with
@@ -1550,6 +1552,37 @@ def _chain():
         bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
         assert not bad, "check_site: " + "; ".join(bad)[:140]
         return "ok", "5 builders, then check_site, on a 2-bill fixture"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a narratives.json keyed on bill number is refused, not ignored")
+def _narratives_old_shape():
+    """The same silence rollcalls.json had, on the file that drives everything.
+
+    narratives.json is {term: {bill: record}} because bill numbers repeat every
+    biennium. Read the old flat shape with a term lookup and every bill comes
+    back with no history, no status, no reports and no events -- and the build
+    succeeds.
+    """
+    here = Path(".").resolve()
+    if not (here / "build_site_v2.py").exists():
+        return "skip", "build_site_v2.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        _site_fixture(root)
+        nested = json.loads((root / "narratives.json").read_text(encoding="utf-8"))
+        flat = {b: r for byb in nested.values() for b, r in byb.items()}
+        (root / "narratives.json").write_text(json.dumps(flat), encoding="utf-8")
+        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+                            "--data", "data", "--out", "site", "--segments", "work"],
+                           cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode != 0, ("the build accepted a narratives.json keyed "
+                                   "on bill number and produced a site whose "
+                                   "bills have no history")
+        said = (r.stdout + r.stderr).lower()
+        assert "keyed on bill number" in said, (r.stdout + r.stderr).strip()[-160:]
+        return "ok", "the build stops and says how to rebuild it"
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -2003,7 +2036,10 @@ def _signed():
         return "skip", "narratives.json or build_site_v2.py not here"
     bs = imp("build_site_v2")
     assert bs, "build_site_v2.py will not import"
-    nv = json.loads(Path("narratives.json").read_text(encoding="utf-8"))
+    nvf = json.loads(Path("narratives.json").read_text(encoding="utf-8"))
+    # {term: {bill: record}}. This is a check on the whole record, so it reads
+    # every term rather than one.
+    nv = {b: r for byb in nvf.values() for b, r in byb.items()}
     # The clerk writes it two ways -- "Signed by Governor Ayotte 7/10/2026" and
     # "Signed by the Governor on 7/10/2026" -- and the pattern knew only the
     # first. 233 of the 632 signatures on the record went unrecognised, and the

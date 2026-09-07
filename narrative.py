@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.19
+# GRANITE_VERSION: 2026-09-04.20
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -19,6 +19,7 @@ missing one.
 
 import argparse
 import json
+import proceedings as P
 import re
 import sys
 from collections import defaultdict, OrderedDict
@@ -455,6 +456,36 @@ def classify(desc):
     return {"_type": "other", "_raw": c}
 
 
+# A term as this project writes one: "2025-2026". narratives.json is keyed on
+# it because bill numbers repeat every biennium, and the old flat {bill: record}
+# shape merges HB396 of 2023 with HB396 of 2025 the moment a past session is
+# read in.
+TERM_RE = re.compile(r"^\d{4}-\d{4}$")
+
+
+def is_term_keyed(data):
+    """Is this narratives.json the {term: {bill: record}} shape?"""
+    return bool(data) and all(TERM_RE.match(k) for k in data)
+
+
+def load_narratives(path, term=None):
+    """narratives.json as {bill: record}, for one term.
+
+    The default term is the most recent the file holds, which is what every
+    tool working on the current session wants. Reading the old flat shape with
+    a term lookup returns nothing for every bill without failing, so it is
+    refused rather than read.
+    """
+    p = Path(path)
+    data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    if not data:
+        return {}
+    if not is_term_keyed(data):
+        sys.exit(f"{path} is keyed on bill number, not on term. Rebuild it: "
+                 f"python3 narrative.py --docket Docket.txt --all --out {path}")
+    return data.get(term or max(data), {})
+
+
 def parse_docket(path, want_bill=None, want_session=None):
     bills = defaultdict(list)
     with open(path, encoding="utf-8-sig", errors="replace") as fh:
@@ -470,7 +501,8 @@ def parse_docket(path, want_bill=None, want_session=None):
             except ValueError:
                 created = datetime.min
             bills[bill].append({
-                "lsr": f"{p[0]}-{p[1]}", "body": p[4].strip(),
+                "lsr": f"{p[0]}-{p[1]}", "session": p[0].strip(),
+                "body": p[4].strip(),
                 "desc": p[5], "created": created,
                 "flags": re.findall(r"==\s*([A-Z][A-Z ]*?)\s*==", p[5]),
             })
@@ -1084,13 +1116,22 @@ def main():
     if not bills:
         sys.exit(f"No docket rows found{' for ' + a.bill if a.bill else ''}.")
 
-    results = {b: build(b, rows) for b, rows in bills.items()}
+    # Keyed on the term. Every docket row for a bill carries the same session
+    # year -- all 2,233 of them, split 847 in 2025 and 1,386 in 2026 with no
+    # bill in both -- so the first row settles which term the bill belongs to.
+    results = defaultdict(dict)
+    for b, rows in bills.items():
+        results[P.term_of(rows[0].get("session", ""))][b] = build(b, rows)
+    results = dict(results)
 
     if a.out:
         with open(a.out, "w", encoding="utf-8") as fh:
             json.dump(results, fh, indent=2)
-        unk = sum(len(r["unrecognised"]) for r in results.values())
-        print(f"{len(results):,} bills -> {a.out}")
+        flat = [r for byb in results.values() for r in byb.values()]
+        unk = sum(len(r["unrecognised"]) for r in flat)
+        for t in sorted(results):
+            print(f"  {t}: {len(results[t]):,} bills")
+        print(f"{len(flat):,} bills across {len(results)} term(s) -> {a.out}")
         if MEMBERS:
             print(f"{EXPANDED[0]:,} motion movers given their full name from "
                   f"{a.members}")
@@ -1101,7 +1142,7 @@ def main():
               f"(shown verbatim on the page, never dropped)")
         if unk:
             seen = OrderedDict()
-            for r in results.values():
+            for r in flat:
                 for u in r["unrecognised"]:
                     k = re.sub(r"\d", "#", u)[:70]
                     seen[k] = seen.get(k, 0) + 1
@@ -1110,7 +1151,10 @@ def main():
                 print(f"  {v:5}  {k}")
         return
 
-    for b, r in results.items():
+    # Printing to the terminal rather than writing the file: one flat view,
+    # since a person asking for a bill by name does not care which term the
+    # docket they just pointed at belongs to.
+    for b, r in ((b, r) for byb in results.values() for b, r in byb.items()):
         print(f"\n{'=' * 68}\n{b}\n{'=' * 68}")
         print(r["narrative"] or "(no recognised events)")
         for n in r["notes"]:

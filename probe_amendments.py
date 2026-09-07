@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Is the amendment text already on this disk?
 
@@ -44,6 +44,7 @@ WHAT COMES NEXT EITHER WAY
 
 import argparse
 import json
+import narrative
 import re
 import sys
 from collections import Counter
@@ -66,7 +67,7 @@ def cited_amendments(path):
     """Every amendment number the docket refers to, per bill."""
     if not Path(path).exists():
         return {}, Counter()
-    narr = json.loads(Path(path).read_text(encoding="utf-8"))
+    narr = narrative.load_narratives(path)
     by_bill, all_nums = {}, Counter()
     for bid, rec in narr.items():
         nums = set()
