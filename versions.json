@@ -70,7 +70,7 @@
     "fetch_committee_members_db.py": "2026-09-07.1",
     "build_committees.py": "2026-09-07.4",
     "probe_archive_shape.py": "2026-09-07.2",
-    "app.js": "2026-09-07.11",
+    "app.js": "2026-09-07.12",
     "app.css": "2026-09-07.5",
     "fetch_members_db.py": "2026-09-07.1"
   },

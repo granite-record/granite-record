@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.11
+// GRANITE_VERSION: 2026-09-07.12
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -195,9 +195,15 @@ Promise.all([need("index.json"),need("meta.json")])
    const ys=$("#year");
    ys.innerHTML=terms.map(t=>`<option value="${t}">${t} term</option>`).join("");
    ys.value=term;
-   ys.addEventListener("change",e=>{term=e.target.value;render();});
+   ys.addEventListener("change",e=>{
+     // On a record page there is no list to re-filter, and render() would
+     // write one over the record.
+     if(PAGE||window.GR_STATIC){location.href="bills.html";return;}
+     term=e.target.value;render();});
    const so=$("#sort");
-   if(so)so.addEventListener("change",e=>{sortBy=e.target.value;render();});
+   if(so)so.addEventListener("change",e=>{
+     if(PAGE||window.GR_STATIC)return;
+     sortBy=e.target.value;render();});
    $("#q").disabled=false;
    // The button next to it does the same job on the focused view, so it waits
    // for the same data.
@@ -220,6 +226,7 @@ Promise.all([need("index.json"),need("meta.json")])
      const fac=$("#facets"); if(fac){fac.innerHTML="";fac.hidden=true;}
      const sh=document.querySelector(".shell"); if(sh)sh.classList.add("nofacets");
      const c=$("#count"); if(c)c.textContent="";
+     hideListControls();
      return;
    }
    if(window.GR_MEMBER){openPage("member",String(window.GR_MEMBER));return;}
@@ -1525,6 +1532,22 @@ document.addEventListener("change",e=>{
   renderPage();
 });
 
+// The term and sort dropdowns order and filter a list of bills. On a page
+// showing one member or one committee there is no such list, and a control
+// that does nothing is worse than no control.
+function hideListControls(){
+  ["#year","#sort"].forEach(sel=>{
+    const el=$(sel); if(!el)return;
+    el.hidden=true;
+    const lab=el.previousElementSibling;
+    if(lab&&lab.tagName==="LABEL")lab.hidden=true;
+  });
+  const hint=document.querySelector(".qhint");
+  if(hint)hint.hidden=true;
+  const q=$("#q");
+  if(q)q.placeholder="Search all bills";
+}
+
 function openPage(kind,ref){
   PAGE={kind,data:null,term:"",status:"",vfilter:""};
   // The search chrome belongs to the search. Left up, the facet panel offered
@@ -1534,6 +1557,7 @@ function openPage(kind,ref){
   const sh=document.querySelector(".shell"); if(sh)sh.classList.add("nofacets");
   const c=$("#count"); if(c)c.textContent="";
   const sy=$("#synhint"); if(sy)sy.textContent="";
+  hideListControls();
   const url=DATA(kind==="member"?`legislators/${ref}.json`
                                 :`committee/${ref}.json`);
   const el=$("#results");
@@ -1796,6 +1820,13 @@ document.addEventListener("input",e=>{
 // what a search box on a list should do.
 function submitSearch(){
   query=$("#q").value;
+  // From a member's or a committee's page, searching means going to the bill
+  // search -- that is where results are drawn. Running render() here wrote
+  // the list over the record instead, and the only way back was a reload.
+  if(PAGE||window.GR_STATIC){
+    location.href="bills.html"+(query?`?q=${encodeURIComponent(query)}`:"");
+    return;
+  }
   // From a bill's own view, running the search means leaving that bill. Back
   // out to the top: the scroll position from before it was opened belongs to
   // a list that is no longer the one on screen.
@@ -1809,7 +1840,9 @@ function submitSearch(){
   if(first)first.scrollIntoView({block:"start",behavior:"smooth"});
 }
 $("#q").addEventListener("input",e=>{
-  if(focused)return;
+  // No live narrowing on a record page: there is no list under it to narrow,
+  // and render() would replace the record with one.
+  if(focused||PAGE||window.GR_STATIC)return;
   query=e.target.value;
   render();
 });
