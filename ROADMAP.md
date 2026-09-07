@@ -26,6 +26,48 @@ timestamps.
 
 ---
 
+## Idea box: following a session live
+
+Not feasible in the short term, and parked rather than dropped.
+
+The idea: on a session day, a page that lists the bills in the order they are
+being taken, says which one is on the floor now, marks one "just voted" and the
+next "coming up", and fills in roll calls as they are read out -- so somebody
+tuning into the livestream partway through can tell what they are watching. The
+committee version is the same thing around a hearing or an executive session.
+
+What makes it hard is not the display. It is that this site is files on a CDN
+with no runtime, deliberately, and a live view is the one feature that cannot be
+a static file. It would need a second, small, live surface -- one endpoint the
+page polls -- which is a different operational commitment from a nightly build:
+something has to be running, watched, and correct while nobody is looking at it.
+
+What was measured on 6 September, before parking it:
+
+  The database DOES carry the vote's real clock time. The House's VoteDate is
+  the moment of the vote (15:37:01 on roll call 329), and sequence numbers run
+  in order within a day.
+
+  Publish latency CANNOT be measured from the data. rollcallhistory has a
+  DateModified but it is null on every House row, so nothing records when a row
+  was written. The claim that GenCourt publishes within seconds of the vote
+  being read is plausible and untested; it can only be checked by watching
+  during a session, which needs a session to be sitting.
+
+  There is nothing to watch right now. The last roll call was 19 August 2026,
+  the last hearing sign-in 4 May, the last committee report 15 June. The
+  earliest this could be observed is the next session day.
+
+  VHearings carries CommitteeMeetingID, HearingTypeID, cname, starttime,
+  endtime, ChamberCode and LegislationID -- which is the "what is scheduled,
+  and is it a hearing or an executive session" half, already available.
+
+So the honest order is: observe one session day and measure the real latency
+before designing anything, and only then decide whether a live surface is worth
+what it costs. Nightly remains frequent enough for amendments, reports and
+everything else.
+
+
 ## One click to submit testimony
 
 A reader who sees a hearing scheduled next week on something they care about
