@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.29
+# GRANITE_VERSION: 2026-09-05.30
 """
 Generate the faceted site from real General Court data.
 
@@ -996,17 +996,32 @@ def station_for_proceeding(p, bid, segs, marks):
     else:
         state, start = "novideo", None
     # A stated boundary replaces the estimate outright.
-    said = None
-    for cand in (marks.get(p.get("video_id") or "") or {}).get(bid, []):
-        if not isinstance(cand, dict) or cand.get("start") is None:
-            continue
+    # The filter exists to stop a hearing's boundary being handed to an
+    # executive session on the same recording. A marker that names the
+    # proceeding is checked against the kind; one that does not -- a weak
+    # marker with no noun, or the bare word "session", which one chair uses
+    # for what the docket calls a public hearing -- makes no claim to check,
+    # so it is kept as a fallback rather than discarded.
+    #
+    # Two passes, in that order. Discarding the ambiguous ones outright cost
+    # HB1123 its boundary: the chair said "we're opening the session on House
+    # Bill 1123", the docket calls it a public hearing, neither word contained
+    # the other, and the only quotation on the recording was thrown away in
+    # favour of a clustered guess a minute and a half out.
+    AMBIGUOUS = {"", "session"}
+
+    def _matches(cand):
         want = str(p.get("proceeding") or "").lower()
         what = str(cand.get("what") or "")
-        if want and what and what.split()[-1] not in want \
-                and want.split()[-1] not in what:
-            continue
-        said = cand
-        break
+        if not want or not what or what in AMBIGUOUS:
+            return None
+        return what.split()[-1] in want or want.split()[-1] in what
+
+    usable = [c for c in (marks.get(p.get("video_id") or "") or {}).get(bid, [])
+              if isinstance(c, dict) and c.get("start") is not None]
+    said = next((c for c in usable if _matches(c) is True), None)
+    if said is None:
+        said = next((c for c in usable if _matches(c) is None), None)
 
     # The clustering's end, but only where it is describing the same span.
     #
@@ -1968,14 +1983,14 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # in the other; adjacent functions make that visible, which one long
         # function did not.
         stations = [station_for_proceeding(p, bid, segs, marks)
-                    for p in sorted(procs.get(bid, []),
+                    for p in sorted(procs.get((term, bid), []),
                                     key=lambda x: (x["sched_date"],
                                                    x["sched_time"] or ""))]
         # Floor debates, stacked with the committee proceedings and sorted by
         # date so a bill's whole journey reads in order: hearing, executive
         # session, floor, then the second chamber.
         stations += [station_for_floor(f, bid, marks)
-                     for f in floor.get(bid, [])]
+                     for f in floor.get((term, bid), [])]
         stations.sort(key=lambda x: (x["when"], x.get("time") or ""))
 
         # Under the filing year, because a bill number is unique within a term
@@ -2225,9 +2240,14 @@ def main():
             raise SystemExit("Refusing to build without it. Pass "
                              "--allow-no-manifest to override.")
 
+    # Keyed (term, bill), like everything else per-bill on this site. Keyed
+    # on the number alone, and with the per-bill file written per filing
+    # year, site/bills/2023/CACR10 carried the 2025-2026 CACR10's hearings
+    # and floor debates verbatim -- an archived bill showing another term's
+    # recordings. The path was made term-aware and this lookup was not.
     procs = defaultdict(list)
     for r in P.committee_only(prows):
-        procs[r["bill"]].append({
+        procs[(r["term"], r["bill"])].append({
             "bill": r["bill"], "body": r["body"], "committee": r["committee"],
             "proceeding": r["kind"], "sched_date": r["date"],
             "sched_time": r["time"], "venue": r["venue"], "match": r["match"],
@@ -2238,7 +2258,7 @@ def main():
         })
     floor = defaultdict(list)
     for r in P.floor_only(prows):
-        floor[r["bill"]].append({
+        floor[(r["term"], r["bill"])].append({
             "date": r["date"], "body": r["body"], "video_id": r["video_id"],
             "motions": r["motions"], "tallies": r["tallies"],
             "kind": r["kind"], "debate_end": r["debate_end"],
@@ -2291,8 +2311,11 @@ def main():
         except (ValueError, OSError):
             marks = {}
     if marks:
-        nb = sum(len(v) for v in marks.values())
-        print(f"{nb:,} stated boundaries across {len(marks):,} recordings "
+        # _absent and _sequence are siblings of the recordings, not recordings,
+        # and counting them made the total two higher than the truth.
+        vids = {k: v for k, v in marks.items() if not k.startswith("_")}
+        nb = sum(len(v) for v in vids.values())
+        print(f"{nb:,} stated boundaries across {len(vids):,} recordings "
               f"from {mp2.name}")
     # A silent mismatch here looks exactly like poor alignment accuracy: every
     # hearing reads "start time not identified" because the transcripts are for

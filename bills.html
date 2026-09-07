@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.25 -->
+<!-- GRANITE_VERSION: 2026-09-05.26 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1179,68 +1179,43 @@ function renderHearings(b,d){
     // reads start_stated and words itself accordingly; it only ever needed to
     // be reached.
     if(s.state==="located"||s.state==="stated"){
-      // Open the player a little before the mark, because arriving late
-      // means missing the opening of the hearing while arriving early costs a
-      // few seconds of scrubbing. A stated boundary still gets a lead: it is
-      // timed to a caption line and the words can begin anywhere inside one.
-      const tol=s.tolerance||300;
-      const lead=s.start_stated?Math.min(tol,45):Math.min(tol,300);
-      const from=Math.max(Math.floor(s.start-lead),0);
-      // The tolerance is the whole claim. Where the boundary came from is a
-      // methodology question, and a reader who clicks the link hears the chair
-      // open the hearing for themselves. Seconds rather than minutes when the
-      // number is small, or a half-minute mark would round to "+/- 0 min".
-      // Two different claims, and the wording says which. A boundary the
-      // chair announced is a quotation, checked at a median of one second
-      // against proceedings a person timed by hand; an estimate is an
-      // inference from where bill numbers cluster, and was 1m 27s on the same
-      // test. Showing both as "within N" would flatten that.
-      // Not a quotation. The captions render "HB 1381" as "HP 1381" and
-      // "HB 1444" as "HB1 1444", so printing them as the chair's words would
-      // publish a transcription error as a citation -- and a reader hears the
-      // real words a second after clicking anyway. The timestamp is the claim;
-      // the recording is the evidence.
-      // The end is a second claim and usually a weaker one. 3,896 of the
-      // 5,283 placed proceedings on this site end where the clustering
-      // put them rather than where the chair said, and the range drew
-      // both the same way -- so a guess carried the authority of a
-      // quotation. end_stated has been in the data all along and was
-      // read by nothing.
-      const endsaid=!!s.end_stated, hasend=s.end&&s.end>s.start;
-      const tolnote=(s.start_stated
-        ? `the chair opens it at ${hms(s.start)}`
-        : `estimated within \u00b1${Math.max(1,Math.round(tol/60))} min`)
-        +(hasend?(endsaid?` and closes it at ${hms(s.end)}`:", end estimated"):"");
-      placed=true;
-      const pid=`${esc(s.video_id)}_${si}_${Math.floor(s.start)}`;
-      // Guard on the seconds, not on the rounded string: "0 min" is
-      // truthy, so a twenty-second segment printed "about 0 min" beside a
-      // range that showed a real span.
-      const span=hasend?s.end-s.start:0;
-      const mins=Math.round(span/60);
-      const dur=mins>=1?`${mins} min`:(span>0?`${Math.round(span)} sec`:"");
-      const range=hasend
-        ? (endsaid?`${hms(s.start)}\u2013${hms(s.end)}`
-                  :`${hms(s.start)}, ending about ${hms(s.end)}`)
-        : `from ${hms(s.start)}`;
+      // Open essentially AT the mark. The old lead was five minutes for an
+      // estimate and 45 seconds for a quotation, on the reasoning that
+      // arriving early costs only scrubbing -- but it made the commonest case
+      // land the reader in the middle of the previous bill, and the page then
+      // had to explain a time that was not the bill's. A boundary is timed to
+      // the caption line the words begin in, so two seconds is enough not to
+      // clip the first syllable and little enough to be inaudible.
+      const LEAD = 2;
+      const from = Math.max(Math.floor(s.start - LEAD), 0);
+      // One word, and only when the placement is an inference rather than
+      // something the chair said. Everything else the page used to print about
+      // provenance -- the tolerance, which of the two dates it was showing,
+      // "about where it ends" -- was methodology in the reader's way. What
+      // matters is that clicking lands on the bill.
+      const approx = s.start_stated ? "" : " approximate";
+      // end_stated is no longer read here: a stated close and an inferred
+      // one are both just the end now, and the page does not rank them.
+      const hasend = s.end && s.end > s.start;
+      placed = true;
+      const pid = `${esc(s.video_id)}_${si}_${Math.floor(s.start)}`;
+      // Guard on the seconds, not on the rounded string: "0 min" is truthy, so
+      // a twenty-second segment printed "about 0 min".
+      const span = hasend ? s.end - s.start : 0;
+      const mins = Math.round(span / 60);
+      const dur = mins >= 1 ? `${mins} min` : (span > 0 ? `${Math.round(span)} sec` : "");
+      const range = hasend ? `${hms(s.start)}\u2013${hms(s.end)}` : `from ${hms(s.start)}`;
       inner=`<div class="player" data-player="${pid}">
         <button type="button" class="pstub" data-embed="${esc(s.video_id)}|${from}|${pid}">
           <span>▶</span><span>Play ${esc(s.what)} on this bill — ${range}${
-            dur?`, about ${dur}`:""}${
-            // The button names the bill's span; the player opens before it
-            // so nobody arrives late. Five seconds needs no explanation,
-            // five minutes does -- and the button said neither.
-            lead>=30?`, opening ${Math.round(lead/60)} min early`:""
-            }</span></button>
+            dur?`, about ${dur}`:""}</span></button>
         <div class="pbar">
-          <button class="jump" data-seek="${pid}|${from}">${hms(from)} open player</button>
-          <button class="jump" data-seek="${pid}|${Math.floor(s.start)}">${hms(s.start)} bill starts</button>
+          <button class="jump" data-seek="${pid}|${Math.floor(s.start)}">${hms(s.start)} starts</button>
           ${hasend?`<button class="jump"
-            data-seek="${pid}|${Math.floor(s.end)}">${hms(s.end)} ${
-              endsaid?"ends":"about where it ends"}</button>`:""}
+            data-seek="${pid}|${Math.floor(s.end)}">${hms(s.end)} ends</button>`:""}
           <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}&t=${from}s"
              target="_blank" rel="noopener">Open on YouTube</a>
-          <span class="tolnote">${tolnote}</span>
+          ${approx?`<span class="tolnote">approximate</span>`:""}
         </div></div>`;
     }
     else if(s.state==="approximate"){

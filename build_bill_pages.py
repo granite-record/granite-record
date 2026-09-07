@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.35
+# GRANITE_VERSION: 2026-09-04.36
 """
 Write a real HTML page for every bill.
 
@@ -57,8 +57,11 @@ def fdate(d):
 
 
 def hms(s):
+    # Zero-padded hours, so a timestamp reads the same here as on the
+    # interactive page. They disagreed -- 1:08:31 against 01:08:31 -- which
+    # looks like two different times to anyone comparing the two views.
     s = int(s)
-    return f"{s // 3600}:{(s % 3600) // 60:02d}:{s % 60:02d}"
+    return f"{s // 3600:02d}:{(s % 3600) // 60:02d}:{s % 60:02d}"
 
 
 def vote_tables(rc):
@@ -486,17 +489,15 @@ def page(b, d, generated):
             _m = round(_span / 60)
             mins = (f', about {_m} min' if _m >= 1
                     else (f', about {round(_span)} sec' if _span > 0 else ""))
-            # "(estimated)" is wrong on a span whose start the chair announced.
-            # The tolerance says everything the reader needs; where it came
-            # from is a methodology question, not a caption.
-            tol = s.get("tolerance") or 300
-            prov = (f"\u00b1{round(tol)} sec" if s.get("start_stated")
-                    else f"estimated, \u00b1{max(1, round(tol / 60))} min")
-            if s.get("end") and s["end"] > s["start"] and not _endsaid:
-                prov += "; end estimated"
+            # A start, an end, and one word where the placement is an
+            # inference rather than something the chair said. The tolerance,
+            # and which of the two dates was being shown, were methodology in
+            # the reader's way; what matters is that the link lands on the
+            # bill. The interactive view says the same thing the same way now.
+            prov = "" if s.get("start_stated") else " (approximate)"
             link = (f' <a href="https://www.youtube.com/watch?v={E(s["video_id"])}'
-                    f'&t={int(s["start"])}s" rel="noopener">recording {span}</a>'
-                    f'{mins} ({prov})')
+                    f'&t={max(int(s["start"]) - 2, 0)}s" rel="noopener">'
+                    f'recording {span}</a>{mins}{prov}')
         elif (s.get("state") in ("floor_precise", "floor_stated")
               and s.get("debate_end")):
             # Where the clerk took it up, if that was heard; the window is

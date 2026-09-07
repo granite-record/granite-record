@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.31
+# GRANITE_VERSION: 2026-09-05.32
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -146,7 +146,6 @@ OPEN_DIRECT_RE = re.compile(
     r"start\s+a\s+discussion\s+(?:about|on)|"
     r"we'?re\s+on\s+to|"
     r"get\s+(?:it\s+)?right\s+into|"
-    r"recess\b|"
     r"next\s+(?P<what2>public\s+hearing|executive\s+session|hearing|"
     r"work\s+session)\s+is(?:\s+on)?)", re.I)
 
@@ -510,6 +509,92 @@ def never_named(words, candidates, titles, found, step=12):
     return out
 
 
+def last_mentions(words, candidates):
+    """{bill: the last second at which it was spoken of}.
+
+    Used to cap an inferred end. Same digits-only comparison the bill matcher
+    uses, so "hb1 127" and "H B 513" still count as the bill being named.
+    """
+    pats = {b: re.compile(r"(?<!\d)" + r"[\s,]*".join(
+        list(re.sub(r"[^0-9]", "", b))) + r"(?!\d)")
+        for b in candidates if re.sub(r"[^0-9]", "", b)}
+    out = {}
+    text_at = []
+    for t, w in words:
+        text_at.append((t, w))
+    joined = " ".join(w for _, w in text_at)
+    # Cheap enough: one pass per bill over the joined text, mapping the match
+    # back to a word time by counting spaces.
+    starts = []
+    pos = 0
+    for t, w in text_at:
+        starts.append((pos, t))
+        pos += len(w) + 1
+    import bisect as _b
+    keys = [p for p, _ in starts]
+    for b, pat in pats.items():
+        last = None
+        for m in pat.finditer(joined):
+            k = _b.bisect_right(keys, m.start()) - 1
+            last = starts[max(0, k)][1]
+        if last is not None:
+            out[b] = last
+    return out
+
+
+def fill_ends(byb, last_seen=None):
+    """A segment with no close ends where the next one begins.
+
+    The chair announces a close far less often than an opening: 1,687 of 4,537
+    placed bills have one. Where they do not, the honest end is not a fixed
+    duration -- the old site added 35 minutes and was a minute and a half wrong
+    on HB1123 -- but the moment the room moved on, which is the next boundary
+    on the same recording whoever it belongs to.
+
+    Ordered across the whole recording rather than per bill, because the next
+    thing to happen is usually a different bill. A segment already carrying a
+    stated close keeps it: that is a quotation and this is an inference.
+
+    Returns the count filled, so a run can say how many ends it invented.
+    """
+    flat = sorted(((s["start"], b, s) for b, segs in byb.items() for s in segs),
+                  key=lambda x: x[0])
+    n = 0
+    for i, (start, _b_, seg) in enumerate(flat):
+        if seg.get("end") is not None:
+            continue
+        nxt = next((st for st, _, _ in flat[i + 1:] if st > start), None)
+        if nxt is None:
+            continue
+        # Capped by the last time this bill was spoken of. Without the cap a
+        # recording that breaks for lunch hands the morning's bill the whole
+        # gap: HB1123's hearing ran 32 minutes and the next bill came two
+        # hours later, so the uncapped rule called it a two-hour hearing.
+        cap = (last_seen or {}).get(_b_)
+        end = nxt if cap is None else min(nxt, cap + 60)
+        if end > start:
+            seg["end"] = round(end, 1)
+            seg["end_from"] = ("next boundary" if end == nxt
+                               else "last mention of the bill")
+            n += 1
+    return n
+
+
+def sequence_of(byb):
+    """The recording as an ordered list of what was taken up, in order.
+
+    The per-bill map loses two things a reader of a whole committee day wants:
+    the order, and the gaps between items. This keeps both, so a committee page
+    can show a day's recording with the bills under it in the order they were
+    heard without reconstructing that from a map keyed on bill number.
+    """
+    return [{"bill": b, "what": seg.get("what") or "", "start": seg["start"],
+             "end": seg.get("end"), "how": seg.get("how")}
+            for start, b, seg in
+            sorted(((s["start"], b, s) for b, segs in byb.items() for s in segs),
+                   key=lambda x: x[0])]
+
+
 def to_segments(markers, candidates):
     """Openings become starts; a close of the same bill becomes its end.
 
@@ -823,7 +908,15 @@ def main():
                             s["end_from"] = "roll call clock"
                             stats["ends from the roll call clock"] += 1
                             break
+        # Ends the chair did not state: the next boundary on the recording,
+        # after the roll call clock has had its say above. Counted separately,
+        # because one is a quotation and the other is an inference.
+        stats["ends the chair stated"] += sum(
+            1 for v in segs.values() for x in v if x.get("end") is not None)
+        stats["ends from the next boundary"] += fill_ends(
+            segs, last_mentions(words, cands))
         result[vid] = segs
+        result.setdefault("_sequence", {})[vid] = sequence_of(segs)
         if a.phrases:
             collect_phrases(words, segs, cands, titles, phrase_bag)
         if a.gaps and not a.quiet:
@@ -839,7 +932,7 @@ def main():
         stats["recordings read"] += 1
         stats["bills with a stated start"] += len(segs)
         stats["proceedings found"] += sum(len(v) for v in segs.values())
-        stats["also with a stated end"] += sum(
+        stats["with an end of either kind"] += sum(
             1 for v in segs.values() for s in v if s.get("end") is not None)
         stats["bills scheduled"] += len(cands)
         if not a.quiet:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.46
+# GRANITE_VERSION: 2026-09-05.47
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
@@ -1427,8 +1427,14 @@ def ground_truth(manifest, site=None, candidate=None):
             # tolerance, it is a decoration.
             inside = [m for m in marks if m.get("site") is not None and m.get("tol")]
             if inside:
+                # SECONDS. build_site_v2 sets tolerance in seconds -- 5 for a
+                # stated boundary, 180 to 1800 from the aligner -- and says so
+                # where it sets it. Multiplying by 60 checked a +/-5 second
+                # claim against five minutes and a +/-15 minute claim against
+                # fifteen hours, so this passed almost regardless of the data
+                # and the warning below could not fire.
                 ok = sum(1 for m in inside
-                         if abs(m["site"] - m["obs"]) <= m["tol"] * 60)
+                         if abs(m["site"] - m["obs"]) <= m["tol"])
                 print(f"\n    the site states a tolerance for {len(inside)} of "
                       f"these.\n    The true error is inside it {ok} times "
                       f"({100 * ok / len(inside):.0f}%).")

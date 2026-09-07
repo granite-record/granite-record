@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.3
+# GRANITE_VERSION: 2026-09-05.4
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -112,6 +112,11 @@ MUST_MATCH = [
      "establishing a committee", "start a discussion about"),
     ("so with that um we're on to House Bill 781 which is um requiring schools",
      "we're on to"),
+    # "recess ... HB 283" PAUSES 283; the opening in this sentence is the bare
+    # "open" that follows it. Recess was briefly an opening verb here and it
+    # fired on "recess uh till 2:00 and please be back in your seats. Thanks.
+    # House Bill 1352", putting a bill at the lunch break seven minutes before
+    # it was taken up.
     ("at this point I will recess uh House Bill 283 open house bill 768 which "
      "is allowing public schools", "bare open, no pronoun before it"),
     ("let's just go let's get it right into 1174 right now", "get right into"),

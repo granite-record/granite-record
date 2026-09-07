@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.48
+# GRANITE_VERSION: 2026-09-04.49
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -557,10 +557,15 @@ def _bills_html():
         # wording is what the check is actually about.
         "detail link outside the button": '<a class="detail" href="bill/',
         "page heading": '<h1 class="sr">',
-        # A stated boundary is a different claim from an estimate and the
-        # page words it differently; the check follows the wording.
-        "stated boundary worded as such": "the chair opens it at ${hms(s.start)}",
-        "estimate still carries a tolerance": "estimated within \\u00b1",
+        # The player opens AT the boundary, not before it. The old lead was
+        # five minutes for an estimate, which put the reader in the middle of
+        # the previous bill and then made the page explain a time that was not
+        # the bill's. Two seconds is enough not to clip the first syllable.
+        "player opens at the mark": "const LEAD = 2",
+        # One word, and only where the placement is an inference rather than
+        # something the chair said. The tolerance, which of two dates was being
+        # shown, and "about where it ends" were methodology in the way.
+        "an inferred start says so": 's.start_stated ? "" : " approximate"',
         "consent bills get no timestamp": 's.state==="consent"',
         "member sort key": "(a.s||a.n||\"\")",
         # A jump button pressed before the player exists must build the
@@ -1088,14 +1093,14 @@ var fixtures = [
          // Shortened from "Committee reports": six labels wrapped onto four
          // rows on a 289px card, and this was the longest of them.
          "Reports (6)",
-         // A boundary the chair announced is quoted; one the clustering
-         // guessed says so. Both stations here start at a stated boundary,
-         // so only the end can produce the difference.
-         "and closes it at 00:15:00",
+         // A start and an end, and nothing else. Both stations here start at a
+         // boundary the chair announced, so neither carries the one word that
+         // marks an inference.
+         "00:02:30 starts",
          "00:15:00 ends",
-         "ending about 00:40:00",
-         ", end estimated",
-         "00:40:00 about where it ends"]},
+         "00:25:00 starts",
+         "00:40:00 ends",
+         "00:02:30–00:15:00"]},
   // A bill with nothing on it yet. The fixture above populates every field, so
   // it only ever runs the arm of each ternary that HAS data -- and every one
   // of those has an else. That is what most bills look like early in a

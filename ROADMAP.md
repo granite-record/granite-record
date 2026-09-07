@@ -26,6 +26,30 @@ timestamps.
 
 ---
 
+## A committee's day as one session
+
+Not built. Recorded because the timestamp work now underway is what it is
+built on, and one decision there was made for its sake.
+
+The idea: a committee page shows a day's livestream once, and under it the
+bills in the order the committee took them, each with its start and its end,
+and a short account of what the committee did that day across its hearings,
+executive sessions and work sessions. Someone following a committee could then
+find the twenty minutes they care about in a five-hour recording, instead of
+scrubbing or opening five separate bill pages.
+
+What it needs is the recording seen as a whole rather than as a set of
+per-bill lookups: the order, and the gaps between items. `candidate_segments.json`
+was `{video: {bill: [...]}}`, which carries neither. It now also carries
+`_sequence`: per recording, the spans in the order they happened, with the
+bill, what kind of proceeding it was, and how the boundary was found. That is
+the whole input this view needs, and it cost nothing to write while the
+segmentation was being computed anyway.
+
+The rest is a page. It needs `committees.json`, which fetch_committees.py has
+never been run to produce -- see the committee pages item above.
+
+
 ## Idea box: following a session live
 
 Not feasible in the short term, and parked rather than dropped.
