@@ -110,3 +110,5 @@ probe_calendars*.html
 committees_*.html
 probe_db*.json
 probe_legacy_*.html
+archive_samples/
+archive_sample_ids.json
