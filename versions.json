@@ -64,7 +64,7 @@
     "fetch_testimony_db.py": "2026-09-06.1",
     "fetch_archive_bills.py": "2026-09-06.1",
     "caption_gaps.py": "2026-09-06.1",
-    "app.js": "2026-09-07.1",
+    "app.js": "2026-09-07.2",
     "app.css": "2026-09-07.1",
     "fetch_members_db.py": "2026-09-07.1"
   },

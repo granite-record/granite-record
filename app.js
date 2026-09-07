@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.1
+// GRANITE_VERSION: 2026-09-07.2
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -216,7 +216,11 @@ Promise.all([need("index.json"),need("meta.json")])
    // circulation use. The year is what tells two terms' HB1442 apart;
    // without it the first match in the index wins, which is only safe
    // while one term is loaded.
-   const h=decodeURIComponent(location.hash.slice(1));
+   // A bill's own page at /bill/2026/hb1094 is this same app with one bill
+   // open, rather than a second renderer drawing the same JSON in Python. It
+   // says which bill in GR_BILL, because it cannot say it in the hash without
+   // putting the bill number twice in an address that already names it.
+   const h=decodeURIComponent(location.hash.slice(1))||(window.GR_BILL||"");
    const hm=/^(?:(\d{4})\/)?([A-Z]{2,5}\d+)$/i.exec(h);
    if(hm){
      const id=hm[2].toUpperCase(),hy=hm[1]||"";
@@ -1322,6 +1326,11 @@ function focusBill(id,href){
 }
 
 function unfocus(y){
+  // On a bill's own page there is no list behind it to back out to: the
+  // reader arrived at that bill directly. Drawing two thousand cards under
+  // an address that names one bill would be the wrong page at the wrong URL,
+  // so leaving the bill means leaving the page.
+  if(window.GR_STANDALONE){location.href="bills.html";return;}
   // Back out to where the reader was standing when they opened the bill --
   // except when they got here by typing a new search, where the old position
   // belongs to a list that is no longer on screen.
