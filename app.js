@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.9
+// GRANITE_VERSION: 2026-09-07.10
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -975,7 +975,8 @@ function renderHearings(b,d){
     // follows the branch that actually ran.
     return `<div class="stn ${placed?"done":"pend"}">
       <div class="w">${esc(s.when)}${s.time?" at "+esc(s.time):""}${s.venue?" · "+esc(s.venue):""}</div>
-      <div class="t">${esc(s.committee||"")} ${esc(s.what)}</div>${inner}</div>`;}).join("")
+      <div class="t">${esc(s.committee||"")} ${esc(s.what)}</div>${
+        signins(s.testimony)}${inner}</div>`;}).join("")
     :`<p class="note">No scheduled proceedings on file.</p>`;
 }
 

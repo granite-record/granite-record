@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.34
+# GRANITE_VERSION: 2026-09-05.35
 """
 Generate the faceted site from real General Court data.
 
@@ -2018,6 +2018,26 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                     for p in sorted(procs.get((term, bid), []),
                                     key=lambda x: (x["sched_date"],
                                                    x["sched_time"] or ""))]
+        # The sign-in counts, on the hearing itself. They already reach the
+        # docket line that records the hearing -- 2,115 of them across 2,018
+        # bills -- but that line sits inside a collapsed disclosure on another
+        # tab, so somebody wanting to know how opinion stood before a hearing
+        # had to go looking for it among the raw docket actions.
+        #
+        # Matched on the date, so the figure belongs to THIS hearing. Where
+        # the database has the bill but not this date, nothing is attached
+        # rather than the whole-bill total: on a station the reader is looking
+        # at one sitting, and a number that quietly means something else is
+        # worse than no number. The docket line still shows the whole-bill
+        # figure and still says that is what it is.
+        if tdb:
+            _by_date = {h.get("date"): h for h in (tdb.get("hearings") or [])}
+            for _st in stations:
+                if "hearing" not in (_st.get("what") or "").lower():
+                    continue
+                _hit = _by_date.get(_st.get("when"))
+                if _hit:
+                    _st["testimony"] = {**_hit, "dated": True}
         # Floor debates, stacked with the committee proceedings and sorted by
         # date so a bill's whole journey reads in order: hearing, executive
         # session, floor, then the second chamber.
