@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.37
+# GRANITE_VERSION: 2026-09-05.38
 """
 Generate the faceted site from real General Court data.
 
@@ -2484,8 +2484,17 @@ def main():
                                 "y": r["yeas"], "nn": r["nays"], "margin": m})
     closest.sort(key=lambda x: (x["margin"], x["date"] or ""))
 
+    # "Still moving" counts the CURRENT term only. A bill that did not finish
+    # before its biennium ended did not carry on moving -- it died with the
+    # session -- and counting 492 bills of 2023-2024 among the 599 the home
+    # page called live was the site asserting something that stopped being
+    # true two years ago. The other totals are of the whole record on purpose:
+    # a law passed in 2023 is still a law.
+    newest = max((b["term"] for b in index if b.get("term")), default="")
     by_kind = defaultdict(int)
     for b in index:
+        if b["kind"] == "active" and b.get("term") and b["term"] != newest:
+            continue
         by_kind[b["kind"]] += 1
     # One per chamber. The House and Senate sit on different days, so a single
     # "most recent" hides whichever sat second.
