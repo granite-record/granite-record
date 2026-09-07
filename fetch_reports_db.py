@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.1
+# GRANITE_VERSION: 2026-09-06.2
 """
 Senate committee reports, with their reasoning, from the General Court's
 own database.
@@ -188,7 +188,13 @@ def parse_one(bill, release, raw):
     cal = CALENDAR.search(t)
     am = AMENDMENT.search(t)
     ti = TITLE.search(t)
+    # "the committee recommends that the Bill BE REFERRED TO INTERIM STUDY".
+    # The auxiliary belongs to that sentence, not to the motion: the docket
+    # writes the same motion as "Referred to Interim Study", and a chip reading
+    # "BE REFERRED TO INTERIM STUDY" beside a House chip reading "OUGHT TO
+    # PASS" looks like two different vocabularies rather than one.
     rec = re.sub(r"\s+", " ", got["recommend"].group(1)).strip().upper()
+    rec = re.sub(r"^(?:IS|BE|HAS)\s+", "", rec)
     return {
         "bill": bill.upper(),
         # Which chamber reported. build_site_v2 joins this record to the

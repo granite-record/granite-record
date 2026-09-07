@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.22 -->
+<!-- GRANITE_VERSION: 2026-09-05.23 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -1384,7 +1384,11 @@ function renderReports(b,d,rsa){
       +(r.dated==="printed"?` <span class="note" style="font-size:11.5px">as printed</span>`:"");
   const cited=r=>{
     if(!r.cite)return "";
-    const t=esc(r.source||r.cite);
+    // The House's source string IS the citation -- "House Calendar 51, 2025".
+    // The Senate's reports come from the General Court's database and their
+    // source names that, which is not what a reader wants beside a committee's
+    // name; the docket's own citation for the same report is.
+    const t=esc(r.body==="S"?r.cite:(r.source||r.cite));
     return r.cite_url?` · <a href="${esc(r.cite_url)}" rel="noopener">${t}</a>`
                      :` · ${t}`;
   };
@@ -1421,16 +1425,25 @@ function renderReports(b,d,rsa){
           ${committeeTally(e)}
           ${rec?`<span class="cstat ${recColour(rec)}">${esc(rec)}</span>`:""}</div>
         <p style="font-size:12.5px;color:var(--ink-3);margin:3px 0 8px">${esc(e.author)}</p>
-        <p style="font-family:var(--serif);font-size:16px;line-height:1.6;margin:0">${rsa(esc(e.text))}</p>
+        ${e.amendment?`<p class="note" style="margin:0 0 7px">Amendment ${
+          esc(e.amendment)}.</p>`:""}
+        ${(e.text||"").trim()
+          ? `<p style="font-family:var(--serif);font-size:16px;line-height:1.6;margin:0">${rsa(esc(e.text))}</p>`
+          // 350 of the Senate's 1,446 reports carry no reasoning at all. That
+          // is a fact about the report, not a gap in the site, and saying so
+          // is better than an empty space under a heading.
+          : `<p class="note" style="margin:0">This report records the
+             recommendation and the vote, and gives no reasoning.</p>`}
         </div>`;}).join("");
-    return between(r.date)+head(r,cmte,"House")
+    return between(r.date)+head(r,cmte,r.body==="S"?"Senate":"House")
       +(divided?`<p class="note">The committee split. Both reports are printed
         below in the committee's own words.</p>`:"")+blocks;}).join("");
 
-  // Reports the docket records and no calendar this site has read printed the
-  // reasoning for. Nearly all are the Senate's: it files one report with a
-  // vote and no minority, and the tab used to answer the 319 bills whose only
-  // report is one of these with "not loaded yet".
+  // Reports the docket records and this site has no written text for. Once the
+  // Senate's own reports came out of the General Court's database, 964 of
+  // these turned into written blocks above and what is left is the remainder:
+  // a House report printed in a calendar not read in yet, or a Senate report
+  // the database does not carry.
   const docket=(d.docket_reports||[]).map(r=>{
     const vote=r.vote_yeas!=null&&r.vote_nays!=null
       ? `<span class="cvote" title="Committee vote ${r.vote_yeas}–${r.vote_nays}"
@@ -1447,13 +1460,13 @@ function renderReports(b,d,rsa){
         <span class="cstat ${recColour(r.recommendation)}">${esc(r.recommendation)}</span></div>
       ${amd}
       <p class="note" style="margin:0 0 20px">${r.body==="S"
-        ? "The Senate does not print written reasoning. This is its report in full, as the docket records it."
+        ? "The written report for this one is not on the site; this is what the docket records of it."
         : "The calendar carrying this report has not been read into the site yet, so only what the docket states is shown."}</p>`;}).join("");
 
   return (written||docket)?written+docket
     :`<p class="note">No committee report on file. A report is recorded in the docket
-      when a committee reports the bill out, and the written reasoning behind it is
-      printed in the House Calendar; neither has happened here yet.</p>`;
+      when a committee reports the bill out, and the reasoning behind it is printed
+      in the House Calendar or filed with the Senate; neither has happened here yet.</p>`;
 }
 
 // Sponsors, grouped by chamber with the originating one first. A House bill

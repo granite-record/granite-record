@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.36
+# GRANITE_VERSION: 2026-09-04.38
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -899,7 +899,32 @@ var detail = {
             reports:[{side:"Majority",author:"Rep. A",committee:"Commerce",
                       text:"Against it.",vote_yeas:11,vote_nays:9},
                      {side:"Minority",author:"Rep. B",committee:"Commerce",
-                      text:"For it."}]}],
+                      text:"For it."}]},
+           // The Senate's own written report, from the General Court's
+           // database. It has to be headed "Senate", cite the Senate's
+           // calendar rather than the long source string naming the database,
+           // and show its amendment. The written path was hardcoded to
+           // "House", which put every one of 1,254 Senate reports under a
+           // House committee's name.
+           {majority_recommendation:"OUGHT TO PASS WITH AMENDMENT",
+            minority_recommendation:"", body:"S",
+            source:"Senate committee report, released 2026-05-13",
+            date:"2026-05-12",dated:"signed",cite:"SC 18A",
+            cite_url:"https://gc.nh.gov/sc18a.pdf",
+            reports:[{side:"Committee",author:"Senator Debra Altschiller",
+                      committee:"Judiciary",vote_yeas:5,vote_nays:0,
+                      amendment:"2026-1219s",
+                      text:"The committee heard that the federal rule is settled."}]},
+           // And one of the 350 that record a recommendation and no reasoning.
+           // An empty paragraph under a heading reads as a bug; saying the
+           // report gives no reasoning is the fact.
+           {majority_recommendation:"OUGHT TO PASS",
+            minority_recommendation:"", body:"S",
+            source:"Senate committee report, released 2026-06-02",
+            date:"2026-06-01",dated:"printed",cite:"",cite_url:"",
+            reports:[{side:"Committee",author:"Senator Tara Reardon",
+                      committee:"Finance",vote_yeas:4,vote_nays:1,
+                      amendment:"",text:""}]}],
   // The Senate's shape: one report, a vote, no minority, and no written
   // reasoning anywhere -- 1,531 of them, and the only report at all on 319
   // bills, which the tab used to answer with "not loaded yet".
@@ -953,14 +978,23 @@ var fixtures = [
          // part of the footnote explaining what is missing.
          '<span class="secsub">Committee</span>',
          "Amendment 2026-1201s",
-         "does not print written reasoning",
+         "not on the site; this is what the docket records",
+         // The Senate's written report is headed by its own chamber and cites
+         // the Senate's calendar, not the database it was read out of.
+         "Senate Judiciary",
+         '<a href="https://gc.nh.gov/sc18a.pdf" rel="noopener">SC 18A</a>',
+         "Senator Debra Altschiller",
+         "Amendment 2026-1219s.",
+         "the federal rule is settled",
+         // And a report with no reasoning says so instead of leaving a space.
+         "gives no reasoning",
          // And what happened between the two House reports.
          "Between these reports the docket",
          // The tab counts what the tab draws: three written blocks and the
          // Senate's one. It used to count only the written ones.
          // Shortened from "Committee reports": six labels wrapped onto four
          // rows on a 289px card, and this was the longest of them.
-         "Reports (4)",
+         "Reports (6)",
          // A boundary the chair announced is quoted; one the clustering
          // guessed says so. Both stations here start at a stated boundary,
          // so only the end can produce the difference.
@@ -1279,7 +1313,7 @@ def _site_fixture(root):
          "source": "Senate committee report, released 2026-04-17",
          "date": "2026-04-17", "dated": "printed", "body": "S",
          "calendar": "Regular Calendar",
-         "majority_recommendation": "BE REFERRED TO INTERIM STUDY",
+         "majority_recommendation": "REFERRED TO INTERIM STUDY",
          "minority_recommendation": "",
          "reports": [{"side": "Committee", "author": "Senator Debra Altschiller",
                       "committee": "Judiciary", "vote_yeas": 5, "vote_nays": 0,
@@ -1533,7 +1567,7 @@ def _senate_reports():
 
         # The one the docket also records: it takes the signing date and the
         # Senate Calendar page, not the day it was released.
-        study = by_rec["BE REFERRED TO INTERIM STUDY"]
+        study = by_rec["REFERRED TO INTERIM STUDY"]
         assert (study["dated"], study["date"]) == ("signed", "2026-04-16"),             (study["dated"], study["date"])
         assert study["cite"] == "SC 14", study["cite"]
         assert "federal rules still in flux" in study["reports"][0]["text"],             "the committee's reasoning did not reach the page"

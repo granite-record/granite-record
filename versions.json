@@ -2,7 +2,7 @@
   "files": {
     "align_all.py": "2026-09-04.1",
     "apply_markers.py": "2026-09-04.8",
-    "bills.html": "2026-09-05.22",
+    "bills.html": "2026-09-05.23",
     "build_all.py": "2026-09-05.5",
     "build_bill_pages.py": "2026-09-04.33",
     "build_data.py": "2026-09-04.5",
@@ -39,7 +39,7 @@
     "netcheck.py": "2026-09-04.2",
     "nightly.py": "2026-09-04.5",
     "parse_districts.py": "2026-09-04.1",
-    "preflight.py": "2026-09-04.36",
+    "preflight.py": "2026-09-04.38",
     "probe_alignment.py": "2026-09-05.45",
     "probe_amendments.py": "2026-09-04.2",
     "probe_archive.py": "2026-09-04.1",
@@ -59,7 +59,7 @@
     "transcribe_and_align.py": "2026-09-04.1",
     "verify_batch.py": "2026-09-04.4",
     "fetch_rollcalls_db.py": "2026-09-06.2",
-    "fetch_reports_db.py": "2026-09-06.1"
+    "fetch_reports_db.py": "2026-09-06.2"
   },
   "generated": "2026-09-04"
 }
