@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.34
+# GRANITE_VERSION: 2026-09-04.35
 """
 Write a real HTML page for every bill.
 
@@ -176,6 +176,22 @@ def page(b, d, generated):
                 + f' {t["total"]:,} signed in'
                 + ("" if t.get("dated") else " across this bill&#8217;s hearings")
                 + "</span>")
+
+    # An archived term is a stated limit, not a fault. Without this the summary
+    # is an empty list under a heading, which reads as a broken page.
+    archived_note = (
+        '<p class="src">This is an archived term. The General Court&#8217;s own '
+        'search gives every bill of it with its title, its status in each '
+        'chamber, the committee it went to and the date of its hearing, and the '
+        'recorded votes come from the General Court&#8217;s database &#8212; but '
+        'the docket, the sponsors and the written committee reports are one '
+        'request per bill and are not loaded. The bill&#8217;s own text and its '
+        'full record are linked above.</p>') if d.get("archived") else ""
+
+    # build_feeds writes a per-bill feed only where the bill has an action to
+    # report. An archived term has no docket, so it has no feed, and linking
+    # one anyway is a broken link on every one of its pages.
+    has_feed = bool(d.get("events"))
 
     timeline = "".join(
         f'<li><span class="d">{E(fdate(e["date"]))}</span>'
@@ -519,8 +535,8 @@ def page(b, d, generated):
 <title>{E(n)} — {E(title[:90])} | Granite Record</title>
 <meta name="description" content="{E(desc)}">
 <link rel="canonical" href="/bill/{b.get("year","")}/{bid.lower()}.html">
-<link rel="alternate" type="application/rss+xml" title="{E(n)} updates"
- href="/feed/bill/{b.get("year","")}/{bid.lower()}.xml">
+{f'''<link rel="alternate" type="application/rss+xml" title="{E(n)} updates"
+ href="/feed/bill/{b.get("year","")}/{bid.lower()}.xml">''' if has_feed else ""}
 <meta property="og:type" content="article">
 <meta property="og:title" content="{E(n)} — New Hampshire General Court">
 <meta property="og:description" content="{E(desc)}">
@@ -762,10 +778,10 @@ padding:10px 16px;z-index:99;border-radius:0 0 6px 0}}
  if bt.get("body") else ""}
 
 <section id="timeline"><h2>Summary</h2>
-<p class="src">Every action recorded in the official docket, in order. Each line
-ends with the journal or calendar that recorded it; where we have the document,
-that citation links to it.</p>
-<ul class="tl">{timeline or '<li>No recorded action.</li>'}</ul></section>
+{archived_note}<p class="src">Every action recorded in the official docket, in
+order. Each line ends with the journal or calendar that recorded it; where we
+have the document, that citation links to it.</p>
+<ul class="tl">{timeline or '<li>The docket for this term is not loaded.</li>'}</ul></section>
 
 <section id="votes"><h2>Votes</h2>
 <p class="src">Roll call tallies and individual votes from the General Court roll
@@ -793,8 +809,9 @@ still here and the start time is work in progress.</p>
 <section id="documents"><h2>Documents</h2>
 {docs_block}</section>
 
-<p><a href="../../feed/bill/{b.get("year","")}/{bid.lower()}.xml">Follow this bill
-by RSS</a> &nbsp;&middot;&nbsp; <a href="../../bills.html#{bid}">Open it in the
+<p>{f'''<a href="../../feed/bill/{b.get("year","")}/{bid.lower()}.xml">Follow this
+bill by RSS</a> &nbsp;&middot;&nbsp; ''' if has_feed else ""}<a
+href="../../bills.html#{b.get("year","")}/{bid}">Open it in the
 searchable view &#8594;</a></p>
 
 <p class="src" style="margin-top:26px">Page generated {E(generated)} from data

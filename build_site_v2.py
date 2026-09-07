@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.27
+# GRANITE_VERSION: 2026-09-05.28
 """
 Generate the faceted site from real General Court data.
 
@@ -1690,7 +1690,13 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         narr = narratives.get(term, {}).get(bid)
         # Only for the term these files describe; see the loop header.
         own = term == current
-        st = status_pages.get(bid, {}) if own else {}
+        # An archived term has no bill_status.json of its own and must not
+        # read the current term's, so its statuses travel on the bill record
+        # itself -- put there by build_data from the General Court's own
+        # search, in the same vocabulary classify_stated already reads.
+        st = status_pages.get(bid, {}) if own else {
+            k: b.get(k, "") for k in ("gen_status", "house_status",
+                                      "senate_status", "text_pdf")}
         prefix = bill_prefix(bid)
         told = classify_stated(st, prefix)
         settled = docket_outcome(narr)
@@ -1775,6 +1781,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             "topic": b.get("subject", ""),
             "kind": kind, "status": status,
             "term": term, "carried": carried,
+            # An archived term, whose bills come from the General Court's
+            # search rather than from a session's own files. The page says
+            # so, because an empty summary reads as a broken page and this
+            # is a stated limit rather than a fault.
+            **({"archived": True} if b.get("archived") else {}),
             "status_stated": bool(told),
             "last_action": dates[-1] if dates else "",
             "nrc": len([r for r in rcs if not r.get("procedural")]),
@@ -1982,6 +1993,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                     f"Senate: {st['senate_status']}" if st.get("senate_status") else "",
                 ] if x) or next_step(narr, b, prefix)) if told
                        else next_step(narr, b, prefix),
+            **({"archived": True} if b.get("archived") else {}),
             "status_source": ("General Court docket" if settled
                               else "General Court bill status page" if told
                               else "derived from the docket"),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -695,6 +695,55 @@ def main():
     by_term = defaultdict(dict)
     for bid, rec in bills.items():
         by_term[P.term_of(str(rec.get("lsr_year") or ""))][bid] = rec
+
+    # Archived terms, from fetch_archive_bills.py. The General Court's own
+    # search answers a past session year with every bill of it -- title,
+    # statuses, committee, hearing, text link -- for two requests, which is
+    # where the 2023-2024 term comes from. It has no docket and no sponsors,
+    # and this does not pretend otherwise: those fields are simply absent, and
+    # the page says so rather than showing the CURRENT term's.
+    #
+    # A term the current session files already cover is left alone. The live
+    # data is better than a search-results page in every respect.
+    ap_ = Path("archive_bills.json")
+    if ap_.exists():
+        try:
+            arch = json.loads(ap_.read_text(encoding="utf-8"))
+        except ValueError:
+            arch = {}
+        added = 0
+        for term, byb in arch.items():
+            if term in by_term:
+                print(f"  archive: {term} is already built from session files, "
+                      "left alone")
+                continue
+            for bid, r in byb.items():
+                num = re.match(r"([A-Z]+)(\d+)", bid)
+                cm, ch = r.get("committee") or "", r.get("committee_chamber")
+                by_term[term][bid] = {
+                    "bill": bid,
+                    "lsr": f"{r.get('year','')}-{r.get('lsr','')}",
+                    "lsr_year": r.get("year", ""), "lsr_num": r.get("lsr", ""),
+                    "title": r.get("title", ""),
+                    "chamber": r.get("body", ""),
+                    "subject_code": "", "subject": "",
+                    "house_committee": cm if ch == "House" else "",
+                    "senate_committee": cm if ch == "Senate" else "",
+                    "hearing": r.get("last_hearing", ""), "hearing_room": "",
+                    "designation": (f"{num.group(1)} {num.group(2)}"
+                                    if num else bid),
+                    "text_pdf": r.get("text_pdf", ""),
+                    # The statuses travel with the bill because an archived
+                    # term has no bill_status.json of its own, and the flat one
+                    # belongs to a different term.
+                    "gen_status": r.get("gen_status", ""),
+                    "house_status": r.get("house_status", ""),
+                    "senate_status": r.get("senate_status", ""),
+                    "archived": True,
+                }
+                added += 1
+        if added:
+            print(f"  archive: {added:,} bills added from {ap_}")
     stray = by_term.pop("", None)
     if stray:
         print(f"  {len(stray):,} bills have no filing year and are left out of "

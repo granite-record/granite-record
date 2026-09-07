@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.24 -->
+<!-- GRANITE_VERSION: 2026-09-05.25 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -566,8 +566,16 @@ let IDX=[],META={},term=null,query="",sortBy="num";
 // A bill number is unique within a two-year term and not beyond it, so
 // every address for one carries its filing year: the static page has done
 // so from the start, and the detail file and this view do now.
-const yearOf=id=>{const b=IDX.find(x=>x.id===id);
+// WITHIN THE SELECTED TERM. HB1 exists in every biennium, and finding the
+// first row with that number across the whole index served the 2025 bill's
+// history under the 2023 bill's heading -- the card said "filed 2023" and the
+// body said "introduced on February 20, 2025".
+const yearOf=id=>{const b=IDX.find(x=>x.id===id&&(!term||x.term===term))
+                       ||IDX.find(x=>x.id===id);
   return b&&b.year?String(b.year):"";};
+// The detail cache is keyed the same way, or switching terms hands back the
+// bill of the same number that was looked at first.
+const dkey=id=>`${yearOf(id)}/${id}`;
 
 // House bills before Senate bills, then numerically. Bill numbers are strings
 // like "HB 1442", so a plain string sort puts HB 1000 before HB 99 and mixes
@@ -1088,6 +1096,13 @@ function renderSummary(b,d){
           `<div class="stg">${st.label?`<h3>${esc(st.label)}</h3>`:""}
            <p>${esc(st.text)}</p></div>`).join("")}</div>`
       : (d.narrative?`<p class="story"><span class="stg">${esc(d.narrative)}</span></p>`:"")}
+    ${d.archived?`<p class="note" style="margin:10px 0 0">This is an archived
+      term. The General Court's own search gives every bill of it with its
+      title, its status in each chamber, the committee it went to and the date
+      of its hearing, and the recorded votes come from the General Court's
+      database &#8212; but the docket, the sponsors and the written committee
+      reports are one request per bill and are not loaded. The bill's own text
+      and its full record are linked above.</p>`:""}
     ${(d.events||[]).length?`<details class="docket"><summary><span class="caret"></span>View docket</summary>
       <p class="note">Every action the General Court recorded, in its own words
         and in the order it recorded them.</p>
@@ -1746,7 +1761,7 @@ function render(){
         <div class="cmeta">${esc(b.sponsor_label||b.sponsor)}${(b.committees||[b.committee]).filter(Boolean).map(c=>" · "+esc(c)).join("")}${b.topic?" · "+esc(b.topic):""}</div>
       </button>
       <div class="cbody" ${openCards.has(b.id)?"":"hidden"}>${
-        openCards.has(b.id)?(detail[b.id]?renderDetail(b,detail[b.id]):`<p class="spin">Loading…</p>`):""}</div>
+        openCards.has(b.id)?(detail[dkey(b.id)]?renderDetail(b,detail[dkey(b.id)]):`<p class="spin">Loading…</p>`):""}</div>
     </article>`).join("")+(rows.length>400?`<p class="spin">Showing the first 400. Narrow the search to see more.</p>`:"")
     :(elsewhere.length
       ?`<div class="empty"><b>Not in the ${esc(term)} term.</b><br><br>
@@ -1757,7 +1772,7 @@ function render(){
         term.</div>`));
   rows.filter(b=>openCards.has(b.id)).forEach(b=>{
     const c=document.querySelector(`.card[data-id="${b.id}"]`),t=openTab[b.id]||"0";
-    if(!c||!detail[b.id])return;
+    if(!c||!detail[dkey(b.id)])return;
     c.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected",x.dataset.t===t));
     c.querySelectorAll(".pane").forEach(p=>p.hidden=p.dataset.t!==t);
   });
@@ -1817,7 +1832,7 @@ window.addEventListener("popstate",e=>{
 
 function openBill(id){
   openCards.add(id);
-  if(detail[id]){render();return;}
+  if(detail[dkey(id)]){render();return;}
   render();
   // What went wrong, not merely that something did.
   //
@@ -1828,7 +1843,7 @@ function openBill(id){
   const yr=yearOf(id);
   const url=DATA(`bills/${yr}/${id}.json`);
   const fail=(why)=>{
-    detail[id]={events:[],rollcalls:[],stations:[],reports:[],sponsors:[],
+    detail[dkey(id)]={events:[],rollcalls:[],stations:[],reports:[],sponsors:[],
       documents:[],amendments:[],next_step:"Detail unavailable",
       _error:why+"\n"+url};
     render();
@@ -1841,7 +1856,7 @@ function openBill(id){
     try{ d=JSON.parse(txt); }
     catch(_){ throw new Error(`the file arrived but is not JSON. It starts: ${
       txt.slice(0,80).replace(/\s+/g," ")}`); }
-    detail[id]=d; render();
+    detail[dkey(id)]=d; render();
   }).catch(e=>fail(e.message||String(e)));
 }
 

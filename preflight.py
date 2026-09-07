@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.46
+# GRANITE_VERSION: 2026-09-04.47
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -794,7 +794,7 @@ require("./stub.js");
 const src = require("fs").readFileSync("./page.js", "utf8");
 let scope;
 try { scope = (0, eval)(src +
-    "; ({render, IDX, renderDetail, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
+    "; ({render, IDX, renderDetail, yearOf, dkey, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message);
             process.exit(1); }
 scope.IDX.length = 0;
@@ -980,6 +980,36 @@ var detail = {
   rsa:{"RSA 91-A:4":"https://gc.nh.gov/rsa/html/VI/91-A/91-A-4.htm"}};
 if (typeof scope.renderDetail !== "function") {
   console.log("renderDetail is not reachable from the harness"); process.exit(1); }
+
+// A bill number resolves WITHIN the selected term. HB1 exists in every
+// biennium, and finding the first row with that number across the whole index
+// served the 2025 bill's history under the 2023 bill's heading -- the card
+// read "filed 2023" and the body read "introduced on February 20, 2025".
+if (typeof scope.yearOf === "function" && typeof scope.setTerm === "function") {
+  const savedIdx = scope.IDX.slice();
+  scope.IDX.length = 0;
+  scope.IDX.push({id:"HB1", n:"HB 1", year:2026, term:"2025-2026", title:"the new one",
+                  status:"In committee", kind:"active", nrc:0, committee:"", topic:"",
+                  last_action:"2026-02-01", votedays:[]},
+                 {id:"HB1", n:"HB 1", year:2024, term:"2023-2024", title:"the old one",
+                  status:"Killed", kind:"done", nrc:0, committee:"", topic:"",
+                  last_action:"2024-02-01", votedays:[]});
+  scope.setTerm("2023-2024");
+  if (scope.yearOf("HB1") !== "2024") {
+    console.log("yearOf ignored the selected term: got " + scope.yearOf("HB1")
+                + " for HB1 in 2023-2024"); process.exit(1); }
+  const oldKey = scope.dkey("HB1");
+  scope.setTerm("2025-2026");
+  if (scope.yearOf("HB1") !== "2026") {
+    console.log("yearOf did not follow the term back: got " + scope.yearOf("HB1"));
+    process.exit(1); }
+  if (scope.dkey("HB1") === oldKey) {
+    console.log("the detail cache key is the same in both terms, so switching "
+                + "term serves the other bill's record"); process.exit(1); }
+  scope.IDX.length = 0;
+  savedIdx.forEach(x => scope.IDX.push(x));
+  scope.setTerm(null);
+}
 // Length alone does not prove a branch ran: the tabs and panes are ~1,600
 // characters of markup before a single field is read, so a renderDetail that
 // silently dropped every body would still clear the threshold below. Each
