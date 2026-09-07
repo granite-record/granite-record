@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.41
+# GRANITE_VERSION: 2026-09-04.42
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -296,6 +296,36 @@ def _cols(rollcall_parser):
         assert (r["yeas"], r["nays"]) == (197, 151), (r["yeas"], r["nays"])
         return "ok", f"{r['bill']} {r['yeas']}-{r['nays']}, fields 7/8 are the "
         f"{r['not_voting']} who did not vote"
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+@check("rollcalls", "a vote on a House rule is not filed as a bill",
+       needs=("rollcall_parser",))
+def _rule_vote_not_a_bill(rollcall_parser):
+    """The House amended its own Rule 64 twice on 8 January 2025.
+
+    Both votes are filed in RollCallSummary.txt under "HRULE64", which passes
+    for a bill number if the test is letters-then-digits, and gave the site a
+    bill that does not exist and no page could ever show. A vote about the
+    chamber's own rules is procedural, which is a category this already has.
+    """
+    d = Path(tempfile.mkdtemp())
+    try:
+        f = d / "RollCallSummary.txt"
+        f.write_text("\n".join([
+            "2025|H|1|1/8/2025 10:00:00 AM|HRULE64|216|164|10|10|||"
+            "Amend H Rule 64|relating to the rules of the House",
+            "2025|H|2|1/8/2025 11:00:00 AM|HB56|216|154|20|8|||"
+            "Inexpedient to Legislate|relative to something",
+        ]) + "\n", encoding="utf-8")
+        rows = {r["bill"]: r for r in rollcall_parser.parse(f)}
+        assert "HRULE64" in rows, "the rule vote was dropped, not reclassified"
+        assert rows["HRULE64"]["procedural"], (
+            "a vote to amend a House rule is filed as a vote on a bill")
+        assert not rows["HB56"]["procedural"], (
+            "a real bill's vote was swept up as procedural")
+        return "ok", "the rule vote is procedural and the bill's is not"
     finally:
         shutil.rmtree(d, ignore_errors=True)
 

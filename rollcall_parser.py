@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -84,6 +84,16 @@ PROCEDURAL = {"call of the roll", "rules suspension", "limit debate", "print rem
               "shall member continue", "uphold ruling of chair",
               "uphold ruling of the chair", "affirm the report"}
 
+# The bill-number column does not always hold a bill. The House's two votes on
+# 8 January 2025 to amend House Rule 64 are filed under "HRULE64", which looks
+# enough like a bill number to be keyed as one and gave the site a bill that
+# does not exist. Those are votes about the chamber's own rules, which is what
+# "procedural" already means here.
+#
+# The prefixes are the General Court's, listed rather than matched loosely: an
+# any-letters-then-digits pattern is exactly what admitted HRULE64.
+BILL_NO = re.compile(r"^(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR|SJR)\d+$", re.I)
+
 
 def threshold(question_std, bill, body, yeas, nays):
     """(needed, rule_text, basis) or (None, None, None) for a simple majority."""
@@ -160,7 +170,8 @@ def parse(path, want_bill=None):
                 "date": when.strftime("%Y-%m-%d") if when else "",
                 "time": when.strftime("%H:%M") if when else "",
                 "bill": bill or None,
-                "procedural": (not bill) or key in PROCEDURAL,
+                "procedural": (not bill) or not BILL_NO.match(bill.replace(" ", ""))
+                              or key in PROCEDURAL,
                 "question": std, "question_raw": raw_q, "question_plain": plain,
                 "yeas": yeas, "nays": nays, "voting": voting, "not_voting": not_voting,
                 "seats": SEATS[body], "seated": seated,
@@ -224,6 +235,9 @@ def main():
                     help="a directory of RollCallSummary_<year>.txt files for "
                          "past sessions, from fetch_rollcalls_db.py")
     ap.add_argument("--bill")
+    ap.add_argument("--bills", default="data/bills.json",
+                    help="the session's bill list, used only to report roll "
+                         "calls that name a bill it does not carry")
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--out")
     a = ap.parse_args()
@@ -244,7 +258,11 @@ def main():
         # is voted on in 2026 and both belong to the same record.
         by_term = defaultdict(lambda: defaultdict(list))
         for r in rows:
-            by_term[P.term_of(r["year"])][r["bill"] or "_procedural"].append(r)
+            # A vote whose bill column does not hold a bill number goes with
+            # the other procedural votes rather than inventing a bill.
+            b = (r["bill"] or "").replace(" ", "")
+            key = b if b and BILL_NO.match(b) else "_procedural"
+            by_term[P.term_of(r["year"])][key].append(r)
         stray = by_term.pop("", None)
         if stray:
             print(f"  {sum(len(v) for v in stray.values()):,} roll calls have "
@@ -258,6 +276,33 @@ def main():
             n_r = sum(len(v) for v in by_term[term].values())
             print(f"  {term}: {n_r:,} roll calls across {n_b:,} bills")
         print(f"{len(rows):,} roll calls across {len(by_term)} term(s) -> {a.out}")
+        # A recorded vote on a bill the session's files do not carry. The
+        # General Court's own file has one: House vote 3 of 2025, "Reconsider",
+        # 15-340, filed under HB476 and titled "relative to restrictions on
+        # elective abortion" -- and the HB476s on record are a 2009 bill about
+        # qualifications and a 2018 bill about registers of probate. Nothing
+        # downstream can resolve it, so nothing downstream shows it; saying so
+        # is better than an orphan key nobody ever looks up.
+        known = set()
+        bp = Path(a.bills)
+        if bp.exists():
+            try:
+                known = set(json.loads(bp.read_text(encoding="utf-8")))
+            except ValueError:
+                known = set()
+        if known:
+            stray = sorted({b for byb in by_term.values() for b in byb
+                            if b != "_procedural" and b not in known})
+            if stray:
+                print()
+                print(f"{len(stray)} roll call bill number(s) are not a bill "
+                      f"in {a.bills}, so no page can show them:")
+                for b in stray[:10]:
+                    for byb in by_term.values():
+                        for r in byb.get(b, [])[:1]:
+                            print(f"    {b:9} {r['date']} {r['body']} "
+                                  f"{r['question_raw']!r} {r['yeas']}-{r['nays']}"
+                                  f"  {r['title'][:56]!r}")
         thr = [r for r in rows if r["threshold_needed"]]
         near = [r for r in thr if not r["passed"] and r["yeas"] > r["nays"]]
         print(f"{len(thr):,} votes carried a supermajority threshold; "
