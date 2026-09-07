@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.22
+# GRANITE_VERSION: 2026-09-05.23
 """
 Generate the faceted site from real General Court data.
 
@@ -817,6 +817,41 @@ def docket_outcome(narr):
     return None
 
 
+# A floor motion the chamber ADOPTED that finishes the bill.
+#
+# Read from the motion code and the action, not from a substring of the whole
+# docket. classify() below tests `"inexpedient to legislate" in text`, and that
+# phrase appears in every MINORITY report as well -- which is how HCR1, HCR4
+# and HCR9 came to read "Killed" when the House had adopted Ought to Pass on
+# them 197-156, 195-149 and 204-163.
+DISPOSED = [
+    (re.compile(r"inexpedient to legislate", re.I), ("done", "Killed")),
+    (re.compile(r"indefinitely postpone", re.I),
+     ("done", "Indefinitely postponed")),
+    (re.compile(r"interim study", re.I), ("study", "Referred for interim study")),
+]
+
+
+def floor_disposed(narr):
+    """The last adopted floor motion that finished the bill, or None.
+
+    A later adopted motion that is NOT a disposal clears an earlier one: a bill
+    killed, reconsidered and then passed is not killed, and the docket records
+    that as two adopted motions in order.
+    """
+    out = None
+    for e in sorted((narr or {}).get("events", []),
+                    key=lambda x: x.get("date") or ""):
+        if e.get("cancelled") or e.get("type") != "floor":
+            continue
+        if (e.get("motion") or "").upper() != "MA":
+            continue
+        act = e.get("action") or ""
+        hit = next((res for pat, res in DISPOSED if pat.search(act)), None)
+        out = hit
+    return out
+
+
 def classify(narr, rcs, prefix=""):
     """Map a bill to one of four display states."""
     text = " ".join(e.get("raw", "") for e in (narr or {}).get("events", [])).lower()
@@ -1617,9 +1652,19 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         prefix = bill_prefix(bid)
         told = classify_stated(st, prefix)
         settled = docket_outcome(narr)
+        disposed = floor_disposed(narr)
         if settled:
             # A dated docket line beats a status field that has not caught up.
             kind, status = settled
+            n_stated += 1
+        elif told and told[0] == "active" and disposed:
+            # A bill cannot be "In committee" after the chamber adopted a
+            # motion to kill it. The status columns are not always advanced
+            # once a bill is finished -- 21 of them still read REPORT FILED or
+            # NO ACTION on bills signed into law -- and an in-progress status
+            # is the one case where a dated floor vote is plainly later than
+            # the field. Only "active" yields; a stated outcome still wins.
+            kind, status = disposed
             n_stated += 1
         elif told:
             kind, status = told

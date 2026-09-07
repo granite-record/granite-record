@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.38
+# GRANITE_VERSION: 2026-09-04.39
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1155,7 +1155,12 @@ def _site_fixture(root):
         "HR10": {"designation": "HR 10", "title": "honouring a retirement",
                  "lsr_num": "0900", "lsr_year": "2026", "subject": "Miscellaneous",
                  "chamber": "H", "house_committee": "Legislative Administration",
-                 "senate_committee": "", "lsr": "2026-0900"}})
+                 "senate_committee": "", "lsr": "2026-0900"},
+        # Killed on the floor, with a chamber status that never caught up.
+        "SB900": {"designation": "SB 900", "title": "relative to a study",
+                  "lsr_num": "0901", "lsr_year": "2026", "subject": "Miscellaneous",
+                  "chamber": "S", "senate_committee": "Judiciary",
+                  "house_committee": "", "lsr": "2026-0901"}})
     w("data/legislators.json", [
         {"id": "377204", "name": "Nelson, Jodi", "chamber": "H", "party": "Republican",
          # As the real roster writes it. The fixture carried "Rock." with a
@@ -1191,6 +1196,14 @@ def _site_fixture(root):
     w("data/towns.json", {"Raymond": [{"county": "Rockingham", "district": "13",
                                        "ward": "0", "seats": 2}]})
     w("narratives.json", {
+        "SB900": {"narrative": "The Senate voted it down.", "stages": [],
+                  "notes": [], "unrecognised": [],
+                  "events": [{"date": "2026-02-19", "type": "floor", "body": "S",
+                              "cancelled": False, "motion": "MA",
+                              "action": "Inexpedient to Legislate, RC 16Y-8N",
+                              "vote_kind": "", "yeas": None, "nays": None,
+                              "raw": "Inexpedient to Legislate, RC 16Y-8N, "
+                                     "MA; 02/19/2026"}]},
         "HB1442": {"narrative": "It was introduced.",
                    "stages": [{"label": "In House committee", "text": "It was introduced."}],
                    "notes": [], "unrecognised": [],
@@ -1331,6 +1344,14 @@ def _site_fixture(root):
                       "committee": "Judiciary", "vote_yeas": 4, "vote_nays": 1,
                       "amendment": "", "text": "The study answered it."}]}]})
     w("bill_status.json", {
+        # The database's chamber status is not always advanced once a bill is
+        # finished: 21 real ones still read REPORT FILED or NO ACTION on bills
+        # signed into law, and SB532, SB533 and SB576 read IN COMMITTEE after
+        # the Senate adopted Inexpedient to Legislate on them 16-8. An
+        # in-progress status must not outrank a dated floor vote that ended it.
+        "SB900": {"gen_status": "SENATE", "house_status": "",
+                  "senate_status": "IN COMMITTEE", "text_pdf": "",
+                  "chapter": "", "lsr": "2026-0900", "body": "S"},
         "HB1442": {
             "gen_status": "PASSED/ADOPTED", "house_status": "PASSED/ADOPTED",
             "senate_status": "", "text_pdf": "https://gc.nh.gov/x.pdf",
@@ -1529,6 +1550,46 @@ def _chain():
         bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
         assert not bad, "check_site: " + "; ".join(bad)[:140]
         return "ok", "5 builders, then check_site, on a 2-bill fixture"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "an in-progress status does not outrank a vote that ended the bill")
+def _disposed_beats_stale_status():
+    """SB532, SB533 and SB576 read "In committee" after the Senate killed them.
+
+    The status columns are not always advanced once a bill is finished -- 21 of
+    the real ones still read REPORT FILED or NO ACTION on bills signed into law
+    -- and classify_stated outranks the docket, so a stale in-progress status
+    wins over a dated floor vote that disposed of the bill.
+
+    The evidence is the motion code, not a substring of the docket:
+    classify() tests `"inexpedient to legislate" in text`, and that phrase is in
+    every MINORITY report too, which is how three concurrent resolutions the
+    House adopted 197-156, 195-149 and 204-163 came to read "Killed".
+    """
+    here = Path(".").resolve()
+    if not (here / "build_site_v2.py").exists():
+        return "skip", "build_site_v2.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        _site_fixture(root)
+        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+                            "--data", "data", "--out", "site", "--segments", "work"],
+                           cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
+        idx = {x["id"]: x for x in
+               json.loads((root / "site" / "index.json").read_text(encoding="utf-8"))}
+        assert idx["SB900"]["status"] == "Killed", (
+            f"SB900 reads {idx['SB900']['status']!r}; the Senate adopted "
+            "Inexpedient to Legislate on it and the status field had not "
+            "caught up")
+        # And the rule must not reach a bill whose last adopted motion passed
+        # it. HB1442's docket carries "Inexpedient to Legislate" nowhere, but
+        # HR10's minority reports do on the real data.
+        assert idx["HB1442"]["status"] != "Killed", idx["HB1442"]["status"]
+        assert idx["HR10"]["status"].startswith("Adopted"), idx["HR10"]["status"]
+        return "ok", "a dated floor vote beats an in-progress status field"
     finally:
         shutil.rmtree(root, ignore_errors=True)
 

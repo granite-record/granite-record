@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.5
+# GRANITE_VERSION: 2026-09-05.6
 """
 Run the whole pipeline in the right order.
 
@@ -100,6 +100,15 @@ def plan(a):
              needs=["data/bills.json"], network=True, optional=True,
              note="the status page carries both as labelled fields; slow, "
                   "seconds per bill, and cached afterwards"),
+
+        Step("fill the blanks in bill status from the database",
+             ["fetch_status_db.py"],
+             needs=["bill_status.json"], network=True, optional=True,
+             note="AFTER the step above, never before: that one rebuilds "
+                  "bill_status.json from the pages and this one fills what "
+                  "the pages left empty -- 577 general statuses, 311 House, "
+                  "121 Senate, 188 committee codes. One SELECT, on the SQL "
+                  "host, not gc.nh.gov"),
 
         Step("build data (second pass)",
              ["build_data.py", "--dir", ".", "--out", "data"],
