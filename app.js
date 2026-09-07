@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.6
+// GRANITE_VERSION: 2026-09-07.8
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -205,6 +205,25 @@ Promise.all([need("index.json"),need("meta.json")])
    // Arriving from the home page search box, with the query in the URL.
    const pre=new URLSearchParams(location.search).get("q");
    if(pre){ $("#q").value=pre; query=pre; }
+   // WHAT THIS PAGE IS, decided before anything is drawn.
+   //
+   // These three used to sit after render(), which meant a member's page
+   // built the whole 2,234-bill list into #results and then threw it away --
+   // 300KB of DOM nobody saw -- and the committees index, whose listing is
+   // already in the HTML it was served, had that listing replaced by the bill
+   // search and showed nothing at all.
+   //
+   // Focus is not taken either: a reader who opened a member's page did not
+   // ask to be put in the search box.
+   if(window.GR_STATIC){
+     // The content is in the HTML. Take the chrome down and leave it alone.
+     const fac=$("#facets"); if(fac){fac.innerHTML="";fac.hidden=true;}
+     const sh=document.querySelector(".shell"); if(sh)sh.classList.add("nofacets");
+     const c=$("#count"); if(c)c.textContent="";
+     return;
+   }
+   if(window.GR_MEMBER){openPage("member",String(window.GR_MEMBER));return;}
+   if(window.GR_COMMITTEE){openPage("committee",String(window.GR_COMMITTEE));return;}
    $("#q").focus();
    render();
    // A bare #HB1442 link from elsewhere opens that bill.
@@ -224,8 +243,6 @@ Promise.all([need("index.json"),need("meta.json")])
    // open, so it takes over here rather than drawing the bill list first and
    // replacing it. The index is still loaded: a vote names a bill and not its
    // year, and yearOf needs the index to turn one into a link.
-   if(window.GR_MEMBER){openPage("member",String(window.GR_MEMBER));return;}
-   if(window.GR_COMMITTEE){openPage("committee",String(window.GR_COMMITTEE));return;}
    const h=decodeURIComponent(location.hash.slice(1))||(window.GR_BILL||"");
    const hm=/^(?:(\d{4})\/)?([A-Z]{2,5}\d+)$/i.exec(h);
    if(hm){

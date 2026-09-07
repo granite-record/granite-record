@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.16
+# GRANITE_VERSION: 2026-09-04.18
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -217,6 +217,7 @@ def shell(title, current, body, wide=False, script=""):
     nav = []
     for href, label in (("index.html", "Home"), ("bills.html", "Bills"),
                         ("legislators.html", "Legislators"),
+                        ("committees.html", "Committees"),
                         ("learn.html", "How it works"), ("about.html", "About")):
         cur = ' aria-current="page"' if href == current else ""
         nav.append(f'<a href="{href}"{cur}>{label}</a>')
@@ -876,14 +877,23 @@ def main():
     # They are files of their own so a second page can load the SAME renderer
     # rather than a copy of it, and so a reader who opens six bills downloads
     # 110KB once instead of six times.
+    # bills.html is copied rather than built through shell.page, so the asset
+    # URLs get versioned here instead. Without it the search page holds a
+    # four-hour-old app.js after a publish, the same way every other page did
+    # until 7 September.
+    import shell as _S
+    _q = _S.asset_query(out)
     for name in ("bills.html", "app.css", "app.js"):
         src = Path(name)
         if not src.exists():
             continue
         dst = out / name
-        if not dst.exists() or dst.read_bytes() != src.read_bytes():
-            shutil.copy2(src, dst)
-            print(f"copied {name} into the site folder")
+        body = (_S.bust(src.read_text(encoding="utf-8"), _q).encode("utf-8")
+                if name.endswith(".html") else src.read_bytes())
+        if not dst.exists() or dst.read_bytes() != body:
+            dst.write_bytes(body)
+            print(f"copied {name} into the site folder"
+                  + (f" (assets at {_q})" if name.endswith(".html") else ""))
 
     legs = json.loads((out / "legislators.json").read_text(encoding="utf-8")) \
         if (out / "legislators.json").exists() else []

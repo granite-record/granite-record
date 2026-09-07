@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.58
+# GRANITE_VERSION: 2026-09-04.59
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -647,6 +647,56 @@ def _bills_html():
     return "ok", f"7 markers present, tags balanced{extra}"
 
 
+@check("frontend", "a page asks for the script it was built against")
+def _asset_version():
+    """The four hours in which the site was broken and every file was correct.
+
+    app.js and app.css are served with Cache-Control: max-age=14400; the HTML
+    around them is not cached at all. So after a publish a returning visitor
+    holds the OLD script and receives the NEW page, and the two disagree in
+    whatever way that release changed them.
+
+    On 7 September that was the legislator pages: 406 of them went live setting
+    window.GR_MEMBER, four-hour-old app.js had never heard of GR_MEMBER, and
+    every one of them quietly drew the bill search instead. The page was right,
+    the data was right, the deployed script was right, and the site was broken.
+
+    The URL now carries a hash of the two files, so a changed asset is a
+    changed address. This checks the built pages actually ask for the hash the
+    files on disk have -- a generator that stops adding it fails here rather
+    than four hours after the next deploy.
+    """
+    site = Path("site")
+    if not (site / "bills.html").exists():
+        return "skip", "site/bills.html not built"
+    sh = imp("shell")
+    if not sh:
+        return "skip", "shell.py will not import"
+    q = sh.asset_query(site)
+    assert q, "neither app.js nor app.css is on disk, so no version was computed"
+
+    pages = [site / "bills.html"]
+    for folder, pat in (("bill", "*/*.html"), ("legislator", "*.html"),
+                        ("committee", "*.html")):
+        got = sorted((site / folder).glob(pat))
+        if got:
+            pages.append(got[len(got) // 2])
+
+    bad = []
+    for f in pages:
+        t = f.read_text(encoding="utf-8")
+        if 'src="app.js' not in t:
+            continue
+        if f'src="app.js{q}"' not in t:
+            got = re.search(r'src="app\.js([^"]*)"', t)
+            bad.append(f"{f} asks for app.js{got.group(1) if got else ''} "
+                       f"but the files on disk are {q}")
+        if 'href="app.css' in t and f'href="app.css{q}"' not in t:
+            bad.append(f"{f} asks for an app.css that is not {q}")
+    assert not bad, "; ".join(bad[:3])
+    return "ok", f"{len(pages)} page kinds, all asking for app.js{q}"
+
+
 @check("frontend", "every record's own page is a working shell for app.js")
 def _bill_shell():
     """What replaced "the bill page stylesheet still formats".
@@ -682,7 +732,8 @@ def _bill_shell():
             assert need in t, (
                 f"{f} has no {need}, which app.js binds to on load. The page "
                 "draws nothing and says nothing about why.")
-        assert 'src="app.js"' in t, f"{f} does not load app.js"
+        # The src carries a content hash now, so match the prefix.
+        assert 'src="app.js' in t, f"{f} does not load app.js"
         assert f"window.{glob_name}=" in t, (
             f"{f} never says which record it is, so app.js opens none of them")
         assert '<base href="/">' in t, (

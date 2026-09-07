@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.3
+# GRANITE_VERSION: 2026-09-07.4
 """
 A page's worth of data for every committee.
 
@@ -363,6 +363,62 @@ def main():
         })
 
     (site / "committees.json").write_text(json.dumps(index), encoding="utf-8")
+
+    # The way in. Committee pages were built, sitemapped and unreachable: no
+    # link to one existed anywhere on the site.
+    def _card(c):
+        bits = []
+        if c["chair"]:
+            bits.append(f"Chaired by {S.E(c['chair'])}")
+        if c["n_members"]:
+            bits.append(f"{c['n_members']} members")
+        if c["n_bills"]:
+            bits.append(f"{c['n_bills']:,} bills")
+        if c["n_sessions"]:
+            bits.append(f"{c['n_sessions']:,} sitting days")
+        return (f'<a class="ccard" href="committee/{S.E(c["code"])}.html">'
+                f'<span class="cc-n">{S.E(c["name"])}</span>'
+                f'<span class="cc-m">{" &middot; ".join(bits)}</span></a>')
+
+    live = [c for c in index if c["n_sessions"] or c["n_bills"]]
+    past = [c for c in index if c not in live]
+    body = []
+    for ch, word in (("H", "House"), ("S", "Senate")):
+        rows_ = [c for c in live if c["chamber"] == ch]
+        if not rows_:
+            continue
+        body.append(f"<h2>{word}</h2><div class=\"ccards\">"
+                    + "".join(_card(c) for c in
+                              sorted(rows_, key=lambda x: x["name"]))
+                    + "</div>")
+    if past:
+        body.append('<h2>No longer meeting</h2><p class="src">Committees with '
+                    "no bills and no sitting day on record. Their pages are "
+                    "kept so the bills they once handled still have somewhere "
+                    'to point.</p><div class="ccards">'
+                    + "".join(_card(c) for c in
+                              sorted(past, key=lambda x: x["name"]))
+                    + "</div>")
+
+    page_html = S.page(
+        S.template(site), path="/committees.html", base=a.base,
+        title="Committees | Granite Record",
+        og_title="New Hampshire General Court committees",
+        description=("Every committee of the New Hampshire General Court: who "
+                     "sits on it, the bills referred to it, and what it did on "
+                     "each day it met."),
+        globals={"GR_STATIC": True},
+        noscript="", skip_label="Skip to the committees")
+    # A plain listing rather than an app view: there is nothing to filter and
+    # 56 links do not need JavaScript to draw.
+    page_html = page_html.replace(
+        '<div id="results"></div>',
+        f'<div id="results"><div class="clist"><h1>Committees</h1>'
+        f'<p class="src">Bill-first search answers what happened to a bill. '
+        f'These answer what a committee did on a day.</p>'
+        + "".join(body) + "</div></div>", 1)
+    (site / "committees.html").write_text(page_html, encoding="utf-8")
+    print("committees.html written")
 
     assert written, ("no committee page was written. That means no committee "
                      "name in proceedings.csv matched data/committees.json, "

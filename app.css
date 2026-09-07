@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.4 */
+/* GRANITE_VERSION: 2026-09-07.5 */
 :root{--paper:#F6F6F4;--surface:#fff;--ink:#191C1D;--ink-2:#5C6467;--ink-3:#6C7274;
 --rule:#E2E3E0;--rule-2:#CFD1CD;--edge:#8A8C88;--pine:#1F4B47;--pine-soft:#E7EFED;--wash:#EFEFEC;
 /* Status colours, by what happened to the bill. Yellow while it is moving,
@@ -487,3 +487,15 @@ margin-top:2px}
    column it left behind should not be either. */
 .shell.nofacets{grid-template-columns:1fr}
 .shell.nofacets .facets{display:none}
+
+/* The committees index: a way into the 56 pages that nothing linked to. */
+.clist{max-width:900px;margin:0 auto;padding:20px 24px 60px}
+.clist h1{font-size:26px;margin:0 0 4px}
+.clist h2{font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+color:var(--ink-3);margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
+.ccards{display:grid;gap:7px}
+a.ccard{display:block;padding:10px 13px;border:1px solid var(--rule);border-radius:7px;
+background:var(--paper);text-decoration:none;color:inherit}
+a.ccard:hover{border-color:var(--rule-2);background:var(--surface)}
+.cc-n{display:block;font-weight:600;font-size:14.5px}
+.cc-m{display:block;font-size:12.5px;color:var(--ink-3);margin-top:2px}
