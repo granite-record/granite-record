@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.35
+# GRANITE_VERSION: 2026-09-05.36
 """
 Generate the faceted site from real General Court data.
 
@@ -1187,8 +1187,22 @@ def station_for_floor(f, bid, marks):
     return st
 
 
+def vote_date(s):
+    """"8/19/2026" as something that sorts. Text does not.
+
+    The docket writes m/d/Y with no padding, so a string sort puts August
+    above December and 2023 above 2025. Every member page claimed "newest
+    first" over that order.
+    """
+    p = (s or "").split("/")
+    try:
+        return (int(p[2]), int(p[0]), int(p[1]))
+    except (IndexError, ValueError):
+        return (0, 0, 0)
+
+
 def build_legislators(out, legs, votes_by_member, towns, unnamed,
-                      sponsored=None):
+                      sponsored=None, bill_year=None):
     """One JSON per member, plus the index and the town map.
 
     Split out of main(). main() was 808 lines even after the station
@@ -1197,7 +1211,8 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
     """
     lg = []
     for mid, m in legs.items():
-        mv = sorted(votes_by_member.get(mid, []), key=lambda v: v["date"], reverse=True)
+        mv = sorted(votes_by_member.get(mid, []),
+                    key=lambda v: vote_date(v.get("date")), reverse=True)
         counts = defaultdict(int)
         for v in mv:
             counts[v["vote"]] += 1
@@ -1227,8 +1242,16 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
             "n_sponsored": len(mine),
             "n_prime": sum(1 for x in mine if x["prime"]),
             "sponsored": mine,
+            # y is the bill's FILING year, which is what its address is under
+            # -- a 2025 bill voted on in 2026 lives at /bill/2025/. Without it
+            # the page had to guess the year from the bill number, and a
+            # number that exists in two terms was resolved to whichever came
+            # first in the index.
             "votes": [{"d": v["date"], "b": v["bill"], "q": v["question"],
-                       "v": v["vote"]} for v in mv],
+                       "v": v["vote"],
+                       "y": (bill_year or {}).get(
+                           (P.term_of(v.get("year", "")), v["bill"]), "")}
+                      for v in mv],
         }), encoding="utf-8")
     if unnamed:
         print(f"{len(unnamed):,} member id(s) still have no name and appear as "
@@ -2405,7 +2428,12 @@ def main():
     print(f"index.json: {size:.0f} KB for {len(index):,} bills "
           f"(roughly {size/4:.0f} KB gzipped, which is what a static host sends)")
 
-    lg = build_legislators(out, legs, votes_by_member, towns, unnamed, sponsored)
+    # (term, bill) -> the year its page is under, so a vote can link to the
+    # right one of two bills sharing a number.
+    bill_year = {(t, b): str(r.get("lsr_year") or "")
+                 for t, byb in bills.items() for b, r in byb.items()}
+    lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
+                           sponsored, bill_year)
 
     # ---- home page data ----------------------------------------------------
     # Everything the landing page needs, precomputed here where the full records

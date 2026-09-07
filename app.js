@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.10
+// GRANITE_VERSION: 2026-09-07.11
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1392,8 +1392,14 @@ function renderMemberVotes(m){
     <table class="votes"><thead><tr><th>Date</th><th>Bill</th><th>Question</th>
       <th>Vote</th></tr></thead><tbody>${rows.slice(0,600).map(x=>`<tr>
       <td class="d">${esc(x.d||"")}</td>
-      <td class="b"><a href="bill/${esc(String(x.y||yearOf(x.b)||""))}/${
-        esc(String(x.b||"").toLowerCase())}.html">${esc(x.b||"")}</a></td>
+      <td class="b">${x.b&&x.y
+        ? `<a href="bill/${esc(String(x.y))}/${esc(String(x.b).toLowerCase())
+          }.html">${esc(x.b)}</a>`
+        : x.b ? esc(x.b)
+        // A procedural vote -- a call of the roll, a rules suspension -- is
+        // recorded against no bill. It used to render an empty cell wrapped
+        // in a link to /bill//.html.
+        : `<span class="none">no bill</span>`}</td>
       <td>${esc(x.q||"")}</td><td class="v">${esc(x.v||"")}</td></tr>`).join("")}
       </tbody></table>
     ${rows.length>600?`<p class="src">Showing the most recent 600 of ${
