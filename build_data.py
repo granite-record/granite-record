@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -637,7 +637,7 @@ def main():
     print(f"roll call summaries: {len(summary):,}")
 
     member_votes, vote_kinds, hist_bodies = [], Counter(), Counter()
-    vnums, unmatched_votes = set(), 0
+    vnums, unmatched_votes, no_person = set(), 0, Counter()
     for r in rows_all(d, "RollCallHistory", 8):
         key = (r[0], r[1], r[2])
         hist_bodies[r[1]] += 1
@@ -646,18 +646,29 @@ def main():
         if not s:
             unmatched_votes += 1
             continue
-        m = legs.get(r[4])
+        # Field 4 is the roster's PersonID, joined in on the Employeeno in
+        # field 3. Three members of the 2023-2024 House have no legislators
+        # row at all, so that join comes back empty for all 1,470 of their
+        # votes -- and a blank id put the three of them under a single
+        # "Member #" row, merging three people's votes into one. The
+        # Employeeno is the only identifier the record holds for them, and
+        # the two spaces do not overlap: PersonIDs run 48-10904, Employeenos
+        # are six digits.
+        mid = r[4].strip() or r[3].strip()
+        if not r[4].strip() and mid:
+            no_person[mid] += 1
+        m = legs.get(mid)
         vote_kinds[r[6]] += 1
         member_votes.append({
             # 420 members cast votes but only 406 are in legislators.txt: the
             # file holds current members, and people resign or die mid-term.
             # Their votes are still part of the record.
-            "member_id": r[4],
+            "member_id": mid,
             "name": (m["name"] if m else
-                     former.get(r[4], {}).get("name", f"Member #{r[4]}")),
+                     former.get(mid, {}).get("name", f"Member #{mid}")),
             "party": (m["party_code"] if m else
-                      (former.get(r[4], {}).get("party") or "X")[:1].upper()),
-            "label": (m["label"] if m else _former_label(r[4])),
+                      (former.get(mid, {}).get("party") or "X")[:1].upper()),
+            "label": (m["label"] if m else _former_label(mid)),
             "year": r[0], "body": r[1], "vote_number": r[2],
             "bill": s["bill"], "question": s["question"],
             "date": s["datetime"].split(" ")[0], "vote": r[6],
@@ -671,6 +682,13 @@ def main():
         report.append(f"{unmatched_votes:,} history rows had no matching summary row "
                       "(likely roll calls from a session the summary file no longer covers)")
 
+    if no_person:
+        report.append(
+            f"{len(no_person)} member(s) voting in the 2023-2024 House have no "
+            "row in the legislators table, so the record carries an Employeeno "
+            "for them and no name, party or district: "
+            + ", ".join(f"#{k} ({v:,} votes)" for k, v in sorted(no_person.items()))
+            + ". They are kept apart by that number rather than merged.")
     former = {v["member_id"] for v in member_votes if v["party"] == "X"}
     if former:
         report.append(f"{len(former)} members cast votes but are not in the current "

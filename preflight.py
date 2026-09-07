@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.49
+# GRANITE_VERSION: 2026-09-04.50
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2466,6 +2466,74 @@ def _cite_survives():
                   "build(), and the Documents tab will publish no source links")
     return "ok", (f"{cited:,} of {raw:,} rows cite a volume; "
                   f"{kept:,} kept across the first 400 bills")
+
+
+@check("data", "every voter in the record is one person, with a party")
+def _vote_identity():
+    """Two ways a roll call stops naming who voted, both of which shipped.
+
+    A member who has left is not in legislators.txt, so the party letter falls
+    back to "X" and the grid shows them under no party at all. That was 63,065
+    of the 2023-2024 term's 199,385 votes -- 32% of a term -- and nothing said
+    so; it was noticed by a reader. former_members.json now carries them, from
+    the General Court's own legislators table.
+
+    Worse, and quieter: RollCallHistory identifies a voter by Employeeno, and
+    the roster's PersonID is joined in on it. Three members of the 2023-2024
+    House have no legislators row at all, so that join came back empty and all
+    three were written with an id of "" -- one row in the grid carrying three
+    people's votes, none of them named. Distinct Employeenos must stay
+    distinct members however little else is known about them.
+    """
+    rc = Path("rollcalls")
+    hist = sorted(rc.glob("RollCallHistory_*.txt")) if rc.exists() else []
+    if not hist:
+        return "skip", "no rollcalls/RollCallHistory_*.txt here"
+    # The id build_data will key a voter on, per Employeeno: the PersonID the
+    # join supplied, or the Employeeno itself when it supplied none.
+    by_emp = {}
+    for f in hist:
+        for line in f.open(encoding="utf-8-sig", errors="replace"):
+            r = line.rstrip("\n").split("|")
+            if len(r) < 8:
+                continue
+            emp, pid = r[3].strip(), r[4].strip()
+            if emp:
+                by_emp.setdefault(emp, set()).add(pid or emp)
+    seen = {}
+    for emp, ids in by_emp.items():
+        for i in ids:
+            seen.setdefault(i, set()).add(emp)
+    merged = {i: sorted(e) for i, e in seen.items() if len(e) > 1}
+    assert not merged, (
+        f"{len(merged)} member id(s) carry more than one Employeeno, so two "
+        f"or more people's votes are shown as one: "
+        f"{dict(list(merged.items())[:3])}")
+
+    mv = Path("data/member_votes.json")
+    if not mv.exists():
+        return "ok", (f"{len(by_emp):,} voters, each with an id of their own; "
+                      "data/member_votes.json not built, so no party census")
+    votes = json.loads(mv.read_text(encoding="utf-8"))
+    per_term = {}
+    for v in votes:
+        y = int(v.get("year") or 0)
+        if not y:
+            continue
+        t = f"{y - (1 - y % 2)}-{y - (1 - y % 2) + 1}"
+        tot, nop = per_term.get(t, (0, 0))
+        per_term[t] = (tot + 1, nop + ((v.get("party") or "X") == "X"))
+    # A term is either resolved or it is not. The three unidentifiable members
+    # of the 2023-2024 House are 0.7% of it; a real regression puts a whole
+    # cohort back to "X" and lands in the tens of percent.
+    bad = {t: f"{n:,}/{tot:,}" for t, (tot, n) in per_term.items()
+           if tot and n > tot * 0.05}
+    assert not bad, (f"a term is missing party on more than 5% of its votes: "
+                     f"{bad}. former_members.json is stale or was not read; "
+                     "fetch_members_db.py fills it from the legislators table.")
+    census = ", ".join(f"{t} {n:,}/{tot:,} with no party"
+                       for t, (tot, n) in sorted(per_term.items()))
+    return "ok", f"{len(by_emp):,} distinct voters; {census}"
 
 
 @check("data", "what is on disk for the markers to read")
