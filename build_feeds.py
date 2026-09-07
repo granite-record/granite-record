@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -25,6 +25,7 @@ same person reading about it afterwards cannot.
 
 import argparse
 import json
+import proceedings as P
 import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -98,7 +99,36 @@ def main():
     a = ap.parse_args()
     site, base = Path(a.site), a.base.rstrip("/")
     idx = json.loads((site / "index.json").read_text(encoding="utf-8"))
-    by_id = {b["id"]: b for b in idx}
+    # Keyed on (term, bill), because a bill number is unique within a term and
+    # not across terms. build_feeds had no notion of a term at all, and it is
+    # 2,233 of the site's 8,017 files.
+    by_id = {((b.get("term") or ""), b["id"]): b for b in idx}
+    by_number = {}
+    for b in idx:
+        by_number.setdefault(b["id"], []).append(b)
+    ambiguous = [0]
+
+    def find(bill, date=""):
+        """A bill row, by number and the term its date falls in.
+
+        Where the caller has a date -- an upcoming hearing, a recorded vote --
+        the term follows from it. Where it does not, a number that exists in
+        exactly one term still resolves; one that exists in several is
+        ambiguous, and is counted rather than guessed at.
+        """
+        bill = (bill or "").upper()
+        if not bill:
+            return None
+        if date:
+            hit = by_id.get((P.term_of(date), bill))
+            if hit:
+                return hit
+        cands = by_number.get(bill, [])
+        if len(cands) == 1:
+            return cands[0]
+        if len(cands) > 1:
+            ambiguous[0] += 1
+        return None
 
     fd = site / "feed"
     (fd / "bill").mkdir(parents=True, exist_ok=True)
@@ -109,6 +139,7 @@ def main():
         return f"{base}/bill/{b.get('year','')}/{b['id'].lower()}.html"
 
     all_items, by_cmte, by_topic, nbill = [], {}, {}, 0
+    noyear = []
     sponsored = {}
     for b in idx:
         # Under the filing year, like the feed's own output path below.
@@ -134,12 +165,17 @@ def main():
                 f"{b.get('title','')}\n\n{e.get('text','')}\n\n"
                 f"Status: {d.get('next_step','')}",
                 e["date"],
-                f"{b['id']}:{e['date']}:{slug(e.get('text',''))[:40]}"))
+                f"{b.get('term','')}:{b['id']}:{e['date']}:"
+                f"{slug(e.get('text',''))[:40]}"))
 
-        if items:
-            out = fd / "bill" / str(b.get("year", ""))
+        if items and not str(b.get("year") or "").strip():
+            # Without a year the path collapses to feed/bill/<id>.xml, where
+            # the next term's bill of the same number lands on top of it.
+            noyear.append(b["id"])
+        elif items:
+            out = fd / "bill" / str(b.get("year"))
             out.mkdir(parents=True, exist_ok=True)
-            self_l = f"{base}/feed/bill/{b.get('year','')}/{b['id'].lower()}.xml"
+            self_l = f"{base}/feed/bill/{b.get('year')}/{b['id'].lower()}.xml"
             (out / f"{b['id'].lower()}.xml").write_text(
                 feed(f"{b['n']} — Granite Record",
                      b.get("title", "") or f"Actions on {b['n']}",
@@ -196,7 +232,7 @@ def main():
         home = json.loads(hp.read_text(encoding="utf-8"))
         items = []
         for u in (home.get("upcoming") or []):
-            b = by_id.get(u.get("bill", "").upper())
+            b = find(u.get("bill", ""), u.get("date", ""))
             n = b["n"] if b else u.get("bill", "")
             when = u.get("date", "")
             items.append((
@@ -240,7 +276,7 @@ def main():
             if vp.exists():
                 rec = json.loads(vp.read_text(encoding="utf-8"))
                 for v in (rec.get("votes") or [])[:a.per_feed]:
-                    bb = by_id.get((v.get("b") or "").upper())
+                    bb = find(v.get("b"), v.get("d", ""))
                     label = bb["n"] if bb else (v.get("b") or "")
                     how = VOTE_WORD.get(v.get("v"), v.get("v") or "")
                     q = v.get("q") or "the motion"
@@ -271,6 +307,13 @@ def main():
 
     total = sum(p.stat().st_size for p in fd.rglob("*.xml"))
     print(f"{nbill:,} bill feeds")
+    if noyear:
+        print(f"  {len(noyear):,} bills have no filing year and got no feed, "
+              f"rather than one at feed/bill/ where the next term's bill of "
+              f"the same number would overwrite it: {noyear[:5]}")
+    if ambiguous[0]:
+        print(f"  {ambiguous[0]:,} references name a bill number that exists "
+              "in more than one term with no date to tell them apart")
     print(f"all.xml covers actions up to {TODAY}; anything scheduled later is "
           "in hearings.xml")
     print(f"{len(by_cmte)} committee feeds, {len(by_topic)} topic feeds")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.42
+# GRANITE_VERSION: 2026-09-04.43
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1645,6 +1645,61 @@ def _prose_bill_number(fetch_committee_reports):
         f"the minority report is cut short at {len(text)} characters: "
         f"...{text[-70:]!r}")
     return "ok", "one section per heading, and the prose stays whole"
+
+
+@check("build", "a bill with no filing year gets no feed, not one at the root")
+def _feed_needs_a_year():
+    """feed/bill/<year>/<id>.xml is the only thing keeping two terms apart.
+
+    build_feeds had no notion of a term at all. The path is built from
+    b.get("year"), and a bill without one collapsed it to feed/bill/<id>.xml --
+    where the next term's bill of the same number lands on top. It is 2,233 of
+    the site's 8,017 files, so this is the largest single place a bill number
+    was still standing in for a bill.
+    """
+    here = Path(".").resolve()
+    if not (here / "build_feeds.py").exists():
+        return "skip", "build_feeds.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        site = root / "site"
+        (site / "bills" / "2026").mkdir(parents=True)
+        rows = [{"id": "HB1", "n": "HB 1", "year": 2026, "term": "2025-2026",
+                 "title": "a bill with a year", "committee": "", "topic": "",
+                 "status": "In committee", "kind": "active", "nrc": 0,
+                 "last_action": "2026-02-01", "votedays": []},
+                {"id": "HB2", "n": "HB 2", "year": "", "term": "",
+                 "title": "a bill with none", "committee": "", "topic": "",
+                 "status": "In committee", "kind": "active", "nrc": 0,
+                 "last_action": "2026-02-01", "votedays": []}]
+        (site / "index.json").write_text(json.dumps(rows), encoding="utf-8")
+        for r in rows:
+            d = {"next_step": "", "sponsors": [],
+                 "events": [{"date": "2026-02-01", "text": "It was introduced."}]}
+            (site / "bills" / "2026" / f"{r['id']}.json").write_text(
+                json.dumps(d), encoding="utf-8")
+        # HB2 has no year, so its record cannot be found under bills/<year>/
+        # either; put it where a yearless bill would have been written.
+        (site / "bills").mkdir(exist_ok=True)
+        (site / "bills" / "HB2.json").write_text(
+            json.dumps({"next_step": "", "sponsors": [],
+                        "events": [{"date": "2026-02-01",
+                                    "text": "It was introduced."}]}),
+            encoding="utf-8")
+        r = subprocess.run([sys.executable, str(here / "build_feeds.py"),
+                            "--site", "site", "--base", "https://x.test"],
+                           cwd=root, capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-160:]
+        assert (site / "feed" / "bill" / "2026" / "hb1.xml").exists(),             "the bill WITH a year got no feed"
+        stray = sorted(p.name for p in (site / "feed" / "bill").glob("*.xml"))
+        assert not stray, (f"a feed was written to feed/bill/ with no year in "
+                           f"the path: {stray}")
+        # And the guid says which term, so two terms' HB1 cannot collide.
+        x = (site / "feed" / "bill" / "2026" / "hb1.xml").read_text(encoding="utf-8")
+        assert "2025-2026:HB1:" in x, "the guid does not carry the term"
+        return "ok", "no year, no feed; and the guid names the term"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
 
 
 @check("build", "a narratives.json keyed on bill number is refused, not ignored")
