@@ -166,15 +166,16 @@ In order. `ARCHITECTURE.md` has the full reasoning.
 
 4. **Term-keyed identifiers.** Bill numbers repeat every two years and nothing
    outside `proceedings.csv` knew it. `rollcalls.json` and `narratives.json`
-   are done -- both are `{term: {bill: ...}}`, and `preflight` fails if either
-   is fed the old shape or if two terms' votes reach one bill. So is
-   `build_feeds.py`, which had no notion of a term at all and writes 2,233 of
-   the site's 8,045 files. The rest are not: `committee_reports.json`,
-   `senate_reports.json`, `bill_text.json` and `bill_status.json` are keyed on
-   `HB396` alone. Each of those has a writer that needs the network, so
-   reshaping one means regenerating it in the same session -- which is why they
-   are still here. Fetch anything from 2024 today and it merges into 2026.
-   This gates the archive.
+   are done, and so are `committee_reports.json` and `senate_reports.json` --
+   all four are `{term: {bill: ...}}` and `preflight` fails if any is fed the
+   old shape. So is `build_feeds.py`, which had no notion of a term at all and
+   writes 2,233 of the site's 8,045 files.
+
+   Two are left: `bill_text.json` and `bill_status.json`. Both have writers
+   that need the network, so neither can be reshaped and regenerated in one
+   commit, and shipping the reshape without the rebuild would leave the site
+   unbuildable. Do them when a fetch for the current term is being run anyway.
+   Fetch anything from 2024 before that and it merges into 2026.
 
 ---
 

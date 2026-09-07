@@ -105,10 +105,17 @@ no filing year collapsed `feed/bill/<year>/<id>.xml` to `feed/bill/<id>.xml`,
 which the next term's bill of the same number would land on top of. It now gets
 no feed and is named in the output.
 
-The rest still are not: `committee_reports.json`, `senate_reports.json`,
-`bill_text.json` and `bill_status.json`, all keyed by `HB396`. Each has a
-writer that needs the network, so reshaping one means regenerating it in the
-same session; that is the only reason they are still on this list. `build_feeds.py` contains no notion of a term at all, and is a
+`committee_reports.json` and `senate_reports.json` are done too, and they are
+the ones that show what the constraint really is. Neither could change shape
+without being rebuilt in the same commit, and both could be: the Senate's come
+from the database, and fetch_committee_reports gained --offline, which re-reads
+the 82 calendars already on disk and makes no request. Output-neutral across
+all 2,234 bills.
+
+Two are left: `bill_text.json` and `bill_status.json`. Both have writers that
+need the network. That is the whole reason they are still here -- reshaping one
+without regenerating it leaves the site unbuildable, and regenerating means a
+fetch. Do them when a fetch for the current term is happening anyway. `build_feeds.py` contains no notion of a term at all, and is a
 quarter of the site by file count. Run any fetch for 2024 and its HB 396 merges
 into 2026's. Today's merge guard keys on the year in a source line, which stops
 one year overwriting another but cannot stop two different bills sharing a key.
