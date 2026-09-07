@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.1
+# GRANITE_VERSION: 2026-09-04.4
 """
 Put names to the members who voted but are missing from legislators.txt.
 
@@ -93,17 +93,46 @@ def main():
     a = ap.parse_args()
 
     d = Path(a.dir)
+
+    def rc_file(base):
+        """RollCallHistory.txt for the current session, or the archived year.
+
+        fetch_rollcalls_db.py writes rollcalls/<base>_<year>.txt for a session
+        the download no longer covers. Without this the script read the
+        current session's file whatever --session said, found none of that
+        year's roll calls in it, and reported that every member was already
+        known -- a clean exit having done nothing.
+        """
+        arch = d / "rollcalls" / f"{base}_{a.session}.txt"
+        return arch if arch.exists() else d / f"{base}.txt"
+
+    hist_path, summ_path = rc_file("RollCallHistory"), rc_file("RollCallSummary")
+    print(f"reading {hist_path} and {summ_path}")
+
+    # Everyone the site can already name: the sitting roster AND the members
+    # who have left. former_members.json holds 675 of the latter, from the
+    # General Court's own legislators table. Counting only the roster left
+    # every one of them looking unresolved, so the leftovers on each side of
+    # the set difference were hundreds deep and matched nobody.
     known = {m["id"] for m in json.loads((Path(a.data) / "legislators.json")
                                          .read_text(encoding="utf-8"))}
+    fp = Path(a.out)
+    if fp.exists():
+        known |= set(json.loads(fp.read_text(encoding="utf-8")))
 
     # Which roll calls did each unknown member vote in?
     votes = defaultdict(list)
-    with open(d / "RollCallHistory.txt", encoding="utf-8-sig", errors="replace") as fh:
+    with open(hist_path, encoding="utf-8-sig", errors="replace") as fh:
         for line in fh:
             f = line.rstrip("\n").split("|")
             if len(f) < 8 or f[0].strip() != a.session:
                 continue
-            mid = f[4].strip()
+            # Field 4 is the roster's PersonID and field 3 the Employeeno. The
+            # PersonID is blank when the legislators table has no row for that
+            # person at all -- which is the case this script exists for, and
+            # which it used to skip, so the three members of the 2023-2024
+            # House it could have named were the three it never looked at.
+            mid = f[4].strip() or f[3].strip()
             if mid and mid not in known:
                 votes[mid].append((f[1].strip(), f[2].strip()))
     if not votes:
@@ -112,7 +141,7 @@ def main():
     print(f"{len(votes)} members to resolve")
 
     summary, lsr_of = {}, {}
-    with open(d / "RollCallSummary.txt", encoding="utf-8-sig", errors="replace") as fh:
+    with open(summ_path, encoding="utf-8-sig", errors="replace") as fh:
         for line in fh:
             f = line.rstrip("\n").split("|")
             if len(f) > 4 and f[0].strip() == a.session:
@@ -143,22 +172,55 @@ def main():
     # pattern of votes across a session is effectively unique.
     VOTE_COL = {1: "Yea", 2: "Nay", 3: None, 4: None}   # 3/4 are the absence pages
 
-    known_names = {m["name"] for m in json.loads(
-        (Path(a.data) / "legislators.json").read_text(encoding="utf-8"))}
+    # Everyone the site can name, by NAME rather than by id -- the sitting
+    # roster and the 675 members who have left. Leaving the latter out kept
+    # their names in the unknown pool on every page, so the intersection that
+    # is supposed to converge on one person either never narrowed or emptied
+    # out entirely.
+    #
+    # Both spellings, because the two sources disagree: the roll call page
+    # writes "Thomas Oppel" and these files write "Oppel, Thomas".
+    def _both(n):
+        n = (n or "").strip()
+        if not n:
+            return ()
+        if "," in n:
+            last, first = [x.strip() for x in n.split(",", 1)]
+            return (n, f"{first} {last}".strip())
+        w = n.split()
+        return (n, f"{w[-1]}, {' '.join(w[:-1])}") if len(w) > 1 else (n,)
+
+    known_names = set()
+    for m in json.loads((Path(a.data) / "legislators.json")
+                        .read_text(encoding="utf-8")):
+        known_names.update(_both(m.get("name")))
+    _fp = Path(a.out)
+    if _fp.exists():
+        for _v in json.loads(_fp.read_text(encoding="utf-8")).values():
+            known_names.update(_both(_v.get("name")))
+    print(f"{len(known_names):,} name spellings already accounted for")
 
     hist = defaultdict(lambda: defaultdict(set))     # (body,num) -> vote -> ids
-    with open(d / "RollCallHistory.txt", encoding="utf-8-sig", errors="replace") as fh:
+    with open(hist_path, encoding="utf-8-sig", errors="replace") as fh:
         for line in fh:
             f = line.rstrip("\n").split("|")
             if len(f) < 8 or f[0].strip() != a.session:
                 continue
-            hist[(f[1].strip(), f[2].strip())][f[6].strip()].add(f[4].strip())
+            hist[(f[1].strip(), f[2].strip())][f[6].strip()].add(
+                f[4].strip() or f[3].strip())
 
     candidates = {mid: None for mid in want}         # None = not yet constrained
     name_rec = {}                                    # name -> row, for lookups
     resolved, tried, fails, skipped, cached = {}, 0, {}, 0, 0
     cache = Path(a.cache)
     cache.mkdir(parents=True, exist_ok=True)
+
+    # Bound before either loop, because propagate() is defined inside the
+    # first one: a run that fetches nothing at all reached the second loop
+    # with the name unbound and died on a traceback rather than saying it
+    # had nothing to work with.
+    def propagate():
+        return None
 
     print(f"{len(calls)} candidate roll calls, busiest first\n")
     for call, members in sorted(calls.items(), key=lambda kv: -len(kv[1])):
@@ -353,9 +415,41 @@ def main():
                 cs = candidates.get(mid)
                 print(f"    id {mid} could be: {sorted(cs) if cs else 'unconstrained'}")
 
-    Path(a.out).write_text(json.dumps(resolved, indent=2), encoding="utf-8")
+    # MERGE. This script resolves the handful of members nobody else can name,
+    # and former_members.json holds 675 that fetch_members_db.py reads out of
+    # the General Court's legislators table in one SELECT. Writing `resolved`
+    # over the file took it from 675 entries to 3 -- a writer run on a subset
+    # destroying the rest, which is the failure this project has met twice
+    # before, on the manifest's hand-marked times.
+    #
+    # Nothing here overwrites a field that is already filled: a name from the
+    # database is the database's, and this only ever adds what was missing.
+    fp = Path(a.out)
+    merged, kept, added, filled = {}, 0, 0, 0
+    if fp.exists():
+        try:
+            merged = json.loads(fp.read_text(encoding="utf-8"))
+        except ValueError:
+            merged = {}
+    kept = len(merged)
+    for mid, rec in resolved.items():
+        if mid not in merged:
+            merged[mid] = rec
+            added += 1
+            continue
+        for k, v in rec.items():
+            if v and not merged[mid].get(k):
+                merged[mid][k] = v
+                filled += 1
+    # A run that resolved somebody must not shrink the file.
+    assert len(merged) >= kept, (
+        f"the merge lost entries: {kept:,} on file before, {len(merged):,} "
+        "after. Nothing here should ever remove one.")
+    fp.write_text(json.dumps(merged, indent=1, sort_keys=True), encoding="utf-8")
     print(f"\n{len(resolved)}/{len(votes)} resolved in {tried} requests "
-          f"({cached} pages from cache) -> {a.out}")
+          f"({cached} pages from cache)")
+    print(f"  -> {a.out}: {kept:,} already there, {added:,} added, "
+          f"{filled:,} blank field(s) filled, {len(merged):,} in the file")
     if skipped:
         print(f"{skipped} roll calls skipped: no bill number, or no LSR for it "
               "in Docket.txt (procedural votes have neither)")

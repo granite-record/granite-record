@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.56
+# GRANITE_VERSION: 2026-09-04.57
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2703,6 +2703,44 @@ def _fetch_writes_its_term():
                       "survives it")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("files", "a writer of a shared file reads it before writing it")
+def _writers_merge():
+    """former_members.json went from 675 entries to 3 on 7 September.
+
+    fetch_members_db.py fills it from the General Court's legislators table in
+    one SELECT; resolve_members.py deduces the handful that table has no row
+    for, from the roll call pages. The second wrote its own results over the
+    whole file. Everything the first had found was gone, and the only reason
+    it was recoverable is that the SELECT can be run again.
+
+    This is the same failure as the manifest losing its 35 hand-marked times,
+    twice, and it is worth a structural check rather than a memory: a script
+    that WRITES one of these files must also READ it. Reading is not proof of
+    merging, but not reading is proof of replacing, and that is the case that
+    has actually happened three times.
+    """
+    shared = ("former_members.json", "bill_status.json", "bill_text.json",
+              "testimony_db.json", "narratives.json", "rollcalls.json")
+    bad = []
+    for f in sorted(Path(".").glob("*.py")):
+        if f.name.startswith(("probe_", "test_")):
+            continue
+        src = f.read_text(encoding="utf-8", errors="replace")
+        for name in shared:
+            if name not in src:
+                continue
+            # Crude on purpose: the question is whether the file is opened for
+            # reading anywhere in the script, not how.
+            writes = ("write_text" in src or "json.dump" in src
+                      or 'open(' in src and '"w"' in src)
+            reads = ("read_text" in src or "json.load" in src
+                     or ".exists()" in src)
+            if writes and not reads:
+                bad.append(f"{f.name} writes {name} and never reads it")
+    assert not bad, "; ".join(bad)
+    return "ok", f"{len(shared)} shared files, every writer of one reads it first"
 
 
 @check("data", "a term's sponsors came from that term's own files")
