@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.54
+# GRANITE_VERSION: 2026-09-04.55
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -647,18 +647,51 @@ def _bills_html():
     return "ok", f"7 markers present, tags balanced{extra}"
 
 
-@check("frontend", "the bill page stylesheet still formats")
-def _bill_css():
-    p = Path("build_bill_pages.py")
-    if not p.exists():
-        return "skip", "build_bill_pages.py not here"
-    import re as _re
-    src = p.read_text(encoding="utf-8")
-    m = _re.search(r"@media \(max-width: 720px\)\{\{.*?\n\}\}", src, _re.S)
-    assert m, "the narrow-screen block is not there"
-    m.group(0).format()          # doubled braces, in an f-string template
-    assert "start_stated" in src, "the tolerance wording was not updated"
-    return "ok", "braces resolve, narrow-screen overrides present"
+@check("frontend", "a bill's own page is a working shell for app.js")
+def _bill_shell():
+    """What replaced "the bill page stylesheet still formats".
+
+    That check guarded 200 lines of CSS inside build_bill_pages.py, which
+    rendered every bill a second time in Python. Both are gone: a bill's page
+    is bills.html with one bill open, so the stylesheet it uses is app.css and
+    the palette check already covers that.
+
+    What needs guarding now is different and worse if it breaks. app.js binds
+    to #q, #qgo, #year, #sort, #facets, #results and #count as it loads, and
+    tells the page which bill it is through GR_BILL. Drop any one of those and
+    the page is a blank screen that reports nothing -- 4,230 times over, with
+    every check passing. build_bill_pages.py asserts them as it builds; this
+    asserts them on what was actually written.
+    """
+    pages = sorted(Path("site/bill").glob("*/*.html"))
+    if not pages:
+        return "skip", "no pages under site/bill/<year>/"
+    t = pages[len(pages) // 2].read_text(encoding="utf-8")
+    for need in ('id="q"', 'id="qgo"', 'id="year"', 'id="sort"', 'id="facets"',
+                 'id="results"', 'id="count"'):
+        assert need in t, (
+            f"{pages[len(pages)//2]} has no {need}, which app.js binds to on "
+            "load. The page draws nothing and says nothing about why.")
+    assert 'src="app.js"' in t, "the page does not load app.js"
+    assert "window.GR_BILL=" in t, (
+        "the page never says which bill it is, so app.js opens none of them")
+    assert '<base href="/">' in t, (
+        "no <base>, so every relative link app.js writes resolves under "
+        "/bill/<year>/ and 404s")
+    assert "<noscript>" in t, (
+        "no <noscript>: a reader without JavaScript gets a blank page and no "
+        "way to the General Court")
+    # The three things that make a bill findable, and the whole reason these
+    # pages exist rather than a fragment on the search page.
+    assert "<title>" in t and "| Granite Record</title>" in t, "no page title"
+    assert 'name="description"' in t, "no meta description"
+    assert 'rel="canonical"' in t, "no canonical link"
+    sm = Path("site/sitemap.xml")
+    assert sm.exists() and "/bill/" in sm.read_text(encoding="utf-8"), (
+        "sitemap.xml does not list the bill pages")
+    size = pages[len(pages) // 2].stat().st_size
+    return "ok", (f"{len(pages):,} pages, {size/1024:.1f} KB each; binds, "
+                  "GR_BILL, base, noscript, title, description, canonical")
 
 
 @check("frontend", "both stylesheets carry the corrected palette")

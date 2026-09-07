@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.2
+// GRANITE_VERSION: 2026-09-07.3
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -621,6 +621,52 @@ function makeRsa(d){
       +` class="rsa">${esc(k)}</a>`);};
 }
 
+// Quoted from the General Court's own bill status page, in the order that page
+// states them. This table lived only in the Python renderer that drew these
+// bills a second time; every one of the 4,230 bill files carries a facts
+// object, so deleting that renderer without this would have taken the stated
+// status off every bill on the site.
+//
+// Nothing here is worked out. "Local government impact" is the page's Y or N
+// written as a word, and that is the whole of the interpretation.
+const FACTS=[["gen_status","Status"],["house_status","In the House"],
+  ["senate_status","In the Senate"],["date_introduced","Introduced"],
+  ["floor_date","Floor date"],["lsr","LSR number"],["chapter","Chapter"],
+  ["local","Local government impact"],["committee_code","Committee code"]];
+
+function factsTable(d){
+  const f=Object.assign({},d.facts||{});
+  if(d.chapter)f.chapter=d.chapter;
+  const rows=FACTS.filter(([k])=>f[k]).map(([k,lab])=>{
+    const v=k==="local"?(f[k]==="Y"?"yes":f[k]==="N"?"no":f[k]):f[k];
+    return `<tr><th scope="row">${esc(lab)}</th><td>${esc(v)}</td></tr>`;
+  }).join("");
+  if(!rows)return "";
+  return `<section class="facts"><h3>On the record</h3>
+    <p class="src">Quoted from the General Court bill status page, not worked
+      out from the docket.</p>
+    <table class="facttab"><tbody>${rows}</tbody></table></section>`;
+}
+
+// The sentences that say where a section's facts came from and how to read
+// them. They were written for the Python renderer and are the site's voice
+// about its own limits, which is the part of it worth keeping most.
+const PANE_NOTE={
+  votes:`Roll call tallies and individual votes from the General Court roll
+    call files, in the order the docket records them. Presiding, excused and
+    absent are shown separately: one member presides over each House roll call
+    and does not vote except to break a tie.`,
+  hearings:`Recordings are the General Court\u2019s own, on YouTube. A start
+    time is the moment the chair opened the item, taken from what they said.
+    One marked <i>approximate</i> was worked out from where the bill is
+    discussed rather than quoted, and can be a few minutes out. Where neither
+    was possible the recording is linked without a time.`,
+  reports:`The recommendation, the vote and the day it was signed come from the
+    docket; the reasoning, where there is any, is reproduced from the House
+    Calendar in the committee\u2019s own words.`,
+};
+const paneNote=(k)=>PANE_NOTE[k]?`<p class="src">${PANE_NOTE[k]}</p>`:"";
+
 function renderSummary(b,d){
   // The citation at the end of a docket line names the journal or calendar
   // that recorded the action. Linking it turns each line from something the
@@ -633,6 +679,8 @@ function renderSummary(b,d){
       ${esc(d.status_source)}${d.chapter?` \u00b7 Chapter ${esc(d.chapter)}`:""}
       ${d.text_pdf?` \u00b7 <a href="${esc(d.text_pdf)}" target="_blank"
         rel="noopener">bill text (PDF)</a>`:""}</div>`:""}</div>
+    ${(d.notes||[]).map(x=>`<p class="note">${esc(x)}</p>`).join("")}
+    ${factsTable(d)}
     ${(d.stages&&d.stages.length)
       ? `<div class="story">${d.stages.map(st=>
           `<div class="stg">${st.label?`<h3>${esc(st.label)}</h3>`:""}
@@ -1066,7 +1114,8 @@ function renderSponsors(b,d){
         files cover the current session only. The docket lists the prime sponsor
         first but does not mark the field, so that one is inferred from the
         order.</p>`:""}
-      <p class="note" style="margin-top:12px">Prime sponsor in bold.
+      <p class="note" style="margin-top:12px">Prime sponsor in bold. From the
+      General Court sponsor file.
       <a href="${esc(d.docket_url)}" target="_blank" rel="noopener">Full docket and bill text on gencourt</a></p>`;
 }
 
@@ -1210,9 +1259,9 @@ function renderDetail(b,d){
       aria-selected="false" data-t="5">Documents${
         (d.documents||[]).length?` (${d.documents.length})`:""}</button></div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_0" aria-labelledby="tab_${b.id}_0" tabindex="0" data-t="0">${renderSummary(b,d)}</div>
-    <div class="pane" role="tabpanel" id="pane_${b.id}_1" aria-labelledby="tab_${b.id}_1" tabindex="0" data-t="1" hidden>${renderVotes(b,d)}</div>
-    <div class="pane" role="tabpanel" id="pane_${b.id}_2" aria-labelledby="tab_${b.id}_2" tabindex="0" data-t="2" hidden>${renderHearings(b,d)}</div>
-    <div class="pane" role="tabpanel" id="pane_${b.id}_3" aria-labelledby="tab_${b.id}_3" tabindex="0" data-t="3" hidden>${renderReports(b,d,rsa)}</div>
+    <div class="pane" role="tabpanel" id="pane_${b.id}_1" aria-labelledby="tab_${b.id}_1" tabindex="0" data-t="1" hidden>${paneNote("votes")}${renderVotes(b,d)}</div>
+    <div class="pane" role="tabpanel" id="pane_${b.id}_2" aria-labelledby="tab_${b.id}_2" tabindex="0" data-t="2" hidden>${paneNote("hearings")}${renderHearings(b,d)}</div>
+    <div class="pane" role="tabpanel" id="pane_${b.id}_3" aria-labelledby="tab_${b.id}_3" tabindex="0" data-t="3" hidden>${paneNote("reports")}${renderReports(b,d,rsa)}</div>
 
 
     <div class="pane" role="tabpanel" id="pane_${b.id}_4" aria-labelledby="tab_${b.id}_4" tabindex="0" data-t="4" hidden>${renderSponsors(b,d)}</div>

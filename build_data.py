@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -494,17 +494,17 @@ def main():
         raw = json.loads(bsp.read_text(encoding="utf-8"))
         st = P.for_term(raw) if P.term_keyed(raw) else raw
         added_sp = added_t = 0
-        for bill, v in st.items():
-            if bill in bills:
-                if v.get("title") and not bills[bill].get("title"):
-                    bills[bill]["title"] = v["title"]
-                    added_t += 1
-                for k in ("committee_code", "chapter", "text_pdf"):
-                    if v.get(k) and not bills[bill].get(k):
-                        bills[bill][k] = v[k]
-            if not v.get("sponsors") or (sponsors.get(bill)):
-                continue
-            sponsors[bill] = [
+
+        def status_sponsors(v):
+            """One bill's sponsors as the status page lists them.
+
+            Lifted out of the loop below so an ARCHIVED term can use it too.
+            Its sponsors arrive the same way and in the same shape; the only
+            difference is which term they are filed under, and that used to be
+            unrepresentable because sponsors.json was keyed on the bill number
+            alone.
+            """
+            return [
                 {"member_id": x.get("web_member_id", ""), "name": x["name"],
                  "party": x.get("party", ""),
                  # The page states a chamber for members it can link and
@@ -526,7 +526,19 @@ def main():
                            else x["name"]),
                  "sequence": i, "prime": i == 0, "url": x.get("url", ""),
                  "source": "bill status page", "prime_inferred": True}
-                for i, x in enumerate(v["sponsors"])]
+                for i, x in enumerate(v.get("sponsors") or [])]
+
+        for bill, v in st.items():
+            if bill in bills:
+                if v.get("title") and not bills[bill].get("title"):
+                    bills[bill]["title"] = v["title"]
+                    added_t += 1
+                for k in ("committee_code", "chapter", "text_pdf"):
+                    if v.get(k) and not bills[bill].get(k):
+                        bills[bill][k] = v[k]
+            if not v.get("sponsors") or (sponsors.get(bill)):
+                continue
+            sponsors[bill] = status_sponsors(v)
             added_sp += 1
         if added_sp or added_t:
             print(f"bill status page: {added_sp:,} bills gained sponsors, "
@@ -795,6 +807,21 @@ def main():
     # An archived term's sponsors come from that term's slice of
     # bill_status.json, which is not fetched yet; they go in here when it is.
     sp_by_term = {current_term: sponsors} if sponsors else {}
+    # An archived term's sponsors come from ITS slice of bill_status.json, not
+    # from the LSR files, which cover the current session only. Until
+    # bill_status.json was keyed on the term there was nowhere to put them, so
+    # every archived bill showed no sponsors at all and a search for a prime
+    # sponsor found nothing before 2025.
+    if bsp.exists() and P.term_keyed(raw):
+        for _t, _byb in raw.items():
+            if _t == current_term:
+                continue
+            _rows = {bid: status_sponsors(v) for bid, v in _byb.items()
+                     if v.get("sponsors")}
+            if _rows:
+                sp_by_term.setdefault(_t, {}).update(_rows)
+                print(f"  sponsors.json {_t}: {len(_rows):,} from the status "
+                      "pages")
     (out / "sponsors.json").write_text(
         json.dumps(sp_by_term, indent=2), encoding="utf-8")
     for t in sorted(sp_by_term):

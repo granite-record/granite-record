@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.33
+# GRANITE_VERSION: 2026-09-05.34
 """
 Generate the faceted site from real General Court data.
 
@@ -1839,7 +1839,14 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             "id": bid,
             "n": b.get("designation") or re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", bid),
             "year": year, "title": b.get("title", ""),
-            "sponsor": prime["name"] if prime else "",
+            # The sponsor FACET groups on this string, so it has to be one
+            # spelling per person. The two sources spell a name differently --
+            # the LSR files write "Germana, Nicholas" and the status page
+            # writes "Nicholas Germana" -- and the raw name was going straight
+            # into the facet, so 323 of the site's 430 sponsors were listed
+            # twice, once per source. person_name() is the same normaliser the
+            # display label already goes through.
+            "sponsor": person_name(prime["name"]) if prime else "",
             "sponsor_label": prime.get("display", "") if prime else "",
             "committee": cmte, "committees": cmtes,
             "topic": b.get("subject", ""),

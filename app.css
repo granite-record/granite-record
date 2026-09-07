@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.1 */
+/* GRANITE_VERSION: 2026-09-07.2 */
 :root{--paper:#F6F6F4;--surface:#fff;--ink:#191C1D;--ink-2:#5C6467;--ink-3:#6C7274;
 --rule:#E2E3E0;--rule-2:#CFD1CD;--edge:#8A8C88;--pine:#1F4B47;--pine-soft:#E7EFED;--wash:#EFEFEC;
 /* Status colours, by what happened to the bill. Yellow while it is moving,
@@ -415,3 +415,15 @@ padding:10px 16px;z-index:99;border-radius:0 0 6px 0}
 clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .corrections{font-size:12.5px;color:var(--ink-3);margin-top:10px}
 .corrections a{color:var(--pine)}
+
+/* The "On the record" table: the General Court's own status fields, quoted.
+   Ported verbatim from build_bill_pages.py, which rendered these bills a
+   second time in Python until 7 September. */
+.facts{margin:14px 0 4px}
+.facts h3{font-size:13px;font-weight:600;color:var(--ink-2);letter-spacing:.04em;
+text-transform:uppercase;margin:0 0 4px}
+.facttab{width:auto;border-collapse:collapse;font-size:14px;margin:8px 0}
+.facttab th,.facttab td{padding:6px 16px 6px 0;border-bottom:1px solid var(--rule);
+text-align:left;vertical-align:top}
+.facttab th{color:var(--ink-3);font-weight:500;white-space:nowrap}
+@media(max-width:620px){.facttab th,.facttab td{padding:6px 10px 6px 0}}
