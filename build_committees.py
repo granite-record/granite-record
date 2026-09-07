@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.5
+# GRANITE_VERSION: 2026-09-07.6
 """
 A page's worth of data for every committee.
 
@@ -293,13 +293,27 @@ def main():
     out = site / "committee"
     out.mkdir(parents=True, exist_ok=True)
     t = S.template(site)
-    index, written, urls = [], 0, []
+    index, written, urls, skipped = [], 0, [], []
+
+    # H29 is "No Committee Assignment" -- the code the General Court files a
+    # bill under when it has no committee. It is not a committee and must not
+    # have a page; it had one, with two bills on it and no way in, because the
+    # index only lists a chamber it can name and H29 has none.
+    NOT_A_COMMITTEE = {"no committee assignment"}
     for code in sorted(set(list(seats) + list(referred) + list(days))):
         info = lead.get(code, {})
-        name = (info.get("name") or (codes.get(code) or {}).get("name")
-                or code)
-        chamber = info.get("chamber") or (
-            (seats.get(code) or [{}])[0].get("chamber") or "")
+        name = (info.get("name") or (codes.get(code) or {}).get("name") or "")
+        # A code with no name is not a committee this site can present. Five
+        # of them -- H13, H14, H39, H40, H41 -- are in the database's
+        # CommitteeMembers and in no other source: no name, no bills, no
+        # sitting day, and pages titled "The House Committee on H13".
+        if not name or name.strip().lower() in NOT_A_COMMITTEE:
+            skipped.append(f"{code}" + (f" ({name})" if name else " (unnamed)"))
+            continue
+        # The code carries the chamber where nothing else states it.
+        chamber = (info.get("chamber")
+                   or (seats.get(code) or [{}])[0].get("chamber")
+                   or (code[:1].upper() if code[:1].upper() in "HS" else ""))
         members = []
         for m in seats.get(code, []):
             lg = legs.get(m["id"]) or {}
@@ -396,11 +410,14 @@ def main():
         if c["chair"]:
             bits.append(f"Chaired by {S.E(c['chair'])}")
         if c["n_members"]:
-            bits.append(f"{c['n_members']} members")
+            bits.append(f"{c['n_members']} member"
+                        + ("" if c["n_members"] == 1 else "s"))
         if c["n_bills"]:
-            bits.append(f"{c['n_bills']:,} bills")
+            bits.append(f"{c['n_bills']:,} bill"
+                        + ("" if c["n_bills"] == 1 else "s"))
         if c["n_sessions"]:
-            bits.append(f"{c['n_sessions']:,} sitting days")
+            bits.append(f"{c['n_sessions']:,} sitting day"
+                        + ("" if c["n_sessions"] == 1 else "s"))
         return (f'<a class="ccard" href="committee/{S.E(c["code"])}.html">'
                 f'<span class="cc-n">{S.E(c["name"])}</span>'
                 f'<span class="cc-m">{" &middot; ".join(bits)}</span></a>')
@@ -462,6 +479,9 @@ def main():
             print(f"{len(add.splitlines())} added to sitemap.xml")
 
     print(f"{written} committees -> {out}/")
+    if skipped:
+        print(f"  {len(skipped)} code(s) skipped as not a nameable committee: "
+              + ", ".join(skipped))
     print(f"  {sum(i['n_members'] for i in index):,} seats, "
           f"{sum(i['n_bills'] for i in index):,} bill referrals, "
           f"{sum(i['n_sessions'] for i in index):,} sitting days")

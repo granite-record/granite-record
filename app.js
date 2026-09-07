@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.12
+// GRANITE_VERSION: 2026-09-07.13
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1439,7 +1439,7 @@ function renderCommitteeHead(c){
   return `<div class="phead">
     <h1>${esc(c.name||"")}</h1>
     <p class="pmeta">${esc(c.chamber==="S"?"State Senate":"House of Representatives")}
-      ${c.room?` &middot; Room ${esc(c.room)}`:""}${c.phone?` &middot; ${esc(c.phone)}`:""}
+      ${c.phone?` &middot; ${esc(c.phone)}`:""}
       ${c.aide?` &middot; Aide: ${esc(c.aide)}`:""}</p>
     ${lead.length?`<p class="plead">${lead.map(chip).join(" ")}</p>`:""}
     ${rest.length?`<details class="mroster"><summary><span class="caret"></span>

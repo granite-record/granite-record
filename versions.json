@@ -68,9 +68,9 @@
     "shell.py": "2026-09-07.2",
     "fetch_senate_districts_db.py": "2026-09-07.1",
     "fetch_committee_members_db.py": "2026-09-07.1",
-    "build_committees.py": "2026-09-07.5",
+    "build_committees.py": "2026-09-07.6",
     "probe_archive_shape.py": "2026-09-07.2",
-    "app.js": "2026-09-07.12",
+    "app.js": "2026-09-07.13",
     "app.css": "2026-09-07.5",
     "fetch_members_db.py": "2026-09-07.1"
   },
