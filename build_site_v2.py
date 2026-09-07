@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.20
+# GRANITE_VERSION: 2026-09-05.21
 """
 Generate the faceted site from real General Court data.
 
@@ -27,6 +27,7 @@ import proceedings as P
 import csv
 import json
 import re
+import sys
 import unicodedata
 from collections import Counter, defaultdict
 from datetime import date as _date, timedelta as _td
@@ -1553,7 +1554,13 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
 
     for bid, b in bills.items():
         narr = narratives.get(bid)
-        rcs = rollcalls.get(bid, [])
+        # New Hampshire sits in two-year terms beginning in odd years. Bill
+        # numbers are unique across the whole term, so the term -- not the year
+        # -- is the unit a number identifies within, and it has to be known
+        # before anything is looked up by bill number.
+        year = int(b.get("lsr_year") or 0)
+        term = P.term_of(str(year)) if year else ""
+        rcs = rollcalls.get(term, {}).get(bid, [])
         st = status_pages.get(bid, {})
         prefix = bill_prefix(bid)
         told = classify_stated(st, prefix)
@@ -1596,13 +1603,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             _slug = member_slug(_m, _lab) if _m.get("id") else ""
             sp_list.append({**_s, **_lab, "slug": _slug})
         prime = next((s for s in sp_list if s.get("prime")), sp_list[0] if sp_list else None)
-        year = int(b.get("lsr_year") or 0)
         years.add(year)
-        # New Hampshire sits in two-year terms beginning in odd years. Bill
-        # numbers are unique across the whole term, so the term -- not the year
-        # -- is the unit a number identifies within.
-        term_start = year - 1 if year and year % 2 == 0 else year
-        term = f"{term_start}-{term_start + 1}" if year else ""
         ev = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
         dates = sorted(e["date"] for e in ev if e.get("date"))
         act_years = {d[:4] for d in dates}
@@ -1730,8 +1731,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         rc_out = []
         rc_order, rc_names = vote_chronology(rcs, narr)
         for r in sorted(rcs, key=lambda x: (x.get("date", ""), int(x.get("number", 0)))):
-            key = f"{r['body']}-{r['number']}"
-            members = votes_by_bill.get(bid, {}).get(key, [])
+            key = f"{r.get('year')}-{r['body']}-{r['number']}"
+            members = votes_by_bill.get((term, bid), {}).get(key, [])
             tally = defaultdict(lambda: defaultdict(int))
             for m in members:
                 tally[m["party"] or "X"][m["vote"]] += 1
@@ -1955,6 +1956,13 @@ def main():
     towns = load(D / "towns.json", {})
     narratives = load(a.narratives, {})
     rollcalls = load(a.rollcalls, {})
+    # {term: {bill: [votes]}}, since rollcall_parser started reading past
+    # sessions. The older shape was {bill: [votes]}, and reading one with the
+    # new lookup returns nothing for every bill without failing -- the exact
+    # shape of silence this project keeps getting caught by. So it is checked.
+    if rollcalls and not all(isinstance(v, dict) for v in rollcalls.values()):
+        sys.exit(f"{a.rollcalls} is keyed on bill number, not on term. Rebuild "
+                 "it: python3 rollcall_parser.py --all --out rollcalls.json")
     reports = load(a.reports, {})
     # Written by extract_amendments.py out of the cached calendars. Absent is
     # fine: the amendments are still listed, without their text.
@@ -2020,8 +2028,13 @@ def main():
     votes_by_bill = defaultdict(lambda: defaultdict(list))
     votes_by_member = defaultdict(list)
     for v in load(D / "member_votes.json", []):
-        key = f"{v['body']}-{v['vote_number']}"
-        votes_by_bill[v["bill"]][key].append(v)
+        # A vote sequence number restarts each session, so "H-112" names two
+        # different roll calls once 2025 sits beside 2026 -- and both years
+        # belong to the same term, so the term alone does not separate them.
+        # The bill is keyed by term for the same reason every other per-bill
+        # map now is: HB396 exists in every biennium.
+        key = f"{v['year']}-{v['body']}-{v['vote_number']}"
+        votes_by_bill[(P.term_of(v["year"]), v["bill"])][key].append(v)
         votes_by_member[v["member_id"]].append(v)
     print(f"{len(bills):,} bills, {len(legs):,} legislators, "
           f"{sum(len(x) for x in votes_by_member.values()):,} member votes")
@@ -2126,7 +2139,7 @@ def main():
                        key=lambda b: -b["nrc"])[:8]
     closest = []
     for b in index:
-        for r in rollcalls.get(b["id"], []):
+        for r in rollcalls.get(b["term"], {}).get(b["id"], []):
             # RollCallSummary holds chamber floor votes only, but be explicit:
             # procedural motions and anything without a tally are excluded, so
             # "closest" means how close the chamber came on the bill itself.

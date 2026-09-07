@@ -1,0 +1,380 @@
+2025|H|1|1/8/2025 11:08:04 AM|HRULE64|216|164|6|13|||Amend H Rule 64|||1/9/2025 4:34:06 PM
+2025|H|2|1/8/2025 11:37:29 AM|HRULE64|154|227|5|13|||Amend H Rule 64|||1/9/2025 4:33:42 PM
+2025|H|3|2/6/2025 10:20:49 AM|HB476|15|340|11|33|||Reconsider|relative to restrictions on elective abortion.||
+2025|H|4|2/6/2025 10:27:55 AM|HB511|351|6|9|33|||OTPA|relative to cooperation with federal immigration authorities.||
+2025|H|5|2/6/2025 10:36:38 AM|HB71|211|146|10|32|||OTP|prohibiting the use of the facilities of a public elementary school, a public secondary school, or an institution of higher education to provide shelter for aliens who have not been admitted into the United States.||
+2025|H|6|2/6/2025 11:03:01 AM|HB60|140|217|10|32|||Adopt Floor Amendment|relative to the termination of tenancy at the expiration of the tenancy or lease term.||
+2025|H|7|2/6/2025 11:11:11 AM|HB60|145|212|10|32|||Adopt Floor Amendment|relative to the termination of tenancy at the expiration of the tenancy or lease term.||
+2025|H|8|2/6/2025 11:18:54 AM|HB60|217|139|11|32|||OTP|relative to the termination of tenancy at the expiration of the tenancy or lease term.||
+2025|H|9|2/6/2025 11:29:28 AM|HB444|213|144|10|32|||ITL|relative to a tenant's right to notification prior to the sale of a multi-family home.||
+2025|H|10|2/6/2025 11:34:00 AM|HB623|149|207|11|32|||Table|relative to prohibiting corporations from purchasing single-family homes for a certain amount of time.||
+2025|H|11|2/6/2025 11:47:08 AM|HB623|216|141|10|32|||ITL|relative to prohibiting corporations from purchasing single-family homes for a certain amount of time.||
+2025|H|12|2/6/2025 1:37:04 PM|HB106|207|149|9|34|||ITL|establishing a commission to determine the monetary costs of climate damage to the state of New Hampshire and the best means of recouping such costs.||
+2025|H|13|2/6/2025 1:49:09 PM|HB189|150|204|10|35|||Adopt Floor Amendment|defining "clean energy" and the department of energy's 10-year state energy strategy to include new technology small-scale nuclear energy, renewable energy, and fuel diversity; and, removing references to the energy efficiency and sustainable energy board||
+2025|H|14|2/6/2025 1:54:37 PM|HB189|206|148|10|35|||OTPA|defining "clean energy" and the department of energy's 10-year state energy strategy to include new technology small-scale nuclear energy, renewable energy, and fuel diversity; and, removing references to the energy efficiency and sustainable energy board||
+2025|H|15|2/6/2025 2:00:44 PM|HB526|207|146|11|35|||Table|establishing a climate change and damage division in the department of environmental services.||
+2025|H|16|2/6/2025 2:10:42 PM|HB133|206|147|11|35|||OTP|modifying the new resident drivers' license transfer requirements, specifying when the division of motor vehicles shall send violation notices, and appropriating funds to the division for technological upgrades required for legal compliance.||
+2025|H|17|2/6/2025 2:20:05 PM|HB83|215|140|9|35|||Indefinitely Postpone|increasing the minimum age for sports betting.||
+2025|H|18|2/6/2025 2:31:10 PM||165|104|95|35|||Print Remarks|||
+2025|H|19|2/13/2025 11:09:35 AM|HB238|200|180|7|12|||Indefinitely Postpone|prohibiting collective bargaining agreements from requiring employees join or contribute to a labor union.||
+2025|H|20|2/13/2025 11:34:25 AM|HB203|215|162|8|14|||ITL|relative to coast guard approved personal flotation devices while on New Hampshire state waters.||
+2025|H|21|2/13/2025 11:44:04 AM||199|176|8|16|||Rules Suspension|||
+2025|H|22|2/13/2025 1:14:54 PM|HB332|196|171|14|18|||ITL|allowing for the establishment of a village district to protect and remediate surface waters.||
+2025|H|23|2/13/2025 1:17:27 PM|HB334|199|171|11|18|||ITL|relative to the comprehensive state development plan.||
+2025|H|24|2/13/2025 1:26:51 PM|HB422|196|175|10|18|||ITL|increasing penalties for violations of the shoreland and water quality protection act.||
+2025|H|25|2/13/2025 1:50:59 PM|HCR9|204|163|12|20|||OTP|urging the United States to reject compliance with the European Union's Corporate Sustainability Due Diligence Directive.||
+2025|H|26|2/20/2025 10:34:16 AM|HB504|204|165|8|22|||OTPA|relative to the state energy policy.||
+2025|H|27|2/20/2025 10:50:32 AM|HB682|206|163|9|21|||OTP|relative to the office of offshore wind industry, the offshore and port development commission, and the office of energy innovation.||
+2025|H|28|2/20/2025 11:03:11 AM|HB368|213|157|8|21|||ITL|prohibiting smoking and e-cigarettes in motor vehicles when a passenger is under 16 years of age.||
+2025|H|29|2/20/2025 11:22:39 AM|HB502|209|163|7|20|||ITL|relative to complete corporate reporting for unitary businesses under the business profits tax and revenues from the state education property tax.||
+2025|H|30|2/20/2025 11:49:37 AM|HB56|216|154|9|20|||ITL|requiring a background check and mandatory waiting period during certain firearm transfers.||
+2025|H|31|2/20/2025 1:10:30 PM|HB75|167|190|24|18|||ITL|legalizing cannabis for persons 21 years of age or older.||
+2025|H|32|2/20/2025 1:17:29 PM|HB207|207|162|12|18|||OTP|relative to repealing the prohibition on the possession or sale of blackjacks, slung shots, and metallic knuckles except by or to minors.||
+2025|H|33|2/20/2025 1:32:23 PM|HB352|211|161|9|18|||ITL|prohibiting possession of a firearm at a polling place.||
+2025|H|34|2/20/2025 1:39:55 PM|HB381|205|168|8|18|||OTP|exempting firearms and firearm accessories manufactured for in-state use only from the National Firearm Act.||
+2025|H|35|2/20/2025 2:07:53 PM|HB53|328|42|10|19|||OTPA|permitting qualifying patients and designated caregivers to cultivate cannabis for therapeutic use.||
+2025|H|36|2/20/2025 2:17:54 PM|HB80|179|190|10|20|||ITL|allowing a public body member's presence at a meeting by electronic or other means of communication only if physical presence is unavoidable and providing that physical presence is necessary for voting.||
+2025|H|37|2/20/2025 2:36:26 PM|HB282|175|195|9|20|||ITL|increasing the maximum benefits for first responders critically injured in the line of duty.||
+2025|H|38|2/20/2025 2:48:13 PM|HB299|193|177|10|19|||ITL|relative to the award of attorneys' fees and costs in workers' compensation claims.||
+2025|H|39|3/6/2025 10:28:42 AM|HB503|345|27|9|18|||ITL|amending how revenues from taxes are allocated to the education trust fund.||
+2025|H|40|3/6/2025 10:43:26 AM|HB245|225|147|8|19|||ITL|establishing the speed enforcement and awareness fund and providing for grants to municipal law enforcement for speed enforcement and speed awareness traffic equipment.||
+2025|H|41|3/6/2025 11:04:39 AM|HB583|196|174|10|19|||Table|relative to state participation in the Medicaid direct certification program for free and reduced price school meals.||
+2025|H|42|3/6/2025 11:25:31 AM|HB771|205|169|8|17|||OTP|relative to funding for open enrollment schools.||
+2025|H|43|3/6/2025 11:34:49 AM|HB208|211|163|8|17|||OTPA|relative to certification requirements for school nurses. ||
+2025|H|44|3/6/2025 11:43:54 AM|HB54|358|14|10|17|||OTP|allowing alternative treatment centers to operate for-profit.||
+2025|H|45|3/6/2025 12:16:20 PM|HB94|184|183|16|16|||OTP|relative to coverage of circumcision under the state Medicaid plan.||
+2025|H|46|3/6/2025 1:36:01 PM|HB223|213|158|12|16|||OTP|relative to licensing requirements for health care facilities that operate within 15 miles of a critical access hospital.||
+2025|H|47|3/6/2025 1:41:08 PM|HB524|175|198|10|16|||Table|repealing the New Hampshire vaccine association.||
+2025|H|48|3/6/2025 1:58:15 PM|HB524|189|181|13|16|||OTP|repealing the New Hampshire vaccine association.||
+2025|H|49|3/6/2025 2:20:12 PM|HB724|202|167|13|17|||Indefinitely Postpone|relative to lead paint poisoning prevention and remediation.||
+2025|H|50|3/6/2025 2:28:08 PM|HB751|216|152|14|17|||OTPA|relative to certification of alcohol and other substance misuse treatment facilities.||
+2025|H|51|3/6/2025 2:36:34 PM|HB756|202|169|11|17|||ITL|relative to establishing a blood lead level testing requirement for children entering daycare and public schools.||
+2025|H|52|3/6/2025 2:53:38 PM|HB378|193|169|19|18|||ITL|relative to an employee's unused earned time.||
+2025|H|53|3/6/2025 3:18:52 PM|HB617|216|146|18|19|||OTPA|relative to the homestead right.||
+2025|H|54|3/6/2025 3:38:39 PM|HB224|200|162|16|21|||OTPA|relative to rebates to ratepayers from the renewable energy fund.||
+2025|H|55|3/6/2025 3:56:26 PM|HB723|201|160|17|21|||OTP|repealing the multi-use energy data platform.||
+2025|H|56|3/6/2025 4:10:12 PM|HCR1|197|156|25|21|||OTP|calling for policymakers locally and nationally to fully consider all relevant information and factors pertaining to climate change before pursuing courses of action that could adversely affect any economy or environment.||
+2025|H|57|3/6/2025 4:19:54 PM|HB419|227|129|21|22|||ITL|requiring vehicle headlights to be on when windshield wipers are also on.||
+2025|H|58|3/6/2025 4:30:28 PM|HB649|212|143|22|22|||OTP|removing the requirement for physical safety inspections and on-board diagnostic tests for passenger vehicles and eliminating funding for the motor vehicle air pollution abatement fund.||
+2025|H|59|3/6/2025 4:37:19 PM|HB691|190|156|31|22|||ITL|prohibiting the addition of fluoridation chemicals to public water systems.||
+2025|H|60|3/6/2025 4:51:21 PM||171|89|117|22|||Shall Member Continue|||
+2025|H|61|3/13/2025 10:29:27 AM|HB59|196|179|10|13|||OTPA|relative to the assault of a firefighter, emergency medical care provider, or law enforcement officer.||
+2025|H|62|3/13/2025 11:40:30 AM|HB115|170|205|8|15|||Adopt Floor Amendment|relative to universal eligibility for the education freedom account program.||
+2025|H|63|3/13/2025 11:46:16 AM|HB115|171|205|7|15|||Adopt Floor Amendment|relative to universal eligibility for the education freedom account program.||
+2025|H|64|3/13/2025 11:58:06 AM|HB115|198|180|6|14|||OTPA|relative to universal eligibility for the education freedom account program.||
+2025|H|65|3/13/2025 1:25:52 PM|HB319|204|171|6|17|||OTPA|relative to the responsibility of local school districts to provide transportation and meals for pupils in kindergarten.||
+2025|H|66|3/13/2025 1:37:20 PM|HB646|209|165|7|17|||ITL|requiring school districts to establish an online application for participation in the free and reduced price meal program.||
+2025|H|67|3/13/2025 1:54:03 PM|HB675|190|185|6|17|||OTPA|increasing the total revenue raised under the statewide education property tax, requiring municipalities to remit excess statewide education property tax payments to the department of revenue administration, limiting the authority of school districts to m||
+2025|H|68|3/13/2025 2:03:37 PM|HB703|202|173|6|17|||ITL|relative to prohibiting school districts from denying meals to students with unpaid meal balances, and making an appropriation therefor.||
+2025|H|69|3/13/2025 2:20:29 PM|HB739|246|128|7|17|||OTPA|relative to excess funds paid to municipalities for the use of school districts.||
+2025|H|70|3/13/2025 3:01:17 PM|HB521|202|169|9|18|||ITL|authorizing online voter registration.||
+2025|H|71|3/13/2025 3:24:09 PM|HB570|167|207|6|18|||Table|relative to membership of the prescription drug affordability board and the definition of public payor for purposes of board administration.||
+2025|H|72|3/13/2025 4:53:07 PM|HB219|189|173|13|23|||OTPA|relative to the phasing out of the minimum electric renewable portfolio standard.||
+2025|H|73|3/13/2025 5:15:04 PM|HB452|198|162|12|26|||OTP|relative to the issuance of drivers' licenses for aliens temporarily residing in New Hampshire.||
+2025|H|74|3/13/2025 5:52:12 PM|HB123|197|158|16|27|||OTPA|enabling municipalities to tax standing wood and timber on land used for carbon sequestration.||
+2025|H|75|3/20/2025 10:20:55 AM|HB431|160|207|10|21||| Withdraw|establishing a commission to review draft rules related to minimum standards for public school approval and state academic standards developed by the department of education.||
+2025|H|76|3/20/2025 11:20:58 AM|HB10|162|211|6|19|||Table|establishing the parental bill of rights.||
+2025|H|77|3/20/2025 11:24:44 AM|HB10|212|161|6|19|||OTPA|establishing the parental bill of rights.||
+2025|H|78|3/20/2025 11:38:12 AM|HB433|193|178|8|19|||OTP|making 17 the age of consent for marriage if either party is active duty military and removing language regarding age waivers for marriage registration records, since age waivers are no longer issued in New Hampshire.||
+2025|H|79|3/20/2025 11:52:44 AM|HB718|211|163|6|18|||OTP|requiring the state board of education to report the unfunded financial impact to school districts for rules adopted by the board which exceed state or federal minimum standards.||
+2025|H|81|3/20/2025 12:05:17 PM|HB68|217|156|8|17|||OTPA|making best interest placements within the same school district mandatory in the absence of a valid reason to deny the placement.||
+2025|H|82|3/20/2025 12:14:29 PM|HB235|209|164|8|17|||OTP|relative to amending the educator code of ethics and code of conduct to include responsibility to parents.||
+2025|H|83|3/20/2025 2:09:50 PM|HB630|201|169|9|19|||ITL|preventing the dissemination of deepfake materials of political candidates before an election.||
+2025|H|84|3/20/2025 2:42:57 PM|HCR7|199|171|10|18|||Table|recognizing abortion as a critical component of comprehensive reproductive health care.||
+2025|H|85|3/20/2025 2:52:13 PM|HR16|202|166|12|18|||Adopt Amendment|recognizing the essential contributions of frontline health workers in assisting the state to recover from the COVID-19 pandemic and urging greater attention and support for local frontline health workers.||
+2025|H|86|3/20/2025 3:15:54 PM|HB88|211|155|12|20|||OTPA|establishing community property trusts.||
+2025|H|87|3/20/2025 3:44:50 PM|HB148|201|166|10|21|||OTP|permitting classification of individuals based on biological sex under certain circumstances.||
+2025|H|88|3/20/2025 3:57:21 PM|HB254|183|182|12|21|||Table|relative to options for end of life care.||
+2025|H|89|3/20/2025 4:09:39 PM|HB273|196|162|17|23|||OTP|relative to a parent's access to their minor child's library records.||
+2025|H|90|3/20/2025 4:14:54 PM|HB280|172|192|11|23|||Table|relative to wage payments.||
+2025|H|91|3/20/2025 4:24:39 PM|HB280|191|176|8|23|||OTPA|relative to wage payments.||
+2025|H|92|3/20/2025 4:36:20 PM|HB442|199|153|21|25|||Table|relative to prohibiting payment of subminimum wages.||
+2025|H|93|3/20/2025 4:40:34 PM|HB726|197|159|17|25|||Table|relative to the state minimum hourly rate.||
+2025|H|94|3/20/2025 4:50:02 PM|HB221|151|193|28|26|||Table|relative to assessment of cost effectiveness of the systems benefit charge.||
+2025|H|95|3/20/2025 5:02:34 PM|HB221|195|151|25|27|||OTP|relative to assessment of cost effectiveness of the systems benefit charge.||
+2025|H|96|3/20/2025 5:53:28 PM|HCR4|195|149|24|30|||OTP|relative to rejecting all offshore wind energy projects in the waters off the coast of New Hampshire and the Gulf of Maine.||
+2025|H|97|3/20/2025 6:22:29 PM|HB631|128|211|29|30|||Indefinitely Postpone|permitting residential building in commercial zoning by right.||
+2025|H|98|3/26/2025 9:27:53 AM|HB198|208|125|19|46|||OTP|relative to legalizing certain quantities of cannabis and establishing penalties for the smoking or vaping of cannabis in public.||
+2025|H|99|3/26/2025 9:35:56 AM|HB226|140|196|17|45|||ITL|relative to the use of drug checking equipment.||
+2025|H|100|3/26/2025 9:45:46 AM|HB466|120|216|19|43|||OTP|relative to refusal of consent to testing to determine alcohol concentration and penalties for aggravated driving while intoxicated.||
+2025|H|101|3/26/2025 10:14:08 AM|HB600|194|145|15|44|||ITL|enabling ranked-choice voting for municipal elections.||
+2025|H|102|3/26/2025 10:25:29 AM|HB96|199|135|20|44|||Table|requiring New Hampshire builders to use the 2021 Energy Building codes or a similar code that achieves equivalent or greater energy savings.||
+2025|H|103|3/26/2025 10:30:52 AM|HB145|187|152|16|43|||Table|relative to background checks for licensed dietitians and adopting the dietitian licensure compact.||
+2025|H|104|3/26/2025 11:29:40 AM|HB520|154|190|17|37|||Adopt Amendment|relative to authorizing hearing officers of the department of education to issue subpoenas.||
+2025|H|105|3/26/2025 11:34:30 AM|HB520|193|155|13|37|||OTP|relative to authorizing hearing officers of the department of education to issue subpoenas.||
+2025|H|106|3/26/2025 1:30:26 PM|HB487|196|155|12|35|||ITL|relative to providing employees with advance notice of the work schedule.||
+2025|H|107|3/26/2025 2:54:39 PM|HB461|187|159|15|37|||OTPA|relative to department of safety and department of motor vehicle training and testing materials.||
+2025|H|108|3/26/2025 3:50:06 PM|HB380|143|200|17|38|||ITL|relative to penalties for criminal violations of the therapeutic use of cannabis.||
+2025|H|109|3/26/2025 4:08:00 PM|HB638|214|127|18|39|||ITL|allowing an older prisoner serving a sentence of life without parole to be eligible for parole upon meeting certain criteria.||
+2025|H|110|3/26/2025 4:12:54 PM|HB549|186|156|17|39|||Indefinitely Postpone|relative to the use of education freedom account funds in religious schools and institutions of higher education.||
+2025|H|111|3/26/2025 4:27:19 PM|HB50|183|157|19|39|||OTPA|relative to teaching discrimination in public schools and discrimination in public workplaces.||
+2025|H|112|3/26/2025 5:16:55 PM|HB324|183|148|26|41|||OTP|relative to prohibiting obscene or harmful sexual materials in schools.||
+2025|H|113|3/26/2025 5:24:28 PM||237|16|104|41|||Shall Member Continue|||
+2025|H|114|3/27/2025 9:26:02 AM|HB361|203|164|11|20|||OTP|prohibiting mandatory mask policies in schools.||
+2025|H|115|3/27/2025 10:14:11 AM|HB741|198|174|8|18|||OTPA|allowing parents to send their children to any school district they choose.||
+2025|H|116|3/27/2025 10:27:15 AM|HB749|162|209|10|17|||Adopt Floor Amendment|requiring high schools to include instruction on the nature and history of communism.||
+2025|H|117|3/27/2025 10:31:12 AM|HB749|200|173|8|17|||OTPA|requiring high schools to include instruction on the nature and history of communism.||
+2025|H|118|3/27/2025 10:48:03 AM|HB274|200|174|7|17|||OTP|relative to the verification of voter rolls annually.||
+2025|H|119|3/27/2025 11:01:04 AM|HB363|203|167|12|16|||ITL|establishing redistricting criteria.||
+2025|H|120|3/27/2025 11:10:39 AM|HB357|195|174|13|16|||OTP|relative to the department of health and human services' rulemaking authority regarding immunization requirements.||
+2025|H|121|3/27/2025 11:18:17 AM|HB358|206|169|7|16|||OTP|relative to exemption from immunization requirements on the basis of religious belief.||
+2025|H|122|3/27/2025 11:36:26 AM|HB377|168|203|11|16|||Adopt Floor Amendment|relative to health care professionals administering hormone treatments and puberty blockers.||
+2025|H|123|3/27/2025 11:42:37 AM|HB377|177|194|11|16|||Previous Question|relative to health care professionals administering hormone treatments and puberty blockers.||
+2025|H|124|3/27/2025 12:34:15 PM|HB377|197|167|16|18|||OTPA|relative to health care professionals administering hormone treatments and puberty blockers.||
+2025|H|125|3/27/2025 1:47:36 PM|HB548|200|157|22|19|||OTPA|relative to licensing requirements for health care facilities that operate on a membership-based business model.||
+2025|H|126|3/27/2025 2:10:46 PM|HB679|204|165|10|19|||OTP|relative to immunization requirements.||
+2025|H|127|3/27/2025 2:56:18 PM|HB712|200|165|14|19|||OTPA|limiting breast surgeries for minors.||
+2025|H|128|3/27/2025 3:07:50 PM|HB584|198|162|19|19|||OTPA|relative to public health, safety, and state sovereignty.||
+2025|H|129|3/27/2025 3:14:52 PM|HB614|76|287|16|19|||Remove from Table|||
+2025|H|130|3/27/2025 3:32:27 PM|HB666|189|172|18|19|||OTPA|relative to adding restitution payment for violations of the confidentiality of the library use records and adding library cards and membership status to the list of confidential matters.||
+2025|H|131|3/27/2025 3:45:52 PM|HB687|198|165|16|19|||OTP|relative to class action settlements and consent decrees.||
+2025|H|132|3/27/2025 4:05:35 PM|HB284|198|160|21|19|||OTPA|requiring tax impact statements on municipal warrant articles.||
+2025|H|133|3/27/2025 4:32:43 PM|HB374|195|159|23|21|||OTPA|relative to clarifying references under local tax cap and budget laws.||
+2025|H|134|3/27/2025 4:56:27 PM|HB475|195|159|23|21|||OTPA|relative to the reductions from the default budget for official ballot town meetings.||
+2025|H|135|3/27/2025 5:05:00 PM|HB613|197|158|22|21|||OTPA|relative to enabling local political subdivisions to vote and set a reduced default budget option.||
+2025|H|136|3/27/2025 5:34:06 PM|HB690|200|155|22|21|||OTP|directing the department of energy to investigate the state's withdrawal from ISO-New England and other strategy decisions that impact ratepayers in relation to New England's environmental policy.||
+2025|H|137|3/27/2025 5:59:58 PM|HB517|316|32|25|25|||OTPA|repealing the Granite State paid family leave plan.||
+2025|H|138|3/27/2025 6:05:15 PM|HB251|226|115|32|25|||Table|allowing the ownership of certain squirrels and raccoons.||
+2025|H|139|4/10/2025 10:39:16 AM|HB25|136|232|7|23|||Adopt Floor Amendment|making appropriations for capital improvements.||
+2025|H|140|4/10/2025 11:07:31 AM|HB66|179|191|7|21|||Table|relative to material subject to disclosure under the right to know law.||
+2025|H|141|4/10/2025 11:19:43 AM|HB66|207|164|7|20|||OTPA|relative to material subject to disclosure under the right to know law.||
+2025|H|142|4/10/2025 11:30:20 AM|HB71|209|162|9|18|||OTPA|prohibiting the use of the facilities of a public elementary school, a public secondary school, or an institution of higher education to provide shelter for aliens who have not been admitted into the United States.||
+2025|H|143|4/10/2025 11:40:44 AM|HB115|188|181|10|19|||OTP|relative to universal eligibility for the education freedom account program.||
+2025|H|144|4/10/2025 11:43:46 AM|HB282|296|76|7|19|||OTP|increasing the maximum benefits for first responders critically injured in the line of duty.||
+2025|H|145|4/10/2025 12:02:41 PM|HB511|36|337|6|19|||Adopt Amendment|relative to cooperation with federal immigration authorities.||
+2025|H|146|4/10/2025 12:15:55 PM|HB511|211|161|7|19|||OTP|relative to cooperation with federal immigration authorities.||
+2025|H|147|4/10/2025 2:18:56 PM|HB1|197|178|5|18|||Adopt Amendment|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2026 and June 30, 2027.||
+2025|H|148|4/10/2025 2:22:26 PM|HB1|192|183|5|18|||OTPA|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2026 and June 30, 2027.||
+2025|H|149|4/10/2025 2:44:36 PM|HB2|200|175|5|18|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|150|4/10/2025 2:54:44 PM|HB2|203|169|8|18|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|151|4/10/2025 3:04:47 PM|HB2|195|175|9|19|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|152|4/10/2025 3:13:08 PM|HB2|203|167|9|19|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|153|4/10/2025 3:23:34 PM|HB2|104|268|7|19|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|154|4/10/2025 3:52:47 PM|HB2|166|204|7|21|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|156|4/10/2025 4:13:24 PM|HB2|206|165|6|21|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|157|4/10/2025 4:26:11 PM|HB2|174|196|7|21|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|158|4/10/2025 4:37:17 PM|HB2|177|190|10|21|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|159|4/10/2025 4:51:43 PM|HB2|198|169|10|21|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|160|4/10/2025 5:02:37 PM|HB2|183|180|13|22|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|161|4/10/2025 5:13:37 PM|HB2|181|182|12|23|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|162|4/10/2025 5:25:41 PM|HB2|177|185|13|23|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|163|4/10/2025 5:42:38 PM|HB2|183|177|15|23|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|164|4/10/2025 6:30:30 PM|HB2|193|170|11|24|||Remove From Table|relative to state fees, funds, revenues, and expenditures.||
+2025|H|165|4/10/2025 6:34:57 PM|HB2|193|171|10|24|||Previous Queston|relative to state fees, funds, revenues, and expenditures.||
+2025|H|166|4/10/2025 6:38:47 PM|HB2|166|198|10|24|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|167|4/10/2025 6:42:05 PM|HB2|166|198|10|24|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|168|4/10/2025 6:45:35 PM|HB2|173|191|10|24|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|169|4/10/2025 6:48:57 PM|HB2|159|205|10|24|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|170|4/10/2025 6:52:10 PM|HB2|183|181|10|24|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|171|4/10/2025 6:55:59 PM|HB2|116|248|10|24|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|172|4/10/2025 6:59:44 PM|HB2|169|195|10|24|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|173|4/10/2025 7:03:13 PM|HB2|165|198|11|24|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|174|4/10/2025 7:07:03 PM|HB2|161|203|10|24|||Adopt Floor Amendment|relative to state fees, funds, revenues, and expenditures.||
+2025|H|175|4/10/2025 7:11:57 PM|HB2|185|175|14|24|||OTPA|relative to state fees, funds, revenues, and expenditures.||
+2025|H|176|5/1/2025 10:42:03 AM|SB228|190|151|15|42|||ITL|relative to the limitations on community customer generators.||
+2025|H|177|5/1/2025 10:47:31 AM|SB60|176|165|15|42|||Adopt Floor Amendment|relative to advanced deposit account wagering.||
+2025|H|178|5/1/2025 10:54:42 AM|SB171|168|174|14|42|||Remove From Table|relative to required pay for remote work.||
+2025|H|179|5/1/2025 11:08:05 AM|SB23|154|188|14|42|||OTP|expanding the crime of endangering the welfare of a child.||
+2025|H|180|5/1/2025 11:09:35 AM|SB23|190|152|14|42|||ITL|expanding the crime of endangering the welfare of a child.||
+2025|H|181|5/1/2025 11:29:28 AM|SB284|197|144|16|41|||OTPA|relative to the required maximum number of residential parking spaces.||
+2025|H|182|5/8/2025 10:55:29 AM|SB62|161|199|10|28|||Adopt Floor Amendment|relative to law enforcement participation in a federal immigration program.||
+2025|H|183|5/8/2025 11:04:24 AM|SB62|202|160|9|27|||Adopt Floor Amendment|relative to law enforcement participation in a federal immigration program.||
+2025|H|184|5/8/2025 11:10:41 AM|SB62|200|162|9|27|||OTPA|relative to law enforcement participation in a federal immigration program.||
+2025|H|185|5/8/2025 11:21:41 AM|SB262|290|71|10|27|||OTP|relative to the penalty for trafficking in persons under 18 years of age.||
+2025|H|186|5/8/2025 11:26:36 AM|SB23|158|206|7|27|||Reconsider|||
+2025|H|187|5/8/2025 11:34:31 AM|SB295|195|166|10|27|||Previous Question|(New Title)  relative to education freedom accounts.||
+2025|H|188|5/8/2025 11:39:25 AM|SB295|165|199|7|27|||Adopt Floor Amendment|(New Title)  relative to education freedom accounts.||
+2025|H|189|5/8/2025 11:43:23 AM|SB295|188|176|7|27|||OTPA|(New Title)  relative to education freedom accounts.||
+2025|H|190|5/8/2025 12:34:32 PM|SB141|192|170|8|28|||Adopt Floor Amendment|extending the time to petition for a new trial in certain cases.||
+2025|H|191|5/8/2025 12:50:19 PM|SB105|193|168|7|30|||OTPA|enabling towns to adopt budget caps.||
+2025|H|192|5/8/2025 12:58:30 PM|SB153|293|61|14|30|||OTPA|(New Title) relative to expedited driveway permitting of major entrances for residential use of 20 units or greater.||
+2025|H|193|5/22/2025 10:24:43 AM|HB551|200|161|10|27|||Concur|||
+2025|H|194|5/22/2025 10:32:10 AM|SB267|110|253|6|29|||Table|relative to the penalty for engaging in prostitution as a patron.||
+2025|H|195|5/22/2025 10:38:25 AM|SB267|292|72|5|29|||OTPA|relative to the penalty for engaging in prostitution as a patron.||
+2025|H|196|5/22/2025 10:54:19 AM|SB97|199|165|6|28|||OTPA|relative to intra-district public school transfers.||
+2025|H|197|5/22/2025 11:19:48 AM|SB119|196|164|10|28|||Adopt Amendment|relative to Medicaid pharmaceutical services.||
+2025|H|198|5/22/2025 1:24:23 PM|SB13|192|164|12|30|||OTPA|invalidating out-of-state driver's licenses issued to undocumented immigrants.||
+2025|H|199|5/22/2025 1:34:32 PM|SB272|195|163|10|30|||ITL|relative to electric-vehicle charging station funding.||
+2025|H|200|5/22/2025 1:54:18 PM|SB174|179|180|9|30|||Table|prohibiting planning boards from considering the number of bedrooms a given unit or development has during the hearing and approval process.||
+2025|H|201|5/22/2025 2:02:58 PM|SB174|176|183|9|30|||OTPA|prohibiting planning boards from considering the number of bedrooms a given unit or development has during the hearing and approval process.||
+2025|H|202|6/5/2025 10:20:21 AM|SB72|168|211|7|12|||Table|establishing a parents' bill of rights in education.||
+2025|H|203|6/5/2025 10:37:33 AM|SB72|215|166|5|12|||Adopt Floor Amendment|establishing a parents' bill of rights in education.||
+2025|H|204|6/5/2025 10:48:24 AM|SB72|169|212|5|12|||Adopt Floor Amendment|establishing a parents' bill of rights in education.||
+2025|H|205|6/5/2025 11:04:09 AM|SB72|214|167|5|12|||OTPA|establishing a parents' bill of rights in education.||
+2025|H|206|6/5/2025 11:10:29 AM|SB14|176|203|7|12|||Table|relative to the penalty for certain fentanyl-related offenses.||
+2025|H|207|6/5/2025 11:24:07 AM|SB14|217|164|6|11|||Adopt Amendment|relative to the penalty for certain fentanyl-related offenses.||
+2025|H|208|6/5/2025 11:28:34 AM|SB14|169|211|7|11|||Adopt Floor Amendment|relative to the penalty for certain fentanyl-related offenses.||
+2025|H|209|6/5/2025 11:48:31 AM|SB14|214|167|6|11|||OTPA|relative to the penalty for certain fentanyl-related offenses.||
+2025|H|210|6/5/2025 1:19:02 PM|SB263|179|193|10|16|||Table|criminalizing and creating a private right of action for the facilitation, encouragement, offer, solicitation, or recommendation of certain acts or actions through a responsive generative communication to a child.||
+2025|H|211|6/5/2025 1:45:07 PM|SB263|202|168|12|16|||OTPA|criminalizing and creating a private right of action for the facilitation, encouragement, offer, solicitation, or recommendation of certain acts or actions through a responsive generative communication to a child.||
+2025|H|212|6/5/2025 1:49:50 PM|HB10|210|160|13|15|||Concur|||
+2025|H|213|6/5/2025 1:54:56 PM|SB99|208|159|16|15|||Adopt Amendment|relative to regional career and technical education agreements.||
+2025|H|214|6/5/2025 1:59:06 PM|SB99|203|169|11|15|||Adopt Floor Amendment|relative to regional career and technical education agreements.||
+2025|H|215|6/5/2025 2:10:36 PM|SB99|206|167|9|16|||OTPA|relative to regional career and technical education agreements.||
+2025|H|216|6/5/2025 2:52:11 PM|SB96|186|179|18|15|||Adopt Floor Amendment|relative to mandatory disclosure by school district employees to parents.||
+2025|H|217|6/5/2025 3:02:57 PM|SB96|198|172|13|15|||OTPA|relative to mandatory disclosure by school district employees to parents.||
+2025|H|218|6/5/2025 3:14:55 PM|SB295|167|201|13|17|||Adopt Floor Amendment|(New Title)  relative to education freedom accounts.||
+2025|H|219|6/5/2025 3:28:26 PM|SB295|190|178|13|17|||OTPA|(New Title)  relative to education freedom accounts.||
+2025|H|220|6/5/2025 3:31:29 PM|SB295|171|198|12|17|||Reconsider|(New Title)  relative to education freedom accounts.||
+2025|H|221|6/5/2025 3:50:41 PM|SB100|194|165|15|24|||OTPA|relative to violations of the prohibition on teaching discrimination.||
+2025|H|222|6/5/2025 4:06:12 PM|SB206|164|192|16|26|||Adopt Amendment|requiring public schools to adopt policies to limit the use of cell phones by students.||
+2025|H|223|6/5/2025 4:39:27 PM|SB210|193|160|16|29|||Adopt Floor Amendment|establishing a study committee to study the issue of school bullying.||
+2025|H|224|6/5/2025 4:48:25 PM|SB210|193|159|15|31|||OTPA|establishing a study committee to study the issue of school bullying.||
+2025|H|225|6/5/2025 5:04:52 PM|SB218|192|149|20|37|||OTPA|relative to absentee ballot outer envelopes.||
+2025|H|226|6/5/2025 5:10:22 PM|SB221|184|153|24|37|||OTPA|relative to the verification of the checklist.||
+2025|H|227|6/5/2025 5:36:21 PM|SB287|184|146|30|38|||Adopt Amendment|requiring applicants for absentee ballots to present a copy of their photo identification with their application.||
+2025|H|228|6/5/2025 5:39:09 PM|SB287|187|149|23|39|||OTPA|requiring applicants for absentee ballots to present a copy of their photo identification with their application.||
+2025|H|229|6/5/2025 5:49:48 PM|SB25|175|150|30|43|||Adopt Floor Amendment|allowing credit union members to pay members of the board of directors for their services as a board member.||
+2025|H|230|6/5/2025 5:59:25 PM|SB180|163|166|24|45|||Adopt Floor Amendment|designating Coos county as a distressed place-based economy.||
+2025|H|231|6/5/2025 6:33:57 PM|SB222|151|168|32|47|||Remove From Table|relative to moving the state primary date.||
+2025|H|232|6/12/2025 10:34:34 AM|HB468|265|83|17|33|||Concur|||
+2025|H|233|6/12/2025 10:48:00 AM|HB771|189|160|16|33|||Concur|||
+2025|H|234|6/12/2025 10:59:52 AM|HB768|192|158|14|34|||Concur|||
+2025|H|235|6/12/2025 11:20:09 AM|HB358|194|153|17|34|||Concur|||
+2025|H|236|6/12/2025 11:38:30 AM|HB342|154|195|15|34|||Concur|||
+2025|H|237|6/12/2025 12:29:19 PM|HB672|185|151|28|34|||Concur|||
+2025|H|238|6/12/2025 12:41:14 PM|HB690|188|155|22|33|||Concur|||
+2025|H|239|6/26/2025 10:54:56 AM|SB14|183|186|11|17|||Adopt CofC Report|||
+2025|H|240|6/26/2025 1:46:30 PM|SB14|184|182|10|21|||Reconsider|||
+2025|H|241|6/26/2025 1:48:54 PM|SB14|185|182|9|21|||Adopt CofC Report|||
+2025|H|242|6/26/2025 2:22:07 PM|HB273|201|165|10|21|||Adopt CofC Report|||
+2025|H|243|6/26/2025 2:29:37 PM|HB282|322|41|13|21|||Concur|||
+2025|H|244|6/26/2025 2:48:10 PM|HB377|202|161|12|22|||Adopt CofC Report|||
+2025|H|245|6/26/2025 3:11:31 PM|HB1|182|183|10|22|||Adopt CofC Report|||
+2025|H|246|6/26/2025 3:28:44 PM|HB115|196|167|12|22|||Concur|||
+2025|H|247|6/26/2025 3:31:48 PM|HB1|185|180|10|22|||Reconsider|||
+2025|H|248|6/26/2025 3:34:25 PM|HB1|185|180|10|22|||Adopt CofC Report|||
+2025|H|249|6/26/2025 3:37:00 PM|HB2|185|180|10|22|||Remover From Table|||
+2025|H|250|6/26/2025 3:41:39 PM|HB2|193|173|10|21|||Limit Debate|||
+2025|H|251|6/26/2025 3:47:14 PM|HB2|184|183|9|21|||Adopt CofC Report|||
+2025|H|252|6/26/2025 4:22:46 PM|HB712|191|163|21|22|||Adopt CofC Report|||
+2025|H|253|12/17/2025 10:23:14 AM|HB115|1|347|27|20|||Veto Override|||
+2025|H|254|12/17/2025 10:38:19 AM|HB148|228|124|23|20|||Shall Member Continue|||
+2025|H|255|12/17/2025 10:50:05 AM|HB148|188|165|22|20|||Veto Override|||
+2025|H|256|12/17/2025 10:57:45 AM|HB319|182|173|20|20|||Veto Override|||
+2025|H|257|12/17/2025 11:22:50 AM|HB324|183|167|25|20|||Veto Override|||
+2025|H|258|12/17/2025 11:25:24 AM|HB356|177|174|25|19|||Veto Override|||
+2025|H|259|12/17/2025 11:27:02 AM|HB358|176|175|25|19|||Veto Override|||
+2025|H|260|12/17/2025 11:28:39 AM|HB446|181|170|25|19|||Veto Override|||
+2025|H|261|12/17/2025 11:31:57 AM|HB475|178|175|23|19|||Veto Override|||
+2025|H|262|12/17/2025 11:33:41 AM|HB613|150|201|25|19|||Veto Override|||
+2025|H|263|12/17/2025 11:45:59 AM|HB667|159|190|27|19|||Veto Override|||
+2025|H|264|12/17/2025 11:48:21 AM|HB781|28|322|26|19|||Veto Override|||
+2025|S|1|1/30/2025 12:00:00 AM|SB4|23|0|23|1|||Ought to Pass|relative to commercial property assessed clean energy and resiliency (C-PACER).||1/30/2025 1:52:59 PM
+2025|S|2|1/30/2025 12:00:00 AM|SB20|23|0|23|1|||Ought to Pass|relative to payment by the state of a portion of retirement system contributions of political subdivision employers.||1/30/2025 2:51:54 PM
+2025|S|3|1/30/2025 12:00:00 AM|SB13|15|8|23|1|||Ought to Pass w/Amendment|invalidating out-of-state driver's licenses issued to undocumented immigrants.||1/30/2025 2:59:07 PM
+2025|S|4|1/30/2025 12:00:00 AM|SB14|15|8|23|1|||Ought to Pass w/Amendment|relative to the penalty for certain fentanyl-related offenses.||1/30/2025 3:01:21 PM
+2025|S|5|1/30/2025 12:00:00 AM|SB15|14|9|23|1|||Ought to Pass w/Amendment|relative to establishing a mandatory minimum sentence for the crime of distribution of a controlled drug with death resulting.||1/31/2025 9:18:02 AM
+2025|S|6|1/30/2025 12:00:00 AM|SB62|15|8|23|1|||Ought to Pass|relative to law enforcement participation in a federal immigration program.||1/31/2025 1:01:05 PM
+2025|S|7|1/30/2025 12:00:00 AM|SB71|15|8|23|1|||Ought to Pass|relative to cooperation with federal immigration authorities.||1/31/2025 1:02:44 PM
+2025|S|8|1/30/2025 12:00:00 AM|SB113|23|0|23|1|||Ought to Pass|making appropriations to the department of health and human services for homeless services and homeless prevention.||1/31/2025 1:04:35 PM
+2025|S|9|2/13/2025 12:00:00 AM|SB159|16|7|23|1|||Inexpedient to Legislate|establishing a marine habitat fee.||2/13/2025 3:45:19 PM
+2025|S|10|3/6/2025 12:00:00 AM|SB72|8|16|24|0|||Floor Amendment|establishing a parents' bill of rights in education.||3/7/2025 2:52:51 PM
+2025|S|11|3/6/2025 12:00:00 AM|SB72|16|8|24|0|||Ought to Pass w/Amendment|establishing a parents' bill of rights in education.||3/7/2025 3:31:33 PM
+2025|S|12|3/6/2025 12:00:00 AM|SB34|16|8|24|0|||Ought to Pass|relative to parental consent for student participation in Medicaid to schools program.||3/7/2025 3:04:50 PM
+2025|S|13|3/6/2025 12:00:00 AM|SB100|16|8|24|0|||Ought to Pass w/Amendment|relative to violations of the prohibition on teaching discrimination.||3/7/2025 3:31:11 PM
+2025|S|14|3/6/2025 12:00:00 AM|SB219|16|8|24|0|||Inexpedient to Legislate|requiring the secretary of state to enter into a membership agreement with the Electronic Registration Information Center.||3/7/2025 3:25:40 PM
+2025|S|15|3/6/2025 12:00:00 AM|SB71|8|16|24|0|||Floor Amendment|relative to cooperation with federal immigration authorities.||3/7/2025 3:29:06 PM
+2025|S|16|3/6/2025 12:00:00 AM|SB71|16|8|24|0|||Ought to Pass w/Amendment|relative to cooperation with federal immigration authorities.||3/7/2025 3:30:38 PM
+2025|S|17|3/6/2025 12:00:00 AM|SB134|16|8|24|0|||Ought to Pass w/Amendment|relative to work requirements under the state Medicaid program.||3/7/2025 3:33:16 PM
+2025|S|18|3/6/2025 12:00:00 AM|SB227|15|9|24|0|||Laid on Table|relative to site setbacks for landfills.||3/7/2025 3:36:15 PM
+2025|S|19|3/6/2025 12:00:00 AM|SB119|16|8|24|0|||Shall the Decision of the President Stand|relative to Medicaid pharmaceutical services.||3/11/2025 10:33:23 AM
+2025|S|20|3/13/2025 12:00:00 AM|SB176|16|8|24|0|||Inexpedient to Legislate|relative to the state minimum hourly rate.||3/14/2025 1:37:24 PM
+2025|S|21|3/13/2025 12:00:00 AM|SB203|16|8|24|0|||Inexpedient to Legislate|relative to administration of the education freedom accounts program.||3/14/2025 1:37:16 PM
+2025|S|22|3/13/2025 12:00:00 AM|SB207|16|8|24|0|||Inexpedient to Legislate|requiring the department of education to administer the education freedom account program.||3/14/2025 1:39:46 PM
+2025|S|23|3/13/2025 12:00:00 AM|SB295|8|16|24|0|||Floor Amendment|(New Title)  relative to education freedom accounts.||3/14/2025 1:40:56 PM
+2025|S|24|3/13/2025 12:00:00 AM|SB295|8|16|24|0|||Floor Amendment|(New Title)  relative to education freedom accounts.||3/14/2025 1:41:44 PM
+2025|S|25|3/13/2025 12:00:00 AM|SB295|8|16|24|0|||Floor Amendment|(New Title)  relative to education freedom accounts.||3/14/2025 1:42:41 PM
+2025|S|26|3/13/2025 12:00:00 AM|SB295|16|8|24|0|||Ought to Pass w/Amendment|(New Title)  relative to education freedom accounts.||3/14/2025 1:43:53 PM
+2025|S|27|3/13/2025 12:00:00 AM|SB214|16|8|24|0|||Inexpedient to Legislate|enabling no-excuse absentee registration and voting.||3/14/2025 1:46:46 PM
+2025|S|28|3/13/2025 12:00:00 AM|SB144|16|8|24|0|||Inexpedient to Legislate|authorizing the state to report mental health data for firearms background check purposes and providing for processes for confiscation of firearms following certain mental health-related court proceedings and for relief from mental health-related firearms||3/14/2025 1:52:50 PM
+2025|S|29|3/13/2025 12:00:00 AM|CACR8|21|3|24|0|||Ought to Pass|relating to sheriffs.  Providing that no person shall hold the office of county sheriff after he or she has attained the age of seventy-five years.||3/14/2025 1:57:04 PM
+2025|S|30|3/13/2025 12:00:00 AM|SB33|8|16|24|0|||Rereferred|relative to the regulation of public school materials.||3/14/2025 1:58:26 PM
+2025|S|31|3/13/2025 12:00:00 AM|SB33|16|8|24|0|||Ought to Pass|relative to the regulation of public school materials.||3/14/2025 2:00:19 PM
+2025|S|32|3/20/2025 12:00:00 AM|HB592|23|0|23|1|||Ought to Pass|relative to magistrates and the standards applicable to and the administration of bail.||3/21/2025 9:24:49 AM
+2025|S|33|3/20/2025 12:00:00 AM|SB84|13|10|23|1|||Ought to Pass w/Amendment|relative to zoning procedures concerning residential housing.||3/21/2025 9:28:07 AM
+2025|S|34|3/20/2025 12:00:00 AM|SB72|15|8|23|1|||Ought to Pass w/Amendment|establishing a parents' bill of rights in education.||3/21/2025 9:30:41 AM
+2025|S|35|3/20/2025 12:00:00 AM|SB134|15|8|23|1|||Ought to Pass|relative to work requirements under the state Medicaid program.||3/21/2025 9:30:54 AM
+2025|S|36|3/27/2025 12:00:00 AM|SB268|16|8|24|0|||Ought to Pass w/Amendment|permitting classification of individuals based on biological sex under certain limited circumstances.||3/27/2025 5:18:21 PM
+2025|S|37|3/27/2025 12:00:00 AM|SB211|16|8|24|0|||Ought to Pass|relative to biological sex in student athletics.||3/27/2025 5:19:41 PM
+2025|S|38|3/27/2025 12:00:00 AM|SB96|16|8|24|0|||Ought to Pass|relative to mandatory disclosure by school district employees to parents.||3/27/2025 5:20:53 PM
+2025|S|39|3/27/2025 12:00:00 AM|SB287|16|8|24|0|||Ought to Pass|requiring applicants for absentee ballots to present a copy of their photo identification with their application.||3/27/2025 5:21:48 PM
+2025|S|40|3/27/2025 12:00:00 AM|SB304|16|8|24|0|||Laid on Table|directing the commissioner of the department of business and economic affairs to assemble a report on the effects of tariffs on Canada and New Hampshire residents.||3/27/2025 5:23:31 PM
+2025|S|41|3/27/2025 12:00:00 AM|SB83|8|16|24|0|||Floor Amendment|establishing an elderly, disabled, blind, and deaf property tax exemption reimbursement fund, authorizing video lottery terminals, renaming the lottery commission, and creating a voluntary statewide self-exclusion database.||3/27/2025 5:24:54 PM
+2025|S|42|3/27/2025 12:00:00 AM|SB83|8|16|24|0|||Floor Amendment|establishing an elderly, disabled, blind, and deaf property tax exemption reimbursement fund, authorizing video lottery terminals, renaming the lottery commission, and creating a voluntary statewide self-exclusion database.||3/27/2025 5:25:52 PM
+2025|S|43|3/27/2025 12:00:00 AM|SB295|16|8|24|0|||Ought to Pass|(New Title)  relative to education freedom accounts.||3/27/2025 5:26:53 PM
+2025|S|44|3/27/2025 12:00:00 AM|SB300|24|0|24|0|||Ought to Pass|criminalizing the creation of child intimate visual representations.||3/27/2025 5:27:48 PM
+2025|S|45|3/27/2025 12:00:00 AM|SB260|16|8|24|0|||Inexpedient to Legislate|relative to access to abortion care.||3/27/2025 5:30:31 PM
+2025|S|46|3/27/2025 12:00:00 AM|SB275|16|8|24|0|||Inexpedient to Legislate|providing property tax relief for some child care agencies.||3/27/2025 5:31:11 PM
+2025|S|47|4/17/2025 12:00:00 AM|HB231|21|3|24|0|||Ought to Pass|(New Title) prohibiting school district personnel from transporting students to medical or mental health appointments, visits, or procedures without parental consent.||4/17/2025 4:01:46 PM
+2025|S|48|4/17/2025 12:00:00 AM|HB53|12|12|24|0|||Inexpedient to Legislate|permitting qualifying patients and designated caregivers to cultivate cannabis for therapeutic use.||4/17/2025 4:04:39 PM
+2025|S|49|4/17/2025 12:00:00 AM|HB53|16|8|24|0|||Laid on Table|permitting qualifying patients and designated caregivers to cultivate cannabis for therapeutic use.||4/18/2025 10:58:29 AM
+2025|S|50|4/17/2025 12:00:00 AM|HB75|15|9|24|0|||Laid on Table|legalizing cannabis for persons 21 years of age or older.||4/18/2025 11:00:07 AM
+2025|S|51|5/1/2025 12:00:00 AM|HB319|13|8|21|3|||Ought to Pass|(New Title) relative to the responsibility of local school districts to provide transportation for pupils in kindergarten.||5/2/2025 10:10:04 AM
+2025|S|52|5/1/2025 12:00:00 AM|HB198|12|10|22|2|||Laid on Table|relative to legalizing certain quantities of cannabis and establishing penalties for the smoking or vaping of cannabis in public.||5/2/2025 10:12:01 AM
+2025|S|53|5/1/2025 12:00:00 AM|HB226|14|8|22|2|||Laid on Table|relative to the use of drug checking equipment.||5/2/2025 10:22:43 AM
+2025|S|54|5/8/2025 12:00:00 AM|HB190|14|10|24|0|||Laid on Table|relative to therapeutic cannabis possession limits.||5/9/2025 11:34:18 AM
+2025|S|55|5/8/2025 12:00:00 AM|HB380|14|10|24|0|||Laid on Table|relative to penalties for criminal violations of the therapeutic use of cannabis.||5/9/2025 11:35:02 AM
+2025|S|56|5/8/2025 12:00:00 AM|HB381|16|8|24|0|||Committee Amendment|exempting firearms and firearm accessories manufactured for in-state use only from the National Firearm Act.||5/9/2025 11:35:58 AM
+2025|S|57|5/8/2025 12:00:00 AM|HB381|16|8|24|0|||Ought to Pass w/Amendment|exempting firearms and firearm accessories manufactured for in-state use only from the National Firearm Act.||5/9/2025 11:36:42 AM
+2025|S|58|5/8/2025 12:00:00 AM|HB381|16|8|24|0|||Laid on Table|exempting firearms and firearm accessories manufactured for in-state use only from the National Firearm Act.||5/9/2025 11:37:16 AM
+2025|S|59|5/8/2025 12:00:00 AM|HB551|16|8|24|0|||Floor Amendment|(New Title) repealing the license to sell pistols and revolvers and limiting liability for certain design features of firearms.||5/9/2025 11:37:50 AM
+2025|S|60|5/8/2025 12:00:00 AM|HB551|16|8|24|0|||Ought to Pass w/Amendment|(New Title) repealing the license to sell pistols and revolvers and limiting liability for certain design features of firearms.||5/9/2025 11:38:40 AM
+2025|S|61|5/15/2025 12:00:00 AM|HB511|15|8|23|1|||Ought to Pass|relative to cooperation with federal immigration authorities.||5/16/2025 2:35:03 PM
+2025|S|62|5/15/2025 12:00:00 AM|SB105|15|8|23|1|||Concur|enabling towns to adopt budget caps.||5/16/2025 2:35:56 PM
+2025|S|63|5/15/2025 12:00:00 AM|SB138|15|8|23|1|||Concur|(Second New Title) relative to record requests by health care providers.||5/16/2025 2:36:46 PM
+2025|S|64|5/15/2025 12:00:00 AM|SB62|15|8|23|1|||Concur|(New Title) relative to law enforcement participation in a federal immigration program and relative to cooperation with federal immigration authorities.||5/16/2025 2:37:52 PM
+2025|S|65|5/15/2025 12:00:00 AM|HB90|9|14|23|1|||Committee Amendment|relative to the definition of part-time teachers.||5/16/2025 2:39:54 PM
+2025|S|66|5/15/2025 12:00:00 AM|HB699|14|8|22|2|||Ought to Pass|relative to special education definitions.||5/16/2025 2:45:17 PM
+2025|S|67|5/15/2025 12:00:00 AM|HB768|15|8|23|1|||Ought to Pass w/Amendment|(New Title) allowing public schools to contract with any approved nonpublic school.||5/16/2025 3:06:09 PM
+2025|S|68|5/15/2025 12:00:00 AM|HB557|15|8|23|1|||Ought to Pass w/Amendment|relative to the information that appears on the school budget ballot.||5/16/2025 3:04:48 PM
+2025|S|69|5/15/2025 12:00:00 AM|HB356|10|13|23|1|||Inexpedient to Legislate|enabling school districts to adopt partisan school district elections.||5/16/2025 3:07:41 PM
+2025|S|70|5/15/2025 12:00:00 AM|HB282|14|9|23|1|||Laid on Table|increasing the maximum benefits for first responders critically injured in the line of duty.||5/16/2025 3:08:54 PM
+2025|S|71|5/15/2025 12:00:00 AM|HB71|15|8|23|1|||Ought to Pass|(New Title) prohibiting the use of the facilities of a public elementary school, a public secondary school, or an institution of higher education to provide shelter for aliens who have not been admitted into the United States and relative to department of||5/16/2025 3:16:55 PM
+2025|S|72|5/15/2025 12:00:00 AM|HB324|8|15|23|1|||Floor Amendment|relative to prohibiting obscene or harmful sexual materials in schools.||5/16/2025 3:17:40 PM
+2025|S|73|5/15/2025 12:00:00 AM|HB324|15|8|23|1|||Ought to Pass|relative to prohibiting obscene or harmful sexual materials in schools.||5/16/2025 3:19:04 PM
+2025|S|74|5/15/2025 12:00:00 AM|HB649|19|3|22|1|||Rereferred|removing the requirement for physical safety inspections and on-board diagnostic tests for passenger vehicles and eliminating funding for the motor vehicle air pollution abatement fund.||5/16/2025 3:20:08 PM
+2025|S|75|5/15/2025 12:00:00 AM|HB771|15|8|23|1|||Ought to Pass w/Amendment|relative to funding for open enrollment schools.||5/16/2025 4:12:13 PM
+2025|S|76|5/22/2025 12:00:00 AM|HB446|8|16|24|0|||Inexpedient to Legislate|relative to parental notice for non-academic surveys in public schools.||5/22/2025 3:57:04 PM
+2025|S|77|5/22/2025 12:00:00 AM|HB446|8|16|24|0|||Floor Amendment|relative to parental notice for non-academic surveys in public schools.||5/22/2025 4:07:08 PM
+2025|S|78|5/22/2025 12:00:00 AM|HB446|16|8|24|0|||Ought to Pass|relative to parental notice for non-academic surveys in public schools.||5/22/2025 4:10:46 PM
+2025|S|79|5/22/2025 12:00:00 AM|HB57|16|8|24|0|||Committee Amendment|(New Title) relative to the standards applicable to bail in criminal matters.||5/22/2025 4:11:33 PM
+2025|S|80|5/22/2025 12:00:00 AM|HB57|16|8|24|0|||Ought to Pass w/Amendment|(New Title) relative to the standards applicable to bail in criminal matters.||5/22/2025 4:12:21 PM
+2025|S|81|5/22/2025 12:00:00 AM|HB148|16|8|24|0|||Ought to Pass|permitting classification of individuals based on biological sex under certain circumstances.||5/22/2025 4:13:28 PM
+2025|S|82|6/5/2025 12:00:00 AM|HB1|8|16|24|0|||Shall the Decision of the President Stand|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2026 and June 30, 2027.||6/6/2025 10:34:25 AM
+2025|S|83|6/5/2025 12:00:00 AM|HB1|15|9|24|0|||Ought to Pass w/Amendment|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2026 and June 30, 2027.||6/6/2025 10:36:54 AM
+2025|S|84|6/5/2025 12:00:00 AM|HB2|8|16|24|0|||Shall the Decision of the President Stand|relative to state fees, funds, revenues, and expenditures.||6/6/2025 10:38:08 AM
+2025|S|85|6/5/2025 12:00:00 AM|HB2|9|15|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2025 8:52:06 AM
+2025|S|86|6/5/2025 12:00:00 AM|HB2|8|16|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2025 8:55:10 AM
+2025|S|87|6/5/2025 12:00:00 AM|HB2|8|16|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2025 9:02:06 AM
+2025|S|88|6/5/2025 12:00:00 AM|HB2|8|16|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2025 9:05:55 AM
+2025|S|89|6/5/2025 12:00:00 AM|HB2|8|16|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2025 9:07:15 AM
+2025|S|90|6/5/2025 12:00:00 AM|HB2|8|16|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2025 9:09:54 AM
+2025|S|91|6/5/2025 12:00:00 AM|HB2|8|16|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2025 9:11:38 AM
+2025|S|92|6/5/2025 12:00:00 AM|HB2|8|16|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2025 9:12:53 AM
+2025|S|93|6/5/2025 12:00:00 AM|HB2|8|16|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2025 9:14:10 AM
+2025|S|94|6/5/2025 12:00:00 AM|HB2|8|16|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2025 9:15:16 AM
+2025|S|95|6/5/2025 12:00:00 AM|HB2|9|15|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2025 9:30:02 AM
+2025|S|96|6/5/2025 12:00:00 AM|HB2|8|16|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2025 9:31:28 AM
+2025|S|97|6/5/2025 12:00:00 AM|HB2|8|16|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2025 9:32:31 AM
+2025|S|98|6/5/2025 12:00:00 AM|HB2|14|10|24|0|||Ought to Pass w/Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2025 9:40:06 AM
+2025|S|99|6/5/2025 12:00:00 AM|HB361|16|7|23|1|||Ought to Pass|prohibiting mandatory mask policies in schools.||6/9/2025 9:43:00 AM
+2025|S|100|6/5/2025 12:00:00 AM|HB71|16|7|23|1|||Ought to Pass w/Amendment|(Second New Title) prohibiting the school facilities to be used to provide shelter for aliens, relative to department of health and human services contracts,  requiring the use of public notices before re-assessment of property values for tax purposes, an||6/9/2025 9:48:30 AM
+2025|S|101|6/5/2025 12:00:00 AM|HB377|16|7|23|1|||Ought to Pass w/Amendment|(New Title) relative to health care professionals administering hormone treatments and puberty blockers and relative to recognizing the second Thursday in October as children's environmental health day.||6/9/2025 9:53:09 AM
+2025|S|102|6/5/2025 12:00:00 AM|HB712|16|7|23|1|||Ought to Pass w/Amendment|(New Title) limiting breast surgeries for minors, relative to residential care and health facility licensing, and relative to the collection and reporting of abortion statistics by health care providers and medical facilities.||6/9/2025 9:59:46 AM
+2025|S|103|6/5/2025 12:00:00 AM|HB143|22|1|23|1|||Floor Amendment|(New TItle) relative to the issuance of no trespass orders on municipal or school district property, the responsibility of local school districts to provide meals to students during school hours, and reimbursing schools for meals provided to students at n||6/9/2025 10:02:45 AM
+2025|S|104|6/5/2025 12:00:00 AM|HB143|23|0|23|1|||Floor Amendment|(New TItle) relative to the issuance of no trespass orders on municipal or school district property, the responsibility of local school districts to provide meals to students during school hours, and reimbursing schools for meals provided to students at n||6/9/2025 10:04:38 AM
+2025|S|105|6/5/2025 12:00:00 AM|HB506|7|16|23|1|||Floor Amendment|(New Title) relative to background checks during motions to return firearms and ammunition and relative to invalidating out-of-state driver's licenses issued to undocumented immigrants and relative to requiring schools to engage an owner's project manager||6/9/2025 10:07:44 AM
+2025|S|106|6/5/2025 12:00:00 AM|HB506|16|7|23|1|||Ought to Pass w/Amendment|(New Title) relative to background checks during motions to return firearms and ammunition and relative to invalidating out-of-state driver's licenses issued to undocumented immigrants and relative to requiring schools to engage an owner's project manager||6/9/2025 10:10:31 AM
+2025|S|107|6/26/2025 12:00:00 AM|HB282|24|0|24|0|||Floor Amendment|(New Title) increasing the maximum benefits for first responders critically injured in the line of duty, relative to the determination of education adequacy grants and calculation of certain group II benefits within the retirement system. ||6/27/2025 8:53:49 AM
+2025|S|108|6/26/2025 12:00:00 AM|HB282|24|0|24|0|||Suspension of all Rules Necessary|(New Title) increasing the maximum benefits for first responders critically injured in the line of duty, relative to the determination of education adequacy grants and calculation of certain group II benefits within the retirement system. ||6/27/2025 8:58:25 AM
+2025|S|109|6/26/2025 12:00:00 AM|HB60|16|8|24|0|||Conference Committee Report|relative to the termination of tenancy at the expiration of the tenancy or lease term.||6/27/2025 9:01:36 AM
+2025|S|110|6/26/2025 12:00:00 AM|HB71|16|8|24|0|||Conference Committee Report|(Second New Title) prohibiting the school facilities to be used to provide shelter for aliens, relative to department of health and human services contracts,  requiring the use of public notices before re-assessment of property values for tax purposes, an||6/27/2025 9:02:22 AM
+2025|S|111|6/26/2025 12:00:00 AM|HB377|16|8|24|0|||Conference Committee Report|(New Title) relative to health care professionals administering hormone treatments and puberty blockers and relative to recognizing the second Thursday in October as children's environmental health day.||6/27/2025 9:03:18 AM
+2025|S|112|6/26/2025 12:00:00 AM|HB506|16|8|24|0|||Conference Committee Report|(New Title) relative to background checks during motions to return firearms and ammunition and relative to invalidating out-of-state driver's licenses issued to undocumented immigrants and relative to requiring schools to engage an owner's project manager||6/27/2025 9:06:03 AM
+2025|S|113|6/26/2025 12:00:00 AM|HB712|16|8|24|0|||Conference Committee Report|(New Title) limiting breast surgeries for minors, relative to residential care and health facility licensing, and relative to the collection and reporting of abortion statistics by health care providers and medical facilities.||6/27/2025 9:07:27 AM
+2025|S|114|6/26/2025 12:00:00 AM|HB1|16|8|24|0|||Conference Committee Report|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2026 and June 30, 2027.||6/27/2025 9:08:31 AM
+2025|S|115|6/26/2025 12:00:00 AM|HB2|16|8|24|0|||Conference Committee Report|relative to state fees, funds, revenues, and expenditures.||6/27/2025 9:09:21 AM
+2025|S|116|6/26/2025 12:00:00 AM|HB115|8|16|24|0|||Floor Amendment|(New Title) making temporary appropriations for the expenses and encumbrances of the state of New Hampshire.||6/27/2025 9:19:36 AM
+2025|S|117|6/26/2025 12:00:00 AM|HB287|16|8|24|0|||Conference Committee Report|requiring police departments to provide fire departments with certain motorist personal and insurance information following a motor vehicle incident.||6/27/2025 9:16:09 AM
+2025|S|118|10/23/2025 12:00:00 AM|SB213|0|24|24|0|||VETO MESSAGE - Roll Call Required|(New Title) relative to electioneering by public employees and relative to absentee voting.||10/23/2025 12:02:39 PM

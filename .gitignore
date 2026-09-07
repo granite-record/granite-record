@@ -92,6 +92,14 @@ check.txt
 !status/officials.txt
 !versions.json
 
+# rollcalls/ is tracked, and the bulk downloads above are not, for the reason
+# given there: those change on every fetch. A past session's roll calls do not.
+# The General Court publishes one bulk file per CURRENT session, so 2025's
+# 380 votes and 107,118 member votes cannot be downloaded at all -- they exist
+# here only because fetch_rollcalls_db.py read them out of the database, and a
+# git clean would cost another round trip to a server this project does not
+# control. 3.8 MB, written once per session year and never rewritten.
+
 # ---- probe output: a snapshot of one page, re-fetchable in one request ---
 probe_calendars*.html
 

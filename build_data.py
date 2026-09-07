@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -80,6 +80,29 @@ def rows(path, expect=None):
             if expect and len(f) != expect:
                 continue
             out.append([x.strip() for x in f])
+    return out
+
+
+def rows_all(d, base, expect=None):
+    """base.txt plus every rollcalls/base_<year>.txt beside it.
+
+    The General Court publishes one bulk file per CURRENT session, so the
+    download alone holds no roll call older than this year. fetch_rollcalls_db
+    writes a file per past year in the same shape, from the database, and both
+    are read together here -- teaching this reader a second format would have
+    been the larger change, and it would have let the two disagree about what
+    a column means.
+
+    The download is read first, so a year present in both keeps the copy the
+    General Court publishes directly.
+    """
+    out = rows(d / f"{base}.txt", expect)
+    extra = d / "rollcalls"
+    if extra.is_dir():
+        for f in sorted(extra.glob(f"{base}_*.txt")):
+            got = rows(f, expect)
+            print(f"  {f.name}: {len(got):,} rows")
+            out += got
     return out
 
 
@@ -597,8 +620,12 @@ def main():
         return (f"{f['name']}({pc}) {f.get('county','')} "
                 f"{f.get('district','')}").strip()
 
+    # Keyed (year, body, number): a vote sequence number restarts each session,
+    # so the year is what keeps 2025's roll call 112 apart from 2026's. That was
+    # already true before past years were readable, which is why adding them
+    # needed nothing here beyond the extra files.
     summary = {}
-    for r in rows(d / "RollCallSummary.txt"):
+    for r in rows_all(d, "RollCallSummary"):
         if len(r) < 13:
             continue
         summary[(r[0], r[1], r[2])] = {
@@ -610,7 +637,7 @@ def main():
 
     member_votes, vote_kinds, hist_bodies = [], Counter(), Counter()
     vnums, unmatched_votes = set(), 0
-    for r in rows(d / "RollCallHistory.txt", 8):
+    for r in rows_all(d, "RollCallHistory", 8):
         key = (r[0], r[1], r[2])
         hist_bodies[r[1]] += 1
         vnums.add(int(r[2]) if r[2].isdigit() else -1)

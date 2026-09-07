@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.34
+# GRANITE_VERSION: 2026-09-04.35
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1144,7 +1144,16 @@ def _site_fixture(root):
         {"member_id": "377204", "name": "Nelson, Jodi", "party": "R",
          "label": "Nelson, Jodi(R) Rock 13", "year": "2026", "body": "H",
          "vote_number": "310", "bill": "HB1442", "question": "Ought to Pass",
-         "date": "2026-03-06", "vote": "Yea"}])
+         "date": "2026-03-06", "vote": "Yea"},
+        # The same bill number, the same chamber and the same vote sequence
+        # number, in the previous term. Sequence numbers restart every session,
+        # so this pair is not contrived -- it is what two terms of the file
+        # look like side by side.
+        {"member_id": "377204", "name": "Nelson, Jodi", "party": "R",
+         "label": "Nelson, Jodi(R) Rock 13", "year": "2024", "body": "H",
+         "vote_number": "310", "bill": "HB1442",
+         "question": "Inexpedient to Legislate",
+         "date": "2024-03-06", "vote": "Nay"}])
     w("data/towns.json", {"Raymond": [{"county": "Rockingham", "district": "13",
                                        "ward": "0", "seats": 2}]})
     w("narratives.json", {
@@ -1221,14 +1230,29 @@ def _site_fixture(root):
                               "cancelled": False,
                               "raw": "Veto Sustained 08/19/2026: RC 165-140 "
                                      "Lacking Necessary Two-Thirds Vote"}]}})
-    w("rollcalls.json", {"HB1442": [
+    # {term: {bill: [votes]}}. A bill number is unique within a term and not
+    # across terms, so the fixture carries the SAME number in two of them --
+    # HB1442 in 2025-2026 with 214-119, and an older HB1442 in 2023-2024 with
+    # a different tally. A build that merges them shows the wrong vote count
+    # on the current bill, which is what the checks below look for.
+    w("rollcalls.json", {"2023-2024": {"HB1442": [
+        {"year": "2024", "body": "H", "number": "310", "date": "2024-03-06",
+         "time": "09:30", "bill": "HB1442", "procedural": False,
+         "question": "Inexpedient to Legislate",
+         "question_raw": "Inexpedient to Legislate",
+         "question_plain": "kill the bill", "yeas": 190, "nays": 160,
+         "voting": 350, "not_voting": 50, "seats": 400, "seated": 400,
+         "vacancies": 0, "threshold_needed": None, "threshold_rule": None,
+         "passed": True, "threshold_note": None,
+         "title": "an entirely different bill of the same number"}]},
+                         "2025-2026": {"HB1442": [
         {"year": "2026", "body": "H", "number": "310", "date": "2026-03-06",
          "time": "11:12", "bill": "HB1442", "procedural": False,
          "question": "Ought to Pass", "question_raw": "Ought to Pass",
          "question_plain": "pass the bill", "yeas": 214, "nays": 119, "voting": 333,
          "not_voting": 67, "seats": 400, "seated": 400, "vacancies": 0,
          "threshold_needed": None, "threshold_rule": None, "passed": True,
-         "threshold_note": None, "title": "relative to insurance coverage"}]})
+         "threshold_note": None, "title": "relative to insurance coverage"}]}})
     w("bill_status.json", {
         "HB1442": {
             "gen_status": "PASSED/ADOPTED", "house_status": "PASSED/ADOPTED",
@@ -1428,6 +1452,81 @@ def _chain():
         bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
         assert not bad, "check_site: " + "; ".join(bad)[:140]
         return "ok", "5 builders, then check_site, on a 2-bill fixture"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "an earlier term's votes stay on the earlier term's bill")
+def _rollcalls_by_term():
+    """HB1442 exists in 2023-2024 and in 2025-2026, with different tallies.
+
+    Bill numbers repeat every biennium and nothing outside proceedings.csv used
+    to know it. rollcalls.json is keyed on the term for that reason, and the
+    fixture carries the same number twice so a build that merged them would be
+    visible here rather than in two years' time.
+    """
+    here = Path(".").resolve()
+    if not (here / "build_site_v2.py").exists():
+        return "skip", "build_site_v2.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        _site_fixture(root)
+        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+                            "--data", "data", "--out", "site", "--segments", "work"],
+                           cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
+        hb = json.loads((root / "site" / "bills" / "2026" / "HB1442.json")
+                        .read_text(encoding="utf-8"))
+        # The votes tab also carries voice and division votes read off the
+        # docket, which have no tally and no member grid. The roll call FILE's
+        # entries are the ones with a tally, and those are what is at issue.
+        rcs = [r for r in hb.get("rollcalls", []) if r.get("tally")]
+        assert len(rcs) == 1, (f"HB1442 shows {len(rcs)} recorded roll calls; "
+                               "the 2023-2024 bill of the same number has "
+                               "leaked in")
+        got = (rcs[0]["yeas"], rcs[0]["nays"])
+        assert got == (214, 119), f"HB1442's vote reads {got}, not 214-119"
+        assert not [r for r in hb.get("rollcalls", []) if r.get("yeas") == 190],             "the 2023-2024 tally of 190-160 is on the 2025-2026 bill"
+        votes = {m["v"] for m in rcs[0].get("members", [])}
+        assert votes == {"Yea"}, (f"the member grid holds {sorted(votes)}; the "
+                                  "previous term's Nay has been counted too")
+        idx = {x["id"]: x for x in
+               json.loads((root / "site" / "index.json").read_text(encoding="utf-8"))}
+        assert idx["HB1442"]["nrc"] == 1, idx["HB1442"]["nrc"]
+        return "ok", "the same number in two terms stays two bills"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a rollcalls.json keyed on bill number is refused, not ignored")
+def _rollcalls_old_shape():
+    """The failure this replaces is silent.
+
+    rollcalls.json used to be {bill: [votes]} and is now {term: {bill: [votes]}}.
+    Read the old shape with the new lookup and every bill comes back with no
+    recorded votes, the build succeeds, and 449 bills quietly lose their
+    tallies. Five instances of exactly that in a week is why this is a check.
+    """
+    here = Path(".").resolve()
+    if not (here / "build_site_v2.py").exists():
+        return "skip", "build_site_v2.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        _site_fixture(root)
+        nested = json.loads((root / "rollcalls.json").read_text(encoding="utf-8"))
+        flat = {}
+        for byterm in nested.values():
+            for bill, votes in byterm.items():
+                flat.setdefault(bill, []).extend(votes)
+        (root / "rollcalls.json").write_text(json.dumps(flat), encoding="utf-8")
+        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+                            "--data", "data", "--out", "site", "--segments", "work"],
+                           cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode != 0, ("the build accepted a rollcalls.json keyed on "
+                                   "bill number and produced a site with no votes")
+        said = (r.stdout + r.stderr).lower()
+        assert "keyed on bill number" in said, (r.stdout + r.stderr).strip()[-160:]
+        return "ok", "the build stops and says how to rebuild it"
     finally:
         shutil.rmtree(root, ignore_errors=True)
 

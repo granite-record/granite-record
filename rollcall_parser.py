@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -21,15 +21,25 @@ Two things this handles that a naive parser gets wrong:
    status reads "Failed to Pass with Necessary Three-fifths Vote". Showing the
    tally without the threshold actively misleads.
 
+3. A BILL NUMBER MEANS NOTHING WITHOUT A TERM.
+   HB396 exists in every biennium. The download covers the current session
+   only, so that never came up; rollcalls/ holds a file per past year fetched
+   from the General Court's database, and the moment 2023 sits beside 2025 a
+   flat {bill: votes} map merges two different bills. The output is keyed on
+   the TERM, not the year, because one bill is voted on in both years of its
+   biennium -- HB56 was filed in 2025 and voted on in 2026.
+
     python3 rollcall_parser.py --file RollCallSummary.txt --bill HB1442
     python3 rollcall_parser.py --file RollCallSummary.txt --all --out rollcalls.json
 """
 
 import argparse
 import json
+import proceedings as P
 import re
 import sys
 from collections import defaultdict
+from pathlib import Path
 from datetime import datetime
 
 SEATS = {"H": 400, "S": 24}
@@ -162,6 +172,38 @@ def parse(path, want_bill=None):
     return out
 
 
+def parse_all(current, extra_dir):
+    """Every roll call this machine has, the download and the archive both.
+
+    rollcalls/RollCallSummary_<year>.txt is written by fetch_rollcalls_db.py
+    from the General Court's database, one file per past session year. The
+    download is the current session and is read first, so if a year somehow
+    appears in both the download's row is the one kept -- it is the copy the
+    General Court publishes directly, and the database's answer was verified
+    against it rather than the other way round.
+
+    Deduplicated on (year, body, number), which is what identifies a roll call.
+    """
+    seen, out = set(), []
+    files = [Path(current)] if Path(current).exists() else []
+    d = Path(extra_dir)
+    if d.is_dir():
+        files += sorted(d.glob("RollCallSummary_*.txt"))
+    if not files:
+        return [], []
+    for f in files:
+        kept = 0
+        for r in parse(f):
+            key = (r["year"], r["body"], r["number"])
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(r)
+            kept += 1
+        print(f"  {f}: {kept:,} roll calls")
+    return out, files
+
+
 def sentence(r):
     ch = "House" if r["body"] == "H" else "Senate"
     when = datetime.strptime(r["date"], "%Y-%m-%d").strftime("%B %d, %Y") if r["date"] else ""
@@ -176,25 +218,46 @@ def sentence(r):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--file", default="RollCallSummary.txt")
+    ap.add_argument("--file", default="RollCallSummary.txt",
+                    help="the current session's bulk download")
+    ap.add_argument("--dir", default="rollcalls",
+                    help="a directory of RollCallSummary_<year>.txt files for "
+                         "past sessions, from fetch_rollcalls_db.py")
     ap.add_argument("--bill")
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--out")
     a = ap.parse_args()
 
-    rows = parse(a.file, want_bill=a.bill)
+    rows, files = parse_all(a.file, a.dir)
+    if not files:
+        sys.exit(f"No roll call file to read: neither {a.file} nor anything in "
+                 f"{a.dir}/.")
+    if a.bill:
+        rows = [r for r in rows if (r["bill"] or "").upper() == a.bill.upper()]
     if not rows:
         sys.exit("No roll calls matched.")
 
     if a.out:
-        by_bill = defaultdict(list)
+        # Keyed on the term, not the bill: HB396 exists in every biennium, and
+        # the moment a past year sits beside the current one a flat map merges
+        # two different bills. Not on the year either -- a bill filed in 2025
+        # is voted on in 2026 and both belong to the same record.
+        by_term = defaultdict(lambda: defaultdict(list))
         for r in rows:
-            by_bill[r["bill"] or "_procedural"].append(r)
+            by_term[P.term_of(r["year"])][r["bill"] or "_procedural"].append(r)
+        stray = by_term.pop("", None)
+        if stray:
+            print(f"  {sum(len(v) for v in stray.values()):,} roll calls have "
+                  "no readable session year and are left out")
         with open(a.out, "w", encoding="utf-8") as fh:
-            json.dump(by_bill, fh, indent=2)
+            json.dump(by_term, fh, indent=2)
         unknown = sorted({r["question_raw"] for r in rows if r["question_plain"] is None
                           and not r["procedural"]})
-        print(f"{len(rows):,} roll calls across {len(by_bill) - 1:,} bills -> {a.out}")
+        for term in sorted(by_term):
+            n_b = len(by_term[term]) - (1 if "_procedural" in by_term[term] else 0)
+            n_r = sum(len(v) for v in by_term[term].values())
+            print(f"  {term}: {n_r:,} roll calls across {n_b:,} bills")
+        print(f"{len(rows):,} roll calls across {len(by_term)} term(s) -> {a.out}")
         thr = [r for r in rows if r["threshold_needed"]]
         near = [r for r in thr if not r["passed"] and r["yeas"] > r["nays"]]
         print(f"{len(thr):,} votes carried a supermajority threshold; "
