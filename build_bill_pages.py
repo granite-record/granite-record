@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.36
+# GRANITE_VERSION: 2026-09-04.37
 """
 Write a real HTML page for every bill.
 
@@ -474,9 +474,11 @@ def page(b, d, generated):
             # 5,283 placed proceedings on this site have the second kind,
             # and end_stated has been in the data all along, read by
             # nothing.
-            _endsaid = bool(s.get("end_stated"))
-            span = ((f'{hms(s["start"])}\u2013{hms(s["end"])}' if _endsaid
-                     else f'{hms(s["start"])}, ending about {hms(s["end"])}')
+            # A start and an end, drawn the same way whether the close was
+            # quoted or inferred. The page no longer ranks the two: one word,
+            # "approximate", carries what the reader needs, and it is about
+            # the START, which is the one they click.
+            span = (f'{hms(s["start"])}\u2013{hms(s["end"])}'
                     if s.get("end") and s["end"] > s["start"]
                     else f'from {hms(s["start"])}')
             # Guard on the seconds. round() on a sub-30-second span gives 0,
@@ -792,9 +794,11 @@ vote except to break a tie.</p>
 {votes}</section>
 
 <section id="hearings"><h2>Videos</h2>
-<p class="src">Recordings are the General Court&#8217;s own, on YouTube. Where a
-start time is known it carries its tolerance; where it is not, the recording is
-still here and the start time is work in progress.</p>
+<p class="src">Recordings are the General Court&#8217;s own, on YouTube. A start
+time is the moment the chair opened the item, taken from what they said. One
+marked <i>approximate</i> was worked out from where the bill is discussed
+rather than quoted, and can be a few minutes out. Where neither was possible
+the recording is linked without a time.</p>
 <ul class="tl">{hearings or '<li>No proceedings on file.</li>'}</ul></section>
 
 <section id="reports"><h2>Committee reports</h2>
