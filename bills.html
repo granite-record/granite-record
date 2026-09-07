@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.23 -->
+<!-- GRANITE_VERSION: 2026-09-05.24 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -153,6 +153,10 @@ letter-spacing:.01em}
 .stg:last-child{margin-bottom:0}
 
 .stg p{margin:0;font-family:var(--serif);font-size:16px;line-height:1.6}
+.sgn{display:inline-block;margin:3px 6px 0 0;padding:1px 7px;border-radius:9px;
+font-size:11.5px;font-weight:600;background:var(--paper);border:1px solid var(--rule-2)}
+.sgn.for{color:var(--pine);border-color:color-mix(in srgb,var(--pine) 35%,var(--rule-2))}
+.sgn.against{color:var(--brick);border-color:color-mix(in srgb,var(--brick) 35%,var(--rule-2))}
 .testimony{margin:8px 0 2px;padding:9px 12px;background:var(--paper);
 border-left:3px solid var(--rule-2);border-radius:0 5px 5px 0;font-size:13px;
 line-height:1.55}
@@ -1003,6 +1007,25 @@ const RECCOLOUR=[[/INEXPEDIENT/i,"s-done"],
                  [/OUGHT\s+TO\s+PASS/i,"s-law"]];
 const recColour=r=>{const m=RECCOLOUR.find(([re])=>re.test(r||""));
   return m?m[1]:"";};
+// Who signed in for and against the bill at a hearing.
+//
+// Counts only, deliberately. The General Court's sign-in sheet carries a name,
+// a town and often written testimony for each of some 400,000 rows, and almost
+// every one is a member of the public who signed a committee's sheet rather
+// than a public figure. The number is the civic fact; the person is not this
+// site's to republish.
+//
+// "dated" is the difference between a fact and a number that looks like one:
+// with it the count is this hearing's, without it the database had the bill
+// but not this date and the figure covers every hearing the bill had.
+const signins=t=>{
+  if(!t||!t.total)return "";
+  const n=x=>Number(x||0).toLocaleString();
+  const bit=(v,label,cls)=>v?`<span class="sgn ${cls}">${n(v)} ${label}</span>`:"";
+  return `<span class="tnote">${bit(t.support,"for","for")}${
+    bit(t.oppose,"against","against")}${bit(t.neutral,"neutral","")} ${
+    n(t.total)} signed in${t.dated?"":" across this bill’s hearings"}</span>`;
+};
 const CHNAME={H:"Representatives",S:"Senators"};
 const hms=x=>new Date(x*1000).toISOString().substr(11,8);
 // "0:02:00" or "-0:05:00" as the manifest wrote it -- and a plain number of
@@ -1072,7 +1095,8 @@ function renderSummary(b,d){
         <span class="d">${e.date?esc(fdate(e.date)):""}</span>
         <span class="w">${esc(e.text||"")}${e.cite?` <span class="cite">${
           e.cite_url?`<a href="${esc(e.cite_url)}" target="_blank"
-          rel="noopener">${esc(e.cite)}</a>`:esc(e.cite)}</span>`:""}</span>
+          rel="noopener">${esc(e.cite)}</a>`:esc(e.cite)}</span>`:""}${
+          signins(e.testimony)}</span>
         </li>`).join("")}</ul></details>`:""}
 `;
 }

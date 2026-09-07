@@ -2,8 +2,8 @@
   "files": {
     "align_all.py": "2026-09-04.1",
     "apply_markers.py": "2026-09-04.8",
-    "bills.html": "2026-09-05.23",
-    "build_all.py": "2026-09-05.6",
+    "bills.html": "2026-09-05.24",
+    "build_all.py": "2026-09-05.7",
     "build_bill_pages.py": "2026-09-04.33",
     "build_data.py": "2026-09-04.5",
     "build_feeds.py": "2026-09-04.6",
@@ -12,7 +12,7 @@
     "build_manifest.py": "2026-09-05.4",
     "build_pages.py": "2026-09-04.13",
     "build_proceedings.py": "2026-09-05.1",
-    "build_site_v2.py": "2026-09-05.24",
+    "build_site_v2.py": "2026-09-05.25",
     "check_live.py": "2026-09-04.10",
     "check_site.py": "2026-09-04.2",
     "docket_parser.py": "2026-09-04.3",
@@ -39,7 +39,7 @@
     "netcheck.py": "2026-09-04.2",
     "nightly.py": "2026-09-04.5",
     "parse_districts.py": "2026-09-04.1",
-    "preflight.py": "2026-09-04.43",
+    "preflight.py": "2026-09-04.44",
     "probe_alignment.py": "2026-09-05.45",
     "probe_amendments.py": "2026-09-04.3",
     "probe_archive.py": "2026-09-04.1",
@@ -60,7 +60,8 @@
     "verify_batch.py": "2026-09-04.4",
     "fetch_rollcalls_db.py": "2026-09-06.2",
     "fetch_reports_db.py": "2026-09-06.2",
-    "fetch_status_db.py": "2026-09-06.1"
+    "fetch_status_db.py": "2026-09-06.1",
+    "fetch_testimony_db.py": "2026-09-06.1"
   },
   "generated": "2026-09-04"
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.43
+# GRANITE_VERSION: 2026-09-04.44
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2174,6 +2174,41 @@ def _closing(build_site_v2):
     assert cs("Killed", stage("anything")) is None,         "Killed is back in the table, and it misfires on bills laid on the table"
     assert cs("Signed into law", stage("anything")) is None
     return "ok", "the ending is added when it is missing and not when it is not"
+
+
+@check("data", "a hearing's sign-in count says whether it is that hearing's",
+       needs=("build_site_v2",))
+def _testimony_dated(build_site_v2):
+    """30,108 people signed in against HB283. On which day matters.
+
+    The database carries the hearing date with each sign-in, so the count can
+    sit with the hearing it belongs to. Where it has the bill but not that
+    date -- 50 of 2,122 docket hearing lines -- the whole-bill total is still
+    true of the bill and is not true of that hearing, and the page has to say
+    which of the two it is showing.
+    """
+    f = getattr(build_site_v2, "hearing_testimony", None)
+    assert f, "build_site_v2 has no hearing_testimony"
+    tdb = {"total": 300, "support": 100, "oppose": 200, "neutral": 0,
+           "hearings": [{"date": "2026-02-03", "total": 120, "support": 40,
+                         "oppose": 80, "neutral": 0}]}
+    hear = {"raw": "Public Hearing: 02/03/2026 10:00 am LOB 302",
+            "date": "2026-02-03"}
+    got = f(hear, tdb, None)["testimony"]
+    assert got["total"] == 120, f"the hearing shows {got['total']}, not its own 120"
+    assert got.get("dated") is True, "a count for this hearing does not say so"
+
+    other = {"raw": "Public Hearing: 05/05/2026 10:00 am LOB 302",
+             "date": "2026-05-05"}
+    got2 = f(other, tdb, None)["testimony"]
+    assert got2["total"] == 300, got2["total"]
+    assert not got2.get("dated"), (
+        "a whole-bill total is presented as this hearing's count")
+
+    # And a line that is not a hearing carries none of it.
+    assert f({"raw": "Ought to Pass: MA VV 03/06/2026", "date": "2026-03-06"},
+             tdb, None) == {}, "a floor vote was given a sign-in count"
+    return "ok", "the hearing's own count, or the bill's, and it says which"
 
 
 @check("data", "a bill the governor signed says so")

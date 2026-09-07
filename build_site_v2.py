@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.24
+# GRANITE_VERSION: 2026-09-05.25
 """
 Generate the faceted site from real General Court data.
 
@@ -1588,8 +1588,36 @@ def committee_reports(recs, narr, sources, house_cmte, senate_cmte):
     return out, docket, between
 
 
+def hearing_testimony(e, tdb, scraped):
+    """Who signed in for and against, on the hearing this line records.
+
+    The database carries the hearing DATE with each sign-in, so the count sits
+    with the hearing it belongs to rather than as one number for the whole
+    bill -- which is the point of it: a hearing next week, and where opinion
+    stands today. 2,072 of the 2,122 docket hearing lines match a date the
+    database also has.
+
+    Counts only. The table has names, towns and the written testimony, and
+    almost every one of the 400,000 rows is a private individual who signed a
+    committee's sheet; fetch_testimony_db does not ask for any of it.
+    """
+    if not PUBLIC_HEARING.search(e.get("raw", "")):
+        return {}
+    if tdb:
+        hit = next((h for h in tdb.get("hearings", [])
+                    if h.get("date") == e.get("date")), None)
+        if hit:
+            return {"testimony": {**hit, "dated": True}}
+        # The database has the bill but not this date. Its whole-bill total is
+        # still true of the bill; it is just not true of this hearing alone,
+        # and the page has to say which it is showing.
+        return {"testimony": {k: tdb[k] for k in
+                              ("total", "support", "oppose", "neutral")}}
+    return {"testimony": scraped} if scraped else {}
+
+
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
-                bill_texts, amend_texts, testimony, procs, floor, segs,
+                bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
                 votes_by_bill):
     """One JSON per bill, and the index row for each.
@@ -1648,6 +1676,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         year = int(b.get("lsr_year") or 0)
         term = P.term_of(str(year)) if year else ""
         rcs = rollcalls.get(term, {}).get(bid, [])
+        tdb = testimony_db.get(term, {}).get(bid)
         narr = narratives.get(term, {}).get(bid)
         st = status_pages.get(bid, {})
         prefix = bill_prefix(bid)
@@ -1927,9 +1956,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # that makes a claim on this site checkable rather than trusted.
             "events": [{"date": e["date"], "text": e.get("raw", ""),
                         "routine": is_routine(e.get("raw", "")),
-                        **({"testimony": testimony[bid]}
-                           if bid in testimony and PUBLIC_HEARING.search(
-                               e.get("raw", "")) else {}),
+                        **hearing_testimony(e, tdb, testimony.get(bid)),
                         **_cite(e, sources, (e.get("date") or "")[:4])}
                        for e in (narr or {}).get("events", []) if not e.get("cancelled")],
             # Prefer what the General Court says over what we would infer.
@@ -2098,6 +2125,15 @@ def main():
     sources = {**load("calendars.json", {}), **load("journals.json", {})}
     # Sign-in counts, attached to the hearing they were filed for.
     testimony = load("testimony.json", {})
+    # Counts per bill AND per hearing, from the General Court's database:
+    # 2,019 bills against the scraped page's 565. Keyed on the term, because
+    # legislationID is reused across terms -- joining without that put 67,119
+    # sign-ins from 2024 onto 856 bills of this one.
+    testimony_db = load("testimony_db.json", {})
+    if testimony_db:
+        nb = sum(len(v) for v in testimony_db.values())
+        ns = sum(r["total"] for v in testimony_db.values() for r in v.values())
+        print(f"testimony sign-ins: {ns:,} across {nb:,} bills, per hearing")
     if testimony:
         print(f"testimony counts for {len(testimony):,} bills")
     if sources:
@@ -2217,6 +2253,7 @@ def main():
     # -------------------------------------------------------------- index --
     index, years, unnamed = build_bills(out, bills, narratives, rollcalls, reports,
                                sponsors, bill_texts, amend_texts, testimony,
+                               testimony_db,
                                procs, floor, segs, marks, sources,
                                legs, leg_by_sort, leg_by_name,
                                votes_by_bill)

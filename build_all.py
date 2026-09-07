@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.6
+# GRANITE_VERSION: 2026-09-05.7
 """
 Run the whole pipeline in the right order.
 
@@ -139,6 +139,14 @@ def plan(a):
              ["fetch_committee_reports.py", "--year", a.session],
              network=True, optional=True,
              note="calendars are cached; discovery only needs running once a session"),
+
+        Step("how many signed in for and against, per hearing",
+             ["fetch_testimony_db.py"],
+             produces=["testimony_db.json"],
+             network=True, optional=True,
+             note="the SQL host, not gc.nh.gov. Counts only -- the sign-in "
+                  "sheet's names, towns and written testimony are not asked "
+                  "for. 2,019 bills against the scraped page's 565"),
 
         Step("the Senate's committee reports, with their reasoning",
              ["fetch_reports_db.py"],
