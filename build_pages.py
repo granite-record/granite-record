@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.14
+# GRANITE_VERSION: 2026-09-04.15
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -856,12 +856,24 @@ def main():
     # to it sat at the project root while the deploy shipped whatever was in
     # site/ -- which looks exactly like the edit having no effect, and cost a
     # round more than once. Copied here, next to the stylesheet it needs.
-    src = Path("bills.html")
-    if src.exists():
-        dst = out / "bills.html"
+    # bills.html and the two files it loads. They are written by hand rather
+    # than generated, and nothing in the pipeline was copying bills.html into
+    # the output folder -- so an edit sat at the project root while the deploy
+    # shipped whatever was in site/, which looks exactly like the edit having
+    # no effect and cost a round more than once.
+    #
+    # app.css and app.js used to be a <style> and a <script> inside the page.
+    # They are files of their own so a second page can load the SAME renderer
+    # rather than a copy of it, and so a reader who opens six bills downloads
+    # 110KB once instead of six times.
+    for name in ("bills.html", "app.css", "app.js"):
+        src = Path(name)
+        if not src.exists():
+            continue
+        dst = out / name
         if not dst.exists() or dst.read_bytes() != src.read_bytes():
             shutil.copy2(src, dst)
-            print("copied bills.html into the site folder")
+            print(f"copied {name} into the site folder")
 
     legs = json.loads((out / "legislators.json").read_text(encoding="utf-8")) \
         if (out / "legislators.json").exists() else []

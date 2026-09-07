@@ -2,7 +2,7 @@
   "files": {
     "align_all.py": "2026-09-04.1",
     "apply_markers.py": "2026-09-04.8",
-    "bills.html": "2026-09-05.26",
+    "bills.html": "2026-09-05.27",
     "build_all.py": "2026-09-05.7",
     "build_bill_pages.py": "2026-09-04.37",
     "build_data.py": "2026-09-04.10",
@@ -10,7 +10,7 @@
     "build_floor_index.py": "2026-09-04.3",
     "build_legislator_pages.py": "2026-09-04.4",
     "build_manifest.py": "2026-09-05.4",
-    "build_pages.py": "2026-09-04.14",
+    "build_pages.py": "2026-09-04.15",
     "build_proceedings.py": "2026-09-05.2",
     "build_site_v2.py": "2026-09-05.33",
     "check_live.py": "2026-09-04.10",
@@ -39,7 +39,7 @@
     "netcheck.py": "2026-09-04.2",
     "nightly.py": "2026-09-04.5",
     "parse_districts.py": "2026-09-04.1",
-    "preflight.py": "2026-09-04.52",
+    "preflight.py": "2026-09-04.53",
     "probe_alignment.py": "2026-09-05.47",
     "probe_amendments.py": "2026-09-04.3",
     "probe_archive.py": "2026-09-04.1",
@@ -64,6 +64,8 @@
     "fetch_testimony_db.py": "2026-09-06.1",
     "fetch_archive_bills.py": "2026-09-06.1",
     "caption_gaps.py": "2026-09-06.1",
+    "app.js": "2026-09-07.1",
+    "app.css": "2026-09-07.1",
     "fetch_members_db.py": "2026-09-07.1"
   },
   "generated": "2026-09-04"

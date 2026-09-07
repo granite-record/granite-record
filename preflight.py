@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.52
+# GRANITE_VERSION: 2026-09-04.53
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -541,6 +541,33 @@ def _verify_bands():
 
 # ============================================================ code: front end ==
 
+def page_source(name="bills.html"):
+    """bills.html together with the app.css and app.js it loads.
+
+    The page was one file with a <style> and a <script> in it. It is three
+    files now, so a bill's own page can load the SAME renderer rather than a
+    second copy of it. Everything these checks look for -- the palette, the
+    station branches, the declaration order -- moved into app.js and app.css
+    with it.
+
+    A check that reads only the page now finds nothing to disagree with and
+    passes, which is worse than failing, so there is one reader rather than
+    three places to remember. Returns ("", None) when the page is not here, so
+    a caller can skip rather than assert against nothing.
+    """
+    p = Path(name)
+    if not p.exists():
+        p = Path("site") / name
+    if not p.exists():
+        return "", None
+    out = p.read_text(encoding="utf-8")
+    for asset in ("app.css", "app.js"):
+        f = p.parent / asset
+        if f.exists():
+            out += "\n" + f.read_text(encoding="utf-8")
+    return out, p
+
+
 @check("frontend", "bills.html carries the changes and its tags balance")
 def _bills_html():
     p = Path("bills.html")
@@ -548,7 +575,16 @@ def _bills_html():
         p = Path("site/bills.html")
     if not p.exists():
         return "skip", "bills.html not here or in site/"
+    # Most of what this looks for lives in app.js now, which bills.html loads
+    # rather than contains. Reading only the page would pass every one of these
+    # by finding nothing to disagree with -- so the page is read together with
+    # the files it pulls in, and it is an error if those are missing.
     t = p.read_text(encoding="utf-8")
+    for asset in ("app.css", "app.js"):
+        f = p.parent / asset
+        assert f.exists(), (f"bills.html loads {asset} and it is not next to "
+                            f"it in {p.parent}/")
+        t += "\n" + f.read_text(encoding="utf-8")
     want = {
         "play control is a button": '<button type="button" class="pstub"',
         # A link inside a button is not a link a keyboard or a screen reader
@@ -628,11 +664,16 @@ def _bill_css():
 @check("frontend", "both stylesheets carry the corrected palette")
 def _palette():
     bad = []
-    for name, path in (("bills.html", Path("bills.html")),
+    for name, path in (("bills.html + app.css", None),
                        ("style.css (build_pages.py)", Path("build_pages.py"))):
-        if not path.exists():
+        if path is None:
+            t = page_source()[0]
+            if not t:
+                continue
+        elif path.exists():
+            t = path.read_text(encoding="utf-8")
+        else:
             continue
-        t = path.read_text(encoding="utf-8")
         if "--ink-3:#6C7274" not in t:
             bad.append(f"{name}: --ink-3 still fails contrast")
         if "--edge:" not in t:
@@ -819,9 +860,13 @@ def _runs():
         return "skip", "node is not installed"
     if not stub.exists():
         return "skip", "dom_stub.js not here"
-    js = "\n".join(re.findall(r"<script>(.*?)</script>",
-                              f.read_text(encoding="utf-8"), re.S))
-    assert js.strip(), "no script in bills.html"
+    # The script is app.js now. The inline form is still read, so this keeps
+    # working against an older checkout of the page.
+    ext = f.parent / "app.js"
+    js = (ext.read_text(encoding="utf-8") if ext.exists()
+          else "\n".join(re.findall(r"<script>(.*?)</script>",
+                                    f.read_text(encoding="utf-8"), re.S)))
+    assert js.strip(), f"no script in {ext if ext.exists() else f}"
     root = Path(tempfile.mkdtemp())
     try:
         (root / "page.js").write_text(js, encoding="utf-8")
@@ -1176,11 +1221,11 @@ def _states_covered():
     Two halves, because either alone would have missed it: the states must be
     covered, and the chain must be a single chain.
     """
-    b, h = Path("build_site_v2.py"), Path("bills.html")
-    if not (b.exists() and h.exists()):
+    b = Path("build_site_v2.py")
+    page, h = page_source()
+    if not (b.exists() and h):
         return "skip", "build_site_v2.py or bills.html not here"
     src = b.read_text(encoding="utf-8")
-    page = h.read_text(encoding="utf-8")
 
     emitted = set(re.findall(r'"state":\s*"(\w+)"', src))
     emitted |= set(re.findall(r'\["state"\]\s*=\s*"(\w+)"', src))
@@ -1210,17 +1255,13 @@ def _states_covered():
 
 @check("frontend", "no const is read before the line that declares it")
 def _tdz():
-    f = Path("bills.html")
-    if not f.exists():
-        f = Path("site/bills.html")
-    if not f.exists():
+    js, f = page_source()
+    if not f:
         return "skip", "bills.html not here or in site/"
-    js = "\n".join(re.findall(r"<script>(.*?)</script>",
-                              f.read_text(encoding="utf-8"), re.S))
-    assert js.strip(), "no script found in bills.html"
+    assert js.strip(), "no script found for bills.html"
     bad = _tdz_suspects(js)
     assert not bad, "; ".join(bad[:3])
-    return "ok", "checked every function in bills.html"
+    return "ok", "checked every function in app.js"
 
 
 # =============================================================== build chain ==
