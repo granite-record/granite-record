@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.8
+# GRANITE_VERSION: 2026-09-05.9
 """
 Run the whole pipeline in the right order.
 
@@ -123,6 +123,23 @@ def plan(a):
                   "\"a motion by Rep. N. Germana\" into the member's full name. "
                   "build_data.py does not read narratives.json, so nothing "
                   "before this point needs it"),
+
+        # An archived term's docket, and the histories built from it. Both
+        # are skipped when the file is not there, so a checkout without the
+        # archive builds exactly as before.
+        #
+        # narrative.py MERGES, and has to: it is run twice here, once per
+        # docket, and the second run would otherwise replace the first term's
+        # 2,233 bills with the other's 1,996 and build clean.
+        Step("plain-language histories for the archived term",
+             ["narrative.py", "--docket", "Docket_2023-2024.txt", "--all",
+              "--out", "narratives.json",
+              "--members", "data/legislators.json"],
+             needs=["Docket_2023-2024.txt", "data/legislators.json"],
+             produces=["narratives.json"],
+             note="fetch_archive_docket.py writes that docket in Docket.txt's "
+                  "own seven columns, so this is the same parser the current "
+                  "term uses"),
 
         # Never a step until now, which is the only reason no chair, vice
         # chair, aide, room or phone is anywhere on disk: fetch_committees.py
