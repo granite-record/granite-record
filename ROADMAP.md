@@ -26,6 +26,28 @@ timestamps.
 
 ---
 
+## One click to submit testimony
+
+A reader who sees a hearing scheduled next week on something they care about
+should be able to say so without learning the General Court's menus. Today that
+means going to gc.nh.gov, choosing the committee, then the hearing date, then
+the bill, from selects that do not explain themselves -- and the bill they came
+for is the one thing they already know.
+
+The feature is a single link on the bill page that opens the General Court's
+own sign-in form with the committee, hearing date and bill already chosen, so
+what is left is a name and what the person thinks. It sends people TO the
+official form rather than collecting anything here.
+
+What it needs first is to know how that form addresses a hearing --
+fetch_committee_reports.py's _options()/SELECT_RE already read the same kind of
+select from a General Court page, so the shape of the work is known. It is a
+small number of requests to one page, not a crawl.
+
+Not started. The counts that make it worth having landed on 6 September:
+315,142 sign-ins across 2,019 bills, shown per hearing.
+
+
 ## Now: finish the structure
 
 These are in flight or next, and most other work is easier after them.
