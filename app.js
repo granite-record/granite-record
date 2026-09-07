@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.14
+// GRANITE_VERSION: 2026-09-07.15
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1442,7 +1442,8 @@ function renderCommitteeHead(c){
       ${c.phone?` &middot; ${esc(c.phone)}`:""}
       ${c.aide?` &middot; Aide: ${esc(c.aide)}`:""}</p>
     ${lead.length?`<p class="plead">${lead.map(chip).join(" ")}</p>`:""}
-    ${rest.length?`<details class="mroster"><summary><span class="caret"></span>
+    ${rest.length?`<details class="mroster"${PAGE.roster?" open":""}
+      ><summary><span class="caret"></span>
       ${rest.length} more member${rest.length===1?"":"s"}</summary>
       <p class="mlist">${rest.map(chip).join(" ")}</p></details>`:""}
     ${c.url?`<p class="src"><a href="${esc(c.url)}" target="_blank"
@@ -1499,8 +1500,16 @@ function renderCommitteeSessions(c){
 }
 
 function renderCommittee(c){
-  const nBills=Object.values(c.bills||{}).reduce((a,v)=>a+v.length,0);
-  const tabs=[["Bills",nBills],["Sittings",(c.sessions||[]).length]];
+  // Counted for the term the pane is showing, not across every term. "Bills
+  // (107)" over a list of 32 is the tab disagreeing with itself.
+  const bterms=Object.keys(c.bills||{}).sort().reverse();
+  const bt=PAGE.term&&bterms.includes(PAGE.term)?PAGE.term:bterms[0];
+  const nBills=((c.bills||{})[bt]||[]).length;
+  const sterms=[...new Set((c.sessions||[]).map(x=>x.term).filter(Boolean))]
+    .sort().reverse();
+  const stt=PAGE.term&&sterms.includes(PAGE.term)?PAGE.term:sterms[0];
+  const nSit=(c.sessions||[]).filter(x=>!sterms.length||x.term===stt).length;
+  const tabs=[["Bills",nBills],["Sittings",nSit]];
   const body=[()=>renderCommitteeBills(c),()=>renderCommitteeSessions(c)][PAGE_TAB]
     ||(()=>"");
   return renderCommitteeHead(c)
@@ -1527,11 +1536,23 @@ document.addEventListener("click",e=>{
   const t=e.target.closest("[data-pt]");
   if(t){PAGE_TAB=+t.dataset.pt;renderPage();}
 });
+// The roster is a <details>, and every re-render rebuilt it closed, so
+// opening it and then touching any control shut it again. "toggle" fires
+// AFTER the element has changed state and does not bubble, hence capture --
+// reading .open in a click handler gives the state before the toggle.
+document.addEventListener("toggle",e=>{
+  if(!PAGE||!e.target.matches||!e.target.matches("details.mroster"))return;
+  PAGE.roster=e.target.open;
+},true);
 document.addEventListener("change",e=>{
   if(!PAGE)return;
   const f=e.target.dataset.pf;
   if(!f)return;
   PAGE[f]=e.target.value;
+  // A status chosen in one term rarely exists in another, so keeping it
+  // emptied the list while the control still read the old value -- a reader
+  // seeing nothing, with nothing on screen saying why.
+  if(f==="term")PAGE.status="";
   renderPage();
 });
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.7
+# GRANITE_VERSION: 2026-09-07.8
 """
 A page's worth of data for every committee.
 
@@ -466,10 +466,20 @@ def main():
                               sorted(rows_, key=lambda x: x["name"]))
                     + "</div>")
     if past:
-        body.append('<h2>No longer meeting</h2><p class="src">Committees with '
-                    "no bills and no sitting day on record. Their pages are "
-                    "kept so the bills they once handled still have somewhere "
-                    'to point.</p><div class="ccards">'
+        # NOT "no longer meeting". House Rules is here with the Speaker as
+        # its chair and nine members; so is a special committee with a chair
+        # named on the General Court's own page today. What the site knows is
+        # that no bill was referred and no sitting day is on record -- which
+        # is a statement about this record, and true. Whether the committee
+        # meets is not something these files can say.
+        body.append('<h2>No bills or sitting days on record</h2>'
+                    '<p class="src">These committees have a roster, and in '
+                    "some cases a chair, but no bill referred to them and no "
+                    "sitting day in the proceedings this site holds. Some no "
+                    "longer meet; others -- Rules, for one -- do work that "
+                    "does not arrive as a bill. Their pages are kept so the "
+                    'bills they once handled still have somewhere to point.'
+                    '</p><div class="ccards">'
                     + "".join(_card(c) for c in
                               sorted(past, key=lambda x: x["name"]))
                     + "</div>")
