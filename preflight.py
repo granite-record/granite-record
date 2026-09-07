@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.40
+# GRANITE_VERSION: 2026-09-04.41
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1554,6 +1554,67 @@ def _chain():
         return "ok", "5 builders, then check_site, on a 2-bill fixture"
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+# A House Calendar, laid out the way pdftotext -layout returns one: the heading
+# begins a line, the prose that follows does not. The minority's paragraph
+# cites ANOTHER bill mid-sentence, which is what the real calendars do
+# constantly -- "changes enacted in 2025 through HB 394, which established..."
+# and "prevented many towns from adopting SB 2, concentrating budgetary and
+# governance decisions...".
+CALENDAR_PAGE = """REGULAR CALENDAR
+
+HB 1418, setting a minimum affirmative vote for new or expanded spending.
+MAJORITY: OUGHT TO PASS. MINORITY: INEXPEDIENT TO LEGISLATE.
+Rep. Ross Berry for the Majority of Election Law. This legislation applies
+only to towns and school districts that use the official ballot system. In
+many towns turnout is extremely low, often around 15 percent. Vote 12-8.
+Rep. Jim Maggiore for the Minority of Election Law. This limitation has
+prevented many towns from adopting SB 2, concentrating budgetary decisions
+among a relatively small number of attendees. It aligns with changes made
+in 2025 through HB 394, which established that representatives serve in an
+ex-officio capacity. For these reasons the minority opposes the motion.
+
+HB 1419, relative to something else entirely.
+OUGHT TO PASS.
+Rep. Dan McGuire for Election Law. The committee heard testimony from the
+sponsor and from two municipal clerks, and found the change to be a plain
+correction of a cross-reference rather than a matter of policy. No member
+spoke against it and the vote was unanimous. Vote 18-0.
+"""
+
+
+@check("reports", "a bill number inside a sentence does not start a new report",
+       needs=("fetch_committee_reports",))
+def _prose_bill_number(fetch_committee_reports):
+    """It split a real minority report in half and filed the tail as a new bill.
+
+    House Calendar 10 of 2026 says "...prevented many towns and school
+    districts from adopting SB 2, concentrating budgetary and governance
+    decisions...". SB 2 is not a bill -- it is the name New Hampshire gives the
+    ballot-vote form of town meeting -- and the section that started there took
+    1,669 characters of Municipal and County Government's minority report with
+    it. HB 394, cited the same way in the same calendar, took 3,567 more.
+
+    Across the 82 cached calendars: 2 phantom sections, 5 real ones that had
+    been swallowed, and 70,935 characters of committee reasoning that were
+    being cut off mid-report.
+    """
+    got = fetch_committee_reports.parse_reports(CALENDAR_PAGE, "House Calendar 1, 2026")
+    keys = sorted(got)
+    assert "SB2" not in keys, (
+        "a bill number inside a sentence started a section: " + str(keys))
+    assert "HB394" not in keys, (
+        "a bill cited inside a report started a section: " + str(keys))
+    assert keys == ["HB1418", "HB1419"], keys
+    mino = [e for r in got["HB1418"] for e in r["reports"]
+            if e.get("side") == "Minority"]
+    assert mino, "the minority report was not read at all"
+    text = mino[0]["text"]
+    assert "the minority opposes the motion" in text, (
+        f"the minority report is cut short at {len(text)} characters: "
+        f"...{text[-70:]!r}")
+    return "ok", "one section per heading, and the prose stays whole"
 
 
 @check("build", "a narratives.json keyed on bill number is refused, not ignored")

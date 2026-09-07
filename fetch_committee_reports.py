@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.19
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -42,8 +42,19 @@ UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
 # Bill numbers carry stacked suffixes: HB 660-FN-LOCAL, HB 1442-FN-A-LOCAL.
 # Matching only -FN, -A and -L meant "HB 660-FN-LOCAL," never registered as the
 # start of a new section, so the previous committee's report swallowed it.
+# And a heading BEGINS A LINE. That is what tells it apart from a bill number
+# inside a sentence: House Calendar 10 of 2026 contains "...has effectively
+# prevented many towns and school districts from adopting SB 2, concentrating
+# budgetary and governance decisions among a relatively small number of
+# attendees...", which split a real minority report in half and filed the
+# second half under a bill called SB2. There is no SB2 this term; the phrase
+# is the name New Hampshire gives the ballot-vote form of town meeting.
+#
+# So the sections are cut from the RAW text, before clean_pdf_text collapses
+# every newline to a space, and each section is cleaned afterwards.
 BILL_START = re.compile(
-    r"(?:^|\s)(?P<bill>(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR)\s?\d+(?:-[A-Z]+)*)\s*,\s*",
+    r"(?:\A|[\r\n])[ \t]*"
+    r"(?P<bill>(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR)\s?\d+(?:-[A-Z]+)*)\s*,\s*",
     re.I)
 
 # A report also ends when the calendar moves to another kind of business. These
@@ -297,15 +308,14 @@ def parse_reports(text, source, skipped=None, skipped_samples=None):
     """Split into bill sections, then read the recommendations and signed prose."""
     skipped = skipped if skipped is not None else [0]
     skipped_samples = skipped_samples if skipped_samples is not None else []
-    t = clean_pdf_text(text)
-    # start("bill"), not start() -- the pattern matches leading whitespace too,
-    # and slicing from the wrong offset eats a digit off the bill number.
-    marks = [(m.start("bill"), m.group("bill")) for m in BILL_START.finditer(t)]
+    # start("bill"), not start() -- the pattern matches the line break before
+    # the number too, and slicing from the wrong offset eats a digit off it.
+    marks = [(m.start("bill"), m.group("bill")) for m in BILL_START.finditer(text)]
     reports = defaultdict(list)
 
     for i, (pos, bill) in enumerate(marks):
-        end = marks[i + 1][0] if i + 1 < len(marks) else len(t)
-        chunk = t[pos:end]
+        end = marks[i + 1][0] if i + 1 < len(marks) else len(text)
+        chunk = clean_pdf_text(text[pos:end])
         # Cut at the first heading that starts a different kind of business.
         cut = SECTION_END.search(chunk, 60)
         if cut:
@@ -408,6 +418,9 @@ def main():
                          "calendars.json")
     ap.add_argument("--year", required=True)
     ap.add_argument("--pdf", help="one local or named calendar; omit to do the year")
+    ap.add_argument("--offline", action="store_true",
+                    help="re-read the calendars already in the cache and make "
+                         "no network request at all")
     ap.add_argument("--cache", default="calendars")
     ap.add_argument("--out", default="committee_reports.json")
     ap.add_argument("--limit", type=int, default=0)
@@ -418,6 +431,19 @@ def main():
 
     if a.pdf and Path(a.pdf).exists():
         targets = [(0, Path(a.pdf))]
+    elif a.offline:
+        # Every calendar already in the cache, and not one request. This exists
+        # so a PARSER change can be applied to what is already downloaded: the
+        # network half of this script is discovery and download, and neither is
+        # needed to re-read a PDF sitting on the disk.
+        targets = []
+        for f in sorted(cache.glob("HC*.pdf")):
+            m = re.match(r"HC0*(\d+)([A-Z]*)\.pdf$", f.name)
+            if m:
+                targets.append((f"{m.group(1)}{m.group(2)}", f))
+        if not targets:
+            sys.exit(f"--offline, and no calendars in {cache}/ to read.")
+        print(f"offline: {len(targets)} calendars from {cache}/, no requests")
     else:
         print(f"Listing {a.year} calendars...")
         try:
