@@ -165,11 +165,11 @@ In order. `ARCHITECTURE.md` has the full reasoning.
    term-keying being built twice.
 
 4. **Term-keyed identifiers.** Bill numbers repeat every two years and nothing
-   outside `proceedings.csv` knew it. `rollcalls.json` is done -- it is
-   `{term: {bill: [votes]}}` and `preflight` fails if it is fed the old shape
-   or if two terms' votes reach one bill. The rest are not:
-   `committee_reports.json`, `senate_reports.json`, `bill_text.json`,
-   `narratives.json`, the per-bill site files and the 2,233 files under
+   outside `proceedings.csv` knew it. `rollcalls.json` and `narratives.json`
+   are done -- both are `{term: {bill: ...}}`, and `preflight` fails if either
+   is fed the old shape or if two terms' votes reach one bill. The rest are
+   not: `committee_reports.json`, `senate_reports.json`, `bill_text.json`,
+   `bill_status.json`, the per-bill site files and the 2,233 files under
    `site/feed/bill/` are keyed on `HB396` alone -- `build_feeds.py` has no
    notion of a term at all. Fetch anything from 2024 today and it merges into
    2026. This gates the archive.

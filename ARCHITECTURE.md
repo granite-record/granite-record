@@ -93,8 +93,14 @@ finding nothing. The member-vote key gained its year at the same time, because
 vote sequence numbers restart each session and "H-310" named two different roll
 calls the moment 2025 arrived beside 2026.
 
+`narratives.json` is done too, and it was the one that mattered most: status,
+stages, events, the dating of every committee report, the floor index and the
+amendment numbers all read through it. Its four readers were changed and run;
+the build is byte-for-byte the same site, and it now refuses the flat shape
+rather than producing 2,234 bills with no history in them.
+
 The rest still are not. `committee_reports.json`, `senate_reports.json`,
-`bill_text.json`, `narratives.json`, the per-bill site files, and the 2,233
+`bill_text.json`, `bill_status.json`, the per-bill site files, and the 2,233
 feeds under `site/feed/bill/`: all keyed by `HB396`. `build_feeds.py` contains no notion of a term at all, and is a
 quarter of the site by file count. Run any fetch for 2024 and its HB 396 merges
 into 2026's. Today's merge guard keys on the year in a source line, which stops
@@ -211,6 +217,38 @@ scraped and 23441 in the database. So a status source swap either keeps the
 scrape for that one field, links the General Court's current bill status page
 instead, or renders the database's own text. That is a decision, not a
 detail.
+
+---
+
+## What the database actually covers, measured 6 September
+
+This decides the archive, and it is not what the table names suggest. Asking
+for `MIN(SessionYear)` on `docket` says 1989 and asking for `MAX` says 2026,
+and both are true with an eight-year hole between them.
+
+| table | years | rows |
+|---|---|---|
+| `docket` | 1989-2015 complete, **2016 partial** (190 bills against a normal ~900), **2017-2024 absent**, 2025-2026 complete | 317,811 |
+| `rollcallsummary` / `rollcallhistory` | **1999-2026, no gaps** | 9,565 / 2,303,047 |
+| `Legislation`, `sponsors` | **2025-2026 only** | 2,234 / 13,326 |
+| `CandH_Reports` | 2025-2026 | 5,597 |
+| `LegislationText` | 2025-2026, every version of every bill as HTML | — |
+
+So:
+
+- **Roll calls are the easy half.** 13 terms back to 1999, one query a year,
+  in the download's own format. Proven: 2025 took three seconds.
+- **The docket is available for 1989-2015** and is the bill's whole history.
+- **2017-2024 exists nowhere on this host.** Those four terms need the legacy
+  web pages, which is the slow path and the one that got this address blocked.
+- **Titles, sponsors and status do not go back at all.** `Legislation` holds
+  the current term and nothing else, so an archived bill's title has to come
+  from its docket, from the legacy pages, or from the LSR files if those can be
+  had for a past year.
+
+That last point is the one that changes the plan: the archive is not "one query
+per term". A term before 2025 can have its votes and its docket cheaply, and
+needs another source for what a bill is called and who filed it.
 
 ---
 
