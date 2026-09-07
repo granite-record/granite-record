@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.2
+# GRANITE_VERSION: 2026-09-07.3
 """
 A page's worth of data for every committee.
 
@@ -50,6 +50,7 @@ import re
 from pathlib import Path
 
 import proceedings as P
+import shell as S
 
 # The kinds proceedings.csv records, in the order a committee day runs, with
 # the plural the narrative needs.
@@ -170,6 +171,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
     ap.add_argument("--data", default="data")
+    ap.add_argument("--base", default="https://graniterecord.org")
     a = ap.parse_args()
     site, data = Path(a.site), Path(a.data)
 
@@ -265,7 +267,8 @@ def main():
 
     out = site / "committee"
     out.mkdir(parents=True, exist_ok=True)
-    index, written = [], 0
+    t = S.template(site)
+    index, written, urls = [], 0, []
     for code in sorted(set(list(seats) + list(referred) + list(days))):
         info = lead.get(code, {})
         name = (info.get("name") or (codes.get(code) or {}).get("name")
@@ -317,6 +320,39 @@ def main():
             "sessions": sessions,
         }
         (out / f"{code}.json").write_text(json.dumps(rec), encoding="utf-8")
+
+        # The page, which is bills.html with this committee open. Same shell
+        # as a bill's and a member's, from shell.py, so the three cannot drift.
+        chamber_word = "Senate" if chamber == "S" else "House"
+        towns = f"{len(rec['members'])} members"
+        desc = (f"The {chamber_word} Committee on {name}. "
+                f"{towns}, {sum(len(v) for v in rec['bills'].values()):,} bills "
+                f"referred and {len(sessions):,} sitting days, each with what "
+                "was taken up and when. From the New Hampshire General Court's "
+                "own records.")
+        nos = ('<noscript><div class="wrap" style="max-width:70ch;'
+               'padding:26px 20px">'
+               f"<h1>{S.E(name)}</h1><p>The {chamber_word} Committee on "
+               f"{S.E(name)}"
+               + (f", chaired by {S.E(rec['chair'])}" if rec["chair"] else "")
+               + ".</p><p>This page draws the committee's bills and sitting "
+                 "days in the browser, so it needs JavaScript. Everything it "
+                 "shows comes from the file linked below, which needs none.</p>"
+                 f'<ul><li><a href="/committee/{S.E(code)}.json">this page\'s '
+                 "data as JSON</a></li>"
+               + (f'<li><a href="{S.E(rec["url"])}" rel="noopener">this '
+                  "committee on gencourt</a></li>" if rec.get("url") else "")
+               + '</ul><p><a href="/bills.html">All bills</a></p></div></noscript>')
+        path = f"/committee/{code}.html"
+        (out / f"{code}.html").write_text(S.page(
+            t, path=path, base=a.base,
+            title=f"{name} — {chamber_word} committee | Granite Record",
+            og_title=f"{name} — New Hampshire {chamber_word}",
+            description=desc,
+            globals={"GR_COMMITTEE": code, "GR_STANDALONE": True},
+            noscript=nos, skip_label="Skip to this committee"),
+            encoding="utf-8")
+        urls.append(f"{a.base}{path}")
         written += 1
         index.append({
             "code": code, "name": name, "chamber": chamber,
@@ -331,6 +367,19 @@ def main():
     assert written, ("no committee page was written. That means no committee "
                      "name in proceedings.csv matched data/committees.json, "
                      "which is a parse problem rather than an empty session.")
+    # sitemap.xml is written by build_bill_pages.py, which runs first.
+    # Appended rather than replaced: rewriting it here would drop every other
+    # URL on the site.
+    sm = site / "sitemap.xml"
+    if sm.exists():
+        text = sm.read_text(encoding="utf-8")
+        add = "".join(f"<url><loc>{S.E(u)}</loc></url>\n" for u in urls
+                      if S.E(u) not in text)
+        if add:
+            sm.write_text(text.replace("</urlset>", add + "</urlset>"),
+                          encoding="utf-8")
+            print(f"{len(add.splitlines())} added to sitemap.xml")
+
     print(f"{written} committees -> {out}/")
     print(f"  {sum(i['n_members'] for i in index):,} seats, "
           f"{sum(i['n_bills'] for i in index):,} bill referrals, "

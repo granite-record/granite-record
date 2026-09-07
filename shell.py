@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+# GRANITE_VERSION: 2026-09-07.1
+"""
+The page every record's own address is: bills.html, with one record open.
+
+    import shell
+    t = shell.template(Path("site"))
+    html = shell.page(t, path="/bill/2026/hb1094.html", title="HB 1094 — ...",
+                      description="...", base="https://graniterecord.org",
+                      globals={"GR_BILL": "2026/HB1094"}, noscript="<p>...</p>")
+
+WHY ONE MODULE
+
+Three things now have a page of their own -- a bill, a legislator, a committee
+-- and all three are the same app with one record open. app.js binds to #q,
+#qgo, #year, #sort, #facets, #results and #count as it loads, and a page
+missing any of them is a blank screen that reports nothing. Three generators
+each with their own copy of that markup is three chances for one of them to
+drift, silently, across thousands of files.
+
+So the template IS bills.html, read at build time, and the substitutions assert
+that what they are replacing was actually there.
+"""
+
+import html
+import json
+from pathlib import Path
+
+E = html.escape
+
+# The pieces of bills.html that get substituted. If one stops being there,
+# every page is quietly wrong, so each is asserted rather than left to
+# str.replace's silent no-op.
+NEEDS = {
+    "title": "<title>Granite Record — New Hampshire legislative history</title>",
+    "skip": '<a class="skip" href="#results">Skip to the bills</a>',
+    "script": '<script src="app.js"></script>',
+    "viewport": '<meta name="viewport" content="width=device-width, initial-scale=1">',
+}
+
+# Every element app.js binds to on load.
+BINDS = ('id="q"', 'id="qgo"', 'id="year"', 'id="sort"',
+         'id="facets"', 'id="results"', 'id="count"')
+
+
+def template(site=Path("site")):
+    """bills.html, checked for everything the substitutions rely on."""
+    for p in (Path("bills.html"), Path(site) / "bills.html"):
+        if p.exists():
+            t = p.read_text(encoding="utf-8")
+            break
+    else:
+        raise SystemExit(
+            "bills.html is not in the project root or in the site folder, and "
+            "it is the template every record's page is made from.")
+    absent = [k for k, v in NEEDS.items() if v not in t]
+    assert not absent, (
+        f"bills.html no longer contains: {', '.join(absent)}. Every page is "
+        "built by substituting into those, so they cannot be edited there "
+        "without editing shell.py too.\nExpected literally:\n  "
+        + "\n  ".join(NEEDS[k] for k in absent))
+    missing = [b for b in BINDS if b not in t]
+    assert not missing, (
+        f"bills.html is missing {', '.join(missing)}, which app.js binds to "
+        "when it loads. Every page would draw a blank screen and say nothing "
+        "about why.")
+    return t
+
+
+def page(t, *, path, title, description, base, globals=None, noscript="",
+         alternate="", skip_label="Skip to the content", og_title=None):
+    """One record's page: the template, told which record it is."""
+    head = (
+        NEEDS["viewport"]
+        # Every relative address app.js writes -- bill/, legislator/,
+        # bills.html -- is written from the site root, because that is where
+        # the page it was written for sits. These pages are folders down.
+        + '\n<base href="/">'
+        + f"\n<title>{E(title)}</title>"
+        + f'\n<meta name="description" content="{E(description)}">'
+        + f'\n<link rel="canonical" href="{base}{path}">'
+        + (f"\n{alternate}" if alternate else "")
+        + '\n<meta property="og:type" content="article">'
+        # The card a link unfurls into wants the record's name, not
+        # the browser tab's "... | Granite Record".
+        + f'\n<meta property="og:title" content="{E(og_title or title)}">'
+        + f'\n<meta property="og:description" content="{E(description)}">')
+
+    out = t.replace(NEEDS["viewport"], head, 1)
+    # <base> would send the skip link to the site root instead of down the
+    # page, which is the one thing a skip link must not do.
+    out = out.replace(
+        NEEDS["skip"],
+        f'<a class="skip" href="{path}#results">{E(skip_label)}</a>', 1)
+    decl = "".join(f"window.{k}={json.dumps(v)};"
+                   for k, v in (globals or {}).items())
+    out = out.replace(
+        NEEDS["script"],
+        (noscript + "\n" if noscript else "")
+        + f"<script>{decl}</script>\n{NEEDS['script']}", 1)
+    return out

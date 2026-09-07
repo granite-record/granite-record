@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.38
+# GRANITE_VERSION: 2026-09-04.39
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -48,47 +48,9 @@ import re
 from datetime import date
 from pathlib import Path
 
+import shell as S
+
 E = html.escape
-
-# The pieces of bills.html this substitutes into. If any of them stops being
-# there, every page is quietly wrong, so each is asserted rather than left to
-# str.replace's silent no-op.
-NEEDS = {
-    "title": "<title>Granite Record — New Hampshire legislative history</title>",
-    "skip": '<a class="skip" href="#results">Skip to the bills</a>',
-    "script": '<script src="app.js"></script>',
-    "viewport": '<meta name="viewport" content="width=device-width, initial-scale=1">',
-}
-
-# Every element app.js binds to on load. A page without one of these draws
-# nothing and reports nothing.
-BINDS = ('id="q"', 'id="qgo"', 'id="year"', 'id="sort"',
-         'id="facets"', 'id="results"', 'id="count"')
-
-
-def template(site):
-    """bills.html, checked for everything the substitutions rely on."""
-    for p in (Path("bills.html"), site / "bills.html"):
-        if p.exists():
-            t = p.read_text(encoding="utf-8")
-            break
-    else:
-        raise SystemExit(
-            "bills.html is not in the project root or in the site folder, and "
-            "it is the template every bill page is made from.")
-    absent = [k for k, v in NEEDS.items() if v not in t]
-    assert not absent, (
-        f"bills.html no longer contains: {', '.join(absent)}. Every bill page "
-        "is built by substituting into those, so they cannot be edited there "
-        "without editing this file too.\nExpected literally:\n  "
-        + "\n  ".join(NEEDS[k] for k in absent))
-    missing_binds = [b for b in BINDS if b not in t]
-    assert not missing_binds, (
-        f"bills.html is missing {', '.join(missing_binds)}, which app.js binds "
-        "to when it loads. Every bill page would draw a blank screen and say "
-        "nothing about why.")
-    return t
-
 
 def describe(b):
     """The sentence a search engine shows under the link."""
@@ -139,41 +101,18 @@ def shell(t, b, d, base):
     yr = str(b.get("year") or "")
     n = b.get("n") or bid
     title = b.get("title") or ""
-    desc = describe(b)
     path = f"/bill/{yr}/{bid.lower()}.html"
     # A per-bill feed exists only where there is a docket to report.
     feed = (f'<link rel="alternate" type="application/rss+xml" '
             f'title="{E(n)} updates" href="/feed/bill/{yr}/{bid.lower()}.xml">'
             if d.get("events") else "")
-
-    head = (
-        NEEDS["viewport"]
-        # Every relative address app.js writes -- bill/, legislator/,
-        # bills.html -- is written from the site root, because that is where
-        # the page it was written for sits. This page is two folders down.
-        + '\n<base href="/">'
-        + f'\n<title>{E(n)} — {E(title[:90])} | Granite Record</title>'
-        + f'\n<meta name="description" content="{E(desc)}">'
-        + f'\n<link rel="canonical" href="{base}{path}">'
-        + (f"\n{feed}" if feed else "")
-        + '\n<meta property="og:type" content="article">'
-        + f'\n<meta property="og:title" content="{E(n)} — New Hampshire '
-          'General Court">'
-        + f'\n<meta property="og:description" content="{E(desc)}">')
-
-    out = t.replace(NEEDS["viewport"], head, 1)
-    # <base> would send the skip link to the site root instead of down the
-    # page, which is the one thing a skip link must not do.
-    out = out.replace(
-        NEEDS["skip"],
-        f'<a class="skip" href="{path}#results">Skip to this bill</a>', 1)
-    out = out.replace(
-        NEEDS["script"],
-        noscript(b, d)
-        + f'\n<script>window.GR_BILL={json.dumps(f"{yr}/{bid}")};'
-          "window.GR_STANDALONE=true;</script>"
-        + f"\n{NEEDS['script']}", 1)
-    return out
+    return S.page(
+        t, path=path, base=base,
+        title=f"{n} — {title[:90]} | Granite Record",
+        og_title=f"{n} — New Hampshire General Court",
+        description=describe(b), alternate=feed,
+        globals={"GR_BILL": f"{yr}/{bid}", "GR_STANDALONE": True},
+        noscript=noscript(b, d), skip_label="Skip to this bill")
 
 
 def main():
@@ -186,7 +125,7 @@ def main():
     out = site / "bill"
     out.mkdir(parents=True, exist_ok=True)
     generated = date.today().isoformat()
-    t = template(site)
+    t = S.template(site)
 
     # The year is part of the path because bill numbers are only unique within
     # a term. There really is an HB 84 in several of them, and /bill/hb84.html

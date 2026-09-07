@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.57
+# GRANITE_VERSION: 2026-09-04.58
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -647,7 +647,7 @@ def _bills_html():
     return "ok", f"7 markers present, tags balanced{extra}"
 
 
-@check("frontend", "a bill's own page is a working shell for app.js")
+@check("frontend", "every record's own page is a working shell for app.js")
 def _bill_shell():
     """What replaced "the bill page stylesheet still formats".
 
@@ -663,35 +663,52 @@ def _bill_shell():
     every check passing. build_bill_pages.py asserts them as it builds; this
     asserts them on what was actually written.
     """
-    pages = sorted(Path("site/bill").glob("*/*.html"))
-    if not pages:
-        return "skip", "no pages under site/bill/<year>/"
-    t = pages[len(pages) // 2].read_text(encoding="utf-8")
-    for need in ('id="q"', 'id="qgo"', 'id="year"', 'id="sort"', 'id="facets"',
-                 'id="results"', 'id="count"'):
-        assert need in t, (
-            f"{pages[len(pages)//2]} has no {need}, which app.js binds to on "
-            "load. The page draws nothing and says nothing about why.")
-    assert 'src="app.js"' in t, "the page does not load app.js"
-    assert "window.GR_BILL=" in t, (
-        "the page never says which bill it is, so app.js opens none of them")
-    assert '<base href="/">' in t, (
-        "no <base>, so every relative link app.js writes resolves under "
-        "/bill/<year>/ and 404s")
-    assert "<noscript>" in t, (
-        "no <noscript>: a reader without JavaScript gets a blank page and no "
-        "way to the General Court")
-    # The three things that make a bill findable, and the whole reason these
-    # pages exist rather than a fragment on the search page.
-    assert "<title>" in t and "| Granite Record</title>" in t, "no page title"
-    assert 'name="description"' in t, "no meta description"
-    assert 'rel="canonical"' in t, "no canonical link"
-    sm = Path("site/sitemap.xml")
-    assert sm.exists() and "/bill/" in sm.read_text(encoding="utf-8"), (
-        "sitemap.xml does not list the bill pages")
-    size = pages[len(pages) // 2].stat().st_size
-    return "ok", (f"{len(pages):,} pages, {size/1024:.1f} KB each; binds, "
-                  "GR_BILL, base, noscript, title, description, canonical")
+    # A bill's, a legislator's and a committee's page are the same shell with
+    # a different global set, all three from shell.py. Each is checked, because
+    # a generator that stops setting its global produces thousands of pages
+    # that load, draw nothing and report nothing.
+    kinds = [("site/bill", "*/*.html", "GR_BILL", "/bill/"),
+             ("site/legislator", "*.html", "GR_MEMBER", "/legislator/"),
+             ("site/committee", "*.html", "GR_COMMITTEE", "/committee/")]
+    found, sizes = [], []
+    for folder, pat, glob_name, urlbit in kinds:
+        pages = sorted(Path(folder).glob(pat))
+        if not pages:
+            continue
+        f = pages[len(pages) // 2]
+        t = f.read_text(encoding="utf-8")
+        for need in ('id="q"', 'id="qgo"', 'id="year"', 'id="sort"',
+                     'id="facets"', 'id="results"', 'id="count"'):
+            assert need in t, (
+                f"{f} has no {need}, which app.js binds to on load. The page "
+                "draws nothing and says nothing about why.")
+        assert 'src="app.js"' in t, f"{f} does not load app.js"
+        assert f"window.{glob_name}=" in t, (
+            f"{f} never says which record it is, so app.js opens none of them")
+        assert '<base href="/">' in t, (
+            f"{f} has no <base>, so every relative link app.js writes resolves "
+            f"under {folder}/ and 404s")
+        assert "<noscript>" in t, (
+            f"{f} has no <noscript>: a reader without JavaScript gets a blank "
+            "page and no way to the General Court")
+        # The three things that make a record findable, and the whole reason
+        # these pages exist rather than a fragment on the search page.
+        assert "<title>" in t and "| Granite Record</title>" in t, f"{f}: no title"
+        assert 'name="description"' in t, f"{f}: no meta description"
+        assert 'rel="canonical"' in t, f"{f}: no canonical link"
+        sm = Path("site/sitemap.xml")
+        assert sm.exists() and urlbit in sm.read_text(encoding="utf-8"), (
+            f"sitemap.xml does not list {urlbit} pages")
+        found.append(f"{len(pages):,} {urlbit.strip('/')}")
+        sizes.append(f.stat().st_size)
+    if not found:
+        return "skip", "no record pages built yet"
+    assert len(found) == 3, (
+        "only " + ", ".join(found) + " were built. All three page types come "
+        "from shell.py and build_all runs all three, so a missing one is a "
+        "step that did not run rather than a page type that does not exist.")
+    return "ok", (", ".join(found) + f"; {min(sizes)/1024:.1f}-"
+                  f"{max(sizes)/1024:.1f} KB each")
 
 
 @check("frontend", "both stylesheets carry the corrected palette")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.7
+# GRANITE_VERSION: 2026-09-05.8
 """
 Run the whole pipeline in the right order.
 
@@ -135,6 +135,13 @@ def plan(a):
              note="both chambers, two requests; the only source on this site "
                   "for who chairs what"),
 
+        Step("who sits on each committee",
+             ["fetch_committee_members_db.py"],
+             produces=["data/committee_members.json"], network=True,
+             optional=True,
+             note="the database has both chambers' rosters; the web pages "
+                  "have the Senate's only"),
+
         Step("committee majority and minority reports",
              ["fetch_committee_reports.py", "--year", a.session],
              network=True, optional=True,
@@ -246,6 +253,14 @@ def plan(a):
              needs=["site/legislators.json"],
              produces=["site/legislator"],
              note="what makes a member's voting record findable by name"),
+
+        Step("a page for every committee",
+             ["build_committees.py", "--site", "site", "--data", "data",
+              "--base", a.base],
+             needs=["site/index.json", "site/legislators.json"],
+             produces=["site/committees.json"],
+             note="what a committee did on a day, which bill-first search "
+                  "cannot answer"),
 
         Step("RSS feeds",
              ["build_feeds.py", "--site", "site", "--base", a.base],

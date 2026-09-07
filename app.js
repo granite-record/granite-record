@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.4
+// GRANITE_VERSION: 2026-09-07.6
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -220,6 +220,12 @@ Promise.all([need("index.json"),need("meta.json")])
    // open, rather than a second renderer drawing the same JSON in Python. It
    // says which bill in GR_BILL, because it cannot say it in the hash without
    // putting the bill number twice in an address that already names it.
+   // A legislator's or a committee's page is this same app with one record
+   // open, so it takes over here rather than drawing the bill list first and
+   // replacing it. The index is still loaded: a vote names a bill and not its
+   // year, and yearOf needs the index to turn one into a link.
+   if(window.GR_MEMBER){openPage("member",String(window.GR_MEMBER));return;}
+   if(window.GR_COMMITTEE){openPage("committee",String(window.GR_COMMITTEE));return;}
    const h=decodeURIComponent(location.hash.slice(1))||(window.GR_BILL||"");
    const hm=/^(?:(\d{4})\/)?([A-Z]{2,5}\d+)$/i.exec(h);
    if(hm){
@@ -1269,6 +1275,251 @@ function renderDetail(b,d){
       tabindex="0" data-t="5" hidden>${renderDocuments(b,d)}</div>${btsec}`;
 }
 
+// ===================================================== member and committee ==
+//
+// Two more things a page can be. A bill's page is this app with one bill open;
+// a legislator's and a committee's are the same idea, so the cards, the tabs
+// and the timestamps are the ones the bill view already draws rather than a
+// second set that drifts from them.
+//
+// Each is told which record it is by a global the shell page sets, for the
+// reason GR_BILL exists: the address already names it, and putting it in the
+// hash as well would show it twice.
+
+let PAGE = null;          // {kind:"member"|"committee", data:{...}}
+let PAGE_TAB = 0;
+
+// A bill, as a card small enough to list a hundred of. Clicking goes to the
+// bill's own page, which is this app again with that bill open.
+function billCard(b){
+  const y = b.year || (b.term ? String(b.term).slice(0,4) : "");
+  return `<a class="bcard ${KIND[b.kind]||""}" href="bill/${esc(String(y))}/${
+    esc(String(b.id||b.bill||"").toLowerCase())}.html">
+    <span class="bc-n">${esc(b.n||b.id||b.bill||"")}</span>
+    <span class="bc-t">${esc(b.title||"")}</span>
+    ${b.status?`<span class="bc-s">${esc(b.status)}</span>`:""}</a>`;
+}
+
+// The filter strip above a list of bills: which term, and which outcome.
+function billFilters(terms, term, statuses, status){
+  return `<div class="bfilt">
+    ${terms.length>1?`<label>Term
+      <select data-pf="term">${terms.map(t=>
+        `<option value="${esc(t)}"${t===term?" selected":""}>${esc(t)}</option>`
+      ).join("")}</select></label>`:""}
+    <label>Status
+      <select data-pf="status">
+        <option value="">Any</option>
+        ${statuses.map(x=>`<option value="${esc(x)}"${x===status?" selected":""}>${
+          esc(x)}</option>`).join("")}
+      </select></label>
+  </div>`;
+}
+
+// ---------------------------------------------------------------- member ---
+function renderMemberHead(m){
+  const towns = m.towns||[];
+  return `<div class="phead">
+    <h1>${esc(m.display_full||m.display||m.name||"")}</h1>
+    <p class="pmeta">${esc(m.chamber==="S"?"State Senate":"House of Representatives")}${
+      m.district?` &middot; District ${esc(m.district)}`:""}${
+      m.county?` &middot; ${esc(m.county)} County`:""}</p>
+    ${towns.length?`<p class="ptowns"><b>Represents</b> ${
+      towns.map(t=>esc(t)).join(" &middot; ")}</p>`:
+      `<p class="ptowns note">The towns in this district are not on file.</p>`}
+    ${(m.committees||[]).length?`<p class="pcmte"><b>Committees</b> ${
+      m.committees.map(c=>esc(c)).join(" &middot; ")}</p>`:""}
+    ${m.email?`<p class="pmeta"><a href="mailto:${esc(m.email)}">${esc(m.email)}</a></p>`:""}
+  </div>`;
+}
+
+function renderMemberBills(m, prime){
+  const all = (m.sponsored||[]).filter(b=>!!b.prime===prime);
+  if(!all.length)return `<p class="src">${prime
+    ?"No bills prime sponsored in the terms on this site."
+    :"No bills co-sponsored in the terms on this site."}</p>`;
+  const terms=[...new Set(all.map(b=>b.term).filter(Boolean))].sort().reverse();
+  const t=PAGE.term&&terms.includes(PAGE.term)?PAGE.term:terms[0];
+  const inTerm=all.filter(b=>!terms.length||b.term===t);
+  const statuses=[...new Set(inTerm.map(b=>b.status).filter(Boolean))].sort();
+  const shown=inTerm.filter(b=>!PAGE.status||b.status===PAGE.status);
+  return billFilters(terms,t,statuses,PAGE.status||"")
+    + `<p class="src">${shown.length.toLocaleString()} bill${shown.length===1?"":"s"}${
+        prime?" prime sponsored":" co-sponsored"}. Sponsoring a bill is putting a
+        name to it, which is not the same as voting for it and is not counted as
+        one here.</p>`
+    + `<div class="bcards">${shown.map(billCard).join("")}</div>`;
+}
+
+function renderMemberVotes(m){
+  const v=m.votes||[];
+  if(!v.length)return `<p class="src">No recorded roll call votes. Voice and
+    division votes leave no record of individual members, so a member can have
+    taken part in many votes and appear in none of them.</p>`;
+  const q=(PAGE.vfilter||"").toLowerCase();
+  const rows=v.filter(x=>!q||String(x.v||"").toLowerCase()===q);
+  const tally={};
+  v.forEach(x=>{tally[x.v]=(tally[x.v]||0)+1;});
+  return `<div class="bfilt"><label>Vote
+      <select data-pf="vfilter"><option value="">Any</option>
+      ${Object.keys(tally).sort().map(k=>`<option value="${esc(k.toLowerCase())}"${
+        q===k.toLowerCase()?" selected":""}>${esc(k)} (${tally[k]})</option>`).join("")}
+      </select></label></div>
+    <p class="src">${rows.length.toLocaleString()} of ${v.length.toLocaleString()}
+      recorded votes, newest first. Every roll call this member is recorded in,
+      as it was cast and on what. Nothing here is rated or scored.</p>
+    <table class="votes"><thead><tr><th>Date</th><th>Bill</th><th>Question</th>
+      <th>Vote</th></tr></thead><tbody>${rows.slice(0,600).map(x=>`<tr>
+      <td class="d">${esc(x.d||"")}</td>
+      <td class="b"><a href="bill/${esc(String(x.y||yearOf(x.b)||""))}/${
+        esc(String(x.b||"").toLowerCase())}.html">${esc(x.b||"")}</a></td>
+      <td>${esc(x.q||"")}</td><td class="v">${esc(x.v||"")}</td></tr>`).join("")}
+      </tbody></table>
+    ${rows.length>600?`<p class="src">Showing the most recent 600 of ${
+      rows.length.toLocaleString()}.</p>`:""}`;
+}
+
+function renderMember(m){
+  const nPrime=(m.sponsored||[]).filter(b=>b.prime).length;
+  const nCo=(m.sponsored||[]).length-nPrime;
+  const tabs=[["Prime sponsored",nPrime],["Co-sponsored",nCo],
+              ["Votes",(m.votes||[]).length]];
+  const body=[()=>renderMemberBills(m,true),()=>renderMemberBills(m,false),
+              ()=>renderMemberVotes(m)][PAGE_TAB]||(()=>"");
+  return renderMemberHead(m)
+    + `<div class="tabs" role="tablist">${tabs.map((t,i)=>
+        `<button class="tab" role="tab" data-pt="${i}" aria-selected="${
+          i===PAGE_TAB}">${esc(t[0])}${t[1]?` (${t[1].toLocaleString()})`:""}</button>`
+      ).join("")}</div>
+      <div class="pane" role="tabpanel" tabindex="0">${body()}</div>`;
+}
+
+// ------------------------------------------------------------- committee ---
+function renderCommitteeHead(c){
+  const lead=(c.members||[]).filter(m=>m.role&&m.role!=="Member");
+  const rest=(c.members||[]).filter(m=>!m.role||m.role==="Member");
+  const chip=m=>`<span class="mchip p-${esc((m.party_code||"X"))}">${
+    m.slug?`<a href="legislator/${esc(m.slug)}.html">${esc(m.label||m.name)}</a>`
+          :esc(m.label||m.name)}${m.role&&m.role!=="Member"
+      ?` <i>${esc(m.role)}</i>`:""}</span>`;
+  return `<div class="phead">
+    <h1>${esc(c.name||"")}</h1>
+    <p class="pmeta">${esc(c.chamber==="S"?"State Senate":"House of Representatives")}
+      ${c.room?` &middot; Room ${esc(c.room)}`:""}${c.phone?` &middot; ${esc(c.phone)}`:""}
+      ${c.aide?` &middot; Aide: ${esc(c.aide)}`:""}</p>
+    ${lead.length?`<p class="plead">${lead.map(chip).join(" ")}</p>`:""}
+    ${rest.length?`<details class="mroster"><summary><span class="caret"></span>
+      ${rest.length} more member${rest.length===1?"":"s"}</summary>
+      <p class="mlist">${rest.map(chip).join(" ")}</p></details>`:""}
+    ${c.url?`<p class="src"><a href="${esc(c.url)}" target="_blank"
+      rel="noopener">This committee on gencourt &#8599;</a></p>`:""}
+  </div>`;
+}
+
+function renderCommitteeBills(c){
+  const terms=Object.keys(c.bills||{}).sort().reverse();
+  if(!terms.length)return `<p class="src">No bills referred to this committee
+    in the terms on this site.</p>`;
+  const t=PAGE.term&&terms.includes(PAGE.term)?PAGE.term:terms[0];
+  const inTerm=(c.bills[t]||[]);
+  const statuses=[...new Set(inTerm.map(b=>b.status).filter(Boolean))].sort();
+  const shown=inTerm.filter(b=>!PAGE.status||b.status===PAGE.status);
+  return billFilters(terms,t,statuses,PAGE.status||"")
+    + `<p class="src">${shown.length.toLocaleString()} bill${
+        shown.length===1?"":"s"} referred to this committee in ${esc(t)}.</p>`
+    + `<div class="bcards">${shown.map(billCard).join("")}</div>`;
+}
+
+function renderCommitteeSessions(c){
+  const ss=c.sessions||[];
+  if(!ss.length)return `<p class="src">No sitting day of this committee is on
+    record. Committees that no longer meet keep their page so the bills they
+    handled still have somewhere to point.</p>`;
+  const terms=[...new Set(ss.map(s=>s.term).filter(Boolean))].sort().reverse();
+  const t=PAGE.term&&terms.includes(PAGE.term)?PAGE.term:terms[0];
+  const shown=ss.filter(s=>!terms.length||s.term===t);
+  return (terms.length>1?billFilters(terms,t,[],""):"")
+    + `<p class="src">${shown.length.toLocaleString()} sitting day${
+        shown.length===1?"":"s"}, newest first. What was taken up and when,
+        composed from the record rather than written.</p>`
+    + shown.map(s=>`<section class="cday">
+        <h3>${esc(fdate(s.date))}</h3>
+        <p class="cnarr">${esc(s.narrative||"")}</p>
+        <ul class="tl">${(s.items||[]).map(i=>`<li>
+          <span class="d">${i.start!=null?hms(i.start):"&mdash;"}</span>
+          <span class="w"><a href="bill/${esc(String(i.year||""))}/${
+            esc(String(i.bill||"").toLowerCase())}.html">${esc(i.n||i.bill||"")}</a>
+            &mdash; ${esc(i.kind||"")}${i.title?`<span class="ctitle">${
+              esc(i.title)}</span>`:""}
+            ${i.video_id&&i.start!=null?` <a class="cite" target="_blank"
+              rel="noopener" href="https://www.youtube.com/watch?v=${
+                esc(i.video_id)}&t=${Math.max(0,Math.floor(i.start)-2)}s">watch
+              from ${hms(i.start)} &#8599;</a>`:""}</span></li>`).join("")}</ul>
+        ${s.video_id?`<p class="src"><a href="https://www.youtube.com/watch?v=${
+          esc(s.video_id)}" target="_blank" rel="noopener">the whole day's
+          recording &#8599;</a></p>`:""}
+      </section>`).join("");
+}
+
+function renderCommittee(c){
+  const nBills=Object.values(c.bills||{}).reduce((a,v)=>a+v.length,0);
+  const tabs=[["Bills",nBills],["Sittings",(c.sessions||[]).length]];
+  const body=[()=>renderCommitteeBills(c),()=>renderCommitteeSessions(c)][PAGE_TAB]
+    ||(()=>"");
+  return renderCommitteeHead(c)
+    + `<div class="tabs" role="tablist">${tabs.map((t,i)=>
+        `<button class="tab" role="tab" data-pt="${i}" aria-selected="${
+          i===PAGE_TAB}">${esc(t[0])}${t[1]?` (${t[1].toLocaleString()})`:""}</button>`
+      ).join("")}</div>
+      <div class="pane" role="tabpanel" tabindex="0">${body()}</div>`;
+}
+
+// ------------------------------------------------------------------ boot ---
+function renderPage(){
+  if(!PAGE)return;
+  const el=$("#results");
+  if(!el)return;
+  el.innerHTML = PAGE.kind==="member" ? renderMember(PAGE.data)
+                                      : renderCommittee(PAGE.data);
+}
+
+// The tabs and the filter selects on these two pages. Kept apart from the bill
+// list's handlers, which key on .card and would not find one here.
+document.addEventListener("click",e=>{
+  if(!PAGE)return;
+  const t=e.target.closest("[data-pt]");
+  if(t){PAGE_TAB=+t.dataset.pt;renderPage();}
+});
+document.addEventListener("change",e=>{
+  if(!PAGE)return;
+  const f=e.target.dataset.pf;
+  if(!f)return;
+  PAGE[f]=e.target.value;
+  renderPage();
+});
+
+function openPage(kind,ref){
+  PAGE={kind,data:null,term:"",status:"",vfilter:""};
+  // The search chrome belongs to the search. Left up, the facet panel offered
+  // filters for a list that is not on screen and the counter read "2,234 of
+  // 2,234 bills" beside one member's name.
+  const fac=$("#facets"); if(fac){fac.innerHTML="";fac.hidden=true;}
+  const sh=document.querySelector(".shell"); if(sh)sh.classList.add("nofacets");
+  const c=$("#count"); if(c)c.textContent="";
+  const sy=$("#synhint"); if(sy)sy.textContent="";
+  const url=DATA(kind==="member"?`legislators/${ref}.json`
+                                :`committee/${ref}.json`);
+  const el=$("#results");
+  if(el)el.innerHTML=`<p class="src">Loading&hellip;</p>`;
+  fetch(url).then(r=>{
+    if(!r.ok)throw new Error(`the server answered HTTP ${r.status} for this file`);
+    return r.json();
+  }).then(d=>{PAGE.data=d;renderPage();})
+    .catch(e=>{if(el)el.innerHTML=`<div class="empty"><b>This page's record did
+      not load.</b><br><br><code>${esc(e.message||e)}</code><br><br>
+      The file it wanted is <code>${esc(url)}</code>.</div>`;});
+}
+
 function render(){
   // Page scroll only. The facet panel restores itself inside renderFacets,
   // synchronously, which is the only way it survives the repaint.
@@ -1493,6 +1744,10 @@ document.addEventListener("click",e=>{
     e.preventDefault();
     focusBill(dt.closest(".card").dataset.id,dt.getAttribute("href"));return;}
   if(e.target.closest("[data-back]")){history.back();return;}
+  // Everything below reads .card. A member's or a committee's page has none,
+  // so a tab click here threw on tab.closest(".card").dataset and the tab did
+  // nothing. Those pages have their own handler, registered above.
+  if(PAGE)return;
   const head=e.target.closest(".chead");
   if(head&&!e.target.closest("a")){const id=head.closest(".card").dataset.id;
     if(openCards.has(id)){openCards.delete(id);render();}else openBill(id);return;}
@@ -1502,7 +1757,9 @@ document.addEventListener("click",e=>{
   if(jt){term=jt.dataset.term;$("#year").value=term;render();return;}
   if(e.target.id==="clear"){Object.values(sel).forEach(s=>s.clear());render();return;}
 });
-document.addEventListener("change",e=>{const f=e.target.dataset.f;if(!f)return;
+document.addEventListener("change",e=>{
+  if(PAGE)return;                       // the facet checkboxes are not drawn there
+  const f=e.target.dataset.f;if(!f)return;
   e.target.checked?sel[f].add(e.target.value):sel[f].delete(e.target.value);render();});
 document.addEventListener("input",e=>{
   if(e.target.id==="sbox"){sponsorFilter=e.target.value;renderFacets();
