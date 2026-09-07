@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.8
+// GRANITE_VERSION: 2026-09-07.9
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -665,7 +665,7 @@ function factsTable(d){
     return `<tr><th scope="row">${esc(lab)}</th><td>${esc(v)}</td></tr>`;
   }).join("");
   if(!rows)return "";
-  return `<section class="facts"><h3>On the record</h3>
+  return `<section class="facts"><h3>Stated on the status page</h3>
     <p class="src">Quoted from the General Court bill status page, not worked
       out from the docket.</p>
     <table class="facttab"><tbody>${rows}</tbody></table></section>`;
@@ -703,7 +703,6 @@ function renderSummary(b,d){
       ${d.text_pdf?` \u00b7 <a href="${esc(d.text_pdf)}" target="_blank"
         rel="noopener">bill text (PDF)</a>`:""}</div>`:""}</div>
     ${(d.notes||[]).map(x=>`<p class="note">${esc(x)}</p>`).join("")}
-    ${factsTable(d)}
     ${(d.stages&&d.stages.length)
       ? `<div class="story">${d.stages.map(st=>
           `<div class="stg">${st.label?`<h3>${esc(st.label)}</h3>`:""}
@@ -1240,7 +1239,11 @@ function renderBillText(b,d,rsa){
 }
 
 function renderDocuments(b,d){
-  return (d.documents||[]).length
+  // The status fields the site quotes, with the documents it quotes them
+  // alongside. This is the provenance tab, and the table is provenance: nine
+  // values taken from the General Court's own status page rather than worked
+  // out from anything.
+  return factsTable(d) + ((d.documents||[]).length
       ? `<p class="note">Everything below is published by the General Court. This
          site quotes and summarises these; they are the record itself.</p>
          <ul class="docs">${d.documents.map(x=>`<li class="doc doc-${esc(x.kind)}">
@@ -1248,7 +1251,7 @@ function renderDocuments(b,d){
            <span>${DOCWHAT[x.kind]||""}</span></li>`).join("")}</ul>`
       : `<p class="note">No official documents on file for this bill yet. The
          bill text and docket links come from the General Court's status page,
-         which is fetched separately.</p>`;
+         which is fetched separately.</p>`);
 }
 
 // The tabs, and one call per pane. Everything this reads is either a
