@@ -1,0 +1,416 @@
+2024|H|1|1/3/2024 9:25:37 AM||361|2|21|12|||Call of the Roll|||
+2024|H|2|1/3/2024 9:51:08 AM|HB185|202|172|8|14|||OTPA|relative to the determination of parental rights and responsibilities based on shared parenting and shared access to the child's records.||
+2024|H|3|1/3/2024 10:04:53 AM|HB227|182|193|8|13|||Interim Study|relative to fair access to financial services.||
+2024|H|4|1/3/2024 10:57:33 AM|HB470|212|161|9|14|||OTPA|relative to fentanyl test strips and other drug checking equipment.||
+2024|H|5|1/3/2024 11:17:53 AM|HB354|190|177|15|14|||OTPA|relative to chartered public school eligibility for state school building aid.||
+2024|H|6|1/3/2024 11:42:50 AM|HB628|174|199|9|14|||OTP|requiring certain non-public schools or education service providers that accept public funds to perform background checks on all employees and volunteers.||
+2024|H|7|1/3/2024 11:45:09 AM|HB628|195|178|9|14|||ITL|requiring certain non-public schools or education service providers that accept public funds to perform background checks on all employees and volunteers.||
+2024|H|8|1/3/2024 11:59:22 AM|SB151|183|186|12|15|||OTP|relative to mental health education.||
+2024|H|9|1/3/2024 12:02:19 PM|SB151|183|187|11|15|||Reconsider|relative to mental health education.||
+2024|H|10|1/3/2024 1:52:21 PM|HB345|207|170|8|11|||ITL|enabling ranked-choice voting for state party primary elections and municipal elections.||
+2024|H|11|1/3/2024 2:01:11 PM|HB350|248|128|9|11|||ITL|relative to ranked-choice voting.||
+2024|H|12|1/3/2024 2:39:41 PM|HB369|186|187|14|9|||OTPA|establishing a task force to provide energy relief on farms.||
+2024|H|13|1/3/2024 3:19:18 PM|HB559|181|192|12|11|||Adopt Amendment|establishing a state retirement plan group for new state employee members of the retirement system.||
+2024|H|14|1/3/2024 3:23:59 PM|HB559|201|174|10|11|||Indefinitely Postpone|establishing a state retirement plan group for new state employee members of the retirement system.||
+2024|H|15|1/3/2024 3:55:46 PM|HB546|186|189|10|11|||ITL|relative to the school building aid program.||
+2024|H|16|1/3/2024 3:58:08 PM|HB546|190|187|8|11|||Table|relative to the school building aid program.||
+2024|H|17|1/3/2024 4:22:14 PM|HB601|189|188|8|11|||ITL|relative to state participation in the Medicaid direct certification program for free and reduced price school meals.||
+2024|H|18|1/3/2024 4:32:12 PM|HB620|188|185|10|13|||ITL|(New Title) establishing a division of early learning in the department of education and relative to a pre-kindergarten pilot program.||
+2024|H|19|1/4/2024 9:39:42 AM|SB263|191|183|8|14|||ITL|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||
+2024|H|20|1/4/2024 10:23:50 AM|HB368|186|188|9|13|||OTP|relative to protections related to receiving gender-affirming health care or gender-affirming mental health care.||
+2024|H|21|1/4/2024 10:44:09 AM|HB619|209|167|7|13|||Adopt Amendment|prohibiting gender transition procedures for minors, relative to sex and gender in public schools, and relative to the definition of conversion therapy.||
+2024|H|22|1/4/2024 10:52:05 AM|HB619|199|175|9|13|||OTPA|prohibiting gender transition procedures for minors, relative to sex and gender in public schools, and relative to the definition of conversion therapy.||
+2024|H|23|1/4/2024 11:13:47 AM|HB396|194|182|7|13|||Adopt Amendment|relative to state recognition of biological sex.||
+2024|H|24|1/4/2024 11:26:18 AM|HB396|192|184|7|13|||OTPA|relative to state recognition of biological sex.||
+2024|H|25|1/4/2024 11:57:59 AM|HB232|190|182|11|13|||Table|adopting section 1910 OSHA standards for public sector employees in New Hampshire.||
+2024|H|26|1/4/2024 1:45:06 PM|HB194|194|179|8|15|||OTPA|requiring the director of the division of archives and records management to compile and maintain a list of public monuments.||
+2024|H|27|1/4/2024 2:13:10 PM|HB631|192|180|7|17|||ITL|relative to electric utility smart meter gateway devices.||
+2024|H|28|1/4/2024 2:38:44 PM|HB229|187|182|9|18|||OTPA|relative to requiring an official declaration of war for the activation of the New Hampshire national guard.||
+2024|H|29|1/4/2024 3:22:05 PM|HB121|192|176|9|19|||ITL|relative to worldwide combined reporting for unitary businesses under the business profits tax.||
+2024|H|30|1/4/2024 3:59:03 PM|HB144|297|63|17|19|||ITL|restoring firearm ownership rights to ex-felons.||
+2024|H|31|1/4/2024 4:12:24 PM|HB512|286|69|21|20|||ITL|exempting firearms manufactured in New Hampshire from federal laws and regulations.||
+2024|H|32|2/1/2024 10:53:30 AM|HB1372|319|58|2|19|||ITL|relative to prohibiting torture.||
+2024|H|33|2/1/2024 11:01:30 AM|HB1068|189|190|1|18|||OTP|relative to establishing a blood lead level testing requirement for children entering day care and public schools.||
+2024|H|34|2/1/2024 11:36:43 AM|CACR23|193|184|3|18|||OTP|relating to the right to abortion. Providing that all persons shall have the right to abortion prior to 24 weeks.||
+2024|H|35|2/1/2024 12:14:38 PM|HB1002|193|179|8|18|||OTPA|relative to fees for records under the right-to-know law.||
+2024|H|36|2/1/2024 1:50:06 PM|HB1248|363|11|6|18|||Indefinitely Postpone|relative to restrictions on access to abortion.||
+2024|H|37|2/1/2024 2:19:02 PM|CACR13|168|201|9|20|||Adopt Floor Amendment|relating to slavery and involuntary servitude. Providing that slavery and involuntary servitude shall be prohibited in the state of New Hampshire.||
+2024|H|38|2/1/2024 2:21:10 PM|CACR13|366|5|7|20|||OTP|relating to slavery and involuntary servitude. Providing that slavery and involuntary servitude shall be prohibited in the state of New Hampshire.||
+2024|H|39|2/1/2024 2:33:08 PM|HB1338|266|101|11|20|||ITL|relative to New Hampshire's enforcement of the Military Selective Service Act.||
+2024|H|40|2/1/2024 3:02:20 PM|HB1391|241|123|13|21|||OTP|allowing new vehicles purchased in the model year or before to be inspected in the second year after purchase.||
+2024|H|41|2/1/2024 3:15:13 PM|HR20|354|6|17|21|||OTP|reaffirming friendship between New Hampshire and Taiwan, encouraging the enhancement of bilateral trade relations, and supporting Taiwan's international participation.||
+2024|H|42|2/8/2024 11:30:06 AM|HB1561|185|197|3|13|||OTP|relative to qualifications for student eligibility in the education freedom accounts program.||
+2024|H|43|2/8/2024 11:33:22 AM|HB1561|189|192|4|13|||Reconsider|relative to qualifications for student eligibility in the education freedom accounts program.||
+2024|H|44|2/8/2024 11:48:55 AM|HB1634|186|194|5|13|||OTP|relative to universal eligibility for the education freedom account program.||
+2024|H|45|2/8/2024 11:52:08 AM|HB1634|188|193|4|13|||Reconsider|relative to universal eligibility for the education freedom account program.||
+2024|H|46|2/8/2024 1:22:19 PM|HB1665|190|189|6|13|||OTP|relative to student eligibility for the education freedom accounts program.||
+2024|H|47|2/8/2024 1:43:19 PM|HB1116|221|157|6|14|||OTPA|relative to certain firearms to be used for taking of game.||
+2024|H|48|2/8/2024 1:47:49 PM|HB1665|186|192|6|14|||Reconsider|relative to student eligibility for the education freedom accounts program.||
+2024|H|49|2/8/2024 2:04:30 PM|HB1662|190|187|7|14|||ITL|relative to restricting simultaneous employment of certain department of health and human services staff with adoption or child placement agencies.||
+2024|H|50|2/8/2024 2:12:18 PM|HB1396|195|182|7|14|||ITL|relative to prohibiting municipal inspections of owner-occupied units of multi-unit housing.||
+2024|H|51|2/8/2024 2:23:15 PM|HB1049|324|53|7|14|||Indefinitely Postpone|relative to the prohibition on overnight mooring of houseboats.||
+2024|H|52|2/15/2024 2:08:26 PM|HB1212|187|188|6|15|||OTP|relative to eligibility for free school meals.||
+2024|H|53|2/15/2024 2:11:06 PM|HB1212|188|187|6|15|||ITL|relative to eligibility for free school meals.||
+2024|H|54|2/15/2024 2:20:38 PM|HB1419|17|358|6|15|||Adopt Floor Amendment|relative to prohibiting obscene or harmful sexual materials in schools.||
+2024|H|55|2/15/2024 2:32:16 PM|HB1419|201|173|7|15|||Shall Member Continue|relative to prohibiting obscene or harmful sexual materials in schools.||
+2024|H|56|2/15/2024 2:45:59 PM|HB1419|192|181|8|15|||Table|relative to prohibiting obscene or harmful sexual materials in schools.||
+2024|H|57|2/15/2024 2:48:32 PM|HB1419|291|84|6|15|||Print Remarks|relative to prohibiting obscene or harmful sexual materials in schools.||
+2024|H|58|2/15/2024 3:19:44 PM|HB1652|194|179|7|16|||ITL|relative to establishing a local education freedom account program.||
+2024|H|59|2/15/2024 3:40:43 PM|HB1677|174|192|13|17|||OTP|relative to participation in education freedom accounts based on school or school district proficiency scores.||
+2024|H|60|2/15/2024 3:51:55 PM|HB1212|187|181|10|18|||Reconsider|relative to eligibility for free school meals.||
+2024|H|61|2/15/2024 4:04:17 PM|HB1212|193|175|10|18|||OTP|relative to eligibility for free school meals.||
+2024|H|62|2/15/2024 4:43:32 PM|HB1000|184|174|15|23|||ITL|relative to classifying New Hampshire legislators' service as public service for certain federal purposes.||
+2024|H|63|2/15/2024 4:58:53 PM|HB1363|184|168|17|27|||OTP|relative to allowing members of the general court to participate in the department of health and human services employee assistance program.||
+2024|H|64|2/15/2024 5:21:24 PM|HCR11|196|151|21|28|||OTP|condemning medically unnecessary restrictions on medication abortion.||
+2024|H|65|2/15/2024 5:45:12 PM|HB1419|162|187|19|28|||OTP|relative to prohibiting obscene or harmful sexual materials in schools.||
+2024|H|66|2/15/2024 5:47:32 PM|HB1419|187|162|19|28|||Indefinitely Postpone|relative to prohibiting obscene or harmful sexual materials in schools.||
+2024|H|67|2/15/2024 6:02:54 PM|HR19|165|180|23|28|||OTP|calling for the repeal of the Jones Act.||
+2024|H|68|2/22/2024 9:25:27 AM|HB154|162|201|23|10|||Reconsider|||
+2024|H|69|2/22/2024 9:43:47 AM|HB1111|199|179|9|9|||OTPA|relative to the penalty for false reports of suspected abuse and neglect made to the division for children, youth, and families.||
+2024|H|70|2/22/2024 10:53:24 AM|HB1050|179|200|7|10|||OTP|relative to establishing a voluntary waiver of the right to purchase a firearm.||
+2024|H|71|2/22/2024 10:55:31 AM|HB1050|205|175|6|10|||ITL|relative to establishing a voluntary waiver of the right to purchase a firearm.||
+2024|H|72|2/22/2024 11:05:30 AM|HB1186|203|174|9|10|||OTPA|relative to firearm purchaser's privacy.||
+2024|H|73|2/22/2024 11:25:06 AM|HB1128|185|188|13|10|||OTP|relative to the definition of a scholarship organization for purposes of the education tax credit.||
+2024|H|74|2/22/2024 11:30:22 AM|HB1128|191|187|8|10|||Indefinitely Postpone|relative to the definition of a scholarship organization for purposes of the education tax credit.||
+2024|H|75|2/22/2024 11:50:43 AM|HB1288|192|185|8|11|||OTPA|relative to establishing certain due process rights for students, student organizations, and faculty members facing disciplinary actions by state institutions of higher learning.||
+2024|H|76|2/22/2024 11:59:22 AM|HB1517|196|184|5|11|||OTP|relative to the statewide education property tax and excess revenue from games of chance.||
+2024|H|77|2/22/2024 1:47:56 PM|HB1472|188|189|9|10|||Indefinitely Postpone|relative to rebates of energy efficiency funds for electric vehicles.||
+2024|H|78|2/22/2024 2:00:22 PM|HB1472|187|192|7|10|||OTP|relative to rebates of energy efficiency funds for electric vehicles.||
+2024|H|79|2/22/2024 2:02:45 PM|HB1472|189|191|6|10|||Table|relative to rebates of energy efficiency funds for electric vehicles.||
+2024|H|80|2/22/2024 2:05:42 PM|HB1472|187|192|7|10|||Reconsider|relative to rebates of energy efficiency funds for electric vehicles.||
+2024|H|81|2/22/2024 2:42:06 PM|HB1426|192|186|8|10|||Indefinitely Postpone|relative to establishing an advisory redistricting commission.||
+2024|H|82|2/22/2024 2:53:18 PM|HB1577|193|182|11|10|||OTPA|relative to digital images of ballots.||
+2024|H|83|2/22/2024 3:31:43 PM|HB1680|260|117|9|10|||ITL|relative to prohibiting the sale of dogs and cats by retail pet shops.||
+2024|H|84|2/22/2024 3:40:33 PM|HB1394|194|186|7|9|||OTPA|relative to licensure and regulation of music therapists and making an appropriation therefor.||
+2024|H|85|2/22/2024 4:01:11 PM|HB1178|199|179|9|9|||Adopt Floor Amendment|relative to an employee's unused earned time.||
+2024|H|86|2/22/2024 4:13:39 PM|HB1322|187|192|8|9|||OTP|relative to the state minimum hourly rate.||
+2024|H|87|2/22/2024 4:39:09 PM|HB1377|212|168|7|9|||Indefinitely Postpone|relative to granting workers free choice to join or refrain from joining labor unions.||
+2024|H|88|2/22/2024 5:01:03 PM|HB1423|228|141|15|12|||Indefinitely Postpone|requiring the commissioner of the department of natural and cultural resources to identify all old growth and mature forests on public land in the state of New Hampshire.||
+2024|H|89|3/7/2024 9:38:46 AM|CACR17|174|186|10|26|||ITL|relating to the rights of parents. Providing that parents shall have a fundamental right to direct the upbringing, education, and care of their minor children.||
+2024|H|90|3/7/2024 10:11:02 AM|HB1266|191|173|7|25|||OTP|relative to permitting recordings of open family court proceedings by parties.||
+2024|H|91|3/7/2024 10:23:47 AM|HB1308|194|170|7|25|||ITL|relative to parent access to children's library records.||
+2024|H|92|3/7/2024 11:04:48 AM|HB1437|176|190|6|24|||OTPA|relative to the membership of the state board of education.||
+2024|H|93|3/7/2024 11:19:17 AM|HB1695|192|173|7|24|||OTPA|relative to the release of student personally identifiable information.||
+2024|H|94|3/7/2024 11:31:23 AM|CACR14|197|168|7|24|||ITL|relating to the environment and natural resources. Providing that the state shall maintain and improve a clean and healthful environment for present and future generations.||
+2024|H|95|3/7/2024 11:44:14 AM|HB1029|186|179|7|24|||ITL|relative to exempting certain persons from requiring a New Hampshire landing license if such persons are not landing for the purpose of the sale of the lobster or crab they have caught.||
+2024|H|96|3/7/2024 1:33:14 PM|HB1213|189|173|11|23|||OTPA|relative to immunization requirements for private schools and child care agencies.||
+2024|H|97|3/7/2024 1:46:27 PM|HB1250|182|182|9|23|||OTP|enabling the creation of certain village districts.||
+2024|H|98|3/7/2024 1:48:48 PM|HB1250|182|183|8|23|||Table|enabling the creation of certain village districts.||
+2024|H|99|3/7/2024 1:51:16 PM|HB1250|184|180|9|23|||ITL|enabling the creation of certain village districts.||
+2024|H|100|3/7/2024 1:53:43 PM|HB1250|179|187|7|23|||Reconsider|enabling the creation of certain village districts.||
+2024|H|101|3/7/2024 2:27:57 PM|HB1660|174|188|10|24|||Table|relative to coverage of certain procedures for minor children under the state’s Medicaid program.||
+2024|H|102|3/7/2024 2:31:23 PM|HB1660|193|169|10|24|||OTP|relative to coverage of certain procedures for minor children under the state’s Medicaid program.||
+2024|H|103|3/7/2024 2:55:48 PM|CACR12|188|171|11|26|||ITL|relating to the definition of the word "cherish." Providing that the 1784 word "cherish" shall be replaced by the 2024 word "cherish."||
+2024|H|104|3/7/2024 3:01:01 PM|HB1037|196|163|10|27|||Indefinitely Postpone|relative to repealing limited liability for manufacturers, distributors, dealers, or importers of firearms or ammunition.||
+2024|H|105|3/7/2024 3:40:57 PM|HB1412|188|166|13|29|||OTPA|relative to court reporters.||
+2024|H|106|3/7/2024 3:59:16 PM|HB1120|264|95|9|28|||ITL|repealing the provision that requires the reflection of municipal body votes on warrant articles.||
+2024|H|107|3/7/2024 4:42:23 PM|HB1359|265|88|12|31|||OTP|relative to appeals of certain zoning decisions by abutters.||
+2024|H|108|3/7/2024 5:13:01 PM|HB1036|184|169|12|31|||OTPA|relative to assessment of cost effectiveness of the systems benefit charge.||
+2024|H|109|3/7/2024 5:32:50 PM|HB1623|184|168|12|32|||OTPA|relative to the state energy policy.||
+2024|H|110|3/7/2024 5:48:51 PM|HB1118|180|167|16|33|||Adopt Amendment|relative to the issuance of drivers' licenses for aliens temporarily residing in New Hampshire.||
+2024|H|111|3/7/2024 5:58:22 PM|HB1118|179|166|18|33|||OTPA|relative to the issuance of drivers' licenses for aliens temporarily residing in New Hampshire.||
+2024|H|112|3/14/2024 10:34:48 AM|HB1204|228|139|12|17|||OTPA|relative to government agent entries into secured premises.||
+2024|H|113|3/14/2024 10:45:29 AM|HB1276|198|175|7|16|||OTP|relative to repealing the prohibition on the possession or sale of blackjacks, slung shots, and metallic knuckles except by or to minors.||
+2024|H|114|3/14/2024 11:10:04 AM|HB1162|192|183|6|15|||Indefinitely Postpone|relative to teaching discrimination in public schools and discrimination in public workplaces.||
+2024|H|115|3/14/2024 11:16:37 AM|HB1305|189|183|9|15|||Reconsider|relative to freedom of speech and association at public institutions of higher education.||
+2024|H|116|3/14/2024 11:24:48 AM|HB1305|197|175|9|15|||Adopt Floor Amendment|relative to freedom of speech and association at public institutions of higher education.||
+2024|H|117|3/14/2024 11:46:38 AM|HB1305|206|169|6|15|||OTPA|relative to freedom of speech and association at public institutions of higher education.||
+2024|H|118|3/14/2024 11:50:44 AM|HB1311|185|190|6|15|||Indefinitely Postpone|relative to school district collection development and reconsideration policies.||
+2024|H|119|3/14/2024 12:08:26 PM|HB1311|194|180|7|15|||OTP|relative to school district collection development and reconsideration policies.||
+2024|H|120|3/14/2024 1:40:36 PM|HB1312|186|185|10|15|||OTPA|requiring parental notification of student health or well-being and certain curricula by school districts.||
+2024|H|121|3/14/2024 1:50:23 PM|HB1512|186|187|7|16|||OTP|limiting education freedom account funding to budgeted amounts.||
+2024|H|122|3/14/2024 1:52:36 PM|HB1512|187|185|8|16|||Indefinitely Postpone|limiting education freedom account funding to budgeted amounts.||
+2024|H|123|3/14/2024 1:57:04 PM|HB1594|189|184|8|15|||Indefinitely Postpone|establishing an annual review and qualification to determine eligibility to participate in the education freedom accounts program.||
+2024|H|124|3/14/2024 2:09:23 PM|CACR19|186|189|6|15|||OTPA|relating to redistricting. Providing that an independent redistricting commission shall be established to draw boundaries for state and federal offices.||
+2024|H|125|3/14/2024 2:12:12 PM|HB1311|183|192|6|15|||Reconsider|relative to school district collection development and reconsideration policies.||
+2024|H|126|3/14/2024 2:25:59 PM|HB1348|184|190|6|16|||Table|relative to polling places at which total ballot counts exceed the total number of registered voters.||
+2024|H|127|3/14/2024 2:28:17 PM|HB1348|191|183|6|16|||Adopt Amendment|relative to polling places at which total ballot counts exceed the total number of registered voters.||
+2024|H|128|3/14/2024 2:36:20 PM|HB1364|189|184|7|16|||Indefinitely Postpone|relative to intimidation of election officers, improper influence over the electoral process, and tampering with electronic ballot counting devices.||
+2024|H|129|3/14/2024 2:40:44 PM|HB1369|191|181|8|16|||OTP|relative to the verification of voter rolls every 4 years.||
+2024|H|130|3/14/2024 2:50:05 PM|HB1557|189|185|6|16|||Indefinitely Postpone|requiring the secretary of state to enter into a membership agreement with the Electronic Registration Information Center.||
+2024|H|131|3/14/2024 3:26:03 PM|HB1231|294|66|19|17|||OTPA|permitting qualifying patients and designated caregivers to cultivate cannabis for therapeutic use.||
+2024|H|132|3/14/2024 3:52:39 PM|HB1156|181|190|8|17|||OTP|relative to public health, safety, and state sovereignty.||
+2024|H|133|3/14/2024 4:11:57 PM|HR23|192|179|8|17|||Indefinitely Postpone|calling upon the New Hampshire congressional delegation to support a national, universal health insurance program.||
+2024|H|134|3/14/2024 4:15:00 PM|HR26|194|179|6|17|||Indefinitely Postpone|urging Congress to adopt a constitutional amendment to distinguish between corporate and individual rights.||
+2024|H|135|3/14/2024 4:39:38 PM|HCR9|128|238|13|17|||ITL|rescinding the application to the Congress of the United States of America to call a convention pursuant to the terms of Article V of the United States Constitution.||
+2024|H|136|3/14/2024 4:53:45 PM|HB1244|188|171|19|18|||ITL|prohibiting smoking and e-cigarettes in motor vehicles when a passenger is under 16 years of age.||
+2024|H|137|3/14/2024 5:06:21 PM|HB1332|145|221|11|19|||OTP|relative to prohibiting electric vehicles from parking in parking garages.||
+2024|H|138|3/14/2024 5:24:29 PM|CACR15|183|185|6|22|||OTP|relating to taxation. Providing that a 2/3 vote is required to pass legislation imposing new or increased taxes or license fees, or to authorize the issuance of state bonds and providing that the general court shall appropriate funds for payment of intere||
+2024|H|139|3/14/2024 5:34:55 PM|HB1254|195|171|7|23|||Indefinitely Postpone|relative to an optional local public safety assessment on certain room occupancies.||
+2024|H|140|3/21/2024 10:43:11 AM|HB1659|198|174|9|15|||OTPA|relative to interference with child custody and shared parenting.||
+2024|H|141|3/21/2024 10:58:09 AM|HB1336|201|172|8|15|||Adopt Floor Amendment|||
+2024|H|142|3/21/2024 11:23:20 AM|HB1205|189|182|10|15|||OTPA|relative to women's school sports.||
+2024|H|143|3/21/2024 11:32:45 AM|HB1650|192|182|7|15|||Indefinitely Postpone|relative to the approval of alternative programs for granting credit leading to graduation.||
+2024|H|144|3/21/2024 11:38:00 AM|HB1654|191|183|7|15|||Indefinitely Postpone|relative to review of education freedom account service providers.||
+2024|H|145|3/21/2024 11:45:09 AM|HR30|191|183|7|15|||Indefinitely Postpone|urging a robust climate education in schools including current environmental and economic information.||3/22/2024 10:03:40 AM
+2024|H|146|3/21/2024 11:50:48 AM|HB147|190|185|7|14|||Remove from Table|||3/22/2024 10:10:24 AM
+2024|H|147|3/21/2024 12:02:09 PM|HB147|192|183|7|14|||OTPA|||3/22/2024 10:10:40 AM
+2024|H|148|3/21/2024 12:06:00 PM|HB1074|191|185|6|14|||Indefinitely Postpone|relative to campaign contributions by limited liability companies.||3/22/2024 10:10:56 AM
+2024|H|149|3/21/2024 1:58:39 PM|HB1414|230|143|9|14|||Indefinitely Postpone|relative to the Gunstock Area Commission and ski resort.||3/22/2024 10:11:27 AM
+2024|H|150|3/21/2024 2:16:24 PM|HB1119|282|92|6|16|||OTPA|relative to absentee ballots.||3/22/2024 10:11:47 AM
+2024|H|151|3/21/2024 2:26:40 PM|HB1149|190|184|6|16|||Indefinitely Postpone|relative to domicile residency, voter registration, investigation of voter verification letters, and relative to the terms "resident," "inhabitant," "residence," and "residency."||3/22/2024 10:12:01 AM
+2024|H|152|3/21/2024 2:55:04 PM|HB1335|331|42|7|16|||ITL|removing Columbus Day as a holiday.||3/22/2024 10:12:14 AM
+2024|H|153|3/21/2024 3:35:37 PM|HB1683|188|187|6|15|||Table|relative to coverage of circumcision under the state Medicaid plan.||3/22/2024 10:12:25 AM
+2024|H|154|3/21/2024 3:47:14 PM|HB1002|345|24|13|14|||Adopt Floor Amendment|relative to fees for records under the right-to-know law.||3/22/2024 10:12:39 AM
+2024|H|155|3/21/2024 3:49:26 PM|HB1002|268|106|7|15|||OTPA|relative to fees for records under the right-to-know law.||3/22/2024 10:13:02 AM
+2024|H|156|3/21/2024 4:14:37 PM|HB1283|155|217|9|15|||Table|relative to end of life options.||3/22/2024 10:13:14 AM
+2024|H|157|3/21/2024 4:33:44 PM|HB1283|150|212|17|17|||Indefinitely Postpone|relative to end of life options.||3/22/2024 10:13:28 AM
+2024|H|158|3/21/2024 5:40:52 PM|HB1283|179|176|15|26|||OTPA|relative to end of life options.||3/22/2024 10:13:49 AM
+2024|H|159|3/21/2024 5:53:05 PM|HB1664|181|164|21|30|||Indefinitely Postpone|relative to legal remedies for individuals who receive medical detransitioning.||3/22/2024 10:14:20 AM
+2024|H|160|3/21/2024 6:02:21 PM|HB1246|182|155|27|32|||ITL|relative to allowing for payment of wages in gold or silver.||3/22/2024 10:14:34 AM
+2024|H|161|3/21/2024 6:17:29 PM|HB1479|135|205|24|32|||Table|relative to prohibiting the use of federal, state, or local funds for lobbying activities.||3/22/2024 10:14:50 AM
+2024|H|162|3/21/2024 6:19:53 PM|HB1479|211|129|23|33|||Indefinitely Postpone|relative to prohibiting the use of federal, state, or local funds for lobbying activities.||3/22/2024 10:15:04 AM
+2024|H|163|3/21/2024 6:45:06 PM|HB1210|167|170|26|33|||Table|relative to the election of Strafford county commissioners.||3/22/2024 10:15:18 AM
+2024|H|164|3/21/2024 6:49:01 PM|HB1210|168|169|26|33|||Indefinitely Postpone|relative to the election of Strafford county commissioners.||3/22/2024 10:15:43 AM
+2024|H|165|3/21/2024 7:01:23 PM|HB1210|168|168|27|33|||OTP|relative to the election of Strafford county commissioners.||3/22/2024 10:15:56 AM
+2024|H|166|3/21/2024 7:41:02 PM|HB1470|164|162|31|39|||Indefinitely Postpone|establishing a study committee on the feasibility and impact of a low-income housing tax credit.||3/22/2024 10:16:19 AM
+2024|H|167|3/21/2024 7:54:12 PM|HB1611|163|162|32|39|||ITL|relative to establishing a child care workforce fund.||3/22/2024 10:16:38 AM
+2024|H|168|3/28/2024 9:30:13 AM|HB1539|283|80|16|18|||OTP|relative to annulling, resentencing, or discontinuing prosecution of certain cannabis offenses.||
+2024|H|169|3/28/2024 10:16:24 AM|HB1084|196|179|7|15|||Table|relative to qualifications for the commissioner of education.||
+2024|H|170|3/28/2024 10:23:33 AM|HB1683|189|188|5|15|||Remove from Table|||
+2024|H|171|3/28/2024 10:27:49 AM|HB1683|185|188|9|15|||ITL|||
+2024|H|172|3/28/2024 10:32:18 AM|HB1683|188|186|8|15|||Reconsider|||
+2024|H|173|3/28/2024 10:35:00 AM|HB1683|184|191|7|15|||OTPA|||
+2024|H|174|3/28/2024 10:53:41 AM|HB1093|187|184|11|15|||OTPA|prohibiting mandatory mask policies in schools.||
+2024|H|175|3/28/2024 11:01:23 AM|HB1287|179|193|10|15|||OTP|relative to the definition of the term "evidence-based" within public education.||
+2024|H|176|3/28/2024 11:36:29 AM|HB1592|191|186|5|15|||Table|relative to the use of education freedom account funds in religious schools.||
+2024|H|177|3/28/2024 12:05:06 PM|HB1102|232|140|10|15|||Table|relative to the definition of animal cruelty.||
+2024|H|178|3/28/2024 12:09:45 PM|HB1145|180|193|9|15|||Table|prohibiting the private ownership of landfills.||
+2024|H|179|3/28/2024 12:30:32 PM|HB1145|208|162|12|15|||OTPA|prohibiting the private ownership of landfills.||
+2024|H|180|3/28/2024 2:04:09 PM|HB1059|179|192|10|16|||Adopt Floor Amendment|relative to the state building code.||
+2024|H|181|3/28/2024 2:20:38 PM|HB1190|175|200|6|16|||ITL|relative to adopting the interstate social work licensure compact.||
+2024|H|182|3/28/2024 2:38:55 PM|HB1271|195|181|5|16|||Interim Study|relative to the conversion, combination, and reorganization of boards and advisory boards.||
+2024|H|183|3/28/2024 2:43:25 PM|HB1545|190|185|6|16|||Table|relative to the disposal of state surplus property for affordable housing.||
+2024|H|184|3/28/2024 2:48:11 PM|HB1279|182|192|7|16|||Table|relative to payment by the state of a portion of retirement system contributions of political subdivision employers.||
+2024|H|185|3/28/2024 3:00:43 PM|HB1279|178|194|8|17|||ITL|relative to payment by the state of a portion of retirement system contributions of political subdivision employers.||
+2024|H|186|3/28/2024 3:14:12 PM|HB1280|189|181|8|19|||OTP|relative to informed consent and patient rights.||
+2024|H|187|3/28/2024 3:26:05 PM|HB1607|183|187|8|19|||Table|relative to expanded safe haven protections.||
+2024|H|188|3/28/2024 3:41:00 PM|HB1607|182|189|7|19|||Interim Study|relative to expanded safe haven protections.||
+2024|H|189|3/28/2024 3:55:28 PM|HB1607|372|1|6|18|||Section 1-4 and 6 OTPA|relative to expanded safe haven protections.||
+2024|H|190|3/28/2024 3:58:14 PM|HB1607|185|188|6|18|||Section 5 OTPA|relative to expanded safe haven protections.||
+2024|H|191|3/28/2024 5:23:13 PM|HB1291|87|277|10|23|||Table|relative to accessory dwelling unit uses allowed by right.||
+2024|H|192|3/28/2024 5:49:09 PM|HB1291|220|143|9|25|||OTPA|relative to accessory dwelling unit uses allowed by right.||
+2024|H|193|3/28/2024 6:02:25 PM|HB1399|220|140|10|27|||OTPA|allowing municipalities to permit 2 residential units in certain single-family residential zones. ||
+2024|H|195|3/28/2024 6:11:11 PM|HB546|182|178|9|28|||OTP|||3/28/2024 7:41:57 PM
+2024|H|196|3/28/2024 6:30:26 PM|HB1711|101|252|14|30|||Adopt Floor Amendment|authorizing the state to report mental health data for firearms background check purposes and providing for processes for confiscation of firearms following certain mental health-related court proceedings and for relief from mental health-related firearms||3/28/2024 7:42:05 PM
+2024|H|197|3/28/2024 6:42:10 PM|HB1711|204|149|14|30|||OTPA|authorizing the state to report mental health data for firearms background check purposes and providing for processes for confiscation of firearms following certain mental health-related court proceedings and for relief from mental health-related firearms||3/28/2024 7:42:13 PM
+2024|H|198|4/11/2024 11:24:30 AM|HB1178|188|193|6|10|||Interim Study|relative to an employee's unused earned time.||
+2024|H|199|4/11/2024 11:28:48 AM|HB1178|198|183|6|10|||OTPA|relative to an employee's unused earned time.||
+2024|H|200|4/11/2024 11:40:44 AM|HB1199|190|191|6|10|||ITL|relative to services of the office of the child advocate for youth experiencing homelessness and making an appropriation therefor.||
+2024|H|201|4/11/2024 11:43:35 AM|HB1199|191|192|4|10|||OTP|relative to services of the office of the child advocate for youth experiencing homelessness and making an appropriation therefor.||
+2024|H|202|4/11/2024 11:48:14 AM|HB1199|192|190|5|10|||Indefinitely Postpone|relative to services of the office of the child advocate for youth experiencing homelessness and making an appropriation therefor.||
+2024|H|203|4/11/2024 11:54:48 AM|HB1212|192|191|4|10|||Table|relative to eligibility for free school meals.||
+2024|H|204|4/11/2024 1:41:06 PM|HB1288|180|186|21|10|||Table|relative to establishing certain due process rights for students, student organizations, and faculty members facing disciplinary actions by state institutions of higher learning.||
+2024|H|205|4/11/2024 1:53:45 PM|HB1288|196|184|7|10|||OTP|relative to establishing certain due process rights for students, student organizations, and faculty members facing disciplinary actions by state institutions of higher learning.||
+2024|H|206|4/11/2024 2:06:10 PM|HB1394|195|187|5|10|||OTPA|relative to licensure and regulation of music therapists and making an appropriation therefor.||
+2024|H|207|4/11/2024 2:15:57 PM|HB1577|193|188|6|10|||Table|relative to digital images of ballots.||
+2024|H|208|4/11/2024 2:20:06 PM|HB1583|180|201|6|10|||Table|relative to the per pupil cost of an opportunity for an adequate education.||
+2024|H|209|4/11/2024 2:39:32 PM|HB1595|208|176|4|9|||Interim Study|relative to adjustment of the child support guidelines based on parenting time, medical support, and child care expenses.||
+2024|H|210|4/11/2024 2:54:02 PM|HB1633|239|136|12|10|||OTPA|relative to the legalization and regulation of cannabis and making appropriations therefor.||
+2024|H|211|4/11/2024 3:12:34 PM|HB1649|165|216|5|11|||Adopt Floor Amendment|relative to prohibiting certain products with intentionally added PFAS.||
+2024|H|212|4/11/2024 3:35:15 PM|HB1649|156|223|6|12|||Adopt Floor Amendment|relative to prohibiting certain products with intentionally added PFAS.||
+2024|H|213|4/11/2024 3:40:45 PM|HB1649|165|215|5|12|||Table|relative to prohibiting certain products with intentionally added PFAS.||
+2024|H|214|4/11/2024 4:07:22 PM|HB1649|233|140|11|13|||OTPA|relative to prohibiting certain products with intentionally added PFAS.||
+2024|H|215|4/11/2024 4:24:26 PM|HB1656|187|187|10|13|||Adopt Amendment|(New Title) relative to adequate education grant amounts for pupils receiving special education services.||
+2024|H|216|4/11/2024 4:26:21 PM|HB1656|349|26|9|13|||OTPA|(New Title) relative to adequate education grant amounts for pupils receiving special education services.||
+2024|H|217|4/11/2024 4:40:04 PM|HB1678|179|193|12|13|||ITL|establishing a New Hampshire farm to school local food incentive pilot program.||
+2024|H|218|5/2/2024 11:16:09 AM|SB417|180|184|10|22|||Table|relative to out-of-home placements for children.||
+2024|H|219|5/2/2024 11:18:13 AM|SB417|191|174|9|22|||OTP|relative to out-of-home placements for children.||
+2024|H|220|5/2/2024 11:58:42 AM|SB563|188|177|9|22|||Table|relative to federal immigration enforcement.||
+2024|H|221|5/2/2024 12:12:20 PM|SB219|180|179|15|22|||OTP|(New Title) requiring mandatory reporting by school districts of school expenses.||
+2024|H|222|5/2/2024 12:19:07 PM|SB341|185|176|13|22|||Indefinitely Postpone|relative to mandatory disclosure by school district employees to parents.||
+2024|H|223|5/2/2024 2:03:15 PM|SB380|190|176|9|21|||ITL|relative to moving the state primary date.||
+2024|H|224|5/2/2024 2:16:04 PM|SB380|189|178|8|21|||Indefinitely Postpone|relative to moving the state primary date.||
+2024|H|225|5/2/2024 2:34:44 PM|SB403|188|178|9|21|||OTPA|(New Title) relative to the health care workforce.||
+2024|H|226|5/2/2024 2:58:38 PM|SB496|186|182|7|21|||ITL|directing the department of health and human services to establish a climate and health protection program.||
+2024|H|227|5/2/2024 3:11:43 PM|SB567|184|182|9|21|||OTP|(New Title) directing the commissioner of the department of health and human services to compile a report on the availability of mifepristone and misoprostol.||
+2024|H|228|5/2/2024 3:24:45 PM|SB63|181|182|12|21|||OTP|(New Title) relative to the adoption of public health ordinances by municipalities.||
+2024|H|229|5/2/2024 3:42:39 PM|SB538|188|173|13|22|||ITL|relative to zoning procedures concerning residential housing.||
+2024|H|230|5/2/2024 3:53:15 PM|SB476|217|144|13|22|||OTP|making a capital appropriation to the department of corrections toward the replacement of the New Hampshire state prison for men.||
+2024|H|231|5/2/2024 3:57:15 PM|SB219|185|181|8|22|||Reconsider|(New Title) requiring mandatory reporting by school districts of school expenses.||
+2024|H|232|5/2/2024 4:00:52 PM|SB219|182|184|8|22|||OTP|(New Title) requiring mandatory reporting by school districts of school expenses.||
+2024|H|233|5/2/2024 4:58:52 PM|SB375|200|154|15|27|||Interim Study|relative to biological sex in student athletics.||
+2024|H|234|5/2/2024 5:09:40 PM|SB219|178|172|18|28|||ITL|(New Title) requiring mandatory reporting by school districts of school expenses.||
+2024|H|235|5/9/2024 10:52:16 AM|SB459|270|94|13|19|||OTPA|(New Title) establishing a committee to study the child protection act.||
+2024|H|236|5/9/2024 11:03:08 AM|SB537|180|186|12|18|||Table|allowing the processing of absentee ballots.||
+2024|H|237|5/9/2024 11:08:59 AM|SB63|185|180|13|18|||Remove from Table|||
+2024|H|238|5/9/2024 11:14:27 AM|SB63|186|180|12|18|||OTP|||
+2024|H|239|5/9/2024 1:23:59 PM|SB413|184|183|12|17|||Adopt Amendment|relative to civil actions for PFAS contamination.||
+2024|H|240|5/9/2024 2:41:45 PM|SB576|179|179|17|21|||ITL|relative to reporting the death of voters.||
+2024|H|241|5/9/2024 2:45:55 PM|SB576|180|181|14|21|||Table|relative to reporting the death of voters.||
+2024|H|242|5/9/2024 2:50:35 PM|SB576|182|180|13|21|||OTP|relative to reporting the death of voters.||
+2024|H|243|5/9/2024 3:11:38 PM|SB383|184|177|15|20|||OTPA|relative to local tax caps.||
+2024|H|244|5/9/2024 3:24:11 PM|SB383|176|185|14|21|||Reconsider|relative to local tax caps.||
+2024|H|245|5/9/2024 3:46:20 PM|SB574|352|7|14|23|||OTPA|relative to the appointment of a temporary agent for a minor child or incapacitated person.||
+2024|H|246|5/9/2024 3:53:11 PM|SB426|126|231|16|23|||Adopt Floor Amendment|(New Title) relative to the transportation of marijuana in a motor vehicle or OHRV.||
+2024|H|247|5/9/2024 4:16:03 PM|SB508|189|160|23|24|||Adopt Amendment|relative to the duties of the superintendent of the county department of corrections concerning mental health and substance use disorder screening of inmates and coordination for services upon reentry into the community.||
+2024|H|248|5/23/2024 9:31:40 AM|SB418|101|253|22|19|||OTP|(New Title) relative to refusal of consent to testing to determine alcohol concentration and penalties for aggravated driving while intoxicated.||
+2024|H|249|5/23/2024 9:53:03 AM|CACR22|175|187|15|18|||Table|relating to the New Hampshire presidential primary.  Providing that the New Hampshire presidential primary shall be the first presidential primary of a presidential election cycle.||
+2024|H|250|5/23/2024 10:02:18 AM|CACR22|195|165|18|17|||OTP|relating to the New Hampshire presidential primary.  Providing that the New Hampshire presidential primary shall be the first presidential primary of a presidential election cycle.||
+2024|H|251|5/23/2024 10:42:30 AM|SB217|184|174|21|16|||ITL|establishing a rural and underserved area educator incentive program for higher education and making an appropriation therefor.||
+2024|H|252|5/23/2024 10:50:07 AM|SB311|177|183|19|16|||Adopt Floor Amendment|relative to property tax offset for the town of Hampstead and making an appropriation therefor.||
+2024|H|253|5/23/2024 11:16:33 AM|SB396|177|185|17|16|||Adopt Floor Amendment|relative to making an appropriation to the culinary arts program at the Wilbur H. Palmer Regional Career and Technical Education Center.||
+2024|H|254|5/23/2024 11:19:57 AM|SB403|241|122|16|16|||OTP|(New Title) relative to the health care workforce.||
+2024|H|255|5/23/2024 11:39:51 AM|SB417|186|178|15|16|||Adopt Amendment|relative to out-of-home placements for children.||
+2024|H|256|5/23/2024 11:42:15 AM|SB417|360|3|16|16|||OTPA|relative to out-of-home placements for children.||
+2024|H|257|5/23/2024 1:39:22 PM||148|216|15|16|||Rules Suspension|||
+2024|H|258|5/23/2024 1:50:28 PM|SB476|202|165|13|15|||Adopt Floor Amendment|making a capital appropriation to the department of corrections toward the replacement of the New Hampshire state prison for men.||
+2024|H|259|5/23/2024 1:52:42 PM|SB476|212|155|13|15|||OTPA|making a capital appropriation to the department of corrections toward the replacement of the New Hampshire state prison for men.||
+2024|H|260|5/23/2024 2:40:11 PM|SB499|192|178|10|15|||Adopt Amendment|relative to reduction of hunger for children, older adults, and people with disabilities.||
+2024|H|261|5/23/2024 4:01:43 PM|SB503|183|181|16|15|||Adopt Floor Amendment|relative to requiring a criminal background check when applying for a fish and game guide license.||
+2024|H|262|5/23/2024 5:03:54 PM|SB505|242|124|14|15|||OTP|relative to the prohibition on the sale of hemp products containing certain levels of THC.||
+2024|H|263|5/23/2024 5:13:32 PM|SB559|176|185|19|15|||Adopt Floor Amendment|(New Title) relative to the New Hampshire vaccine association.||
+2024|H|264|5/23/2024 5:50:14 PM|SB431|214|148|16|17|||OTPA|relative to wake surfing.||
+2024|H|265|5/23/2024 6:30:24 PM|SB358|176|174|24|21|||ITL|relative to invalidating out-of-state driver's licenses issued to undocumented immigrants.||
+2024|H|266|5/23/2024 6:32:47 PM|SB358|176|175|23|21|||Reconsider|relative to invalidating out-of-state driver's licenses issued to undocumented immigrants.||
+2024|H|267|5/23/2024 6:34:52 PM|SB358|176|174|24|21|||ITL|relative to invalidating out-of-state driver's licenses issued to undocumented immigrants.||
+2024|H|268|5/23/2024 6:45:05 PM|SB501|181|169|23|22|||OTP|relative to driver licenses for noncitizens residing in New Hampshire.||
+2024|H|269|5/23/2024 6:51:58 PM|SB485|173|169|29|24|||Adopt Floor Amendment|(New Title) enumerating the office of professional licensure and certification's processes and procedures for temporary occupational licensure for military service members and their spouses.||
+2024|H|270|5/23/2024 6:53:57 PM|SB485|175|169|27|24|||OTPA|(New Title) enumerating the office of professional licensure and certification's processes and procedures for temporary occupational licensure for military service members and their spouses.||
+2024|H|271|5/30/2024 10:47:18 AM|HB1018|180|190|11|14|||Non Concur|||
+2024|H|272|5/30/2024 11:03:14 AM|HB185|178|191|12|14|||Reconsider|||
+2024|H|273|5/30/2024 11:58:45 AM|HB1186|190|179|10|16|||Concur|||
+2024|H|274|5/30/2024 1:24:37 PM|HB1305|201|160|17|17|||Concur|||
+2024|H|275|5/30/2024 2:57:26 PM|HB1607|185|174|17|19|||Concur|||
+2024|H|276|5/30/2024 4:20:15 PM|HB1215|172|180|19|24|||Concur|||
+2024|H|277|5/30/2024 4:48:41 PM|HB1596|182|168|19|26|||Req CofC|||
+2024|H|278|6/13/2024 10:42:15 AM||120|247|15|13|||Rules Suspension|||
+2024|H|279|6/13/2024 10:46:07 AM||248|120|13|14|||Print Remarks|||
+2024|H|280|6/13/2024 12:11:54 PM|HB1215|102|261|20|12|||Adopt CofC Report|||
+2024|H|281|6/13/2024 2:11:15 PM|HB1265|183|172|24|16|||Adopt CofC Report|||
+2024|H|282|6/13/2024 3:21:13 PM|HB1400|205|149|22|19|||Adopt CofC Report|||
+2024|H|283|6/13/2024 3:33:10 PM|HB1616|173|179|24|19|||Adopt CofC Report|||
+2024|H|284|6/13/2024 4:02:00 PM|HB1665|168|185|22|20|||Adopt CofC Report|||
+2024|H|285|6/13/2024 4:05:51 PM|HB1633|162|189|24|20|||Remove from Table|||
+2024|H|286|10/10/2024 10:24:18 AM|HB194|132|195|41|21|||Veto Override|||
+2024|H|287|10/10/2024 10:28:59 AM|HB274|324|5|39|21|||Veto Override|||
+2024|H|288|10/10/2024 10:46:05 AM|HB396|164|168|34|23|||Veto Override|||
+2024|H|289|10/10/2024 11:00:26 AM|HB1093|160|172|34|23|||Veto Override|||
+2024|H|290|10/10/2024 11:10:09 AM|HB1187|161|170|35|23|||Veto Override|||
+2024|H|291|10/10/2024 11:15:00 AM|HB1233|179|152|35|23|||Veto Override|||
+2024|H|292|10/10/2024 11:32:00 AM|HB1293|232|99|34|24|||Veto Override|||
+2024|H|293|10/10/2024 11:40:11 AM|HB1415|289|38|37|25|||Veto Override|||
+2024|H|294|10/10/2024 11:45:48 AM|HB1581|270|55|39|25|||Veto Override|||
+2024|H|295|10/10/2024 11:48:31 AM|HB1622|318|11|35|25|||Veto Override|||
+2024|S|1|1/3/2024 12:00:00 AM|SB219|10|14|24|0|||Inexpedient to Legislate|(New Title) requiring mandatory reporting by school districts of school expenses.||1/3/2024 2:58:45 PM
+2024|S|2|1/3/2024 12:00:00 AM|SB219|14|10|24|0|||Floor Amendment|(New Title) requiring mandatory reporting by school districts of school expenses.||1/3/2024 3:09:41 PM
+2024|S|3|1/3/2024 12:00:00 AM|HB572|13|11|24|0|||Laid on Table|relative to eligibility for free school meals. ||1/3/2024 3:18:58 PM
+2024|S|4|1/18/2024 12:00:00 AM|SB194|15|9|24|0|||Inexpedient to Legislate|allowing students under age 21 to taste wine in educational settings.||1/18/2024 3:41:06 PM
+2024|S|5|1/18/2024 12:00:00 AM|SB194|13|11|24|0|||Inexpedient to Legislate|allowing students under age 21 to taste wine in educational settings.||1/18/2024 3:46:49 PM
+2024|S|6|1/18/2024 12:00:00 AM|SB374|14|10|24|0|||Ought to Pass|relative to the licensing of part-time teachers.||1/18/2024 3:51:37 PM
+2024|S|7|1/18/2024 12:00:00 AM|SB442|13|11|24|0|||Ought to Pass w/Amendment|relative to student eligibility for education freedom accounts.||1/18/2024 3:56:20 PM
+2024|S|8|1/18/2024 12:00:00 AM|CACR22|24|0|24|0|||Ought to Pass|relating to the New Hampshire presidential primary.  Providing that the New Hampshire presidential primary shall be the first presidential primary of a presidential election cycle.||1/18/2024 4:00:15 PM
+2024|S|9|2/15/2024 12:00:00 AM|CACR24|14|9|23|1|||Inexpedient to Legislate|relating to reproductive freedom.  Providing that all persons have the right to make their own reproductive decisions.||2/16/2024 10:31:47 AM
+2024|S|10|2/15/2024 12:00:00 AM|SB322|23|0|23|1|||Committee Amendment|(New Title) relative to licenses to carry and immunity for law enforcement officers issuing certain firearms licenses.||2/16/2024 12:14:26 PM
+2024|S|11|2/15/2024 12:00:00 AM|SB322|14|9|23|1|||Ought to Pass w/Amendment|(New Title) relative to licenses to carry and immunity for law enforcement officers issuing certain firearms licenses.||2/16/2024 10:13:34 AM
+2024|S|12|2/15/2024 12:00:00 AM|SB360|14|9|23|1|||Inexpedient to Legislate|relative to extreme risk protection orders.||2/16/2024 10:15:44 AM
+2024|S|13|2/15/2024 12:00:00 AM|SB571|14|9|23|1|||Inexpedient to Legislate|relative to requiring a background check prior to any commercial firearm sale.||2/16/2024 10:17:33 AM
+2024|S|14|2/15/2024 12:00:00 AM|SB575|14|9|23|1|||Inexpedient to Legislate|relative to legal protection for legal New Hampshire abortion and contraception care.||2/16/2024 10:19:14 AM
+2024|S|15|2/15/2024 12:00:00 AM|SB577|14|9|23|1|||Inexpedient to Legislate|relative to imposing a waiting period between the purchase and delivery of a firearm.||2/16/2024 10:22:35 AM
+2024|S|16|2/15/2024 12:00:00 AM|SB476|23|0|23|1|||Ought to Pass|making a capital appropriation to the department of corrections toward the replacement of the New Hampshire state prison for men.||2/16/2024 10:24:27 AM
+2024|S|17|2/21/2024 12:00:00 AM|SB342|14|10|24|0|||Committee Amendment|relative to school building aid funding.||2/22/2024 9:09:41 AM
+2024|S|18|2/21/2024 12:00:00 AM|SB553|24|0|24|0|||Ought to Pass w/Amendment|requiring that funds held by the public deposit investment pool be invested in New Hampshire.||2/22/2024 9:09:49 AM
+2024|S|19|2/21/2024 12:00:00 AM|SB552|14|10|24|0|||Refer to Interim Study|relative to lapse of funds from the education trust fund.||2/22/2024 9:10:03 AM
+2024|S|20|2/21/2024 12:00:00 AM|SB352|24|0|24|0|||Ought to Pass|establishing an early detection cancer screening pilot program for active and retired firefighters.||2/22/2024 9:10:16 AM
+2024|S|21|2/21/2024 12:00:00 AM|SB484|20|4|24|0|||Laid on Table|relative to completion of the birth worksheet for hospital or institutional birth.||2/22/2024 9:10:09 AM
+2024|S|22|2/21/2024 12:00:00 AM|SB372|14|10|24|0|||Ought to Pass w/Amendment|relative to plumbing apprenticeships.||2/22/2024 9:10:23 AM
+2024|S|23|3/7/2024 12:00:00 AM|SB592|24|0|24|0|||Ought to Pass|renaming Route 127 from Central Street in Franklin to the town line of Sanbornton as Officer Bradley Haas Memorial Highway.||3/8/2024 9:14:30 AM
+2024|S|24|3/7/2024 12:00:00 AM|SB316|14|10|24|0|||Ought to Pass|establishing a penalty for a person who transports fentanyl class drugs into New Hampshire with the intent to distribute.||3/8/2024 9:18:31 AM
+2024|S|25|3/7/2024 12:00:00 AM|SB321|14|10|24|0|||Ought to Pass w/Amendment|relative to the release of a defendant pending trial.||3/8/2024 9:45:21 AM
+2024|S|26|3/7/2024 12:00:00 AM|SB414|16|8|24|0|||Ought to Pass|relative to establishing a mandatory minimum sentence for the crime of distribution of a controlled drug with death resulting.||3/8/2024 9:23:52 AM
+2024|S|27|3/7/2024 12:00:00 AM|SB414|18|6|24|0|||Ought to Pass|relative to establishing a mandatory minimum sentence for the crime of distribution of a controlled drug with death resulting.||3/8/2024 9:50:04 AM
+2024|S|28|3/7/2024 12:00:00 AM|SB415|18|6|24|0|||Ought to Pass|relative to the penalty for certain fentanyl-related offenses.||3/8/2024 9:33:04 AM
+2024|S|29|3/7/2024 12:00:00 AM|SB504|14|10|24|0|||Ought to Pass w/Amendment|relative to land in current use.||3/8/2024 9:35:30 AM
+2024|S|30|3/7/2024 12:00:00 AM|SB563|14|10|24|0|||Ought to Pass|relative to federal immigration enforcement.||3/8/2024 9:54:49 AM
+2024|S|31|3/7/2024 12:00:00 AM|SB570|16|8|24|0|||Inexpedient to Legislate|establishing a misdemeanor for first-offense controlled drug possession.||3/8/2024 9:41:04 AM
+2024|S|32|3/21/2024 12:00:00 AM|SB308|14|10|24|0|||Inexpedient to Legislate|relative to the state minimum hourly rate.||3/21/2024 3:14:43 PM
+2024|S|33|3/21/2024 12:00:00 AM|SB335|12|12|24|0|||Refer to Interim Study|relative to alcohol packaging.||3/21/2024 6:34:26 PM
+2024|S|34|3/21/2024 12:00:00 AM|SB335|12|12|24|0|||Floor Amendment|relative to alcohol packaging.||3/21/2024 6:43:02 PM
+2024|S|35|3/21/2024 12:00:00 AM|SB366|24|0|24|0|||Ought to Pass|relative to restricting the purchase of real property on or around military installations.||3/21/2024 6:55:15 PM
+2024|S|36|3/21/2024 12:00:00 AM|SB517|14|10|24|0|||Committee Amendment|relative to the employment status of university students working in educational programs.||3/21/2024 6:57:59 PM
+2024|S|37|3/21/2024 12:00:00 AM|SB522|14|10|24|0|||Ought to Pass w/Amendment|relative to establishing an early childhood education scholarship account and making an appropriation therefor.||3/21/2024 7:01:35 PM
+2024|S|38|3/21/2024 12:00:00 AM|SB536|14|10|24|0|||Inexpedient to Legislate|enabling no-excuse absentee registration and voting.||3/21/2024 7:03:57 PM
+2024|S|39|3/21/2024 12:00:00 AM|SB321|14|10|24|0|||Ought to Pass|relative to the release of a defendant pending trial.||3/21/2024 7:06:01 PM
+2024|S|40|3/21/2024 12:00:00 AM|SB476|19|4|23|1|||Ought to Pass|making a capital appropriation to the department of corrections toward the replacement of the New Hampshire state prison for men.||3/21/2024 7:09:36 PM
+2024|S|41|3/21/2024 12:00:00 AM|SB555|19|4|23|1|||Ought to Pass|relative to receipt of pharmaceutical rebates by insurers and pharmacy benefits managers.||3/21/2024 7:11:49 PM
+2024|S|42|3/21/2024 12:00:00 AM|SB563|14|9|23|1|||Ought to Pass|relative to federal immigration enforcement.||3/22/2024 11:59:47 AM
+2024|S|43|3/21/2024 12:00:00 AM|SB604|23|0|23|1|||Ought to Pass|providing a death benefit for a New Hampshire hospital security officer killed in the line of duty.||3/22/2024 12:07:40 PM
+2024|S|44|3/21/2024 12:00:00 AM|SB358|14|8|22|2|||Ought to Pass|relative to invalidating out-of-state driver's licenses issued to undocumented immigrants.||3/22/2024 12:15:54 PM
+2024|S|45|3/21/2024 12:00:00 AM|SB576|14|8|22|2|||Ought to Pass w/Amendment|relative to reporting the death of voters.||3/22/2024 1:39:54 PM
+2024|S|46|4/5/2024 12:00:00 AM|SB436|13|10|23|1|||Inexpedient to Legislate|relative to maximum benefits payable in unemployment compensation.||4/5/2024 6:45:59 PM
+2024|S|47|4/5/2024 12:00:00 AM|SB341|13|10|23|1|||Ought to Pass w/Amendment|relative to mandatory disclosure by school district employees to parents.||4/5/2024 6:51:43 PM
+2024|S|48|4/5/2024 12:00:00 AM|SB375|14|10|24|0|||Committee Amendment|relative to biological sex in student athletics.||4/5/2024 6:54:27 PM
+2024|S|49|4/5/2024 12:00:00 AM|SB375|10|14|24|0|||Floor Amendment|relative to biological sex in student athletics.||4/5/2024 6:56:58 PM
+2024|S|50|4/5/2024 12:00:00 AM|SB375|14|10|24|0|||Ought to Pass w/Amendment|relative to biological sex in student athletics.||4/8/2024 9:39:56 AM
+2024|S|51|4/5/2024 12:00:00 AM|SB523|14|10|24|0|||Ought to Pass w/Amendment|(New Title) relative to the regulation of public school materials.||4/5/2024 7:05:56 PM
+2024|S|52|4/5/2024 12:00:00 AM|SB525|14|10|24|0|||Inexpedient to Legislate|relative to administration of the education freedom accounts program.||4/8/2024 9:43:27 AM
+2024|S|53|4/5/2024 12:00:00 AM|SB358|14|10|24|0|||Ought to Pass|relative to invalidating out-of-state driver's licenses issued to undocumented immigrants.||4/5/2024 7:13:32 PM
+2024|S|54|4/5/2024 12:00:00 AM|SB366|24|0|24|0|||Ought to Pass|relative to restricting the purchase of real property on or around military installations.||4/5/2024 7:16:36 PM
+2024|S|55|4/5/2024 12:00:00 AM|SB404|13|11|24|0|||Committee Amendment|(New Title) directing the department of health and human services to submit a report regarding the establishment of a child care workforce child care assistance pilot program.||4/5/2024 7:22:37 PM
+2024|S|56|4/5/2024 12:00:00 AM|SB442|14|10|24|0|||Ought to Pass w/Amendment|(New Title) relative to student eligibility for education freedom accounts and the scholarship organization's costs of administering the program, extending phase-out grants for education freedom accounts, and revising the definitions of average daily memb||4/5/2024 7:25:28 PM
+2024|S|57|4/5/2024 12:00:00 AM|SB462|17|7|24|0|||Ought to Pass w/Amendment|(New Title) relative to raising the cap on damages for wrongful death loss of consortium claims.||4/5/2024 7:30:55 PM
+2024|S|58|4/11/2024 12:00:00 AM|SB417|9|14|23|1|||Floor Amendment|relative to out-of-home placements for children.||4/11/2024 3:08:17 PM
+2024|S|59|4/11/2024 12:00:00 AM|SB461|14|9|23|1|||Committee Amendment|(New Title) requiring health care providers to report certain information about abortions performed to their medical facility, and requiring those medical facilities to report the information to the department of health and human services.||4/11/2024 3:13:46 PM
+2024|S|60|4/11/2024 12:00:00 AM|SB461|14|9|23|1|||Ought to Pass w/Amendment|(New Title) requiring health care providers to report certain information about abortions performed to their medical facility, and requiring those medical facilities to report the information to the department of health and human services.||4/11/2024 4:01:34 PM
+2024|S|61|4/11/2024 12:00:00 AM|SB593|14|9|23|1|||Inexpedient to Legislate|relative to possession of firearms in safe school zones.||4/11/2024 3:18:49 PM
+2024|S|62|5/2/2024 12:00:00 AM|HB1054|14|10|24|0|||Inexpedient to Legislate|relative to the Northern Border Alliance Program fund.||5/3/2024 10:02:53 AM
+2024|S|63|5/2/2024 12:00:00 AM|HB1528|14|10|24|0|||Inexpedient to Legislate|relative to reporting by the northern border alliance program.||5/3/2024 10:03:39 AM
+2024|S|64|5/2/2024 12:00:00 AM|HB1003|24|0|24|0|||Ought to Pass w/Amendment|relative to name changes for inmates, parolees, and convicted violent felons.||5/3/2024 10:04:29 AM
+2024|S|65|5/2/2024 12:00:00 AM|HB1186|14|10|24|0|||Ought to Pass w/Amendment|relative to firearm purchaser's privacy.||5/3/2024 10:05:54 AM
+2024|S|66|5/15/2024 12:00:00 AM|CACR13|14|10|24|0|||Committee Amendment|relating to slavery and involuntary servitude. Providing that slavery and involuntary servitude shall be prohibited in the state of New Hampshire.||5/28/2024 3:12:38 PM
+2024|S|67|5/15/2024 12:00:00 AM|CACR13|24|0|24|0|||Ought to Pass w/Amendment|relating to slavery and involuntary servitude. Providing that slavery and involuntary servitude shall be prohibited in the state of New Hampshire.||5/28/2024 3:12:52 PM
+2024|S|68|5/16/2024 12:00:00 AM|HB1283|17|7|24|0|||Refer to Interim Study|relative to end of life options.||5/17/2024 12:21:29 PM
+2024|S|69|5/16/2024 12:00:00 AM|HB1205|13|10|23|1|||Ought to Pass|relative to women's school sports.||5/17/2024 12:56:12 PM
+2024|S|70|5/16/2024 12:00:00 AM|HB1312|13|10|23|1|||Ought to Pass|requiring parental notification of student health or well-being and certain curricula by school districts.||5/17/2024 12:25:20 PM
+2024|S|71|5/16/2024 12:00:00 AM|HB463|12|11|23|1|||Ought to Pass w/Amendment|(New Title) relative to the establishment of an election information portal and makes an appropriation therefor.||5/17/2024 12:28:54 PM
+2024|S|72|5/16/2024 12:00:00 AM|HB1105|13|10|23|1|||Ought to Pass|relative to application of a local tax cap.||5/17/2024 12:59:52 PM
+2024|S|73|5/16/2024 12:00:00 AM|HB1569|12|11|23|1|||Ought to Pass|relative to eliminating voter identification exceptions.||5/17/2024 1:02:48 PM
+2024|S|74|5/16/2024 12:00:00 AM|HB318|10|13|23|1|||Floor Amendment|(Third New Title) relative to bail commissioners, the standards applicable to and the administration of bail, and making an appropriation.||5/28/2024 4:25:11 PM
+2024|S|75|5/16/2024 12:00:00 AM|HB318|22|1|23|1|||Ought to Pass w/Amendment|(Third New Title) relative to bail commissioners, the standards applicable to and the administration of bail, and making an appropriation.||5/17/2024 1:21:00 PM
+2024|S|76|5/16/2024 12:00:00 AM|HB619|13|10|23|1|||Ought to Pass|(New Title) to require a person to attain the age of majority for genital gender reassignment surgery.||5/17/2024 1:28:30 PM
+2024|S|77|5/16/2024 12:00:00 AM|HB1633|8|15|23|1|||Laid on Table|relative to the legalization and regulation of cannabis and making appropriations therefor.||5/17/2024 1:39:48 PM
+2024|S|78|5/16/2024 12:00:00 AM|HB1633|14|9|23|1|||Committee Amendment|relative to the legalization and regulation of cannabis and making appropriations therefor.||5/29/2024 10:34:55 AM
+2024|S|79|5/16/2024 12:00:00 AM|HB1633|12|11|23|1|||Floor Amendment|relative to the legalization and regulation of cannabis and making appropriations therefor.||5/17/2024 1:48:05 PM
+2024|S|80|5/16/2024 12:00:00 AM|HB1633|7|16|23|1|||Floor Amendment|relative to the legalization and regulation of cannabis and making appropriations therefor.||5/21/2024 8:49:43 AM
+2024|S|81|5/16/2024 12:00:00 AM|HB1633|12|11|23|1|||Floor Amendment 2024-1985s: Lines 9-15|relative to the legalization and regulation of cannabis and making appropriations therefor.||5/17/2024 1:58:52 PM
+2024|S|82|5/16/2024 12:00:00 AM|HB1633|8|15|23|1|||Floor Amendment 2024-1985s: Lines 1-8|relative to the legalization and regulation of cannabis and making appropriations therefor.||5/17/2024 2:04:06 PM
+2024|S|83|5/16/2024 12:00:00 AM|HB1633|11|12|23|1|||Floor Amendment|relative to the legalization and regulation of cannabis and making appropriations therefor.||5/17/2024 2:14:36 PM
+2024|S|84|5/16/2024 12:00:00 AM|HB1633|13|10|23|1|||Floor Amendment|relative to the legalization and regulation of cannabis and making appropriations therefor.||5/28/2024 2:38:12 PM
+2024|S|85|5/16/2024 12:00:00 AM|HB1633|14|9|23|1|||Ought to Pass w/Amendment|relative to the legalization and regulation of cannabis and making appropriations therefor.||5/17/2024 2:21:40 PM
+2024|S|86|5/16/2024 12:00:00 AM|HB1711|13|10|23|1|||Laid on Table|authorizing the state to report mental health data for firearms background check purposes and providing for processes for confiscation of firearms following certain mental health-related court proceedings and for relief from mental health-related firearms||5/21/2024 8:50:56 AM
+2024|S|87|5/16/2024 12:00:00 AM|HB1370|13|10|23|1|||Floor Amendment|(New Title) relative to eliminating voter identification exceptions.||5/17/2024 2:26:43 PM
+2024|S|88|5/22/2024 12:00:00 AM|HB1291|8|16|24|0|||Floor Amendment|relative to accessory dwelling unit uses allowed by right.||5/31/2024 10:38:19 AM
+2024|S|89|5/22/2024 12:00:00 AM|HB1665|14|10|24|0|||Ought to Pass w/Amendment|(New Title) relative to student eligibility for education freedom accounts and the scholarship organization's costs of administering the program, extending phase-out grants for education freedom accounts, and revising the definitions of average daily memb||5/31/2024 10:40:02 AM
+2024|S|90|5/22/2024 12:00:00 AM|HB1521|14|10|24|0|||Committee Amendment|(New Title) relative to recovery houses.||5/31/2024 10:41:35 AM
+2024|S|91|5/22/2024 12:00:00 AM|HB1080|14|10|24|0|||Committee Amendment|relative to the legislative youth advisory council.||5/31/2024 10:42:39 AM
+2024|S|92|5/22/2024 12:00:00 AM|HB1647|24|0|24|0|||Committee Amendment|relative to the calculation of group II retirement benefits in the retirement system.||5/31/2024 1:51:45 PM
+2024|S|93|5/22/2024 12:00:00 AM|HB1647|10|14|24|0|||Floor Amendment|relative to the calculation of group II retirement benefits in the retirement system.||5/31/2024 1:54:08 PM
+2024|S|94|5/22/2024 12:00:00 AM|HB1365|13|11|24|0|||Laid on Table|relative to substitution of biological products by pharmacies.||5/31/2024 11:16:11 AM
+2024|S|95|5/22/2024 12:00:00 AM|HB1584|14|10|24|0|||Ought to Pass|relative to home day care licensing requirements.||5/31/2024 11:17:20 AM
+2024|S|96|5/22/2024 12:00:00 AM|HB396|14|10|24|0|||Ought to Pass|(New Title) permitting classification of individuals based on biological sex under certain limited circumstances.||5/31/2024 11:18:42 AM
+2024|S|97|5/22/2024 12:00:00 AM|HB1336|14|10|24|0|||Ought to Pass|relative to employees' firearms in locked vehicles.||5/31/2024 11:39:25 AM
+2024|S|98|5/22/2024 12:00:00 AM|HB1607|14|10|24|0|||Committee Amendment|relative to expanded safe haven protections.||5/31/2024 11:49:13 AM
+2024|S|99|5/23/2024 12:00:00 AM|HB1569|13|11|24|0|||Ought to Pass|relative to eliminating voter identification exceptions.||5/31/2024 1:28:46 PM
+2024|S|100|5/23/2024 12:00:00 AM|HB1593|24|0|24|0|||Ought to Pass w/Amendment|(Second New Title) making an appropriation to the department of health and human services to support recreational activities for individuals with developmental disabilities and relative to the uncompensated care and Medicaid fund.||5/31/2024 1:29:41 PM
+2024|S|101|5/23/2024 12:00:00 AM|HB1559|24|0|24|0|||Floor Amendment|(New Title) repealing the chapter relative to cash dispensing machines and relative to disability pensions for public safety employees who are victims of violence.||5/31/2024 1:34:42 PM
+2024|S|102|5/23/2024 12:00:00 AM|HB1018|14|10|24|0|||Floor Amendment|(New Title) relative to on-premise and off-premise liquor licenses and relative to land in current use.||5/31/2024 1:44:42 PM
+2024|S|103|5/23/2024 12:00:00 AM|HB1292|14|10|24|0|||Floor Amendment|(New Title) relative to coverage of children under the state retiree insurance plan and relative to federal immigration enforcement.||5/31/2024 1:46:35 PM
+2024|S|104|5/23/2024 12:00:00 AM|HB1292|14|10|24|0|||Ought to Pass w/Amendment|(New Title) relative to coverage of children under the state retiree insurance plan and relative to federal immigration enforcement.||5/31/2024 1:56:11 PM
+2024|S|105|5/23/2024 12:00:00 AM|HB1633|14|10|24|0|||Ought to Pass w/Amendment|relative to the legalization and regulation of cannabis and making appropriations therefor.||5/31/2024 2:02:34 PM
+2024|S|106|5/30/2024 12:00:00 AM|SB476|14|9|23|1|||Nonconcur|(New Title) making a capital appropriation to the department of corrections toward thereplacement of the New Hampshire state prison for men and authorizing the state toreport mental health data for firearms background check purposes and providing for||5/31/2024 2:15:46 PM
+2024|S|107|6/13/2024 12:00:00 AM|HB318|24|0|24|0|||Conference Committee Report|(Third New Title) relative to bail commissioners, the standards applicable to and the administration of bail, and making an appropriation.||6/13/2024 4:58:32 PM
+2024|S|108|6/13/2024 12:00:00 AM|HB1292|14|10|24|0|||Conference Committee Report|(New Title) relative to coverage of children under the state retiree insurance plan and relative to federal immigration enforcement.||6/13/2024 5:02:42 PM
+2024|S|109|6/13/2024 12:00:00 AM|HB1370|14|10|24|0|||Conference Committee Report|(New Title) relative to eliminating voter identification exceptions.||6/13/2024 5:08:40 PM
+2024|S|110|6/13/2024 12:00:00 AM|HB1633|14|10|24|0|||Conference Committee Report|relative to the legalization and regulation of cannabis and making appropriations therefor.||6/13/2024 5:12:18 PM
+2024|S|111|6/13/2024 12:00:00 AM|HB1665|14|10|24|0|||Conference Committee Report|(New Title) relative to student eligibility for education freedom accounts and the scholarship organization's costs of administering the program, extending phase-out grants for education freedom accounts, and revising the definitions of average daily memb||6/13/2024 5:15:25 PM
+2024|S|112|10/10/2024 12:00:00 AM|SB63|13|10|23|1|||VETO MESSAGE - Roll Call Required|(New Title) relative to the adoption of public health ordinances by municipalities.||10/10/2024 12:22:34 PM
+2024|S|113|10/10/2024 12:00:00 AM|SB318|0|23|23|1|||VETO MESSAGE - Roll Call Required|(New Title) converting the manufactured housing installations standards board and the board of examiners of nursing home administrators into advisory boards, and creating a new advisory board named the advisory board of massage therapists, reflexologists,||10/10/2024 12:23:32 PM
+2024|S|114|10/10/2024 12:00:00 AM|SB501|10|13|23|1|||VETO MESSAGE - Roll Call Required|relative to driver licenses for noncitizens residing in New Hampshire.||10/10/2024 12:24:28 PM
+2024|S|115|10/10/2024 12:00:00 AM|SB507|10|13|23|1|||VETO MESSAGE - Roll Call Required|extending the time to petition for a new trial in certain cases.||10/10/2024 12:25:27 PM
+2024|S|116|10/10/2024 12:00:00 AM|SB543|10|13|23|1|||VETO MESSAGE - Roll Call Required|establishing the state environmental adaptation, resilience, and innovation council.||10/11/2024 9:16:28 AM
+2024|S|117|10/10/2024 12:00:00 AM|HB1711|10|13|23|1|||Remove from Table|authorizing the state to report mental health data for firearms background check purposes and providing for processes for confiscation of firearms following certain mental health-related court proceedings and for relief from mental health-related firearms||10/11/2024 9:17:37 AM
+2024|S|118|10/10/2024 12:00:00 AM|HB1622|23|0|23|1|||VETO MESSAGE - Roll Call Required|relative to administrative rulemaking and license renewals by the office of professional licensure and certification.||10/11/2024 11:05:33 AM
+2024|S|119|10/10/2024 12:00:00 AM|HB274|11|12|23|1|||VETO MESSAGE - Roll Call Required|relative to the administrative rulemaking process.||10/11/2024 9:23:07 AM
+2024|S|120|10/10/2024 12:00:00 AM|HB1293|22|1|23|1|||VETO MESSAGE - Roll Call Required|(New Title) relative to the use of certain fertilizers on turf.||10/11/2024 9:24:44 AM
+2024|S|121|10/10/2024 12:00:00 AM|HB1415|6|17|23|1|||VETO MESSAGE - Roll Call Required|relative to PFAS facility liability.  ||10/11/2024 9:29:32 AM
+2024|S|122|10/10/2024 12:00:00 AM|HB1581|9|14|23|1|||VETO MESSAGE - Roll Call Required|relative to cultivation locations for alternative treatment centers.||10/11/2024 9:30:40 AM

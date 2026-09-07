@@ -49,6 +49,7 @@ bill_status.json
 committee_reports.json
 senate_reports.json
 testimony_db.json
+archive_bills.json
 floor_index.json
 journals.json
 calendars.json

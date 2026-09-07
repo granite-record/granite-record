@@ -1,0 +1,289 @@
+2023|H|1|1/3/2023 5:24:44 PM|HR6|187|193|14|0|||Table|Special Election Runoff||1/3/2023 5:25:52 PM
+2023|H|2|1/4/2023 10:55:26 AM|HRULE22|171|204|7|12|||Adopt Amendment|||
+2023|H|3|1/4/2023 11:07:02 AM|HRULE31|180|195|7|12|||Adopt Amendment|||
+2023|H|4|1/4/2023 11:21:16 AM|HRULE46|184|191|7|12|||Adopt Amendment|||
+2023|H|5|1/4/2023 11:34:44 AM|HRULE64|177|197|8|12|||Adopt Amendment|||
+2023|H|6|1/4/2023 11:47:41 AM|HRULE58|183|190|9|12|||Adopt Amendment|||
+2023|H|7|2/2/2023 10:21:14 AM|HB95|180|186|16|15|||Table|enabling municipalities to adopt rental practice regulations.||
+2023|H|8|2/2/2023 10:39:36 AM|HB95|301|63|18|15|||ITL|enabling municipalities to adopt rental practice regulations.||
+2023|H|9|2/14/2023 10:41:21 AM|HB234|182|182|14|19|||OTP|relative to renewable energy credits.||
+2023|H|10|2/14/2023 11:02:14 AM|HB246|179|186|13|19|||OTPA|relative to uses of moneys in the renewable energy fund.||
+2023|H|11|2/14/2023 11:19:48 AM|HB418|183|185|10|19|||OTP|relative to eliminating the rebates distributed by the energy efficiency fund.||
+2023|H|12|2/14/2023 11:43:21 AM|HB630|184|186|8|19|||Table|establishing a revolving clean energy accelerator fund in the department of energy.||
+2023|H|13|2/14/2023 11:45:50 AM|HB630|187|182|9|19|||ITL|establishing a revolving clean energy accelerator fund in the department of energy.||
+2023|H|14|2/14/2023 2:03:21 PM|HB388|191|181|5|20|||ITL|relative to number plates for motor vehicles.||
+2023|H|15|2/14/2023 3:09:14 PM|HB430|185|185|5|22|||OTP|relative to applications for the education freedom accounts program.||
+2023|H|16|2/14/2023 3:11:59 PM|HB430|186|183|6|22|||Table|relative to applications for the education freedom accounts program.||
+2023|H|17|2/14/2023 3:45:10 PM|HB626|183|180|8|26|||OTP|requiring the department of education to administer the education freedom account.||2/14/2023 4:08:04 PM
+2023|H|18|2/14/2023 4:00:21 PM|HB324|163|200|8|26|||OTP|relative to campaign contributions and expenditures and making an appropriation therefor.||
+2023|H|20|2/14/2023 5:08:08 PM|HB620|183|174|11|29|||OTPA|establishing a department of early childhood education and relative to a pre-kindergarten pilot program.||
+2023|H|21|2/14/2023 5:27:50 PM|HB340|273|78|17|29|||ITL|relative to the transfer of residential property.||
+2023|H|22|2/22/2023 10:25:15 AM|HB20|356|4|14|23|||OTP|naming a bridge in the town of Merrimack for the Honorable Richard "Dick" Hinch.||
+2023|H|23|2/22/2023 11:21:00 AM|HB250|260|103|12|22|||OTP|relative to the accidental death benefit payable to a group II member.||
+2023|H|24|2/22/2023 11:35:01 AM|HB436|282|80|13|22|||OTPA|relative to group II retirement under transition provisions in the retirement system.||
+2023|H|25|2/22/2023 1:30:40 PM|HB565|184|179|14|20|||OTPA|relative to expanding Medicaid to include certain postpartum health care services.||
+2023|H|26|2/22/2023 1:45:00 PM|HB574|180|184|13|20|||OTPA|re-establishing the Special Supplemental Nutrition Program for Women, Infants, and Children (WIC) Farmers Market Nutrition Program. ||
+2023|H|27|2/22/2023 2:08:35 PM|HB57|178|183|15|21|||OTP|relative to the state minimum hourly rate.||
+2023|H|28|2/22/2023 2:23:17 PM|HB74|187|174|15|21|||OTP|relative to an employee's unused earned time.||
+2023|H|29|2/22/2023 2:33:57 PM|HB489|190|171|15|21|||ITL|establishing a county tourism development fund administered by the department of business and economic affairs and making an appropriation therefor.||
+2023|H|31|2/22/2023 3:27:50 PM|HB191|237|121|15|24|||ITL|relative to voluntarily surrendered firearms.||
+2023|H|32|2/22/2023 3:48:23 PM|HB581|286|70|13|28|||ITL|repealing the controlled drug act and establishing a committee to study the policy and statutory changes necessary to implement the repeal.||
+2023|H|33|2/22/2023 3:54:08 PM|HB45|312|43|14|28|||ITL|establishing a committee to study student loan forgiveness in New Hampshire.||
+2023|H|34|2/22/2023 4:48:41 PM|HB252|266|84|16|31|||OTPA|exempting agricultural operations from certain municipal noise ordinances.||
+2023|H|35|2/23/2023 11:23:28 AM|HB35|238|105|23|31|||OTPA|requiring student identification cards to include the National Eating Disorders Hotline.||
+2023|H|36|2/23/2023 11:29:32 AM|HB338|283|61|22|31|||ITL|relative to prescription drug assistance for individuals with diabetes.||
+2023|H|37|2/23/2023 11:38:44 AM|CACR6|321|27|20|29|||OTP|relating to the retirement age for judges. Providing that the mandatory judicial retirement age shall be increased from 70 to 75.||
+2023|H|38|2/23/2023 12:24:30 PM|HB44|117|232|19|29|||OTPA|relative to permissible residential units in a residential zone.||
+2023|H|40|2/23/2023 12:42:51 PM|HB123|168|176|24|29|||OTP|relative to governing body members of the budget committee.||
+2023|H|41|2/23/2023 12:48:24 PM|HB226|257|90|21|29|||ITL|enabling municipalities to regulate the distribution and disposal of certain solid waste within landfills.||
+2023|H|42|2/23/2023 12:55:38 PM|HB357|177|162|29|29|||Table|relative to the length of terms for Belknap county officers.||
+2023|H|43|2/23/2023 1:37:37 PM|HCR1|156|192|19|30|||OTP|a resolution applying for a convention of the states under Article V of the Constitution of the United States.||
+2023|H|44|2/23/2023 1:56:16 PM|HR8|181|162|22|32|||ITL|urging Congress to enact legislation regulating and banning certain semi-automatic assault weapons and large capacity ammunition feeding devices.||
+2023|H|45|2/23/2023 2:24:07 PM|HB430|170|175|19|33|||ITL|relative to applications for the education freedom accounts program.||2/24/2023 2:06:16 PM
+2023|H|46|2/23/2023 2:47:55 PM|HB234|170|176|19|32|||ITL|relative to renewable energy credits.||2/24/2023 2:05:51 PM
+2023|H|47|2/23/2023 2:51:07 PM|HB234|178|169|19|31|||Reconsider|relative to renewable energy credits.||2/24/2023 2:05:43 PM
+2023|H|48|2/23/2023 3:31:02 PM|HB234|177|167|21|32|||OTP|relative to renewable energy credits.||2/24/2023 2:05:35 PM
+2023|H|49|2/23/2023 3:38:10 PM|HB111|170|177|18|32|||Reconsider|establishing a committee to study electrical vehicle charging for residential renters.||
+2023|H|50|2/23/2023 3:49:20 PM|HB498|233|113|20|31|||ITL|requiring fish and game officers to obtain a warrant to conduct a search and seizure.||
+2023|H|51|2/23/2023 3:53:20 PM|HR7|333|12|20|32|||OTP|calling for the federal government to preserve and protect Medicare and Social Security without cuts to benefits.||2/27/2023 1:46:26 PM
+2023|H|52|2/23/2023 4:03:19 PM|HR16|283|60|22|32|||ITL|relative to the Internal Revenue Service.||
+2023|H|53|3/9/2023 10:27:16 AM|HB31|196|176|6|20|||OTP|repealing the prohibition on the possession or sale of blackjacks, slung shots, and metallic knuckles.||
+2023|H|54|3/9/2023 10:41:43 AM|HB32|199|174|5|20|||ITL|relative to possession or discharge of a firearm in a safe school zone.||
+2023|H|55|3/9/2023 10:52:05 AM|HB59|197|175|5|21|||ITL|requiring a background check prior to any commercial firearm sale.||
+2023|H|56|3/9/2023 10:59:26 AM|HB78|200|173|4|21|||ITL|repealing an act prohibiting the state from enforcing any federal statute, regulation, or Presidential Executive Order that restricts or regulates the right of the people to keep or bear arms.||
+2023|H|57|3/9/2023 11:18:57 AM|HB106|198|172|7|21|||ITL|relative to extreme risk protection orders.||
+2023|H|58|3/9/2023 11:25:05 AM|HB498|117|256|5|20|||Reconsider|requiring fish and game officers to obtain a warrant to conduct a search and seizure.||
+2023|H|59|3/9/2023 12:02:02 PM|HB624|220|152|6|20|||OTPA|relative to federal immigration checkpoints.||
+2023|H|60|3/9/2023 12:12:02 PM|HB367|187|184|7|20|||OTPA|relative to eligibility of students in the education freedom account program.||
+2023|H|61|3/9/2023 1:42:30 PM|HB380|181|193|5|19|||OTP|relative to non-academic surveys administered by a public school or a chartered public school to its students.||
+2023|H|62|3/9/2023 1:57:00 PM|HB440|191|185|3|19|||OTP|relative to the uses of education trust fund.||
+2023|H|63|3/9/2023 2:13:27 PM|HB464|192|184|3|19|||OTP|relative to eligible students in the education freedom account program.||
+2023|H|64|3/9/2023 2:32:06 PM|HB112|175|199|4|20|||OTP|relative to tenant's right to notification prior to the sale of a multifamily home.||
+2023|H|65|3/9/2023 2:45:18 PM|HB117|211|157|9|21|||OTP|relative to the termination of tenancy at the expiration of the tenancy or lease term.||
+2023|H|66|3/9/2023 2:53:21 PM|HB401|154|213|10|21|||OTP|relative to evictions based on the owner's intent to renovate the property.||
+2023|H|67|3/9/2023 3:03:16 PM|HB469|165|206|6|21|||OTP|prohibiting discrimination against tenants holding certain vouchers for purposes of renting dwellings.||
+2023|H|68|3/9/2023 3:15:16 PM|HB567|166|207|4|21|||OTP|relative to notice of rent increases in certain residential rental property.||
+2023|H|69|3/9/2023 3:33:35 PM|HB51|224|148|6|20|||ITL|relative to requiring towns and school districts use warrant articles for lobbying agents.||
+2023|H|70|3/9/2023 3:42:54 PM|HB90|176|193|7|22|||OTP|relative to the municipal planning master plan.||
+2023|H|71|3/9/2023 3:45:50 PM|HB90|179|192|5|22|||Table|relative to the municipal planning master plan.||
+2023|H|72|3/9/2023 4:05:57 PM|HB154|192|180|4|22|||OTP|relative to the adoption of public health ordinances by municipalities.||
+2023|H|73|3/9/2023 4:19:59 PM|HB177|194|170|12|22|||ITL|relative to the definition of qualified structures under the community revitalization tax relief incentive.||
+2023|H|74|3/9/2023 4:34:47 PM|HB467|193|180|3|22|||OTP|relative to public playground accessibility.||
+2023|H|75|3/9/2023 4:45:15 PM|HB477|179|191|6|22|||ITL|to prohibit municipal inspections of owner-occupied units of multi-unit housing.||
+2023|H|76|3/9/2023 5:00:56 PM|HB92|171|194|9|24|||Adopt Floor Amendment 0747|requiring the adoption of innovative vehicle emissions standards pursuant to section 177 of the federal Clean Air Act.||5/19/2023 9:08:41 AM
+2023|H|77|3/9/2023 5:10:45 PM|HB92|40|331|3|24|||OTP|requiring the adoption of innovative vehicle emissions standards pursuant to section 177 of the federal Clean Air Act.||
+2023|H|78|3/9/2023 5:36:05 PM|HB251|186|169|18|25|||OTPA|relative to the cost of compliance with disclosure of electric renewable portfolio standards.||
+2023|H|79|3/9/2023 5:50:36 PM|HB281|184|168|20|26|||OTP|relative to least cost integrated resource plan of utilities.||
+2023|H|80|3/9/2023 6:07:42 PM|HB372|163|188|21|26|||OTP|establishing a commission to study the short and long-term impacts of pending national and regional carbon pricing mechanisms on New Hampshire's citizens, businesses, institutions, and environment.||
+2023|H|81|3/9/2023 6:21:14 PM|HCR5|189|158|25|26|||ITL|urging the taking of appropriate legal action against multinational fossil fuel companies for harms incurred from disinformation campaigns about the effects of fossil fuel combustion.||
+2023|H|82|3/16/2023 9:15:06 AM|HB497|178|173|24|23|||OTP|relative to the confidentiality of records within the division of children, youth, and families.||
+2023|H|83|3/16/2023 9:33:05 AM|HB76|168|193|13|24|||OTP|imposing a waiting period between the purchase and delivery of a firearm.||
+2023|H|84|3/16/2023 9:53:12 AM|HB328|290|76|10|22|||ITL|an act legalizing certain controlled substances for persons 21 years of age or older.||
+2023|H|85|3/16/2023 10:18:57 AM|HB444|202|167|7|22|||ITL|prohibiting possession of a firearm at a polling place.||
+2023|H|86|3/16/2023 10:37:55 AM|HB596|186|185|6|21|||OTP|prohibiting the use of racial profiling in law enforcement activities and in sentencing.||
+2023|H|87|3/16/2023 11:13:07 AM|HB514|200|175|4|19|||Table|relative to the dissemination of obscene material by schools and institutions of higher learning.||
+2023|H|88|3/16/2023 11:44:17 AM|HB58|176|194|9|19|||OTPA|prohibiting payment of subminimum wages.||
+2023|H|89|3/16/2023 1:10:12 PM|HB125|183|183|13|19|||Adopt Amendment 0328|relative to youth employment during the school year and at night.||5/19/2023 9:08:56 AM
+2023|H|90|3/16/2023 1:23:22 PM|HB125|175|195|9|19|||OTP|relative to youth employment during the school year and at night.||
+2023|H|91|3/16/2023 1:51:18 PM|HB208|183|187|9|19|||OTP|establishing greenhouse gas emission reduction goals for the state and establishing a climate action plan.||
+2023|H|92|3/16/2023 2:27:28 PM|HB523|182|189|8|19|||OTP|relative to net energy metering limits for individual and business customers.||
+2023|H|93|3/16/2023 3:05:32 PM|HB524|181|186|11|20|||OTP|relative to regional greenhouse gas initiative funds.||
+2023|H|94|3/16/2023 4:09:36 PM|HB222|206|162|10|20|||ITL|to require the use of seat belts during the operation of motor vehicles.||
+2023|H|95|3/22/2023 9:19:08 AM|HB189|377|0|7|14|||OTP|renaming a portion of route 140 in Gilmanton in honor of Private First Class Nicholas Cournoyer.||
+2023|H|96|3/22/2023 9:23:30 AM|HB96|353|26|6|13|||Special Order|recognizing May 3rd as Old Man of the Mountain Day.||
+2023|H|97|3/22/2023 10:29:04 AM|HB10|189|195|2|12|||OTP|establishing the parental bill of rights.||
+2023|H|98|3/22/2023 11:00:14 AM|HB135|299|84|3|12|||Adopt Amendment 0684|prohibiting no-knock warrants.||5/19/2023 9:06:48 AM
+2023|H|99|3/22/2023 11:02:56 AM|HB135|374|9|3|12|||OTPA|prohibiting no-knock warrants.||
+2023|H|100|3/22/2023 11:14:14 AM|HB351|184|196|6|12|||Adopt Amendment 0592|relative to the negligent storage of firearms and relative to firearm safety devices.||5/19/2023 9:06:35 AM
+2023|H|101|3/22/2023 11:25:26 AM|HB351|182|203|1|12|||OTP|relative to the negligent storage of firearms and relative to firearm safety devices.||
+2023|H|102|3/22/2023 11:46:23 AM|CACR7|192|191|3|12|||OTP|relating to use of money raised by taxation for education. Providing that money raised by taxation may be applied for the use of religious educational institutions.||
+2023|H|103|3/22/2023 1:25:45 PM|HB331|277|103|5|13|||Table|relative to the income threshold for the education freedom account program.||
+2023|H|104|3/22/2023 1:37:46 PM|HB516|306|73|6|13|||Table|relative to freedom of speech and association at public institutions of higher education.||
+2023|H|105|3/22/2023 1:42:04 PM|HB538|296|83|6|13|||Table|establishing a local education freedom account program.||
+2023|H|106|3/22/2023 1:45:51 PM|HB539|257|123|5|13|||Table|relative to vaccination clinics at schools.||
+2023|H|107|3/22/2023 2:35:47 PM|HB127|193|185|7|13|||OTP|relative to the declaration of a state of emergency.||
+2023|H|108|3/22/2023 2:51:48 PM|HB507|308|71|6|13|||Table|relative to unauthorized practice in occupational and professional licensing and certification.||
+2023|H|109|3/22/2023 2:56:56 PM|HB49|291|87|7|13|||Special Order|relative to postponing the closure of the Sununu Youth Services Center.||
+2023|H|110|3/22/2023 4:12:43 PM|HB442|131|245|9|13|||Table|preventing state resources from being used to enforce lobstering regulations in federal waters and establishing a scuba diver recreational lobster license.||
+2023|H|111|3/22/2023 4:39:34 PM|HB442|271|105|7|15|||Adopt Amendment 0709|preventing state resources from being used to enforce lobstering regulations in federal waters and establishing a scuba diver recreational lobster license.||5/19/2023 9:06:20 AM
+2023|H|112|3/22/2023 4:42:03 PM|HB442|276|100|6|16|||OTPA|preventing state resources from being used to enforce lobstering regulations in federal waters and establishing a scuba diver recreational lobster license.||
+2023|H|113|3/22/2023 4:59:02 PM|HB69|190|189|2|17|||OTP|relative to direct payment and membership-based health care facilities.||
+2023|H|114|3/22/2023 5:05:33 PM|HB69|192|187|2|17|||Table|relative to direct payment and membership-based health care facilities.||
+2023|H|115|3/22/2023 5:20:44 PM|HB114|188|191|2|17|||Reconsider|relative to the age at which a minor may receive mental health treatment without parental consent.||
+2023|H|116|3/23/2023 10:11:58 AM|HB49|276|104|6|12|||Adopt Floor Amendment 1104|relative to postponing the closure of the Sununu Youth Services Center.||5/19/2023 9:06:07 AM
+2023|H|117|3/23/2023 10:30:26 AM|HB557|184|193|9|12|||OTP|relative to the department of health and human services' rulemaking authority regarding immunization requirements.||
+2023|H|118|3/23/2023 10:45:25 AM|HB575|192|186|8|12|||ITL|relative to vaccine and pharmaceutical products purchased, promoted, or distributed by the state and its political subdivisions.||
+2023|H|119|3/23/2023 11:23:05 AM|CACR2|193|191|3|11|||OTP|relating to reproductive freedom. Providing that all persons have the right to make their own reproductive decisions.||
+2023|H|120|3/23/2023 11:51:43 AM|HB224|205|178|4|11|||OTP|repealing the criminal and civil penalties from the fetal life protection act.||
+2023|H|121|3/23/2023 12:03:04 PM|HB271|192|192|3|11|||OTP|repealing the fetal life protection act.||
+2023|H|122|3/23/2023 1:29:38 PM|HB591|271|110|5|12|||ITL|prohibiting abortions after detection of fetal heartbeat.||
+2023|H|123|3/23/2023 1:52:06 PM|CACR4|239|145|2|12|||ITL|relating to compensation for legislators. Providing that legislators' biennial salary compensation shall be increased.||
+2023|H|124|3/23/2023 2:19:32 PM|HB139|188|186|9|15|||OTP|relative to the definition of "municipal host" for purposes of limited electrical energy producers.||
+2023|H|125|3/23/2023 2:36:16 PM|HB142|269|109|4|16|||OTPA|relative to the operation of the Burgess Biopower plant.||
+2023|H|126|4/6/2023 10:01:59 AM|HB2|326|63|3|5|||Adopt Floor Amendment 1336|relative to state fees, funds, revenues, and expenditures.||5/19/2023 9:11:09 AM
+2023|H|127|4/6/2023 10:20:40 AM|HB2|190|199|3|5|||Adopt Floor Amendment 1290|relative to state fees, funds, revenues, and expenditures.||5/19/2023 9:11:47 AM
+2023|H|128|4/6/2023 10:35:36 AM|HB2|199|187|6|5|||Adopt Floor Amendment 1292|relative to state fees, funds, revenues, and expenditures.||5/19/2023 9:11:41 AM
+2023|H|129|4/6/2023 10:42:05 AM|HB2|191|197|5|4|||Adopt Floor Amendment 1313|relative to state fees, funds, revenues, and expenditures.||5/19/2023 9:11:36 AM
+2023|H|130|4/6/2023 10:56:34 AM|HB2|128|259|6|4|||Adopt Floor Amendment 1339|relative to state fees, funds, revenues, and expenditures.||5/19/2023 9:11:29 AM
+2023|H|131|4/6/2023 11:31:37 AM|HB2|167|222|4|4|||Adopt Floor Amendment 1276|relative to state fees, funds, revenues, and expenditures.||5/19/2023 9:11:22 AM
+2023|H|132|4/6/2023 12:10:07 PM|HB74|205|181|7|4|||OTP|relative to an employee's unused earned time.||
+2023|H|133|4/6/2023 1:38:58 PM|HB250|328|53|12|4|||OTPA|relative to the accidental death benefit payable to a group II member.||
+2023|H|134|4/6/2023 1:42:10 PM|HB337|387|0|6|4|||OTP|relative to directing the office of professional licensure and certification to provide notice of public meetings and an opportunity for comment from the public.||
+2023|H|135|4/6/2023 1:54:57 PM|HB430|194|192|7|4|||ITL|relative to applications for the education freedom accounts program.||
+2023|H|136|4/6/2023 2:10:08 PM|HB534|191|196|5|5|||ITL|relative to water assistance for natural disasters.||
+2023|H|137|4/6/2023 2:19:05 PM|HB626|195|194|3|5|||ITL|requiring the department of education to administer the education freedom account.||
+2023|H|138|4/6/2023 2:42:43 PM|HB639|272|109|11|5|||OTPA|relative to the legalization and regulation of cannabis and making appropriations therefor.||
+2023|H|139|5/4/2023 9:35:43 AM|SB77|187|183|11|15|||OTP|relative to changes in school placement for students.||
+2023|H|140|5/4/2023 9:47:53 AM|SB152|122|251|8|15|||Adopt Floor Amendment 1642|relative to New Hampshire workforce training programs.||5/19/2023 9:11:59 AM
+2023|H|141|5/4/2023 9:53:45 AM|SB152|118|255|8|15|||Divide|relative to New Hampshire workforce training programs.||
+2023|H|142|5/4/2023 9:56:01 AM|SB152|250|123|8|15|||OTP|relative to New Hampshire workforce training programs.||
+2023|H|143|5/4/2023 10:16:21 AM|SCR1|356|6|19|15|||OTP|affirming the general court’s support for New Hampshire’s first in the nation primary.||
+2023|H|144|5/4/2023 10:56:28 AM|SB52|183|188|10|15|||Table|relative to the regulation and operation of electric vehicle charging stations.||
+2023|H|145|5/4/2023 11:18:14 AM|SB69|186|186|9|15|||OTP|relative to allowing certain nonprofits to participate as a customer-generator group hosts under net energy metering.||
+2023|H|146|5/4/2023 11:39:25 AM|SB79|194|179|8|15|||OTP|relative to the participation of customer generators in net energy metering.||
+2023|H|147|5/18/2023 10:44:06 AM|SB128|207|177|1|11|||OTP|relative to payment for legal services for persons involuntarily admitted for mental health services.||
+2023|H|148|5/18/2023 11:04:45 AM|SB272|196|188|3|9|||Adopt Floor Amendment 1818|establishing a parents' bill of rights in education.||5/19/2023 9:12:59 AM
+2023|H|149|5/18/2023 11:09:34 AM|SB272|196|189|2|9|||Adopt Floor Amendment 1819|establishing a parents' bill of rights in education.||5/19/2023 9:12:54 AM
+2023|H|150|5/18/2023 11:16:15 AM|SB272|198|187|2|9|||Adopt Floor Amendment 1836|establishing a parents' bill of rights in education.||5/19/2023 9:12:48 AM
+2023|H|151|5/18/2023 11:31:01 AM|SB272|201|184|2|9|||Adopt Floor Amendment 1675|establishing a parents' bill of rights in education.||5/19/2023 9:12:42 AM
+2023|H|152|5/18/2023 11:33:30 AM|SB272|184|201|2|9|||Reconsider|establishing a parents' bill of rights in education.||
+2023|H|153|5/18/2023 11:38:24 AM|SB272|198|187|2|9|||Adopt Floor Amendment 1886|establishing a parents' bill of rights in education.||5/19/2023 9:12:23 AM
+2023|H|154|5/18/2023 11:44:42 AM|SB272|198|187|2|9|||Adopt Floor Amendment 1907|establishing a parents' bill of rights in education.||5/19/2023 9:12:14 AM
+2023|H|155|5/18/2023 11:48:42 AM|SB272|186|199|2|9|||Table|establishing a parents' bill of rights in education.||
+2023|H|156|5/18/2023 11:53:38 AM|SB272|195|190|1|10|||Indefinitely Postpone|establishing a parents' bill of rights in education.||
+2023|H|157|5/18/2023 2:42:31 PM|SB263|184|192|9|11|||Adopt Floor Amendment 1910|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:14:50 AM
+2023|H|158|5/18/2023 2:51:25 PM|SB263|181|199|5|11|||Adopt Floor Amendment 1864|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:14:45 AM
+2023|H|159|5/18/2023 3:02:06 PM|SB263|186|193|5|12|||Adopt Floor Amendment 1749|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:14:40 AM
+2023|H|160|5/18/2023 3:15:05 PM|SB263|184|195|5|12|||Adopt Floor Amendment 1869|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:14:35 AM
+2023|H|161|5/18/2023 3:33:11 PM|SB263|175|199|7|15|||Adopt Floor Amendment 1841|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:14:30 AM
+2023|H|162|5/18/2023 3:49:16 PM|SB263|175|194|9|18|||Adopt Floor Amendment 1890|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:14:26 AM
+2023|H|163|5/18/2023 4:04:04 PM|SB263|169|192|17|18|||Adopt Floor Amendment 1750|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:14:21 AM
+2023|H|164|5/18/2023 4:11:01 PM|SB263|196|169|13|18|||Previous Question|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||
+2023|H|165|5/18/2023 4:15:49 PM|SB263|175|194|9|18|||Adopt Floor Amendment 1860|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:14:09 AM
+2023|H|166|5/18/2023 4:20:33 PM|SB263|173|195|10|18|||Adopt Floor Amendment 1748|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:14:03 AM
+2023|H|167|5/18/2023 4:25:18 PM|SB263|176|193|9|18|||Adopt Floor Amendment 1881|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:13:59 AM
+2023|H|168|5/18/2023 4:29:16 PM|SB263|173|194|11|18|||Adopt Floor Amendment 1747|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:13:53 AM
+2023|H|169|5/18/2023 4:33:57 PM|SB263|168|193|16|19|||Adopt Floor Amendment 1832|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:13:48 AM
+2023|H|170|5/18/2023 4:38:07 PM|SB263|170|191|16|19|||Adopt Floor Amendment 1857|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:13:43 AM
+2023|H|171|5/18/2023 4:41:57 PM|SB263|169|196|12|19|||Adopt Floor Amendment 1859|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:13:38 AM
+2023|H|172|5/18/2023 4:45:21 PM|SB263|174|190|12|20|||Adopt Floor Amendment 1867|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:13:33 AM
+2023|H|173|5/18/2023 4:49:08 PM|SB263|169|190|14|23|||Adopt Floor Amendment 1868|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:13:27 AM
+2023|H|174|5/18/2023 4:53:35 PM|SB263|166|194|12|24|||Adopt Floor Amendment 1870|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:13:22 AM
+2023|H|175|5/18/2023 4:56:50 PM|SB263|162|191|18|25|||Adopt Floor Amendment 1871|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:05:40 AM
+2023|H|176|5/18/2023 5:02:29 PM|SB263|166|191|14|25|||Adopt Floor Amendment 1872|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:05:35 AM
+2023|H|177|5/18/2023 5:06:33 PM|SB263|164|183|24|25|||Adopt Floor Amendment 1873|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:05:29 AM
+2023|H|178|5/18/2023 5:10:37 PM|SB263|164|190|17|25|||Adopt Floor Amendment 1897|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:05:21 AM
+2023|H|179|5/18/2023 5:15:34 PM|SB263|167|193|11|25|||Adopt Floor Amendment 1901|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:05:14 AM
+2023|H|180|5/18/2023 5:20:27 PM|SB263|163|191|17|25|||Adopt Floor Amendment 1909|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:05:07 AM
+2023|H|181|5/18/2023 5:24:21 PM|SB263|160|187|24|25|||Adopt Floor Amendment 1922|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:05:01 AM
+2023|H|182|5/18/2023 5:28:15 PM|SB263|156|198|17|25|||Adopt Floor Amendment 1923|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:04:54 AM
+2023|H|183|5/18/2023 5:32:30 PM|SB263|166|190|15|25|||Adopt Floor Amendment 1929|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 9:03:49 AM
+2023|H|184|5/18/2023 5:37:12 PM|SB263|118|241|13|24|||Adopt Floor Amendment 1789|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||5/19/2023 8:59:57 AM
+2023|H|185|5/18/2023 5:41:53 PM|SB263|193|166|13|24|||OTP|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program.||
+2023|H|186|6/8/2023 10:37:26 AM|SB213|201|175|7|14|||OTPA|relative to educational institution policies on social media.||
+2023|H|187|6/8/2023 11:16:20 AM|SB61|152|226|7|12|||Adopt Floor Amendment|relative to surface water setbacks for landfills.||
+2023|H|188|6/8/2023 11:32:14 AM|SB149|190|188|7|12|||Remove From Tabe|relative to nurse agencies.||
+2023|H|189|6/8/2023 11:41:11 AM|SB149|191|187|7|12|||OTPA|relative to nurse agencies.||
+2023|H|190|6/8/2023 2:10:04 PM|HB2|326|53|6|12|||Concur|relative to state fees, funds, revenues, and expenditures.||
+2023|H|191|6/8/2023 2:35:05 PM|SB42|196|178|10|13|||OTP|relative to overpayment of unemployment compensation.||
+2023|H|192|6/8/2023 2:52:44 PM|SB110|190|180|10|17|||OTP|(New Title) relative to residency status.||
+2023|H|193|6/8/2023 2:58:48 PM|SB132|203|168|9|17|||Table|prohibiting cities and towns from adopting sanctuary policies.||
+2023|H|194|6/8/2023 3:44:42 PM|SB256|186|179|14|18|||OTPA|establishing a safety program for off-highway recreational vehicles.||
+2023|H|195|6/15/2023 2:08:01 PM|HB467|161|199|12|25|||Req CofC|||
+2023|H|196|10/26/2023 10:21:53 AM|HB35|0|350|20|27|||Veto Override|||
+2023|H|197|10/26/2023 10:49:04 AM|HB142|194|159|19|25|||Veto Override|||11/2/2023 12:58:08 PM
+2023|H|198|10/26/2023 10:57:10 AM|HB337|251|104|17|25|||Veto Override|||
+2023|H|199|10/26/2023 11:02:42 AM|HB342|184|171|17|25|||Veto Override|||11/2/2023 1:00:01 PM
+2023|S|1|1/19/2023 12:00:00 AM|SB1|22|2|24|0|||Ought to Pass w/Amendment|(New Title) relative to the closing of the Sununu youth services center and establishing a commission to study the public safety of the secured youth development center and surrounding communities.||1/25/2023 1:38:33 PM
+2023|S|2|1/26/2023 12:00:00 AM|SB77|14|10|24|0|||Ought to Pass|relative to changes in school placement for students. ||1/26/2023 2:41:33 PM
+2023|S|3|2/9/2023 12:00:00 AM|SB114|23|0|23|1|||Ought to Pass|relative to payment by the state of a portion of retirement system contributions of political subdivision employers.||2/9/2023 1:35:35 PM
+2023|S|4|2/22/2023 12:00:00 AM|SB46|10|14|24|0|||Ought to Pass|relative to electronic payments to employee debit cards.||2/22/2023 6:14:08 PM
+2023|S|5|2/22/2023 12:00:00 AM|SB143|14|10|24|0|||Inexpedient to Legislate|establishing a scholarship fund for certain small businesses applying for loans from the capital access program administered by the New Hampshire business finance authority.||2/22/2023 6:25:03 PM
+2023|S|6|2/22/2023 12:00:00 AM|SB144|14|10|24|0|||Inexpedient to Legislate|relative to the state minimum hourly rate.||2/22/2023 6:25:38 PM
+2023|S|7|2/22/2023 12:00:00 AM|SB175|24|0|24|0|||Ought to Pass w/Amendment|relative to Medicaid coverage for mothers. ||2/22/2023 6:26:00 PM
+2023|S|8|2/22/2023 12:00:00 AM|SB104|13|11|24|0|||Ought to Pass w/Amendment|to regulate online gambling and direct net proceeds to a community college education scholarship fund.||2/22/2023 6:26:40 PM
+2023|S|9|2/22/2023 12:00:00 AM|SB261|13|10|23|0|||Inexpedient to Legislate|relative to the interest and dividends tax rate and threshold.||2/22/2023 6:22:59 PM
+2023|S|10|3/9/2023 12:00:00 AM|SB141|14|10|24|0|||Inexpedient to Legislate|relative to administration of the education freedom accounts program.||3/9/2023 2:55:20 PM
+2023|S|11|3/9/2023 12:00:00 AM|SB214|0|24|24|0|||Inexpedient to Legislate|establishing a department of early childhood education and relative to a pre-kindergarten pilot program. ||3/9/2023 2:55:52 PM
+2023|S|12|3/9/2023 12:00:00 AM|SB57|23|1|24|0|||Ought to Pass|relative to the reduction in the calculation of state retirement annuities at age 65.||3/9/2023 2:56:33 PM
+2023|S|13|3/9/2023 12:00:00 AM|SB263|24|0|24|0|||Ought to Pass w/Amendment|extending the New Hampshire granite advantage health care program and reestablishing the commission to evaluate the effectiveness and future of the New Hampshire granite advantage health care program. ||3/9/2023 2:57:21 PM
+2023|S|14|3/9/2023 12:00:00 AM|SB117|14|10|24|0|||Inexpedient to Legislate|relative to the definition of a "child" for the purpose of negligent storage of firearms.||3/9/2023 2:58:39 PM
+2023|S|15|3/9/2023 12:00:00 AM|SB181|14|10|24|0|||Inexpedient to Legislate|relative to access to abortion care.||3/9/2023 3:25:20 PM
+2023|S|16|3/9/2023 12:00:00 AM|SB249|16|8|24|0|||Ought to Pass|relative to the release of a defendant pending trial.||3/9/2023 4:22:15 PM
+2023|S|17|3/9/2023 12:00:00 AM|SB252|21|3|24|0|||Ought to Pass|relative to release of a defendant pending trial.||3/9/2023 5:09:40 PM
+2023|S|18|3/9/2023 12:00:00 AM|SB105|21|3|24|0|||Ought to Pass|relative to information collected by the division of vital records administration as part of the live birth worksheet.||3/9/2023 5:28:24 PM
+2023|S|19|3/16/2023 12:00:00 AM|SB268|24|0|24|0|||Ought to Pass w/Amendment|(New Title) allowing for pre-hospital treatment and transportation for operational canines. ||3/17/2023 10:08:25 AM
+2023|S|20|3/16/2023 12:00:00 AM|SB145|21|3|24|0|||Ought to Pass|relative to New Hampshire housing champion designation for municipalities and making appropriations therefor.||3/17/2023 9:35:37 AM
+2023|S|21|3/16/2023 12:00:00 AM|SB272|14|10|24|0|||Ought to Pass w/Amendment|establishing a parents' bill of rights in education.||3/17/2023 9:39:28 AM
+2023|S|22|3/16/2023 12:00:00 AM|CACR10|24|0|24|0|||Ought to Pass|the general court.||3/17/2023 9:57:04 AM
+2023|S|23|3/16/2023 12:00:00 AM|SB132|14|10|24|0|||Ought to Pass w/Amendment|prohibiting cities and towns from adopting sanctuary policies.||3/17/2023 10:01:50 AM
+2023|S|24|3/16/2023 12:00:00 AM|SB220|14|10|24|0|||Inexpedient to Legislate|modifying the absentee voter registration process, absentee ballot application, and absentee ballot voting process.||3/17/2023 10:03:36 AM
+2023|S|25|3/16/2023 12:00:00 AM|SB247|14|10|24|0|||Inexpedient to Legislate|repealing limited liability for manufacturers, distributors, dealers, or importers of firearms or ammunition.||3/17/2023 10:04:56 AM
+2023|S|26|3/16/2023 12:00:00 AM|SB203|12|12|24|0|||Laid on Table|relative to the composition and jurisdiction of the manufactured housing board.||3/17/2023 10:07:35 AM
+2023|S|27|3/23/2023 12:00:00 AM|SB105|18|5|23|1|||Ought to Pass w/Amendment|relative to information collected by the division of vital records administration as part of the live birth worksheet.||3/23/2023 12:57:37 PM
+2023|S|28|3/23/2023 12:00:00 AM|SB253|13|10|23|1|||Floor Amendment|relative to parental access to a minor child's medical records.||3/23/2023 1:13:11 PM
+2023|S|29|3/23/2023 12:00:00 AM|SB253|13|10|23|1|||Ought to Pass w/Amendment|relative to parental access to a minor child's medical records.||3/23/2023 1:16:04 PM
+2023|S|30|3/30/2023 12:00:00 AM|CACR9|23|0|23|1|||Ought to Pass|relating to the New Hampshire presidential primary. Providing that the New Hampshire presidential primary will be the first presidential primary of a presidential election cycle.||3/30/2023 6:21:50 PM
+2023|S|31|3/30/2023 12:00:00 AM|SB104|11|12|23|1|||Ought to Pass w/Amendment|to regulate online gambling and direct net proceeds to a community college education scholarship fund.||3/30/2023 6:31:01 PM
+2023|S|32|3/30/2023 12:00:00 AM|SB104|12|11|23|1|||Ought to Pass w/Amendment|to regulate online gambling and direct net proceeds to a community college education scholarship fund.||3/30/2023 6:38:29 PM
+2023|S|33|3/30/2023 12:00:00 AM|SB132|13|10|23|1|||Ought to Pass|prohibiting cities and towns from adopting sanctuary policies.||3/31/2023 9:09:09 AM
+2023|S|34|3/30/2023 12:00:00 AM|SB238|23|0|23|1|||Floor Amendment - Sections 2, 4, & 6|relative to the use of telemedicine to treat mental health conditions.||3/31/2023 10:11:25 AM
+2023|S|35|3/30/2023 12:00:00 AM|SB238|13|10|23|1|||Floor Amendment - Remainder|relative to the use of telemedicine to treat mental health conditions.||3/31/2023 11:12:39 AM
+2023|S|36|3/30/2023 12:00:00 AM|SB238|23|0|23|1|||Ought to Pass w/ Amendment Sections 2, 4, 6 & 7|relative to the use of telemedicine to treat mental health conditions.||3/31/2023 10:17:23 AM
+2023|S|37|3/30/2023 12:00:00 AM|SB238|13|10|23|1|||Ought To Pass w/ Amendment - Remainder|relative to the use of telemedicine to treat mental health conditions.||3/31/2023 11:18:32 AM
+2023|S|38|3/30/2023 12:00:00 AM|CACR6|22|1|23|1|||Ought to Pass|relating to the retirement age for judges. Providing that the mandatory judicial retirement age shall be increased from 70 to 75.||3/31/2023 10:26:03 AM
+2023|S|39|3/30/2023 12:00:00 AM|SB58|11|12|23|1|||Floor Amendment|relative to arrests without a warrant while in the care of a medical professional on the premises of a residential care or health care facility.||3/31/2023 11:00:38 AM
+2023|S|40|3/30/2023 12:00:00 AM|SB58|13|10|23|1|||Floor Amendment|relative to arrests without a warrant while in the care of a medical professional on the premises of a residential care or health care facility.||3/31/2023 10:34:49 AM
+2023|S|41|3/30/2023 12:00:00 AM|SB58|14|9|23|1|||Ought to Pass w/Amendment|relative to arrests without a warrant while in the care of a medical professional on the premises of a residential care or health care facility.||3/31/2023 10:36:22 AM
+2023|S|42|3/30/2023 12:00:00 AM|SB271|13|10|23|1|||Ought to Pass|relative to the seating of delegates to national party conventions.||3/31/2023 10:38:44 AM
+2023|S|43|3/30/2023 12:00:00 AM|SB271|10|13|23|1|||Laid on Table|relative to the seating of delegates to national party conventions.||3/31/2023 10:40:03 AM
+2023|S|44|4/13/2023 12:00:00 AM|HB88|14|10|24|0|||Inexpedient to Legislate|relative to reproductive rights.||4/13/2023 3:41:19 PM
+2023|S|45|4/13/2023 12:00:00 AM|HB224|14|10|24|0|||Inexpedient to Legislate|repealing the criminal and civil penalties from the fetal life protection act.||4/13/2023 3:44:21 PM
+2023|S|46|5/11/2023 12:00:00 AM|HB536|14|10|24|0|||Committee Amendment|(New Title) relative to the chartered public school joint legislative oversight committee, and relative to chartered public school use of unused district facilities.||5/12/2023 8:52:27 AM
+2023|S|47|5/11/2023 12:00:00 AM|HB536|14|10|24|0|||Ought to Pass w/ Amendment Sections 3 & 4|(New Title) relative to the chartered public school joint legislative oversight committee, and relative to chartered public school use of unused district facilities.||5/12/2023 10:49:25 AM
+2023|S|48|5/11/2023 12:00:00 AM|HB75|14|10|24|0|||Floor Amendment|(New Title) relative to the election of Strafford county commissioners. ||5/12/2023 9:01:31 AM
+2023|S|49|5/11/2023 12:00:00 AM|HB75|14|10|24|0|||Ought to Pass w/Amendment|(New Title) relative to the election of Strafford county commissioners. ||5/12/2023 9:03:59 AM
+2023|S|50|5/11/2023 12:00:00 AM|HB197|14|10|24|0|||Ought to Pass|relative to the proration of property tax exemptions.||5/12/2023 9:05:44 AM
+2023|S|51|5/11/2023 12:00:00 AM|HB457|10|14|24|0|||Floor Amendment|relative to state treasury pension and insurance fund management. ||5/12/2023 9:10:19 AM
+2023|S|52|5/11/2023 12:00:00 AM|HB457|14|10|24|0|||Ought to Pass|relative to state treasury pension and insurance fund management. ||5/12/2023 9:13:25 AM
+2023|S|53|5/11/2023 12:00:00 AM|HB639|14|10|24|0|||Inexpedient to Legislate|relative to the legalization and regulation of cannabis and making appropriations therefor.||5/12/2023 10:47:59 AM
+2023|S|54|5/11/2023 12:00:00 AM|HB89|14|10|24|0|||Inexpedient to Legislate|(New Title) relative to posthumous exonerations.||5/12/2023 9:29:28 AM
+2023|S|55|5/11/2023 12:00:00 AM|HB201|14|10|24|0|||Inexpedient to Legislate|relative to changing the penalties for driving without a license.||5/12/2023 9:31:49 AM
+2023|S|56|5/11/2023 12:00:00 AM|HB156|14|10|24|0|||Inexpedient to Legislate|relative to misconduct by a law enforcement officer.||5/12/2023 9:36:07 AM
+2023|S|57|5/11/2023 12:00:00 AM|HB588|15|9|24|0|||Inexpedient to Legislate|relative to the criteria for applying for parole.||5/12/2023 9:53:02 AM
+2023|S|58|5/11/2023 12:00:00 AM|HB624|14|10|24|0|||Inexpedient to Legislate|relative to federal immigration checkpoints. ||5/12/2023 10:15:55 AM
+2023|S|59|5/11/2023 12:00:00 AM|HB440|14|10|24|0|||Ought to Pass w/Amendment|relative to the uses of education trust fund.||5/12/2023 10:18:13 AM
+2023|S|60|5/18/2023 12:00:00 AM|HB150|12|12|24|0|||Rereferred|relative to the certification of a collective bargaining unit. ||5/19/2023 9:19:19 AM
+2023|S|61|5/18/2023 12:00:00 AM|HB367|14|10|24|0|||Ought to Pass|relative to eligibility of students in the education freedom account program.||5/19/2023 9:25:16 AM
+2023|S|62|5/18/2023 12:00:00 AM|HB114|14|10|24|0|||Inexpedient to Legislate|relative to the age at which a minor may receive mental health treatment without parental consent. ||5/19/2023 9:30:55 AM
+2023|S|63|5/18/2023 12:00:00 AM|HB534|13|11|24|0|||Committee Amendment|relative to water assistance for natural disasters.||5/19/2023 10:12:55 AM
+2023|S|64|5/18/2023 12:00:00 AM|HB360|24|0|24|0|||Laid on Table|an act legalizing cannabis for persons 21 years of age or older.||5/19/2023 9:47:33 AM
+2023|S|65|5/18/2023 12:00:00 AM|HB431|16|8|24|0|||Laid on Table|permitting qualifying patients and designated caregivers to cultivate cannabis for therapeutic use.||5/19/2023 9:56:02 AM
+2023|S|66|5/18/2023 12:00:00 AM|HB473|17|7|24|0|||Inexpedient to Legislate|relative to penalties for controlled drug violations.||5/19/2023 10:00:30 AM
+2023|S|67|5/18/2023 12:00:00 AM|HB473|18|6|24|0|||Inexpedient to Legislate|relative to penalties for controlled drug violations.||5/19/2023 10:06:08 AM
+2023|S|68|5/18/2023 12:00:00 AM|HB596|14|10|24|0|||Rereferred|prohibiting the use of racial profiling in law enforcement activities and in sentencing.||5/19/2023 10:08:15 AM
+2023|S|69|6/1/2023 12:00:00 AM|HB46|13|10|23|1|||Floor Amendment|(Third New Title) establishing a committee to study replacement of bail commissioners with court magistrates and relative to delinquent payment of accounts by on premises and off premises licensees and relative to electronic payments to employee debit car||6/2/2023 9:39:46 AM
+2023|S|70|6/1/2023 12:00:00 AM|HB46|14|9|23|1|||Ought to Pass w/ Amendment Sections 8 and Effective Date|(Third New Title) establishing a committee to study replacement of bail commissioners with court magistrates and relative to delinquent payment of accounts by on premises and off premises licensees and relative to electronic payments to employee debit car||6/2/2023 10:10:03 AM
+2023|S|71|6/7/2023 12:00:00 AM|HB2|1|23|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2023 9:40:25 AM
+2023|S|72|6/7/2023 12:00:00 AM|HB2|9|15|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2023 9:44:17 AM
+2023|S|73|6/7/2023 12:00:00 AM|HB2|10|14|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2023 9:46:38 AM
+2023|S|74|6/7/2023 12:00:00 AM|HB2|10|14|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2023 9:48:23 AM
+2023|S|75|6/7/2023 12:00:00 AM|HB2|10|13|23|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2023 9:54:19 AM
+2023|S|76|6/7/2023 12:00:00 AM|HB2|11|13|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2023 2:24:52 PM
+2023|S|77|6/7/2023 12:00:00 AM|HB2|10|14|24|0|||Floor Amendment|relative to state fees, funds, revenues, and expenditures.||6/9/2023 10:00:46 AM
+2023|S|78|6/7/2023 12:00:00 AM|HB2|15|8|23|0|||Ought to Pass w/ Amendment Sections 85-88|relative to state fees, funds, revenues, and expenditures.||6/9/2023 2:15:58 PM
+2023|S|79|6/7/2023 12:00:00 AM|HB2|14|9|23|0|||Ought to Pass w/ Amendment Sections 85-88|relative to state fees, funds, revenues, and expenditures.||6/9/2023 2:18:52 PM
+2023|S|80|6/7/2023 12:00:00 AM|HB2|24|0|24|0|||Ought to Pass w/ Amendment Remainder & Effective Date|relative to state fees, funds, revenues, and expenditures.||6/9/2023 2:20:14 PM
+2023|S|81|6/7/2023 12:00:00 AM|HB367|10|14|24|0|||Floor Amendment|relative to eligibility of students in the education freedom account program.||6/9/2023 10:51:22 AM
+2023|S|82|6/7/2023 12:00:00 AM|HB367|14|10|24|0|||Ought to Pass|relative to eligibility of students in the education freedom account program.||6/9/2023 10:53:46 AM
+2023|S|83|6/8/2023 12:00:00 AM|HB358|11|13|24|0|||Floor Amendment|(Second New Title) relative to the filing and adoption of proposed administrative rules and relative to overpayment of unemployment compensation and relative to policies relating to nursing mothers.||6/9/2023 12:39:27 PM
+2023|S|84|6/8/2023 12:00:00 AM|HB315|20|4|24|0|||Floor Amendment|(Second New Title) prohibiting provocations based on a victim's actual or perceived gender, gender identity, gender expression, or sexual orientation from being used as a defense in a criminal case.||6/9/2023 12:41:20 PM
+2023|S|85|6/29/2023 12:00:00 AM|HB275|15|9|24|0|||Conference Committee Report|relative to schools approved for a school tuition program by a school board.||6/29/2023 1:17:18 PM
+2023|S|86|6/29/2023 12:00:00 AM|HB75|14|10|24|0|||Conference Committee Report|(New Title) relative to the election of Strafford county commissioners. ||6/29/2023 1:20:43 PM
+2023|S|87|10/26/2023 12:00:00 AM|SB42|9|14|23|1|||VETO MESSAGE - Roll Call Required|relative to overpayment of unemployment compensation.||10/26/2023 3:45:37 PM
+2023|S|88|10/26/2023 12:00:00 AM|SB51|1|22|23|1|||VETO MESSAGE - Roll Call Required|creating a commission to study charitable gaming and historical horse races and relative to the moratorium on licensed historical horse racing facilities.||10/26/2023 3:46:00 PM
+2023|S|89|10/26/2023 12:00:00 AM|SB79|0|23|23|1|||VETO MESSAGE - Roll Call Required|relative to the participation of customer generators in net energy metering.||10/26/2023 3:46:16 PM
+2023|S|90|10/26/2023 12:00:00 AM|SB193|9|14|23|1|||VETO MESSAGE - Roll Call Required|relative to the obligation of collective bargaining units to negotiate in good faith.||10/26/2023 3:46:26 PM
+2023|S|91|10/26/2023 12:00:00 AM|SB256|10|13|23|1|||VETO MESSAGE - Roll Call Required|establishing a safety program for off-highway recreational vehicles.||10/26/2023 3:58:14 PM
+2023|S|92|10/26/2023 12:00:00 AM|HB337|12|11|23|1|||VETO MESSAGE - Roll Call Required|(New Title) relative to directing the office of professional licensure and certification to provide notice of public meetings and an opportunity for comment from the public, and creating a new attorney II position.||10/26/2023 3:47:10 PM
+2023|S|93|10/26/2023 12:00:00 AM|SR11|23|0|23|1|||Ought to Pass|affirming New Hampshire's support for the State of Israel and the safety and security of its people.||10/26/2023 3:57:14 PM
