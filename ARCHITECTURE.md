@@ -99,9 +99,16 @@ amendment numbers all read through it. Its four readers were changed and run;
 the build is byte-for-byte the same site, and it now refuses the flat shape
 rather than producing 2,234 bills with no history in them.
 
-The rest still are not. `committee_reports.json`, `senate_reports.json`,
-`bill_text.json`, `bill_status.json`, the per-bill site files, and the 2,233
-feeds under `site/feed/bill/`: all keyed by `HB396`. `build_feeds.py` contains no notion of a term at all, and is a
+`build_feeds.py` is done as well, and it was the largest single place a bill
+number still stood in for a bill: 2,233 of the site's 8,045 files. A bill with
+no filing year collapsed `feed/bill/<year>/<id>.xml` to `feed/bill/<id>.xml`,
+which the next term's bill of the same number would land on top of. It now gets
+no feed and is named in the output.
+
+The rest still are not: `committee_reports.json`, `senate_reports.json`,
+`bill_text.json` and `bill_status.json`, all keyed by `HB396`. Each has a
+writer that needs the network, so reshaping one means regenerating it in the
+same session; that is the only reason they are still on this list. `build_feeds.py` contains no notion of a term at all, and is a
 quarter of the site by file count. Run any fetch for 2024 and its HB 396 merges
 into 2026's. Today's merge guard keys on the year in a source line, which stops
 one year overwriting another but cannot stop two different bills sharing a key.
