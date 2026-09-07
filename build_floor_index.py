@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Build a per-bill index of floor debates, keyed to the session recordings.
 
@@ -201,7 +201,14 @@ def main():
             index[b].append({
                 "date": v["date"], "body": v["body"], "video_id": v["video_id"],
                 "motions": [], "tallies": [], "precise": False,
-                "whole_video": True, "title": v["title"],
+                # Only when the title names ONE bill. "Committee of
+                # Conference on HB 144, HB 67, HB 154, HB 464, HB 613" is five
+                # proceedings in one recording with boundaries between them,
+                # and calling it whole-video told the pipeline there was
+                # nothing to segment -- so all five bills pointed at the same
+                # two hours and the recording was skipped for captions.
+                # 36 of the 59 name more than one.
+                "whole_video": len(v["bills"]) == 1, "title": v["title"],
                 "kind": "committee of conference" if v["conference"]
                         else "recording naming this bill"})
             nconf += 1

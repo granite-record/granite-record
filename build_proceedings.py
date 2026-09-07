@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.1
+# GRANITE_VERSION: 2026-09-05.2
 """
 Build proceedings.csv: one row per (bill, date, kind, recording), whether it
 is a committee hearing or a floor debate.
@@ -95,8 +95,24 @@ def from_floor_index(path):
             date = str(e.get("date") or "")[:10]
             kind = str(e.get("kind") or "floor debate").strip().lower()
             if kind not in P.FLOOR_KINDS:
-                kind = ("committee of conference" if "conference" in kind
-                        else "floor debate")
+                # A recording whose title names a bill is not automatically a
+                # floor debate. Five of them are committee work sessions and a
+                # study committee -- "House Health, Human Services and Elderly
+                # Affairs Work Session on HB 54" was on the site as a floor
+                # debate. The title says what it is, so read it.
+                title = str(e.get("title") or "").lower()
+                if "conference" in kind or "conference" in title:
+                    kind = "committee of conference"
+                elif "work session" in title:
+                    kind = "work session"
+                elif "committee to study" in title or "study committee" in title:
+                    kind = "study committee"
+                elif "executive session" in title:
+                    kind = "executive session"
+                elif "subcommittee" in title:
+                    kind = "subcommittee work session"
+                else:
+                    kind = "floor debate"
             rows.append({
                 "term": P.term_of(date), "bill": b,
                 "body": str(e.get("body") or ""),
