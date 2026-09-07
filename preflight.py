@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.51
+# GRANITE_VERSION: 2026-09-04.52
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2547,6 +2547,53 @@ def _cite_survives():
                   "build(), and the Documents tab will publish no source links")
     return "ok", (f"{cited:,} of {raw:,} rows cite a volume; "
                   f"{kept:,} kept across the first 400 bills")
+
+
+@check("data", "a term's sponsors came from that term's own files")
+def _sponsors_by_term():
+    """The check for a mistake made while writing the file this reads.
+
+    data/sponsors.json is {term: {bill: [sponsor]}} now. Splitting the flat
+    dict was done, at first, with a bill -> term map built from data/bills.json
+    -- which is exactly the confusion the term keying exists to prevent. A bill
+    number is in more than one term, so every repeated number took whichever
+    term the loop reached last: 1,849 of 2,220 bills' sponsors landed under
+    2023-2024, having been read out of the 2025-2026 files, and the site built
+    byte-identical because build_site_v2 then found nothing for the current
+    term and showed no sponsors rather than the wrong ones.
+
+    LsrSponsors.txt and LsrsOnly.txt cover the current session, so the newest
+    term is where nearly all of them belong, and a term holding sponsors for
+    bills it does not have is the same error seen from the other side.
+    """
+    sp = Path("data/sponsors.json")
+    bl = Path("data/bills.json")
+    if not (sp.exists() and bl.exists()):
+        return "skip", "data/sponsors.json or data/bills.json not here"
+    sponsors = json.loads(sp.read_text(encoding="utf-8"))
+    bills = json.loads(bl.read_text(encoding="utf-8"))
+    if not all(re.match(r"^\d{4}-\d{4}$", k) for k in sponsors):
+        return "skip", "data/sponsors.json is not keyed on the term yet"
+
+    # No term may carry sponsors for a bill that term does not have.
+    stray = {t: sorted(set(byb) - set(bills.get(t, {})))[:4]
+             for t, byb in sponsors.items()
+             if set(byb) - set(bills.get(t, {}))}
+    assert not stray, (
+        f"sponsors filed under a term whose bills.json has no such bill: "
+        f"{stray}")
+
+    # And the term the current session's files describe must actually have
+    # them. 17% is what the bug looked like; a healthy run is above 90%.
+    newest = max(bills)
+    have, total = len(sponsors.get(newest, {})), len(bills.get(newest, {}))
+    assert total and have > total * 0.75, (
+        f"{newest} has sponsors on {have:,} of {total:,} bills. Its own "
+        "sponsor files cover every bill, so this is sponsors filed under the "
+        "wrong term, not sponsors that are missing.")
+    census = ", ".join(f"{t} {len(v):,}/{len(bills.get(t, {})):,}"
+                       for t, v in sorted(sponsors.items()))
+    return "ok", f"sponsors by term: {census}"
 
 
 @check("data", "every voter in the record is one person, with a party")

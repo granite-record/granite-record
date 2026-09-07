@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -770,11 +770,35 @@ def main():
     if stray:
         print(f"  {len(stray):,} bills have no filing year and are left out of "
               f"bills.json: {sorted(stray)[:5]}")
+    # The newest term the pipeline holds, which is the one the current
+    # session's own files describe.
+    current_term = max(by_term) if by_term else ""
     (out / "bills.json").write_text(
         json.dumps(dict(by_term), indent=2), encoding="utf-8")
     for t in sorted(by_term):
         print(f"  bills.json {t}: {len(by_term[t]):,}")
-    (out / "sponsors.json").write_text(json.dumps(sponsors, indent=2), encoding="utf-8")
+    # {term: {bill: [sponsor]}}, for the reason bills.json is: HB100 of 2023
+    # and HB100 of 2025 have different sponsors, and a flat file gives the
+    # second to the first without saying so.
+    #
+    # `sponsors` is keyed on the bill number and holds the CURRENT session:
+    # LsrSponsors.txt and LsrsOnly.txt cover it and nothing else, and the
+    # status-page fallback above reads the same term out of bill_status.json.
+    # So the term is known, and is not looked up.
+    #
+    # It must not be looked up. A bill -> term map built from by_term files
+    # every repeated number under whichever term the loop reached last, which
+    # is the exact confusion this file is being keyed on the term to prevent --
+    # it put 1,849 of 2,220 bills' sponsors under 2023-2024 on the first
+    # attempt, having read them out of the 2025-2026 files.
+    #
+    # An archived term's sponsors come from that term's slice of
+    # bill_status.json, which is not fetched yet; they go in here when it is.
+    sp_by_term = {current_term: sponsors} if sponsors else {}
+    (out / "sponsors.json").write_text(
+        json.dumps(sp_by_term, indent=2), encoding="utf-8")
+    for t in sorted(sp_by_term):
+        print(f"  sponsors.json {t}: {len(sp_by_term[t]):,}")
     (out / "subjects.json").write_text(json.dumps(subjects, indent=2), encoding="utf-8")
     (out / "committees.json").write_text(json.dumps(committees, indent=2), encoding="utf-8")
 

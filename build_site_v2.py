@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.32
+# GRANITE_VERSION: 2026-09-05.33
 """
 Generate the faceted site from real General Court data.
 
@@ -1730,8 +1730,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # still be in the flat shape, in which case it holds the current term and
     # P.per_term hands an archived term nothing -- HB100 exists in every
     # biennium, so the current term's text on an archived bill is worse than
-    # no text. testimony.json and sponsors.json are still flat and are read
-    # through the `own` guard below for the same reason.
+    # no text. testimony.json is still flat and is read through the `own`
+    # guard below for the same reason.
     current = max(bills) if bills else ""
     for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
@@ -1781,7 +1781,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # The bill-status fallback path carries a web member id from a
         # different space, so that one falls back to matching on the name.
         sp_list = []
-        for _s in (sponsors.get(bid, []) if own else []):
+        for _s in P.per_term(sponsors, term, current).get(bid, []):
             _m = (legs.get(_s.get("member_id"))
                   or leg_by_sort.get(sort_name(_s.get("name") or ""))
                   or leg_by_name.get(name_key(_s.get("name") or "") or ("", ""))

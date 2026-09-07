@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Fetch the bill STATUS page for bills the current-session files no longer cover.
 
@@ -333,8 +333,9 @@ def main():
                          + ", ".join(sorted(all_bills)))
     bills = all_bills[term]
     print(f"term {term}: {len(bills):,} bills on file")
-    sponsors_now = json.loads(
-        (Path(a.data) / "sponsors.json").read_text(encoding="utf-8"))
+    sponsors_now = P.per_term(json.loads(
+        (Path(a.data) / "sponsors.json").read_text(encoding="utf-8")),
+        term, newest)
 
     if a.links:
         link_inventory(Path(a.cache))
