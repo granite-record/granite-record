@@ -1,0 +1,60 @@
+10,830 proceedings from the table -> _captions_manifest.csv (what transcribe_and_align.py reads)
+23 recordings skipped: the title names the bill, so the whole
+recording is that one proceeding and there is no boundary to find.
+Mostly committees of conference.
+915 recordings known, 861 already have captions
+31 to fetch, 31 of them floor sessions
+
+  Sfczp-bEQtE failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  1/31  0 fetched, 1 failed (1 have none at all)  0m 05s gone, 2m 56s left  Sfczp-bEQtE   
+  7Gu9nfs5-vk failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  2/31  0 fetched, 2 failed (2 have none at all)  0m 11s gone, 2m 41s left  7Gu9nfs5-vk   
+  V-RzUyKPaiU failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  3/31  0 fetched, 3 failed (3 have none at all)  0m 16s gone, 2m 30s left  V-RzUyKPaiU   
+  dIumWRhMDrY failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  4/31  0 fetched, 4 failed (4 have none at all)  0m 21s gone, 2m 23s left  dIumWRhMDrY   
+  JtVwLtVWtRY failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  5/31  0 fetched, 5 failed (5 have none at all)  0m 26s gone, 2m 16s left  JtVwLtVWtRY   
+  M_vQhPmdJHo failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  6/31  0 fetched, 6 failed (6 have none at all)  0m 31s gone, 2m 10s left  M_vQhPmdJHo     7/31  1 fetched, 6 failed (6 have none at all)  0m 37s gone, 2m 09s left  fr7ji3roLIo     8/31  2 fetched, 6 failed (6 have none at all)  0m 43s gone, 2m 05s left  89R50nnQFrE   
+  DxY8IqDXajc failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  9/31  2 fetched, 7 failed (7 have none at all)  0m 49s gone, 1m 59s left  DxY8IqDXajc   
+  j175Ax65xhA failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  10/31  2 fetched, 8 failed (8 have none at all)  0m 54s gone, 1m 53s left  j175Ax65xhA   
+  X-CDrizZ1jA failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  11/31  2 fetched, 9 failed (9 have none at all)  0m 59s gone, 1m 47s left  X-CDrizZ1jA   
+  FfXIizXUWiE failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  12/31  2 fetched, 10 failed (10 have none at all)  1m 04s gone, 1m 41s left  FfXIizXUWiE   
+  t5oz6oj4TgU failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  13/31  2 fetched, 11 failed (11 have none at all)  1m 09s gone, 1m 35s left  t5oz6oj4TgU   
+  dyFXwCevncA failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  14/31  2 fetched, 12 failed (12 have none at all)  1m 14s gone, 1m 30s left  dyFXwCevncA     15/31  3 fetched, 12 failed (12 have none at all)  1m 19s gone, 1m 25s left  kaS6ELy-acY   
+  dPDT0V_OCSI failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  16/31  3 fetched, 13 failed (13 have none at all)  1m 24s gone, 1m 19s left  dPDT0V_OCSI     17/31  4 fetched, 13 failed (13 have none at all)  1m 31s gone, 1m 15s left  4qCTakr5RJ8     18/31  5 fetched, 13 failed (13 have none at all)  1m 37s gone, 1m 10s left  aGy5YRZ4rdw     19/31  6 fetched, 13 failed (13 have none at all)  1m 44s gone, 1m 05s left  Ifusbupkw_8   
+  OCmDvpG_NSg failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  20/31  6 fetched, 14 failed (14 have none at all)  1m 49s gone, 1m 00s left  OCmDvpG_NSg     21/31  7 fetched, 14 failed (14 have none at all)  1m 55s gone, 0m 54s left  1SIDO6pM17w     22/31  8 fetched, 14 failed (14 have none at all)  2m 06s gone, 0m 51s left  tTb-MgXa_-I   
+  yigq3bvDOyw failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  23/31  8 fetched, 15 failed (15 have none at all)  2m 11s gone, 0m 45s left  yigq3bvDOyw     24/31  9 fetched, 15 failed (15 have none at all)  2m 18s gone, 0m 40s left  SVoD154m_eg   
+  ODcEunTJ1p8 failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  25/31  9 fetched, 16 failed (16 have none at all)  2m 23s gone, 0m 34s left  ODcEunTJ1p8   
+  Bn6MAz1PlCk failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  26/31  9 fetched, 17 failed (17 have none at all)  2m 28s gone, 0m 28s left  Bn6MAz1PlCk     27/31  10 fetched, 17 failed (17 have none at all)  2m 34s gone, 0m 22s left  xr0tc41Wnms     28/31  11 fetched, 17 failed (17 have none at all)  2m 40s gone, 0m 17s left  DqhQrkn9Ljk   
+  Pw7junoiYjI failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  29/31  11 fetched, 18 failed (18 have none at all)  2m 45s gone, 0m 11s left  Pw7junoiYjI     30/31  12 fetched, 18 failed (18 have none at all)  2m 51s gone, 0m 05s left  TWuDkU2o3og   
+  gMt94bTg5lM failed: No captions available for this video. Rerun with --source whisper.  (permanent; not counted toward stopping)
+  31/31  12 fetched, 19 failed (19 have none at all)  2m 56s gone, 0m 00s left  gMt94bTg5lM   
+12 recordings now have captions (this run took 2m 56s)
+19 failed:
+  Sfczp-bEQtE  No captions available for this video. Rerun with --source whisper.
+  7Gu9nfs5-vk  No captions available for this video. Rerun with --source whisper.
+  V-RzUyKPaiU  No captions available for this video. Rerun with --source whisper.
+  dIumWRhMDrY  No captions available for this video. Rerun with --source whisper.
+  JtVwLtVWtRY  No captions available for this video. Rerun with --source whisper.
+  M_vQhPmdJHo  No captions available for this video. Rerun with --source whisper.
+
+19 have no captions at all -> no_captions.txt
+  Those need --source whisper, which runs locally over hours per
+  recording. Worth doing for a floor session carrying two hundred
+  bills; probably not for a hearing carrying three.
+
+Then: python3 probe_alignment.py --suggest

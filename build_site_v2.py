@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.28
+# GRANITE_VERSION: 2026-09-05.29
 """
 Generate the faceted site from real General Court data.
 
@@ -1172,7 +1172,8 @@ def station_for_floor(f, bid, marks):
     return st
 
 
-def build_legislators(out, legs, votes_by_member, towns, unnamed):
+def build_legislators(out, legs, votes_by_member, towns, unnamed,
+                      sponsored=None):
     """One JSON per member, plus the index and the town map.
 
     Split out of main(). main() was 808 lines even after the station
@@ -1194,9 +1195,23 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed):
                                             "url", "url_past", "towns",
                                             "committees", "title", "phone")},
                    **lab, "n_votes": len(mv), "counts": dict(counts),
+                   "n_sponsored": len((sponsored or {}).get(mid, [])),
                    "slug": member_slug(m, lab)})
+        # What they put their name to. The page's own meta description has
+        # promised "sponsored bills" since it was written and the file did not
+        # carry them, so the page could not show them and a search engine was
+        # being told about a section that does not exist.
+        #
+        # Prime sponsorship first, then the rest, newest first within each: a
+        # member's own bills are the ones they are asked about.
+        mine = sorted((sponsored or {}).get(mid, []),
+                      key=lambda x: (not x["prime"], x.get("year") or 0,
+                                     x["bill"]), reverse=False)
         (out / "legislators" / f"{mid}.json").write_text(json.dumps({
             **m, **lab, "counts": dict(counts),
+            "n_sponsored": len(mine),
+            "n_prime": sum(1 for x in mine if x["prime"]),
+            "sponsored": mine,
             "votes": [{"d": v["date"], "b": v["bill"], "q": v["question"],
                        "v": v["vote"]} for v in mv],
         }), encoding="utf-8")
@@ -1630,11 +1645,13 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     Every input is named in the signature rather than inherited from an
     enclosing scope, so a name can no longer be quietly reused.
 
-    Returns (index, years, unnamed) -- unnamed being the member ids the
-    roll calls reference that the roster cannot name, which
-    build_legislators reports.
+    Returns (index, years, unnamed, sponsored) -- unnamed being the member
+    ids the roll calls reference that the roster cannot name, and sponsored
+    being what each member put their name to, which the legislator pages have
+    advertised since they were written and never had.
     """
     unnamed = set()
+    sponsored = defaultdict(list)
 
     def _vote_name(m, body):
         """One member's entry in a roll call.
@@ -1747,6 +1764,13 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # is the honest outcome rather than a link that goes nowhere.
             _slug = member_slug(_m, _lab) if _m.get("id") else ""
             sp_list.append({**_s, **_lab, "slug": _slug})
+        for _s in sp_list:
+            _mid = str(_s.get("member_id") or "")
+            if _mid:
+                sponsored[_mid].append({
+                    "bill": bid, "n": b.get("designation") or bid,
+                    "title": b.get("title", ""), "year": year, "term": term,
+                    "prime": bool(_s.get("prime"))})
         prime = next((s for s in sp_list if s.get("prime")), sp_list[0] if sp_list else None)
         years.add(year)
         ev = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
@@ -2051,7 +2075,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     if status_pages:
         print(f"  {n_stated:,} bills take their status from the page; "
               f"{len(index) - n_stated:,} still derive it from the docket")
-    return index, years, unnamed
+    return index, years, unnamed, dict(sponsored)
 
 
 def main():
@@ -2293,7 +2317,7 @@ def main():
 
 
     # -------------------------------------------------------------- index --
-    index, years, unnamed = build_bills(out, bills, narratives, rollcalls, reports,
+    index, years, unnamed, sponsored = build_bills(out, bills, narratives, rollcalls, reports,
                                sponsors, bill_texts, amend_texts, testimony,
                                testimony_db,
                                procs, floor, segs, marks, sources,
@@ -2304,7 +2328,7 @@ def main():
     print(f"index.json: {size:.0f} KB for {len(index):,} bills "
           f"(roughly {size/4:.0f} KB gzipped, which is what a static host sends)")
 
-    lg = build_legislators(out, legs, votes_by_member, towns, unnamed)
+    lg = build_legislators(out, legs, votes_by_member, towns, unnamed, sponsored)
 
     # ---- home page data ----------------------------------------------------
     # Everything the landing page needs, precomputed here where the full records

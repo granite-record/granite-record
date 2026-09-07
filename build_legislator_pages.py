@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 One page per sitting legislator, that a search engine can find.
 
@@ -84,11 +84,56 @@ VOTE_WORDS = {"Yea": "yes", "Nay": "no", "Excused": "excused",
               "Absent": "absent"}
 
 
+def sponsored_section(detail, base):
+    """The bills this member put their name to, prime sponsorship first.
+
+    The page's meta description has promised "sponsored bills" since it was
+    written and the file did not carry them, so a search engine was being told
+    about a section that did not exist. 8,259 sponsorships across 406 members,
+    1,352 of them as prime sponsor.
+
+    Prime first because that is the one a member is asked about: a bill with
+    fifteen co-sponsors is fifteen people's bill in name and one person's in
+    practice.
+    """
+    rows = detail.get("sponsored") or []
+    if not rows:
+        return ""
+    prime = [r for r in rows if r.get("prime")]
+    rest = [r for r in rows if not r.get("prime")]
+
+    def table(items):
+        return ('<table class="votes"><thead><tr><th>Bill</th><th>Title</th>'
+                "</tr></thead><tbody>"
+                + "".join(
+                    f'<tr><th scope="row"><a href="../bill/{r.get("year","")}/'
+                    f'{r["bill"].lower()}.html">{E(r.get("n") or r["bill"])}</a>'
+                    f'</th><td>{E(r.get("title") or "")}</td></tr>'
+                    for r in items)
+                + "</tbody></table>")
+
+    out = [f"<h2>Bills sponsored</h2>"]
+    out.append(f'<p class="meta">{len(rows):,} bill'
+               f'{"" if len(rows) == 1 else "s"}, '
+               f'{len(prime):,} as prime sponsor.</p>')
+    out.append('<p class="src">Taken from the General Court&#8217;s own sponsor '
+               "list. Sponsoring a bill is putting a name to it, which is not "
+               "the same as voting for it and is not counted as one here.</p>")
+    if prime:
+        out.append("<h3>As prime sponsor</h3>" + table(prime))
+    if rest:
+        out.append(f"<h3>As co-sponsor &#8212; {len(rest):,}</h3>"
+                   "<details><summary>Show them</summary>"
+                   + table(rest) + "</details>")
+    return "\n".join(out)
+
+
 def page(m, detail, base, css):
     name = m.get("display_full") or m.get("display") or m.get("name", "")
     plain = m.get("display_plain") or name
     chamber = "Senate" if str(m.get("chamber", "")).upper().startswith("S") \
         else "House of Representatives"
+    sponsored_block = sponsored_section(detail, base)
     votes = detail.get("votes") or []
     counts = detail.get("counts") or {}
     towns = m.get("towns") or []
@@ -143,6 +188,7 @@ def page(m, detail, base, css):
 
 {f'<h2>Committees</h2><p>{", ".join(E(c) for c in cmtes)}</p>' if cmtes else ""}
 
+{sponsored_block}
 <h2>Recorded votes</h2>
 {f'<p class="meta">{len(votes):,} recorded votes. {tally}</p>' if votes else ""}
 <p class="src">Every roll call this member is recorded in, newest first, from
