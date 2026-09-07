@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.53
+# GRANITE_VERSION: 2026-09-04.54
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2588,6 +2588,81 @@ def _cite_survives():
                   "build(), and the Documents tab will publish no source links")
     return "ok", (f"{cited:,} of {raw:,} rows cite a volume; "
                   f"{kept:,} kept across the first 400 bills")
+
+
+@check("build", "a fetch writes the term it was asked for")
+def _fetch_writes_its_term():
+    """The run that made 1,996 requests and saved none of them.
+
+    fetch_bill_status.py keeps the whole file in `out_all` and this term's
+    slice in `out`, so a run over one term cannot drop another. `out_all[term]
+    = out` sat before the loop, which was right until an empty term stopped
+    being written: the term was then popped while `out` was still empty and
+    never reattached, so every write produced a file that did not reference
+    the dict the loop was filling.
+
+    It exited zero. The console said "1,996 bills of 2023-2024 -> ...". The
+    file had no 2023-2024 in it, and the only reason nothing was lost is that
+    the pages were already cached.
+
+    This runs the real script over a cache of one page, with no network -- the
+    parser skips a bill it has no cached page for -- and asks the only question
+    that matters: is what it fetched in the file, and is the other term still
+    there beside it.
+    """
+    here = Path(".").resolve()
+    if not (here / "fetch_bill_status.py").exists():
+        return "skip", "fetch_bill_status.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "data").mkdir()
+        (root / "data" / "bills.json").write_text(json.dumps({
+            "2023-2024": {"HB100": {"lsr_year": "2024", "lsr_num": "1234",
+                                    "title": "", "bill": "HB100"}},
+            "2025-2026": {"HB100": {"lsr_year": "2026", "lsr_num": "9999",
+                                    "title": "the current HB100", "bill": "HB100"}},
+        }), encoding="utf-8")
+        (root / "data" / "sponsors.json").write_text(json.dumps(
+            {"2025-2026": {"HB100": []}}), encoding="utf-8")
+        # The other term, already on file. It must still be there afterwards.
+        (root / "bill_status.json").write_text(json.dumps({
+            "2025-2026": {"HB100": {"title": "the current HB100.",
+                                    "gen_status": "IN COMMITTEE"}}}),
+            encoding="utf-8")
+        # One cached page, named the way the fetcher names them.
+        cache = root / "status_pages"
+        cache.mkdir()
+        (cache / "2024_1234_HB100.html").write_text(
+            "<html><body><table><tr><td>Bill Title: an entirely different bill "
+            "of the same number</td></tr><tr><td>LSR#: 1234</td></tr>"
+            "<tr><td>Body: H</td></tr><tr><td>Gen Status: SIGNED BY GOVERNOR"
+            "</td></tr></table></body></html>", encoding="utf-8")
+
+        r = subprocess.run(
+            [sys.executable, str(here / "fetch_bill_status.py"),
+             "--reparse", "--term", "2023-2024", "--data", "data",
+             "--out", "bill_status.json", "--cache", "status_pages"],
+            cwd=root, capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
+
+        got = json.loads((root / "bill_status.json").read_text(encoding="utf-8"))
+        assert "2023-2024" in got, (
+            "the term it was asked to fetch is not in the file it wrote. It "
+            f"wrote: {sorted(got)}. The console will have said it saved them.")
+        assert got["2023-2024"].get("HB100", {}).get("title"), (
+            "the term is there and the bill it parsed is not: "
+            f"{got['2023-2024']}")
+        assert "different bill" in got["2023-2024"]["HB100"]["title"], (
+            "the archived bill took a title from somewhere other than its own "
+            f"cached page: {got['2023-2024']['HB100']['title']!r}")
+        assert got.get("2025-2026", {}).get("HB100"), (
+            "the term that was NOT being fetched was dropped on the way out")
+        assert got["2025-2026"]["HB100"]["title"] == "the current HB100.", (
+            "the term that was not being fetched was overwritten")
+        return "ok", ("the fetched term is written and the other term "
+                      "survives it")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
 
 
 @check("data", "a term's sponsors came from that term's own files")

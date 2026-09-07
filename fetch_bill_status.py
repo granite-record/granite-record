@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Fetch the bill STATUS page for bills the current-session files no longer cover.
 
@@ -31,6 +31,7 @@ import argparse
 import json
 import proceedings as P
 import re
+import sys
 import time
 import urllib.error
 import urllib.parse
@@ -430,12 +431,26 @@ def main():
             print(f"{len(out):,} already on file for {term}; "
                   f"{len(todo) - have:,} still to fetch"
                   + (f"; {others:,} bills of other terms kept" if others else ""))
-    # An empty term is noise in the file and reads as "fetched, found none"
-    # rather than "not fetched yet". Only a term with records is written.
-    if out:
-        out_all[term] = out
-    else:
-        out_all.pop(term, None)
+    def save():
+        """The file, with this term's records in it.
+
+        `out_all[term] = out` used to sit HERE, before the loop, which was
+        right until an empty term stopped being written -- at which point the
+        term was popped while `out` was still empty and never reattached, so
+        every periodic write and the final write produced a file that did not
+        reference the dict the loop was filling. A run of 1,996 requests
+        exited zero having saved none of them, and the only reason nothing was
+        lost is that the pages were already in the cache.
+
+        Attaching the term at the moment of writing is the version that cannot
+        drift: there is one place that decides what the file contains, and it
+        reads `out` as it stands rather than as it stood.
+        """
+        if out:
+            out_all[term] = out
+        else:
+            out_all.pop(term, None)
+        Path(a.out).write_text(json.dumps(out_all, indent=2), encoding="utf-8")
 
     fetched = cached = 0
     fails = Counter()
@@ -479,10 +494,17 @@ def main():
         if i % 25 == 0:
             print(f"  {i}/{len(todo)}  {fetched} fetched, {cached} cached",
                   flush=True)
-            Path(a.out).write_text(json.dumps(out_all, indent=2),
-                                   encoding="utf-8")
+            save()
 
-    Path(a.out).write_text(json.dumps(out_all, indent=2), encoding="utf-8")
+    save()
+
+    # Silence is not success. A run that fetched pages and saved no records is
+    # a parser that stopped matching or a write that went nowhere, and both
+    # look exactly like a quiet success from the outside.
+    if fetched and not out:
+        sys.exit(f"\n{fetched:,} pages were fetched and NOTHING was written "
+                 f"for {term}.\nThe pages are in {a.cache}/, so --reparse "
+                 "rebuilds from them without asking the server again.")
 
     withtitle = sum(1 for v in out.values() if v.get("title"))
     withsp = sum(1 for v in out.values() if v.get("sponsors"))
