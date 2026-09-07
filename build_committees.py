@@ -1,0 +1,353 @@
+#!/usr/bin/env python3
+# GRANITE_VERSION: 2026-09-07.2
+"""
+A page's worth of data for every committee.
+
+    python3 build_committees.py --site site --data data
+
+WHAT A COMMITTEE PAGE ANSWERS
+
+Bill-first search answers "what happened to HB 1442". This answers "what did
+Legislative Administration do on 3 March", which is the question a reporter or
+a member of that committee actually asks, and the site could not answer it at
+all.
+
+WHERE EACH PART COMES FROM
+
+  identity, leadership, room   committees.json          fetch_committees.py
+  who sits on it               data/committee_members.json
+                                                        fetch_committee_members_db.py
+  bills referred               site/index.json          the search index
+  what happened on a day       proceedings.csv          one row per
+                                                        (bill, date, kind, recording)
+  what the committee decided   committee_reports.json, senate_reports.json
+
+The web pages give the chair and the room and not the House rosters; the
+database gives both chambers' rosters and no leadership. Neither alone is a
+committee page.
+
+THE DAY NARRATIVE
+
+Composed from proceedings.csv rather than written, in the same spirit as the
+bill narratives: every clause is a row somebody can check. A day reads
+
+    The Committee on Education met on January 28, 2026 for public hearings on
+    HB1123, HB319 and HB722. It also held an executive session on HB1142, and
+    recommended that the House find it inexpedient to legislate, 12-2.
+
+and the recommendation half only appears when committee_reports.json has one
+for that bill. A committee that met and whose report is not on file gets the
+first sentence and nothing more, which is the honest outcome.
+
+Writes site/committees.json and site/committee/<code>.json. It writes no HTML:
+the page is app.js with one committee open, the same way a bill's page is.
+"""
+
+import argparse
+import collections
+import json
+import re
+from pathlib import Path
+
+import proceedings as P
+
+# The kinds proceedings.csv records, in the order a committee day runs, with
+# the plural the narrative needs.
+KIND_ORDER = ["public hearing", "hearing", "executive session",
+              "full committee work session", "subcommittee work session",
+              "work session", "committee of conference"]
+PLURAL = {
+    "public hearing": "public hearings",
+    "hearing": "hearings",
+    "executive session": "executive sessions",
+    "full committee work session": "full committee work sessions",
+    "subcommittee work session": "subcommittee work sessions",
+    "work session": "work sessions",
+    "committee of conference": "committees of conference",
+}
+MONTHS = ["January", "February", "March", "April", "May", "June", "July",
+          "August", "September", "October", "November", "December"]
+
+
+def fdate(d):
+    if not d or len(d) < 10:
+        return d or ""
+    try:
+        return f"{MONTHS[int(d[5:7]) - 1]} {int(d[8:10])}, {d[:4]}"
+    except (ValueError, IndexError):
+        return d
+
+
+def andlist(xs):
+    xs = list(xs)
+    if not xs:
+        return ""
+    if len(xs) == 1:
+        return xs[0]
+    return ", ".join(xs[:-1]) + " and " + xs[-1]
+
+
+def spaced(bill):
+    """HB1123 as "HB 1123", the way the site writes a bill number."""
+    m = re.match(r"^([A-Z]+)\s*(\d+.*)$", (bill or "").upper())
+    return f"{m.group(1)} {m.group(2)}" if m else (bill or "")
+
+
+def recommendation(reports, term, bill):
+    """What the committee recommended, and the vote, if it is on file."""
+    for rec in (reports.get(term, {}) or {}).get(bill, []) or []:
+        maj = (rec.get("majority_recommendation") or "").strip()
+        if not maj:
+            continue
+        vote = ""
+        for r in rec.get("reports") or []:
+            if (r.get("side") or "").lower().startswith(("majority", "committee")):
+                y, n = r.get("vote_yeas"), r.get("vote_nays")
+                if y is not None and n is not None:
+                    vote = f"{y}–{n}"
+                break
+        return maj.lower(), (rec.get("minority_recommendation") or "").strip().lower(), vote
+    return "", "", ""
+
+
+def narrate(name, chamber, date, items, reports):
+    """One committee day, in sentences, from the rows themselves."""
+    by_kind = collections.defaultdict(list)
+    for it in items:
+        by_kind[it["kind"]].append(it)
+    kinds = [k for k in KIND_ORDER if k in by_kind] + \
+            [k for k in by_kind if k not in KIND_ORDER]
+    if not kinds:
+        return ""
+
+    who = f"The Committee on {name}" if not name.lower().startswith("committee") \
+        else name
+    out = []
+    first = kinds[0]
+    bills = andlist(spaced(i["n"] or i["bill"]) for i in by_kind[first])
+    noun = PLURAL[first] if len(by_kind[first]) > 1 and first in PLURAL else first
+    out.append(f"{who} met on {fdate(date)} for {noun} on {bills}.")
+
+    for k in kinds[1:]:
+        bs = andlist(spaced(i["n"] or i["bill"]) for i in by_kind[k])
+        noun = PLURAL[k] if len(by_kind[k]) > 1 and k in PLURAL else k
+        out.append(f"It also held {'an' if noun[0] in 'aeiou' else 'a'} "
+                   f"{noun} on {bs}." if len(by_kind[k]) == 1
+                   else f"It also held {noun} on {bs}.")
+
+    # What it decided, where a report says so. Only executive sessions produce
+    # a recommendation, and only some of those have a report on file yet.
+    said = []
+    for it in by_kind.get("executive session", []):
+        maj, minor, vote = recommendation(reports, it["term"], it["bill"])
+        if not maj:
+            continue
+        body = "House" if chamber == "H" else "Senate"
+        bit = (f"On {spaced(it['n'] or it['bill'])} it recommended that the "
+               f"{body} find it {maj}" if maj.startswith("inexpedient")
+               else f"On {spaced(it['n'] or it['bill'])} it recommended "
+                    f"{maj}")
+        if vote:
+            bit += f", {vote}"
+        if minor and minor != maj:
+            bit += f", with a minority recommending {minor}"
+        said.append(bit + ".")
+    out += said
+    return " ".join(out)
+
+
+def load(p, default):
+    f = Path(p)
+    if not f.exists():
+        return default
+    try:
+        return json.loads(f.read_text(encoding="utf-8"))
+    except ValueError:
+        return default
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--site", default="site")
+    ap.add_argument("--data", default="data")
+    a = ap.parse_args()
+    site, data = Path(a.site), Path(a.data)
+
+    idx = load(site / "index.json", [])
+    if not idx:
+        raise SystemExit(f"{site}/index.json is not there. Run build_site_v2 "
+                         "first -- the bills a committee heard come from it.")
+    web = load("committees.json", {})
+    seats = load(data / "committee_members.json", {})
+    codes = load(data / "committees.json", {})
+    reports = {**load("committee_reports.json", {})}
+    srep = load("senate_reports.json", {})
+    for t, byb in srep.items():
+        for b, v in byb.items():
+            reports.setdefault(t, {}).setdefault(b, v)
+    legs = {str(m.get("id")): m for m in load(site / "legislators.json", [])}
+
+    # (chamber, name) -> code. NOT name alone: both chambers have a
+    # Judiciary, a Finance and a Ways and Means, so a name-only map silently
+    # gave one chamber's committee the other's roster and sitting days -- the
+    # same confusion as a bill number across two terms, in a different file.
+    #
+    # The code carries the chamber: H05 is a House committee, S30 a Senate
+    # one, and that is the only place the chamber is stated for a House
+    # committee, whose page does not say.
+    by_name = {}
+    for code, rec in codes.items():
+        nm = (rec.get("name") or "").strip().lower()
+        ch = code[:1].upper() if code else ""
+        if nm and ch in ("H", "S"):
+            by_name[(ch, nm)] = code
+
+    def code_of(name, chamber):
+        """The committee a name means, in the chamber that named it."""
+        nm = (name or "").strip().lower()
+        ch = (chamber or "").strip().upper()[:1]
+        if not nm:
+            return None
+        # The search index writes "Senate Judiciary" and "House Finance";
+        # proceedings.csv writes the bare name and carries the chamber in its
+        # own column. Both forms end up here.
+        for pre, c in (("house ", "H"), ("senate ", "S")):
+            if nm.startswith(pre):
+                nm, ch = nm[len(pre):], c
+                break
+        return by_name.get((ch, nm))
+    # The web file carries the chamber and the leadership.
+    lead = {}
+    for chamber, rows in (web.items() if isinstance(web, dict) else []):
+        for c in rows:
+            code = code_of(c.get("name"), chamber)
+            if code:
+                lead[code] = {**c, "chamber": chamber}
+
+    # ---- what each committee heard, day by day --------------------------
+    days = collections.defaultdict(lambda: collections.defaultdict(list))
+    bill_meta = {(b.get("term"), b.get("id")): b for b in idx}
+    unmatched = collections.Counter()
+    for r in P.load():
+        cname = (r.get("committee") or "").strip()
+        if not cname or not r.get("date"):
+            continue
+        code = code_of(cname, r.get("body"))
+        if not code:
+            unmatched[f"{r.get('body') or '?'} {cname}"] += 1
+            continue
+        meta = bill_meta.get((r.get("term"), r.get("bill"))) or {}
+        days[code][(r.get("term"), r.get("date"))].append({
+            "bill": r.get("bill"), "n": meta.get("n") or spaced(r.get("bill")),
+            "title": meta.get("title", ""), "year": meta.get("year", ""),
+            "term": r.get("term"), "kind": r.get("kind"),
+            "video_id": r.get("video_id") or "",
+            "start": r.get("predicted_offset"),
+            "end": r.get("debate_end"),
+            "precise": bool(r.get("precise")),
+            "time": r.get("time") or "", "venue": r.get("venue") or "",
+        })
+
+    # ---- bills referred, per term ---------------------------------------
+    referred = collections.defaultdict(lambda: collections.defaultdict(list))
+    for b in idx:
+        for nm in (b.get("committees") or ([b.get("committee")]
+                                           if b.get("committee") else [])):
+            # The chamber is in the name here -- "Senate Judiciary" -- so
+            # code_of takes it from the prefix.
+            code = code_of(nm, "")
+            if code:
+                referred[code][b.get("term")].append({
+                    "id": b.get("id"), "n": b.get("n"), "year": b.get("year"),
+                    "title": b.get("title", ""), "status": b.get("status", ""),
+                    "kind": b.get("kind", ""), "term": b.get("term"),
+                })
+
+    out = site / "committee"
+    out.mkdir(parents=True, exist_ok=True)
+    index, written = [], 0
+    for code in sorted(set(list(seats) + list(referred) + list(days))):
+        info = lead.get(code, {})
+        name = (info.get("name") or (codes.get(code) or {}).get("name")
+                or code)
+        chamber = info.get("chamber") or (
+            (seats.get(code) or [{}])[0].get("chamber") or "")
+        members = []
+        for m in seats.get(code, []):
+            lg = legs.get(m["id"]) or {}
+            members.append({**m,
+                            "slug": lg.get("slug", ""),
+                            "label": lg.get("display_full") or m["name"],
+                            "county": lg.get("county", "")})
+        # Leadership comes from the web pages, which name a person rather than
+        # an id, so it is matched on the name the roster prints.
+        for m in members:
+            plain = m["name"].split(",")
+            plain = f"{plain[1].strip()} {plain[0].strip()}" if len(plain) > 1 \
+                else m["name"]
+            if info.get("chair") and plain == info["chair"]:
+                m["role"] = "Chair"
+            elif info.get("vice_chair") and plain == info["vice_chair"]:
+                m["role"] = "Vice Chair"
+            else:
+                m.setdefault("role", "Member")
+
+        sessions = []
+        for (term, date), items in sorted(days.get(code, {}).items(),
+                                          key=lambda kv: (kv[0][1] or ""),
+                                          reverse=True):
+            items.sort(key=lambda i: (i["start"] if i["start"] is not None
+                                      else 1e9))
+            sessions.append({
+                "date": date, "term": term,
+                "video_id": next((i["video_id"] for i in items
+                                  if i["video_id"]), ""),
+                "narrative": narrate(name, chamber, date, items, reports),
+                "items": items,
+            })
+
+        rec = {
+            "code": code, "name": name, "chamber": chamber,
+            "chair": info.get("chair", ""), "vice_chair": info.get("vice_chair", ""),
+            "aide": info.get("aide", ""), "room": info.get("room", ""),
+            "phone": info.get("phone", ""), "url": info.get("url", ""),
+            "members": members,
+            "bills": {t: sorted(v, key=lambda b: b["id"])
+                      for t, v in referred.get(code, {}).items()},
+            "sessions": sessions,
+        }
+        (out / f"{code}.json").write_text(json.dumps(rec), encoding="utf-8")
+        written += 1
+        index.append({
+            "code": code, "name": name, "chamber": chamber,
+            "chair": rec["chair"], "n_members": len(members),
+            "n_bills": sum(len(v) for v in rec["bills"].values()),
+            "n_sessions": len(sessions),
+            "terms": sorted(rec["bills"]),
+        })
+
+    (site / "committees.json").write_text(json.dumps(index), encoding="utf-8")
+
+    assert written, ("no committee page was written. That means no committee "
+                     "name in proceedings.csv matched data/committees.json, "
+                     "which is a parse problem rather than an empty session.")
+    print(f"{written} committees -> {out}/")
+    print(f"  {sum(i['n_members'] for i in index):,} seats, "
+          f"{sum(i['n_bills'] for i in index):,} bill referrals, "
+          f"{sum(i['n_sessions'] for i in index):,} sitting days")
+    lead_n = sum(1 for i in index if i["chair"])
+    print(f"  {lead_n} of {written} have a chair on file")
+    if unmatched:
+        print(f"  {len(unmatched)} committee name(s) in proceedings.csv match "
+              "nothing in data/committees.json:")
+        for nm, n in unmatched.most_common(6):
+            print(f"    {nm!r} on {n:,} rows")
+    empty = [i["code"] for i in index if not i["n_sessions"]]
+    if empty:
+        print(f"  {len(empty)} committee(s) have no sitting day on record: "
+              + ", ".join(empty[:8]))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
