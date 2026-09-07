@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.33
+# GRANITE_VERSION: 2026-09-04.34
 """
 Write a real HTML page for every bill.
 
@@ -153,9 +153,33 @@ def page(b, d, generated):
                     f'{E(e["cite"])} &#8599;</a>')
         return f' <span class="cite">{E(e["cite"])}</span>' if e.get("cite") else ""
 
+    def signins(e):
+        """How many signed in for and against, on this hearing.
+
+        Counts only. The sign-in sheet carries a name and a town for each of
+        some 400,000 rows and almost every one is a member of the public, so
+        fetch_testimony_db does not ask for them.
+
+        "dated" is the difference between a fact and a number that looks like
+        one: with it the count belongs to this hearing, without it the database
+        had the bill but not this date and the figure covers every hearing.
+        """
+        t = e.get("testimony") or {}
+        if not t.get("total"):
+            return ""
+        bit = lambda v, w, c: (f'<span class="sgn {c}">{v:,} {w}</span>'
+                               if v else "")
+        return ('<span class="tnote">'
+                + bit(t.get("support") or 0, "for", "for")
+                + bit(t.get("oppose") or 0, "against", "against")
+                + bit(t.get("neutral") or 0, "neutral", "")
+                + f' {t["total"]:,} signed in'
+                + ("" if t.get("dated") else " across this bill&#8217;s hearings")
+                + "</span>")
+
     timeline = "".join(
         f'<li><span class="d">{E(fdate(e["date"]))}</span>'
-        f'<span>{E(e.get("text") or "")}{cite(e)}</span></li>'
+        f'<span>{E(e.get("text") or "")}{cite(e)}{signins(e)}</span></li>'
         for e in (d.get("events") or []))
 
     # Sponsors grouped by chamber, the originating one first, exactly as the
@@ -508,6 +532,12 @@ def page(b, d, generated):
 .tl .d{{flex:0 0 150px;color:var(--ink-3);font-size:13px}}
 .cite{{font-size:12px;color:var(--ink-3);white-space:nowrap}}
 a.cite{{color:var(--pine)}}
+.tnote{{display:block;font-size:12px;color:var(--ink-3);margin-top:4px}}
+.sgn{{display:inline-block;margin:3px 6px 0 0;padding:1px 7px;border-radius:9px;
+font-size:11.5px;font-weight:600;background:var(--paper);
+border:1px solid var(--rule-2)}}
+.sgn.for{{color:var(--pine);border-color:var(--rule-2)}}
+.sgn.against{{color:var(--st-veto);border-color:var(--rule-2)}}
 .votes{{width:100%;border-collapse:collapse;margin:10px 0;font-size:14px}}
 .votes th,.votes td{{padding:7px 10px;border-bottom:1px solid var(--rule);text-align:right}}
 .votes th[scope=row]{{text-align:left}}
