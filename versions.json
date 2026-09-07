@@ -44,7 +44,7 @@
     "probe_amendments.py": "2026-09-04.2",
     "probe_archive.py": "2026-09-04.1",
     "probe_legacy.py": "2026-09-06.3",
-    "probe_db.py": "2026-09-06.8",
+    "probe_db.py": "2026-09-06.9",
     "probe_calendars.py": "2026-09-04.4",
     "probe_schema.py": "2026-09-04.1",
     "proceedings.py": "2026-09-05.1",
@@ -58,7 +58,7 @@
     "tests/test_markers.py": "2026-09-05.1",
     "transcribe_and_align.py": "2026-09-04.1",
     "verify_batch.py": "2026-09-04.4",
-    "fetch_rollcalls_db.py": "2026-09-06.1"
+    "fetch_rollcalls_db.py": "2026-09-06.2"
   },
   "generated": "2026-09-04"
 }

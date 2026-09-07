@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.8
+# GRANITE_VERSION: 2026-09-06.9
 """
 What is actually in the General Court's public database.
 
@@ -270,6 +270,102 @@ def run(connstr, queries):
     except ValueError:
         return None, txt[:300]
     return (d if isinstance(d, list) else [d]), None
+
+
+# A second bridge, for answers too big to hand back through JSON.
+#
+# run() builds a PowerShell array with $rows += $row and then serialises the
+# whole thing with ConvertTo-Json. That is quadratic in the number of rows --
+# += reallocates the array every time -- and it works fine for the forty-row
+# questions it was written for. Asking it for rollcallhistory's 107,118 member
+# votes for 2025 did not come back inside five minutes.
+#
+# Nothing about those rows needs to be in memory at all. The download they are
+# replacing is pipe-delimited text, so the reader can write pipe-delimited text
+# straight to a file as it goes and the process stays flat.
+#
+# It prints a count as it goes for the same reason everything here does: a step
+# that can produce nothing and still exit zero has to say which it did.
+PS_STREAM = r"""
+$ErrorActionPreference = 'Stop'
+$conn = New-Object System.Data.SqlClient.SqlConnection
+$conn.ConnectionString = $env:GR_CONNSTR
+try { $conn.Open() } catch {
+  Write-Output ("CONNECT_FAIL " + $_.Exception.Message); exit 3 }
+$cmd = $conn.CreateCommand()
+$cmd.CommandText = $env:GR_SQL
+$cmd.CommandTimeout = [int]$env:GR_TIMEOUT
+$CR = [string][char]13
+$LF = [string][char]10
+$every = [int]$env:GR_EVERY
+$enc = New-Object System.Text.UTF8Encoding($false)
+$w = New-Object System.IO.StreamWriter($env:GR_OUT, $false, $enc)
+$n = 0
+try {
+  $rdr = $cmd.ExecuteReader()
+  $f = $rdr.FieldCount
+  while ($rdr.Read()) {
+    $vals = for ($i = 0; $i -lt $f; $i++) {
+      $v = $rdr.GetValue($i)
+      if ($v -eq $null -or $v -is [System.DBNull]) { '' }
+      else { ([string]$v).Replace('|',' ').Replace($CR,'').Replace($LF,'') }
+    }
+    $w.WriteLine([string]::Join('|', [string[]]$vals))
+    $n++
+    if ($every -gt 0 -and ($n % $every) -eq 0) {
+      Write-Output ("PROGRESS " + $n); [Console]::Out.Flush()
+    }
+  }
+  $rdr.Close()
+} catch {
+  $w.Close(); $conn.Close()
+  Write-Output ("QUERY_FAIL " + $_.Exception.Message); exit 4
+}
+$w.Close()
+$conn.Close()
+Write-Output ("DONE " + $n)
+"""
+
+
+def run_to_file(connstr, sql, path, timeout=1800, every=20000, label=""):
+    """Stream one SELECT to a pipe-delimited file. Returns (rows, error).
+
+    The file is written by PowerShell, not by Python: the rows never cross the
+    process boundary, so a query's size stops mattering. A pipe inside a value
+    would move every column after it, so one is replaced with a space. A newline
+    would split one row into two, and is DELETED rather than replaced: that is
+    what the General Court's own bulk download does, measured on 2026's roll
+    call titles, where a title runs "laws." then a space, then a newline, then
+    "Providing", and the file holds "laws. Providing" on one line with a single
+    space. Deleting reproduced 328 of the 419 rows exactly; replacing with a
+    space reproduced 317.
+    """
+    import os
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    proc = subprocess.Popen(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command", PS_STREAM],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        env={**os.environ, "GR_CONNSTR": connstr, "GR_SQL": sql,
+             "GR_OUT": str(path.resolve()), "GR_TIMEOUT": str(int(timeout)),
+             "GR_EVERY": str(int(every))})
+    rows, err = None, None
+    try:
+        for line in proc.stdout:
+            line = line.strip()
+            if line.startswith("PROGRESS "):
+                print(f"    {label}{int(line[9:]):,} rows so far", flush=True)
+            elif line.startswith("DONE "):
+                rows = int(line[5:])
+            elif line.startswith(("CONNECT_FAIL", "QUERY_FAIL")):
+                err = line
+    finally:
+        proc.wait(timeout=timeout + 60)
+    if err:
+        return None, err
+    if rows is None:
+        return None, (proc.stderr.read() or "no output").strip()[:300]
+    return rows, None
 
 
 def show(results):
