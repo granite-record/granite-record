@@ -171,6 +171,9 @@ In order. `ARCHITECTURE.md` has the full reasoning.
    old shape. So is `build_feeds.py`, which had no notion of a term at all and
    writes 2,233 of the site's 8,045 files.
 
+   `data/bills.json` is done too, and with it the 2023-2024 term is live:
+   4,230 bills across two terms, 12,013 of the 20,000 files Cloudflare allows.
+
    Two are left: `bill_text.json` and `bill_status.json`. Both have writers
    that need the network, so neither can be reshaped and regenerated in one
    commit, and shipping the reshape without the rebuild would leave the site

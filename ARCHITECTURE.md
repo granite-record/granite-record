@@ -112,6 +112,16 @@ from the database, and fetch_committee_reports gained --offline, which re-reads
 the 82 calendars already on disk and makes no request. Output-neutral across
 all 2,234 bills.
 
+`data/bills.json` is done as well, and it was the one that mattered most: the
+loop in `build_bills` runs over it, so a bare bill number there put two terms'
+bills under one key at the very top of the pipeline. It also turned up the bug
+the whole exercise exists to prevent -- `yearOf(id)` in `bills.html` searched
+the entire index for the first row with that number, so opening the 2023 HB1
+fetched the 2026 one's record and showed it under the 2023 heading.
+
+**The 2023-2024 term is live**, which is the proof this all worked: 4,230 bills
+across two terms, and no per-bill file of one term reachable from the other.
+
 Two are left: `bill_text.json` and `bill_status.json`. Both have writers that
 need the network. That is the whole reason they are still here -- reshaping one
 without regenerating it leaves the site unbuildable, and regenerating means a
@@ -127,7 +137,24 @@ carry a term, and the calendars back to 1997 are two requests a year away.
 already sketch this. Today's year-keyed journal and calendar citations were
 part of the same job without my recognising it.
 
-### 4. The deployment has a file cap, and the archive hits it at three terms
+### 4. The deployment has a file cap, and the archive hits it at five terms
+
+**Measured on the two-term site, 6 September:** 12,013 files of 20,000.
+
+| | files |
+|---|---|
+| the current term | 4,468 |
+| the 2023-2024 term | 3,992 |
+| everything shared -- legislators, towns, feeds, the shell | 3,553 |
+
+An archived term costs **3,992 files**, so there is room for **three more** and
+the cap breaks on the fifth term overall. That is further off than the earlier
+estimate of three, because an archived term is cheaper than a live one: it has
+no per-bill RSS feed, having no docket to report.
+
+It is still the constraint on the archive as a whole -- nineteen terms back to
+1989 is not reachable one file per bill by any arrangement -- so the decision
+below stands. It is just not urgent until a third archived term is wanted.
 
 Cloudflare Pages allows 20,000 files. The site is at 8,045 for a single term.
 It is three files per bill, not two -- `bill/` 2,234, `bills/` 2,234 and

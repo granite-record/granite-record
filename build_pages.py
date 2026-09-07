@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.13
+# GRANITE_VERSION: 2026-09-04.14
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -371,9 +371,21 @@ and where in the recording it was discussed.</p>
 <h2>Where the information comes from</h2>
 <p>Bill histories, hearing schedules and sponsors come from the General Court's
 published data files. Vote tallies and individual member votes come from its roll
-call files. Committee majority and minority reports are taken from the House
-Calendar. Hearing and session recordings are the General Court's own, on YouTube,
-linked rather than copied.</p>
+call files, and for sessions those files no longer cover, from the read-only
+database the General Court publishes credentials for. The House's committee
+majority and minority reports are taken from the House Calendar; the Senate's
+come from that same database, which is where the Senate files them. Hearing and
+session recordings are the General Court's own, on YouTube, linked rather than
+copied.</p>
+<p>Where a hearing shows how many people signed in for and against a bill, those
+are counts and nothing else. The General Court's sign-in sheet records a name, a
+town and often written testimony for every person; almost all of them are members
+of the public rather than public figures, and this site does not republish them.</p>
+<p>An earlier term marked <i>archived</i> is a thinner record on purpose. Its
+bills, statuses, committees, hearing dates and recorded votes are here; its
+docket, sponsors and written reports are one request per bill against the
+General Court's servers and are not loaded. Every archived bill links its own
+official record.</p>
 
 <h2>What is taken from the record and what is generated</h2>
 <p>Dates, sponsors, vote tallies, committee assignments and hearing times are taken
@@ -386,10 +398,17 @@ within, and the player opens early on purpose. Where no estimate was possible, t
 recording is linked with a note saying so rather than a guessed timestamp.</p>
 
 <h2>Accuracy</h2>
-<p>Automatic timing was checked against 34 hand-marked proceedings across seven
-committees. Most land within two minutes; a small number are wrong by considerably
-more. That is why the site says a bill starts <i>around</i> a time and never states
-one as fact.</p>
+<p>Automatic timing is checked against 35 proceedings that a person timed by
+watching the recording, across seven sessions. Of the 18 the site can currently
+place, the median is out by one second and the worst by about sixteen minutes.
+The 17 it cannot place carry no estimate at all rather than a guessed one. That
+is why the site says a bill starts <i>around</i> a time, shows the margin it is
+confident within, and never states a timestamp as fact.</p>
+<p>Where a timestamp comes from matters more than how close it is. A roll call
+carries its own clock time from the General Court&#8217;s record and involves no
+speech recognition; a boundary the chair announced is a quotation; an estimate
+from the pattern of the meeting is a guess with an error bar. The page says
+which of the three it is showing.</p>
 <p>Speech recognition is worst at exactly the things that matter most — names,
 numbers and organisations. Check the recording before quoting anything.</p>
 
