@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.36
+# GRANITE_VERSION: 2026-09-05.37
 """
 Generate the faceted site from real General Court data.
 
@@ -2528,9 +2528,24 @@ def main():
         print(f"  {sum(v['vacant'] for v in vac)} vacant House seats identified "
               f"across {len(vac)} districts")
 
+    # Name as the index writes it -- "House Finance" -- to the code its page
+    # lives at. Both chambers have a Finance, so the chamber is part of the
+    # key, and it comes from the code's own first letter.
+    committee_codes = {}
+    for _code, _rec in (load(D / "committees.json", {}) or {}).items():
+        _nm = (_rec.get("name") or "").strip()
+        _ch = _code[:1].upper()
+        if _nm and _ch in ("H", "S"):
+            committee_codes[f"{'House' if _ch == 'H' else 'Senate'} {_nm}"] = _code
     meta = {"years": sorted(years, reverse=True),
             "terms": sorted({b["term"] for b in index if b["term"]}, reverse=True),
             "committees": sorted({b["committee"] for b in index if b["committee"]}),
+            # {"House Finance": "H34"}, so a committee named on a bill card is
+            # a link to that committee rather than a dead end -- 3,967
+            # mentions across the site, none of them clickable before.
+            # Written from data/committees.json, whose codes carry the
+            # chamber, because "Finance" alone names one in each.
+            "committee_codes": committee_codes,
             "topics": sorted({b["topic"] for b in index if b["topic"]}),
             "sponsors": sorted({b["sponsor"] for b in index if b["sponsor"]}),
             "votedays": sorted({d for b in index for d in b["votedays"]}, reverse=True)}

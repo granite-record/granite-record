@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.15
+// GRANITE_VERSION: 2026-09-07.16
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1319,6 +1319,14 @@ let PAGE_TAB = 0;
 
 // A bill, as a card small enough to list a hundred of. Clicking goes to the
 // bill's own page, which is this app again with that bill open.
+// A committee named on a bill, as a link to its page where there is one.
+// 3,967 mentions across the site were plain text, so the reader who wanted
+// "what else did this committee do" had nowhere to click.
+function cmteLink(name){
+  const code=(META&&META.committee_codes||{})[name];
+  return code?`<a href="committee/${esc(code)}.html">${esc(name)}</a>`:esc(name);
+}
+
 function billCard(b){
   const y = b.year || (b.term ? String(b.term).slice(0,4) : "");
   return `<a class="bcard ${KIND[b.kind]||""}" href="bill/${esc(String(y))}/${
@@ -1356,7 +1364,8 @@ function renderMemberHead(m){
       towns.map(t=>esc(t)).join(" &middot; ")}</p>`:
       `<p class="ptowns note">The towns in this district are not on file.</p>`}
     ${(m.committees||[]).length?`<p class="pcmte"><b>Committees</b> ${
-      m.committees.map(c=>esc(c)).join(" &middot; ")}</p>`:""}
+      m.committees.map(c=>cmteLink(
+        (m.chamber==="S"?"Senate ":"House ")+c)).join(" &middot; ")}</p>`:""}
     ${m.email?`<p class="pmeta"><a href="mailto:${esc(m.email)}">${esc(m.email)}</a></p>`:""}
   </div>`;
 }
@@ -1650,7 +1659,8 @@ function render(){
           ?` <span class="chip" title="Filed one year, acted on in the next — retained in committee or sent to interim study">carried over</span>`:""}</span>
         <span class="cstat ${KIND[b.kind]}">${esc(b.status)}</span></div>
         <div class="ctitle">${esc(b.title)}</div>
-        <div class="cmeta">${esc(b.sponsor_label||b.sponsor)}${(b.committees||[b.committee]).filter(Boolean).map(c=>" · "+esc(c)).join("")}${b.topic?" · "+esc(b.topic):""}</div>
+        <div class="cmeta">${esc(b.sponsor_label||b.sponsor)}${
+          (b.committees||[b.committee]).filter(Boolean).map(c=>" · "+cmteLink(c)).join("")}${b.topic?" · "+esc(b.topic):""}</div>
       </button>
       <div class="cbody" ${openCards.has(b.id)?"":"hidden"}>${
         openCards.has(b.id)?(detail[dkey(b.id)]?renderDetail(b,detail[dkey(b.id)]):`<p class="spin">Loading…</p>`):""}</div>

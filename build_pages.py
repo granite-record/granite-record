@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.20
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -218,6 +218,7 @@ def shell(title, current, body, wide=False, script=""):
     for href, label in (("index.html", "Home"), ("bills.html", "Bills"),
                         ("legislators.html", "Legislators"),
                         ("committees.html", "Committees"),
+                        ("towns.html", "Your town"),
                         ("learn.html", "How it works"), ("about.html", "About")):
         cur = ' aria-current="page"' if href == current else ""
         nav.append(f'<a href="{href}"{cur}>{label}</a>')
@@ -516,7 +517,13 @@ function detail(m){
       (${(d.votes||[]).length} recorded votes)</summary>
       <table style="margin-top:10px"><thead><tr><th>Date</th><th>Bill</th>
       <th>Question</th><th>Vote</th></tr></thead><tbody>${votes.map(v=>
-      `<tr><td>${esc(v.d)}</td><td><a href="bills.html#${esc(v.b)}">${esc(v.b)}</a></td>
+      // #<year>/<bill>, not a bare number. A bill number exists in both
+      // terms about a third of the time, and the app resolves a bare one to
+      // whichever comes first in the index -- so these links opened the wrong
+      // biennium's bill. v.y is the filing year, added to the vote record for
+      // exactly this.
+      `<tr><td>${esc(v.d)}</td><td>${v.b?`<a href="bills.html#${
+        v.y?esc(v.y)+"/":""}${esc(v.b)}">${esc(v.b)}</a>`:"&mdash;"}</td>
        <td>${esc(v.q)}</td><td>${esc(v.v)}</td></tr>`).join("")}</tbody></table>
       ${(d.votes||[]).length>60?`<p class="count">Showing the 60 most recent of
         ${d.votes.length}.</p>`:""}</details>`:""}</div>`;
