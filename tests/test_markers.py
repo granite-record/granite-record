@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.2
+# GRANITE_VERSION: 2026-09-05.3
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -103,6 +103,19 @@ MUST_MATCH = [
     ("With that, we're going to close down the hearing for this bill 1574",
      "close down, where CLOSE_RE knew close out and close up"),
 
+    # -- a second --gaps pass, after the batch above was in -------------
+    ("Send judiciary is back in session. We're doing HB 1217 an act permitting",
+     "we're doing"),
+    ("So what we will do is we'll begin um our meeting, our work session on "
+     "SB 475", "begin"),
+    ("why don't we get started? Um, we can start a discussion about HB 1096, "
+     "establishing a committee", "start a discussion about"),
+    ("so with that um we're on to House Bill 781 which is um requiring schools",
+     "we're on to"),
+    ("at this point I will recess uh House Bill 283 open house bill 768 which "
+     "is allowing public schools", "bare open, no pronoun before it"),
+    ("let's just go let's get it right into 1174 right now", "get right into"),
+
     # -- the floor: the clerk's script ----------------------------------
     ("Majority of the Committee on Finance to which was referred Senate Bill 408, "
      "relative to insurance coverage for prosthetics", "House, standard"),
@@ -122,6 +135,13 @@ MUST_NOT_MATCH = [
     ("the work session sheet is on the table", "a document"),
     ("we had testimony on that from the department last week", "past reference"),
     ("turn to page five of the handout", "not a bill"),
+    # Testimony, not a boundary. A member of the public naming the bill they
+    # came about reads exactly like a sponsor introducing it, and there are far
+    # more of them.
+    ("My name is Chase Poyer, and I'm here to oppose HB1442", "a witness"),
+    ("I strongly support HB1442. These bills would protect", "a witness"),
+    ("Oh, this is for HB1442. I'm so sorry, I read the wrong card",
+     "a pink card being sorted"),
 ]
 
 

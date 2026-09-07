@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.30
+# GRANITE_VERSION: 2026-09-05.31
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -134,12 +134,19 @@ CLOSE_RE = re.compile(
 OPEN_DIRECT_RE = re.compile(
     r"(?:going\s+to\s+turn\s+to|now\s+turn\s+to|turn(?:ing)?\s+to|"
     r"take\s+testimony\s+on|taking\s+testimony\s+on|"
-    r"(?:i'?ll|we'?ll|will|going\s+to|now)\s+open(?:\s+up)?|"
+    r"(?:i'?ll\s+|we'?ll\s+|will\s+|going\s+to\s+|now\s+)?open(?:\s+up)?|"
     r"going\s+to\s+start|we'?re\s+going\s+to\s+start|"
     r"introduc(?:e|ing)|"
     r"next\s+bill\s+up(?:\s+on\s+the\s+docket)?\s+is|"
     r"first\s+up\s+we\s+have|"
     r"mov(?:e|ing)\s+now\s+(?:to|on\s+to)|"
+    # A second --gaps pass, once the batch above was in.
+    r"we'?re\s+doing|"
+    r"begin(?:ning)?|"
+    r"start\s+a\s+discussion\s+(?:about|on)|"
+    r"we'?re\s+on\s+to|"
+    r"get\s+(?:it\s+)?right\s+into|"
+    r"recess\b|"
     r"next\s+(?P<what2>public\s+hearing|executive\s+session|hearing|"
     r"work\s+session)\s+is(?:\s+on)?)", re.I)
 
