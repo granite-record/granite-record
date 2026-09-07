@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.1
+# GRANITE_VERSION: 2026-09-06.2
 """
 How many people signed in for and against a bill, per hearing.
 
@@ -183,8 +183,30 @@ def main():
     if a.dry_run:
         print(f"\n--dry-run: nothing written to {a.out}")
         return 0
-    Path(a.out).write_text(json.dumps(out, indent=1), encoding="utf-8")
-    print(f"  -> {a.out}")
+    # Merge, not replace. This rebuilds every term the database holds, so
+    # replacing is correct TODAY -- but the database holds the current session
+    # only, and the moment a past term's sign-ins come from anywhere else, or
+    # a --term flag is added here, writing `out` over the file deletes them.
+    #
+    # That is not hypothetical: resolve_members.py took former_members.json
+    # from 675 entries to 3 on 7 September doing exactly this, and the
+    # manifest lost its hand-marked times twice before that. Keeping a term
+    # this run did not produce costs four lines.
+    op = Path(a.out)
+    merged = {}
+    if op.exists():
+        try:
+            merged = json.loads(op.read_text(encoding="utf-8"))
+        except ValueError:
+            merged = {}
+    kept = [t for t in merged if t not in out]
+    merged.update(out)
+    op.write_text(json.dumps(merged, indent=1), encoding="utf-8")
+    print(f"  -> {a.out}  ("
+          + ", ".join(f"{t}: {len(v):,}" for t, v in sorted(merged.items())) + ")")
+    if kept:
+        print("     kept, because this run did not cover them: "
+              + ", ".join(sorted(kept)))
     return 0
 
 
