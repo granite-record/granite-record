@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.3
+// GRANITE_VERSION: 2026-09-07.4
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1316,7 +1316,7 @@ function render(){
          <span>${grpN[b.status||""]}</span></h2>`:""}
     <article class="card ${openCards.has(b.id)?'open':''}${fb?' focus':''}" data-id="${b.id}">
       ${fb?"":`<a class="detail" href="bill/${b.year}/${esc(b.id.toLowerCase())}.html"
-        title="A standalone page for ${esc(b.n)}: no JavaScript, its own address, everything on one page"
+        title="${esc(b.n)} on its own page: its own address, and a link worth sharing"
         aria-label="Open the standalone page for ${esc(b.n)}">&#8599;</a>`}
       <button class="chead" aria-expanded="${openCards.has(b.id)}">
         <div class="crow"><span class="cnum">${esc(b.n)}</span>

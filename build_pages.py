@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.15
+# GRANITE_VERSION: 2026-09-04.16
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -381,34 +381,44 @@ copied.</p>
 are counts and nothing else. The General Court's sign-in sheet records a name, a
 town and often written testimony for every person; almost all of them are members
 of the public rather than public figures, and this site does not republish them.</p>
-<p>An earlier term marked <i>archived</i> is a thinner record on purpose. Its
-bills, statuses, committees, hearing dates and recorded votes are here; its
-docket, sponsors and written reports are one request per bill against the
-General Court's servers and are not loaded. Every archived bill links its own
-official record.</p>
+<p>An earlier term marked <i>archived</i> is a thinner record on purpose. For
+the 2023-2024 term the bills, their titles and statuses, the committees they
+went to, their hearing dates, their sponsors and every recorded vote are here.
+What is not is the docket &#8212; the General Court's own line-by-line list of
+actions &#8212; and the written committee reports, which are a further request
+per bill. Every archived bill links its own official record, which has both.</p>
 
 <h2>What is taken from the record and what is generated</h2>
 <p>Dates, sponsors, vote tallies, committee assignments and hearing times are taken
 directly from the official record. Committee reports are reproduced as filed, in the
 committee's own words.</p>
 <p>Plain-language summaries of a bill's progress are generated from those records by
-software, not written by hand. The point where a bill is discussed in a recording is
-detected automatically and is an estimate: each one shows the margin it is confident
-within, and the player opens early on purpose. Where no estimate was possible, the
-recording is linked with a note saying so rather than a guessed timestamp.</p>
+software, not written by hand. Most timestamps are not estimates: they are the
+moment the chair or the clerk opened the item, found by matching what they said
+against the recording's captions. The player opens two seconds before that, which
+is enough not to clip the first word. Where no boundary was heard, the site either
+shows a start marked <i>approximate</i> or links the recording with no time at
+all &#8212; it does not guess.</p>
 
 <h2>Accuracy</h2>
 <p>Automatic timing is checked against 35 proceedings that a person timed by
-watching the recording, across seven sessions. Of the 18 the site can currently
-place, the median is out by one second and the worst by about sixteen minutes.
-The 17 it cannot place carry no estimate at all rather than a guessed one. That
-is why the site says a bill starts <i>around</i> a time, shows the margin it is
-confident within, and never states a timestamp as fact.</p>
-<p>Where a timestamp comes from matters more than how close it is. A roll call
-carries its own clock time from the General Court&#8217;s record and involves no
-speech recognition; a boundary the chair announced is a quotation; an estimate
-from the pattern of the meeting is a guess with an error bar. The page says
-which of the three it is showing.</p>
+watching the recording, across seven sessions. Of the 19 the site can currently
+place, the median is out by one second and the worst by 5 minutes 47 seconds;
+17 of the 19 are within a minute. The 16 it cannot place carry no time at all
+rather than a guessed one.</p>
+<p>Across the whole site there are 10,810 proceedings. 4,994 carry a boundary
+the chair or the clerk said out loud, and 209 a roll call's own clock time from
+the General Court's record, which involves no speech recognition at all. 1,427
+were worked out from where the bill is discussed rather than quoted; those are
+the ones marked <i>approximate</i>, and they can be a few minutes out. The
+remaining 4,180 are shown with no time: 2,522 passed on a consent calendar and
+were never taken up separately, 1,068 have no recording, and 590 are floor
+actions the site can date but not place in the video.</p>
+<p>Only the word <i>approximate</i> distinguishes a start that was inferred
+from one that was quoted. The site used to print the margin and the method
+beside every timestamp; that turned out to be methodology in the reader's way,
+and the useful thing is that a link lands where the bill was actually taken
+up.</p>
 <p>Speech recognition is worst at exactly the things that matter most — names,
 numbers and organisations. Check the recording before quoting anything.</p>
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.55
+# GRANITE_VERSION: 2026-09-04.56
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -938,7 +938,14 @@ if (/class="detail"/.test(focusHtml)) {
 if (!/class="detail"/.test(listHtml)) {
   console.log("ARROW: the search list drew no link to a standalone page");
   process.exit(1); }
-if (!/title="A standalone page for/.test(listHtml)) {
+// The tooltip promised "no JavaScript" until the standalone page became this
+// same app with one bill open. It is the only place a member of the public
+// was told that, and it sat on every card in the list.
+if (/class="detail"[^>]*title="[^"]*(no JavaScript|without JavaScript)/i.test(listHtml)) {
+  console.log("ARROW: the tooltip still promises the page needs no JavaScript, "
+    + "which it has since it became a shell for this renderer");
+  process.exit(1); }
+if (!/class="detail"[^>]*title="[^"]{10,}"/.test(listHtml)) {
   console.log("ARROW: the link has no title, so hovering it says nothing about "
               + "where it goes"); process.exit(1); }
 try { scope.render(); } catch (e) {
