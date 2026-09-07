@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.13
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -248,12 +248,47 @@ def main():
                             "district": dist, "ward": ward})
     print(f"towns: {len(towns)} across {len(seats)} House districts")
 
+    sen_towns = {}
+    _sp = Path("data/senate_towns.json")
+    if _sp.exists():
+        sen_towns = json.loads(_sp.read_text(encoding="utf-8"))
+        print(f"senate districts: {len(sen_towns)} with towns on file")
+
+    def town_label(seat):
+        """"Manchester Ward 3", or just "Manchester" where there is no ward.
+
+        HouseDistricts.txt gives a ward for every town-district pair and puts
+        0 where the town is not warded. The ward was being read and dropped on
+        the next line, so a member representing one ward of a city was shown
+        as representing the whole city -- which in Manchester or Nashua is
+        eleven other members' constituents.
+        """
+        w = str(seat.get("ward") or "0").lstrip("0")
+        return f"{seat['town']} Ward {w}" if w else seat["town"]
+
     for m in legs.values():
         if m["chamber"] == "H":
             k = f"{m['county_code']}-{m['district'].lstrip('0') or '0'}"
-            m["towns"] = sorted({s["town"] for s in seats.get(k, [])})
+            rows_ = seats.get(k, [])
+            m["towns"] = sorted({town_label(s) for s in rows_})
+            # The parts, kept separately, so a page can group by town rather
+            # than reprint the city name once per ward.
+            m["town_seats"] = sorted(
+                ({"town": s["town"],
+                  "ward": str(s.get("ward") or "0").lstrip("0")}
+                 for s in {(x["town"], x.get("ward")): x for x in rows_}.values()),
+                key=lambda x: (x["town"], int(x["ward"] or 0)))
         else:
-            m["towns"] = []          # Senate districts are not in this file
+            # Senate districts are not in HouseDistricts.txt; they come from
+            # the database's senateDistricts table, via
+            # fetch_senate_districts_db.py. Before that, every senator's page
+            # said nothing at all about the towns they represent.
+            rows_ = sen_towns.get(m["district"].lstrip("0") or "0", [])
+            m["towns"] = sorted({
+                f"{x['town']} Ward {x['ward']}" if x.get("ward") else x["town"]
+                for x in rows_})
+            m["town_seats"] = [{"town": x["town"], "ward": x.get("ward") or ""}
+                               for x in rows_]
     unmatched = [m for m in legs.values() if m["chamber"] == "H" and not m["towns"]]
     if unmatched:
         # Name the actual county and district. NH has floterial districts, which
