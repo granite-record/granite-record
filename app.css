@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.5 */
+/* GRANITE_VERSION: 2026-09-07.6 */
 :root{--paper:#F6F6F4;--surface:#fff;--ink:#191C1D;--ink-2:#5C6467;--ink-3:#6C7274;
 --rule:#E2E3E0;--rule-2:#CFD1CD;--edge:#8A8C88;--pine:#1F4B47;--pine-soft:#E7EFED;--wash:#EFEFEC;
 /* Status colours, by what happened to the bill. Yellow while it is moving,
@@ -499,3 +499,7 @@ background:var(--paper);text-decoration:none;color:inherit}
 a.ccard:hover{border-color:var(--rule-2);background:var(--surface)}
 .cc-n{display:block;font-weight:600;font-size:14.5px}
 .cc-m{display:block;font-size:12.5px;color:var(--ink-3);margin-top:2px}
+
+/* On a committee day, a start that was inferred rather than quoted. Same word
+   the bill page uses, for the same reason. */
+.cday .approx{display:block;font-style:normal;font-size:11px;color:var(--ink-3)}

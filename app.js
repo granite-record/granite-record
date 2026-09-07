@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.13
+// GRANITE_VERSION: 2026-09-07.14
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1480,7 +1480,10 @@ function renderCommitteeSessions(c){
         <h3>${esc(fdate(s.date))}</h3>
         <p class="cnarr">${esc(s.narrative||"")}</p>
         <ul class="tl">${(s.items||[]).map(i=>`<li>
-          <span class="d">${i.start!=null?hms(i.start):"&mdash;"}</span>
+          <span class="d">${i.start!=null?hms(i.start):"&mdash;"}${
+            i.start!=null&&i.state!=="stated"&&i.state!=="floor_stated"
+              &&i.state!=="floor_precise"
+              ? `<i class="approx">approximate</i>`:""}</span>
           <span class="w"><a href="bill/${esc(String(i.year||""))}/${
             esc(String(i.bill||"").toLowerCase())}.html">${esc(i.n||i.bill||"")}</a>
             &mdash; ${esc(i.kind||"")}${i.title?`<span class="ctitle">${

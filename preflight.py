@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.60
+# GRANITE_VERSION: 2026-09-04.61
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2809,6 +2809,62 @@ def _writers_merge():
                 bad.append(f"{f.name} writes {name} and never reads it")
     assert not bad, "; ".join(bad)
     return "ok", f"{len(shared)} shared files, every writer of one reads it first"
+
+
+@check("data", "a proceeding starts at the same moment on both pages")
+def _one_start():
+    """The committee page and the bill page must not disagree about a time.
+
+    They did, by four hours. The bill page draws the boundary the chair
+    stated, found by segment_markers from the captions; the committee page was
+    drawing proceedings.csv's predicted_offset, which is the schedule guess --
+    the meeting began at ten and this was third on the agenda. SB430's
+    executive session on 4 May 2026 was 14557s on one page and 1774s on the
+    other, and neither said which to believe.
+
+    Two paths to one number is how they came to differ, so the committee page
+    reads the bill's own station now and there is one path. This asserts that
+    stays true, because the failure is silent: both pages render, both look
+    confident, and only somebody opening the recording finds out.
+    """
+    croot, broot = Path("site/committee"), Path("site/bills")
+    if not croot.exists() or not broot.exists():
+        return "skip", "committee or bill JSON not built"
+    checked, bad = 0, []
+    cache = {}
+    for f in sorted(croot.glob("*.json")):
+        c = json.loads(f.read_text(encoding="utf-8"))
+        for sess in c.get("sessions", []):
+            for it in sess.get("items", []):
+                if it.get("start") is None:
+                    continue
+                key = (str(it.get("year") or ""), it.get("bill"))
+                if key not in cache:
+                    bf = broot / key[0] / f"{key[1]}.json"
+                    try:
+                        cache[key] = json.loads(
+                            bf.read_text(encoding="utf-8")).get("stations") or []
+                    except (OSError, ValueError):
+                        cache[key] = []
+                want = (it.get("kind") or "").strip().lower()
+                st = next((x for x in cache[key]
+                           if x.get("when") == sess.get("date")
+                           and (not want
+                                or want in (x.get("what") or "").lower())), None)
+                if not st:
+                    continue
+                checked += 1
+                a, b = it.get("start"), st.get("start")
+                if b is None or abs(float(a) - float(b)) > 1:
+                    bad.append(f"{c.get('code')} {sess.get('date')} "
+                               f"{it.get('bill')}: committee says {a}, "
+                               f"the bill page says {b}")
+    if not checked:
+        return "skip", "no committee item matched a bill station"
+    assert not bad, (
+        f"{len(bad)} of {checked:,} proceedings start at a different moment on "
+        f"the committee page than on the bill page: {'; '.join(bad[:2])}")
+    return "ok", (f"{checked:,} proceedings, one start each, on both pages")
 
 
 @check("data", "a committee is credited only with its own recommendations")

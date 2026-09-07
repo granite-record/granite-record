@@ -39,7 +39,7 @@
     "netcheck.py": "2026-09-04.2",
     "nightly.py": "2026-09-04.5",
     "parse_districts.py": "2026-09-04.1",
-    "preflight.py": "2026-09-04.60",
+    "preflight.py": "2026-09-04.61",
     "probe_alignment.py": "2026-09-05.47",
     "probe_amendments.py": "2026-09-04.3",
     "probe_archive.py": "2026-09-04.1",
@@ -68,10 +68,10 @@
     "shell.py": "2026-09-07.2",
     "fetch_senate_districts_db.py": "2026-09-07.1",
     "fetch_committee_members_db.py": "2026-09-07.1",
-    "build_committees.py": "2026-09-07.6",
+    "build_committees.py": "2026-09-07.7",
     "probe_archive_shape.py": "2026-09-07.2",
-    "app.js": "2026-09-07.13",
-    "app.css": "2026-09-07.5",
+    "app.js": "2026-09-07.14",
+    "app.css": "2026-09-07.6",
     "fetch_members_db.py": "2026-09-07.1"
   },
   "generated": "2026-09-04"

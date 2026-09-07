@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.6
+# GRANITE_VERSION: 2026-09-07.7
 """
 A page's worth of data for every committee.
 
@@ -254,6 +254,31 @@ def main():
     # ---- what each committee heard, day by day --------------------------
     days = collections.defaultdict(lambda: collections.defaultdict(list))
     bill_meta = {(b.get("term"), b.get("id")): b for b in idx}
+
+    _station_cache = {}
+
+    def station_of(year, bill, date, kind):
+        """The bill page's own station for this proceeding, or None.
+
+        One source for a proceeding's start, because two sources disagreed by
+        four hours and neither page said which was which.
+        """
+        key = (year, bill)
+        if key not in _station_cache:
+            f = site / "bills" / str(year) / f"{bill}.json"
+            try:
+                _station_cache[key] = json.loads(
+                    f.read_text(encoding="utf-8")).get("stations") or []
+            except (OSError, ValueError):
+                _station_cache[key] = []
+        want = (kind or "").strip().lower()
+        for st in _station_cache[key]:
+            if st.get("when") != date:
+                continue
+            if want and want not in (st.get("what") or "").strip().lower():
+                continue
+            return st
+        return None
     unmatched = collections.Counter()
     for r in P.load():
         cname = (r.get("committee") or "").strip()
@@ -264,14 +289,21 @@ def main():
             unmatched[f"{r.get('body') or '?'} {cname}"] += 1
             continue
         meta = bill_meta.get((r.get("term"), r.get("bill"))) or {}
+        st = station_of(meta.get("year", ""), r.get("bill"), r.get("date"),
+                        r.get("kind"))
         days[code][(r.get("term"), r.get("date"))].append({
             "bill": r.get("bill"), "n": meta.get("n") or spaced(r.get("bill")),
             "title": meta.get("title", ""), "year": meta.get("year", ""),
             "term": r.get("term"), "kind": r.get("kind"),
-            "video_id": r.get("video_id") or "",
-            "start": r.get("predicted_offset"),
-            "end": r.get("debate_end"),
-            "precise": bool(r.get("precise")),
+            "video_id": (st or {}).get("video_id") or r.get("video_id") or "",
+            # From the bill's own station, so the two pages agree by
+            # construction. None where the bill has no station for that day:
+            # no time is true, and the schedule guess was out by hours.
+            "start": (st or {}).get("start"),
+            "end": (st or {}).get("end"),
+            # What the bill page says about how the start was arrived at, so
+            # this page can say the same thing rather than imply certainty.
+            "state": (st or {}).get("state") or "",
             "time": r.get("time") or "", "venue": r.get("venue") or "",
         })
 
