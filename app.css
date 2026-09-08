@@ -1,4 +1,8 @@
-/* GRANITE_VERSION: 2026-09-07.10 */
+/* GRANITE_VERSION: 2026-09-07.14 */
+/* Every reading column stops at 34em, which is 68 characters at the
+   body size. Nine measured over 80 at 1440px and the worst, a bill
+   title on a committee page, ran to 195. */
+.src,.note,.cnarr,.lead{max-width:34em}
 :root{
 /* GROUND AND SURFACE. The page was #F6F6F4 and a card is white, which put
    1.08:1 between a bill and the paper behind it -- below the level at which
@@ -55,26 +59,29 @@
    clearly distinct, each with a job. */
 --serif:"Newsreader",Georgia,serif}
 *{box-sizing:border-box}html,body{margin:0}
-body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:15px;
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:16px;
 line-height:1.55;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1}
 :focus-visible{outline:2px solid var(--pine);outline-offset:2px}
-a{color:var(--pine)}button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
+a{color:var(--pine)}
+/* Two weights on the scale, and the browser's default bold is a
+   third one nobody chose. */
+b,strong,h1,h2,h3,h4{font-weight:600}button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
 nav.top{background:var(--surface);border-bottom:1px solid var(--rule)}
 nav.top .in{max-width:1180px;margin:0 auto;padding:13px 24px;display:flex;align-items:baseline;gap:24px;flex-wrap:wrap}
 nav.top .brand{font-size:16px;font-weight:600}
-nav.top a{font-size:13.5px;text-decoration:none;color:var(--ink-2)}
-nav.top a[aria-current]{color:var(--ink);font-weight:500;box-shadow:0 2px 0 var(--pine)}
+nav.top a{font-size:14px;text-decoration:none;color:var(--ink-2)}
+nav.top a[aria-current]{color:var(--ink);font-weight:600;box-shadow:0 2px 0 var(--pine)}
 .searchrow{background:var(--surface);border-bottom:1px solid var(--rule)}
 .searchrow .in{max-width:1180px;margin:0 auto;padding:14px 24px}
 /* Capped. At 1440 the field was 962px of empty box; the placeholder ends
    long before that and the eye has nothing to land on. The hint line
    under it is capped to match so the two read as one control. */
 .qline{display:flex;gap:10px;max-width:840px}
-#sort{height:26px;padding:0 4px;font:inherit;font-size:12.5px;border:1px solid var(--edge);
+#sort{height:26px;padding:0 4px;font:inherit;font-size:14px;border:1px solid var(--edge);
 border-radius:var(--r-in);background:var(--surface);color:var(--ink-2);cursor:pointer}
 #year{height:42px;padding:0 10px;font:inherit;font-size:14px;border:1px solid var(--edge);
 border-radius:var(--r-out);background:var(--surface);cursor:pointer}
-#q{flex:1;height:42px;padding:0 14px;font:inherit;font-size:15px;border:1px solid var(--edge);
+#q{flex:1;height:42px;padding:0 14px;font:inherit;font-size:16px;border:1px solid var(--edge);
 border-radius:var(--r-out);background:var(--paper)}
 #q:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft);background:var(--surface)}
 /* The search list narrows as you type and needs no button. On one bill's own
@@ -91,31 +98,31 @@ line-height:1;border:1px solid transparent;border-radius:var(--r-out);background
 color:var(--ink-2);cursor:pointer}
 #qgo:hover{border-color:var(--edge);background:var(--wash);color:var(--pine)}
 #qgo:disabled{opacity:.35;cursor:default}
-.qhint{font-size:12.5px;color:var(--ink-2);margin:7px 2px 0;display:flex;gap:16px;flex-wrap:wrap;max-width:840px}
-.link{color:var(--pine);font-size:12.5px}
+.qhint{font-size:14px;color:var(--ink-2);margin:7px 2px 0;display:flex;gap:16px;flex-wrap:wrap;max-width:840px}
+.link{color:var(--pine);font-size:14px}
 .shell{max-width:1180px;margin:0 auto;padding:20px 24px 80px;display:grid;
 grid-template-columns:250px 1fr;gap:30px;align-items:start}
 .facets{position:sticky;top:16px;max-height:calc(100vh - 40px);
 overflow-y:auto;overflow-x:hidden}
 .fgroup{border-bottom:1px solid var(--rule)}
-.fhead{width:100%;display:flex;align-items:center;gap:8px;padding:11px 2px;font-size:13px;font-weight:600}
-.fhead .chev{margin-left:auto;color:var(--ink-2);font-size:11px}
+.fhead{width:100%;display:flex;align-items:center;gap:8px;padding:11px 2px;font-size:14px;font-weight:600}
+.fhead .chev{margin-left:auto;color:var(--ink-2);font-size:12px}
 .fgroup.open .chev{transform:rotate(90deg)}
-.fhead .badge{background:var(--pine);color:#fff;font-size:10.5px;padding:1px 6px;border-radius:var(--r-pill);font-weight:500}
+.fhead .badge{background:var(--pine);color:#fff;font-size:12px;padding:1px 6px;border-radius:var(--r-pill);font-weight:600}
 .fbody{padding:0 2px 12px;max-height:340px;overflow-y:auto;overflow-x:hidden}.fbody[hidden]{display:none}
-.fopt{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:13.5px;cursor:pointer}
+.fopt{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:14px;cursor:pointer}
 .fopt input{accent-color:var(--pine);margin:0;flex:0 0 auto}
-.fopt .c{margin-left:auto;font-size:11.5px;color:var(--ink-2)}
+.fopt .c{margin-left:auto;font-size:12px;color:var(--ink-2)}
 /* De-emphasised by colour rather than by opacity. At .38 these came out
    at 2.3:1 while still being clickable; opacity also multiplies through
    to the count beside them, which was already the lightest text here. */
 .fopt.off{color:var(--ink-2)}.fopt.off .c{color:var(--ink-2)}
-.sbox{width:100%;height:32px;padding:0 9px;font:inherit;font-size:13px;
+.sbox{width:100%;height:32px;padding:0 9px;font:inherit;font-size:14px;
 border:1px solid var(--edge);border-radius:var(--r-in);margin-bottom:7px}
 .chosen{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px}
 .pill{font-size:12px;background:var(--pine-soft);color:var(--pine);border-radius:var(--r-pill);padding:2px 8px}
 .pill button{margin-left:4px;color:var(--pine)}
-.count{font-size:13px;color:var(--ink-2);margin:0 0 12px}
+.count{font-size:14px;color:var(--ink-2);margin:0 0 12px}
 /* A bill has to read as an object, not as a band of the page. The card was
    white on #F6F6F4 behind a #E2E3E0 rule -- about three percent of lightness
    between the two -- so a screen of them ran together into one column of
@@ -136,7 +143,7 @@ border-radius:var(--r-out);margin-bottom:14px;overflow:hidden;
    in the corner with CSS, and sized as a real tap target. */
 .detail{position:absolute;top:9px;right:10px;z-index:2;display:flex;
 align-items:center;justify-content:center;min-width:36px;min-height:36px;
-text-decoration:none;font-size:15px;color:var(--ink-2);border-radius:var(--r-out)}
+text-decoration:none;font-size:16px;color:var(--ink-2);border-radius:var(--r-out)}
 .detail:hover{color:var(--pine);background:var(--wash)}
 /* On the focused view the reader is already looking at a detail page, and a
    bare arrow in the corner reads as a link to the one they are on. It leads
@@ -148,12 +155,15 @@ text-decoration:none;font-size:15px;color:var(--ink-2);border-radius:var(--r-out
 .crow{display:flex;gap:9px;align-items:center}
 /* The thing the reader is looking for. It was a point smaller than the
    title beside it, which is the wrong way round on a page of bills. */
-.cnum{font-size:15.5px;font-weight:600;color:var(--pine);letter-spacing:.01em}
-.cyear{font-size:12.5px;color:var(--ink-2)}
-.cstat{margin-left:auto;font-size:11.5px;font-weight:500;padding:3px 10px;border-radius:var(--r-pill);white-space:nowrap}
+/* The bill number: the card's headline, at the scale's headline
+   size. */
+.cnum{font-size:19px;font-weight:600;color:var(--pine);
+letter-spacing:-.005em;line-height:1.25}
+.cyear{font-size:14px;color:var(--ink-2)}
+.cstat{margin-left:auto;font-size:12px;font-weight:600;padding:3px 10px;border-radius:var(--r-pill);white-space:nowrap}
 /* The status on a card head: bigger and heavier than the chips used inside a
    tab, because it is the one thing every reader looks for first. */
-.crow .cstat{font-size:13.5px;font-weight:600;padding:4px 13px;
+.crow .cstat{font-size:14px;font-weight:600;padding:4px 13px;
 letter-spacing:.01em}
 .s-active{background:var(--st-active-bg);color:var(--st-active)}
 .s-law{background:var(--st-law-bg);color:var(--st-law)}
@@ -164,17 +174,27 @@ letter-spacing:.01em}
    law -- but it did not become law, and saying so would be false. Same
    colour, different word. */
 .s-adopted{background:var(--st-law-bg);color:var(--st-law)}
-.ctitle{font-size:15px;margin:6px 0 0;line-height:1.45}
-.cmeta{font-size:12.5px;color:var(--ink-2);margin-top:6px}
+/* WHAT THE BILL DOES. It was 12.5px in the same grey as the year it
+   was filed in, so the sentence a reader is actually looking for
+   ranked joint-fourth on its own card and ran to 147 characters a
+   line at 1440px. Primary ink, body size, and a column it can be
+   read down. */
+.ctitle{font-size:16px;color:var(--ink);margin:7px 0 0;
+line-height:1.5;max-width:34em}
+.cmeta{font-size:14px;color:var(--ink-2);margin-top:7px;max-width:34em}
 .cbody{border-top:1px solid var(--rule);padding:0 18px 20px}
 .cbody[hidden]{display:none}
 .tabs{display:flex;gap:20px;border-bottom:1px solid var(--rule);margin:0 0 18px;flex-wrap:wrap}
-.tab{padding:12px 0 10px;font-size:13.5px;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px}
-.tab[aria-selected=true]{color:var(--ink);border-bottom-color:var(--pine);font-weight:500}
+.tab{padding:12px 0 10px;font-size:14px;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab[aria-selected=true]{color:var(--ink);border-bottom-color:var(--pine);font-weight:600}
 .pane[hidden]{display:none}
 .tl{list-style:none;margin:0;padding:0}
 .tl li{display:flex;gap:14px;padding:7px 0;border-bottom:1px solid var(--rule);font-size:14px;align-items:baseline}
-.tl .d{flex:0 0 104px;font-size:12.5px;color:var(--ink-2)}
+.tl .d{flex:0 0 104px;font-size:14px;color:var(--ink-2)}
+/* The row's text, in a column it can be read down. These ran to
+   107 characters -- the one place the 34em cap did not reach,
+   because the row is a flex child rather than a block. */
+.tl .w{max-width:34em}
 /* Same reason: the date in a routine row is --ink-3 already, and .62 on
    top of that put it at 1.9:1. These are real docket lines. */
 .tl li.routine{color:var(--ink-2)}
@@ -182,33 +202,34 @@ letter-spacing:.01em}
 .stg{margin:0 0 14px;padding-left:13px;border-left:2px solid var(--rule-2)}
 .stg:last-child{margin-bottom:0}
 
-.stg p{margin:0;font-family:var(--serif);font-size:16px;line-height:1.6}
+.stg p{margin:0;font-family:var(--serif);font-size:16px;line-height:1.65;
+max-width:34em}
 .sgn{display:inline-block;margin:3px 6px 0 0;padding:1px 7px;border-radius:var(--r-pill);
-font-size:11.5px;font-weight:600;background:var(--paper);border:1px solid var(--rule-2)}
+font-size:12px;font-weight:600;background:var(--paper);border:1px solid var(--rule-2)}
 .sgn.for{color:var(--pine);border-color:color-mix(in srgb,var(--pine) 35%,var(--rule-2))}
 .sgn.against{color:var(--brick);border-color:color-mix(in srgb,var(--brick) 35%,var(--rule-2))}
 .testimony{margin:8px 0 2px;padding:9px 12px;background:var(--paper);
-border-left:3px solid var(--rule-2);border-radius:0 var(--r-in) var(--r-in) 0;font-size:13px;
+border-left:3px solid var(--rule-2);border-radius:0 var(--r-in) var(--r-in) 0;font-size:14px;
 line-height:1.55}
-.testimony a{font-size:12.5px}
+.testimony a{font-size:14px}
 .tnote{display:block;font-size:12px;color:var(--ink-2);margin-top:4px}
 .cite{font-size:12px;color:var(--ink-2);white-space:nowrap}
 a.cite{color:var(--pine)}
 .status{margin-top:16px;padding:13px 15px;border-radius:var(--r-out);background:var(--st-active-bg);border-left:3px solid var(--st-active)}
-.status .lab{font-size:11.5px;font-weight:600;letter-spacing:.02em;color:var(--st-active)}
+.status .lab{font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--st-active)}
 .status .val{font-size:16px;margin-top:2px}
 .status.s-law{background:var(--st-law-bg);border-left-color:var(--st-law)}.status.s-law .lab{color:var(--st-law)}
 .status.s-done{background:var(--st-done-bg);border-left-color:var(--st-done)}.status.s-done .lab{color:var(--st-done)}
 .status.s-veto{background:var(--st-veto-bg);border-left-color:var(--st-veto)}.status.s-veto .lab{color:var(--st-veto)}
 .rc{border:1px solid var(--rule);border-radius:var(--r-out);padding:15px 17px;margin-bottom:14px}
 .rchead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
-.rcq{font-size:15px;font-weight:500}.rcd{font-size:12.5px;color:var(--ink-2)}
-.rcres{margin-left:auto;font-size:11.5px;font-weight:500;padding:2px 9px;border-radius:var(--r-pill)}
+.rcq{font-size:16px;font-weight:600}.rcd{font-size:14px;color:var(--ink-2)}
+.rcres{margin-left:auto;font-size:12px;font-weight:600;padding:2px 9px;border-radius:var(--r-pill)}
 .pass{background:var(--st-law-bg);color:var(--st-law)}.fail{background:var(--st-done-bg);color:var(--st-done)}
 .votewrap{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;margin-top:10px}
 .donut circle{cursor:pointer}.donut circle:hover{opacity:.8}
 .legend{flex:1;min-width:215px}
-.lrow{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:13px;cursor:pointer;width:100%;
+.lrow{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:14px;cursor:pointer;width:100%;
 text-align:left;border-bottom:1px solid var(--rule)}
 .lrow:hover{background:var(--paper)}.lrow.sel{background:var(--pine-soft)}
 .sw{width:11px;height:11px;border-radius:var(--r-in);flex:0 0 auto}
@@ -221,12 +242,12 @@ text-align:left;border-bottom:1px solid var(--rule)}
 .mlist h3{margin-top:14px}
 /* 250px, not 228: names now carry an honorific and a party letter. */
 .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1px 18px}
-.m{font-size:13px;padding:2px 0}.m .p{color:var(--ink-2)}
-.discl{width:100%;text-align:left;font-size:13px;color:var(--pine);padding:9px 0 0;
+.m{font-size:14px;padding:2px 0}.m .p{color:var(--ink-2)}
+.discl{width:100%;text-align:left;font-size:14px;color:var(--pine);padding:9px 0 0;
 border-top:1px solid var(--rule);margin-top:11px}
 .full{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:22px}
-.full h3{font-size:12.5px;margin:0 0 8px;font-weight:600}
-.note{font-size:12.5px;color:var(--ink-2);background:var(--paper);border-left:3px solid var(--rule-2);
+.full h3{font-size:14px;margin:0 0 8px;font-weight:600}
+.note{font-size:14px;color:var(--ink-2);background:var(--paper);border-left:3px solid var(--rule-2);
 padding:9px 13px;margin:0 0 12px;line-height:1.55}
 .stn{position:relative;padding:0 0 18px 26px}
 .stn:before{content:"";position:absolute;left:4px;top:6px;bottom:-4px;width:1px;background:var(--rule-2)}
@@ -234,21 +255,21 @@ padding:9px 13px;margin:0 0 12px;line-height:1.55}
 .stn:after{content:"";position:absolute;left:0;top:5px;width:9px;height:9px;border-radius:50%;
 border:1.5px solid var(--pine);background:var(--surface)}
 .stn.done:after{background:var(--pine)}.stn.pend:after{border-color:var(--rule-2)}
-.stn .w{font-size:12px;color:var(--ink-2)}.stn .t{font-size:14px;font-weight:500}
+.stn .w{font-size:12px;color:var(--ink-2)}.stn .t{font-size:14px;font-weight:600}
 .vbox{margin-top:9px;border:1px dashed var(--rule-2);border-radius:var(--r-out);padding:11px 13px;background:var(--paper)}
-.vbox p{margin:0;font-size:12.5px;color:var(--ink-2)}
+.vbox p{margin:0;font-size:14px;color:var(--ink-2)}
 .player{margin-top:10px;border:1px solid var(--rule);border-radius:var(--r-out);overflow:hidden;background:#000}
 .player iframe{width:100%;aspect-ratio:16/9;border:0;display:block}
 .pstub{width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;
-cursor:pointer;background:#14181A;color:#C8CFD1;font-size:13.5px;gap:9px;text-align:center;padding:16px}
+cursor:pointer;background:#14181A;color:#C8CFD1;font-size:14px;gap:9px;text-align:center;padding:16px}
 .pstub:hover{background:#1D2225}
 .pbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 12px;
-background:var(--surface);border-top:1px solid var(--rule);font-size:12.5px}
-.jump{border:1px solid var(--edge);border-radius:var(--r-in);padding:3px 9px;font-size:12.5px;
+background:var(--surface);border-top:1px solid var(--rule);font-size:14px}
+.jump{border:1px solid var(--edge);border-radius:var(--r-in);padding:3px 9px;font-size:14px;
 font-variant-numeric:tabular-nums;color:var(--pine);background:var(--paper)}
 .jump:hover{border-color:var(--pine);background:var(--pine-soft)}
 .tolnote{color:var(--ink-2);margin-left:auto}
-.won{margin-left:6px;color:var(--yes);font-weight:700}
+.won{margin-left:6px;color:var(--yes);font-weight:600}
 .donut circle{transition:opacity .12s}
 .rsa{white-space:nowrap}
 /* Stage headings. A bill's history is a sequence of places it has been, and
@@ -260,24 +281,25 @@ font-variant-numeric:tabular-nums;color:var(--pine);background:var(--paper)}
    the shape once. Capitals and letter-spacing at a small size read as a label
    rather than as a sentence, which is what these are. */
 .stg h3,.btan h3,.bttext h3,.spgrp,.mlist h3,.amdsec{
-font-size:13.5px;font-weight:600;color:var(--ink-2);letter-spacing:.05em;
+font-size:14px;font-weight:600;color:var(--ink-2);letter-spacing:.05em;
 text-transform:uppercase;margin:0 0 7px;padding-bottom:6px;
 border-bottom:1px solid var(--rule)}
 .spgrp span,.mlist h3 span{font-weight:400;letter-spacing:0;text-transform:none;
-font-size:12.5px;color:var(--ink-2)}
+font-size:14px;color:var(--ink-2)}
 .story .stg{margin-top:22px}
 .story .stg:first-child{margin-top:2px}
 .btver{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:12px}
 .btv{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
 background:var(--pine-soft);color:var(--pine);border-radius:var(--r-in);padding:3px 9px}
-.btamd{font-size:12.5px;color:var(--ink-2)}
+.btamd{font-size:14px;color:var(--ink-2)}
 .btan{background:var(--wash);border-radius:var(--r-out);padding:13px 15px;margin-bottom:16px}
 
-.btan p{font-family:var(--serif);font-size:15.5px;line-height:1.6;margin:0}
+.btan p{font-family:var(--serif);font-size:16px;line-height:1.6;margin:0}
 /* As close to the printed bill as text allows: a numbered section opens a
    block and what belongs to it hangs under the number instead of running back
    to the margin. */
-.billbody{font-family:var(--serif);font-size:15.5px;line-height:1.65;margin:9px 0 0}
+.billbody{font-family:var(--serif);font-size:16px;line-height:1.65;
+margin:9px 0 0;max-width:34em}
 .billbody p{margin:0}
 .billbody .sec{margin-top:15px;padding-left:2.4em;text-indent:-2.4em}
 .billbody .sec b{font-weight:600}
@@ -299,18 +321,18 @@ border-bottom:0;margin:0 0 2px}
 /* A line under the heading saying what this is. The tabs above are views OF
    the record; this is the document itself, and bleeding it to the card's edge
    under a small heading made it read as one more tab that had run on. */
-.btwhat{font-size:12.5px;color:var(--ink-2);margin:0 0 16px}
+.btwhat{font-size:14px;color:var(--ink-2);margin:0 0 16px}
 /* The same heading shape for a report side and for a recording. Each was set
    by hand and each looked slightly different from the others and from the tab
    it sits in. */
-.secsub{font-size:13.5px;font-weight:600;color:var(--ink-2);letter-spacing:.05em;
+.secsub{font-size:14px;font-weight:600;color:var(--ink-2);letter-spacing:.05em;
 text-transform:uppercase}
 .amdsteps{margin-top:24px}
 .amd{padding:13px 0;border-bottom:1px solid var(--rule)}
-.amdt{font-size:12.5px;color:var(--ink-2);margin:6px 0 0}
+.amdt{font-size:14px;color:var(--ink-2);margin:6px 0 0}
 .tgt{display:inline-block;background:var(--wash);border-radius:var(--r-in);
 padding:1px 7px;margin-right:4px;font-size:12px}
-.amdsup{font-size:12.5px;color:var(--ink-2);margin:5px 0 0;
+.amdsup{font-size:14px;color:var(--ink-2);margin:5px 0 0;
 border-left:2px solid var(--rule-2);padding-left:9px}
 /* Text an amendment takes out. In the red the site already uses for a bill
    that was voted down, rather than grey: struck-through grey at 12.5px is
@@ -323,30 +345,31 @@ color:var(--st-done)}
    are not the same kind of document. The rule down the left is the same
    device the site already uses for a quoted passage. */
 .vmsg{border-left:3px solid var(--st-veto);padding:0 0 4px 16px;margin:0 0 26px}
-.vmsg p{font-size:14.5px;line-height:1.65;margin:0 0 11px;max-width:72ch}
-.vsig{font-size:13.5px;color:var(--ink-2);display:flex;gap:10px;
+.vmsg p{font-size:16px;line-height:1.65;margin:0 0 11px;max-width:34em}
+.vsig{font-size:14px;color:var(--ink-2);display:flex;gap:10px;
 align-items:baseline;flex-wrap:wrap}
 .vmsg .src{margin-top:12px}
 .amdhead{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
 .amdn{font-weight:600;font-size:14px;font-variant-numeric:tabular-nums}
-.amdk{font-size:12.5px;color:var(--ink-2)}
-.amdd{font-size:12.5px;color:var(--ink-2);margin-left:auto}
-.amdby{font-size:13px;color:var(--ink-2);margin:5px 0 0}
+.amdk{font-size:14px;color:var(--ink-2)}
+.amdd{font-size:14px;color:var(--ink-2);margin-left:auto}
+.amdby{font-size:14px;color:var(--ink-2);margin:5px 0 0}
 .amdtext{margin-top:8px}
-.amdtext summary{font-size:13px;color:var(--pine);cursor:pointer;min-height:32px;
+.amdtext summary{font-size:14px;color:var(--pine);cursor:pointer;min-height:32px;
 display:flex;align-items:center}
-.amdtext p{font-family:var(--serif);font-size:15px;line-height:1.6;margin:9px 0 0}
+.amdtext p{font-family:var(--serif);font-size:16px;line-height:1.65;
+margin:9px 0 0;max-width:34em}
 .plink{background:var(--wash);color:var(--pine);text-decoration:none}
 .plink:hover{background:var(--pine-soft);text-decoration:underline}
-.spcount{font-size:13px;color:var(--ink-2);margin:0 0 12px;
+.spcount{font-size:14px;color:var(--ink-2);margin:0 0 12px;
 font-variant-numeric:tabular-nums}
 .spgrp{display:flex;align-items:baseline;gap:7px;margin-top:16px}
 .loaderr{background:var(--st-done-bg);color:var(--st-done);border-radius:var(--r-out);
-padding:11px 14px;margin:0 0 14px;font-size:13.5px}
+padding:11px 14px;margin:0 0 14px;font-size:14px}
 .loaderr span{display:block;margin-top:5px;font-family:ui-monospace,monospace;
 font-size:12px;white-space:pre-wrap;word-break:break-all}
 .docket{margin-top:14px}
-.docket summary{font-size:13.5px;color:var(--pine);cursor:pointer;
+.docket summary{font-size:14px;color:var(--pine);cursor:pointer;
 min-height:34px;display:flex;align-items:center;gap:7px;list-style:none}
 .docket summary::-webkit-details-marker{display:none}
 /* A triangle that turns, so it reads as something that opens rather than as a
@@ -356,14 +379,14 @@ border-top:4.5px solid transparent;border-bottom:4.5px solid transparent;
 transition:transform .12s;flex:none}
 .docket[open] .caret{transform:rotate(90deg)}
 .docket .tl{margin-top:10px}
-.docket .cite{color:var(--ink-2);font-size:12.5px}
+.docket .cite{color:var(--ink-2);font-size:14px}
 .docs{list-style:none;margin:0;padding:0}
 .doc{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;padding:8px 0;
 border-bottom:1px solid var(--rule);font-size:14px}
-.doc span{font-size:12.5px;color:var(--ink-2)}
-.ramd{font-weight:400;font-size:13px;color:var(--ink-2);background:var(--wash);
+.doc span{font-size:14px;color:var(--ink-2)}
+.ramd{font-weight:400;font-size:14px;color:var(--ink-2);background:var(--wash);
 border-radius:var(--r-in);padding:1px 7px;font-variant-numeric:tabular-nums}
-.cvote{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;
+.cvote{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;
 color:var(--ink-2);background:var(--wash);border-radius:var(--r-in);padding:1px 7px}
 /* One bill, filling the space the list was using. The facet rail goes with
    the list: nothing in it applies to a single bill. */
@@ -377,15 +400,15 @@ color:var(--ink-2);background:var(--wash);border-radius:var(--r-in);padding:1px 
    behind the button. Reserving a row above the header instead of a column
    beside it holds however wide the label gets. */
 .backto{display:inline-flex;align-items:center;min-height:36px;margin:0 0 12px;
-font-size:13.5px;color:var(--pine)}
+font-size:14px;color:var(--pine)}
 .backto:hover{text-decoration:underline}
-.grp{font-size:12.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+.grp{font-size:14px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
 color:var(--ink-2);margin:20px 0 8px;display:flex;align-items:baseline;gap:8px}
 .grp:first-child{margin-top:2px}
 .grp span{font-weight:400;font-size:12px;letter-spacing:0;text-transform:none;color:var(--ink-2)}
 .empty{background:var(--surface);border:1px dashed var(--rule-2);border-radius:var(--r-pill);padding:34px;
 text-align:center;color:var(--ink-2);font-size:14px}
-.spin{padding:20px 2px;color:var(--ink-2);font-size:13px}
+.spin{padding:20px 2px;color:var(--ink-2);font-size:14px}
 @media(max-width:860px){.shell{grid-template-columns:1fr}.facets{position:static;max-height:none}
 .full{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -401,7 +424,7 @@ text-align:center;color:var(--ink-2);font-size:14px}
 @media (max-width: 720px){
   .wrap,.in{padding-left:14px;padding-right:14px}
   h1{font-size:24px;line-height:1.2}
-  h2{font-size:18px}
+  h2{font-size:19px}
   .shell{display:block}
   .facets{position:static;max-height:none;width:auto;margin:0 0 20px;
           border-right:none;border-bottom:1px solid var(--rule);padding-bottom:14px}
@@ -410,7 +433,7 @@ text-align:center;color:var(--ink-2);font-size:14px}
   .tl .d{flex:none;font-weight:600}
   .cite{white-space:normal}
   table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .votes th,.votes td{padding:6px 8px;font-size:13px}
+  .votes th,.votes td{padding:6px 8px;font-size:14px}
   .roll,.chosen{columns:1}
   .grid{grid-template-columns:1fr}
   /* Six labels on a 289px card wrapped onto four rows -- 138px of tab strip
@@ -419,7 +442,7 @@ text-align:center;color:var(--ink-2);font-size:14px}
      nothing reflows into horizontal scrolling, which reads as "not meant for
      you" on a civic site. */
   .tabs{flex-wrap:wrap;gap:2px 12px;margin-bottom:14px}
-  .tabs button{font-size:12.5px;padding:7px 0}
+  .tabs button{font-size:14px;padding:7px 0}
   .searchrow{flex-direction:column;align-items:stretch;gap:8px}
   .searchbig{flex-direction:column}
   .searchbig button{padding:11px 20px}
@@ -433,18 +456,18 @@ text-align:center;color:var(--ink-2);font-size:14px}
   .facets .fgroup:last-child{border-bottom:0}
   .qhint{flex-wrap:wrap;gap:8px}
   .crow{flex-wrap:wrap;gap:4px}
-  .cnum{font-size:15px}
+  .cnum{font-size:16px}
   .pbar{flex-wrap:wrap;gap:6px}
   .pbar .jump{font-size:12px}
   .twoup{grid-template-columns:1fr}
   .entry{grid-template-columns:1fr}
   .statgrid{grid-template-columns:1fr 1fr}
   nav.top .in{flex-wrap:wrap;gap:10px 14px;padding-top:10px;padding-bottom:10px}
-  nav.top a{font-size:13.5px}
+  nav.top a{font-size:14px}
   /* The supporting text carries the site's hedging -- "estimated within
      +/- 5 min", the date of a proceeding, a sign-in count's caveat -- and
      at 12px on a phone it was the least readable part of the page. */
-  .cmeta,.note,.qhint,.cite,.tolnote,.vbox p,.stn .w,.tnote,.corrections{font-size:13px}
+  .cmeta,.note,.qhint,.cite,.tolnote,.vbox p,.stn .w,.tnote,.corrections{font-size:14px}
   .m{font-size:14px}
   .fopt{padding:6px 0}
   button,.hit,summary,nav.top a,.detail{min-height:44px}
@@ -467,19 +490,19 @@ padding:10px 16px;z-index:99;border-radius:0 0 var(--r-out) 0}
 }
 .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
 clip:rect(0 0 0 0);white-space:nowrap;border:0}
-.corrections{font-size:12.5px;color:var(--ink-2);margin-top:10px}
+.corrections{font-size:14px;color:var(--ink-2);margin-top:10px}
 .corrections a{color:var(--pine)}
 
 /* The "On the record" table: the General Court's own status fields, quoted.
    Ported verbatim from build_bill_pages.py, which rendered these bills a
    second time in Python until 7 September. */
 .facts{margin:14px 0 4px}
-.facts h3{font-size:13px;font-weight:600;color:var(--ink-2);letter-spacing:.04em;
+.facts h3{font-size:14px;font-weight:600;color:var(--ink-2);letter-spacing:.04em;
 text-transform:uppercase;margin:0 0 4px}
 .facttab{width:auto;border-collapse:collapse;font-size:14px;margin:8px 0}
 .facttab th,.facttab td{padding:6px 16px 6px 0;border-bottom:1px solid var(--rule);
 text-align:left;vertical-align:top}
-.facttab th{color:var(--ink-2);font-weight:500;white-space:nowrap}
+.facttab th{color:var(--ink-2);font-weight:600;white-space:nowrap}
 @media(max-width:620px){.facttab th,.facttab td{padding:6px 10px 6px 0}}
 
 /* ==================================== a legislator's page and a committee's ==
@@ -490,7 +513,8 @@ text-align:left;vertical-align:top}
    side padding -- so applying them again here indented a committee's name
    24px further than the tabs underneath it. */
 .phead{padding:4px 0 6px}
-.phead h1{font-size:25px;margin:0 0 4px;letter-spacing:-.01em}
+.phead h1{font-size:32px;line-height:1.2;margin:0 0 6px;
+letter-spacing:-.015em}
 .pmeta{color:var(--ink-2);font-size:14px;margin:2px 0}
 .ptowns,.pcmte{font-size:14px;color:var(--ink);margin:8px 0 0;line-height:1.6}
 .ptowns b,.pcmte b{font-size:12px;letter-spacing:.05em;text-transform:uppercase;
@@ -516,14 +540,14 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 8px}
 .croster .mlist{display:grid;gap:5px 12px;margin:0;
 grid-template-columns:repeat(auto-fill,minmax(244px,1fr))}
 .croster .mchip{margin:0}
-.cpurpose{margin:18px 0 0;max-width:78ch}
-.cpurpose p{font-size:14.5px;line-height:1.65;margin:0}
+.cpurpose{margin:18px 0 0;max-width:34em}
+.cpurpose p{font-size:16px;line-height:1.65;margin:0}
 .cpurpose .src{margin-top:7px}
 /* The term governs every tab, so it sits above them rather than inside one. */
 .pterm{margin:16px 0 0}
 .mchip{display:inline-block;margin:0 6px 6px 0;padding:3px 9px;border-radius:var(--r-pill);
-font-size:12.5px;background:var(--surface);border:1px solid var(--rule-2)}
-.mchip i{font-style:normal;color:var(--ink-2);font-size:11.5px}
+font-size:14px;background:var(--surface);border:1px solid var(--rule-2)}
+.mchip i{font-style:normal;color:var(--ink-2);font-size:12px}
 .mchip.p-R{box-shadow:inset 3px 0 0 var(--rep)}
 .mchip.p-D{box-shadow:inset 3px 0 0 var(--dem)}
 .mlist{margin:8px 0 0}
@@ -532,7 +556,7 @@ font-size:12.5px;background:var(--surface);border:1px solid var(--rule-2)}
 .bfilt{display:flex;gap:18px;flex-wrap:wrap;align-items:end;margin:2px 0 14px}
 .bfilt label{font-size:12px;letter-spacing:.04em;text-transform:uppercase;
 color:var(--ink-2);font-weight:600;display:flex;flex-direction:column;gap:4px}
-.bfilt select{font:inherit;font-size:13.5px;text-transform:none;letter-spacing:0;
+.bfilt select{font:inherit;font-size:14px;text-transform:none;letter-spacing:0;
 color:var(--ink);padding:5px 8px;border:1px solid var(--edge);border-radius:var(--r-in);
 background:var(--paper)}
 
@@ -544,12 +568,12 @@ background:var(--paper)}
 .cday{margin:0 0 22px;padding:0 0 16px;border-bottom:1px solid var(--rule)}
 .cday h3{font-size:14px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
 color:var(--ink-2);margin:0 0 6px}
-.cnarr{font-size:15px;line-height:1.65;margin:0 0 10px;max-width:72ch}
-.ctitle{display:block;color:var(--ink-2);font-size:12.5px;line-height:1.45;
+.cnarr{font-size:16px;line-height:1.65;margin:0 0 10px;max-width:72ch}
+.ctitle{display:block;color:var(--ink-2);font-size:14px;line-height:1.45;
 margin-top:2px}
 
 @media(max-width:620px){
-  .phead h1{font-size:21px}
+  .phead h1{font-size:19px}
   .cinfo{padding:11px 13px;gap:0}
   .cinfo dt{flex:0 0 106px}
   .croster .mlist{grid-template-columns:1fr}
@@ -563,16 +587,16 @@ margin-top:2px}
 
 /* The committees index: a way into the 56 pages that nothing linked to. */
 .clist{max-width:900px;margin:0 auto;padding:20px 24px 60px}
-.clist h1{font-size:26px;margin:0 0 4px}
-.clist h2{font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+.clist h1{font-size:24px;margin:0 0 4px}
+.clist h2{font-size:14px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
 color:var(--ink-2);margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
 .ccards{display:grid;gap:7px}
 a.ccard{display:block;padding:10px 13px;border:1px solid var(--rule);border-radius:var(--r-out);
 background:var(--paper);text-decoration:none;color:inherit}
 a.ccard:hover{border-color:var(--rule-2);background:var(--surface)}
-.cc-n{display:block;font-weight:600;font-size:14.5px}
-.cc-m{display:block;font-size:12.5px;color:var(--ink-2);margin-top:2px}
+.cc-n{display:block;font-weight:600;font-size:16px}
+.cc-m{display:block;font-size:14px;color:var(--ink-2);margin-top:2px}
 
 /* On a committee day, a start that was inferred rather than quoted. Same word
    the bill page uses, for the same reason. */
-.cday .approx{display:block;font-style:normal;font-size:11px;color:var(--ink-2)}
+.cday .approx{display:block;font-style:normal;font-size:12px;color:var(--ink-2)}

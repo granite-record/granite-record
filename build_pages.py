@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.22
+# GRANITE_VERSION: 2026-09-04.29
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -15,6 +15,7 @@ styles and is untouched.
 """
 
 import argparse
+import hashlib
 import json
 import shutil
 from collections import defaultdict
@@ -33,31 +34,36 @@ def palette(src="app.css"):
 CSS = """
 __PALETTE__
 *{box-sizing:border-box}html,body{margin:0}
-body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:15px;
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:16px;
 line-height:1.55;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1}
 :focus-visible{outline:2px solid var(--pine);outline-offset:2px}
 a{color:var(--pine)}button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
 nav.top{background:var(--surface);border-bottom:1px solid var(--rule)}
 nav.top .in{max-width:1180px;margin:0 auto;padding:13px 24px;display:flex;align-items:baseline;gap:24px;flex-wrap:wrap}
 nav.top .brand{font-size:16px;font-weight:600}
-nav.top a{font-size:13.5px;text-decoration:none;color:var(--ink-2)}
-nav.top a[aria-current]{color:var(--ink);font-weight:500;box-shadow:0 2px 0 var(--pine)}
+nav.top a{font-size:14px;text-decoration:none;color:var(--ink-2)}
+nav.top a[aria-current]{color:var(--ink);font-weight:600;box-shadow:0 2px 0 var(--pine)}
 .wrap{max-width:820px;margin:0 auto;padding:26px 24px 80px}
 .wide{max-width:1180px}
-h1{font-size:25px;font-weight:500;letter-spacing:-.015em;margin:0 0 6px}
-h2{font-size:17px;font-weight:600;margin:32px 0 10px}
+h1{font-size:24px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
+h2{font-size:16px;font-weight:600;margin:32px 0 10px}
 h3{font-size:14px;font-weight:600;margin:22px 0 8px}
 p{margin:0 0 12px}
-.lead{font-family:var(--serif);font-size:18px;line-height:1.62;color:var(--ink)}
-.reading{font-family:var(--serif);font-size:17px;line-height:1.68}
+/* 34em is 68 characters at the body size. Without it the lead ran
+   to 148 and the footer to 182 on a 1440px screen. */
+.lead{font-family:var(--serif);font-size:19px;line-height:1.65;
+color:var(--ink);max-width:28em}
+.note,.statemeta,.corrections,.wrap>p:not(.lead),.wrap li{max-width:34em}
+b,strong{font-weight:600}
+.reading{font-family:var(--serif);font-size:16px;line-height:1.68}
 .reading li{margin-bottom:9px}
-.note{font-size:13px;color:var(--ink-2);background:var(--surface);border-left:3px solid var(--rule-2);
+.note{font-size:14px;color:var(--ink-2);background:var(--surface);border-left:3px solid var(--rule-2);
 padding:11px 14px;margin:0 0 14px;line-height:1.6}
-input[type=search],input[type=text]{width:100%;height:42px;padding:0 14px;font:inherit;font-size:15px;
+input[type=search],input[type=text]{width:100%;height:42px;padding:0 14px;font:inherit;font-size:16px;
 border:1px solid var(--rule-2);border-radius:7px;background:var(--surface)}
 input:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft)}
-table{width:100%;border-collapse:collapse;font-size:13.5px}
-th{text-align:left;font-size:12px;font-weight:500;color:var(--ink-2);padding:0 0 7px;border-bottom:1px solid var(--rule)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:12px;font-weight:600;color:var(--ink-2);padding:0 0 7px;border-bottom:1px solid var(--rule)}
 td{padding:9px 0;border-bottom:1px solid var(--rule);vertical-align:top}
 .card{background:var(--surface);border:1px solid var(--rule);border-radius:9px;padding:15px 18px;margin-bottom:11px}
 .chip{font-size:12px;padding:3px 9px;border-radius:20px;background:var(--wash);color:var(--ink-2);
@@ -65,25 +71,25 @@ display:inline-block;margin:0 5px 5px 0}
 .p-R{background:#F6E7E6;color:var(--rep)}.p-D{background:#E6EDF7;color:var(--dem)}
 .p-I{background:#EEEAF3;color:var(--ind)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:2px 20px}
-.ownpage{float:right;font-size:13px;margin-left:14px}
+.ownpage{float:right;font-size:14px;margin-left:14px}
 .mem{padding:4px 0;font-size:14px}
-.count{font-size:13px;color:var(--ink-2);margin:10px 0}
+.count{font-size:14px;color:var(--ink-2);margin:10px 0}
 .hit{display:block;width:100%;text-align:left;padding:12px 2px;border-bottom:1px solid var(--rule);cursor:pointer}
 .entry{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:20px 0 30px}
 .entry a{display:block;background:var(--surface);border:1px solid var(--rule);border-radius:9px;
 padding:15px 17px;text-decoration:none;color:inherit}
 .entry a:hover{border-color:var(--pine)}
-.entry b{display:block;font-size:15px;margin-bottom:3px;color:var(--pine)}
-.entry span{font-size:13px;color:var(--ink-2)}
+.entry b{display:block;font-size:16px;margin-bottom:3px;color:var(--pine)}
+.entry span{font-size:14px;color:var(--ink-2)}
 .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;
 background:var(--rule);border:1px solid var(--rule);border-radius:9px;overflow:hidden;margin:12px 0 30px}
 .stat{background:var(--surface);padding:14px 16px}
-.stat b{display:block;font-size:22px;font-weight:500}
-.stat span{font-size:12.5px;color:var(--ink-2)}
+.stat b{display:block;font-size:24px;font-weight:600}
+.stat span{font-size:14px;color:var(--ink-2)}
 .searchbig{display:flex;gap:8px;margin:18px 0 4px}
 .searchbig input{flex:1}
 .searchbig button{background:var(--pine);color:#fff;border-radius:7px;padding:0 20px;font-size:14px}
-.fresh{font-size:12.5px;color:var(--ink-2);margin:0 0 14px;display:flex;
+.fresh{font-size:14px;color:var(--ink-2);margin:0 0 14px;display:flex;
 align-items:center;gap:7px}
 .fresh:empty{display:none}
 .fresh .fdot{width:8px;height:8px;border-radius:50%;background:var(--pine);flex:0 0 auto}
@@ -94,31 +100,32 @@ padding:15px 18px;margin:0 0 24px;background:var(--surface)}
 .statebox.live{border-left-color:var(--pine);background:var(--pine-soft)}
 .statebox.wait{border-left-color:#8A6D2F;background:#FBF3E2}
 .statebox.off{border-left-color:var(--ink-2)}
-.stateline{display:flex;align-items:center;gap:9px;font-size:15px;flex-wrap:wrap}
+.stateline{display:flex;align-items:center;gap:9px;font-size:16px;flex-wrap:wrap}
 .stateline .dot{width:9px;height:9px;border-radius:50%;background:var(--ink-2);flex:0 0 auto}
 .statebox.live .dot{background:var(--pine)}
 .statebox.wait .dot{background:#8A6D2F}
-.statemeta{font-size:12.5px;color:var(--ink-2);font-weight:400}
-.statehead{font-size:14.5px;margin:8px 0 0}
-.statenote{font-size:13px;color:var(--ink-2);margin:8px 0 0;line-height:1.6}
+.statemeta{font-size:14px;color:var(--ink-2);font-weight:400}
+.statehead{font-size:16px;margin:8px 0 0}
+.statenote{font-size:14px;color:var(--ink-2);margin:8px 0 0;
+line-height:1.6;max-width:34em}
 .statebox p:last-child{margin-bottom:0}
 .twoup{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
 details.vac{margin-top:10px}
-details.vac summary{cursor:pointer;font-size:13px;color:var(--pine)}
+details.vac summary{cursor:pointer;font-size:14px;color:var(--pine)}
 .comp{margin:0 0 20px}
-.compline{display:flex;align-items:baseline;gap:10px;font-size:15px;margin-bottom:7px}
+.compline{display:flex;align-items:baseline;gap:10px;font-size:16px;margin-bottom:7px}
 .pbar2{display:flex;height:16px;border-radius:4px;overflow:hidden;background:var(--wash)}
 .pseg{display:block;height:100%}
 .p-R{background:var(--rep)}.p-D{background:var(--dem)}
 .p-I{background:var(--ind)}.p-L{background:var(--ind)}
 .p-V{background:var(--rule-2)}
-.plegend{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:13px;color:var(--ink-2)}
+.plegend{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:14px;color:var(--ink-2)}
 .pdot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
 .compbox{margin:0 0 16px}
 .bar{display:flex;height:22px;border-radius:5px;overflow:hidden;margin:9px 0 8px;
 border:1px solid var(--rule)}
 .bar span{display:block}
-.legendrow{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2)}
+.legendrow{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--ink-2)}
 .legendrow i{display:inline-block;width:10px;height:10px;border-radius:2px;
 margin-right:5px;vertical-align:-1px}
 .legendrow i.vac{background:repeating-linear-gradient(45deg,var(--rule-2),
@@ -134,16 +141,16 @@ background:var(--surface);margin-top:10px}
 border-bottom:1px solid var(--rule);cursor:pointer;align-items:baseline;gap:10px}
 .townrow:last-child{border-bottom:none}
 .townrow:hover{background:var(--paper)}
-.townrow.sel{background:var(--pine-soft);font-weight:500}
+.townrow.sel{background:var(--pine-soft);font-weight:600}
 .wct{margin-left:auto;font-size:12px;color:var(--ink-2)}
 .wards{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
-.wbtn{border:1px solid var(--edge);border-radius:6px;padding:5px 12px;font-size:13.5px;
+.wbtn{border:1px solid var(--edge);border-radius:6px;padding:5px 12px;font-size:14px;
 background:var(--surface);cursor:pointer}
 .wbtn:hover{border-color:var(--pine)}
 .wbtn.sel{background:var(--pine);color:#fff;border-color:var(--pine)}
 .hit:hover{background:var(--surface)}
-footer{border-top:1px solid var(--rule);background:var(--surface);padding:22px 0;font-size:12.5px;color:var(--ink-2)}
-footer .in{max-width:1180px;margin:0 auto;padding:0 24px}
+footer{border-top:1px solid var(--rule);background:var(--surface);padding:22px 0;font-size:14px;color:var(--ink-2)}
+footer .in{max-width:34em;margin:0 auto;padding:0 24px}
 @media(max-width:640px){.wrap{padding:20px 18px 60px}}
 /* ---- narrow screens ---------------------------------------------------
    Most people arrive from a search result on a phone. Three things break at
@@ -156,7 +163,7 @@ footer .in{max-width:1180px;margin:0 auto;padding:0 24px}
 @media (max-width: 720px){
   .wrap,.in{padding-left:14px;padding-right:14px}
   h1{font-size:24px;line-height:1.2}
-  h2{font-size:18px}
+  h2{font-size:19px}
   .shell{display:block}
   .facets{position:static;max-height:none;width:auto;margin:0 0 20px;
           border-right:none;border-bottom:1px solid var(--rule);padding-bottom:14px}
@@ -170,26 +177,26 @@ footer .in{max-width:1180px;margin:0 auto;padding:0 24px}
      semantics and keeps the whole table on screen. */
   table{width:100%}
   th,td{overflow-wrap:anywhere}
-  .votes th,.votes td{padding:6px 8px;font-size:13px}
+  .votes th,.votes td{padding:6px 8px;font-size:14px}
   .roll,.chosen{columns:1}
   .grid{grid-template-columns:1fr}
   .tabs{flex-wrap:wrap;gap:4px}
-  .tabs button{font-size:13px;padding:6px 10px}
+  .tabs button{font-size:14px;padding:6px 10px}
   .searchrow{flex-direction:column;align-items:stretch;gap:8px}
   .searchbig{flex-direction:column}
   .searchbig button{padding:11px 20px}
   #year{width:100%}
   .qhint{flex-wrap:wrap;gap:8px}
   .crow{flex-wrap:wrap;gap:4px}
-  .cnum{font-size:15px}
+  .cnum{font-size:16px}
   .pbar{flex-wrap:wrap;gap:6px}
   .pbar .jump{font-size:12px}
   .twoup{grid-template-columns:1fr}
   .entry{grid-template-columns:1fr}
   .statgrid{grid-template-columns:1fr 1fr}
   nav.top .in{flex-wrap:wrap;gap:10px 14px;padding-top:10px;padding-bottom:10px}
-  nav.top a{font-size:13.5px}
-  .note,.cite,footer,.corrections{font-size:13px}
+  nav.top a{font-size:14px}
+  .note,.cite,footer,.corrections{font-size:14px}
   button,.hit,summary,nav.top a{min-height:44px}
 }
 @media (max-width: 420px){
@@ -209,15 +216,25 @@ padding:10px 16px;z-index:99;border-radius:0 0 6px 0}
 }
 .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
 clip:rect(0 0 0 0);white-space:nowrap;border:0}
-.corrections{font-size:12.5px;color:var(--ink-2);margin-top:10px}
+.corrections{font-size:14px;color:var(--ink-2);margin-top:10px}
 .corrections a{color:var(--pine)}
 
 """
 
 FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
          '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-         '<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600'
-         '&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">')
+         '<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600'
+         '&family=Newsreader:opsz,wght@6..72,400;6..72,600&display=swap" rel="stylesheet">')
+
+
+# The content hash of style.css, so a deploy cannot serve yesterday's.
+# A hash rather than the GRANITE_VERSION stamp, for the reason shell.py gives
+# about app.js: the stamp is bumped by hand and the once somebody forgets is
+# the release that breaks, silently, for four hours, for everyone who visited
+# that morning.
+def style_query():
+    css = CSS.replace("__PALETTE__", palette())
+    return "?v=" + hashlib.md5(css.encode("utf-8")).hexdigest()[:8]
 
 
 def shell(title, current, body, wide=False, script=""):
@@ -228,9 +245,10 @@ def shell(title, current, body, wide=False, script=""):
                         ("learn.html", "How it works"), ("about.html", "About")):
         cur = ' aria-current="page"' if href == current else ""
         nav.append(f'<a href="{href}"{cur}>{label}</a>')
+    STYLE_Q = style_query()
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title>{FONTS}<link rel="stylesheet" href="style.css">
+<title>{title}</title>{FONTS}<link rel="stylesheet" href="style.css{STYLE_Q}">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — all activity"
  href="/feed/all.xml">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — upcoming hearings"
@@ -476,7 +494,7 @@ function render(){
         `<div class="mem"><button class="hit" style="border:none;padding:2px 0"
           data-id="${esc(m.id)}">${esc(m.display_plain||m.name)}</button>
           <span class="chip p-${esc((m.party||"X")[0])}">${esc((m.party||"?")[0])}</span>
-          <span style="color:var(--ink-2);font-size:12.5px">${esc(m.district_label||("dist "+m.district))}</span>
+          <span style="color:var(--ink-2);font-size:12px">${esc(m.district_label||("dist "+m.district))}</span>
           ${open===m.id?detail(m):""}</div>`).join("")+`</div>`).join("");}).join("");
 }
 function detail(m){
@@ -627,7 +645,7 @@ function show(){
   // A city's wards fall in different districts, so showing every seat in the
   // city at once buries the answer. Dover has six wards and eleven
   // representatives; a resident of ward 3 wants the ones who represent ward 3.
-  const picker=ws.length>1?`<p style="margin:0 0 8px;font-size:13.5px;
+  const picker=ws.length>1?`<p style="margin:0 0 8px;font-size:14px;
     color:var(--ink-2)">${esc(town)} is divided into wards. Choose yours:</p>
     <div class="wards">${ws.map(w=>
       `<button class="wbtn ${w===ward?'sel':''}" data-ward="${esc(w)}">
@@ -814,7 +832,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       `<tr><td style="width:80px">${fd(r.date)}</td>
        <td><a href="bills.html#${esc(r.bill)}">${esc(r.n)}</a>
        <span style="color:var(--ink-2)">${esc(r.title)}</span><br>
-       <span style="font-size:12.5px">${esc(r.what)}</span></td></tr>`).join("")}
+       <span style="font-size:12px">${esc(r.what)}</span></td></tr>`).join("")}
     </tbody></table>`;
 
   // Closest votes and most contested are computed and stored, but not shown.
@@ -826,7 +844,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       `<tr><td style="width:86px"><b>${v.y}\u2013${v.nn}</b></td>
        <td><a href="bills.html#${esc(v.bill)}">${esc(v.n)}</a>
        <span style="color:var(--ink-2)">${esc(v.q||"")}, ${fd(v.date)}</span><br>
-       <span style="font-size:12.5px">${esc(v.title)}</span></td></tr>`).join("")}
+       <span style="font-size:12px">${esc(v.title)}</span></td></tr>`).join("")}
        </tbody></table>`:""}
      ${co.length?`<h2>Most contested</h2>
        <p class="note">Bills that took the most recorded floor votes to settle.
@@ -846,7 +864,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     ? H.latest_sessions : (H.latest_session?[H.latest_session]:[]);
   document.getElementById("session").innerHTML=ls.length
     ?`<h2>Most recent floor sessions</h2><div class="twoup">${ls.map(v=>
-      `<div><p style="margin:0 0 6px;font-size:13.5px"><b>${esc(v.chamber||"")}</b>
+      `<div><p style="margin:0 0 6px;font-size:14px"><b>${esc(v.chamber||"")}</b>
         <span class="statemeta">${fd(v.date)}</span></p>
         <div class="player"><div class="pstub" data-embed="${esc(v.video_id)}">
           <span>&#9654;</span><span>Play</span></div></div></div>`).join("")}</div>`
@@ -1063,7 +1081,7 @@ record. Searching a committee name lists everyone on it.</p>
         static_recent = "<h2>Latest activity</h2><table><tbody>" + "".join(
             f'<tr><td>{fd(r.get("date"))}</td><td>'
             f'<a href="bills.html#{esc(r.get("bill"))}">{esc(r.get("n"))}</a> '
-            f'{esc(r.get("title"))}<br><span style="font-size:12.5px">'
+            f'{esc(r.get("title"))}<br><span style="font-size:12px">'
             f'{esc(r.get("what"))}</span></td></tr>'
             for r in H["recent"][:12]) + "</tbody></table>"
 
