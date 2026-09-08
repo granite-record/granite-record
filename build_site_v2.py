@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.38
+# GRANITE_VERSION: 2026-09-05.39
 """
 Generate the faceted site from real General Court data.
 
@@ -1690,7 +1690,7 @@ def hearing_testimony(e, tdb, scraped):
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
-                votes_by_bill):
+                votes_by_bill, vetoes=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -2130,6 +2130,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             "docket_reports": rep_docket,
             # What the chamber did between one report and the next.
             "report_actions": rep_actions,
+            # Why the governor vetoed it, in her own words, from the House
+            # calendar the message was read into. The docket records that a
+            # bill was vetoed and the date; it does not record the reasons,
+            # and the reasons are the whole of a veto message.
+            "veto_message": P.per_term(vetoes or {}, term, current).get(bid),
             "subject": b.get("subject", ""),
             "house_committee": b.get("house_committee", ""),
             "senate_committee": b.get("senate_committee", ""),
@@ -2184,6 +2189,9 @@ def main():
     # which sent the diagnosis in the wrong direction entirely.
     ap.add_argument("--segments", default="work")
     ap.add_argument("--reports", default="committee_reports.json")
+    ap.add_argument("--vetoes", default="veto_messages.json",
+                    help="governor's veto messages, from extract_vetoes.py; "
+                         "skipped if the file is not there")
     ap.add_argument("--senate-reports", default="senate_reports.json")
 
     ap.add_argument("--status", default="status/status.txt")
@@ -2248,6 +2256,18 @@ def main():
     # by looking for ", <year>" in each record's source; a record that is not
     # from a calendar has no business inside that. Merged here instead, which
     # is the one place that has to know both exist.
+    # {term: {bill: message}}, and refused in the old flat shape for the same
+    # reason every other per-bill file is: a bill number names one bill in each
+    # biennium, and a flat file read through a term lookup gives every bill
+    # nothing while exiting zero.
+    vetoes = load(a.vetoes, {})
+    if vetoes and not N.is_term_keyed(vetoes):
+        sys.exit(f"{a.vetoes} is keyed on bill number, not on term. "
+                 "Delete it and run extract_vetoes.py again.")
+    if vetoes:
+        print(f"  {sum(len(v) for v in vetoes.values())} veto message(s) "
+              f"across {len(vetoes)} term(s)")
+
     senate = load(a.senate_reports, {})
     # Both are {term: {bill: [reports]}} now, for the reason every per-bill file
     # is: a bill number is unique within a term and not across terms. Reading
@@ -2422,7 +2442,7 @@ def main():
                                testimony_db,
                                procs, floor, segs, marks, sources,
                                legs, leg_by_sort, leg_by_name,
-                               votes_by_bill)
+                               votes_by_bill, vetoes=vetoes)
     (out / "index.json").write_text(json.dumps(index), encoding="utf-8")
     size = (out / "index.json").stat().st_size / 1024
     print(f"index.json: {size:.0f} KB for {len(index):,} bills "

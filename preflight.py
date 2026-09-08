@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.63
+# GRANITE_VERSION: 2026-09-04.65
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2848,6 +2848,60 @@ def _no_empty_dates():
     assert not bad, (f"{len(bad)} of {n:,} bills have a sentence with an empty "
                      f"date: {'; '.join(bad[:2])}")
     return "ok", f"{n:,} bills, no sentence stops where a date should be"
+
+
+@check("data", "a quoted veto message is whole, attributed and citable")
+def _veto_messages():
+    """The site quotes the governor. That has to be exactly right.
+
+    The messages come out of the House calendar PDFs, where pdftotext leaves a
+    running page header at every page break -- "13 JUNE2025HOUSERECORD 3" --
+    and justification splits words across lines. Eleven of the 34 messages
+    carried one or the other before those were dealt with, including one that
+    read "...to and from these schools 13 JUNE2025HOUSERECORD 3 would place an
+    undue burden on working families."
+
+    A garbled quotation with a citation on it is worse than no quotation,
+    which is the same reason this site does not quote captions. So: no page
+    furniture, no split words, an author, a date, and a link to the calendar
+    it was printed in.
+    """
+    root = Path("site/bills")
+    if not root.exists():
+        return "skip", "no bill JSON built"
+    # EXACTLY two stops, not three. The governor quotes a letter in
+    # HB475's message with a real ellipsis in it, and a pattern reading
+    # "..." as a defect flags the site's most careful quotation as its
+    # worst.
+    junk = re.compile(r"HOUSERECORD|SENATERECORD|\x0c|(?<!\.)\.\.(?!\.)"
+                      r"|\w- \w|  ")
+    n, bad = 0, []
+    for f in sorted(root.rglob("*.json")):
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except ValueError:
+            continue
+        v = d.get("veto_message")
+        if not v:
+            continue
+        n += 1
+        text = " ".join(v.get("text") or [])
+        m = junk.search(text)
+        if m:
+            bad.append(f"{d.get('id')} carries {m.group(0)!r}")
+        elif len(text) < 80:
+            bad.append(f"{d.get('id')} is {len(text)} characters, not a message")
+        elif not v.get("governor"):
+            bad.append(f"{d.get('id')} names no author")
+        elif not v.get("date"):
+            bad.append(f"{d.get('id')} carries no date")
+        elif not (v.get("source") or {}).get("url"):
+            bad.append(f"{d.get('id')} cites no calendar")
+    if not n:
+        return "skip", "no bill carries a veto message"
+    assert not bad, (f"{len(bad)} of {n} veto messages are not fit to quote: "
+                     f"{'; '.join(bad[:3])}")
+    return "ok", f"{n} veto messages, each whole, attributed and citable"
 
 
 @check("data", "a committee's stated purpose is the rule, not the page around it")

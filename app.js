@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.18
+// GRANITE_VERSION: 2026-09-07.20
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1098,10 +1098,41 @@ function renderReports(b,d,rsa){
         ? "The written report for this one is not on the site; this is what the docket records of it."
         : "The calendar carrying this report has not been read into the site yet, so only what the docket states is shown."}</p>`;}).join("");
 
-  return (written||docket)?written+docket
+  return veto(d)+((written||docket)?written+docket
     :`<p class="note">No committee report on file. A report is recorded in the docket
       when a committee reports the bill out, and the reasoning behind it is printed
-      in the House Calendar or filed with the Senate; neither has happened here yet.</p>`;
+      in the House Calendar or filed with the Senate; neither has happened here yet.</p>`);
+}
+
+// WHY the governor vetoed it, which the docket does not record. Read into the
+// House on the day and printed in that day's calendar under a heading of its
+// own; the calendar is cited so a reader can check the words against the
+// document they came from.
+//
+// Quoted in full rather than summarised. It is a short written statement
+// published by its author, which is a different thing from a caption -- the
+// site does not quote those because they garble bill numbers, and a garbled
+// quotation with a citation on it is worse than none.
+function veto(d){
+  const v=d.veto_message;
+  if(!v||!(v.text||[]).length)return "";
+  const cite=v.source&&v.source.url
+    ? `<a href="${esc(v.source.url)}" target="_blank" rel="noopener">${
+        esc(v.source.name||"the House calendar")}</a>`
+    : esc((v.source||{}).name||"the House calendar");
+  return `<section class="vmsg">
+    <h3 class="amdsec">The governor&rsquo;s veto message</h3>
+    ${v.text.map(p=>`<p>${esc(p)}</p>`).join("")}
+    <p class="vsig">${esc(v.governor||"")}${
+      v.date?` <span class="secsub">${esc(fdate(v.date))}</span>`:""}</p>
+    ${v.date?`<p class="note" style="margin:6px 0 0">The message carries its own
+      date, which is the day the governor signed it. The docket records the day
+      the veto reached the House, and on three of these the two are days
+      apart.</p>`:""}
+    <p class="src">Read into the House and printed in ${cite}. The docket
+      records that a bill was vetoed and the day it happened; the reasons are
+      only in the message.</p>
+  </section>`;
 }
 
 // Sponsors, grouped by chamber with the originating one first. A House bill

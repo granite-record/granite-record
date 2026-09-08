@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.9
+# GRANITE_VERSION: 2026-09-05.10
 """
 Run the whole pipeline in the right order.
 
@@ -123,6 +123,18 @@ def plan(a):
                   "\"a motion by Rep. N. Germana\" into the member's full name. "
                   "build_data.py does not read narratives.json, so nothing "
                   "before this point needs it"),
+
+        # The governor's reasons, out of the calendars already on disk. No
+        # network: fetch_committee_reports.py brought those PDFs down for the
+        # committee reports and they carry the veto messages too. Skipped
+        # where there is no calendars/ folder, so a checkout without it builds
+        # exactly as before.
+        Step("the governor's veto messages",
+             ["extract_vetoes.py"],
+             needs=["calendars"],
+             produces=["veto_messages.json"],
+             note="34 of the current term's 34 House vetoes; the Senate's are "
+                  "in the Senate calendars, which this project does not fetch"),
 
         # An archived term's docket, and the histories built from it. Both
         # are skipped when the file is not there, so a checkout without the

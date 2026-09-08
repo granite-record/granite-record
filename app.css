@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.8 */
+/* GRANITE_VERSION: 2026-09-07.9 */
 :root{--paper:#F6F6F4;--surface:#fff;--ink:#191C1D;--ink-2:#5C6467;--ink-3:#6C7274;
 --rule:#E2E3E0;--rule-2:#CFD1CD;--edge:#8A8C88;--pine:#1F4B47;--pine-soft:#E7EFED;--wash:#EFEFEC;
 /* Status colours, by what happened to the bill. Yellow while it is moving,
@@ -278,6 +278,15 @@ border-left:2px solid var(--rule-2);padding-left:9px}
    statute the whole point is to see what went at a glance. */
 .cut{text-decoration:line-through;text-decoration-thickness:1px;
 color:var(--st-done)}
+/* The governor's veto message. Set apart from the committee reports above
+   which it sits: a committee recommends and the governor decides, and those
+   are not the same kind of document. The rule down the left is the same
+   device the site already uses for a quoted passage. */
+.vmsg{border-left:3px solid var(--st-veto);padding:0 0 4px 16px;margin:0 0 26px}
+.vmsg p{font-size:14.5px;line-height:1.65;margin:0 0 11px;max-width:72ch}
+.vsig{font-size:13.5px;color:var(--ink-2);display:flex;gap:10px;
+align-items:baseline;flex-wrap:wrap}
+.vmsg .src{margin-top:12px}
 .amdhead{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
 .amdn{font-weight:600;font-size:14px;font-variant-numeric:tabular-nums}
 .amdk{font-size:12.5px;color:var(--ink-2)}
