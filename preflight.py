@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.65
+# GRANITE_VERSION: 2026-09-04.67
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -762,25 +762,80 @@ def _bill_shell():
                   f"{max(sizes)/1024:.1f} KB each")
 
 
-@check("frontend", "both stylesheets carry the corrected palette")
+@check("frontend", "one palette, and every pair of it measures up")
 def _palette():
-    bad = []
-    for name, path in (("bills.html + app.css", None),
-                       ("style.css (build_pages.py)", Path("build_pages.py"))):
-        if path is None:
-            t = page_source()[0]
-            if not t:
+    """Contrast, computed from the tokens, not asserted about their spelling.
+
+    WCAG 2.1: 4.5:1 for body text, 3:1 for a control boundary. The audit of
+    7 September found eleven pairs below those and this is what stops them
+    coming back -- including the five that were the same bug, a secondary grey
+    used on tinted status boxes it had never been checked against.
+
+    It also fails if the two stylesheets stop sharing one palette.
+    build_pages.py used to carry its own copy, which had drifted: --st-veto
+    was #7C2D3A in one file and #8C4A2F in the other.
+    """
+    def root_of(text):
+        i = text.find(":root{")
+        if i < 0:
+            return {}
+        block = text[i:text.index("}", text.index('--sans:', i)) + 1]
+        # Keyed WITHOUT the leading "--", because that is how the pairs
+        # below name them and a dict keyed the other way silently matches
+        # nothing while every assertion still runs.
+        return {k[2:]: v for k, v in re.findall(
+            r"(--[\w-]+)\s*:\s*(#[0-9A-Fa-f]{3,6})\s*[;}]", block)}
+
+    def lum(h):
+        h = h.lstrip("#")
+        if len(h) == 3:
+            h = "".join(c * 2 for c in h)
+        ch = []
+        for i in (0, 2, 4):
+            v = int(h[i:i + 2], 16) / 255
+            ch.append(v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4)
+        return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2]
+
+    def ratio(a, b):
+        x, y = sorted((lum(a), lum(b)), reverse=True)
+        return (x + 0.05) / (y + 0.05)
+
+    css = Path("app.css")
+    if not css.exists():
+        return "skip", "app.css is not there"
+    tok = root_of(css.read_text(encoding="utf-8"))
+    assert tok, "app.css has no :root block this can read"
+
+    built = Path("site/style.css")
+    if built.exists():
+        other = root_of(built.read_text(encoding="utf-8"))
+        drift = [k for k in set(tok) & set(other)
+                 if tok[k].lower() != other[k].lower()]
+        assert not drift, (
+            f"app.css and style.css disagree about {', '.join(sorted(drift))}. "
+            "The palette is meant to have one definition; build_pages.py reads "
+            "app.css's.")
+
+    TEXT = [("ink", "surface"), ("ink", "paper"),
+            ("ink-2", "surface"), ("ink-2", "paper"), ("ink-2", "wash"),
+            ("pine", "surface"), ("pine", "paper")]
+    for st in ("active", "law", "done", "study", "veto"):
+        TEXT += [(f"st-{st}", f"st-{st}-bg"), ("ink-2", f"st-{st}-bg")]
+    BOUND = [("edge", "surface"), ("edge", "paper"),
+             ("pine", "surface"), ("pine", "paper")]
+
+    bad, n = [], 0
+    for pairs, need, kind in ((TEXT, 4.5, "text"), (BOUND, 3.0, "boundary")):
+        for fg, bg in pairs:
+            if fg not in tok or bg not in tok:
+                bad.append(f"--{fg} or --{bg} is not defined")
                 continue
-        elif path.exists():
-            t = path.read_text(encoding="utf-8")
-        else:
-            continue
-        if "--ink-3:#6C7274" not in t:
-            bad.append(f"{name}: --ink-3 still fails contrast")
-        if "--edge:" not in t:
-            bad.append(f"{name}: no --edge for control borders")
-    assert not bad, "; ".join(bad)
-    return "ok", "--ink-3 at 4.5:1, --edge at 3:1"
+            n += 1
+            r = ratio(tok[fg], tok[bg])
+            if r < need:
+                bad.append(f"--{fg} on --{bg} is {r:.2f}:1, {kind} needs {need}")
+    assert not bad, "; ".join(bad[:4])
+    return "ok", f"{n} pairs, all above their threshold"
 
 
 # ============================================================= code: pipeline ==

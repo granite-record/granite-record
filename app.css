@@ -1,11 +1,32 @@
-/* GRANITE_VERSION: 2026-09-07.9 */
-:root{--paper:#F6F6F4;--surface:#fff;--ink:#191C1D;--ink-2:#5C6467;--ink-3:#6C7274;
---rule:#E2E3E0;--rule-2:#CFD1CD;--edge:#8A8C88;--pine:#1F4B47;--pine-soft:#E7EFED;--wash:#EFEFEC;
+/* GRANITE_VERSION: 2026-09-07.10 */
+:root{
+/* GROUND AND SURFACE. The page was #F6F6F4 and a card is white, which put
+   1.08:1 between a bill and the paper behind it -- below the level at which
+   most people see an edge at all, and the whole of "bills don't stand out".
+   Darkening the page to #EAEBE7 makes that 1.20:1 and costs nothing else:
+   every text colour was re-measured against it and the lowest is 6.34:1. */
+--paper:#EAEBE7;--surface:#fff;--wash:#E1E2DD;
+/* INK, in two steps rather than three. --ink-2 and --ink-3 were 0.041 apart
+   in relative luminance and were used interchangeably for metadata, which is
+   one colour with two names. --ink is no longer #191C1D: at 17.7:1 that is
+   black with a tint on it, and this site is about granite. */
+--ink:#23282A;--ink-2:#4C5457;
+/* LINES, BY JOB, which is the distinction that was missing. A hairline
+   inside a surface carries no contrast requirement. The edge of a card is
+   not a control either. Anything a person clicks or types into is, and needs
+   3:1 -- and no colour light enough to read as a hairline gets there:
+   #999E93 manages 2.29:1 on this ground. So the control boundary is a mid
+   grey and says so. */
+--rule:#D7D9D3;      /* a divider inside a card: 1.42:1 on white */
+--rule-2:#B5B9B1;    /* the edge of a card or panel: 1.99:1 on white */
+--edge:#7E827C;      /* input, select, button: 3.91:1 on white, 3.26:1 on the page */
+--pine:#1B4340;--pine-soft:#E7EFED;
 /* Status colours, by what happened to the bill. Yellow while it is moving,
    green if it became law, red if it was voted down, orange for interim study
    -- which is parked rather than dead. A veto keeps its own deeper red: the
    legislature did not kill it, and the two are worth telling apart.
-   Every pair holds at least 5.4:1 against its own chip. */
+   Every pair holds at least 5.4:1 against its own chip, which is why the
+   audit left them alone. */
 --st-active:#7A5A00;--st-active-bg:#FBF2D9;
 --st-law:#1E5B3C;--st-law-bg:#E3EFE7;
 --st-done:#9E2B25;--st-done-bg:#FAE7E5;
@@ -16,7 +37,23 @@
    clearly different lightness as well as different hue, so the ring still
    reads for readers who cannot separate the two by hue alone. */
 --yes:#215C43;--no:#CE6A62;
---sans:"Public Sans",system-ui,-apple-system,sans-serif;--serif:"Newsreader",Georgia,serif}
+/* Sign-ins against a bill. --brick was used by .sgn.against and defined
+   nowhere, so color-mix() had an invalid argument, the whole declaration was
+   dropped, and the opposition count has been rendering with no colour and no
+   border since it was written. */
+--brick:#9E2B25;
+/* CORNERS, three, by role -- twelve values were in use and nine things were
+   9px, nine were 7px and nine were 5px, so no radius meant anything. */
+--r-in:3px;          /* something you operate: input, select, small button */
+--r-out:6px;         /* something that holds content: card, panel, player */
+--r-pill:999px;      /* a chip, which is a word in a shape */
+--sans:"Public Sans",system-ui,-apple-system,sans-serif;
+/* Newsreader sets the long-form text a person actually reads: a bill's
+   narrative, its analysis, its own words and its amendments. The audit said
+   to retire it on the strength of five elements on the home page, having
+   measured no expanded card -- where the other four rules are. Two faces,
+   clearly distinct, each with a job. */
+--serif:"Newsreader",Georgia,serif}
 *{box-sizing:border-box}html,body{margin:0}
 body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:15px;
 line-height:1.55;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1}
@@ -34,11 +71,11 @@ nav.top a[aria-current]{color:var(--ink);font-weight:500;box-shadow:0 2px 0 var(
    under it is capped to match so the two read as one control. */
 .qline{display:flex;gap:10px;max-width:840px}
 #sort{height:26px;padding:0 4px;font:inherit;font-size:12.5px;border:1px solid var(--edge);
-border-radius:5px;background:var(--surface);color:var(--ink-2);cursor:pointer}
+border-radius:var(--r-in);background:var(--surface);color:var(--ink-2);cursor:pointer}
 #year{height:42px;padding:0 10px;font:inherit;font-size:14px;border:1px solid var(--edge);
-border-radius:7px;background:var(--surface);cursor:pointer}
+border-radius:var(--r-out);background:var(--surface);cursor:pointer}
 #q{flex:1;height:42px;padding:0 14px;font:inherit;font-size:15px;border:1px solid var(--edge);
-border-radius:7px;background:var(--paper)}
+border-radius:var(--r-out);background:var(--paper)}
 #q:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft);background:var(--surface)}
 /* The search list narrows as you type and needs no button. On one bill's own
    view it must not: re-running the search there takes the bill off the screen
@@ -50,11 +87,11 @@ border-radius:7px;background:var(--paper)}
 .qbox{position:relative;flex:1;display:flex}
 .qbox #q{flex:1;padding-right:46px}
 #qgo{position:absolute;right:4px;top:4px;width:34px;height:34px;font-size:16px;
-line-height:1;border:1px solid transparent;border-radius:6px;background:none;
-color:var(--ink-3);cursor:pointer}
+line-height:1;border:1px solid transparent;border-radius:var(--r-out);background:none;
+color:var(--ink-2);cursor:pointer}
 #qgo:hover{border-color:var(--edge);background:var(--wash);color:var(--pine)}
 #qgo:disabled{opacity:.35;cursor:default}
-.qhint{font-size:12.5px;color:var(--ink-3);margin:7px 2px 0;display:flex;gap:16px;flex-wrap:wrap;max-width:840px}
+.qhint{font-size:12.5px;color:var(--ink-2);margin:7px 2px 0;display:flex;gap:16px;flex-wrap:wrap;max-width:840px}
 .link{color:var(--pine);font-size:12.5px}
 .shell{max-width:1180px;margin:0 auto;padding:20px 24px 80px;display:grid;
 grid-template-columns:250px 1fr;gap:30px;align-items:start}
@@ -62,32 +99,35 @@ grid-template-columns:250px 1fr;gap:30px;align-items:start}
 overflow-y:auto;overflow-x:hidden}
 .fgroup{border-bottom:1px solid var(--rule)}
 .fhead{width:100%;display:flex;align-items:center;gap:8px;padding:11px 2px;font-size:13px;font-weight:600}
-.fhead .chev{margin-left:auto;color:var(--ink-3);font-size:11px}
+.fhead .chev{margin-left:auto;color:var(--ink-2);font-size:11px}
 .fgroup.open .chev{transform:rotate(90deg)}
-.fhead .badge{background:var(--pine);color:#fff;font-size:10.5px;padding:1px 6px;border-radius:9px;font-weight:500}
+.fhead .badge{background:var(--pine);color:#fff;font-size:10.5px;padding:1px 6px;border-radius:var(--r-pill);font-weight:500}
 .fbody{padding:0 2px 12px;max-height:340px;overflow-y:auto;overflow-x:hidden}.fbody[hidden]{display:none}
 .fopt{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:13.5px;cursor:pointer}
 .fopt input{accent-color:var(--pine);margin:0;flex:0 0 auto}
-.fopt .c{margin-left:auto;font-size:11.5px;color:var(--ink-3)}
+.fopt .c{margin-left:auto;font-size:11.5px;color:var(--ink-2)}
 /* De-emphasised by colour rather than by opacity. At .38 these came out
    at 2.3:1 while still being clickable; opacity also multiplies through
    to the count beside them, which was already the lightest text here. */
-.fopt.off{color:var(--ink-3)}.fopt.off .c{color:var(--ink-3)}
+.fopt.off{color:var(--ink-2)}.fopt.off .c{color:var(--ink-2)}
 .sbox{width:100%;height:32px;padding:0 9px;font:inherit;font-size:13px;
-border:1px solid var(--edge);border-radius:5px;margin-bottom:7px}
+border:1px solid var(--edge);border-radius:var(--r-in);margin-bottom:7px}
 .chosen{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px}
-.pill{font-size:12px;background:var(--pine-soft);color:var(--pine);border-radius:12px;padding:2px 8px}
+.pill{font-size:12px;background:var(--pine-soft);color:var(--pine);border-radius:var(--r-pill);padding:2px 8px}
 .pill button{margin-left:4px;color:var(--pine)}
-.count{font-size:13px;color:var(--ink-3);margin:0 0 12px}
+.count{font-size:13px;color:var(--ink-2);margin:0 0 12px}
 /* A bill has to read as an object, not as a band of the page. The card was
    white on #F6F6F4 behind a #E2E3E0 rule -- about three percent of lightness
    between the two -- so a screen of them ran together into one column of
    text. A firmer rule, a shadow soft enough not to be seen as a shadow, and
    a little more air between them. */
 .card{position:relative;background:var(--surface);border:1px solid var(--rule-2);
-border-radius:10px;margin-bottom:14px;overflow:hidden;
-box-shadow:0 1px 2px rgba(25,28,29,.05)}
-.card.open{box-shadow:0 3px 10px rgba(25,28,29,.08)}
+border-radius:var(--r-out);margin-bottom:14px;overflow:hidden;
+}
+/* Lifting means something only if one thing is lifted. The resting
+   card had a shadow too, so nine cards on a screen were all raised
+   and none of them read as raised. */
+.card.open{box-shadow:0 3px 10px rgba(35,40,42,.10)}
 .chead{width:100%;text-align:left;padding:15px 46px 15px 18px;display:block;cursor:pointer}
 /* The link to a bill's own page used to sit INSIDE the .chead button.
    Nesting a link in a button is invalid and browsers disagree about
@@ -96,7 +136,7 @@ box-shadow:0 1px 2px rgba(25,28,29,.05)}
    in the corner with CSS, and sized as a real tap target. */
 .detail{position:absolute;top:9px;right:10px;z-index:2;display:flex;
 align-items:center;justify-content:center;min-width:36px;min-height:36px;
-text-decoration:none;font-size:15px;color:var(--ink-3);border-radius:6px}
+text-decoration:none;font-size:15px;color:var(--ink-2);border-radius:var(--r-out)}
 .detail:hover{color:var(--pine);background:var(--wash)}
 /* On the focused view the reader is already looking at a detail page, and a
    bare arrow in the corner reads as a link to the one they are on. It leads
@@ -109,8 +149,8 @@ text-decoration:none;font-size:15px;color:var(--ink-3);border-radius:6px}
 /* The thing the reader is looking for. It was a point smaller than the
    title beside it, which is the wrong way round on a page of bills. */
 .cnum{font-size:15.5px;font-weight:600;color:var(--pine);letter-spacing:.01em}
-.cyear{font-size:12.5px;color:var(--ink-3)}
-.cstat{margin-left:auto;font-size:11.5px;font-weight:500;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.cyear{font-size:12.5px;color:var(--ink-2)}
+.cstat{margin-left:auto;font-size:11.5px;font-weight:500;padding:3px 10px;border-radius:var(--r-pill);white-space:nowrap}
 /* The status on a card head: bigger and heavier than the chips used inside a
    tab, because it is the one thing every reader looks for first. */
 .crow .cstat{font-size:13.5px;font-weight:600;padding:4px 13px;
@@ -125,16 +165,16 @@ letter-spacing:.01em}
    colour, different word. */
 .s-adopted{background:var(--st-law-bg);color:var(--st-law)}
 .ctitle{font-size:15px;margin:6px 0 0;line-height:1.45}
-.cmeta{font-size:12.5px;color:var(--ink-3);margin-top:6px}
+.cmeta{font-size:12.5px;color:var(--ink-2);margin-top:6px}
 .cbody{border-top:1px solid var(--rule);padding:0 18px 20px}
 .cbody[hidden]{display:none}
 .tabs{display:flex;gap:20px;border-bottom:1px solid var(--rule);margin:0 0 18px;flex-wrap:wrap}
-.tab{padding:12px 0 10px;font-size:13.5px;color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab{padding:12px 0 10px;font-size:13.5px;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px}
 .tab[aria-selected=true]{color:var(--ink);border-bottom-color:var(--pine);font-weight:500}
 .pane[hidden]{display:none}
 .tl{list-style:none;margin:0;padding:0}
 .tl li{display:flex;gap:14px;padding:7px 0;border-bottom:1px solid var(--rule);font-size:14px;align-items:baseline}
-.tl .d{flex:0 0 104px;font-size:12.5px;color:var(--ink-3)}
+.tl .d{flex:0 0 104px;font-size:12.5px;color:var(--ink-2)}
 /* Same reason: the date in a routine row is --ink-3 already, and .62 on
    top of that put it at 1.9:1. These are real docket lines. */
 .tl li.routine{color:var(--ink-2)}
@@ -143,27 +183,27 @@ letter-spacing:.01em}
 .stg:last-child{margin-bottom:0}
 
 .stg p{margin:0;font-family:var(--serif);font-size:16px;line-height:1.6}
-.sgn{display:inline-block;margin:3px 6px 0 0;padding:1px 7px;border-radius:9px;
+.sgn{display:inline-block;margin:3px 6px 0 0;padding:1px 7px;border-radius:var(--r-pill);
 font-size:11.5px;font-weight:600;background:var(--paper);border:1px solid var(--rule-2)}
 .sgn.for{color:var(--pine);border-color:color-mix(in srgb,var(--pine) 35%,var(--rule-2))}
 .sgn.against{color:var(--brick);border-color:color-mix(in srgb,var(--brick) 35%,var(--rule-2))}
 .testimony{margin:8px 0 2px;padding:9px 12px;background:var(--paper);
-border-left:3px solid var(--rule-2);border-radius:0 5px 5px 0;font-size:13px;
+border-left:3px solid var(--rule-2);border-radius:0 var(--r-in) var(--r-in) 0;font-size:13px;
 line-height:1.55}
 .testimony a{font-size:12.5px}
-.tnote{display:block;font-size:12px;color:var(--ink-3);margin-top:4px}
-.cite{font-size:12px;color:var(--ink-3);white-space:nowrap}
+.tnote{display:block;font-size:12px;color:var(--ink-2);margin-top:4px}
+.cite{font-size:12px;color:var(--ink-2);white-space:nowrap}
 a.cite{color:var(--pine)}
-.status{margin-top:16px;padding:13px 15px;border-radius:7px;background:var(--st-active-bg);border-left:3px solid var(--st-active)}
+.status{margin-top:16px;padding:13px 15px;border-radius:var(--r-out);background:var(--st-active-bg);border-left:3px solid var(--st-active)}
 .status .lab{font-size:11.5px;font-weight:600;letter-spacing:.02em;color:var(--st-active)}
 .status .val{font-size:16px;margin-top:2px}
 .status.s-law{background:var(--st-law-bg);border-left-color:var(--st-law)}.status.s-law .lab{color:var(--st-law)}
 .status.s-done{background:var(--st-done-bg);border-left-color:var(--st-done)}.status.s-done .lab{color:var(--st-done)}
 .status.s-veto{background:var(--st-veto-bg);border-left-color:var(--st-veto)}.status.s-veto .lab{color:var(--st-veto)}
-.rc{border:1px solid var(--rule);border-radius:8px;padding:15px 17px;margin-bottom:14px}
+.rc{border:1px solid var(--rule);border-radius:var(--r-out);padding:15px 17px;margin-bottom:14px}
 .rchead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
-.rcq{font-size:15px;font-weight:500}.rcd{font-size:12.5px;color:var(--ink-3)}
-.rcres{margin-left:auto;font-size:11.5px;font-weight:500;padding:2px 9px;border-radius:20px}
+.rcq{font-size:15px;font-weight:500}.rcd{font-size:12.5px;color:var(--ink-2)}
+.rcres{margin-left:auto;font-size:11.5px;font-weight:500;padding:2px 9px;border-radius:var(--r-pill)}
 .pass{background:var(--st-law-bg);color:var(--st-law)}.fail{background:var(--st-done-bg);color:var(--st-done)}
 .votewrap{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;margin-top:10px}
 .donut circle{cursor:pointer}.donut circle:hover{opacity:.8}
@@ -171,17 +211,17 @@ a.cite{color:var(--pine)}
 .lrow{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:13px;cursor:pointer;width:100%;
 text-align:left;border-bottom:1px solid var(--rule)}
 .lrow:hover{background:var(--paper)}.lrow.sel{background:var(--pine-soft)}
-.sw{width:11px;height:11px;border-radius:2px;flex:0 0 auto}
+.sw{width:11px;height:11px;border-radius:var(--r-in);flex:0 0 auto}
 .sw-o{background:transparent;border:1.5px solid var(--rule-2)}
 .lrow .c{margin-left:auto;color:var(--ink-2)}
 .othergrp{margin-top:10px;padding-top:9px;border-top:1px dashed var(--rule-2)}
-.otherhd{display:flex;font-size:12px;font-weight:600;color:var(--ink-3);padding:0 0 5px}
+.otherhd{display:flex;font-size:12px;font-weight:600;color:var(--ink-2);padding:0 0 5px}
 .otherhd .c{margin-left:auto;font-weight:400;font-style:italic}
 .mlist{margin-top:12px;border-top:1px solid var(--rule);padding-top:11px}
 .mlist h3{margin-top:14px}
 /* 250px, not 228: names now carry an honorific and a party letter. */
 .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1px 18px}
-.m{font-size:13px;padding:2px 0}.m .p{color:var(--ink-3)}
+.m{font-size:13px;padding:2px 0}.m .p{color:var(--ink-2)}
 .discl{width:100%;text-align:left;font-size:13px;color:var(--pine);padding:9px 0 0;
 border-top:1px solid var(--rule);margin-top:11px}
 .full{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:22px}
@@ -194,20 +234,20 @@ padding:9px 13px;margin:0 0 12px;line-height:1.55}
 .stn:after{content:"";position:absolute;left:0;top:5px;width:9px;height:9px;border-radius:50%;
 border:1.5px solid var(--pine);background:var(--surface)}
 .stn.done:after{background:var(--pine)}.stn.pend:after{border-color:var(--rule-2)}
-.stn .w{font-size:12px;color:var(--ink-3)}.stn .t{font-size:14px;font-weight:500}
-.vbox{margin-top:9px;border:1px dashed var(--rule-2);border-radius:6px;padding:11px 13px;background:var(--paper)}
+.stn .w{font-size:12px;color:var(--ink-2)}.stn .t{font-size:14px;font-weight:500}
+.vbox{margin-top:9px;border:1px dashed var(--rule-2);border-radius:var(--r-out);padding:11px 13px;background:var(--paper)}
 .vbox p{margin:0;font-size:12.5px;color:var(--ink-2)}
-.player{margin-top:10px;border:1px solid var(--rule);border-radius:7px;overflow:hidden;background:#000}
+.player{margin-top:10px;border:1px solid var(--rule);border-radius:var(--r-out);overflow:hidden;background:#000}
 .player iframe{width:100%;aspect-ratio:16/9;border:0;display:block}
 .pstub{width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;
 cursor:pointer;background:#14181A;color:#C8CFD1;font-size:13.5px;gap:9px;text-align:center;padding:16px}
 .pstub:hover{background:#1D2225}
 .pbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 12px;
 background:var(--surface);border-top:1px solid var(--rule);font-size:12.5px}
-.jump{border:1px solid var(--edge);border-radius:5px;padding:3px 9px;font-size:12.5px;
+.jump{border:1px solid var(--edge);border-radius:var(--r-in);padding:3px 9px;font-size:12.5px;
 font-variant-numeric:tabular-nums;color:var(--pine);background:var(--paper)}
 .jump:hover{border-color:var(--pine);background:var(--pine-soft)}
-.tolnote{color:var(--ink-3);margin-left:auto}
+.tolnote{color:var(--ink-2);margin-left:auto}
 .won{margin-left:6px;color:var(--yes);font-weight:700}
 .donut circle{transition:opacity .12s}
 .rsa{white-space:nowrap}
@@ -224,14 +264,14 @@ font-size:13.5px;font-weight:600;color:var(--ink-2);letter-spacing:.05em;
 text-transform:uppercase;margin:0 0 7px;padding-bottom:6px;
 border-bottom:1px solid var(--rule)}
 .spgrp span,.mlist h3 span{font-weight:400;letter-spacing:0;text-transform:none;
-font-size:12.5px;color:var(--ink-3)}
+font-size:12.5px;color:var(--ink-2)}
 .story .stg{margin-top:22px}
 .story .stg:first-child{margin-top:2px}
 .btver{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:12px}
 .btv{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
-background:var(--pine-soft);color:var(--pine);border-radius:5px;padding:3px 9px}
-.btamd{font-size:12.5px;color:var(--ink-3)}
-.btan{background:var(--wash);border-radius:8px;padding:13px 15px;margin-bottom:16px}
+background:var(--pine-soft);color:var(--pine);border-radius:var(--r-in);padding:3px 9px}
+.btamd{font-size:12.5px;color:var(--ink-2)}
+.btan{background:var(--wash);border-radius:var(--r-out);padding:13px 15px;margin-bottom:16px}
 
 .btan p{font-family:var(--serif);font-size:15.5px;line-height:1.6;margin:0}
 /* As close to the printed bill as text allows: a numbered section opens a
@@ -253,13 +293,13 @@ background:var(--pine-soft);color:var(--pine);border-radius:5px;padding:3px 9px}
    object -- views of the record -- and the bill itself is another, sitting
    below them. A single rule read as one more section inside a tab. */
 .btsec{margin:40px 2px 8px;padding:20px 20px 10px;background:var(--paper);
-border:1px solid var(--rule-2);border-radius:9px}
+border:1px solid var(--rule-2);border-radius:var(--r-pill)}
 .btsec > .amdsec{font-size:16px;letter-spacing:.06em;color:var(--ink);
 border-bottom:0;margin:0 0 2px}
 /* A line under the heading saying what this is. The tabs above are views OF
    the record; this is the document itself, and bleeding it to the card's edge
    under a small heading made it read as one more tab that had run on. */
-.btwhat{font-size:12.5px;color:var(--ink-3);margin:0 0 16px}
+.btwhat{font-size:12.5px;color:var(--ink-2);margin:0 0 16px}
 /* The same heading shape for a report side and for a recording. Each was set
    by hand and each looked slightly different from the others and from the tab
    it sits in. */
@@ -268,7 +308,7 @@ text-transform:uppercase}
 .amdsteps{margin-top:24px}
 .amd{padding:13px 0;border-bottom:1px solid var(--rule)}
 .amdt{font-size:12.5px;color:var(--ink-2);margin:6px 0 0}
-.tgt{display:inline-block;background:var(--wash);border-radius:5px;
+.tgt{display:inline-block;background:var(--wash);border-radius:var(--r-in);
 padding:1px 7px;margin-right:4px;font-size:12px}
 .amdsup{font-size:12.5px;color:var(--ink-2);margin:5px 0 0;
 border-left:2px solid var(--rule-2);padding-left:9px}
@@ -290,7 +330,7 @@ align-items:baseline;flex-wrap:wrap}
 .amdhead{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
 .amdn{font-weight:600;font-size:14px;font-variant-numeric:tabular-nums}
 .amdk{font-size:12.5px;color:var(--ink-2)}
-.amdd{font-size:12.5px;color:var(--ink-3);margin-left:auto}
+.amdd{font-size:12.5px;color:var(--ink-2);margin-left:auto}
 .amdby{font-size:13px;color:var(--ink-2);margin:5px 0 0}
 .amdtext{margin-top:8px}
 .amdtext summary{font-size:13px;color:var(--pine);cursor:pointer;min-height:32px;
@@ -301,7 +341,7 @@ display:flex;align-items:center}
 .spcount{font-size:13px;color:var(--ink-2);margin:0 0 12px;
 font-variant-numeric:tabular-nums}
 .spgrp{display:flex;align-items:baseline;gap:7px;margin-top:16px}
-.loaderr{background:var(--st-done-bg);color:var(--st-done);border-radius:7px;
+.loaderr{background:var(--st-done-bg);color:var(--st-done);border-radius:var(--r-out);
 padding:11px 14px;margin:0 0 14px;font-size:13.5px}
 .loaderr span{display:block;margin-top:5px;font-family:ui-monospace,monospace;
 font-size:12px;white-space:pre-wrap;word-break:break-all}
@@ -316,20 +356,20 @@ border-top:4.5px solid transparent;border-bottom:4.5px solid transparent;
 transition:transform .12s;flex:none}
 .docket[open] .caret{transform:rotate(90deg)}
 .docket .tl{margin-top:10px}
-.docket .cite{color:var(--ink-3);font-size:12.5px}
+.docket .cite{color:var(--ink-2);font-size:12.5px}
 .docs{list-style:none;margin:0;padding:0}
 .doc{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;padding:8px 0;
 border-bottom:1px solid var(--rule);font-size:14px}
-.doc span{font-size:12.5px;color:var(--ink-3)}
+.doc span{font-size:12.5px;color:var(--ink-2)}
 .ramd{font-weight:400;font-size:13px;color:var(--ink-2);background:var(--wash);
-border-radius:5px;padding:1px 7px;font-variant-numeric:tabular-nums}
+border-radius:var(--r-in);padding:1px 7px;font-variant-numeric:tabular-nums}
 .cvote{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;
-color:var(--ink-2);background:var(--wash);border-radius:5px;padding:1px 7px}
+color:var(--ink-2);background:var(--wash);border-radius:var(--r-in);padding:1px 7px}
 /* One bill, filling the space the list was using. The facet rail goes with
    the list: nothing in it applies to a single bill. */
 .shell.focused{grid-template-columns:1fr}
 .shell.focused .facets{display:none}
-.card.focus{border-color:var(--rule-2);box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.card.focus{border-color:var(--rule-2)}
 .card.focus .chead{cursor:default}
 /* The corner link is absolutely positioned, and .chead's 46px of right
    padding was cut to fit a 36px arrow. Named, it is four times that wide and
@@ -342,10 +382,10 @@ font-size:13.5px;color:var(--pine)}
 .grp{font-size:12.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
 color:var(--ink-2);margin:20px 0 8px;display:flex;align-items:baseline;gap:8px}
 .grp:first-child{margin-top:2px}
-.grp span{font-weight:400;font-size:12px;letter-spacing:0;text-transform:none;color:var(--ink-3)}
-.empty{background:var(--surface);border:1px dashed var(--rule-2);border-radius:9px;padding:34px;
-text-align:center;color:var(--ink-3);font-size:14px}
-.spin{padding:20px 2px;color:var(--ink-3);font-size:13px}
+.grp span{font-weight:400;font-size:12px;letter-spacing:0;text-transform:none;color:var(--ink-2)}
+.empty{background:var(--surface);border:1px dashed var(--rule-2);border-radius:var(--r-pill);padding:34px;
+text-align:center;color:var(--ink-2);font-size:14px}
+.spin{padding:20px 2px;color:var(--ink-2);font-size:13px}
 @media(max-width:860px){.shell{grid-template-columns:1fr}.facets{position:static;max-height:none}
 .full{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -417,9 +457,9 @@ text-align:center;color:var(--ink-3);font-size:14px}
 
 /* Focus must be visible. Keyboard users navigate by it, and the default
    outline is removed by most resets without anything put back. */
-:focus-visible{outline:2px solid var(--pine);outline-offset:2px;border-radius:3px}
+:focus-visible{outline:2px solid var(--pine);outline-offset:2px;border-radius:var(--r-in)}
 .skip{position:absolute;left:-9999px;top:0;background:var(--pine);color:#fff;
-padding:10px 16px;z-index:99;border-radius:0 0 6px 0}
+padding:10px 16px;z-index:99;border-radius:0 0 var(--r-out) 0}
 .skip:focus{left:0}
 /* Reduced motion: honour the system preference rather than overriding it. */
 @media (prefers-reduced-motion: reduce){
@@ -427,7 +467,7 @@ padding:10px 16px;z-index:99;border-radius:0 0 6px 0}
 }
 .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
 clip:rect(0 0 0 0);white-space:nowrap;border:0}
-.corrections{font-size:12.5px;color:var(--ink-3);margin-top:10px}
+.corrections{font-size:12.5px;color:var(--ink-2);margin-top:10px}
 .corrections a{color:var(--pine)}
 
 /* The "On the record" table: the General Court's own status fields, quoted.
@@ -439,7 +479,7 @@ text-transform:uppercase;margin:0 0 4px}
 .facttab{width:auto;border-collapse:collapse;font-size:14px;margin:8px 0}
 .facttab th,.facttab td{padding:6px 16px 6px 0;border-bottom:1px solid var(--rule);
 text-align:left;vertical-align:top}
-.facttab th{color:var(--ink-3);font-weight:500;white-space:nowrap}
+.facttab th{color:var(--ink-2);font-weight:500;white-space:nowrap}
 @media(max-width:620px){.facttab th,.facttab td{padding:6px 10px 6px 0}}
 
 /* ==================================== a legislator's page and a committee's ==
@@ -454,22 +494,22 @@ text-align:left;vertical-align:top}
 .pmeta{color:var(--ink-2);font-size:14px;margin:2px 0}
 .ptowns,.pcmte{font-size:14px;color:var(--ink);margin:8px 0 0;line-height:1.6}
 .ptowns b,.pcmte b{font-size:12px;letter-spacing:.05em;text-transform:uppercase;
-color:var(--ink-3);font-weight:600;margin-right:6px}
-.ptowns.note{color:var(--ink-3)}
+color:var(--ink-2);font-weight:600;margin-right:6px}
+.ptowns.note{color:var(--ink-2)}
 /* A committee's officers and its staff, side by side, the way the General
    Court's own committee page presents them -- which is the layout the people
    who already use those pages know how to read. */
 .cinfo{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
 gap:2px 44px;margin:14px 0 0;padding:12px 16px;border:1px solid var(--rule);
-border-radius:8px;background:var(--surface)}
+border-radius:var(--r-out);background:var(--surface)}
 .cinfo dl{margin:0}
 .cinfo dl>div{display:flex;gap:12px;padding:3px 0;font-size:14px}
-.cinfo dt{flex:0 0 118px;color:var(--ink-3);font-size:12px;letter-spacing:.04em;
+.cinfo dt{flex:0 0 118px;color:var(--ink-2);font-size:12px;letter-spacing:.04em;
 text-transform:uppercase;font-weight:600;padding-top:2px}
 .cinfo dd{margin:0;color:var(--ink)}
 .croster{margin:16px 0 0}
 .croster h2,.cpurpose h2{font-size:12px;letter-spacing:.05em;font-weight:600;
-text-transform:uppercase;color:var(--ink-3);margin:0 0 8px}
+text-transform:uppercase;color:var(--ink-2);margin:0 0 8px}
 .croster h2 span{font-weight:400}
 /* Every member on the committee, in a grid rather than folded into a
    dropdown: who sits on a committee is the first thing the page is asked. */
@@ -481,9 +521,9 @@ grid-template-columns:repeat(auto-fill,minmax(244px,1fr))}
 .cpurpose .src{margin-top:7px}
 /* The term governs every tab, so it sits above them rather than inside one. */
 .pterm{margin:16px 0 0}
-.mchip{display:inline-block;margin:0 6px 6px 0;padding:3px 9px;border-radius:11px;
+.mchip{display:inline-block;margin:0 6px 6px 0;padding:3px 9px;border-radius:var(--r-pill);
 font-size:12.5px;background:var(--surface);border:1px solid var(--rule-2)}
-.mchip i{font-style:normal;color:var(--ink-3);font-size:11.5px}
+.mchip i{font-style:normal;color:var(--ink-2);font-size:11.5px}
 .mchip.p-R{box-shadow:inset 3px 0 0 var(--rep)}
 .mchip.p-D{box-shadow:inset 3px 0 0 var(--dem)}
 .mlist{margin:8px 0 0}
@@ -491,9 +531,9 @@ font-size:12.5px;background:var(--surface);border:1px solid var(--rule-2)}
 /* The filter strip above a list of bills, and above a committee's sessions. */
 .bfilt{display:flex;gap:18px;flex-wrap:wrap;align-items:end;margin:2px 0 14px}
 .bfilt label{font-size:12px;letter-spacing:.04em;text-transform:uppercase;
-color:var(--ink-3);font-weight:600;display:flex;flex-direction:column;gap:4px}
+color:var(--ink-2);font-weight:600;display:flex;flex-direction:column;gap:4px}
 .bfilt select{font:inherit;font-size:13.5px;text-transform:none;letter-spacing:0;
-color:var(--ink);padding:5px 8px;border:1px solid var(--rule-2);border-radius:5px;
+color:var(--ink);padding:5px 8px;border:1px solid var(--edge);border-radius:var(--r-in);
 background:var(--paper)}
 
 /* A bill on a member's or a committee's page is .card, the same one the
@@ -505,7 +545,7 @@ background:var(--paper)}
 .cday h3{font-size:14px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
 color:var(--ink-2);margin:0 0 6px}
 .cnarr{font-size:15px;line-height:1.65;margin:0 0 10px;max-width:72ch}
-.ctitle{display:block;color:var(--ink-3);font-size:12.5px;line-height:1.45;
+.ctitle{display:block;color:var(--ink-2);font-size:12.5px;line-height:1.45;
 margin-top:2px}
 
 @media(max-width:620px){
@@ -525,14 +565,14 @@ margin-top:2px}
 .clist{max-width:900px;margin:0 auto;padding:20px 24px 60px}
 .clist h1{font-size:26px;margin:0 0 4px}
 .clist h2{font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
-color:var(--ink-3);margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
+color:var(--ink-2);margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
 .ccards{display:grid;gap:7px}
-a.ccard{display:block;padding:10px 13px;border:1px solid var(--rule);border-radius:7px;
+a.ccard{display:block;padding:10px 13px;border:1px solid var(--rule);border-radius:var(--r-out);
 background:var(--paper);text-decoration:none;color:inherit}
 a.ccard:hover{border-color:var(--rule-2);background:var(--surface)}
 .cc-n{display:block;font-weight:600;font-size:14.5px}
-.cc-m{display:block;font-size:12.5px;color:var(--ink-3);margin-top:2px}
+.cc-m{display:block;font-size:12.5px;color:var(--ink-2);margin-top:2px}
 
 /* On a committee day, a start that was inferred rather than quoted. Same word
    the bill page uses, for the same reason. */
-.cday .approx{display:block;font-style:normal;font-size:11px;color:var(--ink-3)}
+.cday .approx{display:block;font-style:normal;font-size:11px;color:var(--ink-2)}

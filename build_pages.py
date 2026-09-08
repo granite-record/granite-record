@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.21
+# GRANITE_VERSION: 2026-09-04.22
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -20,11 +20,18 @@ import shutil
 from collections import defaultdict
 from pathlib import Path
 
+# The palette is app.css's, read at build time rather than copied. The copy
+# that used to live here had already drifted: --st-veto was #7C2D3A in one
+# file and #8C4A2F in the other, the same token name naming a plum and a rust,
+# and nothing could see it because each file was internally consistent.
+def palette(src="app.css"):
+    text = Path(src).read_text(encoding="utf-8")
+    i = text.index(":root{")
+    return text[i:text.index("}", text.index('--sans:"Public Sans"')) + 1]
+
+
 CSS = """
-:root{--paper:#F6F6F4;--surface:#fff;--ink:#191C1D;--ink-2:#5C6467;--ink-3:#6C7274;
---rule:#E2E3E0;--rule-2:#CFD1CD;--edge:#8A8C88;--pine:#1F4B47;--pine-soft:#E7EFED;--wash:#EFEFEC;
---rep:#B03A32;--dem:#2E5FA3;--ind:#6B5B95;--st-veto:#8C4A2F;
---sans:"Public Sans",system-ui,-apple-system,sans-serif;--serif:"Newsreader",Georgia,serif}
+__PALETTE__
 *{box-sizing:border-box}html,body{margin:0}
 body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:15px;
 line-height:1.55;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1}
@@ -50,7 +57,7 @@ input[type=search],input[type=text]{width:100%;height:42px;padding:0 14px;font:i
 border:1px solid var(--rule-2);border-radius:7px;background:var(--surface)}
 input:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft)}
 table{width:100%;border-collapse:collapse;font-size:13.5px}
-th{text-align:left;font-size:12px;font-weight:500;color:var(--ink-3);padding:0 0 7px;border-bottom:1px solid var(--rule)}
+th{text-align:left;font-size:12px;font-weight:500;color:var(--ink-2);padding:0 0 7px;border-bottom:1px solid var(--rule)}
 td{padding:9px 0;border-bottom:1px solid var(--rule);vertical-align:top}
 .card{background:var(--surface);border:1px solid var(--rule);border-radius:9px;padding:15px 18px;margin-bottom:11px}
 .chip{font-size:12px;padding:3px 9px;border-radius:20px;background:var(--wash);color:var(--ink-2);
@@ -60,7 +67,7 @@ display:inline-block;margin:0 5px 5px 0}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:2px 20px}
 .ownpage{float:right;font-size:13px;margin-left:14px}
 .mem{padding:4px 0;font-size:14px}
-.count{font-size:13px;color:var(--ink-3);margin:10px 0}
+.count{font-size:13px;color:var(--ink-2);margin:10px 0}
 .hit{display:block;width:100%;text-align:left;padding:12px 2px;border-bottom:1px solid var(--rule);cursor:pointer}
 .entry{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:20px 0 30px}
 .entry a{display:block;background:var(--surface);border:1px solid var(--rule);border-radius:9px;
@@ -72,26 +79,26 @@ padding:15px 17px;text-decoration:none;color:inherit}
 background:var(--rule);border:1px solid var(--rule);border-radius:9px;overflow:hidden;margin:12px 0 30px}
 .stat{background:var(--surface);padding:14px 16px}
 .stat b{display:block;font-size:22px;font-weight:500}
-.stat span{font-size:12.5px;color:var(--ink-3)}
+.stat span{font-size:12.5px;color:var(--ink-2)}
 .searchbig{display:flex;gap:8px;margin:18px 0 4px}
 .searchbig input{flex:1}
 .searchbig button{background:var(--pine);color:#fff;border-radius:7px;padding:0 20px;font-size:14px}
-.fresh{font-size:12.5px;color:var(--ink-3);margin:0 0 14px;display:flex;
+.fresh{font-size:12.5px;color:var(--ink-2);margin:0 0 14px;display:flex;
 align-items:center;gap:7px}
 .fresh:empty{display:none}
 .fresh .fdot{width:8px;height:8px;border-radius:50%;background:var(--pine);flex:0 0 auto}
 .fresh.stale{color:var(--st-veto)}
 .fresh.stale .fdot{background:var(--st-veto)}
-.statebox{border:1px solid var(--rule);border-left:4px solid var(--ink-3);border-radius:9px;
+.statebox{border:1px solid var(--rule);border-left:4px solid var(--ink-2);border-radius:9px;
 padding:15px 18px;margin:0 0 24px;background:var(--surface)}
 .statebox.live{border-left-color:var(--pine);background:var(--pine-soft)}
 .statebox.wait{border-left-color:#8A6D2F;background:#FBF3E2}
-.statebox.off{border-left-color:var(--ink-3)}
+.statebox.off{border-left-color:var(--ink-2)}
 .stateline{display:flex;align-items:center;gap:9px;font-size:15px;flex-wrap:wrap}
-.stateline .dot{width:9px;height:9px;border-radius:50%;background:var(--ink-3);flex:0 0 auto}
+.stateline .dot{width:9px;height:9px;border-radius:50%;background:var(--ink-2);flex:0 0 auto}
 .statebox.live .dot{background:var(--pine)}
 .statebox.wait .dot{background:#8A6D2F}
-.statemeta{font-size:12.5px;color:var(--ink-3);font-weight:400}
+.statemeta{font-size:12.5px;color:var(--ink-2);font-weight:400}
 .statehead{font-size:14.5px;margin:8px 0 0}
 .statenote{font-size:13px;color:var(--ink-2);margin:8px 0 0;line-height:1.6}
 .statebox p:last-child{margin-bottom:0}
@@ -128,14 +135,14 @@ border-bottom:1px solid var(--rule);cursor:pointer;align-items:baseline;gap:10px
 .townrow:last-child{border-bottom:none}
 .townrow:hover{background:var(--paper)}
 .townrow.sel{background:var(--pine-soft);font-weight:500}
-.wct{margin-left:auto;font-size:12px;color:var(--ink-3)}
+.wct{margin-left:auto;font-size:12px;color:var(--ink-2)}
 .wards{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
 .wbtn{border:1px solid var(--edge);border-radius:6px;padding:5px 12px;font-size:13.5px;
 background:var(--surface);cursor:pointer}
 .wbtn:hover{border-color:var(--pine)}
 .wbtn.sel{background:var(--pine);color:#fff;border-color:var(--pine)}
 .hit:hover{background:var(--surface)}
-footer{border-top:1px solid var(--rule);background:var(--surface);padding:22px 0;font-size:12.5px;color:var(--ink-3)}
+footer{border-top:1px solid var(--rule);background:var(--surface);padding:22px 0;font-size:12.5px;color:var(--ink-2)}
 footer .in{max-width:1180px;margin:0 auto;padding:0 24px}
 @media(max-width:640px){.wrap{padding:20px 18px 60px}}
 /* ---- narrow screens ---------------------------------------------------
@@ -202,7 +209,7 @@ padding:10px 16px;z-index:99;border-radius:0 0 6px 0}
 }
 .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
 clip:rect(0 0 0 0);white-space:nowrap;border:0}
-.corrections{font-size:12.5px;color:var(--ink-3);margin-top:10px}
+.corrections{font-size:12.5px;color:var(--ink-2);margin-top:10px}
 .corrections a{color:var(--pine)}
 
 """
@@ -469,7 +476,7 @@ function render(){
         `<div class="mem"><button class="hit" style="border:none;padding:2px 0"
           data-id="${esc(m.id)}">${esc(m.display_plain||m.name)}</button>
           <span class="chip p-${esc((m.party||"X")[0])}">${esc((m.party||"?")[0])}</span>
-          <span style="color:var(--ink-3);font-size:12.5px">${esc(m.district_label||("dist "+m.district))}</span>
+          <span style="color:var(--ink-2);font-size:12.5px">${esc(m.district_label||("dist "+m.district))}</span>
           ${open===m.id?detail(m):""}</div>`).join("")+`</div>`).join("");}).join("");
 }
 function detail(m){
@@ -607,7 +614,7 @@ function people(list){
     `<div class="mem"><a href="${m.slug?`legislator/${esc(m.slug)}.html`
        :"legislators.html"}">${esc(m.display_plain||m.name)}</a>
      <span class="chip p-${esc((m.party||"X")[0])}">${esc((m.party||"?")[0])}</span>
-     ${m.towns&&m.towns.length>1?`<span style="color:var(--ink-3);font-size:12px">
+     ${m.towns&&m.towns.length>1?`<span style="color:var(--ink-2);font-size:12px">
        also ${esc(m.towns.filter(x=>x!==town).slice(0,3).join(", "))}</span>`:""}
      </div>`).join("")}</div>`
     :`<p class="note">No sitting member matched to this district.</p>`;
@@ -655,7 +662,7 @@ function show(){
     body=house+sen+cou;
   }
   out.innerHTML=`<div class="card"><h2 style="margin:0 0 10px">${esc(town)}
-    ${ward&&ws.length>1?`<span style="font-weight:400;color:var(--ink-3)">
+    ${ward&&ws.length>1?`<span style="font-weight:400;color:var(--ink-2)">
       · Ward ${esc(ward)}</span>`:""}</h2>${picker}${body}</div>`;
 }
 
@@ -748,7 +755,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       `<tr><td style="width:96px">District ${esc(m.district)}</td>
        <td>${m.name?`${esc(m.name)} <span class="chip p-${esc(m.party||"V")}">${
          esc(m.party||"?")}</span>`
-        :`<span style="color:var(--ink-3)">vacant</span>`}</td></tr>`).join("");
+        :`<span style="color:var(--ink-2)">vacant</span>`}</td></tr>`).join("");
     return `<div class="comp">
       <div class="compline"><b>Executive Council</b>
         <span class="statemeta">${c.sitting} of ${c.seats} seats filled${
@@ -795,7 +802,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       `<tr><td style="width:90px">${fd(u.date)}${u.time?` ${esc(u.time)}`:""}</td>
        <td><a href="bills.html#${esc(u.bill)}">${esc(u.bill)}</a>
        — ${esc(u.committee||"")} ${esc(u.what||"")}
-       ${u.venue?`<span style="color:var(--ink-3)">· ${esc(u.venue)}</span>`:""}</td>
+       ${u.venue?`<span style="color:var(--ink-2)">· ${esc(u.venue)}</span>`:""}</td>
        </tr>`).join("")}</tbody></table>
       <p class="note">Anyone may attend a public hearing and speak, or sign in for or
       against without speaking.</p>`
@@ -806,7 +813,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     <table><tbody>${(H.recent||[]).map(r=>
       `<tr><td style="width:80px">${fd(r.date)}</td>
        <td><a href="bills.html#${esc(r.bill)}">${esc(r.n)}</a>
-       <span style="color:var(--ink-3)">${esc(r.title)}</span><br>
+       <span style="color:var(--ink-2)">${esc(r.title)}</span><br>
        <span style="font-size:12.5px">${esc(r.what)}</span></td></tr>`).join("")}
     </tbody></table>`;
 
@@ -818,7 +825,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     `${cl.length?`<h2>Closest floor votes</h2><table><tbody>${cl.map(v=>
       `<tr><td style="width:86px"><b>${v.y}\u2013${v.nn}</b></td>
        <td><a href="bills.html#${esc(v.bill)}">${esc(v.n)}</a>
-       <span style="color:var(--ink-3)">${esc(v.q||"")}, ${fd(v.date)}</span><br>
+       <span style="color:var(--ink-2)">${esc(v.q||"")}, ${fd(v.date)}</span><br>
        <span style="font-size:12.5px">${esc(v.title)}</span></td></tr>`).join("")}
        </tbody></table>`:""}
      ${co.length?`<h2>Most contested</h2>
@@ -831,7 +838,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
        <table><tbody>${co.map(b=>
        `<tr><td style="width:86px">${b.nrc} votes</td>
         <td><a href="bills.html#${esc(b.id)}">${esc(b.n)}</a>
-        <span style="color:var(--ink-3)">${esc(b.title)}</span></td></tr>`).join("")}
+        <span style="color:var(--ink-2)">${esc(b.title)}</span></td></tr>`).join("")}
        </tbody></table>`:""}`;
 
   // Both chambers. They sit on different days, so showing one hides the other.
@@ -866,7 +873,8 @@ def main():
     a = ap.parse_args()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "style.css").write_text(CSS, encoding="utf-8")
+    (out / "style.css").write_text(
+        CSS.replace("__PALETTE__", palette()), encoding="utf-8")
 
     # bills.html is the one page written by hand rather than generated, and
     # nothing in the pipeline was copying it into the output folder. So an edit
