@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.21 */
+/* GRANITE_VERSION: 2026-09-07.23 */
 /* Every reading column stops at 34em, which is 68 characters at the
    body size. Nine measured over 80 at 1440px and the worst, a bill
    title on a committee page, ran to 195. */
@@ -349,7 +349,7 @@ margin:9px 0 0;max-width:34em}
    object -- views of the record -- and the bill itself is another, sitting
    below them. A single rule read as one more section inside a tab. */
 .btsec{margin:40px 2px 8px;padding:20px 20px 10px;background:var(--paper);
-border:1px solid var(--rule-2);border-radius:var(--r-pill)}
+border:1px solid var(--rule-2);border-radius:var(--r-out)}
 .btsec > .amdsec{font-size:16px;letter-spacing:.06em;color:var(--ink);
 border-bottom:0;margin:0 0 2px}
 /* A line under the heading saying what this is. The tabs above are views OF
@@ -388,6 +388,20 @@ align-items:baseline;flex-wrap:wrap}
    39,781 -- with a button under it. -webkit-line-clamp rather than a fixed
    height and a gradient: it stops on a whole line and leaves an ellipsis,
    which says "there is more" without a decorative fade over the text. */
+/* ONE RHYTHM inside a bill's tab. The blocks were 22px, 16px and 20px apart
+   -- the same kind of separation, set three different ways by whichever rule
+   happened to own each block. Every direct child of a detail pane now has its
+   own margins zeroed and takes one gap from the rule below, so adding a block
+   cannot introduce a fourth value.
+
+   Scoped to .card .pane: a record page's pane holds a list of cards, which
+   have their own spacing. */
+.card .pane > *{margin-top:0;margin-bottom:0}
+.card .pane > * + *{margin-top:18px}
+/* Inside one stage: the heading, the sentences, then whatever needed
+   explaining. */
+.stg .note{margin:10px 0 0}
+.story > .stg + .stg{margin-top:18px}
 .anbox{margin:0 0 22px}
 .anlab{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
 color:var(--ink-2);margin:0 0 8px}
@@ -460,7 +474,7 @@ font-size:14px;color:var(--pine)}
 color:var(--ink-2);margin:20px 0 8px;display:flex;align-items:baseline;gap:8px}
 .grp:first-child{margin-top:2px}
 .grp span{font-weight:400;font-size:12px;letter-spacing:0;text-transform:none;color:var(--ink-2)}
-.empty{background:var(--surface);border:1px dashed var(--rule-2);border-radius:var(--r-pill);padding:34px;
+.empty{background:var(--surface);border:1px dashed var(--rule-2);border-radius:var(--r-out);padding:34px;
 text-align:center;color:var(--ink-2);font-size:14px}
 .spin{padding:20px 2px;color:var(--ink-2);font-size:14px}
 @media(max-width:860px){.shell{grid-template-columns:1fr}.facets{position:static;max-height:none}
