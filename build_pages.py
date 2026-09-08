@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.29
+# GRANITE_VERSION: 2026-09-04.30
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -60,42 +60,46 @@ b,strong{font-weight:600}
 .note{font-size:14px;color:var(--ink-2);background:var(--surface);border-left:3px solid var(--rule-2);
 padding:11px 14px;margin:0 0 14px;line-height:1.6}
 input[type=search],input[type=text]{width:100%;height:42px;padding:0 14px;font:inherit;font-size:16px;
-border:1px solid var(--rule-2);border-radius:7px;background:var(--surface)}
+border:1px solid var(--rule-2);border-radius:var(--r-out);background:var(--surface)}
 input:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft)}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th{text-align:left;font-size:12px;font-weight:600;color:var(--ink-2);padding:0 0 7px;border-bottom:1px solid var(--rule)}
 td{padding:9px 0;border-bottom:1px solid var(--rule);vertical-align:top}
-.card{background:var(--surface);border:1px solid var(--rule);border-radius:9px;padding:15px 18px;margin-bottom:11px}
-.chip{font-size:12px;padding:3px 9px;border-radius:20px;background:var(--wash);color:var(--ink-2);
+/* THE SAME CARD app.css draws. It was a --rule border at 9px here
+   and a --rule-2 border at 6px there: one name, two objects, and
+   the edge at 1.19:1 against the page instead of 1.66:1. */
+.card{background:var(--surface);border:1px solid var(--rule-2);
+border-radius:var(--r-out);padding:15px 18px;margin-bottom:14px}
+.chip{font-size:12px;padding:3px 9px;border-radius:var(--r-pill);background:var(--wash);color:var(--ink-2);
 display:inline-block;margin:0 5px 5px 0}
-.p-R{background:#F6E7E6;color:var(--rep)}.p-D{background:#E6EDF7;color:var(--dem)}
-.p-I{background:#EEEAF3;color:var(--ind)}
+.p-R{background:var(--rep-soft);color:var(--rep)}.p-D{background:var(--dem-soft);color:var(--dem)}
+.p-I{background:var(--ind-soft);color:var(--ind)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:2px 20px}
 .ownpage{float:right;font-size:14px;margin-left:14px}
 .mem{padding:4px 0;font-size:14px}
 .count{font-size:14px;color:var(--ink-2);margin:10px 0}
 .hit{display:block;width:100%;text-align:left;padding:12px 2px;border-bottom:1px solid var(--rule);cursor:pointer}
 .entry{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:20px 0 30px}
-.entry a{display:block;background:var(--surface);border:1px solid var(--rule);border-radius:9px;
+.entry a{display:block;background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-out);
 padding:15px 17px;text-decoration:none;color:inherit}
 .entry a:hover{border-color:var(--pine)}
 .entry b{display:block;font-size:16px;margin-bottom:3px;color:var(--pine)}
 .entry span{font-size:14px;color:var(--ink-2)}
 .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;
-background:var(--rule);border:1px solid var(--rule);border-radius:9px;overflow:hidden;margin:12px 0 30px}
+background:var(--rule);border:1px solid var(--rule);border-radius:var(--r-out);overflow:hidden;margin:12px 0 30px}
 .stat{background:var(--surface);padding:14px 16px}
 .stat b{display:block;font-size:24px;font-weight:600}
 .stat span{font-size:14px;color:var(--ink-2)}
 .searchbig{display:flex;gap:8px;margin:18px 0 4px}
 .searchbig input{flex:1}
-.searchbig button{background:var(--pine);color:#fff;border-radius:7px;padding:0 20px;font-size:14px}
+.searchbig button{background:var(--pine);color:#fff;border-radius:var(--r-out);padding:0 20px;font-size:14px}
 .fresh{font-size:14px;color:var(--ink-2);margin:0 0 14px;display:flex;
 align-items:center;gap:7px}
 .fresh:empty{display:none}
 .fresh .fdot{width:8px;height:8px;border-radius:50%;background:var(--pine);flex:0 0 auto}
 .fresh.stale{color:var(--st-veto)}
 .fresh.stale .fdot{background:var(--st-veto)}
-.statebox{border:1px solid var(--rule);border-left:4px solid var(--ink-2);border-radius:9px;
+.statebox{border:1px solid var(--rule);border-left:4px solid var(--ink-2);border-radius:var(--r-out);
 padding:15px 18px;margin:0 0 24px;background:var(--surface)}
 .statebox.live{border-left-color:var(--pine);background:var(--pine-soft)}
 .statebox.wait{border-left-color:#8A6D2F;background:#FBF3E2}
@@ -114,28 +118,30 @@ details.vac{margin-top:10px}
 details.vac summary{cursor:pointer;font-size:14px;color:var(--pine)}
 .comp{margin:0 0 20px}
 .compline{display:flex;align-items:baseline;gap:10px;font-size:16px;margin-bottom:7px}
-.pbar2{display:flex;height:16px;border-radius:4px;overflow:hidden;background:var(--wash)}
+.pbar2{display:flex;height:16px;border-radius:var(--r-in);overflow:hidden;background:var(--wash)}
 .pseg{display:block;height:100%}
-.p-R{background:var(--rep)}.p-D{background:var(--dem)}
-.p-I{background:var(--ind)}.p-L{background:var(--ind)}
-.p-V{background:var(--rule-2)}
+/* A bar SEGMENT, not a chip. These were .p-R too -- the same class
+   name in the same file for a tinted chip and a solid block. */
+.seg-R{background:var(--rep)}.seg-D{background:var(--dem)}
+.seg-I{background:var(--ind)}.seg-L{background:var(--ind)}
+.seg-V{background:var(--rule-2)}
 .plegend{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:14px;color:var(--ink-2)}
-.pdot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+.pdot{display:inline-block;width:9px;height:9px;border-radius:var(--r-in);margin-right:5px}
 .compbox{margin:0 0 16px}
-.bar{display:flex;height:22px;border-radius:5px;overflow:hidden;margin:9px 0 8px;
+.bar{display:flex;height:22px;border-radius:var(--r-in);overflow:hidden;margin:9px 0 8px;
 border:1px solid var(--rule)}
 .bar span{display:block}
 .legendrow{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--ink-2)}
-.legendrow i{display:inline-block;width:10px;height:10px;border-radius:2px;
+.legendrow i{display:inline-block;width:10px;height:10px;border-radius:var(--r-in);
 margin-right:5px;vertical-align:-1px}
 .legendrow i.vac{background:repeating-linear-gradient(45deg,var(--rule-2),
 var(--rule-2) 3px,var(--surface) 3px,var(--surface) 6px);border:1px solid var(--rule-2)}
-.player{margin-top:12px;border:1px solid var(--rule);border-radius:9px;overflow:hidden;background:#000}
+.player{margin-top:12px;border:1px solid var(--rule);border-radius:var(--r-out);overflow:hidden;background:#000}
 .player iframe{width:100%;aspect-ratio:16/9;border:0;display:block}
 .pstub{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;gap:10px;
 cursor:pointer;background:#14181A;color:#C8CFD1;font-size:14px}
 .pstub:hover{background:#1D2225}
-.townlist{max-height:340px;overflow-y:auto;border:1px solid var(--rule);border-radius:7px;
+.townlist{max-height:340px;overflow-y:auto;border:1px solid var(--rule);border-radius:var(--r-out);
 background:var(--surface);margin-top:10px}
 .townrow{display:flex;width:100%;text-align:left;padding:8px 13px;font-size:14px;
 border-bottom:1px solid var(--rule);cursor:pointer;align-items:baseline;gap:10px}
@@ -144,7 +150,7 @@ border-bottom:1px solid var(--rule);cursor:pointer;align-items:baseline;gap:10px
 .townrow.sel{background:var(--pine-soft);font-weight:600}
 .wct{margin-left:auto;font-size:12px;color:var(--ink-2)}
 .wards{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
-.wbtn{border:1px solid var(--edge);border-radius:6px;padding:5px 12px;font-size:14px;
+.wbtn{border:1px solid var(--edge);border-radius:var(--r-out);padding:5px 12px;font-size:14px;
 background:var(--surface);cursor:pointer}
 .wbtn:hover{border-color:var(--pine)}
 .wbtn.sel{background:var(--pine);color:#fff;border-color:var(--pine)}
@@ -206,9 +212,9 @@ footer .in{max-width:34em;margin:0 auto;padding:0 24px}
 
 /* Focus must be visible. Keyboard users navigate by it, and the default
    outline is removed by most resets without anything put back. */
-:focus-visible{outline:2px solid var(--pine);outline-offset:2px;border-radius:3px}
+:focus-visible{outline:2px solid var(--pine);outline-offset:2px;border-radius:var(--r-in)}
 .skip{position:absolute;left:-9999px;top:0;background:var(--pine);color:#fff;
-padding:10px 16px;z-index:99;border-radius:0 0 6px 0}
+padding:10px 16px;z-index:99;border-radius:0 0 var(--r-out) 0}
 .skip:focus{left:0}
 /* Reduced motion: honour the system preference rather than overriding it. */
 @media (prefers-reduced-motion: reduce){
@@ -1004,20 +1010,20 @@ def main():
             return ""
         tot = x.get("seats") or 1
         segs = "".join(
-            f'<span class="pseg p-{esc(pp["code"])}" '
+            f'<span class="pseg seg-{esc(pp["code"])}" '
             f'style="width:{100 * pp["n"] / tot:.4f}%" '
             f'title="{esc(pp["name"])}: {pp["n"]}"></span>'
             for pp in x.get("parties", []))
         if x.get("vacant"):
-            segs += (f'<span class="pseg p-V" '
+            segs += (f'<span class="pseg seg-V" '
                      f'style="width:{100 * x["vacant"] / tot:.4f}%" '
                      f'title="Vacant: {x["vacant"]}"></span>')
         legend = "".join(
-            f'<span><span class="pdot p-{esc(pp["code"])}"></span>'
+            f'<span><span class="pdot seg-{esc(pp["code"])}"></span>'
             f'{esc(pp["name"])} <b>{pp["n"]}</b></span>'
             for pp in x.get("parties", []))
         if x.get("vacant"):
-            legend += (f'<span><span class="pdot p-V"></span>Vacant '
+            legend += (f'<span><span class="pdot seg-V"></span>Vacant '
                        f'<b>{x["vacant"]}</b></span>')
         note = ""
         if x.get("majority"):

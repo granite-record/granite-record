@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.16 */
+/* GRANITE_VERSION: 2026-09-07.17 */
 /* Every reading column stops at 34em, which is 68 characters at the
    body size. Nine measured over 80 at 1440px and the worst, a bill
    title on a committee page, ran to 195. */
@@ -37,6 +37,10 @@
 --st-study:#94500E;--st-study-bg:#FCEEDF;
 --st-veto:#7C2D3A;--st-veto-bg:#F7E4E7;
 --rep:#B03A32;--dem:#2E5FA3;--ind:#6B5B95;
+/* The tint a party chip sits on. Literals in style.css until now,
+   which is why the same chip could not be drawn by app.css. Each
+   party's ink on its own tint: 5.00:1, 5.43:1 and 4.98:1. */
+--rep-soft:#F6E7E6;--dem-soft:#E6EDF7;--ind-soft:#EEEAF3;
 /* Yes and no, after the green and red buttons on a member's desk. Set at
    clearly different lightness as well as different hue, so the ring still
    reads for readers who cannot separate the two by hue alone. */
@@ -567,8 +571,12 @@ grid-template-columns:repeat(auto-fill,minmax(244px,1fr))}
 .mchip{display:inline-block;margin:0 6px 6px 0;padding:3px 9px;border-radius:var(--r-pill);
 font-size:14px;background:var(--surface);border:1px solid var(--rule-2)}
 .mchip i{font-style:normal;color:var(--ink-2);font-size:12px}
-.mchip.p-R{box-shadow:inset 3px 0 0 var(--rep)}
-.mchip.p-D{box-shadow:inset 3px 0 0 var(--dem)}
+/* The same chip the legislators page draws, rather than an outlined
+   pill with a colour bar down its left edge. One fact, one shape. */
+.mchip.p-R{background:var(--rep-soft);border-color:var(--rep-soft);color:var(--rep)}
+.mchip.p-D{background:var(--dem-soft);border-color:var(--dem-soft);color:var(--dem)}
+.mchip.p-I,.mchip.p-L{background:var(--ind-soft);border-color:var(--ind-soft);color:var(--ind)}
+.mchip a{color:inherit}
 .mlist{margin:8px 0 0}
 
 /* The filter strip above a list of bills, and above a committee's sessions. */
