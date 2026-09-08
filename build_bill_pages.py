@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.39
+# GRANITE_VERSION: 2026-09-04.40
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -152,8 +152,8 @@ def main():
         if written % 1000 == 0:
             print(f"  {written:,}...", flush=True)
 
-    for p in ("index.html", "bills.html", "legislators.html", "towns.html",
-              "learn.html", "about.html"):
+    for p in ("index.html", "bills.html", "legislators.html",
+              "committees.html", "learn.html", "about.html"):
         if (site / p).exists():
             urls.append(f"{a.base}/{p}")
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.20
+# GRANITE_VERSION: 2026-09-04.21
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -218,7 +218,6 @@ def shell(title, current, body, wide=False, script=""):
     for href, label in (("index.html", "Home"), ("bills.html", "Bills"),
                         ("legislators.html", "Legislators"),
                         ("committees.html", "Committees"),
-                        ("towns.html", "Your town"),
                         ("learn.html", "How it works"), ("about.html", "About")):
         cur = ' aria-current="page"' if href == current else ""
         nav.append(f'<a href="{href}"{cur}>{label}</a>')
@@ -908,22 +907,10 @@ def main():
         if (out / "towns.json").exists() else {}
 
 
-    town_body = f"""<h1>Find your representatives</h1>
-<p class="lead">Choose your town to see every district you live in — state House and
-Senate with the members who represent them, plus Executive Council and congressional
-district.</p>
-<label for="q" style="position:absolute;left:-9999px">Town</label>
-<input id="q" type="search" placeholder="Start typing a town, e.g. Dover" disabled>
-<p class="count" id="count">Loading…</p>
-<div class="townlist" id="towns"></div><div id="out" style="margin-top:18px"></div>
-<p class="note" style="margin-top:22px">Cities are divided into wards, and a city's
-wards can fall in different Senate districts — Manchester spans three. Some towns also
-share a representative with neighbouring towns through a floterial district, which is
-why one town can list more than one House district.</p>"""
-    (out / "towns.html").write_text(
-        shell("Find your representatives — Granite Record", "towns.html",
-              town_body, script=TOWN_JS), encoding="utf-8")
-
+    # The "Your town" page was here. The finder it held is the top of the
+    # legislators page, built from the same towns.json by the same TOWN_JS,
+    # so this page was a second address for one thing and a seventh item in
+    # the nav.
     # Render the home page content at build time as well as in the browser.
     # Fetching home.json works for a visitor with JavaScript, but a crawler --
     # and a reader on a slow connection before the JSON arrives -- sees an empty
@@ -1116,8 +1103,8 @@ one per committee and one per subject.</p>"""
     (out / "about.html").write_text(
         shell("About — Granite Record", "about.html", ABOUT), encoding="utf-8")
 
-    print(f"wrote legislators.html ({len(legs)} members), towns.html "
-          f"({len(towns)} towns), learn.html, about.html, style.css -> {out}/")
+    print(f"wrote legislators.html ({len(legs)} members), "
+          f"learn.html, about.html, style.css -> {out}/")
     if not legs:
         print("  legislators.json missing — run build_site_v2.py first")
 
