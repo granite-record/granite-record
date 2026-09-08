@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.14 */
+/* GRANITE_VERSION: 2026-09-07.15 */
 /* Every reading column stops at 34em, which is 68 characters at the
    body size. Nine measured over 80 at 1440px and the worst, a bill
    title on a committee page, ran to 195. */
@@ -349,6 +349,19 @@ color:var(--st-done)}
 .vsig{font-size:14px;color:var(--ink-2);display:flex;gap:10px;
 align-items:baseline;flex-wrap:wrap}
 .vmsg .src{margin-top:12px}
+/* The General Court's analysis, first thing on the summary. Clamped to six
+   lines when it is long -- 40 bills run past 700 characters and one runs to
+   39,781 -- with a button under it. -webkit-line-clamp rather than a fixed
+   height and a gradient: it stops on a whole line and leaves an ellipsis,
+   which says "there is more" without a decorative fade over the text. */
+.anbox{margin:0 0 22px}
+.antext{font-family:var(--serif);font-size:16px;line-height:1.65;max-width:34em}
+.anbox.clamped .antext{display:-webkit-box;-webkit-line-clamp:6;
+-webkit-box-orient:vertical;overflow:hidden}
+.anmore{margin-top:9px;font-size:14px;color:var(--pine);border:1px solid var(--edge);
+border-radius:var(--r-in);padding:3px 11px;background:var(--surface)}
+.anmore:hover{border-color:var(--pine);background:var(--pine-soft)}
+.anbox .src{margin-top:9px}
 .amdhead{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
 .amdn{font-weight:600;font-size:14px;font-variant-numeric:tabular-nums}
 .amdk{font-size:14px;color:var(--ink-2)}

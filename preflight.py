@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.67
+# GRANITE_VERSION: 2026-09-04.68
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -616,7 +616,10 @@ def _bills_html():
         # otherwise overwrite this one's docket, votes and recordings.
         "the detail file is fetched under its year":
             "DATA(`bills/${yr}/${id}.json`)",
-        "the address carries the year": '#${_y?_y+"/":""}${id}',
+        # /bill/2026/hb1123, which is what a person pastes. The year is the
+        # point of the check and it is still there; only the shape changed,
+        # from a hash on the search page to the bill's own address.
+        "the address carries the year": '`${BASE}bill/${_y}/${id.toLowerCase()}`',
         "a cold jump loads the player at the time asked for":
             "st.dataset.embed=`${vid}|${Math.max(0,Math.floor(Number(t)))}|${p2}`",
         "tab panels": 'role="tabpanel"',

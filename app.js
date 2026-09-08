@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.20
+// GRANITE_VERSION: 2026-09-07.21
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -178,10 +178,22 @@ const showRoutine=new Set();
 // /bills/bills/HB1123.json. That is why refreshing while looking at a bill
 // gave "Detail unavailable" while the same file loaded from the search page.
 const DATA=(f)=>new URL(f, location.origin + "/").href;
+// The site's root, so a pushed address is absolute rather than relative to
+// whatever folder the current page happens to sit in -- /bill/2026/ is three
+// deep and a relative push from there lands in /bill/2026/bill/2026/.
+const BASE="/";
 const need=(f)=>fetch(DATA(f)).then(r=>{
   if(!r.ok)throw new Error(`${f} returned ${r.status} ${r.statusText}`);
   return r.json().catch(()=>{throw new Error(`${f} is not valid JSON`);});
 });
+// A record's own page is served at both /bill/2026/hb1123.html and
+// /bill/2026/hb1123. Show the second, so the address bar matches what the
+// site links and what a reader would paste. Same document either way, so this
+// replaces rather than pushes.
+if(/^\/(?:bill|legislator|committee)\/.+\.html$/.test(location.pathname)){
+  try{history.replaceState(history.state,"",
+    location.pathname.slice(0,-5)+location.search+location.hash);}catch(_){}
+}
 Promise.all([need("index.json"),need("meta.json")])
  .then(([i,m])=>{
    IDX=i;META=m;
@@ -698,11 +710,27 @@ const PANE_NOTE={
 };
 const paneNote=(k)=>PANE_NOTE[k]?`<p class="src">${PANE_NOTE[k]}</p>`:"";
 
-function renderSummary(b,d){
+// The General Court's own analysis of the bill, at the top of the summary
+// because it is the shortest true answer to what the bill does. Long ones are
+// clamped to six lines by CSS and given a button by clampAnalysis(), which
+// measures rather than guessing from a character count -- six lines is a
+// different number of characters on a phone and on a desktop.
+function analysis(d, rsa){
+  const t=((d.billtext||{}).analysis||"").trim();
+  if(!t)return "";
+  return `<section class="anbox" data-an="1">
+    <div class="antext">${rsa?rsa(esc(t)):esc(t)}</div>
+    <p class="src">The General Court's own analysis, printed with the bill.
+      Not written by this site.</p></section>`;
+}
+
+function renderSummary(b,d,rsa){
+  const _an=analysis(d,rsa);
   // The citation at the end of a docket line names the journal or calendar
   // that recorded the action. Linking it turns each line from something the
   // reader has to take on trust into something they can check.
-  return `${d._error?`<div class="loaderr"><b>This bill's detail did not
+  return _an + `
+${d._error?`<div class="loaderr"><b>This bill's detail did not
     load.</b><span>${esc(d._error)}</span></div>`:""}
     <div class="status ${KIND[b.kind]}"><div class="lab">CURRENT STATUS</div>
     <div class="val">${esc(d.next_step)}</div>
@@ -1249,9 +1277,9 @@ function renderBillText(b,d,rsa){
     <div class="btver"><span class="btv">${esc(bt.version||"Version not stated")}</span>
       ${(bt.in_text||[]).length?`<span class="btamd">includes ${
         bt.in_text.map(a=>esc(a.num)).join(", ")}</span>`:""}</div>
-    ${bt.analysis?`<div class="btan"><h3>Analysis</h3>
-      <p>${rsa(esc(bt.analysis))}</p>
-      <p class="src">Written by the General Court, not by this site.</p></div>`:""}
+    ${/* The analysis is the first thing on the Summary tab now. It was
+           only here, and this block only renders on a focused bill, so a
+           card expanded in a list never showed it. */""}
     <div class="bttext"><h3>The bill</h3>
       <p class="src">Text in ${"["}brackets] is being removed from current law.
         Text being added is printed in bold italics in the original, and that
@@ -1324,7 +1352,7 @@ function renderDetail(b,d){
     <button class="tab" role="tab" id="tab_${b.id}_5" aria-controls="pane_${b.id}_5"
       aria-selected="false" data-t="5">Documents${
         (d.documents||[]).length?` (${d.documents.length})`:""}</button></div>
-    <div class="pane" role="tabpanel" id="pane_${b.id}_0" aria-labelledby="tab_${b.id}_0" tabindex="0" data-t="0">${renderSummary(b,d)}</div>
+    <div class="pane" role="tabpanel" id="pane_${b.id}_0" aria-labelledby="tab_${b.id}_0" tabindex="0" data-t="0">${renderSummary(b,d,rsa)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_1" aria-labelledby="tab_${b.id}_1" tabindex="0" data-t="1" hidden>${paneNote("votes")}${renderVotes(b,d)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_2" aria-labelledby="tab_${b.id}_2" tabindex="0" data-t="2" hidden>${paneNote("hearings")}${renderHearings(b,d)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_3" aria-labelledby="tab_${b.id}_3" tabindex="0" data-t="3" hidden>${paneNote("reports")}${renderReports(b,d,rsa)}</div>
@@ -1412,6 +1440,38 @@ function cardHtml(b,focus){
 // The tabs inside an expanded card are set after its HTML is in the document,
 // because every tab's pane is written and only one is shown. Both renderers
 // have to do it, so neither owns it.
+// Which analyses the reader has opened out. Keyed on the bill, so opening
+// one and then touching any other control does not shut it again.
+const anOpen=new Set();
+
+// A box is clamped unless the reader opened it, and gets a button only if it
+// actually overflows -- which is a measurement, not a guess: the same 300
+// characters are three lines on a desktop and eight on a phone.
+function clampAnalysis(){
+  document.querySelectorAll(".card").forEach(card=>{
+    const id=card.dataset.id, box=card.querySelector(".anbox");
+    if(!box)return;
+    const text=box.querySelector(".antext");
+    const open=anOpen.has(id);
+    box.classList.toggle("clamped",!open);
+    const over=text.scrollHeight>text.clientHeight+2;
+    let btn=box.querySelector(".anmore");
+    if(over||open){
+      if(!btn){
+        btn=document.createElement("button");
+        btn.className="anmore";
+        btn.type="button";
+        box.insertBefore(btn,box.querySelector(".src"));
+      }
+      btn.textContent=open?"Show less":"Show more";
+      btn.setAttribute("aria-expanded",String(open));
+      btn.dataset.an=id;
+    }else if(btn){
+      btn.remove();
+    }
+  });
+}
+
 function syncCards(ids){
   ids.forEach(id=>{
     const c=document.querySelector(`.card[data-id="${id}"]`),t=openTab[id]||"0";
@@ -1419,6 +1479,9 @@ function syncCards(ids){
     c.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected",x.dataset.t===t));
     c.querySelectorAll(".pane").forEach(p=>p.hidden=p.dataset.t!==t);
   });
+  // After the panes are shown, because a clamped box inside a hidden pane
+  // measures zero and would never get its button.
+  clampAnalysis();
 }
 
 // A record page names a bill by number, term and title and nothing else. The
@@ -1836,22 +1899,20 @@ function render(){
 function focusBill(id,href){
   focusY=window.scrollY;
   focused=id;
-  // The address of THIS view, not of a different document.
+  // /bill/2026/hb1123 -- the address a person would paste, and the same
+  // shape a legislator's page uses.
   //
-  // It used to push bill/2026/hb1123.html, so the bar read like a real page
-  // and a shared link was crawlable. But that address belongs to the static
-  // page: refresh it and the browser fetches that instead, which holds the
-  // same facts in a different layout with no charts. The reader had pressed
-  // F5 and nothing else, and the page changed under them.
-  //
-  // A URL should name what is on screen. This one does, and reloading it
-  // reopens the same bill in the same view. The static page keeps its own
-  // address for crawlers, for the sitemap, for a reader without JavaScript,
-  // and for anyone opening the arrow in a new tab -- the anchor still points
-  // there, so a middle click gets it.
+  // This used to push "?q=hb1123#2026/HB1123", because the static page's own
+  // address belonged to a DIFFERENT document: reloading it fetched the same
+  // facts in another layout with no charts, and a reader who pressed F5 got a
+  // page that had changed under them. That stopped being true when the
+  // renderer was unified. /bill/2026/hb1123.html is this app with one bill
+  // open, so reloading the clean address reopens exactly this view.
   const _y=yearOf(id);
-  try{history.pushState({focus:id},"",
-    `?q=${encodeURIComponent(id.toLowerCase())}#${_y?_y+"/":""}${id}`);}catch(_){}
+  if(_y){
+    try{history.pushState({focus:id},"",
+      `${BASE}bill/${_y}/${id.toLowerCase()}`);}catch(_){}
+  }
   openBill(id);
   window.scrollTo(0,0);
 }
@@ -1869,10 +1930,8 @@ function unfocus(y){
   focused=null;
   // Leaving a bill named in the address would mean the next refresh reopened
   // it, which is not where the reader is standing.
-  if(location.hash){
-    try{history.replaceState(history.state,"",
-      location.pathname+location.search);}catch(_){}
-  }
+  // Back to the list's own address rather than the bill's.
+  try{history.pushState({},"",BASE+"bills.html");}catch(_){}
   render();
   window.scrollTo(0,y);
 }
@@ -1957,6 +2016,13 @@ document.addEventListener("click",e=>{
   }
   // These three live INSIDE an expanded bill card, which a member's and a
   // committee's page now draw too, so they redraw whichever view is up.
+  const an=e.target.closest(".anmore");
+  if(an){
+    const id=an.dataset.an;
+    anOpen.has(id)?anOpen.delete(id):anOpen.add(id);
+    clampAnalysis();
+    return;
+  }
   const seg=e.target.closest("[data-seg]");
   if(seg){const[bid,i,which]=seg.dataset.seg.split("|");const k=`${bid}|${i}`;
     segSel[k]=segSel[k]===which?null:which;repaint();return;}

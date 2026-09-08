@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.2
+# GRANITE_VERSION: 2026-09-07.4
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -66,7 +66,10 @@ def bust(text, q):
 # str.replace's silent no-op.
 NEEDS = {
     "title": "<title>Granite Record — New Hampshire legislative history</title>",
-    "skip": '<a class="skip" href="#results">Skip to the bills</a>',
+    # Absolute, because bills.html now carries <base href="/"> too -- opening
+    # a bill pushes /bill/2026/hb1123 and a bare "#results" would resolve
+    # against the site root rather than down the page.
+    "skip": '<a class="skip" href="/bills.html#results">Skip to the bills</a>',
     "script": '<script src="app.js"></script>',
     "viewport": '<meta name="viewport" content="width=device-width, initial-scale=1">',
 }
@@ -105,10 +108,10 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     """One record's page: the template, told which record it is."""
     head = (
         NEEDS["viewport"]
-        # Every relative address app.js writes -- bill/, legislator/,
-        # bills.html -- is written from the site root, because that is where
-        # the page it was written for sits. These pages are folders down.
-        + '\n<base href="/">'
+        # <base href="/"> is in bills.html itself now -- opening a bill on the
+        # search page pushes /bill/2026/hb1123, which re-bases every relative
+        # link there too -- and bills.html IS this template, so adding one here
+        # put two on every record page.
         + f"\n<title>{E(title)}</title>"
         + f'\n<meta name="description" content="{E(description)}">'
         + f'\n<link rel="canonical" href="{base}{path}">'
