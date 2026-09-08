@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.21
+# GRANITE_VERSION: 2026-09-04.24
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -207,8 +207,20 @@ AMEND_RE = re.compile(
     r"(?:(?!Enrolled\b|Committee\b|Floor\b|Amendment\b)[A-Z][\w'\u2019.\-]*\s+){1,3}))?"
     r"(?P<what>(?:Enrolled Bill |Committee |Floor )?Amendment)\s*#?\s*"
     r"(?P<num>\d{4}-\d+[a-z]*)\s*[,:]?\s*"
-    r"(?P<motion>AA|Adopted|AF|AL)?[,;]?\s*"
-    r"(?P<vote>VV|DV|RC)?[,;]?\s*"
+    # The motion, the vote kind and the tally, in whatever order and
+    # punctuation the chamber uses, each at most once:
+    #
+    #   House   "Amendment # 2025-1488h: AA RC 200-175 04/10/2025"
+    #   Senate  "Floor Amendment # 2025-2647s, RC 9Y-15N, AF; 06/05/2025"
+    #
+    # None of the three was allowed for between the number and the date, so
+    # every roll-called or divided amendment lost BOTH its tally and its date
+    # -- the date pattern was left sitting in front of "200-175". Thirteen of
+    # HB2's Senate amendments were undated in the published narrative and 26
+    # of its House ones were dated only by the sentence before them.
+    r"(?:(?:(?P<motion>AA|Adopted|AF|AL)"
+    r"|(?P<vote>VV|DV|RC)"
+    r"|(?P<y>\d+)\s*Y?\s*[-\u2013]\s*(?P<n>\d+)\s*N?)[,;]?\s*){0,4}"
     r"(?:\(?(?:in recess of|In recess)\)?\s*)?"
     r"(?P<date>\d{1,2}/\d{1,2}/\d{4})?", re.I)
 
@@ -371,6 +383,14 @@ PATTERNS = [
         # the signatures on the record arrived as unclassified text.
         r"(?P<what>Signed by (?:the )?Governor|Vetoed by (?:the )?Governor"
         r"|Sent to (?:the )?Governor)"
+        # And then the governor's SURNAME, or the word "on", before the date:
+        # "Signed by Governor Ayotte 06/27/2025" and "Signed by the Governor
+        # on 02/27/2025". Neither was allowed for, so the date matched empty
+        # on all 1,254 signed lines and 49 of the 69 vetoes, and every bill
+        # that became law read "The governor signed it on ." The chapter and
+        # the effective date came through, which is why it looked like a
+        # sentence with a gap in it rather than a pattern that had failed.
+        r"(?:\s+(?:on|[A-Z][A-Za-z.'\u2019\-]+)){0,2}"
         r"[,;]?\s*(?P<date>\d{1,2}/\d{1,2}/\d{4})?"
         r"(?:.*?Chapter\s*(?P<chapter>\d+))?"
         r"(?:.*?Effective\s*(?P<eff>\d{1,2}/\d{1,2}/\d{4}))?", re.I)),
@@ -525,6 +545,7 @@ def event_date(ev, fallback):
 # paragraph loses the shape that makes it readable. These are the hands the
 # bill passes through: a House committee, then the whole House, then the same
 # again in the Senate, then a conference and the governor.
+CHAMBER = {"H": "House", "S": "Senate"}
 COMMITTEE_TYPES = {"hearing", "exec", "report", "retained", "consent_off",
                    "subcommittee", "interim_report"}
 FLOOR_TYPES = {"floor", "tabled", "reconsider", "ot3rdg", "nonconcur",
@@ -554,13 +575,36 @@ DIVIDED = (
                r"((?:,| by a vote).*)?\.$"),
 )
 
+# A run of floor amendments taken on one day. HB2, the budget trailer bill,
+# had 26 of them on 10 April 2025 -- 2,600 characters of one sentence written
+# 26 times, differing only in a number. Folded, every number and every tally
+# is still there and the paragraph can be read.
+#
+# Deliberately does NOT match a sentence naming who offered the amendment:
+# that is a fact worth its own sentence, and a run carrying one stays as it
+# is.
+FLOOR_AMD = re.compile(
+    r"^A floor amendment \((?P<num>[^)]+)\)"
+    r"(?:, offered by (?P<by>[^,]+),)? was (?P<what>adopted|rejected)"
+    r"(?P<how> on a [a-z ]+?)?(?P<tally> \d+\u2013\d+)?"
+    r"(?P<when> on \w+ \d{1,2}, \d{4})?"
+    r"(?:, changing the text of the bill)?\.$")
+
 REPEATABLE = [
     (re.compile(r"^The committee held a work session on (.+)\.$"),
      "The committee held work sessions on {dates}."),
-    (re.compile(r"^The committee held a public hearing on (.+)\.$"),
+    # Date-shaped rather than (.+), because a hearing sentence now carries the
+    # sign-in counts after the date and (.+) folded those into the date list.
+    (re.compile(r"^The committee held a public hearing on "
+                r"(\w+ \d{1,2}, \d{4})\.$"),
      "The committee held public hearings on {dates}."),
     (re.compile(r"^The committee met in executive session on (.+?)( to .+)?\.$"),
      "The committee met in executive session on {dates}."),
+    (re.compile(r"^A committee of conference met on (.+?) to try to settle "
+                r"the differences between the two chambers' versions of the "
+                r"bill\.$"),
+     "A committee of conference met on {dates} to try to settle the "
+     "differences between the two chambers' versions of the bill."),
 ]
 
 
@@ -571,7 +615,37 @@ def and_list(items):
     return ", ".join(items[:-1]) + " and " + items[-1]
 
 
-def collapse(sentences):
+def fold_amendments(run, chamber):
+    """One sentence for a day's floor amendments, keeping every number."""
+    def cite(m):
+        num = m.group("num")
+        # Who offered it is kept: it is the one fact in these sentences that
+        # is not repetition, and folding thirteen of them into a count would
+        # lose thirteen different names.
+        inner = [x for x in (m.group("by"), (m.group("tally") or "").strip())
+                 if x]
+        if not inner:
+            how = (m.group("how") or "").strip()
+            if how.startswith("on a "):
+                inner = [how[5:]]
+        return f"{num} ({', '.join(inner)})" if inner else num
+
+    ok = [m for m in run if m.group("what") == "adopted"]
+    no = [m for m in run if m.group("what") == "rejected"]
+    when = next((m.group("when") for m in run if m.group("when")), "")
+    lead = (f"On {when[4:]} the {chamber} took up {len(run)} floor amendments"
+            if when else f"The {chamber} took up {len(run)} floor amendments")
+    if not ok:
+        return (f"{lead} and rejected all of them: "
+                + and_list([cite(m) for m in no]) + ".")
+    if not no:
+        return (f"{lead} and adopted all of them: "
+                + and_list([cite(m) for m in ok]) + ".")
+    return (f"{lead}. It adopted " + and_list([cite(m) for m in ok])
+            + ", and rejected " + and_list([cite(m) for m in no]) + ".")
+
+
+def collapse(sentences, chamber="House"):
     """Fold consecutive sentences of the same shape into one.
 
     Also drops exact repeats. Enrolling is recorded once by each chamber, so
@@ -581,9 +655,32 @@ def collapse(sentences):
     sentences describing one dated action are one action written twice, never
     two things that happened.
     """
+    # EXACT REPEATS GO FIRST. Enrolment is recorded once by each chamber, so
+    # the docket carries two identical amendment rows and two identical
+    # enrolment rows -- and the merge below consumed the second amendment with
+    # the first enrolment before the de-duplicator further down ever saw
+    # either. HB2 said it three times: the amendment, then the merged
+    # sentence, then the enrolment again.
+    #
+    # Two identical sentences describing one dated action are one action
+    # written twice, never two things that happened.
+    sentences = list(dict.fromkeys(x.strip() for x in sentences if x.strip()))
     out, i = [], 0
     seen = set()
     while i < len(sentences):
+        # A day's floor amendments, folded. Four is the threshold: three
+        # sentences read as a list of three things, and twenty-six do not.
+        run, j = [], i
+        while j < len(sentences):
+            m = FLOOR_AMD.match(sentences[j].strip())
+            if not m or (run and m.group("when") != run[0].group("when")):
+                break
+            run.append(m)
+            j += 1
+        if len(run) >= 4:
+            out.append(fold_amendments(run, chamber))
+            i = j
+            continue
         # Enrolment and its amendment, in either order.
         #
         # The flag is not tidiness. This used to decide whether a merge had
@@ -723,6 +820,42 @@ STAGE_LABEL = {
 }
 
 
+# {term: {bill: {"hearings": [{"date": ..., "support": ..., ...}]}}}, from
+# fetch_testimony_db.py. Empty unless --testimony names a file, so a run
+# without it produces exactly the sentences it did before.
+TESTIMONY = {}
+TERM = ""
+
+
+def signins(bill, date):
+    """", with online testimony at 55 signed in support, 140 in opposition
+    and 43 neutral" -- or nothing at all.
+
+    Only where the database has this bill AND this date. Its whole-bill total
+    is true of the bill and not of one hearing, and a bill with three hearings
+    would otherwise have the same figure printed under each of them as though
+    each had drawn that many.
+    """
+    rec = (TESTIMONY.get(TERM) or {}).get(bill or "")
+    if not rec or not date:
+        return ""
+    # The docket writes 03/12/2025 and the database writes 2025-03-12. The
+    # first version compared them directly and matched on no bill at all,
+    # which is the shape of failure that looks like "no hearing has counts".
+    try:
+        mm, dd, yy = date.split("/")
+        iso = f"{yy}-{int(mm):02d}-{int(dd):02d}"
+    except ValueError:
+        iso = date
+    h = next((x for x in rec.get("hearings", []) if x.get("date") == iso), None)
+    if not h or not h.get("total"):
+        return ""
+    bits = [f"{h[k]:,} {word}" for k, word in
+            (("support", "signed in support"), ("oppose", "in opposition"),
+             ("neutral", "neutral")) if h.get(k)]
+    return ", with online testimony at " + and_list(bits) if bits else ""
+
+
 def describe(ev, body, seen_intro=False):
     """One sentence for one docket event, or None to skip."""
     t = ev["_type"]
@@ -741,7 +874,11 @@ def describe(ev, body, seen_intro=False):
                 f"{ev['committee']} committee instead.")
 
     if t == "hearing":
-        return f"The committee held a public hearing on {fdate(ev['date'])}."
+        # Counts only, and only for THIS hearing's date. Who signed in is not
+        # published here and is not asked for: almost every one of the 400,000
+        # rows is a private individual who signed a committee's sheet.
+        return (f"The committee held a public hearing on {fdate(ev['date'])}"
+                f"{signins(ev.get('_bill'), ev.get('date'))}.")
 
     if t == "exec":
         return (f"The committee met in executive session on {fdate(ev['date'])} "
@@ -823,18 +960,22 @@ def describe(ev, body, seen_intro=False):
         when = f" on {fdate(ev['date'])}" if ev.get("date") else ""
         adopted = (ev.get("motion") or "").upper() in ("AA", "ADOPTED")
         vk, _ = VOTE_KIND.get((ev.get("vote") or "").upper(), (None, None))
-        how = f" on a {vk}" if vk else ""
+        y, n = ev.get("y"), ev.get("n")
+        how = (f" on a {vk}" if vk else "") + (f" {y}\u2013{n}"
+                                               if vk and y and n else "")
         if "Enrolled Bill" in kind:
             return (f"An enrolled bill amendment ({num}) was "
                     f"{'adopted' if adopted else 'considered'}{how}{when}. These correct "
                     "technical errors found after passage.")
-        # Named only as specifically as the line names itself: "Floor
-        # Amendment" becomes a floor amendment, a bare "Amendment" stays an
-        # amendment. Where it sits in the bill's history is an arrangement we
-        # make; what it is called is the record's own word.
+        # THE SAME TEST stage_of USES, so the sentence and the heading over
+        # it cannot disagree. A bare "Amendment" line is one offered on the
+        # floor -- a committee's own amendment is recorded inside its report
+        # line -- and stage_of has filed them under "On the House floor" since
+        # it was written, while the sentence went on calling them "An
+        # amendment". The heading was already making the claim; this says it
+        # in the sentence too rather than leaving the reader to notice.
         who = ("The committee's amendment" if "committee" in kind.lower()
-               else "A floor amendment" if "floor" in kind.lower()
-               else "An amendment")
+               else "A floor amendment")
         by = ""
         if ev.get("mover"):
             by = f", offered by {expand_mover(ev['mover'].strip())},"
@@ -946,6 +1087,8 @@ def build(bill, rows):
     evs = []
     for r in rows:
         ev = classify(r["desc"])
+        # The hearing sentence looks its own sign-ins up by bill and date.
+        ev["_bill"] = bill
         # Off the raw line: clean() has already removed it from ev["_raw"].
         ev["cite"], ev["cite_page"] = cite_of(r["desc"])
         ev["body"] = r["body"]
@@ -1036,14 +1179,21 @@ def build(bill, rows):
                         "voice or division votes, which do not record how "
                         "individual legislators voted.")
 
+    # The one-string version is the collapsed stages joined, not the raw
+    # sentences. It used to be the raw ones, so everything reading this field
+    # -- the feeds, the page description, the archived term -- got the
+    # twenty-six-sentence version of HB2 that the page itself does not show.
+    staged = [{"label": st["label"],
+               "text": collapse(st["sentences"],
+                                CHAMBER.get(st["key"][0], "House"))}
+              for st in stages]
     return {
         "bill": bill,
-        "narrative": " ".join(sentences),
+        "narrative": " ".join(x["text"] for x in staged),
         # The same history, broken at each change of hands. The site shows
         # these as separate paragraphs; the joined version above is kept for
         # anything that wants one string.
-        "stages": [{"label": st["label"], "text": collapse(st["sentences"])}
-                   for st in stages],
+        "stages": staged,
         "notes": notes,
         # Floor details are carried through so the site can show voice and
         # division votes alongside roll calls. Those never appear in
@@ -1107,10 +1257,17 @@ def main():
     ap.add_argument("--members", default="data/legislators.json",
                     help="roster used to give a motion's mover their full "
                          "first name; skipped if the file is not there")
+    ap.add_argument("--testimony", default="testimony_db.json",
+                    help="sign-in counts, so a public hearing says how many "
+                         "signed in and on which side; skipped if not there")
     a = ap.parse_args()
 
-    global MEMBERS
+    global MEMBERS, TESTIMONY
     MEMBERS = load_members(a.members)
+    try:
+        TESTIMONY = json.loads(Path(a.testimony).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        TESTIMONY = {}
 
     bills = parse_docket(a.docket, want_bill=a.bill)
     if not bills:
@@ -1120,9 +1277,15 @@ def main():
     # year -- all 2,233 of them, split 847 in 2025 and 1,386 in 2026 with no
     # bill in both -- so the first row settles which term the bill belongs to.
     results = defaultdict(dict)
+    global TERM
     for b, rows in bills.items():
-        results[P.term_of(rows[0].get("session", ""))][b] = build(b, rows)
+        TERM = P.term_of(rows[0].get("session", ""))
+        results[TERM][b] = build(b, rows)
     results = dict(results)
+    n_sign = sum(1 for byb in results.values() for r in byb.values()
+                 if "online testimony at" in (r["narrative"] or ""))
+    print(f"  {n_sign:,} bills say how many signed in at a hearing"
+          + ("" if TESTIMONY else f" (no counts at {a.testimony})"))
 
     if a.out:
         # MERGE. A run over one term's docket must not remove another's: this

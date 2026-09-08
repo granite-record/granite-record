@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.17
+// GRANITE_VERSION: 2026-09-07.18
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -602,8 +602,8 @@ const signins=t=>{
   if(!t||!t.total)return "";
   const n=x=>Number(x||0).toLocaleString();
   const bit=(v,label,cls)=>v?`<span class="sgn ${cls}">${n(v)} ${label}</span>`:"";
-  return `<span class="tnote">${bit(t.support,"for","for")}${
-    bit(t.oppose,"against","against")}${bit(t.neutral,"neutral","")} ${
+  return `<span class="tnote">${bit(t.support,"support","for")}${
+    bit(t.oppose,"oppose","against")}${bit(t.neutral,"neutral","")} ${
     n(t.total)} signed in${t.dated?"":" across this bill’s hearings"}</span>`;
 };
 const CHNAME={H:"Representatives",S:"Senators"};
@@ -686,11 +686,12 @@ const PANE_NOTE={
     call files, in the order the docket records them. Presiding, excused and
     absent are shown separately: one member presides over each House roll call
     and does not vote except to break a tie.`,
-  hearings:`Recordings are the General Court\u2019s own, on YouTube. A start
-    time is the moment the chair opened the item, taken from what they said.
-    One marked <i>approximate</i> was worked out from where the bill is
-    discussed rather than quoted, and can be a few minutes out. Where neither
-    was possible the recording is linked without a time.`,
+  // The Videos tab had a paragraph here explaining, once at the top, how
+  // every start time below it was arrived at. Each proceeding already says
+  // that for itself -- the word "approximate" beside a time that is one, and
+  // a line under the player saying what the number is -- so the paragraph was
+  // the same thing said twice, above rather than beside the claim it was
+  // about.
   reports:`The recommendation, the vote and the day it was signed come from the
     docket; the reasoning, where there is any, is reproduced from the House
     Calendar in the committee\u2019s own words.`,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.62
+# GRANITE_VERSION: 2026-09-04.63
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2809,6 +2809,45 @@ def _writers_merge():
                 bad.append(f"{f.name} writes {name} and never reads it")
     assert not bad, "; ".join(bad)
     return "ok", f"{len(shared)} shared files, every writer of one reads it first"
+
+
+@check("data", "no sentence has a hole where a date should be")
+def _no_empty_dates():
+    """A sentence that says "on" and then stops has lost a fact silently.
+
+    "The governor signed it on , making it Chapter 141 of the session laws."
+    That was every one of the 1,254 signatures in the record and 49 of the 69
+    vetoes -- every bill that became law -- because the clerk writes the
+    governor's surname between the title and the date and the pattern allowed
+    only for the title. The chapter and the effective date came through, so
+    the sentence read as prose with a gap in it rather than as a parser that
+    had failed, and nothing else here could see it: the field was present, the
+    narrative was long, the page rendered.
+
+    Any sentence anywhere with "on" or "since" running straight into a comma
+    or a full stop is the same shape, so this looks for the shape rather than
+    for the governor.
+    """
+    root = Path("site/bills")
+    if not root.exists():
+        return "skip", "no bill JSON built"
+    gap = re.compile(r"\b(?:on|since|until|through)\s+[.,]")
+    n, bad = 0, []
+    for f in sorted(root.rglob("*.json")):
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except ValueError:
+            continue
+        n += 1
+        text = " ".join([d.get("narrative") or ""]
+                        + [x.get("text") or "" for x in d.get("stages") or []])
+        m = gap.search(text)
+        if m:
+            bad.append(f"{d.get('id')} ({d.get('year')}): "
+                       f"...{text[max(0, m.start() - 46):m.end() + 12]}...")
+    assert not bad, (f"{len(bad)} of {n:,} bills have a sentence with an empty "
+                     f"date: {'; '.join(bad[:2])}")
+    return "ok", f"{n:,} bills, no sentence stops where a date should be"
 
 
 @check("data", "a committee's stated purpose is the rule, not the page around it")
