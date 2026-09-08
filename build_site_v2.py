@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.39
+# GRANITE_VERSION: 2026-09-05.42
 """
 Generate the faceted site from real General Court data.
 
@@ -1687,6 +1687,51 @@ def hearing_testimony(e, tdb, scraped):
     return {"testimony": scraped} if scraped else {}
 
 
+# The four stops a bill passes, and what happened at each. "p" passed,
+# "h" here now, "x" stopped here, "-" never reached.
+#
+# Read off the stages narrative.py built from the docket, which every bill
+# has. house_status and senate_status from the status page would have been
+# the obvious source and cover 1,387 of the current term's 2,234 bills and
+# none of the archive.
+def passage(stages, kind):
+    hands = [st.get("hand", "") for st in (stages or []) if st.get("hand")]
+    if not hands:
+        return ""
+    # A bill reaches the governor THROUGH BOTH CHAMBERS. SB286 never left the
+    # Senate -- laid on the table, then killed under Senate Rule 3-23 -- and
+    # its last docket row is "Enrolled Adopted, VV", which stage_of files with
+    # the governor. Dropped from the HANDS, not just from the set derived from
+    # them: taking it out of the set alone left "where it ended" pointing at a
+    # stop that was no longer on the rail, so the Senate read as passed rather
+    # than as where the bill stopped.
+    if not {"H", "S"} <= {h.split(":")[0] for h in hands}:
+        hands = [h for h in hands if not h.startswith("G")]
+    if not hands:
+        return ""
+    seen = {h.split(":")[0] for h in hands}
+    moving = kind == "active"
+    # Where it ended is the last hand it was in.
+    last = hands[-1].split(":")[0]
+    out = []
+    for stop in ("H", "S", "G"):
+        if stop not in seen:
+            out.append("-")
+        elif stop == last and moving:
+            out.append("h")
+        elif stop == last and stop != "G":
+            # It ended in this chamber. A bill that reached the governor and
+            # stopped there is handled by the law stop below.
+            out.append("x")
+        else:
+            out.append("p")
+    # The fourth stop is the outcome, not a place.
+    out.append("p" if kind == "law" else
+               "x" if kind in ("done", "veto") else
+               "h" if moving else "-")
+    return "".join(out)
+
+
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
@@ -1881,6 +1926,10 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # is a stated limit rather than a fault.
             **({"archived": True} if b.get("archived") else {}),
             "status_stated": bool(told),
+            # HSGL, one character each: how far the bill got and where it
+            # stopped. Four characters in the index rather than four fields,
+            # because index.json is loaded up front by every visitor.
+            "passage": passage((narr or {}).get("stages"), kind),
             "last_action": dates[-1] if dates else "",
             "nrc": len([r for r in rcs if not r.get("procedural")]),
             "votedays": sorted({r["date"] for r in rcs if r.get("date")}),

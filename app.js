@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.23
+// GRANITE_VERSION: 2026-09-07.24
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1424,6 +1424,32 @@ function cmteLink(name){
 // bill was two different objects depending on which page you reached it from
 // and the detail a reader wanted was a page load away. Sharing the markup is
 // also the only way the two stay the same as this card changes.
+// The four stops a bill passes, and what happened at each. b.passage is
+// "HSGL", one character a stop: p passed, h here now, x stopped here, - never
+// reached.
+//
+// Every state has its own SHAPE as well as its own weight -- filled, ringed,
+// crossed, empty -- because this is the site's one piece of ornament and it
+// would be a poor one if it depended on telling two greens apart. The stops
+// are labelled, so it is read rather than decoded.
+//
+// Nothing here calls an outcome good or bad. A bill dying is an outcome, not
+// a failure, so a stop the bill did not get past is crossed in the same ink
+// as one it passed, not in red.
+const RAIL=[["H","House"],["S","Senate"],["G","Governor"],["L","Law"]];
+const RAILSAY={p:"passed",h:"is here now",x:"stopped here",
+               "-":"never reached"};
+function rail(b){
+  const p=b.passage||"";
+  if(p.length!==4)return "";
+  const said=RAIL.map(([,name],i)=>
+    `${name}: ${RAILSAY[p[i]]||"not known"}`).join("; ");
+  return `<span class="rail" role="img" aria-label="${esc(said)}"
+    title="${esc(said)}">${RAIL.map(([,name],i)=>
+      `<span class="stop s-${esc(p[i]==="-"?"o":p[i])}"><i>${esc(name)}</i></span>`
+    ).join("")}</span>`;
+}
+
 function cardHtml(b,focus){
   const open=openCards.has(b.id);
   const y=b.year||(b.term?String(b.term).slice(0,4):"");
@@ -1439,6 +1465,7 @@ function cardHtml(b,focus){
         <div class="ctitle">${esc(b.title)}</div>
         <div class="cmeta">${esc(b.sponsor_label||b.sponsor||"")}${
           (b.committees||[b.committee]).filter(Boolean).map(c=>" · "+cmteLink(c)).join("")}${b.topic?" · "+esc(b.topic):""}</div>
+        ${rail(b)}
       </button>
       <div class="cbody" ${open?"":"hidden"}>${
         open?(detail[dkey(b.id)]?renderDetail(b,detail[dkey(b.id)]):`<p class="spin">Loading…</p>`):""}</div>

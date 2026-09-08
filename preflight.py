@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.68
+# GRANITE_VERSION: 2026-09-04.69
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2960,6 +2960,59 @@ def _veto_messages():
     assert not bad, (f"{len(bad)} of {n} veto messages are not fit to quote: "
                      f"{'; '.join(bad[:3])}")
     return "ok", f"{n} veto messages, each whole, attributed and citable"
+
+
+@check("data", "the passage rail agrees with the outcome it sits beside")
+def _rail():
+    """Four stops drawn on every card, and each one is a claim.
+
+    The rail is the site's one piece of ornament and it is made of facts, so
+    it must not be able to disagree with the status chip six pixels above it.
+    A bill that became law has to show the Law stop passed; one that was
+    killed or vetoed has to show it stopped; and a bill cannot have got
+    through a chamber it never reached.
+
+    "pppp" -- passed the House, passed the Senate, reached the governor,
+    became law -- should also come out at exactly the number of bills the
+    site independently calls law.
+    """
+    idx = Path("site/index.json")
+    if not idx.exists():
+        return "skip", "index.json is not built"
+    rows = json.loads(idx.read_text(encoding="utf-8"))
+    bad, n, laws, pppp = [], 0, 0, 0
+    for b in rows:
+        p = b.get("passage") or ""
+        kind = b.get("kind") or ""
+        if kind == "law":
+            laws += 1
+        if not p:
+            continue
+        n += 1
+        if len(p) != 4 or set(p) - set("phx-"):
+            bad.append(f"{b.get('id')}: {p!r} is not four stops")
+            continue
+        if p == "pppp":
+            pppp += 1
+        h, se, g, law = p
+        if kind == "law" and law != "p":
+            bad.append(f"{b.get('id')} became law and its Law stop is {law!r}")
+        if kind in ("done", "veto") and law != "x":
+            bad.append(f"{b.get('id')} is {kind} and its Law stop is {law!r}")
+        if se == "p" and h == "-":
+            bad.append(f"{b.get('id')} passed a Senate it reached without a House")
+        if g != "-" and "-" in (h, se) and not b.get("archived"):
+            # A bill reaches the governor through both chambers.
+            bad.append(f"{b.get('id')} reached the governor as {p!r}")
+    if not n:
+        return "skip", "no bill carries a passage"
+    assert not bad, (f"{len(bad)} of {n:,} rails disagree with the record: "
+                     f"{'; '.join(bad[:3])}")
+    assert pppp == laws, (
+        f"{pppp:,} bills show the whole rail passed and {laws:,} are called "
+        "law. Those are the same bills counted two ways and they have to "
+        "match.")
+    return "ok", f"{n:,} rails, {pppp:,} of them the whole way, none disagreeing"
 
 
 @check("data", "a committee's stated purpose is the rule, not the page around it")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.24
+# GRANITE_VERSION: 2026-09-04.25
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -1183,7 +1183,11 @@ def build(bill, rows):
     # sentences. It used to be the raw ones, so everything reading this field
     # -- the feeds, the page description, the archived term -- got the
     # twenty-six-sentence version of HB2 that the page itself does not show.
+    # "hand" is the stage's own key -- H:committee, S:floor, G:governor --
+    # so anything downstream can ask how far a bill got without matching on
+    # the label's prose.
     staged = [{"label": st["label"],
+               "hand": f"{st['key'][0]}:{st['key'][1]}",
                "text": collapse(st["sentences"],
                                 CHAMBER.get(st["key"][0], "House"))}
               for st in stages]

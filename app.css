@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.17 */
+/* GRANITE_VERSION: 2026-09-07.19 */
 /* Every reading column stops at 34em, which is 68 characters at the
    body size. Nine measured over 80 at 1440px and the worst, a bill
    title on a committee page, ran to 195. */
@@ -164,6 +164,41 @@ text-decoration:none;font-size:16px;color:var(--ink-2);border-radius:var(--r-out
 .cnum{font-size:19px;font-weight:600;color:var(--pine);
 letter-spacing:-.005em;line-height:1.25}
 .cyear{font-size:14px;color:var(--ink-2)}
+/* THE PASSAGE RAIL. Four stops on a line -- House, Senate, Governor, Law --
+   showing how far a bill got and where it stopped, which is the one thing
+   this site knows that a status chip cannot say. It is the only ornament on
+   the page and it is not ornament: every mark on it is a fact.
+
+   Four states, four SHAPES, so nothing here depends on telling two colours
+   apart:
+     .s-p  passed         a filled circle
+     .s-h  here now       a ring, haloed
+     .s-x  stopped here   a filled square
+     .s-o  never reached  an empty circle
+
+   And one ink. A stop the bill passed and a stop it ended at are drawn in
+   the same pine, because a bill dying is an outcome rather than a failure
+   and the rail does not get to say otherwise. */
+.rail{display:flex;margin:12px 0 2px;max-width:310px}
+.stop{flex:1 1 0;position:relative;display:flex;justify-content:center;
+padding-top:21px;min-width:0}
+/* The line between stops, behind them, stopping at the last one. */
+.stop:before{content:"";position:absolute;top:8px;left:50%;right:-50%;
+height:1px;background:var(--rule-2)}
+.stop:last-child:before{display:none}
+.stop:after{content:"";position:absolute;top:2px;left:50%;
+width:12px;height:12px;margin-left:-6px;border-radius:50%;
+border:1.5px solid var(--edge);background:var(--paper);box-sizing:border-box}
+.stop i{font-style:normal;font-size:12px;color:var(--edge);white-space:nowrap}
+.stop.s-p:after{background:var(--pine);border-color:var(--pine)}
+.stop.s-x:after{background:var(--pine);border-color:var(--pine);
+border-radius:var(--r-in)}
+.stop.s-h:after{background:var(--surface);border-color:var(--pine);
+border-width:3px;box-shadow:0 0 0 3px var(--pine-soft)}
+.stop.s-p i,.stop.s-x i,.stop.s-h i{color:var(--ink-2)}
+/* A card head is a button, and the rail inside it must not look clickable
+   on its own. */
+.chead .rail{pointer-events:none}
 .cstat{margin-left:auto;font-size:12px;font-weight:600;padding:3px 10px;border-radius:var(--r-pill);white-space:nowrap}
 /* The status on a card head: bigger and heavier than the chips used inside a
    tab, because it is the one thing every reader looks for first. */
