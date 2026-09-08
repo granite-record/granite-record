@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.15 */
+/* GRANITE_VERSION: 2026-09-07.16 */
 /* Every reading column stops at 34em, which is 68 characters at the
    body size. Nine measured over 80 at 1440px and the worst, a bill
    title on a committee page, ran to 195. */
@@ -494,6 +494,12 @@ text-align:center;color:var(--ink-2);font-size:14px}
 /* Focus must be visible. Keyboard users navigate by it, and the default
    outline is removed by most resets without anything put back. */
 :focus-visible{outline:2px solid var(--pine);outline-offset:2px;border-radius:var(--r-in)}
+/* The same footer the pages built from style.css have carried all along.
+   It reaches every record page because bills.html is their template. */
+footer{border-top:1px solid var(--rule);background:var(--surface);
+padding:22px 0;font-size:14px;color:var(--ink-2);margin-top:40px}
+footer .in{max-width:34em;margin:0 auto;padding:0 24px}
+.corrections{display:block;margin-top:5px}
 .skip{position:absolute;left:-9999px;top:0;background:var(--pine);color:#fff;
 padding:10px 16px;z-index:99;border-radius:0 0 var(--r-out) 0}
 .skip:focus{left:0}

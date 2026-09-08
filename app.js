@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.21
+// GRANITE_VERSION: 2026-09-07.23
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -156,8 +156,11 @@ const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),kind:new Set(),
 // Committee group is 340 pixels of it -- so the first bill sat past a
 // screen and a half of filters on a 375-wide screen. Someone arriving on
 // a phone came for the bills; the filters are one tap away either way.
+// 861px, which is where .shell actually becomes two columns. It was 721,
+// so between those two widths the panel stacked ABOVE the results with its
+// longest group open -- fourteen committees before the first bill.
 const wideEnough=typeof matchMedia==="function"
-  && matchMedia("(min-width:721px)").matches;
+  && matchMedia("(min-width:861px)").matches;
 const openGroups=new Set(wideEnough?["committee"]:[]);
 let sponsorFilter="";
 const openCards=new Set(),openTab={},detail={},segSel={},fullOpen=new Set();
@@ -241,6 +244,11 @@ Promise.all([need("index.json"),need("meta.json")])
      hideListControls();
      return;
    }
+   // A bill's own page is one bill, so the controls that filter and sort a
+   // LIST have nothing to act on. They were left up, with the count reading
+   // "2,234 of 2,234 bills in the 2025-2026 term" above a single bill --
+   // which at 360px was the whole first screen.
+   if(window.GR_BILL)hideListControls();
    if(window.GR_MEMBER){openPage("member",String(window.GR_MEMBER));return;}
    if(window.GR_COMMITTEE){openPage("committee",String(window.GR_COMMITTEE));return;}
    $("#q").focus();
@@ -1848,7 +1856,11 @@ function render(){
   if(sh)sh.textContent=used.length&&!billNumbers(query)
     ? `also matching: ${used.join(", ")}` : "";
   const ids0=billNumbers(query);
-  $("#count").textContent=ids0
+  // A focused view is one bill. The count describes a list that is not on
+  // screen, and on a bill's own page it read "2,234 of 2,234 bills in the
+  // 2025-2026 term" above a single bill.
+  $("#count").textContent=focused?""
+    :ids0
     ?`${rows.length} matching in the ${term} term`
     :`${rows.length.toLocaleString()} of ${inTerm.toLocaleString()} bills in the ${term} term`;
   // Same number, different term: say so instead of an empty page.
@@ -1878,7 +1890,7 @@ function render(){
     ${!fb&&sortBy==="status"&&(gi===0||arr[gi-1].status!==b.status)
       ?`<h2 class="grp">${esc(b.status||"No status recorded")}
          <span>${grpN[b.status||""]}</span></h2>`:""}
-    ${cardHtml(b,!!fb)}`).join("")+(rows.length>400?`<p class="spin">Showing the first 400. Narrow the search to see more.</p>`:"")
+    ${cardHtml(b,!!fb)}`).join("")+((!fb&&rows.length>400)?`<p class="spin">Showing the first 400. Narrow the search to see more.</p>`:"")
     :(elsewhere.length
       ?`<div class="empty"><b>Not in the ${esc(term)} term.</b><br><br>
         ${elsewhere.map(b=>`${esc(b.n)} exists in the
