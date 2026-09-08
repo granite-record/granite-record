@@ -461,6 +461,50 @@ In order. Each depends on the one before it.
    link.
 5. **Then the rest**, which by that point is a long fetch and a lot of disk.
 
+### What 2023-2024 actually got, 8 September
+
+Steps 1 to 4 are done and the back-fill is most of the way there. Measured
+after the fetch, not before it:
+
+| | 2023-2024 | how |
+|---|---|---|
+| titles, status, docket | 1,996 | bulk files |
+| narratives | 1,996 | built from the docket |
+| roll calls | 417 days | the database, 1999-2026 with no gaps |
+| committee reports | **1,344 bills** | 90 House calendars, fetched today |
+| veto messages | **23 of 24** | those calendars and 204 Senate ones |
+| Senate committee reports | 0 | `CandH_Reports` holds 2025-2026 only |
+| testimony | 0 | see below |
+| bill text | 0, and deliberately | item 10: old terms get a link |
+
+**Three things the database cannot give an archived term**, asked directly on
+8 September rather than inferred from the table names:
+
+- `CandH_Reports` is 2025 and 2026 only, so the Senate's committee reports --
+  which are one query for the current term -- are a per-bill web fetch for any
+  other, or nothing.
+- `houseRemoteTestify` **does** reach back: 74,084 sign-ins in 2024. But its
+  only bill reference is `legislationID`, and `Legislation` holds the current
+  term alone, so there is nothing to join them to. The rows are there and
+  unaddressable. A 2024 `Legislation` dump, if the downloads page offers one,
+  would unlock all 74,084 in a single bulk file and is the cheapest
+  outstanding win in the archive.
+- `LegislationText` is current-term only too, so the database does not rescue
+  bill text either. Item 10's decision stands on its own merits.
+
+**The two chambers print a veto message differently**, which cost four
+readings of the artefact. The House prints the full text in its calendar; the
+Senate mostly prints "PENDING VETO MESSAGES: SENATE BILLS: 268" and carries
+the text only in the veto-session editions. Between two governors and two
+chambers there are four signature shapes, and nine of Ayotte's Senate messages
+state no date anywhere -- so the page shows none for those rather than
+borrowing the docket's, which is the day the veto reached the chamber and not
+the day it was signed.
+
+**CLAUDE.md's step 4 is stale**: it still lists `bill_text.json` and
+`bill_status.json` as the two files left to term-key. Both were done on
+7 September and this document says so above.
+
 The things that scale already: the marker method (per recording, cached, one
 second at the median), the bulk-file pipeline, the narrative rules. The things
 that do not: per-bill text fetches, and any tool that assumes one term.
