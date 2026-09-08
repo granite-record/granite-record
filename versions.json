@@ -17,7 +17,7 @@
     "check_site.py": "2026-09-04.4",
     "docket_parser.py": "2026-09-04.3",
     "dom_stub.js": "2026-09-04.2",
-    "extract_vetoes.py": "2026-09-07.5",
+    "extract_vetoes.py": "2026-09-07.6",
     "extract_amendments.py": "2026-09-04.3",
     "fetch_bill_status.py": "2026-09-04.7",
     "fetch_bill_text.py": "2026-09-04.19",

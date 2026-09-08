@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.5
+# GRANITE_VERSION: 2026-09-07.6
 """
 The governor's veto messages, from the House calendars already on disk.
 
@@ -69,8 +69,19 @@ HEAD = re.compile(
     re.I)
 # The signature block that ends one.
 SIGN = re.compile(
-    r"Respectfully\s+submitted,?\s*\n\s*(?P<who>[^\n]{3,60}?)\s*\n"
-    r"\s*Date:\s*(?P<date>[A-Z][a-z]+\s+\d{1,2},\s*\d{4})",
+    r"Respectfully\s+submitted,?\s*\n"
+    r"\s*(?P<who>[^\n]{3,60}?)\s*\n"
+    # Sununu's title sits on its own line; Ayotte's is appended to the name.
+    r"(?:[ \t]*(?P<title>Governor)[ \t]*\n)?"
+    # And Sununu's block carries no Date at all.
+    r"(?:\s*Date:\s*(?P<date>[A-Z][a-z]+\s+\d{1,2},\s*\d{4}))?",
+    re.I)
+# "...pursuant to part II, Article 44 of the New Hampshire Constitution, on
+# August 2, 2024, I have vetoed House Bill 1622". The governor stating the day
+# they vetoed it, which is where the date comes from when the signature has
+# none.
+SAIDDATE = re.compile(
+    r"\bon\s+([A-Z][a-z]+\s+\d{1,2},\s*\d{4}),?\s*I\s+have\s+vetoed",
     re.I)
 MONTHS = {m: i + 1 for i, m in enumerate(
     ["January", "February", "March", "April", "May", "June", "July", "August",
@@ -192,11 +203,21 @@ def messages(text, source):
             continue
         bill = ("HB" if m.group("kind").upper() == "HOUSE" else "SB") + m.group("num")
         said = {x for x in INBODY.findall(" ".join(paras))}
+        # "Kelly A. Ayotte, Governor" and "Christopher T. Sununu, Governor"
+        # -- one name shape, whichever line the title arrived on.
+        who = (sig.group("who").strip().rstrip(",") if sig else "")
+        if sig and sig.group("title") and "governor" not in who.lower():
+            who = f"{who}, {sig.group('title').strip()}"
+        when = iso(sig.group("date")) if (sig and sig.group("date")) else ""
+        if not when:
+            m2 = SAIDDATE.search(" ".join(paras))
+            if m2:
+                when = iso(m2.group(1))
         found.append({
             "bill": bill,
             "text": paras,
-            "governor": (sig.group("who").strip().rstrip(",") if sig else ""),
-            "date": iso(sig.group("date")) if sig else "",
+            "governor": who,
+            "date": when,
             "source": source,
             # Every bill number the message itself names, so a heading and a
             # body that disagree can be seen rather than guessed at.
