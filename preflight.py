@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.61
+# GRANITE_VERSION: 2026-09-04.62
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2809,6 +2809,48 @@ def _writers_merge():
                 bad.append(f"{f.name} writes {name} and never reads it")
     assert not bad, "; ".join(bad)
     return "ok", f"{len(shared)} shared files, every writer of one reads it first"
+
+
+@check("data", "a committee's stated purpose is the rule, not the page around it")
+def _duty_is_a_duty():
+    """A quotation must end where the quoted text ends.
+
+    The duty is read off gc.nh.gov's committee pages, where it runs straight
+    into the site's own navigation with no punctuation between: "...such other
+    matters as may be referred to it. HELPFUL LINKS Committees of Conference
+    Redistricting Ethics Committee ... 107 North Main Street | Concord, NH
+    03301." All 26 published that, under a heading saying it was House Rule 31.
+
+    This is the worst shape of error the site can make -- not a missing fact
+    but a wrong one, presented as a quotation from the rules -- and it is
+    invisible to every other check here, because a longer string is not an
+    empty one and the page renders perfectly.
+    """
+    root = Path("site/committee")
+    if not root.exists():
+        return "skip", "no committee JSON built"
+    junk = ("HELPFUL LINKS", "DOCUMENTS & MEDIA", "OTHER RESOURCES",
+            "Concord, NH", "Copyright", "Driving Directions", "Help Desk")
+    n, bad = 0, []
+    for f in sorted(root.glob("*.json")):
+        d = json.loads(f.read_text(encoding="utf-8"))
+        pur = d.get("purpose") or {}
+        text = (pur.get("text") or "").strip()
+        if not text:
+            continue
+        n += 1
+        hit = next((x for x in junk if x in text), "")
+        if hit:
+            bad.append(f"{d.get('code')} carries {hit!r}")
+        elif not text.endswith("."):
+            bad.append(f"{d.get('code')} does not end in a full stop")
+        elif len(text) < 60:
+            bad.append(f"{d.get('code')} is {len(text)} characters, not a duty")
+    if not n:
+        return "skip", "no committee states a purpose yet"
+    assert not bad, (f"{len(bad)} of {n} stated purposes are not just the "
+                     f"rule's text: {'; '.join(bad[:3])}")
+    return "ok", f"{n} committees quote a rule, and only the rule"
 
 
 @check("data", "a proceeding starts at the same moment on both pages")
