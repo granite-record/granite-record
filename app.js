@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.16
+// GRANITE_VERSION: 2026-09-07.17
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1317,8 +1317,31 @@ function renderDetail(b,d){
 let PAGE = null;          // {kind:"member"|"committee", data:{...}}
 let PAGE_TAB = 0;
 
-// A bill, as a card small enough to list a hundred of. Clicking goes to the
-// bill's own page, which is this app again with that bill open.
+// Redraw whatever is on screen. The bill search and a record page are two
+// renderers, and the controls INSIDE an expanded bill card -- the segment
+// picker, the routine-lines toggle, the full-text toggle -- are shared by
+// both. Those called render() unconditionally, which on a committee's page
+// drew four hundred bill cards over the committee.
+const repaint=()=>PAGE?renderPage():render();
+
+// The term a record page is showing. One control for the whole record rather
+// than one per tab: a reader looking at 2023-2024 wants that term's bills AND
+// that term's sessions, and choosing the term on one tab then finding the
+// other back on the current term is the page disagreeing with itself.
+const pageTerm=()=>{
+  const ts=(PAGE&&PAGE.terms)||[];
+  return PAGE&&PAGE.term&&ts.includes(PAGE.term)?PAGE.term:(ts[0]||"");
+};
+// "2026" -> "2025-2026". A vote records the year it was cast and not the term,
+// and the term is what every other list on the page is keyed by.
+const termOfYear=y=>{
+  const n=parseInt(y,10);
+  if(!n)return "";
+  return ((META&&META.terms)||[]).find(t=>{
+    const [a,b]=String(t).split("-").map(Number);
+    return a&&b&&n>=a&&n<=b;})||"";
+};
+
 // A committee named on a bill, as a link to its page where there is one.
 // 3,967 mentions across the site were plain text, so the reader who wanted
 // "what else did this committee do" had nowhere to click.
@@ -1327,30 +1350,92 @@ function cmteLink(name){
   return code?`<a href="committee/${esc(code)}.html">${esc(name)}</a>`:esc(name);
 }
 
-function billCard(b){
-  const y = b.year || (b.term ? String(b.term).slice(0,4) : "");
-  return `<a class="bcard ${KIND[b.kind]||""}" href="bill/${esc(String(y))}/${
-    esc(String(b.id||b.bill||"").toLowerCase())}.html">
-    <span class="bc-n">${esc(b.n||b.id||b.bill||"")}</span>
-    <span class="bc-t">${esc(b.title||"")}</span>
-    ${b.status?`<span class="bc-s">${esc(b.status)}</span>`:""}</a>`;
+// ONE card, drawn by the search list and by both record pages.
+//
+// A member's page used to draw its own flatter card with no body, so the same
+// bill was two different objects depending on which page you reached it from
+// and the detail a reader wanted was a page load away. Sharing the markup is
+// also the only way the two stay the same as this card changes.
+function cardHtml(b,focus){
+  const open=openCards.has(b.id);
+  const y=b.year||(b.term?String(b.term).slice(0,4):"");
+  return `<article class="card ${open?'open':''}${focus?' focus':''}" data-id="${b.id}">
+      ${focus?"":`<a class="detail" href="bill/${esc(String(y))}/${esc(b.id.toLowerCase())}.html"
+        title="${esc(b.n)} on its own page: its own address, and a link worth sharing"
+        aria-label="Open the standalone page for ${esc(b.n)}">&#8599;</a>`}
+      <button class="chead" aria-expanded="${open}">
+        <div class="crow"><span class="cnum">${esc(b.n)}</span>
+        <span class="cyear">filed ${esc(String(y))}${b.carried
+          ?` <span class="chip" title="Filed one year, acted on in the next — retained in committee or sent to interim study">carried over</span>`:""}</span>
+        <span class="cstat ${KIND[b.kind]||""}">${esc(b.status||"")}</span></div>
+        <div class="ctitle">${esc(b.title)}</div>
+        <div class="cmeta">${esc(b.sponsor_label||b.sponsor||"")}${
+          (b.committees||[b.committee]).filter(Boolean).map(c=>" · "+cmteLink(c)).join("")}${b.topic?" · "+esc(b.topic):""}</div>
+      </button>
+      <div class="cbody" ${open?"":"hidden"}>${
+        open?(detail[dkey(b.id)]?renderDetail(b,detail[dkey(b.id)]):`<p class="spin">Loading…</p>`):""}</div>
+    </article>`;
 }
 
-// The filter strip above a list of bills: which term, and which outcome.
-function billFilters(terms, term, statuses, status){
-  return `<div class="bfilt">
-    ${terms.length>1?`<label>Term
-      <select data-pf="term">${terms.map(t=>
-        `<option value="${esc(t)}"${t===term?" selected":""}>${esc(t)}</option>`
-      ).join("")}</select></label>`:""}
-    <label>Status
-      <select data-pf="status">
-        <option value="">Any</option>
-        ${statuses.map(x=>`<option value="${esc(x)}"${x===status?" selected":""}>${
-          esc(x)}</option>`).join("")}
-      </select></label>
-  </div>`;
+// The tabs inside an expanded card are set after its HTML is in the document,
+// because every tab's pane is written and only one is shown. Both renderers
+// have to do it, so neither owns it.
+function syncCards(ids){
+  ids.forEach(id=>{
+    const c=document.querySelector(`.card[data-id="${id}"]`),t=openTab[id]||"0";
+    if(!c||!detail[dkey(id)])return;
+    c.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected",x.dataset.t===t));
+    c.querySelectorAll(".pane").forEach(p=>p.hidden=p.dataset.t!==t);
+  });
 }
+
+// A record page names a bill by number, term and title and nothing else. The
+// card wants its status, its sponsor and its committees, so the index row is
+// looked up rather than reconstructed -- and the TERM is part of the lookup,
+// because a bill number names one bill in each biennium.
+function idxRow(b){
+  const id=String(b.id||b.bill||"").toUpperCase();
+  const t=b.term||"";
+  return IDX.find(x=>x.id===id&&(!t||x.term===t))
+      || (b.year?IDX.find(x=>x.id===id&&String(x.year)===String(b.year)):null)
+      || {id,n:b.n||id,title:b.title||"",year:b.year||"",term:t,
+          status:b.status||"",kind:b.kind||"",sponsor:"",committees:[]};
+}
+
+// The bills of one tab, as cards, with the outcome filter above them.
+function billPane(rows,note){
+  const statuses=[...new Set(rows.map(b=>b.status).filter(Boolean))].sort();
+  const shown=rows.filter(b=>!PAGE.status||b.status===PAGE.status);
+  return `<div class="bfilt"><label>Status
+      <select data-pf="status"><option value="">Any</option>
+      ${statuses.map(x=>`<option value="${esc(x)}"${x===PAGE.status?" selected":""}>${
+        esc(x)}</option>`).join("")}</select></label></div>
+    <p class="src">${note(shown.length)}</p>
+    <div class="cards">${shown.map(b=>cardHtml(b,false)).join("")}</div>`;
+}
+
+// The term, above the tabs, because it governs all of them.
+function termControl(){
+  const ts=(PAGE&&PAGE.terms)||[],t=pageTerm();
+  if(ts.length<2)return "";
+  return `<div class="bfilt pterm"><label>Term
+    <select data-pf="term">${ts.map(x=>
+      `<option value="${esc(x)}"${x===t?" selected":""}>${esc(x)}</option>`
+    ).join("")}</select></label></div>`;
+}
+
+function tabStrip(tabs){
+  return `<div class="tabs" role="tablist">${tabs.map((t,i)=>
+    `<button class="tab" role="tab" data-pt="${i}" aria-selected="${
+      i===PAGE_TAB}">${esc(t[0])}${t[1]?` (${t[1].toLocaleString()})`:""}</button>`
+  ).join("")}</div>`;
+}
+
+// A member of a committee or a chamber, as a chip in party colour.
+const mchip=m=>`<span class="mchip p-${esc(m.party_code||"X")}">${
+  m.slug?`<a href="legislator/${esc(m.slug)}.html">${esc(m.label||m.name)}</a>`
+        :esc(m.label||m.name)}${m.role&&m.role!=="Member"
+    ?` <i>${esc(m.role)}</i>`:""}</span>`;
 
 // ---------------------------------------------------------------- member ---
 function renderMemberHead(m){
@@ -1370,29 +1455,32 @@ function renderMemberHead(m){
   </div>`;
 }
 
+const memberBills=(m,prime)=>(m.sponsored||[])
+  .filter(b=>!!b.prime===prime)
+  .filter(b=>!pageTerm()||b.term===pageTerm())
+  .map(idxRow);
+
 function renderMemberBills(m, prime){
-  const all = (m.sponsored||[]).filter(b=>!!b.prime===prime);
-  if(!all.length)return `<p class="src">${prime
-    ?"No bills prime sponsored in the terms on this site."
-    :"No bills co-sponsored in the terms on this site."}</p>`;
-  const terms=[...new Set(all.map(b=>b.term).filter(Boolean))].sort().reverse();
-  const t=PAGE.term&&terms.includes(PAGE.term)?PAGE.term:terms[0];
-  const inTerm=all.filter(b=>!terms.length||b.term===t);
-  const statuses=[...new Set(inTerm.map(b=>b.status).filter(Boolean))].sort();
-  const shown=inTerm.filter(b=>!PAGE.status||b.status===PAGE.status);
-  return billFilters(terms,t,statuses,PAGE.status||"")
-    + `<p class="src">${shown.length.toLocaleString()} bill${shown.length===1?"":"s"}${
-        prime?" prime sponsored":" co-sponsored"}. Sponsoring a bill is putting a
-        name to it, which is not the same as voting for it and is not counted as
-        one here.</p>`
-    + `<div class="bcards">${shown.map(billCard).join("")}</div>`;
+  const rows=memberBills(m,prime);
+  const t=pageTerm();
+  if(!rows.length)return `<p class="src">No bills ${prime?"prime sponsored"
+    :"co-sponsored"} in the ${esc(t)} term.</p>`;
+  return billPane(rows,n=>`${n.toLocaleString()} bill${n===1?"":"s"}${
+    prime?" prime sponsored":" co-sponsored"} in ${esc(t)}. Sponsoring a bill is
+    putting a name to it, which is not the same as voting for it and is not
+    counted as one here.`);
 }
 
+const memberVotes=m=>(m.votes||[])
+  .filter(x=>!pageTerm()||!x.y||termOfYear(x.y)===pageTerm());
+
 function renderMemberVotes(m){
-  const v=m.votes||[];
-  if(!v.length)return `<p class="src">No recorded roll call votes. Voice and
-    division votes leave no record of individual members, so a member can have
-    taken part in many votes and appear in none of them.</p>`;
+  const v=memberVotes(m);
+  const t=pageTerm();
+  if(!v.length)return `<p class="src">No recorded roll call votes in the
+    ${esc(t)} term. Voice and division votes leave no record of individual
+    members, so a member can have taken part in many votes and appear in none
+    of them.</p>`;
   const q=(PAGE.vfilter||"").toLowerCase();
   const rows=v.filter(x=>!q||String(x.v||"").toLowerCase()===q);
   const tally={};
@@ -1403,8 +1491,8 @@ function renderMemberVotes(m){
         q===k.toLowerCase()?" selected":""}>${esc(k)} (${tally[k]})</option>`).join("")}
       </select></label></div>
     <p class="src">${rows.length.toLocaleString()} of ${v.length.toLocaleString()}
-      recorded votes, newest first. Every roll call this member is recorded in,
-      as it was cast and on what. Nothing here is rated or scored.</p>
+      recorded votes in ${esc(t)}, newest first. Every roll call this member is
+      recorded in, as it was cast and on what. Nothing here is rated or scored.</p>
     <table class="votes"><thead><tr><th>Date</th><th>Bill</th><th>Question</th>
       <th>Vote</th></tr></thead><tbody>${rows.slice(0,600).map(x=>`<tr>
       <td class="d">${esc(x.d||"")}</td>
@@ -1423,110 +1511,128 @@ function renderMemberVotes(m){
 }
 
 function renderMember(m){
-  const nPrime=(m.sponsored||[]).filter(b=>b.prime).length;
-  const nCo=(m.sponsored||[]).length-nPrime;
-  const tabs=[["Prime sponsored",nPrime],["Co-sponsored",nCo],
-              ["Votes",(m.votes||[]).length]];
+  const tabs=[["Prime sponsored",memberBills(m,true).length],
+              ["Co-sponsored",memberBills(m,false).length],
+              ["Votes",memberVotes(m).length]];
   const body=[()=>renderMemberBills(m,true),()=>renderMemberBills(m,false),
               ()=>renderMemberVotes(m)][PAGE_TAB]||(()=>"");
-  return renderMemberHead(m)
-    + `<div class="tabs" role="tablist">${tabs.map((t,i)=>
-        `<button class="tab" role="tab" data-pt="${i}" aria-selected="${
-          i===PAGE_TAB}">${esc(t[0])}${t[1]?` (${t[1].toLocaleString()})`:""}</button>`
-      ).join("")}</div>
-      <div class="pane" role="tabpanel" tabindex="0">${body()}</div>`;
+  return renderMemberHead(m) + termControl() + tabStrip(tabs)
+    + `<div class="pane" role="tabpanel" tabindex="0">${body()}</div>`;
 }
 
 // ------------------------------------------------------------- committee ---
+// Laid out the way the General Court lays out its own committee pages,
+// because that is the layout the people who use these pages already know:
+// the officers and the staff side by side, then the whole membership, then
+// what the chamber's rules say the committee is for.
 function renderCommitteeHead(c){
-  const lead=(c.members||[]).filter(m=>m.role&&m.role!=="Member");
-  const rest=(c.members||[]).filter(m=>!m.role||m.role==="Member");
-  const chip=m=>`<span class="mchip p-${esc((m.party_code||"X"))}">${
-    m.slug?`<a href="legislator/${esc(m.slug)}.html">${esc(m.label||m.name)}</a>`
-          :esc(m.label||m.name)}${m.role&&m.role!=="Member"
-      ?` <i>${esc(m.role)}</i>`:""}</span>`;
+  const officers=(c.officers||[]).filter(o=>o.name);
+  const staff=[["Committee aide",c.aide],["Researcher",c.researcher],
+               ["Room",c.room],["Phone",c.phone]].filter(x=>x[1]);
+  const members=c.members||[];
+  const rule=c.purpose||null;
+  const dl=(cls,rows)=>rows.length?`<dl class="${cls}">${rows.map(
+    ([k,v])=>`<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join("")}</dl>`:"";
   return `<div class="phead">
     <h1>${esc(c.name||"")}</h1>
-    <p class="pmeta">${esc(c.chamber==="S"?"State Senate":"House of Representatives")}
-      ${c.phone?` &middot; ${esc(c.phone)}`:""}
-      ${c.aide?` &middot; Aide: ${esc(c.aide)}`:""}</p>
-    ${lead.length?`<p class="plead">${lead.map(chip).join(" ")}</p>`:""}
-    ${rest.length?`<details class="mroster"${PAGE.roster?" open":""}
-      ><summary><span class="caret"></span>
-      ${rest.length} more member${rest.length===1?"":"s"}</summary>
-      <p class="mlist">${rest.map(chip).join(" ")}</p></details>`:""}
+    <p class="pmeta">${esc(c.chamber==="S"?"State Senate":"House of Representatives")}</p>
+    <div class="cinfo">
+      ${dl("cofficers",officers.map(o=>[o.role,
+        o.slug?`<a href="legislator/${esc(o.slug)}.html">${esc(o.label||o.name)}</a>`
+              :esc(o.name)]))}
+      ${dl("cstaff",staff.map(([k,v])=>[k,esc(v)]))}
+    </div>
+    ${members.length?`<div class="croster">
+      <h2>Members <span>${members.length}</span></h2>
+      <p class="mlist">${members.map(mchip).join(" ")}</p></div>`:""}
+    ${rule?`<div class="cpurpose"><h2>What it does</h2>
+      <p>${esc(rule.text||"")}</p>
+      <p class="src">${esc(rule.rule||"")}, as the General Court publishes it.</p>
+      </div>`:""}
     ${c.url?`<p class="src"><a href="${esc(c.url)}" target="_blank"
       rel="noopener">This committee on gencourt &#8599;</a></p>`:""}
   </div>`;
 }
 
+const cmteBills=c=>((c.bills||{})[pageTerm()]||[]).map(idxRow);
+const cmteSessions=c=>(c.sessions||[])
+  .filter(s=>!pageTerm()||!s.term||s.term===pageTerm());
+
 function renderCommitteeBills(c){
-  const terms=Object.keys(c.bills||{}).sort().reverse();
-  if(!terms.length)return `<p class="src">No bills referred to this committee
-    in the terms on this site.</p>`;
-  const t=PAGE.term&&terms.includes(PAGE.term)?PAGE.term:terms[0];
-  const inTerm=(c.bills[t]||[]);
-  const statuses=[...new Set(inTerm.map(b=>b.status).filter(Boolean))].sort();
-  const shown=inTerm.filter(b=>!PAGE.status||b.status===PAGE.status);
-  return billFilters(terms,t,statuses,PAGE.status||"")
-    + `<p class="src">${shown.length.toLocaleString()} bill${
-        shown.length===1?"":"s"} referred to this committee in ${esc(t)}.</p>`
-    + `<div class="bcards">${shown.map(billCard).join("")}</div>`;
+  const rows=cmteBills(c),t=pageTerm();
+  if(!rows.length)return `<p class="src">No bills were referred to this
+    committee in the ${esc(t)} term.</p>`;
+  return billPane(rows,n=>`${n.toLocaleString()} bill${n===1?"":"s"} referred to
+    this committee in ${esc(t)}.`);
+}
+
+// One day the committee met: what it did, the recording, and the moment each
+// bill was taken up. The timestamps drive the player above them rather than
+// sending the reader to YouTube and back.
+function sessionHtml(s,si){
+  const items=s.items||[];
+  const pid=`d${String(s.date||"").replace(/-/g,"")}_${si}`;
+  const timed=items.filter(i=>i.start!=null);
+  const from=timed.length?Math.max(0,Math.floor(timed[0].start)):0;
+  const vid=s.video_id||"";
+  // ONE number, shown and seeked. Where the header, the player and the button
+  // each carried a slightly different offset, a reader had no way to tell
+  // which one was the claim.
+  const player=vid?`<div class="player" data-player="${esc(pid)}">
+      <button type="button" class="pstub" data-embed="${esc(vid)}|${from}|${esc(pid)}">
+        <span>&#9654;</span><span>Play this day's recording${timed.length
+          ?` from ${hms(from)}, where the first bill is taken up`:""}</span></button>
+      <div class="pbar">
+        <a href="https://www.youtube.com/watch?v=${esc(vid)}&t=${from}s"
+           target="_blank" rel="noopener">Open on YouTube</a>
+        <span class="tolnote">${timed.length
+          ?"the times below move this player"
+          :"no moment in this recording has been identified yet"}</span>
+      </div></div>`
+    :`<p class="note">No recording of this day is on file.</p>`;
+  return `<section class="cday">
+    <h3>${esc(fdate(s.date))}</h3>
+    <p class="cnarr">${esc(s.narrative||"")}</p>
+    ${player}
+    <ul class="tl">${items.map(i=>{
+      // "stated" is a boundary the chair spoke; anything else was worked out
+      // from the schedule or the surrounding recording and says so.
+      const said=/^(stated|floor_stated|floor_precise)$/.test(i.state||"");
+      const at=i.start!=null?Math.max(0,Math.floor(i.start)):null;
+      return `<li>
+      <span class="d">${at!=null
+        ? (vid?`<button class="jump" data-seek="${esc(pid)}|${at}">${hms(at)}</button>`
+             :`${hms(at)}`)
+        : "&mdash;"}${at!=null&&!said?`<i class="approx">approximate</i>`:""}</span>
+      <span class="w"><a href="bill/${esc(String(i.year||""))}/${
+        esc(String(i.bill||"").toLowerCase())}.html">${esc(i.n||i.bill||"")}</a>
+        &mdash; ${esc(i.kind||"")}${i.title?`<span class="ctitle">${
+          esc(i.title)}</span>`:""}</span></li>`;}).join("")}</ul>
+  </section>`;
 }
 
 function renderCommitteeSessions(c){
-  const ss=c.sessions||[];
-  if(!ss.length)return `<p class="src">No sitting day of this committee is on
-    record. Committees that no longer meet keep their page so the bills they
+  const ss=cmteSessions(c),t=pageTerm();
+  if(!(c.sessions||[]).length)return `<p class="src">No day of this committee is
+    on record. Committees that no longer meet keep their page so the bills they
     handled still have somewhere to point.</p>`;
-  const terms=[...new Set(ss.map(s=>s.term).filter(Boolean))].sort().reverse();
-  const t=PAGE.term&&terms.includes(PAGE.term)?PAGE.term:terms[0];
-  const shown=ss.filter(s=>!terms.length||s.term===t);
-  return (terms.length>1?billFilters(terms,t,[],""):"")
-    + `<p class="src">${shown.length.toLocaleString()} sitting day${
-        shown.length===1?"":"s"}, newest first. What was taken up and when,
-        composed from the record rather than written.</p>`
-    + shown.map(s=>`<section class="cday">
-        <h3>${esc(fdate(s.date))}</h3>
-        <p class="cnarr">${esc(s.narrative||"")}</p>
-        <ul class="tl">${(s.items||[]).map(i=>`<li>
-          <span class="d">${i.start!=null?hms(i.start):"&mdash;"}${
-            i.start!=null&&i.state!=="stated"&&i.state!=="floor_stated"
-              &&i.state!=="floor_precise"
-              ? `<i class="approx">approximate</i>`:""}</span>
-          <span class="w"><a href="bill/${esc(String(i.year||""))}/${
-            esc(String(i.bill||"").toLowerCase())}.html">${esc(i.n||i.bill||"")}</a>
-            &mdash; ${esc(i.kind||"")}${i.title?`<span class="ctitle">${
-              esc(i.title)}</span>`:""}
-            ${i.video_id&&i.start!=null?` <a class="cite" target="_blank"
-              rel="noopener" href="https://www.youtube.com/watch?v=${
-                esc(i.video_id)}&t=${Math.max(0,Math.floor(i.start)-2)}s">watch
-              from ${hms(i.start)} &#8599;</a>`:""}</span></li>`).join("")}</ul>
-        ${s.video_id?`<p class="src"><a href="https://www.youtube.com/watch?v=${
-          esc(s.video_id)}" target="_blank" rel="noopener">the whole day's
-          recording &#8599;</a></p>`:""}
-      </section>`).join("");
+  if(!ss.length)return `<p class="src">No day of this committee is on record in
+    the ${esc(t)} term.</p>`;
+  return `<p class="src">${ss.length.toLocaleString()} day${ss.length===1?"":"s"}
+      this committee met in ${esc(t)}, newest first. Each is the day's recording
+      with the moment every bill was taken up, composed from the record rather
+      than written.</p>`
+    + ss.map(sessionHtml).join("");
 }
 
 function renderCommittee(c){
-  // Counted for the term the pane is showing, not across every term. "Bills
+  // Counted for the term the page is showing, not across every term. "Bills
   // (107)" over a list of 32 is the tab disagreeing with itself.
-  const bterms=Object.keys(c.bills||{}).sort().reverse();
-  const bt=PAGE.term&&bterms.includes(PAGE.term)?PAGE.term:bterms[0];
-  const nBills=((c.bills||{})[bt]||[]).length;
-  const sterms=[...new Set((c.sessions||[]).map(x=>x.term).filter(Boolean))]
-    .sort().reverse();
-  const stt=PAGE.term&&sterms.includes(PAGE.term)?PAGE.term:sterms[0];
-  const nSit=(c.sessions||[]).filter(x=>!sterms.length||x.term===stt).length;
-  const tabs=[["Bills",nBills],["Sittings",nSit]];
+  const tabs=[["Bills",cmteBills(c).length],["Sessions",cmteSessions(c).length]];
   const body=[()=>renderCommitteeBills(c),()=>renderCommitteeSessions(c)][PAGE_TAB]
     ||(()=>"");
-  return renderCommitteeHead(c)
-    + `<div class="tabs" role="tablist">${tabs.map((t,i)=>
-        `<button class="tab" role="tab" data-pt="${i}" aria-selected="${
-          i===PAGE_TAB}">${esc(t[0])}${t[1]?` (${t[1].toLocaleString()})`:""}</button>`
-      ).join("")}</div>
-      <div class="pane" role="tabpanel" tabindex="0">${body()}</div>`;
+  return renderCommitteeHead(c) + termControl() + tabStrip(tabs)
+    + `<div class="pane" role="tabpanel" tabindex="0">${body()}</div>`;
 }
 
 // ------------------------------------------------------------------ boot ---
@@ -1536,23 +1642,25 @@ function renderPage(){
   if(!el)return;
   el.innerHTML = PAGE.kind==="member" ? renderMember(PAGE.data)
                                       : renderCommittee(PAGE.data);
+  syncCards([...openCards]);
 }
 
-// The tabs and the filter selects on these two pages. Kept apart from the bill
-// list's handlers, which key on .card and would not find one here.
+// The tabs, the cards and the filter selects on these two pages. Kept apart
+// from the bill list's handlers, which end at "if(PAGE)return" because they
+// finish by calling render() and would draw the search over the record.
 document.addEventListener("click",e=>{
   if(!PAGE)return;
   const t=e.target.closest("[data-pt]");
-  if(t){PAGE_TAB=+t.dataset.pt;renderPage();}
+  if(t){PAGE_TAB=+t.dataset.pt;renderPage();return;}
+  const ct=e.target.closest(".card .tab[data-t]");
+  if(ct){openTab[ct.closest(".card").dataset.id]=ct.dataset.t;renderPage();return;}
+  const head=e.target.closest(".chead");
+  if(head&&!e.target.closest("a")){
+    const id=head.closest(".card").dataset.id;
+    if(openCards.has(id)){openCards.delete(id);renderPage();}
+    else openBill(id);
+    return;}
 });
-// The roster is a <details>, and every re-render rebuilt it closed, so
-// opening it and then touching any control shut it again. "toggle" fires
-// AFTER the element has changed state and does not bubble, hence capture --
-// reading .open in a click handler gives the state before the toggle.
-document.addEventListener("toggle",e=>{
-  if(!PAGE||!e.target.matches||!e.target.matches("details.mroster"))return;
-  PAGE.roster=e.target.open;
-},true);
 document.addEventListener("change",e=>{
   if(!PAGE)return;
   const f=e.target.dataset.pf;
@@ -1561,7 +1669,11 @@ document.addEventListener("change",e=>{
   // A status chosen in one term rarely exists in another, so keeping it
   // emptied the list while the control still read the old value -- a reader
   // seeing nothing, with nothing on screen saying why.
-  if(f==="term")PAGE.status="";
+  //
+  // The term also moves the GLOBAL term, because dkey and yearOf resolve a
+  // bill number within it: a card opened on a 2023-2024 page would otherwise
+  // have fetched the 2025-2026 bill of that number and shown its history.
+  if(f==="term"){PAGE.status="";term=PAGE.term;}
   renderPage();
 });
 
@@ -1581,8 +1693,22 @@ function hideListControls(){
   if(q)q.placeholder="Search all bills";
 }
 
+// Every term this record has anything in, newest first. Worked out once,
+// when the file lands, so every tab and the control above them agree.
+function recordTerms(kind,d){
+  const t=new Set();
+  if(kind==="member"){
+    (d.sponsored||[]).forEach(b=>b.term&&t.add(b.term));
+    (d.votes||[]).forEach(v=>{const x=termOfYear(v.y);if(x)t.add(x);});
+  }else{
+    Object.keys(d.bills||{}).forEach(x=>x&&t.add(x));
+    (d.sessions||[]).forEach(s=>s.term&&t.add(s.term));
+  }
+  return [...t].sort().reverse();
+}
+
 function openPage(kind,ref){
-  PAGE={kind,data:null,term:"",status:"",vfilter:""};
+  PAGE={kind,data:null,terms:[],term:"",status:"",vfilter:""};
   // The search chrome belongs to the search. Left up, the facet panel offered
   // filters for a list that is not on screen and the counter read "2,234 of
   // 2,234 bills" beside one member's name.
@@ -1598,7 +1724,15 @@ function openPage(kind,ref){
   fetch(url).then(r=>{
     if(!r.ok)throw new Error(`the server answered HTTP ${r.status} for this file`);
     return r.json();
-  }).then(d=>{PAGE.data=d;renderPage();})
+  }).then(d=>{
+    PAGE.data=d;
+    PAGE.terms=recordTerms(kind,d);
+    // The global term follows the page's, because dkey and yearOf resolve a
+    // bill number inside it and a card opened here fetches by that key.
+    PAGE.term=PAGE.terms[0]||"";
+    if(PAGE.term)term=PAGE.term;
+    renderPage();
+  })
     .catch(e=>{if(el)el.innerHTML=`<div class="empty"><b>This page's record did
       not load.</b><br><br><code>${esc(e.message||e)}</code><br><br>
       The file it wanted is <code>${esc(url)}</code>.</div>`;});
@@ -1649,22 +1783,7 @@ function render(){
     ${!fb&&sortBy==="status"&&(gi===0||arr[gi-1].status!==b.status)
       ?`<h2 class="grp">${esc(b.status||"No status recorded")}
          <span>${grpN[b.status||""]}</span></h2>`:""}
-    <article class="card ${openCards.has(b.id)?'open':''}${fb?' focus':''}" data-id="${b.id}">
-      ${fb?"":`<a class="detail" href="bill/${b.year}/${esc(b.id.toLowerCase())}.html"
-        title="${esc(b.n)} on its own page: its own address, and a link worth sharing"
-        aria-label="Open the standalone page for ${esc(b.n)}">&#8599;</a>`}
-      <button class="chead" aria-expanded="${openCards.has(b.id)}">
-        <div class="crow"><span class="cnum">${esc(b.n)}</span>
-        <span class="cyear">filed ${b.year}${b.carried
-          ?` <span class="chip" title="Filed one year, acted on in the next — retained in committee or sent to interim study">carried over</span>`:""}</span>
-        <span class="cstat ${KIND[b.kind]}">${esc(b.status)}</span></div>
-        <div class="ctitle">${esc(b.title)}</div>
-        <div class="cmeta">${esc(b.sponsor_label||b.sponsor)}${
-          (b.committees||[b.committee]).filter(Boolean).map(c=>" · "+cmteLink(c)).join("")}${b.topic?" · "+esc(b.topic):""}</div>
-      </button>
-      <div class="cbody" ${openCards.has(b.id)?"":"hidden"}>${
-        openCards.has(b.id)?(detail[dkey(b.id)]?renderDetail(b,detail[dkey(b.id)]):`<p class="spin">Loading…</p>`):""}</div>
-    </article>`).join("")+(rows.length>400?`<p class="spin">Showing the first 400. Narrow the search to see more.</p>`:"")
+    ${cardHtml(b,!!fb)}`).join("")+(rows.length>400?`<p class="spin">Showing the first 400. Narrow the search to see more.</p>`:"")
     :(elsewhere.length
       ?`<div class="empty"><b>Not in the ${esc(term)} term.</b><br><br>
         ${elsewhere.map(b=>`${esc(b.n)} exists in the
@@ -1672,12 +1791,7 @@ function render(){
           term — ${esc(b.title||"")}`).join("<br>")}</div>`
       :`<div class="empty">No bills match. Try removing a filter, or a different
         term.</div>`));
-  rows.filter(b=>openCards.has(b.id)).forEach(b=>{
-    const c=document.querySelector(`.card[data-id="${b.id}"]`),t=openTab[b.id]||"0";
-    if(!c||!detail[dkey(b.id)])return;
-    c.querySelectorAll(".tab").forEach(x=>x.setAttribute("aria-selected",x.dataset.t===t));
-    c.querySelectorAll(".pane").forEach(p=>p.hidden=p.dataset.t!==t);
-  });
+  syncCards(rows.filter(b=>openCards.has(b.id)).map(b=>b.id));
   renderFacets();
   if(window.scrollY!==_y)window.scrollTo(0,_y);
 }
@@ -1739,8 +1853,8 @@ window.addEventListener("popstate",e=>{
 
 function openBill(id){
   openCards.add(id);
-  if(detail[dkey(id)]){render();return;}
-  render();
+  if(detail[dkey(id)]){repaint();return;}
+  repaint();
   // What went wrong, not merely that something did.
   //
   // This used to report "Detail unavailable" and nothing else, which is how a
@@ -1753,7 +1867,7 @@ function openBill(id){
     detail[dkey(id)]={events:[],rollcalls:[],stations:[],reports:[],sponsors:[],
       documents:[],amendments:[],next_step:"Detail unavailable",
       _error:why+"\n"+url};
-    render();
+    repaint();
   };
   fetch(url).then(r=>{
     if(!r.ok)throw new Error(`the server answered HTTP ${r.status} for this file`);
@@ -1763,7 +1877,7 @@ function openBill(id){
     try{ d=JSON.parse(txt); }
     catch(_){ throw new Error(`the file arrived but is not JSON. It starts: ${
       txt.slice(0,80).replace(/\s+/g," ")}`); }
-    detail[dkey(id)]=d; render();
+    detail[dkey(id)]=d; repaint();
   }).catch(e=>fail(e.message||String(e)));
 }
 
@@ -1809,22 +1923,26 @@ document.addEventListener("click",e=>{
     }
     return;
   }
+  // These three live INSIDE an expanded bill card, which a member's and a
+  // committee's page now draw too, so they redraw whichever view is up.
   const seg=e.target.closest("[data-seg]");
   if(seg){const[bid,i,which]=seg.dataset.seg.split("|");const k=`${bid}|${i}`;
-    segSel[k]=segSel[k]===which?null:which;render();return;}
+    segSel[k]=segSel[k]===which?null:which;repaint();return;}
   const rt=e.target.closest("[data-routine]");
   if(rt){const id=rt.dataset.routine;
     showRoutine.has(id)?showRoutine.delete(id):showRoutine.add(id);
-    render();return;}
+    repaint();return;}
   const f=e.target.closest("[data-full]");
-  if(f){const k=f.dataset.full;fullOpen.has(k)?fullOpen.delete(k):fullOpen.add(k);render();return;}
+  if(f){const k=f.dataset.full;fullOpen.has(k)?fullOpen.delete(k):fullOpen.add(k);repaint();return;}
   const g=e.target.closest(".fhead");
   if(g){openGroups.has(g.dataset.g)?openGroups.delete(g.dataset.g):openGroups.add(g.dataset.g);renderFacets();return;}
   const un=e.target.dataset.unpick;
   if(un){sel.sponsor.delete(un);render();return;}
   // Left click opens in place; a modified or middle click falls through to
   // the anchor and gets the static page in a new tab, which still works.
-  const dt=e.target.closest("a.detail");
+  // On a record page there is no search list to come back to, so the arrow
+  // is left to be an ordinary link to the bill's own page.
+  const dt=PAGE?null:e.target.closest("a.detail");
   if(dt&&e.button===0&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){
     e.preventDefault();
     focusBill(dt.closest(".card").dataset.id,dt.getAttribute("href"));return;}

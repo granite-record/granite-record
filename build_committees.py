@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.9
+# GRANITE_VERSION: 2026-09-07.10
 """
 A page's worth of data for every committee.
 
@@ -77,6 +77,14 @@ def fdate(d):
         return f"{MONTHS[int(d[5:7]) - 1]} {int(d[8:10])}, {d[:4]}"
     except (ValueError, IndexError):
         return d
+
+
+def plain_name(nm):
+    """"Thomas, Douglas" as "Douglas Thomas", which is how a committee page
+    names its chair. The roster files a person surname-first; the committee
+    pages do not, and the two are matched on this."""
+    a = (nm or "").split(",")
+    return f"{a[1].strip()} {a[0].strip()}" if len(a) > 1 else (nm or "")
 
 
 def andlist(xs):
@@ -360,16 +368,27 @@ def main():
                             "county": lg.get("county", "")})
         # Leadership comes from the web pages, which name a person rather than
         # an id, so it is matched on the name the roster prints.
+        offices = [("Chair", (info.get("chair") or "").strip()),
+                   ("Vice Chair", (info.get("vice_chair") or "").strip()),
+                   ("Clerk", (info.get("clerk") or "").strip())]
         for m in members:
-            plain = m["name"].split(",")
-            plain = f"{plain[1].strip()} {plain[0].strip()}" if len(plain) > 1 \
-                else m["name"]
-            if info.get("chair") and plain == info["chair"]:
-                m["role"] = "Chair"
-            elif info.get("vice_chair") and plain == info["vice_chair"]:
-                m["role"] = "Vice Chair"
-            else:
-                m.setdefault("role", "Member")
+            m["role"] = next((role for role, nm in offices
+                              if nm and nm == plain_name(m["name"])), "Member")
+        # The officers as their own list, in the order a committee names them,
+        # each carrying the slug of the member's own page.
+        #
+        # An officer the roster does not contain is still named. The two come
+        # from different places -- the roster from the database, the officers
+        # from the committee's web page -- and one being short of the other is
+        # a reason to link less, not to say less.
+        officers = []
+        for role, nm in offices:
+            if not nm:
+                continue
+            seat = next((x for x in members if plain_name(x["name"]) == nm), None)
+            officers.append({"role": role, "name": nm,
+                             "slug": (seat or {}).get("slug", ""),
+                             "label": (seat or {}).get("label") or nm})
 
         sessions = []
         for (term, date), items in sorted(days.get(code, {}).items(),
@@ -388,8 +407,19 @@ def main():
         rec = {
             "code": code, "name": name, "chamber": chamber,
             "chair": info.get("chair", ""), "vice_chair": info.get("vice_chair", ""),
-            "aide": info.get("aide", ""), "room": info.get("room", ""),
+            "clerk": info.get("clerk", ""), "officers": officers,
+            "aide": info.get("aide", ""),
+            "researcher": info.get("researcher", ""),
+            # The House listing calls it "location" and the Senate's says
+            # nothing, so a key named "room" was read and written empty for
+            # every one of the 27 House committees that had a room on file.
+            "room": info.get("room") or info.get("location") or "",
             "phone": info.get("phone", ""), "url": info.get("url", ""),
+            # {"rule": "House Rule 31", "text": "It shall be the duty of..."}
+            # or None. What a committee is FOR is the one thing a reader who
+            # does not already know the General Court cannot work out from a
+            # list of bills.
+            "purpose": info.get("purpose") or None,
             "members": members,
             "bills": {t: sorted(v, key=lambda b: b["id"])
                       for t, v in referred.get(code, {}).items()},
@@ -411,7 +441,10 @@ def main():
                f"<h1>{S.E(name)}</h1><p>The {chamber_word} Committee on "
                f"{S.E(name)}"
                + (f", chaired by {S.E(rec['chair'])}" if rec["chair"] else "")
-               + ".</p><p>This page draws the committee's bills and sitting "
+               + ".</p>"
+               + (f"<p>{S.E(rec['purpose']['text'])}</p>"
+                  if rec.get("purpose") else "")
+               + "<p>This page draws the committee's bills and sitting "
                  "days in the browser, so it needs JavaScript. Everything it "
                  "shows comes from the file linked below, which needs none.</p>"
                  f'<ul><li><a href="/committee/{S.E(code)}.json">this page\'s '
@@ -453,7 +486,7 @@ def main():
             bits.append(f"{c['n_bills']:,} bill"
                         + ("" if c["n_bills"] == 1 else "s"))
         if c["n_sessions"]:
-            bits.append(f"{c['n_sessions']:,} sitting day"
+            bits.append(f"{c['n_sessions']:,} session"
                         + ("" if c["n_sessions"] == 1 else "s"))
         return (f'<a class="ccard" href="committee/{S.E(c["code"])}.html">'
                 f'<span class="cc-n">{S.E(c["name"])}</span>'
@@ -477,10 +510,10 @@ def main():
         # that no bill was referred and no sitting day is on record -- which
         # is a statement about this record, and true. Whether the committee
         # meets is not something these files can say.
-        body.append('<h2>No bills or sitting days on record</h2>'
+        body.append('<h2>No bills or sessions on record</h2>'
                     '<p class="src">These committees have a roster, and in '
                     "some cases a chair, but no bill referred to them and no "
-                    "sitting day in the proceedings this site holds. Some no "
+                    "session in the proceedings this site holds. Some no "
                     "longer meet; others -- Rules, for one -- do work that "
                     "does not arrive as a bill. Their pages are kept so the "
                     'bills they once handled still have somewhere to point.'
