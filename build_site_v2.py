@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.42
+# GRANITE_VERSION: 2026-09-05.45
 """
 Generate the faceted site from real General Court data.
 
@@ -1052,6 +1052,10 @@ def station_for_proceeding(p, bid, segs, marks):
     return {
         "when": p["sched_date"], "time": p.get("sched_time"),
         "what": p["proceeding"], "committee": p.get("committee"),
+        # Which chamber's committee, from proceedings.csv's own
+        # column. A House bill is heard by a Senate committee too,
+        # so this cannot be read off the bill number.
+        "body": p.get("body"),
         "venue": p.get("venue"), "video_id": p.get("video_id"),
         "watch": p.get("watch_url"), "predicted": p.get("predicted_offset"),
         "start": said["start"] if said else start,
@@ -1713,8 +1717,16 @@ def passage(stages, kind):
     moving = kind == "active"
     # Where it ended is the last hand it was in.
     last = hands[-1].split(":")[0]
+    # IN THE ORDER THE BILL TRAVELLED. A Senate bill goes to the Senate first
+    # and the rail drew House first for everything, so SB 139 opened with an
+    # empty House stop it had never been to. The chamber of origin comes from
+    # the bill's own first hand rather than from its number -- the record
+    # answering for itself.
+    origin = next((h.split(":")[0] for h in hands
+                   if h.split(":")[0] in ("H", "S")), "H")
+    other = "S" if origin == "H" else "H"
     out = []
-    for stop in ("H", "S", "G"):
+    for stop in (origin, other, "G"):
         if stop not in seen:
             out.append("-")
         elif stop == last and moving:
@@ -1729,7 +1741,8 @@ def passage(stages, kind):
     out.append("p" if kind == "law" else
                "x" if kind in ("done", "veto") else
                "h" if moving else "-")
-    return "".join(out)
+    # The order is part of the answer, so it travels with it.
+    return origin + "".join(out)
 
 
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
@@ -2136,6 +2149,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             "stages": ((narr or {}).get("stages", [])
                        + [x for x in [closing_stage(status, narr)] if x]),
             "notes": (narr or {}).get("notes", []),
+            # Belongs on the Votes tab, not above the history.
+            "vote_note": (narr or {}).get("vote_note", ""),
             # Each action keeps the citation it ends with -- "HJ 7 P. 55" -- and
             # the URL of that journal or calendar where we have it. That is the
             # official record of the line being displayed, and it is the thing

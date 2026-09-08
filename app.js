@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.24
+// GRANITE_VERSION: 2026-09-07.28
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -679,33 +679,11 @@ function makeRsa(d){
 //
 // Nothing here is worked out. "Local government impact" is the page's Y or N
 // written as a word, and that is the whole of the interpretation.
-const FACTS=[["gen_status","Status"],["house_status","In the House"],
-  ["senate_status","In the Senate"],["date_introduced","Introduced"],
-  ["floor_date","Floor date"],["lsr","LSR number"],["chapter","Chapter"],
-  ["local","Local government impact"],["committee_code","Committee code"]];
-
-function factsTable(d){
-  const f=Object.assign({},d.facts||{});
-  if(d.chapter)f.chapter=d.chapter;
-  const rows=FACTS.filter(([k])=>f[k]).map(([k,lab])=>{
-    const v=k==="local"?(f[k]==="Y"?"yes":f[k]==="N"?"no":f[k]):f[k];
-    return `<tr><th scope="row">${esc(lab)}</th><td>${esc(v)}</td></tr>`;
-  }).join("");
-  if(!rows)return "";
-  return `<section class="facts"><h3>Stated on the status page</h3>
-    <p class="src">Quoted from the General Court bill status page, not worked
-      out from the docket.</p>
-    <table class="facttab"><tbody>${rows}</tbody></table></section>`;
-}
-
-// The sentences that say where a section's facts came from and how to read
-// them. They were written for the Python renderer and are the site's voice
-// about its own limits, which is the part of it worth keeping most.
+// FACTS and factsTable drew the status page's own fields at the top of the
+// Documents tab -- status, date introduced, committee code -- every one of
+// which is already on the summary in a sentence. Removed rather than
+// hidden, so nothing calls a function that is not there.
 const PANE_NOTE={
-  votes:`Roll call tallies and individual votes from the General Court roll
-    call files, in the order the docket records them. Presiding, excused and
-    absent are shown separately: one member presides over each House roll call
-    and does not vote except to break a tie.`,
   // The Videos tab had a paragraph here explaining, once at the top, how
   // every start time below it was arrived at. Each proceeding already says
   // that for itself -- the word "approximate" beside a time that is one, and
@@ -727,9 +705,9 @@ function analysis(d, rsa){
   const t=((d.billtext||{}).analysis||"").trim();
   if(!t)return "";
   return `<section class="anbox" data-an="1">
+    <h3 class="anlab">Official legislative analysis</h3>
     <div class="antext">${rsa?rsa(esc(t)):esc(t)}</div>
-    <p class="src">The General Court's own analysis, printed with the bill.
-      Not written by this site.</p></section>`;
+    <p class="src">Source: NH General Court</p></section>`;
 }
 
 function renderSummary(b,d,rsa){
@@ -750,7 +728,8 @@ ${d._error?`<div class="loaderr"><b>This bill's detail did not
     ${(d.stages&&d.stages.length)
       ? `<div class="story">${d.stages.map(st=>
           `<div class="stg">${st.label?`<h3>${esc(st.label)}</h3>`:""}
-           <p>${esc(st.text)}</p></div>`).join("")}</div>`
+           <p>${esc(st.text)}</p>${(st.notes||[]).map(n=>
+             `<p class="note">${esc(n)}</p>`).join("")}</div>`).join("")}</div>`
       : (d.narrative?`<p class="story"><span class="stg">${esc(d.narrative)}</span></p>`:"")}
     ${d.archived?`<p class="note" style="margin:10px 0 0">This is an archived
       term. The General Court's own search gives every bill of it with its
@@ -773,7 +752,14 @@ ${d._error?`<div class="loaderr"><b>This bill's detail did not
 }
 
 function renderVotes(b,d){
-  return (d.rollcalls||[]).length?d.rollcalls.map((rc,i)=>{
+  // What this tab holds, in one sentence, naming the bill it is about. It
+  // used to explain the roll call file, the ordering, and the presiding
+  // officer's tie-breaking vote before a reader reached a single vote.
+  const lead=`<p class="src">All recorded votes on ${esc(b.n||b.id)}. Roll
+    call votes record how individual legislators voted on a certain motion,
+    but voice or division votes do not.</p>`
+    + (d.vote_note?`<p class="note">${esc(d.vote_note)}</p>`:"");
+  return lead+((d.rollcalls||[]).length?d.rollcalls.map((rc,i)=>{
     const vk=rc.vote_kind||"RC";
     let body;
     if(vk==="RC"){
@@ -797,8 +783,21 @@ function renderVotes(b,d){
       <span class="rcres ${rc.passed?'pass':'fail'}">${rc.passed?"Adopted":"Failed"}</span></div>
       ${rc.threshold_note?`<p class="note" style="margin:6px 0 0">${esc(rc.threshold_note)}</p>`:""}
       ${body}</section>`;}).join("")
-    :`<p class="note">No roll call votes on this bill. Where a chamber acts by voice or
-      division vote, no record exists of how individual members voted — not withheld, never captured.</p>`;
+    :`<p class="note">No roll call votes on this bill.</p>`);
+}
+
+// "HB 1123 - House Labor Public Hearing", "HB 1123 - Senate Floor Debate".
+// Only the kind is title-cased: a committee's name is the General Court's own
+// and "Labor, Industrial And Rehabilitative Services" is not how it spells it.
+const CHWORD={H:"House",S:"Senate"};
+function stationTitle(b,s){
+  const kind=(s.what||"").replace(/\b[a-z]/g,c=>c.toUpperCase());
+  const cmte=(s.committee||"").trim();
+  const ch=CHWORD[s.body]||"";
+  // A floor row's "committee" is already the chamber, so it is not repeated.
+  const where=(!cmte||cmte===ch)?ch:(ch?`${ch} ${cmte}`:cmte);
+  return [b.n||b.id, [where,kind].filter(Boolean).join(" ")]
+    .filter(Boolean).join(" - ");
 }
 
 function renderHearings(b,d){
@@ -1019,7 +1018,7 @@ function renderHearings(b,d){
     // follows the branch that actually ran.
     return `<div class="stn ${placed?"done":"pend"}">
       <div class="w">${esc(s.when)}${s.time?" at "+esc(s.time):""}${s.venue?" · "+esc(s.venue):""}</div>
-      <div class="t">${esc(s.committee||"")} ${esc(s.what)}</div>${
+      <div class="t">${esc(stationTitle(b,s))}</div>${
         signins(s.testimony)}${inner}</div>`;}).join("")
     :`<p class="note">No scheduled proceedings on file.</p>`;
 }
@@ -1063,10 +1062,15 @@ function renderReports(b,d,rsa){
     return r.cite_url?` · <a href="${esc(r.cite_url)}" rel="noopener">${t}</a>`
                      :` · ${t}`;
   };
-  const head=(r,cmte,body)=>`<div style="display:flex;gap:9px;align-items:baseline;
-      flex-wrap:wrap;border-top:1px solid var(--rule);padding-top:11px;margin-bottom:9px">
-      ${when(r)}<span class="note" style="font-size:12px">${
-        esc([body,cmte].filter(Boolean).join(" "))}${cited(r)}</span></div>`;
+  // "SENATE JUDICIARY COMMITTEE" -- whose report this is, as the heading
+  // rather than as small print beside the date. A bill can be reported by
+  // four different committees and the reader needs to know which one is
+  // speaking before they read what it said.
+  const head=(r,cmte,body)=>`<div class="rephead">
+      ${[body,cmte].filter(Boolean).length
+        ? `<h3>${esc([body,cmte].filter(Boolean).join(" "))} committee</h3>`:""}
+      <div class="repmeta">${when(r)}<span class="note"
+        style="font-size:12px">${cited(r)}</span></div></div>`;
 
   const written=(d.reports||[]).map(r=>{
     const divided=!!r.minority_recommendation;
@@ -1207,11 +1211,6 @@ function renderSponsors(b,d){
     ${spRest.length?`<h3 class="spgrp">Chamber not on file <span>${spRest.length}</span></h3>
       <div class="chosen">${spRest.map(pill).join(" ")}</div>`:""}`:"";
   return `${sp||`<p class="note">No sponsors on file.</p>`}
-      ${(d.sponsors||[]).some(x=>x.prime_inferred)?`<p class="note"
-        style="margin-top:12px">Taken from the docket page, because the sponsor
-        files cover the current session only. The docket lists the prime sponsor
-        first but does not mark the field, so that one is inferred from the
-        order.</p>`:""}
       <p class="note" style="margin-top:12px">Prime sponsor in bold. From the
       General Court sponsor file.
       <a href="${esc(d.docket_url)}" target="_blank" rel="noopener">Full docket and bill text on gencourt</a></p>`;
@@ -1319,7 +1318,10 @@ function renderDocuments(b,d){
   // alongside. This is the provenance tab, and the table is provenance: nine
   // values taken from the General Court's own status page rather than worked
   // out from anything.
-  return factsTable(d) + ((d.documents||[]).length
+  // factsTable used to open this tab with the status page's own fields --
+  // status, the date introduced, the committee code. Every one of them is
+  // already on the summary, in a sentence, above the tab strip.
+  return ((d.documents||[]).length
       ? `<p class="note">Everything below is published by the General Court. This
          site quotes and summarises these; they are the record itself.</p>
          <ul class="docs">${d.documents.map(x=>`<li class="doc doc-${esc(x.kind)}">
@@ -1436,17 +1438,29 @@ function cmteLink(name){
 // Nothing here calls an outcome good or bad. A bill dying is an outcome, not
 // a failure, so a stop the bill did not get past is crossed in the same ink
 // as one it passed, not in red.
-const RAIL=[["H","House"],["S","Senate"],["G","Governor"],["L","Law"]];
-const RAILSAY={p:"passed",h:"is here now",x:"stopped here",
+// The four stops a bill passes, in the order IT travelled them. b.passage is
+// five characters: the chamber it started in, then one a stop -- p passed,
+// h here now, x stopped here, - never reached.
+//
+// A stop carries a green check where the bill got through and a red cross
+// where it stopped, so the state is legible without knowing a key. The glyph
+// says it and the colour agrees; neither carries it alone.
+const CHNAME2={H:"House",S:"Senate"};
+const RAILMARK={p:"\u2713", x:"\u2715", h:"", "-":""};
+const RAILSAY={p:"passed", h:"is here now", x:"stopped here",
                "-":"never reached"};
 function rail(b){
   const p=b.passage||"";
-  if(p.length!==4)return "";
-  const said=RAIL.map(([,name],i)=>
-    `${name}: ${RAILSAY[p[i]]||"not known"}`).join("; ");
+  if(p.length!==5||!CHNAME2[p[0]])return "";
+  const other=p[0]==="H"?"S":"H";
+  const stops=[CHNAME2[p[0]],CHNAME2[other],"Governor","Law"];
+  const st=p.slice(1);
+  const said=stops.map((name,i)=>`${name}: ${RAILSAY[st[i]]||"not known"}`)
+    .join("; ");
   return `<span class="rail" role="img" aria-label="${esc(said)}"
-    title="${esc(said)}">${RAIL.map(([,name],i)=>
-      `<span class="stop s-${esc(p[i]==="-"?"o":p[i])}"><i>${esc(name)}</i></span>`
+    title="${esc(said)}">${stops.map((name,i)=>
+      `<span class="stop s-${esc(st[i]==="-"?"o":st[i])}"
+        ><b>${RAILMARK[st[i]]||""}</b><i>${esc(name)}</i></span>`
     ).join("")}</span>`;
 }
 

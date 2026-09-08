@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.70
+# GRANITE_VERSION: 2026-09-04.71
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2996,12 +2996,14 @@ def _rail():
         if not p:
             continue
         n += 1
-        if len(p) != 4 or set(p) - set("phx-"):
-            bad.append(f"{b.get('id')}: {p!r} is not four stops")
+        if len(p) != 5 or p[0] not in "HS" or set(p[1:]) - set("phx-"):
+            bad.append(f"{b.get('id')}: {p!r} is not a chamber and four stops")
             continue
-        if p == "pppp":
+        if p[1:] == "pppp":
             pppp += 1
-        h, se, g, law = p
+        # The first character is the chamber the bill started in, and the four
+        # after it are the stops in the order it travelled them.
+        h, se, g, law = p[1:]
         if kind == "law" and law != "p":
             bad.append(f"{b.get('id')} became law and its Law stop is {law!r}")
         if kind in ("done", "veto") and law != "x":

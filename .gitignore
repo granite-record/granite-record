@@ -116,3 +116,7 @@ archive_sample_ids.json
 committees.json
 docket_pages/
 Docket_*.txt
+
+# Patch scripts are copied in from the scratchpad, run, and deleted. One
+# survived a failed run and was committed.
+_*.py

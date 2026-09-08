@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.25
+# GRANITE_VERSION: 2026-09-04.26
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -48,14 +48,23 @@ MOTION = {
 # on the Consent Calendar passed without floor debate because no member pulled
 # it off. That is real information about how contested a bill was.
 CALENDAR = {
+    # Two halves. The first explains what the consent calendar IS and is
+    # said whenever a bill is put on one. The second explains how a bill comes
+    # OFF it, and is said only when one did -- the docket records that as its
+    # own action, so it is a fact about this bill rather than a rule recited
+    # at every reader.
     "CC": ("the consent calendar",
            "A bill goes on the consent calendar when the committee vote was "
-           "unanimous or nearly so, and any members who dissented did not object "
-           "to placing it there. It then passes without floor debate. Ten members "
-           "may file a petition to pull a bill off the consent calendar and have "
-           "it debated and voted on separately."),
+           "unanimous or nearly so, and any members who dissented did not "
+           "object to placing it there. It then passes without floor debate."),
     "RC": ("the regular calendar", None),
 }
+
+# Said only where the docket records a bill actually coming off the consent
+# calendar, which classify() reads as consent_off.
+CONSENT_OFF_NOTE = ("Ten members may file a petition to pull a bill off the "
+                    "consent calendar and have it debated and voted on "
+                    "separately, which is what happened here.")
 
 RECOMMENDATION = {
     "ought to pass with amendment": "pass it with changes",
@@ -1113,6 +1122,8 @@ def build(bill, rows):
         ev["committee_now"] = held.get(ev["body"], "")
 
     sentences, notes, unknown = [], [], []
+    # A note is said once per bill, however many rows repeat the action.
+    used_notes = set()
     last_cmte = {}
     stages = []   # [{"label": ..., "text": ...}] in the order they happened
     recorded_votes = 0
@@ -1148,7 +1159,8 @@ def build(bill, rows):
                 base = STAGE_LABEL.get(key[:2], "")
                 if len(key) > 2 and base:
                     base = f"{base} \u2014 {key[2]}"
-                stages.append({"key": key, "label": base, "sentences": [s]})
+                stages.append({"key": key, "label": base, "sentences": [s],
+                               "notes": []})
         elif ev["_type"] == "other":
             unknown.append(ev["_raw"])
 
@@ -1159,25 +1171,40 @@ def build(bill, rows):
             elif vk in ("VV", "DV"):
                 unrecorded_votes += 1
 
+        # Onto the stage this action belongs to, so the explanation sits
+        # under the sentence that needed it. There may be no stage yet -- a
+        # cancelled or unrecognised row produces no sentence -- in which case
+        # there is nothing for the note to explain and it is dropped.
+        def _note(text):
+            if not stages or not text:
+                return
+            if text not in stages[-1]["notes"] and text not in used_notes:
+                stages[-1]["notes"].append(text)
+                used_notes.add(text)
+
         cm = CALENDAR_RE.search(ev["_raw"])
         if cm:
             _, cnote = CALENDAR[cm.group("cal").upper()]
-            if cnote and cnote not in notes:
-                notes.append(cnote)
+            _note(cnote)
+        if ev["_type"] == "consent_off":
+            _note(CONSENT_OFF_NOTE)
 
         raw = ev["_raw"].lower()
         for key, note in NUANCE.items():
-            if key in raw and note not in notes:
-                notes.append(note)
+            if key in raw:
+                _note(note)
 
+    # Not a note on the summary. This is about the votes, and the Votes tab
+    # is where somebody goes to look for them.
+    vote_note = ""
     if unrecorded_votes and not recorded_votes:
-        notes.insert(0, "Every floor vote on this bill was a voice or division "
-                        "vote, so there is no record of how individual legislators "
-                        "voted.")
+        vote_note = ("Every floor vote on this bill was a voice or division "
+                     "vote, so there is no record of how individual "
+                     "legislators voted.")
     elif unrecorded_votes:
-        notes.insert(0, f"{unrecorded_votes} of the floor votes on this bill were "
-                        "voice or division votes, which do not record how "
-                        "individual legislators voted.")
+        vote_note = (f"{unrecorded_votes} of the floor votes on this bill were "
+                     "voice or division votes, which do not record how "
+                     "individual legislators voted.")
 
     # The one-string version is the collapsed stages joined, not the raw
     # sentences. It used to be the raw ones, so everything reading this field
@@ -1189,7 +1216,10 @@ def build(bill, rows):
     staged = [{"label": st["label"],
                "hand": f"{st['key'][0]}:{st['key'][1]}",
                "text": collapse(st["sentences"],
-                                CHAMBER.get(st["key"][0], "House"))}
+                                CHAMBER.get(st["key"][0], "House")),
+               # What this stage's actions needed explaining, in the order
+               # they came up.
+               "notes": st["notes"]}
               for st in stages]
     return {
         "bill": bill,
@@ -1199,6 +1229,7 @@ def build(bill, rows):
         # anything that wants one string.
         "stages": staged,
         "notes": notes,
+        "vote_note": vote_note,
         # Floor details are carried through so the site can show voice and
         # division votes alongside roll calls. Those never appear in
         # RollCallSummary.txt -- only a roll call is recorded there -- yet they
