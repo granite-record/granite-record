@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Report what is actually on disk, and which scripts are out of date.
 
@@ -137,7 +137,7 @@ def main():
                     absent.append(name)
                 continue
         txt = f.read_text(encoding="utf-8", errors="replace")
-        m = re.search(r"GRANITE_VERSION:\s*(\S+?)\s*(?:-->|$)", txt, re.M)
+        m = re.search(r"GRANITE_VERSION:\s*(\S+?)\s*(?:-->|\*/|$)", txt, re.M)
         got = m.group(1) if m else None
         want = expected.get(name)
         if got is None:

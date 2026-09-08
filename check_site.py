@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Check the site is fit to publish before uploading it.
 
@@ -182,8 +182,14 @@ def main():
     total = sum(f.stat().st_size for f in site.rglob("*") if f.is_file())
     nfiles = sum(1 for f in site.rglob("*") if f.is_file())
     print(f"\nsize: {total/1e6:.1f} MB across {nfiles:,} files")
-    if nfiles > 20000:
-        warnings.append(f"{nfiles:,} files - check your host's file-count limit")
+    # Cloudflare Pages allows 20,000 files on the free plan and 100,000 on
+    # Pro, which this project moved to on 8 September. Warned at 90% rather
+    # than at the cap: the number to act on is the one before a deploy is
+    # refused, and every bill costs three files, so 10,000 is about three
+    # more terms of warning.
+    if nfiles > 90000:
+        warnings.append(f"{nfiles:,} files against Cloudflare Pages' 100,000 "
+                        "on the Pro plan")
 
     # ---- verdict ------------------------------------------------------------
     print("\n" + "=" * 62)
