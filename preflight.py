@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.69
+# GRANITE_VERSION: 2026-09-04.70
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2921,8 +2921,14 @@ def _veto_messages():
 
     A garbled quotation with a citation on it is worse than no quotation,
     which is the same reason this site does not quote captions. So: no page
-    furniture, no split words, an author, a date, and a link to the calendar
-    it was printed in.
+    furniture, no split words, an author, and a link to the calendar it was
+    printed in.
+
+    NOT a date. Nine of Ayotte's Senate messages state none -- not in the
+    signature and not in the text -- and the page shows none for those rather
+    than borrowing the docket's, which is a different fact: the day the veto
+    reached the chamber, not the day it was signed. A date is required to be
+    well formed if it is there, and not required to be there.
     """
     root = Path("site/bills")
     if not root.exists():
@@ -2951,8 +2957,9 @@ def _veto_messages():
             bad.append(f"{d.get('id')} is {len(text)} characters, not a message")
         elif not v.get("governor"):
             bad.append(f"{d.get('id')} names no author")
-        elif not v.get("date"):
-            bad.append(f"{d.get('id')} carries no date")
+        elif v.get("date") and not re.fullmatch(r"\d{4}-\d\d-\d\d",
+                                                v["date"]):
+            bad.append(f"{d.get('id')} has a date of {v['date']!r}")
         elif not (v.get("source") or {}).get("url"):
             bad.append(f"{d.get('id')} cites no calendar")
     if not n:

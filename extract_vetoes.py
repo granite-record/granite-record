@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.6
+# GRANITE_VERSION: 2026-09-07.9
 """
 The governor's veto messages, from the House calendars already on disk.
 
@@ -69,12 +69,18 @@ HEAD = re.compile(
     re.I)
 # The signature block that ends one.
 SIGN = re.compile(
-    r"Respectfully\s+submitted,?\s*\n"
+    # A comma on most, a full stop on SB501.
+    r"Respectfully\s+submitted[.,]?\s*\n"
+    # The Senate prints the rule the governor signs on, between the closing
+    # and the name. Skipped, or the byline is a row of underscores.
+    r"(?:[ \t]*_{5,}[ \t]*\n)?"
     r"\s*(?P<who>[^\n]{3,60}?)\s*\n"
     # Sununu's title sits on its own line; Ayotte's is appended to the name.
     r"(?:[ \t]*(?P<title>Governor)[ \t]*\n)?"
     # And Sununu's block carries no Date at all.
-    r"(?:\s*Date:\s*(?P<date>[A-Z][a-z]+\s+\d{1,2},\s*\d{4}))?",
+    # "Date: May 22, 2026", or a bare date on its own line under the title,
+    # or -- on nine of Ayotte's Senate messages -- nothing at all.
+    r"(?:\s*(?:Date:\s*)?(?P<date>[A-Z][a-z]+\s+\d{1,2},\s*\d{4}))?",
     re.I)
 # "...pursuant to part II, Article 44 of the New Hampshire Constitution, on
 # August 2, 2024, I have vetoed House Bill 1622". The governor stating the day
@@ -106,8 +112,13 @@ def iso(d):
 # "13 JUNE2025HOUSERECORD  3" or "3  13 JUNE2025HOUSERECORD". Matched on the
 # word RECORD rather than on "the line after a form feed", because one page in
 # twenty calendars breaks straight into a sentence.
-PAGEHEAD = re.compile(r"\n*\x0c[ \t]*[^\n]*(?:HOUSE|SENATE)\s*RECORD[^\n]*\n*",
-                      re.I)
+PAGEHEAD = re.compile(
+    # The House's running header names the record: "13 JUNE2025HOUSERECORD 3".
+    # The Senate's is a bare page number on its own line. Both are the line
+    # straight after a form feed, and both land inside a sentence when a
+    # message runs over a page.
+    r"\n*\x0c[ \t]*(?:[^\n]*(?:HOUSE|SENATE)\s*RECORD[^\n]*|\d{1,4})[ \t]*\n*",
+    re.I)
 ENDS_SENTENCE = re.compile(r"[.!?:\u201d\"]\s*$")
 
 
@@ -229,7 +240,10 @@ def messages(text, source):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--dir", default="calendars")
+    ap.add_argument("--dir", default="calendars",
+                    help="the House calendars")
+    ap.add_argument("--senate-dir", default="calendars_senate",
+                    help="the Senate calendars, where a veto message on a\n Senate bill is printed; skipped if the folder is not there")
     ap.add_argument("--out", default="veto_messages.json")
     ap.add_argument("--index", default="calendars.json",
                     help="calendar name -> its address on gc.nh.gov")
@@ -248,11 +262,17 @@ def main():
     # (term, bill) -> the earliest printing, plus every later one for comparison
     best, copies = {}, collections.defaultdict(list)
     all_joins = collections.Counter()
-    files = sorted(root.rglob("*.txt"))
-    for f in files:
+    # Both chambers. A veto message is read into the chamber the bill came
+    # from, so a Senate bill's is in a Senate calendar and nowhere else.
+    roots = [(root, "HC")]
+    sroot = Path(a.senate_dir)
+    if sroot.exists():
+        roots.append((sroot, "SC"))
+    files = [(f, pre) for r, pre in roots for f in sorted(r.rglob("*.txt"))]
+    for f, prefix in files:
         year = f.parts[-2]
         num = re.sub(r"\D", "", f.stem)
-        name = f"HC {int(num)}" if num else f.stem
+        name = f"{prefix} {int(num)}" if num else f.stem
         src = {"calendar": f.stem, "year": year, "name": name,
                "url": cal_url.get(f"{name} {year}") or cal_url.get(name, "")}
         for msg in messages(f.read_text(encoding="utf-8", errors="replace"), src):
@@ -289,13 +309,23 @@ def main():
         msg = {k: v for k, v in msg.items() if not k.startswith("_")}
         out.setdefault(term, {})[bill] = msg
 
-    print(f"{len(files)} calendars read, {sum(len(v) for v in copies.values())} "
-          f"printings, {len(best)} distinct messages")
+    per = collections.Counter(pre for _, pre in files)
+    print(f"{len(files)} calendars read ("
+          + ", ".join(f"{n} {k}" for k, n in sorted(per.items()))
+          + f"), {sum(len(v) for v in copies.values())} printings, "
+          f"{len(best)} distinct messages")
     for term in sorted(out):
         print(f"  {term}: {len(out[term])} bills")
     print(f"  {sum(all_joins.values()):,} line-break hyphens rejoined "
           f"({len(all_joins)} distinct words)")
     print(f"  {HEALED[0]:,} sentences rejoined across a page break")
+    undated = sum(1 for byb in out.values() for m in byb.values()
+                  if not m.get("date"))
+    if undated:
+        print(f"  {undated} message(s) state no date anywhere -- not in the "
+              "signature\n    and not in the text. The page shows none for "
+              "those rather than the\n    docket's date, which is a different "
+              "fact: it is the day the veto\n    reached the chamber.")
     if differ:
         print(f"  {len(differ)} message(s) differ between printings: "
               + "; ".join(differ[:3]))
@@ -324,9 +354,9 @@ def main():
             # actually applies rather than whichever the test reaches first.
             if term not in out:
                 why = f"no calendar for {term} is on disk"
-            elif kind == "SB":
-                why = ("their messages are in the SENATE calendars, which "
-                       "this project does not fetch")
+            elif kind == "SB" and not sroot.exists():
+                why = ("their messages are in the SENATE calendars, and "
+                       f"{a.senate_dir}/ is not there")
             else:
                 why = "no calendar on disk carries one"
             print(f"    {n:>2} {kind} in {term} -- {why}")
