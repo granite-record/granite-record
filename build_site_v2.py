@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.45
+# GRANITE_VERSION: 2026-09-05.46
 """
 Generate the faceted site from real General Court data.
 
@@ -24,6 +24,7 @@ Standard library only.
 
 import argparse
 import narrative as N
+import fiscal
 import proceedings as P
 import csv
 import json
@@ -152,9 +153,14 @@ def bill_text_block(rec):
     # "ANALYSIS" or "AMENDED ANALYSIS", and any rule printed above it.
     analysis = re.sub(r"^[\s\u2500-\u257F_=-]*(?:[A-Z]+\s+)?ANALYSIS\s*", "",
                       analysis, flags=re.I).strip()
+    # The fiscal note is a table, flattened to one column by the PDF
+    # extraction. Taken out of the body so it can be drawn as a table and
+    # not printed twice.
+    note, rest = fiscal.parse(rest)
     return {"version": rec.get("version") or "",
             "title": rec.get("title") or "",
             "analysis": analysis,
+            **({"fiscal": note} if note else {}),
             "body": rest.strip(),
             "in_text": rec.get("amendments_in_text") or [],
             "chars": len(body)}

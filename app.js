@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.28
+// GRANITE_VERSION: 2026-09-07.30
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1220,6 +1220,33 @@ function renderSponsors(b,d){
 // is considered before any floor amendment, and where two touch the same
 // section the later one governs -- so the sequence carries meaning, and it
 // is shown as the record has it rather than grouped or sorted.
+// The fiscal note, as the table the bill's own PDF prints. A figure sits
+// under a year only where the row has one figure per year; where it has fewer
+// the row spans, because which years the second figure covers is not stated
+// and putting it under one of them would be inventing an answer.
+function fiscalTable(f){
+  if(!f)return "";
+  const table=t=>{
+    if(t.raw)return `<div class="fnraw">${t.caption?`<h4>${esc(t.caption)}</h4>`:""}
+      ${t.raw.map(l=>`<p>${esc(l)}</p>`).join("")}</div>`;
+    const n=(t.years||[]).length;
+    return `<div class="fnwrap"><table class="fn">
+      ${t.caption?`<caption>${esc(t.caption)}</caption>`:""}
+      <thead><tr><th></th>${t.years.map(y=>
+        `<th scope="col">${esc(y)}</th>`).join("")}</tr></thead>
+      <tbody>${t.rows.map(r=>`<tr><th scope="row">${esc(r.label)}</th>${
+        r.span
+          ? `<td colspan="${n}">${esc(r.values.join(" \u00b7 "))}</td>`
+          : r.values.map(v=>`<td>${esc(v)}</td>`).join("")
+      }</tr>`).join("")}</tbody></table></div>
+      ${t.footnote?`<p class="src">${esc(t.footnote)}</p>`:""}`;
+  };
+  return `<section class="fnsec"><h3 class="amdsec">Fiscal impact</h3>
+    ${f.lead?`<p class="fnlead">${esc(f.lead)}</p>`:""}
+    ${(f.tables||[]).map(table).join("")}
+    <p class="src">Source: NH General Court</p></section>`;
+}
+
 function renderBillText(b,d,rsa){
   const brackets=(s)=>s.replace(/\[([^\]]{1,400})\]/g,
     (_,inner)=>`<del class="cut" title="removed by this amendment">${inner}</del>`);
@@ -1287,6 +1314,7 @@ function renderBillText(b,d,rsa){
     ${/* The analysis is the first thing on the Summary tab now. It was
            only here, and this block only renders on a focused bill, so a
            card expanded in a list never showed it. */""}
+    ${fiscalTable(bt.fiscal)}
     <div class="bttext"><h3>The bill</h3>
       <p class="src">Text in ${"["}brackets] is being removed from current law.
         Text being added is printed in bold italics in the original, and that

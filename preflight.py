@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.71
+# GRANITE_VERSION: 2026-09-04.72
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2906,6 +2906,59 @@ def _no_empty_dates():
     assert not bad, (f"{len(bad)} of {n:,} bills have a sentence with an empty "
                      f"date: {'; '.join(bad[:2])}")
     return "ok", f"{n:,} bills, no sentence stops where a date should be"
+
+
+@check("data", "no fiscal figure sits under a year nobody put it there")
+def _fiscal():
+    """A fiscal table is the one place on this site where a wrong answer would
+    look most authoritative.
+
+    The note arrives from the PDF as a single column -- four fiscal years and
+    four figures with nothing saying which belongs to which -- so the table is
+    rebuilt here. A row is laid out one figure per year ONLY where it has
+    exactly one figure per year. Where it has fewer, as most do, the row spans
+    the table instead, because which years the second figure covers is not
+    stated and putting it under FY 2026 would be inventing it.
+
+    This asserts that rule held over every note, which is the difference
+    between a table and a guess with borders on it.
+    """
+    root = Path("site/bills")
+    if not root.exists():
+        return "skip", "no bill JSON built"
+    n, cells, spans, raw, bad = 0, 0, 0, 0, []
+    for f in sorted(root.rglob("*.json")):
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except ValueError:
+            continue
+        note = ((d.get("billtext") or {}).get("fiscal")) or None
+        if not note:
+            continue
+        n += 1
+        for t in note.get("tables", []):
+            if "raw" in t:
+                raw += 1
+                continue
+            years = len(t.get("years") or [])
+            if not years:
+                bad.append(f"{d.get('id')} has a table with no years")
+                continue
+            for r in t.get("rows", []):
+                if r.get("span"):
+                    spans += 1
+                elif len(r.get("values") or []) != years:
+                    bad.append(f"{d.get('id')}: {r.get('label')!r} lays "
+                               f"{len(r.get('values') or [])} figures across "
+                               f"{years} years")
+                else:
+                    cells += years
+    if not n:
+        return "skip", "no bill carries a parsed fiscal note"
+    assert not bad, (f"{len(bad)} row(s) would place a figure under a year the "
+                     f"source did not: {'; '.join(bad[:3])}")
+    return "ok", (f"{n:,} fiscal notes, {cells:,} figures under a stated year, "
+                  f"{spans:,} rows spanning, {raw} tables left as their lines")
 
 
 @check("data", "a quoted veto message is whole, attributed and citable")

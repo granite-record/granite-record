@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.23 */
+/* GRANITE_VERSION: 2026-09-07.25 */
 /* Every reading column stops at 34em, which is 68 characters at the
    body size. Nine measured over 80 at 1440px and the worst, a bill
    title on a committee page, ran to 195. */
@@ -403,6 +403,31 @@ align-items:baseline;flex-wrap:wrap}
 .stg .note{margin:10px 0 0}
 .story > .stg + .stg{margin-top:18px}
 .anbox{margin:0 0 22px}
+/* The fiscal note. A table in the bill's PDF, a single column of lines by
+   the time the text extraction is done with it, and a table again here.
+   Figures right-aligned and tabular so the columns line up; a spanning row is
+   one the source did not break down by year. */
+.fnsec{margin:0 0 22px}
+.fnlead{font-size:16px;line-height:1.6;margin:0 0 12px;max-width:34em}
+/* Five columns of figures do not fit 360px, and the page must not
+   scroll sideways because of it. */
+.fnwrap{overflow-x:auto;margin:0 0 10px}
+table.fn{border-collapse:collapse;width:100%;font-size:14px;min-width:22em;
+font-variant-numeric:tabular-nums}
+table.fn caption{text-align:left;font-size:12px;font-weight:600;
+letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);
+padding:0 0 7px}
+table.fn th,table.fn td{border:1px solid var(--rule);padding:6px 10px;
+text-align:right;vertical-align:top}
+table.fn thead th{background:var(--wash);font-weight:600;font-size:12px;
+letter-spacing:.03em;color:var(--ink-2)}
+table.fn tbody th{text-align:left;font-weight:400;color:var(--ink);
+background:var(--wash)}
+table.fn td[colspan]{text-align:left;color:var(--ink-2)}
+.fnsec .src{margin-top:2px}
+.fnraw p{margin:0;font-size:14px;color:var(--ink-2)}
+.fnraw h4{font-size:12px;font-weight:600;letter-spacing:.05em;
+text-transform:uppercase;color:var(--ink-2);margin:0 0 6px}
 .anlab{font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
 color:var(--ink-2);margin:0 0 8px}
 /* Whose report this is, as a heading rather than as small print. */
