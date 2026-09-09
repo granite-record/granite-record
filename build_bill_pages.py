@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.42
+# GRANITE_VERSION: 2026-09-04.45
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -81,7 +81,7 @@ def describe(b):
     return f"{lead}: {subject}{tail}".strip()
 
 
-def noscript(b, d):
+def noscript(b, d, data_url=None):
     """What a reader without JavaScript is told, and where to go instead.
 
     Not an apology and not an empty div. It names the bill, says plainly that
@@ -98,8 +98,13 @@ def noscript(b, d):
     if d.get("text_pdf"):
         links.append(f'<a href="{E(d["text_pdf"])}" rel="noopener">'
                      "the bill text (PDF)</a>")
-    links.append(f'<a href="/bills/{E(yr)}/{E(bid)}.json">this page\'s data '
-                 "as JSON</a>")
+    # ONLY WHEN THERE IS A FILE TO OFFER. This linked to the bill's JSON
+    # unconditionally, and 33,585 of those files stopped existing the day
+    # their contents moved inside the page -- so the one thing this block
+    # exists to give a reader without JavaScript was a 404. check_site.py
+    # found it.
+    if data_url:
+        links.append(f'<a href="{E(data_url)}">this page\'s data as JSON</a>')
     return (
         '<noscript><div class="wrap" style="max-width:70ch;padding:26px 20px">'
         f"<h1>{E(n)}</h1>"
@@ -114,7 +119,20 @@ def noscript(b, d):
         + '</ul><p><a href="/bills.html">All bills</a></p></div></noscript>')
 
 
-def shell(t, b, d, base):
+# HOW BIG A RECORD MAY TRAVEL INSIDE ITS PAGE.
+#
+# Measured across all 33,683 bills: the median record is 1.3 KB, the 90th
+# percentile 9.5 KB, the 99th 56 KB -- and the largest is HB2 at 2,059 KB,
+# almost all of it individual roll call ballots. Roll calls are 34% of every
+# byte on this site.
+#
+# At 100 KB, 98 bills keep a file of their own and 33,585 do not: 99.7% of the
+# saving, and no page larger than about 104 KB. Inlining the other 98 would
+# mean asking somebody to download two megabytes to read a bill.
+INLINE_CAP = 100 * 1024
+
+
+def shell(t, b, d, base, raw=None, data_url=None):
     """One bill's page: bills.html, told which bill it is."""
     bid = b["id"]
     yr = str(b.get("year") or "")
@@ -137,7 +155,25 @@ def shell(t, b, d, base):
         og_title=f"{n} — New Hampshire General Court",
         description=describe(b), alternate=feed,
         globals={"GR_BILL": f"{yr}/{bid}", "GR_STANDALONE": True},
-        noscript=noscript(b, d), skip_label="Skip to this bill")
+        data_json=raw, data_url=data_url,
+        noscript=noscript(b, d, data_url), skip_label="Skip to this bill")
+
+
+# The record as it was written into a page, for a run that happens after the
+# file it came from was removed.
+EMBEDDED = re.compile(
+    r'<script type="application/json" id="gr-data">(.*?)</script>', re.S)
+
+
+def embedded(page):
+    """The record inside a built page, or None."""
+    if not page.exists():
+        return None
+    m = EMBEDDED.search(page.read_text(encoding="utf-8", errors="replace"))
+    if not m:
+        return None
+    # The one escape shell.py applies on the way in.
+    return m.group(1).replace("<" + chr(92) + "/", "</")
 
 
 def main():
@@ -156,6 +192,7 @@ def main():
     # a term. There really is an HB 84 in several of them, and /bill/hb84.html
     # could only ever point at one.
     written, missing, noyear = 0, 0, 0
+    inlined, kept = 0, 0
     urls = []
     for b in idx:
         yr = str(b.get("year") or "")
@@ -165,17 +202,40 @@ def main():
         # The detail file lives under its filing year too, for the reason the
         # page does: a bill number is unique within a term and not beyond it.
         f = site / "bills" / yr / f"{b['id']}.json"
-        if not f.exists():
+        page = out / yr / f"{b['id'].lower()}.html"
+        # IDEMPOTENT, because the first run takes the file away. A record
+        # small enough to travel inside its page leaves no file behind, so a
+        # second run of this script alone found 33,585 bills with "no detail
+        # file", skipped them, and rewrote sitemap.xml with the 104 it had
+        # left -- a writer run on a subset destroying the rest, which is the
+        # failure this project keeps meeting.
+        raw = f.read_text(encoding="utf-8") if f.exists() else embedded(page)
+        if raw is None:
             missing += 1
             continue
-        d = json.loads(f.read_text(encoding="utf-8"))
+        d = json.loads(raw)
+        small = len(raw.encode("utf-8")) <= INLINE_CAP
         (out / yr).mkdir(parents=True, exist_ok=True)
-        (out / yr / f"{b['id'].lower()}.html").write_text(
-            shell(t, b, d, a.base), encoding="utf-8")
+        html = shell(t, b, d, a.base,
+                     raw=raw if small else None,
+                     data_url=None if small else f"/bills/{yr}/{b['id']}.json")
+        page.write_text(html, encoding="utf-8")
+        # THE PAGE IS WRITTEN BEFORE THE FILE IS REMOVED, and only the one
+        # file whose contents are now inside it. A run that stops half way
+        # leaves every bill either inlined or with its file, never neither.
+        if small:
+            f.unlink(missing_ok=True)
+            inlined += 1
+        else:
+            kept += 1
         urls.append(a.base + S.canon(f"/bill/{yr}/{b['id'].lower()}.html"))
         written += 1
         if written % 1000 == 0:
             print(f"  {written:,}...", flush=True)
+
+    print(f"  {inlined:,} records travel inside their page; "
+          f"{kept:,} are larger than {INLINE_CAP // 1024} KB and keep a file "
+          "of their own")
 
     for p in ("index.html", "bills.html", "legislators.html",
               "committees.html", "learn.html", "about.html"):

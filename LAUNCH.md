@@ -47,11 +47,15 @@ more than "bill text".
 
 Today: **16 of 19 terms have zero sponsors and 18 of 19 have zero topics.**
 
-**Full pages for every archived term will not fit.** 73,086 files today, three
-per bill. The seventeen terms without pages are ~28,000 bills ≈ 84,000 more
-files, against Cloudflare Pages' 100,000. So: full pages for roughly **two more
-terms**, cards beyond that — or per-bill data behind a Worker, which is a
-bigger change than it looks.
+**Every term already has full pages, and the file count is no longer close.**
+An earlier note here said archived terms would not fit; that was wrong. All
+33,683 bills, 1989 onward, have had a page all along.
+
+On 9 September each bill's record moved inside its own page, so a bill is one
+file rather than two: **73,086 files became 39,501**, 39% of Cloudflare Pages'
+100,000. The 98 records larger than 100 KB — almost all roll call ballots, HB2
+alone being 2 MB — keep a file, and their page says where it is. A bill page
+now costs one request instead of two.
 
 ---
 

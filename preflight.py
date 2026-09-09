@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.81
+# GRANITE_VERSION: 2026-09-04.82
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -614,8 +614,14 @@ def _bills_html():
         # Per-bill data is addressed by its filing year, because a bill number
         # is unique within a term and not beyond it. A 2027 HB686 would
         # otherwise overwrite this one's docket, votes and recordings.
-        "the detail file is fetched under its year":
-            "DATA(`bills/${yr}/${id}.json`)",
+        # A record small enough travels inside its own page, so what is
+        # fetched is the page and not a JSON file beside it. Still addressed
+        # by filing year, for the same reason: a bill number is unique within
+        # a term and not beyond it.
+        "the record is read from the bill's own page, under its year":
+            "DATA(`bill/${yr}/${id.toLowerCase()}`)",
+        "a record too large to inline is followed to its own file":
+            'meta[name="gr-data"]',
         # /bill/2026/hb1123, which is what a person pastes. The year is the
         # point of the check and it is still there; only the shape changed,
         # from a hash on the search page to the bill's own address.

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.38
+// GRANITE_VERSION: 2026-09-07.41
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2137,22 +2137,73 @@ function openBill(id){
   // cause. A 404, a file that is not JSON, and a refused connection all looked
   // identical from the outside, and they are three different problems.
   const yr=yearOf(id);
-  const url=DATA(`bills/${yr}/${id}.json`);
+  // THE RECORD TRAVELS INSIDE THE PAGE unless it is large. A bill's page used
+  // to be a 4.3 KB shell that fetched its record as a second round trip, and
+  // for half the bills here that record is 1.3 KB -- so the envelope cost
+  // more than the letter and took an extra journey to deliver it. 33,585 of
+  // 33,683 records are now in the page; the 98 over 100 KB, which are almost
+  // all roll call ballots, keep a file and the page says where it is.
+  const url=DATA(`bill/${yr}/${id.toLowerCase()}`);
   const fail=(why)=>{
     detail[dkey(id)]={events:[],rollcalls:[],stations:[],reports:[],sponsors:[],
       documents:[],amendments:[],next_step:"Detail unavailable",
       _error:why+"\n"+url};
     repaint();
   };
-  fetch(url).then(r=>{
-    if(!r.ok)throw new Error(`the server answered HTTP ${r.status} for this file`);
-    return r.text();
-  }).then(txt=>{
+  const take=(txt,where)=>{
     let d;
     try{ d=JSON.parse(txt); }
-    catch(_){ throw new Error(`the file arrived but is not JSON. It starts: ${
+    catch(_){ throw new Error(`${where} arrived but is not JSON. It starts: ${
       txt.slice(0,80).replace(/\s+/g," ")}`); }
     detail[dkey(id)]=d; repaint();
+  };
+
+  // ON A BILL'S OWN PAGE THE ANSWER IS ALREADY HERE. Either the record
+  // itself, or -- for the 98 too large to travel inside a page -- the address
+  // of the file holding it. Reading the pointer from this document rather
+  // than fetching the page again saves HB1442 from asking for itself before
+  // asking for its votes.
+  const mine=window.GR_BILL&&
+    String(window.GR_BILL).toUpperCase()===`${yr}/${id}`.toUpperCase();
+  if(mine){
+    const own=document.getElementById("gr-data");
+    if(own){
+      try{ take(own.textContent,"this page's record"); }catch(e){ fail(e.message); }
+      return;
+    }
+    const here=document.querySelector('meta[name="gr-data"]');
+    if(here){
+      const u=DATA(here.getAttribute("content").replace(/^\//,""));
+      fetch(u).then(r=>{
+        if(!r.ok)throw new Error(`the server answered HTTP ${r.status} for ${u}`);
+        return r.text();
+      }).then(txt=>take(txt,"the record file"))
+        .catch(e=>fail(e.message||String(e)));
+      return;
+    }
+  }
+
+  // Otherwise fetch the bill's page and read the record out of it. A script
+  // tag with an id is one DOMParser call; the alternative was pulling a
+  // JavaScript assignment out of the text by hand.
+  // Extensionless, because that is the address the host serves and the one
+  // the canonical names. A plain static file server -- the one used to look
+  // at this site locally -- serves only the .html form, so a 404 is retried
+  // there. In production the first request succeeds and the retry never runs.
+  fetch(url).then(r=>r.ok?r:fetch(url+".html")).then(r=>{
+    if(!r.ok)throw new Error(`the server answered HTTP ${r.status} for this page`);
+    return r.text();
+  }).then(html=>{
+    const doc=new DOMParser().parseFromString(html,"text/html");
+    const node=doc.getElementById("gr-data");
+    if(node)return take(node.textContent,"the record in that page");
+    const ptr=doc.querySelector('meta[name="gr-data"]');
+    if(!ptr)throw new Error("that page carries neither the record nor a link to it");
+    const u=DATA(ptr.getAttribute("content").replace(/^\//,""));
+    return fetch(u).then(r=>{
+      if(!r.ok)throw new Error(`the server answered HTTP ${r.status} for ${u}`);
+      return r.text();
+    }).then(txt=>take(txt,"the record file"));
   }).catch(e=>fail(e.message||String(e)));
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Check the site is fit to publish before uploading it.
 
@@ -30,6 +30,25 @@ from pathlib import Path
 REQUIRED = ["index.html", "bills.html", "legislators.html", "learn.html",
             "about.html", "style.css", "index.json", "meta.json",
             "legislators.json", "home.json"]
+
+
+def served(target):
+    """Is this address one the host will answer?
+
+    Cloudflare Pages serves /bill/2026/hb1442 from hb1442.html and redirects
+    the .html form to it -- measured against the live site. So the canonical
+    links, the skip links and all 34,158 sitemap entries now name the address
+    WITHOUT the extension, and a checker that only looks for a file of that
+    exact name calls every one of them broken. It did: 34,154 of them.
+
+    A directory is served by its index.html for the same reason.
+    """
+    if target.exists():
+        return True
+    if target.is_dir():
+        return (target / "index.html").exists()
+    return target.with_suffix(target.suffix + ".html").exists() \
+        or target.with_name(target.name + ".html").exists()
 
 
 def main():
@@ -105,7 +124,7 @@ def main():
             else:
                 target = (p.parent / clean).resolve()
             checked += 1
-            if not target.exists():
+            if not served(target):
                 bad[f"{p.name} -> {href}"] += 1
     print(f"  {checked:,} internal references checked across {len(pages)} pages")
     for k, n in list(bad.items())[:10]:
@@ -133,7 +152,7 @@ def main():
         missing = 0
         for u in locs:
             rel = u.replace(a.base.rstrip("/"), "").lstrip("/")
-            if rel and not (site / rel).exists():
+            if rel and not served(site / rel):
                 missing += 1
         print(f"\nsitemap: {len(locs):,} URLs, {missing:,} pointing at files "
               "that are not here")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.10
+# GRANITE_VERSION: 2026-09-07.11
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -177,7 +177,8 @@ def title_of(lead, detail="", brand=True):
 
 def page(t, *, path, title, description, base, globals=None, noscript="",
          alternate="", skip_label="Skip to the content", og_title=None,
-         sr_title=None, nav_current="", jsonld=None):
+         sr_title=None, nav_current="", jsonld=None,
+         data_json=None, data_url=None):
     """One record's page: the template, told which record it is.
 
     sr_title replaces the template's own visually-hidden <h1>. bills.html
@@ -245,8 +246,32 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         1)
     decl = "".join(f"window.{k}={json.dumps(v)};"
                    for k, v in (globals or {}).items())
+
+    # THE RECORD ITSELF, OR ITS ADDRESS. A bill's page was a 4.3 KB shell that
+    # loaded app.js, which then fetched the record as a SECOND round trip --
+    # and for half the bills on this site that record is 1.3 KB, so the
+    # envelope cost more than the letter and took an extra journey to deliver
+    # it.
+    #
+    # Small enough, and it travels inside the page. Too big, and the page says
+    # where it is instead: 98 of 33,683 bills carry more than 100 KB, almost
+    # all of it individual roll call ballots, and HB2 alone is 2 MB. Inlining
+    # those would make a page nobody should be asked to download.
+    #
+    # <script type="application/json"> and not window.X = {...}: the search
+    # page fetches this page to expand a card, and a script tag with an id is
+    # read with one DOMParser call, where a JavaScript assignment would have
+    # to be pulled out of the text by hand.
+    block = ""
+    if data_json:
+        block = ('<script type="application/json" id="gr-data">'
+                 + data_json.replace("</", "<\\/") + "</script>\n")
+    elif data_url:
+        block = f'<meta name="gr-data" content="{E(data_url)}">\n'
+
     out = out.replace(
         NEEDS["script"],
         (noscript + "\n" if noscript else "")
+        + block
         + f"<script>{decl}</script>\n{NEEDS['script']}", 1)
     return bust(out, asset_query())
