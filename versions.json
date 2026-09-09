@@ -75,7 +75,7 @@
     "fetch_testimony_db.py": "2026-09-06.2",
     "fetch_archive_bills.py": "2026-09-06.1",
     "caption_gaps.py": "2026-09-06.1",
-    "fetch_archive_docket.py": "2026-09-07.1",
+    "fetch_archive_docket.py": "2026-09-07.2",
     "shell.py": "2026-09-07.7",
     "fetch_schedule.py": "2026-09-08.5",
     "fetch_senate_calendars.py": "2026-09-08.1",

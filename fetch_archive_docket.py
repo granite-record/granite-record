@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.1
+# GRANITE_VERSION: 2026-09-07.2
 """
 The docket of every bill of an archived term, in Docket.txt's own format.
 
@@ -31,10 +31,15 @@ vocabulary, which is the mistake this project has spent a week undoing.
 
 GENTLE BY CONSTRUCTION
 
-One request at a time, a delay between each, a hard --limit, and a cache: a
-page already on disk is never asked for again, so a stopped run resumes for
-free and --reparse re-reads the lot with no network at all. This address has
-been blocked twice.
+One request at a time, fifteen seconds between each, a hard --limit, and a
+cache: a page already on disk is never asked for again, so a stopped run
+resumes for free and --reparse re-reads the lot with no network at all.
+
+And --stop-refused, which is the one that matters over 7,500 requests. A
+RemoteDisconnected, a 403 or a 429 is this address being told no rather than a
+flaky link, and two of them end the run with the work so far on disk. This
+address has been blocked twice, and both times something kept going after the
+first refusal.
 """
 
 import argparse
@@ -59,6 +64,7 @@ ROW = re.compile(
     r"<td[^>]*>(?P<body>[^<]*?)</td>\s*"
     r"<td[^>]*>(?P<desc>.*?)</td>\s*</tr>", re.S | re.I)
 TAGS = re.compile(r"<[^>]+>")
+NL = chr(10)
 WS = re.compile(r"[\s ]+")
 
 
@@ -98,7 +104,10 @@ def main():
     ap.add_argument("--out")
     ap.add_argument("--limit", type=int, default=0,
                     help="stop after this many REQUESTS; 0 means the term")
-    ap.add_argument("--delay", type=float, default=1.5)
+    ap.add_argument("--delay", type=float, default=15.0,
+                    help="seconds between requests (default 15)")
+    ap.add_argument("--stop-refused", type=int, default=2,
+                    help="refusals this run before giving up entirely")
     ap.add_argument("--timeout", type=float, default=60.0)
     ap.add_argument("--reparse", action="store_true",
                     help="re-read the cached pages, ask the server nothing")
@@ -118,6 +127,7 @@ def main():
           + (", no network" if a.reparse else f", {a.delay}s apart"))
 
     lines, fetched, cached_n, failed, empty = [], 0, 0, Counter(), 0
+    refused = 0
     for i, bid in enumerate(todo, 1):
         rec = bills[a.term][bid]
         yr, lsr = str(rec.get("lsr_year") or ""), str(rec.get("lsr_num") or "")
@@ -143,6 +153,36 @@ def main():
             fetched += 1
             if page is None:
                 failed[type(err).__name__] += 1
+                # A REFUSAL IS NOT A FAILURE AMONG OTHERS. A server that
+                # accepts the connection and closes it without sending a byte,
+                # or answers 403 or 429, is not a flaky link -- it is this
+                # address being told no, and it is what being blocked looks
+                # like from here. That has happened twice on this project and
+                # cost days each time.
+                #
+                # Everything before this counted failures and kept going.
+                # Over 7,500 requests that is the difference between one bad
+                # minute and an address that stops being served, so a refusal
+                # now ends the run with the work so far written out. Nothing
+                # already on disk is asked for again, so starting again later
+                # resumes for free.
+                why = f"{type(err).__name__}: {err}"
+                if any(k in why for k in ("RemoteDisconnected",
+                                          "ConnectionReset", "403", "429")):
+                    refused += 1
+                    if refused >= a.stop_refused:
+                        out_path.write_text(NL.join(lines) + NL,
+                                            encoding="utf-8")
+                        sys.exit(
+                            f"{NL}{refused} refusals ({why}). Stopping, and "
+                            f"not coming back tonight.{NL}"
+                            f"  {fetched:,} fetched this run, {len(lines):,} "
+                            f"docket lines written to {out_path}.{NL}"
+                            "  netcheck.py says what kind of refusal it is "
+                            "without making it worse.")
+                    print(f"{NL}  refused ({why}) -- cooling off 120s",
+                          flush=True)
+                    time.sleep(120)
                 continue
             f.write_text(page, encoding="utf-8")
 
@@ -179,6 +219,8 @@ def main():
           "with no docket line on them")
     if failed:
         print("  failures: " + ", ".join(f"{k} x{v}" for k, v in failed.items()))
+    if refused:
+        print(f"  {refused} of those were refusals -- the address was told no")
     print("\nSame seven columns as Docket.txt, so narrative.py reads it with "
           "no change:\n  python3 narrative.py --docket "
           f"{out_path} --all --out narratives_{a.term}.json "
