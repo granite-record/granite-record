@@ -10,6 +10,82 @@ present it rather than deciding what to ask for next.
 
 ---
 
+## Where it stands, 8 September
+
+`python3 archive_status.py` prints this and is the authority; the table below
+is a snapshot with the reasoning attached.
+
+| | held | of | |
+|---|---|---|---|
+| the public database | 27 views | 27 | **done** — 3,128,698 rows, 625 MB |
+| bills, by term | 18 terms | 18 | **done** — 31,449 bills, 1989-2024 |
+| videos indexed | 4,428 | 4,428 | **done** — both channels, back to May 2020 |
+| House calendars | 375 | 1,589 | 24% |
+| Senate calendars | 214 | 1,662 | 13% |
+| House journals | 0 | 629 | not started |
+| Senate journals | 0 | 512 | not started |
+| captions | 916 | 4,428 | 21% |
+
+**The cheap half is done.** The database and the bill lists cost about forty
+queries and 68 requests between them, and they are the spine everything else
+hangs on. Nothing failed in either.
+
+**What the calendars already bought.** The 193 House calendars fetched before
+the drain was paused took the hearings parser from 5,817 distinct (bill, day)
+public hearings to **8,008**, and its coverage from 2023-2026 to **2019-2026**.
+Every one of the 10,423 hearing rows was noticed by a calendar published on or
+before the day of the hearing, median five days ahead — so the testimony
+window is computable across all of it.
+
+### The pace, and why it changed
+
+The first drain ran at three seconds and 18 documents a minute, and one
+request came back `RemoteDisconnected` — the server accepting the connection
+and closing it without sending a byte, which is this address's signature for
+being refused. It recovered and kept going, which is exactly the behaviour not
+to have: pushing through a refusal is how the last two blocks were earned.
+
+So the default is now **15 seconds, jittered a quarter either way**, a budget
+of 150 a run, and `RemoteDisconnected` treated as its own case — one costs a
+two-minute pause, two in a run ends the run whether or not they were
+consecutive. That is four documents a minute and about sixteen hours for the
+rest of the archive, spread over as many nights as it takes.
+
+The goal is every document eventually, not many documents today. Nothing here
+has a deadline and the server is the only party that can be inconvenienced.
+
+### Two things learned the hard way
+
+**A fetched PDF that no parser can read is not fetched.**
+`fetch_calendar_archive.py` saves the PDF and nothing else, and
+`calendar_meetings.py` reads the `.txt`. 193 calendars sat on this disk
+invisible until `extract_calendar_text.py` was written — the recurring failure
+of this project exactly, a step that produces nothing and exits zero.
+
+**The archive's recordings were unreachable through the only path that fetches
+captions.** `fetch_captions.py` picks from `proceedings.csv`, which knows 915
+of the 4,428 videos, and hands each to `transcribe_and_align.py`, which exits
+with "No manifest rows" for anything else. `fetch_archive_captions.py` fetches
+the caption file and stops there — raw first, parsed second — because the
+alternative is no captions for four terms until dockets nobody has agreed to
+buy are fetched.
+
+### What is left, in the order it should go
+
+1. **Calendars and journals**, 3,813 documents at 150 a run. The journals are
+   the prize: not one is on this disk and the House Journal is the only
+   document in the record carrying what a member actually said.
+2. **Captions**, 3,512 recordings and about 20 GB. YouTube's server, not the
+   General Court's, so it can move at its own pace — but it wants its own
+   window rather than running beside anything else. Half of that 20 GB is
+   `captions.en-orig.json3` duplicating `captions.en.json3`; `--sub-langs en`
+   would halve it at the cost of diverging from the 915 folders already here.
+3. **The 2017-2024 docket**, still the one open decision: ~7,200 requests, and
+   at fifteen seconds that is thirty hours. The bill lists for those years are
+   now local, so what is missing is the sequence of what happened to each one.
+
+---
+
 ## 1. Five archives, and how far each one goes
 
 | | span available | on this disk | where it comes from |
