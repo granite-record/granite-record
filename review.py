@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.2
+# GRANITE_VERSION: 2026-09-09.4
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -128,6 +128,14 @@ def sample_timestamps():
 
 def show_timestamps(it):
     start, end = it["predicted"], it["end"]
+
+    def sec(x):
+        try:
+            return int(float(x))
+        except (TypeError, ValueError):
+            return None
+
+    s0, s1 = sec(start), sec(end)
     rows = [
         ("Bill", it["bill"]),
         ("Proceeding", f'{it["proceeding"]} &middot; {it["committee"]} &middot; {it["date"]}'),
@@ -136,19 +144,43 @@ def show_timestamps(it):
         ("How it was placed", f'{E(it["match"])}'
                               + (" &middot; <b>stated by the chair</b>"
                                  if it["precise"] else " &middot; inferred")),
+        # BOTH TIMES, SIDE BY SIDE. The printed end was only ever a second
+        # link before, so checking whether a proceeding ran to where the site
+        # says it did meant opening another tab and losing the first.
+        ("Printed start", f'<b class="t">{E(_hms(start))}</b>'
+                          + (f' &nbsp;&nbsp; <span class="dim">to</span> '
+                             f'&nbsp;&nbsp; <b class="t">{E(_hms(end))}</b>'
+                             if s1 is not None else
+                             ' &nbsp; <span class="dim">no end printed</span>')),
     ]
     body = "".join(f'<tr><th>{E(k)}</th><td>{v}</td></tr>' for k, v in rows)
-    jump = (f'<p class="jump"><a class="btn" href="{E(_yt(it["video_id"], start))}" '
-            f'target="_blank" rel="noopener">Open at the printed start '
-            f'&mdash; {E(_hms(start))}</a>'
-            + (f' <a class="btn" href="{E(_yt(it["video_id"], end))}" '
-               f'target="_blank" rel="noopener">and at the printed end '
-               f'&mdash; {E(_hms(end))}</a>' if end not in (None, "") else "")
-            + "</p>")
-    return (f'<table class="facts">{body}</table>{jump}'
-            '<p class="ask">Open it, find the moment the chair takes this bill '
-            'up, and put that time below. Leave a box empty to say the printed '
-            'one is right.</p>')
+
+    # The player itself, so the whole judgment happens on one screen. The
+    # IFrame API is what makes "use the current time" possible: without it the
+    # only way to report a moment is to read it off the player and retype it.
+    player = (f'<div class="player"><div id="ytplayer"></div></div>'
+              f'<div id="ytdata" data-video="{E(it["video_id"])}" '
+              f'data-start="{s0 if s0 is not None else 0}" '
+              f'data-end="{s1 if s1 is not None else ""}"></div>')
+
+    controls = (
+        '<p class="jump">'
+        '<button type="button" class="btn" data-seek="start">'
+        f'Play from the printed start &mdash; {E(_hms(start))}</button>'
+        + (f'<button type="button" class="btn" data-seek="end">'
+           f'Play from the printed end &mdash; {E(_hms(end))}</button>'
+           if s1 is not None else "")
+        + '<button type="button" class="btn grab" data-grab="observed_start">'
+          'Use what is playing as the start</button>'
+          '<button type="button" class="btn grab" data-grab="observed_end">'
+          'Use what is playing as the end</button>'
+        + f'<a class="btn" href="{E(_yt(it["video_id"], start))}" target="_blank" '
+          'rel="noopener">Open on YouTube</a></p>')
+
+    return (f'<table class="facts">{body}</table>{player}{controls}'
+            '<p class="ask">Play it, pause where the chair takes this bill up, '
+            'and press <b>Use what is playing as the start</b>. Same for the '
+            'end. Leave a box empty to say the printed time is right.</p>')
 
 
 def sample_narratives():
@@ -421,7 +453,15 @@ ul.raw{font-size:13px;color:var(--ink-2);background:var(--paper);padding:12px 14
  border-radius:6px;max-height:260px;overflow:auto;margin:0}
 ul.raw li{margin:0 0 3px}
 .ask{color:var(--ink-2);font-size:14px;margin:14px 0 0}
-.jump{margin:10px 0 0}
+.jump{margin:12px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.player{margin:14px 0 0;background:#000;border-radius:8px;overflow:hidden;
+ aspect-ratio:16/9}
+.player iframe,.player>div{width:100%;height:100%;border:0;display:block}
+b.t{font-variant-numeric:tabular-nums;font-size:16px}
+.dim{color:var(--ink-2);font-weight:400}
+.btn.grab{background:#fff;border-color:var(--rule);color:var(--ink)}
+.btn.grab:hover{border-color:var(--pine);color:var(--pine)}
+button.btn{cursor:pointer}
 .btn{display:inline-block;background:var(--pine-soft);color:var(--pine);
  border:1px solid var(--pine-soft);border-radius:6px;padding:7px 12px;
  text-decoration:none;font-size:14px;margin:0 6px 6px 0}
@@ -442,6 +482,51 @@ button.ghost{background:#fff;color:var(--ink-2);border-color:var(--rule)}
 .saved{background:var(--pine-soft);color:var(--pine);border-radius:6px;
  padding:8px 12px;font-size:14px;margin:0 0 12px}
 </style>
+<script>
+// THE RECORDING IN THE PAGE. Loaded only when a sample has one, so the other
+// four kinds do not fetch YouTube's player to show a paragraph of prose.
+// AFTER THE DOCUMENT, not with it. This sat in the head and ran before the
+// body existed, so getElementById("ytdata") was null every time and the whole
+// function returned without building a player -- silently, which is why the
+// page looked finished and had no video in it.
+document.addEventListener("DOMContentLoaded", function(){
+  var d = document.getElementById("ytdata");
+  if(!d) return;
+  var player = null, ready = false;
+  window.onYouTubeIframeAPIReady = function(){
+    player = new YT.Player("ytplayer", {
+      videoId: d.dataset.video,
+      playerVars: {start: parseInt(d.dataset.start || "0", 10), rel: 0},
+      events: {onReady: function(){ ready = true; }}
+    });
+  };
+  var s = document.createElement("script");
+  s.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(s);
+
+  function hms(x){
+    x = Math.max(0, Math.round(x));
+    var h = Math.floor(x/3600), m = Math.floor((x%3600)/60), s2 = x%60;
+    return h + ":" + String(m).padStart(2,"0") + ":" + String(s2).padStart(2,"0");
+  }
+  document.addEventListener("click", function(e){
+    var seek = e.target.closest("[data-seek]");
+    if(seek && ready){
+      var to = seek.dataset.seek === "end" ? d.dataset.end : d.dataset.start;
+      if(to !== ""){ player.seekTo(parseInt(to,10), true); player.playVideo(); }
+      return;
+    }
+    // WHAT IS PLAYING, NOT WHAT WAS TYPED. Reading a time off the player and
+    // retyping it is where a digit gets dropped, and this is a file measured
+    // in seconds.
+    var grab = e.target.closest("[data-grab]");
+    if(grab && ready){
+      var f = document.querySelector('[name="' + grab.dataset.grab + '"]');
+      if(f){ f.value = hms(player.getCurrentTime()); f.focus(); }
+    }
+  });
+});
+</script>
 <header><div class="wrap" style="padding:0">
 <h1>The bench</h1>
 <p class="sub">One sample at a time, judged by a person, written to
