@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.6
+# GRANITE_VERSION: 2026-09-08.8
 """
 Who is hearing what, when, and in which room -- out of the calendars on disk.
 
@@ -86,12 +86,21 @@ from pathlib import Path
 
 # ---------------------------------------------------------------- the sources
 CHAMBERS = {
+    # THE SECTION'S TERMINATOR CHANGED PART WAY THROUGH 2023 and neither
+    # spelling was in this list: 126 of 161 files end at REVISED FISCAL NOTES
+    # and 24 at OFFICIAL NOTICES, and a bare "NOTICES" matches neither as a
+    # whole line. So the section ran on past the meetings and swallowed the
+    # fiscal notes into the last committee of the day. The score did not
+    # catch it, because the junk rows were not in the docket and so fell
+    # outside the set being scored -- silence is not success.
     "H": {"dir": "calendars", "glob": "HC*.txt", "head": "COMMITTEE MEETINGS",
           "running": "HOUSERECORD",
-          "ends": ("NOTICES", "HOUSE DEADLINES", "DEADLINES")},
+          "ends": ("REVISED FISCAL NOTES", "OFFICIAL NOTICES", "AMENDMENTS",
+                   "NOTICES", "HOUSE DEADLINES", "DEADLINES")},
     "S": {"dir": "calendars_senate", "glob": "*.txt", "head": "HEARINGS",
           "running": "SENATERECORD",
-          "ends": ("NOTICES", "SENATE CALENDAR", "SENATE DEADLINES")},
+          "ends": ("NOTICES", "OFFICIAL NOTICES", "SENATE CALENDAR",
+                   "SENATE DEADLINES")},
 }
 
 MONTHS = {m: i for i, m in enumerate(
@@ -117,9 +126,21 @@ PUBDATE = re.compile(
 SENATE_PUBDATE = re.compile(
     r"^\s*([A-Za-z]+)\s*(\d{1,2})\s*,\s*(\d{4})\s*$", re.M)
 
+# A day heading, which four times in 2023 has a committee name bled onto it
+# from the left column -- "CRIMINAL                 WEDNESDAY, FEBRUARY 8".
+# In three of those files it is the ONLY day heading, so anchoring on the
+# weekday at the start of the line returned nothing at all for them. What is
+# allowed before the weekday is capitals and spaces, which prose is not.
 DAY = re.compile(
-    r"^\s{2,}(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)\s*,\s*"
-    r"([A-Z]+)\s+(\d{1,2})\s*(?:,\s*(\d{4}))?\s*$", re.I)
+    r"^(?:\s*[A-Z][A-Z ]{2,}?)?\s{2,}"
+    r"(MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)\s*,\s*"
+    # re.M as well as re.I: without it "^" only matches at the start of the
+    # whole string, so DAY.match() worked line by line and DAY.finditer() --
+    # which is how a file with no section heading is found -- never matched
+    # anything at all and failed silently.
+    r"([A-Z]+)\s+(\d{1,2})\s*(?:,\s*(\d{4}))?\s*$", re.I | re.M)
+WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday",
+            "saturday", "sunday"]
 
 # NAME, Room 232, GP   |   NAME (RSA 79:32), Room 154, GP   |   NAME, <address>
 HEADER = re.compile(
@@ -192,11 +213,27 @@ def normalise(text, running):
 
 
 def section(text, head, ends):
-    """The block under the section heading, up to whatever heading follows."""
-    m = re.search(rf"^\s*{re.escape(head)}\s*$", text, re.M)
-    if not m:
-        return ""
-    rest = text[m.end():]
+    """The block under the section heading, up to whatever heading follows.
+
+    Two files carry a full meetings section with NO heading over it at all --
+    2023's HC010 (129 entries) and 2025's HC011 (67 committee blocks) -- and a
+    heading-anchored reader returns zero for them and exits successfully. So
+    where the heading is absent the section is found by its content instead:
+    the first day heading that is followed by a committee block.
+    """
+    m = re.search(rf"^\s*{re.escape(head)}S?\s*$", text, re.M)
+    if m:
+        rest = text[m.end():]
+    else:
+        d = None
+        for cand in DAY.finditer(text):
+            after = text[cand.end():cand.end() + 400]
+            if any(SHOUT.match(l.strip()) for l in after.split("\n")):
+                d = cand
+                break
+        if not d:
+            return ""
+        rest = text[d.start():]
     stop = len(rest)
     for e in ends:
         mm = re.search(rf"^\s*{re.escape(e)}\s*$", rest, re.M)
@@ -214,26 +251,34 @@ def pub_date(text, chamber="H"):
     return None
 
 
-def _day_date(mon, day, stated_year, pub):
-    """A day heading's date, taking the year from the masthead when it is not
-    stated -- and rolling over in December, because a calendar published on
-    30 December lists meetings in January."""
+def _day_date(mon, day, stated_year, pub, weekday=None):
+    """A day heading's date. The House states no year on any of its 2,000-odd
+    headings, so it comes from the masthead -- and the December calendars list
+    January meetings, which a naive read files a whole year early AND, since
+    bill numbers repeat every two years, into the wrong term.
+
+    THE WEEKDAY IS A FREE CHECKSUM. The heading says "TUESDAY, JANUARY 13", so
+    the year that makes that a Tuesday is the year. Measured on 2025: all 617
+    in-year headings and all 22 that roll into 2026 resolve with no ambiguity.
+    """
+    import datetime
     mo = MONTHS.get(mon.lower())
     if not mo:
         return None
     if stated_year:
-        y = int(stated_year)
-    else:
-        y = pub[0]
-        if pub[1] >= 11 and mo <= 2:
-            y += 1
-        elif pub[1] <= 2 and mo >= 11:
-            y -= 1
-    try:
-        import datetime
-        return datetime.date(y, mo, day).isoformat()
-    except ValueError:
-        return None
+        try:
+            return datetime.date(int(stated_year), mo, day).isoformat()
+        except ValueError:
+            return None
+    want = WEEKDAYS.index(weekday.lower()) if weekday else None
+    for y in (pub[0], pub[0] + 1, pub[0] - 1):
+        try:
+            d = datetime.date(y, mo, day)
+        except ValueError:
+            continue
+        if want is None or d.weekday() == want:
+            return d.isoformat()
+    return None
 
 
 def _name(s):
@@ -275,17 +320,32 @@ def parse(text, chamber):
     conf = CHAMBERS[chamber]
     pub = pub_date(text, chamber)
     if not pub:
-        return [], None
+        return [], None, []
     body = section(normalise(text, conf["running"]), conf["head"], conf["ends"])
     if not body.strip():
-        return [], pub
+        return [], pub, []
 
     rows = []
+    unpaired = []
     date = committee = room = venue = None
     pending = []            # time lines whose committee header is above them
 
     def flush(when, rest):
         if not (date and committee and when):
+            return
+        # THE CALENDAR IS TWO COLUMNS AND THEY SLIP. About one time line in
+        # eight either has nothing after it at all or begins mid-sentence --
+        # "ties for the use of school districts" -- because the extractor
+        # emitted the time column and the text column out of step. Every field
+        # of such a row is populated and the row validates; the meeting is
+        # simply listed at an hour nobody scheduled it for, and the bill that
+        # held that slot loses its time. There is no way to repair the pairing
+        # from the text, so these are counted and dropped rather than
+        # published at an hour the record does not support.
+        body_ = rest.strip()
+        if not body_ or (body_[:1].islower() and body_.split(" ")[0].lower()
+                         not in ("and", "or")):
+            unpaired.append((date, committee, when, body_[:40]))
             return
         kind = next((k for rx, k in STATED if rx.match(rest.strip())), "")
         bills = _bills(rest)
@@ -308,7 +368,8 @@ def parse(text, chamber):
             continue
         d = DAY.match(line)
         if d:
-            date = _day_date(d.group(2), int(d.group(3)), d.group(4), pub)
+            date = _day_date(d.group(2), int(d.group(3)), d.group(4), pub,
+                             weekday=d.group(1))
             committee = room = venue = None
             continue
         if MEMBER.match(line):
@@ -377,7 +438,10 @@ def parse(text, chamber):
                 committee = _name(whole)
                 room, venue = "", ""
             continue
-    return rows, pub
+    return rows, pub, unpaired
+
+
+UNPAIRED = []
 
 
 def load(chamber, limit=None):
@@ -391,7 +455,8 @@ def load(chamber, limit=None):
     out = []
     for f in files:
         text = f.read_text(encoding="utf-8", errors="replace")
-        rows, pub = parse(text, chamber)
+        rows, pub, unpaired = parse(text, chamber)
+        UNPAIRED.extend(unpaired)
         if not rows:
             continue
         noticed = f"{pub[0]:04d}-{pub[1]:02d}-{pub[2]:02d}" if pub else ""
