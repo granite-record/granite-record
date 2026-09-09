@@ -57,6 +57,28 @@ bigger change than it looks.
 
 ## 4. Ranked: most impact for least effort
 
+### Done, 9 September
+
+Items 1-4 below are fixed and struck through. Each was measured before and
+after.
+
+1. ~~**Narratives in the past tense**~~ — 13 current-term bills said a
+   committee "held a work session on October 13, 2026" for a session not yet
+   held. `narrative.py` compares the docket date to today; those read "A work
+   session is scheduled for..." now. 0 remain.
+2. ~~**HTML entities published raw**~~ — `text_of()` replaced a hand-written
+   list of six entities, so `&ldquo;` and `&rdquo;` went out as themselves:
+   **3,882 occurrences**, 3,816 in bill text and 41 in official analysis.
+   `html.unescape` knows the whole table. 0 remain.
+3. ~~**Page furniture inside committee reports**~~ — **542 running headers**
+   landed mid-sentence in members' reasoning. The pattern wanted whitespace
+   the PDF does not have: pdftotext emits "19 DECEMBER2025HOUSERECORD" jammed
+   together. 0 remain, and a date written out in prose still survives.
+4. ~~**The rail was wrong for resolutions**~~ — 36 adopted resolutions drew a
+   cross on the chamber that adopted them, against a Senate they were never
+   going to see. HR and SR now carry a two-stop rail: the chamber, and whether
+   it was adopted. HCR, SCR and CACR do cross and are untouched.
+
 ### Do first — small, visible, and several are correctness
 
 1. **Narratives are written in the past tense**, so a scheduled meeting reads

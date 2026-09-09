@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.35
+// GRANITE_VERSION: 2026-09-07.36
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1510,10 +1510,16 @@ const RAILSAY={p:"passed", h:"is here now", x:"stopped here",
                "-":"never reached"};
 function rail(b){
   const p=b.passage||"";
-  if(p.length!==5||!CHNAME2[p[0]])return "";
+  if(!CHNAME2[p[0]])return "";
   const other=p[0]==="H"?"S":"H";
-  const stops=[CHNAME2[p[0]],CHNAME2[other],"Governor","Law"];
   const st=p.slice(1);
+  // A resolution belongs to one chamber and has two stops: that chamber, and
+  // whether it was adopted. Four stops drew it against a Senate it was never
+  // going to see and a Law it could never become.
+  const stops = st.length===2 ? [CHNAME2[p[0]],"Adopted"]
+              : st.length===4 ? [CHNAME2[p[0]],CHNAME2[other],"Governor","Law"]
+              : null;
+  if(!stops)return "";
   const said=stops.map((name,i)=>`${name}: ${RAILSAY[st[i]]||"not known"}`)
     .join("; ");
   return `<span class="rail" role="img" aria-label="${esc(said)}"

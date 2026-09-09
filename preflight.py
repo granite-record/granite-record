@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.77
+# GRANITE_VERSION: 2026-09-04.78
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3208,8 +3208,17 @@ def _rail():
         if not p:
             continue
         n += 1
-        if len(p) != 5 or p[0] not in "HS" or set(p[1:]) - set("phx-"):
-            bad.append(f"{b.get('id')}: {p!r} is not a chamber and four stops")
+        if p[0] not in "HS" or set(p[1:]) - set("phx-") \
+                or len(p) not in (3, 5):
+            bad.append(f"{b.get('id')}: {p!r} is not a chamber and its stops")
+            continue
+        # A resolution has one chamber and two stops -- itself, and whether it
+        # was adopted. It never crosses, never reaches a governor and never
+        # becomes law, so none of the four-stop rules below apply to it.
+        if len(p) == 3:
+            if p[1] != p[2]:
+                bad.append(f"{b.get('id')} is a resolution and its two stops "
+                           f"disagree: {p!r}")
             continue
         if p[1:] == "pppp":
             pppp += 1

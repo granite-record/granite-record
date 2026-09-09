@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.20
+# GRANITE_VERSION: 2026-09-04.21
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -89,15 +89,26 @@ SECTION_END = re.compile(
 # deleting a real clause is far worse than leaving a header in one.
 _MON = ("JANUARY|FEBRUARY|MARCH|APRIL|MAY|JUNE|JULY|AUGUST|SEPTEMBER|OCTOBER|"
         "NOVEMBER|DECEMBER")
-_DATE = rf"\d{{1,2}}\s+(?:{_MON})\s+\d{{4}}"
+_DATE = rf"\d{{1,2}}\s*(?:{_MON})\s*\d{{4}}"
+# THE HEADER ARRIVES JAMMED TOGETHER. pdftotext -layout emits the House's
+# running header as "19 DECEMBER2025HOUSERECORD": a space after the day and
+# none at all between the month, the year and the two words of the record's
+# name. Every gap here wanted \s+, so 542 headers survived into the text and
+# landed mid-sentence inside members' own reasoning -- "What matters is
+# legislative approval -- such 44 19 DECEMBER2025HOUSERECORD as an
+# authorization for the use of military force".
+#
+# Every separator is optional now. The day still needs its digits and the year
+# still needs four of them, and every branch but the first requires the words
+# HOUSE RECORD, which do not follow a date in a member's sentence.
 PAGE_FURNITURE = re.compile(
     r"\s*(?:"
-    rf"\d{{1,3}}\s+{_DATE}(?:\s+HOUSE\s+RECORD)?"
-    rf"|{_DATE}\s+HOUSE\s+RECORD(?:\s+\d{{1,3}})?"
-    rf"|HOUSE\s+RECORD\s+\d{{1,3}}\s+{_DATE}"
-    rf"|{_DATE}\s+\d{{1,3}}\s+HOUSE\s+RECORD"
-    rf"|HOUSE\s+RECORD\s+{_DATE}"
-    rf"|\d{{1,3}}\s+HOUSE\s+RECORD\s+{_DATE}"
+    rf"\d{{1,3}}\s*HOUSE\s*RECORD\s*{_DATE}"
+    rf"|HOUSE\s*RECORD\s*\d{{1,3}}\s*{_DATE}"
+    rf"|{_DATE}\s*\d{{1,3}}\s*HOUSE\s*RECORD"
+    rf"|{_DATE}\s*HOUSE\s*RECORD(?:\s*\d{{1,3}})?"
+    rf"|HOUSE\s*RECORD\s*{_DATE}"
+    rf"|\d{{1,3}}\s*{_DATE}(?:\s*HOUSE\s*RECORD)?"
     r")\s*")
 
 # Enough to notice a consent-calendar section, not enough to classify one.

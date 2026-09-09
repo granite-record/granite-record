@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.51
+# GRANITE_VERSION: 2026-09-05.52
 """
 Generate the faceted site from real General Court data.
 
@@ -1705,10 +1705,30 @@ def hearing_testimony(e, tdb, scraped):
 # has. house_status and senate_status from the status page would have been
 # the obvious source and cover 1,387 of the current term's 2,234 bills and
 # none of the archive.
-def passage(stages, kind, status=""):
+# A HOUSE RESOLUTION NEVER GOES TO THE SENATE. HR and SR are the business of
+# one chamber -- its rules, its own thanks and condolences -- and they never
+# cross, never reach a governor and never become law. A concurrent resolution
+# (HCR, SCR) and a constitutional amendment (CACR) do cross, so they are not
+# in here.
+ONE_CHAMBER = ("HR", "SR")
+
+
+def passage(stages, kind, status="", bill=""):
     hands = [st.get("hand", "") for st in (stages or []) if st.get("hand")]
     if not hands:
         return ""
+
+    # TWO STOPS, NOT FOUR. The rail drew a resolution against a Senate it was
+    # never going to see and a Law it could never become, and marked its own
+    # chamber with an X for stopping there -- so 36 resolutions that were
+    # ADOPTED showed a cross on the chamber that adopted them. What the rail
+    # should say is simply: this chamber, and whether it adopted the thing.
+    if bill and any(bill.upper().startswith(k) and
+                    not bill.upper().startswith(k + "R") for k in ONE_CHAMBER):
+        origin = hands[0].split(":")[0]
+        if origin in ("H", "S"):
+            adopted = kind == "adopted" or "adopt" in (status or "").lower()
+            return origin + ("p" if adopted else "x") + ("p" if adopted else "x")
     # A bill reaches the governor THROUGH BOTH CHAMBERS. SB286 never left the
     # Senate -- laid on the table, then killed under Senate Rule 3-23 -- and
     # its last docket row is "Enrolled Adopted, VV", which stage_of files with
@@ -1992,7 +2012,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # HSGL, one character each: how far the bill got and where it
             # stopped. Four characters in the index rather than four fields,
             # because idx/<term>.json is loaded up front by every visitor.
-            "passage": passage((narr or {}).get("stages"), kind, status),
+            "passage": passage((narr or {}).get("stages"), kind, status,
+                               bid),
             "last_action": dates[-1] if dates else "",
             "nrc": len([r for r in rcs if not r.get("procedural")]),
             "votedays": sorted({r["date"] for r in rcs if r.get("date")}),

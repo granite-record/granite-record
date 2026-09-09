@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.26
+# GRANITE_VERSION: 2026-09-04.27
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -23,7 +23,7 @@ import proceedings as P
 import re
 import sys
 from collections import defaultdict, OrderedDict
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 # --------------------------------------------------------------- glossary
@@ -185,6 +185,28 @@ def fdate(d):
         return datetime.strptime(d, "%m/%d/%Y").strftime(MONTH)
     except ValueError:
         return d
+
+
+# TODAY, so a scheduled meeting is not written as a held one. Overridable
+# because a build that is reproducible cannot ask the clock, and because the
+# fixtures need a fixed answer.
+TODAY = date.today()
+
+
+def ahead(d):
+    """True if this docket date is still in the future.
+
+    THE SITE MUST NOT SAY A MEETING HAPPENED BECAUSE IT IS ON THE DOCKET.
+    A committee posts a hearing or a work session days or weeks before it
+    sits, and every sentence in this file was written in the past tense, so
+    thirteen bills of the current term read "The committee held a work session
+    on October 13, 2026" for a session that has not been held. That is the
+    site stating a future event as fact, which is worse than saying nothing.
+    """
+    try:
+        return datetime.strptime(d, "%m/%d/%Y").date() > TODAY
+    except (ValueError, TypeError):
+        return False
 
 
 def clean(s):
@@ -881,6 +903,17 @@ def describe(ev, body, seen_intro=False):
     if t == "vacated":
         return (f"The {chamber} withdrew that referral and sent the bill to the "
                 f"{ev['committee']} committee instead.")
+
+    if t == "hearing" and ahead(ev.get("date")):
+        return (f"A public hearing is scheduled for {fdate(ev['date'])}"
+                f"{signins(ev.get('_bill'), ev.get('date'))}.")
+
+    if t == "exec" and ahead(ev.get("date")):
+        return (f"The committee is due to meet in executive session on "
+                f"{fdate(ev['date'])} to vote on its recommendation.")
+
+    if t == "worksession" and ahead(ev.get("date")):
+        return f"A work session is scheduled for {fdate(ev['date'])}."
 
     if t == "hearing":
         # Counts only, and only for THIS hearing's date. Who signed in is not

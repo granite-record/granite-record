@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.19
+# GRANITE_VERSION: 2026-09-04.20
 """
 The text of each bill, as text rather than as a link to a PDF.
 
@@ -54,6 +54,7 @@ rather than in another one.
 """
 
 import argparse
+import html
 import json
 import proceedings as P
 import random
@@ -247,14 +248,23 @@ def get(url, timeout=60, tries=5):
     return None, None, last
 
 
-def text_of(html):
-    html = re.sub(r"<script\b.*?</script>|<style\b.*?</style>", " ", html,
-                  flags=re.S | re.I)
-    html = re.sub(r"<br\s*/?>|</p>|</div>|</tr>|</li>", "\n", html, flags=re.I)
-    t = TAG.sub(" ", html)
-    for a, b in (("&nbsp;", " "), ("&amp;", "&"), ("&#39;", "'"),
-                 ("&quot;", '"'), ("&rsquo;", "\u2019"), ("&ndash;", "\u2013")):
-        t = t.replace(a, b)
+def text_of(doc):
+    doc = re.sub(r"<script\b.*?</script>|<style\b.*?</style>", " ", doc,
+                 flags=re.S | re.I)
+    doc = re.sub(r"<br\s*/?>|</p>|</div>|</tr>|</li>", "\n", doc, flags=re.I)
+    t = TAG.sub(" ", doc)
+    # EVERY ENTITY, NOT THE SIX SOMEBODY HAPPENED TO HIT. This was a list of
+    # six replacements, so &ldquo; and &rdquo; went to the site as themselves:
+    # 3,882 of them across the current term, 3,816 inside bill text and 41
+    # inside the official analysis, where HB2 read
+    # 'Modifies the definition of &ldquo;environmental review&rdquo;'.
+    #
+    # html.unescape knows the whole table and resolves numeric references too
+    # (&#8209;, the non-breaking hyphen, appeared 42 times). It runs AFTER the
+    # tags are stripped, so an escaped &lt;p&gt; in the bill's own words cannot
+    # become markup.
+    t = html.unescape(t)
+    t = t.replace("\u00a0", " ")
     lines = [WS.sub(" ", ln).strip() for ln in t.splitlines()]
     return "\n".join(ln for ln in lines if ln)
 
