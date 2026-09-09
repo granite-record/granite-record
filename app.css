@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.31 */
+/* GRANITE_VERSION: 2026-09-07.32 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -306,6 +306,27 @@ table.votes th{font-weight:600;color:var(--ink-2);font-size:12px;
 letter-spacing:.04em;text-transform:uppercase}
 .full{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:22px}
 .full h3{font-size:14px;margin:0 0 8px;font-weight:600}
+/* EVERY BLOCK IN THE PANE, NOT THE ONES I HAPPENED TO NAME.
+   This is the fourth go at the same complaint, and it kept coming back
+   because each attempt capped a list of selectors and the list was never the
+   whole list. Measured on a bill page: .anbox and .status ended at the
+   measure and .story and .docket ran the full 1,094px pane with their text
+   stopping at 560 -- 534px of empty box, which is precisely the thing being
+   reported.
+   So the rule is on the CHILD SELECTOR now. Everything a pane holds takes
+   the measure, and the four things that genuinely need width say so by name:
+   a roll call's donut and its two-column member grid, a 16:9 video, the
+   sponsor chips that reflow, and any table, which brings its own scroller.
+   A block added later is capped by default, which is the right way round --
+   the failure mode is a narrow box, not a broken one. */
+.card .pane > *{max-width:var(--measure)}
+.card .pane > .rc,
+.card .pane > .stn,
+.card .pane > .chosen,
+.card .pane > .fnwrap,
+.card .pane > table,
+.card .pane > .full{max-width:none}
+
 /* A note is a box, so the box is the measure and its text fills it. */
 .note{font-size:14px;color:var(--ink-2);background:var(--paper);border-left:3px solid var(--rule-2);
 padding:9px 13px;margin:0 0 12px;line-height:1.55;max-width:var(--measure)}

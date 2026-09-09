@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.76
+# GRANITE_VERSION: 2026-09-04.77
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3220,6 +3220,13 @@ def _rail():
             bad.append(f"{b.get('id')} became law and its Law stop is {law!r}")
         if kind in ("done", "veto") and law != "x":
             bad.append(f"{b.get('id')} is {kind} and its Law stop is {law!r}")
+        # A bill is never AT the law stop. "here now" is a 3px ring that reads
+        # as active, and it was being drawn on the outcome of 175 bills that
+        # were stalled -- laid on the table, or waiting on a concurrence that
+        # never came, in a chamber that had finished sitting.
+        if law == "h":
+            bad.append(f"{b.get('id')} shows the Law stop as 'here now', and "
+                       "no bill is ever at the law stop")
         if se == "p" and h == "-":
             bad.append(f"{b.get('id')} passed a Senate it reached without a House")
         if g != "-" and "-" in (h, se) and not b.get("archived"):

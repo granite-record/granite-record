@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.47
+# GRANITE_VERSION: 2026-09-05.48
 """
 Generate the faceted site from real General Court data.
 
@@ -1758,10 +1758,15 @@ def passage(stages, kind, status=""):
             out.append("x")
         else:
             out.append("p")
-    # The fourth stop is the outcome, not a place.
+    # THE FOURTH STOP IS THE OUTCOME, NOT A PLACE -- and it was drawing the
+    # "here now" ring on 175 bills that are going nowhere. A bill is never AT
+    # the law stop: it either became law or it did not, and while it is still
+    # moving the honest mark is that it has not got there. The ring is a
+    # 3px pine circle that reads as active, so a bill laid on the table in a
+    # chamber that has finished sitting was showing a bold "in progress" mark
+    # on its outcome. Reported, and right.
     out.append("p" if kind == "law" else
-               "x" if kind in ("done", "veto") else
-               "h" if moving else "-")
+               "x" if kind in ("done", "veto") else "-")
     # The order is part of the answer, so it travels with it.
     return origin + "".join(out)
 
