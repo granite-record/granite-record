@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.13
+# GRANITE_VERSION: 2026-09-04.14
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -33,6 +33,7 @@ Standard library only.
 
 import argparse
 import json
+import names
 import proceedings as P
 import re
 import sys
@@ -139,7 +140,13 @@ def main():
             "party": PARTY.get(pcode, pcode or "Unknown"), "party_code": pcode,
             "email": r[14],
             "address": ", ".join(x for x in [r[10], r[11], r[12], r[13]] if x),
-            "label": f"{name}({pcode}) {c.get('abbr','')} {r[7]}".strip(),
+            # names.legislator, so a member reads the same on a bill, on a
+            # committee and on their own page. This was
+            # "Abbas, Daryl(R) Rock 22" -- a database row rather than a person.
+            "label": names.legislator({
+                "first": r[2], "last": r[1], "chamber": r[4],
+                "party_code": pcode, "county_abbr": c.get("abbr", ""),
+                "district": r[7]}),
             # The parameter is pid, and it takes the id from THIS file -- not
             # the member= id used in roll call page links, which is a different
             # space entirely (Keith Ammon is pid 836 and member 377204).

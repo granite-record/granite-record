@@ -79,9 +79,35 @@ after.
    going to see. HR and SR now carry a two-stop rail: the chamber, and whether
    it was adopted. HCR, SCR and CACR do cross and are untouched.
 
+5. ~~**Search loaded everything**~~ — it drew the first 400 and told the
+   reader to narrow their search. It shows 100 now and adds 100 as you reach
+   the end, with a button for a keyboard or a browser without
+   IntersectionObserver.
+6. ~~**Sponsor party colour was inconsistent**~~ — committee pages coloured a
+   member by party and bill pages did not, so the same person read as one
+   party on one page and as no party on another. One chip, `pchip`, used in
+   both.
+7. ~~**Legislator names were not uniform**~~ — the roster's label was built
+   inline as "Abbas, Daryl(R) Rock 22". It is `names.legislator` now, which
+   produces exactly what `build_site_v2.member_labels` has always produced:
+   "Sen. Daryl Abbas (R - SD22)". A new preflight check compares the two
+   across all 406 members so they cannot drift.
+
+**Ranking members: the record does not state them.** Asked for as "typically
+the first two names listed in the minority". Every source on this disk was
+searched: the database's `CommitteeMembers.comments` holds only Chairman,
+V Chairman and Clerk; `committees.json` positions are Chair, Vice Chair and
+Member; and the only "ranking member" text in the calendars is statutory
+language inside bill text, not a roster.
+
+So naming one would be inferring a named person's leadership role from list
+order. That is publishable only if the page says it is inferred, and it is
+worth checking the convention against a few real committees first — which is
+the review tool again. Left undone deliberately.
+
 ### Do first — small and visible
 
-5. **Special-bill notes.** HB1 is the budget, HB2 the trailer bill, HB2026 the
+8. **Special-bill notes.** HB1 is the budget, HB2 the trailer bill, HB2026 the
    ten-year transportation plan. A reader cannot know that. Hand-written, a
    dozen of them.
 6. **Search loads everything.** 100, then more on scroll.

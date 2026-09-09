@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.78
+# GRANITE_VERSION: 2026-09-04.79
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3554,6 +3554,41 @@ def _vote_identity():
     census = ", ".join(f"{t} {n:,}/{tot:,} with no party"
                        for t, (tot, n) in sorted(per_term.items()))
     return "ok", f"{len(by_emp):,} distinct voters; {census}"
+
+
+@check("data", "a member is named the same way by both namers")
+def _one_naming():
+    """names.legislator and build_site_v2.member_labels must agree.
+
+    Two functions compose a member's name because data/legislators.json is
+    written by build_data.py, which runs first and cannot import the builder.
+    They agreed on all 406 members the day the second one was written, and the
+    only way to keep that true is to ask.
+    """
+    try:
+        import names
+        import build_site_v2 as B
+    except ImportError as e:
+        return "skip", f"cannot import: {e}"
+    src = Path("data/legislators.json")
+    if not src.exists():
+        return "skip", "data/legislators.json is not built"
+    recs = json.loads(src.read_text(encoding="utf-8"))
+    recs = list(recs.values()) if isinstance(recs, dict) else recs
+    bad = []
+    for r in recs:
+        if not isinstance(r, dict):
+            continue
+        mine = names.legislator(r)
+        theirs = B.member_labels(
+            r.get("name"), chamber=r.get("chamber"), party=r.get("party_code"),
+            district=r.get("district"), county=r.get("county"),
+            county_abbr=r.get("county_abbr"))["display_full"]
+        if mine != theirs:
+            bad.append(f"{r.get('name')}: {mine!r} vs {theirs!r}")
+    assert not bad, (f"{len(bad)} of {len(recs)} members are named two ways: "
+                     + "; ".join(bad[:3]))
+    return "ok", f"{len(recs):,} members, one name each"
 
 
 @check("data", "what is on disk for the markers to read")

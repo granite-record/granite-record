@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.36
+// GRANITE_VERSION: 2026-09-07.38
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1219,11 +1219,7 @@ function renderSponsors(b,d){
   const CHNAME={H:"Representatives",S:"Senators"};
   // A sponsor's name links to that member's own page. It was the one place a
   // person was named on this site and could not be followed.
-  const pill=s=>{const who=esc(s.display_full||s.label||s.name||"");
-    const inner=s.prime?`<b>${who}</b>`:who;
-    return s.slug
-      ? `<a class="pill plink" href="legislator/${esc(s.slug)}.html">${inner}</a>`
-      : `<span class="pill" style="background:var(--wash);color:var(--ink-2)">${inner}</span>`;};
+  const pill=pchip;
   const spBlock=ch=>{const l=spAll.filter(s=>chOf(s)===ch);return l.length
     ?`<h3 class="spgrp">${CHNAME[ch]} <span>${l.length}</span></h3>
       <div class="chosen">${l.map(pill).join(" ")}</div>`:"";};
@@ -1640,11 +1636,23 @@ function tabStrip(tabs){
   ).join("")}</div>`;
 }
 
-// A member of a committee or a chamber, as a chip in party colour.
-const mchip=m=>`<span class="mchip p-${esc(m.party_code||"X")}">${
-  m.slug?`<a href="legislator/${esc(m.slug)}.html">${esc(m.label||m.name)}</a>`
-        :esc(m.label||m.name)}${m.role&&m.role!=="Member"
-    ?` <i>${esc(m.role)}</i>`:""}</span>`;
+// ONE CHIP FOR A PERSON, wherever they appear. A committee's members were
+// drawn in party colour and a bill's sponsors were not: the sponsor pill was
+// pine green for everyone, so the same member read as one party on a
+// committee page and as no party on a bill. Prime sponsorship stays bold and
+// a committee role stays in the corner; nothing else differs between them.
+//
+// The party comes from party_code where the roster supplied one and from the
+// first letter of party where only the word is there, because the sponsor
+// records carry "Republican" and the roster carries "R".
+const pchip=m=>{
+  const code=String(m.party_code||m.party||"").toUpperCase().slice(0,1)||"X";
+  const who=esc(m.display_full||m.label||m.name||"");
+  const inner=m.prime?`<b>${who}</b>`:who;
+  return `<span class="mchip p-${esc(code)}">${
+    m.slug?`<a href="legislator/${esc(m.slug)}.html">${inner}</a>`:inner}${
+    m.role&&m.role!=="Member"?` <i>${esc(m.role)}</i>`:""}</span>`;};
+const mchip=pchip;
 
 // ---------------------------------------------------------------- member ---
 function renderMemberHead(m){
@@ -1973,7 +1981,24 @@ function openPage(kind,ref){
       The file it wanted is <code>${esc(url)}</code>.</div>`;});
 }
 
-function render(){
+// A HUNDRED AT A TIME. render() drew the first 400 matches and told the
+// reader to narrow the search to see the rest, which is the site asking a
+// person to do its work: the 2025-2026 term alone matches 2,234 bills with no
+// filters at all, and 400 cards is a slow first paint for a list nobody has
+// scrolled yet.
+//
+// This stays ONE renderer, which is the rule here -- render(true) draws the
+// same list one page longer rather than a second function appending to it.
+// The observer at the bottom of the list is what calls it.
+// PAGE_SIZE, not PAGE: PAGE is already the member-or-committee page
+// object declared above, and shadowing it emptied every legislator page.
+const PAGE_SIZE = 100;
+let SHOWN = PAGE_SIZE;
+
+function render(more){
+  // Any change to the result set starts again at the first hundred. Every
+  // existing caller passes nothing, so only the observer extends.
+  if(!more)SHOWN=PAGE_SIZE;
   // Page scroll only. The facet panel restores itself inside renderFacets,
   // synchronously, which is the only way it survives the repaint.
   const _y=window.scrollY;
@@ -2010,7 +2035,7 @@ function render(){
   // with it. The page loaded, the data loaded, and nothing listed.
   const fb=focused?(rows.find(b=>b.id===focused)||IDX.find(b=>b.id===focused)):null;
   document.querySelector(".shell").classList.toggle("focused",!!fb);
-  const shown=fb?[fb]:rows.slice(0,400);
+  const shown=fb?[fb]:rows.slice(0,SHOWN);
   $("#summary").textContent=fb?"":(ids&&ids.length>1
     ?`Showing ${rows.length} of the ${ids.length} bills you listed.`:"");
   // Counted over what is on screen, not over the whole result set, so the
@@ -2022,7 +2047,9 @@ function render(){
     ${!fb&&sortBy==="status"&&(gi===0||arr[gi-1].status!==b.status)
       ?`<h2 class="grp">${esc(b.status||"No status recorded")}
          <span>${grpN[b.status||""]}</span></h2>`:""}
-    ${cardHtml(b,!!fb)}`).join("")+((!fb&&rows.length>400)?`<p class="spin">Showing the first 400. Narrow the search to see more.</p>`:"")
+    ${cardHtml(b,!!fb)}`).join("")+((!fb&&rows.length>SHOWN)?`<p class="more" id="more">Showing ${
+      shown.length.toLocaleString()} of ${rows.length.toLocaleString()} — <button
+      class="link" data-more="1">show ${Math.min(PAGE_SIZE,rows.length-SHOWN)} more</button></p>`:"")
     :(elsewhere.length
       ?`<div class="empty"><b>Not in the ${esc(term)} term.</b><br><br>
         ${elsewhere.map(b=>`${esc(b.n)} exists in the
@@ -2030,6 +2057,19 @@ function render(){
           term — ${esc(b.title||"")}`).join("<br>")}</div>`
       :`<div class="empty">No bills match. Try removing a filter, or a different
         term.</div>`));
+  // Reaching the end of the list is the request for more of it. The button
+  // in the sentinel does the same thing for a keyboard or a reader that never
+  // fires an intersection.
+  const sentinel=$("#more");
+  if(sentinel){
+    if(window._moreObs)window._moreObs.disconnect();
+    if(window.IntersectionObserver){
+      window._moreObs=new IntersectionObserver(es=>{
+        if(es.some(e=>e.isIntersecting)){SHOWN+=PAGE_SIZE;render(true);}
+      },{rootMargin:"400px"});
+      window._moreObs.observe(sentinel);
+    }
+  }
   syncCards(rows.filter(b=>openCards.has(b.id)).map(b=>b.id));
   renderFacets();
   if(window.scrollY!==_y)window.scrollTo(0,_y);
@@ -2189,6 +2229,9 @@ document.addEventListener("click",e=>{
     e.preventDefault();
     focusBill(dt.closest(".card").dataset.id,dt.getAttribute("href"));return;}
   if(e.target.closest("[data-back]")){history.back();return;}
+  // The same thing the observer does, for a keyboard, a reader, or a
+  // browser with no IntersectionObserver.
+  if(e.target.closest("[data-more]")){SHOWN+=PAGE_SIZE;render(true);return;}
   // Everything below reads .card. A member's or a committee's page has none,
   // so a tab click here threw on tab.closest(".card").dataset and the tab did
   // nothing. Those pages have their own handler, registered above.

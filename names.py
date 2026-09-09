@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.1
+# GRANITE_VERSION: 2026-09-09.3
 """
 One way to write a name, so the same committee reads the same in every term.
 
@@ -77,6 +77,65 @@ def committee(s):
         pos = m.end()
     out.append(s[pos:])
     return "".join(out)
+
+# --------------------------------------------------------------- a person ---
+
+# The chamber's word for one of its own. The roster carries "Senator" and
+# "Representative" in full; these are what fits on a chip.
+TITLE = {"H": "Rep.", "S": "Sen."}
+
+
+def legislator(rec):
+    """A member as the site names them: Rep. Erica Layon (R - Rock 13).
+
+    THIS MUST AGREE WITH build_site_v2.member_labels()["display_full"], which
+    is the older of the two and the one every page already uses. It is not
+    duplicated here for fun: data/legislators.json is written by build_data.py,
+    which runs BEFORE build_site_v2 and cannot import it, and its label was
+    being built inline as "Abbas, Daryl(R) Rock 22" -- a database row rather
+    than a person, and a second format for the same member.
+
+    preflight checks the two against the whole roster, so they cannot drift.
+
+    The rules, all of them the older function's:
+      - the honorific comes from the CHAMBER, never from a title field, which
+        may hold "Speaker" and is an office rather than a way of referring to
+        somebody
+      - a Senate seat is SD24; a House seat is its county abbreviation and
+        number, and is dropped entirely when the county is unknown, because
+        "13" locates nothing
+      - an unknown party is dropped rather than guessed, and the district with
+        it: "(?)" beside a name is worse than a name on its own
+    """
+    if not isinstance(rec, dict):
+        return str(rec or "")
+    first = (rec.get("first") or "").strip()
+    last = (rec.get("last") or "").strip()
+    if not (first or last):
+        nm = (rec.get("name") or "").strip()
+        if "," in nm:
+            last, first = [x.strip() for x in nm.split(",", 1)]
+        else:
+            bits = nm.split()
+            first, last = " ".join(bits[:-1]), (bits[-1] if bits else "")
+    who = " ".join(x for x in (first, last) if x)
+    if not who:
+        return ""
+    ch = (rec.get("chamber") or "").strip().upper()[:1]
+    plain = f"{TITLE.get(ch, '')} {who}".strip()
+    pc = (rec.get("party_code") or rec.get("party") or "").strip()[:1].upper()
+    party = pc if pc in "RDILU" else ""
+    d = str(rec.get("district") or "").strip()
+    if not d:
+        tag = ""
+    elif ch == "S":
+        tag = f"SD{d}"
+    else:
+        ab = (rec.get("county_abbr") or "").strip()
+        tag = f"{ab} {d}" if ab else ""
+    if tag:
+        return f"{plain} ({party} - {tag})" if party else f"{plain} ({tag})"
+    return f"{plain} ({party})" if party else plain
 
 
 if __name__ == "__main__":
