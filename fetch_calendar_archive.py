@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.2
+# GRANITE_VERSION: 2026-09-08.3
 """
 Thirty years of calendars and journals, a night at a time.
 
@@ -147,6 +147,13 @@ def discover(chamber, kind, years=None, delay=3.0):
     want = [y for y in listed if not years or int(y) in years]
 
     found = []
+    # DISCOVERY NEEDS THE SAME STOP-LOSS AS THE DRAIN. The first run made five
+    # failing requests in a row -- the Senate publishes no journals for
+    # 1998-2002 and its page answers HTTP 500 rather than an empty list -- and
+    # nothing here stopped it. Five is harmless; a whole index answering 500
+    # and this looping through thirty years of it is the shape of the request
+    # pattern that got this address blocked.
+    run = 0
     for n, y in enumerate(want, 1):
         fields = _hidden(page)
         fields[SEL_KIND] = kindval
@@ -157,8 +164,15 @@ def discover(chamber, kind, years=None, delay=3.0):
         try:
             page = _page(index, urllib.parse.urlencode(fields).encode())
         except Exception as e:                          # noqa: BLE001
+            run += 1
             print(f"    {y}: {type(e).__name__}: {e}")
+            if run >= 4:
+                print("    four years in a row failed. Stopping this "
+                      "index rather than asking for twenty-six more "
+                      "that will answer the same way.")
+                break
             continue
+        run = 0
         docs = [(v, lab) for v, lab in _options(page, SEL_DOC)
                 if v and v.lower() != "select"]
         for name, label in docs:
