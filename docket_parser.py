@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -114,8 +114,22 @@ VIDEO_KINDS = {
 
 
 def _parse_time(s):
+    """The stated time, or None if the record does not state a usable one.
+
+    ONE BAD ROW MUST NOT END THE RUN. The 2023-2024 docket contains exactly
+    one time the twelve-hour clock cannot express -- HB639, "Full Committee
+    Work Session: 02/14/2023 00:00 pm LOB 302-304" -- and it raised out of the
+    whole of build_manifest, so 1,643 recordings could not be matched against
+    23,808 docket lines because of a typo in one of them.
+
+    It is left as None rather than read as noon. Noon is very likely what was
+    meant, and "very likely" is not something this project publishes as a
+    time. The proceeding keeps its date and loses only the hour."""
     s = s.strip().replace(" ", "").upper()
-    return datetime.strptime(s, "%I:%M%p").time()
+    try:
+        return datetime.strptime(s, "%I:%M%p").time()
+    except ValueError:
+        return None
 
 
 def _parse_date(s):

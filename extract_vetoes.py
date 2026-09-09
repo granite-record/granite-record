@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.10
+# GRANITE_VERSION: 2026-09-07.13
 """
 The governor's veto messages, from the House calendars already on disk.
 
@@ -234,6 +234,21 @@ def messages(text, source):
         if not ok:
             dropped.append((bill, why))
             continue
+        # AND FIT TO QUOTE, which is a separate question from being whole.
+        # The Senate calendars that arrived on 9 September took the count from
+        # 124 messages to 177 and brought two the site must not put in a
+        # Governor's mouth: SB101 with "e- a" still in it, where the
+        # calendar's justification split a word across a line and the rejoin
+        # did not heal it, and SB141 with no calendar to cite.
+        #
+        # These are the same tests preflight applies to what is published, and
+        # they belong here too, because the check can only say the site is
+        # wrong -- this is where it stops being wrong. The veto itself is
+        # still recorded from the docket; what is dropped is the quotation.
+        unfit = quotable(paras, who, when, source)
+        if unfit:
+            dropped.append((bill, unfit))
+            continue
         found.append({
             "bill": bill,
             "text": paras,
@@ -249,6 +264,27 @@ def messages(text, source):
         print(f"  {len(dropped)} message(s) dropped as not a veto message: "
               + "; ".join(f'{b} ({w})' for b, w in dropped[:3]))
     return found
+
+
+def quotable(paras, who, when, source):
+    """Why this must not be quoted, or None if it may be.
+
+    A garbled quote presented as what somebody said is a transcription error
+    wearing the clothes of a citation, which is the rule this whole file
+    exists under."""
+    text = " ".join(paras).strip()
+    m = BROKEN.search(text)
+    if m:
+        return f"carries {m.group(0)!r}"
+    if len(text) < 80:
+        return f"{len(text)} characters, not a message"
+    if not who:
+        return "names no author"
+    if when and not ISO.fullmatch(when):
+        return f"date is {when!r}"
+    if not (source or {}).get("url"):
+        return "cites no calendar"
+    return None
 
 
 # A VETO MESSAGE HAS A SHAPE, AND THESE ARE NOT IT.
@@ -267,6 +303,12 @@ RUNAWAY = 60
 NOT_A_MESSAGE = ("COMMITTEE MEETINGS", "OFFICIAL NOTICES", "MEMBERS' NOTICES",
                  "REVISED FISCAL NOTES", "BILLS LAID ON THE TABLE",
                  "HOUSE DEADLINES")
+
+
+# A word the calendar's justification split across a line and rejoin() did
+# not heal: a letter, a hyphen, a space, then a lone letter.
+BROKEN = re.compile(r"\w- \w")
+ISO = re.compile(r"\d{4}-\d\d-\d\d")
 
 
 def is_whole(lines):
@@ -316,8 +358,19 @@ def main():
         year = f.parts[-2]
         num = re.sub(r"\D", "", f.stem)
         name = f"{prefix} {int(num)}" if num else f.stem
+        # THE YEAR IS PART OF THE KEY, and the fallback that dropped it was
+        # citing the wrong document. calendars.json holds one entry per
+        # "SC 25 2023"; asking it for bare "SC 25" returned whichever year it
+        # happened to hold, so all 48 Senate messages from terms before
+        # 2023 cited a 2023 calendar -- SB101 of 2015-2016 pointing at
+        # "No 25 June 01 2023.pdf".
+        #
+        # A message whose calendar has no known address now cites none, and
+        # quotable() drops it rather than publishing a quotation attached to
+        # a document it did not come from. Citing the wrong source is worse
+        # than citing no source.
         src = {"calendar": f.stem, "year": year, "name": name,
-               "url": cal_url.get(f"{name} {year}") or cal_url.get(name, "")}
+               "url": cal_url.get(f"{name} {year}", "")}
         for msg in messages(f.read_text(encoding="utf-8", errors="replace"), src):
             term = P.term_of(year)
             key = (term, msg["bill"])
@@ -436,6 +489,31 @@ def main():
     if kept:
         print("  kept, because no calendar read here covers them: "
               + ", ".join(f"{t} ({len(prior[t])})" for t in sorted(kept)))
+    # THE GATE GOES ON THE WRITE, NOT ONLY ON THE READ. A term this run did
+    # not produce is kept whole -- the rule that a writer run on a subset must
+    # not destroy the rest -- and that is right, but it also kept two messages
+    # this run had deliberately rejected: SB101 with "e- a" still in it and
+    # SB141 citing a calendar it did not come from. They had been written by
+    # an earlier run under looser rules and no later run could remove them.
+    #
+    # So every message is tested on the way out, whether this run made it or
+    # inherited it. The veto is still recorded from the docket; what is
+    # dropped is the quotation.
+    culled = []
+    for term_, bills_ in list(merged.items()):
+        if not isinstance(bills_, dict):
+            continue
+        for bill_, rec_ in list(bills_.items()):
+            if not isinstance(rec_, dict):
+                continue
+            why_ = quotable(rec_.get("text") or [], rec_.get("governor"),
+                            rec_.get("date"), rec_.get("source"))
+            if why_:
+                del bills_[bill_]
+                culled.append(f"{bill_} ({why_})")
+    if culled:
+        print(f"  {len(culled)} message(s) not fit to quote and left out: "
+              + "; ".join(culled[:4]))
     op.write_text(json.dumps(merged, indent=2), encoding="utf-8")
     print(f"-> {a.out}")
     return 0
