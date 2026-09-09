@@ -1,14 +1,25 @@
-/* GRANITE_VERSION: 2026-09-07.27 */
-/* Every reading column stops at 34em, which is 68 characters at the
-   body size. Nine measured over 80 at 1440px and the worst, a bill
-   title on a committee page, ran to 195. */
-.src,.note,.cnarr,.lead{max-width:34em}
+/* GRANITE_VERSION: 2026-09-07.29 */
+/* ONE MEASURE, AND IT BELONGS TO THE BOX.
+   34em was not one width: em resolves against the element's own font size,
+   so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
+   small print got the NARROWER column, which is backwards. Worse, it was
+   being applied to boxes: .note is a tinted, bordered, padded panel, and
+   capping its text at 476px inside a 1094px pane drew a shaded strip with
+   618px of empty white beside it. That is the "not filling the right side
+   of the box" this is fixing, and it was in about 25 places.
+   So: --measure is a length, it is put on the CONTAINER wherever the
+   container holds nothing but prose, and anything that is not prose -- a
+   video, a vote grid, a table, a list of documents -- fills its pane.
+   560px measures 76 characters of the 16px serif, counted in a browser
+   rather than derived from an average character width. */
+.src,.lead{max-width:var(--measure)}
 :root{
 /* GROUND AND SURFACE. The page was #F6F6F4 and a card is white, which put
    1.08:1 between a bill and the paper behind it -- below the level at which
    most people see an edge at all, and the whole of "bills don't stand out".
    Darkening the page to #EAEBE7 makes that 1.20:1 and costs nothing else:
    every text colour was re-measured against it and the lowest is 6.34:1. */
+--measure:560px;
 --paper:#EAEBE7;--surface:#fff;--wash:#E1E2DD;
 /* INK, in two steps rather than three. --ink-2 and --ink-3 were 0.041 apart
    in relative luminance and were used interchangeably for metadata, which is
@@ -213,9 +224,10 @@ letter-spacing:.01em}
    ranked joint-fourth on its own card and ran to 147 characters a
    line at 1440px. Primary ink, body size, and a column it can be
    read down. */
+/* A headline in a padded head box, not a reading column. */
 .ctitle{font-size:16px;color:var(--ink);margin:7px 0 0;
-line-height:1.5;max-width:34em}
-.cmeta{font-size:14px;color:var(--ink-2);margin-top:7px;max-width:34em}
+line-height:1.5}
+.cmeta{font-size:14px;color:var(--ink-2);margin-top:7px}
 .cbody{border-top:1px solid var(--rule);padding:0 18px 20px}
 .cbody[hidden]{display:none}
 .tabs{display:flex;gap:20px;border-bottom:1px solid var(--rule);margin:0 0 18px;flex-wrap:wrap}
@@ -225,10 +237,10 @@ line-height:1.5;max-width:34em}
 .tl{list-style:none;margin:0;padding:0}
 .tl li{display:flex;gap:14px;padding:7px 0;border-bottom:1px solid var(--rule);font-size:14px;align-items:baseline}
 .tl .d{flex:0 0 104px;font-size:14px;color:var(--ink-2)}
-/* The row's text, in a column it can be read down. These ran to
-   107 characters -- the one place the 34em cap did not reach,
-   because the row is a flex child rather than a block. */
-.tl .w{max-width:34em}
+/* The row's text, in a column it can be read down -- but the measure goes
+   on the ROW, because the border-bottom belongs to the row. Capping the text
+   alone left 500px of bare rule to the right of every line. */
+.tl li{max-width:var(--measure)}
 /* Same reason: the date in a routine row is --ink-3 already, and .62 on
    top of that put it at 1.9:1. These are real docket lines. */
 .tl li.routine{color:var(--ink-2)}
@@ -237,19 +249,22 @@ line-height:1.5;max-width:34em}
 .stg:last-child{margin-bottom:0}
 
 .stg p{margin:0;font-family:var(--serif);font-size:16px;line-height:1.65;
-max-width:34em}
+max-width:var(--measure)}
 .sgn{display:inline-block;margin:3px 6px 0 0;padding:1px 7px;border-radius:var(--r-pill);
 font-size:12px;font-weight:600;background:var(--paper);border:1px solid var(--rule-2)}
 .sgn.for{color:var(--pine);border-color:color-mix(in srgb,var(--pine) 35%,var(--rule-2))}
 .sgn.against{color:var(--brick);border-color:color-mix(in srgb,var(--brick) 35%,var(--rule-2))}
-.testimony{margin:8px 0 2px;padding:9px 12px;background:var(--paper);
+.testimony{max-width:var(--measure);margin:8px 0 2px;padding:9px 12px;background:var(--paper);
 border-left:3px solid var(--rule-2);border-radius:0 var(--r-in) var(--r-in) 0;font-size:14px;
 line-height:1.55}
 .testimony a{font-size:14px}
 .tnote{display:block;font-size:12px;color:var(--ink-2);margin-top:4px}
 .cite{font-size:12px;color:var(--ink-2);white-space:nowrap}
 a.cite{color:var(--pine)}
-.status{margin-top:16px;padding:13px 15px;border-radius:var(--r-out);background:var(--st-active-bg);border-left:3px solid var(--st-active)}
+/* Prose-only panels take the measure themselves: the box ends where its
+   sentence ends, instead of running on to the edge of a pane the text
+   never reaches. */
+.status{margin-top:16px;padding:13px 15px;border-radius:var(--r-out);background:var(--st-active-bg);border-left:3px solid var(--st-active);max-width:var(--measure)}
 .status .lab{font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--st-active)}
 .status .val{font-size:16px;margin-top:2px}
 .status.s-law{background:var(--st-law-bg);border-left-color:var(--st-law)}.status.s-law .lab{color:var(--st-law)}
@@ -279,10 +294,21 @@ text-align:left;border-bottom:1px solid var(--rule)}
 .m{font-size:14px;padding:2px 0}.m .p{color:var(--ink-2)}
 .discl{width:100%;text-align:left;font-size:14px;color:var(--pine);padding:9px 0 0;
 border-top:1px solid var(--rule);margin-top:11px}
+/* app.css had no table rule at all above 720px, so the legislator page's
+   votes table rendered at width:auto with no cell padding and no row rules
+   -- shrink-to-fit text in a 1,132px column, which is its own version of
+   "the text does not fill the box". table.fn carries its own complete rule
+   and is deliberately not matched here. */
+table.votes{width:100%;border-collapse:collapse;font-size:14px}
+table.votes th,table.votes td{text-align:left;padding:7px 12px 7px 0;
+border-bottom:1px solid var(--rule);vertical-align:top}
+table.votes th{font-weight:600;color:var(--ink-2);font-size:12px;
+letter-spacing:.04em;text-transform:uppercase}
 .full{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:22px}
 .full h3{font-size:14px;margin:0 0 8px;font-weight:600}
+/* A note is a box, so the box is the measure and its text fills it. */
 .note{font-size:14px;color:var(--ink-2);background:var(--paper);border-left:3px solid var(--rule-2);
-padding:9px 13px;margin:0 0 12px;line-height:1.55}
+padding:9px 13px;margin:0 0 12px;line-height:1.55;max-width:var(--measure)}
 .stn{position:relative;padding:0 0 18px 26px}
 .stn:before{content:"";position:absolute;left:4px;top:6px;bottom:-4px;width:1px;background:var(--rule-2)}
 .stn:last-child:before{display:none}
@@ -333,7 +359,7 @@ background:var(--pine-soft);color:var(--pine);border-radius:var(--r-in);padding:
    block and what belongs to it hangs under the number instead of running back
    to the margin. */
 .billbody{font-family:var(--serif);font-size:16px;line-height:1.65;
-margin:9px 0 0;max-width:34em}
+margin:9px 0 0;max-width:var(--measure)}
 .billbody p{margin:0}
 .billbody .sec{margin-top:15px;padding-left:2.4em;text-indent:-2.4em}
 .billbody .sec b{font-weight:600}
@@ -379,7 +405,7 @@ color:var(--st-done)}
    are not the same kind of document. The rule down the left is the same
    device the site already uses for a quoted passage. */
 .vmsg{border-left:3px solid var(--st-veto);padding:0 0 4px 16px;margin:0 0 26px}
-.vmsg p{font-size:16px;line-height:1.65;margin:0 0 11px;max-width:34em}
+.vmsg p{font-size:16px;line-height:1.65;margin:0 0 11px;max-width:var(--measure)}
 .vsig{font-size:14px;color:var(--ink-2);display:flex;gap:10px;
 align-items:baseline;flex-wrap:wrap}
 .vmsg .src{margin-top:12px}
@@ -402,13 +428,13 @@ align-items:baseline;flex-wrap:wrap}
    explaining. */
 .stg .note{margin:10px 0 0}
 .story > .stg + .stg{margin-top:18px}
-.anbox{margin:0 0 22px}
+.anbox{max-width:var(--measure);margin:0 0 22px}
 /* The fiscal note. A table in the bill's PDF, a single column of lines by
    the time the text extraction is done with it, and a table again here.
    Figures right-aligned and tabular so the columns line up; a spanning row is
    one the source did not break down by year. */
 .fnsec{margin:0 0 22px}
-.fnlead{font-size:16px;line-height:1.6;margin:0 0 12px;max-width:34em}
+.fnlead{font-size:16px;line-height:1.6;margin:0 0 12px;max-width:var(--measure)}
 /* Five columns of figures do not fit 360px, and the page must not
    scroll sideways because of it. */
 .fnwrap{overflow-x:auto;margin:0 0 10px}
@@ -435,7 +461,7 @@ color:var(--ink-2);margin:0 0 8px}
 .rephead h3{font-size:12px;font-weight:600;letter-spacing:.05em;
 text-transform:uppercase;color:var(--ink-2);margin:0 0 5px}
 .repmeta{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
-.antext{font-family:var(--serif);font-size:16px;line-height:1.65;max-width:34em}
+.antext{font-family:var(--serif);font-size:16px;line-height:1.65;max-width:var(--measure)}
 .anbox.clamped .antext{display:-webkit-box;-webkit-line-clamp:6;
 -webkit-box-orient:vertical;overflow:hidden}
 .anmore{margin-top:9px;font-size:14px;color:var(--pine);border:1px solid var(--edge);
@@ -451,7 +477,7 @@ border-radius:var(--r-in);padding:3px 11px;background:var(--surface)}
 .amdtext summary{font-size:14px;color:var(--pine);cursor:pointer;min-height:32px;
 display:flex;align-items:center}
 .amdtext p{font-family:var(--serif);font-size:16px;line-height:1.65;
-margin:9px 0 0;max-width:34em}
+margin:9px 0 0;max-width:var(--measure)}
 .plink{background:var(--wash);color:var(--pine);text-decoration:none}
 .plink:hover{background:var(--pine-soft);text-decoration:underline}
 .spcount{font-size:14px;color:var(--ink-2);margin:0 0 12px;
@@ -483,17 +509,12 @@ border-radius:var(--r-in);padding:1px 7px;font-variant-numeric:tabular-nums}
 color:var(--ink-2);background:var(--wash);border-radius:var(--r-in);padding:1px 7px}
 /* One bill, filling the space the list was using. The facet rail goes with
    the list: nothing in it applies to a single bill. */
-/* ONE BILL IS A DOCUMENT, NOT A BANNER. Every reading column stops at
-   34em, and the shell it sat in was 1180px: at 1440 that put a 544px column
-   of prose inside a 1094px card and left half of every box -- the status
-   box, the analysis, each stage of the narrative -- empty to the right. The
-   tab strip's own natural width is 537px, which is why the text read as
-   bounded by the tabs.
-   46em brings the container to the column instead of stretching the column
-   to the container, which would be 144 characters a line. Below 46em it does
-   nothing, so a phone is untouched. Measured at 1440: pane 650px, the widest
-   fiscal table 604px, nothing scrolling sideways. */
-.shell.focused{grid-template-columns:1fr;max-width:46em}
+/* A focused bill is one column: the facet rail goes with the list.
+   It was also capped at 46em for a while, to stop prose sitting in a half
+   empty card. That was the wrong lever -- see --measure at the top of this
+   file. The card is full width again and the boxes inside it carry the
+   measure, so the video embeds and the vote grids have their space back. */
+.shell.focused{grid-template-columns:1fr}
 .shell.focused .facets{display:none}
 .card.focus{border-color:var(--rule-2)}
 .card.focus .chead{cursor:default}
@@ -588,7 +609,7 @@ text-align:center;color:var(--ink-2);font-size:14px}
    It reaches every record page because bills.html is their template. */
 footer{border-top:1px solid var(--rule);background:var(--surface);
 padding:22px 0;font-size:14px;color:var(--ink-2);margin-top:40px}
-footer .in{max-width:34em;margin:0 auto;padding:0 24px}
+footer .in{max-width:var(--measure);margin:0 auto;padding:0 24px}
 .corrections{display:block;margin-top:5px}
 .skip{position:absolute;left:-9999px;top:0;background:var(--pine);color:#fff;
 padding:10px 16px;z-index:99;border-radius:0 0 var(--r-out) 0}
@@ -649,7 +670,7 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 8px}
 .croster .mlist{display:grid;gap:5px 12px;margin:0;
 grid-template-columns:repeat(auto-fill,minmax(244px,1fr))}
 .croster .mchip{margin:0}
-.cpurpose{margin:18px 0 0;max-width:34em}
+.cpurpose{margin:18px 0 0;max-width:var(--measure)}
 .cpurpose p{font-size:16px;line-height:1.65;margin:0}
 .cpurpose .src{margin-top:7px}
 /* The term governs every tab, so it sits above them rather than inside one. */
@@ -681,8 +702,12 @@ background:var(--paper)}
 .cday{margin:0 0 22px;padding:0 0 16px;border-bottom:1px solid var(--rule)}
 .cday h3{font-size:14px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
 color:var(--ink-2);margin:0 0 6px}
-.cnarr{font-size:16px;line-height:1.65;margin:0 0 10px;max-width:72ch}
-.ctitle{display:block;color:var(--ink-2);font-size:14px;line-height:1.45;
+.cnarr{font-size:16px;line-height:1.65;margin:0 0 10px;max-width:var(--measure)}
+/* The bill's title inside a committee day. NOT .ctitle: that is the card
+   title, declared 469 lines above, and this one won on source order --
+   so every bill title on every card rendered at 14px in --ink-2 instead
+   of 16px in --ink. Two elements were sharing one class name. */
+.cd-title{display:block;color:var(--ink-2);font-size:14px;line-height:1.45;
 margin-top:2px}
 
 @media(max-width:620px){
@@ -699,7 +724,9 @@ margin-top:2px}
 .shell.nofacets .facets{display:none}
 
 /* The committees index: a way into the 56 pages that nothing linked to. */
-.clist{max-width:1180px;margin:0 auto;padding:20px 24px 60px}
+/* No width and no padding of its own: it is already inside .shell,
+   which is 1180px with 24px of padding. Both were applied twice. */
+.clist{padding:0 0 40px}
 /* The two chambers as two columns. A reader looking for a Senate committee
    was scrolling past 25 House ones to reach 14, and the two lists have
    nothing to do with each other. One column below 860px, which is the same

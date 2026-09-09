@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.31
+// GRANITE_VERSION: 2026-09-07.32
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1778,7 +1778,7 @@ function sessionHtml(s,si){
         : "&mdash;"}${at!=null&&!said?`<i class="approx">approximate</i>`:""}</span>
       <span class="w"><a href="bill/${esc(String(i.year||""))}/${
         esc(String(i.bill||"").toLowerCase())}.html">${esc(i.n||i.bill||"")}</a>
-        &mdash; ${esc(i.kind||"")}${i.title?`<span class="ctitle">${
+        &mdash; ${esc(i.kind||"")}${i.title?`<span class="cd-title">${
           esc(i.title)}</span>`:""}</span></li>`;}).join("")}</ul>
   </section>`;
 }
