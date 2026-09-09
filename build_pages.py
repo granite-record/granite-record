@@ -271,6 +271,13 @@ General Court. Not affiliated with the General Court.
 {script}</body></html>"""
 
 
+# SUPERSEDED, AND KEPT ON PURPOSE. This was the whole of "How it works"
+# until the civics section replaced it. Every paragraph here was redistributed
+# into civics.py rather than rewritten -- the bill path, the shorthand tables,
+# the five things that surprise people -- because this prose had been read and
+# corrected and the new pages should inherit that rather than start again.
+# Nothing writes it out any more. Delete it once civics.py has been reviewed
+# by somebody who knows the building.
 LEARN = """
 <h1>How the New Hampshire legislature works</h1>
 <p class="lead">New Hampshire has 400 representatives and 24 senators — the largest
@@ -1130,13 +1137,17 @@ one per committee and one per subject.</p>"""
         shell("Granite Record \u2014 New Hampshire legislative record", "index.html",
               home_body, script=HOME_JS), encoding="utf-8")
 
-    (out / "learn.html").write_text(
-        shell("How it works — Granite Record", "learn.html", LEARN), encoding="utf-8")
+    # learn.html belongs to build_civics.py now: it is the way into eleven
+    # topic pages rather than one page of its own, and two builders writing
+    # the same address means whichever runs last wins. LEARN below is kept
+    # because its prose was redistributed into civics.py rather than
+    # rewritten, and it is the thing to diff against if a passage there
+    # looks wrong.
     (out / "about.html").write_text(
         shell("About — Granite Record", "about.html", ABOUT), encoding="utf-8")
 
     print(f"wrote legislators.html ({len(legs)} members), "
-          f"learn.html, about.html, style.css -> {out}/")
+          f"about.html, style.css -> {out}/  (learn.html: build_civics.py)")
     if not legs:
         print("  legislators.json missing — run build_site_v2.py first")
 

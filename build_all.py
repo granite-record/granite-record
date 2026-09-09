@@ -291,6 +291,13 @@ def plan(a):
              note="what a committee did on a day, which bill-first search "
                   "cannot answer"),
 
+        Step("how New Hampshire works",
+             ["build_civics.py", "--site", "site", "--base", a.base],
+             needs=["site/index.json"],
+             produces=["site/learn.html"],
+             note="eleven civics pages and the hub they hang off; needs no "
+                  "data and no network, and it owns learn.html"),
+
         Step("RSS feeds",
              ["build_feeds.py", "--site", "site", "--base", a.base],
              needs=["site/index.json"], produces=["site/feed/all.xml"],

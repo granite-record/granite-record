@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.30 */
+/* GRANITE_VERSION: 2026-09-07.31 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -729,6 +729,74 @@ margin-top:2px}
    column it left behind should not be either. */
 .shell.nofacets{grid-template-columns:1fr}
 .shell.nofacets .facets{display:none}
+
+/* ---- the civics section ------------------------------------------------
+   Eleven pages that are prose first, so this is the one part of the site
+   where the reading measure IS the page rather than a column inside a card.
+   --measure is 560px and every block here takes it, so the text and the box
+   it sits in end together. Wide things -- there are none yet, but a diagram
+   is coming -- opt out with .wide. */
+.civics{max-width:var(--measure);margin:0 auto;padding:6px 0 40px}
+.civics h1{font-size:28px;line-height:1.2;margin:6px 0 10px}
+.civics h2{font-size:19px;margin:30px 0 8px}
+.civics h3{font-size:15px;font-weight:600;letter-spacing:.03em;
+text-transform:uppercase;color:var(--ink-2);margin:22px 0 6px}
+.civics p{font-family:var(--serif);font-size:16px;line-height:1.68;
+margin:0 0 13px}
+.civics .lead{font-size:19px;line-height:1.6;color:var(--ink);margin:0 0 18px}
+.civics ul,.civics ol{font-family:var(--serif);font-size:16px;line-height:1.68;
+padding-left:22px;margin:0 0 14px}
+.civics li{margin-bottom:8px}
+.civics .crumb{font-family:var(--sans);font-size:13px;margin:0 0 4px}
+.civics .crumb a{color:var(--ink-2)}
+
+/* A block that points into the record: the whole argument for this section
+   living here rather than being a link to somebody else's explainer. */
+.shows{border-left:3px solid var(--pine);background:var(--pine-soft);
+padding:12px 15px;margin:0 0 16px;border-radius:0 var(--r-in) var(--r-in) 0}
+.shows h4{font-family:var(--sans);font-size:12px;font-weight:600;
+letter-spacing:.05em;text-transform:uppercase;color:var(--pine);margin:0 0 6px}
+.shows p{margin:0 0 8px;font-size:15px}
+.shows p:last-child{margin-bottom:0}
+.shows a{color:var(--pine);font-weight:600}
+
+/* A limit, said plainly rather than left for the reader to discover. */
+.caveat{border-left:3px solid var(--rule-2);background:var(--paper);
+padding:11px 14px;font-size:15px;color:var(--ink-2);margin:18px 0 0}
+
+/* Where this comes from. Not a bibliography for respectability: a reader who
+   wants to check should be one click from the authority. */
+.srcs{margin-top:34px;border-top:1px solid var(--rule);padding-top:14px}
+.srcs h2{font-size:12px;font-weight:600;letter-spacing:.05em;
+text-transform:uppercase;color:var(--ink-2);margin:0 0 8px}
+.srcs ul{font-size:14px;font-family:var(--sans);padding-left:20px}
+.srcs li{margin-bottom:5px}
+
+/* The hub's topic list. Numbered, because the order is the argument. */
+.tlist{list-style:decimal;padding-left:26px;margin:4px 0 26px}
+.tlist li{margin-bottom:2px}
+.tlist a{display:block;padding:9px 12px;margin-left:-12px;text-decoration:none;
+border-radius:var(--r-in);color:inherit}
+.tlist a:hover{background:var(--pine-soft)}
+.tlist b{display:block;font-family:var(--sans);font-size:16px;
+color:var(--pine)}
+.tlist span{display:block;font-size:14px;color:var(--ink-2);margin-top:1px}
+
+/* Next topic, by name. A menu does not answer the question a reader has just
+   finished forming. */
+.tnav{margin-top:32px;border-top:1px solid var(--rule);padding-top:16px;
+display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}
+.tnav a{text-decoration:none;color:inherit}
+.tnav .next,.tnav .prev{flex:1 1 220px;border:1px solid var(--edge);
+border-radius:var(--r-out);padding:10px 14px;background:var(--surface)}
+.tnav .next{border-color:var(--pine)}
+.tnav .next:hover,.tnav .prev:hover{background:var(--pine-soft)}
+.tnav span{display:block;font-size:12px;letter-spacing:.05em;
+text-transform:uppercase;color:var(--ink-2)}
+.tnav b{display:block;font-size:16px;color:var(--pine);margin-top:2px}
+.tnav .prev b{color:var(--ink)}
+.tnav .all{align-self:center;font-size:14px;color:var(--ink-2)}
+@media(max-width:520px){.tnav .next,.tnav .prev{flex:1 1 100%}}
 
 /* The committees index: a way into the 56 pages that nothing linked to. */
 /* No width and no padding of its own: it is already inside .shell,

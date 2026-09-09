@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.4
+# GRANITE_VERSION: 2026-09-07.7
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -104,8 +104,32 @@ def template(site=Path("site")):
 
 
 def page(t, *, path, title, description, base, globals=None, noscript="",
-         alternate="", skip_label="Skip to the content", og_title=None):
-    """One record's page: the template, told which record it is."""
+         alternate="", skip_label="Skip to the content", og_title=None,
+         sr_title=None, nav_current=""):
+    """One record's page: the template, told which record it is.
+
+    sr_title replaces the template's own visually-hidden <h1>. bills.html
+    carries "New Hampshire bills" because that is what bills.html is, and
+    every page built from it inherits the same line -- so a screen reader
+    opening the committees index, a member's page or a civics page is told
+    "New Hampshire bills" before it is told anything true. It is invisible,
+    which is why it has gone unnoticed, and it is the first thing announced,
+    which is why it matters."""
+    if nav_current:
+        # The template is bills.html, so its nav marks Bills as the current
+        # page and every page built from it inherits that -- the committees
+        # index, a member's page and these all tell a reader they are on
+        # Bills. aria-current is what a screen reader uses to say "you are
+        # here", so this is not only decoration.
+        t = t.replace(' aria-current="page"', "", 1)
+        t = t.replace(f'<a href="{nav_current}"',
+                      f'<a href="{nav_current}" aria-current="page"', 1)
+    if sr_title is not None:
+        # An empty string REMOVES it, which is what a page with its own
+        # visible <h1> wants: keeping both makes a screen reader announce the
+        # same heading twice, which is worse than the wrong one it replaced.
+        repl = f'<h1 class="sr">{E(sr_title)}</h1>' if sr_title else ""
+        t = t.replace('<h1 class="sr">New Hampshire bills</h1>', repl, 1)
     head = (
         NEEDS["viewport"]
         # <base href="/"> is in bills.html itself now -- opening a bill on the
