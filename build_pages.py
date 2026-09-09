@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.31
+# GRANITE_VERSION: 2026-09-04.32
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -16,6 +16,7 @@ styles and is untouched.
 
 import argparse
 import hashlib
+import html as _html
 import json
 import shutil
 from collections import defaultdict
@@ -243,7 +244,8 @@ def style_query():
     return "?v=" + hashlib.md5(css.encode("utf-8")).hexdigest()[:8]
 
 
-def shell(title, current, body, wide=False, script=""):
+def shell(title, current, body, wide=False, script="", desc="",
+          base="https://graniterecord.org"):
     nav = []
     for href, label in (("index.html", "Home"), ("bills.html", "Bills"),
                         ("legislators.html", "Legislators"),
@@ -252,9 +254,25 @@ def shell(title, current, body, wide=False, script=""):
         cur = ' aria-current="page"' if href == current else ""
         nav.append(f'<a href="{href}"{cur}>{label}</a>')
     STYLE_Q = style_query()
+    # THE PAGES A SEARCH ENGINE REACHES FIRST HAD THE LEAST IN THEIR HEAD.
+    # Every one of the 33,683 bill pages carries a description, a canonical
+    # address and an unfurl card because shell.py writes them. The home page,
+    # the search page, the legislator index and About did not, because they
+    # are written here and this function never had them -- and those four are
+    # where a person arrives.
+    _e = lambda s: _html.escape(str(s or ""), quote=True)
+    _canon = f"{base}/{current}" if current else base
+    HEAD_SEO = (f'<meta name="description" content="{_e(desc)}">'
+                f'<link rel="canonical" href="{_canon}">'
+                f'<meta property="og:type" content="website">'
+                f'<meta property="og:title" content="{_e(title)}">'
+                f'<meta property="og:description" content="{_e(desc)}">'
+                f'<meta property="og:url" content="{_canon}">'
+                f'<meta property="og:site_name" content="Granite Record">'
+                f'<meta name="twitter:card" content="summary">') if desc else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title>{FONTS}<link rel="stylesheet" href="style.css{STYLE_Q}">
+<title>{title}</title>{HEAD_SEO}{FONTS}<link rel="stylesheet" href="style.css{STYLE_Q}">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — all activity"
  href="/feed/all.xml">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — upcoming hearings"
@@ -1078,7 +1096,10 @@ record. Searching a committee name lists everyone on it.</p>
  if C else ""}
 <p class="count" id="count">Loading…</p><div id="out"></div>"""
     (out / "legislators.html").write_text(
-        shell("Legislators \u2014 Granite Record", "legislators.html", leg_body,
+        shell("Legislators | Granite Record", "legislators.html", leg_body,
+              desc="Every member of the New Hampshire House and Senate: their "
+                   "district, their party, the bills they sponsored and every "
+                   "recorded vote they cast.",
               wide=True, script=TOWN_JS + LEG_JS), encoding="utf-8")
 
     static_up = ""
@@ -1134,8 +1155,12 @@ next two weeks, in time to attend or sign in.</li>
 <p class="note">Every bill has its own feed too, linked from its page, along with
 one per committee and one per subject.</p>"""
     (out / "index.html").write_text(
-        shell("Granite Record \u2014 New Hampshire legislative record", "index.html",
-              home_body, script=HOME_JS), encoding="utf-8")
+        shell("Granite Record \u2014 the New Hampshire legislative record",
+              "index.html", home_body, script=HOME_JS,
+              desc="Every bill, vote, hearing and floor debate of the New "
+                   "Hampshire General Court, linked to the moment in the "
+                   "recording where it happened."),
+        encoding="utf-8")
 
     # learn.html belongs to build_civics.py now: it is the way into eleven
     # topic pages rather than one page of its own, and two builders writing
@@ -1144,7 +1169,10 @@ one per committee and one per subject.</p>"""
     # rewritten, and it is the thing to diff against if a passage there
     # looks wrong.
     (out / "about.html").write_text(
-        shell("About — Granite Record", "about.html", ABOUT), encoding="utf-8")
+        shell("About | Granite Record", "about.html", ABOUT,
+              desc="How Granite Record is built, where every fact on it comes "
+                   "from, and how to report something that is wrong."),
+        encoding="utf-8")
 
     print(f"wrote legislators.html ({len(legs)} members), "
           f"about.html, style.css -> {out}/  (learn.html: build_civics.py)")

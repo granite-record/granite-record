@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.4
+# GRANITE_VERSION: 2026-09-08.5
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -143,7 +143,14 @@ def main():
         body.append(footer_nav(i, topics))
 
         p = S.page(tmpl, path=f"/learn/{t['slug']}.html", base=a.base,
-                   title=f"{t['title']} | How New Hampshire works",
+                   # THE SITE'S NAME LAST, on every page. These eleven ended
+                   # "| How New Hampshire works" while the other 34,000 ended
+                   # "| Granite Record", so a search result for a civics page
+                   # did not look like it came from the same site. The section
+                   # is worth naming, so it goes in front of the brand rather
+                   # than instead of it.
+                   title=S.title_of(t["title"],
+                                    "How New Hampshire works"),
                    og_title=t["title"], description=t["blurb"],
                    globals={"GR_STATIC": True}, noscript="",
                    skip_label="Skip to the page", sr_title="",

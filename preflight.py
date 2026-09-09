@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.79
+# GRANITE_VERSION: 2026-09-04.80
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3554,6 +3554,37 @@ def _vote_identity():
     census = ", ".join(f"{t} {n:,}/{tot:,} with no party"
                        for t, (tot, n) in sorted(per_term.items()))
     return "ok", f"{len(by_emp):,} distinct voters; {census}"
+
+
+@check("frontend", "a page says what it is once, and says where it lives")
+def _one_head():
+    """Exactly one title, one description and one canonical per page.
+
+    shell.page() builds a head that begins with the viewport meta and
+    substitutes it into bills.html -- which left the template's own <title>
+    in place, so every generated page carried two. Browsers show the first;
+    a crawler may take either.
+    """
+    site = Path("site")
+    if not site.exists():
+        return "skip", "site is not built"
+    bad, n = [], 0
+    for p in sorted(site.rglob("*.html")):
+        h = p.read_text(encoding="utf-8", errors="replace")[:6000]
+        n += 1
+        for what, pat in (("title", r"<title>"),
+                          ("description", r'<meta name="description"'),
+                          ("canonical", r'<link rel="canonical"')):
+            c = len(re.findall(pat, h))
+            if c > 1:
+                bad.append(f"{p.relative_to(site)} has {c} {what} tags")
+            elif c == 0 and what == "title":
+                bad.append(f"{p.relative_to(site)} has no title")
+        if len(bad) > 12:
+            break
+    assert not bad, (f"{len(bad)} page(s) name themselves more than once: "
+                     + "; ".join(bad[:4]))
+    return "ok", f"{n:,} pages, one head each"
 
 
 @check("data", "a member is named the same way by both namers")

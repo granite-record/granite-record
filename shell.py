@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.7
+# GRANITE_VERSION: 2026-09-07.9
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -25,6 +25,7 @@ that what they are replacing was actually there.
 import hashlib
 import html
 import json
+import re
 from pathlib import Path
 
 E = html.escape
@@ -72,6 +73,11 @@ NEEDS = {
     "skip": '<a class="skip" href="/bills.html#results">Skip to the bills</a>',
     "script": '<script src="app.js"></script>',
     "viewport": '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    # bills.html is a page in its own right and carries its own description,
+    # canonical and unfurl card. Every record page built from it writes its
+    # own, so this block is removed rather than inherited -- otherwise 34,000
+    # pages would all claim to be the bill search page.
+    "seo": '''<meta name="description" content="Search every bill of the New Hampshire General Court by number, subject, sponsor or committee, with its votes, hearings and full history."><link rel="canonical" href="https://graniterecord.org/bills.html"><meta property="og:type" content="website"><meta property="og:title" content="New Hampshire bills | Granite Record"><meta property="og:description" content="Search every bill of the New Hampshire General Court by number, subject, sponsor or committee."><meta property="og:url" content="https://graniterecord.org/bills.html"><meta property="og:site_name" content="Granite Record"><meta name="twitter:card" content="summary">''',
 }
 
 # Every element app.js binds to on load.
@@ -103,9 +109,49 @@ def template(site=Path("site")):
     return t
 
 
+BRAND = "Granite Record"
+
+# A search result shows roughly the first sixty characters of a title and a
+# hundred and sixty of a description. Longer is not penalised -- it is simply
+# not shown -- but a cut that lands mid-word is, because the fragment that
+# survives reads as broken.
+# Sixty is what is SHOWN; the rest still counts for relevance and costs
+# nothing, so the room here is for the lead and the subject together and the
+# brand is added after it. Sixty flat left "making appropriations for
+# capital..." -- a cut that loses the word the reader needed.
+TITLE_ROOM = 70
+DESC_ROOM = 155
+
+
+def clip(s, room):
+    """Trim to about `room` characters, at a word boundary, never mid-word."""
+    s = re.sub(r"\s+", " ", (s or "")).strip()
+    if len(s) <= room:
+        return s
+    cut = s[:room]
+    sp = cut.rfind(" ")
+    if sp > room * 0.6:
+        cut = cut[:sp]
+    return cut.rstrip(" ,;:-\u2013\u2014.") + "\u2026"
+
+
+def title_of(lead, detail="", brand=True):
+    """A page title: what this page IS, then what it is about, then the site.
+
+    The lead is never trimmed -- it is the thing a person searched for, and
+    "HB 25 (2015)" is the whole reason this page is not the other thirteen
+    pages with the same subject. The detail takes whatever room is left.
+    """
+    lead = re.sub(r"\s+", " ", (lead or "")).strip()
+    tail = f" | {BRAND}" if brand else ""
+    room = TITLE_ROOM - len(lead) - 3
+    detail = clip(detail, room) if (detail and room > 12) else ""
+    return (f"{lead} \u2014 {detail}" if detail else lead) + tail
+
+
 def page(t, *, path, title, description, base, globals=None, noscript="",
          alternate="", skip_label="Skip to the content", og_title=None,
-         sr_title=None, nav_current=""):
+         sr_title=None, nav_current="", jsonld=None):
     """One record's page: the template, told which record it is.
 
     sr_title replaces the template's own visually-hidden <h1>. bills.html
@@ -144,9 +190,27 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         # The card a link unfurls into wants the record's name, not
         # the browser tab's "... | Granite Record".
         + f'\n<meta property="og:title" content="{E(og_title or title)}">'
-        + f'\n<meta property="og:description" content="{E(description)}">')
+        + f'\n<meta property="og:description" content="{E(description)}">'
+        # og:url and og:site_name: a card unfurled from a shared link had no
+        # address of its own and no site to belong to, so it read as a
+        # headline from nowhere. Same address as the canonical, deliberately.
+        + f'\n<meta property="og:url" content="{base}{path}">'
+        + f'\n<meta property="og:site_name" content="{BRAND}">'
+        + '\n<meta name="twitter:card" content="summary">'
+        # Structured data, where the page has something a search engine has a
+        # vocabulary for. It is passed in rather than guessed at here, because
+        # only the builder knows whether this is a bill, a person or a body.
+        + (f'{NL}<script type="application/ld+json">{jsonld}</script>'
+           if jsonld else ""))
 
     out = t.replace(NEEDS["viewport"], head, 1)
+    # ONE TITLE PER PAGE. head starts with the viewport meta and adds a
+    # <title> after it, so the template's own title survived the substitution
+    # and every one of the 34,152 generated pages carried two of them -- the
+    # record's, and then "Granite Record — New Hampshire legislative history".
+    # A browser shows the first and a crawler is entitled to either.
+    out = out.replace(NEEDS["title"], "", 1)
+    out = out.replace(NEEDS["seo"], "", 1)
     # <base> would send the skip link to the site root instead of down the
     # page, which is the one thing a skip link must not do.
     out = out.replace(

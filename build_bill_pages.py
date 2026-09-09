@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.40
+# GRANITE_VERSION: 2026-09-04.41
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -52,14 +52,33 @@ import shell as S
 
 E = html.escape
 
+# "(New Title)" is the General Court's marker for a subject changed by
+# amendment. It belongs on the page, where the change is the story, and not at
+# the front of a search result, where it is the first thing read and says
+# nothing about the bill.
+NEW_TITLE = re.compile(r"^\s*\((?:New Title|Second New Title)\)\s*", re.I)
+
+
+def clean_title(s):
+    return NEW_TITLE.sub("", s or "").strip()
+
+
 def describe(b):
-    """The sentence a search engine shows under the link."""
+    """The sentence a search engine shows under the link.
+
+    Built to fit rather than sliced to fit: the status and what the page holds
+    are what make one bill's description different from another's, and the old
+    version could push them past where they would be shown.
+    """
     n = b.get("n") or b["id"]
-    title = b.get("title") or ""
-    desc = f"{n}, {title} " if title else f"{n}. "
-    desc = re.sub(r"\s+", " ", desc)[:180].strip()
-    return (desc + f" Status: {b.get('status', '')}. Sponsors, votes, hearings "
-                   "and the full record.")
+    yr = str(b.get("year") or "")
+    lead = f"{n} ({yr})" if yr else n
+    st = (b.get("status") or "").strip().rstrip(".")
+    tail = f" {st}." if st else ""
+    subject = clean_title(b.get("title") or "")
+    room = S.DESC_ROOM - len(lead) - len(tail) - 2
+    subject = S.clip(subject, max(20, room))
+    return f"{lead}: {subject}{tail}".strip()
 
 
 def noscript(b, d):
@@ -108,7 +127,13 @@ def shell(t, b, d, base):
             if d.get("events") else "")
     return S.page(
         t, path=path, base=base,
-        title=f"{n} — {title[:90]} | Granite Record",
+        # THE YEAR IS PART OF THE NAME. Bill numbers repeat every two
+        # years, so 192 pages shared a title with another term's bill --
+        # fourteen of them "HB 25 — making appropriations for capital
+        # improvements" — and a search engine has no way to tell them apart.
+        # The old title also cut the subject at ninety characters flat,
+        # mid-word.
+        title=S.title_of(f"{n} ({yr})" if yr else n, clean_title(title)),
         og_title=f"{n} — New Hampshire General Court",
         description=describe(b), alternate=feed,
         globals={"GR_BILL": f"{yr}/{bid}", "GR_STANDALONE": True},
