@@ -315,6 +315,123 @@ card and page changes above, or it gets done twice.
 
 ---
 
+## Bill versions, and what each amendment changed
+
+Researched 8 September. The ask: the detail page opens on the bill as it
+stands now, and the reader can step back through the versions to see what each
+amendment did to it.
+
+### What the record holds today, measured
+
+`bill_text.json` carries **one version of each of the 2,234 current-term
+bills** — whichever one was current when it was fetched. The General Court
+labels them, and the labels say plainly that the others exist:
+
+| label | bills |
+|---|---|
+| AS INTRODUCED | 1,187 |
+| FINAL VERSION | 686 |
+| AS AMENDED BY THE HOUSE | 203 |
+| AS AMENDED BY THE SENATE | 138 |
+| VERSION ADOPTED BY BOTH BODIES | 3 |
+| none stated | 17 |
+
+So for the **861 bills whose text is not the introduced one, the introduced
+text is not on this disk**. That is the missing artefact, and everything else
+follows from it: a diff is two texts, and the site holds one.
+
+**1,572 bills carry at least one adopted amendment** — 2,478 adopted
+amendments in all, against 200 rejected and 181 the docket does not say
+either way.
+
+Two things the site already has that are easy to mistake for this feature:
+
+- **`amendments.json` holds 663 amendment texts**, extracted from cached House
+  calendars, covering 446 of the 2,478 adopted amendments. An amendment is
+  drafting instructions — *"Amend RSA 354-A:1 by replacing it with the
+  following: ..."* — so it says what changed in the drafter's words. It is not
+  a version of the bill and cannot be diffed against one.
+- **The cached bill-text HTML keeps the General Court's own drafting markup**:
+  2,161 of 2,234 files carry `line-through` spans and 2,220 carry italics,
+  marking what the bill removes from current law and what it adds. The
+  extractor flattens both to plain text and the site shows neither. That is a
+  different comparison — bill against statute, not version against version —
+  but it is free, already fetched, and worth taking on its own.
+
+### Where a second version can come from
+
+**1. `LegislationText` on the public SQL host. This is the one to use.**
+Recorded in `ARCHITECTURE.md` on 6 September: it holds the full text of every
+version of every bill as HTML — "Introduced", "As Amended by the House",
+"Version adopted by both bodies", "CHAPTERED FINAL VERSION". One SELECT, on
+the server the General Court publishes credentials for, not the web server
+that blocked this address twice. Current term only, like everything else in
+that database.
+
+**2. `billText.aspx` with a version parameter.** A search result once showed
+`billText.aspx?id=692&txtFormat=pdf&v=current`, so the parameter exists; what
+other values it takes is unknown and no page links to one. Worth a single
+probe only if route 1 disappoints, and it costs 2,234 requests a version to
+the address that has been blocked twice.
+
+**3. Reconstructing a version by applying the amendment.** Of the 663
+amendment texts on disk, 55 open *"Amend the bill by replacing all after the
+enacting clause with the following"* — those carry a complete replacement body
+and could be applied exactly. The rest amend a section, an RSA or the title,
+and applying them means matching the drafter's target inside the bill. That is
+a parser against prose where a wrong answer is a fabricated bill text. Not
+worth doing while route 1 exists.
+
+### The offline win that is available either way
+
+`extract_amendments.py` reads `calendars/` only. The 204 Senate calendars
+fetched for the veto messages print amendments in the same shape — number,
+bracket, proposer, instructions — and hold **902 of the adopted amendments
+whose text is not yet extracted**. A further **388 are in the House calendars
+already on disk** and were missed. Reading both would take amendment-text
+coverage from 446 to about 1,736 of 2,478, **with no network at all**. 744
+appear in no cached calendar.
+
+### The design
+
+**Versions, not diffs, are the unit.** Store each version's text once, in
+order, with the label the General Court gave it and the amendments its own
+header names — `bill_text.json` already parses that header, so
+`2026-1054h at 5 March` is on file for HB 1442 without any new parsing.
+
+**A step is the gap between two consecutive versions**, and that is what the
+reader is shown: the word-level difference, computed at build time, stored as
+operations rather than as two marked-up copies. The site already has the
+vocabulary for it — `.cut` renders removed text struck through in red, added
+in the ordinary ink.
+
+**The check that makes it honest**: applying a step's operations to version *k*
+must reproduce version *k+1* byte for byte. A diff that does not reconstruct is
+a wrong diff, and `preflight` can say so without a network or a judgement call.
+
+**The page**: the text tab opens on the current version, as now. A row of
+version buttons above it, in order, with the amendment number under each. The
+URL takes the version, so a link to what one amendment changed is shareable —
+the same argument as `/bill/2026/hb1442`.
+
+**Cost**: one version of every bill is 14.8 MB of text; the second version for
+the 861 amended bills is about 5.7 MB more. Nothing here needs a new file per
+bill.
+
+### What it will not be able to say
+
+Where `LegislationText` holds fewer versions than the bill had amendments —
+two amendments adopted on the same day and published as one version — the
+step covers both and **the page must say so** rather than attributing the
+whole change to one of them. That is the same rule as the timestamps: name
+what the claim rests on.
+
+And the archived term gets none of it. `LegislationText` is 2025-2026, so
+2023-2024 bills keep a link to the General Court, which is what the archive
+does everywhere else.
+
+---
+
 ## Needs data not yet fetched
 
 Each is a fetch plus a parser plus a place to put it. None blocks anything
@@ -326,13 +443,15 @@ else, and each is worth doing when the structure around it is settled.
 | Public hearing testimony | 565 of 1,237 fetched |
 | Permanent journal speeches | **The largest content addition available.** The House journal records what members actually said. Nothing else on the site carries a member's own words |
 | Fiscal notes | Already inside the bill text, at the bottom, not parsed |
-| Amendment text | `billtext.aspx?txtFormat=amend&id=2026-1054H` reaches it directly; would replace the current 40% ceiling and make diffing possible |
+| Amendment text | 446 of 2,478 adopted amendments have text; 902 more are in the cached Senate calendars and 388 in the House ones, both readable with no network. See **Bill versions** above |
 | Committees of conference | 133 recordings exist and are linked, but the proceeding is not modelled |
 | Executive Council, Governor | `status/officials.txt` is unedited, so neither appears |
 | Rules and executive departments | Not started |
 
-**Amendment text is the one I would do first** of these: it unblocks amendment
-diffing, which is on the list separately, and the endpoint is already known.
+**Amendment text is the one I would do first** of these, and most of it
+needs no fetch at all -- the calendars holding it are already on this
+disk. Versions of the bill itself are a different artefact and come from
+`LegislationText`; **Bill versions** above sets both out.
 
 ---
 
