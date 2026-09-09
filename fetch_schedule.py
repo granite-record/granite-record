@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.4
+# GRANITE_VERSION: 2026-09-08.5
 """
 What each committee is meeting about next, and which bills at what time.
 
@@ -203,7 +203,8 @@ def main():
     ap.add_argument("--reparse", action="store_true",
                     help="rebuild from schedule_pages/, no network")
     ap.add_argument("--limit", type=int, default=400)
-    ap.add_argument("--delay", type=float, default=3.0)
+    ap.add_argument("--delay", type=float, default=8.0,
+                    help="seconds between event pages (default 8)")
     ap.add_argument("--out", default="schedule.json")
     a = ap.parse_args()
 

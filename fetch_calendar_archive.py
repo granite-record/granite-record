@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.3
+# GRANITE_VERSION: 2026-09-08.4
 """
 Thirty years of calendars and journals, a night at a time.
 
@@ -43,14 +43,32 @@ Two fetches at once is what got this address blocked the second time, and a
 design that cannot do it beats a rule that has to be remembered.
 
 A NIGHTLY BUDGET, NOT A MARATHON. --budget stops the run at that many
-requests whether or not the queue is empty. About 5,500 documents is then a
-week of quiet nights rather than one long crawl that looks exactly like an
-attack from the far end.
+requests whether or not the queue is empty. About 4,400 documents is then a
+fortnight of quiet nights rather than one long crawl that looks exactly like
+an attack from the far end.
+
+AND SLOWLY. The first drain ran at three seconds and 18 documents a minute,
+and one request in came back RemoteDisconnected -- the server accepting the
+connection and closing it without sending a byte, which is this address's
+signature for being refused. It recovered and kept going, and that is exactly
+the behaviour not to have: a fetch that pushes through a refusal is how the
+last two blocks were earned.
+
+So the default is 15 seconds with jitter, which is four documents a minute and
+about sixteen hours for the whole archive spread over as many nights as it
+takes. The goal is every document eventually, not many documents today.
+Nothing here has a deadline; the server is the only party that can be
+inconvenienced, and it did not ask for any of this.
+
+RemoteDisconnected is treated as its own thing. One is bad luck and costs a
+two-minute pause; two in a run ends the run, whether or not they were
+consecutive, because the second one is a pattern.
 """
 
 import argparse
 import csv
 import os
+import random
 import sys
 import time
 import urllib.parse
@@ -207,9 +225,12 @@ def main():
                     default="both")
     ap.add_argument("--from", dest="first", type=int, default=0)
     ap.add_argument("--to", dest="last", type=int, default=9999)
-    ap.add_argument("--budget", type=int, default=300,
-                    help="requests this run, then stop (default 300)")
-    ap.add_argument("--delay", type=float, default=3.0)
+    ap.add_argument("--budget", type=int, default=150,
+                    help="requests this run, then stop (default 150)")
+    ap.add_argument("--delay", type=float, default=15.0,
+                    help="seconds between requests (default 15). Jittered by "
+                         "a quarter either way, so a run does not arrive on a "
+                         "metronome.")
     a = ap.parse_args()
 
     ROOT.mkdir(exist_ok=True)
@@ -275,10 +296,12 @@ def main():
                 if r["state"] == "wanted"
                 and (r["chamber"] in chambers) and (r["kind"] in kinds)
                 and (not years or int(r["year"]) in years)]
-        print(f"{len(todo):,} wanted, taking {min(len(todo), a.budget):,} "
-              f"this run at {a.delay}s apart")
+        n = min(len(todo), a.budget)
+        print(f"{len(todo):,} wanted, taking {n:,} this run at about "
+              f"{a.delay:g}s apart -- roughly {n * a.delay / 60:.0f} minutes, "
+              f"{60 / a.delay:.1f} a minute")
         got = fail = 0
-        run = 0
+        run = dropped = 0
         t0 = time.time()
         for i, r in enumerate(todo[:a.budget], 1):
             path = Path(r["path"])
@@ -296,12 +319,29 @@ def main():
                     r["state"] = "failed"
                 fail += 1
                 run += 1
+                # RemoteDisconnected is not one failure among others. It is
+                # the server accepting the connection and closing it without
+                # sending a byte, which is what being refused looks like from
+                # here. One is bad luck; two in a run is a pattern and the
+                # run is over.
+                blocklike = "RemoteDisconnected" in r["error"] or \
+                    "ConnectionReset" in r["error"] or "403" in r["error"]
+                if blocklike:
+                    dropped += 1
                 print(f"  [{i}] {r['name']}: {r['error'][:80]}", flush=True)
-                if run >= 3:
-                    print("\nThree in a row. Stopping. netcheck.py says why "
+                if dropped >= 2:
+                    print("\nTwo refusals this run. Stopping and not coming "
+                          "back today.\npython3 netcheck.py says what kind of "
+                          "refusal it is without making it worse.")
+                    break
+                if run >= 2:
+                    print("\nTwo in a row. Stopping. netcheck.py says why "
                           "without making it worse.")
                     break
-                time.sleep(a.delay * 2)
+                cool = 120 if blocklike else a.delay * 3
+                print(f"      waiting {cool:.0f}s before the next one",
+                      flush=True)
+                time.sleep(cool)
                 continue
             run = 0
             path.write_bytes(blob)
@@ -310,12 +350,13 @@ def main():
             r["error"] = ""
             r["fetched"] = time.strftime("%Y-%m-%dT%H:%M:%S")
             got += 1
-            if got % 25 == 0:
+            if got % 10 == 0:
                 save_queue(rows)
                 rate = got / max(1e-9, time.time() - t0)
                 print(f"  {i}/{min(len(todo), a.budget)}  {got} fetched, "
                       f"{rate * 60:.0f}/min", flush=True)
-            time.sleep(a.delay)
+            # Jittered, so a run does not arrive on a metronome.
+            time.sleep(a.delay * random.uniform(0.75, 1.25))
         save_queue(rows)
         held = sum(1 for x in rows if x["state"] == "held")
         print(f"\n{got:,} fetched, {fail} failed, {time.time() - t0:.0f}s")
