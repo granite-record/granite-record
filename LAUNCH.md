@@ -149,7 +149,15 @@ the review tool again. Left undone deliberately.
 
 15. Session calendar page: consent calendar, regular calendar, committee
     motions, in order, explained.
-16. Executive Council, Governor, CD-1, CD-2 and US Senator pages.
+16. ~~**Executive Council, Governor, CD-1, CD-2 and US Senator pages**~~ —
+    built as 320 town-and-ward pages at `/town/<slug>`, because the question
+    people actually ask is "who represents me", not "who is on the Executive
+    Council". Every town-ward already mapped to a congressional and council
+    district in `site/districts.json`; neither had ever been shown. The ten
+    office-holders live in `officials.json`, hand-edited like
+    `ground_truth.csv`, and are **still blank** — until they are filled in
+    each page names the office, gives the reader their district and links to
+    the official directory.
 17. Cross-term legislator identity, so a member's whole career is one record.
     `DistrictPast` exists because a 1998 member's district is not today's.
 18. Related bills — after the review tool, never before.

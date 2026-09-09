@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.10
+# GRANITE_VERSION: 2026-09-05.11
 """
 Run the whole pipeline in the right order.
 
@@ -297,6 +297,15 @@ def plan(a):
              produces=["site/learn.html"],
              note="eleven civics pages and the hub they hang off; needs no "
                   "data and no network, and it owns learn.html"),
+
+        Step("a page per town and ward",
+             ["build_town_pages.py", "--site", "site", "--base", a.base],
+             needs=["site/districts.json", "site/legislators.json"],
+             produces=["site/town"],
+             note="who represents the people who live there -- state "
+                  "representatives and senator from the roster, and the "
+                  "executive council, US House and Senate districts that were "
+                  "in districts.json all along and had never been shown"),
 
         Step("RSS feeds",
              ["build_feeds.py", "--site", "site", "--base", a.base],

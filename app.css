@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.33 */
+/* GRANITE_VERSION: 2026-09-07.34 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -760,6 +760,25 @@ margin-top:2px}
    --measure is 560px and every block here takes it, so the text and the box
    it sits in end together. Wide things -- there are none yet, but a diagram
    is coming -- opt out with .wide. */
+
+/* WHO REPRESENTS THIS TOWN. Built like the civics pages, because it is the
+   same kind of page: server-rendered prose in the same shell, read once
+   rather than searched. The measure keeps it readable; the lists inside it
+   are wider than the measure only where a name and an address share a line. */
+.officials{max-width:var(--measure);margin:0 auto;padding:6px 0 40px}
+.offtitle{font-size:28px;line-height:1.2;margin:6px 0 10px}
+.officials .lead{font-size:19px;line-height:1.6;color:var(--ink);margin:0 0 22px}
+.offsec{font-size:19px;margin:34px 0 6px;padding-top:14px;
+  border-top:1px solid var(--rule)}
+.offh{font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--ink-2);margin:22px 0 8px}
+.offlist{list-style:none;padding:0;margin:0 0 10px}
+.offrow{margin:0 0 8px;font-size:14px;line-height:1.6}
+.offrow .mchip{margin-right:2px}
+.officials .note{font-family:var(--serif);font-size:15px;line-height:1.6;
+  color:var(--ink-2);margin:0 0 12px;max-width:var(--measure)}
+.officials .srcs{margin-top:34px;border-top:1px solid var(--rule);
+  padding-top:14px;font-size:13px;color:var(--ink-2);line-height:1.6}
 .civics{max-width:var(--measure);margin:0 auto;padding:6px 0 40px}
 .civics h1{font-size:28px;line-height:1.2;margin:6px 0 10px}
 .civics h2{font-size:19px;margin:30px 0 8px}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.33
+# GRANITE_VERSION: 2026-09-04.34
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -654,6 +654,14 @@ function list(q){
    :`<p class="note">Nothing matches that.</p>`;
 }
 
+// The same slug build_town_pages.py writes. Two places compute it because
+// one is Python at build time and one is JavaScript in the browser; they are
+// checked against each other by preflight rather than trusted to agree.
+function slugOf(t,w){
+  const s=String(t).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  return (w&&w!=="0")?`${s}-ward-${w}`:s;
+}
+
 function reps(county,district){
   return L.filter(m=>m.chamber==="H"&&m.county===county&&
     num(m.district)===num(district));
@@ -711,7 +719,17 @@ function show(){
       <p class="note" style="margin:4px 0 0">The Executive Council approves state
       contracts, judicial nominations and pardons. Its members are elected but
       rarely covered, and this site does not track their votes.</p>`:"";
-    body=house+sen+cou;
+    // The congressional district was in districts.json all along and had
+    // never been shown, so a reader who came here to find out who represents
+    // them was told about two of their four elected bodies.
+    const con=dist.congress?`<p style="margin:16px 0 4px"><b>US House</b> —
+      New Hampshire district ${dist.congress}</p>`:"";
+    // And the whole answer, on a page that can be shared, printed or found in
+    // a search. "Who represents Concord Ward 3" is a question people type.
+    const full=`<p style="margin:18px 0 0"><a href="town/${slugOf(town,w)}.html"
+      ><b>Everyone who represents ${esc(town)}${ws.length>1?` Ward ${esc(w)}`:""}</b>,
+      with how to reach them &#8594;</a></p>`;
+    body=house+sen+cou+con+full;
   }
   out.innerHTML=`<div class="card"><h2 style="margin:0 0 10px">${esc(town)}
     ${ward&&ws.length>1?`<span style="font-weight:400;color:var(--ink-2)">
