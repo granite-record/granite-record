@@ -92,6 +92,101 @@ what it costs. Nightly remains frequent enough for amendments, reports and
 everything else.
 
 
+## Upcoming hearings, and submitting testimony: what the probes found
+
+Four requests to gc.nh.gov on 8 September, one at a time. Everything below was
+read off the responses, not inferred.
+
+### The testimony form cannot be deep-linked. This is settled, not suspected.
+
+`house/committees/remotetestimony/default.aspx` is the submission form, and it
+is five steps: personal details, **a date**, a committee, a bill, a position,
+an optional upload.
+
+Step 2 is an ASP.NET `Calendar` control — `pageBody_calHearingDate`, a table of
+days whose every cell is
+`javascript:__doPostBack('ctl00$pageBody$calHearingDate','V9709')`. Choosing a
+day posts back and populates `ddlCommittee`; choosing a committee posts back
+and populates `ddlBills`. On a fresh load **both of those selects hold zero
+options**, because nothing is chosen yet.
+
+The second request supplied `?committee=10&bill=HB1442&date=2026-02-20&
+hearingdate=2026-02-20&lsr=2729`. The page came back **identical**: committee
+0 options, bills 0 options, no day selected, name field empty. The query
+string is ignored, which is the ordinary behaviour for this page style and is
+now measured rather than assumed.
+
+**So no link can pre-fill the calendar, the committee or the bill.** The
+honest thing to build is a link to the form with the three values printed
+beside it for the reader to choose, and no pretence that it does more.
+
+### The schedule is a JSON web service, and it is the better source
+
+`house/schedule/dailyschedule.aspx` is a FullCalendar page, and its events come
+from one AJAX call with no parameters, no ViewState and no postback:
+
+    GET https://gc.nh.gov/house/schedule/CalendarWS.asmx/GetEvents
+
+It answers with every scheduled meeting:
+
+    {"title":"House Ways and Means : GP, Room 234",
+     "start":"2026-09-10T10:00:00","end":"2026-09-10T16:30:00",
+     "backgroundColor":"#2980B9",
+     "url":"eventDetails.aspx?event=3027&et=1","allDay":false}
+
+- `backgroundColor` **is the kind**, per the page's own legend: `#2980B9` blue
+  is a hearing, `#66A362` green a meeting, orange an executive session, red a
+  committee of conference.
+- The title carries `==REVISED==` and `==CANCELLED==` markers inline, which the
+  docket has as `==FLAG==` and the site already models.
+- `url` is an event id and a type.
+
+And the event page carries the bills, at their times:
+
+    GET house/schedule/eventDetails.aspx?event=3027&et=1
+
+    Date Sep 10, 2026 · Time 10:00 AM - 04:30 PM · Granite Place · Room 234
+    HOUSE WAYS AND MEANS
+      10:00 AM  HB1648  providing property tax exemptions for qualifying residences.
+      10:00 AM  HB1787  modifying the statewide education property tax.
+      10:00 AM  HB1800  relative to statewide education property taxes.
+
+Committee, room, date, a time range for the sitting and a time for each bill.
+That is the whole of what a committee page needs to show an upcoming day, and
+what a calendar view needs to let someone find a hearing worth attending.
+
+**Cost: one request for the whole schedule, then one per event.** Currently
+about 40 events are listed; in session it will be tens a week. This is a
+nightly job of a few dozen requests, not a crawl.
+
+### What this changes about the plan
+
+The House calendar `COMMITTEE MEETINGS` sections are still worth parsing — they
+are the legal notice, they are on disk for 150 calendars already, and they are
+what gives a hearing a **publication date**, which is what opens the testimony
+window. But they are the *historical* record. For anything upcoming,
+`CalendarWS` is better in every way: it is JSON, it is current, it states the
+kind, and it names the bills at their times.
+
+So the two sources do different jobs:
+
+| | source | gives |
+|---|---|---|
+| what is coming | `CalendarWS.asmx/GetEvents` + `eventDetails.aspx` | the schedule, the room, the bills and their times |
+| when it was noticed | House calendar `COMMITTEE MEETINGS`, on disk | the publication date the testimony window opens from |
+| what happened | the docket, as now | the record |
+
+### And the reason none of it can be seen working yet
+
+No hearing on this disk is in the future. The session adjourned in August, the
+newest proceeding anywhere is 2026-09-02, and `ddlCommittee` on the submission
+form is empty because nothing is open. Every one of the 3,360 committee
+hearings in the record can only be "closed". The three states are buildable and
+checkable, but they cannot be *seen* until the next session schedules
+something.
+
+---
+
 ## One click to submit testimony
 
 A reader who sees a hearing scheduled next week on something they care about
