@@ -79,19 +79,8 @@ after.
    going to see. HR and SR now carry a two-stop rail: the chamber, and whether
    it was adopted. HCR, SCR and CACR do cross and are untouched.
 
-### Do first — small, visible, and several are correctness
+### Do first — small and visible
 
-1. **Narratives are written in the past tense**, so a scheduled meeting reads
-   "The committee held a work session on September 20th, 2026." The site
-   states a future event as fact. Compare the event date to today.
-2. **HTML entities published raw** — `&ldquo;` appears as itself in HB2's
-   analysis. One unescape.
-3. **Committee reports carry page furniture mid-sentence** — "13 FEBRUARY2026
-   HOUSERECORD 23" inside a member's reasoning. `is_whole()` in
-   `extract_vetoes.py` is the pattern to copy.
-4. **The rail is wrong for resolutions.** A House resolution never goes to the
-   Senate; the rail draws that as a stop it failed to reach. Two stops, not
-   four.
 5. **Special-bill notes.** HB1 is the budget, HB2 the trailer bill, HB2026 the
    ten-year transportation plan. A reader cannot know that. Hand-written, a
    dozen of them.
@@ -151,10 +140,7 @@ after.
 
 ## 5. Known bugs not yet fixed
 
-- Narrative tense (above, item 1).
-- Raw HTML entities (item 2).
-- Committee-report page furniture (item 3).
-- Resolution rail (item 4).
+- The four above are fixed. What follows is what is left.
 - **Veto coverage regressed** 124 → 67 newly-extracted messages when the
   citation fallback was removed today. 175 publish in total, all correct, but
   `calendars.json` still covers only 976 of 2,564 calendars, and the rest
