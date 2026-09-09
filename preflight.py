@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.75
+# GRANITE_VERSION: 2026-09-04.76
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3248,11 +3248,20 @@ def _rail():
     # Not "pppp": nine bills became law over a veto, and their rail reads
     # ppxp -- both chambers, the governor against, law anyway. That is the
     # story, and requiring a clean run would have forbidden telling it.
-    ends_law = sum(1 for b in rows
-                   if (b.get("passage") or "")[4:5] == "p")
-    assert ends_law == laws, (
-        f"{ends_law:,} rails end at law and {laws:,} bills are called law. "
-        "Those are the same bills counted two ways and they have to match.")
+    #
+    # AMONG THE BILLS THAT CARRY A PASSAGE, and only those. The archived
+    # terms arrived with statuses and no dockets, so 29,485 bills are called
+    # law, study or done on the strength of a status field while having no
+    # stages to draw a rail from -- and counting those made a check that was
+    # exactly right read as 1,273 against 12,127. A rail cannot be required
+    # of a bill whose sequence of events is not on this disk.
+    withp = [b for b in rows if b.get("passage")]
+    laws_p = sum(1 for b in withp if (b.get("kind") or "") == "law")
+    ends_law = sum(1 for b in withp if (b["passage"] or "")[4:5] == "p")
+    assert ends_law == laws_p, (
+        f"{ends_law:,} rails end at law and {laws_p:,} bills with a rail are "
+        "called law. Those are the same bills counted two ways and they have "
+        "to match.")
     return "ok", (f"{n:,} rails, {pppp:,} of them the whole way, "
                   f"{vetoes} vetoed and crossed at the governor")
 

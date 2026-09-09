@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.9
+# GRANITE_VERSION: 2026-09-07.10
 """
 The governor's veto messages, from the House calendars already on disk.
 
@@ -198,6 +198,7 @@ def messages(text, source):
     text, healed = unpaginate(text)
     HEALED[0] += healed
     found = []
+    dropped = []
     marks = list(HEAD.finditer(text))
     for i, m in enumerate(marks):
         end = marks[i + 1].start() if i + 1 < len(marks) else len(text)
@@ -224,6 +225,15 @@ def messages(text, source):
             m2 = SAIDDATE.search(" ".join(paras))
             if m2:
                 when = iso(m2.group(1))
+        # SHAPE FIRST. A message that runs past a plausible length, or that
+        # carries a heading belonging to another section, is not a veto
+        # message that needs trimming -- it is the end boundary having been
+        # missed, and publishing it would put a room-booking list in a
+        # Governor's mouth.
+        ok, why = is_whole(paras)
+        if not ok:
+            dropped.append((bill, why))
+            continue
         found.append({
             "bill": bill,
             "text": paras,
@@ -235,7 +245,40 @@ def messages(text, source):
             "_named": sorted(said),
             "_joins": joins,
         })
+    if dropped:
+        print(f"  {len(dropped)} message(s) dropped as not a veto message: "
+              + "; ".join(f'{b} ({w})' for b, w in dropped[:3]))
     return found
+
+
+# A VETO MESSAGE HAS A SHAPE, AND THESE ARE NOT IT.
+#
+# The archived calendars arrived in an older layout and the end boundary is
+# not always found in them. HB455's message came out at 195 lines and had
+# swallowed the whole rest of the document -- COMMITTEE MEETINGS, OFFICIAL
+# NOTICES, MEMBERS' NOTICES, a list of room bookings -- and would have been
+# published under a heading saying the Governor wrote it.
+#
+# That is the worst thing this file can produce. A missing veto message is a
+# gap; a wrong one is words put in a Governor's mouth. So a message that runs
+# past a plausible length, or that contains a heading belonging to another
+# section, is dropped and counted rather than trimmed and hoped over.
+RUNAWAY = 60
+NOT_A_MESSAGE = ("COMMITTEE MEETINGS", "OFFICIAL NOTICES", "MEMBERS' NOTICES",
+                 "REVISED FISCAL NOTES", "BILLS LAID ON THE TABLE",
+                 "HOUSE DEADLINES")
+
+
+def is_whole(lines):
+    """(ok, why not). Shape only -- nothing here reads the prose."""
+    if len(lines) > RUNAWAY:
+        return False, f"{len(lines)} lines, which is not a veto message"
+    for l in lines:
+        s = l.strip().upper()
+        for h in NOT_A_MESSAGE:
+            if s == h or s.startswith(h):
+                return False, f"contains the heading {h!r}"
+    return True, ""
 
 
 def main():
