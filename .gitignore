@@ -129,3 +129,11 @@ db/
 # ---- parsed out of the calendars by calendar_meetings.py ----------------
 # 21,611 rows, 6 MB, rebuilt from calendars/ in about a minute with no network.
 meetings.json
+
+# ---- the House meeting schedule, fetched by fetch_schedule.py -----------
+schedule_pages/
+schedule.json
+archive_years.json
+archive/
+journals/
+journals_senate/
