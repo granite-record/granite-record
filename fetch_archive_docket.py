@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.2
+# GRANITE_VERSION: 2026-09-07.3
 """
 The docket of every bill of an archived term, in Docket.txt's own format.
 
@@ -111,6 +111,10 @@ def main():
     ap.add_argument("--timeout", type=float, default=60.0)
     ap.add_argument("--reparse", action="store_true",
                     help="re-read the cached pages, ask the server nothing")
+    ap.add_argument("--seed",
+                    help="a Docket-shaped file whose bills are already "
+                         "accounted for; its lines are kept and those bills "
+                         "are never asked for")
     a = ap.parse_args()
 
     bills = json.loads((Path(a.data) / "bills.json").read_text(encoding="utf-8"))
@@ -128,7 +132,33 @@ def main():
 
     lines, fetched, cached_n, failed, empty = [], 0, 0, Counter(), 0
     refused = 0
+
+    # A BILL THE DATABASE ALREADY ACCOUNTS FOR IS NOT ASKED FOR AGAIN. The
+    # public database's Docket view holds 1989-2014 whole and then stops part
+    # way through 2016: 905 of the 2015-2016 term's 1,788 bills are in it and
+    # 883 are not. Fetching the term blind would ask this server for 905 pages
+    # whose contents are already on this disk -- nearly four hours of load on
+    # an address that has been blocked twice, for nothing.
+    #
+    # So the seed's lines are kept as they are and its bills are skipped. The
+    # output is still the whole term in one file, which is what narrative.py
+    # wants.
+    seeded = set()
+    if a.seed:
+        sp = Path(a.seed)
+        if not sp.exists():
+            sys.exit(f"--seed {a.seed} is not here")
+        for ln in sp.read_text(encoding="utf-8-sig",
+                               errors="replace").splitlines():
+            p = ln.split("|")
+            if len(p) >= 7 and p[3].strip():
+                seeded.add(p[3].strip().upper())
+                lines.append(ln)
+        print(f"  seeded with {len(lines):,} docket lines covering "
+              f"{len(seeded):,} bills, none of which will be asked for")
     for i, bid in enumerate(todo, 1):
+        if bid.upper() in seeded:
+            continue
         rec = bills[a.term][bid]
         yr, lsr = str(rec.get("lsr_year") or ""), str(rec.get("lsr_num") or "")
         if not yr or not lsr:
