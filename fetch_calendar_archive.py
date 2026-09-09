@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.1
+# GRANITE_VERSION: 2026-09-08.2
 """
 Thirty years of calendars and journals, a night at a time.
 
@@ -58,8 +58,8 @@ import urllib.request
 from collections import Counter
 from pathlib import Path
 
-from fetch_committee_reports import (SEL_DOC, SEL_KIND, SEL_YEAR, UA, _hidden,
-                                     _options)
+from fetch_committee_reports import (DOCNUM_RE, SEL_DOC, SEL_KIND, SEL_YEAR,
+                                     UA, _hidden, _options)
 
 ROOT = Path("archive")
 QUEUE = ROOT / "queue.csv"
@@ -73,13 +73,13 @@ FIELDS = ["chamber", "kind", "year", "name", "url", "path", "state",
 # the folder is lower case in one and capitalised in the other.
 SOURCES = {
     ("H", "calendar"): ("https://gc.nh.gov/house/calendars_journals/",
-                        "Calendar", "calendars", "calendars"),
+                        "Calendar", "calendars", "calendars", "HC"),
     ("H", "journal"): ("https://gc.nh.gov/house/calendars_journals/",
-                       "Journal", "journals", "journals"),
+                       "Journal", "journals", "journals", "HJ"),
     ("S", "calendar"): ("https://gc.nh.gov/senate/calendars_journals/",
-                        "SenateCalendar", "Calendars", "calendars_senate"),
+                        "SenateCalendar", "Calendars", "calendars_senate", "SC"),
     ("S", "journal"): ("https://gc.nh.gov/senate/calendars_journals/",
-                       "SenateJournal", "Journals", "journals_senate"),
+                       "SenateJournal", "Journals", "journals_senate", "SJ"),
 }
 VIEWER = "viewer.aspx?fileName="
 
@@ -95,6 +95,25 @@ def _get(url, data=None, timeout=60):
 
 def _page(url, data=None):
     return _get(url, data).decode("utf-8", errors="replace")
+
+
+def _local(prefix, name, label):
+    """The name the existing archive uses: HC010.pdf, SC005.pdf, HJ016.pdf.
+
+    The number comes from the LABEL ("No 32 September 4 2026"), not the
+    filename, because a filename can be "SC 29.pdf" with no "No" in it at all
+    while its label still reads "No 29". Where neither carries a number the
+    source name is kept, so nothing is silently renamed to a collision.
+    """
+    m = DOCNUM_RE.search(label or "") or DOCNUM_RE.search(name or "")
+    if not m:
+        return name
+    num = m.group(1)
+    digits = "".join(c for c in num if c.isdigit())
+    suffix = "".join(c for c in num if c.isalpha()).upper()
+    if not digits:
+        return name
+    return f"{prefix}{int(digits):03d}{suffix}.pdf"
 
 
 def load_queue():
@@ -117,7 +136,7 @@ def save_queue(rows):
 
 def discover(chamber, kind, years=None, delay=3.0):
     """Ask one index what it has. One request to load, one per year to switch."""
-    index, kindval, folder, outdir = SOURCES[(chamber, kind)]
+    index, kindval, folder, outdir, prefix = SOURCES[(chamber, kind)]
     print(f"  {chamber} {kind}: reading {index}")
     page = _page(index)
     listed = [v for v, _ in _options(page, SEL_YEAR) if v.isdigit()]
@@ -140,13 +159,24 @@ def discover(chamber, kind, years=None, delay=3.0):
         except Exception as e:                          # noqa: BLE001
             print(f"    {y}: {type(e).__name__}: {e}")
             continue
-        docs = [v for v, _ in _options(page, SEL_DOC) if v and v.lower() != "select"]
-        for name in docs:
+        docs = [(v, lab) for v, lab in _options(page, SEL_DOC)
+                if v and v.lower() != "select"]
+        for name, label in docs:
             rel = f"{folder}\\{y}\\{name}"
             found.append({
-                "chamber": chamber, "kind": kind, "year": y, "name": name,
+                "chamber": chamber, "kind": kind, "year": y,
+                # THE SOURCE FILENAME, VERBATIM, because across thirty years
+                # there are at least three incompatible forms of it and it is
+                # the only identifier this source offers.
+                "name": name,
                 "url": index + VIEWER + urllib.parse.quote(rel, safe=""),
-                "path": str(Path(outdir) / y / name),
+                # But the LOCAL name follows the 376 files already on this
+                # disk: calendars/2026/HC010.pdf, calendars_senate/2026/
+                # SC005.pdf. Keyed on the source name instead, not one of
+                # them would be recognised as held, and the first run would
+                # re-download every one -- 376 needless requests at the
+                # address that has blocked this project twice.
+                "path": str(Path(outdir) / y / _local(prefix, name, label)),
                 "state": "wanted", "attempts": "0", "error": "",
                 "bytes": "", "fetched": ""})
         print(f"    [{n}/{len(want)}] {y}: {len(docs)} documents", flush=True)
