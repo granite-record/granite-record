@@ -1,0 +1,36 @@
+{
+ "NHLegislatureDB2": {},
+ "PublicNHLMS": {
+  "LegislationText": [
+   {
+    "n": "6825"
+   }
+  ],
+  "houseRemoteTestify": [
+   {
+    "n": "402918"
+   }
+  ],
+  "DocumentVersion": [
+   {
+    "n": "54"
+   }
+  ],
+  "Subject": [
+   {
+    "n": "48"
+   }
+  ],
+  "hearingType": [
+   {
+    "n": "27"
+   }
+  ],
+  "committeeType": [
+   {
+    "n": "13"
+   }
+  ]
+ },
+ "NHRSA": {}
+}

@@ -1,11 +1,12 @@
 # Getting the whole record onto this disk
 
-Written 8 September 2026. Every number below was measured, not estimated, and
-the measurement is named beside it so it can be re-run.
+Written 8 September 2026 and revised the same day, after the three probes at
+the end were run. Every number below was measured, and the measurement is
+named beside it so it can be re-run.
 
 The goal: stop fetching in chunks. Bring the New Hampshire record local — all
-of it that is reachable — so that the remaining work is deciding how to present
-it rather than deciding what to ask for next.
+of it that is reachable — so that the remaining work is deciding how to
+present it rather than deciding what to ask for next.
 
 ---
 
@@ -16,10 +17,11 @@ it rather than deciding what to ask for next.
 | Bill lists and status | 1989–2026 | 2 terms (4,230) | Advanced Bill Status Search, **2 requests a year** |
 | Dockets | 1989–2016, 2025–2026 | 2 terms | **the database, free** — 317,811 rows |
 | Roll calls | **1999–2026, no gaps** | 2 terms | **the database, free** — 9,565 votes, 2,303,047 individual ballots |
-| Calendars and journals | **1997–2026** | 376 calendars, **0 journals** | the index's own dropdowns, one request a document |
-| Video and captions | unknown, ≥2024 | 1,418 indexed, 883 with captions | YouTube uploads playlist |
+| Calendars and journals | House **1997–2026**, Senate **1998–2026** | 376 calendars, **0 journals** | the index's own dropdowns, one request a document |
+| Video and captions | **2020–2026, 4,428 videos** | 1,418 indexed, 883 with captions | YouTube uploads playlist |
 
-Two spans are worth saying out loud because they change what this site can be.
+Three spans are worth saying out loud because they change what this site can
+be.
 
 **Roll calls go back to 1999 and cost nothing.** `RollCallSummary` and
 `RollCallHistory` hold 27 years without a gap — 2.3 million individual ballots
@@ -27,11 +29,19 @@ Two spans are worth saying out loud because they change what this site can be.
 recorded vote by every member for thirteen terms, and it is a query, not a
 crawl.
 
-**The docket has an eight-year hole.** 1989–2015 is complete, 2016 is a
-fifth of a year (1,962 rows against a normal 9,000), and **2017–2024 is not
-in the database at all**. Those eight years exist on the web at one request
-per bill, which is about 7,200 requests — the single most expensive item on
-this page, and the only one that deserves an argument.
+**The video record is more than three times what we knew about.** Both
+channels were walked to the end on 8 September: the House has **3,029 videos
+back to 14 May 2020** and the Senate **1,399 back to 29 May 2020**. The site
+knows about 1,418 of those, because the index was only ever fetched from
+January 2025. The other **3,010 cover two whole terms the site has no
+recordings for at all**, including the 2023–2024 term that is already
+published as cards.
+
+**The docket has an eight-year hole and the database does not fill it.**
+1989–2015 is complete, 2016 is a fifth of a year (1,962 rows against a normal
+9,000), and **2017–2024 is absent**. The probe below asked the other seven
+databases on that server and none of them has a `Docket` view. So those eight
+years cost about 7,200 web requests or they do not happen — see §3E.
 
 ---
 
@@ -51,7 +61,8 @@ work/                 915 recordings       captions and transcripts, 5.0 GB
 `work/` is 20.3 GB and **15.3 GB of it is 34 `audio.wav` files** — the
 intermediate the Whisper path writes before transcribing. They are
 regenerable from YouTube and nothing reads them after the transcript exists.
-Deleting the transcribed ones is the cheapest 15 GB on this machine.
+Deleting the transcribed ones is the cheapest 15 GB on this machine, and it
+roughly pays for the whole PDF archive below.
 
 Journals: none. Not one, in either chamber, for any year. The House Journal is
 the only document in the record that carries what a member actually **said**,
@@ -77,15 +88,15 @@ first, in one evening.
 
 ### B — The database, in full. **About 40 queries. No web requests at all.**
 
-One SELECT per view per year where a view is large, streamed to file through
-`probe_db.run_to_file`. What that gets, with row counts already measured:
+One SELECT per view, streamed to file through `probe_db.run_to_file` where the
+answer is more than a few thousand rows. Row counts already measured:
 
 | view | rows | what it is |
 |---|---|---|
 | `RollCallHistory` | 2,303,047 | every ballot, 1999–2026 |
 | `RollCallSummary` | 9,565 | every recorded vote |
 | `Docket` | 317,811 | 1989–2016 and 2025–2026 |
-| `houseRemoteTestify` | 402,908 | testimony sign-ins, 128,854 with written text |
+| `houseRemoteTestify` | 402,918 | testimony sign-ins, 128,854 with written text |
 | `NH_RSA` | 29,785 | the statutes themselves |
 | `VHearings` | 8,728 | hearings, which is what "upcoming hearings" needs |
 | `LegislationText` | 6,825 | **three versions per bill**, current term |
@@ -98,56 +109,77 @@ the RSA linker point at the statute's own words instead of at a citation; the
 second is the table behind the hearing-schedule feature already planned for
 the next term.
 
-Also unexplored, and one query settles it: this server holds **eight
-databases**, and only `NHLegislatureDB` has been read. `NHLegislatureDB2`
-exists and answers nothing under the same view names; `PublicNHLMS` answers
-`Legislation`, `LegislationText`, `DocumentVersion` and testimony. **If the
-2017–2024 docket lives anywhere, it is in one of those two**, and finding it
-turns the most expensive item on this page into a free one. Ask before
-assuming it does not.
+**What the eight-database question turned up.** `NHLegislatureDB2` and `NHRSA`
+answer nothing at all — not one known view name, and `INFORMATION_SCHEMA` is
+closed to this account on both. `PublicNHLMS` is a different thing entirely:
+it is the drafting system behind the public record, and two of its views are
+worth having.
 
-### C — Calendars and journals, 1997 to 2026. **About 5,400 documents.**
+- **`DocumentVersion`, 54 rows** against the 13 in `NHLegislatureDB`. It is
+  the authoritative version vocabulary — Introduced, As Amended by the House,
+  As Amended by the House (2nd committee), Conference Committee report,
+  Version adopted by both bodies, Adopted in concurrence, FINAL VERSION,
+  CHAPTERED FINAL VERSION — each with a **`SortOrder`** and a **`SendToWEB`**
+  flag. That is exactly what the version switcher in `ROADMAP.md` needs: the
+  order of the versions is a published column, not something to infer, and the
+  flag says which ones the public is meant to see.
+- **`Legislation`, 2,428 rows** against 2,234 in the public view, on a
+  different schema: `IntakeNbr` ("IN 25-0006"), `RequestReceiveDate`,
+  `Confidential`, `IntakeTitleText`, `AttorneyReAssigenedDate`. This is the
+  LSR pipeline — bills before they are bills, including 194 that never became
+  one. Interesting, and a decision of its own: some of it is drafting-stage
+  material and the `Confidential` column exists for a reason. Read before
+  publishing anything from it.
 
-The index at `gc.nh.gov/{house,senate}/calendars_journals/` lists every
-calendar and every journal, by number and date, for **thirty years back to
-1997**, and the document dropdown's option values are the real filenames.
-`probe_calendars.py` established this on 6 September and
-`fetch_senate_calendars.py` already fetches against it. One postback lists a
-whole year.
+### C — Calendars and journals. **About 5,500 documents.**
 
-Per year, per chamber, roughly 50 calendars and 40 journals. Thirty years,
-two chambers, minus the 376 calendars already here:
+Confirmed at the index on 8 September. The House offers **30 years, 2026 back
+to 1997**; the Senate **29 years, back to 1998**. Both have a Journals option
+beside Calendars — `Calendar`/`Journal` in the House, `SenateCalendar`/
+`SenateJournal` in the Senate. The document dropdown's option values are the
+real filenames, so one postback lists a whole year and nothing is guessed.
+
+Per year, per chamber, roughly 50 calendars and 40 journals:
 
 ```
-listing      ~120 postbacks      one per year per kind per chamber
-documents    ~5,400 requests     at 350 KB each, about 1.9 GB
+listing      118 postbacks       30 House years x 2 kinds + 29 Senate years x 2
+documents    ~5,500 requests     at 350 KB each, about 1.9 GB
 ```
 
 At five seconds apart that is eight hours of requests. It should not be eight
-hours; see the method below.
+hours; see §4.
 
-### D — Video and captions. **Cheap on quota, heavy on disk.**
+### D — Video and captions. **Free to index, 24 GB to keep.**
 
-Both channels are walked through the **uploads playlist**, which costs one
-YouTube API unit per fifty videos against a daily allowance of ten thousand.
-Indexing every video either channel has ever posted costs a few hundred units
-— call it free.
+Done for the index, on 8 September: 61 pages for the House and 28 for the
+Senate, about 90 quota units against a daily allowance of ten thousand. The
+whole result is in `channel_index_full.json`.
 
-What is unknown is **how far back the channels go**. The index was only ever
-fetched from 1 January 2025, so 1,418 videos are known and the back catalogue
-is unmeasured. One API call per channel answers it and should be the first
-thing done here.
+```
+            2020  2021  2022  2023  2024  2025  2026   total
+House         33   378   440   666   539   570   403   3,029
+Senate       106   218   186   217   226   245   201   1,399
+```
 
-Captions are a separate request per video, to YouTube rather than to the
-General Court, and land at about 5.5 MB a recording. 535 already-indexed
-videos have no captions on disk; 19 of those are known to have none available.
+Captions are one request a video, to YouTube rather than to the General Court,
+and land at about 5.5 MB a recording. 883 are already here, so **3,545 remain
+— roughly 20 GB**. That is the largest single item on this page by disk and
+the cheapest by politeness, since it is not the General Court's server.
 
-### E — The 2017–2024 docket. **~7,200 requests. Decide after B.**
+### E — The 2017–2024 docket. **~7,200 requests, and now known to be the only way.**
 
 One request per bill, and the only item here that is a crawl rather than a
-question. `fetch_archive_docket.py` exists and paces at 1.5 s. Do not start it
-until the database question in B is answered, because the answer may delete
-the whole item.
+question. `fetch_archive_docket.py` exists and paces at 1.5 s. The hope was
+that another database on that server held it; the probe says none does. So
+this is a real decision rather than a deferred one:
+
+- **Take it**, and eight years get the sequence of what actually happened to
+  each bill — the material every narrative on this site is built from.
+- **Leave it**, and those years have bill lists, statuses and roll calls but
+  no story, which is what the 2023–2024 term looked like before its dockets
+  were fetched.
+
+Either way it goes last, after everything cheap is in.
 
 ### F — Bill text for older terms. **Not planned.**
 
@@ -194,7 +226,7 @@ when the server recovers. That belongs in a module both fetchers import rather
 than in one of them.
 
 **A nightly budget, not a marathon.** A run takes `--budget 800` requests and
-stops, whether or not the queue is empty. 5,400 documents is then a week of
+stops, whether or not the queue is empty. 5,500 documents is then a week of
 quiet nights rather than one long crawl that looks exactly like an attack from
 the far end.
 
@@ -214,49 +246,84 @@ number this prints, not a feeling.
 
 ---
 
-## 5. What changed over the years, and finding out before parsing
+## 5. What changed over the years
 
 The user's phrase was "finding out info that's changed over the years", and it
 is the part of this most likely to go wrong quietly. Thirty years of a
-government's output is not one format. What is already known:
+government's output is not one format. Three eras are now measured rather than
+suspected.
 
-- **Filenames have at least three eras.** `HC 32.pdf` (2026); `No 51 December
-  29 2023.pdf` (2023 and 2006); `HJ No 21 09-04-2003.pdf` (2003). Day padding
-  is inconsistent inside a single year, and 2026 carries two forms at once.
-- **(year, number) is not a key.** The 2003 journal list holds `HJ No 21
-  09-04-2003` and `HJ No 21 06-30-2003` — the same number twice — and
-  `HJ No 23 01-07-2004`, a 2004 date filed under 2003 because the session runs
-  into January. The filename is the only identifier the source offers, so it
-  travels verbatim and is never parsed into parts and rebuilt.
-- **Status vocabulary is in the database.** `GeneralStatusCodes` and
-  `BodyStatusCodes` are views. Whether they carry codes retired before 2016 is
-  one query, and it decides whether `STATED` in `build_site_v2.py` covers the
-  archive or only the present.
-- **Districts and committees are not stable.** `DistrictPast` exists as a view
-  and has never been read. A 1998 member's district does not mean today's
-  district, and presenting it as if it did would be the kind of confident wrong
-  answer this project exists not to give.
+**Filenames have at least three eras.** `HC 32.pdf` (2026); `No 51 December 29
+2023.pdf` (2023 and 2006); `HJ No 21 09-04-2003.pdf` (2003). Day padding is
+inconsistent inside a single year, and 2026 carries two forms at once — its
+two most recent entries switched to `HC NN.pdf` while the rest below them did
+not.
 
-So the survey is a step, not an afterthought: **once a source is listed, sample
-one document per era before writing a parser for it.** One from 2026, 2015,
-2005, 1997. The timestamp method scored one second because it was built from
-real transcripts and its predecessor was twelve times worse because it was
-built from an assumption; the same asymmetry applies here, thirty times over.
+**(year, number) is not a key.** The 2003 journal list holds `HJ No 21
+09-04-2003` and `HJ No 21 06-30-2003` — the same number twice — and `HJ No 23
+01-07-2004`, a 2004 date filed under 2003 because the session runs into
+January. The filename is the only identifier the source offers, so it travels
+verbatim and is never parsed into parts and rebuilt.
+
+**The Senate renamed its videos at the start of 2023.** Measured against the
+title pattern in `fetch_channel_index.py`, over the full 4,428:
+
+```
+          2020  2021  2022  2023  2024  2025  2026
+House      88%   87%   96%   98%   99%  100%   99%
+Senate      1%   14%   10%  100%  100%  100%   99%
+```
+
+**459 Senate recordings from 2020–2022 cannot be read by the current
+pattern**, and their forms are now known:
+
+```
+Senate Education (02/08)                              month and day, NO YEAR
+Senate Finance Committee Budget Work Session-May 19   a written date, hyphen
+Senate Election Law and Municipal Affairs             committee only, no date
+REMOTE MEETING OF COMMISSION ON PRETRIAL DETENTION    not a committee at all
+```
+
+And a trap inside that: **the video is published the day after the meeting**.
+`Senate Education (02/08)` was posted on 2022-02-09. Falling back to the
+publish date where the title carries none would misdate the recording by one
+day and file it against the wrong day's hearings — a silent, plausible,
+entirely wrong answer of exactly the kind this project exists not to give.
+
+The House's 91 misses are mostly not legislative at all: `Inside New
+Hampshire's Golden Dome`, `NH Fallen Officer Memorial Ceremony 2026`, a state
+house video tour. Those should be recognised and skipped, not forced.
+
+**Status vocabulary and districts are still unread.** `GeneralStatusCodes` and
+`BodyStatusCodes` are views, and whether they carry codes retired before 2016
+decides whether `STATED` in `build_site_v2.py` covers the archive or only the
+present. `DistrictPast` exists as a view and has never been read; a 1998
+member's district is not today's district, and presenting it as though it were
+would be the same class of error as the misdated recording.
+
+So the survey stays a step, not an afterthought: **once a source is listed,
+sample one document per era before writing a parser for it.** One from 2026,
+2015, 2005, 1997. The timestamp method scored one second because it was built
+from real transcripts, and its predecessor was twelve times worse because it
+was built from an assumption. That asymmetry applies here thirty times over.
 
 ---
 
 ## 6. Order of work
 
-1. **The database sweep** (B). No web requests, answers the biggest open
-   question, and includes the 2017–2024 hunt in `NHLegislatureDB2` and
-   `PublicNHLMS`.
+1. **The database sweep** (B). No web requests, ~40 queries, and it includes
+   `NH_RSA`, `VHearings` and `PublicNHLMS.DocumentVersion` — the last of which
+   unblocks the version switcher.
 2. **Every bill 1989–2024** (A). 72 requests, one evening, ~36,000 bills.
-3. **Both channels' full index** (D, first half). Two API calls; tells us what
-   the video archive actually is before planning to fetch it.
-4. **Calendars and journals** (C). The long one. Listing first, all of it, so
-   the queue is complete and measurable; then nightly budgets against it.
-5. **Captions**, paced alongside 4 but against a different host.
-6. **The 2017–2024 docket** (E), only if step 1 says it is not free.
+3. **Captions for the 3,010 newly found recordings** (D). A different host
+   from the General Court, so it can run on its own schedule. Two whole terms
+   of hearings and floor debates the site has never had.
+4. **Calendars and journals** (C). The long one. All 118 listings first, so
+   the queue is complete and measurable, then nightly budgets against it.
+5. **The 2017–2024 docket** (E), if it is judged worth 7,200 requests.
+
+Steps 3 and 4 are the only two that could overlap, and they must not: one
+worker, one queue, whatever the hosts.
 
 ---
 
@@ -270,22 +337,20 @@ about 3 files a bill. Thirty-six thousand archived bills at that rate is
 2023–2024. Nothing in this plan needs deciding differently, but nothing in it
 should be read as a promise of a page per bill either.
 
-**Disk.** The archive fetch adds roughly 2 GB of PDFs and, if the video back
-catalogue is as large as the current one, another 20 GB of captions. Deleting
-the 34 transcribed `audio.wav` files pays for the PDFs eight times over.
+**Disk.** About 1.9 GB of PDFs and about 20 GB of captions. Deleting the 34
+transcribed `audio.wav` files covers most of it.
 
 ---
 
-## 8. What to run first, and what it costs
+## 8. What the probes found
 
-Three probes, each one question, before any of the above begins:
+Run 8 September, six requests and about a dozen queries, before any of the
+above begins.
 
-| probe | requests | answers |
-|---|---|---|
-| list the views in `NHLegislatureDB2` and `PublicNHLMS` | 2 queries | whether 2017–2024 is free or costs 7,200 requests |
-| the uploads playlist of both YouTube channels | 2 API calls | how far back the video record goes |
-| the year dropdown on both chambers' calendar index | 2–4 requests | how far back journals go, and how many there are |
+| probe | answer |
+|---|---|
+| the views in `NHLegislatureDB2`, `PublicNHLMS`, `NHRSA` | **no `Docket` anywhere.** 2017–2024 costs 7,200 requests or nothing. `PublicNHLMS` holds the drafting system, and its `DocumentVersion` is the version order the diff feature needs |
+| both YouTube channels, walked to the end | **4,428 videos back to May 2020**, 3,010 of them unknown to the site — two whole terms of recordings |
+| the year dropdowns, both chambers | **House 1997–2026, Senate 1998–2026**, journals listed beside calendars in both |
 
-Six requests and four queries. Every number in this plan that is currently a
-range becomes a figure, and the queue can then be built complete before a
-single document is fetched.
+Nothing in this plan is now written as a range.
