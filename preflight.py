@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.82
+# GRANITE_VERSION: 2026-09-04.83
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3591,6 +3591,45 @@ def _one_head():
     assert not bad, (f"{len(bad)} page(s) name themselves more than once: "
                      + "; ".join(bad[:4]))
     return "ok", f"{n:,} pages, one head each"
+
+
+@check("data", "nobody is named surname-first on a page")
+def _no_lastfirst():
+    """A member reads the same wherever they appear, including after leaving.
+
+    The roster holds the 406 sitting members. A committee's record reaches
+    back past them, so 173 seats across 85 people fell through to the source's
+    own spelling and read "Soucy, Donna" beside "Sen. Sharon Carson (R - SD14)"
+    -- and a member who has left is shown exactly like one who has not.
+    """
+    site = Path("site")
+    if not site.exists():
+        return "skip", "site is not built"
+    lastfirst = re.compile(r"^[A-Z][A-Za-z'\-]+,\s+[A-Z]")
+    bad, n = [], 0
+
+    def walk(o):
+        nonlocal n
+        if isinstance(o, dict):
+            for k, v in o.items():
+                if k in ("label", "display_full", "display") and isinstance(v, str):
+                    n += 1
+                    if lastfirst.match(v):
+                        bad.append(v)
+                else:
+                    walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+
+    for p in list(site.glob("committee/*.json")) + [site / "legislators.json"]:
+        if p.exists():
+            walk(json.loads(p.read_text(encoding="utf-8")))
+    if not n:
+        return "skip", "no labels found"
+    assert not bad, (f"{len(bad)} of {n:,} names are written surname-first: "
+                     + "; ".join(sorted(set(bad))[:4]))
+    return "ok", f"{n:,} names, all written as a person is addressed"
 
 
 @check("data", "a person's career is one record, and two people are two")

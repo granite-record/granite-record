@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.13
+# GRANITE_VERSION: 2026-09-07.14
 """
 A page's worth of data for every committee.
 
@@ -50,6 +50,7 @@ import re
 from pathlib import Path
 
 import proceedings as P
+import names
 import shell as S
 
 # The kinds proceedings.csv records, in the order a committee day runs, with
@@ -199,6 +200,18 @@ def load(p, default):
         return default
 
 
+# County code to the abbreviation a district is written with. Taken from the
+# roster rather than repeated here, so it cannot drift from it.
+CABBR = {}
+
+
+def load_county_abbr(legislators):
+    for r in (legislators.values() if isinstance(legislators, dict)
+              else legislators):
+        if isinstance(r, dict) and r.get("county_code") and r.get("county_abbr"):
+            CABBR.setdefault(str(r["county_code"]).zfill(2), r["county_abbr"])
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -226,6 +239,7 @@ def main():
                 reports.setdefault(t, {}).setdefault(b, []).extend(
                     v if isinstance(v, list) else [v])
     legs = {str(m.get("id")): m for m in load(site / "legislators.json", [])}
+    load_county_abbr(legs)
 
     # (chamber, name) -> code. NOT name alone: both chambers have a
     # Judiciary, a Finance and a Ways and Means, so a name-only map silently
@@ -362,9 +376,22 @@ def main():
         members = []
         for m in seats.get(code, []):
             lg = legs.get(m["id"]) or {}
+            # A MEMBER WHO HAS LEFT IS NAMED LIKE ONE WHO HAS NOT. The roster
+            # holds the 406 sitting members, and a committee's record reaches
+            # back past them -- so 173 seats across 85 people fell through to
+            # the source's own spelling and read "Soucy, Donna" beside
+            # "Sen. Sharon Carson (R - SD14)". Everything the name needs is on
+            # the seat already: chamber, party and district.
             members.append({**m,
                             "slug": lg.get("slug", ""),
-                            "label": lg.get("display_full") or m["name"],
+                            "label": lg.get("display_full") or names.legislator({
+                                "name": m.get("name"),
+                                "chamber": m.get("chamber"),
+                                "party_code": m.get("party_code"),
+                                "district": m.get("district"),
+                                "county_abbr": CABBR.get(
+                                    str(m.get("county_code") or "").zfill(2), ""),
+                            }) or m["name"],
                             "county": lg.get("county", ""),
                             # Baked in rather than joined on the page: a
                             # committee page loads its own 67 KB of JSON and
