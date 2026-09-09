@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.72
+# GRANITE_VERSION: 2026-09-04.73
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1682,7 +1682,7 @@ def _site_fixture(root):
     # decoration: build_site_v2 used to apply that boundary by rebinding `st`
     # to stations[-1], and `st` was already the bill's status record from 350
     # lines earlier. Every bill that took this branch -- 611 of 2,234 on the
-    # real data -- then shipped with no facts block, no text_pdf, and a
+    # real data -- then shipped with no facts block, no text link, and a
     # next_step that fell back to "In progress". The fixture had no floor row
     # at all, so 33 checks passed over it. It has one now.
     w("floor_index.json", {"HB1442": [
@@ -2056,14 +2056,14 @@ def _bills_by_term():
                        .read_text(encoding="utf-8"))
         n = json.loads((root / "site" / "bills" / "2026" / "HB1442.json")
                        .read_text(encoding="utf-8"))
-        # sponsors.json is the flat file the fixture carries. text_pdf comes
+        # sponsors.json is the flat file the fixture carries. text_url comes
         # from bill_status.json, which is keyed on the term: the fixture holds
         # only the current one, so the archived bill must still get nothing.
         assert n.get("sponsors"), "the current term's bill lost its sponsors"
         assert not a.get("sponsors"), (
             "the archived bill is showing the current term's sponsors")
-        assert n.get("text_pdf"), "the current term's bill lost its text link"
-        assert not a.get("text_pdf"), (
+        assert n.get("text_url"), "the current term's bill lost its text link"
+        assert not a.get("text_url"), (
             "the archived bill is showing the current term's bill text link")
         return "ok", "two terms, one number, and neither borrows the other"
     finally:
@@ -2131,10 +2131,14 @@ def _termed_status_and_text():
         n = json.loads((root / "site" / "bills" / "2026" / "HB1442.json")
                        .read_text(encoding="utf-8"))
 
-        assert a.get("text_pdf") == "https://gc.nh.gov/archived.pdf", (
+        # text_url is the link AS PUBLISHED, not the raw scrape: the
+        # session year is appended where the scrape did not carry one,
+        # because billText.aspx without it answers with an ASP.NET error.
+        assert (a.get("text_url") or "").startswith(
+                "https://gc.nh.gov/archived.pdf"), (
             "the archived bill did not read its own term out of "
-            f"bill_status.json; text_pdf is {a.get('text_pdf')!r}")
-        assert n.get("text_pdf") != "https://gc.nh.gov/archived.pdf", (
+            f"bill_status.json; text_url is {a.get('text_url')!r}")
+        assert n.get("text_url") != "https://gc.nh.gov/archived.pdf", (
             "the current bill took the ARCHIVED term's text link")
 
         at = (a.get("billtext") or {}).get("analysis", "")
@@ -2482,8 +2486,8 @@ def _chain_output():
             # These three are the fields that were lost when the floor code
             # rebound `st`, and they are checked together because they failed
             # together and would again.
-            (hb.get("text_pdf") == "https://gc.nh.gov/x.pdf",
-             f"text_pdf reads {hb.get('text_pdf')!r} on a bill with a stated "
+            ((hb.get("text_url") or "").startswith("https://gc.nh.gov/x.pdf"),
+             f"text_url reads {hb.get('text_url')!r} on a bill with a stated "
              "floor boundary"),
             (hb.get("facts", {}).get("lsr") == "2026-0503",
              f"facts reads {hb.get('facts')!r} on a bill with a stated floor "
@@ -2908,6 +2912,51 @@ def _no_empty_dates():
     return "ok", f"{n:,} bills, no sentence stops where a date should be"
 
 
+@check("data", "every published link asks for something the source serves")
+def _links_answer():
+    """A link is a claim that something is there.
+
+    billText.aspx takes txtFormat=html and txtFormat=pdf, and only one of them
+    exists. The scrape minted the pdf shape for all 4,230 bills, and every one
+    of them answered
+
+        error: condensedbillno is neither a DataColumn nor a DataRelation for
+        table text.
+
+    which renders as a blank page. The status page's own link, in all 2,234
+    cached copies of it, is txtFormat=html. Nothing here can tell whether an
+    address answers -- that costs a request to somebody else's server -- so
+    this checks the one thing it can: that no published address uses a
+    parameter value the General Court was never observed to serve.
+    """
+    root = Path("site/bills")
+    if not root.exists():
+        return "skip", "no bill JSON built"
+    bad, n, links = [], 0, 0
+    for f in sorted(root.rglob("*.json")):
+        try:
+            d = json.loads(f.read_text(encoding="utf-8"))
+        except ValueError:
+            continue
+        n += 1
+        urls = [x.get("url", "") for x in (d.get("documents") or [])]
+        urls.append(d.get("text_url", ""))
+        for u in urls:
+            if not u:
+                continue
+            links += 1
+            if "txtFormat=pdf" in u:
+                bad.append(f"{d.get('id')} links to txtFormat=pdf")
+            elif "billText.aspx" in u and "sy=" not in u:
+                bad.append(f"{d.get('id')} links to billText.aspx with no "
+                           "session year")
+    if not n:
+        return "skip", "no bill carries a document"
+    assert not bad, (f"{len(bad)} link(s) ask for something no page serves: "
+                     f"{'; '.join(bad[:3])}")
+    return "ok", f"{links:,} published links across {n:,} bills, none malformed"
+
+
 @check("data", "no fiscal figure sits under a year nobody put it there")
 def _fiscal():
     """A fiscal table is the one place on this site where a wrong answer would
@@ -3040,7 +3089,7 @@ def _rail():
     if not idx.exists():
         return "skip", "index.json is not built"
     rows = json.loads(idx.read_text(encoding="utf-8"))
-    bad, n, laws, pppp = [], 0, 0, 0
+    bad, n, laws, pppp, vetoes = [], 0, 0, 0, 0
     for b in rows:
         p = b.get("passage") or ""
         kind = b.get("kind") or ""
@@ -3066,15 +3115,36 @@ def _rail():
         if g != "-" and "-" in (h, se) and not b.get("archived"):
             # A bill reaches the governor through both chambers.
             bad.append(f"{b.get('id')} reached the governor as {p!r}")
+        # A VETO IS THE GOVERNOR STOPPING THE BILL, and for a while the rail
+        # said the opposite: the governor stop was marked passed on the
+        # strength of the bill having ARRIVED there, so all 68 vetoed bills
+        # drew a green check on the governor who vetoed them. The chambers
+        # keep their checks -- the House that failed to override HB 1442 by
+        # 165-149 had passed the bill in May, and a failed override is not a
+        # chamber rejecting a bill.
+        if "veto" in (b.get("status") or "").lower():
+            vetoes += 1
+            if g != "x":
+                bad.append(f"{b.get('id')} was vetoed and its Governor stop "
+                           f"is {g!r}")
+            if "x" in (h, se):
+                bad.append(f"{b.get('id')} reached a governor who vetoed it "
+                           f"through a chamber the rail crosses: {p!r}")
     if not n:
         return "skip", "no bill carries a passage"
     assert not bad, (f"{len(bad)} of {n:,} rails disagree with the record: "
                      f"{'; '.join(bad[:3])}")
-    assert pppp == laws, (
-        f"{pppp:,} bills show the whole rail passed and {laws:,} are called "
-        "law. Those are the same bills counted two ways and they have to "
-        "match.")
-    return "ok", f"{n:,} rails, {pppp:,} of them the whole way, none disagreeing"
+    # The Law stop and the word "law" are the same fact counted two ways.
+    # Not "pppp": nine bills became law over a veto, and their rail reads
+    # ppxp -- both chambers, the governor against, law anyway. That is the
+    # story, and requiring a clean run would have forbidden telling it.
+    ends_law = sum(1 for b in rows
+                   if (b.get("passage") or "")[4:5] == "p")
+    assert ends_law == laws, (
+        f"{ends_law:,} rails end at law and {laws:,} bills are called law. "
+        "Those are the same bills counted two ways and they have to match.")
+    return "ok", (f"{n:,} rails, {pppp:,} of them the whole way, "
+                  f"{vetoes} vetoed and crossed at the governor")
 
 
 @check("data", "a committee's stated purpose is the rule, not the page around it")

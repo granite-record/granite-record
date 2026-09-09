@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.25 */
+/* GRANITE_VERSION: 2026-09-07.26 */
 /* Every reading column stops at 34em, which is 68 characters at the
    body size. Nine measured over 80 at 1440px and the worst, a bill
    title on a committee page, ran to 195. */
@@ -483,7 +483,17 @@ border-radius:var(--r-in);padding:1px 7px;font-variant-numeric:tabular-nums}
 color:var(--ink-2);background:var(--wash);border-radius:var(--r-in);padding:1px 7px}
 /* One bill, filling the space the list was using. The facet rail goes with
    the list: nothing in it applies to a single bill. */
-.shell.focused{grid-template-columns:1fr}
+/* ONE BILL IS A DOCUMENT, NOT A BANNER. Every reading column stops at
+   34em, and the shell it sat in was 1180px: at 1440 that put a 544px column
+   of prose inside a 1094px card and left half of every box -- the status
+   box, the analysis, each stage of the narrative -- empty to the right. The
+   tab strip's own natural width is 537px, which is why the text read as
+   bounded by the tabs.
+   46em brings the container to the column instead of stretching the column
+   to the container, which would be 144 characters a line. Below 46em it does
+   nothing, so a phone is untouched. Measured at 1440: pane 650px, the widest
+   fiscal table 604px, nothing scrolling sideways. */
+.shell.focused{grid-template-columns:1fr;max-width:46em}
 .shell.focused .facets{display:none}
 .card.focus{border-color:var(--rule-2)}
 .card.focus .chead{cursor:default}

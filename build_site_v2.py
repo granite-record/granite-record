@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.46
+# GRANITE_VERSION: 2026-09-05.47
 """
 Generate the faceted site from real General Court data.
 
@@ -1704,7 +1704,7 @@ def hearing_testimony(e, tdb, scraped):
 # has. house_status and senate_status from the status page would have been
 # the obvious source and cover 1,387 of the current term's 2,234 bills and
 # none of the archive.
-def passage(stages, kind):
+def passage(stages, kind, status=""):
     hands = [st.get("hand", "") for st in (stages or []) if st.get("hand")]
     if not hands:
         return ""
@@ -1731,15 +1731,30 @@ def passage(stages, kind):
     origin = next((h.split(":")[0] for h in hands
                    if h.split(":")[0] in ("H", "S")), "H")
     other = "S" if origin == "H" else "H"
+    # The governor stop says what the GOVERNOR DID, not that the bill got as
+    # far as the desk. Reaching a stop was being read as clearing it, so all
+    # 68 vetoed bills drew a green check on the governor who vetoed them --
+    # the rail stating the opposite of the sentence beside it.
+    vetoed = kind == "veto" or "veto" in (status or "").lower()
+    reached_gov = "G" in seen
     out = []
     for stop in (origin, other, "G"):
         if stop not in seen:
             out.append("-")
-        elif stop == last and moving:
+        elif stop == "G":
+            out.append("x" if vetoed else
+                       "p" if kind == "law" else
+                       "h" if moving else "p")
+        elif moving and stop == last:
             out.append("h")
-        elif stop == last and stop != "G":
-            # It ended in this chamber. A bill that reached the governor and
-            # stopped there is handled by the law stop below.
+        elif reached_gov or (stop == origin and other in seen):
+            # It CLEARED this chamber: the bill went on from here, and a later
+            # visit does not undo that. The House that failed to override the
+            # veto of HB 1442 by 165-149 had passed the bill in May, and
+            # crossing it because the override was the last thing in the
+            # docket said the House had rejected it.
+            out.append("p")
+        elif stop == last:
             out.append("x")
         else:
             out.append("p")
@@ -1948,7 +1963,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # HSGL, one character each: how far the bill got and where it
             # stopped. Four characters in the index rather than four fields,
             # because index.json is loaded up front by every visitor.
-            "passage": passage((narr or {}).get("stages"), kind),
+            "passage": passage((narr or {}).get("stages"), kind, status),
             "last_action": dates[-1] if dates else "",
             "nrc": len([r for r in rcs if not r.get("procedural")]),
             "votedays": sorted({r["date"] for r in rcs if r.get("date")}),
@@ -1983,7 +1998,20 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # year -- which is what the status page's link says, on every one
         # checked. Re-running fetch_bill_status.py --reparse replaces the
         # guess with the page's own value and needs no network.
-        text_url = st.get("text_pdf", "")
+        #
+        # AND txtFormat=pdf IS NOT AN ADDRESS THE GENERAL COURT SERVES. The
+        # scrape built one anyway, so every bill on this site linked to
+        #
+        #   error: condensedbillno is neither a DataColumn nor a DataRelation
+        #   for table text.
+        #
+        # All 4,230 of them. The status page's own link -- the one shape that
+        # appears in 2,234 cached pages -- is txtFormat=html, which answers
+        # with the bill. So the format is corrected here rather than in the
+        # scrape, because the scrape is a record of what was fetched and this
+        # is a link being published.
+        text_url = (st.get("text_pdf", "") or "").replace("txtFormat=pdf",
+                                                          "txtFormat=html")
         if text_url and "sy=" not in text_url:
             sy = st.get("text_year") or b.get("lsr_year") or ""
             if sy:
@@ -2182,7 +2210,10 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                               else "General Court bill status page" if told
                               else "derived from the docket"),
             "chapter": st.get("chapter", ""),
-            "text_pdf": st.get("text_pdf", ""),
+            # Named for what it is rather than for the format the
+            # scrape guessed at: the General Court's own text of
+            # this bill, in the form its status page links to.
+            "text_url": text_url,
             # The rest of what the status page states. All of it was being
             # fetched and thrown away; the detail page is where it belongs,
             # since these are the facts someone reads when the summary card is

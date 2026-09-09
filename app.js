@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.30
+// GRANITE_VERSION: 2026-09-07.31
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -8,7 +8,7 @@ const DOCWHAT={text:"the bill as it currently stands",
 const PARTY_NAME={R:"Republican",D:"Democrat",I:"Independent",L:"Libertarian",
   X:"Party not on file"};
 const PARTY_COLOR={R:"var(--rep)",D:"var(--dem)",I:"var(--ind)",L:"var(--ind)",
-  X:"var(--ink-3)"};
+  X:"var(--ink-2)"};
 const KIND={active:"s-active",law:"s-law",done:"s-done",veto:"s-veto",
             study:"s-study",adopted:"s-adopted"};
 // "Became law" is wrong for a resolution: an adopted House Resolution is
@@ -331,7 +331,7 @@ function fgroup(key,label,vals,counts,searchable){
       +(shown.map(v=>`<label class="fopt ${!counts[v]?'off':''}"><input type="checkbox" data-f="${key}"
         value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(v)}</span>
         <span class="c">${counts[v]||0}</span></label>`).join("")
-        ||(sponsorFilter?`<p style="font-size:12.5px;color:var(--ink-3)">No match</p>`:""));
+        ||(sponsorFilter?`<p style="font-size:12.5px;color:var(--ink-2)">No match</p>`:""));
   }else{
     inner=vals.map(v=>`<label class="fopt ${!counts[v]&&!chosen.has(v)?'off':''}">
       <input type="checkbox" data-f="${key}" value="${esc(v)}" ${chosen.has(v)?"checked":""}>
@@ -471,7 +471,7 @@ function donut(bid,i,rc){
   const legend=segs.map(s=>{
     const winner=(s.side==="Yea")===won;
     return `<button class="lrow ${chosen===s.key?'sel':''}" data-seg="${key}|${s.key}">
-    <span class="sw" style="background:${PARTY_COLOR[s.p]||"var(--ink-3)"}"></span>
+    <span class="sw" style="background:${PARTY_COLOR[s.p]||"var(--ink-2)"}"></span>
     <span>${PARTY_NAME[s.p]||s.p} — ${s.side==="Yea"?"Yes":"No"}${
       winner?`<span class="won" title="this side prevailed">\u2713</span>`:""}</span>
     <span class="c">${s.n}</span></button>`;}).join("");
@@ -720,10 +720,10 @@ ${d._error?`<div class="loaderr"><b>This bill's detail did not
     load.</b><span>${esc(d._error)}</span></div>`:""}
     <div class="status ${KIND[b.kind]}"><div class="lab">CURRENT STATUS</div>
     <div class="val">${esc(d.next_step)}</div>
-    ${d.status_source?`<div style="font-size:12px;color:var(--ink-3);margin-top:6px">
+    ${d.status_source?`<div style="font-size:12px;color:var(--ink-2);margin-top:6px">
       ${esc(d.status_source)}${d.chapter?` \u00b7 Chapter ${esc(d.chapter)}`:""}
-      ${d.text_pdf?` \u00b7 <a href="${esc(d.text_pdf)}" target="_blank"
-        rel="noopener">bill text (PDF)</a>`:""}</div>`:""}</div>
+      ${d.text_url?` \u00b7 <a href="${esc(d.text_url)}" target="_blank"
+        rel="noopener">bill text</a>`:""}</div>`:""}</div>
     ${(d.notes||[]).map(x=>`<p class="note">${esc(x)}</p>`).join("")}
     ${(d.stages&&d.stages.length)
       ? `<div class="story">${d.stages.map(st=>
@@ -907,7 +907,7 @@ function renderHearings(b,d){
              target="_blank" rel="noopener">Open on YouTube</a>
           <span class="tolnote">entire recording is this bill</span></div>
         ${s.title?`<div class="pbar" style="border-top:none">
-          <span style="color:var(--ink-3)">${esc(s.title)}</span></div>`:""}</div>`;
+          <span style="color:var(--ink-2)">${esc(s.title)}</span></div>`:""}</div>`;
     }
     else if(s.state==="consent"){
       // Named nowhere in the recording, so it went through on the consent
@@ -977,7 +977,7 @@ function renderHearings(b,d){
             : "the chair opens and closes it; no roll call on this one"
             }</span></div>
         ${(s.motions||[]).length?`<div class="pbar" style="border-top:none">
-          <span style="color:var(--ink-3)">Motions: ${s.motions.map(esc).join(" · ")}</span>
+          <span style="color:var(--ink-2)">Motions: ${s.motions.map(esc).join(" · ")}</span>
           </div>`:""}</div>`;
     }
     // A voice or division vote leaves no roll call to time the end, but the
@@ -1099,7 +1099,7 @@ function renderReports(b,d,rsa){
           <span class="secsub">${esc(e.side)}</span>
           ${committeeTally(e)}
           ${rec?`<span class="cstat ${recColour(rec)}">${esc(rec)}</span>`:""}</div>
-        <p style="font-size:12.5px;color:var(--ink-3);margin:3px 0 8px">${esc(e.author)}</p>
+        <p style="font-size:12.5px;color:var(--ink-2);margin:3px 0 8px">${esc(e.author)}</p>
         ${e.amendment?`<p class="note" style="margin:0 0 7px">Amendment ${
           esc(e.amendment)}.</p>`:""}
         ${(e.text||"").trim()

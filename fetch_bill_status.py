@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Fetch the bill STATUS page for bills the current-session files no longer cover.
 
@@ -221,7 +221,7 @@ def parse(html):
                 rec["text_year"] = q["sy"]
             sy = f"&sy={q['sy']}" if q.get("sy") else ""
             rec["text_pdf"] = ("https://gc.nh.gov/bill_status/legacy/bs2016/"
-                               f"billText.aspx?id={q['id']}&txtFormat=pdf{sy}")
+                               f"billText.aspx?id={q['id']}&txtFormat=html{sy}")
     return rec
 
 
