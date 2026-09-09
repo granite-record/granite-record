@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.30
+# GRANITE_VERSION: 2026-09-04.31
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -248,7 +248,7 @@ def shell(title, current, body, wide=False, script=""):
     for href, label in (("index.html", "Home"), ("bills.html", "Bills"),
                         ("legislators.html", "Legislators"),
                         ("committees.html", "Committees"),
-                        ("learn.html", "How it works"), ("about.html", "About")):
+                        ("learn.html", "Learn"), ("about.html", "About")):
         cur = ' aria-current="page"' if href == current else ""
         nav.append(f'<a href="{href}"{cur}>{label}</a>')
     STYLE_Q = style_query()
@@ -1113,7 +1113,7 @@ where in the recording it was discussed.</p>
     status or the day it was voted on</span></a>
   <a href="legislators.html"><b>Find your legislators</b><span>By town: your House,
     Senate, Executive Council and congressional districts</span></a>
-  <a href="learn.html"><b>How it works</b><span>How a bill moves, what the shorthand
+  <a href="learn.html"><b>Learn</b><span>How a bill moves, what the shorthand
     means, and how to testify</span></a>
 </div>
 <div id="fresh" class="fresh"></div>

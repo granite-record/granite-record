@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.50
+# GRANITE_VERSION: 2026-09-05.51
 """
 Generate the faceted site from real General Court data.
 
@@ -28,6 +28,7 @@ import fiscal
 import proceedings as P
 import csv
 import json
+import names
 import re
 import sys
 import unicodedata
@@ -1955,7 +1956,13 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # from the facets the moment it crossed over and was referred in the
         # House. Filtering for the committee that actually heard it found
         # nothing.
-        cmtes = [f"{ch} {nm}" for ch, nm in
+        # ONE SPELLING PER COMMITTEE, the same rule the sponsor facet already
+        # follows below. The archived bill records write a committee in
+        # capitals -- "COMMERCE, LABOR AND CONSUMER PROTECTION", "WILDLIFE &
+        # RECREATION", 28 of them across the terms before about 2015 -- and
+        # the current term writes it in title case. Same committee, two
+        # spellings, and the facet listed both.
+        cmtes = [f"{ch} {names.committee(nm)}" for ch, nm in
                  (("House", b.get("house_committee") or ""),
                   ("Senate", b.get("senate_committee") or "")) if nm]
         cmte = cmtes[0] if cmtes else ""
@@ -2259,8 +2266,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # and the reasons are the whole of a veto message.
             "veto_message": P.per_term(vetoes or {}, term, current).get(bid),
             "subject": b.get("subject", ""),
-            "house_committee": b.get("house_committee", ""),
-            "senate_committee": b.get("senate_committee", ""),
+            "house_committee": names.committee(b.get("house_committee", "")),
+            "senate_committee": names.committee(b.get("senate_committee", "")),
             "lsr": b.get("lsr", ""),
             "docket_url": ("https://gc.nh.gov/bill_status/legacy/bs2016/bill_docket.aspx"
                            f"?lsr={b.get('lsr_num','')}&sy={b.get('lsr_year','')}"

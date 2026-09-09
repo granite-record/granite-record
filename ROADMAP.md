@@ -570,3 +570,159 @@ search engines index URLs that are about to change.
 **Publicising widely.** The `renderDetail` crash class is fixed but the
 function is still 472 lines, and a blank page for an arriving visitor is worse
 than no visitor. After the split.
+
+---
+
+# 9 September: a read-through of the live site
+
+A list from someone reading the site rather than building it, so it is ordered
+here by what it costs against what it fixes, not by the order it arrived in.
+Two items on it were already done and are recorded as such so they are not
+done twice.
+
+## Already done
+
+**Archived bills reading as in progress.** Fixed in `fe147fa`: 1,954 bills
+across eighteen terms said "In committee" or "Laid on the table" because the
+General Court stops updating the status field when a term closes. The word the
+record gave them is unchanged; the kind that drives the colour and the rail is
+not. 107 bills are active now, all current-term.
+
+**Interim study and laid-on-the-table indicators.** Shipped. The refinement
+asked for on 9 September is new and is in "the rail" below: a pending mark
+whose Law stop is struck through once the term ends without the bill being
+taken back up.
+
+## The one that unblocks three others: a review tool
+
+Asked for as a way to spot-check timestamps quickly. It is worth more than
+that and should go first among the feature work.
+
+`ground_truth.csv` holds 35 proceedings somebody timed by watching. It is the
+only independent measure this project has, `CLAUDE.md` requires every
+timestamp method be scored against it, and it is thin — thin enough that a
+method can be tuned to it without anyone noticing. The same problem is about
+to appear twice more: related bills and narrative quality both need a
+judgment no generator can make.
+
+So: a local page, not published, that pulls up one sample with the thing being
+measured already open — the recording at the published timestamp, or two bills
+proposed as related, or a narrative beside its docket — takes a verdict and a
+short note, writes it to a hand-edited file no generator may touch, and moves
+to the next. Same shape for all three, one keystroke per sample.
+
+That turns "35 proceedings" into as many as somebody has patience for, and it
+is the difference between claiming a median and knowing one. Build it before
+related bills, not after, because related bills cannot be evaluated without
+it.
+
+## Capitalisation and naming, one pass
+
+Cheap, visible, and all the same class of defect.
+
+- Committee names arriving ALL CAPS from older terms — "Senate WILDLIFE &
+  RECREATION". `_name()` in `calendar_meetings.py` already title-cases with a
+  small-word list; the committee pages need the same function rather than
+  their own.
+- "Prime sponsor" to "Prime Sponsor", "Year filed" to "Year Filed".
+- The term selector should read "2001-2002 Term".
+- "How it works" becomes "Learn". The pages already live at `/learn/`; only
+  the label and the nav entry are wrong.
+- A bill on a card should carry its year — "HB1123 (2026)" — rather than a
+  filed-or-carried-over phrase.
+
+## Correctness, in rough order of how wrong each one is
+
+**Narratives are written entirely in the past tense**, so a work session that
+is merely scheduled reads as "The committee held a work session on September
+20th, 2026." That is the site stating as fact something that has not happened.
+It is the worst item on this list and should be fixed first: `describe()` needs
+the event date against today, and future events need their own wording.
+
+**Roll calls on legislator pages cannot be read.** Date, bill number, motion,
+vote — and no way to see what the bill was, how the vote came out, or how the
+member voted against their party. It needs the bill's title, the tally, a
+party-line comparison, and grouping by session day.
+
+**Committee reports carry page furniture mid-sentence** — "13 FEBRUARY2026
+HOUSERECORD 23" dropped into the middle of Rep. Walsh's reasoning. Same class
+as the veto-message runaway fixed last week: a page header inside a text
+block. `is_whole()` in `extract_vetoes.py` is the pattern to copy.
+
+**HTML entities are published raw** in bill analysis — `&ldquo;` and `&rdquo;`
+appear as themselves in HB2. One unescape at the right point.
+
+**The rail is wrong for resolutions.** A House or Senate resolution that passed
+its own chamber never goes to the other one, and the rail draws that as though
+it stopped. A resolution's rail has two stops, not four.
+
+**Sponsor party colours are inconsistent** across bill pages, committee pages
+and legislator pages. One chip component, used everywhere.
+
+**Legislator names are not uniform.** "Seidel, Sheila" on a committee page
+should be "Rep. Sheila Seidel (R-Rock 21)" everywhere, including for members
+who have left. Note the standing rule: former members are shown exactly like
+sitting ones, never flagged or segregated.
+
+**Committee pages do not name the ranking and deputy ranking members**, which
+are conventionally the first two names in the minority.
+
+## Data the archive does not yet carry
+
+**Topics for older terms.** Bills before the current term have none. Assigning
+them by machine is possible and is the kind of thing that invents facts
+quietly, so: it must be visibly derived, the method stated on the page, and
+scored against a sample somebody checked — the review tool again.
+
+**One legislator across terms.** A member who served in 2004 and serves now is
+two records today. Merging them gives a sponsorship and voting history across
+a career, and it is what makes "find the sponsors of a 2004 bill" work.
+`DistrictPast` in the database exists precisely because a 1998 member's
+district is not today's, and presenting it as though it were is the error to
+avoid.
+
+**Special bills need a note.** HB1 and HB2 are the budget and the budget
+trailer bill; HB2026 is the ten-year transportation plan. A reader has no way
+to know that a bill numbered 2 is the whole state budget. A short standing
+note per bill, hand-written, not derived.
+
+## Related bills
+
+Wanted as its own tab: bills amending the same RSA across years, and bills
+whose text was amended into another bill during a session. Minimum wage,
+bathroom bans, red flag laws as the worked examples.
+
+The user has already named the hard part, which is the whole problem: two
+bills can touch the same RSA for unrelated purposes, and two bills can do the
+same thing through different RSAs. So an RSA overlap is a signal, not an
+answer, and this needs the review tool to measure both false positives and
+false negatives before any of it is published. "Amended into" is the easier
+half and is in the docket already.
+
+## Pages and sections not yet built
+
+- **A session calendar page**: the consent calendar, the regular calendar and
+  the committee motions, in order, explained.
+- **Committee pages showing upcoming hearings, executive sessions and work
+  sessions** with their bills. Half-built: the schedule service is fetched and
+  the hearings parser now reaches 1997.
+- **A committee's session day as a table** — every bill heard that day, its
+  status change, and the report split (SB473: public hearing, then executive
+  session, 10-7 OTPA to ITL), with the bill numbers hyperlinked.
+- **Executive Council, Governor, CD-1, CD-2 and US Senator pages**, with
+  official links and contact details.
+
+## Search
+
+Load 100 bills and fetch more on scroll. Straightforward, and it pairs with
+the per-term index split already shipped.
+
+## Carried over, unchanged
+
+Amendment diffing — the data is on this disk and was found on 9 September:
+`LegislationText` holds 6,825 rows, every version of every current-term bill
+with both HTML and plain text, plus `DocumentVersion.SortOrder` to order them.
+No fetching needed for the current term.
+
+Email routing. Accessibility, continuously. Google indexing, which needs the
+URLs and titles cleaned up first.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.9
+# GRANITE_VERSION: 2026-09-08.10
 """
 Who is hearing what, when, and in which room -- out of the calendars on disk.
 
@@ -79,6 +79,7 @@ Three things, all measured across the 172 House files:
 
 import argparse
 import json
+import names
 import re
 import sys
 from collections import Counter, defaultdict
@@ -308,16 +309,13 @@ def _day_date(mon, day, stated_year, pub, weekday=None):
 
 
 def _name(s):
-    """"WAYS AND    MEANS" -> "Ways and Means". The extra spaces are the PDF's,
-    and the small words are lower case because a committee is a name and not a
-    shout."""
-    s = re.sub(r"\s*\(RSA[^)]*\)", "", s)
-    s = re.sub(r"\s{2,}", " ", s).strip(" ,")
-    out = s.title()
-    for w in ("And", "Of", "On", "The", "For", "To", "In"):
-        out = re.sub(rf"(?<! )\b{w}\b", w.lower(), out)
-        out = re.sub(rf"(?<=\w )\b{w}\b", w.lower(), out)
-    return out[:1].upper() + out[1:]
+    """"WAYS AND    MEANS" -> "Ways and Means".
+
+    This lived here first, because the calendars shout. data/bills.json shouts
+    too, for the same committees, so it moved to names.py and both callers use
+    the one implementation -- two would drift, and the whole point is that the
+    same committee reads the same wherever it appears."""
+    return names.committee(s)
 
 
 def _room(tail):

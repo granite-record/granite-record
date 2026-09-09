@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.34
+// GRANITE_VERSION: 2026-09-07.35
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -234,7 +234,7 @@ need("meta.json")
      :[...new Set(IDX.map(b=>b.term).filter(Boolean))].sort().reverse();
    term=wantedTerm(META)||terms[0];
    const ys=$("#year");
-   ys.innerHTML=terms.map(t=>`<option value="${t}">${t} term</option>`).join("");
+   ys.innerHTML=terms.map(t=>`<option value="${t}">${t} Term</option>`).join("");
    ys.value=term;
    ys.addEventListener("change",e=>{
      // On a record page there is no list to re-filter, and render() would
@@ -382,13 +382,13 @@ function renderFacets(){
   let h="";
   h+=fgroup("committee","Committee",present("committee"),cnt("committee","committee"));
   h+=fgroup("topic","Topic",present("topic"),cnt("topic","topic"));
-  h+=fgroup("sponsor","Prime sponsor",present("sponsor"),cnt("sponsor","sponsor"),true);
+  h+=fgroup("sponsor","Prime Sponsor",present("sponsor"),cnt("sponsor","sponsor"),true);
   // Year is a facet inside the term, not a hard filter on the whole site.
   // A term's bills split into the year they were filed, and that is useful to
   // narrow by -- but it must never be the thing that hides a bill you searched
   // for by number.
   const yc=cnt("year","year");
-  h+=fgroup("year","Year filed",Object.keys(yc).sort(),yc);
+  h+=fgroup("year","Year Filed",Object.keys(yc).sort(),yc);
   h+=fgroup("kind","Status",["active","law","done","veto"].filter(k=>present("kind").includes(k)),cnt("kind","kind"));
   const days={};inYear.filter(b=>matches(b,"voteday")).forEach(b=>(b.votedays||[]).forEach(d=>days[d]=(days[d]||0)+1));
   const allDays=[...new Set(inYear.flatMap(b=>b.votedays||[]))].sort().reverse();
@@ -1531,8 +1531,8 @@ function cardHtml(b,focus){
         title="${esc(b.n)} on its own page: its own address, and a link worth sharing"
         aria-label="Open the standalone page for ${esc(b.n)}">&#8599;</a>`}
       <button class="chead" aria-expanded="${open}">
-        <div class="crow"><span class="cnum">${esc(b.n)}</span>
-        <span class="cyear">filed ${esc(String(y))}${b.carried
+        <div class="crow"><span class="cnum">${esc(b.n)} (${esc(String(y))})</span>
+        <span class="cyear">${b.carried
           ?` <span class="chip" title="Filed one year, acted on in the next — retained in committee or sent to interim study">carried over</span>`:""}</span>
         <span class="cstat ${KIND[b.kind]||""}">${esc(b.status||"")}</span></div>
         <div class="ctitle">${esc(b.title)}</div>
