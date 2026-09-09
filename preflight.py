@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.80
+# GRANITE_VERSION: 2026-09-04.81
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3585,6 +3585,49 @@ def _one_head():
     assert not bad, (f"{len(bad)} page(s) name themselves more than once: "
                      + "; ".join(bad[:4]))
     return "ok", f"{n:,} pages, one head each"
+
+
+@check("data", "a person's career is one record, and two people are two")
+def _careers():
+    """careers.json merges employee numbers into people, and must not overmerge.
+
+    A member gets a new EmployeeNumber when they move from the House to the
+    Senate, so 19 of the roster's numbers belong to somebody who already had
+    one. The rule is a shared name AND service that does not overlap, because
+    nobody holds two seats at once -- and the two shared names whose service
+    DOES overlap are two different people, which is the case this guards.
+    """
+    p = Path("careers.json")
+    if not p.exists():
+        return "skip", "careers.json is not built"
+    d = json.loads(p.read_text(encoding="utf-8"))
+    bad = []
+    seen = {}
+    for key, v in d.items():
+        for e in v.get("employee_nos") or []:
+            if e in seen:
+                bad.append(f"employee number {e} is in two people: "
+                           f"{seen[e]} and {key}")
+            seen[e] = key
+        terms = v.get("terms") or []
+        if terms != sorted(terms):
+            bad.append(f"{key} lists its terms out of order")
+        if len(terms) != len(set(terms)):
+            bad.append(f"{key} lists a term twice")
+        # A district carried backwards across a redistricting is the error
+        # this file exists to avoid; none is recorded until a per-term source
+        # supplies one.
+        if v.get("district_by_term"):
+            for t in v["district_by_term"]:
+                if t not in terms:
+                    bad.append(f"{key} has a district for {t}, a term it did "
+                               "not serve")
+    assert not bad, (f"{len(bad)} problem(s) in careers.json: "
+                     + "; ".join(bad[:3]))
+    multi = sum(1 for v in d.values() if len(v.get("employee_nos") or []) > 1)
+    named = sum(1 for v in d.values() if v.get("named"))
+    return "ok", (f"{len(d):,} people, {multi} holding more than one employee "
+                  f"number, {named:,} named")
 
 
 @check("data", "a member is named the same way by both namers")
