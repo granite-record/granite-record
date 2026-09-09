@@ -19,6 +19,7 @@
     "dom_stub.js": "2026-09-04.2",
     "extract_vetoes.py": "2026-09-07.9",
     "extract_amendments.py": "2026-09-04.3",
+    "fetch_archive_db.py": "2026-09-08.2",
     "fetch_bill_status.py": "2026-09-04.8",
     "fetch_bill_text.py": "2026-09-04.19",
     "fetch_captions.py": "2026-09-05.10",
@@ -72,10 +73,10 @@
     "fetch_senate_calendars.py": "2026-09-08.1",
     "fetch_senate_districts_db.py": "2026-09-07.1",
     "fetch_committee_members_db.py": "2026-09-07.1",
-    "build_committees.py": "2026-09-07.10",
+    "build_committees.py": "2026-09-07.11",
     "probe_archive_shape.py": "2026-09-07.2",
     "app.js": "2026-09-07.31",
-    "app.css": "2026-09-07.26",
+    "app.css": "2026-09-07.27",
     "fetch_members_db.py": "2026-09-07.1"
   },
   "generated": "2026-09-04"

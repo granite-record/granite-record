@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.10
+# GRANITE_VERSION: 2026-09-07.11
 """
 A page's worth of data for every committee.
 
@@ -495,14 +495,25 @@ def main():
     live = [c for c in index if c["n_sessions"] or c["n_bills"]]
     past = [c for c in index if c not in live]
     body = []
+    # THE TWO CHAMBERS SIDE BY SIDE. 25 House committees and 14 Senate ones
+    # in one column put the Senate below a screen and a half of scrolling,
+    # for a reader who very likely came looking for one of the 14. They are
+    # two independent lists and nothing is served by stacking them.
+    #
+    # The columns are a grid on the container rather than a width on each
+    # section, so they collapse to one on a narrow screen without either
+    # column knowing about the other.
+    cols = []
     for ch, word in (("H", "House"), ("S", "Senate")):
         rows_ = [c for c in live if c["chamber"] == ch]
         if not rows_:
             continue
-        body.append(f"<h2>{word}</h2><div class=\"ccards\">"
+        cols.append(f"<section><h2>{word}</h2><div class=\"ccards\">"
                     + "".join(_card(c) for c in
                               sorted(rows_, key=lambda x: x["name"]))
-                    + "</div>")
+                    + "</div></section>")
+    if cols:
+        body.append('<div class="ctwo">' + "".join(cols) + "</div>")
     if past:
         # NOT "no longer meeting". House Rules is here with the Speaker as
         # its chair and nine members; so is a special committee with a chair

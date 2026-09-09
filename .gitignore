@@ -120,3 +120,8 @@ Docket_*.txt
 # Patch scripts are copied in from the scratchpad, run, and deleted. One
 # survived a failed run and was committed.
 _*.py
+
+# ---- the database, dumped whole by fetch_archive_db.py -------------------
+# 2.8 million rows and about 400 MB. Re-fetchable in one run, and it changes
+# whenever the General Court updates it.
+db/

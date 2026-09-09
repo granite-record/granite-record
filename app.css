@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.26 */
+/* GRANITE_VERSION: 2026-09-07.27 */
 /* Every reading column stops at 34em, which is 68 characters at the
    body size. Nine measured over 80 at 1440px and the worst, a bill
    title on a committee page, ran to 195. */
@@ -699,7 +699,14 @@ margin-top:2px}
 .shell.nofacets .facets{display:none}
 
 /* The committees index: a way into the 56 pages that nothing linked to. */
-.clist{max-width:900px;margin:0 auto;padding:20px 24px 60px}
+.clist{max-width:1180px;margin:0 auto;padding:20px 24px 60px}
+/* The two chambers as two columns. A reader looking for a Senate committee
+   was scrolling past 25 House ones to reach 14, and the two lists have
+   nothing to do with each other. One column below 860px, which is the same
+   breakpoint the search page's facet rail uses. */
+.ctwo{display:grid;grid-template-columns:1fr 1fr;gap:0 34px;align-items:start}
+.ctwo > section > h2{margin-top:22px}
+@media(max-width:860px){.ctwo{grid-template-columns:1fr;gap:0}}
 .clist h1{font-size:24px;margin:0 0 4px}
 .clist h2{font-size:14px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
 color:var(--ink-2);margin:26px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
