@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.1
+# GRANITE_VERSION: 2026-09-09.2
 """
 The text of every archived bill, two requests at a time and never in a hurry.
 
@@ -322,8 +322,15 @@ def main():
             rows = build_queue(bills, skip)
             write_queue(rows)
             print(f"queue written: {len(rows):,} archived bills")
+        # NEWEST ARCHIVED TERM FIRST. The queue is built in term order, which
+        # would spend the first fortnight on 1989 -- the term least likely to
+        # have any digital text at all and the one fewest people are looking
+        # for. Working backwards from the most recent archived term means the
+        # text that lands first is the text most likely to exist and to be
+        # read, and a run stopped half way has still bought something.
         todo = [r for r in rows
                 if r["state"] == "wanted" and (not a.term or r["term"] == a.term)]
+        todo.sort(key=lambda r: (r["term"], r["bill"]), reverse=True)
         if not todo:
             print("nothing wanted. --status says where things stand.")
             return 0
