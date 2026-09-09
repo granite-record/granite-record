@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.11
+# GRANITE_VERSION: 2026-09-07.12
 """
 A page's worth of data for every committee.
 
@@ -365,7 +365,15 @@ def main():
             members.append({**m,
                             "slug": lg.get("slug", ""),
                             "label": lg.get("display_full") or m["name"],
-                            "county": lg.get("county", "")})
+                            "county": lg.get("county", ""),
+                            # Baked in rather than joined on the page: a
+                            # committee page loads its own 67 KB of JSON and
+                            # not the 335 KB roster, so a client-side join
+                            # would cost every reader the whole roster to
+                            # write one email. 622 of the 625 sitting seats
+                            # have an address on file; a member who has left
+                            # has none, and gets none here.
+                            "email": lg.get("email", "")})
         # Leadership comes from the web pages, which name a person rather than
         # an id, so it is matched on the name the roster prints.
         offices = [("Chair", (info.get("chair") or "").strip()),

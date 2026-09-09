@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.32
+// GRANITE_VERSION: 2026-09-07.33
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1697,6 +1697,31 @@ function renderMember(m){
 // because that is the layout the people who use these pages already know:
 // the officers and the staff side by side, then the whole membership, then
 // what the chamber's rules say the committee is for.
+// WRITING TO A WHOLE COMMITTEE. Every one of these addresses is published
+// by the General Court and 404 of them are already on this site's own member
+// pages, so nothing is disclosed here that was not already public. They go in
+// the To field rather than Bcc: a person writing to a committee should be
+// able to see, and say, who they are writing to.
+//
+// A member who has left the House keeps their seat in the record and has no
+// address on file, so they are not in the link and the count says so. The
+// largest committee, House Finance, makes a 720-character mailto with 26
+// addresses in it -- well inside what a mail client will take.
+function emailCommittee(c){
+  const seats=(c.members||[]).filter(m=>m.sitting!==false);
+  const with_=seats.filter(m=>m.email);
+  if(!with_.length)return "";
+  const to=with_.map(m=>m.email).join(",");
+  const subject=`${c.name||"Committee"} ${c.chamber==="S"?"(Senate)":"(House)"}`;
+  const href=`mailto:${encodeURIComponent(to).replace(/%2C/g,",")}`
+    +`?subject=${encodeURIComponent(subject)}`;
+  const missing=seats.length-with_.length;
+  return `<p class="cmail"><a class="btn" href="${href}">Email the
+    ${with_.length} members of this committee</a>${missing?
+    `<span class="src"> ${missing} member${missing===1?" has":"s have"} no
+     address on file</span>`:""}</p>`;
+}
+
 function renderCommitteeHead(c){
   const officers=(c.officers||[]).filter(o=>o.name);
   const staff=[["Committee aide",c.aide],["Researcher",c.researcher],
@@ -1716,7 +1741,8 @@ function renderCommitteeHead(c){
     </div>
     ${members.length?`<div class="croster">
       <h2>Members <span>${members.length}</span></h2>
-      <p class="mlist">${members.map(mchip).join(" ")}</p></div>`:""}
+      <p class="mlist">${members.map(mchip).join(" ")}</p>
+      ${emailCommittee(c)}</div>`:""}
     ${rule?`<div class="cpurpose"><h2>What it does</h2>
       <p>${esc(rule.text||"")}</p>
       <p class="src">${esc(rule.rule||"")}, as the General Court publishes it.</p>

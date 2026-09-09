@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.29 */
+/* GRANITE_VERSION: 2026-09-07.30 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -707,6 +707,13 @@ color:var(--ink-2);margin:0 0 6px}
    title, declared 469 lines above, and this one won on source order --
    so every bill title on every card rendered at 14px in --ink-2 instead
    of 16px in --ink. Two elements were sharing one class name. */
+/* Writing to the whole committee. A control rather than a link: it does
+   something rather than going somewhere. */
+.cmail{margin:12px 0 0;display:flex;gap:11px;align-items:baseline;flex-wrap:wrap}
+.cmail .btn{display:inline-block;font-size:14px;color:var(--pine);
+background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-in);
+padding:5px 12px;text-decoration:none}
+.cmail .btn:hover{background:var(--pine-soft)}
 .cd-title{display:block;color:var(--ink-2);font-size:14px;line-height:1.45;
 margin-top:2px}
 
