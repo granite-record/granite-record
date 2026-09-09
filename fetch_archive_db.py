@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.3
+# GRANITE_VERSION: 2026-09-08.4
 """
 Every view in the General Court's public database, onto this disk.
 
@@ -100,6 +100,14 @@ VIEWS = [
     ("StatStudDetails", "NHLegislatureDB", "", "statutory study committees"),
     ("StatStudMembers", "NHLegislatureDB", "", "their members"),
     ("StatStudMeetings", "NHLegislatureDB", "", "their meetings"),
+    # The 28th object, and the only one this disk did not have: asked for on
+    # 9 September by comparing INFORMATION_SCHEMA against db/_manifest.json.
+    # 1,545 rows joining a study committee to the bill that created it and the
+    # RSA chapter it studies -- a bill-to-statute link that exists nowhere
+    # else here. NHRSA, NHLegislatureDB2 and PublicNHLMS show publicuser
+    # nothing at all, so with this the host is complete.
+    ("vStatStudTemp", "NHLegislatureDB", "",
+     "study committee to the bill that made it, and its RSA chapter"),
 
     # -- the current term's own record
     ("Sponsors", "NHLegislatureDB", "", "sponsors on the roster's own id"),
