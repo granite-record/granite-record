@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.48
+# GRANITE_VERSION: 2026-09-05.50
 """
 Generate the faceted site from real General Court data.
 
@@ -1840,6 +1840,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # no text. testimony.json is still flat and is read through the `own`
     # guard below for the same reason.
     current = max(bills) if bills else ""
+    n_stale = 0
     for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
         # numbers are unique across the whole term, so the term -- not the year
@@ -1883,6 +1884,22 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             n_stated += 1
         else:
             kind, status = classify(narr, rcs, prefix)
+        # A TERM THAT HAS ENDED HAS NO BILLS IN PROGRESS. The General Court's
+        # status field stops being updated when a term closes, so 1,954
+        # archived bills across eighteen terms still say "In committee",
+        # "Laid on the table" or "Passed one chamber" -- 608 of them in
+        # committee, some since 1989. Read literally that is a 37-year-old
+        # bill awaiting a hearing.
+        #
+        # The word is left exactly as the record gives it, because it is what
+        # the record last said and this site does not rewrite that. What
+        # changes is the KIND, which drives the colour and the rail: in a
+        # closed term the bill did not go on from there, so it is finished
+        # rather than moving. The current term is untouched -- a bill laid on
+        # the table in 2026 may yet be taken up.
+        if kind == "active" and term != current:
+            kind = "done"
+            n_stale += 1
         # Sponsor records already carry member_id, party and chamber from
         # build_data.py, and for the LsrSponsors path that id IS the roster's.
         # The bill-status fallback path carries a web member id from a
@@ -1967,7 +1984,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             "status_stated": bool(told),
             # HSGL, one character each: how far the bill got and where it
             # stopped. Four characters in the index rather than four fields,
-            # because index.json is loaded up front by every visitor.
+            # because idx/<term>.json is loaded up front by every visitor.
             "passage": passage((narr or {}).get("stages"), kind, status),
             "last_action": dates[-1] if dates else "",
             "nrc": len([r for r in rcs if not r.get("procedural")]),
@@ -2276,6 +2293,10 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     if status_pages:
         print(f"  {n_stated:,} bills take their status from the page; "
               f"{len(index) - n_stated:,} still derive it from the docket")
+        if n_stale:
+            print(f"  {n_stale:,} bills in closed terms read as still moving "
+                  "and are marked finished;")
+            print("    the status word the record gave them is unchanged")
     return index, years, unnamed, dict(sponsored)
 
 
@@ -2550,6 +2571,32 @@ def main():
                                legs, leg_by_sort, leg_by_name,
                                votes_by_bill, vetoes=vetoes)
     (out / "index.json").write_text(json.dumps(index), encoding="utf-8")
+
+    # ONE TERM AT A TIME, BECAUSE THAT IS ALL THE PAGE EVER SHOWS. The search
+    # has always filtered to a single term -- there is a term picker and
+    # render() reads it -- so a visitor was downloading nineteen terms to look
+    # at one. With the archive in, index.json is 15.7 MB (1.6 gzipped) and
+    # every first visit pays for it before a word can be typed.
+    #
+    # index.json stays whole because six build steps read it and expect every
+    # bill. These are what the browser fetches: the newest term is 0.14 MB
+    # gzipped and an archived one about 0.08, fetched only if somebody picks
+    # it.
+    idx_dir = out / "idx"
+    idx_dir.mkdir(exist_ok=True)
+    by_term = defaultdict(list)
+    for row in index:
+        if row.get("term"):
+            by_term[row["term"]].append(row)
+    for term_, rows_ in by_term.items():
+        (idx_dir / f"{term_}.json").write_text(
+            json.dumps(rows_, separators=(",", ":")), encoding="utf-8")
+    newest_ = max(by_term) if by_term else ""
+    print(f"  idx/: {len(by_term)} terms, newest {newest_} "
+          f"({len(by_term.get(newest_, [])):,} bills, "
+          f"{(idx_dir / f'{newest_}.json').stat().st_size / 1024:,.0f} KB) "
+          "-- what a visitor actually loads")
+
     size = (out / "index.json").stat().st_size / 1024
     print(f"index.json: {size:.0f} KB for {len(index):,} bills "
           f"(roughly {size/4:.0f} KB gzipped, which is what a static host sends)")
@@ -2689,9 +2736,14 @@ def main():
           f"{len(meta['sponsors'])} sponsors, {len(meta['votedays'])} vote days")
 
     total = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
-    print(f"\nsite data: {total/1e6:.1f} MB total, {size:.0f} KB loaded up front")
+    front = ((out / "idx" / f"{newest_}.json").stat().st_size / 1024
+             if newest_ else 0)
+    print(f"\nsite data: {total/1e6:.1f} MB total, {front:,.0f} KB loaded "
+          f"up front (idx/{newest_}.json)")
+    print(f"  index.json is {size:,.0f} KB and is read by the build "
+          "rather than by a browser")
     print(f"-> {out}/")
-    print("\nNext: the HTML shell reads index.json and meta.json for search and")
+    print("\nNext: the HTML shell reads idx/<term>.json and meta.json for search and")
     print("facets, then fetches bills/<year>/<id>.json when a card is expanded.")
 
 

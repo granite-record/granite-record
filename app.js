@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.33
+// GRANITE_VERSION: 2026-09-07.34
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -197,16 +197,42 @@ if(/^\/(?:bill|legislator|committee)\/.+\.html$/.test(location.pathname)){
   try{history.replaceState(history.state,"",
     location.pathname.slice(0,-5)+location.search+location.hash);}catch(_){}
 }
-Promise.all([need("index.json"),need("meta.json")])
+// WHICH TERM TO LOAD FIRST. A record page names it in its own address --
+// /bill/2026/hb1442 -- so a 1995 bill loads the 1995 index and not the
+// current one. Anything else starts at the newest, which is what the picker
+// opens on.
+function wantedTerm(m){
+  const terms=(m.terms&&m.terms.length)?m.terms:[];
+  const mm=location.pathname.match(/^\/bill\/(\d{4})\//);
+  if(mm){
+    const y=+mm[1], t=terms.find(x=>{const a=+String(x).slice(0,4);return y===a||y===a+1;});
+    if(t)return t;
+  }
+  return terms[0]||"";
+}
+// A term already in IDX is never fetched again.
+const LOADED=new Set();
+function ensureTerm(t){
+  if(!t||LOADED.has(t))return Promise.resolve();
+  return need("idx/"+encodeURIComponent(t)+".json").then(rows=>{
+    LOADED.add(t);
+    rows.forEach(b=>b.hay=[b.id,b.n,b.title,b.sponsor,
+      ...(b.committees||[b.committee||""]),b.topic].join(" ").toLowerCase());
+    IDX=IDX.concat(rows);
+  });
+}
+
+need("meta.json")
+ .then(m=>{
+   META=m;
+   const first=wantedTerm(m);
+   return ensureTerm(first).then(()=>[IDX,m]);})
  .then(([i,m])=>{
    IDX=i;META=m;
-   // Build the search haystack here rather than shipping it — one pass, instant,
-   // and it keeps index.json about a third smaller over the wire.
-   IDX.forEach(b=>b.hay=[b.id,b.n,b.title,b.sponsor,
-     ...(b.committees||[b.committee||""]),b.topic].join(" ").toLowerCase());
+   // The haystack is built in ensureTerm, once per term as it arrives.
    const terms=META.terms&&META.terms.length?META.terms
      :[...new Set(IDX.map(b=>b.term).filter(Boolean))].sort().reverse();
-   term=terms[0];
+   term=wantedTerm(META)||terms[0];
    const ys=$("#year");
    ys.innerHTML=terms.map(t=>`<option value="${t}">${t} term</option>`).join("");
    ys.value=term;
@@ -214,7 +240,12 @@ Promise.all([need("index.json"),need("meta.json")])
      // On a record page there is no list to re-filter, and render() would
      // write one over the record.
      if(PAGE||window.GR_STATIC){location.href="bills.html";return;}
-     term=e.target.value;render();});
+     term=e.target.value;
+     // The term's bills may not be here yet. Fetch, then draw -- and say so
+     // meanwhile, because a picker that does nothing for a moment reads as
+     // broken.
+     const c=$("#count"); if(c&&!LOADED.has(term))c.textContent="loading "+term+"…";
+     ensureTerm(term).then(render);});
    const so=$("#sort");
    if(so)so.addEventListener("change",e=>{
      if(PAGE||window.GR_STATIC)return;
