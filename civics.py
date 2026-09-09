@@ -74,15 +74,17 @@ SHOWS = ('<div class="shows"><h4>In the record</h4>{}</div>')
 
 
 BODY_GENERAL_COURT = """
-<p>The General Court is the legislature: a House of 400 representatives and a
-Senate of 24. It is the largest state legislature in the country and, per
-resident, has by far the smallest districts &mdash; roughly one representative
-for every 3,400 people.</p>
+<p>The General Court is the legislature: a House of 400 representatives and
+a Senate of 24. It is the largest state legislature in the country, and the
+districts are correspondingly small.</p>
 
-<p>Members are paid $100 a year plus mileage, a figure set in the constitution
-and unchanged since 1889. Almost none have staff. Most have other jobs, and
-the session is arranged around that: the House meets on a small number of
-full days, and committee work fills the rest.</p>
+<p>Members are paid $100 a year plus mileage. Almost none have staff. Most
+have other jobs, and the session is arranged around that: the House meets on
+a small number of full days, and committee work fills the rest.</p>
+
+<p>Four hundred is the number of seats, not the number of members. Seats fall
+vacant and are filled at by-elections through the term, so the working size of
+the House moves.</p>
 
 <h2>A term is two years</h2>
 <p>The General Court sits in two-year terms beginning in odd years. Bill
@@ -130,6 +132,14 @@ it.</p>
 """ + SHOWS.format("""
 <p>The 2025&ndash;2026 term filed <b>2,234 bills</b>: 1,564 House bills, 566
 Senate bills, 31 constitutional amendments and 73 resolutions.</p>
+<p>The House is <b>400 seats and 382 sitting members</b> as this was written,
+with 18 vacant. The record shows that moving: roll calls this term were taken
+with as many as 399 members seated and as few as 384.</p>
+<p>There are <b>203 House districts and 24 Senate districts</b>. Of the 162
+ordinary House districts, 75 elect a single member and 42 elect two; the
+largest elects ten. The other 41 are floterial &mdash; see
+<a href="learn/your-representatives.html">Finding your
+representatives</a>.</p>
 <p><a href="committees.html">Every committee</a>, who sits on it, and what it
 did on each day it met. <a href="legislators.html">Every member</a>, with how
 they voted.</p>""")
@@ -198,19 +208,22 @@ in a single vote. Ten members may petition to pull a bill off and have it
 taken up separately.</p>
 """ + SHOWS.format("""
 <p><b>Killed in committee:</b>
-<a href="bill/2026/sb71">SB 71-FN</a>, on cooperation with federal immigration
+<a href="bill/2026/sb71.html">SB 71-FN</a>, on cooperation with federal immigration
 authorities &mdash; three roll calls before it died.</p>
 <p><b>Signed into law:</b>
-<a href="bill/2025/hb2">HB 2</a>, the budget trailer bill, with 44 recorded
+<a href="bill/2025/hb2.html">HB 2</a>, the budget trailer bill, with 44 recorded
 votes and a fiscal note running to four years.</p>
 <p><b>Vetoed, and the override failed:</b>
-<a href="bill/2026/hb1442">HB 1442-FN</a> &mdash; passed both chambers, vetoed,
+<a href="bill/2026/hb1442.html">HB 1442-FN</a> &mdash; passed both chambers, vetoed,
 and the House fell short of two thirds on the override.</p>
 <p><b>Vetoed, and overridden anyway:</b>
-<a href="bill/2026/hb2026">HB 2026</a>, on the ten-year transportation
+<a href="bill/2026/hb2026.html">HB 2026</a>, on the ten-year transportation
 plan.</p>
 <p><b>Carried over</b> into the second year:
-<a href="bill/2026/hb751">HB 751-FN</a>.</p>""")
+<a href="bill/2026/hb751.html">HB 751-FN</a>.</p>
+<p>Of the 2,233 bills with a narrative this term, <b>1,068 reached both
+chambers</b> and <b>86 went to a committee of conference</b>. 649 became law:
+632 signed, 10 without a signature, and 7 over a veto.</p>""")
 
 
 BODY_GOVERNOR = """
@@ -329,14 +342,14 @@ same route as a judge, and it is the most concrete answer to
 <a href="learn/governor-and-council.html">what the Council does</a>. A
 commissioner serves a fixed term and can be reappointed the same way.</p>
 
-<h2>You have already met them</h2>
-<p>Agency staff are in the hearing recordings constantly. "For the record, I
-am the deputy commissioner of&hellip;" opens testimony in a great many
-hearings, because a department is usually the first body asked what a bill
-would actually do, and often the body that would have to do it.</p>
-<p>An agency may support a bill, oppose it, or appear as neutral and simply
-explain the effect. A reader who has watched a department explain why a bill
-is unworkable has met that agency without needing this page at all.</p>
+<h2>You have probably already met them</h2>
+<p>A department is usually among the first bodies asked what a bill would
+actually do, and often the body that would have to do it, so agency staff
+appear at hearings regularly. An agency may support a bill, oppose it, or
+appear as neutral and simply explain the effect.</p>
+<p>If you have watched a hearing on this site and heard someone explain why a
+bill would be difficult to administer, that is what you were listening
+to.</p>
 
 <h2>What an agency cannot do</h2>
 <p>It cannot give itself powers the statute does not grant. What it can do is
@@ -393,8 +406,7 @@ decided by the people in the room.</p>
 <p>A town that has adopted the official-ballot form votes on warrant articles
 by ballot on election day instead, after a separate deliberative session where
 the articles can be amended. It is called SB 2 after the bill that created the
-option. Roughly a third of New Hampshire towns and most school districts have
-adopted it.</p>
+option, and many towns and school districts have adopted it.</p>
 <p>The trade is participation for reach: a deliberative session is attended by
 far fewer people than a town meeting, but far more people vote on the
 result.</p>
@@ -474,6 +486,16 @@ a district covering several towns elects several representatives at large
 across the whole of it.</p>
 <p>Senate districts are numbered 1 to 24 statewide and cut across county
 lines.</p>
+
+<h2>Floterial districts</h2>
+<p>Some towns are in two House districts at once. A <b>floterial</b> district
+sits on top of several ordinary ones and elects an additional member or two
+across the whole of it, which is how the state gets closer to equal
+representation without splitting small towns.</p>
+<p>If you live in one, you have more representatives than you might expect:
+the members of your own district, plus the floterial members shared with
+neighbouring towns. Of New Hampshire's 203 House districts, <b>41 are
+floterial</b>, and they account for 65 of the 400 seats.</p>
 
 <h2>Getting in touch</h2>
 <p>Members publish an address and, for nearly all of them, an email. There is
