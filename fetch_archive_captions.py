@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.1
+# GRANITE_VERSION: 2026-09-08.2
 """
 Captions for the recordings the proceedings table has never heard of.
 
@@ -96,11 +96,26 @@ def fetch(vid, timeout=300):
     if got:
         return True, got[0].name
     err = (r.stderr or r.stdout or "").strip().splitlines()
-    why = err[-1][:120] if err else "no caption file appeared"
+    why = err[-1][:140] if err else "no caption file appeared"
+    low = why.lower()
     # A video with no auto-captions is a gap in the source, not a failure
     # here, and must not count towards the stop-loss.
-    if "no subtitles" in why.lower() or "There are no subtitles" in why:
+    if "no subtitles" in low or "there are no subtitles" in low:
         return False, "none published"
+    # A STREAM THAT HAS NOT HAPPENED YET. The channel index lists scheduled
+    # broadcasts, and three of the first ten videos tried were one -- "This
+    # live event will begin in 8 days". There is nothing to fetch and there
+    # will not be until it airs, so it is recorded and skipped rather than
+    # retried on every run for the next week.
+    if "live event will begin" in low or "premieres in" in low:
+        return False, "not yet broadcast"
+    # 429 IS YOUTUBE SAYING NO. Four of the first ten came back with it, which
+    # is not a slow connection or a bad video -- it is the rate limiter, and
+    # it is the same class of answer as the General Court closing a connection
+    # without sending a byte. It gets its own name so the caller can stop
+    # rather than work through three thousand more of them.
+    if "429" in why or "too many requests" in low:
+        return False, "REFUSED"
     return False, why
 
 
@@ -109,7 +124,14 @@ def main():
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--year", help="only videos published in this year")
-    ap.add_argument("--delay", type=float, default=2.0)
+    ap.add_argument("--delay", type=float, default=6.0,
+                    help="seconds between videos (default 6). yt-dlp makes "
+                         "several requests of its own per video on top of "
+                         "this.")
+    ap.add_argument("--backoff", type=float, default=120.0,
+                    help="pause after a 429 before trying the next one")
+    ap.add_argument("--stop-refused", type=int, default=3,
+                    help="429s in a run before giving up entirely")
     ap.add_argument("--stop-after", type=int, default=5,
                     help="consecutive real failures before giving up")
     a = ap.parse_args()
@@ -118,13 +140,15 @@ def main():
     led = ledger()
     todo = [v for v in vids
             if not has(v)
-            and led.get(v, {}).get("state") != "none published"
+            and led.get(v, {}).get("state")
+                not in ("none published", "not yet broadcast")
             and (not a.year or vids[v]["date"][:4] == a.year)]
     todo.sort(key=lambda v: vids[v]["date"], reverse=True)
 
     print(f"{len(vids):,} videos on the two channels")
     print(f"{sum(1 for v in vids if has(v)):,} already have captions")
-    none_pub = sum(1 for v in led.values() if v.get("state") == "none published")
+    none_pub = sum(1 for v in led.values()
+                   if v.get("state") in ("none published", "not yet broadcast"))
     if none_pub:
         print(f"{none_pub:,} have none published and are not asked for again")
     print(f"{len(todo):,} to fetch")
@@ -141,7 +165,7 @@ def main():
         return 0
 
     ok = miss = 0
-    run = 0
+    run = refused = 0
     t0 = time.time()
     for i, v in enumerate(todo, 1):
         got, why = fetch(v)
@@ -150,14 +174,25 @@ def main():
             run = 0
             led[v] = {"state": "held", "how": why,
                       "at": time.strftime("%Y-%m-%dT%H:%M:%S")}
-        elif why == "none published":
+        elif why in ("none published", "not yet broadcast"):
             miss += 1
             run = 0
-            led[v] = {"state": "none published"}
+            led[v] = {"state": why}
         else:
             run += 1
             led[v] = {"state": "failed", "why": why}
             print(f"  [{i}] {v}: {why}", flush=True)
+            if why == "REFUSED":
+                refused += 1
+                if refused >= a.stop_refused:
+                    print(f"\n{refused} refusals (HTTP 429). YouTube is rate "
+                          "limiting this address.\nStopping: working through "
+                          "three thousand more of these is how an address "
+                          "stops\nbeing served at all. Try again later, or "
+                          "from somewhere else.")
+                    break
+                print(f"      backing off {a.backoff:.0f}s", flush=True)
+                time.sleep(a.backoff)
             if run >= a.stop_after:
                 print(f"\n{a.stop_after} in a row. Stopping.")
                 break
@@ -173,7 +208,8 @@ def main():
     print(f"\n{ok:,} fetched, {miss:,} have none published, "
           f"{time.time() - t0:.0f}s")
     left = sum(1 for v in vids if not has(v)
-               and led.get(v, {}).get("state") != "none published")
+               and led.get(v, {}).get("state")
+               not in ("none published", "not yet broadcast"))
     print(f"{sum(1 for v in vids if has(v)):,} of {len(vids):,} now have "
           f"captions; {left:,} still wanted")
     return 0
