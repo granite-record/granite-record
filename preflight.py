@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.83
+# GRANITE_VERSION: 2026-09-04.84
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -922,6 +922,39 @@ def _stamps():
     assert not bad, "; ".join(bad[:4]) + (f" (+{len(bad) - 4} more)" if len(bad) > 4 else "")
     assert not unstamped, "no stamp line in: " + ", ".join(unstamped[:5])
     return "ok", f"{seen} files agree with the manifest"
+
+
+@check("files", "no generator writes the bench's record")
+def _bench_untouched():
+    """review/checked.jsonl is the second thing on this disk that a person
+    made by hand, and it is protected the same way ground_truth.csv is.
+
+    The bench appends and never rewrites a line: a later look at the same item
+    is a second judgment rather than a correction of the first. A build_ or
+    fetch_ script that opens it for writing is the next loss waiting to
+    happen, and this project has lost hand-made measurements twice.
+
+    The bench also stays off the network. It shows unpublished judgments about
+    named people, and it binds the loopback address for that reason.
+    """
+    bad = [f.name for f in
+           sorted(Path(".").glob("build_*.py")) + sorted(Path(".").glob("fetch_*.py"))
+           if "checked.jsonl" in f.read_text(encoding="utf-8", errors="replace")]
+    assert not bad, ("these name the bench's record and must not: "
+                     + ", ".join(bad))
+
+    rv = Path("review.py")
+    if rv.exists():
+        src = rv.read_text(encoding="utf-8", errors="replace")
+        # The BIND, not the file: the first version of this check read the
+        # whole source and failed on the comment explaining why the bind is
+        # what it is.
+        binds = re.findall(r"HTTPServer\(\s*\(\s*[\"']([\d.]+)[\"']", src)
+        assert binds, "review.py no longer opens an HTTPServer"
+        assert all(b.startswith("127.") for b in binds), (
+            "review.py binds " + ", ".join(binds)
+            + "; it must stay on the loopback address")
+    return "ok", "only a person writes it, and it is not on the site"
 
 
 @check("files", "no generator writes ground_truth.csv")

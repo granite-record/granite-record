@@ -137,3 +137,8 @@ archive_years.json
 archive/
 journals/
 journals_senate/
+
+# The bench's sample pools are derived and rebuilt by review.py
+# --refresh. review/checked.jsonl is NOT ignored: it is the record a
+# person made, and it belongs in git beside ground_truth.csv.
+review/.pool-*.json

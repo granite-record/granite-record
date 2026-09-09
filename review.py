@@ -1,0 +1,632 @@
+#!/usr/bin/env python3
+# GRANITE_VERSION: 2026-09-09.2
+"""
+The bench: one sample at a time, judged by a person, written down for good.
+
+    python3 review.py                 # opens on http://127.0.0.1:8799
+    python3 review.py --port 9000
+    python3 review.py --report        # what has been judged so far, no server
+
+LOCAL ONLY, AND NOT PART OF THE SITE. It binds 127.0.0.1, writes nothing into
+site/, and site/ is never served from here. Nothing this tool produces reaches
+graniterecord.org except by a person deciding it should.
+
+WHY IT EXISTS
+
+Every derived thing on this site is measured against something a person
+checked, and there is very little of that: ground_truth.csv holds 35
+proceedings somebody timed by watching, and it is the ONLY independent measure
+this project has. CLAUDE.md requires every timestamp method be scored against
+it. A set of 35 can be fitted without anyone noticing.
+
+The same problem is arriving twice more. Related bills and narrative quality
+both need a judgment no generator can make, and both are about to be built.
+One bench, three uses.
+
+WHAT IT WILL NOT DO
+
+It will not overwrite an answer. review/checked.jsonl is append-only: every
+judgment is a new line, and a second look at the same item is a second line
+rather than a replacement. Nothing here rewrites ground_truth.csv either --
+that file is a person's, and preflight fails if a generator opens it for
+writing. This writes its own file and probe_alignment.py can read both.
+
+THE KINDS
+
+Each kind knows how to pick an item nobody has judged, how to show it, and
+what to ask. Adding one is a dict in KINDS; nothing else changes.
+"""
+
+import argparse
+import csv
+import html
+import json
+import random
+import re
+import subprocess
+import sys
+import threading
+import time
+import webbrowser
+from datetime import datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from pathlib import Path
+
+OUT = Path("review")
+LEDGER = OUT / "checked.jsonl"
+E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
+
+
+# ------------------------------------------------------------------ storage
+
+def judged():
+    """Every key already judged, and how many times."""
+    seen = {}
+    if not LEDGER.exists():
+        return seen
+    for line in LEDGER.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            d = json.loads(line)
+        except ValueError:
+            continue
+        seen.setdefault((d.get("kind"), d.get("key")), []).append(d)
+    return seen
+
+
+def record(entry):
+    """APPEND. Never rewrite: a judgment is evidence, and a later look at the
+    same item is a second piece of evidence rather than a correction of the
+    first. Which one to believe is a question for whoever reads the file."""
+    OUT.mkdir(exist_ok=True)
+    entry["at"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    with LEDGER.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+# -------------------------------------------------------------------- kinds
+
+def _hms(sec):
+    try:
+        s = int(float(sec))
+    except (TypeError, ValueError):
+        return ""
+    return f"{s // 3600}:{(s % 3600) // 60:02d}:{s % 60:02d}"
+
+
+def _yt(vid, sec=None):
+    u = f"https://www.youtube.com/watch?v={vid}"
+    try:
+        return u + f"&t={int(float(sec))}s"
+    except (TypeError, ValueError):
+        return u
+
+
+def sample_timestamps():
+    """A proceeding the site prints a time for, and the recording it is in."""
+    import proceedings as P
+    out = []
+    for r in P.load():
+        if not (r.get("video_id") and r.get("bill")):
+            continue
+        if r.get("predicted_offset") in (None, ""):
+            continue
+        key = f"{r.get('video_id')}|{r.get('bill')}|{r.get('kind')}"
+        out.append({
+            "key": key, "bill": r["bill"], "video_id": r["video_id"],
+            "committee": r.get("committee") or "", "date": r.get("date") or "",
+            "proceeding": r.get("kind") or "", "title": r.get("video_title") or "",
+            "predicted": r.get("predicted_offset"),
+            "end": r.get("debate_end"),
+            "precise": bool(r.get("precise")),
+            "match": r.get("match") or "",
+        })
+    return out
+
+
+def show_timestamps(it):
+    start, end = it["predicted"], it["end"]
+    rows = [
+        ("Bill", it["bill"]),
+        ("Proceeding", f'{it["proceeding"]} &middot; {it["committee"]} &middot; {it["date"]}'),
+        ("Recording", f'<a href="{E(_yt(it["video_id"]))}" target="_blank" '
+                      f'rel="noopener">{E(it["title"] or it["video_id"])}</a>'),
+        ("How it was placed", f'{E(it["match"])}'
+                              + (" &middot; <b>stated by the chair</b>"
+                                 if it["precise"] else " &middot; inferred")),
+    ]
+    body = "".join(f'<tr><th>{E(k)}</th><td>{v}</td></tr>' for k, v in rows)
+    jump = (f'<p class="jump"><a class="btn" href="{E(_yt(it["video_id"], start))}" '
+            f'target="_blank" rel="noopener">Open at the printed start '
+            f'&mdash; {E(_hms(start))}</a>'
+            + (f' <a class="btn" href="{E(_yt(it["video_id"], end))}" '
+               f'target="_blank" rel="noopener">and at the printed end '
+               f'&mdash; {E(_hms(end))}</a>' if end not in (None, "") else "")
+            + "</p>")
+    return (f'<table class="facts">{body}</table>{jump}'
+            '<p class="ask">Open it, find the moment the chair takes this bill '
+            'up, and put that time below. Leave a box empty to say the printed '
+            'one is right.</p>')
+
+
+def sample_narratives():
+    """A bill's plain-language history, beside the docket it was built from."""
+    p = Path("narratives.json")
+    if not p.exists():
+        return []
+    d = json.loads(p.read_text(encoding="utf-8"))
+    out = []
+    for term, bills in d.items():
+        if not isinstance(bills, dict):
+            continue
+        for bid, rec in bills.items():
+            text = (rec or {}).get("narrative") or ""
+            if len(text.split()) < 25:
+                continue
+            out.append({"key": f"{term}/{bid}", "term": term, "bill": bid,
+                        "narrative": text})
+    return out
+
+
+def _docket_lines(term, bill):
+    """The raw rows the narrative was written from, so the two can be read
+    against each other. This is the whole point: a narrative that reads well
+    and says something the docket does not is the failure worth catching."""
+    for name in (f"Docket_{term}.txt", "Docket.txt"):
+        p = Path(name)
+        if not p.exists():
+            continue
+        got = []
+        for line in p.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+            f = line.split("|")
+            if len(f) >= 7 and f[3].strip().upper() == bill.upper():
+                got.append(f"{f[2].split()[0]}  {f[4]}  {f[5]}")
+        if got:
+            return got
+    return []
+
+
+def show_narratives(it):
+    lines = _docket_lines(it["term"], it["bill"])
+    raw = ("".join(f"<li>{E(x)}</li>" for x in lines) if lines
+           else "<li>No docket rows found for this bill on this disk.</li>")
+    return (f'<table class="facts"><tr><th>Bill</th><td>{E(it["bill"])} '
+            f'&middot; {E(it["term"])}</td></tr></table>'
+            f'<h3>The narrative as published</h3>'
+            f'<p class="prose">{E(it["narrative"])}</p>'
+            f'<h3>The docket it was built from</h3>'
+            f'<ul class="raw">{raw}</ul>'
+            '<p class="ask">Does the narrative say what the docket says, in the '
+            'right order, without adding anything? A sentence in the wrong '
+            'tense counts as wrong.</p>')
+
+
+def sample_hearings():
+    """A hearing read out of a calendar: bill, committee, day, time, room."""
+    try:
+        import calendar_meetings as CM
+    except ImportError:
+        return []
+    # load() walks one chamber's calendars; parse() is per file and takes the
+    # text. Both chambers, because a Senate hearing is as worth checking as a
+    # House one and the Senate parse is the newer of the two.
+    rows = []
+    for chamber in ("H", "S"):
+        try:
+            rows += CM.load(chamber)
+        except Exception:                                   # noqa: BLE001
+            pass
+    out = []
+    for r in rows if isinstance(rows, list) else []:
+        if not r.get("bill"):
+            continue
+        out.append({"key": f'{r.get("bill")}|{r.get("date")}|{r.get("kind")}',
+                    "bill": r["bill"], "date": r.get("date") or "",
+                    "committee": r.get("committee") or "",
+                    "time": r.get("time") or "", "room": r.get("room")
+                    or r.get("venue") or "", "kind": r.get("kind") or "",
+                    "calendar": r.get("calendar") or ""})
+    return out
+
+
+def show_hearings(it):
+    rows = [("Bill", it["bill"]), ("Committee", it["committee"]),
+            ("Date", it["date"]), ("Time", it["time"] or "not stated"),
+            ("Room", it["room"] or "not stated"),
+            ("Kind", it["kind"]), ("From calendar", it["calendar"])]
+    body = "".join(f"<tr><th>{E(k)}</th><td>{E(v)}</td></tr>" for k, v in rows)
+    return (f'<table class="facts">{body}</table>'
+            '<p class="ask">This was read out of a printed calendar. Does it '
+            'match what the calendar says? Correct anything that is wrong.</p>')
+
+
+def sample_vetoes():
+    p = Path("veto_messages.json")
+    if not p.exists():
+        return []
+    d = json.loads(p.read_text(encoding="utf-8"))
+    out = []
+    for term, bills in d.items():
+        if not isinstance(bills, dict):
+            continue
+        for bid, rec in bills.items():
+            if not isinstance(rec, dict):
+                continue
+            out.append({"key": f"{term}/{bid}", "term": term, "bill": bid,
+                        "text": " ".join(rec.get("text") or []),
+                        "governor": rec.get("governor") or "",
+                        "date": rec.get("date") or "",
+                        "source": (rec.get("source") or {}).get("name") or "",
+                        "url": (rec.get("source") or {}).get("url") or ""})
+    return out
+
+
+def show_vetoes(it):
+    cite = (f'<a href="{E(it["url"])}" target="_blank" rel="noopener">'
+            f'{E(it["source"])}</a>' if it["url"] else E(it["source"]))
+    return (f'<table class="facts">'
+            f'<tr><th>Bill</th><td>{E(it["bill"])} &middot; {E(it["term"])}</td></tr>'
+            f'<tr><th>Attributed to</th><td>{E(it["governor"])}</td></tr>'
+            f'<tr><th>Dated</th><td>{E(it["date"])}</td></tr>'
+            f'<tr><th>Cited to</th><td>{cite}</td></tr></table>'
+            f'<h3>The message as published</h3>'
+            f'<p class="prose">{E(it["text"])}</p>'
+            '<p class="ask">Open the calendar and read it there. Is this the '
+            'whole message, is it the right Governor, and does it start and '
+            'end where the calendar does?</p>')
+
+
+def sample_reports():
+    p = Path("committee_reports.json")
+    if not p.exists():
+        return []
+    d = json.loads(p.read_text(encoding="utf-8"))
+    out = []
+    for term, bills in d.items():
+        if not isinstance(bills, dict):
+            continue
+        for bid, entries in bills.items():
+            for e in (entries if isinstance(entries, list) else [entries]):
+                for r in ((e or {}).get("reports") or []):
+                    txt = r.get("text") or ""
+                    if len(txt.split()) < 25:
+                        continue
+                    side = r.get("side") or ""
+                    out.append({
+                        "key": f'{term}/{bid}/{side}',
+                        "term": term, "bill": bid, "text": txt,
+                        "signer": r.get("author") or "",
+                        "committee": r.get("committee") or "",
+                        "rec": " ".join(x for x in (
+                            side,
+                            (e or {}).get(f"{side.lower()}_recommendation") or "",
+                            (f'vote {r.get("vote_yeas")}-{r.get("vote_nays")}'
+                             if r.get("vote_yeas") else "")) if x)})
+    return out
+
+
+def show_reports(it):
+    return (f'<table class="facts">'
+            f'<tr><th>Bill</th><td>{E(it["bill"])} &middot; {E(it["term"])}</td></tr>'
+            f'<tr><th>Written by</th><td>{E(it["signer"]) or "not recorded"}</td></tr>'
+            f'<tr><th>Committee</th><td>{E(it.get("committee"))}</td></tr>'
+            f'<tr><th>Report</th><td>{E(it["rec"]) or "not recorded"}</td></tr>'
+            f'</table><h3>The reasoning as published</h3>'
+            f'<p class="prose">{E(it["text"])}</p>'
+            '<p class="ask">Is this one member\'s reasoning, whole, with no '
+            'page headers or another section\'s text inside it, and attributed '
+            'to the right person?</p>')
+
+
+# Each kind: where the samples come from, how to show one, and what to ask.
+# A field is (name, label, placeholder).
+KINDS = {
+    "timestamp": {
+        "label": "Bill hearing timings",
+        "blurb": "The moment the site says a bill was taken up, against the "
+                 "recording. This is what ground_truth.csv measures, and there "
+                 "are 35 of those against 5,935 proceedings with a printed time.",
+        "sample": sample_timestamps, "show": show_timestamps,
+        "fields": [("observed_start", "The real start", "1:10:01 or 4201"),
+                   ("observed_end", "The real end", "1:24:30 or 5070")],
+    },
+    "narrative": {
+        "label": "Plain-language histories",
+        "blurb": "The sentences the site writes about a bill, against the "
+                 "docket rows they were built from.",
+        "sample": sample_narratives, "show": show_narratives,
+        "fields": [("wrong_sentence", "A sentence that is wrong, if one is",
+                    "paste it")],
+    },
+    "hearing": {
+        "label": "Hearings read from calendars",
+        "blurb": "61,429 bill-days parsed out of printed calendars back to "
+                 "1997. Kind agrees with the docket 98% and room 100%, but "
+                 "the docket only covers a fraction of them.",
+        "sample": sample_hearings, "show": show_hearings,
+        "fields": [("real_time", "The right time, if this one is wrong", "10:00 am"),
+                   ("real_room", "The right room, if this one is wrong", "LOB 302")],
+    },
+    "veto": {
+        "label": "Governors' veto messages",
+        "blurb": "175 messages quoted from the calendars, each cited to the "
+                 "calendar it was printed in.",
+        "sample": sample_vetoes, "show": show_vetoes,
+        "fields": [("missing_text", "Anything cut off the start or end",
+                    "the first or last words that should be there")],
+    },
+    "report": {
+        "label": "Committee report reasoning",
+        "blurb": "A member's own explanation of a committee's recommendation, "
+                 "lifted out of the calendar.",
+        "sample": sample_reports, "show": show_reports,
+        "fields": [("real_signer", "The right member, if this one is wrong",
+                    "Rep. Jane Smith")],
+    },
+}
+
+
+def pool_for(kind, refresh=False):
+    """The samples of one kind, cached on disk.
+
+    THE HEARINGS SAMPLER READS 2,564 CALENDARS. It produced 97,158 rows and
+    took long enough that the first request for that kind timed out before a
+    page was drawn -- and it would have done it again on every restart. The
+    pool is a derived list, not a judgment, so caching it costs nothing and
+    --refresh rebuilds it when the underlying data has moved.
+    """
+    OUT.mkdir(exist_ok=True)
+    cache = OUT / f".pool-{kind}.json"
+    if not refresh and cache.exists():
+        try:
+            return json.loads(cache.read_text(encoding="utf-8"))
+        except ValueError:
+            pass
+    items = KINDS[kind]["sample"]()
+    cache.write_text(json.dumps(items), encoding="utf-8")
+    return items
+
+
+# ---------------------------------------------------------------- the page
+
+PAGE = """<!doctype html><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Granite Record &mdash; the bench</title>
+<style>
+:root{--ink:#22251f;--ink-2:#5c6156;--paper:#f5f4ef;--card:#fff;--rule:#dcdbd2;
+ --pine:#2f5d47;--pine-soft:#e6efe9;--rust:#8c3a2b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+ font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{background:var(--card);border-bottom:1px solid var(--rule);padding:14px 20px}
+.wrap{max-width:820px;margin:0 auto;padding:20px}
+h1{font-size:17px;margin:0 0 4px}
+h3{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);
+ margin:22px 0 6px}
+.sub{color:var(--ink-2);font-size:13px;margin:0}
+select,input,textarea,button{font:inherit}
+select{padding:6px 8px;border:1px solid var(--rule);border-radius:6px;background:#fff}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:10px;
+ padding:20px;margin:18px 0}
+table.facts{border-collapse:collapse;width:100%;margin:0 0 12px}
+table.facts th{text-align:left;color:var(--ink-2);font-weight:600;font-size:12px;
+ letter-spacing:.04em;text-transform:uppercase;padding:5px 12px 5px 0;
+ white-space:nowrap;vertical-align:top;width:1%}
+table.facts td{padding:5px 0;vertical-align:top}
+.prose{background:var(--paper);border-left:3px solid var(--rule);padding:12px 14px;
+ border-radius:0 6px 6px 0;font-size:15px;line-height:1.65;white-space:pre-wrap}
+ul.raw{font-size:13px;color:var(--ink-2);background:var(--paper);padding:12px 14px 12px 30px;
+ border-radius:6px;max-height:260px;overflow:auto;margin:0}
+ul.raw li{margin:0 0 3px}
+.ask{color:var(--ink-2);font-size:14px;margin:14px 0 0}
+.jump{margin:10px 0 0}
+.btn{display:inline-block;background:var(--pine-soft);color:var(--pine);
+ border:1px solid var(--pine-soft);border-radius:6px;padding:7px 12px;
+ text-decoration:none;font-size:14px;margin:0 6px 6px 0}
+label.f{display:block;margin:12px 0 0;font-size:13px;color:var(--ink-2)}
+label.f input,label.f textarea{width:100%;margin-top:4px;padding:8px 10px;
+ border:1px solid var(--rule);border-radius:6px;background:#fff}
+textarea{min-height:74px;resize:vertical}
+.verdicts{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 0}
+.verdicts label{border:1px solid var(--rule);border-radius:999px;padding:7px 14px;
+ background:#fff;cursor:pointer;font-size:14px}
+.verdicts input{margin-right:6px}
+.actions{display:flex;gap:10px;margin:20px 0 0;flex-wrap:wrap}
+button{padding:10px 18px;border-radius:8px;border:1px solid var(--pine);
+ background:var(--pine);color:#fff;cursor:pointer;font-size:15px}
+button.ghost{background:#fff;color:var(--ink-2);border-color:var(--rule)}
+.count{color:var(--ink-2);font-size:13px}
+.empty{color:var(--ink-2)}
+.saved{background:var(--pine-soft);color:var(--pine);border-radius:6px;
+ padding:8px 12px;font-size:14px;margin:0 0 12px}
+</style>
+<header><div class="wrap" style="padding:0">
+<h1>The bench</h1>
+<p class="sub">One sample at a time, judged by a person, written to
+review/checked.jsonl and never overwritten. Local only.</p>
+</div></header>
+<div class="wrap">
+<form method="get" action="/" style="margin:0 0 6px">
+  <label class="count">Checking:
+  <select name="kind" onchange="this.form.submit()">__OPTIONS__</select></label>
+</form>
+<p class="count">__BLURB__</p>
+<p class="count"><b>__DONE__</b> judged &middot; __LEFT__ not yet looked at</p>
+__SAVED__
+<div class="card">__ITEM__</div>
+</div>
+"""
+
+
+def form_html(kind, item):
+    k = KINDS[kind]
+    fields = "".join(
+        f'<label class="f">{E(lab)}'
+        f'<input name="{E(nm)}" placeholder="{E(ph)}" autocomplete="off"></label>'
+        for nm, lab, ph in k["fields"])
+    return (
+        f'<form method="post" action="/save">'
+        f'<input type="hidden" name="kind" value="{E(kind)}">'
+        f'<input type="hidden" name="key" value="{E(item["key"])}">'
+        f'<input type="hidden" name="shown" value="{E(json.dumps(item))}">'
+        + k["show"](item)
+        + '<div class="verdicts">'
+          '<label><input type="radio" name="verdict" value="correct" checked>'
+          'Correct as published</label>'
+          '<label><input type="radio" name="verdict" value="wrong">Wrong</label>'
+          '<label><input type="radio" name="verdict" value="unsure">'
+          'Cannot tell</label></div>'
+        + fields
+        + '<label class="f">Notes'
+          '<textarea name="note" placeholder="Anything worth saying about this '
+          'one. What you write here is read by a person, not parsed."></textarea>'
+          '</label>'
+        + '<div class="actions">'
+          '<button type="submit" name="action" value="save">Save and next</button>'
+          '<button type="submit" name="action" value="skip" class="ghost">'
+          'Skip &mdash; I cannot identify this one</button>'
+          '</div></form>')
+
+
+class Bench(BaseHTTPRequestHandler):
+    pool = {}
+
+    def log_message(self, *a):
+        pass
+
+    def _send(self, body, code=200, ctype="text/html; charset=utf-8"):
+        b = body.encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(b)))
+        self.end_headers()
+        self.wfile.write(b)
+
+    def do_GET(self):
+        from urllib.parse import urlparse, parse_qs
+        q = parse_qs(urlparse(self.path).query)
+        kind = (q.get("kind") or ["timestamp"])[0]
+        if kind not in KINDS:
+            kind = "timestamp"
+        saved = "<p class=\"saved\">Saved.</p>" if q.get("saved") else ""
+        self._send(self.render(kind, saved))
+
+    def render(self, kind, saved=""):
+        k = KINDS[kind]
+        if kind not in self.pool:
+            self.pool[kind] = pool_for(kind)
+        items = self.pool[kind]
+        seen = judged()
+        done = [key for (kd, key) in seen if kd == kind]
+        left = [it for it in items if (kind, it["key"]) not in seen]
+        opts = "".join(
+            f'<option value="{E(n)}"{" selected" if n == kind else ""}>'
+            f'{E(v["label"])}</option>' for n, v in KINDS.items())
+        if not items:
+            body = ('<p class="empty">Nothing to judge here yet. This kind '
+                    'reads a file that is not built on this disk.</p>')
+        elif not left:
+            body = ('<p class="empty">Every sample of this kind has been '
+                    'judged. Pick another, or look at review/checked.jsonl.</p>')
+        else:
+            body = form_html(kind, random.choice(left))
+        return (PAGE.replace("__OPTIONS__", opts)
+                    .replace("__BLURB__", E(k["blurb"]))
+                    .replace("__DONE__", f"{len(done):,}")
+                    .replace("__LEFT__", f"{len(left):,}")
+                    .replace("__SAVED__", saved)
+                    .replace("__ITEM__", body))
+
+    def do_POST(self):
+        from urllib.parse import parse_qs
+        n = int(self.headers.get("Content-Length") or 0)
+        form = parse_qs(self.rfile.read(n).decode("utf-8"))
+        g = lambda f, d="": (form.get(f) or [d])[0]
+        kind = g("kind", "timestamp")
+        if kind not in KINDS:
+            self._send("unknown kind", 400, "text/plain")
+            return
+        action = g("action", "save")
+        entry = {"kind": kind, "key": g("key"),
+                 "verdict": "skipped" if action == "skip" else g("verdict"),
+                 "note": g("note"), "by": "hand"}
+        for nm, _, _ in KINDS[kind]["fields"]:
+            v = g(nm).strip()
+            if v:
+                entry.setdefault("fields", {})[nm] = v
+        try:
+            entry["shown"] = json.loads(g("shown") or "{}")
+        except ValueError:
+            entry["shown"] = {}
+        record(entry)
+        self.send_response(303)
+        self.send_header("Location", f"/?kind={kind}&saved=1")
+        self.end_headers()
+
+
+def report():
+    seen = judged()
+    if not seen:
+        print("review/checked.jsonl is empty. Nothing has been judged yet.")
+        return 0
+    from collections import Counter
+    per = Counter()
+    verd = Counter()
+    for (kind, key), entries in seen.items():
+        per[kind] += 1
+        verd[(kind, entries[-1].get("verdict"))] += 1
+    print(f"{sum(per.values()):,} items judged, "
+          f"{sum(len(v) for v in seen.values()):,} judgments in total")
+    for kind in KINDS:
+        if not per[kind]:
+            continue
+        bits = ", ".join(f"{v} {w}" for (k, w), v in sorted(verd.items())
+                         if k == kind)
+        print(f"  {KINDS[kind]['label']:32} {per[kind]:5,}   {bits}")
+    return 0
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--port", type=int, default=8799)
+    ap.add_argument("--report", action="store_true",
+                    help="what has been judged, and stop")
+    ap.add_argument("--no-open", action="store_true")
+    ap.add_argument("--refresh", action="store_true",
+                    help="rebuild the sample pools from the data on disk")
+    a = ap.parse_args()
+    if a.report:
+        return report()
+
+    OUT.mkdir(exist_ok=True)
+    # WARMED BEFORE THE FIRST REQUEST, not during it. Building a pool inside a
+    # request meant the browser waited on it, and the hearings pool takes long
+    # enough to time out.
+    for name in KINDS:
+        t0 = time.time()
+        items = pool_for(name, refresh=a.refresh)
+        Bench.pool[name] = items
+        took = time.time() - t0
+        print(f"  {KINDS[name]['label']:32} {len(items):7,}"
+              + (f"  ({took:.0f}s)" if took > 2 else ""))
+    # 127.0.0.1 AND NOT 0.0.0.0. This shows unpublished judgments and writes a
+    # file the site is measured against; it has no business on a network.
+    srv = HTTPServer(("127.0.0.1", a.port), Bench)
+    url = f"http://127.0.0.1:{a.port}/"
+    print(f"the bench is at {url}")
+    print(f"  writing to {LEDGER} (append only)")
+    print("  ctrl-c to stop")
+    if not a.no_open:
+        threading.Timer(0.6, lambda: webbrowser.open(url)).start()
+    try:
+        srv.serve_forever()
+    except KeyboardInterrupt:
+        print("\nstopped.")
+        report()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
