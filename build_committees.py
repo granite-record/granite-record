@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.12
+# GRANITE_VERSION: 2026-09-07.13
 """
 A page's worth of data for every committee.
 
@@ -469,7 +469,7 @@ def main():
             globals={"GR_COMMITTEE": code, "GR_STANDALONE": True},
             noscript=nos, skip_label="Skip to this committee"),
             encoding="utf-8")
-        urls.append(f"{a.base}{path}")
+        urls.append(a.base + S.canon(path))
         written += 1
         index.append({
             "code": code, "name": name, "chamber": chamber,

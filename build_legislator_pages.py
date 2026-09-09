@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -114,7 +114,7 @@ def main():
             globals={"GR_MEMBER": str(m.get("id", "")), "GR_STANDALONE": True},
             noscript=noscript(m), skip_label="Skip to this member"),
             encoding="utf-8")
-        urls.append(f"{a.base}{path}")
+        urls.append(a.base + S.canon(path))
         written += 1
 
     assert written or not legs, (

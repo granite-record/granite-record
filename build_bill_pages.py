@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.41
+# GRANITE_VERSION: 2026-09-04.42
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -172,7 +172,7 @@ def main():
         (out / yr).mkdir(parents=True, exist_ok=True)
         (out / yr / f"{b['id'].lower()}.html").write_text(
             shell(t, b, d, a.base), encoding="utf-8")
-        urls.append(f"{a.base}/bill/{yr}/{b['id'].lower()}.html")
+        urls.append(a.base + S.canon(f"/bill/{yr}/{b['id'].lower()}.html"))
         written += 1
         if written % 1000 == 0:
             print(f"  {written:,}...", flush=True)
@@ -180,7 +180,7 @@ def main():
     for p in ("index.html", "bills.html", "legislators.html",
               "committees.html", "learn.html", "about.html"):
         if (site / p).exists():
-            urls.append(f"{a.base}/{p}")
+            urls.append(a.base + S.canon("/" + p))
 
     (site / "sitemap.xml").write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'

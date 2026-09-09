@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.32
+# GRANITE_VERSION: 2026-09-04.33
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -17,6 +17,7 @@ styles and is untouched.
 import argparse
 import hashlib
 import html as _html
+import shell as _shell
 import json
 import shutil
 from collections import defaultdict
@@ -261,7 +262,9 @@ def shell(title, current, body, wide=False, script="", desc="",
     # are written here and this function never had them -- and those four are
     # where a person arrives.
     _e = lambda s: _html.escape(str(s or ""), quote=True)
-    _canon = f"{base}/{current}" if current else base
+    # The host serves /legislators, not /legislators.html, and redirects
+    # the second to the first. shell.canon is where that is written down.
+    _canon = (base + _shell.canon("/" + current)) if current else (base + "/")
     HEAD_SEO = (f'<meta name="description" content="{_e(desc)}">'
                 f'<link rel="canonical" href="{_canon}">'
                 f'<meta property="og:type" content="website">'

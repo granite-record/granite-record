@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.9
+# GRANITE_VERSION: 2026-09-07.10
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -111,6 +111,32 @@ def template(site=Path("site")):
 
 BRAND = "Granite Record"
 
+
+def canon(path):
+    """The address the host actually serves, for a page written as .html.
+
+    MEASURED, not assumed, against the live site on 9 September:
+
+        /bill/2026/hb1442        200, and the address bar keeps it
+        /bill/2026/hb1442.html   308 to /bill/2026/hb1442
+
+    Cloudflare Pages strips the extension. So every canonical link and all
+    34,158 entries in the sitemap named an address that redirects -- telling a
+    crawler the real address of this page is one that immediately sends it
+    somewhere else. Google follows it and indexes the destination, so nothing
+    was broken; it was 34,158 wasted round trips and a canonical that
+    contradicted itself.
+
+    index.html is the directory, not a page called index.
+    """
+    if not path:
+        return "/"
+    if path.endswith("/index.html"):
+        return path[: -len("index.html")]
+    if path == "index.html":
+        return "/"
+    return path[:-5] if path.endswith(".html") else path
+
 # A search result shows roughly the first sixty characters of a title and a
 # hundred and sixty of a description. Longer is not penalised -- it is simply
 # not shown -- but a cut that lands mid-word is, because the fragment that
@@ -184,7 +210,7 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         # put two on every record page.
         + f"\n<title>{E(title)}</title>"
         + f'\n<meta name="description" content="{E(description)}">'
-        + f'\n<link rel="canonical" href="{base}{path}">'
+        + f'\n<link rel="canonical" href="{base}{canon(path)}">'
         + (f"\n{alternate}" if alternate else "")
         + '\n<meta property="og:type" content="article">'
         # The card a link unfurls into wants the record's name, not
@@ -194,7 +220,7 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         # og:url and og:site_name: a card unfurled from a shared link had no
         # address of its own and no site to belong to, so it read as a
         # headline from nowhere. Same address as the canonical, deliberately.
-        + f'\n<meta property="og:url" content="{base}{path}">'
+        + f'\n<meta property="og:url" content="{base}{canon(path)}">'
         + f'\n<meta property="og:site_name" content="{BRAND}">'
         + '\n<meta name="twitter:card" content="summary">'
         # Structured data, where the page has something a search engine has a
@@ -215,7 +241,8 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     # page, which is the one thing a skip link must not do.
     out = out.replace(
         NEEDS["skip"],
-        f'<a class="skip" href="{path}#results">{E(skip_label)}</a>', 1)
+        f'<a class="skip" href="{canon(path)}#results">{E(skip_label)}</a>',
+        1)
     decl = "".join(f"window.{k}={json.dumps(v)};"
                    for k, v in (globals or {}).items())
     out = out.replace(

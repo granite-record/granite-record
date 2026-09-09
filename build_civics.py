@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.5
+# GRANITE_VERSION: 2026-09-08.7
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -112,7 +112,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
 
     tmpl = S.template(site)
-    urls = [f"{a.base}/learn.html"]
+    urls = [a.base + S.canon("/learn.html")]
 
     # ---- the hub -------------------------------------------------------
     page = S.page(tmpl, path="/learn.html", base=a.base,
@@ -159,7 +159,7 @@ def main():
                       f'<div id="results"><div class="civics">'
                       f'{"".join(body)}</div></div>', 1)
         (out / f"{t['slug']}.html").write_text(p, encoding="utf-8")
-        urls.append(f"{a.base}/learn/{t['slug']}.html")
+        urls.append(a.base + S.canon(f"/learn/{t['slug']}.html"))
 
     # ---- the sitemap, appended rather than rewritten -------------------
     sm = site / "sitemap.xml"
