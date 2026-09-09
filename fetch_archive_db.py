@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.2
+# GRANITE_VERSION: 2026-09-08.3
 """
 Every view in the General Court's public database, onto this disk.
 
@@ -35,9 +35,14 @@ SELECT only. It never writes, never creates, never drops.
 
 WHAT IT WRITES
 
-  db/<view>.psv        pipe-delimited, header row first, streamed by
+  db/<view>.psv        pipe-delimited and WITH NO HEADER ROW, streamed by
                        PowerShell so a 2.3-million-row answer never crosses
                        the Python boundary
+  db/_columns.json     the column order of each file, because the files
+                       themselves do not carry it and a blob column is
+                       renamed to <name>_bytes on the way out. Without this
+                       the dumps are unreadable, which is a poor thing for
+                       624 MB to be.
   db/_manifest.json    what came back, how many rows, how long it took
 
 Nothing else is touched. In particular nothing here writes any of the JSON

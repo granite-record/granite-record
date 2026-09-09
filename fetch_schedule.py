@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.3
+# GRANITE_VERSION: 2026-09-08.4
 """
 What each committee is meeting about next, and which bills at what time.
 
@@ -41,6 +41,16 @@ Then one request per event gives the bills at their times:
     HOUSE WAYS AND MEANS
       10:00 AM  HB1648  providing property tax exemptions for qualifying residences.
       10:00 AM  HB1787  modifying the statewide education property tax.
+
+ONE SITTING CAN BE LISTED TWICE
+
+Event 3027 comes back as both "House Ways and Means" in blue with et=1 and
+"Ways and Means" in green with et=2 -- the same room, the same three bills,
+the same morning. That is the service making a real distinction rather than
+repeating itself: the sitting is a hearing and it is also a meeting. 87
+distinct event ids across 88 rows on 8 September, so it is rare. Anything
+presenting this should key on the event id and keep the more specific kind,
+not print the morning twice.
 
 WHAT IT COSTS
 

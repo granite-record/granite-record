@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.74
+# GRANITE_VERSION: 2026-09-04.75
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2910,6 +2910,48 @@ def _no_empty_dates():
     assert not bad, (f"{len(bad)} of {n:,} bills have a sentence with an empty "
                      f"date: {'; '.join(bad[:2])}")
     return "ok", f"{n:,} bills, no sentence stops where a date should be"
+
+
+@check("data", "a fetched schedule still has bills in it")
+def _schedule():
+    """The schedule is the only thing on this site that is about the future.
+
+    It comes from a JSON service and then one page per event, and the page is
+    where the bills are. If that page's shape changes, the fetch still
+    succeeds, the events still arrive, and every one of them simply has no
+    bills -- which is indistinguishable from a quiet fortnight unless
+    something says otherwise.
+
+    So: if a schedule has been fetched at all, at least one event must name a
+    bill, and every bill slot must carry a time and a bill number. Skipped
+    entirely when no schedule is on disk, because not having fetched one is
+    not a fault.
+    """
+    p = Path("schedule.json")
+    if not p.exists():
+        return "skip", "no schedule fetched"
+    try:
+        events = json.loads(p.read_text(encoding="utf-8"))
+    except ValueError:
+        raise AssertionError("schedule.json is not readable JSON")
+    if not events:
+        return "skip", "the schedule is empty"
+    slots = [b for e in events for b in (e.get("bills") or [])]
+    named = [e for e in events if e.get("bills")]
+    assert named, (
+        f"{len(events)} events fetched and not one names a bill. That is the "
+        "event page's shape having changed, not an empty schedule -- look at "
+        "one in schedule_pages/ before trusting it.")
+    bad = [b for b in slots if not (b.get("time") and b.get("bill"))]
+    assert not bad, f"{len(bad)} bill slot(s) have no time or no bill: {bad[:2]}"
+    kinds = {e.get("kind") or e.get("colour") for e in events}
+    unmapped = {k for k in kinds if k.startswith("#")}
+    assert not unmapped, (
+        f"the service sent {len(unmapped)} colour(s) the legend does not map: "
+        f"{sorted(unmapped)}. The colour IS the kind, so an unmapped one is a "
+        "meeting whose kind this site does not know.")
+    return "ok", (f"{len(events)} events, {len(named)} naming bills, "
+                  f"{len(slots)} bill slots, every kind mapped")
 
 
 @check("data", "the calendar and the docket agree about a hearing")
