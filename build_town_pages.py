@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.2
+# GRANITE_VERSION: 2026-09-09.4
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -93,6 +93,11 @@ def office_block(title, holder, fallback_url, note=""):
         bits.append(f'<span class="mchip p-{E(p)}">{who}</span>')
         if holder.get("phone"):
             bits.append(E(holder["phone"]))
+        if holder.get("phone_dc"):
+            bits.append(E(holder["phone_dc"]) + " (Washington)")
+        if holder.get("email"):
+            bits.append(f'<a href="mailto:{E(holder["email"])}">'
+                        f'{E(holder["email"])}</a>')
         if url:
             bits.append(f'<a href="{E(url)}" rel="noopener">official page</a>')
     else:
@@ -103,7 +108,7 @@ def office_block(title, holder, fallback_url, note=""):
                     "who holds this seat, on the official directory</a>")
     body = '<ul class="offlist"><li class="offrow">' + \
            " &middot; ".join(bits) + "</li></ul>"
-    return (f'<h3 class="offh">{E(title)}</h3>'
+    return ((f'<h3 class="offh">{E(title)}</h3>' if title else "")
             + (f'<p class="note">{E(note)}</p>' if note else "")
             + body)
 
@@ -177,25 +182,31 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
     if us.get("about"):
         body.append(f'<p class="note">{E(" ".join(us["about"]))}</p>')
     for seat in (us.get("seats") or []):
-        # senior and junior is how the Senate itself distinguishes two seats
-        # elected by the same voters, and it is the only thing that tells
-        # these two rows apart until a name is filled in.
-        which = (seat.get("class") or "").strip()
-        body.append(office_block(
-            f"{which.title()} senator" if which else "Senator",
-            seat, us.get("official_url", "")))
+        # No per-seat heading. Both are elected by the whole state and both
+        # represent this town, so the names are what tells them apart --
+        # senate.gov lists them in seniority order and calling one "senior"
+        # here would be reading more into that order than it states.
+        body.append(office_block("", seat, us.get("official_url", "")))
 
     g = off.get("governor", {})
     body.append(office_block("Governor of New Hampshire", g,
                              g.get("official_url", "")))
 
+    # WHEN, as well as where. These offices change at an election and the
+    # names here do not; the official link does not go stale, and a reader
+    # who can see the date can tell which half they are looking at.
+    checked = (off.get("_checked") or "").strip()
     body.append('<p class="srcs">Districts from the General Court\'s own '
                 'district files, including the floterial districts its '
                 'legislator list omits. Members of the House and Senate from '
-                'the General Court roster. The offices under "Other offices" '
-                'are not in any General Court file and are listed here from '
-                'a hand-kept file, with the official directory linked in '
-                'every case.</p>')
+                'the General Court roster, which the rest of this site is '
+                'drawn from. The offices under "Other offices" are in no '
+                'General Court file: they were read from the Governor\'s '
+                'office, the Executive Council, the Secretary of State\'s '
+                'congressional delegation page and senate.gov'
+                + (f', on {E(checked)}' if checked else '')
+                + '. Each links to its own official page, which stays right '
+                'after an election when a name here would not.</p>')
 
     path = f"/town/{slug(town, ward)}.html"
     desc = (f"Who represents {label}: state representatives, state senator, "

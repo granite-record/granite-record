@@ -2,30 +2,36 @@
   "_README": [
     "The offices this site does not track the votes of: the Governor, the five",
     "Executive Councillors, the two members of the US House and the two US",
-    "Senators. Everything else on Granite Record is derived from the General",
-    "Court's own files; none of these people appear in them.",
+    "Senators. None of them appear in any General Court file, which is where",
+    "everything else on Granite Record comes from.",
     "",
     "THIS FILE IS EDITED BY HAND AND NO GENERATOR WRITES IT, for the same",
     "reason ground_truth.csv is: a name against an office is a claim about a",
     "real person holding real power, and it must come from somebody who",
     "checked rather than from a build step that guessed.",
     "",
-    "A blank name is not a bug. The page then names the office, gives the",
-    "reader their district, and links to the official directory, which is",
-    "correct and never goes stale. Filling a name in makes the page better;",
-    "leaving it blank never makes it wrong.",
+    "Every record carries the page it was read from and the date it was read.",
+    "These offices change at an election; when one does, the names here are",
+    "stale and the official_url is still right, which is why the page links to",
+    "it either way.",
     "",
-    "The official_url values are the offices' own directories rather than any",
-    "individual's site, so they survive an election."
+    "PARTY IS RECORDED ONLY WHERE AN OFFICIAL SOURCE STATED IT. senate.gov",
+    "gives a party for each senator. governor.nh.gov, council.nh.gov and the",
+    "members' own house.gov sites do not, so those are blank -- not because",
+    "the answer is unknown to the world, but because this file holds what a",
+    "source said, and a party chip is a visible claim about a person."
   ],
+  "_checked": "2026-09-09",
   "governor": {
     "office": "Governor of New Hampshire",
     "scope": "statewide",
-    "name": "",
+    "name": "Kelly Ayotte",
     "party": "",
-    "phone": "",
+    "phone": "(603) 271-2121",
+    "email": "GovernorAyotte@governor.nh.gov",
     "official_url": "https://www.governor.nh.gov/",
-    "contact_url": "https://www.governor.nh.gov/contact-us"
+    "contact_url": "https://www.governor.nh.gov/contact-governor-ayotte",
+    "source": "https://www.governor.nh.gov/"
   },
   "council": {
     "office": "Executive Council",
@@ -35,13 +41,14 @@
       "state contracts over $10,000, judicial and agency nominations, and",
       "pardons. It meets with the Governor and its votes are public."
     ],
-    "official_url": "https://www.nh.gov/council/",
+    "official_url": "https://www.council.nh.gov/",
+    "source": "https://www.council.nh.gov/",
     "districts": {
-      "1": {"name": "", "party": "", "phone": "", "official_url": "https://www.nh.gov/council/districts/district1.htm"},
-      "2": {"name": "", "party": "", "phone": "", "official_url": "https://www.nh.gov/council/districts/district2.htm"},
-      "3": {"name": "", "party": "", "phone": "", "official_url": "https://www.nh.gov/council/districts/district3.htm"},
-      "4": {"name": "", "party": "", "phone": "", "official_url": "https://www.nh.gov/council/districts/district4.htm"},
-      "5": {"name": "", "party": "", "phone": "", "official_url": "https://www.nh.gov/council/districts/district5.htm"}
+      "1": {"name": "Joseph D. Kenney", "party": "", "phone": "", "official_url": "https://www.council.nh.gov/district-1"},
+      "2": {"name": "Karen Liot Hill", "party": "", "phone": "", "official_url": "https://www.council.nh.gov/district-2"},
+      "3": {"name": "Janet Stevens", "party": "", "phone": "", "official_url": "https://www.council.nh.gov/district-3"},
+      "4": {"name": "John Stephen", "party": "", "phone": "", "official_url": "https://www.council.nh.gov/district-4"},
+      "5": {"name": "David K. Wheeler", "party": "", "phone": "", "official_url": "https://www.council.nh.gov/district-5"}
     }
   },
   "us_house": {
@@ -52,10 +59,25 @@
       "congressional district. They are not part of the General Court and",
       "nothing they do appears elsewhere on this site."
     ],
-    "official_url": "https://www.house.gov/representatives/find-your-representative",
+    "official_url": "https://www.sos.nh.gov/congressional-delegation",
+    "source": "https://www.sos.nh.gov/congressional-delegation, and each member's own site for the district",
     "districts": {
-      "1": {"name": "", "party": "", "phone": "", "official_url": ""},
-      "2": {"name": "", "party": "", "phone": "", "official_url": ""}
+      "1": {
+        "name": "Chris Pappas",
+        "party": "",
+        "phone": "(603) 285-4300",
+        "phone_dc": "(202) 225-5456",
+        "official_url": "https://pappas.house.gov",
+        "source": "https://pappas.house.gov states NH-01"
+      },
+      "2": {
+        "name": "Maggie Goodlander",
+        "party": "",
+        "phone": "(603) 226-1002",
+        "phone_dc": "(202) 225-5206",
+        "official_url": "https://goodlander.house.gov",
+        "source": "https://goodlander.house.gov/about states New Hampshire's Second District"
+      }
     }
   },
   "us_senate": {
@@ -64,10 +86,23 @@
     "about": [
       "Two senators, elected by the whole state, so both represent every town."
     ],
-    "official_url": "https://www.senate.gov/senators/senators-contact.htm",
+    "official_url": "https://www.senate.gov/states/NH/intro.htm",
+    "source": "https://www.senate.gov/states/NH/intro.htm",
     "seats": [
-      {"name": "", "party": "", "phone": "", "official_url": "", "class": "senior"},
-      {"name": "", "party": "", "phone": "", "official_url": "", "class": "junior"}
+      {
+        "name": "Jeanne Shaheen",
+        "party": "D",
+        "phone": "(603) 647-7500",
+        "phone_dc": "(202) 224-2841",
+        "official_url": "https://shaheen.senate.gov"
+      },
+      {
+        "name": "Maggie Hassan",
+        "party": "D",
+        "phone": "(603) 622-2204",
+        "phone_dc": "(202) 224-3324",
+        "official_url": "https://hassan.senate.gov"
+      }
     ]
   }
 }
