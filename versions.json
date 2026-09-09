@@ -22,6 +22,7 @@
     "extract_calendar_text.py": "2026-09-08.1",
     "extract_vetoes.py": "2026-09-07.9",
     "extract_amendments.py": "2026-09-04.3",
+    "fetch_archive_captions.py": "2026-09-08.1",
     "fetch_archive_db.py": "2026-09-08.3",
     "fetch_archive_years.py": "2026-09-08.1",
     "fetch_bill_status.py": "2026-09-04.8",
