@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.4
+# GRANITE_VERSION: 2026-09-08.5
 """
 Thirty years of calendars and journals, a night at a time.
 
@@ -69,6 +69,7 @@ import argparse
 import csv
 import os
 import random
+import refusal
 import sys
 import time
 import urllib.parse
@@ -290,6 +291,7 @@ def main():
                      "address blocked. Delete the lock only\nif you are sure "
                      "nothing else is running.")
         LOCK.unlink()
+    refusal.check("The calendar drain")
     LOCK.write_text(str(os.getpid()), encoding="utf-8")
     try:
         todo = [r for r in rows
@@ -330,6 +332,7 @@ def main():
                     dropped += 1
                 print(f"  [{i}] {r['name']}: {r['error'][:80]}", flush=True)
                 if dropped >= 2:
+                    refusal.note("fetch_calendar_archive", r["error"])
                     print("\nTwo refusals this run. Stopping and not coming "
                           "back today.\npython3 netcheck.py says what kind of "
                           "refusal it is without making it worse.")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.3
+# GRANITE_VERSION: 2026-09-07.4
 """
 The docket of every bill of an archived term, in Docket.txt's own format.
 
@@ -46,6 +46,7 @@ import argparse
 import html
 import json
 import re
+import refusal
 import sys
 import time
 import urllib.error
@@ -116,6 +117,11 @@ def main():
                          "accounted for; its lines are kept and those bills "
                          "are never asked for")
     a = ap.parse_args()
+
+    # A refusal is a fact about the address, so it stops this run even though
+    # it was some other run that was told no.
+    if not a.reparse:
+        refusal.check("The docket fetch")
 
     bills = json.loads((Path(a.data) / "bills.json").read_text(encoding="utf-8"))
     if a.term not in bills:
@@ -203,6 +209,7 @@ def main():
                     if refused >= a.stop_refused:
                         out_path.write_text(NL.join(lines) + NL,
                                             encoding="utf-8")
+                        refusal.note("fetch_archive_docket", why)
                         sys.exit(
                             f"{NL}{refused} refusals ({why}). Stopping, and "
                             f"not coming back tonight.{NL}"

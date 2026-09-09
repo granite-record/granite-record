@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.2
+# GRANITE_VERSION: 2026-09-09.4
 """
 The text of every archived bill, two requests at a time and never in a hurry.
 
@@ -53,6 +53,7 @@ import json
 import os
 import random
 import re
+import refusal
 import sys
 import time
 import urllib.error
@@ -88,7 +89,7 @@ def get(url, timeout=60):
         return None, e
 
 
-def refusal(err):
+def told_no(err):
     """True when the server is saying no rather than failing."""
     why = f"{type(err).__name__}: {err}"
     return any(k in why for k in ("RemoteDisconnected", "ConnectionReset",
@@ -158,7 +159,7 @@ def one_bill(row, delay, timeout, counts):
             page, err = get(status_url(bill, yr, lsr), timeout)
             made += 1
             if page is None:
-                is_ref, why = refusal(err)
+                is_ref, why = told_no(err)
                 row["note"] = why[:90]
                 if is_ref:
                     return made, why
@@ -188,7 +189,7 @@ def one_bill(row, delay, timeout, counts):
     body, err = get(text_url(row["text_id"], yr), timeout)
     made += 1
     if body is None:
-        is_ref, why = refusal(err)
+        is_ref, why = told_no(err)
         row["note"] = why[:90]
         if is_ref:
             return made, why
@@ -226,11 +227,12 @@ def discover(bills, per_term, delay, timeout, stop_refused):
                 time.sleep(delay)
                 page, err = get(status_url(bill, yr, lsr), timeout)
                 if page is None:
-                    is_ref, why = refusal(err)
+                    is_ref, why = told_no(err)
                     if is_ref:
                         refused += 1
                         print(f"  refused: {why}", flush=True)
                         if refused >= stop_refused:
+                            refusal.note("fetch_archive_text --discover", why)
                             print(NL + "Two refusals. Stopping discovery here; "
                                   "what it learned is below.", flush=True)
                             return found
@@ -302,6 +304,7 @@ def main():
         sys.exit(f"archive/.lock is held ({age:.0f} minutes old). Another "
                  "fetch is running, and two at once is what got this address "
                  "blocked. Wait for it.")
+    refusal.check("The archived-text fetch")
     LOCK.parent.mkdir(exist_ok=True)
     LOCK.write_text(str(os.getpid()), encoding="utf-8")
     try:
@@ -352,6 +355,7 @@ def main():
                 refused += 1
                 if refused >= a.stop_refused:
                     write_queue(rows)
+                    refusal.note("fetch_archive_text", why)
                     sys.exit(
                         f"{NL}{refused} refusals ({why}). Stopping, and not "
                         f"coming back tonight.{NL}"

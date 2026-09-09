@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.8
+# GRANITE_VERSION: 2026-09-08.9
 """
 Who is hearing what, when, and in which room -- out of the calendars on disk.
 
@@ -271,14 +271,40 @@ def _day_date(mon, day, stated_year, pub, weekday=None):
         except ValueError:
             return None
     want = WEEKDAYS.index(weekday.lower()) if weekday else None
+
+    # AND THE MASTHEAD OUTRANKS IT WHEN THE TWO DISAGREE. House Calendar 68A
+    # of 1998 heads a section "THURSDAY, AUGUST 28". August 28 was a Friday in
+    # 1998 and a Thursday in 1997, so the checksum alone read a hearing on
+    # SB 409 as happening eleven months BEFORE the calendar that announced it.
+    # The weekday is a typo in the source; the year on the masthead is not.
+    #
+    # So a candidate that lands before the calendar was printed is not
+    # considered. Thirty days of slack, because a heading occasionally
+    # continues a session recessed from the week before and the December
+    # calendars legitimately roll into January.
+    try:
+        printed = datetime.date(*pub)
+    except (TypeError, ValueError):
+        printed = None
+    floor = printed - datetime.timedelta(days=30) if printed else None
+
+    ok = []
     for y in (pub[0], pub[0] + 1, pub[0] - 1):
         try:
             d = datetime.date(y, mo, day)
         except ValueError:
             continue
+        if floor and d < floor:
+            continue
+        ok.append(d)
+    for d in ok:
         if want is None or d.weekday() == want:
             return d.isoformat()
-    return None
+    # No year makes the stated weekday true. The heading is still a real day
+    # in a real calendar, so it takes the earliest year the masthead allows
+    # rather than being dropped -- a hearing with a right date and a wrong
+    # weekday beats no hearing at all.
+    return ok[0].isoformat() if ok else None
 
 
 def _name(s):
