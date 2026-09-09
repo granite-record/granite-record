@@ -77,6 +77,7 @@
     "caption_gaps.py": "2026-09-06.1",
     "fetch_archive_docket.py": "2026-09-07.3",
     "docket_from_db.py": "2026-09-09.1",
+    "fetch_archive_text.py": "2026-09-09.1",
     "shell.py": "2026-09-07.7",
     "fetch_schedule.py": "2026-09-08.5",
     "fetch_senate_calendars.py": "2026-09-08.1",
