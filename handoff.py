@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.3
+# GRANITE_VERSION: 2026-09-05.5
 """
 Write STATE.md from what is actually on disk.
 
@@ -157,15 +157,17 @@ def section_site(out):
         out.append("No `site/build.json` -- the site has not been built here.\n")
         return
     site = Path("site")
-    # Files, not entries. rglob yields directories as well, and the number
-    # this feeds is the one the Cloudflare 20,000 cap decision rests on.
+    # Files, not entries. rglob yields directories as well, and this is the
+    # number the file-cap decision rests on -- 100,000 on the Pro plan, not
+    # the 20,000 of the free one this used to print.
     files = (sum(1 for x in site.rglob("*") if x.is_file())
              if site.is_dir() else 0)
     dirs = (sum(1 for x in site.rglob("*") if x.is_dir())
             if site.is_dir() else 0)
     idx = jload("site/index.json", [])
     out.append(f"- {n(files)} files in `site/` across {n(dirs)} folders "
-               f"(Cloudflare Pages allows 20,000 files)")
+               f"({files * 100 // 100000}% of the 100,000 Cloudflare Pages "
+               "allows on the Pro plan)")
     if isinstance(idx, list):
         out.append(f"- {n(len(idx))} bills in the index")
     when = b.get("finished") or b.get("when") or ""
@@ -193,9 +195,14 @@ def section_checks(out):
                    "get to check.\n")
         out.append("```\n" + "\n".join(tail) + "\n```")
         return
+    # SAY WHICH CHECKS. This runs preflight --code, which skips the data
+    # checks, so the number here is smaller than the one preflight prints with
+    # no flag -- and an unlabelled 48 beside an unlabelled 72 reads as checks
+    # having been lost.
     out.append("```\n" + (lines[-1] if lines else
                           f"preflight exited {r.returncode}, no summary line")
-               + "\n```")
+               + "\ncode checks only; preflight.py with no flag runs the data "
+                 "checks too\n```")
     bad = [l.strip() for l in r.stdout.splitlines() if "[ FAIL ]" in l]
     if bad:
         out.append("\nFailing:\n")

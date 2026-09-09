@@ -171,6 +171,15 @@ citations were part of the same job without my recognising it.
 
 ### 4. The deployment has a file cap, and the archive hits it at five terms
 
+> **Resolved, 9 September.** The plan is Pro, so the cap is 100,000. And a
+> bill is one file rather than two: its record travels inside its own page,
+> except for the 98 over 100 KB which keep a file the page points at. All 19
+> terms are live at **39,821 files, 39% of the cap** — where the reasoning
+> below predicted the cap breaking partway through the third term. The
+> reasoning is kept because the measurement of what each term costs is still
+> the right way to think about it, and because the trap it names about paid
+> plans is real.
+
 **Measured on the two-term site, 6 September:** 12,013 files of 20,000.
 
 | | files |

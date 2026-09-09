@@ -1,8 +1,13 @@
 # Granite Record
 
 A public record of the New Hampshire General Court, live at graniterecord.org.
-2,234 bills, 406 legislators, 238,317 votes, and every committee hearing and
-floor debate linked to the moment in the recording where it happened.
+33,683 bills across 19 terms, 1989 to 2026; 406 sitting legislators and 2,192
+people who have served; and every committee hearing and floor debate of the
+current terms linked to the moment in the recording where it happened.
+
+`LAUNCH.md` is the current list of what is done, what is not, and what to do
+first. It was written by measuring the site rather than by reading these
+documents, and where it disagrees with them it is the newer answer.
 
 Static site: files on a CDN, no runtime. That constraint is deliberate.
 
@@ -36,6 +41,15 @@ time. Getting blocked again costs days and an email to a Clerk's office.
 If a fetch is genuinely needed, say so and let the person start it. Never run
 two at once. `python3 netcheck.py` diagnoses a refusal without making things
 worse.
+
+**A refusal outlives the run that met it.** `refusal.py` records one in
+`archive/refused.json` and every fetch stops for 24 hours — the calendar
+drain, the docket, the archived text and its discovery pass. It exists because
+on 9 September the calendar drain was answered with two 403s, stopped itself
+correctly, and a chained run started asking the same address for a docket
+fifty-four seconds later. Clearing it is a person's decision:
+`python3 refusal.py --clear`, after `netcheck.py` has said what kind of
+refusal it was.
 
 `fetch_rollcalls_db.py` and `fetch_reports_db.py` are the exception worth
 knowing about: they read the SQL host the General Court publishes credentials
@@ -156,29 +170,26 @@ In order. `ARCHITECTURE.md` has the full reasoning.
    patterns were validated against sentences typed out of a document for a
    whole day before anyone ran them on a floor caption file.
 
-3. **A decision on the file cap**, before term-keying is built. Cloudflare
-   Pages allows 20,000 files and one term already occupies 8,045 of them --
-   three files per bill, not two, because `feed/bill/` is a third. That is
-   6,701 per term in bill files alone, so the cap breaks partway through the
-   THIRD term. Fewer static pages for older terms, or per-bill data in R2
-   behind a Worker — the two imply different paths, so deciding first stops
-   term-keying being built twice.
+3. **The file cap: decided and no longer close.** Cloudflare Pages allows
+   100,000 on the Pro plan. Every bill's record now travels inside its own
+   page rather than beside it, so a bill is one file: **39,914 files, 40% of
+   the cap**, against 73% before. The 98 records over 100 KB — almost all roll
+   call ballots, HB2 alone being 2 MB — keep a file, and their page carries a
+   `<meta name="gr-data">` pointing at it. `build_bill_pages.py` explains the
+   threshold and the measurements behind it.
 
-4. **Term-keyed identifiers.** Bill numbers repeat every two years and nothing
-   outside `proceedings.csv` knew it. `rollcalls.json` and `narratives.json`
-   are done, and so are `committee_reports.json` and `senate_reports.json` --
-   all four are `{term: {bill: ...}}` and `preflight` fails if any is fed the
-   old shape. So is `build_feeds.py`, which had no notion of a term at all and
-   writes 2,233 of the site's 8,045 files.
+4. **Term keying: done.** Every per-bill file is `{term: {bill: ...}}` and
+   `preflight` fails if any is fed the old shape, `bill_text.json` and
+   `bill_status.json` included. All 19 terms are live.
 
-   `data/bills.json` is done too, and with it the 2023-2024 term is live:
-   4,230 bills across two terms, 12,013 of the 20,000 files Cloudflare allows.
-
-   Two are left: `bill_text.json` and `bill_status.json`. Both have writers
-   that need the network, so neither can be reshaped and regenerated in one
-   commit, and shipping the reshape without the rebuild would leave the site
-   unbuildable. Do them when a fetch for the current term is being run anyway.
-   Fetch anything from 2024 before that and it merges into 2026.
+5. **The bench.** `review.py` serves one sample at a time on the loopback
+   address, takes a verdict and a note, and appends to
+   `review/checked.jsonl` — which is hand-made evidence and is protected the
+   way `ground_truth.csv` is. Five kinds today: hearing timings, narratives,
+   hearings read from calendars, veto messages, committee reasoning. It exists
+   because 35 hand-timed proceedings is a thin measuring stick, and related
+   bills and auto-assigned topics will both need the same bench before they
+   can honestly be published.
 
 ---
 

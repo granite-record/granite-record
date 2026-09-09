@@ -169,15 +169,16 @@ have caught.
 
 ## What to do next
 
-In order. The first two are consolidation; the last two gate the archive.
-`ARCHITECTURE.md` has the reasoning.
+`LAUNCH.md` is the working list, written on 9 September by measuring the site
+rather than by reading these documents. What follows is the part of it that
+belongs here, because it is about how the code is built rather than what it
+shows.
 
-**1. Split `build_site_v2.main`.** `renderDetail` was the other half and was
-split on 6 September into nine hoisted functions, one per tab, its output
-verified byte-identical against the pre-split page over ten renders.
-`build_site_v2.main` is where the floor-marker miss lived, because the
-committee and floor station code sit 90 lines apart in one function. One
-function per tab, each small enough that declaration order is obvious.
+**1. Split `build_site_v2.main`.** Still 449 lines. `renderDetail` was the
+other half and was split on 6 September into nine hoisted functions, one per
+tab, its output verified byte-identical against the pre-split page over ten
+renders. `main` is where the floor-marker miss lived, because the committee
+and floor station code sit 90 lines apart in one function.
 
 **2. More marker patterns.** `segment_markers.py --all --gaps` prints what the
 chair says where no boundary was found; `--phrases` counts those across every
@@ -185,19 +186,17 @@ recording so a shared convention appears as a number. That loop took coverage
 from 40% to 71% in an evening and is not exhausted. Add a phrase to
 `tests/test_markers.py` only if it was actually spoken.
 
-**3. The file cap.** Cloudflare Pages allows 20,000 files; one term already
-occupies 8,045. It is three files per bill, not two -- `bill/`, `bills/` and
-`feed/bill/` -- which is 6,701 a term, so the cap breaks partway through the
-THIRD term. Decide before term-keying is built: fewer static pages for older
-terms, or per-bill data in R2 behind a Worker. The two imply different keying
-paths, which is why this one comes first.
+**3. Use the bench.** `python3 review.py` serves one sample at a time and
+appends a judgment to `review/checked.jsonl`. `ground_truth.csv` has 35
+proceedings and is the only independent measure this project has; 35 is few
+enough to fit a pattern to without noticing. Related bills and auto-assigned
+topics both need the same bench before either can honestly be published, so
+the samples taken now are what makes those possible later.
 
-**4. Term-keyed identifiers.** Bill numbers repeat every two years and nothing
-outside `proceedings.csv` knows it. `committee_reports.json`, `bill_text.json`,
-`narratives.json`, the per-bill site files and the 2,233 feeds under
-`site/feed/bill/` are all keyed on `HB396` alone; `build_feeds.py` has no
-notion of a term at all. Fetch anything from 2024 today and it merges into
-2026. This gates the archive.
+**Settled, and recorded here because this list used to say otherwise.** The
+file cap is decided: a bill's record travels inside its page, 39,821 files,
+39% of the 100,000 Cloudflare Pages allows on the Pro plan. Term keying is
+finished across every per-bill file, and all 19 terms are live.
 
 ---
 
