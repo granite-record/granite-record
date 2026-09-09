@@ -125,3 +125,7 @@ _*.py
 # 2.8 million rows and about 400 MB. Re-fetchable in one run, and it changes
 # whenever the General Court updates it.
 db/
+
+# ---- parsed out of the calendars by calendar_meetings.py ----------------
+# 21,611 rows, 6 MB, rebuilt from calendars/ in about a minute with no network.
+meetings.json

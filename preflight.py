@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.73
+# GRANITE_VERSION: 2026-09-04.74
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2910,6 +2910,74 @@ def _no_empty_dates():
     assert not bad, (f"{len(bad)} of {n:,} bills have a sentence with an empty "
                      f"date: {'; '.join(bad[:2])}")
     return "ok", f"{n:,} bills, no sentence stops where a date should be"
+
+
+@check("data", "the calendar and the docket agree about a hearing")
+def _calendar_meetings():
+    """The calendar says who is hearing what, where, and when.
+
+    It is the only source that can answer "what is Education hearing on
+    Monday" -- the docket answers per bill and cannot be asked that way -- and
+    it is also the legal notice, so its publication date is when the window
+    for public testimony opens.
+
+    Neither of those is worth anything if the parse is wrong, and the parse
+    reads a two-column PDF whose columns do not always line up. So it is
+    scored on every run against the docket, which nothing here wrote: for a
+    hearing both sources know, do they call it the same kind of meeting, at
+    the same time, in the same room?
+
+    The floors are set below the measurement of 8 September (kind 96%, room
+    100% of the rows where both name one) so that a regression fails and an
+    improvement does not.
+    """
+    try:
+        import calendar_meetings as CM
+    except ImportError:
+        return "skip", "calendar_meetings is not here"
+    if not Path("calendars").exists():
+        return "skip", "no calendars on disk"
+    rows = CM.load("H") + CM.load("S")
+    if not rows:
+        return "skip", "no calendar produced a meeting"
+    hearings = [r for r in rows
+                if r["kind"] == "public hearing" and r["bill"] and r["date"]]
+    assert len(hearings) > 5000, (
+        f"only {len(hearings):,} public hearings parsed out of the calendars; "
+        "8 September measured 7,293, and a collapse here means a format the "
+        "parser stopped recognising rather than a quiet session")
+
+    # A notice cannot follow the thing it notices. All 7,293 were published on
+    # or before the day of the hearing when this was written, median five days
+    # ahead, so any exception is a parse fault rather than a late clerk.
+    import datetime
+    late = [r for r in hearings if r["noticed"] and
+            datetime.date.fromisoformat(r["noticed"])
+            > datetime.date.fromisoformat(r["date"])]
+    assert not late, (
+        f"{len(late)} hearing(s) are noticed by a calendar published after the "
+        f"hearing itself, e.g. {late[0]['bill']} heard {late[0]['date']} and "
+        f"announced {late[0]['noticed']}")
+
+    got = CM.check(rows)
+    known = int(str(got["the docket also knows"]).replace(",", ""))
+    if known < 500:
+        return "ok", (f"{len(hearings):,} public hearings parsed; the docket "
+                      "holds too few of them to score against")
+    kind = int(str(got["kind agrees"]).split(" of ")[0].replace(",", ""))
+    room_s = str(got["room agrees, where both state one"])
+    room = int(room_s.split(" of ")[0].replace(",", ""))
+    room_n = int(room_s.split(" of ")[1].split(" ")[0].replace(",", ""))
+    assert kind / known >= 0.93, (
+        f"the calendar and the docket agree about the kind of meeting on only "
+        f"{kind / known:.0%} of {known:,}; it was 96% on 8 September. "
+        f"{got['kind disagreements'][:3]}")
+    assert room_n == 0 or room / room_n >= 0.99, (
+        f"they disagree about the room on {room_n - room} of {room_n:,}; "
+        f"three was the whole of it on 8 September. {got['room disagreements'][:3]}")
+    return "ok", (f"{len(hearings):,} public hearings out of the calendars, "
+                  f"{kind:,} of {known:,} agreeing with the docket on kind, "
+                  f"{room:,} of {room_n:,} on room")
 
 
 @check("data", "every published link asks for something the source serves")
