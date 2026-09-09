@@ -204,8 +204,11 @@ finished across every per-bill file, and all 19 terms are live.
 
 `STATE.md` is generated -- run `python3 handoff.py`. Never edit it.
 
-`HANDOFF.md` (this file), `ARCHITECTURE.md` and `TESTING_QUEUE.md` are written
-by a person and should stay short enough to reread. When one of them says
+`HANDOFF.md` (this file), `ARCHITECTURE.md`, `LAUNCH.md`, `DESIGN.md` and
+`obsolete/README.md` are written by a person and should stay short enough to
+reread. `TESTING_QUEUE.md` was named here and in `CLAUDE.md` for a while and
+has never existed in this repository -- which is exactly the kind of thing
+this paragraph is about. When one of them says
 something the code no longer does, that is a bug in the document; fix it in the
 same session, because a document that is wrong once is not trusted again.
 

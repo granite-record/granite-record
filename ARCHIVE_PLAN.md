@@ -10,32 +10,53 @@ present it rather than deciding what to ask for next.
 
 ---
 
-## Where it stands, 8 September
+## Where it stands, 9 September evening
 
 `python3 archive_status.py` prints this and is the authority; the table below
 is a snapshot with the reasoning attached.
 
 | | held | of | |
 |---|---|---|---|
-| the public database | 27 views | 27 | **done** — 3,128,698 rows, 625 MB |
+| the public database | 28 views | 28 | **done** — 3,130,243 rows, 625 MB |
 | bills, by term | 18 terms | 18 | **done** — 31,449 bills, 1989-2024 |
 | videos indexed | 4,428 | 4,428 | **done** — both channels, back to May 2020 |
-| House calendars | 375 | 1,589 | 24% |
-| Senate calendars | 214 | 1,662 | 13% |
-| House journals | 0 | 629 | not started |
-| Senate journals | 0 | 512 | not started |
-| captions | 916 | 4,428 | 21% |
+| House calendars | 1,589 | 1,589 | **done** |
+| House journals | 629 | 629 | **done** |
+| Senate journals | 511 | 512 | **done** bar one |
+| Senate calendars | 998 | 1,662 | 60% — the last 664 are queued |
+| text extracted beside them | 3,628 | 3,628 | **done** |
+| captions | 1,131 | 4,428 | 26% |
+| the 2017-2022 docket | in progress | 3 terms | fetching |
+| archived bill text | not started | 31,449 bills | queued behind the docket |
 
-**The cheap half is done.** The database and the bill lists cost about forty
-queries and 68 requests between them, and they are the spine everything else
-hangs on. Nothing failed in either.
+**The database is finished.** Comparing `INFORMATION_SCHEMA` against
+`db/_manifest.json` on 9 September found 28 objects there and 27 here; the
+missing one was `vStatStudTemp`, 1,545 rows joining a statutory study
+committee to the bill that created it and the RSA chapter it studies. `NHRSA`,
+`NHLegislatureDB2` and `PublicNHLMS` show `publicuser` nothing at all. There is
+nothing further on that host.
 
-**What the calendars already bought.** The 193 House calendars fetched before
-the drain was paused took the hearings parser from 5,817 distinct (bill, day)
-public hearings to **8,008**, and its coverage from 2023-2026 to **2019-2026**.
-Every one of the 10,423 hearing rows was noticed by a calendar published on or
-before the day of the hearing, median five days ahead — so the testimony
-window is computable across all of it.
+**What the calendars bought.** The hearings parser went from 8,008 distinct
+(bill, day) pairs covering 2019-2026 to **61,429 covering 1997-2026**. Its
+agreement with the docket — which nothing in the parser wrote — held across
+that eightfold growth: kind 98%, room 100%, time 88%.
+
+**What the calendars cost.** The drain fetched 1,846 documents over eight
+hours, was answered with two HTTP 403s, and stopped itself. That was the first
+time a fetch here has stopped on a refusal rather than recovering and carrying
+on — and fifty-four seconds later a chained run started asking the same
+address for a docket, which is why `refusal.py` now exists and why a refusal
+outlives the run that met it.
+
+**Bill text is the one large thing left, and it is two requests a bill.**
+`billText.aspx` is keyed by a text id that appears nowhere on this disk for an
+archived bill: `Docket.psv` has `legislationid` 0 for every row from 1989 to
+2016, `Legislation.psv` is 2025-2026 only, and `LegislationText` is one
+session. The id is not derivable either — for 2025 it is a small dense
+sequence, for 2023 it is the sequence and the year concatenated. So it is read
+off each bill's status page, which is keyed by lsr and session year, both of
+which every archived bill already carries. 31,449 bills, two requests each,
+fifteen seconds apart.
 
 ### The pace, and why it changed
 

@@ -1,199 +1,161 @@
 # Granite Record — what is done, what is not, and what to do first
 
-Written 9 September 2026 by reading the code and measuring the site, not by
-reading the older documents. Where this disagrees with `ROADMAP.md`,
-`ARCHITECTURE.md` or `HANDOFF.md`, this is the newer answer — several of their
-"outstanding" items shipped in the last three days and one of their
-assumptions is now known to be wrong.
+Rewritten 9 September 2026, in the evening, after the site went live. Every
+number here was measured, not remembered. Where this disagrees with
+`ROADMAP.md`, `ARCHITECTURE.md` or `HANDOFF.md`, this is the newer answer.
 
-Every number here was measured today.
+The previous version listed items 6, 7 and 8 twice — once struck through and
+once not — which is what happens when a working list is updated in pieces. It
+is renumbered here in one pass.
 
 ---
 
-## 1. Shipped and working
+## 1. Live
 
-| | evidence |
+Published 9 September. **72 preflight checks, `check_site` ready, 39,821 files
+across 411 MB — 40% of the 100,000 Cloudflare Pages allows.**
+
+| | |
 |---|---|
-| Search, facets, per-bill cards and detail | 33,683 bills across 19 terms |
-| One renderer for every page | `bills.html` + `app.js`; the second renderer was deleted 7 Sep |
-| Term keying | all per-bill files are `{term: {bill: …}}`; preflight fails on the old shape |
-| Per-term index split | first load 15,329 KB → **1,068 KB** |
-| Static page per bill, legislator, committee | 73,086 files |
-| Committee pages | 104 built |
-| Civics section | 11 topics + hub at `/learn/` |
-| RSS feeds | per bill, per committee, hearings, all |
-| Passage rail | including vetoes, and closed terms no longer read as in progress |
-| Veto messages | 175, every one citable and fit to quote |
-| The archive on disk | DB 27 views / 3.1M rows; 18 terms of bills; House calendars 100%; journals 100% |
-| Hearings parsed from calendars | **61,429 bill-days, 1997–2026**, kind 98% and room 100% against the docket |
-| The test suite | 67 checks, green |
+| Bills | **33,683 across 19 terms**, 1989 to 2026, each with its own page |
+| Legislators | 406 sitting, **2,192 who have served** |
+| Committees | 104 pages |
+| Towns | **320 town-and-ward pages** — everyone who represents you, with contact |
+| Civics | 11 topics at `/learn/` |
+| Feeds | per bill, committee, topic and hearing |
+| Veto messages | 175, each cited to the calendar it was printed in |
+| Hearings parsed from calendars | **61,429 bill-days, 1997–2026** |
+| The archive on disk | 28 database views / 3.1M rows; House calendars and journals 100% |
 
-## 2. Running right now
+## 2. Running
 
-- **Docket for 2017-2018**, then 2019-2020, 2021-2022, 2015-2016. ~23 hours.
-- **Archived bill text** after that. Two requests per bill, 15s apart, days.
-- **Captions**, trickling — YouTube throttled this address after a 984-in-a-day
-  run on 5 September. 890 of 4,428.
-- **Calendar text extraction**, idle and current.
+- **Docket**, 2017-2018 then 2019-2020, 2021-2022 and a seeded 2015-2016.
+  3,404 pages cached. Roughly 19 hours to go.
+- **664 Senate calendars**, queued behind the docket, then their text.
+- **Archived bill text**, behind those. ~63,000 requests, days.
+- **Captions**, recovering after YouTube throttled this address on
+  5 September: cycles of 48, 59, 59, 50.
 
-## 3. Two facts that change the plan
+`refusal.py` stops every fetch for 24 hours when the address says no, and
+clearing it is a person's decision.
 
-**Archived sponsors are not in the database.** `Sponsors` holds 2025 and 2026
-only; `Subject` holds the current session only. 2023-2024's sponsors came from
-its *status pages*. Since the archived-text fetch already asks for each bill's
-status page as stage one, **sponsors, committee and subject for all sixteen
-remaining terms arrive with it, free**. That single queued fetch is worth far
-more than "bill text".
+## 3. The bench
 
-Today: **16 of 19 terms have zero sponsors and 18 of 19 have zero topics.**
+`python3 review.py` — local only, loopback address, nothing on the site. One
+sample at a time: a verdict, a correction, a note, appended to
+`review/checked.jsonl`, which is hand-made evidence and is protected the way
+`ground_truth.csv` is.
 
-**Every term already has full pages, and the file count is no longer close.**
-An earlier note here said archived terms would not fit; that was wrong. All
-33,683 bills, 1989 onward, have had a page all along.
+| kind | pool |
+|---|---|
+| Bill hearing timings | 5,950 (243 stated by a chair, 5,707 inferred) |
+| Plain-language histories | 4,198 |
+| Hearings read from calendars | 97,158 |
+| Governors' veto messages | 175 |
+| Committee report reasoning | 4,274 |
 
-On 9 September each bill's record moved inside its own page, so a bill is one
-file rather than two: **73,086 files became 39,501**, 39% of Cloudflare Pages'
-100,000. The 98 records larger than 100 KB — almost all roll call ballots, HB2
-alone being 2 MB — keep a file, and their page says where it is. A bill page
-now costs one request instead of two.
+A timings item embeds the recording, shows both printed times, and captures
+the player's current position straight into the field — so a judgment is play,
+pause, press, rather than read-off-and-retype.
+
+**Nothing has been judged yet.** `ground_truth.csv` is still 35 proceedings,
+and until the bench has been used, related bills and auto-assigned topics
+cannot honestly be published.
 
 ---
 
-## 4. Ranked: most impact for least effort
+## 4. What is left
 
-### Done, 9 September
+### Small and visible
 
-Items 1-4 below are fixed and struck through. Each was measured before and
-after.
-
-1. ~~**Narratives in the past tense**~~ — 13 current-term bills said a
-   committee "held a work session on October 13, 2026" for a session not yet
-   held. `narrative.py` compares the docket date to today; those read "A work
-   session is scheduled for..." now. 0 remain.
-2. ~~**HTML entities published raw**~~ — `text_of()` replaced a hand-written
-   list of six entities, so `&ldquo;` and `&rdquo;` went out as themselves:
-   **3,882 occurrences**, 3,816 in bill text and 41 in official analysis.
-   `html.unescape` knows the whole table. 0 remain.
-3. ~~**Page furniture inside committee reports**~~ — **542 running headers**
-   landed mid-sentence in members' reasoning. The pattern wanted whitespace
-   the PDF does not have: pdftotext emits "19 DECEMBER2025HOUSERECORD" jammed
-   together. 0 remain, and a date written out in prose still survives.
-4. ~~**The rail was wrong for resolutions**~~ — 36 adopted resolutions drew a
-   cross on the chamber that adopted them, against a Senate they were never
-   going to see. HR and SR now carry a two-stop rail: the chamber, and whether
-   it was adopted. HCR, SCR and CACR do cross and are untouched.
-
-5. ~~**Search loaded everything**~~ — it drew the first 400 and told the
-   reader to narrow their search. It shows 100 now and adds 100 as you reach
-   the end, with a button for a keyboard or a browser without
-   IntersectionObserver.
-6. ~~**Sponsor party colour was inconsistent**~~ — committee pages coloured a
-   member by party and bill pages did not, so the same person read as one
-   party on one page and as no party on another. One chip, `pchip`, used in
-   both.
-7. ~~**Legislator names were not uniform**~~ — the roster's label was built
-   inline as "Abbas, Daryl(R) Rock 22". It is `names.legislator` now, which
-   produces exactly what `build_site_v2.member_labels` has always produced:
-   "Sen. Daryl Abbas (R - SD22)". A new preflight check compares the two
-   across all 406 members so they cannot drift.
-
-**Ranking members: the record does not state them.** Asked for as "typically
-the first two names listed in the minority". Every source on this disk was
-searched: the database's `CommitteeMembers.comments` holds only Chairman,
-V Chairman and Clerk; `committees.json` positions are Chair, Vice Chair and
-Member; and the only "ranking member" text in the calendars is statutory
-language inside bill text, not a roster.
-
-So naming one would be inferring a named person's leadership role from list
-order. That is publishable only if the page says it is inferred, and it is
-worth checking the convention against a few real committees first — which is
-the review tool again. Left undone deliberately.
-
-### Do first — small and visible
-
-8. **Special-bill notes.** HB1 is the budget, HB2 the trailer bill, HB2026 the
+1. **Special-bill notes.** HB1 is the budget, HB2 the trailer bill, HB2026 the
    ten-year transportation plan. A reader cannot know that. Hand-written, a
    dozen of them.
-6. **Search loads everything.** 100, then more on scroll.
-7. **Sponsor party colour is inconsistent** across bill, committee and
-   legislator pages. One chip, used everywhere.
-8. **Ranking and deputy ranking members** are not named. Conventionally the
-   first two in the minority; `CommitteeMembers` has the data.
+2. **Dark mode**, favicon and logo, header and footer, and dropping the
+   redundant status block on the bill page.
 
-### Do next — larger, and each unlocks something
+### Larger, and each unlocks something
 
-9. **The sampling review tool.** A local page that opens one sample with the
-   thing being measured already up, takes a verdict and a note, and moves on.
-   `ground_truth.csv` has 35 proceedings and is the only independent measure
-   this project has. **Related bills, auto-topics and narrative quality all
-   need the same tool**, so it is one build for three features — and related
-   bills cannot honestly be evaluated without it.
-10. **Wire the video match.** Proved today on 2023-2024 with no network: 1,643
-    of 1,648 recordings convert and **4,731 of 5,868 proceedings (81%) match a
-    single video, 1,693 bills reaching a recording** — no captions needed. The
-    remaining work is the merge into `proceedings.csv`, which must not destroy
-    the current term.
-11. **Legislator names in one format everywhere** — "Seidel, Sheila" should be
-    "Rep. Sheila Seidel (R-Rock 21)", including for members who have left.
-    `names.py` is where it goes.
-12. **Roll calls on legislator pages are unreadable** — date, bill number,
-    motion, vote, and no way to see what the bill was, how the vote came out,
-    or how the member voted against their party. Group by session day.
-13. **Amendment diffing.** The data is already here: `LegislationText`, 6,825
-    rows, every version of every current-term bill with `SortOrder`. Current
-    term only, and no fetching needed.
-14. **Committee pages: upcoming hearings**, and a session day as a table —
-    every bill heard, its status change, the report split, bill numbers linked.
+3. **Wire the video match.** Proved on 2023-2024 with no network: 1,643 of
+   1,648 recordings convert to the shape `build_manifest.py` reads, and
+   **4,731 of 5,868 proceedings (81%) match a single recording** — 1,693 bills
+   reaching video, no captions needed. What is left is the merge into
+   `proceedings.csv`, which must not destroy the current term.
+   `index_to_csv.py` is the converter.
+4. **Roll calls on legislator pages are unreadable** — date, bill number,
+   motion, vote, and no way to see what the bill was, how the vote came out,
+   or how the member voted against their own party. Group by session day.
+5. **Amendment diffing.** The data is already here and needs no fetching:
+   `LegislationText`, 6,825 rows, every version of every current-term bill,
+   with `DocumentVersion.SortOrder` to order them.
+6. **Committee pages: upcoming hearings**, and a session day as a table —
+   every bill heard, its status change, the report split, bill numbers linked.
+7. **A member's whole career on their page.** `careers.json` exists: 2,211
+   employee numbers resolved to **2,192 people**, 17 who served in both
+   chambers and 289 who left and came back. Nothing on the site reads it yet,
+   and it needs the archived roll calls built before it says much.
+8. **Narrative prose into the HTML.** A bill page gives a crawler 70 words;
+   everything else arrives by JavaScript. The narrative already exists — a
+   median of 192 words of specific prose — and putting it in the `<noscript>`
+   block is a text dump, not a second renderer. Worth doing when the 2017–2022
+   dockets land, because only 12% of bills have a narrative today.
 
-### Then — new surface
+### New surface
 
-15. Session calendar page: consent calendar, regular calendar, committee
-    motions, in order, explained.
-16. ~~**Executive Council, Governor, CD-1, CD-2 and US Senator pages**~~ —
-    built as 320 town-and-ward pages at `/town/<slug>`, because the question
-    people actually ask is "who represents me", not "who is on the Executive
-    Council". Every town-ward already mapped to a congressional and council
-    district in `site/districts.json`; neither had ever been shown. The ten
-    office-holders live in `officials.json`, hand-edited like
-    `ground_truth.csv`, and are **still blank** — until they are filled in
-    each page names the office, gives the reader their district and links to
-    the official directory.
-17. Cross-term legislator identity, so a member's whole career is one record.
-    `DistrictPast` exists because a 1998 member's district is not today's.
-18. Related bills — after the review tool, never before.
-19. Topics for the eighteen terms without them — visibly derived, method
-    stated, scored against a checked sample.
+9. **A session calendar page**: the consent calendar, the regular calendar and
+   the committee motions, in order, explained.
+10. **Related bills** — after the bench, never before. The hard part is
+    already named: two bills can touch the same RSA for unrelated purposes,
+    and two bills can do the same thing through different RSAs.
+11. **Topics for the eighteen terms without them.** Visibly derived, method
+    stated on the page, scored against a checked sample.
 
-### Housekeeping, not blocking
+### Not blocking
 
-20. Dark mode, favicon and logo, header and footer, the redundant status block.
-21. Email routing, and the follow-by-email decision the static site cannot
-    make on its own.
-22. Google indexing — needs the URLs and titles cleaned first.
-23. Accessibility, continuously.
-24. `build_site_v2.main` is still **449 lines**. Internal, and the reason a
+12. Email routing, and the follow-by-email decision a static site cannot make
+    on its own.
+13. Accessibility, continuously.
+14. `build_site_v2.main` is still **449 lines**. Internal, and the reason a
     floor-marker miss went unnoticed.
 
 ---
 
-## 5. Known bugs not yet fixed
+## 5. Answered, and the answer was no
 
-- The four above are fixed. What follows is what is left.
-- **Veto coverage regressed** 124 → 67 newly-extracted messages when the
-  citation fallback was removed today. 175 publish in total, all correct, but
-  `calendars.json` still covers only 976 of 2,564 calendars, and the rest
-  cannot be cited and so are not quoted. Rebuilding that index fully would
-  recover them.
-- **`--phrases` and marker coverage**: 4,180 of 10,830 proceedings carry no
-  time. 2,522 of those passed on a consent calendar and were never taken up
-  separately, which is honest; the rest are recoverable.
+**Ranking and deputy ranking members.** Asked for as "typically the first two
+names listed in the minority". Every source on this disk was searched: the
+database's `CommitteeMembers.comments` holds only Chairman, V Chairman and
+Clerk; `committees.json` positions are Chair, Vice Chair and Member; and the
+only "ranking member" text in the calendars is statutory language inside bill
+text. Naming one would infer a real person's leadership role from list order.
+Publishable only if the page says it is inferred, and worth checking against a
+few real committees first — the bench again.
 
-## 6. Before launch, specifically
+**Party for eight of the ten offices in `officials.json`.** `senate.gov` gives
+(D) for both senators. `governor.nh.gov`, `council.nh.gov` and the members'
+own house.gov sites do not print a party at all. The file holds what a source
+said.
 
-1. The four correctness bugs in §4.
-2. A decision on the file cap — two more terms as pages, or a Worker.
-3. `check_civics_links.py` has never been run; the civics section's outbound
-   sources are unverified.
-4. The proposal's own instruction that somebody who knows the building reads
+---
+
+## 6. Known bugs
+
+- **Veto coverage.** 175 messages publish and every one is correctly cited,
+  but only 67 were newly extracted on the last run against 124 before, because
+  the wrong-citation fallback was removed. `calendars.json` covers 976 of
+  2,564 calendars; a calendar with no known address cannot be cited and so is
+  not quoted. Rebuilding that index recovers them.
+- **Marker coverage.** 4,180 of 10,830 proceedings carry no time. 2,522 of
+  those passed on a consent calendar and were never taken up separately, which
+  is honest; the rest are recoverable with more phrases.
+- **`check_civics_links.py` has never been run.** The civics section's
+  outbound source URLs are unverified.
+
+## 7. Before the next publish
+
+1. Run `check_civics_links.py`.
+2. The proposal's own instruction that somebody who knows the building reads
    the civics pages before they ship.
-5. Accessibility pass at 360, 768 and 1440.
+3. An accessibility pass at 360, 768 and 1440.
+4. `probe_alignment.py --truth` if anything about timestamps changed — the
+   rule in `CLAUDE.md`. Nothing has changed today.

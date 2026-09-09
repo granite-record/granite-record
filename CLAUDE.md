@@ -25,9 +25,10 @@ Under a minute, no network. **Trust their output over anything written in
 prose, including this file.** If `preflight` is not green, fix that before
 anything else.
 
-`STATE.md` is generated. Never edit it. `HANDOFF.md`, `ARCHITECTURE.md` and
-`TESTING_QUEUE.md` are written by a person and explain why things are the way
-they are.
+`STATE.md` is generated. Never edit it. `HANDOFF.md`, `ARCHITECTURE.md`,
+`LAUNCH.md`, `DESIGN.md` and `obsolete/README.md` are written by a person and
+explain why things are the way they are. (`TESTING_QUEUE.md` was named here
+for a while and has never existed; `LAUNCH.md` is what took its place.)
 
 ---
 
@@ -75,8 +76,9 @@ predecessor was built from an assumption about how meetings run and was twelve
 times worse. When tempted to write a parser from a description, open the file.
 
 **Measure against something you did not generate.** `ground_truth.csv` holds 35
-proceedings a person timed by watching the video. Any timestamp method is
-scored with:
+proceedings a person timed by watching the video, and `review/checked.jsonl`
+holds whatever the bench has added since — `python3 review.py` serves one
+sample at a time and appends a judgment. Any timestamp method is scored with:
 
 ```
 python3 probe_alignment.py --truth --candidate candidate_segments.json
@@ -116,7 +118,7 @@ presenting as a different bug. **Do not add a sixth reader of the old files.**
 **`ground_truth.csv` is the record.** Edited by hand only. `preflight` fails if
 any `build_*` or `fetch_*` script opens it for writing.
 
-**`build_all.py` is the pipeline.** 14 steps; `--local` skips network ones,
+**`build_all.py` is the pipeline.** 19 steps; `--local` skips network ones,
 `--dry-run` shows the plan. A step marked `superseded=True` is kept for a case
 a newer step does not cover and does not run unasked.
 

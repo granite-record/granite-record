@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.1
+# GRANITE_VERSION: 2026-09-08.2
 """
 How much of the record is on this disk, and what is still missing.
 
@@ -66,7 +66,14 @@ def main():
     rows = sum(v["rows"] for v in ok.values())
     mb = sum(v.get("bytes", 0) for v in ok.values()) / 1e6
     print("\nTHE PUBLIC DATABASE")
-    line("views dumped", len(ok), 27, f"{rows:,} rows, {mb:,.0f} MB")
+    # The denominator is the fetcher's own list, not a number typed here.
+    # It was 27, a 28th view was added, and the bar read 104%.
+    try:
+        import fetch_archive_db as FDB
+        want = len(FDB.VIEWS)
+    except Exception:                                       # noqa: BLE001
+        want = max(len(ok), 27)
+    line("views dumped", len(ok), want, f"{rows:,} rows, {mb:,.0f} MB")
     if a.detail:
         for k, v in sorted(ok.items(), key=lambda x: -x[1]["rows"])[:8]:
             print(f"      {k:<26} {v['rows']:>10,} rows")

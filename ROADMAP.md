@@ -1,5 +1,15 @@
 # Granite Record — roadmap
 
+> **Read `LAUNCH.md` first.** It was written on 9 September by measuring the
+> site, and it supersedes this file wherever the two disagree. What is kept
+> here is the reasoning behind decisions — why the committees page was cheap,
+> why the testimony form cannot be deep-linked, what the probes found — which
+> is still worth having and does not go stale the way a task list does.
+>
+> Two things below are now wrong and are left in place because the reasoning
+> around them is not: the file cap is 100,000 rather than 20,000 and the site
+> uses 40% of it, and the archived terms have full pages rather than cards.
+
 Written 6 September 2026, from a list of everything outstanding. Ordered by
 what blocks what, not by size. `ARCHITECTURE.md` has the reasoning behind the
 structural items; this places them among the rest.
