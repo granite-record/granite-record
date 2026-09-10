@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.4
+# GRANITE_VERSION: 2026-09-09.8
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -104,30 +104,109 @@ def _yt(vid, sec=None):
         return u
 
 
-def sample_timestamps():
-    """A proceeding the site prints a time for, and the recording it is in."""
+# The page's own word for how sure it is, said the way a person can judge it.
+# The bench asks "is this right", and that question is different for a
+# boundary somebody spoke and a boundary a model guessed.
+STATE_SAID = {
+    "stated": "the chair said it &mdash; a quoted boundary",
+    "floor_stated": "the presiding officer said it, on the floor",
+    "floor_precise": "a roll call's clock time, from the written record",
+    "located": "<b>inferred</b> &mdash; nobody said it; the model placed it",
+    "whole_video": "the whole recording is this one bill",
+}
+
+
+def _site_records(site=Path("site")):
+    """Every bill page's record, as the reader receives it.
+
+    THE PAGE, NOT THE TABLE BEHIND IT. This sampler used to read
+    proceedings.csv's predicted_offset, and that field is the SCHEDULE: the
+    meeting was called for 09:00, the stream began at 08:54:21, so it reads
+    339 seconds. The page never prints that. It prints what build_site_v2
+    resolved by laying the stated boundaries over the schedule, and for
+    HB1118 that is 58:07 against the schedule's 5:39.
+
+    Nine judgments were entered against a number no reader has ever been
+    shown before anybody noticed. A bench that grades something other than
+    what is published is worse than no bench, because its verdicts look like
+    evidence. So this reads the built pages themselves.
+
+    A bill's record travels inside its page; the 98 too large to inline keep
+    a file and the page points at it, so both are followed.
+    """
+    inline = re.compile(
+        r'<script type="application/json" id="gr-data">(.*?)</script>', re.S)
+    meta = re.compile(r'<meta name="gr-data" content="([^"]+)"')
+    # The years that have recordings, from the terms proceedings.csv holds,
+    # rather than a pair of literals that would go stale the first time an
+    # earlier term gets video.
     import proceedings as P
+    years = sorted({y for r in P.load() if r.get("video_id")
+                    for y in str(r.get("term") or "").split("-") if y.isdigit()})
+    for y in years:
+        d = site / "bill" / y
+        if not d.is_dir():
+            continue
+        for f in sorted(d.glob("*.html")):
+            text = f.read_text(encoding="utf-8")
+            m = inline.search(text)
+            if m:
+                raw = m.group(1)
+            else:
+                mm = meta.search(text)
+                if not mm:
+                    continue
+                side = site / mm.group(1).lstrip("/")
+                if not side.exists():
+                    continue
+                raw = side.read_text(encoding="utf-8")
+            try:
+                yield y, f.stem.upper(), json.loads(raw)
+            except ValueError:
+                continue
+
+
+def sample_timestamps():
+    """A proceeding the site prints a time for, and the recording it is in.
+
+    Only the ones that print a start: those are the claims a stopwatch can
+    settle. A consent-calendar bill and a proceeding marked "approximate"
+    print no time at all, so there is nothing there to be right or wrong
+    about -- finding when those happened is a different and much longer job
+    than checking a claim, and mixing the two would make every draw a gamble
+    on how long it takes.
+    """
     out = []
-    for r in P.load():
-        if not (r.get("video_id") and r.get("bill")):
-            continue
-        if r.get("predicted_offset") in (None, ""):
-            continue
-        key = f"{r.get('video_id')}|{r.get('bill')}|{r.get('kind')}"
-        out.append({
-            "key": key, "bill": r["bill"], "video_id": r["video_id"],
-            "committee": r.get("committee") or "", "date": r.get("date") or "",
-            "proceeding": r.get("kind") or "", "title": r.get("video_title") or "",
-            "predicted": r.get("predicted_offset"),
-            "end": r.get("debate_end"),
-            "precise": bool(r.get("precise")),
-            "match": r.get("match") or "",
-        })
+    for year, bid, rec in _site_records():
+        for st in (rec.get("stations") or []):
+            vid = st.get("video_id")
+            if not vid or st.get("start") is None:
+                continue
+            out.append({
+                # The same key shape the ledger already holds, so an item
+                # judged before this change is still recognised as judged.
+                "key": f'{vid}|{bid}|{st.get("what") or ""}',
+                "bill": bid, "year": year, "video_id": vid,
+                "committee": st.get("committee") or "",
+                "date": st.get("when") or "",
+                "proceeding": st.get("what") or "",
+                "title": st.get("title") or "",
+                # WHAT THE PAGE PRINTS. These are the numbers under judgment.
+                "start": st.get("start"), "end": st.get("end"),
+                "state": st.get("state") or "",
+                "said_how": st.get("said_how") or "",
+                "tolerance": st.get("tolerance"),
+                "end_stated": bool(st.get("end_stated")),
+                # The schedule offset, kept beside them and labelled. It is
+                # what this sampler used to show on its own, and seeing the
+                # two together is how the next mix-up gets caught early.
+                "scheduled": st.get("predicted"),
+            })
     return out
 
 
 def show_timestamps(it):
-    start, end = it["predicted"], it["end"]
+    start, end = it.get("start"), it.get("end")
 
     def sec(x):
         try:
@@ -136,23 +215,50 @@ def show_timestamps(it):
             return None
 
     s0, s1 = sec(start), sec(end)
+    claim = STATE_SAID.get(it.get("state"), E(it.get("state") or "unknown"))
+    if it.get("said_how"):
+        claim += f' <span class="dim">({E(it["said_how"])})</span>'
+    sched = sec(it.get("scheduled"))
+    # An end the model guessed and an end the chair closed are different
+    # claims, and the page distinguishes them, so the bench does too.
+    end_note = "" if it.get("end_stated") else " &middot; end inferred"
+    span = (f'<b class="t">{E(_hms(start))}</b> &nbsp;&nbsp;'
+            f'<span class="dim">to</span>&nbsp;&nbsp;'
+            f'<b class="t">{E(_hms(end))}</b>'
+            f'<span class="dim">{end_note}</span>') if s1 is not None else (
+        f'<b class="t">{E(_hms(start))}</b> &nbsp; '
+        '<span class="dim">no end published</span>')
     rows = [
-        ("Bill", it["bill"]),
-        ("Proceeding", f'{it["proceeding"]} &middot; {it["committee"]} &middot; {it["date"]}'),
+        ("Bill", f'{E(it["bill"])} <span class="dim">({E(it.get("year") or "")})</span>'),
+        ("Proceeding", f'{E(it["proceeding"])} &middot; {E(it["committee"])}'
+                       f' &middot; {E(it["date"])}'),
         ("Recording", f'<a href="{E(_yt(it["video_id"]))}" target="_blank" '
                       f'rel="noopener">{E(it["title"] or it["video_id"])}</a>'),
-        ("How it was placed", f'{E(it["match"])}'
-                              + (" &middot; <b>stated by the chair</b>"
-                                 if it["precise"] else " &middot; inferred")),
-        # BOTH TIMES, SIDE BY SIDE. The printed end was only ever a second
-        # link before, so checking whether a proceeding ran to where the site
-        # says it did meant opening another tab and losing the first.
-        ("Printed start", f'<b class="t">{E(_hms(start))}</b>'
-                          + (f' &nbsp;&nbsp; <span class="dim">to</span> '
-                             f'&nbsp;&nbsp; <b class="t">{E(_hms(end))}</b>'
-                             if s1 is not None else
-                             ' &nbsp; <span class="dim">no end printed</span>')),
+        # NOT THE TOLERANCE. The record carries one, and app.js stopped
+        # printing it on purpose -- "methodology in the reader's way" -- so a
+        # reader is never told "within 5 minutes" and the bench must not
+        # invent the claim in order to grade it. What the reader does see is
+        # the single word "approximate", and only where the start was not
+        # spoken. That is the claim, and this says which it is.
+        ("How the page places it", claim),
+        ("What a reader is told",
+         '<span class="dim">nothing &mdash; the time is given plainly</span>'
+         if it.get("state") in ("stated", "floor_stated", "floor_precise")
+         else '<span class="dim">the word <b>approximate</b> beside the '
+              'time</span>'),
+        # BOTH TIMES, SIDE BY SIDE. Checking whether a proceeding ran to where
+        # the site says it did used to mean opening a second tab and losing
+        # the first.
+        ("Published start", span),
     ]
+    # Only where it differs enough to be worth a line. The schedule agreeing
+    # with the published time says nothing; the schedule being an hour away
+    # is the whole reason this row exists.
+    if sched is not None and s0 is not None and abs(sched - s0) >= 60:
+        rows.append(("For contrast, the schedule",
+                     f'<span class="dim">{E(_hms(sched))} &mdash; when the '
+                     f'meeting was called for. Not what the page prints, and '
+                     f'not what you are judging.</span>'))
     body = "".join(f'<tr><th>{E(k)}</th><td>{v}</td></tr>' for k, v in rows)
 
     # The player itself, so the whole judgment happens on one screen. The
@@ -166,9 +272,9 @@ def show_timestamps(it):
     controls = (
         '<p class="jump">'
         '<button type="button" class="btn" data-seek="start">'
-        f'Play from the printed start &mdash; {E(_hms(start))}</button>'
+        f'Play from the published start &mdash; {E(_hms(start))}</button>'
         + (f'<button type="button" class="btn" data-seek="end">'
-           f'Play from the printed end &mdash; {E(_hms(end))}</button>'
+           f'Play from the published end &mdash; {E(_hms(end))}</button>'
            if s1 is not None else "")
         + '<button type="button" class="btn grab" data-grab="observed_start">'
           'Use what is playing as the start</button>'
@@ -180,7 +286,7 @@ def show_timestamps(it):
     return (f'<table class="facts">{body}</table>{player}{controls}'
             '<p class="ask">Play it, pause where the chair takes this bill up, '
             'and press <b>Use what is playing as the start</b>. Same for the '
-            'end. Leave a box empty to say the printed time is right.</p>')
+            'end. Leave a box empty to say the published time is right.</p>')
 
 
 def sample_narratives():
@@ -357,9 +463,13 @@ def show_reports(it):
 KINDS = {
     "timestamp": {
         "label": "Bill hearing timings",
+        # No HTML entities here: the template escapes a blurb, so "&mdash;"
+        # reached the page as those eight characters.
         "blurb": "The moment the site says a bill was taken up, against the "
-                 "recording. This is what ground_truth.csv measures, and there "
-                 "are 35 of those against 5,935 proceedings with a printed time.",
+                 "recording. The time the page actually prints, not the "
+                 "schedule behind it. This is what ground_truth.csv "
+                 "measures, and there are 35 of those against 6,279 "
+                 "published boundaries.",
         "sample": sample_timestamps, "show": show_timestamps,
         "fields": [("observed_start", "The real start", "1:10:01 or 4201"),
                    ("observed_end", "The real end", "1:24:30 or 5070")],
@@ -670,6 +780,36 @@ def report():
         bits = ", ".join(f"{v} {w}" for (k, w), v in sorted(verd.items())
                          if k == kind)
         print(f"  {KINDS[kind]['label']:32} {per[kind]:5,}   {bits}")
+
+    # WHICH TIMESTAMP VERDICTS WERE GRADED AGAINST THE WRONG NUMBER. Until
+    # 9 September this bench showed proceedings.csv's predicted_offset, which
+    # is the schedule -- the meeting was called for 09:00 and the stream began
+    # at 08:54:21, so 5:39 -- and not the time the page prints. Nine items
+    # were judged against it. HB1118 was marked wrong at 5:39 when the page
+    # says 58:07 and the person's own stopwatch said 58:06.
+    #
+    # The ledger is append-only and nothing rewrites it, so the entries stay
+    # exactly as they were entered. What can be done is say so every time
+    # anybody reads it: an entry whose "shown" carries no published start was
+    # graded against the schedule, and its VERDICT means nothing. The
+    # observed times in it are a person's own stopwatch and are as good as
+    # any other.
+    stale = [e for (kind, key), entries in seen.items() if kind == "timestamp"
+             for e in entries if (e.get("shown") or {}).get("start") is None]
+    if stale:
+        obs = sum(1 for e in stale
+                  if (e.get("fields") or {}).get("observed_start"))
+        print()
+        print(f"  {len(stale)} timestamp judgment(s) were graded against the "
+              "SCHEDULE, not the published time.")
+        print("  Their verdict column cannot be used. The hand-timed values "
+              f"in them can: {obs} carry an observed start.")
+        for e in stale:
+            s = e.get("shown") or {}
+            f = e.get("fields") or {}
+            print(f"    {s.get('bill', '?'):9} {s.get('proceeding', ''):26} "
+                  f"observed {f.get('observed_start') or '-'}"
+                  f" to {f.get('observed_end') or '-'}")
     return 0
 
 
