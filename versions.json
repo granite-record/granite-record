@@ -16,7 +16,7 @@
     "build_manifest.py": "2026-09-05.6",
     "build_pages.py": "2026-09-04.35",
     "build_proceedings.py": "2026-09-05.3",
-    "build_site_v2.py": "2026-09-05.64",
+    "build_site_v2.py": "2026-09-05.66",
     "check_live.py": "2026-09-04.10",
     "calendar_meetings.py": "2026-09-08.10",
     "check_civics_links.py": "2026-09-08.2",
@@ -97,7 +97,7 @@
     "site_read.py": "2026-09-09.1",
     "keys.py": "2026-09-10.1",
     "build_exports.py": "2026-09-10.4",
-    "fetch_legislation.py": "2026-09-10.2"
+    "fetch_legislation.py": "2026-09-10.3"
   },
   "generated": "2026-09-04"
 }

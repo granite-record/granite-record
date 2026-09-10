@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.2
+# GRANITE_VERSION: 2026-09-10.3
 """
 The bill itself, from an address that can simply be constructed.
 
@@ -174,10 +174,21 @@ TITLE_RE = [
 ]
 ANALYSIS_RE = re.compile(r"\bANALYSIS\b\s*(.+?)(?:\s*EXPLANATION\b|$)", re.I)
 
-# A kind that has no sponsor and no committee by its nature. A simple
-# resolution of one chamber is adopted by that chamber; nobody is referred to
-# and the page names no sponsor.
-NO_SPONSOR_KINDS = {"HR", "SR"}
+# NO SUCH RULE. There was one here -- NO_SPONSOR_KINDS = {"HR", "SR"} -- on
+# the grounds that a simple resolution of one chamber names no sponsor and is
+# referred to nobody. Four pages supported it. All four were from 1991-1994,
+# because that is as far as the sample had fetched, and a modern House
+# resolution does have sponsors and does get referred to a committee.
+#
+# So it was never a fact about the kind. It was a fact about the era, stated
+# as a fact about the kind, from the only pages that had arrived yet -- which
+# is this project's oldest failure wearing new clothes: a rule generalised
+# from the subset that happened to be on disk.
+#
+# What replaces it is not a better rule but no rule. The report crosses kind
+# with era and prints what was found, so "HR carries no sponsor before the
+# mid-nineties and carries one after" is something a reader sees in the
+# numbers rather than something this file asserts.
 
 
 def parse(html):
@@ -244,20 +255,31 @@ def report():
             line += f"{n:>7}/{len(ks):<3}"
         print(line)
     # The ones a parser must be shown, not told about.
-    # A House or Senate resolution names no sponsor because it has none.
-    # Counting those as parser misses would bury the real ones.
-    expected = [r for r in rows
-                if not r[3].get("sponsors") and r[1] in NO_SPONSOR_KINDS]
-    if expected:
-        print()
-        print(f"{len(expected)} pages have no sponsor because their kind has "
-              "none (" + ", ".join(sorted(NO_SPONSOR_KINDS)) + "); not a miss.")
-    blank = [r for r in rows if not r[3].get("sponsors")
-             and r[1] not in NO_SPONSOR_KINDS]
+    # KIND AGAINST ERA, because whether a thing has a sponsor turns out to
+    # depend on both. Printed rather than concluded from.
+    kinds = sorted({r[1] for r in rows})
+    eras = [(lo, lo + 7) for lo in range(1989, 2027, 8)]
+    print()
+    print("sponsors found, by kind and era (found/pages):")
+    print(f"{'kind':8}" + "".join(f"{f'{lo}-{str(hi)[2:]}':>12}"
+                                  for lo, hi in eras))
+    for k in kinds:
+        line = f"{k:8}"
+        for lo, hi in eras:
+            cell = [r for r in rows if r[1] == k and lo <= r[0] <= hi]
+            if not cell:
+                line += f"{'-':>12}"
+            else:
+                n = sum(1 for r in cell if r[3].get("sponsors"))
+                line += f"{f'{n}/{len(cell)}':>12}"
+        print(line)
+    blank = [r for r in rows if not r[3].get("sponsors")]
     if blank:
         print()
-        print(f"{len(blank)} pages yielded no sponsor and should have. "
-              "First few:")
+        print(f"{len(blank)} pages yielded no sponsor. Whether that is the "
+              "document or the parser\n  is what the table above is for -- a "
+              "kind that has none in one era and\n  some in the next is the "
+              "document changing, not a bug.")
         for r in blank[:6]:
             print(f"    {r[0]} {r[2]:10} {r[3].get('_chars', 0):>7,} chars  "
                   + (r[3].get("title") or "(no title either)")[:52])

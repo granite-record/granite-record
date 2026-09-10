@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.64
+# GRANITE_VERSION: 2026-09-05.66
 """
 Generate the faceted site from real General Court data.
 
@@ -32,7 +32,7 @@ import names
 import re
 import sys
 import unicodedata
-from collections import Counter, defaultdict
+from collections import Counter, defaultdict, namedtuple
 from datetime import date as _date, timedelta as _td
 from pathlib import Path
 
@@ -2105,6 +2105,118 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
     return sp_list
 
 
+Disposition = namedtuple("Disposition",
+                         "kind status told settled prefix stated stale")
+
+
+def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
+                   narr, rcs, coverage, carried, dates):
+    """One bill's row in the search index.
+
+    STEP 9 OF SPLITTING build_bills, and the last. It comes after
+    bill_disposition because it reads that function's result, so a
+    mistake in step 8 surfaces here -- which is the argument for
+    doing them as two commits rather than one.
+
+    years.add(year) stays in the loop. It belongs to the caller's
+    bookkeeping rather than to a row, and moving it would give this
+    function a side effect for no gain.
+    """
+    return {
+        "id": bid,
+        "n": b.get("designation") or re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", bid),
+        "year": year, "title": b.get("title", ""),
+        # The sponsor FACET groups on this string, so it has to be one
+        # spelling per person. The two sources spell a name differently --
+        # the LSR files write "Germana, Nicholas" and the status page
+        # writes "Nicholas Germana" -- and the raw name was going straight
+        # into the facet, so 323 of the site's 430 sponsors were listed
+        # twice, once per source. person_name() is the same normaliser the
+        # display label already goes through.
+        "sponsor": person_name(prime["name"]) if prime else "",
+        "sponsor_label": prime.get("display", "") if prime else "",
+        "committee": cmte, "committees": cmtes,
+        "topic": b.get("subject", ""),
+        "kind": disp.kind, "status": disp.status,
+        "term": term, "carried": carried,
+        # An archived term, whose bills come from the General Court's
+        # search rather than from a session's own files. The page says
+        # so, because an empty summary reads as a broken page and this
+        # is a stated limit rather than a fault.
+        **({"archived": (coverage or {}).get(term) or True}
+           if b.get("archived") else {}),
+        "status_stated": bool(disp.told),
+        # HSGL, one character each: how far the bill got and where it
+        # stopped. Four characters in the index rather than four fields,
+        # because idx/<term>.json is loaded up front by every visitor.
+        "passage": passage((narr or {}).get("stages"), disp.kind,
+                            disp.status,
+                           bid),
+        "last_action": dates[-1] if dates else "",
+        "nrc": len([r for r in rcs if not r.get("procedural")]),
+        "votedays": sorted({r["date"] for r in rcs if r.get("date")}),
+    }
+
+def bill_disposition(b, bid, st, narr, rcs, term, current):
+    """What became of this bill, and where that answer came from.
+
+    STEP 8 OF SPLITTING build_bills, and the first of the two that are
+    not leaves. It was the only block in the loop touching the two
+    counters the build reports at the end, and it touched them as side
+    effects on names in an enclosing 465-line scope.
+
+    They leave as data instead. The caller does
+        n_stated += d.stated
+        n_stale  += d.stale
+    which is the same arithmetic written where it can be seen.
+
+    Returns a namedtuple rather than a tuple: this has seven fields
+    and positional unpacking of seven things is the shape of the bug
+    build_bills' own docstring is about.
+    """
+    stated = stale = 0
+    prefix = bill_prefix(bid)
+    told = classify_stated(st, prefix)
+    settled = docket_outcome(narr)
+    disposed = floor_disposed(narr)
+    if settled:
+        # A dated docket line beats a status field that has not caught up.
+        kind, status = settled
+        stated = 1
+    elif told and told[0] == "active" and disposed:
+        # A bill cannot be "In committee" after the chamber adopted a
+        # motion to kill it. The status columns are not always advanced
+        # once a bill is finished -- 21 of them still read REPORT FILED or
+        # NO ACTION on bills signed into law -- and an in-progress status
+        # is the one case where a dated floor vote is plainly later than
+        # the field. Only "active" yields; a stated outcome still wins.
+        kind, status = disposed
+        stated = 1
+    elif told:
+        kind, status = told
+        stated = 1
+    else:
+        kind, status = classify(narr, rcs, prefix)
+    # A TERM THAT HAS ENDED HAS NO BILLS IN PROGRESS. The General Court's
+    # status field stops being updated when a term closes, so 1,954
+    # archived bills across eighteen terms still say "In committee",
+    # "Laid on the table" or "Passed one chamber" -- 608 of them in
+    # committee, some since 1989. Read literally that is a 37-year-old
+    # bill awaiting a hearing.
+    #
+    # The word is left exactly as the record gives it, because it is what
+    # the record last said and this site does not rewrite that. What
+    # changes is the KIND, which drives the colour and the rail: in a
+    # closed term the bill did not go on from there, so it is finished
+    # rather than moving. The current term is untouched -- a bill laid on
+    # the table in 2026 may yet be taken up.
+    if kind == "active" and term != current:
+        kind = "done"
+        stale = 1
+    return Disposition(kind, status, told, settled, prefix,
+                       stated, stale)
+
+
 def bill_documents(b, bid, st, narr, sources, rep_written, rep_docket):
     """Everything a reader can open for themselves, deduped on the URL.
 
@@ -2399,44 +2511,12 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         if not st and not own:
             st = {k: b.get(k, "") for k in ("gen_status", "house_status",
                                             "senate_status", "text_pdf")}
-        prefix = bill_prefix(bid)
-        told = classify_stated(st, prefix)
-        settled = docket_outcome(narr)
-        disposed = floor_disposed(narr)
-        if settled:
-            # A dated docket line beats a status field that has not caught up.
-            kind, status = settled
-            n_stated += 1
-        elif told and told[0] == "active" and disposed:
-            # A bill cannot be "In committee" after the chamber adopted a
-            # motion to kill it. The status columns are not always advanced
-            # once a bill is finished -- 21 of them still read REPORT FILED or
-            # NO ACTION on bills signed into law -- and an in-progress status
-            # is the one case where a dated floor vote is plainly later than
-            # the field. Only "active" yields; a stated outcome still wins.
-            kind, status = disposed
-            n_stated += 1
-        elif told:
-            kind, status = told
-            n_stated += 1
-        else:
-            kind, status = classify(narr, rcs, prefix)
-        # A TERM THAT HAS ENDED HAS NO BILLS IN PROGRESS. The General Court's
-        # status field stops being updated when a term closes, so 1,954
-        # archived bills across eighteen terms still say "In committee",
-        # "Laid on the table" or "Passed one chamber" -- 608 of them in
-        # committee, some since 1989. Read literally that is a 37-year-old
-        # bill awaiting a hearing.
-        #
-        # The word is left exactly as the record gives it, because it is what
-        # the record last said and this site does not rewrite that. What
-        # changes is the KIND, which drives the colour and the rail: in a
-        # closed term the bill did not go on from there, so it is finished
-        # rather than moving. The current term is untouched -- a bill laid on
-        # the table in 2026 may yet be taken up.
-        if kind == "active" and term != current:
-            kind = "done"
-            n_stale += 1
+        disp = bill_disposition(b, bid, st, narr, rcs, term, current)
+        kind, status = disp.kind, disp.status
+        told, settled, prefix = disp.told, disp.settled, disp.prefix
+        n_stated += disp.stated
+        n_stale += disp.stale
+
         # Sponsor records already carry member_id, party and chamber from
         # build_data.py, and for the LsrSponsors path that id IS the roster's.
         # The bill-status fallback path carries a web member id from a
@@ -2474,39 +2554,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                  (("House", b.get("house_committee") or ""),
                   ("Senate", b.get("senate_committee") or "")) if nm]
         cmte = cmtes[0] if cmtes else ""
-        index.append({
-            "id": bid,
-            "n": b.get("designation") or re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", bid),
-            "year": year, "title": b.get("title", ""),
-            # The sponsor FACET groups on this string, so it has to be one
-            # spelling per person. The two sources spell a name differently --
-            # the LSR files write "Germana, Nicholas" and the status page
-            # writes "Nicholas Germana" -- and the raw name was going straight
-            # into the facet, so 323 of the site's 430 sponsors were listed
-            # twice, once per source. person_name() is the same normaliser the
-            # display label already goes through.
-            "sponsor": person_name(prime["name"]) if prime else "",
-            "sponsor_label": prime.get("display", "") if prime else "",
-            "committee": cmte, "committees": cmtes,
-            "topic": b.get("subject", ""),
-            "kind": kind, "status": status,
-            "term": term, "carried": carried,
-            # An archived term, whose bills come from the General Court's
-            # search rather than from a session's own files. The page says
-            # so, because an empty summary reads as a broken page and this
-            # is a stated limit rather than a fault.
-            **({"archived": (coverage or {}).get(term) or True}
-               if b.get("archived") else {}),
-            "status_stated": bool(told),
-            # HSGL, one character each: how far the bill got and where it
-            # stopped. Four characters in the index rather than four fields,
-            # because idx/<term>.json is loaded up front by every visitor.
-            "passage": passage((narr or {}).get("stages"), kind, status,
-                               bid),
-            "last_action": dates[-1] if dates else "",
-            "nrc": len([r for r in rcs if not r.get("procedural")]),
-            "votedays": sorted({r["date"] for r in rcs if r.get("date")}),
-        })
+        index.append(bill_index_row(
+            bid, b, year, term, cmte, cmtes, disp, prime,
+            narr, rcs, coverage, carried, dates))
 
         # ---- one detail file per bill, loaded only when expanded
         # ---- the official documents behind this bill --------------------
