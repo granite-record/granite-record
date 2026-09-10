@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.20
+# GRANITE_VERSION: 2026-09-04.21
 """
 The text of each bill, as text rather than as a link to a PDF.
 
@@ -66,7 +66,7 @@ import urllib.request
 from pathlib import Path
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 BASE = "https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
 WS = re.compile(r"\s+")
 TAG = re.compile(r"<[^>]+>")

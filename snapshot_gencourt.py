@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.1
+# GRANITE_VERSION: 2026-09-04.2
 """
 Daily snapshot of the NH General Court bulk data files.
 
@@ -53,7 +53,7 @@ EXTRA = [("https://gc.nh.gov/downloads/Members.txt", "Members.txt")]
 
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency archive; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 
 
 def fetch(url, tries=3):

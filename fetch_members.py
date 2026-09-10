@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Pull each member's own page on gencourt: photo, district, towns, contact,
 committees and the position they hold on each.
@@ -70,7 +70,7 @@ from collections import Counter
 from pathlib import Path
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 
 TAG = re.compile(r"<[^>]+>")
 WS = re.compile(r"\s+")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.14
+# GRANITE_VERSION: 2026-09-04.15
 """
 Collect House online testimony sign-ins: who registered support or opposition
 on each bill, and who filed written testimony.
@@ -53,7 +53,7 @@ from pathlib import Path
 BASE = "https://gc.nh.gov/house/committees/remotetestimony/"
 PAGE = BASE + "submitted_testimony.aspx"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 
 
 class FormProbe(HTMLParser):

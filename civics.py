@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.1
+# GRANITE_VERSION: 2026-09-08.2
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -569,7 +569,7 @@ upcoming hearings. No account, no email address, nothing to leak.</p>
 <p>This is assembled by machine from official sources and it will be wrong
 somewhere. If you find something wrong &mdash; particularly on these
 explanatory pages, where an error is harder to spot than a wrong date &mdash;
-write to <a href="mailto:corrections@graniterecord.org">corrections@graniterecord.org</a>.</p>
+write to <a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>.</p>
 """
 
 # The official addresses these pages send a reader to. Kept in one place

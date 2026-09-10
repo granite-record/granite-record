@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.4
+# GRANITE_VERSION: 2026-09-07.5
 """
 The docket of every bill of an archived term, in Docket.txt's own format.
 
@@ -57,7 +57,7 @@ from pathlib import Path
 
 BASE = "https://gc.nh.gov/bill_status/legacy/bs2016/bill_docket.aspx"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 
 # One docket line: three cells, date / body / description.
 ROW = re.compile(

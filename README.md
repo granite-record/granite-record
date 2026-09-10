@@ -167,10 +167,14 @@ or to read the data.
 
 ## Licence
 
-**Not yet chosen.** Until one is added, no permission to reuse this code is
-granted. The New Hampshire General Court's records are public; this
-repository's own code is not yet licensed, and that is a decision for its
-author rather than an oversight to be worked around.
+**MIT** — see [`LICENSE`](LICENSE). Use it, change it, sell it; keep the notice.
+
+That covers the software and the texts this project writes: the plain-English
+bill histories, the explainers under `/learn`, and the editorial notes on
+particular bills. It does not cover the underlying record, because it cannot —
+the bills, votes, calendars and recordings are the State of New Hampshire's,
+published by them, and facts are not copyrightable. Nothing here claims
+otherwise.
 
 ---
 

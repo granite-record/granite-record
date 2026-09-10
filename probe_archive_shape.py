@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.2
+# GRANITE_VERSION: 2026-09-07.3
 """
 How the General Court's record changes shape as you go back through it.
 
@@ -46,7 +46,7 @@ from pathlib import Path
 
 BASE = "https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 OUT = Path("archive_samples")
 
 # What is read out of a page is whatever fetch_bill_status.parse() reads out

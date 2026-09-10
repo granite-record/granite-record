@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Find the journal and calendar PDFs so docket citations become links.
 
@@ -39,7 +39,7 @@ from datetime import datetime
 from pathlib import Path
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 
 # Real examples, both chambers:
 #   /house/calendars_journals/Journals/2026/HJ 07 March 11, 2026.PDF

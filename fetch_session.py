@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.1
+# GRANITE_VERSION: 2026-09-04.2
 """
 Fetch a whole past session from the legacy docket pages.
 
@@ -39,7 +39,7 @@ from pathlib import Path
 
 BASE = "https://gc.nh.gov/bill_status/legacy/bs2016/bill_docket.aspx"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency archive; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 
 TAG = re.compile(r"<[^>]+>")
 WS = re.compile(r"\s+")

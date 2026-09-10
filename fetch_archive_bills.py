@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.1
+# GRANITE_VERSION: 2026-09-06.2
 """
 Every bill of an archived session year, from the General Court's own search.
 
@@ -58,7 +58,7 @@ import proceedings as P
 
 URL = "https://gc.nh.gov/bill_status/legacy/bs2016/"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 HIDDEN = re.compile(r"<input\b[^>]*type=[\"']hidden[\"'][^>]*>", re.I)
 ATTR = re.compile(r"([\w:-]+)\s*=\s*[\"']([^\"']*)[\"']")
 

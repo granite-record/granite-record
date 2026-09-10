@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Every standing committee, from the two pages that list them.
 
@@ -51,7 +51,7 @@ import urllib.request
 from pathlib import Path
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 PAGES = [("S", "https://gc.nh.gov/senate/committees/senate_committees.aspx"),
          ("H", "https://gc.nh.gov/house/committees/standingcommittees.aspx")]
 

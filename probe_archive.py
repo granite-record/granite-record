@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.1
+# GRANITE_VERSION: 2026-09-04.2
 """
 Work out which eras of the bill history archive are actually machine-readable.
 
@@ -37,7 +37,7 @@ from pathlib import Path
 
 BASE = "https://gc.nh.gov/BillHistory/SofS_Archives/{year}/{chamber}/{bill}.pdf"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency archive; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 
 
 def get(url, timeout=60, tries=2):

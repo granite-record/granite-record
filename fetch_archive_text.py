@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.4
+# GRANITE_VERSION: 2026-09-09.5
 """
 The text of every archived bill, two requests at a time and never in a hurry.
 
@@ -65,7 +65,7 @@ from pathlib import Path
 STATUS = "https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"
 TEXT = "https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 
 QUEUE = Path("archive/text_queue.csv")
 LOCK = Path("archive/.lock")

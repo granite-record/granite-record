@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 The nightly run. Fetch what changed, rebuild, check, publish -- or don't.
 
@@ -115,7 +115,7 @@ def reachable():
     req = urllib.request.Request(
         "https://gc.nh.gov/senate/about_senate/about.aspx",
         headers={"User-Agent": "granite-record/1.0 (civic transparency "
-                               "project; corrections@graniterecord.org)"})
+                               "project; contact@graniterecord.org)"})
     try:
         with urllib.request.urlopen(req, timeout=45) as r:
             return r.status == 200, f"HTTP {r.status}"

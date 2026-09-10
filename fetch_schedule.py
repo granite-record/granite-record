@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.5
+# GRANITE_VERSION: 2026-09-08.6
 """
 What each committee is meeting about next, and which bills at what time.
 
@@ -75,7 +75,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 # The .asmx endpoint answers HTTP 500 to a plain GET and 200 to the one the
 # page's own jQuery makes. Its $.ajax call sets contentType and dataType, so
 # jQuery sends Content-Type: application/json and X-Requested-With, and an

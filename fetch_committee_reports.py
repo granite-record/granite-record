@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.21
+# GRANITE_VERSION: 2026-09-04.22
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -38,7 +38,7 @@ from pathlib import Path
 
 INDEX = "https://gc.nh.gov/house/calendars_journals/"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 
 # Bill numbers carry stacked suffixes: HB 660-FN-LOCAL, HB 1442-FN-A-LOCAL.
 # Matching only -FN, -A and -L meant "HB 660-FN-LOCAL," never registered as the

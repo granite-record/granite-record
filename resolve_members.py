@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Put names to the members who voted but are missing from legislators.txt.
 
@@ -34,7 +34,7 @@ from pathlib import Path
 
 BASE = "https://gc.nh.gov/bill_status/legacy/bs2016/Roll_calls/"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 MEMBER_ID = re.compile(r"member=(\d+)")
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Who holds a leadership role in each chamber.
 
@@ -59,7 +59,7 @@ import urllib.request
 from pathlib import Path
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 WS = re.compile(r"\s+")
 TAG = re.compile(r"<[^>]+>")
 

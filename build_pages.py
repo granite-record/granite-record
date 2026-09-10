@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.34
+# GRANITE_VERSION: 2026-09-04.35
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -287,7 +287,7 @@ def shell(title, current, body, wide=False, script="", desc="",
 General Court. Not affiliated with the General Court.
 <a href="about.html">How this is made</a>.
 <span class="corrections">Found an error?
-<a href="mailto:corrections@graniterecord.org">corrections@graniterecord.org</a>
+<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>
 </span></div></footer>
 {script}</body></html>"""
 

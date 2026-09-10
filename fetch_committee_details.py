@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.3
+# GRANITE_VERSION: 2026-09-07.4
 """
 Each committee's own page: the clerk, the staff, and what the committee is for.
 
@@ -55,7 +55,7 @@ import urllib.request
 from pathlib import Path
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 WS = re.compile(r"\s+")
 
 # "Pursuant to House Rule 31:" and the duty that follows it. The rule is

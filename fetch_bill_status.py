@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 Fetch the bill STATUS page for bills the current-session files no longer cover.
 
@@ -42,7 +42,7 @@ from pathlib import Path
 
 BASE = "https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 
 WS = re.compile(r"\s+")
 MEMBER_ID = re.compile(r"member\.aspx\?member=(\d+)", re.I)

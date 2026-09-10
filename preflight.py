@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.86
+# GRANITE_VERSION: 2026-09-04.87
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -128,6 +128,55 @@ def _upcoming_shape():
                       "as a string -- the shape build_feeds.py needs")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("files", "one contact address, and it is the working one")
+def _one_address():
+    """Thirty occurrences across twenty-seven files, and they must agree.
+
+    The address is published to readers on every page and, more importantly,
+    sent to the General Court in the User-Agent of every fetch script. Those
+    are the people who have blocked this address twice; if they ever want to
+    say why, the address in their logs is how they would do it, and for a
+    while it was one that does not receive mail.
+
+    Thirty copies is the real defect and a constant would be better, but the
+    copies are inside User-Agent strings in twenty scripts and inside HTML in
+    three more, and threading an import through all of them to save a
+    find-and-replace is not obviously the better trade. What is not
+    acceptable is the copies silently disagreeing, so this is the guard: one
+    address at graniterecord.org, everywhere, and it is the one that works.
+    """
+    import re
+    import subprocess
+    CORRECT = "contact@graniterecord.org"
+    try:
+        out = subprocess.run(["git", "ls-files"], capture_output=True,
+                             text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError) as e:
+        return "skip", f"git would not list the tracked files ({e})"
+    if out.returncode != 0:
+        return "skip", "not a git repository"
+    rx = re.compile(r"[A-Za-z0-9._%+-]+@graniterecord\.org")
+    found, wrong = 0, {}
+    for n in out.stdout.splitlines():
+        f = Path(n)
+        if not n.strip() or not f.exists() or f.stat().st_size > 4_000_000:
+            continue
+        try:
+            body = f.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for m in rx.finditer(body):
+            found += 1
+            if m.group(0) != CORRECT:
+                line = body[:m.start()].count(chr(10)) + 1
+                wrong.setdefault(m.group(0), []).append(f"{n}:{line}")
+    assert not wrong, (
+        "an address at graniterecord.org that is not " + CORRECT + ": "
+        + "; ".join(f"{a} at {', '.join(v[:3])}" for a, v in wrong.items()))
+    return "ok", (f"{found} occurrences of {CORRECT} across the tracked "
+                  "files, and no other address at that domain")
 
 
 @check("files", "no tracked file carries a credential")

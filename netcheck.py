@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Why is the General Court refusing us?
 
@@ -52,7 +52,7 @@ import urllib.error
 import urllib.request
 
 OURS = ("granite-record/1.0 (civic transparency project; "
-        "corrections@graniterecord.org)")
+        "contact@graniterecord.org)")
 BROWSER = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
            "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
 FULL = {"User-Agent": BROWSER,

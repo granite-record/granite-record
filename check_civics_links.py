@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.1
+# GRANITE_VERSION: 2026-09-08.2
 """
 Do the civics pages' source links actually go anywhere?
 
@@ -34,7 +34,7 @@ from collections import Counter
 import civics
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 
 
 def links():

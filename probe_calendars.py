@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Read the calendar list instead of guessing at it.
 
@@ -119,7 +119,7 @@ BASE = "https://gc.nh.gov/{chamber}/calendars_journals/"
 # fetch_journals on 6 September, which is why --chamber exists.
 URL = BASE.format(chamber="house")
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
-                    "corrections@graniterecord.org)"}
+                    "contact@graniterecord.org)"}
 
 SELECT = re.compile(r"<select\b(?P<attrs>[^>]*)>(?P<body>.*?)</select>", re.S | re.I)
 OPTION = re.compile(r"<option\b(?P<attrs>[^>]*)>(?P<text>.*?)</option>", re.S | re.I)

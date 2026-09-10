@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.7
+# GRANITE_VERSION: 2026-09-08.8
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -92,7 +92,7 @@ def hub(topics):
         out.append("</ol>")
     out.append(
         '<p class="note">Every page here ends with its sources. If something '
-        'is wrong, <a href="mailto:corrections@graniterecord.org">tell us</a> '
+        'is wrong, <a href="mailto:contact@graniterecord.org">tell us</a> '
         '&mdash; that address exists for this.</p>')
     return "".join(out)
 
