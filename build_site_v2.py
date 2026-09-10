@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.62
+# GRANITE_VERSION: 2026-09-05.64
 """
 Generate the faceted site from real General Court data.
 
@@ -2056,6 +2056,130 @@ def vote_member(m, body, legs, unnamed):
             "p": m.get("party") or "X", "v": m.get("vote")}
 
 
+def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
+                      leg_by_sort, leg_by_name, sponsored):
+    """Who put their name to this bill, and their own bill list, both.
+
+    STEP 7 OF SPLITTING build_bills, and the last of the leaves.
+
+    It mutates `sponsored`, which is the caller's accumulator of what
+    each member has sponsored, the same way vote_member mutates
+    `unnamed`. That is why it is passed explicitly rather than closed
+    over: a function that changes something belonging to its caller
+    should say so in its signature.
+
+    `prime` stays in the loop. It is one line and it reads better
+    beside the payload that uses it than as an extra return value.
+    """
+    sp_list = []
+    for _s in P.per_term(sponsors, term, current).get(bid, []):
+        _m = (legs.get(_s.get("member_id"))
+              or leg_by_sort.get(sort_name(_s.get("name") or ""))
+              or leg_by_name.get(name_key(_s.get("name") or "") or ("", ""))
+              or {})
+        # The roster first, then whatever the sponsor record carries in
+        # its own right. build_data fills the county and district in for a
+        # member who has left, from former_members.json, so that they are
+        # named the same way as anyone else: "Rep. Suzanne Vail (D - Hills
+        # 6)", not a bare name under a heading about a missing chamber.
+        _lab = member_labels(
+            _s.get("name"),
+            chamber=_m.get("chamber") or _s.get("chamber"),
+            party=_m.get("party_code") or _s.get("party"),
+            district=_m.get("district") or _s.get("district"),
+            county=_m.get("county") or _s.get("county"),
+            county_abbr=_m.get("county_abbr"))
+        # The address of this member's own page, where the sponsor was
+        # matched to the roster. Where they were not -- a former member,
+        # or a name the join missed -- there is no page and no link, which
+        # is the honest outcome rather than a link that goes nowhere.
+        _slug = member_slug(_m, _lab) if _m.get("id") else ""
+        sp_list.append({**_s, **_lab, "slug": _slug})
+    for _s in sp_list:
+        _mid = str(_s.get("member_id") or "")
+        if _mid:
+            sponsored[_mid].append({
+                "bill": bid, "n": b.get("designation") or bid,
+                "title": b.get("title", ""), "year": year, "term": term,
+                "prime": bool(_s.get("prime"))})
+    return sp_list
+
+
+def bill_documents(b, bid, st, narr, sources, rep_written, rep_docket):
+    """Everything a reader can open for themselves, deduped on the URL.
+
+    STEP 5 OF SPLITTING build_bills. add_doc was defined once per bill
+    inside a 465-line body; it is a nested helper of a 60-line function
+    now, which is what a closure that small should be.
+
+    Its third parameter is named `sort` rather than `kind`, so that no
+    binding called `kind` exists in this scope at all. `kind` means the
+    bill's status kind in the caller, and the last thing this refactor
+    should do is create a fresh instance of the shadowing it is here
+    to remove.
+
+    Returns (docs, text_url): the text URL is built here and the caller
+    needs it for the payload as well.
+    """
+    docs, seen_doc = [], set()
+
+    def add_doc(label, url, sort):
+        if url and url not in seen_doc:
+            seen_doc.add(url)
+            docs.append({"label": label, "url": url, "kind": sort})
+
+    text_url = bill_text_url(b, st)
+    add_doc("Bill text", text_url, "text")
+    add_doc("Bill status page", (
+        "https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"
+        f"?lsr={b.get('lsr_num','')}&sy={b.get('lsr_year','')}"
+        f"&txtsessionyear={b.get('lsr_year','')}"
+        f"&txtbillnumber={bid.lower()}&sortoption=billnumber"), "status")
+    add_doc("Docket", (
+        "https://gc.nh.gov/bill_status/legacy/bs2016/bill_docket.aspx"
+        f"?lsr={b.get('lsr_num','')}&sy={b.get('lsr_year','')}"
+        f"&txtsessionyear={b.get('lsr_year','')}"
+        f"&txtbillnumber={bid.lower()}&sortoption=billnumber"), "docket")
+    # The journals and calendars the docket itself cites. These are the
+    # official record of the individual actions, which is a stronger thing
+    # to link than a summary of them.
+    # One entry per volume, naming every page of it this bill is on.
+    # add_doc dedupes on the URL, and a volume has one URL however many
+    # pages are cited -- so listing them per event kept whichever page came
+    # first and dropped the rest without a word. 565 of the 7,013 volumes
+    # cited on this site carry a bill on more than one page; HB686 is on
+    # HJ 7 at both 143 and 144, and the list named only 143.
+    vols = {}
+    for e in (narr or {}).get("events", []):
+        if e.get("cancelled"):
+            continue
+        c = _cite(e, sources, (e.get("date") or "")[:4])
+        if not c.get("cite_url"):
+            continue
+        key = (e.get("cite") or "").strip()
+        v = vols.setdefault(key, {"url": c["cite_url"], "pages": []})
+        pg = (e.get("cite_page") or "").strip()
+        if pg and pg not in v["pages"]:
+            v["pages"].append(pg)
+    for key, v in vols.items():
+        pages = sorted(v["pages"], key=lambda x: int(x))
+        label = key + ("" if not pages else
+                       f", page {pages[0]}" if len(pages) == 1 else
+                       ", pages " + ", ".join(pages[:-1]) + " and " + pages[-1])
+        add_doc(label, v["url"], "record")
+    # The calendar a committee report was printed in.
+    # committee_reports() has already turned each report's calendar into
+    # a key and a URL, so this cites what the report itself is citing
+    # rather than parsing "House Calendar 51, 2025" a second time.
+    for r in rep_written:
+        add_doc(f"{r.get('source') or r.get('cite')}, committee report",
+                r.get("cite_url", ""), "report")
+    for r in rep_docket:
+        if r.get("cite_url"):
+            add_doc(f"{r['cite']}, committee report", r["cite_url"], "report")
+    return docs, text_url
+
+
 def bill_text_url(b, st):
     """The address of the bill's own text, corrected on the way out.
 
@@ -2317,37 +2441,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # build_data.py, and for the LsrSponsors path that id IS the roster's.
         # The bill-status fallback path carries a web member id from a
         # different space, so that one falls back to matching on the name.
-        sp_list = []
-        for _s in P.per_term(sponsors, term, current).get(bid, []):
-            _m = (legs.get(_s.get("member_id"))
-                  or leg_by_sort.get(sort_name(_s.get("name") or ""))
-                  or leg_by_name.get(name_key(_s.get("name") or "") or ("", ""))
-                  or {})
-            # The roster first, then whatever the sponsor record carries in
-            # its own right. build_data fills the county and district in for a
-            # member who has left, from former_members.json, so that they are
-            # named the same way as anyone else: "Rep. Suzanne Vail (D - Hills
-            # 6)", not a bare name under a heading about a missing chamber.
-            _lab = member_labels(
-                _s.get("name"),
-                chamber=_m.get("chamber") or _s.get("chamber"),
-                party=_m.get("party_code") or _s.get("party"),
-                district=_m.get("district") or _s.get("district"),
-                county=_m.get("county") or _s.get("county"),
-                county_abbr=_m.get("county_abbr"))
-            # The address of this member's own page, where the sponsor was
-            # matched to the roster. Where they were not -- a former member,
-            # or a name the join missed -- there is no page and no link, which
-            # is the honest outcome rather than a link that goes nowhere.
-            _slug = member_slug(_m, _lab) if _m.get("id") else ""
-            sp_list.append({**_s, **_lab, "slug": _slug})
-        for _s in sp_list:
-            _mid = str(_s.get("member_id") or "")
-            if _mid:
-                sponsored[_mid].append({
-                    "bill": bid, "n": b.get("designation") or bid,
-                    "title": b.get("title", ""), "year": year, "term": term,
-                    "prime": bool(_s.get("prime"))})
+        sp_list = bill_sponsor_list(bid, b, year, term, current,
+                                    sponsors, legs, leg_by_sort,
+                                    leg_by_name, sponsored)
         prime = next((s for s in sp_list if s.get("prime")), sp_list[0] if sp_list else None)
         years.add(year)
         ev = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
@@ -2427,62 +2523,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             reports.get(term, {}).get(bid, []), narr, sources,
             b.get("house_committee", ""), b.get("senate_committee", ""))
 
-        docs, seen_doc = [], set()
-
-        def add_doc(label, url, kind):
-            if url and url not in seen_doc:
-                seen_doc.add(url)
-                docs.append({"label": label, "url": url, "kind": kind})
-
-        text_url = bill_text_url(b, st)
-        add_doc("Bill text", text_url, "text")
-        add_doc("Bill status page", (
-            "https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"
-            f"?lsr={b.get('lsr_num','')}&sy={b.get('lsr_year','')}"
-            f"&txtsessionyear={b.get('lsr_year','')}"
-            f"&txtbillnumber={bid.lower()}&sortoption=billnumber"), "status")
-        add_doc("Docket", (
-            "https://gc.nh.gov/bill_status/legacy/bs2016/bill_docket.aspx"
-            f"?lsr={b.get('lsr_num','')}&sy={b.get('lsr_year','')}"
-            f"&txtsessionyear={b.get('lsr_year','')}"
-            f"&txtbillnumber={bid.lower()}&sortoption=billnumber"), "docket")
-        # The journals and calendars the docket itself cites. These are the
-        # official record of the individual actions, which is a stronger thing
-        # to link than a summary of them.
-        # One entry per volume, naming every page of it this bill is on.
-        # add_doc dedupes on the URL, and a volume has one URL however many
-        # pages are cited -- so listing them per event kept whichever page came
-        # first and dropped the rest without a word. 565 of the 7,013 volumes
-        # cited on this site carry a bill on more than one page; HB686 is on
-        # HJ 7 at both 143 and 144, and the list named only 143.
-        vols = {}
-        for e in (narr or {}).get("events", []):
-            if e.get("cancelled"):
-                continue
-            c = _cite(e, sources, (e.get("date") or "")[:4])
-            if not c.get("cite_url"):
-                continue
-            key = (e.get("cite") or "").strip()
-            v = vols.setdefault(key, {"url": c["cite_url"], "pages": []})
-            pg = (e.get("cite_page") or "").strip()
-            if pg and pg not in v["pages"]:
-                v["pages"].append(pg)
-        for key, v in vols.items():
-            pages = sorted(v["pages"], key=lambda x: int(x))
-            label = key + ("" if not pages else
-                           f", page {pages[0]}" if len(pages) == 1 else
-                           ", pages " + ", ".join(pages[:-1]) + " and " + pages[-1])
-            add_doc(label, v["url"], "record")
-        # The calendar a committee report was printed in.
-        # committee_reports() has already turned each report's calendar into
-        # a key and a URL, so this cites what the report itself is citing
-        # rather than parsing "House Calendar 51, 2025" a second time.
-        for r in rep_written:
-            add_doc(f"{r.get('source') or r.get('cite')}, committee report",
-                    r.get("cite_url", ""), "report")
-        for r in rep_docket:
-            if r.get("cite_url"):
-                add_doc(f"{r['cite']}, committee report", r["cite_url"], "report")
+        docs, text_url = bill_documents(b, bid, st, narr, sources,
+                                        rep_written, rep_docket)
 
         bill_amds = bill_amendments(narr, amend_texts)
         btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid))
