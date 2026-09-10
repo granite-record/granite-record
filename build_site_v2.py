@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.53
+# GRANITE_VERSION: 2026-09-05.54
 """
 Generate the faceted site from real General Court data.
 
@@ -1212,6 +1212,69 @@ def vote_date(s):
         return (0, 0, 0)
 
 
+def write_rollcall_index(out, rollcalls, votes_by_member):
+    """One shared file describing all 1,504 roll calls.
+
+    A legislator's page listed 1,081 rows of "HB2026 / Veto Override / Yea":
+    no plain English for the question, no outcome, and no way to see that a
+    member had broken with their own party. Everything needed to answer that
+    is already built -- rollcalls.json has the tallies and the plain-English
+    question, and the party split falls out of the member votes themselves.
+
+    It is one file rather than a copy inside each of the 406 member files
+    because the same roll calls describe all of them: repeated, it would add
+    something over a hundred megabytes to the site; shared, it is fetched
+    once, when a reader opens the Votes tab, and serves every member page
+    after that. The bill's title is not in it at all -- the page already has
+    the term's bill index loaded and can look the title up there.
+    """
+    ix = {}
+    for term_bills in rollcalls.values():
+        for rows in term_bills.values():
+            for r in rows:
+                # The same key main() builds votes_by_bill with. A vote
+                # sequence number restarts each session, so the year and the
+                # body are both part of naming one.
+                key = f'{r.get("year")}-{r.get("body")}-{r.get("number")}'
+                ix[key] = {
+                    # The plain-English gloss, where the parser could make
+                    # one. "OTPA" is the record's word and means nothing to
+                    # anyone who has not read the manual; "pass the bill with
+                    # changes" is the same fact in language a reader has.
+                    "q": (r.get("question_plain") or "").strip(),
+                    # The tallies as the source document gives them, not as
+                    # summed from the member rows: the clerk's count is the
+                    # count, and where the two disagree the clerk wins.
+                    "y": r.get("yeas"), "n": r.get("nays"),
+                    "p": 1 if r.get("passed") else 0,
+                    "pr": 1 if r.get("procedural") else 0,
+                }
+                if r.get("threshold_note"):
+                    ix[key]["tn"] = r["threshold_note"]
+
+    # HOW EACH PARTY VOTED, so a member's page can say when they broke with
+    # their own. Yea and Nay only: a member not voting has not taken a side,
+    # and counting an excused absence as agreement with anybody would be an
+    # invention.
+    split = defaultdict(lambda: defaultdict(lambda: [0, 0]))
+    for rows in votes_by_member.values():
+        for v in rows:
+            key = f'{v["year"]}-{v["body"]}-{v["vote_number"]}'
+            party = (v.get("party") or "").strip()[:1].upper()
+            side = (v.get("vote") or "").strip().lower()
+            if party and side in ("yea", "nay"):
+                split[key][party][0 if side == "yea" else 1] += 1
+    for key, parties in split.items():
+        if key in ix:
+            ix[key]["s"] = {p: c for p, c in sorted(parties.items()) if any(c)}
+
+    f = out / "rollcalls_index.json"
+    f.write_text(json.dumps(ix, separators=(",", ":"), sort_keys=True),
+                 encoding="utf-8")
+    print(f"{len(ix):,} roll calls -> {f.name} "
+          f"({f.stat().st_size / 1024:,.0f} KB, read once per reader)")
+
+
 def build_legislators(out, legs, votes_by_member, towns, unnamed,
                       sponsored=None, bill_year=None):
     """One JSON per member, plus the index and the town map.
@@ -1258,8 +1321,13 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
             # the page had to guess the year from the bill number, and a
             # number that exists in two terms was resolved to whichever came
             # first in the index.
+            # k names the roll call this vote was cast in, in the
+            # shape main() already keys them by. It is what lets the page
+            # look up what the vote decided without all 406 member files
+            # carrying their own copy of that.
             "votes": [{"d": v["date"], "b": v["bill"], "q": v["question"],
                        "v": v["vote"],
+                       "k": (f'{v["year"]}-{v["body"]}-{v["vote_number"]}'),
                        "y": (bill_year or {}).get(
                            (P.term_of(v.get("year", "")), v["bill"]), "")}
                       for v in mv],
@@ -2554,6 +2622,7 @@ def main():
         votes_by_member[v["member_id"]].append(v)
     print(f"{len(bills):,} bills, {len(legs):,} legislators, "
           f"{sum(len(x) for x in votes_by_member.values()):,} member votes")
+    write_rollcall_index(out, rollcalls, votes_by_member)
 
     # The aligner writes work/<videoid>/segments.json; an earlier layout used
     # segments/<videoid>.json. Accept either so the site picks them up wherever

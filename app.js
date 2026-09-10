@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.43
+// GRANITE_VERSION: 2026-09-07.45
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1808,8 +1808,72 @@ function renderMemberBills(m, prime){
     counted as one here.`);
 }
 
-const memberVotes=m=>(m.votes||[])
-  .filter(x=>!pageTerm()||!x.y||termOfYear(x.y)===pageTerm());
+// THE TERM A VOTE BELONGS TO IS THE ONE IT WAS CAST IN. This read the
+// bill's FILING year, which about three votes in every hundred do not have
+// -- a call of the roll or a rules suspension is recorded against no bill --
+// and a row with no year passed every term's filter. So a procedural vote
+// taken in August 2026 was listed among the same member's 2023-2024 votes,
+// and counted in that term's total. The roll call's own year is the first
+// field of its key. Checked across 55,522 votes: no vote's roll call year
+// and bill year fall in different terms, so nothing else moves.
+//
+// A row with neither is still shown rather than silently dropped.
+const voteYear=x=>x.y||String(x.k||"").split("-")[0];
+const memberVotes=m=>(m.votes||[]).filter(x=>{
+  const y=voteYear(x);
+  return !pageTerm()||!y||termOfYear(y)===pageTerm();});
+
+// WHAT THE VOTE DECIDED, not only how they voted. This tab listed 1,081 rows
+// of "HB2026 / Veto Override / Yea" on one member's page: the record's own
+// abbreviations, no outcome, and no way to see when somebody had broken with
+// their own party. All three answers are in one shared file, fetched the
+// first time this tab is drawn -- the same 1,504 roll calls describe all 406
+// members, so a copy inside each member's own file would add over a hundred
+// megabytes to the site for facts that are identical in every copy.
+//
+// The bill's TITLE is not in that file: this page already has the term's bill
+// index loaded, because the sponsored tabs are drawn from it, so the title is
+// looked up there rather than shipped twice.
+let RCX=null, RCX_ERR="";
+function needRollcalls(){
+  if(RCX)return;
+  RCX={};                     // claimed, so a redraw does not fetch it twice
+  fetch(DATA("rollcalls_index.json"))
+    .then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status)))
+    .then(j=>{RCX=j;renderPage();})
+    .catch(e=>{RCX_ERR=e.message||String(e);renderPage();});
+}
+
+// Which way a party went on one roll call, where it went a way at all. Five
+// members is the floor: a party of two has no majority worth naming, and an
+// even split has no side. Both come back blank rather than as a coin toss,
+// and only Yea and Nay are counted -- a member who did not vote did not take
+// a side, and counting an absence as agreement would be an invention.
+const PARTY_FLOOR=5;
+function partySide(rc,code){
+  const c=rc&&rc.s&&rc.s[code];
+  if(!c)return "";
+  const yea=c[0]||0, nay=c[1]||0;
+  if(yea+nay<PARTY_FLOOR||yea===nay)return "";
+  return yea>nay?"Yea":"Nay";
+}
+
+// Whether this member took the side most of their own party took. It is a
+// fact about one vote, and the count of them below is a count -- neither is
+// turned into a percentage, a rating or a rank. Breaking with your party is
+// not a virtue or a failing here; it is a thing that happened, and a reader
+// who wants to know how often can see the number and the denominator.
+function partyMark(m,x,rc){
+  const code=String(m.party_code||m.party||"").toUpperCase().slice(0,1);
+  if(code==="X"||!PARTY_NAME[code])return null;
+  const side=partySide(rc,code), mine=String(x.v||"");
+  if(!side||(mine!=="Yea"&&mine!=="Nay"))return null;
+  return {agreed:mine===side, code, word:PARTY_NAME[code]+"s"};
+}
+
+// How many are drawn before the reader asks for more. The old table stopped
+// dead at 600 with a line saying so and no way to see the 481 after it.
+const VOTES_SHOWN=200;
 
 function renderMemberVotes(m){
   const v=memberVotes(m);
@@ -1818,33 +1882,100 @@ function renderMemberVotes(m){
     ${esc(t)} term. Voice and division votes leave no record of individual
     members, so a member can have taken part in many votes and appear in none
     of them.</p>`;
-  const q=(PAGE.vfilter||"").toLowerCase();
-  const rows=v.filter(x=>!q||String(x.v||"").toLowerCase()===q);
+  needRollcalls();
+
+  // Resolved once per row: what the roll call decided, the bill's title from
+  // the index this page already holds, and where the member stood in their
+  // own party.
+  const all=v.map(x=>{
+    const rc=(RCX||{})[x.k]||null;
+    return {x, rc, mark:partyMark(m,x,rc),
+            b:(x.b&&x.y)?idxRow({id:x.b,year:x.y,term:termOfYear(x.y)}):null};
+  });
+
+  const q=(PAGE.vfilter||"").toLowerCase(), pf=PAGE.vparty||"";
+  const rows=all.filter(r=>(!q||String(r.x.v||"").toLowerCase()===q)
+    &&(!pf||(r.mark&&(pf==="with")===r.mark.agreed)));
   const tally={};
   v.forEach(x=>{tally[x.v]=(tally[x.v]||0)+1;});
+
+  // The denominator is the roll calls where their party actually took a side,
+  // not every roll call: on the rest there was nothing to break with.
+  const marked=all.filter(r=>r.mark);
+  const broke=marked.filter(r=>!r.mark.agreed).length;
+  const pname=PARTY_NAME[String(m.party_code||m.party||"")
+    .toUpperCase().slice(0,1)]||"";
+
+  const cap=PAGE.vshow||VOTES_SHOWN;
+  const shown=rows.slice(0,cap);
+  const left=rows.length-shown.length;
+
   return `<div class="bfilt"><label>Vote
       <select data-pf="vfilter"><option value="">Any</option>
       ${Object.keys(tally).sort().map(k=>`<option value="${esc(k.toLowerCase())}"${
         q===k.toLowerCase()?" selected":""}>${esc(k)} (${tally[k]})</option>`).join("")}
-      </select></label></div>
+      </select></label>${marked.length?`<label>Their party
+      <select data-pf="vparty"><option value="">Any</option>
+        <option value="with"${pf==="with"?" selected":""}>Voted with ${
+          esc(pname)}s (${(marked.length-broke).toLocaleString()})</option>
+        <option value="against"${pf==="against"?" selected":""}>Voted against ${
+          esc(pname)}s (${broke.toLocaleString()})</option>
+      </select></label>`:""}</div>
     <p class="src">${rows.length.toLocaleString()} of ${v.length.toLocaleString()}
       recorded votes in ${esc(t)}, newest first. Every roll call this member is
-      recorded in, as it was cast and on what. Nothing here is rated or scored.</p>
-    <table class="votes"><thead><tr><th>Date</th><th>Bill</th><th>Question</th>
-      <th>Vote</th></tr></thead><tbody>${rows.slice(0,600).map(x=>`<tr>
-      <td class="d">${esc(x.d||"")}</td>
-      <td class="b">${x.b&&x.y
-        ? `<a href="bill/${esc(String(x.y))}/${esc(String(x.b).toLowerCase())
-          }.html">${esc(x.b)}</a>`
-        : x.b ? esc(x.b)
-        // A procedural vote -- a call of the roll, a rules suspension -- is
-        // recorded against no bill. It used to render an empty cell wrapped
-        // in a link to /bill//.html.
-        : `<span class="none">no bill</span>`}</td>
-      <td>${esc(x.q||"")}</td><td class="v">${esc(x.v||"")}</td></tr>`).join("")}
+      recorded in, as it was cast and on what. Nothing here is rated or
+      scored.${marked.length?` On the ${marked.length.toLocaleString()} where
+      ${esc(pname)}s took a side, this member took the other one
+      ${broke.toLocaleString()} time${broke===1?"":"s"}.`:""}</p>
+    ${RCX_ERR?`<p class="note">What each vote decided could not be loaded, so
+      the outcomes and the party comparison are missing from the rows below.
+      The votes themselves are the member's own record and are unaffected.
+      <code>${esc(RCX_ERR)}</code></p>`:""}
+    <table class="votes vfull"><thead><tr><th>Date</th>
+      <th>What the vote was on</th><th>Their vote</th><th>Outcome</th>
+      </tr></thead><tbody>${shown.map(r=>voteRow(r)).join("")}
       </tbody></table>
-    ${rows.length>600?`<p class="src">Showing the most recent 600 of ${
-      rows.length.toLocaleString()}.</p>`:""}`;
+    ${left?`<p class="src"><button type="button" class="link" data-vmore="1"
+      >Show ${Math.min(VOTES_SHOWN,left).toLocaleString()} more</button> &mdash;
+      ${left.toLocaleString()} of ${rows.length.toLocaleString()} not yet
+      shown.</p>`:""}`;
+}
+
+// One row. data-l carries the column's name so the same markup can stack into
+// labelled blocks on a phone instead of scrolling sideways, which on a civic
+// site reads as "this page was not meant for you".
+function voteRow(r){
+  const x=r.x, rc=r.rc, b=r.b;
+  // The record's own word for the question and the plain-English one are both
+  // kept: "pass the bill with changes" is what a reader needs, and "OTPA" is
+  // what they will see on every other page of the General Court's own site.
+  const plain=(rc&&rc.q)||"", raw=x.q||"";
+  const question=plain
+    ? `${esc(plain)}${raw&&raw.toLowerCase()!==plain.toLowerCase()
+        ?` <span class="dim">(${esc(raw)})</span>`:""}`
+    : esc(raw);
+  const tallies=rc&&rc.y!=null&&rc.n!=null
+    ? ` <i>${rc.y}–${rc.n}</i>`:"";
+  return `<tr>
+    <td class="d" data-l="Date">${esc(x.d||"")}</td>
+    <td class="b" data-l="On">${x.b&&x.y
+      ? `<a href="bill/${esc(String(x.y))}/${esc(String(x.b).toLowerCase())
+        }.html">${esc((b&&b.n)||x.b)}</a>`
+      : x.b ? esc(x.b)
+      // A procedural vote -- a call of the roll, a rules suspension -- is
+      // recorded against no bill. It used to render an empty cell wrapped in
+      // a link to /bill//.html.
+      : `<span class="none">no bill</span>`}${
+      b&&b.title?`<span class="vt">${esc(b.title)}</span>`:""}
+      <span class="vq">${question}</span></td>
+    <td class="v" data-l="Their vote"><span class="vcast v-${
+      esc(String(x.v||"").slice(0,3).toLowerCase())}">${esc(x.v||"")}</span>${
+      r.mark?`<i class="pm${r.mark.agreed?"":" broke"}">${
+        r.mark.agreed?"with":"against"} ${esc(r.mark.word)}</i>`:""}</td>
+    <td class="o" data-l="Outcome">${rc
+      ? `<span class="${rc.p?"pass":"fail"}">${rc.p?"Adopted":"Failed"}</span>${
+          tallies}${rc.tn?`<i class="thr">${esc(rc.tn)}</i>`:""}`
+      : `<span class="dim">&mdash;</span>`}</td></tr>`;
 }
 
 function renderMember(m){
@@ -2015,6 +2146,11 @@ document.addEventListener("click",e=>{
   if(!PAGE)return;
   const t=e.target.closest("[data-pt]");
   if(t){PAGE_TAB=+t.dataset.pt;renderPage();return;}
+  // Not data-more: that one belongs to the bill list, is read by the
+  // handler above this in the file, and calls render(), which would draw the
+  // search over the member's record.
+  const vm=e.target.closest("[data-vmore]");
+  if(vm){PAGE.vshow=(PAGE.vshow||VOTES_SHOWN)+VOTES_SHOWN;renderPage();return;}
   const ct=e.target.closest(".card .tab[data-t]");
   if(ct){openTab[ct.closest(".card").dataset.id]=ct.dataset.t;renderPage();return;}
   const head=e.target.closest(".chead");
@@ -2036,7 +2172,16 @@ document.addEventListener("change",e=>{
   // The term also moves the GLOBAL term, because dkey and yearOf resolve a
   // bill number within it: a card opened on a 2023-2024 page would otherwise
   // have fetched the 2025-2026 bill of that number and shown its history.
-  if(f==="term"){PAGE.status="";term=PAGE.term;}
+  // THE TERM'S BILLS, FETCHED. idxRow looks a bill up in IDX, and IDX only
+  // ever held the term the site opened on -- so choosing an earlier term
+  // here left every bill on the page with no title and its number unspaced,
+  // on the sponsored tabs as well as this one. Nothing asked for that term's
+  // index because nothing on a record page ever had.
+  if(f==="term"){PAGE.status="";term=PAGE.term;
+    ensureTerm(PAGE.term).then(renderPage);}
+  // A narrower filter over a list already expanded to 800 rows left the
+  // reader at the bottom of a list of 40.
+  if(f==="vfilter"||f==="vparty"||f==="term")PAGE.vshow=0;
   renderPage();
 });
 
@@ -2071,7 +2216,8 @@ function recordTerms(kind,d){
 }
 
 function openPage(kind,ref){
-  PAGE={kind,data:null,terms:[],term:"",status:"",vfilter:""};
+  PAGE={kind,data:null,terms:[],term:"",status:"",vfilter:"",
+        vparty:"",vshow:0};
   // The search chrome belongs to the search. Left up, the facet panel offered
   // filters for a list that is not on screen and the counter read "2,234 of
   // 2,234 bills" beside one member's name.
@@ -2095,6 +2241,9 @@ function openPage(kind,ref){
     PAGE.term=PAGE.terms[0]||"";
     if(PAGE.term)term=PAGE.term;
     renderPage();
+    // And on the way in: a member whose newest term is not the site's opens
+    // on their own, whose index nothing has asked for either.
+    if(PAGE.term)ensureTerm(PAGE.term).then(renderPage);
   })
     .catch(e=>{if(el)el.innerHTML=`<div class="empty"><b>This page's record did
       not load.</b><br><br><code>${esc(e.message||e)}</code><br><br>

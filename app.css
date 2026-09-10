@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.35 */
+/* GRANITE_VERSION: 2026-09-07.38 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -895,3 +895,74 @@ a.ccard:hover{border-color:var(--rule-2);background:var(--surface)}
 .vamds{list-style:none;padding:0;margin:8px 0 0}
 .vamds li{margin:0 0 10px}
 .vamds .dim{color:var(--ink-2);font-size:12px;margin-left:6px}
+
+
+/* A MEMBER'S VOTES, WITH WHAT EACH ONE DECIDED. The middle column carries the
+   bill, its title and the question in plain English stacked on top of each
+   other, so a row reads as a sentence about one vote rather than as four
+   disconnected cells -- which is what the four thin columns before it were.
+   The measure is capped there because a 255-character bill title across a
+   1,100px pane is a line nobody's eye can return from. */
+/* THE COLUMNS, DECIDED HERE RATHER THAN BY THE LONGEST CELL. Left to the
+   browser, the bill's column took 529px and the title inside it wrapped at
+   46ch -- 240px of empty box beside every title, which is the same "the text
+   does not fill the box" this file has been fixing all week. Half the row
+   goes to what the vote was on, because that is the half a reader is here
+   for; the rest is a date, a word and a tally. */
+.votes.vfull{table-layout:fixed}
+.vfull th:nth-child(1){width:9%}
+.vfull th:nth-child(2){width:49%}
+.vfull th:nth-child(3){width:18%}
+.vfull th:nth-child(4){width:24%}
+.votes .vt{display:block;color:var(--ink);font-size:14px;line-height:1.35;
+  margin-top:3px}
+.votes .vq{display:block;color:var(--ink-2);font-size:13px;margin-top:4px}
+.votes .vq .dim{opacity:.8}
+/* Not nowrap: "Not Voting/Not Excused" is 22 characters and ran out of its
+   own column. */
+.votes .vcast{font-weight:600}
+.votes .v-yea{color:var(--yes)}
+.votes .v-nay{color:var(--no)}
+.votes .none{color:var(--ink-2);font-style:italic}
+/* WITH OR AGAINST THEIR OWN PARTY, in ink and not in colour. Green for
+   agreeing with your party and red for not would be this page rating a
+   member, which the site does not do anywhere else and will not start doing
+   here. Both are the same grey; the one worth noticing is the heavier. */
+.votes .pm{display:block;font-style:normal;font-size:12px;color:var(--ink-2);
+  margin-top:4px}
+.votes .pm.broke{color:var(--ink);font-weight:600}
+.votes td.o .pass,.votes td.o .fail,.votes td.o i{white-space:nowrap}
+.votes td.o .pass{color:var(--yes);font-weight:600}
+.votes td.o .fail{color:var(--no);font-weight:600}
+.votes td.o i{font-style:normal;color:var(--ink-2)}
+.votes td.o .thr{display:block;font-size:12px;margin-top:3px}
+
+@media (max-width:720px){
+  /* NOT SIDEWAYS. Every other table on the site is allowed to scroll
+     horizontally on a phone; four columns of this one, each carrying a
+     paragraph, would need about 700px of it. This file's rule is that
+     nothing reflows into horizontal scrolling, so the row becomes a block
+     and each cell is labelled from the data-l the renderer already writes.
+     The date and the bill label themselves. */
+  table.vfull{display:block;overflow-x:visible}
+  .vfull thead{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+  .vfull tbody,.vfull tr,.vfull td{display:block;width:auto}
+  .vfull tr{border-bottom:1px solid var(--rule);padding:12px 0}
+  /* table.vfull, not .vfull: the rule this is turning off is written
+     table.votes td, and a single class does not outrank an element and a
+     class. It lost, so every cell kept its own bottom rule and one vote read
+     as four stacked rows with four lines through it. */
+  table.vfull td{border:none;padding:2px 0}
+  .vfull td[data-l]::before{content:attr(data-l);display:block;font-size:11px;
+    letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);
+    margin-bottom:3px}
+  .vfull td.d::before,.vfull td.b::before{display:none}
+  .vfull td.d{font-weight:600;color:var(--ink-2);font-size:13px}
+  .vfull td.b{max-width:none}
+  /* The vote and the outcome are two short facts and belong on one line.
+     Given their full width they took a line each, which put four lines
+     between one vote and the next. */
+  .vfull td.v,.vfull td.o{display:inline-block;width:47%;vertical-align:top;
+    margin:10px 0 0}
+}
