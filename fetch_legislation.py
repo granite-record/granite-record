@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.10
+# GRANITE_VERSION: 2026-09-10.11
 """
 The bill itself, from an address that can simply be constructed.
 
@@ -131,6 +131,12 @@ TEXT = ("https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
 # gone, and no other address for a 1996 bill's text is known. Both holes,
 # 1996 and 2016, sit exactly on a change of the tool that generated these
 # pages.
+# What the application says instead of 404ing. Both were met rather than
+# imagined: the first by opening a wrong id by hand on 10 September, the
+# second by the scrape that minted txtFormat=pdf links for 4,230 bills and
+# got this back from every one of them.
+ERROR_PAGE = re.compile(
+    r"is either negative or above rows count|is neither a DataColumn", re.I)
 STATIC_404 = {1996, 2016, 2022, 2023, 2024, 2025, 2026}
 ID_AS_STORED = {2016, 2022, 2025, 2026}
 ID_PLUS_YEAR = {2023, 2024}
@@ -251,6 +257,13 @@ def fetch(year, bid, delay, rec=None):
         return "missing"
     except (urllib.error.URLError, TimeoutError):
         return "missing"
+    # An error is not a document, and this one arrives wearing HTTP 200.
+    # Saved, it would sit in legislation/ looking like a bill and be counted
+    # as one -- a page with no sponsor, no committee and no title, which is
+    # indistinguishable from the housekeeping resolutions that genuinely have
+    # none. Checked before the write so it never reaches the disk.
+    if ERROR_PAGE.search(decode(body)[:4000]):
+        return "error page"
     # The bytes as served. Decoding is decode()'s job at parse time, so a
     # wrong guess about the encoding is corrected by re-parsing, not by
     # asking the General Court for the page again.
