@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.57
+# GRANITE_VERSION: 2026-09-05.58
 """
 Generate the faceted site from real General Court data.
 
@@ -1917,6 +1917,48 @@ def passage(stages, kind, status="", bill=""):
     return origin + "".join(out)
 
 
+def archive_coverage(bills, narratives, sponsors, reports, rollcalls,
+                     procs, current):
+    """What has actually been fetched for each archived term.
+
+    ONE SENTENCE DESCRIBED 1989 AND 2023 IDENTICALLY. The page carried a
+    single paragraph gated on one boolean, on 31,449 of 33,683 bill pages,
+    and it was wrong in both directions.
+
+    It UNDERSTATED the recent archived terms: 2017-2018, 2019-2020 and
+    2023-2024 have full dockets and generated histories, and the "View docket"
+    block contradicting the paragraph renders seven lines below it.
+
+    It OVERSTATED the older ones. "The recorded votes come from the General
+    Court's database" is false for fifteen terms -- named roll calls exist
+    only for 2023-2024 and the current term. "The committee it went to and the
+    date of its hearing" is false for the five terms 1989-1998, which have no
+    committee at all.
+
+    Measured per TERM, not per bill. 466 bills of 2023-2024 have no committee
+    report and 131 have no sponsors; deriving this from the record in hand
+    would have each of them announce that the whole term lacks them. Coverage
+    is a property of what was fetched.
+    """
+    cov = {}
+    for term in bills:
+        if term == current:
+            continue
+        cov[term] = {
+            "docket": bool((narratives or {}).get(term)),
+            "sponsors": bool((sponsors or {}).get(term)),
+            "reports": bool((reports or {}).get(term)),
+            "votes": bool((rollcalls or {}).get(term)),
+            # A recording linked to a bill, not merely a proceeding on record.
+            "video": any(p.get("video_id")
+                         for (t_, _b), ps in (procs or {}).items()
+                         if t_ == term for p in ps),
+            "committee": any(b.get("house_committee") or b.get("senate_committee")
+                             for b in bills[term].values()),
+        }
+    return cov
+
+
 def bill_note(notes, term, bid):
     """The standing note for this bill, if it has one.
 
@@ -1983,7 +2025,7 @@ def check_notes(notes, bills):
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
-                votes_by_bill, vetoes=None, notes=None):
+                votes_by_bill, vetoes=None, notes=None, coverage=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -2195,7 +2237,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # search rather than from a session's own files. The page says
             # so, because an empty summary reads as a broken page and this
             # is a stated limit rather than a fault.
-            **({"archived": True} if b.get("archived") else {}),
+            **({"archived": (coverage or {}).get(term) or True}
+               if b.get("archived") else {}),
             "status_stated": bool(told),
             # HSGL, one character each: how far the bill got and where it
             # stopped. Four characters in the index rather than four fields,
@@ -2443,7 +2486,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                     f"Senate: {st['senate_status']}" if st.get("senate_status") else "",
                 ] if x) or next_step(narr, b, prefix)) if told
                        else next_step(narr, b, prefix),
-            **({"archived": True} if b.get("archived") else {}),
+            **({"archived": (coverage or {}).get(term) or True}
+               if b.get("archived") else {}),
             "status_source": ("General Court docket" if settled
                               else "General Court bill status page" if told
                               else "derived from the docket"),
@@ -2808,7 +2852,11 @@ def main():
                                testimony_db,
                                procs, floor, segs, marks, sources,
                                legs, leg_by_sort, leg_by_name,
-                               votes_by_bill, vetoes=vetoes, notes=notes)
+                               votes_by_bill, vetoes=vetoes, notes=notes,
+                               coverage=archive_coverage(
+                                   bills, narratives, sponsors, reports,
+                                   rollcalls, procs,
+                                   max(bills) if bills else ""))
     (out / "index.json").write_text(json.dumps(index), encoding="utf-8")
 
     # ONE TERM AT A TIME, BECAUSE THAT IS ALL THE PAGE EVER SHOWS. The search

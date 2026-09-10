@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.88
+# GRANITE_VERSION: 2026-09-04.89
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -69,6 +69,63 @@ def imp(name):
 
 
 # =========================================================== code: the files ==
+
+@check("status", "an archived page says what its own term actually has")
+def _archived_coverage():
+    """One paragraph described 1989 and 2023 identically, on 31,449 pages.
+
+    It was gated on a single boolean, and it was wrong in both directions: it
+    understated the terms that now have full dockets, and it asserted for
+    fifteen terms that "the recorded votes come from the General Court's
+    database" when named roll calls exist for two.
+
+    d.archived is the term's coverage object now. It stays truthy so nothing
+    that merely tests it had to change -- which is convenient and is exactly
+    why this check exists. A build that reverted to `True` would render the
+    old single paragraph again on every archived page and pass every other
+    check in this file, because a bare True is a perfectly good truthy value.
+
+    Checked on the built site rather than on a fixture: the fixture has one
+    term and this is a claim about eighteen.
+    """
+    site = Path("site")
+    if not (site / "bill").is_dir():
+        return "skip", "no built site here"
+    try:
+        import site_read as SR
+    except ImportError:
+        return "skip", "site_read.py will not import"
+    KEYS = {"docket", "sponsors", "reports", "votes", "video", "committee"}
+    bare, objects, terms = 0, 0, {}
+    seen = 0
+    for year, bid, rec in SR.records(site):
+        a = rec.get("archived")
+        if a is None:
+            continue
+        seen += 1
+        if a is True:
+            bare += 1
+        elif isinstance(a, dict):
+            objects += 1
+            terms.setdefault(year, {k for k in a if a.get(k)})
+            assert set(a) <= KEYS, (
+                f"/bill/{year}/{bid} has an archived key this does not know: "
+                + ", ".join(sorted(set(a) - KEYS)))
+    if not seen:
+        return "skip", "no archived pages in the built site"
+    assert not bare, (
+        f"{bare:,} archived pages of {seen:,} carry `archived: true` rather "
+        "than their term's coverage. A bare true is truthy, so the page "
+        "renders the old one-size paragraph and nothing else complains. "
+        "Rebuild with the current build_site_v2.")
+    # Coverage only ever grows as fetches land, so a term that has a docket
+    # and no committee is a sign the flags were computed from the wrong slice.
+    odd = [y for y, ks in terms.items() if "docket" in ks and "committee" not in ks]
+    assert not odd, ("these years claim a docket but no committee, which no "
+                     "real term does: " + ", ".join(sorted(odd)))
+    return "ok", (f"{objects:,} archived pages across {len(terms)} years, each "
+                  "carrying its own term's coverage")
+
 
 @check("status", "an upcoming hearing names a bill, not a key")
 def _upcoming_shape():

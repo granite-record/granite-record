@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.46
+// GRANITE_VERSION: 2026-09-07.47
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -762,6 +762,66 @@ function billNote(d){
       not say.</p></section>`;
 }
 
+// WHAT AN ARCHIVED TERM ACTUALLY HAS, which is not the same in all eighteen
+// of them. This was one paragraph on one boolean, drawn on 31,449 of the
+// site's 33,683 bill pages, and it was wrong in both directions at once.
+//
+// It understated the recent terms: 2017-2018, 2019-2020 and 2023-2024 have
+// full dockets, and the "View docket" block that contradicts the paragraph
+// renders seven lines below it in this same function.
+//
+// It overstated the older ones. "The recorded votes come from the General
+// Court's database" was false for fifteen terms; named roll calls exist only
+// for 2023-2024 and the current term. "The committee it went to" was false
+// for the five terms 1989-1998, which have none.
+//
+// d.archived is now the term's coverage object rather than true, computed at
+// build time from what was fetched. It stays truthy, so nothing that merely
+// tests it had to change. The wording is derived from the flags rather than
+// from a list of terms, because the fetches are still landing -- 2021-2022's
+// docket is being pulled as this is written -- and a hard-coded list would be
+// wrong again by the afternoon.
+//
+// NEVER "DOES NOT EXIST". These are records not yet fetched. The General
+// Court has them; this site does not have them yet, and saying otherwise
+// would be inventing a fact about somebody else's archive.
+function archivedNote(d){
+  const a=d&&d.archived;
+  if(!a)return "";
+  const c=(typeof a==="object")?a:{};
+  const P=s=>`<p class="note" style="margin:10px 0 0">${s} The bill's own
+    record at the General Court is linked above.</p>`;
+
+  if(!c.docket&&!c.committee)
+    return P(`This term is archived, and thinly. Its bills come from the
+      General Court's own search, which for a session this old gives the title
+      and the status in each chamber and nothing else: no docket, no sponsors,
+      no committee, no reports and no votes have been fetched for it yet.`);
+
+  if(!c.docket)
+    return P(`This term is archived. Its bills come from the General Court's
+      own search &#8212; the title, the status in each chamber and the
+      committee it went to. The docket, the sponsors, the committee reports
+      and the recorded votes are a separate request per bill and have not been
+      fetched yet.`);
+
+  // Has a docket. What is missing beyond it is what the reader needs told.
+  const gaps=[];
+  if(!c.sponsors)gaps.push("the sponsors");
+  if(!c.reports)gaps.push("the written committee reports");
+  if(!c.votes)gaps.push("the roll calls naming individual members");
+  if(!c.video)gaps.push("a recording of any hearing");
+  if(!gaps.length)
+    return P(`This term is archived, but its record is close to complete: the
+      docket, the sponsors, the committee reports and the recorded votes are
+      all here. What a current term adds is the bill's own text, which is
+      linked rather than loaded.`);
+  return P(`This term is archived, and its docket is here: every action the
+    General Court recorded, and the committee's recommendation and the vote on
+    it. Not yet fetched for this term: ${gaps.join(", ").replace(/, ([^,]*)$/,
+    " and $1")}.`);
+}
+
 function renderSummary(b,d,rsa){
   const _an=billNote(d)+analysis(d,rsa);
   // The citation at the end of a docket line names the journal or calendar
@@ -783,13 +843,7 @@ ${d._error?`<div class="loaderr"><b>This bill's detail did not
            <p>${esc(st.text)}</p>${(st.notes||[]).map(n=>
              `<p class="note">${esc(n)}</p>`).join("")}</div>`).join("")}</div>`
       : (d.narrative?`<p class="story"><span class="stg">${esc(d.narrative)}</span></p>`:"")}
-    ${d.archived?`<p class="note" style="margin:10px 0 0">This is an archived
-      term. The General Court's own search gives every bill of it with its
-      title, its status in each chamber, the committee it went to and the date
-      of its hearing, and the recorded votes come from the General Court's
-      database &#8212; but the docket, the sponsors and the written committee
-      reports are one request per bill and are not loaded. The bill's own text
-      and its full record are linked above.</p>`:""}
+    ${archivedNote(d)}
     ${(d.events||[]).length?`<details class="docket"><summary><span class="caret"></span>View docket</summary>
       <p class="note">Every action the General Court recorded, in its own words
         and in the order it recorded them.</p>
