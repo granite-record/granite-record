@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.10
+# GRANITE_VERSION: 2026-09-05.11
 """
 Fetch captions for every recording that has none, busiest first.
 
@@ -36,6 +36,7 @@ import re
 import subprocess
 import sys
 import time
+import child
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -245,7 +246,7 @@ def _run(todo, a, tool, use_manifest, misses, t0, counts_of=None):
                             "-- this takes a while   ")
             _s.stdout.flush()
         try:
-            r = subprocess.run(cmd, capture_output=True, text=True,
+            r = child.run(cmd, capture_output=True, text=True,
                                timeout=a.timeout)
             good = r.returncode == 0 and has_captions(a.workdir, vid)
             why = "" if good else (

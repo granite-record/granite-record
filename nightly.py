@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 The nightly run. Fetch what changed, rebuild, check, publish -- or don't.
 
@@ -63,6 +63,7 @@ import subprocess
 import sys
 import urllib.request
 import time
+import child
 from datetime import datetime
 from pathlib import Path
 
@@ -90,7 +91,7 @@ def run(args, label):
     """
     say(f"\n--- {label} ---")
     t0 = time.time()
-    proc = subprocess.Popen([sys.executable, "-u"] + args,
+    proc = child.popen([sys.executable, "-u"] + args,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, bufsize=1)
     for ln in proc.stdout:
@@ -256,7 +257,7 @@ def main():
             return 0
 
         say("\n--- publish ---")
-        r = subprocess.run(["npx", "wrangler", "pages", "deploy", a.site,
+        r = child.run(["npx", "wrangler", "pages", "deploy", a.site,
                             f"--project-name={a.project}", "--commit-dirty=true"],
                            capture_output=True, text=True, shell=(sys.platform
                                                                   == "win32"))

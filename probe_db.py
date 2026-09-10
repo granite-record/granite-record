@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.10
+# GRANITE_VERSION: 2026-09-06.11
 """
 What is actually in the General Court's public database.
 
@@ -46,6 +46,7 @@ import argparse
 import json
 import subprocess
 import sys
+import child
 from pathlib import Path
 
 # From gc.nh.gov/downloads/ODBC and Data Table Structure.pdf, which publishes
@@ -348,7 +349,7 @@ def run_to_file(connstr, sql, path, timeout=1800, every=20000, label="",
     import os
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    proc = subprocess.Popen(
+    proc = child.popen(
         ["powershell", "-NoProfile", "-NonInteractive", "-Command", PS_STREAM],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
         env={**os.environ, "GR_CONNSTR": connstr, "GR_SQL": sql,

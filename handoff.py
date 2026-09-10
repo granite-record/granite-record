@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.5
+# GRANITE_VERSION: 2026-09-05.6
 """
 Write STATE.md from what is actually on disk.
 
@@ -27,6 +27,7 @@ import json
 import re
 import subprocess
 import sys
+import child
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -181,7 +182,7 @@ def section_checks(out):
     if not Path("preflight.py").exists():
         out.append("`preflight.py` is not here.\n")
         return
-    r = subprocess.run([sys.executable, "preflight.py", "--code"],
+    r = child.run([sys.executable, "preflight.py", "--code"],
                        capture_output=True, text=True)
     lines = [l for l in r.stdout.splitlines() if "passed," in l]
     # A preflight that crashed and one that printed in an unexpected format

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.93
+# GRANITE_VERSION: 2026-09-04.94
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -50,25 +50,20 @@ import traceback
 from collections import Counter
 from pathlib import Path
 
+import child
+
 CHECKS = []
 
 
 def _run(cmd, **kw):
     """subprocess.run, with the child's output read as UTF-8.
 
-    Every child here is Python or node. Python on Windows writes to a pipe
-    in the console code page -- an em dash is the single byte 0x97 -- while
-    this process, run with -X utf8, read the pipe as UTF-8. The reader
-    thread died on the first such byte, printed a traceback the summary
-    never counted, and the check that ran the child went on with nothing
-    for that stream. Seven reads failed that way on 10 September, under a
-    line that said 77 passed. PYTHONUTF8 makes the child write UTF-8;
-    errors="replace" means nothing a child can print will stop the read.
+    The reason is in child.py, which now holds this for the whole repository:
+    seven reads died here on 10 September under a line that said 77 passed,
+    and eight hours later the same defect took the pipeline down at step 3 of
+    21. This stays as a name because every check below calls it.
     """
-    env = dict(os.environ, PYTHONUTF8="1")
-    env.update(kw.pop("env", None) or {})
-    kw.pop("text", None)
-    return subprocess.run(cmd, env=env, encoding="utf-8", errors="replace", **kw)
+    return child.run(cmd, **kw)
 
 
 def check(group, name, needs=()):
@@ -2130,21 +2125,53 @@ def _site_fixture(root):
     assert r.returncode == 0, "fixture proceedings: " + (r.stderr or r.stdout)[-200:]
 
 
-@check("build", "every child process is read through _run")
-def _children_through_run():
-    """A raw subprocess.run(text=True) decodes in whatever the console
-    speaks, and a child that prints one em dash takes the whole stream with
-    it -- silently, as far as the pass/fail line is concerned."""
-    # Counted as calls in the syntax tree, not as text: the text of this
-    # file mentions subprocess.run in this docstring and in _run's, and a
-    # count of the words reported three where there is one call.
-    tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
-    raw = sum(1 for n in ast.walk(tree)
-              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
-              and n.func.attr == "run" and isinstance(n.func.value, ast.Name)
-              and n.func.value.id == "subprocess")
-    assert raw == 1, f"{raw} raw subprocess.run calls; every child goes through _run"
-    return "ok", "one raw call, inside _run"
+@check("files", "no child process is read in an unnamed encoding")
+def _child_encoding():
+    """text=True decodes in whatever the console happens to speak.
+
+    A Python child on Windows writes its pipe in the console code page,
+    where an em dash is the single byte 0x97, and a parent reading it as
+    UTF-8 loses the whole stream: the reader thread raises, dies, and hands
+    back None. This was found twice in one day -- silently in this file,
+    where seven checks ran children and got nothing under a line that said
+    77 passed, and loudly in build_all.py, where the pipeline stopped at
+    step 3 of 21 with an AttributeError three frames from the punctuation
+    that caused it.
+
+    So the rule is repository-wide and mechanical: a call that decodes a
+    child's output must say in what. child.run and child.popen do; anything
+    passing text=True without an encoding does not.
+    """
+    out = _run(["git", "ls-files", "*.py"], capture_output=True, timeout=60)
+    if out.returncode != 0:
+        return "skip", "not a git repository"
+    bad, n = [], 0
+    for f in out.stdout.split():
+        if f.startswith("obsolete/") or not Path(f).exists():
+            continue
+        try:
+            tree = ast.parse(Path(f).read_text(encoding="utf-8", errors="replace"))
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if not (isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and isinstance(node.func.value, ast.Name)
+                    and node.func.value.id == "subprocess"
+                    and node.func.attr in ("run", "Popen", "check_output",
+                                           "call", "check_call")):
+                continue
+            n += 1
+            kw = {k.arg for k in node.keywords if k.arg}
+            texty = any(k.arg in ("text", "universal_newlines")
+                        and getattr(k.value, "value", None) is True
+                        for k in node.keywords)
+            if texty and "encoding" not in kw:
+                bad.append(f"{f}:{node.lineno}")
+    assert not bad, ("these read a child's output without naming an "
+                     "encoding, so one em dash empties the stream: "
+                     + ", ".join(bad))
+    return "ok", f"{n} direct subprocess calls, every text one names its encoding"
 
 
 @check("build", "every builder runs end to end on a fixture site")

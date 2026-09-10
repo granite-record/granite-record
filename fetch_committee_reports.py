@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.22
+# GRANITE_VERSION: 2026-09-04.23
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -33,6 +33,7 @@ import time
 import urllib.parse
 import urllib.error
 import urllib.request
+import child
 from collections import defaultdict
 from pathlib import Path
 
@@ -169,7 +170,7 @@ def clean_pdf_text(t):
 
 def extract_text(pdf):
     if shutil.which("pdftotext"):
-        out = subprocess.run(["pdftotext", "-layout", str(pdf), "-"],
+        out = child.run(["pdftotext", "-layout", str(pdf), "-"],
                              capture_output=True, text=True)
         if out.returncode == 0 and out.stdout.strip():
             return out.stdout, "pdftotext -layout"

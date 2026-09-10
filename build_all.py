@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.13
+# GRANITE_VERSION: 2026-09-05.14
 """
 Run the whole pipeline in the right order.
 
@@ -26,6 +26,7 @@ import json
 import subprocess
 import sys
 import time
+import child
 from datetime import datetime
 from pathlib import Path
 
@@ -381,7 +382,7 @@ def main():
             continue
         print(f"[{i}/{len(steps)}] {s.name}", flush=True)
         st = time.time()
-        r = subprocess.run([sys.executable] + s.args, capture_output=True, text=True)
+        r = child.run([sys.executable] + s.args, capture_output=True, text=True)
         secs = round(time.time() - st, 1)
         if r.returncode == 0:
             tail = [l for l in r.stdout.strip().splitlines() if l.strip()][-3:]

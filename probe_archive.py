@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Work out which eras of the bill history archive are actually machine-readable.
 
@@ -32,6 +32,7 @@ import re
 import time
 import urllib.error
 import urllib.request
+import child
 from collections import defaultdict
 from pathlib import Path
 
@@ -63,7 +64,7 @@ def pdf_text(data):
     try:
         import shutil, subprocess
         if shutil.which("pdftotext"):
-            r = subprocess.run(["pdftotext", "-layout", str(tmp), "-"],
+            r = child.run(["pdftotext", "-layout", str(tmp), "-"],
                                capture_output=True, text=True)
             if r.returncode == 0:
                 return r.stdout, "pdftotext"

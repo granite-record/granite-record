@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.1
+# GRANITE_VERSION: 2026-09-04.2
 """
 Transcribe one hearing video and work out where each docketed bill sits in it.
 
@@ -37,6 +37,7 @@ import math
 import re
 import subprocess
 import sys
+import child
 from collections import defaultdict
 from pathlib import Path
 
@@ -135,7 +136,7 @@ def strong_count(bill):
 # ---------------------------------------------------------------- stages
 
 def run(cmd, **kw):
-    return subprocess.run(cmd, check=True, capture_output=True, text=True, **kw)
+    return child.run(cmd, check=True, capture_output=True, text=True, **kw)
 
 
 def fetch_audio(video_id, out):
@@ -154,7 +155,7 @@ def detect_silence(wav, out, min_len=45.0, thresh="-45dB"):
     if out.exists():
         return json.loads(out.read_text(encoding="utf-8"))
     print(f"  scanning for silences longer than {min_len:.0f}s...")
-    p = subprocess.run(
+    p = child.run(
         ["ffmpeg", "-i", str(wav), "-af",
          f"silencedetect=noise={thresh}:d={min_len}", "-f", "null", "-"],
         capture_output=True, text=True)
