@@ -160,3 +160,5 @@ secrets.json
 *.pem
 *.key
 !secrets.example.json
+
+legislation/
