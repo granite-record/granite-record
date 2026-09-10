@@ -58,8 +58,12 @@ former_members.json
 rollcalls.json
 bill_text.json
 amendments.json
-verification_manifest.csv
-verification_manifest.xlsx
+# One per term now: build_manifest.py writes verification_manifest.csv for
+# the current term and verification_manifest_<term>.csv for each archived
+# one, and build_proceedings.py reads them all. Named individually, the
+# per-term files were not matched and one was committed.
+verification_manifest*.csv
+verification_manifest*.xlsx
 proceedings.csv
 candidate_segments.json
 _captions_manifest.csv
