@@ -48,7 +48,7 @@ Python 3.14 and Node (the test suite loads the front end in node). Then:
 
 ```
 python3 inventory.py     # every script and the version it should be
-python3 preflight.py     # 74 checks; builds the whole site on a fixture
+python3 preflight.py     # 75 checks; builds the whole site on a fixture
 python3 handoff.py       # writes STATE.md with the current counts
 ```
 
@@ -73,7 +73,7 @@ python3 -m http.server 8787 --directory site
 
 ## How the code is arranged
 
-**`build_all.py` is the pipeline.** Twenty steps, each printing what it did and
+**`build_all.py` is the pipeline.** Twenty-one steps, each printing what it did and
 why it matters. `--local` skips the steps that need the network.
 
 **`proceedings.csv` is the one table.** One row per (bill, date, kind,
@@ -91,7 +91,7 @@ because they are the same code reading the same JSON.
 and `versions.json` says what each should be. `preflight` fails when they
 disagree, which has caught several half-applied edits.
 
-**Checks are the design record.** Most of the 74 in `preflight.py` exist
+**Checks are the design record.** Most of the 75 in `preflight.py` exist
 because something broke in a way a check could have caught, and each one's
 docstring says what that was. Reading them is a fast way to learn where the
 sharp edges are.
@@ -112,9 +112,17 @@ CORS-open:
 | `/committees.json`, `/towns.json`, `/districts.json` | membership and geography |
 | `/feed/*.xml` | RSS, including one feed per bill |
 
-Bulk downloads in CSV are being added; see `ARCHITECTURE.md` for where that is
-going. If you are building something and the shape is awkward, that is worth
-raising — the point of this is to be used.
+And every table is downloadable as CSV from
+**[graniterecord.org/data](https://graniterecord.org/data)** — bills, votes,
+sponsors, roll calls, legislators and proceedings, 524,850 rows in all.
+`/data/manifest.json` lists each one with its rows, size and column names, so a
+program can discover what is there in one request. It also publishes a per-term
+coverage table: titles go back to 1989, sponsors only to 2023, topics only to
+2025, and a column that is empty is a record not yet collected rather than a
+bill without one.
+
+If you are building something and the shape is awkward, that is worth raising —
+the point of this is to be used.
 
 ---
 
