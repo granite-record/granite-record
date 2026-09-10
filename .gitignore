@@ -168,3 +168,6 @@ legislation/
 sponsors_pages/
 sponsors_members.json
 sponsors_form.html
+
+# The General Court's own list of past and present legislators, one request.
+past_members.json

@@ -1,0 +1,425 @@
+2022|H|1|1/5/2022 12:00:00 AM||351|2|13|27|||Call Of The Roll|||
+2022|H|2|1/5/2022 12:00:00 AM|HB1650|326|34|6|27|||Introduction|||
+2022|H|3|1/5/2022 12:00:00 AM|HB166|186|160|20|27|||ITL|||
+2022|H|4|1/5/2022 12:00:00 AM||35|316|17|25|||Special Order Reconsider|||
+2022|H|5|1/5/2022 12:00:00 AM||179|179|10|25|||HB 50- Table|||
+2022|H|6|1/5/2022 12:00:00 AM|HB50|186|170|13|24|||Adopt Amendment|||
+2022|H|7|1/5/2022 12:00:00 AM|HB50|165|192|12|24|||Adopt Amendment|||
+2022|H|8|1/5/2022 12:00:00 AM|HB50|186|168|13|26|||OTPA|||
+2022|H|9|1/5/2022 12:00:00 AM||167|188|13|25|||Reconsideration HB 50|||
+2022|H|10|1/5/2022 12:00:00 AM|HB52|177|178|13|25|||Table|||
+2022|H|11|1/5/2022 12:00:00 AM|HB52|167|189|12|25|||Adopt Amendment|||
+2022|H|12|1/5/2022 12:00:00 AM|HB52|174|182|12|25|||Adopt Amendment|||
+2022|H|13|1/5/2022 12:00:00 AM|HB52|186|164|18|25|||OTPA|||
+2022|H|14|1/5/2022 12:00:00 AM|HB147|66|260|42|25|||Adopt Amendment|||
+2022|H|15|1/5/2022 12:00:00 AM|HB237|163|170|36|24|||OTP|||
+2022|H|16|1/6/2022 12:00:00 AM|HB238|223|118|22|30|||OTP|||
+2022|H|17|1/6/2022 12:00:00 AM|HB579|254|85|25|29|||OTPA|||
+2022|H|18|1/6/2022 12:00:00 AM|HB255|213|142|11|27|||Table|||
+2022|H|19|1/6/2022 12:00:00 AM|HB607|187|170|10|26|||Table|||
+2022|H|20|1/6/2022 12:00:00 AM|HB87|166|184|16|27|||Table|||
+2022|H|21|1/6/2022 12:00:00 AM|HB514|188|165|10|30|||OTPA|||
+2022|H|22|1/6/2022 12:00:00 AM|HB275|190|165|9|29|||OTPA|||
+2022|H|23|1/6/2022 12:00:00 AM|HB414|198|156|10|29|||ITL|||
+2022|H|24|1/6/2022 12:00:00 AM|HB254|151|204|9|29|||Table|||
+2022|H|25|1/6/2022 12:00:00 AM|HB254|264|87|13|29|||OTPA|||
+2022|H|26|1/6/2022 12:00:00 AM|HB118|321|31|13|28|||ITL|||
+2022|H|27|1/6/2022 12:00:00 AM|HB103|225|127|12|29|||OTPA|||
+2022|H|28|1/6/2022 12:00:00 AM|HB478|139|212|11|31|||ITL|||
+2022|H|29|1/6/2022 12:00:00 AM|HB611|187|162|13|31|||Table|||
+2022|H|30|1/6/2022 12:00:00 AM|HB549|187|156|19|31|||Adopt Amendment|||
+2022|H|31|1/6/2022 12:00:00 AM|HB549|343|0|18|32|||OTPA|||
+2022|H|32|1/6/2022 12:00:00 AM||178|158|25|32|||Print Remarks|||
+2022|H|33|2/16/2022 12:00:00 AM|HB1469|187|168|11|27|||OTPA|||2/18/2022 2:59:27 PM
+2022|H|34|2/16/2022 12:00:00 AM|HB1468|276|79|11|27|||Table|||2/18/2022 2:59:41 PM
+2022|H|35|2/16/2022 12:00:00 AM|HB1540|233|122|11|27|||OTPA|||2/18/2022 2:59:55 PM
+2022|H|36|2/16/2022 12:00:00 AM|HB1516|181|174|11|27|||ITL|||2/18/2022 3:04:54 PM
+2022|H|37|2/16/2022 12:00:00 AM|HB1657|186|164|16|27|||ITL|||2/18/2022 3:05:10 PM
+2022|H|38|2/16/2022 12:00:00 AM|HB1684|182|171|13|27|||ITL|||2/18/2022 3:05:29 PM
+2022|H|39|2/16/2022 12:00:00 AM|HB1484|273|76|16|28|||Table|||2/18/2022 3:05:52 PM
+2022|H|40|2/16/2022 12:00:00 AM|HB1417|173|172|17|31|||ITL|||2/18/2022 3:06:07 PM
+2022|H|41|2/16/2022 12:00:00 AM|HB1417|180|171|12|30|||Reconsider|||2/18/2022 3:06:25 PM
+2022|H|42|2/16/2022 12:00:00 AM|HB1417|171|180|12|30|||Table|||2/18/2022 3:07:03 PM
+2022|H|43|2/16/2022 12:00:00 AM|HB1417|182|169|12|30|||OTP|||2/18/2022 3:07:22 PM
+2022|H|44|2/16/2022 12:00:00 AM|HB1417|165|181|17|30|||Reconsider|||2/18/2022 3:07:45 PM
+2022|H|45|2/17/2022 12:00:00 AM|HB1587|231|113|20|29|||OTP|||2/18/2022 3:08:10 PM
+2022|H|46|2/17/2022 12:00:00 AM|HB1604|174|173|19|27|||Adopt Amendment|||2/18/2022 3:09:28 PM
+2022|H|47|2/17/2022 12:00:00 AM|HB1604|176|174|16|27|||OTPA|||2/18/2022 3:09:02 PM
+2022|H|48|2/17/2022 12:00:00 AM|HB1609|177|176|12|28|||Table|||2/18/2022 3:09:51 PM
+2022|H|49|2/17/2022 12:00:00 AM|HB1207|195|158|12|28|||ITL|||2/18/2022 3:10:04 PM
+2022|H|50|2/17/2022 12:00:00 AM|HB1609|178|175|12|28|||Take From Table|||2/18/2022 3:10:28 PM
+2022|H|51|2/17/2022 12:00:00 AM|HB1609|179|174|12|28|||OTP|||2/18/2022 3:10:42 PM
+2022|H|52|2/17/2022 12:00:00 AM|HB1208|209|141|17|26|||Table|||2/18/2022 3:11:00 PM
+2022|H|53|2/17/2022 12:00:00 AM|HB1461|46|304|18|25|||Adopt Amendment|||2/18/2022 3:11:30 PM
+2022|H|54|2/17/2022 12:00:00 AM|HB1262|224|124|20|25|||ITL|||2/18/2022 3:11:45 PM
+2022|H|55|2/17/2022 12:00:00 AM|HB1642|162|183|21|27|||Table|||2/18/2022 3:12:02 PM
+2022|H|56|2/17/2022 12:00:00 AM|HB1642|213|131|21|28|||OTPA|||2/18/2022 3:12:16 PM
+2022|H|57|2/17/2022 12:00:00 AM||199|70|98|26|||Shall Member Continue|||
+2022|H|58|3/10/2022 9:44:49 AM|HB1151|191|141|15|43|||ITL|prohibiting the display of a deadly weapon at a parade, funeral procession, picket line, march, rally, vigil, or demonstration.||
+2022|H|59|3/10/2022 10:20:20 AM|HB1636|204|134|10|42|||OTP|relative to prohibitions on carrying a loaded firearm on an OHRV or snowmobile.||
+2022|H|60|3/10/2022 10:36:11 AM|HB1257|312|25|14|39|||ITL|requiring the retirement system to divest from investment in companies located in China.||
+2022|H|61|3/10/2022 10:53:22 AM|HB1126|184|151|15|40|||ITL|permitting minors over the age of 16 to obtain a vaccination without parental consent.||
+2022|H|62|3/10/2022 11:17:57 AM|CACR14|182|159|9|40|||ITL|relating to unions. Providing that all workers have the right to join a union.||
+2022|H|63|3/10/2022 1:11:22 PM|CACR32|162|170|17|41|||Table|relating to independence. Providing that the state peaceably declares independence from the United States and proceeds as a sovereign nation.||
+2022|H|64|3/10/2022 1:39:24 PM|CACR32|323|13|12|42|||ITL|relating to independence. Providing that the state peaceably declares independence from the United States and proceeds as a sovereign nation.||
+2022|H|65|3/10/2022 1:42:00 PM||278|62|8|42|||Print Remarks|||
+2022|H|66|3/10/2022 2:01:03 PM|HB1138|226|114|8|42|||ITL|exempting the display of a front license plate on certain vehicles.||
+2022|H|67|3/10/2022 2:15:33 PM|HB50|172|163|11|44|||Concur|||
+2022|H|68|3/10/2022 2:27:09 PM|HB1149|283|43|20|43|||ITL|relative to the number of names required for nomination by nomination papers.||
+2022|H|69|3/10/2022 2:40:08 PM|HB1555|199|131|16|44|||Table|repealing the permit required for fires at campgrounds.||
+2022|H|70|3/15/2022 11:10:34 AM|HB1431|181|157|11|41|||OTPA|establishing the parental bill of rights.||
+2022|H|71|3/15/2022 11:48:56 AM|HB1503|149|188|11|41|||Table|exempting the developer, seller, or facilitator of the exchange of an open blockchain token from certain securities laws.||
+2022|H|72|3/15/2022 12:14:00 PM|HB1503|187|150|10|42|||OTPA|exempting the developer, seller, or facilitator of the exchange of an open blockchain token from certain securities laws.||
+2022|H|73|3/15/2022 12:50:16 PM|HB1072|169|161|20|40|||Table|establishing a criminal penalty for denying an elected school district official access to any school district facilities, documents, or events.||
+2022|H|74|3/15/2022 2:19:35 PM|HB1096|190|153|10|37|||ITL|prohibiting open carrying or display of a deadly weapon within 100 feet of a polling place.||
+2022|H|75|3/15/2022 2:30:24 PM|HB1108|239|102|11|38|||ITL|relative to the prescribed manner of posting land.||
+2022|H|76|3/15/2022 2:53:13 PM|HB1178|153|187|11|39|||Table|prohibiting the state from enforcing any federal statute, regulation, or Presidential Executive Order that restricts or regulates the right of the people to keep and bear arms. ||
+2022|H|77|3/15/2022 3:04:38 PM|HB1178|190|147|14|39|||OTPA|prohibiting the state from enforcing any federal statute, regulation, or Presidential Executive Order that restricts or regulates the right of the people to keep and bear arms. ||
+2022|H|78|3/15/2022 3:16:40 PM|HB1266|172|162|16|40|||OTPA|relative to restrictions on enforcement of federal immigration laws.||
+2022|H|79|3/15/2022 3:48:36 PM|HB1476|161|168|19|42|||Table|relative to persons arrested while out on bail.||
+2022|H|80|3/15/2022 4:10:31 PM|HB1476|199|134|13|44|||OTPA|relative to persons arrested while out on bail.||
+2022|H|81|3/15/2022 4:34:17 PM|HB1668|179|144|20|47|||ITL|requiring a background check prior to any commercial firearm sale.||
+2022|H|82|3/15/2022 4:54:47 PM|HB1090|165|153|23|49|||Table|relative to teaching on discrimination in the public schools.||
+2022|H|83|3/15/2022 5:17:22 PM|HB1120|165|155|24|46|||ITL|relative to education service providers under the education freedom accounts program.||
+2022|H|84|3/15/2022 5:26:24 PM|HB1131|152|168|24|46|||Adopt  Floor Amendment|relative to facial covering policies for schools.||
+2022|H|85|3/15/2022 5:36:55 PM|HB1131|166|157|21|46|||OTPA|relative to facial covering policies for schools.||
+2022|H|86|3/15/2022 5:49:18 PM|HB1132|164|148|28|50|||OTPA|relative to applications for a charter conversion school.||
+2022|H|87|3/15/2022 6:21:22 PM|HB1261|170|143|27|50|||ITL|prohibiting the use of Native American mascots in public schools, colleges, and universities.||
+2022|H|88|3/15/2022 6:34:01 PM|HB1298|159|152|28|51|||OTP|relative to eligibility for the education tax credit.||
+2022|H|89|3/16/2022 9:26:50 AM|HB1332|172|142|43|33||| Table|excepting public universities and colleges from requirements under medical freedom in immunizations.||
+2022|H|90|3/16/2022 9:35:12 AM|HB1376|179|153|28|30|||Table|relative to participation in the education freedom accounts program by students with disabilities. ||
+2022|H|91|3/16/2022 9:40:48 AM|HB1434|185|152|26|27|||OTPA|relative to the availability of school curriculum materials.||
+2022|H|92|3/16/2022 9:53:23 AM|HB1576|186|158|19|27|||Table|repealing the law relative to certain discrimination in public workplaces and education.||
+2022|H|93|3/16/2022 9:59:03 AM|HB1607|189|155|21|25|||Table|prohibiting unlawful discrimination in public and nonpublic schools.||
+2022|H|94|3/16/2022 10:05:22 AM|HB1638|190|152|24|24|||Table|relative to grievances under the right to freedom from discrimination in public workplaces and education.||
+2022|H|95|3/16/2022 10:23:03 AM|HB1639|183|164|20|23|||OTPA|relative to the youth risk behavior survey in schools.||
+2022|H|97|3/16/2022 10:50:35 AM|HB1669|185|158|24|23|||Table|requiring the department of education to administer the education freedom account program.||
+2022|H|99|3/16/2022 11:08:50 AM|HB1683|189|166|12|23|||ITL|repealing the education freedom account program.||
+2022|H|100|3/16/2022 11:25:32 AM|CACR15|192|163|12|23|||Adopt Amendment|relating to elections. Providing that the age to vote in the primary election be reduced to 17 for those who will be 18 by the general election.||
+2022|H|101|3/16/2022 11:33:46 AM|CACR15|190|165|12|23|||OTPA|relating to elections. Providing that the age to vote in the primary election be reduced to 17 for those who will be 18 by the general election.||
+2022|H|102|3/16/2022 11:40:44 AM|CACR19|195|160|13|22|||OTP|relating to paper ballots. Providing that all elections shall be conducted through paper ballots.||
+2022|H|103|3/16/2022 11:49:25 AM|HB1009|185|167|16|22|||OTP|requiring the date a person registers to vote to be included with other voter information.||
+2022|H|104|3/16/2022 1:29:19 PM|HB1153|185|158|24|23|||OTP|relative to absentee ballot requests.||
+2022|H|105|3/16/2022 1:47:55 PM|HB1247|203|145|19|23|||ITL|relative to folded ballots.||
+2022|H|106|3/16/2022 2:10:00 PM|HB1394|187|163|17|23|||ITL|relative to the reporting of certain campaign contributions and relative to political contributions made by limited liability companies.||
+2022|H|107|3/16/2022 2:44:38 PM|HB1171|156|190|21|23|||Table|exempting certain niche beauty services from licensure requirements.||
+2022|H|108|3/16/2022 2:53:26 PM|HB1171|201|147|19|23|||OTPA|exempting certain niche beauty services from licensure requirements.||
+2022|H|109|3/16/2022 3:04:55 PM|HB1330|175|168|24|23|||Adopt Amendment|relative to the board of registration of medical technicians.||
+2022|H|110|3/16/2022 3:08:53 PM|HB1330|167|184|16|23|||Adopt Amendment|relative to the board of registration of medical technicians.||
+2022|H|111|3/16/2022 3:37:04 PM|HB103|237|100|29|24|||OTPA|establishing a dental benefit under the state Medicaid program.||
+2022|H|112|3/16/2022 4:35:25 PM|HB1022|183|159|22|26|||OTPA|permitting pharmacists to dispense the drug ivermectin by means of a standing order.||
+2022|H|113|3/16/2022 4:47:47 PM|HB1044|171|172|19|28|||ITL|relative to policies required for health facilities and special health care service licenses.||
+2022|H|114|3/16/2022 4:52:58 PM|HB1044|166|179|17|28|||Table|relative to policies required for health facilities and special health care service licenses.||
+2022|H|115|3/16/2022 4:55:38 PM|HB1044|334|10|18|28|||Adopt Amendment|relative to policies required for health facilities and special health care service licenses.||
+2022|H|116|3/16/2022 5:02:31 PM|HB1077|197|147|18|28|||Table|repealing the prohibition on conversion therapy for minors.||
+2022|H|117|3/16/2022 5:17:59 PM|HB1080|175|165|20|30|||OTP|relative to the rights of conscience for medical professionals.||
+2022|H|118|3/16/2022 5:24:33 PM|HB1180|167|169|24|30|||Table|relative to state recognition of biological sex.||
+2022|H|119|3/16/2022 5:55:22 PM|HB1180|175|167|18|30|||Table|relative to state recognition of biological sex.||
+2022|H|120|3/16/2022 7:01:19 PM|HB1369|177|146|33|34|||Table|relative to COVID-19 health and safety policies at New Hampshire performing arts venues.||
+2022|H|121|3/16/2022 7:11:15 PM|HB1379|169|164|23|34|||OTPA|relative to the department of health and human services' rulemaking authority regarding immunization requirements.||
+2022|H|122|3/16/2022 7:16:32 PM|HB1409|171|163|22|34|||Table|relative to the age at which a minor may receive mental health treatment without parental consent.||
+2022|H|123|3/16/2022 7:20:31 PM|HB1264|116|219|21|34|||Remove From Table|establishing ranked-choice voting for state party primary elections and municipal elections.||
+2022|H|124|3/16/2022 7:32:52 PM|HB1439|158|177|21|34|||Adopt Amendment|relative to hospital visitation policies.||
+2022|H|125|3/16/2022 7:44:16 PM|HB1455|174|159|23|34|||OTP|relative to state enforcement of federal vaccination mandates.||
+2022|H|126|3/16/2022 7:50:41 PM|HB1481|175|156|25|34|||Table|repealing the statute relative to medical freedom in immunizations.||
+2022|H|127|3/16/2022 7:59:47 PM|HB1495|179|153|22|36|||OTPA|relative to vaccine mandates for government contractors.||
+2022|H|128|3/16/2022 8:04:21 PM|CACR18|175|157|22|36|||Table|relating to reproductive medical decisions. Providing that the state shall not infringe or unduly inconvenience the right of reproductive medical decisions.||
+2022|H|129|3/16/2022 8:09:29 PM|HB1014|175|155|24|36|||Table|allowing public meetings to be conducted virtually.||
+2022|H|130|3/16/2022 8:20:07 PM|HB1291|179|148|27|36||| |prohibiting discrimination against tenants holding certain vouchers for purposes of renting dwellings.||
+2022|H|131|3/16/2022 8:24:53 PM|HB1425|179|150|26|35|||OTP|relative to the taking of real property by eminent domain.||
+2022|H|132|3/16/2022 8:37:12 PM|HB1477|185|143|26|36|||Table|prohibiting abortions after detection of fetal heartbeat.||
+2022|H|133|3/16/2022 8:48:01 PM|HB1490|161|170|24|35|||OTP|relative to equal access to places of public accommodation regardless of vaccination status.||
+2022|H|134|3/16/2022 9:04:35 PM|HB1625|160|170|24|36|||Table|repealing the prohibition on entering or remaining on a public way or sidewalk adjacent to a reproductive health care facility.||
+2022|H|135|3/16/2022 9:07:44 PM|HB1625|162|168|24|36|||ITL|repealing the prohibition on entering or remaining on a public way or sidewalk adjacent to a reproductive health care facility.||
+2022|H|136|3/16/2022 9:09:55 PM|HB1625|168|162|24|36|||OTP|repealing the prohibition on entering or remaining on a public way or sidewalk adjacent to a reproductive health care facility.||
+2022|H|137|3/16/2022 9:36:41 PM|HB1673|163|165|26|36|||Adopt Amendment|relative to women's health privacy and repealing the fetal health protection act.||
+2022|H|138|3/17/2022 9:23:15 AM|HB1076|169|152|33|36|||Table|relative to illegal productivity quotas.||
+2022|H|139|3/17/2022 9:38:02 AM|HB1165|160|172|22|36|||Table|repealing the Granite State paid family leave plan.||
+2022|H|140|3/17/2022 9:50:35 AM|HB1165|172|164|19|35|||OTP|repealing the Granite State paid family leave plan.||
+2022|H|141|3/17/2022 10:10:46 AM|HB1210|181|155|19|35|||OTPA|relative to exemptions from vaccine mandates.||
+2022|H|142|3/17/2022 10:30:20 AM|HB1337|179|153|24|34|||OTPA|relative to the duration of unemployment benefits.||
+2022|H|143|3/17/2022 11:03:04 AM|HB1514|172|164|20|34|||ITL|relative to an employee's unused earned time.||
+2022|H|144|3/17/2022 11:13:56 AM|HB1007|186|150|20|34|||Table|relative to qualifications for office.||
+2022|H|145|3/17/2022 11:17:54 AM|HB1033|174|161|21|34|||Table|prohibiting recipients of state or local grants or appropriations from using such funds for lobbying.||
+2022|H|146|3/17/2022 11:36:42 AM|HB1170|157|186|13|34|||Table|limiting the authority of New Hampshire delegates to policymaking conventions.||
+2022|H|147|3/17/2022 1:52:59 PM|HB1070|172|162|22|34|||OTP|relative to the default budget in official ballot jurisdictions.||
+2022|H|148|3/17/2022 2:04:07 PM|HB1081|174|162|20|34|||OTP|relative to the dissolution of a village district.||
+2022|H|149|3/17/2022 2:08:56 PM|HB1076|165|171|20|34|||Remove from Table|relative to illegal productivity quotas.||
+2022|H|150|3/17/2022 2:24:17 PM|HB1119|300|35|20|35|||Table|relative to the regulation of single-use bags.||
+2022|H|151|3/17/2022 2:40:37 PM|HB1177|167|157|31|35|||Table|relative to permissible residential units in a residential zone.||
+2022|H|152|3/17/2022 2:53:06 PM|HB1194|148|181|25|36|||Table|relative to the procedure for overriding a local tax cap.||
+2022|H|153|3/17/2022 3:06:22 PM|HB1194|183|146|23|38|||OTP|relative to the procedure for overriding a local tax cap.||
+2022|H|154|3/17/2022 3:18:22 PM|HB1268|176|156|21|37|||OTPA|limiting the authority for city council bylaws and ordinances.||
+2022|H|155|3/17/2022 3:39:51 PM|HB1342|157|181|13|39|||OTP|relative to municipal charter provisions for tax caps.||
+2022|H|156|3/17/2022 3:44:49 PM|HB1393|164|178|10|38|||Table|relative to the adoption of school district budget caps.||
+2022|H|157|3/17/2022 4:04:06 PM|HB1667|205|127|18|40|||OTP|relative to the standard and optional veterans' tax credits and the all veterans' tax credit.||
+2022|H|158|3/17/2022 4:11:08 PM|HB1177|159|176|15|40|||Remove from Table|relative to permissible residential units in a residential zone.||
+2022|H|159|3/17/2022 4:16:47 PM|HB1432|152|182|16|40|||Table|prohibiting the use of state funds for new passenger rail projects.||
+2022|H|160|3/17/2022 4:29:18 PM|HB1432|187|144|19|40|||OTP|prohibiting the use of state funds for new passenger rail projects.||
+2022|H|161|3/17/2022 5:14:49 PM|HB1097|251|72|23|44|||OTPA|relative to taxation of income of New Hampshire residents when working remotely for an out of state employer.||
+2022|H|162|3/17/2022 5:27:51 PM|HB1221|227|99|21|43|||Adopt Amendment|relative to the rates of the business profits tax and the business enterprise tax.||
+2022|H|163|3/17/2022 5:43:55 PM|HB1221|177|141|28|44|||OTPA|relative to the rates of the business profits tax and the business enterprise tax.||
+2022|H|164|3/17/2022 8:52:43 PM|HCR7|150|155|41|44|||Table|reaffirming support for the nation of Israel and the location of the embassy of the United States therein.||
+2022|H|165|3/17/2022 8:56:31 PM|HCR7|119|185|40|46|||Adopt Floor Amendment|reaffirming support for the nation of Israel and the location of the embassy of the United States therein.||
+2022|H|166|3/17/2022 9:01:34 PM|HCR7|144|160|41|45|||Indefinitely Postpone|reaffirming support for the nation of Israel and the location of the embassy of the United States therein.||
+2022|H|167|3/17/2022 9:15:00 PM|HCR7|175|107|62|46|||OTP|reaffirming support for the nation of Israel and the location of the embassy of the United States therein.||
+2022|H|168|3/31/2022 9:45:28 AM|HR17|178|159|24|29|||OTP|opposing all federal and state efforts to establish a carbon tax on fuels for electricity and transportation.||
+2022|H|169|3/31/2022 9:58:14 AM|HB1093|186|161|14|29|||ITL|relative to the licensure of nonresident aliens temporarily residing in New Hampshire.||
+2022|H|170|3/31/2022 10:18:39 AM|HB1401|189|160|12|29|||OTPA|prohibiting the disclosure of the number of miles driven by a specific driver licensed by the state or vehicle registered in the state.||
+2022|H|171|3/31/2022 10:33:55 AM|HB1666|189|160|12|29|||ITL|relative to the application process for driver's licenses and the privacy of motor vehicle records.||
+2022|H|172|3/31/2022 10:40:39 AM|HB1478|304|40|17|29|||ITL|relative to the business profits tax applicable to certain large, low-wage employers.||
+2022|H|173|3/31/2022 10:53:15 AM|HB1349|210|132|19|29|||Table|decriminalizing the possession and use of psilocybin mushrooms.||
+2022|H|174|3/31/2022 11:01:25 AM|HB1064|270|75|16|29|||Table|requiring the use of hand-marked, durable paper ballots in elections.||
+2022|H|175|3/31/2022 11:08:03 AM|HB1473|251|94|16|29|||Table|authorizing a forensic audit of the November 3, 2020 election results in Merrimack county for president, governor, and United States senate races.||
+2022|H|176|3/31/2022 11:37:26 AM|CACR27|254|85|22|29|||ITL|elected and appointed officials. Providing that all state court judges shall be subject to recall and removal by petition and vote of registered voters pursuant to provisions established by the legislature.||
+2022|H|177|3/31/2022 12:09:01 PM|HB1417|163|182|16|29|||ITL|relative to payment by the state of a portion of retirement system contributions of political subdivision employers.||
+2022|H|178|3/31/2022 12:12:47 PM|HB1417|186|159|16|29|||OTP|relative to payment by the state of a portion of retirement system contributions of political subdivision employers.||
+2022|H|179|3/31/2022 1:52:36 PM|HB1552|124|221|13|32|||Table|establishing a board for the certification of assessors.||
+2022|H|180|3/31/2022 2:38:09 PM|HB1609|231|114|13|32|||OTPA|relative to the scope of the fetal protection act.||
+2022|H|181|3/31/2022 3:04:30 PM|HB1627|161|177|18|34|||Table|establishing an education freedom account program administrator in the department  of education and making an appropriation therefor.||
+2022|H|182|3/31/2022 3:26:20 PM|HB1627|152|181|23|34|||Table|establishing an education freedom account program administrator in the department  of education and making an appropriation therefor.||
+2022|H|183|3/31/2022 3:37:57 PM|HB1627|76|258|22|34|||Adopt Floor Amendment|establishing an education freedom account program administrator in the department  of education and making an appropriation therefor.||
+2022|H|184|3/31/2022 3:53:36 PM|HB1627|204|131|20|35|||OTPA|establishing an education freedom account program administrator in the department  of education and making an appropriation therefor.||
+2022|H|185|3/31/2022 3:59:14 PM|HB1647|155|179|21|35|||Table|relative to the calculation of child support.||
+2022|H|186|3/31/2022 4:19:41 PM|HB1661|271|65|19|35|||Adopt Amendment|relative to regional career technical education agreements.||
+2022|H|187|3/31/2022 4:56:37 PM|HB1598|118|216|21|35|||Table|legalizing the possession and use of cannabis.||
+2022|H|188|3/31/2022 5:37:14 PM|HB1598|169|156|29|36|||OTPA|legalizing the possession and use of cannabis.||
+2022|H|190|4/21/2022 10:06:30 AM|SB458|182|150|20|37|||Adopt Amendment|relative to the Sununu youth services center and operation of a replacement secure facility.||
+2022|H|191|4/21/2022 10:47:01 AM|SB306|201|132|19|37|||OTP|relative to the penalties for various motor vehicle violations.||
+2022|H|192|4/21/2022 11:02:28 AM|SB401|241|93|18|37|||OTP|(Third New Title) making appropriations to the department of transportation for local highway aid and to the body-worn and dashboard camera fund and permitting the department of transportation to operate dash cameras in fleet vehicles.||
+2022|H|193|4/21/2022 11:09:00 AM|SB420|261|71|19|38|||OTPA|establishing an extraordinary need grant for schools.||
+2022|H|194|4/21/2022 11:14:18 AM|HB172|152|181|18|38|||Remove From Table|||
+2022|H|195|4/21/2022 11:18:54 AM|HB1506|147|184|19|39|||Remove From Table|HB1506||
+2022|H|196|4/21/2022 11:54:50 AM|SB418|180|154|16|39|||OTPA|relative to verification of voter affidavits.||
+2022|H|197|4/21/2022 1:33:19 PM|SB438|170|151|26|42|||OTPA|(New Title) establishing state procurement policies intended to promote the use of American materials.||
+2022|H|198|4/21/2022 1:58:25 PM|SB407|212|117|17|43|||OTPA|relative to expanding Medicaid to include certain postpartum health care services and making an appropriation therefor.||
+2022|H|199|4/21/2022 2:16:08 PM|SB430|233|90|23|43|||OTPA|relative to health and human services.||
+2022|H|200|4/21/2022 2:32:38 PM|SB459|182|146|17|44|||Adopt Floor Amendment|relative to a health care facility workplace violence prevention program.||
+2022|H|201|4/21/2022 2:38:02 PM|SB459|264|64|17|44|||OTPA|relative to a health care facility workplace violence prevention program.||
+2022|H|202|4/21/2022 2:53:44 PM|SB240|143|170|31|45|||Table|apportioning state senate districts.||
+2022|H|203|4/21/2022 2:58:06 PM|SB240|172|149|23|45|||OTP|apportioning state senate districts.||
+2022|H|204|4/21/2022 3:04:54 PM|SB241|145|175|22|47|||Adopt Amendment|apportioning executive council districts.||
+2022|H|205|4/21/2022 3:11:47 PM|SB241|174|146|22|47|||OTP|apportioning executive council districts.||
+2022|H|206|4/21/2022 3:26:21 PM|SB442|218|94|30|47|||OTP|relative to the suspension of a vehicle registration as a result of evading toll collection systems.||
+2022|H|207|4/21/2022 3:36:32 PM|SB376|206|107|27|49|||OTPA|(New Title) relative to creating a board to review police incidents involving citizens affected by mental health issues.||
+2022|H|208|4/21/2022 3:47:08 PM||258|10|72|49|||Shall Member Continue|||
+2022|H|210|5/4/2022 10:28:38 AM|SB326|178|151|21|39|||ITL|(New Title) relative to developing a plan to create the office of early childhood.||
+2022|H|211|5/4/2022 10:41:06 AM|SB431|178|151|19|41|||OTPA|relative to child support in cases with equal or approximately equal parenting schedules.||
+2022|H|212|5/4/2022 11:19:20 AM|SB294|209|121|18|41|||Table|relative to the release of a defendant pending trial.||
+2022|H|213|5/4/2022 11:56:13 AM|SB274|177|154|18|40|||ITL|relative to governmental construction contracts.||
+2022|H|214|5/4/2022 12:06:05 PM|SB325|248|84|16|41|||OTP|relative to local organization for emergency management and first responders.||
+2022|H|215|5/4/2022 1:37:57 PM|SB333|170|164|11|44|||Adopt Floor Amendment|relative to licensure of case management service providers.||
+2022|H|216|5/4/2022 1:58:21 PM|SB382|144|187|13|45|||Table|(New Title) relative to licensure requirements for telehealth services and relative to licensure of physicians and physicians assistants through reciprocity agreements.||
+2022|H|217|5/4/2022 2:13:08 PM|SB397|202|132|10|45|||OTPA|(New Title) relative to the mental health counseling compact and the interstate compact for the placement of children.||
+2022|H|218|5/4/2022 2:27:21 PM|SB450|173|161|10|45|||OTP|relative to the prescription drug affordability board.||
+2022|H|219|5/4/2022 2:35:19 PM|SB399|159|173|12|45|||Special Order|(New Title) relative to certain provisions of the fetal life protection act requiring an ultrasound examination.||
+2022|H|220|5/4/2022 2:39:48 PM|HB1674|158|173|13|45|||Remove From Table|||
+2022|H|221|5/4/2022 2:45:11 PM|CACR18|157|174|13|45|||Remove From Table|||
+2022|H|222|5/4/2022 3:06:06 PM|SB366|177|139|27|46|||OTP|requiring an audit of ballots cast in the 2022 primary and general election.||
+2022|H|223|5/4/2022 3:38:26 PM|SB381|170|155|18|46|||OTPA|establishing an office of the advocate for special education.||
+2022|H|224|5/4/2022 3:49:21 PM|SB401|173|142|28|46|||Adopt Floor Amendment|(Third New Title) making appropriations to the department of transportation for local highway aid and to the body-worn and dashboard camera fund and permitting the department of transportation to operate dash cameras in fleet vehicles.||
+2022|H|225|5/4/2022 4:10:08 PM|SB407|162|153|27|47|||Adopt Floor Amendment|relative to expanding Medicaid to include certain postpartum health care services and making an appropriation therefor.||
+2022|H|226|5/4/2022 4:12:49 PM|SB407|295|28|19|47|||OTPA|relative to expanding Medicaid to include certain postpartum health care services and making an appropriation therefor.||
+2022|H|227|5/4/2022 4:34:39 PM|SB418|164|155|23|47|||OTPA|relative to verification of voter affidavits.||
+2022|H|228|5/4/2022 4:43:16 PM|SB420|171|150|21|47|||Adopt Floor Amendment|(New Title) establishing an extraordinary need grant for schools and relative to additional adequate education grant amounts for pupils receiving special education services.||
+2022|H|229|5/4/2022 5:04:44 PM|SB430|167|147|29|46|||Adopt Floor Amendment|relative to health and human services.||
+2022|H|230|5/4/2022 5:13:20 PM|SB438|170|129|44|46|||Adopt Floor Amendment|(New Title) establishing state procurement policies intended to promote the use of American materials.||
+2022|H|231|5/4/2022 5:28:10 PM|SB442|201|103|39|46|||OTP|relative to the suspension of a vehicle registration as a result of evading toll collection systems.||
+2022|H|232|5/4/2022 5:35:37 PM|SB459|220|87|36|46|||OTPA|relative to a health care facility workplace violence prevention program.||
+2022|H|233|5/4/2022 5:39:15 PM|SB404|226|76|41|46|||OTPA|establishing a supplemental nutrition assistance program.||
+2022|H|235|5/5/2022 9:39:43 AM|SB344|176|155|21|37|||ITL|(New Title) relative to the electronic participation requirements of meetings open to the public under the right to know law.||
+2022|H|236|5/5/2022 10:05:32 AM|SB345|154|181|17|37|||Adopt Floor Amendment|relative to youth employment.||
+2022|H|237|5/5/2022 10:09:54 AM|SB345|145|192|15|37|||Table|relative to youth employment.||
+2022|H|238|5/5/2022 10:14:38 AM|SB345|185|152|15|37|||OTPA|relative to youth employment.||
+2022|H|239|5/5/2022 10:17:42 AM|SB345|164|172|16|37|||Print Remarks|relative to youth employment.||
+2022|H|240|5/5/2022 11:08:14 AM|SB263|174|150|28|37|||ITL|establishing the New Hampshire youth environmental education and conservation council.||
+2022|H|241|5/5/2022 11:19:32 AM|SB269|182|152|18|37|||Interim Study|(New Title) establishing a commission to study energy saving weatherization programs.||
+2022|H|242|5/5/2022 1:36:50 PM|SB200|178|158|16|37|||Adopt Amendment|relative to the election of district commissioners in Haverhill.||
+2022|H|243|5/5/2022 1:47:33 PM|SB200|156|182|14|37|||Adopt Amendment|relative to the election of district commissioners in Haverhill.||
+2022|H|244|5/5/2022 1:51:20 PM|SB200|179|159|14|37|||OTPA|relative to the election of district commissioners in Haverhill.||
+2022|H|245|5/5/2022 2:44:29 PM|SB429|158|176|19|36|||Adopt Floor Amendment|relative to the site evaluation committee.||
+2022|H|247|5/12/2022 11:15:33 AM|HB1178|163|143|25|58|||Concur|||
+2022|H|248|5/12/2022 12:04:32 PM|HB1022|157|148|26|58|||Concur|||
+2022|H|249|5/12/2022 2:37:43 PM||206|52|71|60|||Shall Member Continue|||
+2022|H|250|5/12/2022 2:44:37 PM||184|70|75|60|||Print Remarks|||
+2022|H|252|5/26/2022 10:25:42 AM|SB200|176|171|16|26|||Adopt CofC Report|||
+2022|H|253|5/26/2022 10:52:25 AM||163|188|12|26|||Rules Suspension|||
+2022|H|254|5/26/2022 10:58:53 AM|HB103|246|105|12|26|||Adopt CofC Report|||
+2022|H|255|5/26/2022 1:27:41 PM|HB1431|169|173|19|28|||Table|||
+2022|H|256|5/26/2022 2:00:53 PM|HB1431|171|176|14|28|||Adopt CofC Report|||
+2022|H|257|5/26/2022 2:03:46 PM|HB1431|170|177|14|28|||Reconsider|||
+2022|H|258|5/26/2022 2:21:35 PM|HB1567|184|161|16|28|||Adopt CofC Report|||
+2022|H|259|5/26/2022 3:02:57 PM|HB1661|244|99|17|29|||Adopt CofC Report|||
+2022|H|260|5/26/2022 3:14:04 PM||160|118|82|29|||Shall Member Continue|||
+2022|H|262|9/15/2022 1:58:34 PM|HB52|103|220|29|29|||Veto Override|||
+2022|H|263|9/15/2022 2:07:19 PM|HB275|157|167|28|29|||Veto Override|||
+2022|H|264|9/15/2022 2:19:12 PM|HB319|143|181|28|29|||Veto Override|||
+2022|H|265|9/15/2022 2:32:52 PM|HB1022|144|170|38|29|||Veto Override|||
+2022|H|266|9/15/2022 2:39:38 PM|HB1131|150|170|31|30|||Veto Override|||
+2022|H|267|9/15/2022 2:57:24 PM|HB1454|256|65|30|30|||Veto Override|||
+2022|H|268|9/15/2022 3:10:17 PM|HB1625|145|175|30|31|||Veto Override|||
+2022|H|269|9/15/2022 3:21:30 PM||56|257|37|31|||Rules Suspension|||
+2022|S|1|1/5/2022 12:00:00 AM|SB145|14|10|24|0|||Inexpedient to Legislate|relative to a temporary change in the formula for school funding.||1/6/2022 10:56:36 AM
+2022|S|2|1/5/2022 12:00:00 AM|SB161|12|12|24|0|||Committee Amendment 2286s|relative to non-fraud overpayments for unemployment benefits.||1/10/2022 12:14:47 PM
+2022|S|3|1/5/2022 12:00:00 AM|HB381|13|11|24|0|||Ought to Pass w/Amendment|relative to laboratory testing.||1/10/2022 12:15:32 PM
+2022|S|4|1/5/2022 12:00:00 AM|HB197|14|10|24|0|||Refer to Interim Study|relative to the use of deadly force in defense of another.||1/6/2022 11:24:35 AM
+2022|S|5|1/5/2022 12:00:00 AM|HB233|14|10|24|0|||Committee Amendment 2292s|(New Title) establishing a committee to study the right of any infant born alive to medically appropriate and reasonable care and treatment.||1/10/2022 12:16:03 PM
+2022|S|6|1/5/2022 12:00:00 AM|HB233|14|10|24|0|||Ought to Pass w/Amendment|(New Title) establishing a committee to study the right of any infant born alive to medically appropriate and reasonable care and treatment.||1/6/2022 11:27:23 AM
+2022|S|7|1/5/2022 12:00:00 AM|HB293|19|5|24|0|||Ought to Pass w/Amendment|relative to the procedure for adoption of a minor child.||1/6/2022 11:30:34 AM
+2022|S|8|1/5/2022 12:00:00 AM|HB307|14|10|24|0|||Committee Amendment 2288s|relative to the state preemption of the regulation of firearms and ammunition.||1/10/2022 12:16:27 PM
+2022|S|9|1/5/2022 12:00:00 AM|HB307|12|12|24|0|||Floor Amendment 2302s|relative to the state preemption of the regulation of firearms and ammunition.||1/10/2022 12:16:40 PM
+2022|S|10|1/5/2022 12:00:00 AM|HB307|10|14|24|0|||Floor Amendment 2302s|relative to the state preemption of the regulation of firearms and ammunition.||1/10/2022 12:16:56 PM
+2022|S|11|1/5/2022 12:00:00 AM|HB307|10|14|24|0|||Floor Amendment 2307s|relative to the state preemption of the regulation of firearms and ammunition.||1/10/2022 12:17:14 PM
+2022|S|12|1/5/2022 12:00:00 AM|HB307|14|10|24|0|||Ought to Pass w/Amendment|relative to the state preemption of the regulation of firearms and ammunition.||1/6/2022 11:42:38 AM
+2022|S|13|1/5/2022 12:00:00 AM|HB440|14|10|24|0|||Floor Amendment 2311s|(New Title) prohibiting the suspension of civil liberties during a state of emergency.||1/10/2022 12:17:31 PM
+2022|S|14|1/5/2022 12:00:00 AM|HB440|14|10|24|0|||Ought to Pass w/Amendment|(New Title) prohibiting the suspension of civil liberties during a state of emergency.||1/6/2022 11:44:37 AM
+2022|S|15|2/3/2022 12:00:00 AM|HB319|10|14|24|0|||Inexpedient to Legislate|requiring students in the university and community college systems of New Hampshire to pass the United States Citizenship and Immigration Services civics naturalization test.||2/4/2022 11:02:41 AM
+2022|S|16|2/3/2022 12:00:00 AM|HB319|14|10|24|0|||Ought to Pass|requiring students in the university and community college systems of New Hampshire to pass the United States Citizenship and Immigration Services civics naturalization test.||2/4/2022 11:05:52 AM
+2022|S|17|2/3/2022 12:00:00 AM|SB274|14|10|24|0|||Floor Amendment 0429s|relative to governmental construction contracts.||2/18/2022 12:24:12 PM
+2022|S|18|2/3/2022 12:00:00 AM|SB274|11|13|24|0|||Laid on Table|relative to governmental construction contracts.||2/4/2022 11:09:12 AM
+2022|S|19|2/3/2022 12:00:00 AM|SB274|13|11|24|0|||Ought to Pass w/Amendment|relative to governmental construction contracts.||2/4/2022 11:11:39 AM
+2022|S|20|2/3/2022 12:00:00 AM|SB319|13|11|24|0|||Ought to Pass w/Amendment|relative to vaccination status and wellness incentives.||2/4/2022 11:14:02 AM
+2022|S|21|2/3/2022 12:00:00 AM|SB399|14|10|24|0|||Committee Amendment 0333s|(New Title) relative to certain provisions of the fetal life protection act requiring an ultrasound examination.||2/18/2022 12:25:00 PM
+2022|S|22|2/3/2022 12:00:00 AM|SB399|10|14|24|0|||Floor Amendment 0472s|(New Title) relative to certain provisions of the fetal life protection act requiring an ultrasound examination.||2/18/2022 12:25:15 PM
+2022|S|23|2/3/2022 12:00:00 AM|SB399|11|13|24|0|||Floor Amendment 0444s|(New Title) relative to certain provisions of the fetal life protection act requiring an ultrasound examination.||2/18/2022 12:25:30 PM
+2022|S|24|2/3/2022 12:00:00 AM|SB399|10|14|24|0|||Floor Amendment 0440s|(New Title) relative to certain provisions of the fetal life protection act requiring an ultrasound examination.||2/18/2022 12:25:48 PM
+2022|S|25|2/3/2022 12:00:00 AM|SB399|10|14|24|0|||Floor Amendment 0452s|(New Title) relative to certain provisions of the fetal life protection act requiring an ultrasound examination.||2/18/2022 12:26:04 PM
+2022|S|26|2/3/2022 12:00:00 AM|SB399|13|11|24|0|||Ought to Pass w/Amendment|(New Title) relative to certain provisions of the fetal life protection act requiring an ultrasound examination.||2/4/2022 11:48:12 AM
+2022|S|27|2/3/2022 12:00:00 AM|SB399|14|10|24|0|||Ought to Pass w/Amendment|(New Title) relative to certain provisions of the fetal life protection act requiring an ultrasound examination.||2/4/2022 11:49:14 AM
+2022|S|28|2/3/2022 12:00:00 AM|SB436|12|12|24|0|||Inexpedient to Legislate|relative to access to abortion care.||2/4/2022 11:51:02 AM
+2022|S|29|2/16/2022 12:00:00 AM|SB248|13|10|23|1|||Inexpedient to Legislate|relative to political contributions made by limited liability companies||2/16/2022 6:17:20 PM
+2022|S|30|2/16/2022 12:00:00 AM|SB237|14|9|23|1|||Inexpedient to Legislate|relative to participation in the education freedom account program.||2/16/2022 6:18:17 PM
+2022|S|31|2/16/2022 12:00:00 AM|SB351|14|9|23|1|||Inexpedient to Legislate|relative to annual performance and financial reporting by private and religious schools that receive public funds.||2/16/2022 6:19:21 PM
+2022|S|32|2/16/2022 12:00:00 AM|SB432|14|9|23|1|||Inexpedient to Legislate|repealing the education freedom account program.||2/16/2022 6:20:43 PM
+2022|S|33|2/16/2022 12:00:00 AM|SB413|13|10|23|1|||Refer to Interim Study|requiring an independent audit and needs assessment regarding COVID-19 preparedness at long term care facilities, nursing homes, and the New Hampshire veterans' home, and making an appropriation therefor.||2/16/2022 6:22:58 PM
+2022|S|34|2/16/2022 12:00:00 AM|SB422|24|0|24|0|||Ought to Pass w/Amendment|establishing an adult dental benefit under the state Medicaid program.||2/16/2022 6:23:51 PM
+2022|S|35|2/16/2022 12:00:00 AM|SB240|14|10|24|0|||Committee Amendment 0565s|apportioning state senate districts.||2/17/2022 8:26:45 AM
+2022|S|36|2/16/2022 12:00:00 AM|SB240|10|14|24|0|||Floor Amendment 0718s|apportioning state senate districts.||2/17/2022 8:27:00 AM
+2022|S|37|2/16/2022 12:00:00 AM|SB240|10|14|24|0|||Floor Amendment 0709s|apportioning state senate districts.||2/17/2022 8:27:15 AM
+2022|S|38|2/16/2022 12:00:00 AM|SB240|14|10|24|0|||Ought to Pass w/Amendment|apportioning state senate districts.||2/16/2022 6:29:35 PM
+2022|S|39|2/16/2022 12:00:00 AM|HB50|14|10|24|0|||Ought to Pass w/Amendment|apportioning state representative districts.||2/16/2022 6:33:26 PM
+2022|S|40|2/16/2022 12:00:00 AM|HB54|11|13|24|0|||Committee Amendment 0713s|apportioning county commissioner districts.||2/17/2022 8:27:50 AM
+2022|S|41|2/16/2022 12:00:00 AM|SB294|20|4|24|0|||Ought to Pass|relative to the release of a defendant pending trial.||2/16/2022 6:54:42 PM
+2022|S|42|2/24/2022 12:00:00 AM|SB203|13|10|23|1|||Refer to Interim Study|relative to the state minimum hourly rate.||2/24/2022 10:56:55 AM
+2022|S|43|2/24/2022 12:00:00 AM|SB252|13|10|23|1|||Inexpedient to Legislate|relative to information on property tax bills.||2/24/2022 3:18:10 PM
+2022|S|44|2/24/2022 12:00:00 AM|SB255|13|10|23|1|||Refer to Interim Study|establishing redistricting criteria.||2/24/2022 2:44:05 PM
+2022|S|45|2/24/2022 12:00:00 AM|SB422|23|0|23|1|||Ought to Pass w/Amendment|establishing an adult dental benefit under the state Medicaid program.||2/24/2022 3:29:21 PM
+2022|S|46|2/24/2022 12:00:00 AM|SB298|13|10|23|1|||Inexpedient to Legislate|repealing the law relative to certain discrimination in public workplaces and education.||2/24/2022 3:06:11 PM
+2022|S|47|2/24/2022 12:00:00 AM|SB302|14|9|23|1|||Ought to Pass w/Amendment|establishing the personal privacy protection act.||2/24/2022 3:31:30 PM
+2022|S|48|3/17/2022 12:00:00 AM|CACR36|14|10|24|0|||Ought to Pass w/Amendment|residency for the purpose of voting.  Providing that only residents of the state may vote in elections.||3/18/2022 10:19:31 AM
+2022|S|49|3/17/2022 12:00:00 AM|SB254|14|10|24|0|||Refer to Interim Study|apportioning executive council districts.||3/18/2022 10:33:02 AM
+2022|S|50|3/17/2022 12:00:00 AM|SB328|19|5|24|0|||Floor Amendment 1137s|relative to the date of the state primary election.||3/25/2022 11:14:42 AM
+2022|S|51|3/17/2022 12:00:00 AM|SB328|22|2|24|0|||Ought to Pass w/Amendment|relative to the date of the state primary election.||3/18/2022 12:44:15 PM
+2022|S|52|3/17/2022 12:00:00 AM|HB52|10|14|24|0|||Floor Amendment 1136s|apportioning congressional districts.||3/25/2022 11:15:03 AM
+2022|S|53|3/17/2022 12:00:00 AM|HB52|13|11|24|0|||Ought to Pass|apportioning congressional districts.||3/18/2022 12:47:56 PM
+2022|S|54|3/17/2022 12:00:00 AM|SB359|13|11|24|0|||Inexpedient to Legislate|requiring the commissioner of the department of administrative services to conduct an inventory of all state real estate.||3/18/2022 11:52:19 AM
+2022|S|55|3/17/2022 12:00:00 AM|SB374|18|6|24|0|||Refer to Interim Study|relative to the SARS-CoV-2 vaccinations.||3/18/2022 11:54:53 AM
+2022|S|56|3/17/2022 12:00:00 AM|SB458|14|10|24|0|||Committee Amendment 1057s|relative to the Sununu youth services center and operation of a replacement secure facility.||3/25/2022 11:15:41 AM
+2022|S|57|3/17/2022 12:00:00 AM|SB344|11|13|24|0|||Refer to Interim Study|relative to the quorum requirements under the right to know law of meetings open to the public. ||3/21/2022 12:11:04 PM
+2022|S|58|3/17/2022 12:00:00 AM|SB437|14|10|24|0|||Inexpedient to Legislate|relative to the additional municipal fee for transportation improvements.||3/18/2022 12:05:48 PM
+2022|S|59|3/17/2022 12:00:00 AM|SB400|13|11|24|0|||Ought to Pass w/Amendment|relative to training and procedures for zoning and planning boards and relative to financial investments and incentives for affordable housing development.||3/18/2022 12:09:19 PM
+2022|S|60|3/24/2022 12:00:00 AM|SB426|13|9|22|2|||Inexpedient to Legislate|relative to the adequate education grants for fiscal year 2023.||3/24/2022 2:37:19 PM
+2022|S|61|3/24/2022 12:00:00 AM|SB453|13|9|22|2|||Refer to Interim Study|relative to statewide pre-kindergarten funding.||3/24/2022 2:41:49 PM
+2022|S|62|3/24/2022 12:00:00 AM|SB241|12|10|22|2|||Floor Amendment 1188s|apportioning executive council districts.||3/25/2022 11:13:29 AM
+2022|S|63|3/24/2022 12:00:00 AM|SB241|9|13|22|2|||Floor Amendment 1189s|apportioning executive council districts.||3/25/2022 11:13:16 AM
+2022|S|64|3/24/2022 12:00:00 AM|SB380|8|14|22|2|||Refer to Interim Study|relative to solid waste rules and landfill containment tests.||3/25/2022 10:14:37 AM
+2022|S|65|3/24/2022 12:00:00 AM|SB380|20|2|22|2|||Floor Amendment 1212s|relative to solid waste rules and landfill containment tests.||3/25/2022 11:12:59 AM
+2022|S|66|3/24/2022 12:00:00 AM|SB226|11|11|22|2|||Refer to Interim Study|establishing a recruitment and retention program for state employment.||3/25/2022 10:16:52 AM
+2022|S|67|3/24/2022 12:00:00 AM|SB226|12|10|22|2|||Laid on Table|establishing a recruitment and retention program for state employment.||3/25/2022 10:18:01 AM
+2022|S|68|3/24/2022 12:00:00 AM|SB387|13|9|22|2|||Inexpedient to Legislate|making an appropriation to the body-worn and dashboard camera fund.||3/25/2022 10:19:02 AM
+2022|S|69|3/24/2022 12:00:00 AM|SB408|1|21|22|2|||Inexpedient to Legislate|directing the department of health and human services to make adjustments to the facility fee reimbursement schedule for freestanding birthing centers. ||3/25/2022 10:19:47 AM
+2022|S|70|3/24/2022 12:00:00 AM|SB420|21|1|22|2|||Ought to Pass|establishing an extraordinary need grant for schools.||3/25/2022 10:20:49 AM
+2022|S|71|3/24/2022 12:00:00 AM|SB449|10|12|22|2|||Floor Amendment 1192s|relative to the retention of social security numbers by the division of motor vehicles.||3/25/2022 11:12:32 AM
+2022|S|72|3/24/2022 12:00:00 AM|SB449|12|10|22|2|||Ought to Pass w/Amendment|relative to the retention of social security numbers by the division of motor vehicles.||3/25/2022 10:23:37 AM
+2022|S|73|3/31/2022 12:00:00 AM|HB1583|16|8|24|0|||Ought to Pass|(New Title) relative to days of operation of state liquor stores.||4/1/2022 11:23:25 AM
+2022|S|74|3/31/2022 12:00:00 AM|SB418|13|11|24|0|||Committee Amendment 1096s|relative to verification of voter affidavits.||4/4/2022 1:32:10 PM
+2022|S|75|3/31/2022 12:00:00 AM|SB418|13|11|24|0|||Ought to Pass w/Amendment|relative to verification of voter affidavits.||4/1/2022 11:24:08 AM
+2022|S|76|3/31/2022 12:00:00 AM|SB382|24|0|24|0|||Floor Amendment 1290s|(New Title) relative to licensure requirements for telehealth services and relative to licensure of physicians and physicians assistants through reciprocity agreements.||4/4/2022 1:32:29 PM
+2022|S|77|3/31/2022 12:00:00 AM|SB380|24|0|24|0|||Ought to Pass|relative to solid waste rules and landfill containment tests.||4/1/2022 11:32:51 AM
+2022|S|78|3/31/2022 12:00:00 AM|SB401|24|0|24|0|||Ought to Pass w/Amendment|(Third New Title) making appropriations to the department of transportation for local highway aid and to the body-worn and dashboard camera fund and permitting the department of transportation to operate dash cameras in fleet vehicles.||4/1/2022 11:33:34 AM
+2022|S|79|3/31/2022 12:00:00 AM|SB415|13|11|24|0|||Laid on Table|making an appropriation to the department of health and human services for the purpose of increasing rates paid to homeless shelters.||4/1/2022 9:56:07 AM
+2022|S|80|3/31/2022 12:00:00 AM|SB417|4|20|24|0|||Refer to Interim Study|establishing an electric school bus pilot program.||4/1/2022 9:59:24 AM
+2022|S|81|3/31/2022 12:00:00 AM|SB434|13|11|24|0|||Refer to Interim Study|relative to the reduction in the calculation of state retirement annuities at age 65. ||4/1/2022 10:02:33 AM
+2022|S|82|3/31/2022 12:00:00 AM|SB443|4|20|24|0|||Refer to Interim Study|relative to municipal authority regarding the state building code.||4/1/2022 10:06:36 AM
+2022|S|83|3/31/2022 12:00:00 AM|SB443|23|1|24|0|||Ought to Pass|relative to municipal authority regarding the state building code.||4/1/2022 11:34:24 AM
+2022|S|84|3/31/2022 12:00:00 AM|SB344|13|11|24|0|||Floor Amendment 1301s|(New Title) relative to the electronic participation requirements of meetings open to the public under the right to know law.||4/4/2022 1:33:00 PM
+2022|S|85|3/31/2022 12:00:00 AM|SB344|13|11|24|0|||Ought to Pass w/Amendment|(New Title) relative to the electronic participation requirements of meetings open to the public under the right to know law.||4/1/2022 11:38:11 AM
+2022|S|86|4/14/2022 12:00:00 AM|HB579|14|10|24|0|||Inexpedient to Legislate|requiring notice to the public before immigration checkpoints are conducted.||4/14/2022 12:55:00 PM
+2022|S|87|4/21/2022 12:00:00 AM|HB1513|23|1|24|0|||Floor Amendment|(Second New Title) relative to the definition of a child with a disability for purposes of special education.||4/22/2022 10:01:24 AM
+2022|S|88|4/21/2022 12:00:00 AM|HB1627|14|10|24|0|||Floor Amendment|(Second New Title) establishing an education freedom account program administrator in the department of education and making an appropriation therefor.||4/22/2022 10:04:14 AM
+2022|S|89|4/21/2022 12:00:00 AM|CACR21|21|3|24|0|||Ought to Pass w/Amendment|relating to registers of probate. Providing that eliminating the office of register of probate and all references to such office.||4/22/2022 10:41:25 AM
+2022|S|90|4/21/2022 12:00:00 AM|HB1583|13|11|24|0|||Inexpedient to Legislate|(New Title) relative to days of operation of state liquor stores.||4/22/2022 10:44:18 AM
+2022|S|91|4/21/2022 12:00:00 AM|HB103|24|0|24|0|||Ought to Pass w/Amendment|establishing a dental benefit under the state Medicaid program.||4/22/2022 12:32:56 PM
+2022|S|92|4/21/2022 12:00:00 AM|HB1044|20|4|24|0|||Refer to Interim Study|(New Title) relative to direct payment and membership-based health care facilities.||4/22/2022 10:50:21 AM
+2022|S|93|4/21/2022 12:00:00 AM|HB1495|14|10|24|0|||Ought to Pass w/Amendment|(New Title) prohibiting the state from requiring businesses to require vaccine or documentation related to vaccination or immunity status.||4/22/2022 11:02:08 AM
+2022|S|94|4/21/2022 12:00:00 AM|HB1360|17|7|24|0|||Refer to Interim Study|relative to penalties for controlled drug violations.||4/22/2022 4:12:21 PM
+2022|S|95|4/21/2022 12:00:00 AM|HB1425|20|4|24|0|||Inexpedient to Legislate|relative to the taking of real property by eminent domain.||4/22/2022 11:08:25 AM
+2022|S|96|4/21/2022 12:00:00 AM|HB1221|14|10|24|0|||Committee Amendment Sections|(Second New Title) relative to the rate of the business profits tax, and relative to payment by the state to municipalities of an amount equal to a portion of retirement system contributions of political subdivision employers.||4/22/2022 11:38:59 AM
+2022|S|97|4/21/2022 12:00:00 AM|HB1221|24|0|24|0|||Committee Amendment Sections|(Second New Title) relative to the rate of the business profits tax, and relative to payment by the state to municipalities of an amount equal to a portion of retirement system contributions of political subdivision employers.||4/22/2022 12:18:48 PM
+2022|S|98|4/21/2022 12:00:00 AM|HB1221|14|10|24|0|||Sections|(Second New Title) relative to the rate of the business profits tax, and relative to payment by the state to municipalities of an amount equal to a portion of retirement system contributions of political subdivision employers.||4/22/2022 12:26:49 PM
+2022|S|99|4/21/2022 12:00:00 AM|HB1221|24|0|24|0|||Ought to Pass w/Amendment|(Second New Title) relative to the rate of the business profits tax, and relative to payment by the state to municipalities of an amount equal to a portion of retirement system contributions of political subdivision employers.||4/22/2022 12:31:03 PM
+2022|S|100|4/21/2022 12:00:00 AM|HB1609|10|14|24|0|||Floor Amendment|(NEW TITLE) relative to certain provisions of the fetal life protection act requiring an ultrasound examination.||4/22/2022 12:39:00 PM
+2022|S|101|4/21/2022 12:00:00 AM|HB1609|19|5|24|0|||Ought to Pass|(NEW TITLE) relative to certain provisions of the fetal life protection act requiring an ultrasound examination.||4/22/2022 12:41:12 PM
+2022|S|102|4/28/2022 12:00:00 AM|HB1203|14|10|24|0|||Committee Amendment Sections|(Second New Title) relative to voter registration and verification of voter identity.||4/29/2022 9:37:54 AM
+2022|S|103|4/28/2022 12:00:00 AM|HB1203|10|14|24|0|||Floor Amendment|(Second New Title) relative to voter registration and verification of voter identity.||4/29/2022 9:41:28 AM
+2022|S|104|4/28/2022 12:00:00 AM|HB1203|14|10|24|0|||Divide the Question|(Second New Title) relative to voter registration and verification of voter identity.||4/29/2022 9:46:53 AM
+2022|S|105|4/28/2022 12:00:00 AM|HB1268|21|3|24|0|||Refer to Interim Study|limiting the authority for city council bylaws and ordinances.||4/29/2022 9:49:06 AM
+2022|S|106|4/28/2022 12:00:00 AM|HB629|11|13|24|0|||Floor Amendment|relative to the home cultivation of cannabis plants and the possession of certain cannabis-infused products.||4/29/2022 10:00:15 AM
+2022|S|107|4/28/2022 12:00:00 AM|HB629|9|15|24|0|||Ought to Pass|relative to the home cultivation of cannabis plants and the possession of certain cannabis-infused products.||4/29/2022 10:03:22 AM
+2022|S|108|4/28/2022 12:00:00 AM|HB629|15|9|24|0|||Inexpedient to Legislate|relative to the home cultivation of cannabis plants and the possession of certain cannabis-infused products.||4/29/2022 10:05:57 AM
+2022|S|109|4/28/2022 12:00:00 AM|HB1131|14|10|24|0|||Ought to Pass w/Amendment|relative to facial covering policies for schools. ||4/29/2022 10:14:08 AM
+2022|S|110|4/28/2022 12:00:00 AM|HB1375|14|10|24|0|||Laid on Table|relative to the definition of veteran. ||4/29/2022 10:16:00 AM
+2022|S|111|4/28/2022 12:00:00 AM|HB1417|22|2|24|0|||Ought to Pass|relative to payment by the state of a portion of retirement system contributions of political subdivision employers.||4/29/2022 10:18:04 AM
+2022|S|112|4/28/2022 12:00:00 AM|HB1417|14|10|24|0|||Laid on Table|relative to payment by the state of a portion of retirement system contributions of political subdivision employers.||4/29/2022 10:21:30 AM
+2022|S|113|4/28/2022 12:00:00 AM|HB1431|13|11|24|0|||Committee Amendment|establishing the parental bill of rights. ||4/29/2022 10:31:44 AM
+2022|S|114|4/28/2022 12:00:00 AM|HB1431|12|12|24|0|||Floor Amendment|establishing the parental bill of rights. ||4/29/2022 10:38:21 AM
+2022|S|115|4/28/2022 12:00:00 AM|HB1476|21|3|24|0|||Ought to Pass w/Amendment|(New Title) relative to release of a defendant pending trial.||4/29/2022 10:41:21 AM
+2022|S|116|5/5/2022 12:00:00 AM|HB1454|14|10|24|0|||Floor Amendment|relative to permits for the siting of new landfills.||5/6/2022 8:55:21 AM
+2022|S|117|5/5/2022 12:00:00 AM|HB1454|3|21|24|0|||Laid on Table|relative to permits for the siting of new landfills.||5/6/2022 2:55:15 PM
+2022|S|118|5/5/2022 12:00:00 AM|HB1454|16|8|24|0|||Ought to Pass w/Amendment|relative to permits for the siting of new landfills.||5/6/2022 9:11:50 AM
+2022|S|119|5/5/2022 12:00:00 AM|HB1132|14|10|24|0|||Ought to Pass w/Amendment|relative to applications for a charter conversion school. ||5/6/2022 9:51:32 AM
+2022|S|120|5/5/2022 12:00:00 AM|HB490|17|7|24|0|||Committee Amendment|(Second New Title) relative to the definitions of "game camera" and "hunting day," relative to the use of game cameras, relative to the use of temporary tree stands or observation blinds, and relative to the definition of "firearm."||5/6/2022 2:58:08 PM
+2022|S|121|5/5/2022 12:00:00 AM|HB490|10|14|24|0|||Floor Amendment|(Second New Title) relative to the definitions of "game camera" and "hunting day," relative to the use of game cameras, relative to the use of temporary tree stands or observation blinds, and relative to the definition of "firearm."||5/6/2022 10:07:42 AM
+2022|S|122|5/5/2022 12:00:00 AM|HB536|11|13|24|0|||Refer to Interim Study|relative to death benefits for public works employees killed in the line of duty, and relative to workers' compensation offsets for certain retirement system benefits.||5/6/2022 3:03:16 PM
+2022|S|123|5/5/2022 12:00:00 AM|HB1066|24|0|24|0|||Ought to Pass|(Second New Title) requiring the commissioner of the department of environmental services to prepare a plan relative to cyanobacterial blooms in New Hampshire. ||5/6/2022 1:34:10 PM
+2022|S|124|5/5/2022 12:00:00 AM|HB1221|14|10|24|0|||Sections|(Third New Title) relative to the rate of the business profits tax, and relative to payment by the state to political subdivisions of an amount equal to a portion of retirement system contributions of political subdivision employers.||5/6/2022 1:38:48 PM
+2022|S|125|5/5/2022 12:00:00 AM|HB1431|13|11|24|0|||Ought to Pass w/Amendment|establishing the parental bill of rights. ||5/6/2022 1:41:25 PM
+2022|S|126|5/5/2022 12:00:00 AM|HB1535|9|15|24|0|||Inexpedient to Legislate|(New Title) relative to a one-time allowance for certain state retirees.||5/6/2022 1:53:11 PM
+2022|S|127|5/5/2022 12:00:00 AM|HB1535|17|7|24|0|||Ought to Pass|(New Title) relative to a one-time allowance for certain state retirees.||5/6/2022 3:06:43 PM
+2022|S|128|5/5/2022 12:00:00 AM|HB1587|24|0|24|0|||Ought to Pass|relative to determination of average final compensation under the retirement system and making an appropriation therefor.||5/6/2022 1:59:01 PM
+2022|S|129|5/5/2022 12:00:00 AM|HB1662|24|0|24|0|||Floor Amendment|(Second New Title) relative to the privacy obligations of the department of health and human services, an appropriation for housing expenses for homeless people and parameters thereof, electronic wage payments, and requiring online marketplaces to disclos||5/6/2022 3:10:51 PM
+2022|S|130|5/5/2022 12:00:00 AM|HB1662|24|0|24|0|||Floor Amendment|(Second New Title) relative to the privacy obligations of the department of health and human services, an appropriation for housing expenses for homeless people and parameters thereof, electronic wage payments, and requiring online marketplaces to disclos||5/6/2022 3:11:20 PM
+2022|S|131|5/5/2022 12:00:00 AM|HB1677|10|14|24|0|||Floor Amendment|relative to the administration and settlement of claims of abuse at the youth development center and making an appropriation therefor.||5/6/2022 2:07:04 PM
+2022|S|132|5/5/2022 12:00:00 AM|HB1677|10|14|24|0|||Floor Amendment|relative to the administration and settlement of claims of abuse at the youth development center and making an appropriation therefor.||5/6/2022 2:10:25 PM
+2022|S|133|5/5/2022 12:00:00 AM|HB1677|14|10|24|0|||Ought to Pass|relative to the administration and settlement of claims of abuse at the youth development center and making an appropriation therefor.||5/6/2022 2:14:33 PM
+2022|S|134|5/5/2022 12:00:00 AM|HB1022|14|10|24|0|||Committee Amendment|(New Title) permitting pharmacists to dispense the drug Ivermectin by means of a standing order and establishing a commission to study the use of Ivermectin to treat Covid-19.||5/6/2022 2:26:15 PM
+2022|S|135|5/5/2022 12:00:00 AM|HB1022|10|14|24|0|||Floor Amendment|(New Title) permitting pharmacists to dispense the drug Ivermectin by means of a standing order and establishing a commission to study the use of Ivermectin to treat Covid-19.||5/6/2022 2:28:39 PM
+2022|S|136|5/5/2022 12:00:00 AM|HB1022|14|10|24|0|||Ought to Pass w/Amendment|(New Title) permitting pharmacists to dispense the drug Ivermectin by means of a standing order and establishing a commission to study the use of Ivermectin to treat Covid-19.||5/6/2022 2:32:04 PM
+2022|S|137|5/5/2022 12:00:00 AM|HB1080|14|10|24|0|||Refer to Interim Study|relative to the rights of conscience for medical professionals.||5/6/2022 2:43:23 PM
+2022|S|138|5/5/2022 12:00:00 AM|HB1210|19|5|24|0|||Refer to Interim Study|relative to exemptions from vaccine mandates.||5/6/2022 2:58:25 PM
+2022|S|139|5/5/2022 12:00:00 AM|HB238|12|12|24|0|||Refer to Interim Study|prohibiting provocations based on a victim’s actual or perceived gender, gender identity, gender expression, or sexual orientation from being used as a defense in manslaughter cases.||5/6/2022 3:01:51 PM
+2022|S|140|5/5/2022 12:00:00 AM|HB1280|14|10|24|0|||Committee Amendment Sections|(New Title) prohibiting a parent's refusal to vaccinate a child from being used as evidence in any proceeding to terminating parental rights and enacting the 2009 interstate compact for the placement of children.||5/6/2022 3:05:32 PM
+2022|S|141|5/5/2022 12:00:00 AM|HB1625|12|12|24|0|||Floor Amendment|repealing the prohibition on entering or remaining on a public way or sidewalk adjacent to a reproductive health care facility.||5/6/2022 3:16:48 PM
+2022|S|142|5/5/2022 12:00:00 AM|HB1625|10|14|24|0|||Floor Amendment|repealing the prohibition on entering or remaining on a public way or sidewalk adjacent to a reproductive health care facility.||5/6/2022 3:18:43 PM
+2022|S|143|5/5/2022 12:00:00 AM|HB1625|12|11|23|1|||Ought to Pass|repealing the prohibition on entering or remaining on a public way or sidewalk adjacent to a reproductive health care facility.||5/6/2022 3:22:41 PM
+2022|S|144|5/5/2022 12:00:00 AM|HB103|23|0|23|1|||Ought to Pass|establishing a dental benefit under the state Medicaid program.||5/6/2022 3:25:12 PM
+2022|S|145|5/5/2022 12:00:00 AM|HB1661|23|0|23|1|||Ought to Pass w/Amendment|(Sixth New Title) relative to regional career technical education agreements, an appropriation for preliminary work for a new legislative parking garage, health and human services, establishing an extraordinary need grant for schools, the release of a def||5/6/2022 3:29:32 PM
+2022|S|146|5/5/2022 12:00:00 AM|HB1455|13|10|23|1|||Ought to Pass w/Amendment|relative to state enforcement of federal vaccination mandates.||5/6/2022 3:32:33 PM
+2022|S|147|5/5/2022 12:00:00 AM|HB1606|13|10|23|1|||Ought to Pass w/Amendment|(New Title) relative to administration of the state immunization registry.||5/6/2022 3:35:24 PM
+2022|S|148|5/5/2022 12:00:00 AM|HB1178|13|10|23|1|||Ought to Pass w/Amendment|prohibiting the state from enforcing any federal statute, regulation, or Presidential Executive Order that restricts or regulates the right of the people to keep and bear arms. ||5/6/2022 3:36:54 PM
+2022|S|149|5/12/2022 12:00:00 AM|HB1431|13|10|23|1|||Accede|establishing the parental bill of rights. ||5/12/2022 3:48:27 PM
+2022|S|150|5/12/2022 12:00:00 AM|SB345|14|9|23|1|||Concur|relative to youth employment.||5/12/2022 3:49:51 PM
+2022|S|151|5/12/2022 12:00:00 AM|SB418|14|9|23|1|||Concur|relative to verification of voter affidavits.||5/12/2022 3:52:19 PM
+2022|S|152|5/12/2022 12:00:00 AM|SB333|14|10|24|0|||Nonconcur|(New Title) relative to licensure of case management service providers and relative to payment by the state of a portion of retirement system contributions of political subdivision employers.||5/12/2022 3:53:26 PM
+2022|S|153|5/12/2022 12:00:00 AM|SB299|15|9|24|0|||Nonconcur|(New Title) relative to the penalty for escape and relative to home cultivation of cannabis plants and the possession of certain cannabis-infused products.||5/12/2022 3:54:40 PM
+2022|S|154|5/26/2022 12:00:00 AM|HB1221|24|0|24|0|||Conference Committee Report|(Third New Title) relative to the rate of the business profits tax, and relative to payment by the state to political subdivisions of an amount equal to a portion of retirement system contributions of political subdivision employers.||5/26/2022 11:49:37 AM
+2022|S|155|5/26/2022 12:00:00 AM|HB1431|14|10|24|0|||Conference Committee Report|establishing the parental bill of rights. ||5/26/2022 1:12:17 PM
+2022|S|156|5/26/2022 12:00:00 AM|HB1567|14|10|24|0|||Conference Committee Report|(New Title) relative to consequences resulting from election official misconduct.||5/26/2022 1:12:49 PM
+2022|S|157|5/26/2022 12:00:00 AM|SB200|14|10|24|0|||Conference Committee Report|(New Title) apportioning congressional districts.||5/26/2022 1:13:44 PM
+2022|S|158|9/15/2022 12:00:00 AM|SB200|14|9|23|0|||VETO MESSAGE - Roll Call Required|(New Title) apportioning congressional districts.||9/16/2022 10:10:44 AM
+2022|S|159|9/15/2022 12:00:00 AM|SB200|13|10|23|0|||VETO MESSAGE - Roll Call Required|(New Title) apportioning congressional districts.||9/16/2022 10:10:54 AM
+2022|S|160|9/15/2022 12:00:00 AM|HB2023|10|13|23|0|||Floor Amendment|making appropriations to the department of energy for a state emergency fuel assistance program and a supplemental electric benefit, and relative to the electric low-income program fund.||9/16/2022 9:34:21 AM
+2022|S|161|9/15/2022 12:00:00 AM|HB2023|13|10|23|0|||Ought to Pass: Sections|making appropriations to the department of energy for a state emergency fuel assistance program and a supplemental electric benefit, and relative to the electric low-income program fund.||9/16/2022 11:06:02 AM
+2022|S|162|9/15/2022 12:00:00 AM|HB2023|23|0|23|0|||Ought to Pass: Remainder|making appropriations to the department of energy for a state emergency fuel assistance program and a supplemental electric benefit, and relative to the electric low-income program fund.||9/16/2022 11:08:20 AM
+2022|S|163|9/15/2022 12:00:00 AM|SB436|10|13|23|0|||Remove from Table|relative to access to abortion care.||9/16/2022 9:46:36 AM
+2022|S|164|9/15/2022 12:00:00 AM|HB1454|11|12|23|0|||VETO MESSAGE - Roll Call Required|relative to permits for the siting of new landfills.||9/16/2022 10:13:59 AM

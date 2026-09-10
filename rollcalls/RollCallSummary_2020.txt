@@ -1,0 +1,324 @@
+2020|H|1|1/8/2020 10:49:54 AM||368|0|10|18|||Call of the Roll|||
+2020|H|2|1/8/2020 10:58:51 AM|HB377|255|115|8|18|||OTPA|relative to the best interests of the child under the child protection act.||
+2020|H|3|1/8/2020 11:08:11 AM|HB201|316|55|7|18|||OTP|increasing penalties for buyers under the law regarding trafficking in persons.||
+2020|H|4|1/8/2020 11:44:48 AM|HB687|213|162|4|17|||Adopt Amendment|relative to extreme risk protection orders.||
+2020|H|5|1/8/2020 12:20:16 PM|HB687|201|176|2|17|||OTPA|relative to extreme risk protection orders.||
+2020|H|6|1/8/2020 1:48:40 PM|HB677|210|149|18|19|||OTPA|relative to discipline of students, addressing students' behavioral needs, and making an appropriation therefor.||
+2020|H|7|1/8/2020 2:04:09 PM|HB721|214|152|10|20|||OTPA|relative to special education in towns with no public schools.||
+2020|H|8|1/8/2020 2:11:56 PM|CACR9|217|150|7|22|||OTPA|relating to redistricting.  Providing that an independent redistricting commission shall be established to draw boundaries for state and federal offices.||
+2020|H|9|1/8/2020 2:24:40 PM|SB7|203|163|6|24|||OTPA|establishing the secure modern accurate registration act (SMART ACT).||
+2020|H|10|1/8/2020 2:39:53 PM|SB8|224|141|7|24|||OTPA|establishing an independent redistricting commission.||
+2020|H|11|1/8/2020 3:02:18 PM|HB221|179|178|12|27|||Table|renaming Columbus Day as Indigenous People's Day.||
+2020|H|12|1/8/2020 3:11:06 PM|HB506|186|173|10|27|||Adopt Amendment|establishing state holidays for elections.||
+2020|H|13|1/8/2020 3:24:41 PM|HB546|218|144|6|28|||OTPA|relative to the regulation of art therapists.||
+2020|H|14|1/8/2020 3:44:16 PM|HB168|226|126|11|33|||ITL|making an appropriation to the FRM victims' contribution recovery fund.||
+2020|H|15|1/8/2020 3:53:55 PM|HB712|215|141|7|33|||OTPA|relative to a family and medical leave insurance program.||
+2020|H|16|1/8/2020 3:59:07 PM|HB366|289|65|9|33|||OTPA|adding opioid addiction, misuse, and abuse to qualifying medical conditions under therapeutic use of cannabis.||
+2020|H|18|1/9/2020 10:24:11 AM|HB731|189|170|11|26|||Adopt Amendment|relative to the minimum hourly rate.||
+2020|H|19|1/9/2020 10:36:23 AM|HB731|189|177|4|26|||Adopt Amendment|relative to the minimum hourly rate.||
+2020|H|20|1/9/2020 10:46:06 AM|HB731|212|155|3|26|||OTPA|relative to the minimum hourly rate.||
+2020|H|21|1/9/2020 11:01:57 AM|SB19|148|216|5|27|||Adopt Amendment|relative to the privacy of certain information concerning public employees.||
+2020|H|22|1/9/2020 11:05:41 AM|SB19|218|148|3|27|||OTPA|relative to the privacy of certain information concerning public employees.||
+2020|H|23|1/9/2020 11:30:06 AM|HB102|215|151|3|27|||OTPA|relative to municipal ordinances regarding the use of plastics.||
+2020|H|24|1/9/2020 12:03:56 PM|HB559|205|158|6|27|||OTPA|enabling municipalities to ban single-use sources of plastic pollution.||
+2020|H|25|1/9/2020 1:39:59 PM|HB655|178|188|5|25|||OTPA|regulating disorderly houses.||
+2020|H|26|1/9/2020 1:47:22 PM|HB655|188|180|3|25|||ITL|regulating disorderly houses.||
+2020|H|27|1/9/2020 2:11:42 PM|HB735|187|172|6|31|||Table|relative to carbon pricing.||
+2020|H|28|1/9/2020 2:23:09 PM|SB122|212|140|9|35|||OTPA|relative to expenditures from the energy efficiency fund.||
+2020|H|29|1/9/2020 2:34:20 PM|SB124|214|141|7|34|||OTPA|relative to renewable portfolio standards after 2025.||
+2020|H|30|1/9/2020 3:02:11 PM|SB159|227|128|5|36|||OTPA|relative to net energy metering limits for customer-generators.||
+2020|H|31|1/9/2020 3:11:37 PM|SB166|203|131|24|38|||OTPA|relative to competitive electricity supplier requirements under net energy metering.||
+2020|H|32|1/9/2020 3:24:17 PM|HCR6|318|27|11|40|||ITL|applying to congress to propose a congressional term limits constitutional amendment.||
+2020|H|34|2/13/2020 1:46:14 PM|HB1258|174|153|16|53|||ITL|establishing a committee to study the impact on youth of media concerning them available on the Internet.||
+2020|H|35|2/13/2020 3:02:53 PM|HB1335|183|142|18|53|||ITL|relative to private rights of action regarding pupil safety.||
+2020|H|36|2/13/2020 3:15:58 PM|HB1339|199|129|13|55|||ITL|relative to damage to crops or livestock done by animals.||
+2020|H|37|2/13/2020 3:36:10 PM|HB1568|181|148|14|53|||ITL|prohibiting town employees and elected officials from profiting from businesses with which the town does business.||
+2020|H|38|2/13/2020 3:43:29 PM|HB1649|120|206|16|54|||Table|establishing a road usage fee and making an appropriation therefor.||
+2020|H|39|2/13/2020 4:29:03 PM|HB1649|144|173|19|60|||OTPA|establishing a road usage fee and making an appropriation therefor.||
+2020|H|40|2/13/2020 4:55:13 PM|HB1700|177|128|27|64|||OTP|relative to the licensure of nonresident aliens temporarily residing in New Hampshire.||
+2020|H|42|2/19/2020 10:26:42 AM|HB1563|329|21|20|26|||OTP|relative to the use of funds in the drug forfeiture fund.||
+2020|H|43|2/19/2020 11:12:22 AM|HB1601|140|212|16|28|||Indefinitely Postpone|removing the exception for married minors from the definition of sexual assault.||
+2020|H|44|2/19/2020 1:32:55 PM|HB1580|227|124|13|32|||OTPA|regulating the use of drones.||
+2020|H|45|2/19/2020 1:49:22 PM|HB1660|206|144|13|33|||OTPA|establishing a protective order for vulnerable adults.||
+2020|H|46|2/19/2020 3:24:14 PM|HB1218|215|125|17|39|||OTPA|relative to net energy metering and limits for customer generators.||
+2020|H|47|2/19/2020 3:44:41 PM|HB1402|188|148|15|45|||Interim Study|establishing procedures for municipal host customer-generators of electrical energy.||
+2020|H|48|2/19/2020 3:57:01 PM|HB1661|203|127|17|49|||ITL|relative to the exemption from property taxes for water and air pollution control facilities.||
+2020|H|49|2/19/2020 4:14:45 PM|HB1664|197|123|22|54|||OTPA|establishing a climate action plan, an office of the environmental advocate, and an oversight commission on environmental services.||
+2020|H|50|2/19/2020 4:32:29 PM|HB1281|208|110|22|56|||OTPA|requiring insurance coverage for epipens.||
+2020|H|51|2/19/2020 4:50:47 PM|HB1101|184|134|19|59|||OTPA|imposing a waiting period between the purchase and delivery of a firearm.||
+2020|H|53|2/20/2020 10:56:03 AM|HB1379|196|152|11|37|||OTP|requiring a background check for commercial firearms sales.||
+2020|H|54|2/20/2020 11:21:26 AM|HB1648|236|112|12|36|||OTPA|relative to the home cultivation of cannabis plants and the possession of certain cannabis-infused products.||
+2020|H|55|2/20/2020 12:15:50 PM|HB1454|202|142|15|37|||OTP|relative to credit for alternative, extended learning, and work-based programs.||
+2020|H|56|2/20/2020 2:03:30 PM||129|206|13|48|||Table Burns Reprimand|||
+2020|H|57|2/20/2020 2:40:11 PM||208|128|11|49|||Burns Reprimand|||
+2020|H|58|2/20/2020 3:37:40 PM||203|120|18|55|||Burt Reprimand|||
+2020|H|59|2/20/2020 4:29:15 PM||108|203|22|63|||Prout Reprimand|||
+2020|H|60|2/20/2020 4:45:55 PM||191|115|24|66|||Sylvia Reprimand|||
+2020|H|61|2/20/2020 5:12:06 PM||182|117|23|74|||Verville Reprimand|||
+2020|H|63|3/5/2020 1:59:11 PM|HB1221|210|139|13|34|||OTPA|relative to privacy for an employee's personal financial and credit information.||
+2020|H|64|3/5/2020 2:12:39 PM|HB1290|209|134|18|35|||OTPA|relative to public employee labor relations and collective bargaining.||
+2020|H|65|3/5/2020 2:22:57 PM|HB1322|207|137|18|34|||OTP|prohibiting university system funds from being spent to oppose the formation of unions and collective bargaining units.||
+2020|H|66|3/5/2020 2:33:03 PM|HB1399|205|142|15|34|||OTPA|relative to the establishment of public employee bargaining units.||
+2020|H|67|3/5/2020 2:38:54 PM|HB1554|211|136|15|34|||ITL|relative to elections in collective bargaining.||
+2020|H|68|3/5/2020 3:30:05 PM|HB1372|203|141|17|35|||OTP|relative to the election of Carroll county commissioners.||
+2020|H|69|3/5/2020 3:39:16 PM|HB1441|271|74|16|35|||ITL|relative to the perambulation of town lines.||
+2020|H|70|3/5/2020 4:07:40 PM|HB1629|276|60|18|42|||OTPA|relative to training and procedures for zoning and planning boards.||
+2020|H|71|3/5/2020 4:24:23 PM|HB1480|201|130|19|46|||ITL|relative to the use of system benefits charges.||
+2020|H|72|3/5/2020 4:30:54 PM|HB1621|193|141|16|46|||Table|relative to the use of protective head gear while operating motorcycles and motorized bicycles.||
+2020|H|73|3/5/2020 4:40:17 PM|HB1492|320|11|18|47|||ITL|establishing a tax on the retail sale of certain electronic devices to fund education.||
+2020|H|74|3/5/2020 4:44:52 PM|HB1652|323|7|18|48|||ITL|including ski area ticket sales under the meals and rooms tax and dedicating the revenue to the governor's scholarship program for New Hampshire resident students.||
+2020|H|75|3/5/2020 4:50:11 PM|HB1699|144|185|19|48|||Table|relative to a tax on electronic cigarettes.||
+2020|H|76|3/5/2020 5:14:01 PM|HB1699|172|142|25|57|||OTP|relative to a tax on electronic cigarettes.||
+2020|H|78|3/11/2020 9:27:33 AM|HB1102|232|81|39|44|||OTPA|requiring food service establishments to establish food allergy awareness procedures.||
+2020|H|79|3/11/2020 10:06:28 AM|HB1349|205|128|20|43|||OTP|establishing a committee to study firearms incidents involving children with access to unsecured firearms.||
+2020|H|80|3/11/2020 10:15:45 AM|HB1516|128|209|18|41|||Table|raising the minimum age for marriage.||
+2020|H|81|3/11/2020 10:30:30 AM|HB1516|113|230|13|40|||Adopt Amendment|raising the minimum age for marriage.||
+2020|H|82|3/11/2020 10:34:59 AM|HB1516|208|137|11|40|||Adopt Amendment|raising the minimum age for marriage.||
+2020|H|83|3/11/2020 10:41:39 AM|HB1516|136|209|11|40|||Adopt Amendment|raising the minimum age for marriage.||
+2020|H|84|3/11/2020 10:54:54 AM|HB1516|213|133|10|40|||Limit Debate|raising the minimum age for marriage.||
+2020|H|85|3/11/2020 11:21:59 AM|HB1516|207|132|17|40|||OTPA|raising the minimum age for marriage.||
+2020|H|86|3/11/2020 11:42:49 AM|HB546|197|139|20|40|||OTPA|relative to the regulation of art therapists.||
+2020|H|87|3/11/2020 12:00:41 PM|HB1280|223|121|13|39|||OTPA|relative to copayments for insulin.||
+2020|H|88|3/11/2020 1:27:10 PM||210|115|24|47|||Table Comeau Reprimand|||
+2020|H|89|3/11/2020 2:16:12 PM|HB1410|192|143|12|49|||OTPA|prohibiting the use of flavors and certain chemicals in vaping products.||
+2020|H|90|3/11/2020 2:26:46 PM|HB1455|216|120|11|49|||OTPA|relative to vehicle repairs.||
+2020|H|91|3/11/2020 2:44:56 PM|HB1472|197|135|15|49|||OTPA|restricting the distribution of plastic straws.||
+2020|H|92|3/11/2020 3:19:17 PM|HB1500|197|128|17|54|||OTPA|relative to a student loan bill of rights and a student loan ombudsman.||
+2020|H|93|3/11/2020 3:25:32 PM|HB1564|194|129|19|54|||OTPA|prohibiting the use of polystyrene foam.||
+2020|H|94|3/11/2020 3:31:51 PM|HB1633|219|104|19|54|||OTPA|relative to insurance coverage for tick-borne illness.||
+2020|H|95|3/11/2020 3:37:34 PM|HB1701|197|127|17|55|||OTPA|relative to the recycling of single use plastics.||
+2020|H|96|3/11/2020 3:58:11 PM|HB1350|169|153|16|58|||ITL|requiring a locking safety device be provided for commercial firearm sales and transfers.||
+2020|H|97|3/11/2020 4:12:45 PM|HB1374|181|141|15|59|||OTP|relative to voluntarily surrendered firearms.||
+2020|H|98|3/11/2020 5:08:42 PM|HB1586|200|123|13|60|||Interim Study|relative to the statute of limitations for sexual assault.||
+2020|H|99|3/11/2020 5:55:34 PM|HB1608|150|145|19|82|||OTPA|prohibiting the manufacture, sale, transfer, and possession of large capacity ammunition feeding devices.||
+2020|H|101|3/12/2020 9:53:04 AM|HB1675|177|131|33|55|||ITL|relative to the right of any infant born alive to medically appropriate and reasonable care and treatment.||
+2020|H|102|3/12/2020 10:10:36 AM|HB1148|182|131|28|55|||ITL|relative to the display of the national motto in schools.||
+2020|H|103|3/12/2020 11:13:45 AM|HB1251|184|131|28|53|||ITL|relative to participation in school sports programs for female student-athletes.||
+2020|H|104|3/12/2020 11:40:04 AM|HB1285|182|141|20|53|||OTPA|relative to possession of firearms on school property.||
+2020|H|105|3/12/2020 11:47:15 AM|HB1306|196|128|20|52|||OTP|relative to the recitation of the Lord's prayer in public elementary schools.||
+2020|H|106|3/12/2020 11:57:39 AM|HB1321|188|137|19|52|||OTPA|establishing a committee to study the reporting criteria of chartered public schools.||
+2020|H|107|3/12/2020 12:08:30 PM|HB1323|187|139|18|52|||ITL|relative to the statewide assessment report.||
+2020|H|108|3/12/2020 1:52:45 PM||150|170|21|55|||Print Remarks|||
+2020|H|109|3/12/2020 1:57:33 PM|HB1334|197|125|19|55|||ITL|relative to religious activities of teachers and students in public schools.||
+2020|H|110|3/12/2020 2:02:07 PM|HB1423|192|135|14|55|||OTP|relative to reports on education tax credit scholarships.||
+2020|H|111|3/12/2020 2:08:46 PM|HB1435|192|132|15|57|||OTPA|repealing the powers of the state board of education.||
+2020|H|112|3/12/2020 2:22:07 PM|HB1459|186|136|19|55|||OTPA|relative to non-academic surveys administered by a public school or a chartered public school to its students.||
+2020|H|113|3/12/2020 2:26:04 PM|HB1473|226|97|17|56|||OTPA|requiring schools to have a special education parent advisory council.||
+2020|H|114|3/12/2020 2:34:36 PM|HB1487|203|121|15|57|||ITL|relative to freedom of speech and association on college campuses.||
+2020|H|115|3/12/2020 3:10:10 PM|HB1715|182|131|26|57|||OTP|relative to the renomination of teachers.||
+2020|H|116|3/12/2020 3:16:45 PM|HB1279|189|133|17|57|||OTP|relative to the terms resident, inhabitant, residence, and residency.||
+2020|H|117|3/12/2020 3:21:31 PM|HB1390|219|105|15|57|||Interim Study|relative to access to ballots and verification counts of machine-counted ballots.||
+2020|H|118|3/12/2020 3:28:36 PM|HB1525|198|124|22|52|||OTP|relative to the definition of political advocacy organization.||
+2020|H|119|3/12/2020 3:38:00 PM|HB1653|191|129|20|56|||OTP|relative to domicile, residency, voter registration, and investigation of voter verification letters.||
+2020|H|120|3/12/2020 3:46:53 PM|HB1665|203|121|16|56|||OTPA|establishing an independent redistricting commission.||
+2020|H|121|3/12/2020 3:51:38 PM|HB1672|194|132|15|55|||OTP|allowing voters to vote by absentee ballot.||
+2020|H|122|3/12/2020 3:59:27 PM|HB1319|189|123|29|55|||OTPA|prohibiting the siting of new landfills or expansions of existing landfills near state parks, national parks, or United States Department of Agriculture forest land.||
+2020|H|123|3/12/2020 4:05:33 PM|HB1422|260|56|24|56|||Interim Study|establishing a moratorium on the issuance of permits for new landfills or the expansion of existing landfills for the purpose of studying the creating of municipal waste districts.||
+2020|H|124|3/12/2020 4:27:17 PM|HB1122|275|42|22|57|||OTPA|relative to death benefits of first responders who die from suicide.||
+2020|H|125|3/12/2020 4:32:42 PM|HB1228|132|188|17|59|||Table|proclaiming Climate Change Awareness Day on October 1.||
+2020|H|126|3/12/2020 4:42:23 PM|HB1228|197|114|26|59|||OTPA|proclaiming Climate Change Awareness Day on October 1.||
+2020|H|127|3/12/2020 4:56:06 PM|HB1286|182|125|27|62|||OTPA|relative to the licensure and regulation of music therapists.||
+2020|H|128|3/12/2020 5:00:55 PM|HB1382|244|67|23|62|||OTP|establishing April 8, 2024 as Solar Eclipse Day.||
+2020|H|129|3/12/2020 5:15:13 PM|HB1571|183|126|24|63|||Table|relative to the qualifications for the members of the fish and game commission.||
+2020|H|130|3/12/2020 5:48:39 PM|HB1275|189|123|17|67|||ITL|relative to laboratory testing.||
+2020|H|131|3/12/2020 6:01:07 PM|HB1404|182|123|22|69|||Adopt Amendment|relative to HIV/AIDS prophylaxis treatment for minors without parental consent and allowing pharmacists to dispense a limited supply of pre-exposure prophylaxis for the human immunodeficiency virus.||
+2020|H|132|3/12/2020 6:12:42 PM|HB1404|178|125|24|69|||OTPA|relative to HIV/AIDS prophylaxis treatment for minors without parental consent and allowing pharmacists to dispense a limited supply of pre-exposure prophylaxis for the human immunodeficiency virus.||
+2020|H|133|3/12/2020 8:00:09 PM|HB1577|194|109|23|70|||OTPA|relative to initiating amendments and corrections to birth records.||
+2020|H|134|3/12/2020 8:07:24 PM|HB1655|185|118|22|71|||OTPA|expanding the New Hampshire vaccine association to include adult vaccines.||
+2020|H|135|3/12/2020 8:39:22 PM|HB1143|170|126|28|72|||OTP|repealing limited liability for manufacturers, distributors, dealers, or importers of firearms or ammunition.||
+2020|H|136|3/12/2020 8:42:55 PM||159|138|27|72|||Print Remarks|||
+2020|H|137|3/12/2020 9:10:45 PM|HB1247|188|108|27|73|||OTPA|relative to notice of rent increases in certain residential rental property.||
+2020|H|138|3/12/2020 9:23:46 PM|HB1391|196|96|31|73|||Table|relative to prohibiting discrimination in housing against persons with pets.||
+2020|H|139|3/12/2020 9:38:44 PM|HB1475|194|91|39|72|||ITL|prohibiting abortions after detection of fetal heartbeat.||
+2020|H|140|3/12/2020 9:51:05 PM|HB1539|185|112|26|73|||OTPA|relative to the relocation of children with elevated lead levels.||
+2020|H|141|3/12/2020 10:10:30 PM|HB1640|191|102|31|72|||ITL|relative to parental notification prior to abortion.||
+2020|H|142|3/12/2020 10:45:06 PM|HB1678|193|101|28|74|||ITL|relative to prohibiting abortion in certain cases.||
+2020|H|143|3/12/2020 11:01:23 PM||182|116|25|73|||Limit Debate|||
+2020|H|144|3/12/2020 11:09:31 PM||165|134|24|73|||Rules Suspension|||
+2020|H|145|3/12/2020 11:12:07 PM||267|32|24|73|||Print Remarks|||
+2020|H|146|3/12/2020 11:18:47 PM|HB1171|179|106|38|73|||OTPA|relative to the application of federal Occupational Safety and Health Act standards to public employers.||
+2020|H|147|3/12/2020 11:26:25 PM|HB1358|221|63|39|73|||ITL|relative to the identification of lobbyists.||
+2020|H|148|3/12/2020 11:44:30 PM|HB1115|282|6|34|74|||ITL|relative to the discharge of a firearm in the compact part of a city or town.||
+2020|H|149|3/12/2020 11:58:02 PM|HB1147|181|110|31|74|||ITL|prohibiting municipalities from requiring a license for a lemonade stand operated by a person under the age of 18.||
+2020|H|150|3/13/2020 12:10:18 AM|HB1160|174|113|35|74|||OTP|allowing municipalities to collect an occupancy fee from operators of local room rentals.||
+2020|H|151|3/13/2020 12:21:02 AM||41|247|36|72|||Adjourn|||
+2020|H|152|3/13/2020 1:18:17 AM|HB1444|110|178|35|73|||Table|requiring the adoption of vehicle emissions standards based on the California clean car standards.||
+2020|H|153|3/13/2020 1:27:05 AM|HB1444|179|109|33|75|||OTPA|requiring the adoption of vehicle emissions standards based on the California clean car standards.||
+2020|H|154|3/13/2020 1:38:29 AM|HB1496|180|101|41|74|||OTPA|relative to the regional greenhouse gas initiative cap and trade program for controlling carbon dioxide emissions.||
+2020|H|155|3/13/2020 1:45:29 AM|HB1676|118|163|43|72|||Table|requiring monitoring of certain radioactive air pollutants.||
+2020|H|156|3/13/2020 1:59:41 AM|HB1676|162|118|42|74|||OTP|requiring monitoring of certain radioactive air pollutants.||
+2020|H|157|3/13/2020 2:09:50 AM|HB1493|172|107|43|74|||OTP|establishing a committee to study the effects of deportation of primary earners on United States citizen family members.||
+2020|H|158|3/13/2020 2:34:13 AM|HB1401|174|109|38|75|||OTPA|prohibiting smoking and e-cigarettes in motor vehicles when a passenger is under 16 years of age.||
+2020|H|159|3/13/2020 2:43:22 AM|HB1552|167|114|40|75|||OTPA|requiring learner's permits for certain persons seeking drivers' licenses.||
+2020|H|160|3/13/2020 2:55:09 AM|HB1622|171|114|36|75|||OTPA|relative to the use of passenger restraints in motor vehicles.||
+2020|H|161|3/13/2020 3:06:32 AM|HB1646|155|121|45|75|||Table|relative to historic racing.||
+2020|H|162|3/13/2020 3:14:34 AM||80|196|45|75|||Reprimand|||
+2020|H|164|6/12/2020 8:54:19 AM||199|143|12|37|||Amend House Rules|||
+2020|H|165|6/12/2020 9:01:40 AM|CACR21|197|143|14|37|||Rules Suspension|||
+2020|H|166|6/12/2020 9:04:17 AM|HB1717|256|84|14|37|||Rules Suspension|||
+2020|H|167|6/12/2020 9:06:26 AM||154|174|26|37|||Hinch Rules Suspension|||
+2020|H|168|6/12/2020 9:08:32 AM||68|266|20|37|||Abramson Rules Suspension|||
+2020|H|169|6/12/2020 9:10:18 AM||57|280|17|37|||Prout Rules Suspension|||
+2020|H|170|6/12/2020 9:11:42 AM||189|151|15|36|||Adjutant Rules Suspension|||
+2020|H|171|6/12/2020 9:13:38 AM||201|140|15|35|||Cushing Rules Suspension|||
+2020|H|172|6/12/2020 9:15:26 AM||224|114|18|35|||Uphold Ruling of Chair|||
+2020|H|173|6/12/2020 9:16:55 AM|SB295|203|134|17|37|||Rules Suspension|relative to the office of the child advocate.||
+2020|H|174|6/12/2020 9:19:21 AM|HB1218|194|132|26|39|||Rules Suspension|(New Title) relative to net energy metering limits for customer generators and the purchase of output of limited electrical energy producers.||
+2020|H|175|6/12/2020 9:20:52 AM|HB2020|211|120|21|39|||Rules Suspension|relative to the 10-year transportation improvement plan.||
+2020|H|176|6/12/2020 9:23:02 AM||212|121|21|37|||Rules Suspension, Adopt CC|||
+2020|H|177|7/1/2020 8:52:33 AM|HB1162|209|119|23|40|||Concur|||
+2020|H|178|7/1/2020 8:54:51 AM|HB1249|224|105|22|40|||Concur|||
+2020|H|179|7/1/2020 8:57:31 AM|HB685|196|132|23|40|||Concur|||
+2020|H|180|7/1/2020 8:58:47 AM|HB1166|178|154|20|39|||Concur|||
+2020|H|181|7/1/2020 9:00:12 AM|HB1230|229|102|21|39|||Concur|||
+2020|H|182|7/1/2020 9:01:09 AM|HB1280|224|104|24|39|||Concur|||
+2020|H|183|7/1/2020 9:02:32 AM|HB1375|227|105|20|39|||Concur|||
+2020|H|184|7/1/2020 9:03:23 AM|HB705|254|75|22|40|||Concur|||
+2020|H|185|7/1/2020 9:04:17 AM|HB1240|257|68|26|40|||Concur|||
+2020|H|186|7/1/2020 9:05:00 AM|HB1645|255|74|23|39|||Concur|||
+2020|H|187|7/1/2020 9:05:44 AM|HB1454|193|136|23|39|||Concur|||
+2020|H|188|7/1/2020 9:06:25 AM|HB1558|201|129|22|39|||Concur|||
+2020|H|189|7/1/2020 9:07:18 AM|HB1266|221|101|30|39|||Concur|||
+2020|H|190|7/1/2020 9:08:07 AM|HB1672|195|130|24|42|||Concur|||
+2020|H|191|7/1/2020 9:08:51 AM|HB1494|202|127|20|42|||Concur|||
+2020|H|192|7/1/2020 9:10:08 AM|HB1234|198|129|22|42|||Concur|||
+2020|H|193|7/1/2020 9:11:00 AM|HB250|205|124|19|43|||Concur|||
+2020|H|194|7/1/2020 9:11:58 AM|HB1246|194|132|22|43|||Concur|||
+2020|H|195|7/1/2020 9:12:44 AM|HB1264|210|116|22|43|||Concur|||
+2020|H|196|7/1/2020 9:13:33 AM|HB1623|204|117|27|43|||Concur|||
+2020|H|197|7/1/2020 9:14:23 AM|HB1639|201|121|26|43|||Concur|||
+2020|H|198|7/1/2020 9:15:14 AM|HB1247|187|135|24|45|||Concur|||
+2020|H|199|7/1/2020 9:16:12 AM|HB731|199|124|23|45|||Concur|||
+2020|H|200|7/1/2020 9:17:23 AM|HB1245|190|127|29|45|||Concur|||
+2020|H|201|7/1/2020 9:20:02 AM|HB1135|299|17|30|45|||Concur|||
+2020|H|202|7/1/2020 9:20:49 AM|HB466|201|120|25|45|||Concur|||
+2020|H|203|7/1/2020 9:21:51 AM||199|108|39|45|||Adopt Report|||
+2020|H|204|9/17/2020 8:15:34 AM||199|134|22|33|||Refer to Justices 1|||
+2020|H|205|9/17/2020 8:16:56 AM||156|178|21|33|||Refer to Justices 2|||
+2020|H|206|9/17/2020 8:18:35 AM|SB159|207|130|18|33|||Veto Override|||
+2020|H|207|9/17/2020 8:20:24 AM|HB250|194|146|15|33|||Veto Override|||
+2020|H|208|9/17/2020 8:21:25 AM|HB466|199|139|17|33|||Veto Override|||
+2020|H|209|9/17/2020 8:22:27 AM|HB685|195|139|21|33|||Veto Override|||
+2020|H|210|9/17/2020 8:23:47 AM|HB687|182|156|17|33|||Veto Override|||
+2020|H|211|9/17/2020 8:24:47 AM|HB712|195|143|17|33|||Veto Override|||
+2020|H|212|9/17/2020 8:25:52 AM|HB731|197|139|19|33|||Veto Override|||
+2020|H|213|9/17/2020 8:29:20 AM|HB1166|193|145|17|33|||Veto Override|||
+2020|H|214|9/17/2020 8:30:22 AM|HB1234|192|145|17|34|||Veto Override|||
+2020|H|215|9/17/2020 8:31:25 AM|HB1246|196|139|18|35|||Veto Override|||
+2020|H|216|9/17/2020 8:32:46 AM|HB1247|187|148|18|35|||Veto Override|||
+2020|H|217|9/17/2020 8:33:44 AM|HB1375|191|138|23|36|||Veto Override|||
+2020|H|218|9/17/2020 8:34:43 AM|HB1454|193|140|19|36|||Veto Override|||
+2020|H|219|9/17/2020 8:35:47 AM|HB1494|202|133|17|36|||Veto Override|||
+2020|H|220|9/17/2020 8:36:48 AM|HB1660|191|142|19|36|||Veto Override|||
+2020|H|221|9/17/2020 8:37:40 AM|HB1665|198|135|19|36|||Veto Override|||
+2020|H|222|9/17/2020 8:38:34 AM|HB1672|191|141|20|36|||Veto Override|||
+2020|H|223|9/17/2020 8:40:16 AM||182|107|63|36|||Shall Member Continue|||
+2020|S|1|1/8/2020 12:00:00 AM|SB227|13|10|23|1|||Inexpedient to Legislate|relative to multiple-employer welfare arrangements.||1/9/2020 11:45:32 AM
+2020|S|2|1/8/2020 12:00:00 AM|SB248|15|8|23|1|||Floor Amendment 0022s|increasing the age for sales and possession of tobacco products.||1/10/2020 10:29:35 AM
+2020|S|3|1/8/2020 12:00:00 AM|SB248|15|8|23|1|||Ought to Pass w/Amendment|increasing the age for sales and possession of tobacco products.||1/9/2020 12:17:05 PM
+2020|S|4|1/8/2020 12:00:00 AM|SB23|13|10|23|1|||Inexpedient to Legislate|relative to a town establishing a minimum age to purchase a product.||1/9/2020 11:55:31 AM
+2020|S|5|1/8/2020 12:00:00 AM|SB304|13|10|23|1|||Ought to Pass w/Amendment|(New Title) establishing a committee to study public funding of certain state election campaigns.||1/9/2020 12:19:10 PM
+2020|S|6|1/8/2020 12:00:00 AM|SB261|13|11|24|0|||Laid on Table|relative to grandparents' access to preventive and protective child care services.||1/9/2020 12:01:28 PM
+2020|S|7|1/8/2020 12:00:00 AM|SB248|16|8|24|0|||Ought to Pass w/Amendment|increasing the age for sales and possession of tobacco products.||1/9/2020 12:20:49 PM
+2020|S|8|1/8/2020 12:00:00 AM|HB397|23|1|24|0|||Laid on Table|relative to drivers' licenses for New Hampshire residents who do not possess a social security card.||1/9/2020 12:04:25 PM
+2020|S|9|1/8/2020 12:00:00 AM|SB223|22|2|24|0|||Ought to Pass w/Amendment|increasing the minimum gross business income required for filing a business profits tax return.||1/9/2020 12:22:24 PM
+2020|S|10|1/30/2020 12:00:00 AM|SB552|24|0|24|0|||Ought to Pass|designating a portion of state route 125 as Officer Stephen Arkell Memorial Highway.||1/31/2020 9:22:32 AM
+2020|S|11|1/30/2020 12:00:00 AM|SB410|14|10|24|0|||Ought to Pass|relative to the state minimum hourly rate.||1/31/2020 9:25:45 AM
+2020|S|12|1/30/2020 12:00:00 AM|SB583|11|13|24|0|||Floor Amendment 0324s|relative to the addition of climate and environmental sciences to the criteria for an adequate education.||8/5/2020 10:43:04 AM
+2020|S|13|1/30/2020 12:00:00 AM|SB583|14|10|24|0|||Ought to Pass|relative to the addition of climate and environmental sciences to the criteria for an adequate education.||1/31/2020 9:50:37 AM
+2020|S|14|1/30/2020 12:00:00 AM|SB223|8|16|24|0|||Refer to Interim Study|increasing the minimum gross business income required for filing a business profits tax return.||1/31/2020 10:18:23 AM
+2020|S|15|1/30/2020 12:00:00 AM|SB223|24|0|24|0|||Ought to Pass|increasing the minimum gross business income required for filing a business profits tax return.||1/31/2020 10:25:57 AM
+2020|S|16|1/30/2020 12:00:00 AM|SB644|13|11|24|0|||Laid on Table|relative to missing children.||1/31/2020 10:28:46 AM
+2020|S|17|1/30/2020 12:00:00 AM|SB451|14|10|24|0|||Ought to Pass|establishing an administrative hearing procedure and penalty for an employer who fails to make payment of wages or who fails to secure workers' compensation coverage.||1/31/2020 10:30:16 AM
+2020|S|18|2/6/2020 12:00:00 AM|SB651|14|9|23|1|||Inexpedient to Legislate|prohibiting collective bargaining agreements that require employees to join or contribute to a labor union.||2/6/2020 3:21:52 PM
+2020|S|19|2/6/2020 12:00:00 AM|SB302|10|13|23|1|||Floor Amendment 0540s|relative to suspension and expulsion of pupils.||2/6/2020 3:35:54 PM
+2020|S|20|2/6/2020 12:00:00 AM|SJR1|15|8|23|1|||Ought to Pass|prohibiting the implementation of certain rules of the board of education.||2/6/2020 3:22:51 PM
+2020|S|21|2/13/2020 12:00:00 AM|SJR2|24|0|24|0|||Ought to Pass|awarding the New Hampshire Medal of Honor to Captain Ryan S. Phaneuf of Hudson, New Hampshire.||2/14/2020 8:26:16 AM
+2020|S|22|2/13/2020 12:00:00 AM|SB455|0|24|24|0|||Inexpedient to Legislate|prohibiting higher education institutions from discriminating on the basis of military, law enforcement, or veterans status.||2/14/2020 8:27:49 AM
+2020|S|23|2/13/2020 12:00:00 AM|SB455|24|0|24|0|||Floor Amendment 0621s|prohibiting higher education institutions from discriminating on the basis of military, law enforcement, or veterans status.||2/14/2020 1:18:54 PM
+2020|S|24|2/13/2020 12:00:00 AM|SB514|14|10|24|0|||Ought to Pass|relative to alternative learning credit rules of the state board of education.||2/14/2020 8:56:36 AM
+2020|S|25|2/13/2020 12:00:00 AM|SB496|24|0|24|0|||Ought to Pass w/Amendment|(New Title) establishing a per and polyfluoroalkyl substances fund and programs and making an appropriation therefor.||2/14/2020 8:35:36 AM
+2020|S|26|2/13/2020 12:00:00 AM|SB287|24|0|24|0|||Ought to Pass w/Amendment|(New Title) setting the maximum contaminant levels for certain perfluorochemicals in drinking water.||2/14/2020 8:37:49 AM
+2020|S|27|2/13/2020 12:00:00 AM|SB617|15|9|24|0|||Inexpedient to Legislate|relative to a voluntary additional charge in the registry of deeds used to support the land and community heritage investment program (LCHIP), and establishing a committee to study the economic impact of land conservation and to review the LCHIP surcharge||2/14/2020 8:42:33 AM
+2020|S|28|2/13/2020 12:00:00 AM|SB488|14|10|24|0|||Inexpedient to Legislate|relative to public inspection of absentee ballot lists.||2/14/2020 8:43:46 AM
+2020|S|29|2/13/2020 12:00:00 AM|SB489|14|10|24|0|||Inexpedient to Legislate|relative to the absentee ballot application process.||2/14/2020 8:44:34 AM
+2020|S|30|2/13/2020 12:00:00 AM|SB741|14|10|24|0|||Laid on Table|establishing the born alive protection act.||2/14/2020 8:45:43 AM
+2020|S|31|2/13/2020 12:00:00 AM|HB263|13|11|24|0|||Laid on Table|relative to department of health and human services family reunification practices involving convicted sex offenders.||2/14/2020 8:47:42 AM
+2020|S|32|3/5/2020 12:00:00 AM|SB469|24|0|24|0|||Inexpedient to Legislate|relative to shooting ranges.||3/6/2020 10:14:29 AM
+2020|S|33|3/5/2020 12:00:00 AM|SB159|17|7|24|0|||VETO MESSAGE - Roll Call Required|relative to net energy metering limits for customer-generators.||3/6/2020 10:23:58 AM
+2020|S|34|3/11/2020 12:00:00 AM|SB486|10|14|24|0|||Floor Amendment 1135s|relative to insurance plans that cover maternity benefits.||3/13/2020 2:58:53 PM
+2020|S|35|3/11/2020 12:00:00 AM|SB486|10|14|24|0|||Laid on Table|relative to insurance plans that cover maternity benefits.||3/13/2020 9:33:21 AM
+2020|S|36|3/11/2020 12:00:00 AM|SB486|14|10|24|0|||Ought to Pass|relative to insurance plans that cover maternity benefits.||3/13/2020 9:36:17 AM
+2020|S|37|3/11/2020 12:00:00 AM|SB603|13|11|24|0|||Ought to Pass|relative to financial assistance for biomass and forest product workers.||3/13/2020 10:28:54 AM
+2020|S|38|3/11/2020 12:00:00 AM|SB623|23|1|24|0|||Ought to Pass|requiring insurance coverage for PFAS and PFC blood tests.||3/13/2020 10:32:22 AM
+2020|S|39|3/11/2020 12:00:00 AM|SB623|24|0|24|0|||Ought to Pass|requiring insurance coverage for PFAS and PFC blood tests.||3/13/2020 10:35:36 AM
+2020|S|40|3/11/2020 12:00:00 AM|SB686|14|10|24|0|||Ought to Pass w/Amendment|(New Title) relative to prescription drug benefits paid by health plans and establishing the New Hampshire prescription drug competitive marketplace.||3/13/2020 10:40:39 AM
+2020|S|41|3/11/2020 12:00:00 AM|SB688|14|10|24|0|||Ought to Pass w/Amendment|(New Title) relative to the pricing of generic prescription drugs.||3/13/2020 10:43:56 AM
+2020|S|42|3/12/2020 12:00:00 AM|SB688|24|0|24|0|||Ought to Pass w/Amendment|(New Title) relative to the pricing of generic prescription drugs.||3/13/2020 10:52:24 AM
+2020|S|43|3/12/2020 12:00:00 AM|SB727|24|0|24|0|||Ought to Pass w/Amendment|(New Title) relative to Holocaust and genocide studies legislation and establishing a commission to study genocide education.||3/13/2020 10:55:05 AM
+2020|S|44|3/12/2020 12:00:00 AM|SB586|19|5|24|0|||Ought to Pass w/Amendment|relative to certain expenditures by candidates and candidate committees.||3/13/2020 11:00:28 AM
+2020|S|45|3/12/2020 12:00:00 AM|SB631|14|10|24|0|||Ought to Pass w/Amendment|authorizing online voter registration.||3/13/2020 11:03:36 AM
+2020|S|46|3/12/2020 12:00:00 AM|SB695|14|10|24|0|||Ought to Pass|relative to sharing voter registration information.||3/13/2020 11:09:02 AM
+2020|S|47|3/12/2020 12:00:00 AM|SB726|24|0|24|0|||Ought to Pass w/Amendment|(Second New Title) relative to programs to aid veterans' access to employment, housing, health care, and college degrees.||3/13/2020 11:17:00 AM
+2020|S|48|3/12/2020 12:00:00 AM|SB730|14|10|24|0|||Refer to Interim Study|establishing the granite state paid family leave plan.||3/13/2020 11:19:07 AM
+2020|S|49|3/12/2020 12:00:00 AM|HB712|10|14|24|0|||Floor Amendment 1197s|relative to a family and medical leave insurance program.||3/13/2020 3:01:22 PM
+2020|S|50|3/12/2020 12:00:00 AM|HB712|10|14|24|0|||Laid on Table|relative to a family and medical leave insurance program.||3/13/2020 11:25:47 AM
+2020|S|51|3/12/2020 12:00:00 AM|HB712|14|10|24|0|||Ought to Pass|relative to a family and medical leave insurance program.||3/13/2020 11:28:20 AM
+2020|S|52|3/12/2020 12:00:00 AM|SB754|24|0|24|0|||Ought to Pass w/Amendment|establishing a dental benefit under the state Medicaid program.||3/13/2020 11:31:36 AM
+2020|S|53|3/12/2020 12:00:00 AM|SB436|20|4|24|0|||Ought to Pass w/Amendment|relative to the penalties for various motor vehicle violations.||3/13/2020 11:38:10 AM
+2020|S|54|3/12/2020 12:00:00 AM|SB679|24|0|24|0|||Ought to Pass w/Amendment|(New Title) requiring institutions of higher education to adopt policies on sexual misconduct.||3/13/2020 11:40:38 AM
+2020|S|55|3/12/2020 12:00:00 AM|SB705|15|9|24|0|||Ought to Pass w/Amendment|(New Title) relative to fraudulent impersonation using a social networking site.||3/13/2020 11:44:07 AM
+2020|S|56|3/12/2020 12:00:00 AM|HB1660|14|10|24|0|||Ought to Pass|establishing a protective order for vulnerable adults.||3/13/2020 11:48:01 AM
+2020|S|57|3/12/2020 12:00:00 AM||24|0|24|0|||Amendment to Senate Rule 7-1|||3/13/2020 2:53:05 PM
+2020|S|58|3/12/2020 12:00:00 AM|SB685|24|0|24|0|||Ought to Pass w/Amendment|(New Title) establishing a wholesale prescription drug importation program and establishing the New Hampshire prescription drug competitive marketplace.||3/13/2020 11:56:27 AM
+2020|S|59|3/12/2020 12:00:00 AM|SB739|24|0|24|0|||Ought to Pass|relative to mental health and substance use disorder insurance coverage.||3/13/2020 11:58:11 AM
+2020|S|60|3/12/2020 12:00:00 AM|SB759|24|0|24|0|||Ought to Pass w/Amendment|relative to employers provision of reasonable accommodations for pregnant employees.||3/13/2020 12:00:51 PM
+2020|S|61|3/12/2020 12:00:00 AM|SB572|24|0|24|0|||Floor Amendment 1208s|relative to prohibited sexual contact involving persons in a position of authority.||3/13/2020 3:02:37 PM
+2020|S|62|3/12/2020 12:00:00 AM|SB572|11|13|24|0|||Floor Amendment 1144s|relative to prohibited sexual contact involving persons in a position of authority.||3/13/2020 3:03:05 PM
+2020|S|63|3/12/2020 12:00:00 AM|SB572|24|0|24|0|||Ought to Pass w/Amendment|relative to prohibited sexual contact involving persons in a position of authority.||3/13/2020 12:11:31 PM
+2020|S|64|6/16/2020 12:00:00 AM|HB685|14|10|24|0|||Committee Amendment|(Second New Title) relative to insurance plans that cover maternity benefits.||6/17/2020 11:41:54 AM
+2020|S|65|6/16/2020 12:00:00 AM|HB685|14|10|24|0|||Ought to Pass w/Amendment|(Second New Title) relative to insurance plans that cover maternity benefits.||6/17/2020 11:46:03 AM
+2020|S|66|6/16/2020 12:00:00 AM|HB731|14|10|24|0|||Ought to Pass w/Amendment|(Second New Title) relative to the state minimum hourly rate.||6/17/2020 11:50:47 AM
+2020|S|67|6/16/2020 12:00:00 AM|HB1166|12|12|24|0|||Committee Amendment Sections 7 and 24|(New Title) relative to unemployment compensation, certain sanitary protections for COVID-19, extending the federal Family and Medical Leave Act for certain COVID-19 protections, and waiving cost sharing for testing and treatment for COVID-19. ||6/18/2020 5:43:20 PM
+2020|S|68|6/16/2020 12:00:00 AM|HB1166|14|10|24|0|||Committee Amendment Sections 1-6 and Sections 9-24|(New Title) relative to unemployment compensation, certain sanitary protections for COVID-19, extending the federal Family and Medical Leave Act for certain COVID-19 protections, and waiving cost sharing for testing and treatment for COVID-19. ||6/18/2020 5:45:01 PM
+2020|S|69|6/16/2020 12:00:00 AM|HB1166|14|10|24|0|||Ought to Pass w/Amendment Sections 1-6 and Sections 9-24|(New Title) relative to unemployment compensation, certain sanitary protections for COVID-19, extending the federal Family and Medical Leave Act for certain COVID-19 protections, and waiving cost sharing for testing and treatment for COVID-19. ||6/18/2020 5:45:58 PM
+2020|S|70|6/16/2020 12:00:00 AM|HB1280|24|0|24|0|||Ought to Pass w/Amendment|(New Title) relative to copayments for insulin, establishing a wholesale prescription drug importation program,  establishing a New Hampshire prescription drug affordability board, establishing the prescription drug competitive marketplace, relative to th||6/18/2020 11:28:53 AM
+2020|S|71|6/16/2020 12:00:00 AM|HB1494|23|1|24|0|||Committee Amendment Sections 4-5, and 8|(Second New Title) adopting omnibus legislation concerning workers.||6/18/2020 5:54:12 PM
+2020|S|72|6/16/2020 12:00:00 AM|HB1494|14|10|24|0|||Committee Amendment Sections 1-3, and Sections 6-8|(Second New Title) adopting omnibus legislation concerning workers.||6/18/2020 5:55:19 PM
+2020|S|73|6/16/2020 12:00:00 AM|HB1494|23|1|24|0|||Ought to Pass w/Amendment Sections 4-5, and 8|(Second New Title) adopting omnibus legislation concerning workers.||6/18/2020 5:56:58 PM
+2020|S|74|6/16/2020 12:00:00 AM|HB1494|14|10|24|0|||Ought to Pass w/Amendment Sections 1-3, and Sections 6-8|(Second New Title) adopting omnibus legislation concerning workers.||6/18/2020 6:02:38 PM
+2020|S|75|6/16/2020 12:00:00 AM|HB1454|15|9|24|0|||Ought to Pass w/Amendment|(New Title) relative to alternative learning credit rules of the state board of education.||6/18/2020 12:18:29 PM
+2020|S|76|6/16/2020 12:00:00 AM|HB1582|24|0|24|0|||Committee Amendment|(New Title) relative to free tuition at colleges and universities for children of veterans who are totally and permanently disabled; programs to aid veterans' access to employment, housing, health care, and college degrees; educational assistance for memb||6/18/2020 12:25:55 PM
+2020|S|77|6/16/2020 12:00:00 AM|HB1111|24|0|24|0|||Ought to Pass w/Amendment|(Second New Title) relative to municipal broadband infrastructure bonds and establishing communications districts.||6/18/2020 12:27:24 PM
+2020|S|78|6/16/2020 12:00:00 AM|HB1129|23|1|24|0|||Ought to Pass w/Amendment|(Second New Title) relative to notice requirements for certain municipal public hearings, providing for optional town meeting procedures during the state of emergency declared in response to the novel coronavirus disease (Covid-19), and relative to online||6/18/2020 12:28:57 PM
+2020|S|79|6/16/2020 12:00:00 AM|HB1672|14|10|24|0|||Ought to Pass w/Amendment|(New Title) relative to absentee voting.||6/18/2020 12:32:20 PM
+2020|S|80|6/16/2020 12:00:00 AM|HB1245|17|7|24|0|||Committee Amendment Sections 105-118 and 155|(Second New Title) adopting omnibus legislation concerning state agencies. ||6/18/2020 6:03:28 PM
+2020|S|81|6/16/2020 12:00:00 AM|HB250|19|5|24|0|||Ought to Pass w/Amendment|(Second New Title) establishing a dental benefit under the state Medicaid program.||6/18/2020 12:37:45 PM
+2020|S|82|6/16/2020 12:00:00 AM|HB1246|14|10|24|0|||Ought to Pass w/Amendment|(New Title) relative to reporting of health care associated infections, establishing a COVID-19 nursing home and long-term care fund, relative to an independent COVID-19 nursing home and long-term care review, needs assessment, and recommendations, author||6/18/2020 12:40:25 PM
+2020|S|83|6/16/2020 12:00:00 AM|HB1264|23|1|24|0|||Ought to Pass w/Amendment|(New Title) extending the commission on the seacoast cancer cluster investigation, setting the maximum contaminant levels for certain perfluorochemicals in drinking water, establishing a per and polyfluoroalkyl substances fund and programs and making an a||6/18/2020 12:42:18 PM
+2020|S|84|6/16/2020 12:00:00 AM|HB705|19|5|24|0|||Ought to Pass w/Amendment Sections 11-12 and 19|(Second New Title) relative to sexual assault, sexual misconduct in institutions of higher education,  and the rights of victims of crime.||6/18/2020 6:28:36 PM
+2020|S|85|6/16/2020 12:00:00 AM|HB1247|14|10|24|0|||Ought to Pass w/Amendment|(Second New Title) relative to mortgage defaults and nonpayment of rent during the novel coronavirus disease (Covid-19) outbreak state of emergency.||6/18/2020 12:49:21 PM
+2020|S|86|6/16/2020 12:00:00 AM|HB1645|23|1|24|0|||Ought to Pass w/Amendment|(New Title) relative to superior court judgments; adding a bail commissioner to the commission on pretrial detention, pretrial scheduling, and pretrial services and the release of a defendant pending trial; prison privatization; misdemeanor domestic viole||6/18/2020 12:50:33 PM
+2020|S|87|6/16/2020 12:00:00 AM|HB1135|24|0|24|0|||Ought to Pass w/Amendment|(New Title) naming a portion of route 49 in honor of Specialist Marc P. Decoteau; designating a portion of state route 125 as Officer Stephen Arkell Memorial Highway; declaring June 6 as D-Day Remembrance Day; proclaiming August 31 as Overdose Awareness D||6/18/2020 12:51:59 PM
+2020|S|88|6/16/2020 12:00:00 AM|CACR19|13|10|23|1|||Laid on Table|relating to the American flag.  Providing that no person shall burn an American flag except as a dignified means of disposing of a worn or damaged flag.||6/18/2020 12:54:55 PM
+2020|S|89|6/29/2020 12:00:00 AM|FFR|14|10|24|0|||Adoption of Reports|Joint Committee on Employee Relations - Fact-Finders Reports||6/30/2020 11:40:35 AM
+2020|S|90|6/29/2020 12:00:00 AM|HB1266|24|0|24|0|||Ought to Pass w/Amendment|(Second New Title) making temporary modifications to the absentee voter registration, absentee ballot application, and absentee voting processes in response to the novel coronavirus (Covid-19) disease.||6/30/2020 9:57:59 AM
+2020|S|91|6/29/2020 12:00:00 AM|HB1665|15|9|24|0|||Ought to Pass|(New Title) establishing an independent advisory commission on redistricting.||6/30/2020 9:58:32 AM
+2020|S|92|6/29/2020 12:00:00 AM|HB687|14|10|24|0|||Ought to Pass|relative to extreme risk protection orders.||6/30/2020 9:58:57 AM
+2020|S|93|6/29/2020 12:00:00 AM|HB1375|14|10|24|0|||Committee Amendment 2020-1568s|(New Title) relative to claims for medical monitoring.||6/30/2020 11:32:29 AM
+2020|S|94|6/29/2020 12:00:00 AM|HB1240|23|1|24|0|||Ought to Pass w/Amendment|(Second New Title) relative to the grounds for sexual assault and related offenses, establishing a special marriage officiant license, modifying requirements for renewal of pharmacy licenses, and relative to occupational licensure and the office of profes||6/30/2020 9:59:35 AM
+2020|S|95|6/29/2020 12:00:00 AM|HB1637|10|14|24|0|||Remove from Table|establishing a kinship navigator program in the department of health and human services.||6/30/2020 9:40:48 AM
+2020|S|96|6/29/2020 12:00:00 AM|HB1240|24|0|24|0|||Ought to Pass w/Amendment|(Second New Title) relative to the grounds for sexual assault and related offenses, establishing a special marriage officiant license, modifying requirements for renewal of pharmacy licenses, and relative to occupational licensure and the office of profes||6/30/2020 10:00:01 AM
+2020|S|97|6/29/2020 12:00:00 AM|HB647|10|14|24|0|||Remove from Table|relative to lucky 7 tickets.||6/30/2020 9:43:29 AM
+2020|S|98|6/29/2020 12:00:00 AM|HB1330|11|13|24|0|||Remove from Table|proclaiming an annual observance of a day commemorating caregivers of wounded veterans.||6/30/2020 9:45:41 AM
+2020|S|99|6/29/2020 12:00:00 AM|SB7|15|9|24|0|||Concur|establishing the secure modern accurate registration act (SMART ACT).||6/30/2020 9:48:16 AM
+2020|S|100|6/29/2020 12:00:00 AM|SB122|14|10|24|0|||Concur|relative to expenditures from the energy efficiency fund.||6/30/2020 9:52:23 AM
+2020|S|101|6/29/2020 12:00:00 AM|SB124|14|10|24|0|||Concur|(New Title) relative to the minimum electric renewable portfolio standards.||6/30/2020 9:53:34 AM
+2020|S|102|6/29/2020 12:00:00 AM|SB166|15|9|24|0|||Concur|relative to competitive electricity supplier requirements under net energy metering.||6/30/2020 9:54:34 AM
+2020|S|103|6/29/2020 12:00:00 AM|SB34|20|4|24|0|||Concur|relative to the applicability of certain DWI prohibitions.||6/30/2020 9:55:44 AM
+2020|S|104|6/29/2020 12:00:00 AM|SB311|15|9|24|0|||Concur|relative to annulment of criminal records.||6/30/2020 9:56:57 AM
+2020|S|105|9/16/2020 12:00:00 AM|SB7|14|10|24|0|||VETO MESSAGE - Roll Call Required|establishing the secure modern accurate registration act (SMART ACT).||9/16/2020 1:51:52 PM
+2020|S|106|9/16/2020 12:00:00 AM|SB19|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to the privacy of certain information concerning public employees.||9/16/2020 1:52:30 PM
+2020|S|107|9/16/2020 12:00:00 AM|SB122|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to expenditures from the energy efficiency fund.||9/16/2020 1:54:33 PM
+2020|S|108|9/16/2020 12:00:00 AM|SB124|14|10|24|0|||VETO MESSAGE - Roll Call Required|(New Title) relative to the minimum electric renewable portfolio standards.||9/16/2020 1:55:11 PM
+2020|S|109|9/16/2020 12:00:00 AM|SB311|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to annulment of criminal records.||9/16/2020 1:55:43 PM

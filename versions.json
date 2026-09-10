@@ -9,7 +9,7 @@
     "build_town_pages.py": "2026-09-09.4",
     "review.py": "2026-09-09.9",
     "build_careers.py": "2026-09-09.1",
-    "build_data.py": "2026-09-04.17",
+    "build_data.py": "2026-09-04.18",
     "build_feeds.py": "2026-09-04.6",
     "build_floor_index.py": "2026-09-04.3",
     "build_legislator_pages.py": "2026-09-04.7",
@@ -51,7 +51,7 @@
     "netcheck.py": "2026-09-04.3",
     "nightly.py": "2026-09-04.7",
     "parse_districts.py": "2026-09-04.1",
-    "preflight.py": "2026-09-04.95",
+    "preflight.py": "2026-09-04.97",
     "probe_alignment.py": "2026-09-05.59",
     "probe_amendments.py": "2026-09-04.3",
     "probe_archive.py": "2026-09-04.3",
@@ -100,7 +100,9 @@
     "fetch_legislation.py": "2026-09-10.12",
     "referrals.py": "2026-09-10.1",
     "child.py": "2026-09-10.1",
-    "fetch_sponsors_by_member.py": "2026-09-10.1"
+    "fetch_sponsors_by_member.py": "2026-09-10.1",
+    "past_members.py": "2026-09-10.1",
+    "rollcalls_from_db.py": "2026-09-10.1"
   },
   "generated": "2026-09-04"
 }

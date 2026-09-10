@@ -1,0 +1,384 @@
+2016|H|2|1/6/2016 10:04:08 AM||307|0|69|23|||Call of the Roll|||
+2016|H|3|1/6/2016 10:12:50 AM||160|186|27|26|||Divide Introduction|||
+2016|H|4|1/6/2016 10:25:31 AM||313|41|19|26|||Print Remarks|||
+2016|H|5|1/6/2016 11:08:31 AM|HB128|221|140|12|26|||ITL|authorizing individuals and certain businesses to purchase health insurance from out-of-state companies.||
+2016|H|6|1/6/2016 11:13:58 AM|HB197|360|1|12|26|||OTPA|relative to sales and samples provided by wine manufacturers.||
+2016|H|7|1/6/2016 11:43:12 AM|SB110|211|149|13|26|||OTPA|establishing the administrative supervision act.||
+2016|H|8|1/6/2016 11:53:37 AM||104|255|14|26|||Print Remarks|||
+2016|H|9|1/6/2016 1:34:02 PM|HB504|111|242|19|27|||ITL|relative to online driver education.||
+2016|H|10|1/6/2016 2:13:52 PM|HB626|116|241|14|28|||Table|authorizing energy infrastructure development and designating energy infrastructure corridors.||
+2016|H|11|1/6/2016 2:37:03 PM|SB219|188|158|25|28|||Table|relative to breastfeeding.||
+2016|H|12|1/6/2016 2:41:51 PM|HB512|231|121|19|28|||OTPA|prohibiting confiscation of firearms, ammunition, or firearms accessories during a state of emergency.||
+2016|H|13|1/6/2016 3:03:55 PM|HB582|206|146|15|32|||OTPA|repealing the license requirement for carrying a concealed pistol or revolver.||
+2016|H|14|1/6/2016 3:56:27 PM|SB157|267|65|28|39|||OTPA|(New Title) relative to encouraging high school students to take and pass a United States citizenship test.||
+2016|H|15|1/7/2016 10:57:01 AM|HB602|246|66|15|72|||OTPA|relative to the use of drones.||
+2016|H|16|1/7/2016 11:16:45 AM|HB376|184|130|13|72|||ITL|appropriating funds to the department of environmental services for the purpose of funding eligible and completed drinking water, wastewater, and landfill closure projects under the state aid grant program.||
+2016|H|17|1/7/2016 11:39:18 AM|HB500|184|124|19|72|||OTP|repealing the prohibition on the use of silencing devices for taking wildlife.||
+2016|H|18|1/7/2016 1:31:25 PM|HB634|197|109|18|75|||ITL|relative to applying the interest and dividends tax to trusts, increasing exemptions, and extending the tax to capital gains; and relative to homeowners property tax relief.||
+2016|H|19|1/7/2016 2:14:18 PM|SB136|152|154|16|77|||Interim Study|(2nd New Title) establishing a committee to review constitutional amendments pending in Congress regarding the Citizens United decision and related cases that have been introduced in the United States Supreme Court.||
+2016|H|20|1/7/2016 2:18:18 PM|SB136|152|157|14|76|||Table|(2nd New Title) establishing a committee to review constitutional amendments pending in Congress regarding the Citizens United decision and related cases that have been introduced in the United States Supreme Court.||
+2016|H|21|1/7/2016 3:19:26 PM|sb136|156|152|17|74|||OTPA|||
+2016|H|22|1/7/2016 4:23:29 PM|SB136|160|149|15|75|||Reconsider|(2nd New Title) establishing a committee to review constitutional amendments pending in Congress regarding the Citizens United decision and related cases that have been introduced in the United States Supreme Court.||
+2016|H|23|1/7/2016 3:14:09 PM|SB136|144|159|17|79|||OTPA|(2nd New Title) establishing a committee to review constitutional amendments pending in Congress regarding the Citizens United decision and related cases that have been introduced in the United States Supreme Court.||
+2016|H|24|1/7/2016 3:17:18 PM|SB136|166|137|16|80|||ITL|(2nd New Title) establishing a committee to review constitutional amendments pending in Congress regarding the Citizens United decision and related cases that have been introduced in the United States Supreme Court.||
+2016|H|25|1/7/2016 4:00:56 PM|SB146|188|93|31|87|||OTPA|relative to accessory dwelling units.||
+2016|H|26|1/20/2016 11:19:21 AM|SB576|106|239|17|37|||Divide|(New Title) relative to the penalty for possession and use of fentanyl-class drugs, insurance coverage for substance use disorders, the funding of the controlled drug prescription health and safety program, the membership of the board of medicine, and pre||
+2016|H|27|1/20/2016 11:28:41 AM|SB576|276|69|16|38|||OTP|(New Title) relative to the penalty for possession and use of fentanyl-class drugs, insurance coverage for substance use disorders, the funding of the controlled drug prescription health and safety program, the membership of the board of medicine, and pre||
+2016|H|28|1/20/2016 11:48:37 AM|SB369|196|150|15|38|||Adopt Amendment|requiring public schools to include drug and alcohol education as part of their health education curriculum.||
+2016|H|29|1/20/2016 1:40:17 PM|HB552|264|74|12|49|||ITL|requiring the state treasurer to develop an implementation plan for the state to accept bitcoin as payment for taxes and fees.||
+2016|H|30|1/20/2016 2:34:17 PM|HB630|200|129|14|56|||ITL|establishing the New Hampshire video lottery.||
+2016|H|31|1/20/2016 2:44:45 PM|HCACR2|234|90|19|56|||ITL|Relating to dedicated funds.  Providing that funds shall be used solely for the purpose of the fund.||
+2016|H|32|1/20/2016 3:22:47 PM|HB372|270|39|23|67|||OTP|relative to certain private employers under workers' compensation.||
+2016|H|33|1/20/2016 3:44:37 PM|HB400|224|75|22|78|||ITL|relative to the mileage reimbursement rate for legislators and prohibiting deductions from compensation or mileage reimbursement of representatives.||
+2016|H|34|1/20/2016 3:54:22 PM|HB585|204|89|28|78|||OTPA|relative to fines for violation of alcoholic beverage laws.||
+2016|H|35|1/27/2016 2:44:02 PM|HJR3|112|227|15|45|||Table|calling for the investigation and defunding of Planned Parenthood.||2/29/2016 2:53:33 PM
+2016|H|36|1/27/2016 11:54:00 AM|HJR3|227|100|26|46|||ITL|calling for the investigation and defunding of Planned Parenthood.||2/29/2016 2:05:01 PM
+2016|H|37|2/4/2016 2:49:42 PM|HB1127|185|124|22|68|||OTP|relative to qualifications of referees in the superior courts and circuit courts.||
+2016|H|38|2/4/2016 2:57:33 PM|HCACR15|220|85|25|69|||ITL|relating to the election of judges. Providing that judges be elected for specific terms.||
+2016|H|39|2/4/2016 3:26:40 PM|HB1214|185|119|26|69|||ITL|allowing towns and cities to authorize an additional surcharge on hotel occupancy under the meals and rooms tax.||
+2016|H|40|2/4/2016 3:50:32 PM|HB1446|198|100|28|73|||ITL|relative to enforcement of the prohibition on the use of mobile electronic devices while driving.||
+2016|H|42|2/10/2016 10:44:02 AM|HB1563|157|200|13|29|||OTP|relative to funding for full-day kindergarten pupils.||
+2016|H|43|2/10/2016 10:45:45 AM|HB1563|205|152|13|29|||ITL|relative to funding for full-day kindergarten pupils.||
+2016|H|44|2/10/2016 11:22:58 AM|HB1644|186|172|12|29|||OTP|relative to screening and treatment for dyslexia and related disorders and establishing a reading specialist in the department of education.||
+2016|H|45|2/10/2016 11:34:47 AM|HB1564|210|151|9|29|||ITL|establishing an independent redistricting commission.||
+2016|H|46|2/10/2016 12:19:47 PM|HB1674|239|122|8|30|||ITL|requiring the labeling of genetically engineered foods.||
+2016|H|47|2/10/2016 2:01:41 PM|HB1524|220|133|13|33|||ITL|repealing fish and game department authority to establish fees by administrative rulemaking.||
+2016|H|48|2/10/2016 2:50:30 PM|HB1696|143|206|14|36|||Adopt Amendment|requesting a modification of the New Hampshire health protection program.||
+2016|H|49|2/10/2016 2:59:51 PM|HB1696|138|210|23|28|||Adopt Amendment|requesting a modification of the New Hampshire health protection program.||
+2016|H|50|2/10/2016 9:29:33 AM|HB1696|302|48|15|34|||Adopt Amendment|requesting a modification of the New Hampshire health protection program.||2/13/2016 6:15:13 PM
+2016|H|51|2/10/2016 3:39:57 PM|HB1696|116|215|31|37|||Adopt Amendment|requesting a modification of the New Hampshire health protection program.||2/12/2016 3:37:26 PM
+2016|H|52|2/10/2016 3:48:44 PM|HB1696|179|159|24|37|||Adopt Amendment|requesting a modification of the New Hampshire health protection program.||2/12/2016 3:37:40 PM
+2016|H|53|2/10/2016 3:54:08 PM|HB1696|193|146|23|37|||Adopt Amendment|requesting a modification of the New Hampshire health protection program.||2/12/2016 3:37:44 PM
+2016|H|54|2/10/2016 5:06:16 PM|HB1696|207|136|13|43|||OTPA|requesting a modification of the New Hampshire health protection program.||2/12/2016 3:37:48 PM
+2016|H|55|2/10/2016 5:13:04 PM|HB1696|120|211|25|43|||Reconsider|requesting a modification of the New Hampshire health protection program.||2/12/2016 3:37:52 PM
+2016|H|56|2/10/2016 5:45:02 PM|HB1560|163|136|48|52|||ITL|relative to abortion procedures.||2/12/2016 3:37:56 PM
+2016|H|57|2/10/2016 6:10:14 PM|HB1627|167|116|63|53|||ITL|relative to the protection of infants born alive.||2/12/2016 3:38:01 PM
+2016|H|58|2/11/2016 9:27:59 AM|HB1130|92|211|40|56|||Table|requiring school districts to permit placement of a memorial honoring those who have died during military service.||2/12/2016 3:38:05 PM
+2016|H|59|2/11/2016 9:39:38 AM|HB1130|181|127|35|56|||Adopt Amendment|requiring school districts to permit placement of a memorial honoring those who have died during military service.||2/12/2016 3:38:08 PM
+2016|H|60|2/11/2016 9:41:54 AM|HB1130|192|117|34|56|||OTPA|requiring school districts to permit placement of a memorial honoring those who have died during military service.||2/12/2016 3:38:13 PM
+2016|H|61|2/11/2016 10:08:36 AM|HB1641|181|138|23|57|||ITL|relative to requiring prevailing wages on state-funded public works projects.||2/12/2016 3:39:27 PM
+2016|H|62|2/11/2016 10:57:43 AM|HB1622|171|145|25|58|||ITL|relative to radioactive waste and establishing a nuclear waste storage fee.||2/12/2016 3:39:32 PM
+2016|H|63|2/11/2016 11:03:17 AM|HB1673|188|127|26|58|||Table|establishing a cash balance plan within the state retirement system.||2/12/2016 3:39:35 PM
+2016|H|64|2/11/2016 11:16:55 AM|HB1616|127|190|22|60|||Adopt Amendment|relative to drivers' licenses and identification cards that are compliant with federal identification law.||2/12/2016 3:39:39 PM
+2016|H|65|2/11/2016 11:39:57 AM|HB1616|67|254|18|60|||Table|relative to drivers' licenses and identification cards that are compliant with federal identification law.||2/12/2016 3:39:46 PM
+2016|H|66|2/11/2016 11:57:23 AM|HB1616|245|76|18|60|||OTPA|relative to drivers' licenses and identification cards that are compliant with federal identification law.||2/12/2016 3:39:56 PM
+2016|H|67|2/11/2016 12:11:37 PM|HB668|134|168|33|64|||ITL|relative to expense deductions under the business profits tax.||2/12/2016 3:39:59 PM
+2016|H|68|2/11/2016 12:18:21 PM|HB1368|287|22|25|65|||ITL|requiring firearms owners to have liability insurance.||2/12/2016 3:40:03 PM
+2016|H|69|2/11/2016 12:26:25 PM|HB1444|195|114|25|65|||ITL|relative to the rate of the insurance premium tax.||2/12/2016 3:40:07 PM
+2016|H|70|2/11/2016 12:30:29 PM|HB1590|202|107|24|66|||OTPA|relative to the regulation and taxation of short-term rental businesses.||2/12/2016 3:40:11 PM
+2016|H|71|2/11/2016 12:43:21 PM|HB1647|168|142|23|66|||OTP|repealing laws regulating hawkers and peddlers and itinerant vendors.||2/12/2016 3:40:16 PM
+2016|H|72|2/11/2016 1:06:11 PM|HB1694|190|112|28|69|||ITL|relative to the legalization and regulation of marijuana.||2/13/2016 6:33:53 PM
+2016|H|73|3/9/2016 9:32:02 AM|CACR17|188|135|43|33|||OTP|relating to domicile for the purpose of voting.  Providing that only a resident of the state may establish a domicile for the purpose of voting.||
+2016|H|74|3/9/2016 9:51:38 AM|CACR23|169|164|35|31|||OTP|relating to the warning of biennial meetings.  Providing that the selectmen are not required to be present to receive the votes.||
+2016|H|75|3/9/2016 10:26:47 AM|HB1482|208|140|21|30|||OTPA|establishing a committee to study improving the statewide voter registration database.||
+2016|H|76|3/9/2016 10:44:26 AM|HB1530|287|66|16|30|||ITL|relative to mail-in voting.||
+2016|H|77|3/9/2016 10:55:37 AM|HB1440|219|130|21|29|||ITL|relative to certification for solid waste operators.||
+2016|H|78|3/9/2016 11:15:46 AM|CACR21|179|181|12|27|||ITL|relating to the attorney general. Providing that the attorney general be elected to a 4-year term.||
+2016|H|79|3/9/2016 11:30:32 AM|HB1122|200|150|20|29|||ITL|relative to limitations on supervisory positions in state employment.||
+2016|H|80|3/9/2016 11:35:47 AM|HB1282|307|49|17|26|||ITL|relative to the state building code.||
+2016|H|81|3/9/2016 11:50:27 AM|HB1639|318|41|14|26|||ITL|relative to bonds for public employees.||
+2016|H|82|3/9/2016 1:30:40 PM|HB1475|195|160|11|31|||ITL|establishing a death benefit for a school employee killed in the line of duty.||
+2016|H|83|3/9/2016 1:49:44 PM|HB1591|194|162|10|31|||OTPA|relative to the health care premium contribution for retired state employees who are over 65 years of age, relative to funding of retiree health benefits, and making an appropriation to the department of administrative services.||
+2016|H|84|3/9/2016 2:14:51 PM|HB1696|182|181|4|30|||Adopt Amendment|requesting a modification of the New Hampshire health protection program.||
+2016|H|85|3/9/2016 2:25:49 PM|HB1696|137|221|10|29|||Table|requesting a modification of the New Hampshire health protection program.||
+2016|H|86|3/9/2016 2:29:37 PM|HB1696|14|344|10|29|||Adopt Amendment|requesting a modification of the New Hampshire health protection program.||
+2016|H|87|3/9/2016 2:39:18 PM|HB1696|126|233|8|30|||Adopt Amendment|requesting a modification of the New Hampshire health protection program.||
+2016|H|88|3/9/2016 3:24:57 PM|HB1696|216|145|5|31|||OTPA|requesting a modification of the New Hampshire health protection program.||
+2016|H|89|3/9/2016 3:34:16 PM|HB1696|146|214|6|31|||Reconsider|requesting a modification of the New Hampshire health protection program.||
+2016|H|90|3/9/2016 3:46:40 PM|HB1178|217|122|23|35|||ITL|relative to the taking of black bear assisted by a licensed guide.||
+2016|H|91|3/9/2016 4:14:21 PM|HB1420|155|195|10|37|||OTPA|relative to controlled drug prescription health and safety information.||
+2016|H|92|3/9/2016 4:31:34 PM|HB1453|89|257|13|38|||ITL|relative to qualifying medical conditions for purposes of therapeutic cannabis.||
+2016|H|93|3/9/2016 4:36:44 PM|HB1605|180|162|17|38|||OTPA|prohibiting the use of latex gloves and utensils in the food service industry.||
+2016|H|94|3/9/2016 4:44:57 PM|HB1690|211|128|18|40|||ITL|extending the New Hampshire health protection program.||
+2016|H|95|3/9/2016 5:13:25 PM|CACR22|220|116|17|44|||OTPA|relating to the right to privacy.  Providing that an individual's right to live free from governmental interference is fundamental and shall not be restricted unless the government demonstrates a compelling state interest.||
+2016|H|96|3/9/2016 5:24:10 PM|HB1125|180|152|17|48|||ITL|requiring law enforcement officers to return stolen property.||
+2016|H|97|3/9/2016 5:29:14 PM|HB1249|204|128|16|49|||ITL|providing that persons who provide false or misleading information in an abuse or neglect proceeding shall be guilty of the crime of false swearing.||
+2016|H|98|3/9/2016 5:46:02 PM|HB1270|184|145|16|52|||OTPA|relative to a jury's determination as to the applicability of a law.||
+2016|H|99|3/9/2016 5:51:08 PM|HB1328|182|144|20|51|||ITL|limiting pregnancy terminations to pregnancies of 20 weeks or less.||
+2016|H|100|3/9/2016 5:54:10 PM|HB1399|203|121|18|55|||ITL|requiring licensure of outpatient abortion clinics.||
+2016|H|101|3/9/2016 5:58:16 PM|HB1417|189|135|18|55|||ITL|relative to records of convenings of public bodies.||
+2016|H|102|3/9/2016 6:04:24 PM|HB1496|215|108|19|55|||ITL|relative to the expectation of privacy in personal materials.||
+2016|H|103|3/9/2016 6:23:10 PM|HB1570|160|152|28|57|||OTP|repealing the law governing access to reproductive health care facilities.||
+2016|H|104|3/9/2016 6:37:39 PM|HB1623|224|88|26|59|||ITL|prohibiting an abortion based on genetic abnormalities.||
+2016|H|105|3/9/2016 7:02:09 PM|HB1625|148|151|36|62|||OTPA|relative to banning abortion after viability.||
+2016|H|106|3/9/2016 7:06:21 PM|HB1625|134|167|34|62|||Reconsider|relative to banning abortion after viability.||
+2016|H|107|3/9/2016 7:18:21 PM|HB1636|122|160|49|66|||OTP|prohibiting abortions once an unborn child can feel pain.||
+2016|H|108|3/9/2016 7:34:57 PM|HB1660|235|47|49|66|||OTPA|relative to eminent domain for gas pipelines and relative to assessment of the land use change tax for eminent domain takings for energy infrastructure.||
+2016|H|109|3/9/2016 7:49:24 PM|HB1663|155|122|52|68|||ITL|prohibiting buying, selling, and experimenting on unborn infants or bodily remains resulting from abortion.||
+2016|H|110|3/9/2016 8:04:31 PM|HB1684|131|146|52|68|||OTP|prohibiting the use of public funds, employees, and facilities in assisting or performing abortions.||
+2016|H|111|3/10/2016 9:31:14 AM|HB1301|188|121|43|45|||OTPA|relative to the issuance of youth employment certificates.||
+2016|H|112|3/10/2016 9:48:01 AM|HB1322|173|146|33|45|||OTPA|relative to reports to the public employee labor relations board.||
+2016|H|113|3/10/2016 10:08:22 AM|HB1346|190|137|26|44|||ITL|relative to minimum wage for tipped employees.||
+2016|H|114|3/10/2016 10:28:49 AM|HB1480|185|143|27|42|||ITL|establishing a state minimum wage.||
+2016|H|115|3/10/2016 10:33:52 AM|HB1112|240|87|28|42|||Table|relative to subdivision of land.||
+2016|H|116|3/10/2016 11:02:15 AM|HB1180|188|142|26|41|||ITL|relative to the authority of towns to issue bonds for the expansion of Internet service.||
+2016|H|117|3/10/2016 11:10:33 AM|HB1500|207|126|23|41|||ITL|relative to default budgets for the purpose of setting tax rates.||
+2016|H|118|3/10/2016 11:43:39 AM|HB1349|126|212|18|41|||ITL|relative to the location of the Merrimack county superior court.||
+2016|H|119|3/10/2016 12:03:24 PM|HB2016|174|162|20|41|||Adopt Amendment|relative to the state 10-year transportation improvement program.||
+2016|H|120|3/10/2016 1:46:05 PM|HB1104|210|126|18|43|||ITL|relative to electric renewable energy classes.||
+2016|H|121|3/10/2016 1:57:09 PM|HB1140|239|96|18|44|||ITL|relative to financial responsibility for gas transmission pipelines.||
+2016|H|122|3/10/2016 2:13:30 PM|HB1148|163|169|21|44|||ITL|relative to pipeline capacity contracts.||
+2016|H|123|3/10/2016 2:15:13 PM|HB1148|208|124|19|46|||OTP|relative to pipeline capacity contracts.||
+2016|H|124|3/10/2016 2:35:49 PM|HB1174|198|132|19|48|||ITL|relative to energy sources for new natural gas transmission compressor stations.||
+2016|H|125|3/10/2016 2:46:30 PM|HB1374|203|127|18|49|||ITL|relative to rebates to ratepayers from the renewable energy fund.||
+2016|H|126|3/10/2016 3:25:10 PM|HB1288|188|129|22|58|||OTPA|relative to the National Guard force protection policy.||
+2016|H|127|3/10/2016 3:35:06 PM|HB1132|196|120|23|58|||Adopt Amendment|relative to carrying a rifle or shotgun in certain vehicles.||
+2016|H|128|3/10/2016 4:16:03 PM|HB1154|175|112|50|60|||OTPA|authorizing and regulating the use of license plate scanning devices.||
+2016|H|129|3/10/2016 4:24:06 PM|HB1192|189|117|30|61|||ITL|repealing the education tax credit.||
+2016|H|130|3/10/2016 4:47:32 PM|HB1198|151|164|23|59|||Adopt Amendment|relative to the valuation of poles and conduits owned by telephone utilities.||
+2016|H|131|3/10/2016 4:53:56 PM|HB1198|283|31|21|62|||Adopt Amendment|relative to the valuation of poles and conduits owned by telephone utilities.||
+2016|H|132|3/10/2016 4:59:39 PM|HB1198|112|202|21|62|||Adopt Amendment|relative to the valuation of poles and conduits owned by telephone utilities.||
+2016|H|133|3/10/2016 5:18:31 PM|HB1443|180|131|23|63|||ITL|relative to the reasonable compensation deduction from gross business profits under the business profits tax and requiring the department of revenue administration to prepare draft rules relative to auditing.||3/17/2016 12:57:26 PM
+2016|H|134|3/10/2016 5:35:40 PM|CACR16|174|136|24|63|||OTP|relating to parental rights. Providing that parents have the natural right to control the health, education, and welfare of their children.||
+2016|H|135|3/10/2016 6:52:12 PM|HB1435|188|115|23|71|||ITL|relative to enforcement of the prohibition on the use of mobile electronic devices while driving.||
+2016|H|136|3/10/2016 6:56:05 PM|HB1474|225|80|21|71|||ITL|requiring the collection of data relative to firearm related deaths and injuries.||
+2016|H|137|3/10/2016 7:00:52 PM|HB1549|205|99|21|72|||ITL|requiring the department of safety to establish a database cataloging certain law enforcement activities.||
+2016|H|138|3/10/2016 7:04:20 PM|HB1600|294|10|25|68|||ITL|prohibiting the possession of a flame thrower.||
+2016|H|139|3/10/2016 7:10:52 PM|HB1657|248|55|22|72|||ITL|prohibiting firearms in certain public places.||
+2016|H|140|3/10/2016 7:27:40 PM|HB2016|130|175|20|72|||Reconsider|relative to the state 10-year transportation improvement program.||
+2016|H|141|3/10/2016 7:46:28 PM|HB1250|155|146|22|74|||OTPA|relative to medical neglect of children.||
+2016|H|142|3/10/2016 7:52:43 PM|HB1471|163|135|25|74|||OTP|relative to parental rights.||
+2016|H|143|3/10/2016 8:01:52 PM|HB1348|184|116|21|76|||ITL|repealing the exemption for certain transactions under the consumer protection act.||
+2016|H|144|3/10/2016 8:17:53 PM|HB1314|179|117|23|78|||ITL|limiting the authority of state entities to regulate the sale, use, and possession of firearms.||
+2016|H|145|3/10/2016 8:25:24 PM|HB1400|173|123|23|78|||ITL|defining suitable person for the purpose of obtaining a license to carry a firearm and extending the term of the license.||
+2016|H|146|3/10/2016 9:01:13 PM|HB1631|104|193|22|78|||ITL|relative to penalties for possession of marijuana.||3/17/2016 12:59:02 PM
+2016|H|147|3/10/2016 9:18:34 PM|HB1645|149|146|24|78|||ITL|relative to carrying a pistol or revolver without a license.||3/17/2016 12:58:50 PM
+2016|H|148|3/23/2016 10:21:08 AM||140|191|38|28|||Print Remarks|||
+2016|H|149|3/23/2016 10:46:01 AM|HB280|103|249|17|28|||ITL|(New Title) authorizing multi-use decal plates, multi-use veterans decal plates, and relative to special motorcycle number plates for disabled veterans.||
+2016|H|150|3/23/2016 11:12:18 AM|HB602|151|211|8|28|||ITL|relative to the use of drones.||
+2016|H|151|3/23/2016 11:17:49 AM|HB602|251|114|7|26|||OTPA|relative to the use of drones.||
+2016|H|152|3/23/2016 11:43:15 AM|HB1120|267|96|10|25|||ITL|relative to teacher qualifications at charter schools.||
+2016|H|153|3/23/2016 12:20:20 PM|HB1274|204|152|14|28|||ITL|establishing a committee to study the efficacy of changes in the community college system of New Hampshire.||
+2016|H|154|3/23/2016 1:36:26 PM|HB1300|168|130|73|27|||OTPA|relative to the content of patriotic exercises in public schools.||
+2016|H|155|3/23/2016 1:47:52 PM|HB1338|204|151|16|27|||OTP|relative to student exemption from the statewide assessment.||
+2016|H|156|3/23/2016 1:54:44 PM|HB1365|276|83|12|27|||ITL|requiring public schools to observe New Hampshire constitution day.||
+2016|H|157|3/23/2016 2:04:24 PM|HB1393|180|177|14|27|||ITL|requiring the department of education to report statewide assessment results for school districts receiving certain state aid.||
+2016|H|158|3/23/2016 2:36:24 PM|HB1135|329|30|10|29|||ITL|relative to physical force in defense of a person.||
+2016|H|159|3/23/2016 2:41:14 PM|HB1153|122|237|11|28|||Table|prohibiting a political subdivision from adopting residency restrictions on sex offenders.||
+2016|H|160|3/23/2016 2:56:31 PM|HB1153|264|92|11|31|||OTP|prohibiting a political subdivision from adopting residency restrictions on sex offenders.||
+2016|H|161|3/23/2016 3:15:23 PM|HB1610|229|119|13|37|||Table|legalizing the possession and cultivation of marijuana for personal use.||
+2016|H|162|3/23/2016 3:24:11 PM|HB1414|273|71|17|37|||ITL|repealing the home education advisory council.||
+2016|H|163|3/23/2016 3:40:24 PM|HB1143|221|119|20|38|||Table|relative to showing a ballot.||
+2016|H|164|3/23/2016 3:59:54 PM|HB1661|167|175|16|40|||Table|relative to conversion therapy seeking to change a person's sexual orientation.||
+2016|H|165|3/23/2016 4:07:35 PM||213|129|16|40|||Limit Debate|||
+2016|H|166|3/23/2016 4:08:57 PM||269|73|16|40|||Limit Debate|||
+2016|H|167|3/23/2016 4:43:43 PM|HB1661|229|99|19|51|||OTPA|relative to conversion therapy seeking to change a person's sexual orientation.||
+2016|H|168|4/6/2016 11:11:16 AM|SB320|52|274|22|50|||Adopt Amendment|relative to non-academic surveys administered by a public school to its students.||
+2016|H|169|4/6/2016 11:30:56 AM|SB330|213|113|23|49|||OTP|(New Title) relative to licensure of medical imaging professionals and radiation therapists.||
+2016|H|170|4/6/2016 12:02:57 PM|SB441|171|158|20|49|||OTP|relative to discounts and admission without charge at state parks.||
+2016|H|171|4/20/2016 10:28:39 AM|SB515|203|129|23|43|||OTPA|relative to child neglect and other changes to the child protection act.||
+2016|H|172|4/20/2016 10:33:16 AM|SB500|256|84|18|40|||OTP|relative to student health insurance plans.||
+2016|H|173|4/20/2016 10:51:34 AM|SB210|178|162|18|40|||OTPA|relative to regulation of septic system evaluators.||
+2016|H|174|4/20/2016 11:02:27 AM|SB533|235|109|14|40|||OTPA|(New Title) relative to the governor's commission on alcohol and drug abuse prevention, treatment, and recovery and making supplemental appropriations to the commission, the department of justice, and the department of health and human services.||
+2016|H|175|4/20/2016 11:14:14 AM|SB368|208|136|14|40|||OTP|making a capital appropriation for department of environmental services monitoring equipment.||
+2016|H|176|4/20/2016 11:18:43 AM|SB521|262|83|13|40|||OTPA|relative to an OHRV registration fee for persons who are members of an OHRV club.||
+2016|H|177|4/20/2016 11:41:30 AM|SB492|189|155|14|40|||Table|relative to expenditures from the energy efficiency fund.||
+2016|H|178|4/20/2016 11:51:33 AM|SB510|246|99|13|40|||OTP|relative to parking at state park parking meters.||
+2016|H|179|4/20/2016 1:09:24 PM|SB509|173|125|51|49|||Adopt Amendment|relative to voter registration forms and relative to voter identity verification.||
+2016|H|180|4/20/2016 1:26:12 PM|SB509|194|133|22|49|||OTPA|relative to voter registration forms and relative to voter identity verification.||
+2016|H|181|4/20/2016 2:56:10 PM|SB481|129|182|28|59|||Table|(New Title) relative to a special health care service license and establishing a fund.||
+2016|H|182|4/20/2016 3:01:45 PM|SB481|198|114|27|59|||OTPA|(New Title) relative to a special health care service license and establishing a fund.||
+2016|H|183|5/11/2016 11:13:15 AM|SB506|151|193|19|35|||OTPA|clarifying who may adopt.||
+2016|H|184|5/11/2016 11:37:38 AM|SB537|169|179|15|35|||OTP|relative to record management of abuse and neglect reports.||
+2016|H|185|5/11/2016 12:03:05 PM|SB532|210|139|14|35|||Adopt Amendment|relative to prior authorization for substance abuse treatment.||
+2016|H|186|5/11/2016 1:47:23 PM|SB336|156|189|15|38|||ITL|relative to the qualifications for obtaining a license to carry a concealed pistol or revolver.||
+2016|H|187|5/11/2016 1:51:00 PM|SB336|217|132|11|38|||OTPA|relative to the qualifications for obtaining a license to carry a concealed pistol or revolver.||
+2016|H|188|5/11/2016 1:58:06 PM|SB498|289|58|13|38|||OTPA|relative to penalties for possession of certain controlled drugs.||
+2016|H|189|5/11/2016 2:38:25 PM|SB4|203|144|12|39|||OTPA|(New Title) relative to eligibility to vote and relative to availability of voter information.||
+2016|H|190|5/11/2016 3:42:34 PM|CACR27|201|139|17|41|||OTPA|(New Title) relating to the operating budget. Providing that the state shall not spend more from any fund than such fund receives in revenue, nor use the proceeds of any bond to fund its annual operating expenditures.||
+2016|H|191|5/11/2016 4:03:05 PM|SB466|141|200|12|45|||Adopt Amendment|(New Title) relative to the detention of youthful offenders at the youth development center.||
+2016|H|192|5/11/2016 4:35:50 PM|SB481|195|134|19|50|||OTPA|(New Title) relative to a special health care service license and establishing a fund.||
+2016|H|193|5/11/2016 5:43:26 PM|SB533|98|204|30|66|||Adopt Amendment|(New Title) relative to the governor's commission on alcohol and drug abuse prevention, treatment, and recovery and making supplemental appropriations to the commission, the department of justice, and the New Hampshire housing finance authority.||
+2016|H|194|5/11/2016 6:41:57 PM|SB534|197|99|24|78|||OTP|to implement a system of care for children's behavioral health.||
+2016|H|195|5/11/2016 7:17:39 PM|SB426|123|174|21|80|||OTPA|establishing an end-of-life choices study commission.||
+2016|H|196|5/11/2016 8:27:03 PM|SB324|115|171|24|88|||Table|(New Title) eliminating the land use board and requiring approval of federal land acquisitions by the governor and executive council.||
+2016|H|197|5/11/2016 9:05:32 PM|SB210|158|128|24|88|||OTPA|relative to regulation of septic system evaluators.||
+2016|H|198|5/19/2016 11:30:00 AM|HB1590|183|129|30|56|||Reconsider|(New Title) relative of taxation of short-term rentals.||
+2016|H|199|5/19/2016 12:00:08 PM|HB1661|181|138|23|56|||CofC|(New Title) relative to conversion therapy seeking to change a person's sexual orientation.||
+2016|H|200|5/19/2016 1:16:53 PM|SCR3|171|106|48|73|||Remove from Table|(New Title) applying to the United States Congress to convene a limited convention for the exclusive purpose of proposing amendments to the federal Constitution concerning election reform that do not abrogate or amend the first amendment to the federal C||
+2016|H|201|5/19/2016 1:22:01 PM|SCR3|171|119|36|72|||OTP|(New Title) applying to the United States Congress to convene a limited convention for the exclusive purpose of proposing amendments to the federal Constitution concerning election reform that do not abrogate or amend the first amendment to the federal C||
+2016|H|202|5/19/2016 1:28:45 PM|SCR4|80|211|35|72|||Remove from Table|(New Title) applying for an Article V convention to propose an amendment to the Constitution of the United States that imposes fiscal restraints on the federal government.||
+2016|H|203|5/19/2016 2:01:02 PM|HB636|209|77|37|75|||Non Concur|(Third New Title) relative to forfeiture of property; relative to the sale of premixed synthetic urine; establishing a grant program for high schools for heroin and opiate prevention education; and clarifying who may petition to adopt.||
+2016|H|204|5/19/2016 2:49:13 PM|HB1298|199|87|33|79|||Concur|(New Title) relative to damage to private property and relative to the authority of federal border patrol agents to make arrests in Coos county.||
+2016|H|205|6/1/2016 10:30:47 AM|SB4|192|141|34|31|||Adopt CofC Report|(New Title) relative to eligibility to vote and relative to availability of voter information.||
+2016|H|206|6/1/2016 10:40:17 AM|SB320|285|56|26|31|||Adopt CofC Report|relative to non-academic surveys administered by a public school to its students.||
+2016|H|207|6/1/2016 10:50:07 AM|SB324|191|149|27|31|||Adopt CofC Report|(New Title) eliminating the land use board and requiring approval of federal land acquisitions by the governor and executive council.||
+2016|H|208|6/1/2016 10:54:36 AM|SB391|333|11|23|31|||Adopt CofC Report|(New Title) relative to annulment of certain misdemeanor offenses and relative to the annulment of offenses occurring between May 14, 2014 and July 1, 2015.||
+2016|H|209|6/1/2016 11:14:49 AM|SB441|156|185|26|31|||Adopt CofC Report|relative to discounts and admission without charge at state parks.||
+2016|H|210|6/1/2016 11:37:51 AM|SB485|157|187|22|32|||Reconsider|(New Title) establishing a state grant program to assist state and local law enforcement agencies in addressing the opioid crisis and making an appropriation therefor, relative to the health care premium contribution for retired state employees who are el||
+2016|H|211|6/1/2016 11:49:12 AM|SB523|232|106|28|32|||Adopt CofC Report|(New Title) relative to the controlled drug prescription health and safety program and establishing a commission to study requiring controlled drugs and controlled drug analogs to be provided in abuse-deterrent formulation.||
+2016|H|212|6/1/2016 12:02:11 PM|HB1703|314|25|27|32|||OTP|relative to brew pub licensing.||
+2016|H|213|6/1/2016 1:38:22 PM||142|180|36|40|||Rules Suspension|||
+2016|H|214|6/1/2016 1:49:43 PM|HB427|189|135|34|40|||Adopt CofC Report|(New Title) relative to the definition of the New Hampshire fire code and establishing a committee to study the 2015 edition of the Uniform Fire Code NFPA 1.||
+2016|H|215|6/1/2016 1:58:40 PM|HB605|311|7|40|40|||Adopt CofC Report|(New Title) relative to mandatory minimum sentences.||
+2016|H|216|6/1/2016 2:05:39 PM|HB1193|182|131|44|41|||Adopt CofC Report|(New Title) relative to the wellness and primary prevention council and relative to certification of school nurses.||
+2016|H|217|6/1/2016 2:13:42 PM|HB1590|189|127|38|44|||Adopt CofC Report|(New Title) relative of taxation of short-term rentals.||
+2016|H|218|6/1/2016 2:29:45 PM|HB1637|190|132|32|44|||Adopt CofC Report|relative to school attendance in towns with no public schools.||
+2016|H|219|6/1/2016 2:32:56 PM|HB1656|311|11|32|44|||Adopt CofC Report|relative to exceptions to the real estate transfer tax.||
+2016|H|220|6/16/2016 11:40:25 AM||241|97|19|34|||Rules Suspension|||6/16/2016 12:56:29 PM
+2016|H|221|6/16/2016 11:46:03 AM||207|126|24|34|||Limit Debate|||
+2016|H|222|6/16/2016 11:57:29 AM|HB1000|110|214|32|35|||Adopt Amendment|establishing a state grant program to assist state and local law enforcement agencies in addressing the opioid crisis and making an appropriation therefor.||
+2016|H|223|6/16/2016 1:36:36 PM|HB1000|87|220|37|47|||Adopt Amendment|establishing a state grant program to assist state and local law enforcement agencies in addressing the opioid crisis and making an appropriation therefor.||
+2016|H|224|6/16/2016 1:41:20 PM|HB1000|100|214|27|50|||Adopt Amendment|establishing a state grant program to assist state and local law enforcement agencies in addressing the opioid crisis and making an appropriation therefor.||
+2016|H|225|6/16/2016 1:47:23 PM|HB1000|95|219|27|50|||Adopt Amendment|establishing a state grant program to assist state and local law enforcement agencies in addressing the opioid crisis and making an appropriation therefor.||
+2016|H|226|6/16/2016 1:52:43 PM|HB1000|93|222|26|50|||Adopt Amendment|establishing a state grant program to assist state and local law enforcement agencies in addressing the opioid crisis and making an appropriation therefor.||
+2016|H|227|6/16/2016 2:07:05 PM||91|223|27|50|||Rules Suspension|||
+2016|H|228|6/16/2016 2:25:16 PM|HB1000|235|74|28|54|||OTP|establishing a state grant program to assist state and local law enforcement agencies in addressing the opioid crisis and making an appropriation therefor.||
+2016|H|229|6/16/2016 2:33:30 PM|HB512|169|130|34|58|||Veto Override|prohibiting confiscation of firearms, ammunition, or firearms accessories during a state of emergency.||
+2016|H|230|6/16/2016 3:01:45 PM|HB533|179|112|37|63|||Veto Override|(Second New Title) relative to installation requirements for arc-fault circuit interrupters and relative to state building code review board rules.||
+2016|H|231|6/16/2016 3:18:21 PM|HB582|150|117|57|67|||Veto Override|repealing the license requirement for carrying a concealed pistol or revolver.||
+2016|H|232|6/16/2016 3:28:20 PM|HB1208|145|108|66|72|||Veto Override|relative to administration of the tobacco tax.||
+2016|H|233|6/16/2016 3:35:30 PM|HB1266|132|119|65|75|||Veto Override|(New Title) legalizing firecrackers.||
+2016|H|234|6/16/2016 3:49:16 PM|HB1637|147|105|64|75|||Veto Override|relative to school attendance in towns with no public schools.||
+2016|H|235|6/16/2016 4:16:37 PM||118|103|93|77|||Amend Journal|||
+2016|H|236|6/16/2016 4:21:31 PM||115|105|94|77|||Print Remarks|||
+2016|S|1|1/14/2016 12:00:00 AM|HB216|12|11|23|1|||Ought to Pass|(New Title) relative to recovery of certain investigatory costs by regulatory boards and commissions, and applying certain general administration provisions to the mechanical licensing board.||1/15/2016 2:17:35 PM
+2016|S|2|1/14/2016 12:00:00 AM|HB560|12|11|23|1|||Committee Amendment 3068s|(New Title) including a viable fetus in the definition of "another" for the purposes of certain criminal offenses.||1/15/2016 4:11:47 PM
+2016|S|3|1/14/2016 12:00:00 AM|HB560|12|11|23|1|||Ought to Pass with Amendment|(New Title) including a viable fetus in the definition of "another" for the purposes of certain criminal offenses.||1/15/2016 4:13:31 PM
+2016|S|4|1/21/2016 12:00:00 AM|SB100|13|10|23|1|||Interim Study|relative to home heating fuel deliveries in the winter.||1/22/2016 12:28:05 PM
+2016|S|5|1/21/2016 12:00:00 AM|SB4|12|11|23|1|||Committee Amendment 2015-3086s|(New Title) relative to eligibility to vote and relative to availability of voter information.||1/22/2016 12:34:03 PM
+2016|S|6|1/21/2016 12:00:00 AM|SB4|12|11|23|1|||Ought to Pass with Amendment|(New Title) relative to eligibility to vote and relative to availability of voter information.||1/22/2016 12:34:13 PM
+2016|S|7|2/4/2016 12:00:00 AM|SB464|24|0|24|0|||Committee Amendment 0369s Sections 1, 2, 3, and 5|(New Title) establishing a statewide drug offender grant program and making appropriations therefor, and relative to transferring certain revenues to the revenue stabilization reserve account.||2/11/2016 4:14:58 PM
+2016|S|8|2/4/2016 12:00:00 AM|SB464|14|10|24|0|||Committee Amendment 0369s Section 4|(New Title) establishing a statewide drug offender grant program and making appropriations therefor, and relative to transferring certain revenues to the revenue stabilization reserve account.||2/11/2016 4:15:06 PM
+2016|S|9|2/4/2016 12:00:00 AM|SB464|24|0|24|0|||Ought to Pass with Amendment|(New Title) establishing a statewide drug offender grant program and making appropriations therefor, and relative to transferring certain revenues to the revenue stabilization reserve account.||2/11/2016 4:15:13 PM
+2016|S|10|2/4/2016 12:00:00 AM|SB412|14|10|24|0|||Inexpedient to Legislate|establishing a minimum wage.||2/11/2016 4:15:20 PM
+2016|S|11|2/4/2016 12:00:00 AM|SB333|3|21|24|0|||Sen. Sanborn Floor Amendment 0402s|relative to net energy metering.||2/11/2016 4:15:27 PM
+2016|S|12|2/4/2016 12:00:00 AM|SB131|10|14|24|0|||Inexpedient to Legislate|authorizing individuals and certain businesses to purchase health insurance from out-of-state companies.||2/11/2016 4:15:32 PM
+2016|S|13|2/4/2016 12:00:00 AM|SB131|10|13|23|1|||Sen. Sanborn Floor Amendment 0419s|authorizing individuals and certain businesses to purchase health insurance from out-of-state companies.||2/11/2016 4:15:38 PM
+2016|S|14|2/4/2016 12:00:00 AM|SB380|23|0|23|1|||Ought to Pass with Amendment|establishing the drinking water and groundwater trust fund and establishing the New Hampshire drinking water and groundwater advisory commission.||2/11/2016 4:15:45 PM
+2016|S|15|2/11/2016 12:00:00 AM|SB437|24|0|24|0|||Ought to Pass with Amendment|establishing a commission to address child hunger in New Hampshire.||2/11/2016 4:26:50 PM
+2016|S|16|2/11/2016 12:00:00 AM|SB479|14|10|24|0|||Interim Study|establishing a credit against business taxes for implementing employee profit sharing.||2/11/2016 4:26:43 PM
+2016|S|17|2/11/2016 12:00:00 AM|SB511|13|11|24|0|||Interim Study|establishing a refund of a portion of state education property taxes for child and dependent care expenses.||2/11/2016 4:26:35 PM
+2016|S|18|2/18/2016 12:00:00 AM|SB492|12|11|23|1|||Ought to Pass|relative to expenditures from the energy efficiency fund.||3/4/2016 10:09:05 AM
+2016|S|19|2/18/2016 12:00:00 AM|SB486|16|7|23|1|||Inexpedient to Legislate|relative to election assistance for cities and towns. ||3/4/2016 10:09:13 AM
+2016|S|20|2/18/2016 12:00:00 AM|SB518|16|7|23|1|||Inexpedient to Legislate|establishing a fee for political committees, political advocacy organizations, and candidates based on gross expenditures.||3/4/2016 10:09:20 AM
+2016|S|21|2/18/2016 12:00:00 AM|SB497|13|10|23|1|||Refer to Interim Study|relative to disposition of meals and rooms tax revenues to towns and cities.||3/4/2016 10:09:29 AM
+2016|S|22|2/18/2016 12:00:00 AM|SB552|15|8|23|1|||Ought to Pass with Amendment|relative to application of the Internal Revenue Code to provisions of the business profits tax.||3/4/2016 10:09:35 AM
+2016|S|23|3/3/2016 12:00:00 AM|SB463|12|12|24|0|||Sen. Pierce Floor Amendment 0887s|suspending the imposition of the death penalty.||3/4/2016 3:50:42 PM
+2016|S|24|3/3/2016 12:00:00 AM|SB481|17|7|24|0|||Ought to Pass with Amendment|(New Title) relative to a special health care service license and establishing a fund.||3/4/2016 3:50:51 PM
+2016|S|25|3/3/2016 12:00:00 AM|SB320|14|10|24|0|||Ought to Pass with Amendment|relative to non-academic surveys administered by a public school to its students.||3/4/2016 3:50:59 PM
+2016|S|26|3/3/2016 12:00:00 AM|SB422|13|11|24|0|||Inexpedient to Legislate|relative to the tobacco use prevention and cessation program.||3/4/2016 3:51:06 PM
+2016|S|27|3/3/2016 12:00:00 AM|SB428|12|12|24|0|||Lay on the Table|relative to arbitration agreements in nursing home contracts.||3/4/2016 3:51:13 PM
+2016|S|28|3/3/2016 12:00:00 AM|SB428|14|10|24|0|||Inexpedient to Legislate|relative to arbitration agreements in nursing home contracts.||3/4/2016 3:51:18 PM
+2016|S|29|3/3/2016 12:00:00 AM|SB516|14|10|24|0|||Inexpedient to Legislate|relative to preventing violence in health care facilities.||3/4/2016 3:51:22 PM
+2016|S|30|3/3/2016 12:00:00 AM|SB542|12|12|24|0|||Lay on the Table|relative to criminal interference with health services.||3/4/2016 3:51:27 PM
+2016|S|31|3/3/2016 12:00:00 AM|SB542|12|12|24|0|||Inexpedient to Legislate|relative to criminal interference with health services.||3/4/2016 3:51:31 PM
+2016|S|32|3/3/2016 12:00:00 AM|SB542|12|12|24|0|||Ought to Pass|relative to criminal interference with health services.||3/4/2016 3:51:35 PM
+2016|S|33|3/3/2016 12:00:00 AM|SB457|13|10|23|1|||Inexpedient to Legislate|relative to reporting of receipts and expenditures by political committees other than political committees of candidates.||3/4/2016 3:51:39 PM
+2016|S|34|3/17/2016 12:00:00 AM|SB470|10|11|23|1|||Inexpedient to Legislate|relative to eligibility of school district employees for Family and Medical Leave Act coverage.||3/18/2016 11:21:01 AM
+2016|S|35|3/17/2016 12:00:00 AM|SB413|11|12|23|1|||Interim Study|relative to employment rights of persons with criminal records.||3/18/2016 11:21:09 AM
+2016|S|36|3/17/2016 12:00:00 AM|SB416|13|10|23|1|||Ought to Pass with Amendment|relative to flexible working arrangements in employment.||3/18/2016 11:21:16 AM
+2016|S|37|3/17/2016 12:00:00 AM|SB425|14|9|23|1|||Interim Study|establishing an independent redistricting commission.||3/18/2016 11:21:21 AM
+2016|S|38|3/17/2016 12:00:00 AM|HB500|23|0|23|1|||Ought to Pass with Amendment|repealing the prohibition on the use of silencing devices for taking wildlife.||3/18/2016 11:21:25 AM
+2016|S|39|3/24/2016 12:00:00 AM|SB417|19|5|24|0|||Ought to Pass with Amendment|relative to employment contract restrictions upon physicians.||3/25/2016 2:50:28 PM
+2016|S|40|3/24/2016 12:00:00 AM|CACR27|23|1|24|0|||Ought to Pass with Amendment|(New Title) relating to the operating budget. Providing that the state shall not spend more from any fund than such fund receives in revenue, nor use the proceeds of any bond to fund its annual operating expenditures.||3/25/2016 2:50:45 PM
+2016|S|41|3/24/2016 12:00:00 AM|SB492|13|11|24|0|||Ought to Pass|relative to expenditures from the energy efficiency fund.||3/25/2016 2:50:53 PM
+2016|S|42|3/24/2016 12:00:00 AM|SB507|13|11|24|0|||Inexpedient to Legislate|authorizing online voter registration.||3/25/2016 2:51:00 PM
+2016|S|43|3/24/2016 12:00:00 AM|SB527|24|0|24|0|||Ought to Pass with Amendment|making an appropriation to the police standards and training council, repealing the police standards and training council training fund, making an appropriation to the department of safety for the purchase of state police cruisers.||3/25/2016 2:51:07 PM
+2016|S|44|3/24/2016 12:00:00 AM|SB533|24|0|24|0|||Sen. Bradley Floor Amendment 1157s|(New Title) relative to the governor's commission on alcohol and drug abuse prevention, treatment, and recovery and making supplemental appropriations to the commission, the department of justice, and the department of health and human services.||3/25/2016 2:51:15 PM
+2016|S|45|3/24/2016 12:00:00 AM|SB533|10|14|24|0|||Sen. Woodburn Floor Amendment 1172s|(New Title) relative to the governor's commission on alcohol and drug abuse prevention, treatment, and recovery and making supplemental appropriations to the commission, the department of justice, and the department of health and human services.||3/25/2016 2:51:20 PM
+2016|S|46|3/24/2016 12:00:00 AM|SB533|24|0|24|0|||Ought to Pass with Amendment|(New Title) relative to the governor's commission on alcohol and drug abuse prevention, treatment, and recovery and making supplemental appropriations to the commission, the department of justice, and the department of health and human services.||3/25/2016 2:51:24 PM
+2016|S|47|3/24/2016 12:00:00 AM|SB552|18|6|24|0|||Ought to Pass with Amendment|(New Title) relative to application of the Internal Revenue Code to provisions of the business profits tax.||3/25/2016 2:51:28 PM
+2016|S|48|3/24/2016 12:00:00 AM|SB553|23|0|24|0|||Ought to Pass with Amendment|relative to implementation of the Medicaid managed care program.||3/25/2016 2:51:32 PM
+2016|S|49|3/24/2016 12:00:00 AM|SB336|22|2|24|0|||Committee Amendment 1046s|relative to the qualifications for obtaining a license to carry a concealed pistol or revolver.||3/25/2016 2:51:37 PM
+2016|S|50|3/24/2016 12:00:00 AM|SB336|10|14|24|0|||Sen. Pierce Floor Amendment 1150s|relative to the qualifications for obtaining a license to carry a concealed pistol or revolver.||3/25/2016 2:51:41 PM
+2016|S|51|3/24/2016 12:00:00 AM|SB336|14|10|24|0|||Ought to Pass with Amendment|relative to the qualifications for obtaining a license to carry a concealed pistol or revolver.||3/25/2016 2:51:46 PM
+2016|S|52|3/24/2016 12:00:00 AM|SB551|11|13|24|0|||Ought to Pass|establishing video lottery and table gaming at one location.||3/25/2016 2:52:51 PM
+2016|S|53|3/24/2016 12:00:00 AM|SCR3|22|2|24|0|||Ought to Pass with Amendment|(New Title) applying to the United States Congress to convene a limited convention for the exclusive purpose of proposing amendments to the federal Constitution concerning election reform that do not abrogate or amend the first amendment to the federal Co|nstitution.|3/25/2016 2:52:03 PM
+2016|S|54|3/24/2016 12:00:00 AM|SCR4|15|9|24|0|||Ought to Pass with Amendment|(New Title) applying for an Article V convention to propose an amendment to the Constitution of the United States that imposes fiscal restraints on the federal government.||3/25/2016 2:52:10 PM
+2016|S|55|3/24/2016 12:00:00 AM|SB520|14|10|24|0|||Lay on the Table|relative to the form of drivers' licenses and identification cards.||3/25/2016 2:52:16 PM
+2016|S|56|3/24/2016 12:00:00 AM|HB668|18|6|24|0|||Ought to Pass with Amendment|(New Title) relative to application of the Internal Revenue Code to provisions of the business profits tax.||3/25/2016 2:52:21 PM
+2016|S|57|3/24/2016 12:00:00 AM|SB382|9|15|24|0|||Lay on the Table|relative to the authority of a federal law enforcement officer to make arrests in New Hampshire.||3/25/2016 2:52:27 PM
+2016|S|58|3/31/2016 12:00:00 AM|HB1696|9|15|24|0|||Lay on the Table|requesting a modification of the New Hampshire health protection program.||4/1/2016 11:32:20 AM
+2016|S|59|3/31/2016 12:00:00 AM|HB1696|7|17|24|0|||Sen. Sanborn Floor Amendment 1218s|requesting a modification of the New Hampshire health protection program.||4/1/2016 11:32:34 AM
+2016|S|60|3/31/2016 12:00:00 AM|HB1696|2|22|24|0|||Sen. Prescott Floor Amendment 1230s, Sec. 17-23, and 24|requesting a modification of the New Hampshire health protection program.||4/1/2016 11:32:39 AM
+2016|S|61|3/31/2016 12:00:00 AM|HB1696|6|18|24|0|||Sen. Prescott Floor Amendment 1230s, Sec. 15-16, and 24|requesting a modification of the New Hampshire health protection program.||4/1/2016 11:32:44 AM
+2016|S|62|3/31/2016 12:00:00 AM|HB1696|16|8|24|0|||Ought to Pass|requesting a modification of the New Hampshire health protection program.||4/1/2016 11:32:48 AM
+2016|S|63|4/7/2016 12:00:00 AM|HB1116|19|4|24|0|||Ought to Pass|relative to net metering.||4/7/2016 2:39:47 PM
+2016|S|64|4/14/2016 12:00:00 AM|HB1616|9|13|22|2|||Sen. Soucy Floor Amendment 1397s|relative to drivers' licenses and identification cards that are compliant with federal identification law.||4/14/2016 2:17:19 PM
+2016|S|65|4/14/2016 12:00:00 AM|HB1616|18|4|22|2|||Ought to Pass with Amendment|relative to drivers' licenses and identification cards that are compliant with federal identification law.||4/14/2016 2:17:30 PM
+2016|S|66|4/14/2016 12:00:00 AM|HB1247|17|5|22|2|||Lay on the Table|(New Title) relative to poker in private residences.||4/14/2016 2:17:37 PM
+2016|S|67|4/21/2016 12:00:00 AM|HB1231|12|12|24|0|||Inexpedient to Legislate|relative to school district policy regarding objectionable course material.||4/22/2016 9:52:23 AM
+2016|S|68|4/21/2016 12:00:00 AM|HB582|14|10|24|0|||Ought to Pass|repealing the license requirement for carrying a concealed pistol or revolver.||4/22/2016 9:52:33 AM
+2016|S|69|4/21/2016 12:00:00 AM|HB1631|14|10|24|0|||Inexpedient to Legislate|relative to penalties for possession of marijuana.||4/22/2016 9:52:38 AM
+2016|S|70|4/21/2016 12:00:00 AM|HB1590|10|14|24|0|||Interim Study|relative to the regulation and taxation of short-term rental businesses.||4/22/2016 9:52:42 AM
+2016|S|71|4/28/2016 12:00:00 AM|HB1266|9|14|23|1|||Inexpedient to Legislate|(New Title) legalizing firecrackers.||4/29/2016 5:06:21 PM
+2016|S|72|4/28/2016 12:00:00 AM|HB1266|14|9|23|1|||Ought to Pass|(New Title) legalizing firecrackers.||4/29/2016 5:06:29 PM
+2016|S|73|4/28/2016 12:00:00 AM|HB1381|20|3|23|1|||Inexpedient to Legislate|(New Title) relative to the sale of smoke bombs.||4/29/2016 5:06:36 PM
+2016|S|74|4/28/2016 12:00:00 AM|HB1589|22|1|23|1|||Committee Amendment 1505s: RSA 487:16-e, Lines 15-20|(New Title) prohibiting the transport of aquatic plants and aquatic weeds.||4/29/2016 5:06:41 PM
+2016|S|75|4/28/2016 12:00:00 AM|HB1589|22|1|23|1|||Ought to Pass with Amendment: RSA 487:16-e, Lines 8-11|(New Title) prohibiting the transport of aquatic plants and aquatic weeds.||4/29/2016 5:06:46 PM
+2016|S|76|4/28/2016 12:00:00 AM|HB1589|23|0|23|1|||Ought to Pass with Amendment: Sections 1-3, 4 I-III, and 5-6|(New Title) prohibiting the transport of aquatic plants and aquatic weeds.||4/29/2016 5:06:50 PM
+2016|S|77|4/28/2016 12:00:00 AM|HB1660|14|9|23|1|||Committee Amendment 1545s: Sections 2 VII, and 5|(Second New Title)  relative to appraisals of residential property, a residential owner option in a partial taking, and relocation, temporary housing, and legal expenses in eminent domain proceedings for gas pipelines; relative to intervention by the site| evaluation committee in such proceedings; and relative to expenditures from the energy efficiency fund.|4/29/2016 5:06:54 PM
+2016|S|78|4/28/2016 12:00:00 AM|HB1660|23|0|23|1|||Committee Amendment 1545s: Sections 1, 2 VIII, and 3-5|(Second New Title)  relative to appraisals of residential property, a residential owner option in a partial taking, and relocation, temporary housing, and legal expenses in eminent domain proceedings for gas pipelines; relative to intervention by the site| evaluation committee in such proceedings; and relative to expenditures from the energy efficiency fund.|4/29/2016 5:06:58 PM
+2016|S|79|4/28/2016 12:00:00 AM|HB1660|7|16|23|1|||Sen. Sanborn Floor Amendment 1641s|(Second New Title)  relative to appraisals of residential property, a residential owner option in a partial taking, and relocation, temporary housing, and legal expenses in eminent domain proceedings for gas pipelines; relative to intervention by the site| evaluation committee in such proceedings; and relative to expenditures from the energy efficiency fund.|4/29/2016 5:07:01 PM
+2016|S|80|4/28/2016 12:00:00 AM|HB1660|14|9|23|1|||Sen. Little Floor Amendment 1580s|(Second New Title)  relative to appraisals of residential property, a residential owner option in a partial taking, and relocation, temporary housing, and legal expenses in eminent domain proceedings for gas pipelines; relative to intervention by the site| evaluation committee in such proceedings; and relative to expenditures from the energy efficiency fund.|4/29/2016 5:07:04 PM
+2016|S|81|4/28/2016 12:00:00 AM|HB1660|22|1|23|1|||Ought to Pass with Amendment: Sections 1-4, and 7 II|(Second New Title)  relative to appraisals of residential property, a residential owner option in a partial taking, and relocation, temporary housing, and legal expenses in eminent domain proceedings for gas pipelines; relative to intervention by the site| evaluation committee in such proceedings; and relative to expenditures from the energy efficiency fund.|4/29/2016 5:07:08 PM
+2016|S|82|4/28/2016 12:00:00 AM|HB1660|13|10|23|1|||Ought to Pass with Amendment: Sections 5-6, and 7 I|(Second New Title)  relative to appraisals of residential property, a residential owner option in a partial taking, and relocation, temporary housing, and legal expenses in eminent domain proceedings for gas pipelines; relative to intervention by the site| evaluation committee in such proceedings; and relative to expenditures from the energy efficiency fund.|4/29/2016 5:07:11 PM
+2016|S|83|4/28/2016 12:00:00 AM|HB636|21|2|23|1|||Ought to Pass: Sections 1-4, and 9 II-III|relative to forfeiture of property.||4/29/2016 5:07:14 PM
+2016|S|84|4/28/2016 12:00:00 AM|HB636|5|18|23|1|||Ought to Pass: Sections 5-8, and 9 I and III|relative to forfeiture of property.||4/29/2016 5:07:18 PM
+2016|S|85|4/28/2016 12:00:00 AM|HB594|13|10|23|1|||Inexpedient to Legislate|establishing keno.||4/29/2016 5:08:01 PM
+2016|S|86|4/28/2016 12:00:00 AM|HB1198|18|5|23|1|||Ought to Pass with Amendment|relative to the valuation of poles and conduits owned by telephone utilities.||4/29/2016 5:08:09 PM
+2016|S|87|4/28/2016 12:00:00 AM|HB1198|20|3|23|1|||Ought to Pass with Amendment|relative to the valuation of poles and conduits owned by telephone utilities.||4/29/2016 5:08:18 PM
+2016|S|88|5/5/2016 12:00:00 AM|HB1252|12|12|24|0|||Ought to Pass with Amendment|permitting employers to pay wages to employees weekly or biweekly.||5/6/2016 2:37:19 PM
+2016|S|89|5/5/2016 12:00:00 AM|HB1637|24|0|24|0|||Ought to Pass with Amendment|relative to school attendance in towns with no public schools.||5/6/2016 2:37:27 PM
+2016|S|90|5/5/2016 12:00:00 AM|HB533|13|11|24|0|||Sen. Daniels Floor Amendment 1865s|(Second New Title) relative to installation requirements for arc-fault circuit interrupters and relative to state building code review board rules.||5/6/2016 2:37:32 PM
+2016|S|91|5/5/2016 12:00:00 AM|HB582|14|10|24|0|||Ought to Pass|repealing the license requirement for carrying a concealed pistol or revolver.||5/6/2016 2:37:37 PM
+2016|S|92|5/5/2016 12:00:00 AM|HB1527|24|0|24|0|||Committee Amendment 1616s|(New Title) authorizing additional part-time positions at the department of administrative services and making an appropriation therefor, and relative to the revenue stabilization reserve account.||5/6/2016 2:37:40 PM
+2016|S|93|5/5/2016 12:00:00 AM|HB1385|24|0|24|0|||Ought to Pass with Amendment|(New Title) making certain changes to business profits tax provisions affecting a business organization when owners sell or exchange ownership interests in the business.||5/6/2016 2:37:43 PM
+2016|S|94|5/5/2016 12:00:00 AM|HB629|12|12|24|0|||Ought to Pass|relative to induced termination of pregnancy statistics.||5/6/2016 2:37:46 PM
+2016|S|95|5/5/2016 12:00:00 AM|HB1570|12|12|24|0|||Ought to Pass|repealing the law governing access to reproductive health care facilities.||5/6/2016 2:37:49 PM
+2016|S|96|5/5/2016 12:00:00 AM|HB1661|14|10|24|0|||Special Order to 5/12/16|relative to conversion therapy seeking to change a person's sexual orientation.||5/6/2016 2:37:54 PM
+2016|S|97|5/12/2016 12:00:00 AM|HB1461|16|8|24|0|||Ought to Pass with Amendment|relative to the definition of and criteria for protection instream flow.||5/16/2016 2:25:40 PM
+2016|S|98|5/12/2016 12:00:00 AM|HB1595|16|8|24|0|||Ought to Pass with Amendment|relative to the rivers management and protection program.||5/16/2016 2:25:45 PM
+2016|S|99|5/12/2016 12:00:00 AM|HB1322|17|7|24|0|||Inexpedient to Legislate|relative to reports to the public employee labor relations board.||5/16/2016 2:25:54 PM
+2016|S|100|5/12/2016 12:00:00 AM|HB197|7|17|24|0|||Sen. Daniels Floor Amendment 1954s|(Second New Title) establishing a commission to evaluate the 3-tier system.||5/16/2016 2:26:00 PM
+2016|S|101|5/12/2016 12:00:00 AM|HB1590|13|11|24|0|||Ought to Pass with Amendment|(New Title) relative of taxation of short-term rentals.||5/16/2016 2:26:03 PM
+2016|S|102|5/12/2016 12:00:00 AM|HB1591|24|0|24|0|||Committee Amendment 1810s, Sections 8-9 and 12 III|(New Title) relative to the health care premium contribution for retired state employees who are eligible for Medicare Parts A and B due to age or disability, relative to funding of retiree health benefits, and making an appropriation to the department of| administrative services.|5/16/2016 2:26:06 PM
+2016|S|103|5/12/2016 12:00:00 AM|HB1591|14|10|24|0|||Committee Amendment 1810s, Sections 7 and 10-12|(New Title) relative to the health care premium contribution for retired state employees who are eligible for Medicare Parts A and B due to age or disability, relative to funding of retiree health benefits, and making an appropriation to the department of| administrative services.|5/16/2016 2:26:12 PM
+2016|S|104|5/12/2016 12:00:00 AM|HB1591|14|10|24|0|||Ought to Pass with Amendment|(New Title) relative to the health care premium contribution for retired state employees who are eligible for Medicare Parts A and B due to age or disability, relative to funding of retiree health benefits, and making an appropriation to the department of| administrative services.|5/16/2016 2:26:16 PM
+2016|S|105|5/12/2016 12:00:00 AM|HB1697|9|15|24|0|||Sen. Boutin Floor Amendment 1955s|relative to the operation and insurance of transportation network companies.||5/16/2016 2:26:20 PM
+2016|S|106|5/12/2016 12:00:00 AM|HB1661|7|17|24|0|||Sen. Sanborn Floor Amendment 1960s|(New Title) relative to conversion therapy seeking to change a person's sexual orientation.||5/16/2016 2:26:26 PM
+2016|S|107|5/12/2016 12:00:00 AM|HB1661|4|20|24|0|||Sen. Prescott Floor Amendment 1963s|(New Title) relative to conversion therapy seeking to change a person's sexual orientation.||5/16/2016 2:26:31 PM
+2016|S|108|5/12/2016 12:00:00 AM|HB1661|13|11|24|0|||Lay on the Table|(New Title) relative to conversion therapy seeking to change a person's sexual orientation.||5/16/2016 2:26:35 PM
+2016|S|109|5/12/2016 12:00:00 AM|HB512|18|6|24|0|||Ought to Pass with Amendment|prohibiting confiscation of firearms, ammunition, or firearms accessories during a state of emergency.||5/16/2016 2:26:37 PM
+2016|S|110|5/12/2016 12:00:00 AM|HB512|16|8|24|0|||Ought to Pass with Amendment|prohibiting confiscation of firearms, ammunition, or firearms accessories during a state of emergency.||5/16/2016 2:26:40 PM
+2016|S|111|5/12/2016 12:00:00 AM|HB1144|12|12|24|0|||Sen. Watters Floor Amendment 1950s|relative to notice for sessions of correction of the check list.||5/16/2016 2:26:43 PM
+2016|S|112|5/12/2016 12:00:00 AM|HB1356|12|12|24|0|||Inexpedient to Legislate|(New Title) relative to construction of the terms "resident," "inhabitant," "residence," and "residency."||5/16/2016 2:26:46 PM
+2016|S|113|5/12/2016 12:00:00 AM|HB1468|15|9|24|0|||Ought to Pass|relative to sessions for correction of the checklist.||5/16/2016 2:26:50 PM
+2016|S|114|5/12/2016 12:00:00 AM|HB1534|15|9|24|0|||Committee Amendment 1849s|(New Title) relative to reports of death of voters and authorizing an electronic poll book trial program.||5/16/2016 2:26:53 PM
+2016|S|115|5/12/2016 12:00:00 AM|HB1132|13|11|24|0|||Inexpedient to Legislate|(New Title) relative to carrying a loaded rifle or loaded shotgun in certain vehicles.||5/16/2016 2:26:59 PM
+2016|S|116|5/12/2016 12:00:00 AM|HB1212|24|0|24|0|||Ought to Pass|naming welcome center at exit 44 on Interstate 93 in honor of Raymond S. Burton.||5/16/2016 2:27:03 PM
+2016|S|117|5/12/2016 12:00:00 AM|HB1271|7|17|24|0|||Committee Amendment 1783s|(New Title) making certain length and width exemptions concerning commercial vehicles and relative to signs advising motorists approaching emergency vehicles in the breakdown lane.||5/16/2016 2:27:07 PM
+2016|S|118|5/12/2016 12:00:00 AM|HB2016|11|13|24|0|||Sen. Lasky Floor Amendment 1913s|relative to the state 10-year transportation improvement program.||5/16/2016 2:27:10 PM
+2016|S|119|5/12/2016 12:00:00 AM|HB1661|16|8|24|0|||Sen. Prescott Floor Amendment 1974s|(New Title) relative to conversion therapy seeking to change a person's sexual orientation.||5/16/2016 2:27:13 PM
+2016|S|120|5/19/2016 12:00:00 AM|SB532|8|16|24|0|||Non-Concur Request Committee of Conference|(New Title) relative to prior authorization for substance use treatment.||5/20/2016 2:36:58 PM
+2016|S|121|5/19/2016 12:00:00 AM|SB406|14|10|24|0|||Concur|(New Title) relative to classification of certain state employee positions and relative to the liquor commission.||5/20/2016 2:37:07 PM
+2016|S|122|5/19/2016 12:00:00 AM|SB336|14|10|24|0|||Concur|relative to the qualifications for obtaining a license to carry a concealed pistol or revolver.||5/20/2016 2:37:13 PM
+2016|S|123|5/19/2016 12:00:00 AM|SB4|12|12|24|0|||Concur|(New Title) relative to eligibility to vote and relative to availability of voter information.||5/20/2016 2:37:18 PM
+2016|S|124|5/19/2016 12:00:00 AM|SB4|14|10|24|0|||Non-Concur Request Committee of Conference|(New Title) relative to eligibility to vote and relative to availability of voter information.||5/20/2016 2:37:24 PM
+2016|S|125|5/19/2016 12:00:00 AM|SB458|14|10|24|0|||Concur|(Second New Title) relative to reporting by political committees and relative to agreements to share voter information with other states.||5/20/2016 2:37:30 PM
+2016|S|126|5/19/2016 12:00:00 AM|HB668|17|7|24|0|||Accede to Request for Committee of Conference|(New Title) relative to application of the Internal Revenue Code to provisions of the business profits tax.||5/20/2016 2:37:35 PM
+2016|S|127|6/1/2016 12:00:00 AM|HB427|15|9|24|0|||Committee of Conference Report 2042c|(New Title) relative to the definition of the New Hampshire fire code and establishing a committee to study the 2015 edition of the Uniform Fire Code NFPA 1.||6/2/2016 11:15:45 AM
+2016|S|128|6/1/2016 12:00:00 AM|HB533|22|2|24|0|||Committee of Conference Report 2085c|(Second New Title) relative to installation requirements for arc-fault circuit interrupters and relative to state building code review board rules.||6/2/2016 11:11:04 AM
+2016|S|129|6/1/2016 12:00:00 AM|HB1503|23|1|24|0|||Committee of Conference Report 2015c|(Second New Title) relative to distributing campaign materials at the polling place,  relative to health and dental benefits for temporary, seasonal, and part-time state employees, and relative to administration of the tobacco tax.||6/2/2016 11:11:11 AM
+2016|S|130|6/1/2016 12:00:00 AM|HB1590|13|11|24|0|||Committee of Conference Report 2069c|(New Title) relative of taxation of short-term rentals.||6/2/2016 11:11:23 AM
+2016|S|131|6/1/2016 12:00:00 AM|HB1637|14|10|24|0|||Committee of Conference Report 2093c|relative to school attendance in towns with no public schools.||6/2/2016 11:11:29 AM
+2016|S|132|6/1/2016 12:00:00 AM|HB1656|24|0|24|0|||Committee of Conference Report 2019c|relative to exceptions to the real estate transfer tax.||6/2/2016 11:11:34 AM
+2016|S|133|6/1/2016 12:00:00 AM|HB1660|11|13|24|0|||Committee of Conference Report 2072c|(Second New Title)  relative to appraisals of residential property, a residential owner option in a partial taking, and relocation, temporary housing, and legal expenses in eminent domain proceedings for gas pipelines; relative to intervention by the site| evaluation committee in such proceedings; and relative to expenditures from the energy efficiency fund.|6/2/2016 11:11:39 AM
+2016|S|134|6/1/2016 12:00:00 AM|SB4|12|12|24|0|||Committee of Conference Report 2030c|(New Title) relative to eligibility to vote and relative to availability of voter information.||6/2/2016 11:11:43 AM
+2016|S|135|6/1/2016 12:00:00 AM|SB66|19|5|24|0|||Committee of Conference Report 2009c|(New Title) naming the lobby of the legislative office building after former speaker of the house George Roberts.||6/2/2016 11:11:47 AM
+2016|S|136|6/1/2016 12:00:00 AM|SB239|22|2|24|0|||Committee of Conference Report 2067c|relative to application of the Internal Revenue Code to provisions of the business profits tax.||6/2/2016 11:11:51 AM
+2016|S|137|6/1/2016 12:00:00 AM|SB320|14|10|24|0|||Committee of Conference Report 1988c|relative to non-academic surveys administered by a public school to its students.||6/2/2016 11:11:56 AM
+2016|S|138|6/1/2016 12:00:00 AM|SB324|15|9|24|0|||Committee of Conference Report 2034c|(New Title) eliminating the land use board and requiring approval of federal land acquisitions by the governor and executive council.||6/2/2016 11:11:59 AM
+2016|S|139|6/1/2016 12:00:00 AM|SB324|14|10|24|0|||Committee of Conference Report 2034c|(New Title) eliminating the land use board and requiring approval of federal land acquisitions by the governor and executive council.||6/2/2016 11:12:06 AM
+2016|S|140|6/1/2016 12:00:00 AM|SB342|24|0|24|0|||Committee of Conference Report 2075c|(New Title) relative to the sale or exchange of an interest in a business organization under the business profits tax.||6/2/2016 11:12:11 AM
+2016|S|141|6/1/2016 12:00:00 AM|SB466|13|11|24|0|||Committee of Conference Report 2088c|(New Title) relative to the detention of youthful offenders at the youth development center.||6/2/2016 11:12:14 AM
+2016|S|142|6/1/2016 12:00:00 AM|SB533|24|0|24|0|||Committee of Conference Report 2097c|(Second New Title) relative to the governor's commission on alcohol and drug abuse prevention, treatment, and recovery and making supplemental appropriations to the commission and the New Hampshire housing finance authority.||6/2/2016 11:12:18 AM
+2016|S|143|6/16/2016 12:00:00 AM|HB1000|22|0|22|1|||Ought to Pass|establishing a state grant program to assist state and local law enforcement agencies in addressing the opioid crisis and making an appropriation therefor.||6/16/2016 4:00:34 PM
+2016|S|144|9/29/2016 12:00:00 AM|SB320|13|9|22|0|||Notwithstanding the Governor's veto shall the bill become law?|relative to non-academic surveys administered by a public school to its students.||9/29/2016 3:02:19 PM
+2016|S|145|9/29/2016 12:00:00 AM|SB324|13|9|22|0|||Notwithstanding the Governor's veto shall the bill become law?|eliminating the land use board and requiring approval of federal land acquisitions by the governor and executive council.||9/29/2016 3:02:25 PM
+2016|S|146|9/29/2016 12:00:00 AM|SB336|13|9|22|0|||Notwithstanding the Governor's veto shall the bill become law?|relative to the qualifications for obtaining a license to carry a concealed pistol or revolver.||9/29/2016 3:02:31 PM
+2016|S|147|9/29/2016 12:00:00 AM|SB381|0|22|22|0|||Notwithstanding the Governor's veto shall the bill become law?|relative to the combustion of the wood component of construction and demolition debris.||9/29/2016 3:02:38 PM
+2016|S|148|9/29/2016 12:00:00 AM|SB403|0|22|22|0|||Notwithstanding the Governor's veto shall the bill become law?|relative to the sale of gift certificates with expiration dates.||9/29/2016 3:02:47 PM
+2016|S|149|9/29/2016 12:00:00 AM|SB446|12|10|22|0|||Notwithstanding the Governor's veto shall the bill become law?|relative to requirements of the state building code.||9/29/2016 3:03:04 PM
+2016|S|150|9/29/2016 12:00:00 AM|SB495|12|10|22|0|||Notwithstanding the Governor's veto shall the bill become law?|relative to the definition of a cigar bar.||9/29/2016 3:03:09 PM

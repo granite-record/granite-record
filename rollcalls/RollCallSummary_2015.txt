@@ -1,0 +1,289 @@
+2015|H|1|1/7/2015 10:41:01 AM|HRule63|228|149|13|10|||Adopt Amendment|Deadly Weapons||
+2015|H|2|1/7/2015 10:47:58 AM|HRule22|343|36|11|10|||Table|Roll Calls||
+2015|H|3|1/7/2015 11:09:13 AM|HRule8|120|260|10|10|||Adopt Amendment|Majority Leader||
+2015|H|5|2/4/2015 10:12:25 AM||135|212|25|27|||Refer to Committee|||
+2015|H|7|2/4/2015 10:30:03 AM|HB181|302|52|19|26|||Inexpedient to Legislate|relative to the definition of "meeting" under the right-to-know law.||
+2015|H|8|2/4/2015 10:37:17 AM||120|235|18|26|||Amend H Rules|||
+2015|H|9|2/4/2015 11:08:56 AM||119|236|18|26|||Amend H Rules|||
+2015|H|11|2/11/2015 10:45:44 AM|HB176|221|127|16|34|||Inexpedient to Legislate|relative to towns affected by the Merrimack River flood control compact and the Connecticut River flood control compact and making an appropriation therefor.||
+2015|H|12|2/11/2015 11:14:30 AM|HB194|246|104|14|34|||Inexpedient to Legislate|providing that life begins at conception.||
+2015|H|14|2/11/2015 12:05:18 PM|HB371|194|157|12|35|||Inexpedient to Legislate|relative to assessing the consequences of the Citizens United decision.||
+2015|H|23|2/11/2015 1:38:15 PM|HB269|145|204|14|35|||Reconsider|allowing a landlord to collect first and last month's rent in addition to a security deposit.||
+2015|H|26|2/11/2015 2:12:15 PM|HB101|191|151|18|38|||Inexpedient to Legislate|relative to prescription refills.||
+2015|H|27|2/11/2015 2:23:26 PM|CACR8|242|101|16|39|||Inexpedient to Legislate|Relating to the nomination and appointment of officers. Providing that judicial officers shall be confirmed by the legislature.||
+2015|H|28|2/11/2015 2:41:27 PM|HB246|225|115|17|41|||Inexpedient to Legislate|relative to jury nullification.||
+2015|H|30|2/11/2015 2:59:02 PM|HB338|252|75|29|42|||Inexpedient to Legislate|relative to nomination of candidates for United States senator.||
+2015|H|39|2/18/2015 10:19:22 AM|HB585|223|133|14|28|||Ought to Pass Amended|relative to fines for violation of alcoholic beverage laws.||
+2015|H|40|2/18/2015 10:25:26 AM|HB575|236|122|13|27|||Inexpedient to Legislate|establishing the position of school nurse coordinator in the department of education and making an appropriation therefor.||
+2015|H|41|2/18/2015 10:54:24 AM|HB261|226|135|10|27|||Inexpedient to Legislate|relative to disbursements of school building aid grant payments.||
+2015|H|42|2/18/2015 11:27:14 AM|HB677|216|142|14|26|||Inexpedient to Legislate|prohibiting the use of public funds for abortion services.||
+2015|H|43|2/18/2015 1:22:23 PM|HB591|243|108|23|24|||Inexpedient to Legislate|relative to the road toll rate and eliminating a capital appropriation for highway projects.||
+2015|H|44|2/18/2015 2:01:44 PM|HB208|197|158|17|26|||Adopt Amendment|repealing the New Hampshire regional greenhouse gas initiative program.||
+2015|H|45|2/18/2015 2:05:12 PM|HB208|201|154|17|26|||Ought to Pass Amended|repealing the New Hampshire regional greenhouse gas initiative program.||
+2015|H|46|2/18/2015 2:22:32 PM|HB615|210|145|17|26|||Inexpedient to Legislate|relative to funding for state energy efficiency programs.||
+2015|H|47|2/18/2015 2:38:39 PM|HB433|215|137|20|26|||Inexpedient to Legislate|relative to the state guard.||
+2015|H|48|2/18/2015 2:42:37 PM|HB241|296|56|20|26|||Table|prohibiting driving while holding an animal in the driver's seat.||
+2015|H|49|2/18/2015 3:20:53 PM|HB387|207|140|24|27|||Inexpedient to Legislate|relative to motor vehicle inspections.||
+2015|H|50|2/18/2015 3:40:01 PM|HB407|134|204|29|31|||Inexpedient to Legislate|prohibiting the state and political subdivisions from acquiring military-equipped vehicles or equipment which are not readily available in an open national commercial market.||
+2015|H|51|2/18/2015 3:56:18 PM|HB670|237|88|37|36|||Inexpedient to Legislate|relative to the rights of conscience for medical professionals.||
+2015|H|53|3/4/2015 10:28:53 AM|CACR1|226|128|19|25|||Inexpedient to Legislate|Relating to taxation.  Providing that a 3/5 vote is required to pass legislation imposing new or increased taxes or license fees, or to authorize the issuance of state bonds and providing that the general court shall appropriate funds for payment of inter||
+2015|H|54|3/4/2015 10:38:54 AM|HB350|213|143|17|25|||Inexpedient to Legislate|establishing a commission to study the impacts of the property tax on New Hampshire's residents, businesses, municipalities, and the economy.||
+2015|H|55|3/4/2015 11:08:53 AM|HB116|218|145|10|25|||Inexpedient to Legislate|relative to the renomination of teachers.||
+2015|H|56|3/4/2015 11:34:13 AM|HB206|246|114|13|25|||Adopt Amendment|relative to non-academic surveys or questionnaires given to students.||
+2015|H|57|3/4/2015 12:23:12 PM|HB404|233|131|10|24|||Inexpedient to Legislate|relative to showing a ballot.||
+2015|H|58|3/4/2015 1:42:59 PM|HB463|104|244|22|28|||Adopt Amendment|relative to state agency communications.||
+2015|H|59|3/4/2015 1:55:11 PM|HB136|171|188|11|28|||Table|prohibiting tanning facilities from tanning persons under 18 years of age.||
+2015|H|60|3/4/2015 2:13:32 PM|HB136|199|162|9|28|||Ought to Pass|prohibiting tanning facilities from tanning persons under 18 years of age.||
+2015|H|61|3/4/2015 2:30:47 PM|CACR9|235|121|12|30|||Inexpedient to Legislate|Relating to judgment on impeachment.  Providing that persons impeached by the senate forfeit their state pensions and state-funded insurance.||
+2015|H|62|3/4/2015 2:40:10 PM|HB315|263|95|9|31|||Ought to Pass Amended|relative to termination of tenancy.||
+2015|H|63|3/4/2015 3:08:10 PM|HB689|203|148|13|34|||Ought to Pass Amended|relative to adoption of a default budget.||
+2015|H|64|3/4/2015 3:21:14 PM|HB416|163|191|10|34|||Inexpedient to Legislate|relative to compensation for members of the Coos county convention.||
+2015|H|65|3/4/2015 3:38:05 PM|HB543|253|95|16|34|||Table|repealing the electric renewable portfolio standard.||
+2015|H|66|3/4/2015 4:08:32 PM|HB302|260|77|25|36|||Inexpedient to Legislate|requiring a public hearing prior to the submission of a grant application by the department of education.||
+2015|H|67|3/4/2015 4:15:47 PM|HB228|253|89|20|36|||Inexpedient to Legislate|relative to showing or specially marking a ballot.||
+2015|H|68|3/4/2015 4:21:23 PM|HB627|275|64|20|39|||Inexpedient to Legislate|relative to registering to vote.||
+2015|H|69|3/4/2015 4:31:20 PM|HB665|286|56|17|39|||Inexpedient to Legislate|relative to nomination papers.||
+2015|H|70|3/4/2015 5:43:13 PM|HCR2|181|134|33|50|||Ought to Pass|applying to Congress to hold a convention for amendments.||
+2015|H|71|3/4/2015 6:06:54 PM|HB438|254|54|34|56|||Inexpedient to Legislate|exempting proprietorships from taxation under the business profits tax.||
+2015|H|73|3/11/2015 10:22:17 AM|HB426|214|136|25|23|||Inexpedient to Legislate|relative to the prohibition on the use of mobile electronic devices while driving.||
+2015|H|74|3/11/2015 11:01:27 AM|HB445|217|150|9|22|||Inexpedient to Legislate|defining poker as a game of skill.||
+2015|H|75|3/11/2015 11:26:45 AM|HB547|205|162|11|20|||Ought to Pass Amended|reestablishing the exemption from property taxation for telecommunications poles and conduits.||
+2015|H|76|3/11/2015 11:36:33 AM|HB673|355|13|7|23|||Inexpedient to Legislate|establishing a sales and use tax.||
+2015|H|77|3/11/2015 11:52:28 AM|HB681|170|199|8|21|||Adopt Amendment|increasing the marriage license fees.||
+2015|H|78|3/11/2015 11:55:55 AM|HB681|223|146|7|22|||Ought to Pass|increasing the marriage license fees.||
+2015|H|79|3/11/2015 12:11:25 PM|HB236|191|174|11|22|||Ought to Pass Amended|relative to child support and allowable child care expenses.||
+2015|H|80|3/11/2015 1:40:16 PM|HB380|154|217|5|22|||Inexpedient to Legislate|relative to investigations of child day care agencies.||
+2015|H|81|3/11/2015 1:47:36 PM|HB380|213|157|6|22|||Adopt Amendment|relative to investigations of child day care agencies.||
+2015|H|82|3/11/2015 1:54:44 PM|HB380|214|157|5|22|||OTPA|relative to investigations of child day care agencies.||
+2015|H|83|3/11/2015 2:31:15 PM|HB548|237|131|6|24|||Inexpedient to Legislate|establishing the federally-facilitated health exchange as the health exchange for New Hampshire.||
+2015|H|84|3/11/2015 2:36:24 PM|HB554|311|58|4|25|||Ought to Pass Amended|relative to sales of beer in refillable containers.||
+2015|H|85|3/11/2015 3:00:55 PM|HB214|233|122|18|25|||Inexpedient to Legislate|relative to circumstances under which a police officer's certification may be revoked.||
+2015|H|86|3/11/2015 3:19:59 PM|HB560|168|190|15|25|||Adopt Amendment|including a fetus in the definition of  "another" for the purpose of certain criminal offenses.||
+2015|H|87|3/11/2015 3:35:15 PM|HB560|208|155|10|25|||Ought to Pass|including a fetus in the definition of  "another" for the purpose of certain criminal offenses.||
+2015|H|88|3/11/2015 3:48:04 PM|HB618|297|67|8|26|||Ought to Pass Amended|relative to penalties for the possession of marijuana and relative to the cultivation of marijuana plants.||
+2015|H|89|3/11/2015 4:15:46 PM|HB650|236|124|10|28|||Inexpedient to Legislate|requiring background checks for commercial firearms sales.||
+2015|H|90|3/11/2015 4:30:08 PM|HB669|245|110|13|30|||Inexpedient to Legislate|requiring law enforcement agencies to report on the receipt of certain equipment and grants from the federal government and on the deployment of tactical teams.||
+2015|H|91|3/11/2015 4:37:45 PM|HB685|234|119|13|32|||Inexpedient to Legislate|prohibiting a state agency, state employee, or political subdivision from enforcing any federal law regarding a firearm, firearm accessory, or ammunition.||
+2015|H|92|3/11/2015 4:49:23 PM|HB276|225|130|11|32|||Ought to Pass Amended|providing that school districts shall not be required to adopt the common core standards.||
+2015|H|93|3/11/2015 5:03:39 PM|HB303|129|227|9|33|||Adopt Amendment|relative to statewide assessment standards and relative to parental consent for psychological services to students.||
+2015|H|94|3/11/2015 5:08:12 PM|HB303|230|127|8|33|||Table|relative to statewide assessment standards and relative to parental consent for psychological services to students.||
+2015|H|95|3/11/2015 5:23:48 PM|HB332|217|136|11|34|||Ought to Pass|relative to school district policy regarding objectionable course material.||
+2015|H|96|3/11/2015 5:47:37 PM|HB578|204|136|17|41|||OTP|relative to state board of education compliance with unfunded federal education mandates.||
+2015|H|97|3/11/2015 6:32:45 PM|HB609|254|81|17|46|||Inexpedient to Legislate|relative to hydraulic fracturing.||
+2015|H|98|3/11/2015 7:05:18 PM|HB279|174|121|51|52|||Ought to Pass Amended|establishing a commission to study the economic impact of the arts and culture in New Hampshire.||
+2015|H|99|3/11/2015 7:10:18 PM|HB410|245|54|47|52|||Inexpedient to Legislate|relative to the uniform anatomical gift act.||
+2015|H|100|3/11/2015 7:27:09 PM|HB448|196|103|47|52|||Inexpedient to Legislate|establishing February 6 as Ronald Reagan Day.||
+2015|H|101|3/11/2015 7:37:19 PM|HB454|172|126|48|52|||Inexpedient to Legislate|relative to the commandant of the veterans' home.||
+2015|H|102|3/11/2015 8:27:04 PM|HB658|149|146|50|53|||Ought to Pass|prohibiting collective bargaining agreements that require employees to join a labor union.||
+2015|H|103|3/12/2015 9:37:50 AM|HB298|222|95|47|34|||Inexpedient to Legislate|relative to the seasons for taking game animals and game birds with the use of bait.||
+2015|H|104|3/12/2015 10:04:26 AM|HB563|222|116|21|39|||Ought to Pass Amended|relative to funding for chartered public school pupils.||
+2015|H|105|3/12/2015 10:21:38 AM|HB593|148|188|20|42|||Inexpedient to Legislate|permitting qualifying patients and registered caregivers to cultivate cannabis for therapeutic use.||
+2015|H|106|3/12/2015 10:24:31 AM|HB593|208|132|17|41|||OTP|permitting qualifying patients and registered caregivers to cultivate cannabis for therapeutic use.||
+2015|H|107|3/12/2015 10:39:08 AM|HB292|235|105|14|44|||Ought to Pass Amended|expanding the good Samaritan law to engineers and architects.||
+2015|H|108|3/12/2015 11:01:41 AM|HB403|170|159|27|42|||Ought to Pass|repealing the law relative to providing certain parameters for access to reproductive health care facilities.||
+2015|H|109|3/12/2015 11:09:59 AM|HB403|161|180|18|39|||Reconsider|repealing the law relative to providing certain parameters for access to reproductive health care facilities.||
+2015|H|110|3/12/2015 11:34:56 AM|HB470|233|108|16|41|||Inexpedient to Legislate|relative to jury nullification.||
+2015|H|111|3/12/2015 11:43:39 AM|HB606|321|18|19|40|||Ought to Pass Amended|relative to costs for public records filed electronically.||
+2015|H|112|3/12/2015 1:31:32 PM|HB431|213|131|23|31|||Inexpedient to Legislate|relative to the placement of all new elective electric transmission lines in New Hampshire.||
+2015|H|113|3/12/2015 1:48:35 PM|HB684|198|145|20|35|||Inexpedient to Legislate|establishing a state minimum hourly rate.||
+2015|H|114|3/12/2015 2:13:30 PM|HB365|200|142|17|39|||Inexpedient to Legislate|prohibiting an employer from using credit history in employment decisions.||
+2015|H|115|3/12/2015 2:30:22 PM|HB600|219|122|17|40|||Inexpedient to Legislate|relative to paid sick leave for employees.||
+2015|H|116|3/12/2015 2:47:34 PM|HB299|271|69|15|43|||Inexpedient to Legislate|prohibiting voting by the house of representatives for the speaker of the house on organizational convening day to be by secret ballot.||
+2015|H|117|3/12/2015 2:51:40 PM|HB434|235|105|14|44|||Inexpedient to Legislate|relative to review of proposed agency administrative rules by standing committees of the general court.||
+2015|H|118|3/12/2015 3:21:50 PM|HCR1|262|75|16|45|||Inexpedient to Legislate|rescinding all requests by the New Hampshire legislature for a federal constitutional convention.||
+2015|H|119|3/12/2015 3:40:06 PM|HCR7|217|108|19|54|||Inexpedient to Legislate|affirming States' powers based on the Constitution for the United States and the Constitution of New Hampshire.||
+2015|H|120|3/12/2015 4:04:26 PM|HB391|167|152|26|53|||Ought to Pass Amended|applying the E911 surcharge to prepaid cellular telephones.||
+2015|H|121|3/12/2015 4:45:22 PM|HB492|258|54|26|60|||Ought to Pass Amended|relative to military and historic reenactments and commemorations.||
+2015|H|122|3/12/2015 4:55:05 PM|HB568|231|66|40|61|||Inexpedient to Legislate|requiring a supervisory law enforcement officer to arrest a law enforcement officer when the supervisor knows that the law enforcement officer has committed a criminal offense.||
+2015|H|123|3/12/2015 6:17:58 PM|HB402|184|74|74|66|||Inexpedient to Legislate|establishing the Franklin Partin right-to-work act.||
+2015|H|124|3/25/2015 10:31:55 AM|HB357|3|365|9|21|||Adopt Amendment|(NT) relative to notice of change of name or address on a driver's license and on the registration of a vehicle.||
+2015|H|125|3/25/2015 10:35:58 AM|HB572|364|5|8|21|||Ought to Pass|relative to taking land by eminent domain for high pressure gas pipelines and requiring payment of the land use change tax when land is taken by eminent domain to build energy infrastructure.||
+2015|H|126|4/1/2015 10:53:13 AM|HB2|219|161|4|14|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2015|H|127|4/1/2015 11:27:43 AM|HB2|210|170|5|13|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2015|H|128|4/1/2015 11:42:02 AM|HB2|206|176|3|13|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2015|H|129|4/1/2015 12:09:39 PM|HB2|147|234|4|13|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2015|H|130|4/1/2015 1:36:05 PM|HB2|167|199|19|13|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2015|H|131|4/1/2015 1:56:44 PM|HB2|163|212|7|16|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2015|H|132|4/1/2015 2:06:58 PM|HB2|163|207|12|16|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2015|H|133|4/1/2015 2:16:41 PM|HB2|334|34|12|18|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2015|H|134|4/1/2015 2:24:36 PM|HB2|91|273|16|18|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2015|H|135|4/1/2015 2:29:19 PM|HB2|194|179|9|16|||Ought to Pass Amended|relative to state fees, funds, revenues, and expenditures.||
+2015|H|136|4/1/2015 2:34:13 PM|HB2|161|217|6|14|||Reconsider|relative to state fees, funds, revenues, and expenditures.||
+2015|H|137|4/1/2015 2:55:41 PM|HB1|210|162|10|16|||Adopt Amendment|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||
+2015|H|138|4/1/2015 3:19:12 PM|HB1|182|193|6|17|||Adopt Amendment|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||
+2015|H|139|4/1/2015 3:36:37 PM|HB1|157|214|10|17|||Adopt Amendment|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||
+2015|H|140|4/1/2015 3:51:14 PM|HB1|151|218|9|20|||Adopt Amendment|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||
+2015|H|141|4/1/2015 4:05:04 PM|HB1|159|209|10|20|||Adopt Amendment|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||
+2015|H|142|4/1/2015 4:16:19 PM|HB1|138|233|7|20|||Adopt Amendment|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||
+2015|H|143|4/1/2015 4:27:09 PM|HB1|212|161|5|20|||Ought to Pass Amended|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||
+2015|H|144|4/15/2015 10:23:49 AM|SB69|164|168|22|43|||Ought to Pass|establishing a commission to study social impact bond funding for early childhood education for at-risk students.||
+2015|H|145|4/15/2015 10:36:32 AM|SB101|202|138|15|42|||Ought to Pass|prohibiting the state from requiring implementation of common core standards.||
+2015|H|146|4/15/2015 11:06:42 AM|SB181|188|158|10|41|||Table|relative to registration fees for hunter education programs of the fish and game department.||
+2015|H|147|4/29/2015 10:24:09 AM|SB116|212|150|8|27|||Ought to Pass Amended|repealing the license requirement for carrying a concealed pistol or revolver.||
+2015|H|148|4/29/2015 11:00:48 AM|SB113|103|259|8|27|||Adopt Amendment|relative to video lottery and table gaming.||
+2015|H|149|4/29/2015 11:14:27 AM|SB113|87|279|4|27|||Adopt Amendment|relative to video lottery and table gaming.||
+2015|H|150|4/29/2015 12:57:11 PM|SB113|156|208|6|27|||OTP|relative to video lottery and table gaming.||
+2015|H|151|5/6/2015 10:47:39 AM|SB105|210|143|9|36|||Inexpedient to Legislate|(New Title) relative to child-resistant packaging for tobacco products and establishing a committee to study revising the indoor smoking act.||
+2015|H|152|5/6/2015 10:52:31 AM|SB40|192|161|10|35|||Adopt Amendment|including a viable fetus in the definition of "another" for the purposes of certain criminal offenses.||
+2015|H|153|5/6/2015 11:08:31 AM|SB40|193|159|11|35|||Ought to Pass Amended|including a viable fetus in the definition of "another" for the purposes of certain criminal offenses.||
+2015|H|154|5/6/2015 11:37:14 AM|SB106|233|120|9|36|||Ought to Pass Amended|restricting the sale or possession of synthetic drugs.||
+2015|H|155|5/6/2015 11:43:45 AM|SB125|206|147|9|36|||Table|relative to certification and licensure for mold assessment or remediation services.||
+2015|H|156|5/6/2015 12:05:43 PM|SB30|293|57|10|38|||Ought to Pass Amended|(2nd New Title) permitting counties with unincorporated areas to establish tax increment financing districts.||
+2015|H|157|6/3/2015 11:24:31 AM|SB55|331|37|5|26|||Ought to Pass Amended|allowing private employers to establish a policy granting a veterans' preference in employment decisions.||
+2015|H|158|6/3/2015 12:04:11 PM|SB218|203|158|12|26|||Inexpedient to Legislate|making spoofing an unfair and deceptive act under the consumer protection law.||
+2015|H|159|6/3/2015 1:57:09 PM|SB125|230|128|9|32|||OTPA|relative to certification and licensure for mold assessment or remediation services.||
+2015|H|160|6/3/2015 2:12:52 PM|SB39|206|149|11|33|||Ought to Pass Amended|relative to recounts on questions.||
+2015|H|161|6/3/2015 2:41:50 PM|SB179|211|145|10|33|||Ought to Pass Amended|relative to eligibility to vote.||
+2015|H|162|6/3/2015 3:08:08 PM|SB221|308|43|10|38|||Ought to Pass Amended|relative to electric rate reduction financing.||
+2015|H|163|6/3/2015 3:20:39 PM|SB190|164|175|20|40|||Adopt Amendment|(New Title) relative to payment of costs for career and technical education center programs and administration by the department of education.||
+2015|H|164|6/3/2015 3:47:03 PM|SB124|212|127|19|41|||Ought to Pass Amended|relative to filing felonies first in the superior court.||
+2015|H|165|6/3/2015 4:35:11 PM|SB133|132|198|23|46|||Adopt Amendment|(New Title) relative to certain health care data and relative to certain workers’ compensation medical claim data collected by the insurance department.||
+2015|H|166|6/3/2015 4:45:35 PM|SB133|231|100|22|46|||Adopt Amendment|(New Title) relative to certain health care data and relative to certain workers’ compensation medical claim data collected by the insurance department.||
+2015|H|167|6/3/2015 4:50:12 PM|SB133|108|223|22|46|||Table|(New Title) relative to certain health care data and relative to certain workers’ compensation medical claim data collected by the insurance department.||
+2015|H|168|6/3/2015 4:52:12 PM|SB133|264|67|22|46|||Ought to Pass Amended|(New Title) relative to certain health care data and relative to certain workers’ compensation medical claim data collected by the insurance department.||
+2015|H|169|6/11/2015 10:33:54 AM|HR12|193|137|18|51|||Adopt Amendment|affirming revenue estimates for fiscal years 2015, 2016, and 2017.||
+2015|H|170|6/11/2015 10:43:40 AM|HR12|133|197|18|51|||Adopt Amendment|affirming revenue estimates for fiscal years 2015, 2016, and 2017.||
+2015|H|171|6/11/2015 10:54:25 AM|HB122|236|95|18|50|||Veto Override|relative to advertising of liquor or beverages.||
+2015|H|172|6/11/2015 11:15:01 AM|HB148|197|140|13|49|||Veto Override|limiting the authority of delegates to Article V conventions.||
+2015|H|173|6/11/2015 11:37:17 AM|HB151|184|154|13|48|||Veto Override|establishing a committee to study end-of-life decisions.||
+2015|H|174|6/24/2015 10:28:00 AM||279|71|25|23|||Rules Suspension|||
+2015|H|175|6/24/2015 10:36:21 AM|SB135|249|103|23|23|||Adopt CofC Report|relative to lead poisoning in children.||
+2015|H|176|6/24/2015 10:51:14 AM|SB169|213|143|19|23|||Adopt CofC Report|(New Title) relative to the use of electronic benefits transfer (EBT) cards.||
+2015|H|177|6/24/2015 1:21:21 PM|HB1|196|161|19|22|||Adopt CofC Report|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||
+2015|H|178|6/24/2015 1:46:35 PM|HB2|196|164|16|22|||Adopt CofC Report|relative to state fees, funds, revenues, and expenditures.||
+2015|H|179|6/24/2015 1:59:54 PM|HJR2|150|208|18|22|||Adopt Amendment|making temporary appropriations for the expenses and encumbrances of the State of New Hampshire.||
+2015|H|180|6/24/2015 2:11:53 PM|HB364|223|131|19|25|||Adopt CofC Report|(2nd New Title) relative to renewal fees administered by the office of professional licensing, the salt applicator certification program, and pesticide product registration requirements.||
+2015|H|181|6/24/2015 2:54:10 PM|HB550|202|145|25|26|||Adopt CofC Report|(New Title) relative to administration of the tobacco tax and relative to the sale or exchange of an interest in a business organization under the business profits tax.||
+2015|H|182|6/24/2015 3:00:21 PM|HB577|201|145|24|28|||Adopt CofC Report|(New Title) establishing a children’s savings account program, and relative to the bonding authority of the city of Dover.||
+2015|H|183|6/24/2015 3:11:04 PM|HB662|275|71|24|28|||Adopt CofC Report|relative to property taxes paid by chartered public schools leasing property.||
+2015|H|184|6/24/2015 3:15:08 PM|HB681|203|144|23|28|||Adopt CofC Report|(3rd New Title) establishing a fine for persons convicted of domestic violence and increasing the marriage license fee.||
+2015|H|185|9/16/2015 1:34:56 PM|HB332|226|148|11|14|||Veto Override|relative to school district policy regarding objectionable course material.||
+2015|H|186|9/16/2015 1:52:16 PM|HB449|229|151|6|13|||Veto Override|relative to the duration of child support.||
+2015|H|187|9/16/2015 2:10:04 PM|HB550|230|147|9|13|||Veto Override|(New Title) relative to administration of the tobacco tax and relative to the sale or exchange of an interest in a business organization under the business profits tax.||
+2015|H|188|9/16/2015 2:18:40 PM||286|89|11|13|||Uphold Ruling of the Chair|||
+2015|H|189|9/16/2015 3:08:25 PM||285|93|7|14|||Rules Suspension|||
+2015|H|190|9/16/2015 3:26:40 PM|SB9|94|264|26|15|||Adopt Amendment|relative to salary increases for state employees and making appropriations therefor, establishing a legislative oversight committee on employee relations, relative to the purpose of a capital budget appropriation, reducing the rates of the business profit||
+2015|H|191|9/16/2015 3:37:58 PM|SB9|96|265|23|15|||Adopt Amendment|relative to salary increases for state employees and making appropriations therefor, establishing a legislative oversight committee on employee relations, relative to the purpose of a capital budget appropriation, reducing the rates of the business profit||
+2015|H|192|9/16/2015 3:52:44 PM|SB9|65|289|29|16|||Adopt Amendment|relative to salary increases for state employees and making appropriations therefor, establishing a legislative oversight committee on employee relations, relative to the purpose of a capital budget appropriation, reducing the rates of the business profit||
+2015|H|193|9/16/2015 4:00:58 PM|SB9|93|263|27|16|||Adopt Amendment|relative to salary increases for state employees and making appropriations therefor, establishing a legislative oversight committee on employee relations, relative to the purpose of a capital budget appropriation, reducing the rates of the business profit||
+2015|H|194|9/16/2015 4:16:42 PM|SB9|291|73|19|16|||OTP|relative to salary increases for state employees and making appropriations therefor, establishing a legislative oversight committee on employee relations, relative to the purpose of a capital budget appropriation, reducing the rates of the business profit||
+2015|H|195|9/16/2015 4:37:52 PM|HB603|211|141|29|18|||Veto Override|(New Title) relative to student exemption from the statewide assessment.||
+2015|H|196|9/16/2015 5:02:02 PM|HB1|321|25|32|21|||Veto Override|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||
+2015|H|197|9/16/2015 5:03:30 PM|HB2|326|21|31|21|||Veto Override|relative to state fees, funds, revenues, and expenditures.||
+2015|H|199|11/18/2015 12:46:54 PM|SSHCR1|79|258|28|35|||Adopt Amendment|establishing a joint task force for the response to the heroin and opioid epidemic in New Hampshire.||
+2015|H|200|11/18/2015 1:39:44 PM|SSHCR1|290|46|27|37|||OTP|establishing a joint task force for the response to the heroin and opioid epidemic in New Hampshire.||
+2015|S|1|2/12/2015 12:00:00 AM|SB106|23|0|23|1|||Ought to Pass with Amendment|restricting the sale or possession of synthetic drugs.||2/13/2015 11:12:14 AM
+2015|S|2|2/12/2015 12:00:00 AM|SB5|14|9|23|1|||Ought to Pass|relative to transfers into the revenue stabilization reserve account.||2/13/2015 11:12:24 AM
+2015|S|3|2/12/2015 12:00:00 AM|SB13|18|5|23|1|||Ought to Pass|relative to the disposition of dedicated funds.||2/13/2015 11:12:30 AM
+2015|S|4|2/12/2015 12:00:00 AM|SB116|14|9|23|1|||Ought to Pass|repealing the license requirement for carrying a concealed pistol or revolver.||2/13/2015 11:12:41 AM
+2015|S|5|2/19/2015 12:00:00 AM|SB204|14|10|24|0|||Inexpedient to Legislate|repealing the education tax credit program.||2/19/2015 2:37:16 PM
+2015|S|6|2/19/2015 12:00:00 AM|SB6|24|0|24|0|||Ought to Pass|increasing the research and development tax credit against the business profits tax.||2/19/2015 2:37:22 PM
+2015|S|7|2/19/2015 12:00:00 AM|SB74|24|0|24|0|||Ought to Pass with Amendment|establishing a committee to study reducing the cost of county government.||2/19/2015 2:37:33 PM
+2015|S|8|3/5/2015 12:00:00 AM|SB42|12|12|24|0|||Committee Amendment 0505s|relative to employee notification of contraceptive coverage.||3/6/2015 10:16:54 AM
+2015|S|9|3/5/2015 12:00:00 AM|SB47|24|0|24|0|||Ought to Pass|repealing the payment of subminimum wages to persons with disabilities.||3/6/2015 10:17:08 AM
+2015|S|10|3/5/2015 12:00:00 AM|SB107|12|12|24|0|||Ought to Pass|prohibiting collective bargaining agreements that require employees to join or contribute to a labor union.||3/6/2015 10:17:18 AM
+2015|S|11|3/5/2015 12:00:00 AM|SB223|24|0|24|0|||Ought to Pass|relative to name availability for business organizations.||3/6/2015 10:17:25 AM
+2015|S|12|3/5/2015 12:00:00 AM|SB233|14|10|24|0|||Lay on the Table|relative to state revenue and expenditures for fiscal year 2015.||3/6/2015 10:17:34 AM
+2015|S|13|3/5/2015 12:00:00 AM|SB1|14|10|24|0|||Ought to Pass with Amendment|reducing the rate of the business profits tax.||3/6/2015 10:17:42 AM
+2015|S|14|3/5/2015 12:00:00 AM|SB2|14|10|24|0|||Ought to Pass with Amendment|reducing the rate of the business enterprise tax.||3/6/2015 10:17:49 AM
+2015|S|15|3/5/2015 12:00:00 AM|SB2|10|14|24|0|||Lay on the Table|reducing the rate of the business enterprise tax.||3/6/2015 10:17:56 AM
+2015|S|16|3/5/2015 12:00:00 AM|SB199|17|6|23|1|||Inexpedient to Legislate|including prepaid communications services as taxable under the communications services tax.||3/6/2015 10:18:04 AM
+2015|S|17|3/5/2015 12:00:00 AM|SB215|23|0|23|1|||Ought to Pass|establishing an option to rebate the research and development tax credit against business profits taxes.||3/6/2015 10:18:13 AM
+2015|S|18|3/12/2015 12:00:00 AM|SB75|24|0|24|0|||Ought to Pass|relative to unfair trade practices targeting veterans.||3/13/2015 12:03:38 PM
+2015|S|19|3/12/2015 12:00:00 AM|SB188|24|0|24|0|||Ought to Pass with Amendment|(New Title) revising banking, credit union, and trust laws.||3/13/2015 12:03:46 PM
+2015|S|20|3/12/2015 12:00:00 AM|SB32|24|0|24|0|||Ought to Pass with Amendment|relative to state agency budgetary reporting requirements.||3/13/2015 12:03:54 PM
+2015|S|21|3/12/2015 12:00:00 AM|SB154|20|4|24|0|||Ought to Pass|authorizing the department of safety to set fees for motorcycle rider education programs.||3/13/2015 12:04:54 PM
+2015|S|22|3/12/2015 12:00:00 AM|SB181|13|11|24|0|||Ought to Pass|relative to registration fees for hunter education programs of the fish and game department.||3/13/2015 12:05:03 PM
+2015|S|23|3/12/2015 12:00:00 AM|SB261|14|10|24|0|||Inexpedient to Legislate|establishing a state minimum wage.||3/13/2015 12:05:11 PM
+2015|S|24|3/12/2015 12:00:00 AM|SB8|9|15|24|0|||Sen. D'Allesandro Floor Amendment 0843s|relative to appropriations for nursing homes.||3/13/2015 12:13:08 PM
+2015|S|25|3/12/2015 12:00:00 AM|SB8|10|14|24|0|||Sen. Watters Floor Amendment 0841s|relative to appropriations for nursing homes.||3/13/2015 12:13:56 PM
+2015|S|26|3/12/2015 12:00:00 AM|SB8|10|14|24|0|||Sen. D'Allesandro Floor Amendment 0843s|relative to appropriations for nursing homes.||3/13/2015 12:15:30 PM
+2015|S|27|3/12/2015 12:00:00 AM|SB8|16|8|24|0|||Ought to Pass with Amendment|relative to appropriations for nursing homes.||3/13/2015 12:15:44 PM
+2015|S|28|3/12/2015 12:00:00 AM|SB135|24|0|24|0|||Ought to Pass with Amendment|relative to lead poisoning in children.||3/13/2015 12:15:59 PM
+2015|S|29|3/12/2015 12:00:00 AM|SB214|5|19|24|0|||Committee Amendment 0634s|relative to the transfer of skilled nursing facility beds from the Franklin Regional Hospital.||3/13/2015 12:16:25 PM
+2015|S|30|3/12/2015 12:00:00 AM|SB40|11|13|24|0|||Committee Amendment 0703s|including a viable fetus in the definition of "another" for the purposes of certain criminal offenses.||3/13/2015 12:16:49 PM
+2015|S|31|3/12/2015 12:00:00 AM|SB40|13|11|24|0|||Ought to Pass|including a viable fetus in the definition of "another" for the purposes of certain criminal offenses.||3/13/2015 12:17:06 PM
+2015|S|32|3/12/2015 12:00:00 AM|SB262|14|10|24|0|||Inexpedient to Legislate|relative to the form of drivers' licenses and identification cards.||3/13/2015 12:17:17 PM
+2015|S|33|3/12/2015 12:00:00 AM|SB207|14|10|24|0|||Inexpedient to Legislate|eliminating the requirement that moderators photograph voters without identification.||3/13/2015 12:17:30 PM
+2015|S|34|3/12/2015 12:00:00 AM|SB113|13|11|24|0|||Ought to Pass with Amendment|relative to video lottery and table gaming.||3/13/2015 12:17:47 PM
+2015|S|35|3/12/2015 12:00:00 AM|SB232|23|0|23|1|||Ought to Pass|exempting certain leases from the real estate transfer tax.||3/13/2015 12:18:01 PM
+2015|S|36|3/19/2015 12:00:00 AM|SB137|23|0|24|0|||Ought to Pass with Amendment|relative to cost-sharing parity for oral anti-cancer therapies.||3/20/2015 10:23:42 AM
+2015|S|37|3/19/2015 12:00:00 AM|SB164|14|10|24|0|||Inexpedient to Legislate|relative to the independent investment committee in the New Hampshire retirement system.||3/20/2015 10:23:52 AM
+2015|S|38|3/19/2015 12:00:00 AM|SB1|14|10|24|0|||Ought to Pass|reducing the rate of the business profits tax.||3/20/2015 10:23:59 AM
+2015|S|39|3/19/2015 12:00:00 AM|SB2|14|10|24|0|||Ought to Pass|reducing the rate of the business enterprise tax.||3/20/2015 10:24:06 AM
+2015|S|40|3/19/2015 12:00:00 AM|CACR5|24|0|24|0|||Ought to Pass with Amendment|relating to legal actions. Providing that taxpayers have standing to bring actions against the government.||7/16/2015 11:21:52 AM
+2015|S|41|3/19/2015 12:00:00 AM|SB265|24|0|24|0|||Ought to Pass|establishing the achieving a better life experience (ABLE) savings account program.||3/20/2015 10:24:20 AM
+2015|S|42|3/26/2015 12:00:00 AM|SB158|23|0|23|1|||Sen. Feltes Floor Amendment 1158s|relative to notice required prior to foreclosure.||3/27/2015 10:12:47 AM
+2015|S|43|3/26/2015 12:00:00 AM|SB158|13|10|23|1|||Rerefer to Committee|relative to notice required prior to foreclosure.||3/27/2015 10:12:54 AM
+2015|S|44|3/26/2015 12:00:00 AM|SB266|23|0|23|1|||Ought to Pass with Amendment|adopting the Uniform Securities Act.||3/27/2015 10:13:01 AM
+2015|S|45|3/26/2015 12:00:00 AM|SB135|23|0|23|1|||Ought to Pass|relative to lead poisoning in children.||3/27/2015 10:13:07 AM
+2015|S|46|3/26/2015 12:00:00 AM|SB232|23|0|23|1|||Ought to Pass|exempting certain leases from the real estate transfer tax.||3/27/2015 10:13:13 AM
+2015|S|47|3/26/2015 12:00:00 AM|SB169|10|13|23|1|||Sen. Fuller Clark Floor Amendment 1137s|relative to permissible uses of electronic benefit transfer (EBT) cards.||3/27/2015 10:13:20 AM
+2015|S|48|3/26/2015 12:00:00 AM|SB169|10|13|23|1|||Sen. Feltes Floor Amendment 1148s|relative to permissible uses of electronic benefit transfer (EBT) cards.||3/27/2015 10:13:26 AM
+2015|S|49|3/26/2015 12:00:00 AM|SB169|9|14|23|1|||Sen. Feltes Floor Amendment 1148s|relative to permissible uses of electronic benefit transfer (EBT) cards.||3/27/2015 10:13:33 AM
+2015|S|50|3/26/2015 12:00:00 AM|SB169|19|4|23|1|||Ought to Pass|relative to permissible uses of electronic benefit transfer (EBT) cards.||3/27/2015 10:13:38 AM
+2015|S|51|3/26/2015 12:00:00 AM|SB179|13|10|23|1|||Committee Amendment 1025s|relative to eligibility to vote.||3/27/2015 10:13:45 AM
+2015|S|52|3/26/2015 12:00:00 AM|SB179|13|10|23|1|||Ought to Pass with Amendment|relative to eligibility to vote.||3/27/2015 10:13:51 AM
+2015|S|53|4/30/2015 12:00:00 AM|HB411|24|0|24|0|||Ought to Pass|prohibiting the payment of subminimum wages to persons with disabilities.||5/1/2015 9:23:40 AM
+2015|S|54|4/30/2015 12:00:00 AM|HB662|22|2|24|0|||Ought to Pass with Amendment|relative to property taxes paid by chartered public schools leasing property.||5/1/2015 9:23:49 AM
+2015|S|55|4/30/2015 12:00:00 AM|HB503|24|0|24|0|||Ought to Pass|relative to presidential primary ballots.||5/1/2015 9:23:57 AM
+2015|S|56|4/30/2015 12:00:00 AM|HB258|17|7|24|0|||Ought to Pass with Amendment|relative to fees for preparing motor vehicle registration documents.||5/1/2015 9:24:04 AM
+2015|S|57|4/30/2015 12:00:00 AM|HB169|13|11|24|0|||Rerefer to Committee|relative to table stakes poker.||5/1/2015 9:24:11 AM
+2015|S|58|5/7/2015 12:00:00 AM|HB648|23|0|23|1|||Ought to Pass|(New Title) requiring detention until arraignment for persons arrested for violation of protective orders.||5/8/2015 9:47:41 AM
+2015|S|59|5/7/2015 12:00:00 AM|HB502|10|13|23|1|||Ought to Pass|relative to petitions for verification of checklists.||5/8/2015 9:47:51 AM
+2015|S|60|5/14/2015 12:00:00 AM|HB332|14|10|24|0|||Ought to Pass with Amendment|relative to school district policy regarding objectionable course material.||5/15/2015 10:53:40 AM
+2015|S|61|5/14/2015 12:00:00 AM|HB563|14|10|24|0|||Ought to Pass|relative to funding for chartered public school pupils.||5/15/2015 10:53:49 AM
+2015|S|62|5/14/2015 12:00:00 AM|HB603|11|13|24|0|||Inexpedient to Legislate|(New Title) relative to student exemption from the statewide assessment.||5/15/2015 10:53:56 AM
+2015|S|63|5/14/2015 12:00:00 AM|HB216|16|8|24|0|||Ought to Pass with Amendment|relative to recovery of certain investigatory costs by regulatory boards and commissions.||5/15/2015 10:54:04 AM
+2015|S|64|5/14/2015 12:00:00 AM|HB216|17|7|24|0|||Ought to Pass with Amendment|relative to recovery of certain investigatory costs by regulatory boards and commissions.||5/15/2015 10:54:09 AM
+2015|S|65|5/14/2015 12:00:00 AM|HB219|16|8|24|0|||Committee Amendment 1569s|relative to the use of electronic benefit transfer (EBT) cards.||5/15/2015 10:54:15 AM
+2015|S|66|5/14/2015 12:00:00 AM|HB403|12|12|24|0|||Ought to Pass|repealing the law relative to providing certain parameters for access to reproductive health care facilities.||5/15/2015 10:54:21 AM
+2015|S|67|5/14/2015 12:00:00 AM|HB560|11|13|24|0|||Rerefer to Committee|including a fetus in the definition of  "another" for the purpose of certain criminal offenses.||5/15/2015 10:54:28 AM
+2015|S|68|5/14/2015 12:00:00 AM|HB212|24|0|24|0|||Sections 1 and 34|(New Title) relative to revocation of fish and game licenses of persons convicted of sexual assault while hunting, trapping, or fishing and relative to the authority of the fish and game department to establish fees.||5/15/2015 10:54:34 AM
+2015|S|69|5/14/2015 12:00:00 AM|HB212|20|4|24|0|||Sections 2 through 34|(New Title) relative to revocation of fish and game licenses of persons convicted of sexual assault while hunting, trapping, or fishing and relative to the authority of the fish and game department to establish fees.||5/15/2015 10:54:40 AM
+2015|S|70|5/14/2015 12:00:00 AM|HB681|24|0|24|0|||Sen. Sanborn Floor Amendment 1702s|(3rd New Title) establishing a fine for persons convicted of domestic violence and increasing the marriage license fee.||5/15/2015 10:54:49 AM
+2015|S|71|5/14/2015 12:00:00 AM|HB681|20|4|24|0|||Sections 1 and 3|(3rd New Title) establishing a fine for persons convicted of domestic violence and increasing the marriage license fee.||5/15/2015 10:54:56 AM
+2015|S|72|5/14/2015 12:00:00 AM|HB681|21|3|24|0|||Sections 2 and 3|(3rd New Title) establishing a fine for persons convicted of domestic violence and increasing the marriage license fee.||5/15/2015 10:55:03 AM
+2015|S|73|5/21/2015 12:00:00 AM|HB364|20|4|24|0|||Sections 19-21|(2nd New Title) relative to renewal fees administered by the office of professional licensing, the salt applicator certification program, and pesticide product registration requirements.||5/22/2015 12:49:45 PM
+2015|S|74|5/21/2015 12:00:00 AM|HB364|18|6|24|0|||Sections 22-24|(2nd New Title) relative to renewal fees administered by the office of professional licensing, the salt applicator certification program, and pesticide product registration requirements.||5/22/2015 12:50:08 PM
+2015|S|75|5/21/2015 12:00:00 AM|HB564|10|14|24|0|||Sen. Kelly Floor Amendment 1898s|relative to prior authorization for certain prescription drugs.||5/22/2015 12:50:39 PM
+2015|S|76|5/28/2015 12:00:00 AM|HB25|8|14|22|2|||Sen. Lasky Floor Amendment 1966s|making appropriations for capital improvements.||5/29/2015 10:04:27 AM
+2015|S|77|5/28/2015 12:00:00 AM|HB25|22|0|22|2|||Ought to Pass with Amendment|making appropriations for capital improvements.||5/29/2015 10:04:38 AM
+2015|S|78|5/28/2015 12:00:00 AM|HB290|18|4|22|2|||Ought to Pass|relative to the acceptance of risk in outdoor recreational activities.||5/29/2015 10:04:45 AM
+2015|S|79|5/28/2015 12:00:00 AM|HB450|11|10|21|3|||Sen. Prescott Floor Amendment 1943s|(New Title) relative to the definition of "employee" for the purposes of workers' compensation and unemployment compensation.||5/29/2015 10:04:52 AM
+2015|S|80|5/28/2015 12:00:00 AM|HB216|14|7|21|3|||Rerefer to Committee|relative to recovery of certain investigatory costs by regulatory boards and commissions.||5/29/2015 10:04:59 AM
+2015|S|81|5/28/2015 12:00:00 AM|HB258|14|7|21|3|||Ought to Pass|relative to fees for preparing motor vehicle registration documents.||5/29/2015 10:05:05 AM
+2015|S|82|6/4/2015 12:00:00 AM|HB1|14|10|24|0|||Committee Amendment 1962s|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||6/5/2015 4:55:55 PM
+2015|S|83|6/4/2015 12:00:00 AM|HB1|10|14|24|0|||Sen. Pierce Floor Amendment 2051s|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||6/5/2015 4:56:01 PM
+2015|S|84|6/4/2015 12:00:00 AM|HB1|10|14|24|0|||Sen. Hosmer Floor Amendment 2054s|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||6/5/2015 4:56:07 PM
+2015|S|85|6/4/2015 12:00:00 AM|HB1|10|14|24|0|||Sen. Kelly Floor Amendment 2048s|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||6/5/2015 4:56:13 PM
+2015|S|86|6/4/2015 12:00:00 AM|HB1|10|14|24|0|||Sen. Fuller Clark Floor Amendment 2053s|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||6/5/2015 4:56:18 PM
+2015|S|87|6/4/2015 12:00:00 AM|HB1|10|14|24|0|||Sen. D'Allesandro Floor Amendment 2058s|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||6/5/2015 4:56:23 PM
+2015|S|88|6/4/2015 12:00:00 AM|HB1|10|14|24|0|||Sen. Watters Floor Amendment 2050s|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||6/5/2015 4:56:28 PM
+2015|S|89|6/4/2015 12:00:00 AM|HB1|10|14|24|0|||Sen. Fuller Clark Floor Amendment 2073s|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||6/5/2015 4:56:35 PM
+2015|S|90|6/4/2015 12:00:00 AM|HB1|14|10|24|0|||Ought to Pass with Amendment|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||6/5/2015 4:56:40 PM
+2015|S|91|6/4/2015 12:00:00 AM|HB2|13|11|24|0|||Committee Amendment 1986s|relative to state fees, funds, revenues, and expenditures.||6/5/2015 4:58:37 PM
+2015|S|92|6/4/2015 12:00:00 AM|HB2|14|10|24|0|||Sen. Bradley Floor Amendment 2076s|relative to state fees, funds, revenues, and expenditures.||6/5/2015 4:56:55 PM
+2015|S|93|6/4/2015 12:00:00 AM|HB2|11|13|24|0|||Sen. D'Allesandro Floor Amendment 2036s|relative to state fees, funds, revenues, and expenditures.||6/5/2015 4:57:02 PM
+2015|S|94|6/4/2015 12:00:00 AM|HB2|10|14|24|0|||Sen. Feltes Floor Amendment 2043s|relative to state fees, funds, revenues, and expenditures.||6/5/2015 4:57:08 PM
+2015|S|95|6/4/2015 12:00:00 AM|HB2|11|13|24|0|||Sen. Feltes Floor Amendment 2068s|relative to state fees, funds, revenues, and expenditures.||6/5/2015 4:57:14 PM
+2015|S|96|6/4/2015 12:00:00 AM|HB2|14|10|24|0|||Ought to Pass with Amendment|relative to state fees, funds, revenues, and expenditures.||6/5/2015 4:57:20 PM
+2015|S|97|6/4/2015 12:00:00 AM|HB208|14|10|24|0|||Committee Amendment 1970s|(New Title) relative to allowance sales under the New Hampshire regional greenhouse gas initiative program.||6/5/2015 4:57:26 PM
+2015|S|98|6/4/2015 12:00:00 AM|HB208|13|11|24|0|||Ought to Pass with Amendment|(New Title) relative to allowance sales under the New Hampshire regional greenhouse gas initiative program.||6/5/2015 4:57:32 PM
+2015|S|99|6/4/2015 12:00:00 AM|HB550|10|14|24|0|||Rerefer to Committee|(New Title) relative to administration of the tobacco tax and relative to the sale or exchange of an interest in a business organization under the business profits tax.||6/5/2015 4:57:37 PM
+2015|S|100|6/4/2015 12:00:00 AM|HB550|14|10|24|0|||Ought to Pass with Amendment|(New Title) relative to administration of the tobacco tax and relative to the sale or exchange of an interest in a business organization under the business profits tax.||6/5/2015 4:57:41 PM
+2015|S|101|6/4/2015 12:00:00 AM|HB618|9|15|24|0|||Inexpedient to Legislate|(New Title) relative to penalties for the possession of marijuana.||6/5/2015 4:57:49 PM
+2015|S|102|6/4/2015 12:00:00 AM|HB618|11|13|24|0|||Section IV. (a) and (b), Lines 26-32|(New Title) relative to penalties for the possession of marijuana.||6/5/2015 4:57:54 PM
+2015|S|103|6/4/2015 12:00:00 AM|HB572|5|19|24|0|||Sen. Sanborn Floor Amendment 2063s|(New Title) relative to taking land by eminent domain for high pressure gas pipelines and relative to the siting of high pressure gas pipelines.||6/5/2015 4:57:59 PM
+2015|S|104|6/24/2015 12:00:00 AM|HB1|14|10|24|0|||Committee of Conference Report 2320|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||6/24/2015 12:52:10 PM
+2015|S|105|6/24/2015 12:00:00 AM|HB2|14|10|24|0|||Committee of Conference Report 2318|relative to state fees, funds, revenues, and expenditures.||6/24/2015 12:52:42 PM
+2015|S|106|6/24/2015 12:00:00 AM|HB550|14|10|24|0|||Committee of Conference Report 2288|(New Title) relative to administration of the tobacco tax and relative to the sale or exchange of an interest in a business organization under the business profits tax.||6/24/2015 5:11:54 PM
+2015|S|107|6/24/2015 12:00:00 AM|HJR2|10|14|24|0|||Sen. Hosmer Floor Amendment 2377s|making temporary appropriations for the expenses and encumbrances of the state of New Hampshire.||6/24/2015 5:12:01 PM
+2015|S|108|6/24/2015 12:00:00 AM|HB122|18|6|24|0|||Notwithstanding the Governor's veto shall the bill become law?|relative to advertising of liquor or beverages.||7/16/2015 11:18:34 AM
+2015|S|109|9/16/2015 12:00:00 AM|SB9|24|0|24|0|||Ought to Pass|relative to salary increases for state employees and making appropriations therefor, establishing a legislative oversight committee on employee relations, relative to the purpose of a capital budget appropriation, and reducing the rates of the business pr|ofits tax and the business enterprise tax.|9/16/2015 3:36:35 PM
+2015|S|110|9/16/2015 12:00:00 AM|SB101|13|11|24|0|||Notwithstanding the Governor's veto shall the bill become law?|prohibiting the state from requiring implementation of common core standards.||9/16/2015 3:36:43 PM
+2015|S|111|9/16/2015 12:00:00 AM|SB116|14|10|24|0|||Notwithstanding the Governor's veto shall the bill become law?|repealing the license requirement for carrying a concealed pistol or revolver.||9/16/2015 3:36:50 PM
+2015|S|112|9/16/2015 12:00:00 AM|SB169|14|10|24|0|||Notwithstanding the Governor's veto shall the bill become law?|relative to permissible uses of electronic benefit transfer (EBT) cards.||9/16/2015 3:37:30 PM
+2015|S|113|9/16/2015 12:00:00 AM|SB179|13|11|24|0|||Notwithstanding the Governor's veto shall the bill become law?|(New Title) relative to eligibility to vote and relative to availability of voter information.||9/16/2015 3:36:56 PM
+2015|S|114|9/16/2015 12:00:00 AM|HB1|22|0|22|2|||Notwithstanding the Governor's veto shall the bill become law?|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2016 and June 30, 2017.||9/16/2015 5:40:05 PM
+2015|S|115|9/16/2015 12:00:00 AM|HB2|22|0|22|2|||Notwithstanding the Governor's veto shall the bill become law?|relative to state fees, funds, revenues, and expenditures.||9/18/2015 8:52:27 AM

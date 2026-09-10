@@ -1,0 +1,518 @@
+2019|H|5|1/2/2019 10:56:50 AM||164|221|4|11|||Table|||1/25/2019 3:41:17 PM
+2019|H|6|1/2/2019 12:08:25 PM||220|163|4|13|||Amend Rule 63 - Ley|||1/25/2019 3:41:46 PM
+2019|H|7|1/2/2019 12:42:27 PM||284|92|8|16|||Amend Rule 67 - Ley|||1/25/2019 3:57:04 PM
+2019|H|8|1/2/2019 1:10:54 PM||159|215|9|17|||Amend Rule 63 - Hennessey|||1/25/2019 3:57:18 PM
+2019|H|9|1/2/2019 1:22:31 PM||289|87|7|17|||Print Remarks|||1/25/2019 3:57:35 PM
+2019|H|10|1/2/2019 1:29:04 PM||161|213|7|19|||Amend Rule 67 - Renzullo|||1/25/2019 3:57:58 PM
+2019|H|11|1/2/2019 1:40:58 PM||200|169|12|19|||Amend Rule 100 - T. Smith|||1/25/2019 3:58:20 PM
+2019|H|13|1/31/2019 11:00:23 AM|HB282|235|136|4|25|||ITL|relative to the authority of fish and game officers to search without a warrant.||
+2019|H|14|1/31/2019 11:13:03 AM|HB349|226|145|4|25|||OTP|relative to a second opinion on health care matters for state and county prisoners.||
+2019|H|15|1/31/2019 11:50:57 AM|HB124|228|141|6|25|||ITL|repealing the law relative to the buffer zones to reproductive health care facilities.||
+2019|H|16|1/31/2019 12:37:01 PM|HB163|309|59|6|26|||ITL|relative to the definition of child abuse.||
+2019|H|17|1/31/2019 12:49:49 PM|HB120|255|115|3|27|||OTP|relative to the regulation of body art establishments.||
+2019|H|19|2/14/2019 11:04:55 AM|HB333|240|112|27|21|||ITL|relative to mental health professionals in private custody matters.||
+2019|H|20|2/14/2019 11:21:15 AM|HB169|295|73|12|20|||ITL|requiring school districts to submit an annual report concerning gifted students.||
+2019|H|21|2/14/2019 11:50:04 AM|HB374|236|139|6|19|||ITL|prohibiting certain state officers from forming political action committees.||
+2019|H|22|2/14/2019 12:07:06 PM|HB497|144|232|6|18|||Adopt Amendment|relative to payment by the state of a portion of retirement system contributions of political subdivision employers.||
+2019|H|23|2/14/2019 12:09:12 PM|HB497|256|120|6|18|||OTP|relative to payment by the state of a portion of retirement system contributions of political subdivision employers.||
+2019|H|24|2/14/2019 12:29:42 PM|HB322|227|150|5|18|||ITL|relative to reporting the taking of a turkey.||
+2019|H|25|2/14/2019 1:55:49 PM|HB304|221|141|14|24|||ITL|relative to policies required for health facilities and special health care service licenses.||
+2019|H|26|2/14/2019 2:07:43 PM|HB270|184|183|8|25|||ITL|relative to commencement of foreclosure by civil action.||
+2019|H|27|2/14/2019 2:13:44 PM|HB270|200|168|7|25|||Reconsider|relative to commencement of foreclosure by civil action.||
+2019|H|28|2/14/2019 2:32:12 PM|HB270|166|203|7|24|||ITL|relative to commencement of foreclosure by civil action.||
+2019|H|29|2/14/2019 2:38:18 PM|HB270|208|161|7|24|||OTP|relative to commencement of foreclosure by civil action.||
+2019|H|30|2/14/2019 2:46:33 PM|HB270|223|142|11|24|||Consideration|relative to commencement of foreclosure by civil action.||
+2019|H|31|2/14/2019 2:51:15 PM|HB270|151|216|9|24|||Reconsider|relative to commencement of foreclosure by civil action.||
+2019|H|32|2/14/2019 3:27:52 PM|HB211|212|139|18|31|||OTPA|relative to inquiries by prospective employers concerning salary history.||
+2019|H|33|2/14/2019 3:47:06 PM|HB253|213|142|15|30|||OTPA|relative to criminal records checks in the employee application process.||
+2019|H|34|2/14/2019 3:53:00 PM|HB272|204|140|22|34|||OTPA|relative to temporary workers.||
+2019|H|35|2/14/2019 4:22:19 PM|HB210|123|222|21|34|||OTPA|relative to civil actions against public officials in cities or towns.||
+2019|H|36|2/14/2019 4:52:43 PM|HB185|207|134|19|40|||ITL|relative to contingently reducing the rate of the interest and dividends tax and  repealing the tax in 5 years.||
+2019|H|38|2/27/2019 11:27:14 AM|HB438|293|58|11|38|||ITL|removing the exemption for premium cigars from the tobacco tax.||
+2019|H|39|2/27/2019 11:48:33 AM|HB680|203|153|7|37|||OTPA|relative to the definition of tobacco product for purposes of the tobacco tax and retail tobacco licensing.||
+2019|H|40|2/27/2019 12:53:39 PM|HB481|209|147|7|37|||OTP|relative to the legalization and regulation of cannabis and making appropriations therefor.||
+2019|H|41|2/27/2019 1:06:01 PM|HB177|268|90|5|37|||OTPA|relative to the calculation of stabilization grants.||
+2019|H|42|2/27/2019 2:35:15 PM|HB184|203|148|12|37|||OTP|relative to the calculation of kindergarten students in the average daily membership and repealing prorated kindergarten funding based on Keno revenues.||
+2019|H|43|2/27/2019 3:02:16 PM|HB551|207|148|7|38|||OTPA|establishing a school funding commission and making an appropriation therefor.||
+2019|H|44|2/27/2019 3:08:33 PM|HB564|148|206|8|38|||Table|relative to possession of firearms in safe school zones.||
+2019|H|45|2/27/2019 3:28:11 PM||225|104|27|44|||Disorderly Speech|||
+2019|H|46|2/27/2019 4:06:04 PM|HB564|145|202|10|43|||Indefinitely Postpone|relative to possession of firearms in safe school zones.||
+2019|H|47|2/27/2019 4:10:59 PM|HB564|194|154|9|43|||OTPA|relative to possession of firearms in safe school zones.||
+2019|H|48|2/27/2019 4:28:39 PM|HB673|202|141|10|47|||ITL|relative to the governor's scholarship program to cover the costs of the college level examination program and making an appropriation therefor.||
+2019|H|49|2/27/2019 4:33:22 PM|HB689|216|126|11|47|||OTPA|establishing a student career and college investment program and making an appropriation therefor.||
+2019|H|50|2/27/2019 4:39:30 PM|HB709|262|82|9|47|||OTPA|relative to the formula for determining funding for an adequate education.||
+2019|H|51|2/27/2019 4:52:12 PM|HB719|198|146|8|48|||OTPA|establishing the position of school nurse coordinator in the department of education and making an appropriation therefor.||
+2019|H|52|2/27/2019 5:07:50 PM|HB696|208|132|12|48|||OTPA|establishing a protective order for vulnerable adults.||
+2019|H|53|2/27/2019 5:33:42 PM|HB729|177|165|10|48|||OTPA|establishing a citizen's right-to-know appeals commission and a right-to-know law ombudsman and making an appropriation therefor.||
+2019|H|54|2/27/2019 6:07:14 PM|HB712|199|133|16|52|||OTPA|relative to a family and medical leave insurance program.||
+2019|H|56|2/28/2019 11:40:25 AM|HB232|211|132|11|46|||ITL|relative to enforcement of immigration laws and the prohibition of sanctuary policies.||
+2019|H|57|2/28/2019 12:04:31 PM|HB581|252|94|8|46|||ITL|relative to payment of membership dues for professional organizations on behalf of employees of municipalities and school districts.||
+2019|H|58|2/28/2019 12:23:02 PM|HB641|194|151|9|46|||OTPA|allowing municipalities to collect an occupancy fee from operators of local room rentals.||
+2019|H|59|2/28/2019 12:46:43 PM|HB542|208|140|7|45|||OTPA|establishing a grant program to support municipalities in updating their wetlands regulations.||
+2019|H|60|2/28/2019 1:14:24 PM|HB682|201|147|7|45|||OTP|establishing a water resources fund in the department of environmental services and charging certain application and permit fees.||
+2019|H|61|2/28/2019 2:44:35 PM|HB290|207|131|13|49|||ITL|relative to the removal of certain wood stoves upon the sale of a home and notification of such removal to the department of environmental services.||
+2019|H|62|2/28/2019 3:18:49 PM|HB623|200|141|9|50|||OTPA|relative to the rates of the business profits tax and business enterprise tax.||
+2019|H|63|2/28/2019 3:27:10 PM|HB686|139|203|9|49|||Table|relative to calculating and funding the interim cost of an opportunity for an adequate education and extending the interest and dividends tax to capital gains.||
+2019|H|64|2/28/2019 3:59:26 PM|HB686|199|143|8|50|||OTPA|relative to calculating and funding the interim cost of an opportunity for an adequate education and extending the interest and dividends tax to capital gains.||
+2019|H|65|2/28/2019 4:27:23 PM|HB706|218|123|8|51|||OTPA|establishing an independent redistricting commission.||
+2019|H|66|2/28/2019 4:44:57 PM|HB159|288|49|12|51|||ITL|relative to condominium association unit owner payments in arrears.||
+2019|H|67|2/28/2019 5:01:59 PM|HB218|277|62|10|51|||ITL|relative to the use of deadly force by a law enforcement officer.||
+2019|H|68|2/28/2019 5:07:58 PM|HB101|232|109|8|51|||Table|relative to regulating possession of firearms in a school district.||
+2019|H|69|2/28/2019 5:54:05 PM|HB569|200|131|10|59|||ITL|relative to innovation schools.||
+2019|H|71|3/7/2019 11:22:42 AM|HB455|279|88|5|28|||OTP|relative to the penalty for capital murder.||
+2019|H|72|3/7/2019 11:57:52 AM|HB545|207|162|4|27|||ITL|prohibiting law enforcement officers from questioning a minor at school without a parent or guardian present.||
+2019|H|73|3/7/2019 12:27:59 PM|HB105|153|212|8|27|||Table|relative to domicile residency, voter registration, and investigation of voter verification letters.||
+2019|H|74|3/7/2019 12:40:51 PM|HB105|209|155|9|27|||OTP|relative to domicile residency, voter registration, and investigation of voter verification letters.||
+2019|H|75|3/7/2019 12:50:46 PM|HB106|213|154|7|26|||OTP|relative to the terms "resident," "inhabitant," "residence," and "residency."||
+2019|H|76|3/7/2019 2:38:50 PM|HB202|291|72|9|28|||ITL|relative to requirements for presidential primary candidates.||
+2019|H|77|3/7/2019 2:54:12 PM|HB611|198|163|10|29|||OTP|allowing voters to vote by absentee ballot.||
+2019|H|78|3/7/2019 2:59:08 PM|HB629|224|137|10|29|||ITL|establishing a state defined contribution retirement plan for state and political subdivision members of the retirement system.||
+2019|H|79|3/7/2019 3:19:46 PM|HB158|218|144|8|30|||ITL|relative to induced termination of pregnancy statistics.||
+2019|H|80|3/7/2019 3:48:42 PM|HB691|241|117|10|32|||ITL|relative to blood testing for individuals exposed to perfluorinated chemicals in private or public water supplies.||
+2019|H|81|3/7/2019 4:36:08 PM|HB552|207|148|9|36|||OTPA|relative to transparency and standards for acquisition transactions in health care.||
+2019|H|82|3/7/2019 4:47:02 PM|HB622|214|135|14|37|||ITL|prohibiting collective bargaining agreements that require employees to join or contribute to a labor union.||
+2019|H|83|3/7/2019 5:11:40 PM|HB650|203|141|16|40|||OTP|establishing a committee to study the economic challenges of employed persons serving in the New Hampshire legislature.||
+2019|H|84|3/7/2019 5:30:45 PM|HB381|194|141|20|45|||OTP|repealing requirements for transfer of appropriations in Carroll county.||
+2019|H|86|3/14/2019 1:42:08 PM|HB446|224|125|10|41|||OTPA|relative to initiating amendments and corrections to birth records.||
+2019|H|87|3/14/2019 2:03:43 PM|HB291|146|208|4|42|||Adopt Amendment|establishing a committee to study certain findings and other initiatives regarding end-of-life care.||
+2019|H|88|3/14/2019 2:06:50 PM|HB291|214|140|4|42|||OTP|establishing a committee to study certain findings and other initiatives regarding end-of-life care.||
+2019|H|89|3/14/2019 2:25:56 PM|HB186|79|274|5|42|||Adopt Amendment|establishing a state minimum wage and providing for adjustments to the minimum wage.||
+2019|H|90|3/14/2019 2:58:00 PM|HB186|210|145|3|42|||OTPA|establishing a state minimum wage and providing for adjustments to the minimum wage.||
+2019|H|91|3/14/2019 3:32:04 PM|HB469|205|136|12|47|||ITL|relative to limiting amendments to warrant articles in towns that have adopted official ballot voting.||
+2019|H|92|3/14/2019 3:44:08 PM|HB157|210|130|13|47|||ITL|relative to the class rate for biomass.||
+2019|H|93|3/14/2019 3:55:35 PM|HB166|201|138|12|49|||OTP|relative to funding energy efficiency programs.||
+2019|H|94|3/14/2019 4:18:08 PM|HB477|198|131|21|50|||ITL|relative to allowance sales under the New Hampshire regional greenhouse gas initiative program.||
+2019|H|95|3/14/2019 4:55:15 PM|HCR5|142|189|16|53|||Table|requesting the United States Congress to propose a constitutional amendment to reverse the ruling of the United States Supreme Court in Citizens United v. Federal Election Commission.||
+2019|H|96|3/14/2019 5:14:59 PM|HCR5|198|132|14|56|||OTPA|requesting the United States Congress to propose a constitutional amendment to reverse the ruling of the United States Supreme Court in Citizens United v. Federal Election Commission.||
+2019|H|97|3/14/2019 5:30:42 PM|HB592|202|116|16|66|||OTP|relative to OHRV operation and license.||
+2019|H|98|3/14/2019 5:49:45 PM|CACR10|285|23|19|73|||ITL|relating to a state income tax.  Providing that revenue from any state income tax shall be returned to the cities, towns, school districts, and counties to assist in property tax relief.||
+2019|H|99|3/14/2019 5:55:27 PM|CACR11|158|151|18|73|||Table|relating to taxes.  Providing that a broad-based sales tax shall be prohibited.||
+2019|H|101|3/19/2019 10:34:29 AM|CACR12|206|143|9|42|||ITL|relating to taxes. Providing that an income tax on personal income shall be prohibited.||
+2019|H|102|3/19/2019 10:45:45 AM|HB480|269|82|7|42|||OTPA|relative to sports betting.||
+2019|H|103|3/19/2019 10:51:25 AM|HB632|332|19|7|42|||Table|relative to the education tax credit.||
+2019|H|104|3/19/2019 11:31:59 AM|HB378|251|99|8|42|||Table|raising the minimum age for marriage.||
+2019|H|105|3/19/2019 11:39:15 AM|HB233|207|140|11|42|||OTPA|relative to the group and individual health insurance market.||
+2019|H|106|3/19/2019 11:44:43 AM|HB277|211|141|6|42|||OTP|establishing a commission to study a public option for health insurance.||
+2019|H|107|3/19/2019 11:57:10 AM|HB520|206|142|11|41|||OTPA|relative to availability of diaper changing stations in public restrooms.||
+2019|H|108|3/19/2019 1:19:16 PM|HB558|196|146|13|45|||OTPA|restricting the distribution of plastic straws.||
+2019|H|109|3/19/2019 1:43:44 PM|HB560|201|145|9|45|||OTPA|relative to single-use carryout bags.||
+2019|H|110|3/19/2019 1:58:52 PM|HB628|211|133|9|47|||OTPA|relative to universal changing stations in certain places of public accommodation.||
+2019|H|111|3/19/2019 2:09:50 PM|HB664|247|101|7|45|||Adopt Amendment|relative to vehicle repair standards.||
+2019|H|112|3/19/2019 2:20:05 PM|HB703|206|141|8|45|||OTPA|relative to providing notice of the introduction of new high-cost prescription drugs.||
+2019|H|113|3/19/2019 2:33:23 PM|HB717|198|144|13|45|||OTPA|prohibiting prescription drug manufacturers from offering coupons or discounts to cover insurance copayments or deductibles.||
+2019|H|114|3/19/2019 2:43:50 PM|HB109|92|237|26|45|||Adopt Amendment|requiring background checks for commercial firearms sales.||
+2019|H|115|3/19/2019 3:05:51 PM|HB109|147|202|6|45|||Table|requiring background checks for commercial firearms sales.||
+2019|H|116|3/19/2019 3:14:20 PM|HB109|203|148|4|45|||OTP|requiring background checks for commercial firearms sales.||
+2019|H|117|3/19/2019 3:27:48 PM|HB208|200|150|4|46|||ITL|relative to the justified use of deadly force upon another person.||
+2019|H|118|3/19/2019 3:55:29 PM|HB514|199|147|5|49|||OTPA|imposing a waiting period between the purchase and delivery of a firearm.||
+2019|H|119|3/19/2019 4:16:03 PM|HB605|215|124|6|55|||OTP|relative to criminal penalties for possession, transfer, or manufacture of animal fighting paraphernalia with the intent to be present at, aiding in, or contributing to such fighting.||
+2019|H|120|3/19/2019 4:33:02 PM|HB529|221|107|9|63|||ITL|prohibiting a school district employee from assisting a person convicted of sexual misconduct with a minor child.||
+2019|H|121|3/19/2019 5:00:32 PM|HB494|123|206|7|64|||Table|relative to removal or containment of contaminants from the Coakley Landfill.||
+2019|H|122|3/19/2019 5:07:06 PM|HB494|231|97|7|65|||OTP|relative to removal or containment of contaminants from the Coakley Landfill.||
+2019|H|123|3/19/2019 5:36:13 PM|HB562|193|122|10|75|||OTPA|relative to the state building code.||
+2019|H|124|3/19/2019 5:50:58 PM|HCR3|251|56|14|79|||OTPA|relative to welcoming communities.||
+2019|H|126|3/20/2019 10:38:47 AM|HB280|333|11|19|37|||OTP|designating the red-tailed hawk as the state raptor.||
+2019|H|127|3/20/2019 11:00:15 AM|HCR7|192|162|12|34|||OTP|urging the president and congress to adopt a policy renouncing the first use of nuclear weapons.||
+2019|H|128|3/20/2019 11:41:56 AM|HB293|145|212|7|36|||Table|relative to employee credit privacy.||
+2019|H|129|3/20/2019 12:00:26 PM|SB1|219|142|3|36|||OTP|relative to family and medical leave.||
+2019|H|130|3/20/2019 2:44:07 PM|HB204|341|3|19|37|||Table|establishing a committee to review and update the penalties for contaminating drinking water and groundwater.||
+2019|H|131|3/20/2019 3:04:26 PM|HB326|212|134|14|40|||OTPA|relative to the definition of prime wetland.||
+2019|H|132|3/20/2019 3:28:37 PM|HB365|254|98|9|39|||OTPA|relative to net energy metering limits for customer generators.||
+2019|H|133|3/20/2019 3:45:58 PM|HB466|231|121|8|40|||OTP|relative to the capacity of electricity customer generators for eligibility for net energy metering.||
+2019|H|134|3/20/2019 4:00:20 PM|HB582|215|133|10|42|||OTPA|relative to the regional greenhouse gas initiative cap and trade program for controlling carbon dioxide emissions.||
+2019|H|135|3/20/2019 4:03:51 PM|HB614|293|57|8|42|||Adopt Amendment|increasing penalties for air pollution.||
+2019|H|136|3/20/2019 4:09:02 PM|HB614|247|104|7|42|||OTPA|increasing penalties for air pollution.||
+2019|H|137|3/20/2019 4:16:35 PM|HB715|214|133|10|43|||OTPA|relative to electrical energy storage.||
+2019|H|138|3/20/2019 4:32:55 PM|HB395|203|141|11|45|||ITL|relative to number plates for motor vehicles.||
+2019|H|139|3/20/2019 4:40:24 PM|HB397|139|201|13|47|||Table|relative to drivers' licenses for New Hampshire residents who do not possess a social security card.||
+2019|H|140|3/20/2019 4:46:45 PM|HB397|204|137|13|46|||OTPA|relative to drivers' licenses for New Hampshire residents who do not possess a social security card.||
+2019|H|141|3/20/2019 4:53:24 PM|HB471|220|121|11|48|||ITL|relative to indicating citizenship on drivers' licenses and nondrivers identification cards.||
+2019|H|142|3/20/2019 5:05:03 PM|HB507|262|68|16|54|||ITL|relative to registration of commercial motor vehicles and operator's/drivers' licenses.||
+2019|H|143|3/20/2019 6:06:38 PM||152|160|37|51|||Table|||
+2019|H|144|3/20/2019 6:12:35 PM||210|54|75|61|||Member Continue|||
+2019|H|146|4/4/2019 10:47:25 AM|HB564|213|159|5|23|||OTPA|relative to possession of firearms in safe school zones.||
+2019|H|147|4/4/2019 11:11:34 AM|HB630|292|81|6|21|||OTP|increasing certain fines for OHRV and snowmobile operation violations.||
+2019|H|148|4/4/2019 11:45:54 AM|HB696|219|156|5|20|||OTP|establishing a protective order for vulnerable adults.||
+2019|H|149|4/4/2019 11:54:29 AM|HB120|218|155|6|21|||OTPA|relative to the regulation of body art establishments.||
+2019|H|150|4/4/2019 12:15:30 PM|HB616|219|149|9|23|||OTPA|relative to a cost of living adjustment for retirees in the state retirement system.||
+2019|H|151|4/4/2019 1:47:44 PM|HB729|203|165|8|24|||ITL|establishing a citizen's right-to-know appeals commission and a right-to-know law ombudsman and making an appropriation therefor.||
+2019|H|152|4/4/2019 1:57:25 PM|HB295|154|215|6|25|||Adopt Amendment|establishing a special marriage officiant license.||
+2019|H|153|4/4/2019 2:08:48 PM|HB295|214|155|6|25|||OTP|establishing a special marriage officiant license.||
+2019|H|154|4/4/2019 3:21:03 PM|HB481|200|163|9|28|||OTPA|relative to the legalization and regulation of cannabis and making appropriations therefor.||
+2019|H|155|4/4/2019 3:45:14 PM|HB641|209|146|10|35|||OTPA|allowing municipalities to collect an occupancy fee from operators of local room rentals.||
+2019|H|157|4/11/2019 10:10:47 AM|HB25|362|5|19|14|||OTPA|making appropriations for capital improvements.||
+2019|H|158|4/11/2019 10:45:52 AM|HB2|222|159|5|14|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2019|H|159|4/11/2019 10:57:25 AM|HB2|157|221|8|14|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2019|H|160|4/11/2019 11:08:37 AM|HB2|159|223|4|14|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2019|H|161|4/11/2019 11:16:41 AM|HB2|376|4|6|14|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2019|H|162|4/11/2019 11:23:57 AM|HB2|220|159|7|14|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2019|H|163|4/11/2019 11:47:16 AM|HB2|157|225|5|13|||Adopt Amendment|relative to state fees, funds, revenues, and expenditures.||
+2019|H|164|4/11/2019 11:56:11 AM|HB2|224|160|3|13|||OTPA|relative to state fees, funds, revenues, and expenditures.||
+2019|H|165|4/11/2019 12:29:45 PM|HB1|223|161|3|13|||Adopt Amendment|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2020 and June 30, 2021.||
+2019|H|166|4/11/2019 12:37:51 PM|HB1|159|221|7|13|||Adopt Amendment|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2020 and June 30, 2021.||
+2019|H|167|4/11/2019 12:57:03 PM|HB1|225|159|3|13|||OTPA|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2020 and June 30, 2021.||
+2019|H|169|5/2/2019 1:25:55 PM|SB6|272|87|12|29|||OTP|relative to child protection staffing and making an appropriation therefor.||
+2019|H|170|5/2/2019 1:45:00 PM|SB139|217|142|12|29|||OTP|establishing a committee to study options for lowering student debt.||
+2019|H|171|5/2/2019 2:12:45 PM|SB290|210|150|11|29|||OTP|relative to the New Hampshire granite advantage health care program.||
+2019|H|172|5/2/2019 2:31:51 PM|SB99|204|152|14|30|||OTPA|relative to gainful employment and partial disability in workers' compensation.||
+2019|H|173|5/2/2019 2:41:06 PM|SB151|212|145|14|29|||OTP|establishing an administrative hearing procedure and penalty for an employer who fails to make payment of wages or who fails to secure workers' compensation coverage.||
+2019|H|174|5/2/2019 2:57:41 PM|SB74|214|144|13|29|||OTP|(New Title) relative to register of deeds fees used to support the land and community heritage investment program (LCHIP), and establishing a committee to study the economic impact of land conservation.||
+2019|H|175|5/2/2019 3:24:57 PM|SB52|323|33|12|32|||ITL|(New Title) requiring the department of transportation to install a traffic light in the town of Conway.||
+2019|H|177|5/8/2019 10:38:59 AM|SB193|221|132|9|38|||OTPA|prohibiting the sale of certain furniture and carpeting with flame retardant chemicals.||
+2019|H|178|5/8/2019 11:00:48 AM|SB263|146|207|11|36|||Adopt Amendment|relative to anti-discrimination protection for students in public schools.||
+2019|H|179|5/8/2019 11:15:34 AM|SB263|214|143|10|33|||OTPA|relative to anti-discrimination protection for students in public schools.||
+2019|H|180|5/8/2019 11:22:20 AM|SB293|226|134|8|32|||OTP|relative to federally qualified health care centers and rural health centers reimbursement.||
+2019|H|181|5/8/2019 11:35:53 AM|SB2|216|146|6|32|||OTPA|relative to funding for job training programs in the department of business and economic affairs.||
+2019|H|182|5/8/2019 11:46:47 AM|SB271|213|140|14|33|||OTP|relative to requiring prevailing wages on state-funded public works projects.||
+2019|H|183|5/8/2019 1:48:51 PM|SB167|209|140|14|37|||OTPA|establishing a clean energy resource procurement commission.||
+2019|H|184|5/8/2019 2:07:20 PM|SB204|223|129|9|39|||OTPA|relative to distributed energy resources and consumer energy storage.||
+2019|H|185|5/8/2019 2:22:31 PM|SB275|205|145|10|40|||OTP|requiring that all of the state's motor vehicles will be zero emissions vehicles by the year 2039.||
+2019|H|186|5/8/2019 2:38:06 PM|SB284|218|133|9|40|||OTPA|establishing a statewide, multi-use online energy data platform.||
+2019|H|187|5/8/2019 2:45:47 PM|SB310|289|63|8|40|||ITL|relative to casino gambling.||
+2019|H|188|5/8/2019 2:51:02 PM|SB310|214|139|7|40|||Indefinitely Postpone|relative to casino gambling.||
+2019|H|189|5/8/2019 3:11:02 PM|SB4|213|137|8|42|||OTP|relative to the group and individual health insurance market.||
+2019|H|190|5/8/2019 3:45:21 PM|SB142|211|135|10|44|||OTPA|requiring feminine hygiene products in school restrooms.||
+2019|H|191|5/8/2019 3:59:26 PM|SB267|132|203|19|46|||Adopt Amendment|relative to the release of student assessment information and data.||
+2019|H|192|5/8/2019 4:01:57 PM|SB267|208|133|13|46|||OTPA|relative to the release of student assessment information and data.||
+2019|H|193|5/8/2019 4:07:39 PM|SB5|207|130|14|49|||OTPA|(New Title) making an appropriation to the department of health and human services for Medicaid provider rates for mental health and substance misuse and emergency shelter and stabilization services.||
+2019|H|194|5/8/2019 4:24:07 PM|SB12|201|134|14|51|||OTPA|establishing the New Hampshire college graduate retention incentive partnership program and making an appropriation therefor.||
+2019|H|195|5/8/2019 4:41:40 PM|SB20|202|135|12|51|||OTP|relative to notification requirements for employees, workplace inspections, and the youth employment law.||
+2019|H|196|5/8/2019 4:52:36 PM|SB146|201|137|9|53|||OTP|relative to eliminating the waiting period before eligibility to receive unemployment benefits.||
+2019|H|197|5/8/2019 5:29:42 PM|SB43|206|118|19|57|||OTPA|establishing a commission to study barriers to increased land development in New Hampshire.||
+2019|H|198|5/8/2019 5:38:59 PM|SB72|199|123|19|59|||OTP|relative to issuance of renewable energy certificates.||
+2019|H|199|5/8/2019 5:49:45 PM|SB205|197|127|16|60|||OTPA|(New Title) relative to energy efficiency programs funded from the systems benefits charge and the duties and members of the energy efficiency and sustainable energy board.||
+2019|H|201|5/23/2019 11:12:02 AM|HB455|247|123|6|24|||Veto Override|||
+2019|H|202|5/23/2019 12:08:43 PM|SB140|224|146|6|24|||OTP|(New Title) relative to credit for alternative, extended learning, and work-based programs.||
+2019|H|203|5/23/2019 12:20:10 PM|SB196|155|215|6|24|||Adopt Amendment|relative to non-academic surveys administered by a public school to its students.||
+2019|H|204|5/23/2019 12:38:02 PM|SB196|218|150|8|24|||OTPA|relative to non-academic surveys administered by a public school to its students.||
+2019|H|205|5/23/2019 2:23:06 PM|SB67|215|138|9|38|||OTP|relative to the definitions of resident and residency.||
+2019|H|206|5/23/2019 2:39:49 PM|SB68|214|141|7|38|||OTP|relative to the centralized voter registration database.||
+2019|H|207|5/23/2019 2:50:07 PM|SB88|263|90|7|40|||OTPA|relative to registry identification cards under the use of cannabis for therapeutic purposes law.||
+2019|H|208|5/23/2019 3:12:22 PM|SB100|217|130|11|42|||OTPA|relative to discrimination in employment based on criminal background checks.||
+2019|H|209|5/23/2019 3:43:50 PM|SB165|229|113|10|48|||OTPA|relative to net energy metering by low-moderate income community solar projects.||
+2019|H|211|6/5/2019 1:22:13 PM|SB98|209|142|13|34|||OTPA|clarifying the New Hampshire trust code.||
+2019|H|212|6/5/2019 1:58:05 PM|SB279|210|147|7|34|||OTPA|relative to access to fertility care.||
+2019|H|213|6/5/2019 2:27:49 PM|SB2|207|140|15|36|||OTP|relative to funding for job training programs in the department of business and economic affairs.||
+2019|H|214|6/5/2019 2:36:00 PM|SB289|207|141|14|36|||OTPA|relative to health and human services.||
+2019|H|215|6/5/2019 2:41:23 PM|SB290|207|143|12|36|||OTPA|relative to the New Hampshire granite advantage health care program.||
+2019|H|216|6/5/2019 2:59:52 PM|SB111|135|211|16|36|||Adopt Amendment|relative to the collection of health care data.||
+2019|H|217|6/5/2019 3:33:53 PM|SB263|211|141|10|36|||OTP|relative to anti-discrimination protection for students in public schools.||
+2019|H|218|6/5/2019 3:52:06 PM|SB10|209|139|11|39|||OTPA|establishing the state minimum hourly rate based on whether an employer offers paid sick days to an employee.||
+2019|H|219|6/5/2019 3:57:27 PM|SB235|207|139|13|39|||OTPA|relative to sexual harassment complaints in the general court and authorizing an independent human resources professional.||
+2019|H|221|6/6/2019 11:21:42 AM|SB241|213|141|7|37|||OTP|relative to funding for the project development phase of the capitol corridor rail project.||
+2019|H|222|6/6/2019 11:38:29 AM|SB168|217|139|7|35|||OTPA|relative to class 2 obligations under the electric renewable portfolio standards.||
+2019|H|223|6/6/2019 11:55:04 AM|SB218|206|148|8|36|||OTP|relative to duties of the commissioner of transportation regarding air navigation facilities.||
+2019|H|224|6/6/2019 2:08:21 PM|SB41|161|171|22|44|||Table|relative to historical racing.||
+2019|H|225|6/6/2019 2:49:06 PM|SB41|158|183|13|44|||OTPA|relative to historical racing.||
+2019|H|226|6/6/2019 2:52:01 PM|SB41|184|157|13|44|||ITL|relative to historical racing.||
+2019|H|227|6/6/2019 3:02:20 PM|SB74|136|200|16|46|||Adopt Amendment|(New Title) relative to register of deeds fees used to support the land and community heritage investment program (LCHIP), and establishing a committee to study the economic impact of land conservation.||
+2019|H|228|6/6/2019 3:36:54 PM|SB242|308|25|14|51|||OTPA|requiring notice and approval of certain actions to commence audits of collection liabilities arising under certain sales and use tax statutes and prohibiting New Hampshire remote sellers from disclosing private customer information to foreign taxing auth|orities in connection with the collection of certain sales and use taxes.|
+2019|H|230|6/13/2019 11:32:14 AM|HB109|196|161|6|35|||Concur|||
+2019|H|231|6/13/2019 11:36:26 AM|HB514|197|160|6|35|||Concur|||
+2019|H|232|6/13/2019 2:08:00 PM|HB183|222|123|11|42|||Concur|||
+2019|H|234|6/27/2019 10:27:21 AM|SB10|207|143|15|33|||Adopt CofC Report|||
+2019|H|235|6/27/2019 10:32:30 AM|SB194|210|142|13|33|||Adopt CofC Report|||
+2019|H|236|6/27/2019 10:40:38 AM|SB216|260|92|13|33|||Adopt CofC Report|||
+2019|H|237|6/27/2019 10:45:58 AM|SB226|208|143|14|33|||Adopt CofC Report|||
+2019|H|238|6/27/2019 10:50:58 AM|SB267|206|146|13|33|||Adopt CofC Report|||
+2019|H|239|6/27/2019 10:55:43 AM|SB279|209|141|15|33|||Adopt CofC Report|||
+2019|H|240|6/27/2019 10:59:25 AM|SB290|206|147|12|33|||Adopt CofC Report|||
+2019|H|241|6/27/2019 11:09:34 AM|SB118|213|140|13|32|||Adopt CofC Report|||
+2019|H|242|6/27/2019 1:24:26 PM|HB1|209|144|11|34|||Adopt CofC Report|||
+2019|H|243|6/27/2019 2:02:36 PM|HB2|207|145|12|34|||Adopt CofC Report|||
+2019|H|244|6/27/2019 2:17:32 PM|HB315|203|142|16|37|||Adopt CofC Report|||
+2019|H|245|6/27/2019 2:28:50 PM|HB564|197|146|15|40|||Adopt CofC Report|||
+2019|H|246|6/27/2019 2:42:50 PM|HB696|199|143|16|40|||Adopt CofC Report|||
+2019|H|247|6/27/2019 2:47:37 PM|HB628|205|136|18|39|||Adopt CofC Report|||
+2019|H|249|9/18/2019 10:27:58 AM|HB105|220|156|10|11|||Veto Override|||
+2019|H|250|9/18/2019 10:38:36 AM|HB106|224|158|4|11|||Veto Override|||
+2019|H|251|9/18/2019 10:47:10 AM|HB109|218|162|6|11|||Veto Override|||
+2019|H|252|9/18/2019 11:01:42 AM|HB183|251|132|3|11|||Veto Override|||
+2019|H|253|9/18/2019 11:07:38 AM|HB198|223|157|6|11|||Veto Override|||
+2019|H|254|9/18/2019 11:11:49 AM|HB211|224|157|5|11|||Veto Override|||
+2019|H|255|9/18/2019 11:16:07 AM|HB292|225|159|2|11|||Veto Override|||
+2019|H|256|9/18/2019 11:22:36 AM|HB293|221|158|7|11|||Veto Override|||
+2019|H|257|9/18/2019 11:43:45 AM|HB326|223|160|3|11|||Veto Override|||
+2019|H|258|9/18/2019 11:51:31 AM|HB349|229|155|2|11|||Veto Override|||
+2019|H|259|9/18/2019 12:00:02 PM|HB364|259|120|7|11|||Veto Override|||
+2019|H|260|9/18/2019 12:20:23 PM|HB365|248|132|5|12|||Veto Override|||
+2019|H|261|9/18/2019 1:59:08 PM|HB409|221|157|6|13|||Veto Override|||
+2019|H|262|9/18/2019 2:10:33 PM|HB446|230|148|6|13|||Veto Override|||
+2019|H|263|9/18/2019 2:17:09 PM|HB504|221|157|6|13|||Veto Override|||
+2019|H|264|9/18/2019 2:25:41 PM|HB514|217|163|4|13|||Veto Override|||
+2019|H|265|9/18/2019 2:34:53 PM|HB564|216|164|4|13|||Veto Override|||
+2019|H|266|9/18/2019 2:46:01 PM|HB582|221|157|6|13|||Veto Override|||
+2019|H|267|9/18/2019 2:50:45 PM|HB587|224|156|4|13|||Veto Override|||
+2019|H|268|9/18/2019 2:58:24 PM|HB611|222|157|5|13|||Veto Override|||
+2019|H|269|9/18/2019 3:01:48 PM|HB645|219|160|4|14|||Veto Override|||
+2019|H|270|9/18/2019 3:23:40 PM|HB664|241|132|10|14|||Veto Override|||
+2019|H|271|9/18/2019 3:35:45 PM|HB696|217|156|9|15|||Veto Override|||
+2019|H|272|9/18/2019 3:50:05 PM|HB706|227|145|10|15|||Veto Override|||
+2019|H|273|9/19/2019 1:25:55 PM||210|147|15|25|||Rules Suspension|||
+2019|H|274|9/19/2019 1:33:30 PM|HB226|211|145|15|26|||Adopt Amendment|||
+2019|H|275|9/19/2019 1:47:13 PM|SB74|212|143|17|25|||Veto Override|||
+2019|H|276|9/19/2019 1:59:05 PM|SB88|238|117|17|25|||Veto Override|||
+2019|H|277|9/19/2019 2:04:12 PM|SB100|210|148|14|25|||Veto Override|||
+2019|H|278|9/19/2019 2:12:19 PM|SB148|218|139|14|26|||Veto Override|||
+2019|H|279|9/25/2019 2:05:57 PM|HB3|334|25|13|25|||Rules Suspension|||9/25/2019 3:03:22 PM
+2019|H|280|9/25/2019 2:18:23 PM|HB3|327|29|16|25|||OTP|||
+2019|H|281|9/25/2019 2:28:55 PM|HB4|316|40|16|25|||OTP|||
+2019|H|282|9/25/2019 2:35:50 PM|HB1|204|151|17|25|||Veto Override|||
+2019|H|283|9/25/2019 2:40:41 PM|HB2|205|151|16|25|||Veto Override|||
+2019|H|284|1/8/2020 10:23:37 AM|HB226|213|149|15|19|||Veto Override|||
+2019|H|285|1/8/2020 10:31:38 AM|HB315|218|150|10|18|||Veto Override|||
+2019|S|1|1/31/2019 12:00:00 AM|SB18|14|10|24|0|||Ought to Pass|relative to authorized employee wage deductions.||1/31/2019 1:28:08 PM
+2019|S|2|1/31/2019 12:00:00 AM|SB2|24|0|24|0|||Committee Amendment 0106s|relative to funding for job training programs in the department of business and economic affairs.||1/31/2019 3:19:52 PM
+2019|S|3|1/31/2019 12:00:00 AM|SB2|14|10|24|0|||Ought to Pass w/Amendment|relative to funding for job training programs in the department of business and economic affairs.||1/31/2019 1:30:17 PM
+2019|S|4|1/31/2019 12:00:00 AM|SB5|24|0|24|0|||Ought to Pass|making an appropriation relative to Medicaid provider rates for mental health and substance misuse.||1/31/2019 1:30:46 PM
+2019|S|5|1/31/2019 12:00:00 AM|SB11|10|14|24|0|||Sen. Bradley Floor Amendment 0213s|relative to mental health services and making appropriations therefor.||1/31/2019 3:20:10 PM
+2019|S|6|1/31/2019 12:00:00 AM|SB11|10|14|24|0|||Rereferred|relative to mental health services and making appropriations therefor.||1/31/2019 2:23:35 PM
+2019|S|7|1/31/2019 12:00:00 AM|SB11|16|8|24|0|||Ought to Pass w/Amendment|relative to mental health services and making appropriations therefor.||1/31/2019 2:24:24 PM
+2019|S|8|2/14/2019 12:00:00 AM|SB185|23|0|23|1|||Ought to Pass w/Amendment|establishing a rail trail corridors advisory committee to assist the department of transportation in updating the state trails plan and making an appropriation therefor.||2/15/2019 11:28:22 AM
+2019|S|9|2/14/2019 12:00:00 AM|SB19|10|13|23|1|||Sen. French Floor Amendment 0513s|relative to the privacy of certain information concerning public employees.||2/15/2019 4:07:08 PM
+2019|S|10|2/14/2019 12:00:00 AM|SB59|23|0|23|1|||Ought to Pass w/Amendment|adding post traumatic stress disorder and acute stress disorder to the definition of "injury" for purposes of workers' compensation and reestablishing the commission to study the incidence of post-traumatic stress disorder in first responders.||2/15/2019 11:31:53 AM
+2019|S|11|2/14/2019 12:00:00 AM|SB146|13|10|23|1|||Ought to Pass|relative to eliminating the waiting period before eligibility to receive unemployment benefits.||2/15/2019 11:32:41 AM
+2019|S|12|2/14/2019 12:00:00 AM|SB151|13|10|23|1|||Ought to Pass|establishing an administrative hearing procedure and penalty for an employer who fails to make payment of wages or who fails to secure workers' compensation coverage.||2/15/2019 11:34:15 AM
+2019|S|13|2/14/2019 12:00:00 AM|SB193|21|2|23|1|||Ought to Pass w/Amendment|prohibiting the sale of certain furniture and carpeting with flame retardant chemicals.||2/15/2019 11:35:00 AM
+2019|S|14|2/14/2019 12:00:00 AM|SB249|13|10|23|1|||Ought to Pass|including the legislature as a public employer under the public employee labor relations act.||2/15/2019 11:35:54 AM
+2019|S|15|2/14/2019 12:00:00 AM|SB250|10|13|23|1|||Sen. French Floor Amendment 0411s|relative to forgery of a certificate of insurance.||2/15/2019 4:07:41 PM
+2019|S|16|2/14/2019 12:00:00 AM|SB12|23|0|23|1|||Ought to Pass|establishing the New Hampshire college graduate retention incentive partnership program and making an appropriation therefor.||2/15/2019 11:37:28 AM
+2019|S|17|2/14/2019 12:00:00 AM|SB196|13|10|23|1|||Committee Amendment 0313s|relative to non-academic surveys administered by a public school to its students.||2/15/2019 4:08:01 PM
+2019|S|18|2/14/2019 12:00:00 AM|SB196|13|10|23|1|||Ought to Pass w/Amendment|relative to non-academic surveys administered by a public school to its students.||2/15/2019 11:38:54 AM
+2019|S|19|2/14/2019 12:00:00 AM|SB1|9|14|23|1|||Sen. Bradley Floor Amendment 0508s|relative to family and medical leave.||2/15/2019 4:08:40 PM
+2019|S|20|2/14/2019 12:00:00 AM|SB1|10|13|23|1|||Sen. Bradley Floor Amendment 0508s|relative to family and medical leave.||2/15/2019 4:09:15 PM
+2019|S|21|2/14/2019 12:00:00 AM|SB1|13|10|23|1|||Ought to Pass w/Amendment|relative to family and medical leave.||2/15/2019 11:40:42 AM
+2019|S|22|2/14/2019 12:00:00 AM|SB5|23|0|23|1|||Ought to Pass w/Amendment|(New Title) making an appropriation to the department of health and human services for Medicaid provider rates for mental health and substance misuse and emergency shelter and stabilization services.||2/15/2019 11:41:09 AM
+2019|S|23|2/14/2019 12:00:00 AM|SB6|23|0|23|1|||Ought to Pass w/Amendment|relative to child protection staffing and making an appropriation therefor.||2/15/2019 11:41:43 AM
+2019|S|24|2/14/2019 12:00:00 AM|SB142|17|6|23|1|||Ought to Pass w/Amendment|requiring feminine hygiene products in school restrooms.||2/15/2019 11:42:35 AM
+2019|S|25|2/21/2019 12:00:00 AM|SB174|24|0|24|0|||Ought to Pass|proclaiming an annual observance of Juneteenth.||2/21/2019 1:19:54 PM
+2019|S|26|2/21/2019 12:00:00 AM|SB11|24|0|24|0|||Ought to Pass w/Amendment|relative to mental health services and making appropriations therefor.||2/21/2019 1:22:01 PM
+2019|S|27|2/21/2019 12:00:00 AM|SB14|24|0|24|0|||Ought to Pass|relative to child welfare.||2/21/2019 1:23:31 PM
+2019|S|28|2/21/2019 12:00:00 AM|SB274|24|0|24|0|||Ought to Pass|relative to the newborn home visiting program.||2/21/2019 1:24:14 PM
+2019|S|29|2/21/2019 12:00:00 AM|SB241|14|10|24|0|||Sen. Levesque Floor Amendment 0541s|relative to funding for the project development phase of the capitol corridor rail project.||2/21/2019 3:10:47 PM
+2019|S|30|2/21/2019 12:00:00 AM|SB241|14|10|24|0|||Ought to Pass w/Amendment|relative to funding for the project development phase of the capitol corridor rail project.||2/21/2019 1:26:02 PM
+2019|S|31|2/21/2019 12:00:00 AM|SB242|24|0|24|0|||Ought to Pass|requiring notice and approval of certain actions to commence audits of collection liabilities arising under certain sales and use tax statutes and prohibiting New Hampshire remote sellers from disclosing private customer information to foreign taxing auth||2/21/2019 1:26:39 PM
+2019|S|32|3/7/2019 12:00:00 AM|SB99|14|10|24|0|||Ought to Pass|relative to gainful employment and partial disability in workers' compensation.||3/11/2019 11:38:19 AM
+2019|S|33|3/7/2019 12:00:00 AM|SB248|18|6|24|0|||Rereferred|increasing the age for sales and possession of tobacco products.||3/7/2019 12:38:59 PM
+2019|S|34|3/7/2019 12:00:00 AM|SB198|16|8|24|0|||Inexpedient to Legislate|relative to review of job candidate applications by school board members.||3/7/2019 12:42:01 PM
+2019|S|35|3/7/2019 12:00:00 AM|SB276|24|0|24|0|||Ought to Pass w/Amendment|relative to career readiness credentials for high school students.||3/11/2019 8:29:09 AM
+2019|S|36|3/7/2019 12:00:00 AM|SB280|14|10|24|0|||Laid on Table|relative to the cost of an adequate education.||3/11/2019 8:30:29 AM
+2019|S|37|3/7/2019 12:00:00 AM|SB68|14|10|24|0|||Ought to Pass|relative to the centralized voter registration database.||3/11/2019 8:35:53 AM
+2019|S|38|3/7/2019 12:00:00 AM|SB105|22|2|24|0|||Ought to Pass w/Amendment|relative to contributions to inaugural committees.||3/11/2019 8:36:32 AM
+2019|S|39|3/7/2019 12:00:00 AM|SB254|24|0|24|0|||Ought to Pass|appropriating funds to the department of environmental services for the purpose of funding eligible wastewater projects under the state aid grant program.||3/11/2019 8:37:44 AM
+2019|S|40|3/7/2019 12:00:00 AM|SB310|13|11|24|0|||Inexpedient to Legislate|relative to casino gambling.||3/11/2019 8:38:39 AM
+2019|S|41|3/7/2019 12:00:00 AM|SB310|22|2|24|0|||Laid on Table|relative to casino gambling.||3/11/2019 11:28:22 AM
+2019|S|42|3/7/2019 12:00:00 AM|SB88|9|15|24|0|||Committee Amendment 0606s Line 4|relative to registry identification cards under the use of cannabis for therapeutic purposes law.||3/11/2019 2:52:55 PM
+2019|S|43|3/7/2019 12:00:00 AM|SB88|16|8|24|0|||Ought to Pass w/Amendment Sections 6 and 7|relative to registry identification cards under the use of cannabis for therapeutic purposes law.||3/11/2019 2:53:12 PM
+2019|S|44|3/7/2019 12:00:00 AM|SB89|9|15|24|0|||Inexpedient to Legislate|relative to the penalties for violation of privacy.||3/11/2019 11:32:14 AM
+2019|S|45|3/7/2019 12:00:00 AM|SB296|16|8|24|0|||Ought to Pass w/Amendment|relative to live medical testimony in courts.||3/11/2019 11:34:28 AM
+2019|S|46|3/7/2019 12:00:00 AM|SB57|14|10|24|0|||Inexpedient to Legislate|relative to phasing out and repealing the utility property tax.||3/11/2019 11:35:04 AM
+2019|S|47|3/7/2019 12:00:00 AM|SB191|14|9|23|0|||Inexpedient to Legislate|relative to exemptions for the tax on interest and dividends.||3/11/2019 11:35:40 AM
+2019|S|48|3/7/2019 12:00:00 AM|SB300|8|16|24|0|||Rereferred|eliminating certain ramp tolls on the Everett turnpike in the town of Merrimack.||3/13/2019 10:45:51 AM
+2019|S|49|3/7/2019 12:00:00 AM|SB300|10|14|24|0|||Rereferred|eliminating certain ramp tolls on the Everett turnpike in the town of Merrimack.||3/13/2019 10:48:07 AM
+2019|S|50|3/7/2019 12:00:00 AM|SB300|24|0|24|0|||Ought to Pass w/Amendment|eliminating certain ramp tolls on the Everett turnpike in the town of Merrimack.||3/13/2019 10:51:28 AM
+2019|S|51|3/14/2019 12:00:00 AM|SB227|14|10|24|0|||Rereferred|relative to multiple-employer welfare arrangements.||3/15/2019 2:03:40 PM
+2019|S|52|3/14/2019 12:00:00 AM|SB228|10|14|24|0|||Sen. Bradley Floor Amendment 1057s|relative to multiple-employer welfare arrangements.||3/22/2019 11:28:05 AM
+2019|S|53|3/14/2019 12:00:00 AM|SB228|14|10|24|0|||Ought to Pass w/Amendment|relative to multiple-employer welfare arrangements.||3/15/2019 2:09:11 PM
+2019|S|54|3/14/2019 12:00:00 AM|SB271|14|10|24|0|||Ought to Pass w/Amendment|relative to requiring prevailing wages on state-funded public works projects.||3/15/2019 2:11:17 PM
+2019|S|55|3/14/2019 12:00:00 AM|SB253|2|22|24|0|||Rereferred|relative to statewide deployment of a real-time threat notification system for schools.||3/15/2019 2:21:44 PM
+2019|S|56|3/14/2019 12:00:00 AM|SB253|23|1|24|0|||Ought to Pass|relative to statewide deployment of a real-time threat notification system for schools.||3/15/2019 2:23:46 PM
+2019|S|57|3/14/2019 12:00:00 AM|SB266|24|0|24|0|||Ought to Pass w/Amendment|relative to funding for kindergarten pupils, keno revenues, and school building aid.||3/15/2019 2:25:30 PM
+2019|S|58|3/14/2019 12:00:00 AM|SB282|24|0|24|0|||Ought to Pass w/Amendment|relative to suicide prevention education in schools.||3/15/2019 2:27:07 PM
+2019|S|59|3/14/2019 12:00:00 AM|SB7|14|10|24|0|||Ought to Pass w/Amendment|establishing the secure modern accurate registration act (SMART ACT).||3/15/2019 2:29:00 PM
+2019|S|60|3/14/2019 12:00:00 AM|SB71|14|10|24|0|||Ought to Pass|relative to the election of delegates to party conventions.||3/15/2019 2:30:55 PM
+2019|S|61|3/14/2019 12:00:00 AM|SB74|16|8|24|0|||Ought to Pass w/Amendment|relative to register of deeds fees used to support the land and community heritage investment program (LCHIP).||3/15/2019 2:33:20 PM
+2019|S|62|3/14/2019 12:00:00 AM|SB122|10|14|24|0|||Sen. Bradley Floor Amendment 0863s|relative to expenditures from the energy efficiency fund.||3/22/2019 11:29:22 AM
+2019|S|63|3/14/2019 12:00:00 AM|SB122|14|10|24|0|||Ought to Pass w/Amendment|relative to expenditures from the energy efficiency fund.||3/15/2019 2:37:37 PM
+2019|S|64|3/14/2019 12:00:00 AM|SB257|23|1|24|0|||Ought to Pass w/Amendment|prohibiting foams containing perfluoroalkyl chemicals for use in fighting fires.||3/15/2019 2:39:45 PM
+2019|S|65|3/14/2019 12:00:00 AM|SB14|24|0|24|0|||Ought to Pass w/Amendment|relative to child welfare.||3/15/2019 2:41:04 PM
+2019|S|66|3/14/2019 12:00:00 AM|SB249|14|10|24|0|||Ought to Pass|including the legislature as a public employer under the public employee labor relations act.||3/15/2019 2:42:52 PM
+2019|S|67|3/14/2019 12:00:00 AM|SB290|14|10|24|0|||Committee Amendment 0834s|relative to the New Hampshire granite advantage health care program.||3/22/2019 11:30:09 AM
+2019|S|68|3/14/2019 12:00:00 AM|SB290|14|10|24|0|||Ought to Pass w/Amendment|relative to the New Hampshire granite advantage health care program.||3/15/2019 2:49:52 PM
+2019|S|69|3/14/2019 12:00:00 AM|SB293|14|10|24|0|||Ought to Pass|relative to federally qualified health care centers and rural health centers reimbursement.||3/15/2019 2:51:55 PM
+2019|S|70|3/14/2019 12:00:00 AM|SB262|14|10|24|0|||Committee Amendment 0823s|(New Title) relative to the property interest in abandoned personal materials.||3/22/2019 11:30:49 AM
+2019|S|71|3/14/2019 12:00:00 AM|SB262|13|11|24|0|||Ought to Pass w/Amendment|(New Title) relative to the property interest in abandoned personal materials.||3/15/2019 2:56:01 PM
+2019|S|72|3/14/2019 12:00:00 AM|SB294|24|0|24|0|||Ought to Pass w/Amendment|(New Title) relative to juvenile diversion programs and making an appropriation therefor.||3/15/2019 2:57:23 PM
+2019|S|73|3/14/2019 12:00:00 AM|SB311|16|8|24|0|||Ought to Pass w/Amendment|relative to annulment of criminal records.||3/15/2019 2:59:39 PM
+2019|S|74|3/14/2019 12:00:00 AM|SB317|14|10|24|0|||Laid on Table|prohibiting sanctuary jurisdictions in New Hampshire.||3/15/2019 3:01:19 PM
+2019|S|75|3/14/2019 12:00:00 AM|SB275|16|8|24|0|||Ought to Pass w/Amendment|requiring that all of the state's motor vehicles will be zero emissions vehicles by the year 2039.||3/15/2019 3:03:14 PM
+2019|S|76|3/14/2019 12:00:00 AM|SB93|14|10|24|0|||Committee Amendment 0861s|(New Title) relative to prepaid wireless telecommunications service and voice over Internet protocol communications under the communications service tax.||3/22/2019 11:31:26 AM
+2019|S|77|3/14/2019 12:00:00 AM|SB93|13|11|24|0|||Ought to Pass w/Amendment|(New Title) relative to prepaid wireless telecommunications service and voice over Internet protocol communications under the communications service tax.||3/15/2019 3:06:55 PM
+2019|S|78|3/14/2019 12:00:00 AM|SB135|14|10|24|0|||Ought to Pass|relative to the rates of the business profits tax and the business enterprise tax.||3/15/2019 3:09:00 PM
+2019|S|79|3/14/2019 12:00:00 AM|SB243|24|0|24|0|||Ought to Pass|relative to the low and moderate income homeowners property tax relief program.||3/15/2019 3:10:22 PM
+2019|S|80|3/14/2019 12:00:00 AM|SB301|14|10|24|0|||Ought to Pass|relative to the rates of the business profits tax and business enterprise tax, and relative to revenue sharing with cities and towns.||3/15/2019 3:12:18 PM
+2019|S|81|3/21/2019 12:00:00 AM|SB10|14|10|24|0|||Committee Amendment 0998s|establishing the state minimum hourly rate based on whether an employer offers paid sick days to an employee.||3/22/2019 11:17:22 AM
+2019|S|82|3/21/2019 12:00:00 AM|SB10|14|10|24|0|||Ought to Pass w/Amendment|establishing the state minimum hourly rate based on whether an employer offers paid sick days to an employee.||3/22/2019 8:57:59 AM
+2019|S|83|3/21/2019 12:00:00 AM|SB145|14|10|24|0|||Committee Amendment 1004s|relative to the organization of alternative treatment centers.||3/22/2019 11:17:57 AM
+2019|S|84|3/21/2019 12:00:00 AM|SB150|14|10|24|0|||Inexpedient to Legislate|authorizing individuals and certain businesses to purchase health insurance from out-of-state companies.||3/22/2019 9:02:54 AM
+2019|S|85|3/21/2019 12:00:00 AM|SB102|15|9|24|0|||Inexpedient to Legislate|requiring disclosure of federal income tax returns by presidential and vice-presidential candidates.||3/22/2019 9:05:20 AM
+2019|S|86|3/21/2019 12:00:00 AM|SB206|24|0|24|0|||Ought to Pass|excluding the cost of lobbying and political activity from the rates of public utilities.||3/22/2019 9:06:41 AM
+2019|S|87|3/21/2019 12:00:00 AM|SB88|17|7|24|0|||Ought to Pass w/Amendment|relative to registry identification cards under the use of cannabis for therapeutic purposes law.||3/22/2019 9:08:41 AM
+2019|S|88|3/21/2019 12:00:00 AM|SB247|22|2|24|0|||Ought to Pass w/Amendment|(New Title) establishing a sunny day fund and grant program.||3/22/2019 9:10:29 AM
+2019|S|89|3/21/2019 12:00:00 AM|SB309|24|0|24|0|||Ought to Pass|relative to stabilization grants for education.||3/22/2019 9:12:10 AM
+2019|S|90|3/21/2019 12:00:00 AM|SB309|15|9|24|0|||Laid on Table|relative to stabilization grants for education.||3/22/2019 9:13:57 AM
+2019|S|91|3/21/2019 12:00:00 AM|SB310|20|4|24|0|||Remove from Table|relative to casino gambling.||3/22/2019 9:16:25 AM
+2019|S|92|3/21/2019 12:00:00 AM|SB310|11|13|24|0|||Inexpedient to Legislate|relative to casino gambling.||3/22/2019 9:18:45 AM
+2019|S|93|3/21/2019 12:00:00 AM|SB310|13|11|24|0|||Ought to Pass w/Amendment|relative to casino gambling.||3/22/2019 9:21:04 AM
+2019|S|94|3/21/2019 12:00:00 AM|SB42|10|12|22|2|||Ought to Pass w/Amendment|declaring Old Hampshire Applejack the state spirit of New Hampshire.||3/22/2019 9:23:34 AM
+2019|S|95|3/21/2019 12:00:00 AM|SB42|8|14|22|2|||Laid on Table|declaring Old Hampshire Applejack the state spirit of New Hampshire.||3/22/2019 9:26:00 AM
+2019|S|96|3/21/2019 12:00:00 AM|SB42|15|7|22|2|||Rereferred|declaring Old Hampshire Applejack the state spirit of New Hampshire.||3/22/2019 9:28:47 AM
+2019|S|97|3/27/2019 12:00:00 AM|SB267|13|10|23|1|||Ought to Pass w/Amendment|relative to the release of student assessment information and data.||3/29/2019 2:16:14 PM
+2019|S|98|3/27/2019 12:00:00 AM|SB308|23|0|23|1|||Ought to Pass w/Amendment|relative to the health care workforce and making appropriations therefor.||3/29/2019 2:57:26 PM
+2019|S|99|3/27/2019 12:00:00 AM|SB4|22|1|23|1|||Ought to Pass w/Amendment|relative to the group and individual health insurance market.||3/29/2019 2:59:56 PM
+2019|S|100|3/27/2019 12:00:00 AM|SB36|23|0|23|1|||Ought to Pass|creating a cause of action for certain constitutional deprivations of right.||3/29/2019 3:02:12 PM
+2019|S|101|3/28/2019 12:00:00 AM|SB61|15|9|24|0|||Rereferred|permitting private enforcement of the rights of construction and labor industry employees.||4/1/2019 8:34:50 AM
+2019|S|102|3/28/2019 12:00:00 AM|SB100|16|8|24|0|||Ought to Pass w/Amendment|relative to discrimination in employment based on criminal background checks.||4/1/2019 8:42:11 AM
+2019|S|103|3/28/2019 12:00:00 AM|SB8|14|10|24|0|||Ought to Pass w/Amendment|establishing an independent redistricting commission.||3/29/2019 3:10:25 PM
+2019|S|104|3/28/2019 12:00:00 AM|SB67|14|10|24|0|||Ought to Pass w/Amendment|relative to the definitions of resident and residency.||3/29/2019 3:12:39 PM
+2019|S|105|3/28/2019 12:00:00 AM|SB106|24|0|24|0|||Ought to Pass w/Amendment|(New Title) relative to the definition of political advocacy organization.||3/29/2019 3:14:19 PM
+2019|S|106|3/28/2019 12:00:00 AM|SB156|13|11|24|0|||Ought to Pass|relative to political contributions made by limited liability companies.||3/29/2019 3:16:42 PM
+2019|S|107|3/28/2019 12:00:00 AM|SB157|10|14|24|0|||Committee Amendment 1191s|making undeclared voters eligible to be inspectors.||4/2/2019 10:24:35 AM
+2019|S|108|3/28/2019 12:00:00 AM|SB124|14|10|24|0|||Ought to Pass w/Amendment|relative to renewable portfolio standards after 2025.||3/29/2019 3:22:26 PM
+2019|S|109|3/28/2019 12:00:00 AM|SB159|24|0|24|0|||Ought to Pass w/Amendment|relative to net energy metering limits for customer-generators.||3/29/2019 3:24:09 PM
+2019|S|110|3/28/2019 12:00:00 AM|SB168|14|10|24|0|||Ought to Pass w/Amendment|relative to class 2 obligations under the electric renewable portfolio standards.||3/29/2019 3:26:56 PM
+2019|S|111|3/28/2019 12:00:00 AM|SB290|14|10|24|0|||Ought to Pass|relative to the New Hampshire granite advantage health care program.||3/29/2019 3:30:51 PM
+2019|S|112|3/28/2019 12:00:00 AM|SB7|10|13|23|1|||Rereferred|establishing the secure modern accurate registration act (SMART ACT).||3/29/2019 4:12:14 PM
+2019|S|113|3/28/2019 12:00:00 AM|SB7|13|10|23|1|||Ought to Pass w/Amendment|establishing the secure modern accurate registration act (SMART ACT).||3/29/2019 4:15:05 PM
+2019|S|114|3/28/2019 12:00:00 AM|SB293|13|10|23|1|||Ought to Pass|relative to federally qualified health care centers and rural health centers reimbursement.||3/29/2019 4:17:10 PM
+2019|S|115|3/28/2019 12:00:00 AM|SB306|2|21|23|1|||Sen. Dietsch Floor Amendment 1366s|establishing the housing appeals board.||4/2/2019 10:25:17 AM
+2019|S|116|3/28/2019 12:00:00 AM|SB306|3|20|23|1|||Rereferred|establishing the housing appeals board.||3/29/2019 4:26:37 PM
+2019|S|117|3/28/2019 12:00:00 AM|SB306|18|5|23|1|||Ought to Pass|establishing the housing appeals board.||3/29/2019 4:28:56 PM
+2019|S|118|3/28/2019 12:00:00 AM|SB117|15|8|23|1|||Laid on Table|relative to certain procedures conducted in teaching hospitals.||4/1/2019 1:38:48 PM
+2019|S|119|3/28/2019 12:00:00 AM|SB184|23|0|23|1|||Inexpedient to Legislate|relative to limitation of liability for prescribing an approved drug or device.||4/1/2019 1:39:32 PM
+2019|S|120|3/28/2019 12:00:00 AM|SB213|12|11|23|1|||Laid on Table|relative to immunity for private campground owners.||4/1/2019 1:40:22 PM
+2019|S|121|3/28/2019 12:00:00 AM|SB263|23|0|23|1|||Sen. Bradley Floor Amendment 1290s Lines 1-11 to the period after RSA 354-A.|relative to anti-discrimination protection for students in public schools.||4/2/2019 10:26:44 AM
+2019|S|122|3/28/2019 12:00:00 AM|SB263|10|13|23|1|||Sen. Bradley Floor Amendment 1290s the Balance of the Amendment|relative to anti-discrimination protection for students in public schools.||4/2/2019 10:27:20 AM
+2019|S|123|3/28/2019 12:00:00 AM|SB263|20|3|23|1|||Ought to Pass w/Amendment|relative to anti-discrimination protection for students in public schools.||4/1/2019 1:42:15 PM
+2019|S|124|3/28/2019 12:00:00 AM|SB318|15|8|23|1|||Laid on Table|relative to donations to the education tax credit program.||4/2/2019 3:41:22 PM
+2019|S|125|4/11/2019 12:00:00 AM|HB726|23|0|23|1|||Sen. Bradley Floor Amendment 1456s|(Second New Title) establishing a secure forensic psychiatric hospital advisory council and establishing a new forensic psychiatric hospital and making an appropriation therefor.||4/11/2019 3:45:41 PM
+2019|S|126|4/11/2019 12:00:00 AM|HB726|13|10|23|1|||Laid on Table|(Second New Title) establishing a secure forensic psychiatric hospital advisory council and establishing a new forensic psychiatric hospital and making an appropriation therefor.||4/11/2019 11:17:41 AM
+2019|S|127|4/11/2019 12:00:00 AM|HB455|17|6|23|1|||Ought to Pass|relative to the penalty for capital murder.||4/11/2019 2:25:37 PM
+2019|S|128|4/11/2019 12:00:00 AM|HB726|10|13|23|1|||Remove from Table|(Second New Title) establishing a secure forensic psychiatric hospital advisory council and establishing a new forensic psychiatric hospital and making an appropriation therefor.||4/11/2019 2:26:12 PM
+2019|S|129|4/11/2019 12:00:00 AM|HB534|10|13|23|1|||Sen. Bradley Floor Amendment 1481s|relative to certain major state projects.||4/11/2019 3:46:50 PM
+2019|S|130|4/18/2019 12:00:00 AM|HB406|24|0|24|0|||Ought to Pass|relative to reporting and investigation of serious injuries and death in the workplace.||4/18/2019 2:42:08 PM
+2019|S|131|5/2/2019 12:00:00 AM|HB692|24|0|24|0|||Ought to Pass|relative to dental care for Medicaid recipients.||5/2/2019 4:45:42 PM
+2019|S|132|5/2/2019 12:00:00 AM|HB364|14|10|24|0|||Ought to Pass w/Amendment|(New Title) permitting qualifying patients and designated caregivers to cultivate cannabis for therapeutic use and permitting qualifying patients and designated caregivers to donate excess cannabis to other qualifying patients.||5/2/2019 4:48:39 PM
+2019|S|133|5/15/2019 12:00:00 AM|HB280|24|0|24|0|||Ought to Pass w/Amendment|designating the red-tailed hawk as the state raptor.||5/16/2019 10:46:13 AM
+2019|S|134|5/15/2019 12:00:00 AM|HB560|10|14|24|0|||Inexpedient to Legislate|(New Title) relative to required reporting on waste reduction.||5/16/2019 10:58:11 AM
+2019|S|135|5/15/2019 12:00:00 AM|HB560|14|10|24|0|||Sen. Feltes Floor Amendment 1986s|(New Title) relative to required reporting on waste reduction.||5/17/2019 11:01:34 AM
+2019|S|136|5/15/2019 12:00:00 AM|HB258|8|16|24|0|||Sen. Carson Floor Amendment 1975s|(New Title) establishing a commission to study teacher preparation and education programs.||5/17/2019 11:03:16 AM
+2019|S|137|5/15/2019 12:00:00 AM|HB258|10|14|24|0|||Sen. Carson Floor Amendment 1975s|(New Title) establishing a commission to study teacher preparation and education programs.||5/17/2019 11:04:27 AM
+2019|S|138|5/15/2019 12:00:00 AM|HB258|9|15|24|0|||Sen. Birdsell Floor Amendment 1989s|(New Title) establishing a commission to study teacher preparation and education programs.||5/17/2019 11:05:12 AM
+2019|S|139|5/15/2019 12:00:00 AM|HB409|15|9|24|0|||Ought to Pass|relative to the maximum optional fee for transportation improvements charged by municipalities when collecting motor vehicle registration fees.||5/16/2019 11:02:52 AM
+2019|S|140|5/15/2019 12:00:00 AM|HB326|16|8|24|0|||Committee Amendment 1888s|relative to the definition of prime wetland.||5/17/2019 11:06:19 AM
+2019|S|141|5/15/2019 12:00:00 AM|HB326|16|8|24|0|||Ought to Pass w/Amendment|relative to the definition of prime wetland.||5/16/2019 11:04:35 AM
+2019|S|142|5/15/2019 12:00:00 AM|HB358|16|8|24|0|||Inexpedient to Legislate|relative to combustion of wood residue at municipal waste combustors.||5/16/2019 11:06:17 AM
+2019|S|143|5/15/2019 12:00:00 AM|HB582|14|10|24|0|||Ought to Pass w/Amendment|relative to the regional greenhouse gas initiative cap and trade program for controlling carbon dioxide emissions.||5/16/2019 11:06:57 AM
+2019|S|144|5/15/2019 12:00:00 AM|HB614|19|5|24|0|||Ought to Pass w/Amendment|(New Title) increasing penalties and fines for air pollution and water pollution.||5/16/2019 11:07:31 AM
+2019|S|145|5/15/2019 12:00:00 AM|HB645|19|5|24|0|||Ought to Pass w/Amendment|establishing a dock registration procedure.||5/16/2019 11:08:10 AM
+2019|S|146|5/15/2019 12:00:00 AM|HB291|18|6|24|0|||Ought to Pass w/Amendment|(New Title) establishing a committee to study certain findings regarding hospice and palliative care.||5/16/2019 11:08:48 AM
+2019|S|147|5/15/2019 12:00:00 AM|HB397|16|8|24|0|||Rereferred|relative to drivers' licenses for New Hampshire residents who do not possess a social security card.||5/16/2019 11:09:29 AM
+2019|S|148|5/15/2019 12:00:00 AM|HB549|21|3|24|0|||Ought to Pass w/Amendment|(New Title) establishing gold star family decals for motor vehicles.||5/16/2019 11:10:03 AM
+2019|S|149|5/15/2019 12:00:00 AM|HB292|15|9|24|0|||Ought to Pass|relative to including brokers fees in the calculation of the insurance premium tax.||5/16/2019 11:10:48 AM
+2019|S|150|5/15/2019 12:00:00 AM|HB407|11|12|23|1|||Ought to Pass|clarifying the non taxability of certain telecommunications devices and equipment.||5/16/2019 11:11:49 AM
+2019|S|151|5/23/2019 12:00:00 AM|HB291|21|2|23|1|||Ought to Pass w/Amendment|(New Title) establishing a committee to study certain findings regarding hospice and palliative care.||5/24/2019 8:37:08 AM
+2019|S|152|5/23/2019 12:00:00 AM|HB109|13|10|23|1|||Sen. Hennessey Floor Amendment 2244s|requiring background checks for commercial firearms sales.||5/28/2019 2:20:04 PM
+2019|S|153|5/23/2019 12:00:00 AM|HB109|13|10|23|1|||Ought to Pass w/Amendment|requiring background checks for commercial firearms sales.||5/24/2019 8:41:37 AM
+2019|S|154|5/23/2019 12:00:00 AM|HB514|13|10|23|1|||Ought to Pass w/Amendment|imposing a waiting period between the purchase and delivery of a firearm.||5/24/2019 8:43:11 AM
+2019|S|155|5/23/2019 12:00:00 AM|HB564|13|10|23|1|||Sen. Morgan Floor Amendment 2247s|(New Title) relative to possession of firearms on school property.||5/28/2019 2:20:51 PM
+2019|S|156|5/23/2019 12:00:00 AM|HB564|13|10|23|1|||Ought to Pass w/Amendment|(New Title) relative to possession of firearms on school property.||5/24/2019 8:50:04 AM
+2019|S|157|5/23/2019 12:00:00 AM|HB696|13|10|23|1|||Ought to Pass w/Amendment|establishing a protective order for vulnerable adults.||5/24/2019 8:51:31 AM
+2019|S|158|5/23/2019 12:00:00 AM|HB468|13|10|23|1|||Committee Amendment|(New Title) relative to the inclusion of attendance stipends and certain additional pay for instructional activities as earnable compensation in the retirement system.||5/24/2019 8:53:13 AM
+2019|S|159|5/23/2019 12:00:00 AM|HB468|13|10|23|1|||Ought to Pass w/Amendment|(New Title) relative to the inclusion of attendance stipends and certain additional pay for instructional activities as earnable compensation in the retirement system.||5/24/2019 8:55:09 AM
+2019|S|160|5/23/2019 12:00:00 AM|HB616|11|12|23|1|||Sen. Carson Floor Amendment 2218s|relative to a cost of living adjustment for retirees in the state retirement system.||5/28/2019 2:21:50 PM
+2019|S|161|5/23/2019 12:00:00 AM|HB616|12|11|23|1|||Ought to Pass|relative to a cost of living adjustment for retirees in the state retirement system.||5/24/2019 8:59:50 AM
+2019|S|162|5/23/2019 12:00:00 AM|HB359|22|1|23|1|||Ought to Pass w/Amendment|relative to warning labels on prescription drugs containing opiates.||5/24/2019 9:21:04 AM
+2019|S|163|5/30/2019 12:00:00 AM|HB455|16|8|24|0|||VETO MESSAGE - Roll Call Required|relative to the penalty for capital murder.||5/30/2019 6:30:24 PM
+2019|S|164|5/30/2019 12:00:00 AM|HB25|24|0|24|0|||Ought to Pass w/Amendment|making appropriations for capital improvements.||5/30/2019 6:31:13 PM
+2019|S|165|5/30/2019 12:00:00 AM|HB211|11|13|24|0|||Inexpedient to Legislate|relative to inquiries by prospective employers concerning salary history.||5/30/2019 6:32:00 PM
+2019|S|166|5/30/2019 12:00:00 AM|HB211|13|11|24|0|||Ought to Pass|relative to inquiries by prospective employers concerning salary history.||5/30/2019 6:32:49 PM
+2019|S|167|5/30/2019 12:00:00 AM|HB293|13|11|24|0|||Ought to Pass|relative to employee credit privacy.||5/30/2019 6:33:31 PM
+2019|S|168|5/30/2019 12:00:00 AM|HB105|14|10|24|0|||Ought to Pass|relative to domicile residency, voter registration, and investigation of voter verification letters.||5/30/2019 6:34:26 PM
+2019|S|169|5/30/2019 12:00:00 AM|HB315|14|10|24|0|||Committee Amendment|(Second New Title) relative to the Interstate Voter Registration Crosscheck Program and the accuracy and efficiency of voter registration systems.||5/30/2019 6:35:17 PM
+2019|S|170|5/30/2019 12:00:00 AM|HB315|14|10|24|0|||Ought to Pass w/Amendment|(Second New Title) relative to the Interstate Voter Registration Crosscheck Program and the accuracy and efficiency of voter registration systems.||5/30/2019 6:37:58 PM
+2019|S|171|5/30/2019 12:00:00 AM|HB611|13|11|24|0|||Ought to Pass|allowing voters to vote by absentee ballot.||5/30/2019 6:39:59 PM
+2019|S|172|5/30/2019 12:00:00 AM|HB635|24|0|24|0|||Ought to Pass|enabling a payment in lieu of taxes for a combined heat and power agricultural facility.||5/30/2019 6:40:33 PM
+2019|S|173|5/30/2019 12:00:00 AM|HB641|20|4|24|0|||Laid on Table|allowing municipalities to collect an occupancy fee from operators of local room rentals.||5/30/2019 6:41:09 PM
+2019|S|174|5/30/2019 12:00:00 AM|HB651|15|9|24|0|||Ought to Pass w/Amendment|allowing the use of campaign funds for child care expenses.||5/30/2019 6:41:52 PM
+2019|S|175|5/30/2019 12:00:00 AM|HB295|14|10|24|0|||Committee Amendment|(New Title) establishing a special marriage officiant license and relative to the assignment of temporary justices to the supreme court.||5/30/2019 6:42:59 PM
+2019|S|176|5/30/2019 12:00:00 AM|HB295|14|10|24|0|||Ought to Pass w/Amendment|(New Title) establishing a special marriage officiant license and relative to the assignment of temporary justices to the supreme court.||5/30/2019 6:43:45 PM
+2019|S|177|5/30/2019 12:00:00 AM|HB637|13|11|24|0|||Sen. Chandley Floor Amendment 2361s|relative to criminal history background checks by employers and public agencies.||5/31/2019 11:04:32 AM
+2019|S|178|5/30/2019 12:00:00 AM|HB637|15|9|24|0|||Ought to Pass w/Amendment|relative to criminal history background checks by employers and public agencies.||5/30/2019 6:50:30 PM
+2019|S|179|5/30/2019 12:00:00 AM|HB608|16|8|24|0|||Ought to Pass w/Amendment|expanding the law against discrimination based on gender identity to other areas of the law prohibiting discrimination.||5/30/2019 8:05:13 PM
+2019|S|180|5/30/2019 12:00:00 AM|SB59|20|3|23|1|||Concur|(New Title) adding post traumatic stress disorder and acute stress disorder to the definition of "injury" for purposes of workers' compensation, establishing the commission to study the incidence of post-traumatic stress disorder in first responders, and ||5/30/2019 8:05:55 PM
+2019|S|181|6/6/2019 12:00:00 AM|HB106|14|10|24|0|||Ought to Pass|relative to the terms "resident," "inhabitant," "residence," and "residency."||6/6/2019 12:06:48 PM
+2019|S|182|6/6/2019 12:00:00 AM|HB504|14|10|24|0|||Ought to Pass|relative to election-related amendments to the United States Constitution.||6/6/2019 12:07:47 PM
+2019|S|183|6/6/2019 12:00:00 AM|HB737|10|14|24|0|||Sen. Bradley Floor Amendment 2406s|establishing a commission to investigate and analyze the environmental and public health impacts relating to releases of perfluorinated chemicals in the air, soil, and groundwater in Merrimack, Bedford and Litchfield.||6/7/2019 1:58:31 PM
+2019|S|184|6/6/2019 12:00:00 AM|HB393|10|14|24|0|||Committee Amendment 2352s|(Second New Title) establishing a committee to study child care in New Hampshire, relative to tuition waivers for children in state foster care or guardianship, relative to penalties for violations related to obtaining public assistance, relative to desig||6/7/2019 1:18:57 PM
+2019|S|185|6/6/2019 12:00:00 AM|HB393|14|10|24|0|||Sen. Bradley Floor Amendment 2456s|(Second New Title) establishing a committee to study child care in New Hampshire, relative to tuition waivers for children in state foster care or guardianship, relative to penalties for violations related to obtaining public assistance, relative to desig||6/7/2019 1:19:25 PM
+2019|S|186|6/6/2019 12:00:00 AM|HB1|24|0|24|0|||Ought to Pass w/Amendment: Sec.1 Selection Appropriations|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2020 and June 30, 2021.||6/7/2019 1:21:03 PM
+2019|S|187|6/6/2019 12:00:00 AM|HB1|14|10|24|0|||Ought to Pass w/Amendment - Entire Balance|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2020 and June 30, 2021.||6/7/2019 1:32:32 PM
+2019|S|188|6/6/2019 12:00:00 AM|HB2|24|0|24|0|||Committee Amendment 2403s - First Division|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:52:22 PM
+2019|S|189|6/6/2019 12:00:00 AM|HB2|14|10|24|0|||Committee Amendment 2403s - Entire Balance|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:53:03 PM
+2019|S|190|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Gray Floor Amendment 2446s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:51:18 PM
+2019|S|191|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Birdsell Floor Amendment 2447s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:50:55 PM
+2019|S|192|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Giuda Floor Amendment 2445s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:50:33 PM
+2019|S|193|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Morse Floor Amendment 2448s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:50:12 PM
+2019|S|194|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Birdsell Floor Amendment 2450s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:49:31 PM
+2019|S|195|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Morse Floor Amendment 2428s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:40:48 PM
+2019|S|196|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Giuda Floor Amendment 2436s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:40:21 PM
+2019|S|197|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Bradley Floor Amendment 2458s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:39:59 PM
+2019|S|198|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Reagan Floor Amendment 2427s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:39:18 PM
+2019|S|199|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Giuda Floor Amendment 2444|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:39:04 PM
+2019|S|200|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Reagan Floor Amendment 2443s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:38:54 PM
+2019|S|201|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Starr Floor Amendment 2434s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:38:43 PM
+2019|S|202|6/6/2019 12:00:00 AM|HB2|11|13|24|0|||Sen. Birdsell Floor Amendment 2416s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:38:33 PM
+2019|S|203|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Starr Floor Amendment 2452s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:38:24 PM
+2019|S|204|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Giuda Floor Amendment 2440|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:38:05 PM
+2019|S|205|6/6/2019 12:00:00 AM|HB2|9|15|24|0|||Sen. Giuda Floor Amendment 2439s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:37:55 PM
+2019|S|206|6/6/2019 12:00:00 AM|HB2|11|13|24|0|||Sen. Giuda Floor Amendment 2449s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:37:44 PM
+2019|S|207|6/6/2019 12:00:00 AM|HB2|10|14|24|0|||Sen. Giuda Floor Amendment 2430s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:37:36 PM
+2019|S|208|6/6/2019 12:00:00 AM|HB2|9|14|23|1|||Sen. Bradley Floor Amendment 2431s|relative to state fees, funds, revenues, and expenditures.||6/7/2019 1:37:24 PM
+2019|S|209|6/6/2019 12:00:00 AM|HB2|9|13|22|1|||Is the Question Divisible|relative to state fees, funds, revenues, and expenditures.||6/7/2019 10:30:17 AM
+2019|S|210|6/6/2019 12:00:00 AM|HB2|14|9|23|1|||Ought to Pass w/Amendment|relative to state fees, funds, revenues, and expenditures.||6/7/2019 10:32:24 AM
+2019|S|211|6/13/2019 12:00:00 AM|SB5|14|10|24|0|||VETO MESSAGE - Roll Call Required|(2nd New Title) making an appropriation to the department of health and human services for Medicaid provider rates for mental health and substance use disorder and emergency shelter and stabilization services.||6/13/2019 3:24:13 PM
+2019|S|212|6/13/2019 12:00:00 AM|SB99|14|10|24|0|||Concur|relative to gainful employment and partial disability in workers' compensation.||6/13/2019 3:26:13 PM
+2019|S|213|6/13/2019 12:00:00 AM|SB100|14|10|24|0|||Concur|relative to discrimination in employment based on criminal background checks.||6/13/2019 3:28:51 PM
+2019|S|214|6/13/2019 12:00:00 AM|SB148|14|10|24|0|||Concur|relative to notification to public employees regarding their right to join or not join a union.||6/13/2019 3:30:30 PM
+2019|S|215|6/13/2019 12:00:00 AM|SB196|13|11|24|0|||Concur|relative to non-academic surveys administered by a public school to its students.||6/13/2019 3:32:48 PM
+2019|S|216|6/13/2019 12:00:00 AM|SB168|14|10|24|0|||Concur|relative to class 2 obligations under the electric renewable portfolio standards.||6/13/2019 3:34:44 PM
+2019|S|217|6/13/2019 12:00:00 AM|SB2|14|10|24|0|||Concur|relative to funding for job training programs in the department of business and economic affairs.||6/13/2019 3:37:55 PM
+2019|S|218|6/13/2019 12:00:00 AM|SB263|15|9|24|0|||Concur|relative to anti-discrimination protection for students in public schools.||6/13/2019 3:39:42 PM
+2019|S|219|6/13/2019 12:00:00 AM|SB148|16|8|24|0|||Concur|relative to notification to public employees regarding their right to join or not join a union.||6/13/2019 3:41:49 PM
+2019|S|220|6/27/2019 12:00:00 AM|HB1|14|10|24|0|||Conference Committee Report|making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2020 and June 30, 2021.||6/27/2019 1:11:01 PM
+2019|S|221|6/27/2019 12:00:00 AM|HB2|14|10|24|0|||Conference Committee Report|relative to state fees, funds, revenues, and expenditures.||6/27/2019 3:45:09 PM
+2019|S|222|6/27/2019 12:00:00 AM|HB315|14|10|24|0|||Conference Committee Report|(Second New Title) relative to the Interstate Voter Registration Crosscheck Program and the accuracy and efficiency of voter registration systems.||6/27/2019 4:14:06 PM
+2019|S|223|6/27/2019 12:00:00 AM|HB326|16|8|24|0|||Conference Committee Report|relative to the definition of prime wetland.||6/27/2019 4:15:00 PM
+2019|S|224|6/27/2019 12:00:00 AM|HB564|14|10|24|0|||Conference Committee Report|(New Title) relative to possession of firearms on school property.||6/27/2019 4:16:29 PM
+2019|S|225|6/27/2019 12:00:00 AM|HB582|14|10|24|0|||Conference Committee Report|relative to the regional greenhouse gas initiative cap and trade program for controlling carbon dioxide emissions.||6/27/2019 4:22:47 PM
+2019|S|226|6/27/2019 12:00:00 AM|SB10|14|10|24|0|||Conference Committee Report|establishing the state minimum hourly rate based on whether an employer offers paid sick days to an employee.||6/27/2019 4:24:23 PM
+2019|S|227|9/19/2019 12:00:00 AM|SB10|14|10|24|0|||VETO MESSAGE - Roll Call Required|(Second New Title) relative to the state minimum hourly rate.||9/19/2019 1:01:26 PM
+2019|S|228|9/19/2019 12:00:00 AM|SB1|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to family and medical leave.||9/20/2019 8:49:55 AM
+2019|S|229|9/19/2019 12:00:00 AM|SB2|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to funding for job training programs in the department of business and economic affairs.||9/20/2019 8:50:24 AM
+2019|S|230|9/19/2019 12:00:00 AM|SB18|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to authorized employee wage deductions.||9/20/2019 8:50:59 AM
+2019|S|231|9/19/2019 12:00:00 AM|SB20|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to notification requirements for employees, workplace inspections, and the youth employment law.||9/20/2019 8:51:29 AM
+2019|S|232|9/19/2019 12:00:00 AM|SB67|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to the definitions of resident and residency.||9/20/2019 8:51:59 AM
+2019|S|233|9/19/2019 12:00:00 AM|SB68|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to the centralized voter registration database.||9/20/2019 8:52:30 AM
+2019|S|234|9/19/2019 12:00:00 AM|SB72|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to issuance of renewable energy certificates.||9/20/2019 8:52:59 AM
+2019|S|235|9/19/2019 12:00:00 AM|SB74|17|7|24|0|||VETO MESSAGE - Roll Call Required|(2nd New Title) relative to register of deeds fees used to support the land and community heritage investment program (LCHIP), and establishing a committee to study the economic impact of land conservation and to review the LCHIP surcharge.||9/20/2019 8:54:18 AM
+2019|S|236|9/19/2019 12:00:00 AM|SB88|17|7|24|0|||VETO MESSAGE - Roll Call Required|relative to registry identification cards under the use of cannabis for therapeutic purposes law.||9/20/2019 8:55:13 AM
+2019|S|237|9/19/2019 12:00:00 AM|SB99|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to gainful employment and partial disability in workers' compensation.||9/20/2019 8:55:52 AM
+2019|S|238|9/19/2019 12:00:00 AM|SB100|16|8|24|0|||VETO MESSAGE - Roll Call Required|relative to discrimination in employment based on criminal background checks.||9/20/2019 8:56:42 AM
+2019|S|239|9/19/2019 12:00:00 AM|SB106|15|9|24|0|||VETO MESSAGE - Roll Call Required|(New Title) relative to the definition of political advocacy organization.||9/20/2019 9:03:06 AM
+2019|S|240|9/19/2019 12:00:00 AM|SB140|14|10|24|0|||VETO MESSAGE - Roll Call Required|(New Title) relative to credit for alternative, extended learning, and work-based programs.||9/20/2019 9:03:33 AM
+2019|S|241|9/19/2019 12:00:00 AM|SB145|15|9|24|0|||VETO MESSAGE - Roll Call Required|relative to the organization of alternative treatment centers.||9/20/2019 9:04:06 AM
+2019|S|242|9/19/2019 12:00:00 AM|SB146|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to eliminating the waiting period before eligibility to receive unemployment benefits.||9/20/2019 9:04:39 AM
+2019|S|243|9/19/2019 12:00:00 AM|SB148|16|8|24|0|||VETO MESSAGE - Roll Call Required|relative to notification to public employees regarding their right to join or not join a union.||9/20/2019 9:06:05 AM
+2019|S|244|9/19/2019 12:00:00 AM|SB151|14|10|24|0|||VETO MESSAGE - Roll Call Required|establishing an administrative hearing procedure and penalty for an employer who fails to make payment of wages or who fails to secure workers' compensation coverage.||9/20/2019 9:06:31 AM
+2019|S|245|9/19/2019 12:00:00 AM|SB156|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to political contributions made by limited liability companies.||9/20/2019 9:07:03 AM
+2019|S|246|9/19/2019 12:00:00 AM|SB167|14|10|24|0|||VETO MESSAGE - Roll Call Required|establishing a clean energy resource procurement commission.||9/20/2019 9:07:28 AM
+2019|S|247|9/19/2019 12:00:00 AM|SB168|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to class 2 obligations under the electric renewable portfolio standards.||9/20/2019 9:07:55 AM
+2019|S|248|9/19/2019 12:00:00 AM|SB196|13|11|24|0|||VETO MESSAGE - Roll Call Required|relative to non-academic surveys administered by a public school to its students.||9/20/2019 9:08:30 AM
+2019|S|249|9/19/2019 12:00:00 AM|SB205|14|10|24|0|||VETO MESSAGE - Roll Call Required|(New Title) relative to energy efficiency programs funded from the systems benefits charge and the duties and members of the energy efficiency and sustainable energy board.||9/20/2019 9:08:55 AM
+2019|S|250|9/19/2019 12:00:00 AM|SB218|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to duties of the commissioner of transportation regarding air navigation facilities.||9/20/2019 9:09:21 AM
+2019|S|251|9/19/2019 12:00:00 AM|SB271|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to requiring prevailing wages on state-funded public works projects.||9/20/2019 9:09:54 AM
+2019|S|252|9/19/2019 12:00:00 AM|SB275|14|10|24|0|||VETO MESSAGE - Roll Call Required|requiring that all of the state's motor vehicles will be zero emissions vehicles by the year 2039.||9/20/2019 9:10:26 AM
+2019|S|253|9/19/2019 12:00:00 AM|SB307|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to outdoor lighting.||9/20/2019 9:11:06 AM
+2019|S|254|9/19/2019 12:00:00 AM|HB364|13|11|24|0|||VETO MESSAGE - Roll Call Required|(New Title) permitting qualifying patients and designated caregivers to cultivate cannabis for therapeutic use and permitting qualifying patients and designated caregivers to donate excess cannabis to other qualifying patients.||9/20/2019 9:12:29 AM
+2019|S|255|9/25/2019 12:00:00 AM|HB4|23|1|24|0|||Ought to Pass|relative to state fees, funds, revenues and expenditures.||9/25/2019 3:36:35 PM

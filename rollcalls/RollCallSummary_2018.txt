@@ -1,0 +1,523 @@
+2018|H|1|1/3/2018 10:10:26 AM||315|0|48|30|||Call of the Roll|||
+2018|H|2|1/3/2018 10:49:00 AM|HB236|171|178|15|29|||OTPA|relative to determination of parental rights and responsibilities and establishing a presumption in favor of shared residential responsibility.||
+2018|H|3|1/3/2018 10:51:23 AM|HB236|174|175|15|29|||ITL|relative to determination of parental rights and responsibilities and establishing a presumption in favor of shared residential responsibility.||
+2018|H|4|1/3/2018 11:04:08 AM|HB525|290|58|16|29|||OTPA|relative to stabilization grants for education.||
+2018|H|5|1/3/2018 11:08:56 AM|HB249|167|184|13|29|||Interim Study|relative to showing a ballot.||
+2018|H|6|1/3/2018 11:11:49 AM|HB249|202|150|12|29|||Table|relative to showing a ballot.||
+2018|H|7|1/3/2018 11:46:43 AM|SB247|266|87|13|27|||OTPA|preventing childhood lead poisoning from paint and water and making an appropriation to a special fund.||
+2018|H|8|1/3/2018 12:11:40 PM|HB471|165|189|11|28|||OTPA|relative to induced termination of pregnancy statistics.||
+2018|H|9|1/3/2018 12:15:50 PM|HB471|200|154|11|28|||ITL|relative to induced termination of pregnancy statistics.||
+2018|H|10|1/3/2018 2:03:53 PM|HB476|198|146|16|33|||OTPA|relative to the duties of registers of probate.||
+2018|H|11|1/3/2018 2:37:30 PM|SB193|161|175|25|32|||Adopt Amendment|establishing education freedom savings accounts for students.||
+2018|H|12|1/3/2018 3:46:12 PM|SB193|184|162|15|32|||OTPA|establishing education freedom savings accounts for students.||
+2018|H|13|1/3/2018 4:03:18 PM|HB399|189|143|23|38|||ITL|relative to pesticide use and notification in places where children play.||
+2018|H|14|1/9/2018 9:16:17 AM|HB287|177|134|46|35|||OTPA|establishing a committee to study decriminalizing sex work.||
+2018|H|15|1/9/2018 10:09:52 AM|HB656|162|183|11|36|||ITL|relative to the legalization and regulation of marijuana.||
+2018|H|16|1/9/2018 10:14:05 AM|HB656|207|139|10|36|||OTPA|relative to the legalization and regulation of marijuana.||
+2018|H|17|1/9/2018 10:47:43 AM|HB317|173|171|14|34|||OTPA|prohibiting the public utilities commission from increasing the system benefits charge without legislative approval.||
+2018|H|18|1/9/2018 10:51:41 AM|HB317|164|181|13|34|||Reconsider|prohibiting the public utilities commission from increasing the system benefits charge without legislative approval.||
+2018|H|19|1/9/2018 11:10:51 AM|HB559|160|182|15|35|||ITL|relative to expenditures from the energy efficiency fund.||
+2018|H|20|1/9/2018 11:15:20 AM|HB559|215|126|16|35|||Adopt Amendment|relative to expenditures from the energy efficiency fund.||
+2018|H|21|1/9/2018 11:19:28 AM|HB559|153|189|15|35|||Table|relative to expenditures from the energy efficiency fund.||
+2018|H|22|1/9/2018 11:50:18 AM|HB592|165|180|13|34|||OTPA|repealing the regional greenhouse gas initiative.||
+2018|H|23|1/9/2018 12:06:03 PM|HB92|188|157|12|35|||ITL|revising the definition of the state building code and ratifying changes to the state building code adopted by the state building code review board.||
+2018|H|24|1/9/2018 1:44:16 PM|HB413|172|166|15|39|||ITL|relative to payment by the state of a portion of retirement system contributions of political subdivision employers.||
+2018|H|25|1/9/2018 2:31:47 PM|HB587|166|165|19|42|||ITL|relative to conversion therapy seeking to change a person's sexual orientation.||
+2018|H|26|1/9/2018 2:54:36 PM|SB224|170|169|12|41|||ITL|relative to conversion therapy seeking to change a person's sexual orientation.||
+2018|H|27|1/9/2018 3:39:45 PM|HB628|183|151|16|42|||OTPA|relative to a family and medical leave insurance program.||
+2018|H|28|2/8/2018 10:31:58 AM|HB628|168|178|14|31|||ITL|relative to a family and medical leave insurance program.||
+2018|H|29|2/8/2018 10:41:12 AM|HB628|208|141|11|31|||Adopt Amendment|relative to a family and medical leave insurance program.||
+2018|H|30|2/8/2018 10:53:46 AM|HB628|186|164|10|31|||OTPA|relative to a family and medical leave insurance program.||
+2018|H|31|2/8/2018 11:02:52 AM|HB1819|303|42|13|33|||OTPA|relative to administration of the education tax credit.||
+2018|H|32|2/8/2018 11:11:37 AM|HB1773|214|135|9|33|||ITL|relative to campaign contributions and expenditures.||
+2018|H|33|2/8/2018 11:39:05 AM|HB587|178|169|12|32|||Reconsider|relative to conversion therapy seeking to change a person's sexual orientation.||
+2018|H|34|2/8/2018 12:08:54 PM|HB587|171|177|12|31|||ITL|relative to conversion therapy seeking to change a person's sexual orientation.||
+2018|H|35|2/8/2018 12:22:09 PM|HB587|179|171|10|31|||OTP|relative to conversion therapy seeking to change a person's sexual orientation.||
+2018|H|36|2/8/2018 1:45:07 PM|HB1415|176|161|20|34|||OTPA|establishing a death benefit for a school employee killed in the line of duty.||
+2018|H|37|2/8/2018 2:02:02 PM|HB413|170|171|16|34|||Reconsider|relative to payment by the state of a portion of retirement system contributions of political subdivision employers.||
+2018|H|38|2/8/2018 2:59:37 PM|HB1811|192|154|10|35|||Interim Study|relative to the New Hampshire health protection program.||
+2018|H|39|2/8/2018 3:24:38 PM|HB1822|76|265|11|39|||ITL|making hormonal contraceptives available directly from pharmacists by means of a standing order.||
+2018|H|40|2/8/2018 3:45:53 PM|HB579|172|163|16|40|||OTPA|relative to registration of semi-trailers.||
+2018|H|41|2/8/2018 4:25:43 PM|HB1763|123|200|28|40|||Table|establishing a road usage fee and making an appropriation therefor.||
+2018|H|42|2/8/2018 4:28:32 PM|HB1763|194|132|26|39|||OTPA|establishing a road usage fee and making an appropriation therefor.||
+2018|H|43|2/8/2018 4:57:34 PM|HB1749|239|71|33|48|||Interim Study|relative to the state's authority to prohibit or regulate firearms and relative to the selectmen's authority to manage town property.||
+2018|H|44|2/8/2018 5:33:47 PM|HB1592|187|104|49|51|||Adopt Amendment|requiring the commissioner of the department of environmental services to revise rules relative to arsenic contamination in drinking water.||
+2018|H|45|2/8/2018 5:40:05 PM|HB1592|137|156|44|54|||Adopt Amendment|requiring the commissioner of the department of environmental services to revise rules relative to arsenic contamination in drinking water.||
+2018|H|46|2/8/2018 6:01:25 PM|HB1797|191|94|51|55|||ITL|adding a 50 percent charge to all amounts assessed to persons liable for costs of containment, cleanup, and remediation of water, air and soil pollution.||
+2018|H|47|2/15/2018 11:42:38 AM|HB1328|258|70|21|42|||ITL|relative to motor vehicle inspections.||
+2018|H|48|2/15/2018 12:03:50 PM|HB1778|287|44|18|42|||ITL|relative to registration of commercial motor vehicles and operator's/drivers' licenses.||
+2018|H|49|2/15/2018 12:19:40 PM|HB1557|236|96|17|42|||ITL|requiring meetings and sessions of committees of the house of representatives to be recorded and made available on the Internet.||
+2018|H|50|2/15/2018 12:34:54 PM|HB427|211|121|18|41|||ITL|allowing hobby distillation of liquors.||
+2018|H|51|2/15/2018 1:35:17 PM|SB33|162|155|31|43|||Table|relative to the definition of political advocacy organization.||
+2018|H|52|2/15/2018 2:03:26 PM|HB114|167|164|17|43|||OTP|relative to minimum electric renewable portfolio standards.||
+2018|H|53|2/15/2018 2:12:18 PM|HB193|152|179|16|44|||Table|relative to traffic control measures.||
+2018|H|54|2/15/2018 3:02:13 PM|HB1213|188|138|20|45|||ITL|removing the exception for married minors from the definition of sexual assault.||
+2018|H|55|2/15/2018 3:17:33 PM|HB1511|204|121|17|49|||Table|relative to the death of a fetus for the purpose of certain homicide charges.||
+2018|H|56|2/15/2018 3:24:38 PM|HB1566|194|126|22|49|||ITL|prohibiting open carry of a firearm in certain public places.||
+2018|H|57|2/15/2018 3:30:04 PM|HCR13|132|191|18|50|||Table|condemning hate crimes and any other form of racism in New Hampshire.||
+2018|H|58|2/15/2018 3:50:38 PM|HCR13|234|69|36|52|||OTP|condemning hate crimes and any other form of racism in New Hampshire.||
+2018|H|59|2/22/2018 10:50:41 AM|HB1416|224|113|16|38|||Adopt Amendment|repealing the prohibition on bottle rockets.||
+2018|H|60|2/22/2018 10:53:01 AM|HB1416|197|140|16|38|||OTPA|repealing the prohibition on bottle rockets.||
+2018|H|61|2/22/2018 11:16:15 AM|HB1425|201|138|14|38|||OTP|relative to simple assault.||
+2018|H|62|2/22/2018 11:20:45 AM|HB1477|314|24|15|38|||OTPA|relative to annulment of arrests or convictions for possession of 3/4 of an ounce of marijuana, or less.||
+2018|H|63|2/22/2018 11:29:09 AM|HB1542|231|110|13|37|||ITL|relative to carrying a pistol or revolver on university system and community college system property.||
+2018|H|64|2/22/2018 1:37:13 PM|HB1659|195|143|14|39|||ITL|establishing a committee to study possible health and safety impacts of the alkali-silica reaction on the seacoast.||
+2018|H|65|2/22/2018 1:50:16 PM|CACR12|138|202|12|39|||OTP|relating to the election of judges.  Providing that judges be elected for specific terms.||
+2018|H|66|2/22/2018 2:21:45 PM|HB1301|197|127|25|42|||Table|including the legislature as a public employer under the public employee labor relations act.||
+2018|H|67|2/22/2018 2:32:45 PM|HB1227|208|116|23|44|||OTP|relative to an unattended idling vehicle on private property.||
+2018|H|68|2/22/2018 2:54:31 PM|HB1524|185|138|24|44|||ITL|relative to election-related amendments to the United States Constitution.||
+2018|H|69|2/22/2018 2:59:12 PM|HB1554|182|143|21|45|||OTP|increasing exemptions under the interest and dividends tax and decreasing the total amount of research and development credits against business taxes.||
+2018|H|70|2/22/2018 3:15:40 PM|HB1644|204|109|30|48|||ITL|prohibiting the combination of certain regulated utilities.||
+2018|H|71|2/22/2018 3:41:41 PM|HB1673|126|163|51|51|||ITL|relative to the interest charged on late and delinquent property tax payments.||
+2018|H|72|3/6/2018 10:15:49 AM||144|178|32|38|||Rules Suspension|||
+2018|H|73|3/6/2018 10:29:48 AM|CACR14|216|108|30|38|||ITL|relating to natural rights of children.  Providing that children have a natural right to be protected by their parents.||
+2018|H|74|3/6/2018 10:33:55 AM|HB1650|241|88|26|37|||Interim Study|removing education as required by law as a criterion for determining child neglect.||
+2018|H|75|3/6/2018 10:36:41 AM|HB1418|312|17|26|37|||OTPA|relative to transparency and cost control of pharmaceutical drug prices.||
+2018|H|76|3/6/2018 10:44:40 AM|HB1668|292|39|24|37|||ITL|relative to children's meals served by food service establishments.||
+2018|H|77|3/6/2018 10:47:28 AM|HB1809|326|5|24|37|||OTPA|relative to balance billing under the managed care law.||
+2018|H|78|3/6/2018 11:05:40 AM|HB1528|210|123|23|36|||ITL|prohibiting discrimination in the university and community college systems.||
+2018|H|79|3/6/2018 11:31:23 AM|HB1582|195|139|22|36|||ITL|relative to the authority of the moderator to verify the device count.||
+2018|H|80|3/6/2018 11:48:19 AM|HB1527|245|87|25|35|||ITL|relative to the authority of fish and game officers regarding arrest and search and seizure.||
+2018|H|81|3/6/2018 12:02:14 PM|HB1367|250|81|26|35|||ITL|removing tetanus from the law requiring certain immunizations.||
+2018|H|82|3/6/2018 1:21:46 PM|CACR15|309|9|38|36|||OTP|relating to legal actions.  Providing that taxpayers have standing to bring actions against the government.||
+2018|H|83|3/6/2018 1:38:13 PM|HB1591|232|98|27|35|||ITL|relative to a private right of action for toxin exposure.||
+2018|H|84|3/6/2018 2:28:28 PM|HB1230|181|146|30|35|||ITL|establishing a commission to study the economic impact of national carbon pricing on New Hampshire.||
+2018|H|85|3/6/2018 2:52:37 PM|HB1515|182|147|27|36|||OTPA|relative to an exemption from the combustion ban on construction and demolition debris.||
+2018|H|86|3/6/2018 3:04:46 PM|HB1611|169|150|36|37|||ITL|establishing a committee to study off-shore wind energy development.||
+2018|H|87|3/6/2018 3:17:30 PM|HB1779|166|158|31|37|||ITL|requiring monitoring of certain radioactive air pollutants.||
+2018|H|88|3/6/2018 3:28:21 PM|HB1270|232|99|25|36|||ITL|relative to the prohibition on the use of mobile electronic devices while driving.||
+2018|H|89|3/6/2018 3:46:20 PM|HB1241|176|149|31|36|||ITL|establishing a commission to assess benefits and costs of a "health care for all" program for New Hampshire.||
+2018|H|90|3/6/2018 3:49:30 PM|HB1362|227|98|31|36|||Interim Study|authorizing individuals and certain businesses to purchase health insurance from out-of-state companies.||
+2018|H|91|3/6/2018 4:05:25 PM|HB1514|236|92|28|36|||ITL|relative to shelter-in-place orders.||
+2018|H|92|3/6/2018 4:22:36 PM|HB1752|202|123|30|37|||ITL|requiring a search warrant to obtain blood samples.||
+2018|H|93|3/6/2018 4:33:09 PM|HB1277|170|151|33|38|||ITL|relative to the renomination of teachers.||
+2018|H|94|3/6/2018 4:57:33 PM|HB1354|164|155|30|43|||OTP|adding the speaker of the house of representatives and senate president as permanent members of the university system board of trustees.||
+2018|H|95|3/6/2018 5:08:39 PM|HB1369|210|105|33|44|||ITL|limiting educational assessments to academic skills and knowledge.||
+2018|H|96|3/6/2018 5:26:18 PM|HB1264|148|167|32|45|||Table|relative to construction of the terms "resident," "inhabitant," "residence," and "residency."||
+2018|H|97|3/6/2018 5:34:17 PM|HB1264|171|144|32|45|||OTP|relative to construction of the terms "resident," "inhabitant," "residence," and "residency."||
+2018|H|98|3/6/2018 5:51:42 PM|HB1368|150|121|75|46|||ITL|relative to political contributions made by limited liability companies.||
+2018|H|99|3/6/2018 6:09:27 PM|HB1233|129|164|50|49|||Table|preempting local regulation of seeds and fertilizer.||
+2018|H|100|3/7/2018 9:40:03 AM||191|125|36|40|||Rules Suspension|||
+2018|H|101|3/7/2018 10:05:23 AM|HB1766|149|174|30|39|||Interim Study|relative to remediating the Coakley Landfill in Greenland.||
+2018|H|102|3/7/2018 10:08:03 AM|HB1766|207|118|28|39|||OTP|relative to remediating the Coakley Landfill in Greenland.||
+2018|H|103|3/7/2018 10:23:48 AM|HB1685|154|170|29|39|||ITL|establishing a statutory commission for oversight over occupational regulation.||
+2018|H|104|3/7/2018 10:34:43 AM|HB1756|157|163|33|39|||ITL|relative to an additional allowance and a cost of living adjustment for retirees from the state retirement system.||
+2018|H|105|3/7/2018 10:37:49 AM|HB1756|149|173|31|39|||Table|relative to an additional allowance and a cost of living adjustment for retirees from the state retirement system.||
+2018|H|106|3/7/2018 10:58:50 AM|HB1814|228|102|23|39|||ITL|relative to additional education grants to municipalities for the purpose of restoring reductions in stabilization grants||
+2018|H|107|3/7/2018 11:37:31 AM|HB1532|163|170|21|38|||Table|prohibiting gender reassignment surgery for minors.||
+2018|H|108|3/7/2018 11:54:05 AM|HB1532|162|164|27|39|||OTP|prohibiting gender reassignment surgery for minors.||
+2018|H|109|3/7/2018 12:01:25 PM|HB1560|188|140|24|40|||ITL|prohibiting Medicaid from paying for sex reassignment drug or hormone therapy or surgery.||
+2018|H|110|3/7/2018 12:22:50 PM|HB1319|152|175|24|41|||Adopt Amendment|prohibiting discrimination based on gender identity.||
+2018|H|111|3/7/2018 1:08:11 PM|HB1319|195|129|27|41|||OTP|prohibiting discrimination based on gender identity.||
+2018|H|112|3/7/2018 1:13:28 PM|SB33|149|174|28|41|||Remove from Table|||
+2018|H|113|3/7/2018 1:31:14 PM|HB1323|132|185|27|48|||OTPA|relative to employment of chief executive officers under the right-to-know law.||
+2018|H|114|3/7/2018 1:45:44 PM|HB1344|125|189|29|49|||OTP|relative to collective bargaining under the right-to-know law.||
+2018|H|115|3/15/2018 9:54:03 AM|HB1443|136|171|37|48|||Table|relative to a jury's determination as to the applicability of a law.||
+2018|H|116|3/15/2018 9:56:50 AM|HB1443|158|151|35|48|||OTPA|relative to a jury's determination as to the applicability of a law.||
+2018|H|117|3/15/2018 10:19:45 AM|HB1579|162|166|17|47|||Table|requiring records to be kept for certain exempt convenings under the right-to-know law.||
+2018|H|118|3/15/2018 10:22:53 AM|HB1579|168|161|16|47|||OTP|requiring records to be kept for certain exempt convenings under the right-to-know law.||
+2018|H|119|3/15/2018 10:34:45 AM|HB1672|313|18|14|47|||OTP|prohibiting release of certain information relative to users of therapeutic cannabis to federal agencies.||
+2018|H|120|3/15/2018 10:55:22 AM|HB1787|218|109|18|47|||ITL|relative to the rights of conscience for medical professionals.||
+2018|H|121|3/15/2018 11:10:59 AM|HB1789|213|117|15|47|||ITL|relative to costs of requests which are in electronic format under the right-to-know law.||
+2018|H|122|3/15/2018 11:24:26 AM|HB1201|192|139|14|47|||OTPA|relative to an employee's earned but unused vacation time.||
+2018|H|123|3/15/2018 11:36:21 AM|HB1405|169|162|16|45|||ITL|relative to the eligibility of school district employees for family and medical leave.||
+2018|H|124|3/15/2018 11:48:07 AM|HB1462|175|157|16|44|||ITL|relative to health and dental benefits under the workers' compensation law.||
+2018|H|125|3/15/2018 12:04:29 PM|HB1500|177|157|14|44|||Interim Study|relative to workplace violence, workplace injuries and death in the workplace.||
+2018|H|126|3/15/2018 1:44:15 PM|CACR19|217|112|16|47|||ITL|relating to right to govern.  Providing that the people of the state may enact local laws that protect health, safety and welfare.||
+2018|H|127|3/15/2018 2:00:28 PM|HCR11|154|174|17|47|||OTPA|urging a pardon of Gerald "Jerry" DeLemus.||
+2018|H|128|3/15/2018 2:03:16 PM|HCR11|180|148|17|47|||ITL|urging a pardon of Gerald "Jerry" DeLemus.||
+2018|H|129|3/15/2018 2:06:46 PM|HCR11|148|178|19|47|||Reconsider|urging a pardon of Gerald "Jerry" DeLemus.||
+2018|H|130|3/15/2018 2:24:43 PM|HB2018|166|160|18|48|||Adopt Amendment|relative to the state 10-year transportation improvement program.||
+2018|H|131|3/15/2018 2:30:19 PM|HB1358|178|148|18|48|||Table|relative to decisions by the site evaluation committee.||
+2018|H|132|3/15/2018 3:05:56 PM|HB1259|195|126|23|48|||Table|relative to passenger restraints.||
+2018|H|133|3/15/2018 3:23:06 PM|HB1262|233|94|14|51|||OTP|relative to online driver education.||
+2018|H|134|3/15/2018 3:30:48 PM|HB1442|234|86|20|52|||ITL|relative to driver education.||
+2018|H|135|3/15/2018 3:38:15 PM|HB1686|168|147|24|53|||OTPA|relative to applications for and the use of education tax credits.||
+2018|H|136|3/15/2018 4:21:53 PM|HB1432|165|138|31|58|||ITL|requiring certain schools to establish nondiscrimination and employee background check policies.||
+2018|H|137|3/15/2018 4:42:24 PM|HB1772|179|128|25|60|||ITL|permitting online voting registration.||
+2018|H|138|3/15/2018 4:58:45 PM|HB1818|211|93|28|60|||Interim Study|relative to penalties for certain occupational licensing violations.||
+2018|H|139|3/21/2018 10:14:42 AM|HB1279|198|125|30|39|||ITL|allowing additional charges under a lease to be included in a demand for rent.||
+2018|H|140|3/21/2018 10:25:03 AM|HB1295|290|41|21|40|||OTPA|relative to persons held in civil contempt.||
+2018|H|141|3/21/2018 10:44:49 AM|HB1373|182|151|19|40|||OTPA|relative to an individual's property right in his or her DNA.||
+2018|H|142|3/21/2018 11:08:16 AM|HB1485|184|149|19|40|||ITL|relative to security deposits.||
+2018|H|143|3/21/2018 11:23:34 AM|HB1627|175|159|17|41|||OTP|prohibiting the transmission of images or sounds of another person who is on private property or to conduct surveillance activity.||
+2018|H|144|3/21/2018 11:29:13 AM|HB1680|170|163|18|41|||Table|relative to abortions after viability.||
+2018|H|145|3/21/2018 11:38:06 AM|HB1721|237|100|15|40|||ITL|relative to coercive abortions.||
+2018|H|146|3/21/2018 11:47:54 AM|HB1393|169|161|22|40|||ITL|relative to compensation for vacation time and personal time earned.||
+2018|H|147|3/21/2018 11:57:44 AM|HB1716|172|162|18|40|||ITL|establishing apprenticeship programs for unemployed workers.||
+2018|H|148|3/21/2018 12:03:18 PM|HB1463|202|131|19|40|||Adopt Amendment|relative to requirements for noise ordinances in towns.||
+2018|H|149|3/21/2018 12:14:58 PM|HB1463|138|194|20|40|||OTPA|relative to requirements for noise ordinances in towns.||
+2018|H|150|3/21/2018 2:07:49 PM|HB1541|158|178|16|40|||OTPA|relative to registration and road toll fees for hybrid and electric vehicles.||
+2018|H|151|3/21/2018 2:14:06 PM|HB1313|195|137|20|40|||Special Order|relative to prohibitions on carrying a loaded firearm on an OHRV or snowmobile.||
+2018|H|152|3/21/2018 2:29:15 PM|HB1544|175|150|25|42|||ITL|establishing a committee to identify the requirements needed to commit New Hampshire to a goal of 100 percent renewable energy for electricity by 2040.||
+2018|H|153|3/21/2018 2:45:12 PM|HB1550|179|150|21|42|||OTPA|requiring electric bills to include the cost of compliance with renewable energy standards.||
+2018|H|154|3/21/2018 3:27:35 PM|HB1422|184|144|20|44|||ITL|relative to the applicability of certain business tax rate changes.||
+2018|H|155|3/21/2018 3:39:40 PM|HB1609|178|148|20|46|||ITL|establishing a local option for an additional surcharge on occupancy under the meals and rooms tax.||
+2018|H|156|3/21/2018 3:43:11 PM|HB1680|149|177|21|45|||Remove from Table|relative to abortions after viability.||
+2018|H|157|3/21/2018 4:02:52 PM|HB1802|198|126|22|46|||ITL|relative to the statewide education property tax.||
+2018|H|158|3/21/2018 4:20:41 PM|HB1586|309|9|25|49|||OTP|relative to judicial review for underage marriage.||
+2018|H|159|3/22/2018 10:18:04 AM|HB1313|153|175|27|37|||Adopt Amendment|relative to prohibitions on carrying a loaded firearm on an OHRV or snowmobile.||
+2018|H|160|3/22/2018 10:21:39 AM|HB1313|181|148|26|37|||OTP|relative to prohibitions on carrying a loaded firearm on an OHRV or snowmobile.||
+2018|H|161|3/22/2018 11:18:57 AM|HB1632|216|113|24|39|||ITL|relative to the labeling of bottled water.||
+2018|H|162|3/22/2018 11:44:19 AM|HB1678|227|108|19|38|||ITL|reducing the penalty for certain first offense drug possession charges.||
+2018|H|163|3/22/2018 12:20:09 PM|HB1240|281|44|27|40|||ITL|allowing voters to vote for multiple candidates for an office.||
+2018|H|164|3/22/2018 1:32:59 PM|HB156|113|175|62|42|||Remove From Table|including a fetus in the definition of "another" for purposes of certain criminal offenses.||
+2018|H|165|3/22/2018 1:47:11 PM|HB1728|274|49|27|42|||Table|removing the homestead exemption.||
+2018|H|166|3/22/2018 2:00:28 PM|HB1104|178|148|24|42|||OTPA|(New Title) relative to dredge and fill permit time limits;  relative to time limits under the administrative procedure act; and relative to online filing with the secretary of state's office.||
+2018|H|167|3/22/2018 2:17:55 PM|HB579|165|167|20|40|||Indefinitely Postpone|relative to registration of semi-trailers.||
+2018|H|168|3/22/2018 2:26:32 PM|HB628|164|168|20|40|||Table|relative to a family and medical leave insurance program.||
+2018|H|169|3/22/2018 2:59:49 PM|HB628|156|175|21|40|||Adopt Amendment|relative to a family and medical leave insurance program.||
+2018|H|170|3/22/2018 3:10:08 PM|HB628|171|162|19|40|||OTP|relative to a family and medical leave insurance program.||
+2018|H|171|3/22/2018 3:16:50 PM|HB628|161|169|21|41|||Reconsider|relative to a family and medical leave insurance program.||
+2018|H|172|3/22/2018 3:34:02 PM|HB1763|168|152|28|44|||OTPA|establishing a road usage fee and making an appropriation therefor.||
+2018|H|173|3/22/2018 4:22:01 PM|HB656|153|135|57|47|||Interim Study|relative to the legalization and regulation of marijuana.||
+2018|H|174|4/5/2018 10:12:12 AM|SB313|208|133|19|32|||Adopt Amendment|(New Title) reforming New Hampshire's Medicaid and Premium Assistance Program, establishing the granite workforce pilot program, and relative to certain liquor funds.||
+2018|H|175|4/5/2018 10:21:51 AM|SB313|43|302|15|32|||Adopt Amendment|(New Title) reforming New Hampshire's Medicaid and Premium Assistance Program, establishing the granite workforce pilot program, and relative to certain liquor funds.||
+2018|H|176|4/5/2018 10:46:14 AM|SB313|222|125|13|32|||OTPA|(New Title) reforming New Hampshire's Medicaid and Premium Assistance Program, establishing the granite workforce pilot program, and relative to certain liquor funds.||
+2018|H|177|4/5/2018 11:03:35 AM|SB55|319|25|14|34|||ITL|(New Title) relative to the servicing of backflow devices and arrest powers of fire marshals.||
+2018|H|178|4/5/2018 11:16:51 AM|SB451|191|154|13|34|||Recommit|relative to wildlife trafficking.||
+2018|H|179|4/12/2018 10:07:41 AM|SB532|231|93|31|37|||ITL|relative to group II status of certain department of corrections officials.||
+2018|H|180|4/12/2018 10:13:50 AM|SB33|152|174|29|37|||Remove from Table|relative to the definition of political advocacy organization.||
+2018|H|181|4/12/2018 10:27:18 AM|SB500|184|146|25|37|||OTPA|amending references to firearms terminology.||
+2018|H|182|4/12/2018 10:44:12 AM|SB517|180|155|20|37|||OTP|establishing an electric vehicle charging stations infrastructure commission.||
+2018|H|183|4/12/2018 10:56:09 AM|SB411|170|165|20|37|||Adopt Amendment|(New Title) relative to the research and development tax credit.||
+2018|H|184|4/19/2018 10:24:43 AM|SB316|192|137|29|34|||OTP|relative to the regulation of online auctions.||
+2018|H|185|4/19/2018 10:43:39 AM|SB499|209|122|27|34|||ITL|relative to the applicability of certain DWI prohibitions.||
+2018|H|186|4/19/2018 10:57:30 AM|SB576|180|154|24|34|||ITL|(New Title) relative to  home health services rate setting.||
+2018|H|187|4/19/2018 11:27:31 AM|SB553|214|125|19|34|||OTPA|(New Title) establishing a commission to study the incidence of post traumatic stress disorder in first responders and whether such disorder should be covered under workers' compensation.||
+2018|H|188|4/19/2018 12:02:21 PM|SB503|147|185|26|34|||ITL|relative to increasing the maximum amount of the optional veterans' tax credit.||
+2018|H|189|4/26/2018 10:36:16 AM|SB391|315|22|19|35|||OTPA|(New Title) relative to sexual assault survivors' rights.||
+2018|H|190|4/26/2018 11:25:08 AM|SB593|223|116|17|35|||OTP|relative to the penalty for capital murder.||
+2018|H|191|4/26/2018 11:30:50 AM|CACR22|66|272|18|35|||Table|relating to rights for crime victims.  Providing that crime victims shall be afforded constitutional rights.||
+2018|H|192|4/26/2018 12:19:54 PM|CACR22|284|51|19|37|||ITL|relating to rights for crime victims.  Providing that crime victims shall be afforded constitutional rights.||
+2018|H|193|4/26/2018 2:02:54 PM|SB555|212|103|29|47|||ITL|establishing a citizens' right-to-know appeals commission and a right-to-know law ombudsman and making an appropriation therefor.||
+2018|H|194|4/26/2018 2:37:25 PM|SB451|154|155|33|49|||Adopt Amendment|relative to wildlife trafficking.||
+2018|H|195|4/26/2018 3:06:50 PM|SB318|149|154|36|52|||Adopt Amendment|(New Title) relative to posting and notification requirements for employers, establishing criteria for workplace inspections, and amending certain provisions of the youth employment law.||
+2018|H|196|4/26/2018 3:26:33 PM|SB540|247|49|40|55|||OTPA|(New Title) relative to the operation of keno games in unincorporated places.||
+2018|H|197|4/26/2018 3:55:09 PM|SB564|241|50|43|57|||OTPA|relative to a business tax exemption and a workforce development program for regenerative manufacturing businesses.||
+2018|H|198|5/2/2018 10:40:54 AM|SB383|170|164|22|35|||ITL|(New Title) establishing a commission to recommend policies that will enhance access to affordable health care for all New Hampshire residents.||
+2018|H|199|5/2/2018 10:59:30 AM|SB427|161|175|20|35|||OTP|limiting the liability of successor corporations for asbestos-related claims.||
+2018|H|200|5/2/2018 11:17:43 AM|SB421|219|111|27|34|||OTPA|relative to insurance coverage for prescription contraceptives.||
+2018|H|201|5/2/2018 11:33:54 AM|SB502|170|160|27|34|||Interim Study|relative to transparency and standards for acquisition transactions in health care.||
+2018|H|202|5/2/2018 12:01:58 PM|SB525|233|97|27|34|||Interim Study|(New Title) prohibiting the distribution of adult education financial assistance to any student who is not a legal resident.||
+2018|H|203|5/2/2018 2:07:29 PM|SB569|205|125|28|33|||Adopt Amendment|(New Title) relative to animal cruelty and establishing a commission to study certain language applicable to the transfer of animals.||
+2018|H|204|5/2/2018 2:09:39 PM|SB569|222|111|25|33|||OTPA|(New Title) relative to animal cruelty and establishing a commission to study certain language applicable to the transfer of animals.||
+2018|H|205|5/2/2018 3:02:33 PM|SB438|178|158|22|33|||Adopt Amendment|relative to the postponement of local elections.||
+2018|H|206|5/2/2018 3:13:46 PM|SB377|274|49|33|35|||OTPA|relative to the regulation of dentists and dental hygienists by the board of dental examiners.||
+2018|H|207|5/2/2018 3:26:20 PM|SB535|169|157|30|35|||Adopt Amendment|(New Title) relative to licensure for the practice of professional art therapy and establishing an advisory council on alternative mental health therapies, and relative to certain revenues from the sale of commemorative liquor bottles of historic signific|ance.|
+2018|H|208|5/2/2018 3:28:15 PM|SB535|174|156|26|35|||OTPA|(New Title) relative to licensure for the practice of professional art therapy and establishing an advisory council on alternative mental health therapies, and relative to certain revenues from the sale of commemorative liquor bottles of historic signific|ance.|
+2018|H|209|5/2/2018 3:34:24 PM|SB193|15|314|27|35|||Table|establishing education freedom savings accounts for students.||
+2018|H|210|5/2/2018 4:04:43 PM|SB193|170|159|25|37|||Interim Study|establishing education freedom savings accounts for students.||
+2018|H|211|5/2/2018 4:08:32 PM||166|158|30|37|||Third Reading|||
+2018|H|212|5/3/2018 9:44:17 AM|SB189|154|178|27|32|||Interim Study|requiring insurance policies to cover 3-D mammography.||
+2018|H|213|5/3/2018 9:55:35 AM|SB193|165|172|22|32|||Reconsider|establishing education freedom savings accounts for students.||
+2018|H|214|5/3/2018 10:00:41 AM|SB313|303|29|27|32|||Adopt Amendment|(New Title) reforming New Hampshire's Medicaid and Premium Assistance Program, establishing the granite workforce pilot program, and relative to certain liquor funds.||
+2018|H|215|5/3/2018 10:05:59 AM|SB313|92|236|31|32|||Adopt Amendment|(New Title) reforming New Hampshire's Medicaid and Premium Assistance Program, establishing the granite workforce pilot program, and relative to certain liquor funds.||
+2018|H|216|5/3/2018 10:13:27 AM|SB565|313|16|29|33|||OTPA|relative to aircraft registration fees and airways tolls.||
+2018|H|217|5/3/2018 10:17:51 AM|SB590|315|14|30|32|||OTPA|(New Title) making a supplemental appropriation to the state loan repayment program and relative to emergency involuntary admissions, the child protection act, and the developmental disabilities wait list and making appropriations therefor.||
+2018|H|218|5/3/2018 10:21:29 AM|SB420|234|95|30|32|||ITL|relative to collective bargaining under the right-to-know law.||
+2018|H|219|5/3/2018 10:49:10 AM|SB365|225|108|26|32|||OTPA|(New Title) relative to the use of renewable generation in default service.||
+2018|H|220|5/3/2018 11:02:45 AM|SB447|173|161|24|33|||ITL|relative to issuance of renewable energy certificates.||
+2018|H|221|5/3/2018 11:28:24 AM|SB446|116|213|28|34|||Adopt Amendment|relative to net energy metering limits for customer-generators.||
+2018|H|222|5/3/2018 11:41:30 AM|SB577|254|64|40|33|||OTPA|(New Title) requiring the public utilities commission to consider its order affecting the Burgess BioPower plant in Berlin, prohibiting the import of certain liquid fuels, and relative to the production of useful thermal energy.||
+2018|H|223|5/10/2018 10:24:25 AM|HB1636|168|173|19|31|||CofC|||
+2018|H|224|5/10/2018 10:26:02 AM|HB1636|180|163|17|31|||Non Concur|||
+2018|H|225|5/10/2018 10:42:41 AM|HB1817|283|61|17|30|||CofC|||
+2018|H|226|5/10/2018 10:54:34 AM|HB587|163|182|16|30|||CofC|||
+2018|H|227|5/10/2018 10:58:42 AM|HB587|158|187|16|30|||Reconsider|||
+2018|H|228|5/10/2018 11:50:24 AM|HB1264|182|156|23|30|||Concur|||
+2018|H|229|5/10/2018 12:06:46 PM|HB1565|158|183|19|31|||Concur|||
+2018|H|230|5/10/2018 12:11:20 PM|HB1756|248|84|28|31|||Concur|||
+2018|H|231|5/10/2018 12:24:50 PM|HB1807|171|164|25|31|||Concur|||
+2018|H|232|5/10/2018 12:55:39 PM|HB1592|194|137|26|34|||Concur|||
+2018|H|233|5/23/2018 10:31:16 AM|SB318|182|156|26|27|||Adopt CofC|(Second New Title) relative to posting and notification requirements for employers, establishing criteria for workplace inspections, and amending certain provisions of the youth employment law.||
+2018|H|234|5/23/2018 11:00:03 AM|SB438|118|225|22|26|||Adopt CofC|relative to the postponement of local elections.||
+2018|H|235|5/23/2018 11:19:25 AM|SB527|182|159|25|25|||Adopt CofC|(New Title) relative to absentee voting and relative to the statewide centralized voter registration database.||
+2018|H|236|5/23/2018 11:23:35 AM||174|169|23|25|||Print Remarks|||
+2018|H|237|5/23/2018 11:36:45 AM|SB564|259|79|28|25|||Adopt CofC|relative to a business tax exemption and a workforce development program for regenerative manufacturing businesses.||
+2018|H|238|5/23/2018 11:53:59 AM|HB317|158|180|28|25|||Table|(New Title) relative to changes in the system benefits charge.||
+2018|H|239|5/23/2018 11:58:46 AM|HB1415|262|76|28|25|||Adopt CofC|(New Title) making an appropriation to the public school infrastructure fund to improve security in public schools.||
+2018|H|240|5/23/2018 12:22:59 PM|HB1614|150|187|29|25|||Adopt CofC|(New Title) relative to the international registration plan and relative to registration of semi-trailers.||
+2018|H|241|5/23/2018 12:39:20 PM|HB1817|242|92|32|25|||Adopt CofC|(Eighth New Title) establishing the position of state demographer and a commission on demographic trends; requiring state agencies to prepare 10-year current services cost projections; relative to the inclusion of a demographic analysis as part of the leg||
+2018|H|242|5/23/2018 12:51:30 PM|HB1254|173|155|38|25|||Adopt CofC|(Second New Title) establishing a committee to study procedures for adoption of national codes by the state of New Hampshire; establishing a moratorium on the adoption of changes to the state building code and state fire code; and repealing the joint legi||
+2018|H|243|7/25/2018 11:15:24 AM||125|188|22|49|||Amend Rules Hoell|||
+2018|H|244|7/25/2018 11:21:54 AM||98|216|21|49|||Amend Rule 26|||
+2018|H|245|7/25/2018 11:29:26 AM||235|79|21|49|||Adopt Rules|||
+2018|H|246|7/25/2018 12:06:32 PM|SSSB1|164|151|20|49|||Adopt Amendment|requiring notice and approval of certain actions to commence audits of collection liabilities arising under certain sales and use tax statutes and prohibiting New Hampshire remote sellers from disclosing private customer information to foreign taxing auth||
+2018|H|248|9/13/2018 11:20:52 AM|HB143|255|89|18|19|||Veto Override|relative to recommittal of a prisoner by the parole board.||
+2018|H|249|9/13/2018 11:27:17 AM|HB314|279|66|17|19|||Veto Override|(Third New Title) relative to licensing requirements for autonomous vehicle testing and establishing an automated and connected vehicle testing and deployment commission.||
+2018|H|250|9/13/2018 11:31:46 AM|HB1736|266|79|17|19|||Veto Override|relative to increasing the threshold required for governor and council approval of expenditures from the dam maintenance fund.||
+2018|H|251|9/13/2018 1:16:37 PM|SB365|226|113|22|20|||Veto Override|(Second New Title) relative to the use of renewable generation to provide fuel diversity.||
+2018|H|252|9/13/2018 1:48:42 PM|SB446|213|128|20|20|||Veto Override|relative to net energy metering limits for customer-generators.||
+2018|S|1|1/3/2018 12:00:00 AM|SB84|14|9|23|1|||Committee Amendment 2552s|(New Title) relative to payment of workers' compensation benefits by direct deposit and authorizing electronic payment of payroll.||1/5/2018 3:15:33 PM
+2018|S|2|1/3/2018 12:00:00 AM|SB189|2|21|23|1|||Committee Amendment 2553s|requiring insurance policies to cover 3-D mammography.||1/5/2018 3:15:40 PM
+2018|S|3|1/3/2018 12:00:00 AM|SB189|23|0|23|1|||Ought to Pass|requiring insurance policies to cover 3-D mammography.||1/5/2018 3:15:45 PM
+2018|S|4|1/3/2018 12:00:00 AM|HB549|18|5|23|1|||Ought to Pass|relative to beverage vendor fees.||1/5/2018 3:15:51 PM
+2018|S|5|1/3/2018 12:00:00 AM|SB112|21|2|23|1|||Ought to Pass with Amendment|establishing a council on the creative economy.||1/5/2018 3:15:57 PM
+2018|S|6|1/3/2018 12:00:00 AM|HB372|14|9|23|1|||Committee Amendment 2536s|relative to construction of the terms "resident," "inhabitant," "residence," and "residency."||1/5/2018 3:16:10 PM
+2018|S|7|1/3/2018 12:00:00 AM|HB372|14|9|23|1|||Ought to Pass with Amendment|relative to construction of the terms "resident," "inhabitant," "residence," and "residency."||1/5/2018 3:16:16 PM
+2018|S|8|1/3/2018 12:00:00 AM|HB121|11|12|23|1|||Ought to Pass with Amendment|relative to the maximum optional fee for transportation improvements charged by municipalities when collecting motor vehicle registration fees.||1/5/2018 3:16:23 PM
+2018|S|9|1/3/2018 12:00:00 AM|SB75|14|9|23|1|||Interim Study|establishing a tax credit against business profits taxes for donations to career and technical education centers.||1/5/2018 3:16:28 PM
+2018|S|10|1/3/2018 12:00:00 AM|SB75|14|9|23|1|||Interim Study|establishing a tax credit against business profits taxes for donations to career and technical education centers.||1/5/2018 3:16:36 PM
+2018|S|11|1/3/2018 12:00:00 AM|SB76|12|11|23|1|||Interim Study|establishing an option to rebate the research and development tax credit against business profits taxes, and making an appropriation therefor.||1/5/2018 3:16:41 PM
+2018|S|12|1/3/2018 12:00:00 AM|HB574|14|9|23|1|||Interim Study|increasing the limit on contributions to the community development finance authority for which an investment tax credit may be taken.||1/5/2018 3:16:47 PM
+2018|S|13|1/3/2018 12:00:00 AM|HB614|19|4|23|1|||Interim Study|relative to forfeiture of personal property.||1/5/2018 3:16:53 PM
+2018|S|14|1/18/2018 12:00:00 AM|SB399|23|0|23|1|||Ought to Pass|naming a bridge in Concord in honor of David E. Powelson.||1/19/2018 2:13:26 PM
+2018|S|15|1/18/2018 12:00:00 AM|SB92|3|21|24|0|||Inexpedient to Legislate|relative to the consumer complaint process at the banking department.||1/19/2018 2:13:32 PM
+2018|S|16|1/18/2018 12:00:00 AM|SB399|24|0|24|0|||Ought to Pass|naming a bridge in Concord in honor of David E. Powelson.||1/19/2018 2:13:39 PM
+2018|S|17|1/18/2018 12:00:00 AM|HB561|21|3|24|0|||Committee Amendment 0110s|(Second Title) relative to part-time employment of a retirement system retiree by a participating employer.||1/19/2018 2:13:45 PM
+2018|S|18|1/18/2018 12:00:00 AM|HB561|4|20|24|0|||Floor Amendment 0172s|(Second Title) relative to part-time employment of a retirement system retiree by a participating employer.||1/19/2018 2:14:36 PM
+2018|S|19|1/18/2018 12:00:00 AM|HB561|17|7|24|0|||Ought to Pass with Amendment|(Second Title) relative to part-time employment of a retirement system retiree by a participating employer.||1/19/2018 2:21:34 PM
+2018|S|20|1/18/2018 12:00:00 AM|SB375|23|1|24|0|||Ought to Pass|requiring gross expenditures and funding in the state operating budget.||1/19/2018 2:21:40 PM
+2018|S|21|1/18/2018 12:00:00 AM|SB334|24|0|24|0|||Ought to Pass with Amendment|relative to temporary licensure of allied health professionals from nearby states.||1/19/2018 2:21:46 PM
+2018|S|22|1/18/2018 12:00:00 AM|CACR20|13|11|24|0|||Ought to Pass|relating to the retirement age of judges. Providing that the retirement age of judges be increased.||1/19/2018 2:21:54 PM
+2018|S|23|1/18/2018 12:00:00 AM|CACR20|11|13|24|0|||Inexpedient to Legislate|relating to the retirement age of judges. Providing that the retirement age of judges be increased.||1/19/2018 2:22:00 PM
+2018|S|24|1/18/2018 12:00:00 AM|CACR20|13|11|24|0|||Laid on Table|relating to the retirement age of judges. Providing that the retirement age of judges be increased.||1/19/2018 2:22:06 PM
+2018|S|25|1/18/2018 12:00:00 AM|SB330|20|4|24|0|||Inexpedient to Legislate|requiring the department of environmental services to give certain persons time to cure violations before imposing a penalty.||1/19/2018 2:22:12 PM
+2018|S|26|1/18/2018 12:00:00 AM|SB247|18|6|24|0|||Concur|(New Title) preventing childhood lead poisoning from paint and water.||1/19/2018 2:22:17 PM
+2018|S|27|2/1/2018 12:00:00 AM|SB402|22|0|23|2|||Ought to Pass|naming a portion of route 110 in Berlin in honor of Anthony B. Urban.||2/2/2018 1:16:46 PM
+2018|S|28|2/1/2018 12:00:00 AM|SB402|23|0|23|1|||Ought to Pass|naming a portion of route 110 in Berlin in honor of Anthony B. Urban.||2/2/2018 1:16:52 PM
+2018|S|29|2/1/2018 12:00:00 AM|SB528|17|6|23|1|||Ought to Pass with Amendment|relative to dam registration fees and relative to permit fees for constructing or reconstructing a dam.||2/2/2018 1:17:15 PM
+2018|S|30|2/1/2018 12:00:00 AM|SB457|13|10|23|1|||Inexpedient to Legislate|waiving initial licensure fees for indigent applicants for certain professions.||2/2/2018 1:17:20 PM
+2018|S|31|2/1/2018 12:00:00 AM|SB465|13|10|23|1|||Laid on Table|relative to documentation requirements for the department of labor.||2/2/2018 1:17:25 PM
+2018|S|32|2/1/2018 12:00:00 AM|SB63|14|9|23|1|||Committee Amendment 0260s|(Second New Title) relative to record management of abuse and neglect reports and establishing a pilot program regarding electronic storage of abuse and neglect records.||2/2/2018 1:17:30 PM
+2018|S|33|2/1/2018 12:00:00 AM|SB63|23|0|23|1|||Ought to Pass with Amendment|(Second New Title) relative to record management of abuse and neglect reports and establishing a pilot program regarding electronic storage of abuse and neglect records.||2/2/2018 1:17:36 PM
+2018|S|34|2/1/2018 12:00:00 AM|HB549|14|9|23|1|||Committee Amendment 0153s|relative to beverage vendor fees.||2/2/2018 1:17:41 PM
+2018|S|35|2/1/2018 12:00:00 AM|HB549|15|8|23|1|||Ought to Pass with Amendment|relative to beverage vendor fees.||2/2/2018 1:17:46 PM
+2018|S|36|2/1/2018 12:00:00 AM|SB492|14|9|23|1|||Refer to Interim Study|prohibiting bump stocks in New Hampshire.||2/2/2018 1:17:52 PM
+2018|S|37|2/15/2018 12:00:00 AM|SB352|10|14|24|0|||Ought to Pass|relative to examinations of injured employees under workers' compensation law.||2/16/2018 10:48:00 AM
+2018|S|38|2/15/2018 12:00:00 AM|SB352|22|2|24|0|||Interim Study|relative to examinations of injured employees under workers' compensation law.||2/16/2018 10:48:09 AM
+2018|S|39|2/15/2018 12:00:00 AM|SB416|14|10|24|0|||Ought to Pass|relative to transportation network company drivers.||2/16/2018 10:48:14 AM
+2018|S|40|2/15/2018 12:00:00 AM|SB554|14|10|24|0|||Inexpedient to Legislate|relative to the minimum hourly rate and employer-sponsored health benefits.||2/16/2018 10:48:19 AM
+2018|S|41|2/15/2018 12:00:00 AM|SB362|14|10|24|0|||Inexpedient to Legislate|requiring disclosure of federal income tax returns by presidential and vice-presidential candidates.||2/16/2018 10:48:25 AM
+2018|S|42|2/15/2018 12:00:00 AM|SB363|24|0|24|0|||Ought to Pass with Amendment|prohibiting political expenditures by foreign nationals.||2/16/2018 10:48:30 AM
+2018|S|43|2/15/2018 12:00:00 AM|SB439|14|10|24|0|||Inexpedient to Legislate|repealing the authority to share voter information or data with other states.||2/16/2018 10:49:19 AM
+2018|S|44|2/15/2018 12:00:00 AM|SB513|24|0|24|0|||Ought to Pass|establishing September as New Hampshire recovery month.||2/16/2018 10:49:24 AM
+2018|S|45|2/15/2018 12:00:00 AM|CACR21|14|10|24|0|||Inexpedient to Legislate|relative to alcohol and drug abuse prevention. Providing that a portion of liquor commission revenue shall be used for alcohol and drug abuse prevention.||2/16/2018 10:49:30 AM
+2018|S|46|2/15/2018 12:00:00 AM|SB542|14|10|24|0|||Inexpedient to Legislate|relative to the use of funds in the revenue stabilization reserve account for public health emergencies.||2/16/2018 10:49:35 AM
+2018|S|47|2/15/2018 12:00:00 AM|HB561|11|13|24|0|||Inexpedient to Legislate|(Second New Title) relative to part-time employment of a retirement system retiree by a participating employer.||2/16/2018 10:49:42 AM
+2018|S|48|2/15/2018 12:00:00 AM|SB381|15|9|24|0|||Inexpedient to Legislate|deleting immunization/vaccination requirements for Hepatitis B.||2/16/2018 10:49:47 AM
+2018|S|49|2/22/2018 12:00:00 AM|SB334|13|9|22|2|||Committee Amendment 0610s|(New Title) relative to temporary licenses for occupations and professions for persons from other states.||2/23/2018 12:54:29 PM
+2018|S|50|2/22/2018 12:00:00 AM|SB334|14|8|22|2|||Ought to Pass with Amendment|(New Title) relative to temporary licenses for occupations and professions for persons from other states.||2/23/2018 12:54:37 PM
+2018|S|51|2/22/2018 12:00:00 AM|SB490|10|12|22|2|||Committee Amendment 0652s|establishing a commission to study end-of-life choices.||2/23/2018 12:54:42 PM
+2018|S|52|2/22/2018 12:00:00 AM|SB490|10|12|22|2|||Sen. Hennessey  Floor Amendment 0827s|establishing a commission to study end-of-life choices.||2/23/2018 12:54:48 PM
+2018|S|53|2/22/2018 12:00:00 AM|SB490|10|12|22|2|||Ought to Pass|establishing a commission to study end-of-life choices.||2/23/2018 12:54:53 PM
+2018|S|54|2/22/2018 12:00:00 AM|SB490|12|10|22|2|||Inexpedient to Legislate|establishing a commission to study end-of-life choices.||2/23/2018 12:55:00 PM
+2018|S|55|2/22/2018 12:00:00 AM|SB503|11|11|22|2|||Inexpedient to Legislate|relative to increasing the maximum amount of the optional veterans' tax credit.||2/23/2018 12:55:06 PM
+2018|S|56|2/22/2018 12:00:00 AM|SB503|22|0|22|2|||Sen. Gannon Floor Amendment 0793s|relative to increasing the maximum amount of the optional veterans' tax credit.||2/23/2018 12:55:12 PM
+2018|S|57|2/22/2018 12:00:00 AM|SB503|22|0|22|2|||Ought to Pass with Amendment|relative to increasing the maximum amount of the optional veterans' tax credit.||2/23/2018 12:55:19 PM
+2018|S|58|2/22/2018 12:00:00 AM|SB561|22|0|22|2|||Committee Amendment 0624s|(Second New Title) naming a bridge over the Little River between the towns of Plaistow and Atkinson the Lance Corporal Dimitrios Gavriel bridge.||2/23/2018 12:55:24 PM
+2018|S|59|2/22/2018 12:00:00 AM|SB561|22|0|22|2|||Ought to Pass with Amendment|(Second New Title) naming a bridge over the Little River between the towns of Plaistow and Atkinson the Lance Corporal Dimitrios Gavriel bridge.||2/23/2018 12:55:29 PM
+2018|S|60|2/22/2018 12:00:00 AM|SB575|19|3|22|2|||Ought to Pass with Amendment|relative to electric vehicle charging stations.||2/23/2018 12:55:34 PM
+2018|S|61|2/22/2018 12:00:00 AM|SB301|22|0|22|2|||Ought to Pass with Amendment|temporarily reducing the real estate transfer tax for first-time home buyers.||2/23/2018 12:55:39 PM
+2018|S|62|2/22/2018 12:00:00 AM|SB404|12|9|22|2|||Ought to Pass|phasing out the tax on interest and dividends.||2/23/2018 12:55:45 PM
+2018|S|63|2/22/2018 12:00:00 AM|SB565|18|4|22|2|||Ought to Pass|relative to aircraft registration fees and airways tolls.||2/23/2018 12:55:51 PM
+2018|S|64|3/8/2018 12:00:00 AM|SB431|13|11|24|0|||Inexpedient to Legislate|relative to non-academic surveys required to be filed by school districts to maintain federal funding.||3/9/2018 4:37:18 PM
+2018|S|65|3/8/2018 12:00:00 AM|SB438|15|9|24|0|||Committee Amendment 0591s|relative to the postponement of local elections.||3/9/2018 4:37:28 PM
+2018|S|66|3/8/2018 12:00:00 AM|SB438|8|16|24|0|||Sen. Fuller Clark Floor Amendment 0822s|relative to the postponement of local elections.||3/9/2018 4:37:35 PM
+2018|S|67|3/8/2018 12:00:00 AM|SB569|19|5|24|0|||Ought to Pass with Amendment|(New Title) relative to animal cruelty and establishing a commission to study certain language applicable to the transfer of animals.||3/9/2018 4:37:40 PM
+2018|S|68|3/8/2018 12:00:00 AM|SB577|20|4|24|0|||Ought to Pass with Amendment|(New Title) requiring the public utilities commission to consider its order affecting the Burgess BioPower plant in Berlin, prohibiting the import of certain liquid fuels, and relative to the production of useful thermal energy.||3/9/2018 4:37:44 PM
+2018|S|69|3/8/2018 12:00:00 AM|SB570|24|0|24|0|||Ought to Pass|relative to the work requirement for the child care scholarship program.||3/9/2018 4:37:49 PM
+2018|S|70|3/8/2018 12:00:00 AM|SB559|18|6|24|0|||Committee Amendment 0788s|(New Title) establishing a committee to study the construction of sound barriers on type I and type II highways.||3/9/2018 4:37:54 PM
+2018|S|71|3/8/2018 12:00:00 AM|SB587|14|10|24|0|||Inexpedient to Legislate|relative to the collection of fees for public parking facilities.||3/9/2018 4:37:59 PM
+2018|S|72|3/8/2018 12:00:00 AM|SB317|2|22|24|0|||Refer to Interim Study|relative to veterans' preference in public employment.||3/9/2018 4:38:04 PM
+2018|S|73|3/8/2018 12:00:00 AM|SB317|24|0|24|0|||Ought to Pass|relative to veterans' preference in public employment.||3/9/2018 4:38:08 PM
+2018|S|74|3/8/2018 12:00:00 AM|SB422|10|14|24|0|||Inexpedient to Legislate|relative to advance notice of work schedules.||3/9/2018 4:38:13 PM
+2018|S|75|3/8/2018 12:00:00 AM|SB422|10|14|24|0|||Laid on Table|relative to advance notice of work schedules.||3/9/2018 4:38:19 PM
+2018|S|76|3/8/2018 12:00:00 AM|SB422|11|13|24|0|||Sen. French Floor Amendment 1002s|relative to advance notice of work schedules.||3/9/2018 4:38:22 PM
+2018|S|77|3/8/2018 12:00:00 AM|SB422|14|10|24|0|||Laid on Table|relative to advance notice of work schedules.||3/9/2018 4:38:27 PM
+2018|S|78|3/8/2018 12:00:00 AM|SB313|18|6|24|0|||Committee Amendment 0984s|(New Title) reforming New Hampshire's Medicaid and Premium Assistance Program, establishing the granite workforce pilot program, and relative to certain liquor funds.||3/9/2018 4:38:30 PM
+2018|S|79|3/8/2018 12:00:00 AM|SB313|10|14|24|0|||Sen. Feltes Floor Amendment 1036s|(New Title) reforming New Hampshire's Medicaid and Premium Assistance Program, establishing the granite workforce pilot program, and relative to certain liquor funds.||3/9/2018 4:38:34 PM
+2018|S|80|3/8/2018 12:00:00 AM|SB313|5|19|24|0|||Sen. Sanborn Floor Amendment 1030s|(New Title) reforming New Hampshire's Medicaid and Premium Assistance Program, establishing the granite workforce pilot program, and relative to certain liquor funds.||3/9/2018 4:38:37 PM
+2018|S|81|3/8/2018 12:00:00 AM|SB313|7|17|24|0|||Sen. Giuda Floor Amendment 0998s|(New Title) reforming New Hampshire's Medicaid and Premium Assistance Program, establishing the granite workforce pilot program, and relative to certain liquor funds.||3/9/2018 4:38:41 PM
+2018|S|82|3/8/2018 12:00:00 AM|SB313|17|7|24|0|||Ought to Pass with Amendment|(New Title) reforming New Hampshire's Medicaid and Premium Assistance Program, establishing the granite workforce pilot program, and relative to certain liquor funds.||3/9/2018 4:38:44 PM
+2018|S|83|3/8/2018 12:00:00 AM|SB423|9|14|23|1|||Inexpedient to Legislate|relative to noncompete clauses for low-wage employees.||3/9/2018 4:46:33 PM
+2018|S|84|3/8/2018 12:00:00 AM|SB 426|13|10|23|1|||Inexpedient to Legislate|relative to the commission on primary care workforce issues.||3/9/2018 4:46:41 PM
+2018|S|85|3/8/2018 12:00:00 AM|SB426|12|11|23|1|||Inexpedient to Legislate|relative to the commission on primary care workforce issues.||3/9/2018 4:46:45 PM
+2018|S|86|3/8/2018 12:00:00 AM|SB427|14|9|23|1|||Ought to Pass with Amendment| limiting the liability of successor corporations for asbestos-related claims.||3/9/2018 4:46:50 PM
+2018|S|87|3/8/2018 12:00:00 AM|SB567|12|11|23|1|||Interim Study|relative to workforce development and job training.||3/9/2018 4:46:54 PM
+2018|S|88|3/8/2018 12:00:00 AM|SB526|19|4|23|1|||Ought to Pass with Amendment|(Second New Title) relative to school food and nutrition programs.||3/9/2018 4:46:57 PM
+2018|S|89|3/8/2018 12:00:00 AM|SB589|14|9|23|1|||Ought to Pass|relative to regulation of certified recovery support workers.||3/9/2018 4:46:59 PM
+2018|S|90|3/8/2018 12:00:00 AM|SB301|19|4|23|1|||Ought to Pass|temporarily reducing the real estate transfer tax for first-time home buyers.||3/9/2018 4:47:02 PM
+2018|S|91|3/8/2018 12:00:00 AM|SB432|10|13|23|1|||Inexpedient to Legislate|(New Title) establishing a commission to study whether it is in the best interest of students  to require schools to offer an SAT preparation course as an elective.||3/9/2018 4:47:24 PM
+2018|S|92|3/8/2018 12:00:00 AM|SB565|19|4|23|1|||Ought to Pass|relative to aircraft registration fees and airways tolls.||3/9/2018 4:47:27 PM
+2018|S|93|3/14/2018 12:00:00 AM|SB568|1|23|24|0|||Sen. Reagan Floor Amendment 1033s|relative to criminal history record checks for school employees and certain volunteers.||4/3/2018 11:26:28 AM
+2018|S|94|3/14/2018 12:00:00 AM|SB463|23|1|24|0|||Inexpedient to Legislate|establishing an architectural paint can recycling program.||4/3/2018 11:26:36 AM
+2018|S|95|3/14/2018 12:00:00 AM|SB540|10|14|24|0|||Sen. Feltes Floor Amendment 1034|(New Title) relative to the counting of kindergarteners for "average daily membership in attendance" and relative to the operation of keno games in unincorporated places.||4/3/2018 11:26:42 AM
+2018|S|96|3/14/2018 12:00:00 AM|SB546|14|10|24|0|||Ought to Pass with Amendment|relative to purchasing alliances.||4/3/2018 11:26:48 AM
+2018|S|97|3/14/2018 12:00:00 AM|SB582|24|0|24|0|||Ought to Pass with Amendment|(New Title) authorizing an assessment to determine appropriate caseload and workload standards for the division for children, youth and families; establishing additional child protection services positions in the division for children, youth and families;|  relative to foster care and adoption programs and services; and making appropriations therefor.|4/3/2018 11:27:11 AM
+2018|S|98|3/14/2018 12:00:00 AM|SB590|24|0|24|0|||Committee Amendment 0991|(New Title) making a supplemental appropriation to the state loan repayment program and relative to emergency involuntary admissions, the child protection act, and the developmental disabilities wait list and making appropriations therefor.||4/3/2018 11:27:18 AM
+2018|S|99|3/14/2018 12:00:00 AM|SB388|12|12|24|0|||Sen. Feltes Floor Amendment 1086|(New Title) relative to dispensary locations for therapeutic cannabis.||4/3/2018 11:27:26 AM
+2018|S|100|3/15/2018 12:00:00 AM|SB388|13|11|24|0|||Sen. Kahn Floor Amendment 1086s| (New Title) relative to dispensary locations for therapeutic cannabis.||4/3/2018 11:27:51 AM
+2018|S|101|3/15/2018 12:00:00 AM|SB461|12|12|24|0|||Ought to Pass with Amendment|relative to continuing education for real estate brokers and salespersons.||4/3/2018 11:27:56 AM
+2018|S|102|3/15/2018 12:00:00 AM|SB466|14|10|24|0|||Inexpedient to Legislate|relative to political activities of commissioners of state agencies.||4/3/2018 11:28:02 AM
+2018|S|103|3/15/2018 12:00:00 AM|SB342|14|10|24|0|||Sen. Daniels Floor Amendment 1014s|(Second New Title) requiring identification of specific items in the default budget.||4/3/2018 11:28:10 AM
+2018|S|104|3/15/2018 12:00:00 AM|SB342|14|10|24|0|||Ought to Pass with Amendment|(Second New Title) requiring identification of specific items in the default budget.||4/3/2018 11:28:14 AM
+2018|S|105|3/15/2018 12:00:00 AM|SB403|23|1|24|0|||Ought to Pass with Amendment|relative to the exemption for recreational vehicles from property taxation.||4/3/2018 11:28:19 AM
+2018|S|106|3/15/2018 12:00:00 AM|SB331|12|12|24|0|||Inexpedient to Legislate|prohibiting Medicaid from paying for sex reassignment drug or hormone therapy or surgery.||4/3/2018 11:28:24 AM
+2018|S|107|3/15/2018 12:00:00 AM|SB331|13|11|24|0|||Inexpedient to Legislate|prohibiting Medicaid from paying for sex reassignment drug or hormone therapy or surgery.||4/3/2018 11:28:31 AM
+2018|S|108|3/15/2018 12:00:00 AM|SB331|12|12|24|0|||Inexpedient to Legislate|prohibiting Medicaid from paying for sex reassignment drug or hormone therapy or surgery.||4/3/2018 11:28:34 AM
+2018|S|109|3/15/2018 12:00:00 AM|SB404|11|12|24|0|||Inexpedient to Legislate|phasing out the tax on interest and dividends.||4/3/2018 11:28:39 AM
+2018|S|110|3/15/2018 12:00:00 AM|SB404|12|11|23|0|||Lay on Table|phasing out the tax on interest and dividends.||4/3/2018 11:28:47 AM
+2018|S|111|3/15/2018 12:00:00 AM|SB543|14|10|24|0|||Inexpedient to Legislate|relative to health care premium payments for certain retired state workers.||4/3/2018 11:29:11 AM
+2018|S|112|3/15/2018 12:00:00 AM|SB555|11|13|24|0|||Inexpedient to Legislate|establishing a citizens' right-to-know appeals commission and a right-to-know law ombudsman and making an appropriation therefor.||4/3/2018 11:29:16 AM
+2018|S|113|3/15/2018 12:00:00 AM|SB555|13|11|24|0|||Ought to Pass|establishing a citizens' right-to-know appeals commission and a right-to-know law ombudsman and making an appropriation therefor.||4/3/2018 11:29:24 AM
+2018|S|114|3/15/2018 12:00:00 AM|SB583|14|10|24|0|||Inexpedient to Legislate|establishing a pilot program to eliminate employment barriers for certain parents.||4/3/2018 11:32:35 AM
+2018|S|115|3/15/2018 12:00:00 AM|SB501|18|6|24|0|||Sen. Carson Floor Amendment 1078s|relative to immunity for campground owners.||4/3/2018 11:29:37 AM
+2018|S|116|3/15/2018 12:00:00 AM|SB593|14|10|24|0|||Ought to Pass|relative to the penalty for capital murder.||4/3/2018 11:29:43 AM
+2018|S|117|3/15/2018 12:00:00 AM|SB423|10|14|24|0|||Sen. Watters Floor Amendment 1041s|relative to noncompete clauses for low-wage employees.||4/3/2018 11:30:03 AM
+2018|S|118|3/15/2018 12:00:00 AM|SB423|10|14|24|0|||Ought to Pass|relative to noncompete clauses for low-wage employees.||4/3/2018 11:30:07 AM
+2018|S|119|3/15/2018 12:00:00 AM|SB423|14|10|24|0|||Inexpedient to Legislate|relative to noncompete clauses for low-wage employees.||4/3/2018 11:30:12 AM
+2018|S|120|3/15/2018 12:00:00 AM|SB525|11|13|24|0|||Inexpedient to Legislate|(New Title) prohibiting the distribution of adult education financial assistance to any student who is not a legal resident.||4/3/2018 11:30:17 AM
+2018|S|121|3/15/2018 12:00:00 AM|SB525|13|11|24|0|||Sen. Sanborn Floor Amendment 1023s|(New Title) prohibiting the distribution of adult education financial assistance to any student who is not a legal resident.||4/3/2018 11:30:33 AM
+2018|S|122|3/15/2018 12:00:00 AM|SB525|11|13|24|0|||Lay On Table|(New Title) prohibiting the distribution of adult education financial assistance to any student who is not a legal resident.||4/3/2018 11:30:38 AM
+2018|S|123|3/15/2018 12:00:00 AM|SB525|13|11|24|0|||Ought to Pass with Amendment|(New Title) prohibiting the distribution of adult education financial assistance to any student who is not a legal resident.||4/3/2018 11:32:18 AM
+2018|S|124|3/15/2018 12:00:00 AM|SB499|20|4|24|0|||Ought to Pass with Amendment|relative to the applicability of certain DWI prohibitions.||4/3/2018 11:30:59 AM
+2018|S|125|3/15/2018 12:00:00 AM|HB287|20|4|24|0|||Inexpedient to Legislate|establishing a committee to study decriminalizing sex work.||4/3/2018 11:31:04 AM
+2018|S|126|3/15/2018 12:00:00 AM|HB287|21|3|24|0|||Inexpedient to Legislate|establishing a committee to study decriminalizing sex work.||4/3/2018 11:31:17 AM
+2018|S|127|3/21/2018 12:00:00 AM|SB418|14|9|23|1|||Sen. Bradley Floor Amendment 1134s|(Second New Title) relative to beverage manufacturers and nano breweries and defining table wine.||4/3/2018 10:10:13 AM
+2018|S|128|3/21/2018 12:00:00 AM|SB418|15|8|23|1|||Ought to Pass with Amendment|(Second New Title) relative to beverage manufacturers and nano breweries and defining table wine.||4/3/2018 10:10:23 AM
+2018|S|129|3/21/2018 12:00:00 AM|SB420|12|11|23|1|||Ought to Pass|relative to collective bargaining under the right-to-know law.||4/3/2018 10:10:31 AM
+2018|S|130|3/21/2018 12:00:00 AM|SB421|22|1|23|1|||Ought to Pass|relative to insurance coverage for prescription contraceptives.||4/3/2018 10:10:40 AM
+2018|S|131|3/21/2018 12:00:00 AM|SB357|9|14|23|1|||Sen. Hennessey Floor Amendment 1173s|(New Title) relative to safe school zones and relative to syringe service programs.||4/3/2018 10:10:58 AM
+2018|S|132|3/21/2018 12:00:00 AM|SB357|22|1|23|1|||Ought to Pass|(New Title) relative to safe school zones and relative to syringe service programs.||4/3/2018 10:11:04 AM
+2018|S|133|3/21/2018 12:00:00 AM|SB365|17|4|22|2|||Committee Amendment 1084s|(New Title) relative to the use of renewable generation in default service.||4/3/2018 10:11:23 AM
+2018|S|134|3/21/2018 12:00:00 AM|SB487|22|0|22|2|||Ought to Pass with Amendment|relative to license requirements for certain alcohol and other drug use professionals and establishing a state substance use disorder treatment services program.||4/3/2018 10:11:31 AM
+2018|S|135|3/22/2018 12:00:00 AM|HB1278|23|0|23|1|||Ought to Pass with Amendment|(New Title) naming the rest area in Colebrook in honor of Frederick W. King, Sr. and naming a bridge in Farmington in honor of Major John W. Lawrence, Jr.||4/3/2018 11:55:57 AM
+2018|S|136|3/22/2018 12:00:00 AM|SB526|13|10|23|1|||Lay On Table|(Second New Title) relative to school food and nutrition programs.||4/3/2018 11:56:11 AM
+2018|S|137|3/22/2018 12:00:00 AM|HB1292|9|14|23|1|||Sen. D'Allesandro Floor Amendment 1161s|relative to the effective dates of changes to the rates for the business profits tax and the business enterprise tax.||4/3/2018 11:56:17 AM
+2018|S|138|3/22/2018 12:00:00 AM|SB383|23|0|23|1|||Ought to Pass with Amendment|(New Title) establishing a commission to recommend policies that will enhance access to affordable health care for all New Hampshire residents.||4/3/2018 11:56:21 AM
+2018|S|139|3/22/2018 12:00:00 AM|SB564|4|19|23|1|||Sen. Feltes Floor Amendment 1159s|relative to a business tax exemption and a workforce development program for regenerative manufacturing businesses.||4/3/2018 11:56:25 AM
+2018|S|140|3/22/2018 12:00:00 AM|SB577|4|19|23|1|||Inexpedient to Legislate|(New Title) requiring the public utilities commission to consider its order affecting the Burgess BioPower plant in Berlin, prohibiting the import of certain liquid fuels, and relative to the production of useful thermal energy.||4/3/2018 11:56:29 AM
+2018|S|141|3/22/2018 12:00:00 AM|SB577|19|4|23|1|||Ought to Pass|(New Title) requiring the public utilities commission to consider its order affecting the Burgess BioPower plant in Berlin, prohibiting the import of certain liquid fuels, and relative to the production of useful thermal energy.||4/3/2018 11:56:32 AM
+2018|S|142|3/22/2018 12:00:00 AM|SB590|9|14|23|1|||Sen. Fuller Clark Floor Amendment 1197s|(New Title) making a supplemental appropriation to the state loan repayment program and relative to emergency involuntary admissions, the child protection act, and the developmental disabilities wait list and making appropriations therefor.||4/3/2018 11:56:35 AM
+2018|S|143|3/22/2018 12:00:00 AM|SB590|23|0|23|1|||Ought to Pass|(New Title) making a supplemental appropriation to the state loan repayment program and relative to emergency involuntary admissions, the child protection act, and the developmental disabilities wait list and making appropriations therefor.||4/3/2018 11:56:37 AM
+2018|S|144|3/22/2018 12:00:00 AM|CACR22|22|1|23|1|||Committee Amendment 1146s|relating to rights for crime victims.  Providing that crime victims shall be afforded constitutional rights.||4/3/2018 11:56:40 AM
+2018|S|145|3/22/2018 12:00:00 AM|CACR22|22|1|23|1|||Committee Amendment 1146s|relating to rights for crime victims.  Providing that crime victims shall be afforded constitutional rights.||4/3/2018 11:56:42 AM
+2018|S|146|3/22/2018 12:00:00 AM|CACR22|14|9|23|1|||Sen. Hennessey Floor Amendment 1200|relating to rights for crime victims.  Providing that crime victims shall be afforded constitutional rights.||4/3/2018 11:56:45 AM
+2018|S|147|3/22/2018 12:00:00 AM|CACR22|5|18|23|1|||Sen. Giuda Floor Amendment 1181|relating to rights for crime victims.  Providing that crime victims shall be afforded constitutional rights.||4/3/2018 11:56:47 AM
+2018|S|148|3/22/2018 12:00:00 AM|SB541|12|11|23|1|||Sen. Bradley Floor Amendment 1188s|(New Title) establishing a fund to reimburse costs associated with firefighters who have cancer and establishing a commission to study the funding and operations of the presumption under workers' compensation requiring the reimbursement of costs associate|d with firefighters who have cancer.|4/3/2018 11:56:50 AM
+2018|S|149|3/22/2018 12:00:00 AM|SB541|23|0|23|1|||Ought to Pass with Amendment|(New Title) establishing a fund to reimburse costs associated with firefighters who have cancer and establishing a commission to study the funding and operations of the presumption under workers' compensation requiring the reimbursement of costs associate|d with firefighters who have cancer.|4/3/2018 11:56:54 AM
+2018|S|150|3/22/2018 12:00:00 AM|CACR22|8|15|23|1|||Sen. Giuda Floor Amendment 1202s|relating to rights for crime victims.  Providing that crime victims shall be afforded constitutional rights.||4/3/2018 11:56:58 AM
+2018|S|151|3/22/2018 12:00:00 AM|CACR22|2|21|23|1|||Sen. French Floor Amendment 1204s|relating to rights for crime victims.  Providing that crime victims shall be afforded constitutional rights.||4/3/2018 11:57:00 AM
+2018|S|152|3/22/2018 12:00:00 AM|CACR22|20|3|23|1|||Ought to Pass with Amendment|relating to rights for crime victims.  Providing that crime victims shall be afforded constitutional rights.||4/3/2018 11:57:02 AM
+2018|S|153|3/22/2018 12:00:00 AM|SB318|12|9|21|3|||Sen. Bradley Floor Amendment 1198s: Sec.7.VII and Sec.13|(New Title) relative to posting and notification requirements for employers, establishing criteria for workplace inspections, and amending certain provisions of the youth employment law.||4/3/2018 11:57:05 AM
+2018|S|154|3/22/2018 12:00:00 AM|SB318|12|9|21|3|||Sen. Bradley Floor Amendment 1198s: Sec.8 and Sec.13|(New Title) relative to posting and notification requirements for employers, establishing criteria for workplace inspections, and amending certain provisions of the youth employment law.||4/3/2018 11:57:08 AM
+2018|S|155|3/22/2018 12:00:00 AM|SB318|11|10|21|3|||Sen. Bradley Floor Amendment 1198s: Sec.12 and Sec.13|(New Title) relative to posting and notification requirements for employers, establishing criteria for workplace inspections, and amending certain provisions of the youth employment law.||4/3/2018 11:57:11 AM
+2018|S|156|3/22/2018 12:00:00 AM|SB318|11|10|21|3|||Sen. Bradley Floor Amendment 1198s: Sec.7.VI and Sec.13|(New Title) relative to posting and notification requirements for employers, establishing criteria for workplace inspections, and amending certain provisions of the youth employment law.||4/3/2018 11:57:13 AM
+2018|S|157|3/22/2018 12:00:00 AM|SB318|11|10|21|3|||Sen. Bradley Floor Amendment 1198s: All Remaining Sections and Sec.13|(New Title) relative to posting and notification requirements for employers, establishing criteria for workplace inspections, and amending certain provisions of the youth employment law.||4/3/2018 11:57:16 AM
+2018|S|158|3/22/2018 12:00:00 AM|SB318|11|10|21|3|||Ought to Pass with Amendment|(New Title) relative to posting and notification requirements for employers, establishing criteria for workplace inspections, and amending certain provisions of the youth employment law.||4/3/2018 11:57:18 AM
+2018|S|159|3/22/2018 12:00:00 AM|SB343|11|10|21|3|||Sen. Kahn Floor Amendment 1191s|relative to legislative ethics guidelines.||4/3/2018 11:57:24 AM
+2018|S|160|3/22/2018 12:00:00 AM|SB343|12|9|21|3|||Ought to Pass with Amendment|relative to legislative ethics guidelines.||4/3/2018 11:57:27 AM
+2018|S|161|3/22/2018 12:00:00 AM|SB586|10|11|21|3|||Ought to Pass|relative to casino gambling.||4/3/2018 11:57:29 AM
+2018|S|162|3/22/2018 12:00:00 AM|SB461|14|7|21|3|||Ought to Pass|relative to continuing education for real estate brokers and salespersons.||4/3/2018 11:57:31 AM
+2018|S|163|3/22/2018 12:00:00 AM|SB375|9|12|21|3|||Remove From Table|requiring gross expenditures and funding in the state operating budget.||4/3/2018 11:57:35 AM
+2018|S|164|4/5/2018 12:00:00 AM|HB1785|23|0|23|1|||Ought to Pass|changing "hearing impaired" to "deaf" or "hard of hearing" in the New Hampshire laws.||4/5/2018 12:03:15 PM
+2018|S|165|4/5/2018 12:00:00 AM|HB1228|7|16|23|1|||Laid on Table|removing the limitation on a chartered public school incurring long term debt.||4/6/2018 9:59:45 AM
+2018|S|166|4/5/2018 12:00:00 AM|HB1228|17|6|23|1|||Ought to Pass|removing the limitation on a chartered public school incurring long term debt.||4/6/2018 10:04:48 AM
+2018|S|167|4/5/2018 12:00:00 AM|HB1685|15|8|23|1|||Inexpedient to Legislate|establishing a statutory commission for oversight over occupational regulation.||4/6/2018 10:25:11 AM
+2018|S|168|4/5/2018 12:00:00 AM|HB1273|12|11|23|1|||Sen. Fuller Clark Floor Amendment 1369s|(Second New Title) relative to licensure of health care professionals employed at the Manchester Veterans Affairs Medical Center.||4/6/2018 12:02:22 PM
+2018|S|169|4/5/2018 12:00:00 AM|HB193|15|8|23|1|||Refer to Interim Study|relative to traffic control measures.||4/6/2018 10:29:22 AM
+2018|S|170|4/5/2018 12:00:00 AM|HB1286|23|0|23|1|||Sen. D'Allesandro Floor Amendment 1367s|(New Title) relative to fishing and hunting licenses for permanently disabled veterans.||4/6/2018 12:03:55 PM
+2018|S|171|4/5/2018 12:00:00 AM|SB586|8|15|23|1|||Refer to Interim Study|relative to casino gambling.||4/6/2018 10:51:00 AM
+2018|S|172|4/5/2018 12:00:00 AM|SB586|12|11|23|1|||Sen. Avard Floor Amendment 1358s|relative to casino gambling.||4/6/2018 12:06:12 PM
+2018|S|173|4/5/2018 12:00:00 AM|SB586|12|11|23|1|||Ought to Pass w/Amendment|relative to casino gambling.||4/6/2018 10:54:56 AM
+2018|S|174|4/12/2018 12:00:00 AM|HB1217|8|14|22|2|||Ought to Pass|amending the certification requirements for school nurses.||4/12/2018 1:46:25 PM
+2018|S|175|4/19/2018 12:00:00 AM|HB1499|13|11|24|0|||Ought to Pass|relative to the focus and components of New Hampshire kindergartens.||4/19/2018 1:53:35 PM
+2018|S|176|4/19/2018 12:00:00 AM|HB1744|14|10|24|0|||Ought to Pass|authorizing a parent to exempt his or her child from participating in the statewide assessment program.||4/19/2018 1:54:34 PM
+2018|S|177|4/19/2018 12:00:00 AM|HB1761|13|11|24|0|||Sen. Giuda Floor Amendment 1644s|(Second New Title) relative to the math learning communities program in secondary schools.||4/20/2018 10:26:07 AM
+2018|S|178|4/19/2018 12:00:00 AM|HB587|12|12|24|0|||Committee Amendment 1502s|relative to conversion therapy seeking to change a person's sexual orientation.||4/20/2018 10:26:25 AM
+2018|S|179|4/19/2018 12:00:00 AM|HB587|14|10|24|0|||Sen. Fuller Clark Floor Amendment 1654s|relative to conversion therapy seeking to change a person's sexual orientation.||4/20/2018 10:27:18 AM
+2018|S|180|4/19/2018 12:00:00 AM|HB587|14|10|24|0|||Ought to Pass w/Amendment|relative to conversion therapy seeking to change a person's sexual orientation.||4/20/2018 8:51:38 AM
+2018|S|181|4/19/2018 12:00:00 AM|HB1506|8|14|22|2|||Sen. Gray Floor Amendment 1504s|(Second New Title) relative to the commission on primary care workforce issues.||4/20/2018 10:27:43 AM
+2018|S|182|4/19/2018 12:00:00 AM|HB1315|14|8|22|2|||Inexpedient to Legislate|prohibiting the university system funds from being spent to oppose the formation of unions and collective bargaining units.||4/20/2018 8:53:42 AM
+2018|S|183|4/19/2018 12:00:00 AM|HB1283|15|7|22|2|||Inexpedient to Legislate|prohibiting sobriety checkpoints.||4/20/2018 8:54:45 AM
+2018|S|184|4/19/2018 12:00:00 AM|HB1484|16|6|22|2|||Ought to Pass|(New Title) relative to late fees in manufactured housing parks.||4/20/2018 8:55:52 AM
+2018|S|185|4/26/2018 12:00:00 AM|HB1416|17|7|24|0|||Ought to Pass|repealing the prohibition on bottle rockets.||4/26/2018 10:30:17 AM
+2018|S|186|4/26/2018 12:00:00 AM|HB1715|13|11|24|0|||Inexpedient to Legislate|(New Title) establishing a committee to study options for tenants to dispute a rent increase in a manufactured housing park if such increase was arbitrary and unreasonable.||4/26/2018 10:31:26 AM
+2018|S|187|4/26/2018 12:00:00 AM|HB1766|24|0|24|0|||Committee Amendment 1630s|(New Title) requiring the department of environmental services to report to the general court regarding bedrock testing and perfluorochemical contamination in the Seacoast area and at other landfills and hazardous waste sites.||4/27/2018 3:29:59 PM
+2018|S|188|4/26/2018 12:00:00 AM|HB1766|5|19|24|0|||Sen. Innis Floor Amendment 1792s|(New Title) requiring the department of environmental services to report to the general court regarding bedrock testing and perfluorochemical contamination in the Seacoast area and at other landfills and hazardous waste sites.||4/27/2018 3:29:19 PM
+2018|S|189|4/26/2018 12:00:00 AM|HB1766|24|0|24|0|||Ought to Pass w/Amendment|(New Title) requiring the department of environmental services to report to the general court regarding bedrock testing and perfluorochemical contamination in the Seacoast area and at other landfills and hazardous waste sites.||4/26/2018 10:44:35 AM
+2018|S|190|4/26/2018 12:00:00 AM|HB559|13|11|24|0|||Inexpedient to Legislate|relative to expenditures from the energy efficiency fund.||4/26/2018 11:34:32 AM
+2018|S|191|4/26/2018 12:00:00 AM|HB628|14|10|24|0|||Refer to Interim Study|relative to a family and medical leave insurance program.||4/26/2018 12:41:57 PM
+2018|S|192|4/26/2018 12:00:00 AM|HB1415|14|10|24|0|||Suspension of Rule 3-17|(New Title) making an appropriation to the public school infrastructure fund to improve security in public schools.||4/27/2018 11:47:38 AM
+2018|S|193|4/26/2018 12:00:00 AM|HB1415|14|10|24|0|||Laid on Table|(New Title) making an appropriation to the public school infrastructure fund to improve security in public schools.||4/27/2018 11:48:46 AM
+2018|S|194|4/26/2018 12:00:00 AM|HB1756|11|13|24|0|||Inexpedient to Legislate|(New Title) relative to a one-time allowance for certain state retirees.||4/27/2018 11:49:31 AM
+2018|S|195|4/26/2018 12:00:00 AM|HB1565|10|14|24|0|||Sen. Hennessey Floor Amendment 1804s|(Second New Title) requiring the secure psychiatric unit to be accredited as a behavioral health facility.||4/27/2018 3:46:13 PM
+2018|S|196|4/26/2018 12:00:00 AM|HB1807|22|2|24|0|||Ought to Pass w/Amendment|relative to exploitation of elderly, disabled, or impaired adults and establishing a protective order for vulnerable adults.||4/27/2018 11:51:09 AM
+2018|S|197|4/26/2018 12:00:00 AM|HB1415|18|6|24|0|||Sen. Bradley Floor Amendment 1791s|(New Title) making an appropriation to the public school infrastructure fund to improve security in public schools.||4/27/2018 3:27:56 PM
+2018|S|198|4/26/2018 12:00:00 AM|HB1686|13|10|23|1|||Ought to Pass|relative to applications for and the use of education tax credits.||4/27/2018 11:52:53 AM
+2018|S|199|5/2/2018 12:00:00 AM|HB1100|10|14|24|0|||Sen. Feltes Floor Amendment 1836s|(New Title) establishing a commission to review and evaluate workforce and job training in New Hampshire and relative to veterans' preference in public employment.||5/4/2018 4:37:45 PM
+2018|S|200|5/2/2018 12:00:00 AM|HB1601|13|11|24|0|||Ought to Pass|relative to a declarant's options for condominium expansion.||5/4/2018 11:52:13 AM
+2018|S|201|5/2/2018 12:00:00 AM|HB1690|12|12|24|0|||Sen. Sanborn Floor Amendment 1876s|relative to liquor licenses.||5/4/2018 4:37:18 PM
+2018|S|202|5/2/2018 12:00:00 AM|HB1636|13|11|24|0|||Remainder of Committee Amendment 1427s|(Third New Title) establishing a committee to study teacher preparation and education programs, relative to chartered public school use of unused school district facilities, and establishing education freedom savings accounts for students.||5/4/2018 4:42:46 PM
+2018|S|203|5/2/2018 12:00:00 AM|HB1636|13|11|24|0|||Sen. Giuda Floor Amendment 1851s|(Third New Title) establishing a committee to study teacher preparation and education programs, relative to chartered public school use of unused school district facilities, and establishing education freedom savings accounts for students.||5/4/2018 4:40:28 PM
+2018|S|204|5/2/2018 12:00:00 AM|HB1264|10|14|24|0|||Laid on Table|relative to construction of the terms "resident," "inhabitant," "residence," and "residency."||5/4/2018 12:04:14 PM
+2018|S|205|5/2/2018 12:00:00 AM|HB1264|14|10|24|0|||Ought to Pass w/Amendment|relative to construction of the terms "resident," "inhabitant," "residence," and "residency."||5/4/2018 12:06:45 PM
+2018|S|206|5/2/2018 12:00:00 AM|HB1327|13|11|24|0|||Committee Amendment 1780s|relative to apprentice electricians.||5/4/2018 4:41:03 PM
+2018|S|207|5/2/2018 12:00:00 AM|HB1327|13|11|24|0|||Ought to Pass w/Amendment|relative to apprentice electricians.||5/4/2018 12:13:23 PM
+2018|S|208|5/2/2018 12:00:00 AM|HB1603|14|10|24|0|||Inexpedient to Legislate|relative to employee representation on the independent investment committee in the New Hampshire retirement system.||5/4/2018 12:15:33 PM
+2018|S|209|5/2/2018 12:00:00 AM|HB476|14|9|24|0|||Refer to Interim Study|relative to the duties of registers of probate.||5/4/2018 4:24:24 PM
+2018|S|210|5/2/2018 12:00:00 AM|HB1319|11|12|23|1|||Refer to Interim Study|prohibiting discrimination based on gender identity.||5/4/2018 12:23:30 PM
+2018|S|211|5/2/2018 12:00:00 AM|HB1319|14|10|24|0|||Ought to Pass|prohibiting discrimination based on gender identity.||5/4/2018 12:25:27 PM
+2018|S|212|5/2/2018 12:00:00 AM|HB1443|19|5|24|0|||Inexpedient to Legislate|relative to a jury's determination as to the applicability of a law.||5/4/2018 12:27:24 PM
+2018|S|213|5/2/2018 12:00:00 AM|HB1307|9|15|24|0|||Inexpedient to Legislate|(New Title) relative to the presentation of a default budget.||5/4/2018 12:32:51 PM
+2018|S|214|5/2/2018 12:00:00 AM|CACR15|20|4|24|0|||Ought to Pass|relating to legal actions.  Providing that taxpayers have standing to bring actions against the government.||5/4/2018 2:44:54 PM
+2018|S|215|5/2/2018 12:00:00 AM|CACR16|15|9|24|0|||Ought to Pass|(New Title) Relating to privacy. Providing that an individual's right to live free of governmental intrusion is natural, essential, and inherent.||5/4/2018 2:47:28 PM
+2018|S|216|5/2/2018 12:00:00 AM|CACR15|22|2|24|0|||Ought to Pass|relating to legal actions.  Providing that taxpayers have standing to bring actions against the government.||5/4/2018 2:51:40 PM
+2018|S|217|5/2/2018 12:00:00 AM|HB1554|11|12|24|0|||Committee Amendment 1621|increasing exemptions under the interest and dividends tax and decreasing the total amount of research and development credits against business taxes.||5/4/2018 4:32:41 PM
+2018|S|218|5/3/2018 12:00:00 AM|HB1458|14|10|24|0|||Sen. Avard Floor Amendment 1852s|(New Title) relative to exempting certain rules governing marine species from the administrative procedures act and relative to immunity for campground owners.||5/7/2018 3:11:23 PM
+2018|S|219|5/3/2018 12:00:00 AM|HB1316|14|10|24|0|||Sen. Daniels Floor Amendment 1884s|(New Title) relative to revenue collected from concealed carry licenses and relative to funding the permits and licensing unit of the state police.||5/7/2018 3:20:51 PM
+2018|S|220|5/3/2018 12:00:00 AM|HB1427|12|12|24|0|||Inexpedient to Legislate|(New Title) relative to the reduction in the calculation of state retirement system annuities at age 65.||5/7/2018 8:41:14 AM
+2018|S|221|5/3/2018 12:00:00 AM|HB1427|13|11|24|0|||Laid on Table|(New Title) relative to the reduction in the calculation of state retirement system annuities at age 65.||5/7/2018 8:43:51 AM
+2018|S|222|5/3/2018 12:00:00 AM|HB1592|11|13|24|0|||Laid on Table|(Second New Title) requiring the commissioner of the department of environmental services to review ambient groundwater standards for arsenic.||5/7/2018 8:46:01 AM
+2018|S|223|5/3/2018 12:00:00 AM|HB1592|14|10|24|0|||Laid on Table|(Second New Title) requiring the commissioner of the department of environmental services to review ambient groundwater standards for arsenic.||5/7/2018 8:48:05 AM
+2018|S|224|5/3/2018 12:00:00 AM|HB1626|11|13|24|0|||Sen. Sanborn Floor Amendment 1912s|(Second New Title) requiring the governor's commission on alcohol and drug abuse prevention, treatment, and recovery to report on the cost effectiveness of funded programs, and relative to liquor commission shortfalls.||5/7/2018 3:21:41 PM
+2018|S|225|5/3/2018 12:00:00 AM|HB1476|14|10|24|0|||Refer to Interim Study|permitting qualifying patients and designated caregivers to cultivate cannabis for therapeutic use.||5/7/2018 9:09:42 AM
+2018|S|226|5/3/2018 12:00:00 AM|HB1476|16|8|24|0|||Refer to Interim Study|permitting qualifying patients and designated caregivers to cultivate cannabis for therapeutic use.||5/7/2018 9:11:39 AM
+2018|S|227|5/3/2018 12:00:00 AM|HB1791|24|0|24|0|||Sen. Bradley Floor Amendment 1875s|(New Title ) allowing pharmacists to disclose information relative to lower cost drugs under the managed care law and relative to biological products dispensed by pharmacists.||5/7/2018 3:27:22 PM
+2018|S|228|5/3/2018 12:00:00 AM|HB1809|24|0|24|0|||Ought to Pass w/Amendment|(New Title) relative to balance billing under the managed care law and relative to coverage for emergency services.||5/7/2018 9:23:01 AM
+2018|S|229|5/3/2018 12:00:00 AM|HB1816|24|0|24|0|||Ought to Pass w/Amendment|relative to Medicaid managed care.||5/7/2018 9:26:03 AM
+2018|S|230|5/3/2018 12:00:00 AM|HB1313|12|12|24|0|||Refer to Interim Study|relative to prohibitions on carrying a loaded firearm on an OHRV or snowmobile.||5/7/2018 9:28:01 AM
+2018|S|231|5/3/2018 12:00:00 AM|HB1313|14|10|24|0|||Laid on Table|relative to prohibitions on carrying a loaded firearm on an OHRV or snowmobile.||5/7/2018 9:30:45 AM
+2018|S|232|5/3/2018 12:00:00 AM|HB169|6|18|24|0|||Inexpedient to Legislate|(New Title) relative to limits on wagers in charitable games of chance and licensing historic racing.||5/7/2018 9:32:51 AM
+2018|S|233|5/3/2018 12:00:00 AM|HB1103|10|14|24|0|||Sen. Feltes Floor Amendment 1916s|relative to financial responsibility for voluntary services provided pursuant to a report of abuse or neglect that is "unfounded but with reasonable concern."||5/7/2018 3:34:48 PM
+2018|S|234|5/3/2018 12:00:00 AM|HB1565|10|14|24|0|||Sen. Feltes Floor Amendment 1874s|(Second New Title) requiring the secure psychiatric unit to be accredited as a behavioral health facility.||5/7/2018 3:36:17 PM
+2018|S|235|5/3/2018 12:00:00 AM|HB1614|13|11|24|0|||Ought to Pass w/Amendment|(New Title) relative to the international registration plan and relative to registration of semi-trailers.||5/7/2018 9:40:00 AM
+2018|S|236|5/3/2018 12:00:00 AM|HB1686|10|14|24|0|||Sen. Feltes Floor Amendment 1861s|relative to applications for and the use of education tax credits.||5/7/2018 3:40:18 PM
+2018|S|237|5/3/2018 12:00:00 AM|HB1686|14|10|24|0|||Ought to Pass|relative to applications for and the use of education tax credits.||5/7/2018 9:46:58 AM
+2018|S|238|5/3/2018 12:00:00 AM|HB1817|10|14|24|0|||Sen. Kahn Floor Amendment 1918s|(Eighth New Title) establishing the position of state demographer and a commission on demographic trends; requiring state agencies to prepare 10-year current services cost projections; relative to the inclusion of a demographic analysis as part of the leg||5/7/2018 3:43:47 PM
+2018|S|239|5/3/2018 12:00:00 AM|HB1817|10|14|24|0|||Sen. Feltes Floor Amendment 1903s|(Eighth New Title) establishing the position of state demographer and a commission on demographic trends; requiring state agencies to prepare 10-year current services cost projections; relative to the inclusion of a demographic analysis as part of the leg||5/7/2018 3:45:31 PM
+2018|S|240|5/3/2018 12:00:00 AM|HB1538|14|10|24|0|||Sen. Gannon Floor Amendment 1915s|(New Title) limiting the liability of successor corporations for asbestos-related claims.||5/7/2018 3:51:11 PM
+2018|S|241|5/3/2018 12:00:00 AM|HB2018|12|12|24|0|||Committee Amendment 1807s Section 3, Lines 1-7|(Second New Title) relative to the state 10-year transportation improvement program and establishing a committee to study the removal of the Merrimack tolls.||5/7/2018 3:56:49 PM
+2018|S|242|5/3/2018 12:00:00 AM|HB2018|15|9|24|0|||Sen. Giuda Floor Amendment 1932s Section 9, Lines 1-12|(Second New Title) relative to the state 10-year transportation improvement program and establishing a committee to study the removal of the Merrimack tolls.||5/7/2018 3:58:16 PM
+2018|S|243|5/3/2018 12:00:00 AM|HB2018|12|12|24|0|||Ought to Pass w/Amendment Sections 3 and 27|(Second New Title) relative to the state 10-year transportation improvement program and establishing a committee to study the removal of the Merrimack tolls.||5/7/2018 4:04:48 PM
+2018|S|244|5/3/2018 12:00:00 AM|HB2018|23|1|24|0|||Ought to Pass w/Amendment Remainder of the Bill and Effective Date|(Second New Title) relative to the state 10-year transportation improvement program and establishing a committee to study the removal of the Merrimack tolls.||5/7/2018 4:06:49 PM
+2018|S|245|5/3/2018 12:00:00 AM|HB2018|24|0|24|0|||Ought to Pass w/Amendment Remainder of the Bill and Effective Date|(Second New Title) relative to the state 10-year transportation improvement program and establishing a committee to study the removal of the Merrimack tolls.||5/7/2018 4:08:40 PM
+2018|S|246|5/3/2018 12:00:00 AM|HB1636|19|5|24|0|||Sen. Kahn Floor Amendment 1898s|(Third New Title) establishing a committee to study teacher preparation and education programs, relative to chartered public school use of unused school district facilities, and establishing education freedom savings accounts for students.||5/7/2018 4:11:33 PM
+2018|S|247|5/3/2018 12:00:00 AM|HB1636|14|10|24|0|||Sen. Reagan Floor Amendment 1925s|(Third New Title) establishing a committee to study teacher preparation and education programs, relative to chartered public school use of unused school district facilities, and establishing education freedom savings accounts for students.||5/7/2018 4:13:51 PM
+2018|S|248|5/3/2018 12:00:00 AM|HB1477|10|14|24|0|||Remove from Table|relative to annulment of arrests or convictions for possession of 3/4 of an ounce of marijuana, or less.||5/7/2018 10:16:18 AM
+2018|S|249|5/10/2018 12:00:00 AM|SB527|13|9|22|2|||Nonconcur and Request a C of C|(New Title) relative to absentee voting and relative to the statewide centralized voter registration database.||5/11/2018 8:33:05 AM
+2018|S|250|5/10/2018 12:00:00 AM|SB334|12|10|22|2|||Concur|(Second New Title) relative to temporary licensure of allied health professionals from nearby states, and reciprocal and temporary licensure for occupations and professions for persons from other states.||5/11/2018 8:37:03 AM
+2018|S|251|5/10/2018 12:00:00 AM|SB313|16|6|22|2|||Concur|(New Title) reforming New Hampshire's Medicaid and Premium Assistance Program, establishing the granite workforce pilot program, and relative to certain liquor funds.||5/11/2018 8:39:21 AM
+2018|S|252|5/23/2018 12:00:00 AM|HB314|17|6|23|1|||Conference Committee Report 2058c|(Second New Title) establishing an automated and connected vehicle testing and deployment commission and establishing an automated vehicle pilot program.||5/24/2018 9:09:25 AM
+2018|S|253|5/23/2018 12:00:00 AM|HB1614|12|11|23|1|||Conference Committee Report 2013c|(New Title) relative to the international registration plan and relative to registration of semi-trailers.||5/24/2018 9:10:08 AM
+2018|S|254|5/23/2018 12:00:00 AM|HB2018|21|2|23|1|||Conference Committee Report 2049c|(Second New Title) relative to the state 10-year transportation improvement program and establishing a committee to study the removal of the Merrimack tolls.||5/24/2018 9:10:56 AM
+2018|S|255|5/23/2018 12:00:00 AM|SB119|11|12|23|1|||Conference Committee Report 2004c|(New Title) relative to the length of docks on a water body and boat slips.||5/24/2018 9:11:29 AM
+2018|S|256|5/23/2018 12:00:00 AM|SB318|12|11|23|1|||Conference Committee Report 2039c|(Second New Title) relative to posting and notification requirements for employers, establishing criteria for workplace inspections, and amending certain provisions of the youth employment law.||5/24/2018 9:12:02 AM
+2018|S|257|5/23/2018 12:00:00 AM|SB527|14|9|23|1|||Conference Committee Report 1999c|(New Title) relative to absentee voting and relative to the statewide centralized voter registration database.||5/24/2018 9:12:30 AM
+2018|S|258|7/25/2018 12:00:00 AM|SSRULES|11|13|24|0|||Amendment to Special Session Senate Rules 5-4 and 5-5|Senator Feltes moved to offer an amendment to amend Special Session Senate Rules 5-4 and 5-5.||7/30/2018 11:20:23 AM
+2018|S|259|7/25/2018 12:00:00 AM|SSRULES|16|8|24|0|||Adoption of Special Session Senate Rules|Senator Bradley moved, resolved, that the Senate adopt the 2018 Special Session Senate Rules as proposed, copies of which are provided in the senate calendar.||7/30/2018 8:51:51 AM
+2018|S|260|7/25/2018 12:00:00 AM|SSSB1|11|13|24|0|||Suspension of Special Session Rule 3-9 to allow non-germane amendment 2137s|requiring notice and approval of certain actions to commence audits of collection liabilities arising under certain sales and use tax statutes and prohibiting New Hampshire remote sellers from disclosing private customer information to foreign taxing auth|orities in connection with the collection of certain sales and use taxes.|7/30/2018 9:45:12 AM
+2018|S|261|7/25/2018 12:00:00 AM|SSSB1|10|14|24|0|||Suspension of Special Session Rule 3-9 to allow non-germane amendment 2136s|requiring notice and approval of certain actions to commence audits of collection liabilities arising under certain sales and use tax statutes and prohibiting New Hampshire remote sellers from disclosing private customer information to foreign taxing auth|orities in connection with the collection of certain sales and use taxes.|7/30/2018 9:45:49 AM
+2018|S|262|7/25/2018 12:00:00 AM|SSSB1|11|13|24|0|||Suspension of Special Session Rule 3-9 to allow non-germane amendment 2138s|requiring notice and approval of certain actions to commence audits of collection liabilities arising under certain sales and use tax statutes and prohibiting New Hampshire remote sellers from disclosing private customer information to foreign taxing auth|orities in connection with the collection of certain sales and use taxes.|7/30/2018 9:37:04 AM
+2018|S|263|7/25/2018 12:00:00 AM|SSSB1|24|0|24|0|||Ought to Pass|requiring notice and approval of certain actions to commence audits of collection liabilities arising under certain sales and use tax statutes and prohibiting New Hampshire remote sellers from disclosing private customer information to foreign taxing auth|orities in connection with the collection of certain sales and use taxes.|7/30/2018 11:06:09 AM
+2018|S|264|7/25/2018 12:00:00 AM|SSRULES|11|13|24|0|||Suspension of all Rules Necessary|Senator Feltes moved to suspend all rules necessary to permit consideration of further legislation at the present time.||7/30/2018 11:28:49 AM
+2018|S|265|7/25/2018 12:00:00 AM|SSSB1|23|0|23|1|||Nonconcur|(New Title) establishing a commission to study ways to protect the New Hampshire advantage for New Hampshire businesses as a result of the uncertainty created from the recent United States Supreme Court decision on the collection of certain sales and use |taxes. |7/30/2018 9:11:30 AM
+2018|S|266|9/13/2018 12:00:00 AM|SB365|21|3|24|0|||VETO MESSAGE - Roll Call Required|(Second New Title) relative to the use of renewable generation to provide fuel diversity.||9/13/2018 2:55:39 PM
+2018|S|267|9/13/2018 12:00:00 AM|SB446|21|3|24|0|||VETO MESSAGE - Roll Call Required|relative to net energy metering limits for customer-generators.||9/13/2018 2:59:58 PM
+2018|S|268|9/13/2018 12:00:00 AM|SB593|14|10|24|0|||VETO MESSAGE - Roll Call Required|relative to the penalty for capital murder.||9/13/2018 3:02:38 PM
+2018|S|269|9/13/2018 12:00:00 AM|HB143|23|1|24|0|||VETO MESSAGE - Roll Call Required|relative to recommittal of a prisoner by the parole board.||9/13/2018 3:05:12 PM
+2018|S|270|9/13/2018 12:00:00 AM|HB314|5|19|24|0|||VETO MESSAGE - Roll Call Required|(Third New Title) relative to licensing requirements for autonomous vehicle testing and establishing an automated and connected vehicle testing and deployment commission.||9/13/2018 3:07:23 PM
+2018|S|271|9/13/2018 12:00:00 AM|HB1736|11|13|24|0|||VETO MESSAGE - Roll Call Required|relative to increasing the threshold required for governor and council approval of expenditures from the dam maintenance fund.||9/13/2018 3:09:44 PM
+2018|S|272|9/13/2018 12:00:00 AM|HB1736|12|12|24|0|||VETO MESSAGE - Roll Call Required|relative to increasing the threshold required for governor and council approval of expenditures from the dam maintenance fund.||9/13/2018 3:11:30 PM

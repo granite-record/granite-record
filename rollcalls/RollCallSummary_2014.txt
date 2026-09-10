@@ -1,0 +1,358 @@
+2014|H|1|1/8/2014 1:11:29 PM||342|0|52|1|||Call of the Roll|Call of the Roll||1/17/2014 1:00:22 PM
+2014|H|2|1/8/2014 1:21:30 PM|HB525|324|17|53|1|||OTPA|raising the age of minority for juvenile delinquency proceedings from 17 to 18 years of age.||1/17/2014 1:00:46 PM
+2014|H|3|1/8/2014 1:36:24 PM|HB544|165|178|51|1|||ITL|repealing the prohibition on a state-based health exchange.||1/17/2014 1:00:51 PM
+2014|H|4|1/8/2014 1:43:03 PM|HB544|160|183|51|1|||Divide Sect 1-8|repealing the prohibition on a state-based health exchange.||1/17/2014 1:00:58 PM
+2014|H|5|1/8/2014 2:07:34 PM|HB544|215|126|53|1|||Uphold Ruling of the Chair|repealing the prohibition on a state-based health exchange.||1/17/2014 1:01:01 PM
+2014|H|6|1/8/2014 2:25:20 PM|HB544|186|155|53|1|||Adopt #14-0025h|COMMERCE AND CONSUMER AFFAIRS||7/17/2014 12:31:59 PM
+2014|H|7|1/8/2014 2:29:55 PM|HB544|131|211|52|1|||Adopt #14-0030h|COMMERCE AND CONSUMER AFFAIRS||7/17/2014 12:32:03 PM
+2014|H|8|1/8/2014 2:38:47 PM|HB544|146|196|52|1|||Adopt #14-0031h|COMMERCE AND CONSUMER AFFAIRS||7/17/2014 12:31:37 PM
+2014|H|9|1/8/2014 2:48:08 PM|HB544|145|195|54|1|||Adopt #14-0029h|COMMERCE AND CONSUMER AFFAIRS||7/17/2014 12:31:49 PM
+2014|H|10|1/8/2014 3:12:57 PM|HB544|152|184|58|1|||Recommit|repealing the prohibition on a state-based health exchange.||1/17/2014 1:01:09 PM
+2014|H|11|1/8/2014 3:16:21 PM|HB544|182|154|58|1|||OTPA|repealing the prohibition on a state-based health exchange.||1/17/2014 1:01:11 PM
+2014|H|12|1/8/2014 3:26:21 PM|HB544|151|184|59|1|||Commit|repealing the prohibition on a state-based health exchange.||1/17/2014 1:01:12 PM
+2014|H|13|1/8/2014 3:53:37 PM|HB498|265|54|90|1|||OTPA|permitting the use of firearms by military or veterans groups in the compact part of a town for military or veterans events, or national holidays.||1/17/2014 1:01:14 PM
+2014|H|14|1/8/2014 4:13:40 PM|HB424|162|138|75|1|||ITL|relative to review of chartered public school applications by the state board of education.||1/17/2014 1:01:16 PM
+2014|H|15|1/8/2014 4:53:02 PM|HB435|129|156|93|1|||ITL|relative to funding for chartered public school pupils.||1/17/2014 1:01:18 PM
+2014|H|16|1/8/2014 5:06:54 PM|HB435|132|169|108|1|||ITL|relative to funding for chartered public school pupils.||1/17/2014 1:01:20 PM
+2014|H|20|1/15/2014 11:13:54 AM|HB675|97|250|18|30|||OTPA|authorizing and regulating the use of license plate scanning devices.||
+2014|H|21|1/15/2014 12:11:34 PM|HB350|179|170|18|28|||OTPA|prohibiting discrimination against the unemployed.||
+2014|H|22|1/15/2014 2:13:07 PM|HB562|200|140|28|27|||Adopt AM #0026h|relative to the interest rate on title loans.||
+2014|H|23|1/15/2014 2:14:52 PM|HB562|212|129|27|27|||OTPA|relative to the interest rate on title loans.||
+2014|H|24|1/15/2014 3:07:16 PM|HB492|113|221|34|27|||Lay on Table|relative to the legalization and regulation of marijuana.||
+2014|H|25|1/15/2014 4:11:46 PM|HB492|170|168|29|27|||ITL|relative to the legalization and regulation of marijuana.||
+2014|H|26|1/15/2014 4:15:41 PM|HB492|173|165|29|27|||Reconsider|relative to the legalization and regulation of marijuana.||
+2014|H|27|1/15/2014 4:27:07 PM|HB492|153|185|29|27|||Lay on Table|relative to the legalization and regulation of marijuana.||
+2014|H|28|1/15/2014 5:01:17 PM|HB492|170|162|36|27|||OTPA|relative to the legalization and regulation of marijuana.||
+2014|H|30|1/22/2014 11:21:18 AM|HB474|188|155|21|31|||OTPA|relative to eligibility for in-state tuition rates at the university system of New Hampshire.||
+2014|H|31|1/22/2014 1:11:40 PM|HB660|185|162|17|31|||ITL|requiring the labeling of genetically engineered foods and agricultural commodities.||
+2014|H|32|1/22/2014 2:39:16 PM|HB173|158|172|35|30|||Adopt 13-2247h|repealing the authority for supplemental allowances under the judicial retirement plan.||
+2014|H|33|1/22/2014 3:15:19 PM|HB627|198|141|26|30|||ITL|requiring unused vacation and sick leave to be converted to service time for purposes of calculating retirement system benefits.||
+2014|H|34|1/22/2014 3:20:37 PM|HB597|289|48|28|30|||OTPA|relative to mandatory drug testing for certain health care workers.||
+2014|H|35|1/22/2014 3:31:12 PM|HB582|206|134|25|30|||OTPA|repealing early offers for medical injury claims.||
+2014|H|36|1/22/2014 3:51:39 PM|HB249|266|68|30|31|||ITL|requiring employers to verify an employee's eligibility to work in the United States.||
+2014|H|37|1/22/2014 4:27:46 PM|HB569|151|168|45|31|||Table|relative to the placement of all new electric transmission lines in New Hampshire.||
+2014|H|38|1/22/2014 5:18:29 PM|HB569|171|139|54|31|||OTPA|relative to the placement of all new electric transmission lines in New Hampshire.||
+2014|H|40|1/29/2014 11:26:04 AM|HB580|194|148|17|34|||ITL|establishing moratoriums on wind turbine plants and electric transmission line projects.||
+2014|H|41|1/29/2014 11:55:38 AM||131|210|19|33|||Suspend Rules|||
+2014|H|42|1/29/2014 12:08:53 PM|HB427|185|152|23|33|||OTPA|relative to tobacco tax laws.||
+2014|H|43|1/29/2014 12:47:40 PM|HB485|202|141|17|33|||OTPA|establishing keno.||
+2014|H|44|1/29/2014 2:11:08 PM|HB120|170|156|35|32|||ITL|relative to hours of sales by off-premises liquor licensees.||
+2014|H|45|1/29/2014 2:16:24 PM|HB430|181|150|30|32|||OTPA|requiring insurance companies sending out solicitations for marketing purposes to include their insurance license number on such solicitations.||
+2014|H|46|1/29/2014 3:04:48 PM|HB533|209|125|27|32|||OTPA|relative to the mathematics requirement for high school graduation.||
+2014|H|47|1/29/2014 3:20:35 PM|HB421|185|140|36|32|||OTPA|relative to regulation of real estate brokerage and sales by the real estate commission.||
+2014|H|48|1/29/2014 3:34:03 PM|HB658|228|92|41|32|||OTPA|relative to registration for medical technicians.||
+2014|H|49|1/29/2014 3:57:15 PM|HB341|221|103|37|32|||ITL|relative to the cost of fiscal analysis of legislation relating to the retirement system.||
+2014|H|50|1/29/2014 5:06:11 PM|HB532|167|140|54|32|||OTPA|relative to energy efficiency and clean energy districts.||
+2014|H|51|1/29/2014 5:23:51 PM|HB292|171|120|70|32|||Adopt 13-2269h|requiring milfoil decals on private vessels registered in other states or countries and operating on the inland waters of New Hampshire.||
+2014|H|52|1/29/2014 5:27:59 PM|HB292|126|165|70|32|||Table|requiring milfoil decals on private vessels registered in other states or countries and operating on the inland waters of New Hampshire.||
+2014|H|53|1/29/2014 5:31:02 PM|HB292|164|127|70|32|||OTPA|requiring milfoil decals on private vessels registered in other states or countries and operating on the inland waters of New Hampshire.||
+2014|H|54|1/29/2014 5:37:54 PM|HB286|204|78|79|32|||OTPA|relative to broadband infrastructure.||
+2014|H|55|1/29/2014 5:46:28 PM|HB263|178|104|79|32|||OTPA|establishing a committee to study examination of elderly drivers.||
+2014|H|56|1/29/2014 5:49:20 PM|HB495|218|61|82|32|||OTPA|relative to titles for motor vehicles.||
+2014|H|57|1/29/2014 5:52:50 PM|HB650|192|89|80|32|||OTPA|making an appropriation to start a bus service between Claremont and Lebanon.||
+2014|H|59|2/6/2014 4:11:28 PM|HB366|156|121|40|75|||OTPA|relative to showing a ballot.||
+2014|H|60|2/6/2014 4:28:52 PM|SB3|201|72|44|75|||ITL|(New Title) eliminating certain ramp tolls on the Everett turnpike in the town of Merrimack.||
+2014|H|61|2/6/2014 4:47:06 PM|HB1135|231|33|53|75|||OTPA|relative to penalties for driving without a license.||
+2014|H|62|2/6/2014 4:55:17 PM|HB1475|165|95|57|75|||ITL|relative to expanding the research and development tax credit against the business profits tax to be a reinvestment tax credit.||2/6/2014 7:20:39 PM
+2014|H|63|2/6/2014 4:58:39 PM|HB1475|195|68|54|75|||Table|relative to expanding the research and development tax credit against the business profits tax to be a reinvestment tax credit.||
+2014|H|64|2/6/2014 5:02:33 PM|HB1556|236|23|58|75|||ITL|defining poker as a game of skill.||
+2014|H|66|2/12/2014 10:21:07 AM|HB1486|251|68|51|22|||ITL|reducing the fines for underage possession or consumption of alcoholic beverages.||
+2014|H|67|2/12/2014 10:47:55 AM|HB1589|174|166|30|22|||Adopt #14-0371h|COMMERCE AND CONSUMER AFFAIRS||4/24/2014 4:19:20 PM
+2014|H|68|2/12/2014 11:08:16 AM|HB1589|177|175|19|21|||Adopt #14-0467h|requiring background checks for all firearm sales.||
+2014|H|69|2/12/2014 1:55:10 PM|HB1255|247|105|20|20|||ITL|making students whose name appears on the voter checklist eligible for in-state tuition rates at schools in the university system of New Hampshire.||
+2014|H|70|2/12/2014 3:55:07 PM|HB1396|157|181|32|22|||ITL|relative to the smoking policy at the New Hampshire veterans' home.||
+2014|H|71|2/12/2014 4:16:14 PM|HB1165|249|88|33|22|||ITL|relative to the citizen's petition for redress of grievances by the legislature; establishing a special fund, and making an appropriation therefor.||
+2014|H|72|2/12/2014 4:33:49 PM|HB1581|251|82|37|22|||OTPA|relative to the bonding of project costs for certain department of transportation bridge capital projects.||
+2014|H|74|2/19/2014 11:16:13 AM|HB1204|174|148|26|44|||Interim Study|relative to perjury by a law enforcement officer.||
+2014|H|75|2/19/2014 11:38:55 AM|HB1237|112|215|21|44|||Table|prohibiting residency restrictions for registered sex offenders and offenders against children.||
+2014|H|76|2/19/2014 11:52:03 AM|HB1237|231|97|20|44|||OTP|prohibiting residency restrictions for registered sex offenders and offenders against children.||
+2014|H|77|2/19/2014 12:06:31 PM|HB1436|143|185|20|44|||OTPA|relative to unlawful possession of alcoholic beverages.||
+2014|H|78|2/19/2014 12:21:46 PM|HB1347|206|121|21|44|||OTPA|establishing a house committee to study apportionment of state representative districts.||
+2014|H|79|2/19/2014 12:29:59 PM|HB1146|199|127|22|44|||OTPA|establishing a committee to study the feasibility of funding a kindergarten to college/career ready program and a universal college savings account.||
+2014|H|80|2/19/2014 12:36:51 PM|HB1251|223|104|21|44|||OTPA|making an appropriation for New Hampshire Public Television.||
+2014|H|81|2/19/2014 12:40:13 PM|HB1489|196|132|20|44|||OTPA|establishing a fund to reimburse costs associated with firefighters who have heart, lung, and cancer disease and continually appropriating a special fund.||
+2014|H|82|2/19/2014 2:32:07 PM|CACR12|245|74|31|42|||ITL|relating to nomination and appointment of officers.  Providing that judges and the attorney general shall be elected.||
+2014|H|83|2/19/2014 2:47:28 PM|CACR16|233|83|34|42|||ITL|relating to the nomination and appointment of officers.  Providing that judicial officers shall be confirmed by the legislature.||
+2014|H|84|2/19/2014 3:15:12 PM|HB1188|183|125|39|45|||OTP|relative to paycheck equity.||
+2014|H|85|2/19/2014 3:31:59 PM|HB1404|201|104|42|45|||OTPA|relative to payroll cards.||
+2014|H|86|2/19/2014 3:48:33 PM|HB1405|184|119|44|45|||OTPA|prohibiting an employer from using credit history in employment decisions.||
+2014|H|87|2/19/2014 4:27:43 PM|HB1266|222|64|61|45|||ITL|relative to the appointment of the town clerk.||
+2014|H|88|2/19/2014 4:35:32 PM|HB1476|211|67|69|45|||ITL|exempting proprietorships from taxation under the business enterprise tax.||
+2014|H|89|2/19/2014 4:39:30 PM|HB1477|214|67|66|45|||ITL|exempting proprietorships from taxation under the business profits tax.||
+2014|H|91|3/5/2014 10:45:28 AM|HB1573|238|91|29|32|||ITL|discontinuing regional planning commissions and requiring the election of municipal planning board members.||
+2014|H|92|3/5/2014 12:00:44 PM|HB1509|173|163|21|33|||ITL|relative to including nonprofit charitable enterprises in the business enterprise tax and lowering the rate of the tax.||
+2014|H|93|3/5/2014 12:24:39 PM|HB1597|184|148|24|34|||ITL|reducing the rate of tax on meals under the meals and rooms tax.||
+2014|H|94|3/5/2014 3:25:17 PM|HB1360|192|133|32|33|||OTPA|prohibiting impeded driving and use of certain electronic devices while driving.||
+2014|H|95|3/5/2014 3:45:51 PM|HB1185|199|119|39|33|||ITL|increasing the speed limit on a portion of I-89 to 70 miles per hour.||
+2014|H|96|3/5/2014 4:08:58 PM|HB1365|229|85|43|33|||ITL|permitting certain vehicles to proceed through an intersection after stopping for a red light.||
+2014|H|97|3/5/2014 4:31:25 PM|HB1277|163|142|52|33|||ITL|relative to grocery sales by stores licensed to sell alcoholic beverages.||
+2014|H|98|3/5/2014 4:45:46 PM|HB1294|179|129|49|33|||ITL|requiring that all providers be allowed to participate in the health exchange.||
+2014|H|99|3/5/2014 5:28:27 PM|HB1550|88|199|70|33|||OTP|permitting the audio and video recording of a public official while in the course of his or her official duties.||
+2014|H|100|3/5/2014 6:01:00 PM|HB1621|171|103|82|34|||ITL|redefining simple assault.||
+2014|H|101|3/5/2014 6:21:40 PM|HB1247|144|119|93|34|||ITL|requiring the department of education to share costs of implementing statewide online assessment technology requirements.||
+2014|H|103|3/6/2014 1:22:40 PM|HB1507|178|117|43|52|||ITL|relative to university system of New Hampshire in-state tuition rates for students domiciled in New Hampshire.||
+2014|H|104|3/6/2014 2:57:40 PM|HB1305|180|120|38|50|||ITL|relative to the definition of asbestos abatement.||
+2014|H|105|3/6/2014 3:06:21 PM|SB413|185|120|33|50|||Introduction|||
+2014|H|106|3/6/2014 4:02:57 PM|HB1539|167|132|39|50|||ITL|relative to the repeal date of the certificate of need law.||
+2014|H|107|3/6/2014 5:08:55 PM|HB1325|219|66|53|50|||ITL|relative to death with dignity for certain persons suffering from a terminal condition.||
+2014|H|108|3/6/2014 5:19:54 PM|HB1345|188|87|64|49|||ITL|relative to forfeiture of items used in connection with a drug offense.||
+2014|H|109|3/6/2014 5:43:36 PM|HB1474|201|69|69|49|||ITL|relative to persons held in civil contempt.||
+2014|H|110|3/6/2014 5:46:36 PM|HB1440|240|29|70|49|||Interim Study|including the writing, promoting, or distributing of model legislation to elected officials as lobbying and requiring disclosure of scholarship funds, money, or other financial support received from such lobbyists by elected officials.||
+2014|H|112|3/12/2014 11:14:34 AM|HB1195|201|128|20|39|||OTPA|establishing a commission to study the impacts of the property tax on New Hampshire's residents, businesses, municipalities, and the economy.||
+2014|H|113|3/12/2014 11:25:58 AM|HB1601|164|161|24|39|||Adopt 14-0265h|TRANSPORTATION||4/24/2014 4:20:13 PM
+2014|H|114|3/12/2014 12:02:31 PM|HB1601|151|182|16|39|||OTPA|relative to mandatory headlamp use.||
+2014|H|115|3/12/2014 12:32:49 PM|HB1577|209|116|23|40|||OTP|relative to regulating alkaline hydrolysis for the disposal of human remains.||
+2014|H|116|3/12/2014 12:43:59 PM|HB1572|268|59|21|40|||OTPA|establishing a commission to create a New Hampshire state plan for Alzheimer's disease and requiring certain training and education programs regarding Alzheimer's disease and other related dementia.||
+2014|H|117|3/12/2014 12:50:47 PM|HB1282|226|98|24|40|||OTPA|relative to consumer protection for propane fuel users.||
+2014|H|118|3/12/2014 3:04:53 PM|HB1170|83|247|17|41|||Adopt FLAM 14-0205h|repealing the death penalty in New Hampshire.||
+2014|H|119|3/12/2014 3:37:41 PM|HB1170|85|245|17|41|||Adopt FLAM 14-0916h|repealing the death penalty in New Hampshire.||
+2014|H|120|3/12/2014 3:56:23 PM|HB1170|225|104|18|41|||OTP|repealing the death penalty in New Hampshire.||
+2014|H|121|3/12/2014 4:53:01 PM|HB1625|215|92|39|42|||OTPA|relative to penalties for possession of marijuana in the amount of one ounce or less and the cultivation of marijuana plants.||
+2014|H|122|3/12/2014 5:49:28 PM|HB1403|115|179|52|42|||Table|establishing a state minimum hourly wage.||
+2014|H|123|3/12/2014 5:51:44 PM|HB1403|95|199|52|42|||Adopt FLAM 14-0969h|establishing a state minimum hourly wage.||
+2014|H|124|3/12/2014 6:26:53 PM|HB1403|173|118|55|42|||OTP|establishing a state minimum hourly wage.||
+2014|H|126|3/13/2014 12:21:32 PM|HB1633|173|144|21|50|||ITL|relative to expanded gaming in New Hampshire.||
+2014|H|127|3/13/2014 12:32:54 PM|HB1633|151|166|21|50|||Indef. Postpone|relative to expanded gaming in New Hampshire.||
+2014|H|128|3/13/2014 1:58:24 PM|HB1393|160|126|52|50|||ITL|relative to tuition payments for students attending a chartered public school in the student's district of residence.||
+2014|H|129|3/13/2014 3:16:28 PM|HB1409|147|141|50|50|||OTPA|expanding the law against discrimination to prohibit housing discrimination against recipients of rental assistance and victims of domestic violence, sexual assault, or stalking.||
+2014|H|130|3/13/2014 3:45:40 PM|HR21|145|133|60|50|||OTP|expressing support for the right of residents of the District of Columbia to be fully represented in the Congress of the United States of America.||
+2014|H|131|3/13/2014 4:04:22 PM|HB1336|155|122|61|50|||OTPA|relative to the landlord's agent requirement.||
+2014|H|132|3/13/2014 4:33:09 PM|HB1452|193|84|61|50|||ITL|relative to jury nullification.||
+2014|H|133|3/13/2014 4:41:19 PM|HB1495|217|56|65|50|||ITL|repealing the prohibition on the use of silencing devices for taking wildlife.||
+2014|H|134|3/13/2014 4:48:29 PM|HB1362|202|67|69|50|||ITL|prohibiting enforcement of any federal law which bans certain firearms or limits firearm magazine size and establishing a criminal penalty for such enforcement.||
+2014|H|135|3/13/2014 4:52:46 PM|HB1541|162|109|67|50|||ITL|allowing health insurance policies to be sold without mandates.||
+2014|H|137|3/19/2014 10:32:12 AM|HJR12|197|122|43|25|||ITL|requesting that Anthem extend its coverage to include one hospital in every county in New Hampshire.||
+2014|H|138|3/19/2014 11:08:22 AM|HB1307|195|138|29|25|||ITL|prohibiting the state and political subdivisions from acquiring military-equipped vehicles or equipment which are not readily available in an open national commercial market.||
+2014|H|139|3/19/2014 11:20:11 AM|HB1411|157|172|31|27|||Adopt FLAM 14-1024h|relative to restoring moneys to the department of health and human services.||
+2014|H|140|3/19/2014 11:39:43 AM|HB1411|185|153|24|25|||OTPA|relative to restoring moneys to the department of health and human services.||
+2014|H|141|3/19/2014 11:51:49 AM|HB1378|220|116|26|25|||ITL|repealing sugar packet requirements.||
+2014|H|142|3/19/2014 1:17:25 PM|HB1264|142|154|66|25|||Table|relative to carrying of firearms by nonresidents.||
+2014|H|143|3/19/2014 1:32:47 PM|HB1264|182|144|36|25|||Uphold Ruling of the Chair|relative to carrying of firearms by nonresidents.||
+2014|H|144|3/19/2014 2:05:03 PM|HB1264|160|176|27|24|||Recommit|relative to carrying of firearms by nonresidents.||
+2014|H|145|3/19/2014 2:19:48 PM|HB1438|207|126|30|24|||ITL|relative to the burden of proof for exceptions or exemptions in actions brought under the firearms laws of this state.||
+2014|H|146|3/19/2014 2:55:33 PM|HB1586|218|104|40|25|||Interim Study|relative to student and teacher information protection and privacy.||
+2014|H|147|3/19/2014 3:12:21 PM|HB1101|183|138|41|25|||ITL|relative to the recovery of overpayments by the retirement system and establishing a committee to study the policies and procedures of the retirement system for benefits wrongfully paid.||
+2014|H|148|3/19/2014 4:29:32 PM|HB435|167|151|43|26|||Interim Study|relative to funding for chartered public school pupils.||
+2014|H|149|3/19/2014 4:59:24 PM|HB1624|82|215|64|26|||Table|modernizing the juvenile justice system to ensure rehabilitation of juveniles and preservation of juvenile rights.||
+2014|H|150|3/19/2014 5:08:23 PM|HB1624|249|44|68|26|||Adopt 14-0891h|modernizing the juvenile justice system to ensure rehabilitation of juveniles and preservation of juvenile rights.||
+2014|H|151|3/19/2014 5:31:12 PM|HB1624|256|40|65|26|||OTPA|modernizing the juvenile justice system to ensure rehabilitation of juveniles and preservation of juvenile rights.||
+2014|H|153|3/20/2014 10:30:18 AM|HB1242|165|124|39|59|||OTPA|relative to deductibles, coinsurance, and out-of-pocket maximums under health insurance policies.||
+2014|H|154|3/20/2014 11:43:05 AM|HB1570|136|169|25|57|||Table|establishing a paint stewardship program.||
+2014|H|155|3/20/2014 12:13:00 PM|HB1570|188|112|30|57|||Previous Question|establishing a paint stewardship program.||
+2014|H|156|3/20/2014 12:20:06 PM|HB1570|167|135|28|57|||Adopt FLAM 14-1053h|establishing a paint stewardship program.||
+2014|H|157|3/20/2014 12:26:50 PM|HB1570|161|142|27|57|||OTPA|establishing a paint stewardship program.||
+2014|H|158|3/20/2014 12:33:56 PM||178|121|31|57|||Uphold Ruling of the Chair|||
+2014|H|159|3/20/2014 1:03:46 PM|HB1635|173|125|32|57|||OTP|relative to community mental health programs and making appropriations therefor.||
+2014|H|160|3/20/2014 3:01:23 PM|HB1501|211|86|36|54|||ITL|requiring licensing of outpatient abortion facilities.||
+2014|H|161|3/20/2014 3:47:29 PM|HB1503|176|116|41|54|||Adopt 14-0412h|including "fetus" in the definition of "another" for the purpose of certain criminal offenses.||
+2014|H|162|3/20/2014 4:19:17 PM|HB1503|114|170|49|54|||Adopt FLAM 1091h|including "fetus" in the definition of "another" for the purpose of certain criminal offenses.||
+2014|H|163|3/20/2014 4:23:14 PM|HB1503|243|42|48|54|||OTPA|including "fetus" in the definition of "another" for the purpose of certain criminal offenses.||
+2014|H|164|3/20/2014 4:45:46 PM|HB263|150|128|54|55|||OTPA|(New Title) relative to reporting a person as medically unfit to drive.||
+2014|H|165|3/20/2014 5:07:40 PM|HB1213|174|105|53|55|||Interim Study|prohibiting the purchase of alcohol or tobacco products with electronic benefit transfer (EBT) cards.||
+2014|H|166|3/20/2014 5:42:22 PM|HB1502|188|80|64|55|||Interim Study|relative to induced termination of pregnancy statistics.||
+2014|H|167|3/20/2014 5:51:24 PM||105|159|68|55|||Divide 3rd Reading|||
+2014|H|168|3/20/2014 5:52:50 PM||187|77|68|55|||3rd Reading|||
+2014|H|170|3/25/2014 10:43:15 AM|SB413|134|186|29|38|||Special Order|relative to access to health insurance coverage.||
+2014|H|171|3/25/2014 10:58:48 AM|SB413|137|189|23|38|||Adopt Amendment #1116h|FINANCE||4/24/2014 4:14:45 PM
+2014|H|172|3/25/2014 11:12:03 AM|SB413|138|191|20|38|||Adopt Amendment #1118h|FINANCE||4/24/2014 4:15:03 PM
+2014|H|173|3/25/2014 11:20:08 AM|SB413|131|196|22|38|||Adopt Amendment #1136h|FINANCE||4/24/2014 4:15:21 PM
+2014|H|174|3/25/2014 11:28:06 AM|SB413|137|190|22|38|||Adopt Amendment #1138h|FINANCE||4/24/2014 4:15:42 PM
+2014|H|175|3/25/2014 11:35:18 AM|SB413|134|193|22|38|||Adopt Amendment #1152h|FINANCE||4/24/2014 4:15:58 PM
+2014|H|176|3/25/2014 11:41:11 AM|SB413|135|192|22|38|||Adopt Amendment #1143h|FINANCE||4/24/2014 4:16:13 PM
+2014|H|177|3/25/2014 11:51:06 AM|SB413|138|191|20|38|||Adopt Amendment #1157h|FINANCE||4/24/2014 4:16:28 PM
+2014|H|178|3/25/2014 11:57:10 AM|SB413|127|198|24|38|||Adopt Amendment #1135h|FINANCE||4/24/2014 4:18:04 PM
+2014|H|179|3/25/2014 12:07:23 PM|SB413|129|197|23|38|||Adopt Amendment #1147h|FINANCE||4/24/2014 4:18:21 PM
+2014|H|180|3/25/2014 1:09:34 PM|SB413|202|132|18|35|||OTP|relative to access to health insurance coverage.||
+2014|H|181|3/25/2014 2:48:35 PM|HB1504|214|95|42|36|||ITL|providing that life begins at conception.||
+2014|H|182|3/25/2014 3:36:54 PM|HB1602|185|134|32|36|||OTPA|relative to the divestiture of PSNH assets.||
+2014|H|183|3/25/2014 4:18:33 PM|HB1135|261|45|46|35|||OTP|relative to penalties for driving without a license.||
+2014|H|185|3/26/2014 10:26:10 AM|HB1239|182|124|47|34|||ITL|relative to the implementation of new educational standards.||
+2014|H|186|3/26/2014 10:33:56 AM|HB1262|203|117|33|34|||Interim Study|relative to student assessment data privacy.||
+2014|H|187|3/26/2014 11:28:22 AM|HB1432|183|150|20|34|||Interim Study|delaying implementation of certain statewide assessments and studying the effects of delaying implementation of certain curriculum changes in the public schools.||
+2014|H|188|3/26/2014 11:41:13 AM|HB1496|210|123|20|34|||Interim Study|relative to the objectivity and validity of student assessment materials.||
+2014|H|189|3/26/2014 1:09:53 PM|HB1508|201|138|14|34|||ITL|terminating state participation in the common core educational standards.||
+2014|H|190|3/26/2014 3:49:47 PM|HB492|192|140|22|33|||ITL|relative to the legalization and regulation of marijuana.||
+2014|H|191|3/26/2014 4:13:57 PM|HB1142|274|41|39|33|||Adopt Amendment #1168h|WAYS AND MEANS||4/24/2014 4:14:04 PM
+2014|H|192|3/26/2014 4:17:58 PM|HB1142|258|58|39|32|||OTPA|relative to the road toll for alternative fuels.||
+2014|H|193|3/26/2014 4:58:00 PM|HB1379|239|67|49|32|||ITL|excluding firearms records from public records subject to disclosure under the right-to-know law.||
+2014|H|194|3/26/2014 5:18:46 PM|HB1105|238|70|47|32|||ITL|relative to aid to school districts for costs of special education.||
+2014|H|195|3/26/2014 5:56:02 PM|HB292|238|66|51|32|||OTP|(New Title) relative to registration fees for commercial, private, and pleasure vessels.||
+2014|H|197|4/16/2014 10:49:18 AM|SB405|172|147|31|37|||OTPA|requiring the registration of radon mitigation system installers with the board of home inspectors.||
+2014|H|198|4/16/2014 11:27:45 AM|SB295|192|142|18|35|||OTPA|prohibiting an employer from using credit history in employment decisions.||
+2014|H|199|4/16/2014 11:51:41 AM|SB390|186|153|13|35|||OTP|(New Title) prohibiting discrimination against employees who are victims of domestic violence and establishing a committee to study the protection of employees from domestic violence.||
+2014|H|201|4/23/2014 10:31:13 AM|SB215|216|101|29|41|||OTP|authorizing benefit corporations.||
+2014|H|202|4/23/2014 11:09:54 AM|SB367|126|202|17|42|||Adopt Amendment #1487h|PUBLIC WORKS AND HIGHWAYS||4/24/2014 8:48:35 AM
+2014|H|203|4/23/2014 11:31:02 AM|SB367|99|231|15|42|||Adopt Amendment #1504h|PUBLIC WORKS AND HIGHWAYS||4/24/2014 8:48:03 AM
+2014|H|204|4/23/2014 11:47:38 AM|SB367|87|245|13|42|||Adopt Amendment #1505h|PUBLIC WORKS AND HIGHWAYS||4/24/2014 8:46:22 AM
+2014|H|205|4/23/2014 12:28:39 PM|SB367|193|141|11|42|||OTP|(New Title) requiring adjustment of the road toll according to changes in the Consumer Price Index, eliminating certain ramp tolls on the Everett turnpike in the town of Merrimack, and establishing a committee to study the effectiveness and efficiency of||
+2014|H|206|4/23/2014 12:36:15 PM|SB367|133|202|10|42|||Reconsider|(New Title) requiring adjustment of the road toll according to changes in the Consumer Price Index, eliminating certain ramp tolls on the Everett turnpike in the town of Merrimack, and establishing a committee to study the effectiveness and efficiency of||
+2014|H|207|4/23/2014 2:09:51 PM|SB204|199|120|26|42|||Adopt Amendment #1427h|LABOR, INDUSTRIAL AND REHABILITATIVE SERVICES||7/14/2014 11:47:08 AM
+2014|H|208|4/23/2014 2:13:36 PM|SB204|133|189|23|42|||Adopt Amendment #1492h|LABOR, INDUSTRIAL AND REHABILITATIVE SERVICES||4/24/2014 8:42:12 AM
+2014|H|209|4/23/2014 2:42:44 PM|SB207|187|134|24|42|||OTP|relative to paycheck equity.||
+2014|H|210|4/23/2014 2:54:22 PM|SB325|124|186|35|42|||Divide Section 4 & 5|RESOURCES, RECREATION AND DEVELOPMENT||4/24/2014 8:38:54 AM
+2014|H|211|4/23/2014 3:46:50 PM|SB375|165|124|56|42|||OTPA|establishing a committee to study the creation of a flood mitigation fund for private property owners.||
+2014|H|213|4/30/2014 10:28:12 AM|SB91|172|141|40|34|||OTPA|relative to drug use not approved by the Food and Drug Administration.||
+2014|H|214|4/30/2014 10:51:36 AM|SB317|327|0|26|34|||OTPA|relative to trafficking in persons.||
+2014|H|215|4/30/2014 11:03:21 AM|SB318|325|3|25|34|||OTP|establishing the crime of domestic violence.||
+2014|H|216|4/30/2014 11:14:05 AM|CACR17|234|95|24|34|||Interim Study|relating to natural rights.  Providing that discrimination based on sexual orientation is prohibited.||
+2014|H|217|4/30/2014 11:21:50 AM|SB394|217|119|17|34|||OTP|relative to the recognition of out of state marriages, uniform marriage recognition law, civil union recognition, and gender neutral references.||
+2014|H|218|4/30/2014 11:28:04 AM|SB296|207|129|17|34|||Remove from Table|||4/30/2014 12:58:49 PM
+2014|H|219|4/30/2014 11:41:39 AM|SB296|223|114|16|34|||Rules Suspension|||4/30/2014 12:58:58 PM
+2014|H|220|4/30/2014 11:46:20 AM|SB296|210|128|16|33|||Table|relative to preferences for veterans and disabled veterans in public employment.||
+2014|H|221|4/30/2014 3:02:01 PM|SB366|173|172|12|30|||ITL|relative to video lottery and table gaming.||
+2014|H|222|4/30/2014 3:16:12 PM||133|202|22|30|||Reconsider 3rd Reading|||
+2014|H|224|5/7/2014 11:09:14 AM|SB366|172|192|6|17|||Reconsider|relative to video lottery and table gaming||
+2014|H|225|5/7/2014 11:44:25 AM|SB329|193|164|9|21|||ITL|relative to advertising alcoholic beverages on billboards.||
+2014|H|226|5/7/2014 12:25:46 PM|SB203|188|161|15|23|||Interim Study|relative to permissible uses of electronic benefit transfer (EBT) cards.||
+2014|H|227|5/7/2014 12:44:54 PM|SB248|252|96|15|24|||Adopt 14-1452h|establishing a committee to study policies and procedures for the development and maintenance of state-owned abandoned rail corridors.||
+2014|H|228|5/7/2014 12:53:33 PM|SB241|236|111|16|24|||OTPA|establishing the division of economic development fund.||
+2014|H|230|5/14/2014 11:24:27 AM|HB422|164|171|29|23|||Concur|relative to the adoption, revision, and amendment of municipal charters.||
+2014|H|231|5/14/2014 2:02:46 PM|SB202|218|117|29|23|||Adopt 14-1708h|relative to the elements of the crime of burglary.||
+2014|H|232|5/14/2014 2:05:10 PM|SB202|226|110|28|23|||OTPA|relative to the elements of the crime of burglary.||
+2014|H|233|5/14/2014 2:19:02 PM|SB207|152|184|17|34|||Adopt 14-1629h|relative to paycheck equity.||
+2014|H|234|5/14/2014 2:23:09 PM|SB207|129|208|17|33|||Table|relative to paycheck equity.||
+2014|H|235|5/14/2014 2:30:31 PM|SB207|233|103|18|33|||OTP|relative to paycheck equity.||
+2014|H|236|5/14/2014 2:51:04 PM|SB390|144|188|22|33|||Adopt 14-1701h|(New Title) prohibiting discrimination against employees who are victims of domestic violence and establishing a committee to study the protection of employees from domestic violence.||
+2014|H|237|5/14/2014 3:07:37 PM|SB390|141|187|26|33|||Table|(New Title) prohibiting discrimination against employees who are victims of domestic violence and establishing a committee to study the protection of employees from domestic violence.||
+2014|H|238|5/14/2014 3:09:45 PM|SB390|190|137|27|33|||OTP|(New Title) prohibiting discrimination against employees who are victims of domestic violence and establishing a committee to study the protection of employees from domestic violence.||
+2014|H|239|5/14/2014 3:28:30 PM|SB400|136|181|37|33|||Interim Study|relative to the penalty for violations of the taking of American eels.||
+2014|H|240|5/14/2014 3:30:46 PM|SB400|227|93|34|33|||OTP|relative to the penalty for violations of the taking of American eels.||
+2014|H|241|5/14/2014 3:54:37 PM|SB120|110|205|39|33|||Adopt FLAM 14-1812h|relative to political contributions and expenditures and relative to reporting by political committees.||
+2014|H|242|5/14/2014 4:52:01 PM|SB120|114|191|49|33|||Indefinitely Postpone|relative to political contributions and expenditures and relative to reporting by political committees.||
+2014|H|243|5/14/2014 4:55:21 PM|SB120|186|119|49|33|||OTPA|relative to political contributions and expenditures and relative to reporting by political committees.||
+2014|H|244|5/14/2014 5:00:46 PM|SB374|164|124|66|33|||OTPA|establishing a commission to review and make recommendations to standardize and make uniform the definitions of "domicile" and "residency" in state statutes.||
+2014|H|245|5/14/2014 5:11:40 PM|SB308|164|122|68|33|||OTPA|relative to innovation in the delivery of health care.||
+2014|H|246|5/14/2014 5:34:42 PM|SB415|151|127|76|33|||Interim Study|transferring surplus revenues to the revenue stabilization reserve account.||
+2014|H|247|5/14/2014 5:46:35 PM|SB388|216|60|79|32|||OTP|establishing a committee to study the current status of land conservation in New Hampshire and the state's role in encouraging voluntary protection of land in the future.||
+2014|H|248|5/14/2014 5:55:20 PM|SB220|163|111|81|32|||OTPA|relative to the regulation of electricians by the electricians' board.||
+2014|H|249|5/14/2014 6:09:03 PM|SB369|247|28|80|32|||OTPA|relative to the Medicaid enhancement tax.||
+2014|H|251|5/15/2014 10:15:13 AM|SB336|200|85|50|52|||ITL|prohibiting the taking of deer from baited areas on state-owned lands.||
+2014|H|252|5/15/2014 10:27:16 AM|SB389|110|177|47|53|||Adopt FLAM 14-1814h|(New Title) relative to the enforcement of motor vehicle laws by officers of the fish and game department.||
+2014|H|253|5/15/2014 10:42:51 AM|SB389|219|72|43|53|||OTPA|(New Title) relative to the enforcement of motor vehicle laws by officers of the fish and game department.||
+2014|H|254|5/15/2014 10:54:46 AM|SB319|105|179|50|53|||Adopt FLAM 14-1833h|relative to access to reproductive health care facilities.||
+2014|H|255|5/15/2014 11:02:26 AM|SB319|79|209|47|52|||Adopt FLAM 14-1839h|relative to access to reproductive health care facilities.||
+2014|H|256|5/15/2014 11:17:16 AM|SB319|117|174|44|52|||Table|relative to access to reproductive health care facilities.||
+2014|H|257|5/15/2014 11:24:52 AM|SB319|231|61|43|52|||Previous Question|relative to access to reproductive health care facilities.||
+2014|H|258|5/15/2014 11:33:40 AM|SB319|192|99|44|52|||Uphold Ruling of the Chair|relative to access to reproductive health care facilities.||
+2014|H|259|5/15/2014 11:38:59 AM|SB319|144|147|44|52|||Amend to Limit Debate|relative to access to reproductive health care facilities.||
+2014|H|260|5/15/2014 11:50:23 AM|SB319|143|150|42|52|||Limit Debate|relative to access to reproductive health care facilities.||
+2014|H|261|5/15/2014 1:40:29 PM|SB319|86|152|96|53|||Table|relative to access to reproductive health care facilities.||
+2014|H|262|5/15/2014 2:17:13 PM|SB319|162|100|73|52|||OTPA|relative to access to reproductive health care facilities.||
+2014|H|263|5/15/2014 2:19:57 PM|SB319|94|169|72|52|||Reconsider|relative to access to reproductive health care facilities.||
+2014|H|264|5/15/2014 2:35:46 PM|SB307|183|87|65|52|||OTPA|establishing a committee to review Citizens United amendments to the United States Constitution.||
+2014|H|265|5/15/2014 3:09:50 PM|CACR19|199|65|71|52|||Interim Study|relating to dedicated funds.  Providing that dedicated funds shall be used solely for the purpose of the fund.||
+2014|H|267|6/4/2014 10:35:22 AM|SB261|213|130|23|20|||Adopt CofC Report|(New Title) allowing the commissioner of administrative services to administer the health benefits of certain retirees of the State Employees’ Association of New Hampshire.||
+2014|H|268|6/4/2014 10:44:46 AM|SB271|327|20|20|19|||Rules Suspension|(New Title) relative to retention of voter affidavits and identity verification.||
+2014|H|269|6/4/2014 11:11:30 AM|SB369|278|72|16|20|||Adopt CofC Report|relative to the Medicaid enhancement tax.||
+2014|H|270|6/4/2014 11:23:25 AM|SB389|260|91|15|20|||Adopt CofC Report|(New Title) relative to the enforcement of motor vehicle laws by officers of the fish and game department.||
+2014|H|271|6/4/2014 11:32:20 AM|SB405|227|122|17|20|||Adopt CofC Report|requiring the registration of radon mitigation system installers with the board of home inspectors.||
+2014|H|272|6/4/2014 11:45:41 AM|HB421|201|140|25|20|||Adopt CofC Report|relative to regulation of real estate brokerage and sales by the real estate commission.||
+2014|H|273|6/4/2014 1:54:48 PM|HB532|205|132|29|20|||Adopt CofC Report|relative to energy efficiency and clean energy districts.||
+2014|H|274|6/4/2014 2:07:48 PM|HB1135|252|86|29|19|||Adopt CofC Report|relative to penalties for driving without a license.||
+2014|H|275|6/4/2014 2:20:40 PM|HB1167|182|152|33|19|||Adopt CofC Report|relative to exemptions from boiler inspection requirements.||
+2014|H|276|6/4/2014 2:24:30 PM|HB1188|207|120|40|19|||Adopt CofC Report|relative to paycheck equity.||
+2014|H|277|6/4/2014 2:45:55 PM|HB1410|231|90|46|19|||Adopt CofC Report|including household and domesticated animals under the domestic violence protection statute.||
+2014|H|278|6/4/2014 3:15:11 PM||171|153|43|19|||Rules Suspension|||
+2014|H|280|9/17/2014 10:33:54 AM|HB591|141|154|53|38|||Veto Override|relative to an abusive work environment and the health and safety of public employees.||
+2014|H|281|9/17/2014 11:09:50 AM|HB685|190|113|46|37|||Veto Override|(New Title) relative to state agency communications.||
+2014|H|282|9/17/2014 11:37:47 AM|HB1244|160|142|48|36|||Veto Override|relative to the disclosure of the names of lottery winners.||
+2014|S|1|1/30/2014 12:00:00 AM|SB217|11|13|24|0|||Ought to Pass|prohibiting collective bargaining agreements that require employees to join or contribute to a labor union.||1/31/2014 4:22:53 PM
+2014|S|2|1/30/2014 12:00:00 AM|SB217|13|11|24|0|||Inexpedient to Legislate|prohibiting collective bargaining agreements that require employees to join or contribute to a labor union.||1/31/2014 4:23:12 PM
+2014|S|3|1/30/2014 12:00:00 AM|HB186|13|11|24|0|||Lay On Table|relative to the authority of the department of state.||1/31/2014 4:23:22 PM
+2014|S|4|1/30/2014 12:00:00 AM|HB583|3|21|24|0|||Ought to Pass|relative to proceedings of medical injury claims screening panels.||1/31/2014 4:23:31 PM
+2014|S|5|1/30/2014 12:00:00 AM|SB255|13|11|24|0|||Inexpedient to Legislate|establishing an innovation business tax incentive program and credit against interest and dividend taxes.||1/31/2014 4:23:40 PM
+2014|S|6|1/30/2014 12:00:00 AM|SB312|13|11|24|0|||Inexpedient to Legislate|establishing a job creation credit against the business profits tax and the business enterprise tax for small businesses increasing employment in New Hampshire.||1/31/2014 4:23:48 PM
+2014|S|7|1/30/2014 12:00:00 AM|SB316|13|11|24|0|||Inexpedient to Legislate|establishing a call center job creation tax credit against the business profits tax.||1/31/2014 4:23:57 PM
+2014|S|8|1/30/2014 12:00:00 AM|SB333|24|0|24|0|||Ought to Pass|relative to property taxation of manufactured housing.||1/31/2014 4:24:04 PM
+2014|S|9|1/30/2014 12:00:00 AM|SB193|22|2|24|0|||Sen. Bradley/Gilmour Floor Amendment 0334s|relative to dental therapists and access to oral health care.||1/31/2014 4:21:38 PM
+2014|S|10|2/6/2014 12:00:00 AM|SB329|14|10|24|0|||Ought to Pass|relative to advertising alcoholic beverages on billboards.||2/7/2014 1:59:23 PM
+2014|S|11|2/6/2014 12:00:00 AM|SB238|13|11|24|0|||Inexpedient to Legislate|relative to restoring moneys to the department of health and human services and depositing the balance of the surplus into the revenue stabilization reserve account.||2/7/2014 1:59:32 PM
+2014|S|12|2/6/2014 12:00:00 AM|SB317|24|0|24|0|||Ought to Pass with Amendment|relative to trafficking in persons.||2/7/2014 1:59:43 PM
+2014|S|13|2/6/2014 12:00:00 AM|SB120|19|4|24|0|||Sen. Pierce Floor Amendment 0425s|relative to political contributions and expenditures and relative to reporting by political committees.||2/7/2014 1:59:55 PM
+2014|S|14|2/13/2014 12:00:00 AM|SB318|24|0|24|0|||Ought to Pass with Amendment|establishing the crime of domestic violence.||2/13/2014 5:18:24 PM
+2014|S|15|2/13/2014 12:00:00 AM|SB357|24|0|24|0|||Ought to Pass with Amendment|naming a scenic overlook in honor of Raymond S. Burton.||2/13/2014 5:18:08 PM
+2014|S|16|2/19/2014 12:00:00 AM|SB322|13|11|24|0|||Inexpedient to Legislate|relative to the renomination of teachers.||2/20/2014 9:26:47 AM
+2014|S|17|2/19/2014 12:00:00 AM|SB319|10|14|24|0|||Laid on Table|relative to access to reproductive health care facilities.||2/20/2014 9:27:03 AM
+2014|S|18|2/19/2014 12:00:00 AM|SB319|10|14|24|0|||Inexpedient to Legislate|relative to access to reproductive health care facilities.||2/20/2014 9:27:08 AM
+2014|S|19|2/19/2014 12:00:00 AM|SB319|15|9|24|0|||Ought to Pass|relative to access to reproductive health care facilities.||2/20/2014 9:27:14 AM
+2014|S|20|3/6/2014 12:00:00 AM|SB413|19|4|24|0|||Committee Amendment 0651s|relative to access to health insurance coverage.||3/7/2014 1:50:14 PM
+2014|S|21|3/6/2014 12:00:00 AM|SB413|9|14|24|0|||Sen. Sanborn Floor Amendment 0850s|relative to access to health insurance coverage.||3/7/2014 1:50:20 PM
+2014|S|22|3/6/2014 12:00:00 AM|SB413|4|19|24|0|||Sen. Sanborn Floor Amendment 0882s|relative to access to health insurance coverage.||3/7/2014 1:50:25 PM
+2014|S|23|3/6/2014 12:00:00 AM|SB413|5|18|24|0|||Sen. Sanborn Floor Amendment 0883s|relative to access to health insurance coverage.||3/7/2014 1:50:30 PM
+2014|S|24|3/6/2014 12:00:00 AM|SB413|23|0|24|0|||Sen. Bradley Floor Amendment 0889s|relative to access to health insurance coverage.||3/7/2014 1:50:38 PM
+2014|S|25|3/6/2014 12:00:00 AM|SB413|18|5|24|0|||Ought to Pass with Amendment|relative to access to health insurance coverage.||3/7/2014 1:50:44 PM
+2014|S|26|3/6/2014 12:00:00 AM|SB253|24|0|24|0|||Ought to Pass with Amendment|relative to grounds for termination of parental rights.||3/7/2014 1:50:52 PM
+2014|S|27|3/6/2014 12:00:00 AM|SB390|24|0|24|0|||Ought to Pass with Amendment|relative to protection of employees who are victims of domestic abuse, sexual assault, stalking, or criminal harassment.||3/7/2014 1:50:57 PM
+2014|S|28|3/13/2014 12:00:00 AM|SB204|22|1|23|1|||Ought to Pass with Amendment|relative to medical conditions covered by workers' compensation.||3/14/2014 3:09:31 PM
+2014|S|29|3/13/2014 12:00:00 AM|SB207|23|0|23|1|||Ought to Pass with Amendment|relative to paycheck equity.||3/14/2014 3:09:46 PM
+2014|S|30|3/13/2014 12:00:00 AM|SB364|12|11|23|1|||Inexpedient to Legislate|relative to group II service retirement allowances and relative to establishing a supplemental savings plan in the retirement system.||3/14/2014 3:09:56 PM
+2014|S|31|3/13/2014 12:00:00 AM|SB367|14|9|23|1|||Ought to Pass with Amendment|requiring adjustment of the road toll according to changes in the Consumer Price Index.||3/14/2014 3:10:07 PM
+2014|S|32|3/13/2014 12:00:00 AM|SB374|14|9|23|1|||Ought to Pass|establishing a commission to review and make recommendations to standardize and make uniform the definitions of "domicile" and "residency" in state statutes.||3/14/2014 3:10:18 PM
+2014|S|33|3/13/2014 12:00:00 AM|CACR17|23|0|23|1|||Ought to Pass with Amendment|relating to natural rights.  Providing that discrimination based on sexual orientation is prohibited.||3/14/2014 3:10:29 PM
+2014|S|34|3/13/2014 12:00:00 AM|CACR19|21|2|23|1|||Ought to Pass|relating to dedicated funds.  Providing that dedicated funds shall be used solely for the purpose of the fund.||3/14/2014 3:10:37 PM
+2014|S|35|3/13/2014 12:00:00 AM|SB203|20|3|23|1|||Ought to Pass with Amendment|relative to permissible uses of electronic benefit transfer (EBT) cards.||3/14/2014 3:10:47 PM
+2014|S|36|3/27/2014 12:00:00 AM|SB325|13|11|24|0|||Ought to Pass with Amendment|relative to oil spill preparedness and response.||3/28/2014 3:09:04 PM
+2014|S|37|3/27/2014 12:00:00 AM|SB327|24|0|24|0|||Ought to Pass with Amendment|relative to economic revitalization zone tax credits.||3/28/2014 3:09:18 PM
+2014|S|38|3/27/2014 12:00:00 AM|SB329|12|12|24|0|||Inexpedient to Legislate|relative to advertising alcoholic beverages on billboards.||3/28/2014 3:09:26 PM
+2014|S|39|3/27/2014 12:00:00 AM|SB329|12|12|24|0|||Ought to Pass|relative to advertising alcoholic beverages on billboards.||3/28/2014 3:09:39 PM
+2014|S|40|3/27/2014 12:00:00 AM|SB367|15|9|24|0|||Ought to Pass with Amendment|(New Title) requiring adjustment of the road toll according to changes in the Consumer Price Index, eliminating certain ramp tolls on the Everett turnpike in the town of Merrimack, and establishing a committee to study the effectiveness and efficiency of |the department of transportation.|3/28/2014 3:09:48 PM
+2014|S|41|3/27/2014 12:00:00 AM|SB329|12|12|24|0|||Laid on Table|relative to advertising alcoholic beverages on billboards.||3/28/2014 3:09:56 PM
+2014|S|42|3/27/2014 12:00:00 AM|SB329|13|11|24|0|||Ought to Pass|relative to advertising alcoholic beverages on billboards.||3/28/2014 3:10:06 PM
+2014|S|43|3/27/2014 12:00:00 AM|SB415|10|14|24|0|||Floor Amendment 1183s|transferring surplus revenues to the revenue stabilization reserve account.||3/28/2014 3:10:15 PM
+2014|S|44|3/27/2014 12:00:00 AM|SB415|22|2|24|0|||Ought to Pass|transferring surplus revenues to the revenue stabilization reserve account.||3/28/2014 3:10:23 PM
+2014|S|45|3/27/2014 12:00:00 AM|SB416|12|12|24|0|||Floor Amendment 1184s|(New Title) relative to highway fund appropriations and establishing a committee to study the effectiveness and efficiency of the department of transportation.||3/28/2014 3:10:30 PM
+2014|S|46|3/27/2014 12:00:00 AM|SB244|11|13|24|0|||Laid on Table|requiring the names of certain persons to be reported to the National Instant Criminal Background Check System Index.||3/28/2014 3:10:37 PM
+2014|S|47|3/27/2014 12:00:00 AM|SB244|17|7|24|0|||Committee Amendment 1114s, Sections 1, 4|requiring the names of certain persons to be reported to the National Instant Criminal Background Check System Index.||3/28/2014 3:10:43 PM
+2014|S|48|3/27/2014 12:00:00 AM|SB394|24|0|24|0|||Ought to Pass|relative to the recognition of out of state marriages, uniform marriage recognition law, civil union recognition, and gender neutral references.||3/28/2014 3:10:50 PM
+2014|S|49|3/27/2014 12:00:00 AM|SB307|24|0|24|0|||Committee Amendment 0934s|establishing a committee to review Citizens United amendments to the United States Constitution.||3/28/2014 3:10:58 PM
+2014|S|50|3/27/2014 12:00:00 AM|SB307|12|12|24|0|||Floor Amendment 1189s|establishing a committee to review Citizens United amendments to the United States Constitution.||3/28/2014 3:11:06 PM
+2014|S|51|3/27/2014 12:00:00 AM|SB307|23|1|24|0|||Ought to Pass with Amendment|establishing a committee to review Citizens United amendments to the United States Constitution.||3/28/2014 3:11:14 PM
+2014|S|52|3/27/2014 12:00:00 AM|SB366|15|9|24|0|||Ought to Pass with Amendment|relative to video lottery and table gaming.||3/28/2014 3:11:22 PM
+2014|S|53|4/17/2014 12:00:00 AM|HB1389|24|0|24|0|||Ought to Pass|naming a bridge in Derry the Lance Corporal Michael E. Geary bridge.||4/18/2014 12:21:15 PM
+2014|S|54|4/17/2014 12:00:00 AM|HB1170|10|14|24|0|||Floor Amendment 1436s|repealing the death penalty in New Hampshire.||4/18/2014 12:21:27 PM
+2014|S|55|4/17/2014 12:00:00 AM|HB1170|12|12|24|0|||Ought to Pass|repealing the death penalty in New Hampshire.||4/18/2014 12:22:52 PM
+2014|S|56|4/17/2014 12:00:00 AM|HB1170|12|12|24|0|||Laid on Table|repealing the death penalty in New Hampshire.||4/18/2014 12:23:00 PM
+2014|S|57|4/17/2014 12:00:00 AM|HB1170|12|12|24|0|||Inexpedient to Legislate|repealing the death penalty in New Hampshire.||4/18/2014 12:23:08 PM
+2014|S|58|4/17/2014 12:00:00 AM|HB1170|24|0|24|0|||Laid on Table|repealing the death penalty in New Hampshire.||4/18/2014 12:23:16 PM
+2014|S|59|4/17/2014 12:00:00 AM|HB562|15|9|24|0|||Interim Study| (New Title) relative to title loans.||4/18/2014 12:23:23 PM
+2014|S|60|4/17/2014 12:00:00 AM|HB1174|11|13|24|0|||Floor Amendment 1364s| (New Title) establishing a committee to study the payment of subminimum wages to persons with disabilities.||4/18/2014 12:23:31 PM
+2014|S|61|4/17/2014 12:00:00 AM|HB1498|11|12|24|0|||Interim Study|relative to wages lost when an employee submits to a medical examination required under workers' compensation law.||4/18/2014 12:23:39 PM
+2014|S|62|4/17/2014 12:00:00 AM|HB1498|11|12|24|0|||Laid on Table|relative to wages lost when an employee submits to a medical examination required under workers' compensation law.||4/18/2014 12:23:47 PM
+2014|S|63|4/17/2014 12:00:00 AM|HB186|13|11|24|0|||Interim Study|relative to the authority of the department of state.||4/18/2014 12:23:55 PM
+2014|S|64|4/17/2014 12:00:00 AM|HB1411|15|9|24|0|||Inexpedient to Legislate|(New Title) relative to restoring moneys to the department of health and human services and depositing the balance of the surplus into the revenue stabilization reserve account||4/18/2014 12:24:07 PM
+2014|S|65|4/17/2014 12:00:00 AM|HB1322|13|11|24|0|||Inexpedient to Legislate|relative to the definition of "party" for election purposes.||4/18/2014 12:24:15 PM
+2014|S|66|4/24/2014 12:00:00 AM|HB1503|10|13|23|1|||Laid on the Table|(New Title) relative to the penalties for negligent homicide and manslaughter causing a miscarriage or stillbirth and relative to miscarriage or stillbirth in second degree murder cases.||4/25/2014 2:26:24 PM
+2014|S|67|4/24/2014 12:00:00 AM|HB1503|10|13|23|1|||Committee Amendment 1336s|(New Title) relative to the penalties for negligent homicide and manslaughter causing a miscarriage or stillbirth and relative to miscarriage or stillbirth in second degree murder cases.||4/25/2014 2:26:46 PM
+2014|S|68|4/24/2014 12:00:00 AM|HB1503|11|12|23|1|||Floor Amendment 1539s|(New Title) relative to the penalties for negligent homicide and manslaughter causing a miscarriage or stillbirth and relative to miscarriage or stillbirth in second degree murder cases.||4/25/2014 2:26:58 PM
+2014|S|69|4/24/2014 12:00:00 AM|HB1503|21|2|23|1|||Laid on the Table|(New Title) relative to the penalties for negligent homicide and manslaughter causing a miscarriage or stillbirth and relative to miscarriage or stillbirth in second degree murder cases.||4/25/2014 2:27:10 PM
+2014|S|70|4/24/2014 12:00:00 AM|HB422|7|16|23|1|||Laid on the Table|relative to the adoption, revision, and amendment of municipal charters.||4/25/2014 2:27:22 PM
+2014|S|71|4/24/2014 12:00:00 AM|HB422|15|7|22|2|||Ought to Pass with Amendment|relative to the adoption, revision, and amendment of municipal charters.||4/25/2014 2:27:33 PM
+2014|S|72|5/1/2014 12:00:00 AM|HB1281|23|0|23|1|||Ought to Pass with Amendment|relative to copayments for certain specialists.||5/2/2014 9:57:55 AM
+2014|S|73|5/1/2014 12:00:00 AM|HB1570|7|16|23|1|||Ought to Pass with Amendment|establishing a paint stewardship program.||5/2/2014 9:58:05 AM
+2014|S|74|5/1/2014 12:00:00 AM|HB533|19|4|23|1|||Ought to Pass|relative to the mathematics requirement for high school graduation.||5/2/2014 9:58:12 AM
+2014|S|75|5/1/2014 12:00:00 AM|HB1622|14|9|23|1|||Interim Study|permitting qualifying patients and registered caregivers to cultivate cannabis for therapeutic use.||5/2/2014 9:58:20 AM
+2014|S|76|5/8/2014 12:00:00 AM|HB1349|12|11|24|0|||Ought to Pass with Amendment|(New Title) relative to the definition of employee for purposes of workers’ compensation.||5/9/2014 11:53:20 AM
+2014|S|77|5/8/2014 12:00:00 AM|HB1403|13|11|24|0|||Inexpedient to Legislate|establishing a state minimum hourly wage.||5/9/2014 11:53:34 AM
+2014|S|78|5/8/2014 12:00:00 AM|HB1581|13|11|24|0|||Inexpedient to Legislate|relative to the bonding of project costs for certain department of transportation bridge capital projects.||5/9/2014 11:53:42 AM
+2014|S|79|5/8/2014 12:00:00 AM|HB474|24|0|24|0|||Interim Study|relative to eligibility for in-state tuition rates at the university system of New Hampshire.||5/9/2014 11:53:49 AM
+2014|S|80|5/8/2014 12:00:00 AM|HB685|13|11|24|0|||Ought to Pass with Amendment|(New Title) relative to state agency communications.||5/9/2014 11:53:56 AM
+2014|S|81|5/15/2014 12:00:00 AM|HB286|14|10|24|0|||Interim Study|relative to broadband infrastructure.||5/19/2014 3:07:45 PM
+2014|S|82|5/15/2014 12:00:00 AM|HB569|8|16|24|0|||Committee Amendment 1761s|relative to the placement of all new electric transmission lines in New Hampshire.||5/19/2014 3:07:57 PM
+2014|S|83|5/15/2014 12:00:00 AM|HB1135|24|0|24|0|||Ought to Pass with Amendment|relative to penalties for driving without a license.||5/19/2014 3:08:05 PM
+2014|S|84|5/15/2014 12:00:00 AM|HB1372|24|0|24|0|||Ought to Pass with Amendment|(New Title) making an appropriation for the pediatric sexual assault nurse examiner training program.||5/19/2014 3:08:14 PM
+2014|S|85|5/15/2014 12:00:00 AM|HB1499|12|11|24|0|||Committee Amendment 1808s|(New Title) increasing the maximum weekly benefit amount of unemployment benefits; amending the definitions of “full-time” and “part-time” work; and establishing a commission study the effect on the unemployment compensation trust fund of the contribution| rate reduction trigger levels in RSA 282-A:82 and RSA 282-A:82-a  and the elimination of some or all of the waiting periods required to be served pursuant to RSA 282-A:31, I(h).|5/19/2014 3:08:22 PM
+2014|S|86|5/15/2014 12:00:00 AM|HB1499|12|11|24|0|||Ought to Pass with Amendment|(New Title) increasing the maximum weekly benefit amount of unemployment benefits; amending the definitions of “full-time” and “part-time” work; and establishing a commission study the effect on the unemployment compensation trust fund of the contribution| rate reduction trigger levels in RSA 282-A:82 and RSA 282-A:82-a  and the elimination of some or all of the waiting periods required to be served pursuant to RSA 282-A:31, I(h).|5/19/2014 3:08:29 PM
+2014|S|87|5/15/2014 12:00:00 AM|HB582|11|13|24|0|||Committee Amendment 1746s|(New Title)  relative to early offers for medical injury claims.||5/19/2014 3:08:36 PM
+2014|S|88|5/15/2014 12:00:00 AM|HB582|13|11|24|0|||Floor Amendment 1853s|(New Title)  relative to early offers for medical injury claims.||5/19/2014 3:08:44 PM
+2014|S|89|5/15/2014 12:00:00 AM|HB1409|10|14|24|0|||Floor Amendment 1873s|expanding the law against discrimination to prohibit housing discrimination against recipients of rental assistance and victims of domestic violence, sexual assault, or stalking.||5/19/2014 3:08:52 PM
+2014|S|90|5/15/2014 12:00:00 AM|HB1409|23|1|24|0|||Ought to Pass with Amendment|expanding the law against discrimination to prohibit housing discrimination against recipients of rental assistance and victims of domestic violence, sexual assault, or stalking.||5/19/2014 3:09:01 PM
+2014|S|91|5/15/2014 12:00:00 AM|HB1409|24|0|24|0|||Ought to Pass with Amendment|expanding the law against discrimination to prohibit housing discrimination against recipients of rental assistance and victims of domestic violence, sexual assault, or stalking.||5/19/2014 3:09:07 PM
+2014|S|92|5/15/2014 12:00:00 AM|HB1613|11|13|24|0|||Floor Amendment 1865s|relative to payment of the Medicaid enhancement tax.||5/19/2014 3:09:20 PM
+2014|S|93|5/15/2014 12:00:00 AM|HB1613|13|11|24|0|||Ought to Pass with Amendment|relative to payment of the Medicaid enhancement tax.||5/19/2014 3:09:27 PM
+2014|S|94|5/22/2014 12:00:00 AM|SB319|14|9|23|1|||Concur|relative to access to reproductive health care facilities.||5/23/2014 5:01:56 PM
+2014|S|95|5/22/2014 12:00:00 AM|SB319|14|9|23|1|||Concur|relative to access to reproductive health care facilities.||5/23/2014 5:02:04 PM
+2014|S|96|5/22/2014 12:00:00 AM|SB120|12|11|23|1|||Concur|relative to political contributions and expenditures and relative to reporting by political committees.||5/23/2014 5:02:10 PM
+2014|S|97|5/22/2014 12:00:00 AM|SB307|12|11|23|1|||Non-concur Request Committee of Conference|establishing a committee to review Citizens United amendments to the United States Constitution.||5/23/2014 5:02:17 PM
+2014|S|98|5/22/2014 12:00:00 AM|SB319|13|10|23|1|||Concur|relative to access to reproductive health care facilities.||5/23/2014 5:02:23 PM
+2014|S|99|6/4/2014 12:00:00 AM|HB685|13|11|24|0|||Conference Committee Report 1950c|(New Title) relative to state agency communications.||6/4/2014 1:31:16 PM
+2014|S|100|9/15/2014 12:00:00 AM|SB391|12|9|21|2|||Notwithstanding the Governor's veto shall the bill become law?|(New Title) relative to the juvenile justice advisory board; the policies and procedures of the youth development center; and a reduction in appropriation to the Sununu Youth Services Center.||9/15/2014 1:41:06 PM

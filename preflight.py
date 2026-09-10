@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.95
+# GRANITE_VERSION: 2026-09-04.97
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3068,6 +3068,41 @@ def _testimony_dated(build_site_v2):
     return "ok", "the hearing's own count, or the bill's, and it says which"
 
 
+@check("narrative", "a past member's label gives up their name and district",
+       needs=("past_members",))
+def _past_member_label(past_members):
+    """Real options from the General Court's own list of everyone who served.
+
+    Two of these break the obvious parse. "Battles(-Peirce), Marjorie(Rock.
+    18)" carries a parenthesis inside the SURNAME, so the district has to be
+    read from the last bracket rather than the first -- a non-greedy match
+    calls that member's district "-Peirce". And "Barnes, Jr., John(Dist. 17)"
+    carries a suffix, so the name is not two comma-separated fields.
+
+    A senator has a district and no county; a representative has both.
+    """
+    q = past_members.parse
+    assert q("Rep. Vartanian, Elsie(Rock. 20)") == {
+        "name": "Vartanian, Elsie", "chamber": "H", "county": "Rock",
+        "district": "20", "party": ""}
+    assert q("Sen. Blaisdell, Clesson(Dist. 10)") == {
+        "name": "Blaisdell, Clesson", "chamber": "S", "county": "",
+        "district": "10", "party": ""}
+    assert q("Rep. Battles(-Peirce), Marjorie(Rock. 18)")["district"] == "18"
+    assert q("Rep. Battles(-Peirce), Marjorie(Rock. 18)")["name"] == \
+        "Battles(-Peirce), Marjorie"
+    assert q("Sen. Barnes, Jr., John(Dist. 17)")["name"] == "Barnes, Jr., John"
+    assert q("Rep. Albert, Russell(Straf 01)")["district"] == "01", \
+        "a leading zero is how former_members.json writes a district"
+    # No party is ever invented. The list does not carry one, and a member
+    # named only from here votes without a party letter rather than with a
+    # guessed one.
+    assert all(q(s)["party"] == "" for s in (
+        "Rep. Vartanian, Elsie(Rock. 20)", "Sen. Barnes, Jr., John(Dist. 17)"))
+    assert q("not a legislator") == {}
+    return "ok", "six real labels, two of which break the obvious parse"
+
+
 @check("narrative", "a sponsor row gives up its bill, its LSR and its title",
        needs=("fetch_sponsors_by_member",))
 def _sponsor_rows(fetch_sponsors_by_member):
@@ -4097,19 +4132,55 @@ def _vote_identity():
         if not y:
             continue
         t = f"{y - (1 - y % 2)}-{y - (1 - y % 2) + 1}"
-        tot, nop = per_term.get(t, (0, 0))
-        per_term[t] = (tot + 1, nop + ((v.get("party") or "X") == "X"))
-    # A term is either resolved or it is not. The three unidentifiable members
-    # of the 2023-2024 House are 0.7% of it; a real regression puts a whole
-    # cohort back to "X" and lands in the tens of percent.
-    bad = {t: f"{n:,}/{tot:,}" for t, (tot, n) in per_term.items()
-           if tot and n > tot * 0.05}
-    assert not bad, (f"a term is missing party on more than 5% of its votes: "
-                     f"{bad}. former_members.json is stale or was not read; "
-                     "fetch_members_db.py fills it from the legislators table.")
-    census = ", ".join(f"{t} {n:,}/{tot:,} with no party"
-                       for t, (tot, n) in sorted(per_term.items()))
-    return "ok", f"{len(by_emp):,} distinct voters; {census}"
+        tot, nop, non = per_term.get(t, (0, 0, 0))
+        per_term[t] = (tot + 1,
+                       nop + ((v.get("party") or "X") == "X"),
+                       non + str(v.get("name") or "").startswith("Member #"))
+
+    # A NAME, EVERYWHERE. This is the guard that holds across the whole
+    # archive, and the one that regressed most recently: 24 years of roll
+    # calls came off the database dump on 10 September and 783,919 of their
+    # ballots were cast by "Member #330274", nobody at all. past_members.json
+    # names 733,474 of them. Measured after that, no term is worse than 4%.
+    nameless = {t: f"{n:,}/{tot:,}" for t, (tot, _, n) in per_term.items()
+                if tot and n > tot * 0.05}
+    assert not nameless, (
+        f"a term has more than 5% of its ballots cast by somebody unnamed: "
+        f"{nameless}. past_members.json is missing or stale; "
+        "fetch_sponsors_by_member.py --members writes it in one request.")
+
+    # A PARTY, WHERE A PARTY IS KNOWABLE. The original 5% rule stays, on the
+    # terms it was written for and can hold: the General Court's roster views
+    # reach members who served recently, and the list of everyone who ever
+    # served -- the only source that names the rest -- carries no party at
+    # all. Measured on 10 September, ballots with no party:
+    #
+    #     1999-2000  88%     2007-2008  75%     2015-2016   6%
+    #     2001-2002  85%     2009-2010  66%     2017-2018   2%
+    #     2003-2004  82%     2011-2012  57%     2019-2020   1%
+    #     2005-2006  78%     2013-2014  36%     2021-2026   0%
+    #
+    # So the rule is applied from 2017-2018 on, which is where it is
+    # achievable, and the earlier terms are reported rather than asserted.
+    # Lowering it to pass would have hidden the case it exists for: 63,065 of
+    # the 2023-2024 term's votes lost their party letter once, and a reader
+    # found it before this file did. Inventing a party for a 1999
+    # representative -- from a later namesake, or from how they voted -- would
+    # be worse than saying nothing, because party is the fact a reader is
+    # most likely to act on.
+    bad = {t: f"{n:,}/{tot:,}" for t, (tot, n, _) in per_term.items()
+           if tot and n > tot * 0.05 and t >= "2017-2018"}
+    assert not bad, (f"a term since 2017 is missing party on more than 5% of "
+                     f"its votes: {bad}. former_members.json is stale or was "
+                     "not read; fetch_members_db.py fills it from the "
+                     "legislators table.")
+    old = sum(n for t, (_, n, _) in per_term.items() if t < "2017-2018")
+    census = ", ".join(f"{t} {n:,}/{tot:,}"
+                       for t, (tot, n, _) in sorted(per_term.items())
+                       if n > tot * 0.05)
+    return "ok", (f"{len(by_emp):,} distinct voters, every term named; "
+                  f"{old:,} ballots before 2017 carry no party "
+                  f"(no source on this disk has one): {census}")
 
 
 @check("frontend", "a page says what it is once, and says where it lives")

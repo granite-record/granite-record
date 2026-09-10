@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.17
+# GRANITE_VERSION: 2026-09-04.18
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -680,6 +680,37 @@ def main():
     if fp.exists():
         former = json.loads(fp.read_text(encoding="utf-8"))
         print(f"former members named: {len(former)}")
+
+    # And beneath it, the General Court's own list of everybody who has served.
+    #
+    # Twenty-four years of roll calls came off the database dump on 10
+    # September, and 783,919 of their ballots were cast by somebody this site
+    # could not name -- "Member #330274" -- because the roster views reach
+    # 1,081 people and former_members.json 676. past_members.json holds 2,614,
+    # keyed by the same Employeeno the roll call history uses, and names
+    # 733,474 of those ballots: 93%.
+    #
+    # It goes UNDER what is already here and never over it. The two files do
+    # not currently share a single key -- former_members is PersonID-shaped
+    # and this is Employeeno-shaped -- but relying on that would be relying on
+    # a coincidence, and a name a person checked beats one read off a dropdown.
+    #
+    # What it does not carry is a PARTY, and none is invented: a member named
+    # only from here votes with no party letter. Guessing one from a later
+    # namesake would fabricate the fact a reader is most likely to act on.
+    try:
+        import past_members
+        _past = past_members.roster()
+    except Exception as e:
+        print(f"  past members: none ({e})")
+        _past = {}
+    _added = 0
+    for _mid, _rec in _past.items():
+        if _mid not in former:
+            former[_mid] = _rec
+            _added += 1
+    if _added:
+        print(f"past members named from the General Court's own list: {_added:,}")
 
     # ------------------------------------------ sponsors, district and all ---
     #
