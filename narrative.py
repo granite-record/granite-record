@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.28
+# GRANITE_VERSION: 2026-09-04.29
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -83,6 +83,15 @@ RECOMMENDATION = {
     "without recommendation": "make no recommendation",
     "no recommendation": "make no recommendation",
     "lay on table": "set it aside without killing it",
+    # THE SENATE'S SPELLING. The House clerk writes "Lay on Table" and the
+    # Senate clerk writes "Laid on Table", and this is a prefix match, so
+    # the second fell through and was printed in the docket's own words
+    # while the first read as plain English. 318 Senate actions, plus the
+    # ones carrying a roll-call tally after them. The compound forms --
+    # "vacated from committee and laid on table", "introduced ..., and laid
+    # on table" -- start with a different verb and are two actions in one
+    # line; they are left as the clerk wrote them rather than losing half.
+    "laid on table": "set it aside without killing it",
     "table": "set it aside without killing it",
     "indefinitely postpone": "kill it and bar the subject for the rest of the term",
     "adopt": "adopt it",
