@@ -162,3 +162,9 @@ secrets.json
 !secrets.example.json
 
 legislation/
+
+# The sponsor sweep: 2,614 members x 2 answers, saved gzipped so the parser
+# can be wrong without costing a request. Generated, and large.
+sponsors_pages/
+sponsors_members.json
+sponsors_form.html

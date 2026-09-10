@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.94
+# GRANITE_VERSION: 2026-09-04.95
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3066,6 +3066,49 @@ def _testimony_dated(build_site_v2):
     assert f({"raw": "Ought to Pass: MA VV 03/06/2026", "date": "2026-03-06"},
              tdb, None) == {}, "a floor vote was given a sign-in count"
     return "ok", "the hearing's own count, or the bill's, and it says which"
+
+
+@check("narrative", "a sponsor row gives up its bill, its LSR and its title",
+       needs=("fetch_sponsors_by_member",))
+def _sponsor_rows(fetch_sponsors_by_member):
+    """Real markup from byAnyMember.aspx, kept because it is not what it looks like.
+
+    Rendered, that page is a four-column table. In the HTML the four fields
+    are DIVs inside a single <td>, and a parser written from the rendered
+    shape finds nothing at all -- which is exactly what the first draft of
+    this one did. The header row carries the same four divs, so rows are
+    keyed on the presence of a billinfo link rather than on position.
+
+    The LSR is the point of the whole route: Pastid is the LSR with the
+    session year stuck on the end, so HB750 of 1989 joins data/bills.json on
+    lsr_num 1171 rather than on a guess at which "Rep. Allard" is meant.
+    """
+    page = (
+        '<table><tr><td><div class="container"><div class="row">'
+        '<div class="col-sm-2 font-weight-bold">Year</div>'
+        '<div class="col-sm-2 font-weight-bold">Bill #</div>'
+        '<div class="col-sm-2 font-weight-bold">Status</div>'
+        '<div class="col-sm font-weight-bold">Title</div>'
+        '</div></div></td></tr>'
+        '<tr><td><div class="container"><div class="row">'
+        '<div class="col-sm-2">\n    1989\n</div>'
+        '<div class="col-sm-2"><a href="billinfo.aspx?sy=1989&amp;'
+        'Pastid=11711989&amp;id=99999" class="link-primary">HB750\n</a></div>'
+        '<div class="col-sm-2">&nbsp;SIGNED BY GOVERNOR</div>'
+        '<div class="col-sm"><b>title:</b>&nbsp;(New Title) establishing a '
+        'redevelopment commission relative to Pease Air  Force Base.</div>'
+        '</div></div></td></tr></table>')
+    rows = fetch_sponsors_by_member.parse_rows(page)
+    assert len(rows) == 1, f"{len(rows)} rows; the header must not parse as a bill"
+    r = rows[0]
+    assert r["bill"] == "HB750", r
+    assert r["year"] == "1989", r
+    assert r["lsr"] == "1171", ("Pastid is the LSR with the year on the end, "
+                                "and the LSR is the join key: " + repr(r))
+    assert r["status"] == "SIGNED BY GOVERNOR", r
+    assert r["title"].startswith("(New Title) establishing"), r
+    assert "title:" not in r["title"], r
+    return "ok", "one row, header skipped, LSR 1171 off the link"
 
 
 @check("narrative", "the committee of referral is read out of a docket line",
