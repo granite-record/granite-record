@@ -1,0 +1,29 @@
+{
+  "_what": "Hand-written notes about bills that recur under the same number every term. Edited by a person; no generator writes this file. Keyed by bill number WITHOUT a term, because the whole point is that HB1 is the budget in every term rather than in one -- which is the opposite of how the rest of this project keys things, and is why it is a separate file rather than a field on a bill.",
+  "_fields": {
+    "from": "First filing year the note applies to. Bills of that number BEFORE this year are different bills that happen to share it, and get no note.",
+    "chamber": "H or S, so HB1 and SB1 cannot be confused.",
+    "label": "A short name for the bill's role, shown as a heading.",
+    "note": "The explanation, in the project's own words. Plain English, no markup.",
+    "checked": "When a person last read this and agreed with it."
+  },
+  "_verified": "HB1 exists from 1989 but the 1989 and 1991 bills are not budgets -- 1989 HB1 is a special session bill about public utilities commission approval, and 1991 HB1 is a medicaid enhancement tax. The appropriations title begins in 1993, which is why 'from' is 1993 for both and not 1989.",
+  "notes": [
+    {
+      "bill": "HB1",
+      "chamber": "H",
+      "from": 1993,
+      "label": "The state budget",
+      "note": "HB 1 is the core financial spreadsheet of the state budget, filed alongside HB 2 in the first year of the term. It outlines the exact line-item spending for public services, healthcare, infrastructure, and state agencies for a two-year period.",
+      "checked": "2026-09-10"
+    },
+    {
+      "bill": "HB2",
+      "chamber": "H",
+      "from": 1993,
+      "label": "The budget trailer bill",
+      "note": "HB 2 is known as the budget trailer bill, filed alongside HB 1 in the first year of the term. Because HB 1 only specifies monetary amounts, HB 2 contains the statutory law changes, fee adjustments, and policy language needed to execute and pay for that spending. HB 2 can make changes to state tax structures, raise or lower state fees, and update funding formulas. HB 2 may also contain policy items not directly related to the budget through amendments.",
+      "checked": "2026-09-10"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.87
+# GRANITE_VERSION: 2026-09-04.88
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1133,23 +1133,48 @@ def _bench_untouched():
     return "ok", "only a person writes it, and it is not on the site"
 
 
-@check("files", "no generator writes ground_truth.csv")
+@check("files", "no generator writes a file a person made by hand")
 def _record_untouched():
-    """The 35 hand-marked times are the only measurement of this system a
-    person made, and they were lost twice while they lived as two columns in a
-    file that rebuilds overwrite. They now live in ground_truth.csv, which a
-    person edits and every generator only reads. A build_ or fetch_ script
-    that opens it for writing is the next loss waiting to happen."""
+    """The files nobody can regenerate, and nothing may overwrite.
+
+    The 35 hand-marked times are the only measurement of this system a person
+    made, and they were lost twice while they lived as two columns in a file
+    that rebuilds overwrite. They live in ground_truth.csv now, which a person
+    edits and every generator only reads.
+
+    The list has grown since, and each addition is a file that cost somebody
+    an evening and cannot be rebuilt from anything:
+
+      ground_truth.csv        35 proceedings timed with a stopwatch
+      review/checked.jsonl    the bench's judgments, append-only
+      bill_notes.json         written explanations of bills that recur under
+                              one number every term, like the budget
+      officials.json          offices filled by hand from four official sources
+
+    Naming only the first one meant the check grew stale as quietly as the
+    thing it guards against: three of these four had no guard at all.
+    """
+    HANDMADE = ["ground_truth.csv", "review/checked.jsonl", "bill_notes.json",
+                "officials.json"]
     bad = []
-    for f in sorted(Path(".").glob("build_*.py")) + sorted(Path(".").glob("fetch_*.py")):
+    for f in (sorted(Path(".").glob("build_*.py"))
+              + sorted(Path(".").glob("fetch_*.py"))):
         src = f.read_text(encoding="utf-8", errors="replace")
-        if re.search(r'ground_truth\.csv', src) and re.search(
-                r'(?:open\s*\([^)]*ground_truth\.csv[^)]*["\']w|'
-                r'ground_truth[^\n]{0,40}write_text|'
-                r'TRUTH\s*\.\s*open\s*\(\s*["\']w)', src):
-            bad.append(f.name)
-    assert not bad, "these write the record: " + ", ".join(bad)
-    return "ok", "only a person writes it"
+        for name in HANDMADE:
+            stem = re.escape(name.split("/")[-1])
+            if not re.search(stem, src):
+                continue
+            # Opened for writing, written through a Path, or through a
+            # module-level constant that names it.
+            if re.search(r'open\s*\([^)]*' + stem + r'[^)]*["\']w', src) or \
+               re.search(stem + r'[^\n]{0,40}write_text', src) or \
+               re.search(r'(?:TRUTH|LEDGER|NOTES|OFFICIALS)\s*\.\s*'
+                         r'open\s*\(\s*["\']w', src):
+                bad.append(f"{f.name} writes {name}")
+    assert not bad, "these write a hand-made file: " + "; ".join(bad)
+    present = [n for n in HANDMADE if Path(n).exists()]
+    return "ok", (f"{len(present)} hand-made file(s) here, and only a person "
+                  "writes them: " + ", ".join(present))
 
 
 @check("markers", "every phrasing read from a transcript still matches")
