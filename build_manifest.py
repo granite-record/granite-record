@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.4
+# GRANITE_VERSION: 2026-09-05.5
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
@@ -17,7 +17,6 @@ import argparse
 import csv
 import re
 import sys
-import urllib.request
 from collections import defaultdict
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -28,6 +27,8 @@ try:
 except ImportError:
     sys.exit("Put docket_parser.py in this same folder, then rerun.")
 
+# Named so the error above can print it. Nothing here requests it: this is
+# a build script and fetching is fetch_*'s job.
 DOCKET_URL = "https://gc.nh.gov/dynamicdatadump/Docket.txt"
 
 # Committee names differ between the docket and the video titles. Left side is
@@ -249,12 +250,27 @@ def main():
                          "are lost on every rebuild.")
     a = ap.parse_args()
 
-    docket_path = a.docket
-    if not docket_path:
-        docket_path = "Docket.txt"
-        if not Path(docket_path).exists():
-            print("Downloading Docket.txt (this is a few MB)...")
-            urllib.request.urlretrieve(DOCKET_URL, docket_path)
+    # A build_* SCRIPT DOES NOT TOUCH THE NETWORK. This used to fetch
+    # Docket.txt from gc.nh.gov when the file was absent, and the whole
+    # permission rule in CLAUDE.md rests on the naming contract that only
+    # fetch_* does that -- so a person or a model running this in good faith
+    # would have asked the address that has blocked this one twice, without
+    # ever being asked. It never fired here because Docket.txt is on disk. It
+    # fires in a clean checkout, which is the state a refactor creates.
+    #
+    # Naming the file it wants and the command that gets it costs one run and
+    # keeps the decision with a person.
+    docket_path = a.docket or "Docket.txt"
+    if not Path(docket_path).exists():
+        sys.exit(
+            f"No {docket_path}.\n\n"
+            "This builds the manifest and does not fetch anything. Get the "
+            "docket first:\n"
+            f"    curl -o Docket.txt {DOCKET_URL}\n\n"
+            "or pass an archived term's docket with --docket "
+            "Docket_2023-2024.txt.\n"
+            "Those are on this disk already if fetch_archive_docket.py has "
+            "run for that term.")
     print(f"Parsing {docket_path}...")
 
     rows = parse_rows(docket_path)
