@@ -227,6 +227,122 @@ Saying so is what keeps a cleanup pass from becoming a rewrite.
   and `--no-bench` gives the number comparable with anything recorded before
   9 September.
 
+## The pass, step by step, planned 10 September
+
+Planned by reading the code rather than by remembering it, which changed the
+answer twice. Both corrections are below, because a plan that quietly drops
+its own earlier advice is worse than one that says what it got wrong.
+
+### Two corrections to what was recommended yesterday
+
+**`build_manifest.py` needs no `--term` flag, and no change at all.** It takes
+`--docket` and `--out`, the docket carries the term, and that is the whole of
+term-awareness. Proved rather than argued:
+
+    python3 build_manifest.py --videos "videos_*.csv" \
+        --docket Docket_2023-2024.txt --out verification_manifest_2023-2024.csv
+
+    Wrote verification_manifest_2023-2024.csv: 7,019 rows
+    5,604 rows have a direct watch link
+
+**And the cross-term hazard is not real.** The worry was that a 2023 bill
+could take a 2025 recording on a same-day, same-committee coincidence. It
+cannot: the matcher filters proceedings to dates that have videos, and a date
+carries its year, so `2023-03-07` cannot match a video from `2025-03-07`.
+Measured on those 7,019 rows: **0 matched to a video outside 2023-2024, and 0
+whose video date differs from the scheduled date.**
+
+**`build_proceedings.py` must not get `--term` merge semantics.** That was the
+recommendation and it is the wrong shape. It would make a writer that runs on
+one term and rewrites a file holding all of them, which is precisely the
+failure this project has had twice -- the manifest lost the 35 hand-marked
+times exactly that way, and `segment_markers --transcript X` once discarded
+842 recordings' results. A per-term shrink guard is a guard against a hazard
+that does not need to exist.
+
+Build the table whole instead. One manifest per term on disk, and
+`build_proceedings.py` reads all of them every time. No writer ever runs on a
+subset, the existing shrink guard keeps working unchanged, and there is no
+merge logic to get wrong.
+
+### The steps
+
+**0. Fix the one bug that must not be running during a refactor.**
+`build_manifest.py` downloads `Docket.txt` from gc.nh.gov when `--docket` is
+omitted and the file is absent:
+
+    if not Path(docket_path).exists():
+        print("Downloading Docket.txt (this is a few MB)...")
+        urllib.request.urlretrieve(DOCKET_URL, docket_path)
+
+It is a `build_*` script making an unguarded network call to the address that
+has blocked this one twice. The whole permission rule rests on the naming
+contract -- `fetch_*` touches the network and is asked about first, everything
+else is free to run -- and this breaks it silently. It does not fire today
+because `Docket.txt` is on disk; it fires in a clean checkout, which is the
+state a refactor is most likely to create. Make `--docket` required, or print
+the fetch command and exit.
+
+**1. `build_proceedings.py` reads every manifest.** The only code change in
+the pass. `--manifest` takes a glob, defaults to `verification_manifest*.csv`,
+and `from_manifest` is called once per file. Roughly ten lines in a 193-line
+file. Nothing else in it changes: the dedup key is already
+`(bill, date, kind, video_id)` and a date carries its year, so two terms
+cannot collide.
+
+**2. Write the per-term manifests.** No code. One `build_manifest.py` run per
+docket on disk, each to its own `--out`. 2023-2024 is done and sitting there.
+
+**3. Rebuild and check the number went up.** 9,762 rows now; 2023-2024 alone
+adds about 7,019 before dedup against the floor index. The shrink guard is
+satisfied by growth and needs no flag.
+
+### What happens downstream, checked in advance rather than discovered
+
+- **Stations are already term-keyed.** `build_site_v2.py` builds
+  `procs[(r["term"], r["bill"])]` and `floor[(r["term"], r["bill"])]` and
+  reads them the same way. The "stations leak across terms" bug that an older
+  plan flagged has been fixed, and it was the largest risk in this whole
+  change -- with one term in the table it was latent, and a second term would
+  have made it live on every page.
+- **2023-2024 arrives without timestamps, and that is correct.** Its
+  recordings are almost all uncaptioned, so no boundary can be stated and the
+  stations carry a date, a room, a committee and a watch link. The page
+  already draws exactly that for a proceeding it cannot place.
+- **No new files.** More stations on pages that already exist. The 100,000
+  file cap is not touched.
+- **`segment_markers.py --all` will start seeing 2023-2024 recordings.** It
+  reads captions and skips what has none, so it costs a pass over the
+  proceedings table and nothing else.
+
+### The other things to fix while in there
+
+- **`hms` was defined twice in `probe_alignment.py`** and the second shadowed
+  the first, so fourteen callers wanting sub-second caption times got `12m
+  05s` where they meant `0:12:05.3`. Fixed on 10 September; noted here because
+  it is the kind of thing a pass should look for and it was the only one.
+- **Seven stale `--manifest` defaults** point at `verification_manifest.csv`:
+  `align_all`, `apply_markers`, `fetch_testimony`, `probe_alignment`,
+  `score_alignment`, `transcribe_and_align`, `verify_batch`. Only
+  `preflight.py` opens that file and `build_proceedings.py` reads it as input,
+  so these are pointers rather than coupling -- but once there are several
+  manifests, a default naming one of them is actively wrong. Decide per tool
+  whether it is superseded or should read `proceedings.csv`.
+- **`--keep-marks` looks vestigial.** It carries `observed_start` and
+  `observed_end` forward from an older manifest, and no manifest written today
+  has those columns -- the marks live in `ground_truth.csv`, which no
+  generator may write. Confirm, then delete it or say in the help that it is
+  for a manifest from before that move.
+
+### What would say the pass worked
+
+    python3 preflight.py                     73 checks, still green
+    python3 probe_alignment.py --truth       43 marks, candidate median 0m 02s
+    python3 probe_alignment.py --truth --no-bench   35 marks, median 0m 01s
+    python3 check_site.py                    ready, file count under the cap
+
+and `proceedings.csv` naming two terms instead of one.
+
 ## What is structurally wrong
 
 Ranked by what it has actually cost, not by how it looks on paper.
