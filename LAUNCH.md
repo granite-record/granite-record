@@ -42,13 +42,16 @@ allows.** MIT-licensed, with a README, since the 10th.
 - **The 380-page sample of `gc.nh.gov/legislation/<year>/<BILL>.html` is
   done**: 297 pages saved, the parser read against them in three passes, and
   every bill asked for under 1996, 2016 and 2022 onward answered 404. The
-  full run for the five terms without sponsors waits on the docket and on
-  three addresses a person can open in a browser. 2016's own status page
-  links no `legislation/` address at all and offers only
-  `bs2016/billText.aspx?id=<lsr><year>`; 1996's links its text as
-  `legislation/1996/hb297.htm` -- lower case, unpadded, `.htm` -- where every
-  other year 1989-2015 is `legislation/<year>/HB0109.html`. Both years sit
-  exactly on a change of the tool that generated the pages.
+  **every bill of every term from 1989 to 2026 now has an address** --
+  27,171 by the static path, 6,512 by `billText.aspx`, none unreachable,
+  against 2,103 unreachable on the morning of the 10th. Six addresses opened
+  by hand in a browser settled it: 2016 and 2022-2026 have no static
+  directory and are served by the application; 2022, 2025 and 2026 take the
+  id `data/bills.json` already stores while 2023 and 2024 want the session
+  year appended to it; and 1996 is served at `.htm`, padded and upper-case
+  like every other year, the only address that fails being the one the
+  archive itself publishes. The full run waits on the docket, and on nothing
+  else.
 - **Captions**, no longer throttled: about 60 a cycle, ~2,400 folders.
 
 `refusal.py` stops every fetch for 24 hours when the address says no, and
