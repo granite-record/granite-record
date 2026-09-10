@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.9
+# GRANITE_VERSION: 2026-09-10.10
 """
 The bill itself, from an address that can simply be constructed.
 
@@ -87,40 +87,52 @@ TEXT = ("https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
 
 # WHICH ADDRESS SERVES WHICH YEAR, and how each line was established.
 #
-# The static path answered for every year sampled from 1989 to 2021 except
-# two. 2016 and 1996 returned 404 for all ten bills asked, and a person
-# confirmed both in a browser on 10 September:
+# Every line here was opened in a browser by a person on 10 September. None
+# of it was arrived at by a run trying addresses until one answered, which is
+# what got this address blocked the first time.
 #
-#     legislation/2016/HB1101.html                     404
-#     legislation/1996/hb297.htm                       404  (the archive's OWN
-#                                                            published link)
-#     bs2016/billText.aspx?id=20142016&sy=2016         serves the bill
+# THE STATIC PATH serves 1989-2021, sampled ten bills a year, with two holes:
 #
-# So 2016 has no static directory and is served by the application, and 1996
-# has neither -- the address its own status page publishes is dead, and no
-# other address for a 1996 bill's text is known. Both years sit exactly on a
-# change of the tool that generated these pages.
+#     legislation/2016/HB1101.html                404
+#     legislation/1996/hb297.htm                  404, and that is the
+#                                                 archive's OWN published link
 #
-# THE ID IS NOT ONE SCHEME. data/bills.json carries an id per bill, scraped
-# from the search results, and what the address wants is not always it:
+# and it stops after 2021 -- fifty bills were asked for across 2022-2026 in
+# the sample and every one 404'd, which fits the current terms being served
+# by the application instead: bill_text/ holds 2,234 of them from billText.
 #
-#     2016   stored 882016 (the LSR and the year)   used as stored   browser
-#     2023   stored 1                               wants 12023      the saved
-#     2024   stored 4                               wants 42024      status
-#     2025   stored 7                               used as stored   pages in
-#     2026   stored 6                               used as stored   status_pages/
+# THE APPLICATION serves the same document. Proven rather than assumed: those
+# 2,234 pages parse for sponsors, committee, title and analysis exactly as a
+# legislation/<year>/ page does. Its id is not one scheme, and data/bills.json
+# stores whatever the search results linked, which is not always what the
+# address takes:
 #
-# 2017-2021 are not in the table because the static path serves them and the
-# question does not arise. 2022 is not in it because nothing on this disk
-# answers it: there is no saved 2022 status page, and guessing between two
-# forms is exactly the filename probing that got this address blocked. One
-# person opening one address settles it.
-# 2022 onward as well: fifty bills were asked for across those five years in
-# the sample and every one answered 404. The static archive stops at 2021,
-# which is consistent with the current terms being served by the application
-# -- bill_text/ holds 2,234 of them, fetched from billText.aspx.
+#     2016   stored 882016   used as stored   confirmed in a browser
+#     2022   stored 1130     used as stored   confirmed in a browser
+#     2023   stored 1        wants 12023      the saved status pages, which
+#     2024   stored 4        wants 42024      link 12023 and 42024
+#     2025   stored 7        used as stored   the saved status pages
+#     2026   stored 6        used as stored   the saved status pages
+#
+# 2022 was the year nothing on this disk could answer -- there is no saved
+# 2022 status page -- and both candidate forms were opened by hand:
+#
+#     id=11302022   error: Index 0 is either negative or above rows count
+#     id=1130       serves the bill
+#
+# THAT ERROR IS WORTH KNOWING ON ITS OWN. An id that does not exist comes back
+# as an application error inside an HTTP 200, not as a 404. A fetch that
+# guessed ids would therefore save thousands of error pages and count them as
+# documents, and --parse would report them as bills with no sponsor. This is
+# why a year in neither set below returns no address at all rather than a
+# guess: here, a wrong guess does not announce itself.
+#
+# WHICH LEAVES 1996 and nothing else. Its status page links a file that is
+# gone, and no other address for a 1996 bill's text is known. Both holes,
+# 1996 and 2016, sit exactly on a change of the tool that generated these
+# pages.
 STATIC_404 = {1996, 2016, 2022, 2023, 2024, 2025, 2026}
-ID_AS_STORED = {2016, 2025, 2026}
+ID_AS_STORED = {2016, 2022, 2025, 2026}
 ID_PLUS_YEAR = {2023, 2024}
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
                     "contact@graniterecord.org)"}

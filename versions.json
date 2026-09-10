@@ -97,7 +97,7 @@
     "site_read.py": "2026-09-09.1",
     "keys.py": "2026-09-10.1",
     "build_exports.py": "2026-09-10.4",
-    "fetch_legislation.py": "2026-09-10.9"
+    "fetch_legislation.py": "2026-09-10.10"
   },
   "generated": "2026-09-04"
 }
