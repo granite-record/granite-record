@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.16
+# GRANITE_VERSION: 2026-09-04.17
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -831,6 +831,16 @@ def main():
     # from -- the loop in build_site_v2.build_bills iterates it. Keyed on the
     # bill alone, adding an archived term would put two different bills under
     # one key at the very top of the pipeline.
+    # The committee of referral for every archived bill, from the docket
+    # already on this disk. No network: db/Docket.psv is the General Court's
+    # own database dump and covers 1989-2015. Empty if that file is absent,
+    # in which case nothing below changes.
+    try:
+        import referrals
+        refs = referrals.from_docket()
+    except Exception as e:                       # a missing dump is not a failure
+        print(f"  archive: no docket referrals ({e})")
+        refs = {}
     by_term = defaultdict(dict)
     for bid, rec in bills.items():
         by_term[P.term_of(str(rec.get("lsr_year") or ""))][bid] = rec
@@ -859,6 +869,16 @@ def main():
             for bid, r in byb.items():
                 num = re.match(r"([A-Z]+)(\d+)", bid)
                 cm, ch = r.get("committee") or "", r.get("committee_chamber")
+                # The search page gave a committee for 1999 onward and none at
+                # all before it, so five terms and 8,525 bills had no committee
+                # of any kind. The docket has it: the clerk writes the referral
+                # into the description of the introduction line, and the
+                # database's own docket goes back to 1989. referrals.py reads
+                # it; this fills only what is empty, because the search page's
+                # value is the LAST committee and the docket's is the FIRST,
+                # and a term holding some of each would be two facts under one
+                # label.
+                ref = refs.get((str(r.get("year", "")), bid), {})
                 by_term[term][bid] = {
                     "bill": bid,
                     "lsr": f"{r.get('year','')}-{r.get('lsr','')}",
@@ -866,8 +886,10 @@ def main():
                     "title": r.get("title", ""),
                     "chamber": r.get("body", ""),
                     "subject_code": "", "subject": "",
-                    "house_committee": cm if ch == "House" else "",
-                    "senate_committee": cm if ch == "Senate" else "",
+                    "house_committee": (cm if ch == "House" else "")
+                                       or ref.get("H", ""),
+                    "senate_committee": (cm if ch == "Senate" else "")
+                                        or ref.get("S", ""),
                     "hearing": hearing_in_term(r.get("last_hearing", ""),
                                                term),
                     "hearing_room": "",
@@ -885,6 +907,12 @@ def main():
                 added += 1
         if added:
             print(f"  archive: {added:,} bills added from {ap_}")
+        if refs:
+            filled = sum(1 for bs in by_term.values() for b in bs.values()
+                         if b.get("archived")
+                         and (b.get("house_committee") or b.get("senate_committee")))
+            print(f"  archive: {filled:,} archived bills carry a committee "
+                  f"({len(refs):,} referrals read from the docket)")
     stray = by_term.pop("", None)
     if stray:
         print(f"  {len(stray):,} bills have no filing year and are left out of "

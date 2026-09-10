@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.92
+# GRANITE_VERSION: 2026-09-04.93
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3039,6 +3039,66 @@ def _testimony_dated(build_site_v2):
     assert f({"raw": "Ought to Pass: MA VV 03/06/2026", "date": "2026-03-06"},
              tdb, None) == {}, "a floor vote was given a sign-in count"
     return "ok", "the hearing's own count, or the bill's, and it says which"
+
+
+@check("narrative", "the committee of referral is read out of a docket line",
+       needs=("referrals",))
+def _referral(referrals):
+    """Every string below is a real description from db/Docket.psv.
+
+    Five terms had no committee at all until the docket was read for one --
+    8,525 bills whose page named no committee -- so this is the parser that
+    put a committee on a quarter of the archive, and the shapes it has to
+    survive span 1989 to 2015 and four clerks' habits.
+    """
+    c = referrals.committee
+    assert c("INTRODUCED AND REF TO EXEC & ADMIN     HJ 13 ,P 138") == \
+        "Executive Departments and Administration"
+    assert c("Introduced 1/4/2012 and Referred to Judiciary; HJ 11, PG. 183") == \
+        "Judiciary"
+    assert c("PASSED AND REF TO FINANCE VV; HJ35,P943") == "Finance"
+    assert c("RE-REFERRED TO ENV & AGRIC VV; HJ53B,P1179") == \
+        "Environment and Agriculture"
+    assert c("Introduced and ref to Labor, Industrial and Rehabilitative "
+             "Services   HJ 7, pg 341") == "Labor, Industrial and Rehabilitative Services"
+    # A disposition, not a committee. "Refer to Interim Study" is what a
+    # committee RECOMMENDS; reading it as a referral would invent a committee
+    # of that name for 434 bills.
+    assert c("Committee Report: Refer to Interim Study") == ""
+    # "Rereferred to Committee" is back to the one it is already in.
+    assert c("Rereferred to Committee, MA, VV; SJ 20, P 543") == ""
+    # The shout is unshouted before the ampersand is spelled, or the
+    # lower-case "and" drops it below the 90% that triggers unshouting.
+    assert c("INTRODUCED AND REF TO JUDICIARY & F L") == "Judiciary and F L"
+    return "ok", "seven real docket lines, and two that name no committee"
+
+
+@check("data", "an archived bill's committee came from a source that has one",
+       needs=("referrals",))
+def _referral_coverage(referrals):
+    """The five terms before 1999 had 0 committees and now have 95-98%.
+
+    A regression here does not raise anything: it silently returns the site
+    to a 1989 bill that names no committee, which is what it looked like for
+    a year.
+    """
+    f = Path("data/bills.json")
+    if not f.exists():
+        return "skip", "no data/bills.json"
+    bills = json.loads(f.read_text(encoding="utf-8"))
+    thin = []
+    for term in ("1989-1990", "1991-1992", "1993-1994", "1995-1996",
+                 "1997-1998"):
+        bs = bills.get(term) or {}
+        if not bs:
+            continue
+        got = sum(1 for r in bs.values()
+                  if r.get("house_committee") or r.get("senate_committee"))
+        if got < len(bs) * 0.85:
+            thin.append(f"{term} {got}/{len(bs)}")
+    assert not thin, ("the docket gives 95-98% of these terms a committee; "
+                      "now: " + ", ".join(thin))
+    return "ok", "the five pre-1999 terms all above 85%"
 
 
 @check("data", "a hearing date belongs to the bill it sits on")
