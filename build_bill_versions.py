@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.4
+# GRANITE_VERSION: 2026-09-09.5
 """
 Every version of a bill, in order, and what each amendment changed.
 
@@ -155,6 +155,7 @@ def main():
     ap.add_argument("--site", default="site")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--manifest", default="data/bill_versions.json")
     a = ap.parse_args()
 
     C = columns()
@@ -186,6 +187,7 @@ def main():
 
     out = Path(a.site) / "versions"
     written = steps_total = texts = amds = lone = 0
+    manifest = collections.defaultdict(dict)
     multi = 0
     biggest = ("", 0)
     for (bill, year), vs in sorted(per.items()):
@@ -268,7 +270,23 @@ def main():
                          encoding="utf-8")
             if p.stat().st_size > biggest[1]:
                 biggest = (f"{year}/{bill}", p.stat().st_size)
+        manifest[year][bill] = {"versions": len(vs),
+                                "amendments": len(amendments),
+                                "steps": len(steps)}
         written += 1
+
+    # A MANIFEST, SO THE PAGE KNOWS BEFORE IT ASKS. Only 1,149 of 2,234 bills
+    # have a second version, so a Versions tab on every bill would be a tab
+    # that says "there is one version" 1,085 times and a 404 behind each of
+    # them. build_site_v2 reads this and stamps the counts onto the record,
+    # which is why this step runs before it.
+    if not a.check:
+        man = Path(a.manifest)
+        man.parent.mkdir(parents=True, exist_ok=True)
+        man.write_text(json.dumps(manifest, indent=1, sort_keys=True),
+                       encoding="utf-8")
+        print(f"  manifest of {sum(len(v) for v in manifest.values()):,} bills "
+              f"-> {man}")
 
     print(f"{len(per):,} bills have text; {multi:,} have more than one version")
     print(f"  {written:,} written, {steps_total:,} amendment steps between "

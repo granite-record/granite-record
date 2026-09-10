@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.41
+// GRANITE_VERSION: 2026-09-07.43
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1390,6 +1390,114 @@ function renderDocuments(b,d){
 // The tabs, and one call per pane. Everything this reads is either a
 // parameter or the return value of a call made on the line that uses it,
 // so there is no declaration here whose order could be got wrong.
+// ============================================================== versions ==
+//
+// WHAT EACH AMENDMENT CHANGED. A bill is reprinted at every stage and the
+// changes are usually small -- HB650's first amendment turned one word,
+// "unencumbered" into "unobligated" -- which is exactly what nobody finds by
+// reading two seven-thousand-character documents side by side.
+//
+// Three files rather than one, and each fetched only when it is picked: the
+// index (median 1.1 KB), a version's text, and one comparison's detail. One
+// file held all of it at first and HB2, the budget with 54 versions, came to
+// 11.4 MB.
+const VERS = {};                       // bill -> the index, once fetched
+const VTEXT = {};                      // url -> text, once fetched
+const VPICK = {};                      // bill -> which version is showing
+const VMODE = {};                      // bill -> "text" or "changes"
+
+function verKey(b){ return `${b.year||yearOf(b.id)}/${b.id}`; }
+
+function renderVersions(b,d){
+  const key=verKey(b), ix=VERS[key];
+  if(!ix)return `<p class="spin">Loading the versions…</p>`;
+  if(ix._error)return `<p class="note">The versions of this bill could not be
+    loaded. ${esc(ix._error)}</p>`;
+  const vs=ix.versions||[], amds=ix.amendments||[];
+  // THE CURRENT VERSION BY DEFAULT, which is the last one the record has.
+  if(VPICK[key]===undefined)VPICK[key]=vs.length?vs.length-1:0;
+  const mode=VMODE[key]||"changes";
+  const i=Math.min(VPICK[key],Math.max(0,vs.length-1));
+
+  const picker=vs.length?`<div class="vpick" role="tablist" aria-label="Versions of this bill">${
+    vs.map((v,j)=>`<button class="vbtn${j===i?" sel":""}" data-ver="${esc(key)}|${j}"
+      aria-current="${j===i?"true":"false"}">${esc(v.title)}<i>${
+      esc((v.date||"").split(" ")[0])}</i></button>`).join("")}</div>`:"";
+
+  // The step that produced the version being shown, if there is one.
+  const step=(ix.steps||[]).find(s=>s.to===i);
+  const toggle=step?`<div class="vmode">
+    <button class="vtog${mode==="changes"?" sel":""}" data-vmode="${esc(key)}|changes">What changed</button>
+    <button class="vtog${mode==="text"?" sel":""}" data-vmode="${esc(key)}|text">Full text</button>
+    <span class="vcount">+${step.added} \u2212${step.removed} words against
+      ${esc((vs[step.from]||{}).title||"the version before")}</span></div>`
+    : `<p class="note">This is the first version the record has, so there is
+       nothing before it to compare.</p>`;
+
+  let body="";
+  if(step&&mode==="changes"){
+    const runs=VTEXT[step.runs_url];
+    body=runs===undefined?`<p class="spin">Loading what changed…</p>`
+      :Array.isArray(runs)?`<div class="vdiff">${runs.map(([op,txt])=>
+          op==="~"?`<span class="vskip">${esc(txt)} words unchanged</span>`
+          :op==="+"?`<ins>${esc(txt)}</ins>`
+          :op==="-"?`<del>${esc(txt)}</del>`
+          :`<span>${esc(txt)}</span>`).join("")}</div>`
+      :`<p class="note">That comparison could not be loaded.</p>`;
+  }else{
+    const u=(vs[i]||{}).text_url;
+    const txt=u?VTEXT[u]:null;
+    body=txt===undefined?`<p class="spin">Loading the text…</p>`
+      :typeof txt==="string"?`<pre class="vtext">${esc(txt)}</pre>`
+      :`<p class="note">That text could not be loaded.</p>`;
+  }
+
+  const amdblock=amds.length?`<h3 class="amdsec">The amendments themselves</h3>
+    <p class="note">The General Court publishes the text of each amendment as
+    its own document, naming the statute it amends and what it replaces. These
+    are those, not versions of the bill.</p>
+    <ul class="vamds">${amds.map((a,j)=>`<li><button class="link"
+      data-vamd="${esc(key)}|${j}">Amendment of ${esc((a.date||"").split(" ")[0])}</button>
+      <span class="dim">${(a.chars||0).toLocaleString()} characters</span>${
+      VTEXT[a.text_url]!==undefined
+        ? `<pre class="vtext">${esc(String(VTEXT[a.text_url]))}</pre>` : ""}</li>`
+      ).join("")}</ul>`:"";
+
+  return picker+toggle+body+amdblock;
+}
+
+// Fetch whatever the current view needs and redraw when it lands. Everything
+// already here is used from the cache; nothing is asked for twice.
+function needVersions(b){
+  const key=verKey(b);
+  if(VERS[key]===undefined){
+    VERS[key]=null;
+    fetch(DATA(`versions/${key}.json`))
+      .then(r=>r.ok?r.json():Promise.reject(new Error("HTTP "+r.status)))
+      .then(j=>{VERS[key]=j;repaint();wantVersionBody(b);})
+      .catch(e=>{VERS[key]={_error:e.message||String(e)};repaint();});
+    return;
+  }
+  if(VERS[key])wantVersionBody(b);
+}
+
+function wantVersionBody(b){
+  const key=verKey(b), ix=VERS[key];
+  if(!ix||ix._error)return;
+  const i=VPICK[key]===undefined?(ix.versions||[]).length-1:VPICK[key];
+  const mode=VMODE[key]||"changes";
+  const step=(ix.steps||[]).find(s=>s.to===i);
+  const url=(step&&mode==="changes")?step.runs_url
+    :((ix.versions||[])[i]||{}).text_url;
+  if(!url||VTEXT[url]!==undefined)return;
+  VTEXT[url]=undefined;
+  const json=url.endsWith(".json");
+  fetch(DATA(url.replace(/^\//,"")))
+    .then(r=>r.ok?(json?r.json():r.text()):Promise.reject(new Error("HTTP "+r.status)))
+    .then(x=>{VTEXT[url]=json?(x.runs||[]):x;repaint();})
+    .catch(()=>{VTEXT[url]=null;repaint();});
+}
+
 function renderDetail(b,d){
   const rsa=makeRsa(d);
   // Below the tabs, outside every pane, and only in the expanded view. The
@@ -1416,7 +1524,15 @@ function renderDetail(b,d){
 
     <button class="tab" role="tab" id="tab_${b.id}_5" aria-controls="pane_${b.id}_5"
       aria-selected="false" data-t="5">Documents${
-        (d.documents||[]).length?` (${d.documents.length})`:""}</button></div>
+        (d.documents||[]).length?` (${d.documents.length})`:""}</button>${
+    /* ONLY WHERE THERE IS SOMETHING TO SHOW. 1,149 of 2,234 bills have a
+       second version; a tab on the other 1,085 would say "there is one
+       version" and fetch a file that is not there. nver comes from the
+       manifest build_bill_versions.py writes. */
+    (d.nver||0)>1||(d.namd||0)
+      ? `<button class="tab" role="tab" id="tab_${b.id}_6" aria-controls="pane_${b.id}_6"
+          aria-selected="false" data-t="6">Versions${d.nver>1?` (${d.nver})`:""}</button>`
+      : ""}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_0" aria-labelledby="tab_${b.id}_0" tabindex="0" data-t="0">${renderSummary(b,d,rsa)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_1" aria-labelledby="tab_${b.id}_1" tabindex="0" data-t="1" hidden>${paneNote("votes")}${renderVotes(b,d)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_2" aria-labelledby="tab_${b.id}_2" tabindex="0" data-t="2" hidden>${paneNote("hearings")}${renderHearings(b,d)}</div>
@@ -1425,7 +1541,11 @@ function renderDetail(b,d){
 
     <div class="pane" role="tabpanel" id="pane_${b.id}_4" aria-labelledby="tab_${b.id}_4" tabindex="0" data-t="4" hidden>${renderSponsors(b,d)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_5" aria-labelledby="tab_${b.id}_5"
-      tabindex="0" data-t="5" hidden>${renderDocuments(b,d)}</div>${btsec}`;
+      tabindex="0" data-t="5" hidden>${renderDocuments(b,d)}</div>${
+    (d.nver||0)>1||(d.namd||0)
+      ? `<div class="pane" role="tabpanel" id="pane_${b.id}_6" aria-labelledby="tab_${b.id}_6"
+          tabindex="0" data-t="6" hidden>${renderVersions(b,d)}</div>`
+      : ""}${btsec}`;
 }
 
 // ===================================================== member and committee ==
@@ -2291,7 +2411,44 @@ document.addEventListener("click",e=>{
   if(head&&!e.target.closest("a")){const id=head.closest(".card").dataset.id;
     if(openCards.has(id)){openCards.delete(id);render();}else openBill(id);return;}
   const tab=e.target.closest(".tab");
-  if(tab){openTab[tab.closest(".card").dataset.id]=tab.dataset.t;render();return;}
+  if(tab){
+    const cid=tab.closest(".card").dataset.id;
+    openTab[cid]=tab.dataset.t;
+    // The versions index is fetched when the tab is opened and not before,
+    // which is the whole reason it is a separate file.
+    if(tab.dataset.t==="6"){
+      const row=IDX.find(x=>x.id===cid);
+      if(row)needVersions(row);
+    }
+    render();return;}
+  // Picking a version, or switching between what changed and the full text.
+  const vb=e.target.closest("[data-ver]");
+  if(vb){
+    const [key,j]=vb.dataset.ver.split("|");
+    VPICK[key]=+j;
+    const row=IDX.find(x=>verKey(x)===key);
+    if(row){needVersions(row);}
+    render();return;}
+  const vm=e.target.closest("[data-vmode]");
+  if(vm){
+    const [key,mode]=vm.dataset.vmode.split("|");
+    VMODE[key]=mode;
+    const row=IDX.find(x=>verKey(x)===key);
+    if(row){needVersions(row);}
+    render();return;}
+  // An amendment's own text, opened one at a time.
+  const va=e.target.closest("[data-vamd]");
+  if(va){
+    const [key,j]=va.dataset.vamd.split("|");
+    const ix=VERS[key], a=ix&&(ix.amendments||[])[+j];
+    if(a&&VTEXT[a.text_url]===undefined){
+      VTEXT[a.text_url]=undefined;
+      fetch(DATA(a.text_url.replace(/^\//,"")))
+        .then(r=>r.ok?r.text():Promise.reject(new Error("HTTP "+r.status)))
+        .then(x=>{VTEXT[a.text_url]=x;repaint();})
+        .catch(()=>{VTEXT[a.text_url]=null;repaint();});
+    }
+    render();return;}
   const jt=e.target.closest("[data-term]");
   if(jt){term=jt.dataset.term;$("#year").value=term;render();return;}
   if(e.target.id==="clear"){Object.values(sel).forEach(s=>s.clear());render();return;}

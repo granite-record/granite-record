@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.52
+# GRANITE_VERSION: 2026-09-05.53
 """
 Generate the faceted site from real General Court data.
 
@@ -1713,6 +1713,16 @@ def hearing_testimony(e, tdb, scraped):
 ONE_CHAMBER = ("HR", "SR")
 
 
+# Written by build_bill_versions.py, which runs before this step. Absent is
+# not an error: a tree where that step has not been run yet simply has no
+# Versions tab anywhere, which is the truth about that tree.
+try:
+    VERSIONS = json.loads(
+        Path("data/bill_versions.json").read_text(encoding="utf-8"))
+except (OSError, ValueError):
+    VERSIONS = {}
+
+
 def passage(stages, kind, status="", bill=""):
     hands = [st.get("hand", "") for st in (stages or []) if st.get("hand")]
     if not hands:
@@ -2300,6 +2310,16 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             "amendments": bill_amds,
             # The bill itself, as the General Court publishes it.
             "billtext": btext,
+            # HOW MANY VERSIONS THIS BILL HAS, from the manifest
+            # build_bill_versions.py writes before this step runs. Only 1,149
+            # of 2,234 bills have a second version, so without this the page
+            # would draw a Versions tab on every bill and put a 404 behind
+            # 1,085 of them. The texts and the diffs themselves are fetched
+            # when the tab is opened; this is only the count.
+            "nver": (VERSIONS.get(str(year), {}).get(bid, {})
+                     .get("versions", 0)),
+            "namd": (VERSIONS.get(str(year), {}).get(bid, {})
+                     .get("amendments", 0)),
             # Statutes cited in the committee's own words and in the bill's
             # title. Committee reports cite the RSAs constantly, and a reader
             # who has to leave to find out what 91-A says usually does not

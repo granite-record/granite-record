@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.11
+# GRANITE_VERSION: 2026-09-05.12
 """
 Run the whole pipeline in the right order.
 
@@ -262,6 +262,15 @@ def plan(a):
              note="the older clustering path; segment_markers.py above does "
                   "this better and build_site_v2 reads it directly. Pass "
                   "--with-apply-markers to run it anyway"),
+
+        Step("every version of a bill, and what each amendment changed",
+             ["build_bill_versions.py", "--site", "site"],
+             needs=["db/LegislationText.psv", "db/document_versions.json"],
+             produces=["data/bill_versions.json"],
+             note="BEFORE site data, because it writes the manifest that "
+                  "tells each bill's record how many versions it has -- "
+                  "without which the page would draw a Versions tab on all "
+                  "2,234 bills and put a 404 behind the 1,085 that have one"),
 
         Step("site data",
              ["build_site_v2.py", "--data", "data", "--out", "site",
