@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.2
+# GRANITE_VERSION: 2026-09-05.3
 """
 Build proceedings.csv: one row per (bill, date, kind, recording), whether it
 is a committee hearing or a floor debate.
@@ -46,6 +46,31 @@ def as_seconds(v):
     while len(parts) < 3:
         parts.insert(0, 0.0)
     return parts[0] * 3600 + parts[1] * 60 + parts[2]
+
+
+def manifest_paths(patterns):
+    """Every manifest named or matched, in a stable order, without repeats.
+
+    ONE PER TERM, AND THE TABLE BUILT WHOLE FROM ALL OF THEM. build_manifest
+    writes one manifest per docket it is given, so 2023-2024 lands beside
+    2025-2026 rather than on top of it. The alternative was a --term flag
+    here that rebuilt one term's rows inside a file holding every term, and
+    that is a writer running on a subset of what it rewrites -- which is how
+    the manifest lost the 35 hand-marked times, and how segment_markers
+    --transcript once discarded 842 recordings' results. Reading all of them
+    every time means no writer here ever sees a subset, and the shrink guard
+    below goes on comparing whole tables.
+    """
+    out, seen = [], set()
+    for pat in patterns:
+        hits = (sorted(Path(".").glob(pat))
+                if any(c in pat for c in "*?[") else [Path(pat)])
+        for f in hits:
+            k = f.resolve()
+            if f.exists() and k not in seen:
+                seen.add(k)
+                out.append(f)
+    return out
 
 
 def from_manifest(path):
@@ -138,19 +163,32 @@ def from_floor_index(path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--manifest", default="verification_manifest.csv")
+    # A GLOB, NOT A FILE. verification_manifest.csv is the current term and
+    # verification_manifest_2023-2024.csv is what build_manifest writes when
+    # given that term's docket; both are read, and any later term's too,
+    # without this default needing to change again.
+    ap.add_argument("--manifest", nargs="+",
+                    default=["verification_manifest*.csv"],
+                    help="one or more manifests, or a pattern matching them")
     ap.add_argument("--floor", default="floor_index.json")
     ap.add_argument("--out", default=str(P.PATH))
     ap.add_argument("--allow-shrink", action="store_true",
                     help="write even if this table is smaller than the last")
     a = ap.parse_args()
 
-    cm = from_manifest(a.manifest)
+    files = manifest_paths(a.manifest)
+    cm, per_file = [], []
+    for f in files:
+        got = from_manifest(f)
+        per_file.append((f.name, len(got)))
+        cm.extend(got)
     fl = from_floor_index(a.floor)
     if not cm and not fl:
-        sys.exit(f"Neither {a.manifest} nor {a.floor} is here. Nothing to build.")
+        sys.exit(f"Nothing matches {' '.join(a.manifest)} and no {a.floor} is "
+                 "here. Nothing to build.")
     if not cm:
-        print(f"  WARNING: {a.manifest} not found -- no committee proceedings")
+        print(f"  WARNING: nothing matches {' '.join(a.manifest)} "
+              "-- no committee proceedings")
     if not fl:
         print(f"  WARNING: {a.floor} not found -- no floor debates")
 
@@ -178,7 +216,10 @@ def main():
     floor = [r for r in uniq if r["kind"] in P.FLOOR_KINDS]
     terms = sorted({r["term"] for r in uniq if r["term"]})
     print(f"{len(uniq):,} proceedings -> {a.out}")
-    print(f"  {len(cm):,} from the manifest, {len(fl):,} from the floor index")
+    print(f"  {len(cm):,} from {len(files)} manifest(s), "
+          f"{len(fl):,} from the floor index")
+    for name, n in per_file:
+        print(f"      {n:>7,}  {name}")
     print(f"  {with_video:,} have a recording; "
           f"{len({r['video_id'] for r in uniq if r['video_id']}):,} distinct")
     print(f"  {len(floor):,} floor rows, "
