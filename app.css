@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.38 */
+/* GRANITE_VERSION: 2026-09-07.41 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -966,3 +966,47 @@ a.ccard:hover{border-color:var(--rule-2);background:var(--surface)}
   .vfull td.v,.vfull td.o{display:inline-block;width:47%;vertical-align:top;
     margin:10px 0 0}
 }
+
+
+/* THE DOWNLOADS PAGE IS NOT AN ESSAY. .civics caps at --measure, 560px, which
+   is right for the explainers it was written for and wrong here: this page is
+   mostly a list of tables whose column names run to a hundred characters, and
+   at 560 inside a 1,132px pane it left 572px of empty box beside every one of
+   them. The prose inside still stops at the measure, because .src carries its
+   own max-width -- so the paragraphs read at 76 characters and the column
+   lists get the room they need. */
+.datapage{max-width:900px}
+.dl{margin:22px 0 0;padding:16px 18px;background:var(--surface);
+  border:1px solid var(--rule-2);border-radius:var(--r-out)}
+.dl h3{margin:0;font-size:15px;letter-spacing:0;text-transform:none}
+.dl h3 a{font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);
+  font-size:15px}
+.dlmeta{color:var(--ink-2);font-size:13px;margin:4px 0 8px;
+  font-family:var(--sans,inherit)}
+.dl p{margin:6px 0}
+.dl .cols{font-size:13px;color:var(--ink-2);line-height:1.55;
+  font-family:var(--sans,inherit);max-width:none}
+.dl .note{max-width:none}
+@media(max-width:720px){
+  .datapage{max-width:none}
+  .dl{padding:13px 14px}
+}
+
+
+/* Nineteen terms by five columns, on a phone as well. It scrolls sideways
+   inside its own box rather than pushing the page wide, which is the one
+   place this file allows that. */
+.covwrap{overflow-x:auto;margin:10px 0 0}
+/* width AND min-width. On its own the min-width let the table sit at
+   420px inside a 900px box, which is the same empty-box complaint this file
+   has been answering all week; the min-width is what makes it scroll rather
+   than crush on a phone. */
+table.cov{border-collapse:collapse;font-size:13px;width:100%;min-width:420px}
+.cov th,.cov td{text-align:left;padding:5px 14px 5px 0;
+  border-bottom:1px solid var(--rule);white-space:nowrap}
+.cov th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--ink-2);font-weight:600}
+.cov td.n{color:var(--ink-2)}
+.cov .c1{color:var(--yes);font-weight:600}
+.cov .c0{color:var(--ink-2)}
+.cov .cp{font-weight:600}

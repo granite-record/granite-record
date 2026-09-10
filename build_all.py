@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.12
+# GRANITE_VERSION: 2026-09-05.13
 """
 Run the whole pipeline in the right order.
 
@@ -315,6 +315,15 @@ def plan(a):
                   "representatives and senator from the roster, and the "
                   "executive council, US House and Senate districts that were "
                   "in districts.json all along and had never been shown"),
+
+        Step("bulk downloads",
+             ["build_exports.py", "--site", "site", "--base", a.base],
+             needs=["site/index.json"],
+             produces=["site/data/manifest.json", "site/data.html"],
+             note="the same record as CSV, for anybody who would rather work "
+                  "with it than read it. It runs in the pipeline rather than "
+                  "by hand because an export nobody rebuilds is worse than "
+                  "no export: it looks current and is not"),
 
         Step("RSS feeds",
              ["build_feeds.py", "--site", "site", "--base", a.base],
