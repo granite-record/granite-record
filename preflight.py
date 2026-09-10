@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.91
+# GRANITE_VERSION: 2026-09-04.92
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3039,6 +3039,53 @@ def _testimony_dated(build_site_v2):
     assert f({"raw": "Ought to Pass: MA VV 03/06/2026", "date": "2026-03-06"},
              tdb, None) == {}, "a floor vote was given a sign-in count"
     return "ok", "the hearing's own count, or the bill's, and it says which"
+
+
+@check("data", "a hearing date belongs to the bill it sits on")
+def _hearing_is_the_bills_own():
+    """The archive's bill list will hand you another bill's hearing.
+
+    Asked for session year 2021 or 2022, the General Court's legacy search
+    fills the date of "Next/Last Hearing" from the CURRENT session's record
+    with the same legislationID -- an id that restarts every term. 1,485 of
+    that term's 1,752 bills came back with a hearing in 2025 or 2026, and
+    1,481 of them match the current bill's hearing to the minute against the
+    General Court's own database. The remaining 93 dates are inside the term
+    and are conference-committee meetings, not hearings.
+
+    Nothing renders this field today, which is exactly why it needs a check:
+    the first page to read it would publish a 2025 hearing on a 2021 bill.
+    """
+    f = Path("data/bills.json")
+    if not f.exists():
+        return "skip", "no data/bills.json"
+    bills = json.loads(f.read_text(encoding="utf-8"))
+    undated, astray, dropped = [], [], 0
+    for term, bs in bills.items():
+        try:
+            lo, hi = (int(x) for x in term.split("-"))
+        except ValueError:
+            continue
+        for bid, rec in bs.items():
+            h = (rec.get("hearing") or "").strip()
+            if not h:
+                dropped += 1
+                continue
+            m = re.search(r"(?:19|20)\d{2}", h)
+            if not m:
+                undated.append(f"{term} {bid} {h!r}")
+            elif not lo <= int(m.group(0)) <= hi:
+                astray.append(f"{term} {bid} {h!r}")
+    assert not undated, (f"{len(undated)} hearing values carry no date, e.g. "
+                         + "; ".join(undated[:3]))
+    assert not astray, (f"{len(astray)} hearings fall outside their own term, "
+                        "which means they belong to another bill of that "
+                        "number: " + "; ".join(astray[:3]))
+    t2122 = bills.get("2021-2022") or {}
+    kept = [b for b, r in t2122.items() if (r.get("hearing") or "").strip()]
+    assert not kept, ("2021-2022 hearings come from that term's docket, not "
+                      f"from the bill list: {len(kept)} kept, e.g. {kept[:3]}")
+    return "ok", f"{dropped:,} empty, none dated outside its term"
 
 
 @check("data", "a bill the governor signed says so")

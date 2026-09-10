@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.15
+# GRANITE_VERSION: 2026-09-04.16
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -108,34 +108,62 @@ def rows_all(d, base, expect=None):
     return out
 
 
+# The whole field is a lie for these terms, not merely the out-of-term part.
+# Asked for session year 2021 or 2022, the legacy Advanced Bill Status Search
+# returns the right bills -- 2021-2022 titles, LSRs, statuses, committees and
+# rooms -- and fills the DATE of "Next/Last Hearing" from the 2025-2026
+# legislation record carrying the same legislationID, an id that restarts each
+# term. Measured against db/Legislation.psv, which is the General Court's own
+# database and was dumped ninety minutes before that list was fetched: 1,481
+# of the 1,485 out-of-term values equal, to the minute, the current-session
+# hearing of the bill with that id; the other 4 have no current row with that
+# id; NONE disagree.
+#
+# And the 93 that do fall inside the term are not hearings either. They sit in
+# June 2021 and May 2022, and of the 22 whose docket page is on disk, 22 say
+# "H Conference Committee Meeting" on that date. So not one of the 1,752 rows
+# is the bill's own public hearing, and the term is dropped whole.
+#
+# Re-fetching does not fix it. The request is a deterministic POST of the
+# session year and the values match the server's own database, so the same
+# list comes back. The hearings for this term come from its docket instead,
+# the way 2017-2018 and 2019-2020 get theirs.
+NO_HEARING_FROM_LIST = {"2021-2022"}
+
+
 def hearing_in_term(raw, term):
-    """A hearing date, but only if it falls inside the bill's own term.
+    """A hearing date, or "" -- never a date belonging to another bill.
 
-    2021-2022 came back from the archive with 1,485 of its 1,752 bills
-    carrying a hearing in 2025 or 2026 -- "05/20/2025 at 01:00 PM REMOTE Room
-    000" on a bill filed in 2021. Only 93 had a date from their own term. No
-    other archived term does this: 2019-2020 and 2023-2024 are clean, and the
-    one or two strays elsewhere are single bills.
+    Three things are dropped, each measured on archive_bills.json rather than
+    reasoned about:
 
-    The cause is upstream, in what the General Court's legacy search returned
-    for that year, and the real fix is to fetch that term's list again. This
-    is the guard that should have existed either way. A bill number names a
-    different bill in every biennium -- the fact this whole project is keyed
-    around -- so a date four years after the term ended belongs to whatever
-    bill wears that number now, not to this one. Dropping it loses nothing
-    that was true.
+    NO DATE. "Time not specified", sometimes with a room after it. Every bill
+    of 1989-1998 has this and nothing else -- 8,524 of 8,525 -- so those five
+    terms have no hearing dates at all, and a field that says "Time not
+    specified" is a placeholder the search prints where it has nothing, not a
+    hearing. 172 in 2015-2016 and a scatter elsewhere.
+
+    OUT OF TERM. A bill number names a different bill in every biennium, which
+    is the fact this whole project is keyed around, so a date after the term
+    ended belongs to whatever bill wears that number now. This is the rule
+    that caught 2021-2022 in the first place.
+
+    A TERM KNOWN TO BE SERVED FROM SOMEBODY ELSE'S RECORD. See above.
 
     It stayed invisible because nothing renders this field. That is not a
-    reason to keep it: it is in data/bills.json, which is an input to
-    everything, and the first thing to read it would have published a 2025
-    hearing on a 2021 bill without anybody noticing.
+    reason to keep it: data/bills.json is an input to everything, and the
+    first thing to read it would have published a 2025 hearing on a 2021 bill
+    without anybody noticing.
     """
     import re as _re
     if not raw or not term:
         return raw
-    m = _re.search(r"(19|20)\d{2}", str(raw))
+    if str(term) in NO_HEARING_FROM_LIST:
+        return ""
+    m = _re.search(r"(?:19|20)\d{2}", str(raw))
     if not m:
-        return raw
+        # No year anywhere in it, so there is no date in it.
+        return ""
     try:
         a, b = (int(x) for x in str(term).split("-"))
     except ValueError:
