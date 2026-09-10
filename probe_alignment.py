@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.57
+# GRANITE_VERSION: 2026-09-05.58
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
@@ -1367,6 +1367,7 @@ def site_estimates(site, marks):
         m["site"] = float(s["start"])
         m["site_end"] = (float(s["end"]) if s.get("end") is not None else None)
         m["site_end_stated"] = bool(s.get("end_stated"))
+        m["site_end_from"] = s.get("end_from")
         m["tol"] = s.get("tolerance")
         m["stated"] = bool(s.get("start_stated"))
         m["site_state"] = s.get("state")
@@ -1458,7 +1459,12 @@ def site_ends(marks):
     if prov:
         groups = defaultdict(list)
         for m in both:
-            how = prov.get((m["video"], str(m["bill"]).strip().upper()))
+            # The record's own end_from first. It is written by the build
+            # that decided the end, so it is right even where the candidate
+            # file and the site disagree -- which they do wherever the site
+            # refused a candidate and fell back to the clustering.
+            how = (m.get("site_end_from")
+                   or prov.get((m["video"], str(m["bill"]).strip().upper())))
             groups[how or "not recorded"].append(m["site_end"] - m["end"])
         print("      by where the end came from:")
         for how in sorted(groups, key=lambda k: -len(groups[k])):
@@ -1484,7 +1490,7 @@ def site_ends(marks):
             print(f"        {how:<26} {len(v):>3} scored, median "
                   f"{hms(v[len(v) // 2])}, {near}/{len(v)} within a minute"
                   f", {way}")
-        if "next boundary" in groups:
+        if [x for x in groups if "next boundary" in str(x)]:
             for ln in (
                 "An end taken from the NEXT boundary inherits every error in",
                 "the placement of the item after it. Miss the ones in between",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.54
+# GRANITE_VERSION: 2026-09-05.55
 """
 Generate the faceted site from real General Court data.
 
@@ -1056,6 +1056,42 @@ def station_for_proceeding(p, bid, segs, marks):
         if anchor is not None and seg["end"] > anchor and near:
             seg_end = seg["end"]
 
+    # WHERE THE END CAME FROM, AND WHETHER IT IS WORTH PUBLISHING.
+    #
+    # segment_markers.py records how it decided each end and the site threw
+    # that away, so a chair announcing "we are closed on 1118" and the moment
+    # the NEXT bill happened to be opened arrived on the page as the same
+    # kind of fact. Scored against 43 hand-timed proceedings:
+    #
+    #   the chair closed it        10 scored, median 0m 04s, 10/10 in a minute
+    #   last mention of the bill    8 scored, median 0m 59s,  5/8
+    #   next boundary               7 scored, median 29m 06s, 1/7
+    #
+    # An end taken from the next boundary inherits every error in the
+    # placement of the item after it, and it does so in both directions:
+    # HB84's hearing was published as 101 seconds against the 29 minutes it
+    # ran, SB659's was stretched 94 minutes past where it finished. There is
+    # no offset that repairs a thing that fails both ways, and 2,338 segments
+    # -- 43% of every end this site has -- come from it.
+    #
+    # So it is not published. The proceeding keeps its start, which is good
+    # to four seconds where a chair spoke it, and the page draws it as "from
+    # 1:19:26" exactly as it already does for a proceeding that never had an
+    # end. end_from still records what the candidate was, so a null end here
+    # reads as "we had a number and would not stand behind it" rather than as
+    # "we found nothing".
+    UNPUBLISHABLE = {"next boundary"}
+    end_from = None
+    end_val = None
+    if said and said.get("end") is not None:
+        end_from = said.get("end_from") or "the chair closed it"
+        end_val = said["end"]
+    elif seg_end is not None:
+        end_from = "clustered"
+        end_val = seg_end
+    if end_from in UNPUBLISHABLE:
+        end_val = None
+
     return {
         "when": p["sched_date"], "time": p.get("sched_time"),
         "what": p["proceeding"], "committee": p.get("committee"),
@@ -1081,8 +1117,19 @@ def station_for_proceeding(p, bid, segs, marks):
         # session or a two-hour hearing before they click anything.
         # A stated close outranks a clustered one: four seconds at the
         # median against whatever the cluster's tail happened to be.
-        "end": (said.get("end") if said and said.get("end") else seg_end),
-        "end_stated": bool(said and said.get("end")),
+        "end": end_val,
+        # WHAT IT SAYS, NOT WHETHER THERE IS ONE. This was
+        # bool(said and said.get("end")), which is "an end exists" -- so
+        # SB659's end, which is the second HB1815 was opened 94 minutes after
+        # the hearing finished, was recorded as stated by the chair. It is
+        # true now only where the close itself was spoken: segment_markers
+        # leaves end_from unset in exactly that case, and those score four
+        # seconds at the median against a stopwatch.
+        "end_stated": bool(said and said.get("end") is not None
+                           and not said.get("end_from")),
+        # How the end was decided, or -- where end is null -- what the
+        # candidate was that this refused to publish.
+        "end_from": end_from,
         "candidate": seg["start"] if seg and not seg.get("located") else None,
         # Which ends of this span were stated by the chair rather than
         # inferred, written by apply_markers.py. The page does not say
