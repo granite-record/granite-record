@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.60
+# GRANITE_VERSION: 2026-09-05.62
 """
 Generate the faceted site from real General Court data.
 
@@ -2056,6 +2056,68 @@ def vote_member(m, body, legs, unnamed):
             "p": m.get("party") or "X", "v": m.get("vote")}
 
 
+def bill_text_url(b, st):
+    """The address of the bill's own text, corrected on the way out.
+
+    STEP 4 OF SPLITTING build_bills. Small, and out on its own because
+    it feeds both the documents list and the payload, and because the
+    twenty lines of comment below are the record of two separate
+    failures that each reached every bill on the site. They travel with
+    the code they explain; a split that leaves them behind passes the
+    manifest diff and loses the expensive half.
+    """
+    # billText.aspx needs the session year as well as the id. Without it
+    # the page answers with an ASP.NET error and the reader gets a blank
+    # screen. Records fetched before that was understood carry a two-
+    # parameter link, so the year is added here from the bill's own filing
+    # year -- which is what the status page's link says, on every one
+    # checked. Re-running fetch_bill_status.py --reparse replaces the
+    # guess with the page's own value and needs no network.
+    #
+    # AND txtFormat=pdf IS NOT AN ADDRESS THE GENERAL COURT SERVES. The
+    # scrape built one anyway, so every bill on this site linked to
+    #
+    #   error: condensedbillno is neither a DataColumn nor a DataRelation
+    #   for table text.
+    #
+    # All 4,230 of them. The status page's own link -- the one shape that
+    # appears in 2,234 cached pages -- is txtFormat=html, which answers
+    # with the bill. So the format is corrected here rather than in the
+    # scrape, because the scrape is a record of what was fetched and this
+    # is a link being published.
+    text_url = (st.get("text_pdf", "") or "").replace("txtFormat=pdf",
+                                                      "txtFormat=html")
+    if text_url and "sy=" not in text_url:
+        sy = st.get("text_year") or b.get("lsr_year") or ""
+        if sy:
+            text_url += f"&sy={sy}"
+    return text_url
+
+
+def bill_next_step(narr, b, prefix, st, settled, told):
+    """What happens to this bill next, in one line.
+
+    STEP 6 OF SPLITTING build_bills. It was a conditional expression nested
+    three deep across six lines, with `next_step(narr, b, prefix)` appearing
+    in three of its branches -- and two of those three are the same branch
+    wearing different conditions: if the bill is settled the answer is that
+    call, and if nobody has told us a status the answer is that call again.
+    Written as statements the shape is obvious and the duplication collapses
+    to one line.
+
+    Behaviour is unchanged, which the manifest diff is there to prove rather
+    than to assert: the site was rebuilt into a scratchpad tree and every one
+    of 34,114 files hashed identical before and after.
+    """
+    if settled or not told:
+        return next_step(narr, b, prefix)
+    joined = " \u00b7 ".join(x for x in [
+        f"House: {st['house_status']}" if st.get("house_status") else "",
+        f"Senate: {st['senate_status']}" if st.get("senate_status") else "",
+    ] if x)
+    return joined or next_step(narr, b, prefix)
+
+
 def bill_stations(bid, term, procs, segs, marks):
     """Every committee proceeding on one bill, oldest first.
 
@@ -2372,31 +2434,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 seen_doc.add(url)
                 docs.append({"label": label, "url": url, "kind": kind})
 
-        # billText.aspx needs the session year as well as the id. Without it
-        # the page answers with an ASP.NET error and the reader gets a blank
-        # screen. Records fetched before that was understood carry a two-
-        # parameter link, so the year is added here from the bill's own filing
-        # year -- which is what the status page's link says, on every one
-        # checked. Re-running fetch_bill_status.py --reparse replaces the
-        # guess with the page's own value and needs no network.
-        #
-        # AND txtFormat=pdf IS NOT AN ADDRESS THE GENERAL COURT SERVES. The
-        # scrape built one anyway, so every bill on this site linked to
-        #
-        #   error: condensedbillno is neither a DataColumn nor a DataRelation
-        #   for table text.
-        #
-        # All 4,230 of them. The status page's own link -- the one shape that
-        # appears in 2,234 cached pages -- is txtFormat=html, which answers
-        # with the bill. So the format is corrected here rather than in the
-        # scrape, because the scrape is a record of what was fetched and this
-        # is a link being published.
-        text_url = (st.get("text_pdf", "") or "").replace("txtFormat=pdf",
-                                                          "txtFormat=html")
-        if text_url and "sy=" not in text_url:
-            sy = st.get("text_year") or b.get("lsr_year") or ""
-            if sy:
-                text_url += f"&sy={sy}"
+        text_url = bill_text_url(b, st)
         add_doc("Bill text", text_url, "text")
         add_doc("Bill status page", (
             "https://gc.nh.gov/bill_status/legacy/bs2016/Bill_status.aspx"
@@ -2522,12 +2560,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # Where the docket has settled the bill, the per-chamber fields
             # are describing a superseded state and reading them beside
             # "Vetoed, override failed" is a contradiction. Say what happened.
-            "next_step": next_step(narr, b, prefix) if settled else (
-                " \u00b7 ".join(x for x in [
-                    f"House: {st['house_status']}" if st.get("house_status") else "",
-                    f"Senate: {st['senate_status']}" if st.get("senate_status") else "",
-                ] if x) or next_step(narr, b, prefix)) if told
-                       else next_step(narr, b, prefix),
+            "next_step": bill_next_step(narr, b, prefix, st, settled, told),
             **({"archived": (coverage or {}).get(term) or True}
                if b.get("archived") else {}),
             "status_source": ("General Court docket" if settled
