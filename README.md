@@ -48,7 +48,7 @@ Python 3.14 and Node (the test suite loads the front end in node). Then:
 
 ```
 python3 inventory.py     # every script and the version it should be
-python3 preflight.py     # 76 checks; builds the whole site on a fixture
+python3 preflight.py     # 78 checks; builds the whole site on a fixture
 python3 handoff.py       # writes STATE.md with the current counts
 ```
 
