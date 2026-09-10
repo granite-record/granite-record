@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.58
+# GRANITE_VERSION: 2026-09-05.59
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
@@ -509,12 +509,18 @@ def cluster(times, gap=180):
     return out
 
 
-def hms(s):
+def clock(s):
     """Word-level times are fractional, so keep the fraction where it matters.
 
     The whole point of reading json3 is sub-second placement; rounding it away
     in the display would hide the thing being measured.
     """
+    # NOT hms. There are two functions in this file with that
+    # name, and the second one wins for every caller: a module
+    # rebinds the name at the second def, so this body was
+    # unreachable and every call here printed the coarse
+    # 'm ss' form instead of the sub-second one. Renamed so the
+    # transcript probes get the precision they were written for.
     s = float(s)
     whole = int(s)
     frac = s - whole
@@ -556,7 +562,7 @@ def show_context(lines, expect, nums, tits, around=12, per_bill=4):
             seen += 1
             kinds = {k for x, k in hits if r[0] <= x <= r[-1]}
             txt = WS.sub(" ", words_around(r[0]))
-            print(f"    {hms(r[0]):>10}  {len(r):>2} mention(s), "
+            print(f"    {clock(r[0]):>10}  {len(r):>2} mention(s), "
                   f"{'+'.join(sorted(kinds))}")
             print(f"        ...{txt[:150]}...")
 
@@ -565,7 +571,7 @@ def report(name, lines, expect, titles, context=False, reports=None,
            sched=None, floor_entries=None, is_floor=False):
     print(f"\n{'=' * 74}\n{name}")
     print(f"{'=' * 74}")
-    print(f"  {len(lines):,} caption lines, {hms(lines[-1][0]) if lines else '0'} long")
+    print(f"  {len(lines):,} caption lines, {clock(lines[-1][0]) if lines else '0'} long")
     print(f"  {len(expect)} bills the docket says were taken up")
     # Kept because Question 2 narrows `expect` to the bills the docket puts in
     # a definite order, and the counts above were taken against all of them.
@@ -617,8 +623,8 @@ def report(name, lines, expect, titles, context=False, reports=None,
         print(f"    within 30s: {sum(1 for g,_,_,_ in gaps if g <= 30)}/{len(gaps)}"
               f"   within 3 min: {sum(1 for g,_,_,_ in gaps if g <= 180)}/{len(gaps)}")
         for g, b, n0, t0 in gaps[-3:]:
-            print(f"      {b:<9} number at {hms(n0)}, title at {hms(t0)}  "
-                  f"apart by {hms(g)}")
+            print(f"      {b:<9} number at {clock(n0)}, title at {clock(t0)}  "
+                  f"apart by {clock(g)}")
     else:
         print("    no bill was found by both signals")
 
@@ -638,8 +644,8 @@ def report(name, lines, expect, titles, context=False, reports=None,
         print(f"    {len(moved)} of {len(expect)} bills move by more than two "
               "minutes:")
         for d, b, f, s, size, runs in moved[:5]:
-            print(f"      {b:<9} first named {hms(f)}, busiest run starts "
-                  f"{hms(s)} ({size} mentions, {runs} runs)  moved {hms(d)}")
+            print(f"      {b:<9} first named {clock(f)}, busiest run starts "
+                  f"{clock(s)} ({size} mentions, {runs} runs)  moved {clock(d)}")
         print("      Where a bill is named once early and discussed later, the "
               "early\n      mention is the agenda being read, not the "
               "proceeding.")
@@ -681,7 +687,7 @@ def report(name, lines, expect, titles, context=False, reports=None,
                   f"    {len(anchors)} tallies are unique to one bill and heard "
                   "once -- anchors:")
             for b, y, nn, when in anchors:
-                print(f"      {b:<9} {y}-{nn} at {hms(when)}")
+                print(f"      {b:<9} {y}-{nn} at {clock(when)}")
         if ambiguous:
             print(f"    {len(ambiguous)} cannot identify a bill:")
             for b, y, nn, nb, nh in ambiguous[:5]:
@@ -720,10 +726,10 @@ def report(name, lines, expect, titles, context=False, reports=None,
             print(f"    {len(rows)} bills have a roll-call end time from "
                   "RollCallSummary")
             med = rows[len(rows) // 2][0]
-            print(f"    last mention against that end: median {hms(med)} apart")
+            print(f"    last mention against that end: median {clock(med)} apart")
             for d, b, last, end, ws in rows[:3] + rows[-2:]:
-                print(f"      {b:<9} last heard {hms(last)}, roll call at "
-                      f"{hms(end)}  ({hms(d)} apart)")
+                print(f"      {b:<9} last heard {clock(last)}, roll call at "
+                      f"{clock(end)}  ({clock(d)} apart)")
             near = sum(1 for d, *_ in rows if d <= 120)
             print(f"    {near} of {len(rows)} within two minutes")
             print("    A roll call closes the item, so the last mention should "
@@ -1192,7 +1198,7 @@ def _by_source(marks, field):
         v = sorted(groups[src])
         near = sum(1 for x in v if x <= 60)
         print(f"      {src:<22} {len(v):>3} placed, median "
-              f"{hms(v[len(v) // 2])}, {near}/{len(v)} within a minute")
+              f"{clock(v[len(v) // 2])}, {near}/{len(v)} within a minute")
 
 
 def hms(s):

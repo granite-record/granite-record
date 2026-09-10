@@ -140,6 +140,93 @@ tens of thousands more for 1997-2014 without recordings. The site goes from
 one term of hearings to thirty years of them, and the two terms with the most
 recordings are the ones nothing is waiting for.
 
+## The cleanup pass: scope, measured 10 September
+
+Written before the pass so the pass is execution rather than deliberation.
+Everything here is measured, and the decisions at the end are already made.
+
+### What the modules actually weigh
+
+    build_site_v2.py   2,915     build_bills          543 lines
+    preflight.py       3,911     main                 445
+    app.js             2,658     station_for_proceeding 180
+    probe_alignment.py 2,026     committee_reports    137
+    narrative.py       1,420
+    segment_markers.py 1,021
+    review.py            831
+    build_manifest.py    434     main                 191
+    build_proceedings.py 193     from_floor_index      55
+
+**CLAUDE.md's first item is out of date.** It says to split
+`build_site_v2.main`, and `main` is 445 lines. `build_bills` is **543** and is
+now the larger of the two. Split that first, or at least know that is the
+choice being made.
+
+### In scope
+
+**1. `build_manifest.py` becomes term-aware.** The agreed shape: one producer
+of committee proceedings, taking a term and its docket, with calendars as a
+fallback source later for terms that have no docket. `main` is 191 of its 434
+lines and is where the term has to thread through. The video side is mostly
+argument plumbing -- `--videos` already accepts a glob.
+
+**The hazard to design against, and it is the whole risk of this step:** the
+matcher joins a bill to a video by committee and date. Point it at
+`videos_*.csv` with every year present and a 2023 bill can take a 2025
+recording on a same-day, same-committee coincidence. The term must filter the
+video set, not merely label the output.
+
+**2. `build_proceedings.py --term` merges rather than replaces.** It refuses
+today to write a table smaller than the last one without being told it may,
+which is the right instinct and the wrong granularity once terms arrive one at
+a time. The decision, so it does not get relitigated: a `--term` run rebuilds
+that term's rows and keeps every other term's untouched, and the shrink guard
+applies **per term** rather than to the whole file. A full rebuild stays the
+explicit flag it is now. This is the failure this project has had twice and it
+is five lines to prevent.
+
+**3. Land 2023-2024.** `Docket_2023-2024.txt` gives 7,379 proceedings, and its
+1,648 recordings now have start times -- 1,643 of them, 100% of what YouTube
+holds. Nothing about this waits on a fetch.
+
+**4. Two cheap correctness items.**
+
+- `probe_alignment.py` defines `hms` twice and the second shadows the first.
+  It is the only shadowed function in the repository; a patch anchored on
+  `def hms(s):` matched two places and had to be re-anchored on the body.
+- Seven tools carry `--manifest default="verification_manifest.csv"`:
+  `align_all`, `apply_markers`, `fetch_testimony`, `probe_alignment`,
+  `score_alignment`, `transcribe_and_align`, `verify_batch`. Only
+  `preflight.py` actually opens that file, and `build_proceedings.py` reads it
+  as its input, so these are stale pointers rather than real coupling.
+  `build_proceedings.py`'s own docstring says the intermediate goes away once
+  every reader has moved; these defaults are the readers that have not.
+
+### Explicitly not in scope
+
+Saying so is what keeps a cleanup pass from becoming a rewrite.
+
+- **The 1997-2014 calendar path.** A different source with a different error
+  profile -- kind agrees with the docket 98%, time 88% -- and for those years
+  there is no docket to prefer, so the 12% is unmeasurable. That is a decision
+  about what the site may claim, not a refactor.
+- **Captions and timestamps.** 910 of the 915 recordings carrying a bill are
+  captioned; that path is finished for this term and cannot be advanced by
+  more fetching.
+- **The site's rendering.** `app.js` is 2,658 lines and not the bottleneck.
+- **`preflight.py` at 3,911 lines.** It is long because it is 73 checks, which
+  is the good kind of long.
+
+### Decided in advance, so the pass does not stop to argue
+
+- One producer, term-aware. Not a sibling producer per source.
+- `proceedings.csv` keeps its shape; it already carries a `term` column.
+- The shrink guard becomes per-term.
+- `ground_truth.csv` and `review/checked.jsonl` are not touched by anything.
+- Every change is scored with `probe_alignment.py --truth` before it ships,
+  and `--no-bench` gives the number comparable with anything recorded before
+  9 September.
+
 ## What is structurally wrong
 
 Ranked by what it has actually cost, not by how it looks on paper.
