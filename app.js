@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.45
+// GRANITE_VERSION: 2026-09-07.46
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -741,8 +741,29 @@ function analysis(d, rsa){
     <p class="src">Source: NH General Court</p></section>`;
 }
 
+// WHAT THIS BILL IS, where its number carries a standing meaning. HB1 has
+// been the state budget in every term since 1993-1994 and its title says only
+// "making appropriations for the expenses of certain departments of the
+// state", which is accurate and tells a reader nothing.
+//
+// ATTRIBUTED TO THIS SITE, NOT TO THE RECORD. Everything else in this box is
+// the General Court's -- the official analysis says "Source: NH General
+// Court" underneath it for exactly this reason. These words are Granite
+// Record's, and a reader who cannot tell the difference has been given a
+// worse page, not a fuller one.
+function billNote(d){
+  const n=d&&d.bill_note;
+  if(!n||!n.note)return "";
+  return `<section class="anbox billnote">
+    <h3 class="anlab">${esc(n.label||"About this bill")}</h3>
+    <div class="antext">${esc(n.note)}</div>
+    <p class="src">Written by Granite Record, not quoted from the General
+      Court. It describes what this bill number is for, which its title does
+      not say.</p></section>`;
+}
+
 function renderSummary(b,d,rsa){
-  const _an=analysis(d,rsa);
+  const _an=billNote(d)+analysis(d,rsa);
   // The citation at the end of a docket line names the journal or calendar
   // that recorded the action. Linking it turns each line from something the
   // reader has to take on trust into something they can check.

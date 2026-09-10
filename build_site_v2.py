@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.56
+# GRANITE_VERSION: 2026-09-05.57
 """
 Generate the faceted site from real General Court data.
 
@@ -1917,10 +1917,73 @@ def passage(stages, kind, status="", bill=""):
     return origin + "".join(out)
 
 
+def bill_note(notes, term, bid):
+    """The standing note for this bill, if it has one.
+
+    TWO KEY SHAPES, DELIBERATELY. A note in "every_term" is about a number
+    that means the same thing term after term -- HB1 has been the budget in
+    every term since 1993-1994 -- which is the exact opposite of how the rest
+    of this project keys things, and is why the file says so at the top.
+    A note in "by_term" is about one bill in one term, which is what the
+    ten-year transportation plan needs: it is HB2000, then HB2004, HB2006,
+    HB2010, and on to HB2026, a different number every time.
+
+    "from" is what keeps a standing note off the bills that merely share a
+    number. HB1 goes back to 1989-1990, but the 1989 bill is a special
+    session bill about the public utilities commission and the 1991 one is a
+    medicaid enhancement tax. Neither is the budget, and without this both
+    would have been published saying they were.
+    """
+    if not notes:
+        return None
+    one = ((notes.get("by_term") or {}).get(term) or {}).get(bid)
+    if one:
+        return one
+    n = (notes.get("every_term") or {}).get(bid)
+    if not n:
+        return None
+    if n.get("from") and term < n["from"]:
+        return None
+    if n.get("until") and term > n["until"]:
+        return None
+    return n
+
+
+def check_notes(notes, bills):
+    """Every note must name a bill that exists, or say so loudly.
+
+    A note file that matches nothing exits zero having attached nothing,
+    which is the silent success this project keeps getting caught by --
+    "HB 1" with a space instead of "HB1" would do it, and the only symptom
+    would be a page that looks exactly as it did before.
+    """
+    if not notes:
+        return
+    have = {(term, bid) for term, bs in bills.items() for bid in bs}
+    numbers = {bid for _t, bid in have}
+    missing = []
+    for bid, n in (notes.get("every_term") or {}).items():
+        if bid not in numbers:
+            missing.append(f"every_term {bid}")
+        elif n.get("from") and not any(t >= n["from"] for t, b in have
+                                       if b == bid):
+            missing.append(f'every_term {bid} from {n["from"]}')
+    for term, bs in (notes.get("by_term") or {}).items():
+        for bid in bs:
+            if (term, bid) not in have:
+                missing.append(f"by_term {term} {bid}")
+    if missing:
+        raise SystemExit(
+            "bill_notes.json names bills that are not in the record: "
+            + ", ".join(missing)
+            + "\nA note that matches nothing attaches nothing and the build "
+              "would exit zero having done it.")
+
+
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
-                votes_by_bill, vetoes=None):
+                votes_by_bill, vetoes=None, notes=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -2411,6 +2474,12 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # bill was vetoed and the date; it does not record the reasons,
             # and the reasons are the whole of a veto message.
             "veto_message": P.per_term(vetoes or {}, term, current).get(bid),
+            # A standing note about what this bill IS, where its number
+            # carries a meaning across terms. Written by a person, and the
+            # page labels it as this site's words rather than the General
+            # Court's -- the same line the veto message draws from the other
+            # side, where the words are quoted and attributed.
+            "bill_note": bill_note(notes, term, bid),
             "subject": b.get("subject", ""),
             "house_committee": names.committee(b.get("house_committee", "")),
             "senate_committee": names.committee(b.get("senate_committee", "")),
@@ -2468,6 +2537,8 @@ def main():
     ap.add_argument("--data", default="data")
     ap.add_argument("--narratives", default="narratives.json")
     ap.add_argument("--rollcalls", default="rollcalls.json")
+    ap.add_argument("--notes", default="bill_notes.json",
+                    help="hand-written standing notes about particular bills")
     ap.add_argument("--markers", default="candidate_segments.json",
                     help="boundaries a chair stated, from segment_markers.py")
     ap.add_argument("--allow-no-manifest", action="store_true",
@@ -2530,6 +2601,10 @@ def main():
         sys.exit(f"{a.narratives} is keyed on bill number, not on term. "
                  "Rebuild it: python3 narrative.py --docket Docket.txt --all "
                  f"--out {a.narratives}")
+    # Hand-written, and in the same class as ground_truth.csv: no generator
+    # writes it and preflight fails if one opens it for writing.
+    notes = load(a.notes, {})
+    check_notes(notes, bills)
     rollcalls = load(a.rollcalls, {})
     # {term: {bill: [votes]}}, since rollcall_parser started reading past
     # sessions. The older shape was {bill: [votes]}, and reading one with the
@@ -2733,7 +2808,7 @@ def main():
                                testimony_db,
                                procs, floor, segs, marks, sources,
                                legs, leg_by_sort, leg_by_name,
-                               votes_by_bill, vetoes=vetoes)
+                               votes_by_bill, vetoes=vetoes, notes=notes)
     (out / "index.json").write_text(json.dumps(index), encoding="utf-8")
 
     # ONE TERM AT A TIME, BECAUSE THAT IS ALL THE PAGE EVER SHOWS. The search

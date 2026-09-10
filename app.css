@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.41 */
+/* GRANITE_VERSION: 2026-09-07.42 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1010,3 +1010,10 @@ table.cov{border-collapse:collapse;font-size:13px;width:100%;min-width:420px}
 .cov .c1{color:var(--yes);font-weight:600}
 .cov .c0{color:var(--ink-2)}
 .cov .cp{font-weight:600}
+
+
+/* The standing note sits above the official analysis and must not be mistaken
+   for it. Same box, different edge: this site's words get the pine rule, the
+   General Court's keep the plain one. */
+.anbox.billnote{border-left:3px solid var(--pine)}
+.anbox.billnote .anlab{color:var(--pine)}
