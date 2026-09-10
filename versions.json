@@ -7,7 +7,7 @@
     "build_all.py": "2026-09-05.12",
     "build_bill_pages.py": "2026-09-04.45",
     "build_town_pages.py": "2026-09-09.4",
-    "review.py": "2026-09-09.8",
+    "review.py": "2026-09-09.9",
     "build_careers.py": "2026-09-09.1",
     "build_data.py": "2026-09-04.14",
     "build_feeds.py": "2026-09-04.6",
@@ -52,7 +52,7 @@
     "nightly.py": "2026-09-04.5",
     "parse_districts.py": "2026-09-04.1",
     "preflight.py": "2026-09-04.84",
-    "probe_alignment.py": "2026-09-05.49",
+    "probe_alignment.py": "2026-09-05.57",
     "probe_amendments.py": "2026-09-04.3",
     "probe_archive.py": "2026-09-04.1",
     "probe_legacy.py": "2026-09-06.3",
@@ -93,7 +93,8 @@
     "app.js": "2026-09-07.45",
     "app.css": "2026-09-07.38",
     "fetch_members_db.py": "2026-09-07.1",
-    "build_bill_versions.py": "2026-09-09.5"
+    "build_bill_versions.py": "2026-09-09.5",
+    "site_read.py": "2026-09-09.1"
   },
   "generated": "2026-09-04"
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.49
+# GRANITE_VERSION: 2026-09-05.57
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
@@ -54,6 +54,7 @@ FOUR QUESTIONS, EACH ANSWERED WITHOUT GROUND TRUTH
 
 import argparse
 import proceedings as P
+import site_read as SR
 import csv
 import json
 import re
@@ -924,16 +925,10 @@ def coverage(site, manifest):  # noqa: C901
         if bill:
             want[bill].append((when, kind, str(r.get("video_id") or "")))
     have = defaultdict(list)
-    for f in sorted(list((Path(site) / "bills").glob("*/*.json"))
-                    + list((Path(site) / "bills").glob("*.json"))):
-        try:
-            d = json.loads(f.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-        for s in d.get("stations") or []:
-            have[f.stem.upper()].append((str(s.get("when") or "")[:10],
-                                         str(s.get("what") or "").lower(),
-                                         str(s.get("video_id") or "")))
+    for _y, bid, s in site_stations(site):
+        have[bid].append((str(s.get("when") or "")[:10],
+                          str(s.get("what") or "").lower(),
+                          str(s.get("video_id") or "")))
 
     seen = miss = 0
     bykind = Counter()
@@ -1254,6 +1249,26 @@ def score(marks, label, get):
             print(f"      {m['bill']:<8} {str(m['kind'])[:17]:<18}{m['video']}")
 
 
+_SITE = {}
+
+
+def site_stations(site):
+    """Every proceeding the site publishes, read once per run.
+
+    THE RECORDS ARE IN THE PAGES. Both of the readers below globbed
+    site/bills/<year>/<ID>.json, which is where a bill's record lived until it
+    moved inside its own page. The glob went on matching -- the 98 records too
+    large to inline still live there -- so this reported 519 stations across
+    66 bills, and coverage called 96% of the docket absent. Nothing was
+    absent. Ten seconds of reading, cached, against a number that was wrong
+    by a factor of twenty.
+    """
+    key = str(site)
+    if key not in _SITE:
+        _SITE[key] = list(SR.stations(site))
+    return _SITE[key]
+
+
 def census(site):
     """What kinds of proceeding the site actually carries, and from when.
 
@@ -1262,20 +1277,14 @@ def census(site):
     bills was a floor debate -- and no amount of scoring would have revealed
     that.
     """
-    kinds, states, years, bills = Counter(), Counter(), Counter(), 0
-    for f in sorted(list((Path(site) / "bills").glob("*/*.json"))
-                    + list((Path(site) / "bills").glob("*.json"))):
-        try:
-            d = json.loads(f.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            continue
-        sts = d.get("stations") or []
-        if sts:
-            bills += 1
-        for s in sts:
-            kinds[str(s.get("what") or "?")] += 1
-            states[str(s.get("state") or "?")] += 1
-            years[str(s.get("when") or "")[:4]] += 1
+    kinds, states, years = Counter(), Counter(), Counter()
+    seen = set()
+    for _y, bid, s in site_stations(site):
+        seen.add(bid)
+        kinds[str(s.get("what") or "?")] += 1
+        states[str(s.get("state") or "?")] += 1
+        years[str(s.get("when") or "")[:4]] += 1
+    bills = len(seen)
     total = sum(kinds.values())
     print(f"\n  WHAT THE SITE ACTUALLY CARRIES  ({total:,} stations across "
           f"{bills:,} bills)")
@@ -1312,20 +1321,18 @@ def site_estimates(site, marks):
     got = 0
     why = Counter()
     seen_vids = set()
+    # THE RECORDS ARE IN THE PAGES. This globbed site/bills/<year>/<ID>.json
+    # and answered "no file for that bill" for all 43 marks, every run, since
+    # the records moved inside the pages -- which made the one measurement
+    # that matters, what the SITE claims against what a person saw, silently
+    # unavailable while the command still exited zero and printed a report.
+    by_bill = defaultdict(list)
+    for _y, bid, s in site_stations(site):
+        by_bill[bid].append(s)
     for m in marks:
-        f = next((p for p in
-                  (Path(site) / "bills").glob(f"*/{m['bill']}.json")), None)             or Path(site) / "bills" / f"{m['bill']}.json"
-        if not f.exists():
-            why["no file for that bill"] += 1
-            continue
-        try:
-            d = json.loads(f.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            why["file would not parse"] += 1
-            continue
-        sts = d.get("stations") or []
+        sts = by_bill.get(str(m["bill"]).strip().upper()) or []
         if not sts:
-            why["bill has no stations at all"] += 1
+            why["no page for that bill"] += 1
             continue
         for s in sts:
             if s.get("video_id"):
@@ -1335,15 +1342,35 @@ def site_estimates(site, marks):
             why["no station on that video"] += 1
             m["_have"] = sts
             continue
-        placed = [s for s in same if s.get("start") is not None]
+        # THE RIGHT PROCEEDING, not merely the right recording. A bill heard
+        # in the morning and voted on in the afternoon has two stations on
+        # one video, and scoring the hearing against its executive session is
+        # a wrong answer wearing the clothes of an imprecise one.
+        kind = str(m["kind"]).strip().lower()
+        exact = [s for s in same
+                 if str(s.get("what") or "").strip().lower() == kind]
+        pick = exact or same
+        placed = [s for s in pick if s.get("start") is not None]
+        if not placed and exact:
+            # The kind matches and it is not placed. Falling back to the
+            # other proceeding on the same tape would report a number for a
+            # thing the site did not place, which is the lie this whole
+            # function exists to avoid.
+            why[f"station present but not placed "
+                f"({exact[0].get('state', 'no state')})"] += 1
+            continue
         if not placed:
             why[f"station present but not placed "
                 f"({same[0].get('state', 'no state')})"] += 1
             continue
         s = placed[0]
         m["site"] = float(s["start"])
+        m["site_end"] = (float(s["end"]) if s.get("end") is not None else None)
+        m["site_end_stated"] = bool(s.get("end_stated"))
         m["tol"] = s.get("tolerance")
         m["stated"] = bool(s.get("start_stated"))
+        m["site_state"] = s.get("state")
+        m["site_kind_matched"] = bool(exact)
         got += 1
     if not got:
         # Saying "no match" and stopping leaves the reader to guess between
@@ -1384,6 +1411,129 @@ def site_estimates(site, marks):
                   "dates differ, they are different\n    proceedings and the "
                   "marked one is simply absent.")
     return got
+
+
+def site_ends(marks):
+    """The published END against the one a person watched.
+
+    NOTHING HAS EVER SCORED THIS. Every number this project records is about
+    where a proceeding STARTS, and the site publishes an end as well -- it is
+    what sizes the span a reader is sent to. The end is derived from the last
+    time the bill is mentioned on the recording, which fails in one direction
+    and only one: a bill named again later in the meeting drags the end past
+    where the item actually finished. SB659 publishes a hearing of 4h 31m
+    that ran 2h 57m.
+
+    So the SIGN is the finding here, not the size. An error that is symmetric
+    is noise to be reduced; an error that is one-sided is a mechanism to be
+    fixed, and only reporting the direction tells them apart.
+    """
+    both = [m for m in marks
+            if m.get("site_end") is not None and m.get("end") is not None]
+    if not both:
+        return
+    signed = sorted(m["site_end"] - m["end"] for m in both)
+    errs = sorted(abs(x) for x in signed)
+    long_ = [x for x in signed if x > 60]
+    short = [x for x in signed if x < -60]
+    print(f"\n    {len(both)} of them also publish an END, against a person's "
+          f"own.\n    Off by {hms(errs[len(errs) // 2])} at the median, worst "
+          f"{hms(errs[-1])}.")
+    print(f"    {len(long_)} run LONG by more than a minute, {len(short)} "
+          f"short.")
+    if len(long_) >= 3 * max(1, len(short)):
+        print("    That is one-sided. An end taken from the last mention of "
+              "the bill\n    cannot stop early and can run on forever, which "
+              "is the shape of this.")
+    # WHERE THE END CAME FROM, which the site record does not say. Its
+    # end_stated is set by bool(said and said.get("end")) -- it means "there
+    # is an end", not "the chair closed it" -- so splitting on it puts a
+    # boundary the chair spoke and a boundary inferred from the next item in
+    # the same bucket. SB659's end is the moment HB1815 was opened, 104
+    # minutes after the hearing finished, and the record calls it stated.
+    #
+    # candidate_segments.json carries the honest field. This reads it rather
+    # than trusting the label, and says so when it cannot.
+    prov = _end_provenance()
+    if prov:
+        groups = defaultdict(list)
+        for m in both:
+            how = prov.get((m["video"], str(m["bill"]).strip().upper()))
+            groups[how or "not recorded"].append(m["site_end"] - m["end"])
+        print("      by where the end came from:")
+        for how in sorted(groups, key=lambda k: -len(groups[k])):
+            signed_ = groups[how]
+            v = sorted(abs(x) for x in signed_)
+            near = sum(1 for x in v if x <= 60)
+            # THE DIRECTION, per source. Overall the ends run short more often
+            # than long, and that reads as a contradiction beside a group with
+            # a half-hour median unless each source says which way it fails.
+            # They fail in opposite directions: an end taken from the last
+            # mention stops before the item does, and an end taken from the
+            # next boundary cannot stop until the next one is found.
+            lo = sum(1 for x in signed_ if x > 60)
+            sh = sum(1 for x in signed_ if x < -60)
+            # BOTH WAYS IS ITS OWN ANSWER, and the most important one here.
+            # A source that is always long can be corrected with an offset. A
+            # source that truncates one hearing to 101 seconds and stretches
+            # another by 94 minutes cannot be corrected at all, and calling
+            # that "runs short" because four beat two would hide the finding.
+            way = ("FAILS BOTH WAYS" if min(lo, sh) >= 2
+                   else "runs long" if lo > sh
+                   else "runs short" if sh else "tight")
+            print(f"        {how:<26} {len(v):>3} scored, median "
+                  f"{hms(v[len(v) // 2])}, {near}/{len(v)} within a minute"
+                  f", {way}")
+        if "next boundary" in groups:
+            for ln in (
+                "An end taken from the NEXT boundary inherits every error in",
+                "the placement of the item after it. Miss the ones in between",
+                "and this one swallows them; match a later mention as an opening",
+                "too early and this one is cut off where it had barely started.",
+                "Both happen -- one hearing is published as 101 seconds against",
+                "the 29 minutes it ran, and another is stretched by 94 -- which",
+                "is why no offset can repair it.",
+            ):
+                print("      " + ln)
+
+    worst = sorted(both, key=lambda m: -(m["site_end"] - m["end"]))[:4]
+    over = [m for m in worst if m["site_end"] - m["end"] > 300]
+    if over:
+        print("\n    the longest overruns -- published span against the one "
+              "watched:")
+        for m in over:
+            print(f"      {m['bill']:<8} {str(m['kind'])[:18]:<19}"
+                  f"{m['video']:<14}"
+                  f"published {hms(m['site_end'] - m['site'])}, "
+                  f"watched {hms(m['end'] - m['obs'])}")
+
+
+def _end_provenance(path="candidate_segments.json"):
+    """{(video, BILL): how the end was decided}, from the segmenter's own file.
+
+    end_from is written by segment_markers.py and is the only place the
+    distinction survives: "next boundary", "last mention of the bill", or a
+    close the chair actually spoke. It does not reach the site record, which
+    is why the site cannot tell a reader either.
+    """
+    p = Path(path)
+    if not p.exists():
+        return {}
+    try:
+        cs = json.loads(p.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        return {}
+    out = {}
+    for vid, bills in cs.items():
+        if not isinstance(bills, dict):
+            continue
+        for bill, segs in bills.items():
+            for s in (segs if isinstance(segs, list) else [segs]):
+                if isinstance(s, dict) and s.get("end") is not None:
+                    out[(vid, str(bill).strip().upper())] = (
+                        s.get("end_from") or "the chair closed it")
+                    break
+    return out
 
 
 def load_candidate(path, marks):
@@ -1595,6 +1745,7 @@ def ground_truth(manifest, site=None, candidate=None, bench=True):
                       f"by the chair.\n    Those are off by "
                       f"{hms(e[len(e) // 2])} at the median -- the first "
                       "accuracy\n    number the marker path has ever had.")
+            site_ends(marks)
 
     # The shape of the error matters more than its size. If a day drifts
     # steadily later, one anchor fixes the rest of it; if it jumps about,

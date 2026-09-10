@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.8
+# GRANITE_VERSION: 2026-09-09.9
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -51,6 +51,8 @@ import webbrowser
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+
+import site_read as SR
 
 OUT = Path("review")
 LEDGER = OUT / "checked.jsonl"
@@ -129,41 +131,13 @@ def _site_records(site=Path("site")):
     Nine judgments were entered against a number no reader has ever been
     shown before anybody noticed. A bench that grades something other than
     what is published is worse than no bench, because its verdicts look like
-    evidence. So this reads the built pages themselves.
+    evidence.
 
-    A bill's record travels inside its page; the 98 too large to inline keep
-    a file and the page points at it, so both are followed.
+    The walk itself now lives in site_read.py, because this was the second
+    reader of the same convention and probe_alignment wanted a third. Only
+    the years with recordings are read: 2,234 pages rather than 33,683.
     """
-    inline = re.compile(
-        r'<script type="application/json" id="gr-data">(.*?)</script>', re.S)
-    meta = re.compile(r'<meta name="gr-data" content="([^"]+)"')
-    # The years that have recordings, from the terms proceedings.csv holds,
-    # rather than a pair of literals that would go stale the first time an
-    # earlier term gets video.
-    import proceedings as P
-    years = sorted({y for r in P.load() if r.get("video_id")
-                    for y in str(r.get("term") or "").split("-") if y.isdigit()})
-    for y in years:
-        d = site / "bill" / y
-        if not d.is_dir():
-            continue
-        for f in sorted(d.glob("*.html")):
-            text = f.read_text(encoding="utf-8")
-            m = inline.search(text)
-            if m:
-                raw = m.group(1)
-            else:
-                mm = meta.search(text)
-                if not mm:
-                    continue
-                side = site / mm.group(1).lstrip("/")
-                if not side.exists():
-                    continue
-                raw = side.read_text(encoding="utf-8")
-            try:
-                yield y, f.stem.upper(), json.loads(raw)
-            except ValueError:
-                continue
+    return SR.records(site, years=SR.video_years())
 
 
 def sample_timestamps():
