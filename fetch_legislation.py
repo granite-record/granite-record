@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.7
+# GRANITE_VERSION: 2026-09-10.9
 """
 The bill itself, from an address that can simply be constructed.
 
@@ -78,6 +78,50 @@ import refusal
 
 OUT = Path("legislation")
 URL = "https://gc.nh.gov/legislation/{year}/{bill}.html"
+# The same document, served by the application instead of as a file. Proven
+# the same document rather than assumed: the 2,234 pages in bill_text/ came
+# from here, and today's parser reads sponsors, committee, title and analysis
+# out of them exactly as it does out of a legislation/<year>/ page.
+TEXT = ("https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
+        "?id={id}&txtFormat=html&sy={year}")
+
+# WHICH ADDRESS SERVES WHICH YEAR, and how each line was established.
+#
+# The static path answered for every year sampled from 1989 to 2021 except
+# two. 2016 and 1996 returned 404 for all ten bills asked, and a person
+# confirmed both in a browser on 10 September:
+#
+#     legislation/2016/HB1101.html                     404
+#     legislation/1996/hb297.htm                       404  (the archive's OWN
+#                                                            published link)
+#     bs2016/billText.aspx?id=20142016&sy=2016         serves the bill
+#
+# So 2016 has no static directory and is served by the application, and 1996
+# has neither -- the address its own status page publishes is dead, and no
+# other address for a 1996 bill's text is known. Both years sit exactly on a
+# change of the tool that generated these pages.
+#
+# THE ID IS NOT ONE SCHEME. data/bills.json carries an id per bill, scraped
+# from the search results, and what the address wants is not always it:
+#
+#     2016   stored 882016 (the LSR and the year)   used as stored   browser
+#     2023   stored 1                               wants 12023      the saved
+#     2024   stored 4                               wants 42024      status
+#     2025   stored 7                               used as stored   pages in
+#     2026   stored 6                               used as stored   status_pages/
+#
+# 2017-2021 are not in the table because the static path serves them and the
+# question does not arise. 2022 is not in it because nothing on this disk
+# answers it: there is no saved 2022 status page, and guessing between two
+# forms is exactly the filename probing that got this address blocked. One
+# person opening one address settles it.
+# 2022 onward as well: fifty bills were asked for across those five years in
+# the sample and every one answered 404. The static archive stops at 2021,
+# which is consistent with the current terms being served by the application
+# -- bill_text/ holds 2,234 of them, fetched from billText.aspx.
+STATIC_404 = {1996, 2016, 2022, 2023, 2024, 2025, 2026}
+ID_AS_STORED = {2016, 2025, 2026}
+ID_PLUS_YEAR = {2023, 2024}
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
                     "contact@graniterecord.org)"}
 
@@ -93,6 +137,46 @@ KIND_ORDER = ["HB", "SB", "CACR", "HR", "SR", "HCR", "SCR", "HJR", "SJR"]
 def padded(bid):
     m = PAD.match(bid.strip().upper())
     return f"{m.group(1)}{int(m.group(2)):04d}" if m else None
+
+
+def text_id(rec, year):
+    """The id billText.aspx wants for this bill, or None if it is not known.
+
+    The stored id is whatever the search results page linked; the table above
+    says, per year, whether that is the id the text address takes or whether
+    the year is appended to it. A year in neither set returns None rather
+    than a guess, because a guessed id is a request for a document that does
+    not exist, and a few thousand of those is what a firewall calls a scan.
+    """
+    m = re.search(r"[?&]id=(\d+)", str(rec.get("text_pdf") or ""))
+    if not m:
+        return None
+    if year in ID_AS_STORED:
+        return m.group(1)
+    if year in ID_PLUS_YEAR:
+        return f"{m.group(1)}{year}"
+    return None
+
+
+def address(year, bid, rec):
+    """Where this bill's text is, or None if nowhere known.
+
+    Returns (url, why). A bill with no address is not a failure to fetch: it
+    is a document this project cannot presently reach, and the report says so
+    rather than the run discovering it one 404 at a time.
+    """
+    pad = padded(bid)
+    if not pad:
+        return None, "not a bill number"
+    if year not in STATIC_404:
+        return URL.format(year=year, bill=pad), "static"
+    tid = text_id(rec or {}, year)
+    if tid:
+        return TEXT.format(id=tid, year=year), "billText"
+    return None, ("1996 has no known address: its own status page links "
+                  "legislation/1996/hb297.htm and that is a 404"
+                  if year == 1996 else
+                  f"no id known for {year}; see the table in this file")
 
 
 def sample(bills, per_year, lo, hi):
@@ -124,16 +208,25 @@ def sample(bills, per_year, lo, hi):
     return picked
 
 
-def fetch(year, bid, delay):
-    """One page, saved. Returns "saved", "cached", "missing" or "refused"."""
+def fetch(year, bid, delay, rec=None):
+    """One page, saved.
+
+    Returns "saved", "cached", "missing", "refused" or "unreachable" -- the
+    last meaning no address is known for that year, which is a fact about the
+    archive and not a failure of the run. Both addresses save to the same
+    place, so --parse never learns which one a page came from and does not
+    need to: they serve the same document.
+    """
     pad = padded(bid)
     if not pad:
         return "skipped"
     f = OUT / str(year) / f"{pad}.html"
     if f.exists() and f.stat().st_size > 200:
         return "cached"
+    url, _why = address(year, bid, rec)
+    if not url:
+        return "unreachable"
     f.parent.mkdir(parents=True, exist_ok=True)
-    url = URL.format(year=year, bill=pad)
     time.sleep(delay)
     try:
         req = urllib.request.Request(url, headers=UA)
@@ -417,7 +510,22 @@ def main():
     refusal.check("The legislation fetch")
     bills = json.loads(Path("data/bills.json").read_text(encoding="utf-8"))
     picked = sample(bills, a.sample, a.lo, a.hi)
+    # The record travels with the bill because the text address is keyed by an
+    # id that only the record carries.
+    by_bill = {}
+    for _term, bs in bills.items():
+        for bid, rec in bs.items():
+            y = str(rec.get("year") or rec.get("lsr_year") or "")[:4]
+            if y.isdigit():
+                by_bill[(int(y), bid)] = rec
     total = sum(len(v) for v in picked.values())
+    blocked = sorted({y for y in picked
+                      for bid in picked[y]
+                      if not address(y, bid, by_bill.get((y, bid)))[0]})
+    if blocked:
+        print("no address known for: "
+              + ", ".join(str(y) for y in blocked)
+              + " -- those bills are skipped, not asked for")
     print(f"{total:,} bills across {len(picked)} years, {a.delay:g}s apart "
           f"-- about {total * a.delay / 60:.0f} minutes if none are cached")
     print()
@@ -425,7 +533,8 @@ def main():
     for year in sorted(picked):
         line = []
         for bid in picked[year]:
-            what = fetch(year, bid, a.delay if tally else 0)
+            what = fetch(year, bid, a.delay if tally else 0,
+                         rec=by_bill.get((year, bid)))
             tally[what] += 1
             line.append(f"{bid}:{what[0]}")
             if what == "refused":
