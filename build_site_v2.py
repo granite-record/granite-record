@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.55
+# GRANITE_VERSION: 2026-09-05.56
 """
 Generate the faceted site from real General Court data.
 
@@ -2790,12 +2790,25 @@ def main():
     actions.sort(key=lambda x: x["date"], reverse=True)
 
     upcoming = []
-    for bid, ps in procs.items():
+    # (term, bill), NOT bill. procs was re-keyed when bill numbers turned out
+    # to repeat every biennium, and this loop was not: it put the whole tuple
+    # in the "bill" field, so home.json carried
+    # "bill": ["2025-2026", "HB1648"] and build_feeds died on
+    # (bill or "").upper().
+    #
+    # It hid for as long as it did because it only fires when a hearing is
+    # actually scheduled in the next fortnight. Every build for weeks printed
+    # "0 upcoming" and never built a single one of these; the first day with
+    # seven of them took the feed build down. A field that is only populated
+    # some days needs a check that runs on the days it is empty, which
+    # preflight now has.
+    for (term_, bid), ps in procs.items():
         for pr in ps:
             d = pr.get("sched_date", "")
             if today <= d <= soon:
                 upcoming.append({"date": d, "time": pr.get("sched_time"),
-                                 "bill": bid, "committee": pr.get("committee"),
+                                 "bill": bid, "term": term_,
+                                 "committee": pr.get("committee"),
                                  "what": pr.get("proceeding"),
                                  "venue": pr.get("venue")})
     upcoming.sort(key=lambda x: (x["date"], x["time"] or ""))

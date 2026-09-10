@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.5
+# GRANITE_VERSION: 2026-09-05.6
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
@@ -244,6 +244,10 @@ def main():
                          "Senate indexes together to match both chambers")
     ap.add_argument("--docket", default=None, help="local Docket.txt (downloads if omitted)")
     ap.add_argument("--out", default="verification_manifest.csv")
+    ap.add_argument("--only-recorded", action="store_true",
+                    help="drop proceedings on days with no recording. What "
+                         "this did unconditionally until 10 September, which "
+                         "cost every term before May 2020 all of its rows.")
     ap.add_argument("--keep-marks", metavar="OLD",
                     help="carry observed_start/observed_end forward from an "
                          "earlier manifest (.csv or .xlsx). Without this they "
@@ -294,9 +298,34 @@ def main():
     print(f"  {len(procs):,} proceedings in {'/'.join(sorted(bodies))}: "
           + ", ".join(f"{n:,} {'House' if b == 'H' else 'Senate'}"
                       for b, n in sorted(byb.items())))
+    # A HEARING THAT HAPPENED IS A HEARING, FILMED OR NOT. This dropped
+    # every proceeding whose exact date had no recording, which was right
+    # when the only job of this file was "watch the video and mark where the
+    # bill starts" -- a row with no video is nothing to watch. It stopped
+    # being right when build_proceedings.py started reading it, because
+    # proceedings.csv is the site's record of what the General Court did, and
+    # a hearing is a fact about the legislature rather than about YouTube.
+    #
+    # It was silently fatal for whole terms. The House streamed nothing before
+    # May 2020, so 2017-2018 produced 0 rows from 6,431 proceedings, and
+    # 2019-2020 produced 0 from 5,823 -- the 139 recordings that term has are
+    # all from after the sitting, so not one of them shares a date with a
+    # scheduled hearing. Both printed "0 fall inside the video window" and
+    # exited zero.
+    #
+    # The loop below already handles a proceeding with no candidate: it marks
+    # it "no video found" and writes the row with the video columns empty.
+    # The site already draws 2,480 of those as state "novideo". Nothing new
+    # had to be built; the rows simply had to be allowed through.
     dates = {v["date"] for v in vids}
-    procs = [p for p in procs if p.sched_date in dates]
-    print(f"  {len(procs):,} fall inside the video window")
+    if a.only_recorded:
+        procs = [p for p in procs if p.sched_date in dates]
+        print(f"  {len(procs):,} fall inside the video window "
+              "(--only-recorded)")
+    else:
+        inside = sum(1 for p in procs if p.sched_date in dates)
+        print(f"  {len(procs):,} proceedings, {inside:,} on a day something "
+              f"was recorded, {len(procs) - inside:,} on a day nothing was")
 
     exact = defaultdict(list)
     fam = defaultdict(list)

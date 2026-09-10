@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.85
+# GRANITE_VERSION: 2026-09-04.86
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -70,6 +70,66 @@ def imp(name):
 
 # =========================================================== code: the files ==
 
+@check("status", "an upcoming hearing names a bill, not a key")
+def _upcoming_shape():
+    """home.json's upcoming list, built on a fixture and read back.
+
+    procs is keyed (term, bill) because a bill number names one bill in each
+    biennium. One loop still read it as though the key were the bill alone and
+    put the whole tuple in the field, so home.json carried
+
+        "bill": ["2025-2026", "HB1648"]
+
+    and build_feeds.py died on (bill or "").upper().
+
+    It survived for as long as it did because "upcoming" is empty on any day
+    with no hearing in the next fortnight, which was every day for weeks --
+    and every fixture date here was fixed and in the past, so preflight never
+    ran that code either. The fixture now carries one hearing three days out,
+    dated from the clock, so this runs whenever preflight does.
+    """
+    import shutil, subprocess, sys, tempfile
+    here = Path(".").resolve()
+    need = ["build_site_v2.py", "proceedings.py", "build_proceedings.py"]
+    absent = [x for x in need if not (here / x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp(prefix="gr-upcoming-"))
+    try:
+        _site_fixture(root)
+        # EVERY module, not a guessed list. build_site_v2 imports a dozen
+        # of this project's own files and naming them here means the check
+        # breaks whenever one is added -- and it breaks as "wrote no
+        # home.json", which reads like the thing under test failing rather
+        # than the fixture being short a file. Copying them all costs
+        # milliseconds.
+        for f in [x.name for x in here.glob("*.py")]:
+            if (here / f).exists():
+                shutil.copy(here / f, root / f)
+        r = subprocess.run(
+            [sys.executable, "build_site_v2.py", "--data", "data",
+             "--out", "site", "--segments", "work"],
+            cwd=root, capture_output=True, text=True, timeout=300)
+        hp = root / "site" / "home.json"
+        assert hp.exists(), ("build_site_v2 wrote no home.json on the "
+                             "fixture: " + (r.stderr or r.stdout or "")[-200:])
+        home = json.loads(hp.read_text(encoding="utf-8"))
+        up = home.get("upcoming") or []
+        assert up, ("the fixture holds a hearing three days from now and "
+                    "home.json lists no upcoming item. Either the window "
+                    "moved or the loop that fills it stopped running, and "
+                    "while it is empty nothing checks its shape.")
+        bad = [u for u in up if not isinstance(u.get("bill"), str)
+               or not u["bill"].strip()]
+        assert not bad, (f"{len(bad)} of {len(up)} upcoming items do not "
+                         "name a bill as a string: "
+                         + json.dumps(bad[0])[:140])
+        return "ok", (f"{len(up)} upcoming on the fixture, each naming a bill "
+                      "as a string -- the shape build_feeds.py needs")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("files", "no tracked file carries a credential")
 def _no_secrets():
     """What git would publish, checked before git publishes it.
@@ -126,10 +186,12 @@ def _no_secrets():
             if m:
                 line = body[:m.start()].count(chr(10)) + 1
                 found.append(f"{n}:{line} looks like {what}")
-    if found:
-        return ("fail", f"{len(found)} tracked file(s) carry something "
-                        "shaped like a credential, and this repository is "
-                        "meant to be shared: " + "; ".join(found[:4]))
+    # A check signals failure by raising, which the runner turns into FAIL.
+    # Returning "fail" is not a status it knows and crashed it on a KeyError
+    # the first time one of these actually tripped.
+    assert not found, (f"{len(found)} tracked file(s) carry something shaped "
+                       "like a credential, and this repository is meant to be "
+                       "shared: " + "; ".join(found[:4]))
     return "ok", (f"{len(names)} tracked files, none carrying a key. "
                   "secrets.json is gitignored; probe_db.py's published "
                   "credentials are public by design.")
@@ -1855,12 +1917,32 @@ def _site_fixture(root):
                 sched_time="13:00", video_id="VID4", video_title="House Commerce",
                 stream_start="12:58:00",
                 watch_url="https://youtube.com/watch?v=VID4")
+    # A HEARING THAT HAS NOT HAPPENED YET, dated from the clock rather than
+    # written down, so it is still in the future whenever this runs.
+    #
+    # home.json's "upcoming" is only built for proceedings in the next
+    # fortnight. Every fixture date here was fixed and in the past, so the
+    # code that fills it never ran under preflight -- and the real build
+    # printed "0 upcoming" for weeks and never ran it either. The morning
+    # seven hearings were finally scheduled, that code put a (term, bill)
+    # tuple where a bill number belongs and took the whole feed build down
+    # with (bill or "").upper().
+    #
+    # A field that is only populated on some days needs a fixture that
+    # populates it on all of them.
+    from datetime import date as _date, timedelta as _td
+    row5 = dict(row, bill="HB1443", proceeding="subcommittee work session",
+                sched_date=(_date.today() + _td(days=3)).isoformat(),
+                sched_time="09:30", video_id="", video_title="",
+                stream_start="", predicted_offset="", watch_url="",
+                match="no video found")
     with open(root / "verification_manifest.csv", "w", newline="",
               encoding="utf-8") as fh:
         wr = csv.DictWriter(fh, fieldnames=list(row))
         wr.writeheader()
         wr.writerow(row)
         wr.writerow(row4)
+        wr.writerow(row5)
     # The site reads proceedings.csv, not the manifest. Build it the way
     # build_all does, from the two sources the fixture just wrote.
     import subprocess, sys
