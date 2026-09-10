@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.35
+# GRANITE_VERSION: 2026-09-04.36
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -251,7 +251,14 @@ def shell(title, current, body, wide=False, script="", desc="",
     for href, label in (("index.html", "Home"), ("bills.html", "Bills"),
                         ("legislators.html", "Legislators"),
                         ("committees.html", "Committees"),
-                        ("learn.html", "Learn"), ("about.html", "About")):
+                        # A second nav emitter. bills.html carries the nav
+                        # every shell.page() page inherits; this tuple is what
+                        # legislators.html, index.html and about.html get, and
+                        # when Data was added to the first it was not added
+                        # here, so three pages lacked the link the other
+                        # 34,000 had.
+                        ("learn.html", "Learn"), ("data.html", "Data"),
+                        ("about.html", "About")):
         cur = ' aria-current="page"' if href == current else ""
         nav.append(f'<a href="{href}"{cur}>{label}</a>')
     STYLE_Q = style_query()

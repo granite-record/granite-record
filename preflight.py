@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.89
+# GRANITE_VERSION: 2026-09-04.90
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -363,6 +363,26 @@ DOCKET_LINES = [
     ("report", "Committee Report: Ought to Pass with Amendment # 2026-0503h "
                "(Vote 10-0; CC)"),
 ]
+
+
+@check("narrative", "the mover is split off a floor action, both chambers' ways",
+       needs=("narrative",))
+def _split_mover(narrative):
+    """The House writes the mover last in parentheses; the Senate writes it
+    first with the verb folded in. Before split_mover the Senate name stayed
+    inside the motion, so a voice vote was headed "Sen. Abbas Moved Laid on
+    Table" as if that were the question put."""
+    s = narrative.split_mover
+    assert s("Lay on Table (Rep. K. Rice)") == ("Lay on Table", "Rep. K. Rice")
+    assert s("Sen. Abbas Moved Laid on Table") == ("Laid on Table", "Sen. Abbas")
+    assert s("Sen. Fuller Clark Moved to Concur with the House Amendment") == \
+        ("Concur with the House Amendment", "Sen. Fuller Clark")
+    assert s("Sen. Innis Accedes to House Request for Committee of Conference") == \
+        ("Accedes to House Request for Committee of Conference", "Sen. Innis")
+    assert s("Sen. Birdsell moved to call the question") == \
+        ("call the question", "Sen. Birdsell")
+    assert s("Ought to Pass") == ("Ought to Pass", "")
+    return "ok", "House parenthetical and Senate leading name both split"
 
 
 @check("narrative", "real docket lines classify correctly", needs=("narrative",))
@@ -1601,6 +1621,12 @@ var fixtures = [
          // Shortened from "Committee reports": six labels wrapped onto four
          // rows on a 289px card, and this was the longest of them.
          "Reports (6)",
+         // Votes counts d.rollcalls, which the pane draws, not b.nrc, which
+         // omits procedural and voice votes; Videos counts stations that have
+         // a recording. The fixture has one roll call and two recorded
+         // stations. (This is JavaScript: a # here is a syntax error, and was.)
+         "Votes (1)",
+         "Videos (2)",
          // A start and an end, and nothing else. Both stations here start at a
          // boundary the chair announced, so neither carries the one word that
          // marks an inference.

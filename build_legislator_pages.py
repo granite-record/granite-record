@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -112,7 +112,10 @@ def main():
             og_title=f"{who} — New Hampshire General Court",
             description=describe(m),
             globals={"GR_MEMBER": str(m.get("id", "")), "GR_STANDALONE": True},
-            noscript=noscript(m), skip_label="Skip to this member"),
+            noscript=noscript(m), skip_label="Skip to this member",
+            # Without this the template's marker stays on Bills, and all 406
+            # member pages told a screen reader they were Bills.
+            nav_current="legislators.html"),
             encoding="utf-8")
         urls.append(a.base + S.canon(path))
         written += 1

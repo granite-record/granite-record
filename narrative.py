@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.27
+# GRANITE_VERSION: 2026-09-04.28
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -162,8 +162,6 @@ CALENDAR_RE = re.compile(r"\bVote\s*\d+\s*-\s*\d+\s*;\s*(?P<cal>CC|RC)\b", re.I)
 # Plain-language notes attached to particular outcomes.
 NUANCE = {
     "interim study": "In practice this often ends a bill's progress for the term.",
-    "retain": "House committees sometimes retain a bill to keep working on it, "
-              "and sometimes as a quiet way to end it.",
     "lay on table": "A tabled bill can be taken back up later, but dies at the "
                     "end of the session if it is not.",
     "laid on table": "A tabled bill can be taken back up later, but dies at the "
@@ -887,6 +885,52 @@ def signins(bill, date):
     return ", with online testimony at " + and_list(bits) if bits else ""
 
 
+# The Senate puts the mover in FRONT and folds the verb in with the name:
+# "Sen. Abbas Moved Laid on Table", "Sen. Fuller Clark Moved to Concur with
+# the House Amendment", "Sen. Innis Accedes to House Request for Committee of
+# Conference". 1,257 floor actions begin this way and no House action does --
+# the House writes a trailing "(Rep. K. Rice)", which MOVER_RE already reads.
+# The name runs up to the first verb, so a two-word surname stays whole.
+# "Moved"/"Move" and a following "to" belong to the mover clause, not the
+# motion; "Accedes", "Refused" and "Waived" ARE the motion and stay.
+LEAD_MOVER_RE = re.compile(
+    r"^(?P<mover>Sen\.\s+(?:[A-Z][\w'\u2019.\-]*\s+){1,3}?)"
+    r"(?=(?:Moved?|Accedes|Refused|Waived)\b)", re.I)
+MOVED_RE = re.compile(r"^Moved?\s+(?:to\s+)?", re.I)
+
+
+def _floor_fields(e):
+    """action with the mover taken out, and the mover expanded from the roster.
+
+    Exported beside the motion so the site can print "Moved by Sen. Daryl
+    Abbas" under a voice vote rather than inside its heading. raw is untouched
+    -- the docket list keeps the clerk's exact words.
+    """
+    action, who = split_mover(e.get("action"))
+    return {"action": action, "mover": expand_mover(who) if who else ""}
+
+
+def split_mover(action):
+    """(motion without the mover, mover) for one floor action.
+
+    House:  "Lay on Table (Rep. K. Rice)"    -> ("Lay on Table", "Rep. K. Rice")
+    Senate: "Sen. Abbas Moved Laid on Table" -> ("Laid on Table", "Sen. Abbas")
+
+    Before this, the Senate name stayed inside the motion, so the Votes tab
+    headed a voice vote "Sen. Abbas Moved Laid on Table" as though that were
+    the question put, and the sentence said the Senate adopted it.
+    """
+    action = (action or "").strip()
+    m = MOVER_RE.search(action)
+    if m:
+        return MOVER_RE.sub("", action).strip(), m.group("mover").strip()
+    m = LEAD_MOVER_RE.match(action)
+    if m:
+        rest = action[m.end():].strip()
+        return (MOVED_RE.sub("", rest).strip() or rest), m.group("mover").strip()
+    return action, ""
+
+
 def describe(ev, body, seen_intro=False):
     """One sentence for one docket event, or None to skip."""
     t = ev["_type"]
@@ -956,12 +1000,8 @@ def describe(ev, body, seen_intro=False):
         return f"{who} reported: {ev.get('rec', '').strip()}{vote}."
 
     if t == "floor":
-        action = (ev.get("action") or "").strip()
-        mover = ""
-        m = MOVER_RE.search(action)
-        if m:
-            mover = f", on a motion by {expand_mover(m.group('mover').strip())}"
-            action = MOVER_RE.sub("", action).strip()
+        action, who = split_mover(ev.get("action"))
+        mover = f", on a motion by {expand_mover(who)}" if who else ""
         motion = MOTION.get((ev.get("motion") or "").upper(), "")
         vcode = (ev.get("vote") or "").upper()
         has_tally = bool(ev.get("y") and ev.get("n"))
@@ -1222,10 +1262,18 @@ def build(bill, rows):
         if ev["_type"] == "consent_off":
             _note(CONSENT_OFF_NOTE)
 
+        # THE LONGEST KEY, ONCE. NUANCE held "retain" and "retained in
+        # committee", and "Retained in Committee" contains both, so every
+        # retained bill -- 647 of them -- carried two explanations of the
+        # same event on the same stage. _note dedupes on identical text,
+        # which is the only reason "lay on table" and "laid on table" did not
+        # do it too: they happen to share a sentence. The shorter key is
+        # gone, and this fires only the most specific match so the next
+        # overlapping pair cannot double up either.
         raw = ev["_raw"].lower()
-        for key, note in NUANCE.items():
-            if key in raw:
-                _note(note)
+        hits = [k for k in NUANCE if k in raw]
+        if hits:
+            _note(NUANCE[max(hits, key=len)])
 
     # Not a note on the summary. This is about the votes, and the Votes tab
     # is where somebody goes to look for them.
@@ -1275,7 +1323,7 @@ def build(bill, rows):
                     # one: a hearing cites the calendar that noticed it, a
                     # floor vote the journal page that recorded it.
                     "cite": e.get("cite", ""), "cite_page": e.get("cite_page", ""),
-                    **({"action": (e.get("action") or "").strip(),
+                    **({**_floor_fields(e),
                         "motion": (e.get("motion") or "").upper(),
                         "vote_kind": (e.get("vote") or "").upper(),
                         "yeas": e.get("y"), "nays": e.get("n")}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.45
+# GRANITE_VERSION: 2026-09-04.46
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -238,7 +238,11 @@ def main():
           "of their own")
 
     for p in ("index.html", "bills.html", "legislators.html",
-              "committees.html", "learn.html", "about.html"):
+              # data.html was added to the nav on 10 September and not
+              # here, so the downloads page was on every header and in no
+              # sitemap -- the same shape of defect as the nav tuple in
+              # build_pages.py, one level down.
+              "committees.html", "learn.html", "data.html", "about.html"):
         if (site / p).exists():
             urls.append(a.base + S.canon("/" + p))
 

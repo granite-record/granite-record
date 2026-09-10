@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.47
+// GRANITE_VERSION: 2026-09-07.48
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -9,6 +9,15 @@ const PARTY_NAME={R:"Republican",D:"Democrat",I:"Independent",L:"Libertarian",
   X:"Party not on file"};
 const PARTY_COLOR={R:"var(--rep)",D:"var(--dem)",I:"var(--ind)",L:"var(--ind)",
   X:"var(--ink-2)"};
+// Where a party sits in a vote's legend and full record: Republicans, then
+// Democrats, then anyone else by letter, and within a party yes before no.
+// The split inside a caucus is what those two rows are compared for, so they
+// have to be adjacent; ordered by size, the Republican no drifted to fourth
+// with both Democrat rows between it and the Republican yes.
+const PARTY_RANK={R:0,D:1};
+const partyRank=p=>(p in PARTY_RANK)?PARTY_RANK[p]:2;
+const byParty=(a,b)=>partyRank(a)-partyRank(b)||String(a).localeCompare(String(b));
+const yeaFirst=(a,b)=>a===b?0:(a==="Yea"?-1:1);
 const KIND={active:"s-active",law:"s-law",done:"s-done",veto:"s-veto",
             study:"s-study",adopted:"s-adopted"};
 // "Became law" is wrong for a resolution: an adopted House Resolution is
@@ -151,7 +160,7 @@ function sortRows(rows){
   return rows.slice().sort(by);
 }
 const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),kind:new Set(),
-           voteday:new Set(),year:new Set()};
+           voteday:new Set()};
 // On a phone the filter column stacks ABOVE the results, and an open
 // Committee group is 340 pixels of it -- so the first bill sat past a
 // screen and a half of filters on a 375-wide screen. Someone arriving on
@@ -342,7 +351,6 @@ function matches(b,ignore){
   if(b.term&&term&&b.term!==term)return false;
   for(const k of["committee","topic","sponsor","kind"])
     if(k!==ignore&&sel[k].size&&!facetVals(b,k).some(v=>sel[k].has(v)))return false;
-  if(ignore!=="year"&&sel.year.size&&!sel.year.has(String(b.year)))return false;
   if(ignore!=="voteday"&&sel.voteday.size&&!(b.votedays||[]).some(d=>sel.voteday.has(d)))return false;
   const q=query.trim().toLowerCase(); if(!q)return true;
   // Every word must match, but any of its synonyms will do.
@@ -383,12 +391,10 @@ function renderFacets(){
   h+=fgroup("committee","Committee",present("committee"),cnt("committee","committee"));
   h+=fgroup("topic","Topic",present("topic"),cnt("topic","topic"));
   h+=fgroup("sponsor","Prime Sponsor",present("sponsor"),cnt("sponsor","sponsor"),true);
-  // Year is a facet inside the term, not a hard filter on the whole site.
-  // A term's bills split into the year they were filed, and that is useful to
-  // narrow by -- but it must never be the thing that hides a bill you searched
-  // for by number.
-  const yc=cnt("year","year");
-  h+=fgroup("year","Year Filed",Object.keys(yc).sort(),yc);
+  // No "Year Filed" facet. The term picker above the list already chooses
+  // the biennium, and splitting one term into its two filing years was a
+  // second control for a distinction the card prints on its own. (The
+  // <select id="year"> is the TERM picker, despite its id, and stays.)
   h+=fgroup("kind","Status",["active","law","done","veto"].filter(k=>present("kind").includes(k)),cnt("kind","kind"));
   const days={};inYear.filter(b=>matches(b,"voteday")).forEach(b=>(b.votedays||[]).forEach(d=>days[d]=(days[d]||0)+1));
   const allDays=[...new Set(inYear.flatMap(b=>b.votedays||[]))].sort().reverse();
@@ -460,6 +466,10 @@ function donut(bid,i,rc){
   yes.sort((a,b)=>b.n-a.n);
   no.sort((a,b)=>b.n-a.n);
   const segs=yes.concat(no);
+  // The ring keeps the order above -- its geometry puts crossovers adjacent
+  // at twelve o'clock. The legend does not follow it: read as a list,
+  // R-Yes, R-No, D-Yes, D-No puts each party's split on adjacent rows.
+  const rows=segs.slice().sort((a,b)=>byParty(a.p,b.p)||yeaFirst(a.side,b.side));
   const total=segs.reduce((a,s)=>a+s.n,0)||1;
   // A wider gap: at ten degrees the two sides read as one ring with a nick in
   // it. At twenty-five they read as two sides of a question.
@@ -499,7 +509,7 @@ function donut(bid,i,rc){
   // A check beside every group on the side that prevailed. Which side won is
   // the first thing anyone wants from a vote, and it should not have to be
   // worked out by comparing two numbers against a threshold.
-  const legend=segs.map(s=>{
+  const legend=rows.map(s=>{
     const winner=(s.side==="Yea")===won;
     return `<button class="lrow ${chosen===s.key?'sel':''}" data-seg="${key}|${s.key}">
     <span class="sw" style="background:${PARTY_COLOR[s.p]||"var(--ink-2)"}"></span>
@@ -526,7 +536,7 @@ function donut(bid,i,rc){
     }
   }
   return `<div class="votewrap"><svg class="donut" viewBox="0 0 172 206" width="172" height="206"
-    role="img" aria-label="Votes by party: ${segs.map(s=>`${PARTY_NAME[s.p]||s.p} ${s.side==='Yea'?'yes':'no'} ${s.n}`).join(", ")}. ${
+    role="img" aria-label="Votes by party: ${rows.map(s=>`${PARTY_NAME[s.p]||s.p} ${s.side==='Yea'?'yes':'no'} ${s.n}`).join(", ")}. ${
       rc.threshold_rule?`Needed ${need}, ${esc(rc.threshold_rule)}`:`Needed ${need} for a majority`}.">
     ${circles}${tick}${yn(GAP,R,won)}
     ${score(rc.yeas,rc.nays,won)}</svg>
@@ -589,15 +599,22 @@ function fullRecord(bid,i,rc){
   // Sorted on the surname-first key, not on what is displayed: ordering
   // "Rep. Jodi Nelson (R)" alphabetically groups 400 members by honorific
   // and then by first name.
-  const col=v=>(rc.members||[]).filter(m=>m.v===v)
+  const col=(v,p)=>(rc.members||[]).filter(m=>m.v===v&&(p==null||(m.p||"X")===p))
     .sort((a,b)=>(a.s||a.n||"").localeCompare(b.s||b.n||""));
   const grid=a=>`<div class="mgrid">${a.map(m=>`<div class="m">${esc(m.n)}</div>`).join("")}</div>`;
   const sect=([st,label,blurb])=>{const a=col(st);return a.length?`<div class="mlist">
     <h3>${label} — ${a.length}</h3><p class="note" style="margin:0 0 9px">${blurb}</p>${grid(a)}</div>`:"";};
   const y=col("Yea"),n=col("Nay"),tot=(rc.members||[]).length;
+  // One pair of columns per party, Republicans first, then Democrats, then
+  // anyone else: a party's yea and nay sit side by side, so its split is read
+  // across one row rather than hunted for in two lists 400 names long.
+  const parties=[...new Set((rc.members||[]).filter(m=>m.v==="Yea"||m.v==="Nay")
+    .map(m=>m.p||"X"))].sort(byParty);
+  const pair=p=>{const py=col("Yea",p),pn=col("Nay",p),nm=PARTY_NAME[p]||p;
+    return `<div class="full"><div><h3>${nm} Yea — ${py.length}</h3>${grid(py)}</div>
+    <div><h3>${nm} Nay — ${pn.length}</h3>${grid(pn)}</div></div>`;};
   return `<button class="discl" data-full="${k}">Hide full voting record</button>
-    <div class="full"><div><h3>Yea — ${y.length}</h3>${grid(y)}</div>
-    <div><h3>Nay — ${n.length}</h3>${grid(n)}</div></div>
+    ${parties.map(pair).join("")}
     ${OTHER.map(sect).join("")}
     <p class="note" style="margin-top:12px">All ${tot} recorded members accounted for:
       ${y.length} yes, ${n.length} no, ${tot-y.length-n.length} not voting.</p>`;
@@ -887,6 +904,7 @@ function renderVotes(b,d){
       <span class="rcd">${fdate(rc.date)} · ${rc.body==="H"?"House":"Senate"}${
         vk!=="RC"?` · ${esc(rc.vote_kind_label||"")}`:""}</span>
       <span class="rcres ${rc.passed?'pass':'fail'}">${rc.passed?"Adopted":"Failed"}</span></div>
+      ${rc.mover?`<p class="rcby">Moved by ${esc(rc.mover)}</p>`:""}
       ${rc.threshold_note?`<p class="note" style="margin:6px 0 0">${esc(rc.threshold_note)}</p>`:""}
       ${body}</section>`;}).join("")
     :`<p class="note">No roll call votes on this bill.</p>`);
@@ -1137,6 +1155,11 @@ function renderHearings(b,d){
 // to count only the written ones, so HB686 read "(4)" above five blocks, and
 // the 319 bills whose only report is one the docket recorded showed no count
 // at all above a report that was plainly there.
+// Stations with a recording, counted the way the tab draws them. A station
+// with no video_id draws "No recording matched" and is not a video; on the
+// terms before the House streamed every station is one, so those pages
+// carry no count rather than "Videos (0)".
+const videoCount=d=>(d.stations||[]).filter(s=>s.video_id).length;
 const reportCount=d=>(d.reports||[]).reduce((n,r)=>n+((r.reports||[]).length),0)
                      +(d.docket_reports||[]).length;
 
@@ -1591,8 +1614,15 @@ function renderDetail(b,d){
   return `<div class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab_${b.id}_0" aria-controls="pane_${b.id}_0" aria-selected="true" data-t="0">Summary</button>
 
-    <button class="tab" role="tab" id="tab_${b.id}_1" aria-controls="pane_${b.id}_1" aria-selected="false" data-t="1">Votes${b.nrc?` (${b.nrc})`:""}</button>
-    <button class="tab" role="tab" id="tab_${b.id}_2" aria-controls="pane_${b.id}_2" aria-selected="false" data-t="2">Videos</button>
+    <button class="tab" role="tab" id="tab_${b.id}_1" aria-controls="pane_${b.id}_1" aria-selected="false" data-t="1">Votes${
+        // What the pane draws, not the index row's count. b.nrc is the roll
+        // calls that are not procedural; the pane draws d.rollcalls, which
+        // adds the docket's voice and division votes. The two disagreed on
+        // 2,011 of the current term's 2,234 bills -- mostly bills whose only
+        // votes were voice votes, which showed "Votes" with nothing beside
+        // it and 3 sections beneath.
+        (d.rollcalls||[]).length?` (${d.rollcalls.length})`:""}</button>
+    <button class="tab" role="tab" id="tab_${b.id}_2" aria-controls="pane_${b.id}_2" aria-selected="false" data-t="2">Videos${videoCount(d)?` (${videoCount(d)})`:""}</button>
     <button class="tab" role="tab" id="tab_${b.id}_3" aria-controls="pane_${b.id}_3" aria-selected="false" data-t="3">Reports${
       reportCount(d)?` (${reportCount(d)})`:""}</button>
     <button class="tab" role="tab" id="tab_${b.id}_4" aria-controls="pane_${b.id}_4" aria-selected="false" data-t="4">Sponsors${(d.sponsors||[]).length?` (${(d.sponsors||[]).length})`:""}</button>

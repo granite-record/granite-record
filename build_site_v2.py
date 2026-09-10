@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.66
+# GRANITE_VERSION: 2026-09-05.67
 """
 Generate the faceted site from real General Court data.
 
@@ -2435,6 +2435,11 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
         rc_out.append({
             "date": e["date"], "body": e.get("body"),
             "question": e.get("action") or "Floor action",
+            # Who made the motion, split off the question by narrative.py so
+            # the Senate's "Sen. Abbas Moved Laid on Table" reads as a motion
+            # to lay on the table, moved by Abbas. Roll calls from the roll
+            # call file never carry one; the page prints it only when present.
+            "mover": e.get("mover") or "",
             "yeas": int(y) if y else None, "nays": int(n) if n else None,
             "passed": e.get("motion") in ("MA", "AA"),
             "vote_kind": e.get("vote_kind"), "vote_kind_label": label,
