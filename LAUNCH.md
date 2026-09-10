@@ -54,6 +54,27 @@ allows.** MIT-licensed, with a README, since the 10th.
   else.
 - **Captions**, no longer throttled: about 60 a cycle, ~2,400 folders.
 
+**Sponsors: `byAnyMember.aspx` answers, and it changes the plan.** Opened by
+hand on the 10th. One combobox of **2,614 distinct past and present
+legislators**, no session-year selector at all, and two radio buttons --
+Prime Sponsored and CoSponsored. Choosing a member returns every bill they
+sponsored as `Year | Bill # | Status | Title`, **back to 1989**: Rep. Elsie
+Vartanian (Rock. 20) comes back with HB175 and HB569 of 1989 and three bills
+of 1990. Each row links `billinfo.aspx?sy=1989&Pastid=<lsr><year>`, so the
+LSR is in the address and the join to `data/bills.json` is exact rather than
+a match on a surname.
+
+That is **5,228 requests** -- two per member -- for the sponsors of every
+term from 1989 to 2026, against 7,830 for five terms alone one bill at a
+time. It also returns a member's full first name, where a bill's own text
+gives only "Rep. Vartanian".
+
+One caveat, from the one bill checked against another source: HB1 of 1989 is
+a SPECIAL SESSION bill (LSR 1989-9100) and its text names Vartanian, but it
+appears in neither of her lists. Whether special sessions are excluded or
+filed elsewhere is not known from one sample, and should be measured against
+the archived bill text before this route is trusted alone.
+
 `refusal.py` stops every fetch for 24 hours when the address says no, and
 clearing it is a person's decision.
 
