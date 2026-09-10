@@ -8,36 +8,39 @@ which is generated and always right.
 
 ## How this working relationship runs
 
-**The repository is on the person's machine, not the assistant's.** The
-assistant cannot list files, run scripts or read anything it was not given.
-Everything it knows comes from what is pasted into the conversation. If it
-needs to see a file, it must ask.
+**The assistant works the repository directly.** It lists files, greps, runs
+the builds and the checks, edits in place and commits. This section used to
+say the opposite -- that the repository was on the person's machine, that the
+assistant could read nothing it was not given, and that the loop was paste
+output, receive whole files, download them, paste again -- and every word of
+that is now wrong. It stayed wrong for weeks, which cost real turns: a session
+that believes it cannot read a file asks for it instead, and a session told to
+ship whole files rewrites a thousand lines to change ten.
 
-So the loop is:
+What is still true, and is the useful part of what that section was reaching
+for:
 
-1. The person runs a command and pastes the output.
-2. The assistant reads it, works out what to change, and **ships whole updated
-   files** as downloadable artifacts.
-3. The person downloads them into the working folder, runs the next command,
-   and pastes that.
-
-A few things follow from this that are easy to get wrong:
-
-- **The assistant should ask for a file rather than reconstruct it.** Guessing
-  at a file's contents has been the single biggest source of wasted turns:
-  argument names invented, JSON shapes assumed, functions patched at anchors
-  that did not exist. One paste settles what a paragraph of inference cannot.
-- **Ship the whole file, never a diff or a snippet to hand-apply.** Patches
-  applied by hand drift, and half-applied edits have shipped twice.
-- **Say when a command needs a file downloaded first.** Three times a command
-  was given that used a flag only present in a file not yet downloaded.
-- **Windows `cmd`.** Paths use backslashes, `^` continues a line rather than
-  `\`, wildcards are not expanded by the shell, and `<` and `>` are
-  redirection. Give commands as one line, ready to paste.
+- **Read the artefact before modelling it.** Open the file, the page, the
+  record. Nearly every good result here came from that and nearly every bad
+  one from assuming a shape. It is cheaper now than it was when it needed a
+  paste, so there is less excuse than ever.
+- **Never hand-apply a patch, and never write one through a shell heredoc.**
+  A heredoc eats backslash escapes -- `\n`, `\s`, `\b` -- and has silently
+  corrupted a file about eight times, twice writing something that only
+  `ast.parse` caught. Write the patch script to the scratchpad with the
+  editor tool, copy it into the repository, run it, delete it. Every patch
+  script asserts its anchor appears exactly once before it replaces anything.
+- **Commit before starting a piece of work, and show the diff.** Two files
+  shipped half-applied in one day and both recoveries were guesswork because
+  there was no commit to fall back to.
+- **Windows.** `cmd` for the person, PowerShell and a Git Bash shell for the
+  assistant. Backslash paths, and `Get-CimInstance Win32_Process` is how a
+  stray background process gets found -- six stacked `review.py` processes
+  once held port 8799 and served a stale page while the file on disk was new.
 
 ## Start here, before anything else
 
-The person runs these; the assistant reads the output.
+Every session, before anything else.
 
 ```
 python3 inventory.py

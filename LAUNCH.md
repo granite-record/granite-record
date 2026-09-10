@@ -138,6 +138,56 @@ said.
 
 ---
 
+## 5a. Measured on 9-10 September, and what it changed
+
+The bench (`review.py`) was showing `proceedings.csv`'s `predicted_offset` --
+the SCHEDULE, meeting time minus stream start -- and not the time the page
+prints. Somebody timed HB1118 at 58:06, was shown 5:39, and correctly marked
+it wrong. Nine judgments were entered against a number no reader has ever
+seen. The bench now reads the built pages. Those nine keep their stopwatch
+readings, which are good; `review.py --report` quarantines their verdicts.
+
+`probe_alignment.py --truth` now scores against `ground_truth.csv` AND
+`review/checked.jsonl` together: 43 marks across 15 recordings, against 35
+across 7. `--no-bench` reproduces the old set exactly. Every score is split by
+which hand-made file it came from, because the ruler grows every time somebody
+sits at the bench and a median that moved because the set got harder is not a
+median that moved because the method got worse.
+
+`--site` had been broken since inlining and nobody knew. `census`, `coverage`
+and `site_estimates` all globbed `site/bills/<year>/<ID>.json`, which now holds
+the 98 records too large to inline instead of all 33,683. It reported 519
+stations and called 96% of the docket absent. Nothing was absent. `site_read.py`
+is the one reader of the record-in-a-page convention now.
+
+With that fixed, the site's own claims got measured for the first time:
+
+    WHAT THE SITE CURRENTLY SAYS  (36 of 43 marked proceedings)
+      median off by 0m 32s, worst 88m 08s
+      26 say the boundary was STATED by the chair -- 0m 04s at the median.
+
+And the ENDS, which nothing had ever scored. Split by where each came from:
+
+    the chair closed it        9 scored, median 0m 03s, 9/9 within a minute
+    last mention of the bill  10 scored, median 0m 58s, 7/10
+    next boundary              7 scored, median 29m 06s, 1/7  -- both ways
+
+An end taken from the next boundary inherits every error in the placement of
+the item after it: HB84's hearing published as 101 seconds against the 29
+minutes it ran, SB659's stretched 94 minutes past where it finished. Those are
+no longer published -- 1,586 stations lose a span, keep their start, and read
+as "from 1:19:26" as they already did where there was no end at all. Worst end
+error 93m 48s -> 12m 05s. `end_from` now travels with each station and
+`end_stated` means the close was spoken rather than merely present.
+
+**Captions are done for the purpose they serve.** 910 of the 915 recordings
+that carry a scheduled bill have captions; only 5 do not. The 353 further
+captioned recordings carry no scheduled bill -- they are study commissions,
+oversight bodies and interim committees, and `proceedings.csv` correctly has
+no row for them. More captions will not raise marker coverage on the current
+terms. Earlier terms will, once their calendars reach `proceedings.csv`, and
+that is the unlock rather than more fetching.
+
 ## 6. Known bugs
 
 - **Veto coverage.** 175 messages publish and every one is correctly cited,
@@ -147,7 +197,16 @@ said.
   not quoted. Rebuilding that index recovers them.
 - **Marker coverage.** 4,180 of 10,830 proceedings carry no time. 2,522 of
   those passed on a consent calendar and were never taken up separately, which
-  is honest; the rest are recoverable with more phrases.
+  is honest; the rest are recoverable with more phrases. Not with more
+  captions: the recordings that carry bills are 910 of 915 captioned already.
+- **`proceedings.csv` is one term.** 9,761 of its 9,762 rows are 2025-2026, so
+  every recording, boundary and timestamp on this site is current-term. The
+  archived calendars are parsed -- 61,429 bill-days back to 1997 -- and have
+  never been merged into the one table. That merge is the largest single
+  unlock left and it is an architecture decision, not an evening's work.
+- **`end_stated` was not what it said** until 9 September, and any number
+  recorded against it before then counted a next-boundary guess as a chair's
+  spoken close.
 - **`check_civics_links.py` has never been run.** The civics section's
   outbound source URLs are unverified.
 
@@ -158,4 +217,7 @@ said.
    the civics pages before they ship.
 3. An accessibility pass at 360, 768 and 1440.
 4. `probe_alignment.py --truth` if anything about timestamps changed — the
-   rule in `CLAUDE.md`. Nothing has changed today.
+   rule in `CLAUDE.md`. Run on 10 September after the end-provenance change:
+   candidate median 0m 02s on 26 of 43, unmoved; worst published end 93m 48s
+   -> 12m 05s. `--no-bench` for a number comparable with anything recorded
+   before 9 September.
