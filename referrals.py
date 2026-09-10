@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.1
+# GRANITE_VERSION: 2026-09-10.2
 """The committee a bill was referred to, read out of the docket.
 
     python3 referrals.py            # what it finds, by year, no network
@@ -40,10 +40,20 @@ exists the abbreviation is LEFT ALONE -- an honest "RES, REC & DEV" beats an
 invented expansion, and the site renders a committee with no code as plain
 text rather than as a link, so nothing breaks when a 1989 committee has no
 page.
+
+A BETTER AUTHORITY THAN THE CORPUS, since 10 September. The General Court
+publishes its own key to these abbreviations at
+bill_status/legacy/bs2016/docket_abbrev.htm, kept here as docket_abbrev.json.
+Where the key speaks it wins, and it settled two that nothing in the corpus
+ever spelled out: JUD is Judiciary and Family Law (314 bills read "Judiciary
+and F L" until now) and ECON DEVEL is Economic Development (130). Where the
+key is silent, "Corr and Cj" and "Pub Prot" still stand as the clerk wrote
+them.
 """
 
 import argparse
 import collections
+import json
 import re
 import sys
 from pathlib import Path
@@ -128,6 +138,12 @@ PHRASES = [
     (r"\bEXEC\.?\s*DEPTS?\.?$", "Executive Departments and Administration"),
     (r"\bEXEC\.?\s*(?:&|\+|AND)\s*ADMIN\.?\b",
      "Executive Departments and Administration"),
+    # From the General Court's own key (docket_abbrev.json): JUD is Judiciary
+    # and Family Law, ECON DEVEL is Economic Development. Both stood as the
+    # clerk's letters until the source said otherwise -- which was the right
+    # rule, and a published key is the thing that lifts it.
+    (r"\bJUDICIARY\s*(?:&|\+|AND)\s*F\.?\s*L\.?$", "Judiciary and Family Law"),
+    (r"\bECON\.?\s*DEV(?:EL)?\.?$", "Economic Development"),
 ]
 
 
@@ -221,17 +237,45 @@ def _corpus(path=SRC, lo=1989, hi=2015):
     return seen
 
 
+ABBREV = Path("docket_abbrev.json")
+
+
+def _key_names():
+    """The committee names in the General Court's own key to its docket.
+
+    docket_abbrev.json, copied verbatim from
+    bill_status/legacy/bs2016/docket_abbrev.htm. One entry is corrected: the
+    page prints ST&E as "Science. Technology and Energy", with a full stop
+    where the comma belongs, and publishing a committee's name with a typo in
+    it because the source had one is deference rather than accuracy.
+    """
+    if not ABBREV.exists():
+        return []
+    try:
+        raw = json.loads(ABBREV.read_text(encoding="utf-8")).get("abbrev", {})
+    except ValueError:
+        return []
+    return [v.replace("Science. Technology", "Science, Technology")
+            for v in raw.values()]
+
+
 def _spelled_out():
-    """Committee names written in full, from the two documents that write them.
+    """Committee names written in full, from the three sources that write them.
 
     The docket, where a later clerk spelled out what an earlier one
-    abbreviated; and the bills already saved under legislation/, where the
-    committee is printed beside REFERRED TO: in the bill's own text. The
-    second is the better witness -- it is the document the referral is a
-    record of -- and it is the only one that carries "Constitutional and
-    Statutory Revision", which the docket only ever abbreviates.
+    abbreviated; the bills saved under legislation/, where the committee is
+    printed beside REFERRED TO: in the bill's own text; and the General
+    Court's own key, which is the best of the three because it is the body
+    saying what its own shorthand means rather than this project inferring it.
+
+    The bill texts are the only witness to "Constitutional and Statutory
+    Revision", which the docket only ever abbreviates. The key is the only
+    witness to "Judiciary and Family Law" and "Economic Development", which
+    nothing else on this disk ever writes out.
     """
     out = collections.Counter()
+    for name in _key_names():
+        out[name] += 1
     for name, n in _corpus().items():
         out[name] += n
     pages = Path("legislation")

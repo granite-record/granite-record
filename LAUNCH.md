@@ -78,6 +78,41 @@ the archived bill text before this route is trusted alone.
 `refusal.py` stops every fetch for 24 hours when the address says no, and
 clearing it is a person's decision.
 
+## 2a. Sources found by hand, and what each is for
+
+Six addresses were opened in a browser on 10 September and each changed a
+plan. Kept together because the pattern is worth seeing: every one of them
+answered a question this project had been about to spend days inferring.
+
+- **`legislation/1996/HB0297.htm`** -- 1996 is served at `.htm`, and the only
+  address that fails is the one the archive itself publishes.
+- **`byAnyMember.aspx`** -- 2,614 past and present legislators in one list,
+  keyed by the Employeeno the roll call history uses. It named 733,474
+  ballots that said "Member #330274", and it is the route to sponsors for
+  every term at two requests a member.
+- **`Roll_calls/billstatus_rcdetails.aspx?sy=&vs=&lb=`** -- every voter's
+  PARTY, county and district. 54 requests closes a 773,506-ballot gap that
+  the day before looked unclosable.
+- **`docket_abbrev.htm`** -- the General Court's own key to its docket, kept
+  as `docket_abbrev.json`. It settled JUD (Judiciary and Family Law) and
+  ECON DEVEL, which nothing else on this disk ever spells out, and it is the
+  vocabulary the archived docket is written in: LOT, ITL, OTP/AM, MA, MF,
+  VV, DIV, RC, MAJ REPORT, MIN REPORT. Narrating 1989-2015 needs it.
+
+### Two leads, recorded rather than acted on
+
+- **Amendment texts.** Floor amendments are printed in the House calendars
+  and journals, which are on disk for 1997-2026 and need no network. Committee
+  amendments are not known to be anywhere. `bill_versions.json` is 2025-2026
+  only, so every archived term has a bill's text and none of its amendments.
+- **`scholars.unh.edu/senate_house/`** -- scanned House and Senate journals
+  at UNH, not digitised, in a structure quite unlike the modern ones. It is
+  the only candidate found so far for the years the database does not reach:
+  roll calls stop at 1999, so 1989-1998 has no recorded vote anywhere. Worth
+  opening once the modern terms are finished, and not before -- OCR of
+  scanned journals is a project of its own, and everything else here is
+  cheaper per fact.
+
 ## 3. The bench
 
 `python3 review.py` — local only, loopback address, nothing on the site. One
