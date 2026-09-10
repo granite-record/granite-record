@@ -48,7 +48,7 @@ Python 3.14 and Node (the test suite loads the front end in node). Then:
 
 ```
 python3 inventory.py     # every script and the version it should be
-python3 preflight.py     # 75 checks; builds the whole site on a fixture
+python3 preflight.py     # 76 checks; builds the whole site on a fixture
 python3 handoff.py       # writes STATE.md with the current counts
 ```
 
@@ -91,7 +91,7 @@ because they are the same code reading the same JSON.
 and `versions.json` says what each should be. `preflight` fails when they
 disagree, which has caught several half-applied edits.
 
-**Checks are the design record.** Most of the 75 in `preflight.py` exist
+**Checks are the design record.** Most of the 76 in `preflight.py` exist
 because something broke in a way a check could have caught, and each one's
 docstring says what that was. Reading them is a fast way to learn where the
 sharp edges are.

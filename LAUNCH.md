@@ -1,8 +1,9 @@
 # Granite Record — what is done, what is not, and what to do first
 
-Rewritten 9 September 2026, in the evening, after the site went live. Every
-number here was measured, not remembered. Where this disagrees with
-`ROADMAP.md`, `ARCHITECTURE.md` or `HANDOFF.md`, this is the newer answer.
+Rewritten 9 September 2026, in the evening, after the site went live, and
+brought current on the 10th. Every number here was measured when it was typed,
+and by the next morning several were wrong -- which is the case for reading
+`STATE.md`, which is generated, for any count that matters.
 
 The previous version listed items 6, 7 and 8 twice — once struck through and
 once not — which is what happens when a working list is updated in pieces. It
@@ -12,14 +13,16 @@ is renumbered here in one pass.
 
 ## 1. Live
 
-Published 9 September. **72 preflight checks, `check_site` ready, 39,821 files
-across 411 MB — 40% of the 100,000 Cloudflare Pages allows.**
+Published 9 September and four times on the 10th. **76 preflight checks,
+`check_site` ready, 49,304 files — 49% of the 100,000 Cloudflare Pages
+allows.** MIT-licensed, with a README, since the 10th.
 
 | | |
 |---|---|
 | Bills | **33,683 across 19 terms**, 1989 to 2026, each with its own page |
 | Legislators | 406 sitting, **2,192 who have served** |
-| Committees | 104 pages |
+| Committees | 53 |
+| Data | **seven CSV tables at `/data`**, 524,850 rows, a manifest, rebuilt every run |
 | Towns | **320 town-and-ward pages** — everyone who represents you, with contact |
 | Civics | 11 topics at `/learn/` |
 | Feeds | per bill, committee, topic and hearing |
@@ -29,12 +32,15 @@ across 411 MB — 40% of the 100,000 Cloudflare Pages allows.**
 
 ## 2. Running
 
-- **Docket**, 2017-2018 then 2019-2020, 2021-2022 and a seeded 2015-2016.
-  3,404 pages cached. Roughly 19 hours to go.
-- **664 Senate calendars**, queued behind the docket, then their text.
-- **Archived bill text**, behind those. ~63,000 requests, days.
-- **Captions**, recovering after YouTube throttled this address on
-  5 September: cycles of 48, 59, 59, 50.
+- **Docket**: 2017-2018 and 2019-2020 are done. 2021-2022 was **stopped by
+  hand at 500 of 1,752** on the 10th, because that term's bill list came back
+  with 1,485 hearing dates from 2025-2026 and it was worth understanding
+  before fetching more of it. 2015-2016, the Senate calendars and the bill
+  text wait behind it.
+- **A 380-page sample of `gc.nh.gov/legislation/<year>/<BILL>.html`**, ten
+  bills a year from 1989 to 2026, stratified across every kind of bill and
+  resolution -- the new archive path, being tested before it is used.
+- **Captions**, no longer throttled: about 60 a cycle, ~2,400 folders.
 
 `refusal.py` stops every fetch for 24 hours when the address says no, and
 clearing it is a person's decision.
@@ -48,7 +54,7 @@ sample at a time: a verdict, a correction, a note, appended to
 
 | kind | pool |
 |---|---|
-| Bill hearing timings | 5,950 (243 stated by a chair, 5,707 inferred) |
+| Bill hearing timings | 6,279 published boundaries |
 | Plain-language histories | 4,198 |
 | Hearings read from calendars | 97,158 |
 | Governors' veto messages | 175 |
@@ -58,9 +64,9 @@ A timings item embeds the recording, shows both printed times, and captures
 the player's current position straight into the field — so a judgment is play,
 pause, press, rather than read-off-and-retype.
 
-**Nothing has been judged yet.** `ground_truth.csv` is still 35 proceedings,
-and until the bench has been used, related bills and auto-assigned topics
-cannot honestly be published.
+**It is being used.** Dozens of judgments across all five kinds by the 10th,
+and `probe_alignment.py --truth` reads them beside `ground_truth.csv`. Related
+bills and auto-assigned topics still wait on a checked sample of their own.
 
 ---
 
@@ -68,33 +74,37 @@ cannot honestly be published.
 
 ### Small and visible
 
-1. **Special-bill notes.** HB1 is the budget, HB2 the trailer bill, HB2026 the
-   ten-year transportation plan. A reader cannot know that. Hand-written, a
-   dozen of them.
-2. **Dark mode**, favicon and logo, header and footer, and dropping the
-   redundant status block on the bill page.
+1. **Special-bill notes.** *HB1 and HB2 shipped on the 10th* from
+   `bill_notes.json`, hand-written and protected, applied from 1993-1994
+   onward because the 1989 and 1991 HB1s are not budgets. The transportation
+   plan -- a different number every term -- has a `by_term` section waiting
+   for it.
+2. **Dark mode**, favicon and logo. The footer is on every page and the
+   redundant status block is gone.
 
 ### Larger, and each unlocks something
 
-3. **Wire the video match.** Proved on 2023-2024 with no network: 1,643 of
-   1,648 recordings convert to the shape `build_manifest.py` reads, and
-   **4,731 of 5,868 proceedings (81%) match a single recording** — 1,693 bills
-   reaching video, no captions needed. What is left is the merge into
-   `proceedings.csv`, which must not destroy the current term.
-   `index_to_csv.py` is the converter.
-4. **Roll calls on legislator pages are unreadable** — date, bill number,
-   motion, vote, and no way to see what the bill was, how the vote came out,
-   or how the member voted against their own party. Group by session day.
-5. **Amendment diffing.** The data is already here and needs no fetching:
-   `LegislationText`, 6,825 rows, every version of every current-term bill,
-   with `DocumentVersion.SortOrder` to order them.
+3. ~~**Wire the video match.**~~ *Done on the 10th.* `proceedings.csv` went
+   from one term to seven: 2023-2024 landed with 854 recordings, and
+   2017-2018 and 2019-2020 as hearings without video, which is correct for
+   years before the House streamed. The current term came through
+   station-for-station identical.
+4. **Roll calls on legislator pages.** *Mostly done on the 9th*: each row
+   names the bill and its title, the question in plain English, the outcome
+   with its tally, and whether the member took their own party's side --
+   stated as a count with its denominator, never a score. Not yet grouped by
+   session day.
+5. ~~**Amendment diffing.**~~ *Shipped.* Every version of a bill and what
+   each amendment changed, as a Versions tab; 9,471 files under
+   `site/versions/`, which is most of the file-count growth since the 9th.
 6. **Committee pages: upcoming hearings**, and a session day as a table —
    every bill heard, its status change, the report split, bill numbers linked.
 7. **A member's whole career on their page.** `careers.json` exists: 2,211
    employee numbers resolved to **2,192 people**, 17 who served in both
    chambers and 289 who left and came back. Nothing on the site reads it yet,
    and it needs the archived roll calls built before it says much.
-8. **Narrative prose into the HTML.** A bill page gives a crawler 70 words;
+8. **Narrative prose into the HTML.** A bill page gives a crawler about 137
+   words;
    everything else arrives by JavaScript. The narrative already exists — a
    median of 192 words of specific prose — and putting it in the `<noscript>`
    block is a text dump, not a second renderer. Worth doing when the 2017–2022
@@ -115,8 +125,10 @@ cannot honestly be published.
 12. Email routing, and the follow-by-email decision a static site cannot make
     on its own.
 13. Accessibility, continuously.
-14. `build_site_v2.main` is still **449 lines**. Internal, and the reason a
-    floor-marker miss went unnoticed.
+14. `build_site_v2.main` is **468 lines** and the longest function in the
+    file, now that `build_bills` has gone from 544 to 294 in nine
+    byte-identical steps. The station code that caused the floor-marker miss
+    already came out; what is left in `main` is the loading.
 
 ---
 
@@ -148,8 +160,9 @@ seen. The bench now reads the built pages. Those nine keep their stopwatch
 readings, which are good; `review.py --report` quarantines their verdicts.
 
 `probe_alignment.py --truth` now scores against `ground_truth.csv` AND
-`review/checked.jsonl` together: 43 marks across 15 recordings, against 35
-across 7. `--no-bench` reproduces the old set exactly. Every score is split by
+`review/checked.jsonl` together -- and the bench keeps growing, so the count
+in this sentence is the one number here most certain to be stale: 49 marks
+across 21 recordings by the afternoon of the 10th, against 35 across 7. `--no-bench` reproduces the old set exactly. Every score is split by
 which hand-made file it came from, because the ruler grows every time somebody
 sits at the bench and a median that moved because the set got harder is not a
 median that moved because the method got worse.
@@ -180,13 +193,14 @@ as "from 1:19:26" as they already did where there was no end at all. Worst end
 error 93m 48s -> 12m 05s. `end_from` now travels with each station and
 `end_stated` means the close was spoken rather than merely present.
 
-**Captions are done for the purpose they serve.** 910 of the 915 recordings
-that carry a scheduled bill have captions; only 5 do not. The 353 further
-captioned recordings carry no scheduled bill -- they are study commissions,
-oversight bodies and interim committees, and `proceedings.csv` correctly has
-no row for them. More captions will not raise marker coverage on the current
-terms. Earlier terms will, once their calendars reach `proceedings.csv`, and
-that is the unlock rather than more fetching.
+**Captions were done for the purpose they served -- for one afternoon.**
+On the morning of the 10th, 910 of the 915 recordings carrying a scheduled
+bill had captions, and this paragraph said more fetching would not help. By
+that evening `proceedings.csv` held seven terms and 1,823 bill-carrying
+recordings, 370 of them uncaptioned, and the caption fetch was needed again.
+The claim was true of the table it was measured on and false of the table
+that replaced it the same day. Kept, corrected, because it is the cleanest
+example on this site of a number outliving its premise.
 
 ## 6. Known bugs
 
@@ -195,15 +209,18 @@ that is the unlock rather than more fetching.
   the wrong-citation fallback was removed. `calendars.json` covers 976 of
   2,564 calendars; a calendar with no known address cannot be cited and so is
   not quoted. Rebuilding that index recovers them.
-- **Marker coverage.** 4,180 of 10,830 proceedings carry no time. 2,522 of
-  those passed on a consent calendar and were never taken up separately, which
-  is honest; the rest are recoverable with more phrases. Not with more
-  captions: the recordings that carry bills are 910 of 915 captioned already.
-- **`proceedings.csv` is one term.** 9,761 of its 9,762 rows are 2025-2026, so
-  every recording, boundary and timestamp on this site is current-term. The
-  archived calendars are parsed -- 61,429 bill-days back to 1997 -- and have
-  never been merged into the one table. That merge is the largest single
-  unlock left and it is an architecture decision, not an evening's work.
+- **Marker coverage.** The denominator tripled on the 10th when four more
+  terms of hearings landed, most without recordings. Of 29,827 published
+  stations, 8,388 carry a start. On the recorded ones the phrases are the
+  lever, and on 2021-2024 so are captions, which are still arriving.
+- ~~**`proceedings.csv` is one term.**~~ *Seven, since the 10th.* What is
+  left is the terms whose dockets have not been fetched, and 1989-2014, for
+  which the calendars are the only source: 61,767 bill-days parsed from PDFs
+  already on disk, never merged. Still an architecture decision.
+- **`data/bills.json` had 1,485 hearing dates from the wrong term** on
+  2021-2022 bills -- what the legacy search returned for that year. Guarded on
+  the 10th: a hearing dated outside its own term is dropped. Re-fetching that
+  term's list is the real fix and waits on the chain.
 - **`end_stated` was not what it said** until 9 September, and any number
   recorded against it before then counted a next-boundary guess as a chair's
   spoken close.
@@ -217,7 +234,7 @@ that is the unlock rather than more fetching.
    the civics pages before they ship.
 3. An accessibility pass at 360, 768 and 1440.
 4. `probe_alignment.py --truth` if anything about timestamps changed — the
-   rule in `CLAUDE.md`. Run on 10 September after the end-provenance change:
-   candidate median 0m 02s on 26 of 43, unmoved; worst published end 93m 48s
-   -> 12m 05s. `--no-bench` for a number comparable with anything recorded
-   before 9 September.
+   rule in `CLAUDE.md`. Last run on the 10th: candidate median 0m 01s to
+   0m 02s depending on how many bench marks had landed, worst published end
+   12m 05s (was 93m 48s). `--no-bench` for a number comparable with anything
+   recorded before 9 September.

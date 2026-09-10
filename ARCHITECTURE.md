@@ -1,11 +1,20 @@
 # Granite Record — Architecture review
 
 Written 5 September 2026, after four days of building and one long day of
-finding out what breaks. This is an honest account of the structure, what it
-has cost, and what the archive needs from it that it does not yet have.
+finding out what breaks, and added to since. This is an honest account of the
+structure, what it has cost, and what the archive needs from it.
 
-Three sections: what is sound and should be kept; what is structurally wrong,
-ranked by how much it has cost; and what to do, in order.
+IT IS LAYERED, AND THE LAYERS ARE DATED. Sections written on the 5th were
+amended on the 10th, and several of the 10th's own plans were carried out the
+same day. A section that describes a problem as open may be describing one
+that was fixed the following morning; where that is so, a dated line at its
+head says so, and the reasoning underneath is kept because the measurement
+behind it is still the right way to think. Where a number here disagrees with
+`STATE.md`, `STATE.md` is generated and this is not.
+
+Sections: what is sound and should be kept; the two plans of 10 September and
+what became of them; what is structurally wrong, ranked by cost; and what to
+do, in order.
 
 ---
 
@@ -43,10 +52,18 @@ number written here would be wrong within a day, and was.
 
 ## proceedings.csv across terms, measured 10 September
 
-`proceedings.csv` holds 9,762 rows and 9,761 of them are 2025-2026. Every
-recording, every stated boundary and every timestamp on this site is one term,
-and this is the largest single thing the record is missing. What follows is
-what it would take, measured rather than estimated.
+> **Done the same day, most of it.** `build_manifest.py` needed no change --
+> `--docket` names the term -- and `build_proceedings.py` now reads every
+> `verification_manifest*.csv`. The table went from 9,762 rows in one term to
+> 29,837 across seven. 2023-2024 landed with 854 recordings; 2017-2018 and
+> 2019-2020 landed as hearings without video, which is correct, because the
+> House streamed nothing before May 2020. What remains is below, under "The
+> order that follows".
+
+When this was written, `proceedings.csv` held 9,762 rows and 9,761 of them were
+2025-2026: every recording, every stated boundary and every timestamp on the
+site was one term, and this was the largest single thing the record was
+missing. What follows is what it took, measured rather than estimated.
 
 ### It is not gated by the General Court fetches
 
@@ -157,10 +174,11 @@ Everything here is measured, and the decisions at the end are already made.
     build_manifest.py    434     main                 191
     build_proceedings.py 193     from_floor_index      55
 
-**CLAUDE.md's first item is out of date.** It says to split
-`build_site_v2.main`, and `main` is 445 lines. `build_bills` is **543** and is
-now the larger of the two. Split that first, or at least know that is the
-choice being made.
+**That table is from the morning of the 10th, and `build_bills` was split
+that afternoon**: 544 lines to 294, nine functions, each step verified
+byte-identical across 34,114 files. `main` at 468 is the longest function in
+the file again -- the same problem, one door along -- and it is CLAUDE.md's
+first item once more, with a rationale that is current.
 
 ### In scope
 
@@ -191,9 +209,11 @@ holds. Nothing about this waits on a fetch.
 
 **4. Two cheap correctness items.**
 
-- `probe_alignment.py` defines `hms` twice and the second shadows the first.
-  It is the only shadowed function in the repository; a patch anchored on
-  `def hms(s):` matched two places and had to be re-anchored on the body.
+- `probe_alignment.py` defined `hms` twice and the second shadowed the first.
+  **Fixed 10 September**: the first was unreachable, and its fourteen callers
+  -- word-level caption times that wanted sub-second display -- had been
+  getting the coarse `12m 05s` form since the second was written. Renamed
+  `clock()`.
 - Seven tools carry `--manifest default="verification_manifest.csv"`:
   `align_all`, `apply_markers`, `fetch_testimony`, `probe_alignment`,
   `score_alignment`, `transcribe_and_align`, `verify_batch`. Only
@@ -268,8 +288,8 @@ merge logic to get wrong.
 ### The steps
 
 **0. Fix the one bug that must not be running during a refactor.**
-`build_manifest.py` downloads `Docket.txt` from gc.nh.gov when `--docket` is
-omitted and the file is absent:
+*Done 10 September.* `build_manifest.py` downloaded `Docket.txt` from
+gc.nh.gov when `--docket` was omitted and the file was absent:
 
     if not Path(docket_path).exists():
         print("Downloading Docket.txt (this is a few MB)...")
@@ -283,8 +303,8 @@ because `Docket.txt` is on disk; it fires in a clean checkout, which is the
 state a refactor is most likely to create. Make `--docket` required, or print
 the fetch command and exit.
 
-**1. `build_proceedings.py` reads every manifest.** The only code change in
-the pass. `--manifest` takes a glob, defaults to `verification_manifest*.csv`,
+**1. `build_proceedings.py` reads every manifest.** *Done 10 September.*
+The only code change in the pass. `--manifest` takes a glob, defaults to `verification_manifest*.csv`,
 and `from_manifest` is called once per file. Roughly ten lines in a 193-line
 file. Nothing else in it changes: the dedup key is already
 `(bill, date, kind, video_id)` and a date carries its year, so two terms
@@ -334,14 +354,14 @@ satisfied by growth and needs no flag.
   generator may write. Confirm, then delete it or say in the help that it is
   for a manifest from before that move.
 
-### What would say the pass worked
+### What said the pass worked
 
-    python3 preflight.py                     73 checks, still green
-    python3 probe_alignment.py --truth       43 marks, candidate median 0m 02s
+    python3 preflight.py                     green (76 checks by evening)
+    python3 probe_alignment.py --truth       47 marks, candidate median 0m 01s
     python3 probe_alignment.py --truth --no-bench   35 marks, median 0m 01s
-    python3 check_site.py                    ready, file count under the cap
+    python3 check_site.py                    ready, 49,304 files of 100,000
 
-and `proceedings.csv` naming two terms instead of one.
+and `proceedings.csv` naming seven terms instead of one.
 
 ## What is structurally wrong
 
@@ -476,7 +496,9 @@ citations were part of the same job without my recognising it.
 > **Resolved, 9 September.** The plan is Pro, so the cap is 100,000. And a
 > bill is one file rather than two: its record travels inside its own page,
 > except for the 98 over 100 KB which keep a file the page points at. All 19
-> terms are live at **39,821 files, 39% of the cap** — where the reasoning
+> terms are live, and the site is under half the cap (`STATE.md` has the
+> count; it was 39,821 when this was written and the bill-version files added
+> 9,471 the next day) — where the reasoning
 > below predicted the cap breaking partway through the third term. The
 > reasoning is kept because the measurement of what each term costs is still
 > the right way to think about it, and because the trap it names about paid
@@ -567,13 +589,19 @@ renderer drew, and reading the two files side by side is not enough -- the
 notes were invisible because nothing in `app.js` mentions the word.
 
 
-`renderDetail` in `bills.html` is 472 lines and one function, with 26 `const`
+> **Both halves of this are done.** `renderDetail` was split on 6 September
+> and is 49 lines in `app.js`; `build_bills` was split on 10 September, 544 to
+> 294, byte-identical at each of nine steps. `station_for_proceeding` and
+> `station_for_floor` exist as top-level functions. Kept as written because
+> the failure it describes is the one the splits were done to stop.
+
+`renderDetail` in `bills.html` was 472 lines and one function, with 26 `const`
 declarations. Three times today a template literal read one of them before its
 line ran, and the page died with the data already in hand. A lint that skips
 template literals cannot see it; the runtime check only caught it once
 extended to the focused view, which is the branch where two of the three lived.
 
-`build_site_v2.py` is 1,672 lines and its `main()` builds every station,
+`build_site_v2.py` was 1,672 lines and its `main()` built every station,
 document, sponsor and amendment for every bill in one pass. The floor-marker
 bug in item 1 happened because the committee-station code and the floor-station
 code are 90 lines apart in the same function and I changed one.
@@ -609,7 +637,13 @@ last time stops rather than continues. `nightly.py` has the sanity gate;
 
 ### 8. The parsers have no tests
 
-Every fix today was verified by a fixture written in a heredoc and thrown away.
+> **Done.** `tests/test_markers.py` holds the phrasings that were read out of
+> real recordings, 47 that must match and 8 that must not, and `preflight`
+> runs it. Kept because the reason it was needed is the reason it must be
+> maintained.
+
+Every fix that day was verified by a fixture written in a heredoc and thrown
+away.
 `OPEN_RE` has been through nine revisions and the phrasings it must match are
 scattered across those heredocs and `TRANSCRIPT_MARKERS.md`. When someone
 changes it in six months, the only way to know what broke is to re-run the
@@ -621,7 +655,10 @@ four things that must not match. Twenty lines each. `preflight` runs them.
 
 ### 9. The cache keys on patterns, not on logic
 
-`segment_markers` caches per recording, keyed on a hash of the regexes. Change
+> **Done.** `segment_markers.pattern_signature()` hashes the whole tokenised
+> module, comments stripped, and its docstring quotes this section back.
+
+`segment_markers` cached per recording, keyed on a hash of the regexes. Change
 a regex and everything re-runs; change the dedupe rule, the window size or the
 bill-matching threshold and nothing does. That is the second such trap in one
 file. A hash of the whole module's source is crude and correct.
