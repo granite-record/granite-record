@@ -37,9 +37,11 @@ allows.** MIT-licensed, with a README, since the 10th.
   with 1,485 hearing dates from 2025-2026 and it was worth understanding
   before fetching more of it. 2015-2016, the Senate calendars and the bill
   text wait behind it.
-- **A 380-page sample of `gc.nh.gov/legislation/<year>/<BILL>.html`**, ten
-  bills a year from 1989 to 2026, stratified across every kind of bill and
-  resolution -- the new archive path, being tested before it is used.
+- **The 380-page sample of `gc.nh.gov/legislation/<year>/<BILL>.html` is
+  done**: 297 pages saved, the parser read against them in three passes, and
+  every bill asked for under 1996, 2016 and 2022 onward answered 404. The
+  full run for the five terms without sponsors waits on the docket chain and
+  on someone opening one 1996 and one 2016 address in a browser.
 - **Captions**, no longer throttled: about 60 a cycle, ~2,400 folders.
 
 `refusal.py` stops every fetch for 24 hours when the address says no, and

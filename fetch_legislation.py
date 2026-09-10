@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.3
+# GRANITE_VERSION: 2026-09-10.7
 """
 The bill itself, from an address that can simply be constructed.
 
@@ -25,6 +25,28 @@ have at all:
 Probed across eight years from 1989 to 2017, plus 2021: every one returned a
 page.
 
+WHAT 380 BILLS, TEN A YEAR FROM 1989 TO 2026, FOUND (10 September)
+
+297 pages. The 83 that were not there are not scattered: every bill asked for
+under 1996, 2016, and 2022 through 2026 answered 404, and nothing else did
+except thirteen single bills. 2022 onward is expected -- the current terms
+are served by bill_status, and the site already has them from the database.
+1996 and 2016 are not explained. bills.json puts 893 bills in 1996 and 1,072
+in 2016, the archive path for 1990, 1992 and every other even year works,
+and whether those two years sit under another name or are missing from the
+archive is a question for a browser, not for this script.
+
+Of the 297, 29 name no sponsor and every one is the document: 22 are the
+housekeeping resolutions of an organisation day ("House Resolutions 1-5 were
+housekeeping resolutions adopted during the House Organization Session"),
+7 are HB 1's budget-category tables or a link to a PDF. Sponsors,
+committees and titles are otherwise read across all 15 kinds and 31 years,
+which took three passes of reading the pages the parser missed; the comments
+by each pattern say what each pass found. The archive is served in Latin-1
+on half its pages and UTF-8 on a sixth, and 73 pages saved before decode()
+existed carry a replacement character where a non-breaking space was;
+re-fetching them is the only repair, and it is not worth 73 requests.
+
 FETCH ONCE, PARSE MANY TIMES
 
 Pages are saved under legislation/<year>/<BILL>.html and never re-fetched. The
@@ -44,6 +66,7 @@ the General Court while this runs.
 import argparse
 import json
 import re
+from html import unescape as _unescape
 import sys
 import time
 import urllib.error
@@ -115,7 +138,7 @@ def fetch(year, bid, delay):
     try:
         req = urllib.request.Request(url, headers=UA)
         with urllib.request.urlopen(req, timeout=30) as r:
-            body = r.read().decode("utf-8", "replace")
+            body = r.read()
     except urllib.error.HTTPError as e:
         if e.code in (403, 429):
             refusal.note("fetch_legislation", f"HTTP {e.code} on {url}")
@@ -123,19 +146,46 @@ def fetch(year, bid, delay):
         return "missing"
     except (urllib.error.URLError, TimeoutError):
         return "missing"
-    f.write_text(body, encoding="utf-8")
+    # The bytes as served. Decoding is decode()'s job at parse time, so a
+    # wrong guess about the encoding is corrected by re-parsing, not by
+    # asking the General Court for the page again.
+    f.write_bytes(body)
     return "saved"
 
 
 # ------------------------------------------------------------------ parsing
 
+def decode(raw):
+    """Text of a saved page.
+
+    Bytes that are valid UTF-8 are UTF-8: every pure-ASCII page, the 48 that
+    declare it, and every page this script saved before 10 September, which
+    it decoded on the way in and wrote back out as UTF-8 whatever the page
+    said. Anything else is Windows-1252, the superset of the Latin-1 that
+    152 of the 297 sample pages declare. The declaration itself is not
+    consulted: a page declaring iso-8859-1 that was saved as UTF-8 text
+    would have its replacement characters read as three Latin-1 letters
+    each, which is how "Sen. Clegg" came out as "ï¿½ï¿½ Sen. Clegg".
+    """
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("cp1252", "replace")
+
+
 def flatten(html):
     t = re.sub(r"<script.*?</script>", " ", html, flags=re.S | re.I)
     t = re.sub(r"<style.*?</style>", " ", t, flags=re.S | re.I)
     t = re.sub(r"<[^>]+>", " ", t)
-    for ent, ch in (("&#160;", " "), ("&nbsp;", " "), ("&amp;", "&"),
-                    ("&quot;", '"'), ("&#39;", "'")):
-        t = t.replace(ent, ch)
+    # Every entity, not five of them. "SCR 1 &#8211; FINAL VERSION" and the
+    # box-drawing rule "&#9472;&#9472;..." the modern page draws under the
+    # committee were arriving as text, and the rule was landing inside the
+    # committee's name. 268 of 297 pages carry an entity of some kind.
+    t = _unescape(t)
+    # Pages saved before 10 September were decoded as UTF-8 on the way in,
+    # and the archive's 0xA0 -- a non-breaking space, in the Latin-1 most of
+    # it is served as -- became U+FFFD. It was a space; it is one again.
+    t = t.replace("\ufffd", " ")
     return re.sub(r"\s+", " ", t).strip()
 
 
@@ -155,24 +205,80 @@ def flatten(html):
 #
 # STOP is every heading that can follow the one being read. Anchoring on one
 # of them is what broke this the first time.
-STOP = r"(?:REFERRED TO|AN ACT|RELATING TO|PROVIDING THAT|RESOLVED|ANALYSIS|COMMITTEE:)"
+# Where a captured field ends: the label of the next field, or the head of
+# the document proper. Each entry past the first line was added because a
+# page needed it. "AMENDED ANALYSIS" follows an amended bill's committee;
+# "STATE OF NEW HAMPSHIRE", the session line and the LSR number ("19-0789
+# 11/06") are what follows a COMMITTEE: that names nobody, and without them
+# the capture ran on into the bill.
+STOP = (r"(?:REFERRED TO|AN ACT|AN ORDER|AN ADDRESS|A RESOLUTION|JOINT RESOLUTION|"
+        r"CONCURRENT RESOLUTION|RELATING TO|PROVIDING THAT|RESOLVED|"
+        r"AMENDED ANALYSIS|ANALYSIS|STATEMENT OF INTENT|STATE OF NEW HAMPSHIRE|"
+        r"COMMITTEE:|SPONSORS?:|\d{4} SESSION|\d\d-\d{4}\s+\d\d\b)")
+# A field begins with a letter (or the "[committee]" placeholder, dropped by
+# clean) and not with the next label. "COMMITTEE: 2002 SESSION 02-2470" and
+# "COMMITTEE: ANALYSIS This senate bill..." are a committee left blank, and
+# both read as one before this.
+BEGIN = r"(?!" + STOP + r")(?=[A-Za-z\[])"
 
+# The labels are upper-case and end in a colon on every page that has one.
+# Matching them case-blind with the colon optional let "COMMITTEE" find the
+# word inside "AN ACT establishing a committee to study..." and report the
+# bill's own study committee as the one it was referred to, and find
+# "committees of the senate" and report "s of the senate".
 SPONSOR_RE = [
-    re.compile(r"INTRODUCED BY:?\s*(.+?)\s*" + STOP, re.I),
-    re.compile(r"SPONSORS?:?\s*(.+?)\s*" + STOP, re.I),
+    re.compile(r"INTRODUCED BY:\s*(.+?)\s*" + STOP),
+    re.compile(r"SPONSORS?:\s*(.+?)\s*" + STOP),
 ]
 COMMITTEE_RE = [
-    re.compile(r"REFERRED TO:?\s*(.+?)\s*" + STOP, re.I),
-    re.compile(r"COMMITTEE:?\s*(.+?)\s*" + STOP, re.I),
+    re.compile(r"REFERRED TO:\s*" + BEGIN + r"(.+?)\s*" + STOP),
+    re.compile(r"COMMITTEE:\s*" + BEGIN + r"(.+?)\s*" + STOP),
 ]
 TITLE_RE = [
-    re.compile(r"\bAN ACT\s+(.+?)(?:\s+SPONSORS?:|\s+COMMITTEE:|"
-               r"\s+ANALYSIS\b|\.\s)", re.I),
+    # The opener is upper-case and the title after it lower-case, on every
+    # page read: "AN ACT relative to term limits", "A RESOLUTION affirming
+    # revenue estimates", "JOINT RESOLUTION supporting the improvement of
+    # primary health care delivery" (1993, no article), "AN ORDER relative to
+    # implementing an election" (a House concurrent order). Only AN ACT was
+    # known before the sample: 94 pages open that way, 93 with CONCURRENT
+    # RESOLUTION, 40 with JOINT RESOLUTION, 29 with A RESOLUTION. This is
+    # case-sensitive, and the look-ahead for a lower-case letter is what
+    # keeps the header "HOUSE CONCURRENT RESOLUTION 6" from being the title.
+    # A House address ("AN ADDRESS for the removal of ... from his said
+    # office") is the seventh opener. The full stop that ends a title is
+    # not one after an initial or "St", "Mt", "Dr", "Jr", "No", "Inc":
+    # "naming the Kenneth M. Tarr Highway" was ending at "Kenneth M".
+    re.compile(r"\b(?:AN ACT|AN ORDER|AN ADDRESS|(?:A |AN )?(?:JOINT |CONCURRENT )?RESOLUTION)"
+               r"\s+(?=[a-z])(.+?)(?:\s+SPONSORS?:|\s+COMMITTEE:|\s+ANALYSIS\b|"
+               r"(?<![A-Z])(?<!\bSt)(?<!\bMt)(?<!\bDr)(?<!\bJr)(?<!\bNo)(?<!\bInc)\.\s)"),
     # A CACR states a subject and then what it would do. Both are the title.
-    re.compile(r"RELATING TO:?\s*(.+?)\s*(?:ANALYSIS|EXPLANATION|$)", re.I),
+    # In 1989 the sponsor and committee came before RELATING TO and the
+    # analysis after; by 2009 SPONSORS: and COMMITTEE: follow it, and a
+    # capture that ran on to ANALYSIS swallowed both, exceeded the cap, and
+    # left the title to the RESOLVED clause -- "be amended as follows: I".
+    re.compile(r"RELATING TO:?\s*(.+?)\s*(?:SPONSORS?:|COMMITTEE:|ANALYSIS|"
+               r"EXPLANATION|STATEMENT OF INTENT|$)", re.I),
     re.compile(r"RESOLVED,?\s*(.+?)(?:\.\s|$)", re.I),
 ]
-ANALYSIS_RE = re.compile(r"\bANALYSIS\b\s*(.+?)(?:\s*EXPLANATION\b|$)", re.I)
+# A bill of intent (HBI, 1989-1994) carries a STATEMENT OF INTENT where a bill
+# carries an ANALYSIS. The modern page ends its analysis with a rule of dashes
+# and then the LSR number; the old one with EXPLANATION.
+ANALYSIS_RE = re.compile(
+    r"\b(?:ANALYSIS|STATEMENT OF INTENT)\b\s*(.+?)"
+    r"(?=\s*(?:EXPLANATION\b|(?:-\s*){5,}|\u2500{5,}|STATE OF NEW HAMPSHIRE|"
+    r"\d\d-\d{4}\s+\d\d\b)|$)", re.I)
+
+
+def clean(s):
+    """A captured field without the rule drawn after it.
+
+    The modern page draws a line -- ASCII dashes on some pages, box-drawing
+    characters on others -- between the committee and the analysis, and it
+    was arriving inside the committee's name. "[committee]" is the template's
+    placeholder for a committee never filled in, and is no committee.
+    """
+    s = re.sub(r"^[\s:;.\-\u2500-\u257f]+|[\s:;.\-\u2500-\u257f]+$", "", s)
+    return "" if re.fullmatch(r"\[.*\]", s) else s
 
 # NO SUCH RULE. There was one here -- NO_SPONSOR_KINDS = {"HR", "SR"} -- on
 # the grounds that a simple resolution of one chamber names no sponsor and is
@@ -194,20 +300,24 @@ ANALYSIS_RE = re.compile(r"\bANALYSIS\b\s*(.+?)(?:\s*EXPLANATION\b|$)", re.I)
 def parse(html):
     flat = flatten(html)
     got = {}
+    # The cap on a sponsor list was 400 characters. Six pages exceed it --
+    # SB 1 of 1995 names 21 sponsors in 478 -- and every one of the six was
+    # reported as having no sponsor at all. 2,500 is room for a budget
+    # trailer's forty-odd names; STOP is what keeps a runaway capture short.
     for rx in SPONSOR_RE:
         m = rx.search(flat)
-        if m and len(m.group(1)) < 400:
-            got["sponsors"] = m.group(1).strip(" :;.")
+        if m and len(m.group(1)) < 2500 and clean(m.group(1)):
+            got["sponsors"] = clean(m.group(1))
             break
     for rx in COMMITTEE_RE:
         m = rx.search(flat)
-        if m and len(m.group(1)) < 120:
-            got["committee"] = m.group(1).strip(" :;.")
+        if m and len(m.group(1)) < 120 and clean(m.group(1)):
+            got["committee"] = clean(m.group(1))
             break
     for rx in TITLE_RE:
         m = rx.search(flat)
         if m and 3 < len(m.group(1)) < 400:
-            got["title"] = m.group(1).strip(" .")
+            got["title"] = m.group(1).strip(" .,")
             break
     m = ANALYSIS_RE.search(flat)
     if m:
@@ -225,8 +335,7 @@ def report():
         year = f.parent.name
         bid = f.stem
         kind = (PAD.match(bid) or re.match(r"([A-Z]+)", bid)).group(1)
-        rows.append((int(year), kind, bid, parse(f.read_text(
-            encoding="utf-8", errors="replace"))))
+        rows.append((int(year), kind, bid, parse(decode(f.read_bytes()))))
     if not rows:
         sys.exit(f"{OUT}/ holds no pages yet.")
     print(f"{len(rows):,} saved pages, {len({r[0] for r in rows})} years, "
@@ -280,7 +389,11 @@ def report():
               "document or the parser\n  is what the table above is for -- a "
               "kind that has none in one era and\n  some in the next is the "
               "document changing, not a bug.")
-        for r in blank[:6]:
+        # All of them. Six of thirty-five was enough to see there were
+        # blanks and not enough to see that most were housekeeping
+        # resolutions and budget-category pages -- documents with no
+        # sponsor -- and six were a sponsor list longer than the cap.
+        for r in blank:
             print(f"    {r[0]} {r[2]:10} {r[3].get('_chars', 0):>7,} chars  "
                   + (r[3].get("title") or "(no title either)")[:52])
     return 0

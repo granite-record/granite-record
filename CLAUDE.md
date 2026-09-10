@@ -207,15 +207,20 @@ newer answer where they disagree.
    House calendar PDFs for 1997-2026 are on disk with text, yielding 61,767
    bill-days that need no network.
 
-4. **A new archive path, found on 10 September and not yet used.**
+4. **A new archive path, found on 10 September and tested the same day.**
    `gc.nh.gov/legislation/<year>/<HB0000>.html` is constructible from a year
    and a padded number — no search, no session — and carries the sponsor with
    their district, the committee of referral, the title, the analysis and the
-   full text. Every one of eight years sampled from 1989 to 2017 returned a
-   page. Five terms currently have no sponsor and no committee at all.
-   `fetch_legislation.py` fetches and saves; `--parse` reads what is saved and
-   touches no network, because the labels change with the decades and a parser
-   must be allowed to be wrong without costing a request.
+   full text. A 380-bill sample, ten a year from 1989 to 2026 across every
+   kind, saved 297 pages: 1996, 2016 and 2022 onward answered 404 for every
+   bill asked (the current terms live at bill_status; the two archive years
+   are unexplained), and the parser now reads sponsor, committee and title
+   across all 15 kinds and 31 years — the 29 pages naming no sponsor are
+   housekeeping resolutions and budget tables, which name none. Five terms
+   currently have no sponsor and no committee at all; this is the path that
+   fills them. `fetch_legislation.py` fetches and saves; `--parse` reads what
+   is saved and touches no network, because the labels change with the
+   decades and a parser must be allowed to be wrong without costing a request.
 
 5. **The bench.** `review.py` serves one sample at a time on the loopback
    address, takes a verdict and a note, and appends to `review/checked.jsonl`.
