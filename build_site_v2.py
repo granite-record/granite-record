@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.58
+# GRANITE_VERSION: 2026-09-05.60
 """
 Generate the faceted site from real General Court data.
 
@@ -2022,6 +2022,132 @@ def check_notes(notes, bills):
               "would exit zero having done it.")
 
 
+def vote_member(m, body, legs, unnamed):
+    """One member's entry in a roll call.
+
+    STEP 1 OF SPLITTING build_bills, which was 544 lines. This was nested
+    inside it and captured legs and unnamed from the enclosing scope; they
+    are parameters now, so the next extraction that needs it is a move rather
+    than a rewrite. unnamed is still mutated, which is why it is passed
+    explicitly rather than quietly closed over.
+
+    The name comes from the VOTE record, which build_data.py has already
+    resolved against the roster and against former_members.json. The roster
+    is the fallback rather than the source, because it holds sitting members
+    only.
+
+    Not "label": that field is a composite of name, party and seat, and the
+    roll call grid wants a name.
+
+    The party letter comes from the vote too, so the name agrees with the
+    party segment the member is shown under.
+    """
+    raw = (m.get("name") or "").strip()
+    if not raw or raw.lower().startswith(("member #", "former member")):
+        rec = legs.get(m.get("member_id"), {})
+        raw = (rec.get("name") or raw or "").strip()
+    if not raw or raw.lower().startswith(("member #", "former member")):
+        unnamed.add(str(m.get("member_id")))
+        raw = f"Member #{m.get('member_id')}"
+    lab = member_labels(raw, chamber=(legs.get(m.get("member_id"), {})
+                                      .get("chamber") or body),
+                        party=m.get("party"))
+    return {"n": lab["display"], "s": lab["sort"] or sort_name(raw),
+            "p": m.get("party") or "X", "v": m.get("vote")}
+
+
+def bill_stations(bid, term, procs, segs, marks):
+    """Every committee proceeding on one bill, oldest first.
+
+    STEP 2 OF SPLITTING build_bills. A leaf: one output, no other reader in
+    the loop, nothing captured that is not passed. Keyed (term, bid) because
+    a bill number names a different bill in each biennium.
+    """
+    return [station_for_proceeding(p, bid, segs, marks)
+            for p in sorted(procs.get((term, bid), []),
+                            key=lambda x: (x["sched_date"],
+                                           x["sched_time"] or ""))]
+
+
+def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
+    """Every recorded vote on one bill, in the order the docket took them.
+
+    STEP 3 OF SPLITTING build_bills. Lifted verbatim except for indentation.
+
+    IT ALSO KILLS A SHADOW, BY CONSTRUCTION RATHER THAN BY CARE. In the
+    enclosing scope `kind` is the bill's status kind, read five times in the
+    payload; this block rebound it to a ("voice vote", False) tuple 147 lines
+    after the last of those reads. Harmless only by that distance -- any new
+    use of `kind` in the payload would silently have got a tuple or None. The
+    same was true of `n`, a bill count outside and a nay count here. Neither
+    name means anything else in this function now, so neither can shadow
+    anything again.
+
+    build_bills' own docstring records that this failure already happened
+    once, with `st` meaning two things 350 lines apart. This is the second
+    instance, found while splitting the function the first one caused.
+    """
+    rc_out = []
+    rc_order, rc_names = vote_chronology(rcs, narr)
+    for r in sorted(rcs, key=lambda x: (x.get("date", ""), int(x.get("number", 0)))):
+        key = f"{r.get('year')}-{r['body']}-{r['number']}"
+        members = votes_by_bill.get((term, bid), {}).get(key, [])
+        tally = defaultdict(lambda: defaultdict(int))
+        for m in members:
+            tally[m["party"] or "X"][m["vote"]] += 1
+        rc_out.append({
+            "date": r.get("date"), "body": r.get("body"),
+            "question": r.get("question"), "yeas": r.get("yeas"),
+            "nays": r.get("nays"), "passed": r.get("passed"),
+            "threshold_note": r.get("threshold_note"),
+            # Which amendment this vote was on, where the docket says so.
+            # "Adopt Amendment" twice in an afternoon is two different
+            # amendments and no way to tell which is which.
+            "amendment": rc_names.get((r.get("body"), r.get("number"))),
+            "_ord": (r.get("date") or "",
+                     rc_order.get((r.get("body"), r.get("number")),
+                                  10 ** 6 + int(r.get("number") or 0))),
+            # What the yes side had to reach, so the chart can mark it.
+            # rollcall_parser works this out per motion: two thirds of
+            # those voting for a veto override, three fifths of the whole
+            # membership for a CACR, a simple majority otherwise.
+            "threshold_needed": r.get("threshold_needed"),
+            "threshold_rule": r.get("threshold_rule"),
+            "tally": {p: dict(v) for p, v in tally.items()},
+            # "s" is the surname-first sort key. The grids are read
+            # alphabetically, and sorting the displayed string would order
+            # 400 members by honorific and then by first name.
+            "members": [vote_member(m, r.get("body"), legs, unnamed)
+                        for m in members],
+        })
+
+    # Voice and division votes, from the docket. A voice vote records only
+    # which side sounded louder; a division records the count but not who
+    # voted which way. Both decide bills, and leaving them off the votes tab
+    # makes a bill look as though nothing happened on the floor.
+    VK = {"VV": ("voice vote", False), "DV": ("division vote", False)}
+    for _i, e in enumerate((narr or {}).get("events", [])):
+        if e.get("type") != "floor" or e.get("cancelled"):
+            continue
+        kind = VK.get(e.get("vote_kind"))
+        if not kind:
+            continue          # RC is already covered by the roll call file
+        label, _ = kind
+        y, n = e.get("yeas"), e.get("nays")
+        rc_out.append({
+            "date": e["date"], "body": e.get("body"),
+            "question": e.get("action") or "Floor action",
+            "yeas": int(y) if y else None, "nays": int(n) if n else None,
+            "passed": e.get("motion") in ("MA", "AA"),
+            "vote_kind": e.get("vote_kind"), "vote_kind_label": label,
+            "threshold_note": None, "tally": {}, "members": [],
+            "amendment": None, "_ord": (e["date"], _i),
+        })
+    # By the docket's own sequence, not by the wording of the motion.
+    rc_out.sort(key=lambda r: r["_ord"])
+    return rc_out
+
+
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
@@ -2044,32 +2170,6 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     unnamed = set()
     sponsored = defaultdict(list)
 
-    def _vote_name(m, body):
-        """One member's entry in a roll call.
-
-        The name comes from the VOTE record, which build_data.py has already
-        resolved against the roster and against former_members.json. The
-        roster is the fallback rather than the source, because it holds
-        sitting members only.
-
-        Not "label": that field is a composite of name, party and seat, and
-        the roll call grid wants a name.
-
-        The party letter comes from the vote too, so the name agrees with the
-        party segment the member is shown under.
-        """
-        raw = (m.get("name") or "").strip()
-        if not raw or raw.lower().startswith(("member #", "former member")):
-            rec = legs.get(m.get("member_id"), {})
-            raw = (rec.get("name") or raw or "").strip()
-        if not raw or raw.lower().startswith(("member #", "former member")):
-            unnamed.add(str(m.get("member_id")))
-            raw = f"Member #{m.get('member_id')}"
-        lab = member_labels(raw, chamber=(legs.get(m.get("member_id"), {})
-                                          .get("chamber") or body),
-                            party=m.get("party"))
-        return {"n": lab["display"], "s": lab["sort"] or sort_name(raw),
-                "p": m.get("party") or "X", "v": m.get("vote")}
     index, years = [], set()
     status_pages = load("bill_status.json", {})
     if status_pages:
@@ -2349,63 +2449,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         bill_amds = bill_amendments(narr, amend_texts)
         btext = bill_text_block(P.per_term(bill_texts, term, current).get(bid))
 
-        rc_out = []
-        rc_order, rc_names = vote_chronology(rcs, narr)
-        for r in sorted(rcs, key=lambda x: (x.get("date", ""), int(x.get("number", 0)))):
-            key = f"{r.get('year')}-{r['body']}-{r['number']}"
-            members = votes_by_bill.get((term, bid), {}).get(key, [])
-            tally = defaultdict(lambda: defaultdict(int))
-            for m in members:
-                tally[m["party"] or "X"][m["vote"]] += 1
-            rc_out.append({
-                "date": r.get("date"), "body": r.get("body"),
-                "question": r.get("question"), "yeas": r.get("yeas"),
-                "nays": r.get("nays"), "passed": r.get("passed"),
-                "threshold_note": r.get("threshold_note"),
-                # Which amendment this vote was on, where the docket says so.
-                # "Adopt Amendment" twice in an afternoon is two different
-                # amendments and no way to tell which is which.
-                "amendment": rc_names.get((r.get("body"), r.get("number"))),
-                "_ord": (r.get("date") or "",
-                         rc_order.get((r.get("body"), r.get("number")),
-                                      10 ** 6 + int(r.get("number") or 0))),
-                # What the yes side had to reach, so the chart can mark it.
-                # rollcall_parser works this out per motion: two thirds of
-                # those voting for a veto override, three fifths of the whole
-                # membership for a CACR, a simple majority otherwise.
-                "threshold_needed": r.get("threshold_needed"),
-                "threshold_rule": r.get("threshold_rule"),
-                "tally": {p: dict(v) for p, v in tally.items()},
-                # "s" is the surname-first sort key. The grids are read
-                # alphabetically, and sorting the displayed string would order
-                # 400 members by honorific and then by first name.
-                "members": [_vote_name(m, r.get("body")) for m in members],
-            })
-
-        # Voice and division votes, from the docket. A voice vote records only
-        # which side sounded louder; a division records the count but not who
-        # voted which way. Both decide bills, and leaving them off the votes tab
-        # makes a bill look as though nothing happened on the floor.
-        VK = {"VV": ("voice vote", False), "DV": ("division vote", False)}
-        for _i, e in enumerate((narr or {}).get("events", [])):
-            if e.get("type") != "floor" or e.get("cancelled"):
-                continue
-            kind = VK.get(e.get("vote_kind"))
-            if not kind:
-                continue          # RC is already covered by the roll call file
-            label, _ = kind
-            y, n = e.get("yeas"), e.get("nays")
-            rc_out.append({
-                "date": e["date"], "body": e.get("body"),
-                "question": e.get("action") or "Floor action",
-                "yeas": int(y) if y else None, "nays": int(n) if n else None,
-                "passed": e.get("motion") in ("MA", "AA"),
-                "vote_kind": e.get("vote_kind"), "vote_kind_label": label,
-                "threshold_note": None, "tally": {}, "members": [],
-                "amendment": None, "_ord": (e["date"], _i),
-            })
-        # By the docket's own sequence, not by the wording of the motion.
-        rc_out.sort(key=lambda r: r["_ord"])
+        rc_out = bill_rollcalls(bid, term, rcs, narr,
+                                votes_by_bill, legs, unnamed)
         for r in rc_out:
             r.pop("_ord", None)
 
@@ -2414,10 +2459,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # different code and close enough that a change to one usually belongs
         # in the other; adjacent functions make that visible, which one long
         # function did not.
-        stations = [station_for_proceeding(p, bid, segs, marks)
-                    for p in sorted(procs.get((term, bid), []),
-                                    key=lambda x: (x["sched_date"],
-                                                   x["sched_time"] or ""))]
+        stations = bill_stations(bid, term, procs, segs, marks)
         # The sign-in counts, on the hearing itself. They already reach the
         # docket line that records the hearing -- 2,115 of them across 2,018
         # bills -- but that line sits inside a collapsed disclosure on another
