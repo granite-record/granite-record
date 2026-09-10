@@ -41,6 +41,105 @@ number written here would be wrong within a day, and was.
 
 ---
 
+## proceedings.csv across terms, measured 10 September
+
+`proceedings.csv` holds 9,762 rows and 9,761 of them are 2025-2026. Every
+recording, every stated boundary and every timestamp on this site is one term,
+and this is the largest single thing the record is missing. What follows is
+what it would take, measured rather than estimated.
+
+### It is not gated by the General Court fetches
+
+That was the assumption and it is wrong. The two biggest pieces are sitting on
+this disk already.
+
+`docket_parser.parse_proceedings` takes a docket and returns structured
+proceedings -- bill, body, kind, scheduled date, scheduled time, venue,
+committee -- and it does not care which term's docket it is given. Run today:
+
+    Docket_2023-2024.txt   23,808 rows ->  7,379 proceedings
+    Docket_2017-2018.txt   21,984 rows ->  6,431 proceedings
+    Docket.txt (current)   25,270 rows ->  7,115 proceedings
+
+2023-2024 is a **larger** term than the one the site currently carries, its
+docket has been on disk for days, and its 1,648 recordings are already in
+`channel_index_full.json`. Nothing about it waits on anything.
+
+Recordings exist from May 2020 onwards and only then:
+
+    2019-2020    139        2021-2022  1,222
+    2023-2024  1,648        2025-2026  1,419
+
+So 2,870 recordings across 2021-2024 have no proceeding pointing at them.
+That is twice what the current term has.
+
+### What actually gates it: one number per video, from YouTube
+
+`build_manifest.py` needs `start_eastern` -- when the stream actually began --
+because the schedule offset is the scheduled time minus that. It reads it from
+`videos_*.csv`, and the eight of those on this disk are all 2025 and 2026.
+`channel_index_full.json` carries `id`, `published` and `title` and nothing
+else, and `published` is not the start: a 09/09/2026 meeting is published the
+evening before.
+
+`fetch_channel_index.py` pulls `actualStartTime` from `liveStreamingDetails`,
+**fifty ids per call**, so 2,870 videos is about sixty requests. It needs a
+YouTube Data API v3 key. That is the whole gate, it is against YouTube rather
+than the General Court, and it takes minutes.
+
+### The order that follows from that
+
+1. **2023-2024, today.** Docket here, recordings indexed. One channel-index
+   run for 2023 and 2024, extend `build_manifest.py` to take a term and its
+   docket, merge into `proceedings.csv`. Roughly doubles the record.
+2. **2021-2022, when its docket lands** -- queued behind 2019-2020 in
+   `docket_chain.py`, so about fifteen hours. 1,222 recordings.
+3. **2019-2020**, same, plus its 139 recordings from May 2020.
+4. **2015-2018: hearings without recordings.** The dockets arrive but no video
+   exists before May 2020. Worth having -- that a bill was heard, when, where,
+   by which committee -- and the page already renders a proceeding with no
+   recording.
+5. **1997-2014: calendars, not dockets.** The chain fetches no docket before
+   2015, so the only source is the calendars, and all 1,580 House calendar
+   PDFs for 1997-2026 are on disk with text extracted, 100%.
+   `calendar_meetings.py --check` gets **61,767 distinct (bill, day) pairs
+   across 2,107 committees and 5,968 meeting days** from them right now.
+   Senate calendars cover 2008-2026, 984 texts, with 665 still queued.
+
+### The decisions to make before writing any of it
+
+- **A third producer, or a term-aware first one.** `build_proceedings.py`
+  merges two sources today, and its whole reason for existing is that reading
+  them separately made five tools silently drop the floor in one day. Adding a
+  calendar producer alongside `build_manifest.py` repeats that mistake in a
+  new place. Better: `build_manifest.py` becomes term-aware and takes the
+  calendar as a fallback source for terms with no docket, so there is still
+  one producer of committee proceedings.
+- **The two sources disagree, and by a known amount.** Measured against the
+  docket, the calendar parse agrees on kind 98% of the time, on room 100%,
+  and on time 88%. For 1997-2014 there is no docket to prefer, so the calendar
+  is the record and the 12% is unmeasurable there. That belongs on the page as
+  a stated limit, not buried.
+- **The shrink guard.** `build_proceedings.py` refuses to write a smaller
+  table than last time without being told it may. Going to 60,000 rows is
+  growth and is fine, but a `--term` run that rebuilds one term must merge
+  rather than replace, or the first partial run destroys the rest -- which is
+  the failure this project has had twice.
+- **Timestamps will lag.** 1,278 recordings have captions and they are almost
+  all current-term; 910 of the 915 recordings that carry a bill today are
+  captioned, so that path is finished for this term and untouched for the
+  others. New terms arrive with hearings, rooms, dates and a recording link
+  but no stated boundaries until captions catch up. That is honest and the
+  page already draws it.
+
+### What it is worth
+
+The current term is 9,762 rows. The dockets alone add roughly 21,000 more for
+2015-2024, four of those terms with recordings behind them. The calendars add
+tens of thousands more for 1997-2014 without recordings. The site goes from
+one term of hearings to thirty years of them, and the two terms with the most
+recordings are the ones nothing is waiting for.
+
 ## What is structurally wrong
 
 Ranked by what it has actually cost, not by how it looks on paper.
