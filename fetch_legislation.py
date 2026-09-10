@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.11
+# GRANITE_VERSION: 2026-09-10.12
 """
 The bill itself, from an address that can simply be constructed.
 
@@ -77,7 +77,11 @@ from pathlib import Path
 import refusal
 
 OUT = Path("legislation")
-URL = "https://gc.nh.gov/legislation/{year}/{bill}.html"
+URL = "https://gc.nh.gov/legislation/{year}/{bill}.{ext}"
+# One year of the thirty-eight is served at .htm. Padded and upper-case like
+# every other year -- HB0297, not hb297 -- so the extension is the whole of
+# the difference.
+HTM_YEARS = {1996}
 # The same document, served by the application instead of as a file. Proven
 # the same document rather than assumed: the 2,234 pages in bill_text/ came
 # from here, and today's parser reads sponsors, committee, title and analysis
@@ -96,6 +100,14 @@ TEXT = ("https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
 #     legislation/2016/HB1101.html                404
 #     legislation/1996/hb297.htm                  404, and that is the
 #                                                 archive's OWN published link
+#     legislation/1996/HB0297.htm                 serves the bill
+#
+# So 1996 is not a hole: it is padded and upper-case like every other year and
+# served at .htm, and the only address that does not work is the one the
+# archive itself publishes. Worth stating plainly, because the reasoning that
+# produced the wrong guess was this project's own first rule -- read the
+# artefact, take the address from the source rather than inventing it -- and
+# the source was wrong. Reading beats guessing still; it is not a guarantee.
 #
 # and it stops after 2021 -- fifty bills were asked for across 2022-2026 in
 # the sample and every one 404'd, which fits the current terms being served
@@ -127,19 +139,18 @@ TEXT = ("https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
 # why a year in neither set below returns no address at all rather than a
 # guess: here, a wrong guess does not announce itself.
 #
-# WHICH LEAVES 1996 and nothing else. Its status page links a file that is
-# gone, and no other address for a 1996 bill's text is known. Both holes,
-# 1996 and 2016, sit exactly on a change of the tool that generated these
-# pages.
+# WHICH LEAVES NOTHING. Every bill of every term from 1989 to 2026 now has an
+# address: 27,171 by the static path and 6,512 by the application.
+STATIC_404 = {2016, 2022, 2023, 2024, 2025, 2026}
+ID_AS_STORED = {2016, 2022, 2025, 2026}
+ID_PLUS_YEAR = {2023, 2024}
+
 # What the application says instead of 404ing. Both were met rather than
 # imagined: the first by opening a wrong id by hand on 10 September, the
 # second by the scrape that minted txtFormat=pdf links for 4,230 bills and
 # got this back from every one of them.
 ERROR_PAGE = re.compile(
     r"is either negative or above rows count|is neither a DataColumn", re.I)
-STATIC_404 = {1996, 2016, 2022, 2023, 2024, 2025, 2026}
-ID_AS_STORED = {2016, 2022, 2025, 2026}
-ID_PLUS_YEAR = {2023, 2024}
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
                     "contact@graniterecord.org)"}
 
@@ -187,14 +198,13 @@ def address(year, bid, rec):
     if not pad:
         return None, "not a bill number"
     if year not in STATIC_404:
-        return URL.format(year=year, bill=pad), "static"
+        return (URL.format(year=year, bill=pad,
+                           ext="htm" if year in HTM_YEARS else "html"),
+                "static")
     tid = text_id(rec or {}, year)
     if tid:
         return TEXT.format(id=tid, year=year), "billText"
-    return None, ("1996 has no known address: its own status page links "
-                  "legislation/1996/hb297.htm and that is a 404"
-                  if year == 1996 else
-                  f"no id known for {year}; see the table in this file")
+    return None, f"no id known for {year}; see the table in this file"
 
 
 def sample(bills, per_year, lo, hi):
