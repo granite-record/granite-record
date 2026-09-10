@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.14
+# GRANITE_VERSION: 2026-09-04.15
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -106,6 +106,41 @@ def rows_all(d, base, expect=None):
             print(f"  {f.name}: {len(got):,} rows")
             out += got
     return out
+
+
+def hearing_in_term(raw, term):
+    """A hearing date, but only if it falls inside the bill's own term.
+
+    2021-2022 came back from the archive with 1,485 of its 1,752 bills
+    carrying a hearing in 2025 or 2026 -- "05/20/2025 at 01:00 PM REMOTE Room
+    000" on a bill filed in 2021. Only 93 had a date from their own term. No
+    other archived term does this: 2019-2020 and 2023-2024 are clean, and the
+    one or two strays elsewhere are single bills.
+
+    The cause is upstream, in what the General Court's legacy search returned
+    for that year, and the real fix is to fetch that term's list again. This
+    is the guard that should have existed either way. A bill number names a
+    different bill in every biennium -- the fact this whole project is keyed
+    around -- so a date four years after the term ended belongs to whatever
+    bill wears that number now, not to this one. Dropping it loses nothing
+    that was true.
+
+    It stayed invisible because nothing renders this field. That is not a
+    reason to keep it: it is in data/bills.json, which is an input to
+    everything, and the first thing to read it would have published a 2025
+    hearing on a 2021 bill without anybody noticing.
+    """
+    import re as _re
+    if not raw or not term:
+        return raw
+    m = _re.search(r"(19|20)\d{2}", str(raw))
+    if not m:
+        return raw
+    try:
+        a, b = (int(x) for x in str(term).split("-"))
+    except ValueError:
+        return raw
+    return raw if a <= int(m.group(0)) <= b else ""
 
 
 def main():
@@ -805,7 +840,9 @@ def main():
                     "subject_code": "", "subject": "",
                     "house_committee": cm if ch == "House" else "",
                     "senate_committee": cm if ch == "Senate" else "",
-                    "hearing": r.get("last_hearing", ""), "hearing_room": "",
+                    "hearing": hearing_in_term(r.get("last_hearing", ""),
+                                               term),
+                    "hearing_room": "",
                     "designation": (f"{num.group(1)} {num.group(2)}"
                                     if num else bid),
                     "text_pdf": r.get("text_pdf", ""),
