@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.47
+# GRANITE_VERSION: 2026-09-05.49
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
@@ -1055,10 +1055,111 @@ def read_marks(path):
                     "kind": r[h.get("proceeding", 0)],
                     "sched": sec(r[h["predicted_offset"]]) if "predicted_offset" in h else None,
                     "obs": o,
-                    "end": sec(r[h["observed_end"]]) if "observed_end" in h else None})
+                    "end": sec(r[h["observed_end"]]) if "observed_end" in h else None,
+                    # Which hand-made file this came from. Two sets are read
+                    # now and a median that moved because the ruler grew is
+                    # not the same event as a median that moved because the
+                    # method got worse.
+                    "src": p.name})
     if out and all(m["sched"] is None for m in out):
         _join_schedule(out)
     return out
+
+
+BENCH = Path("review") / "checked.jsonl"
+
+
+def read_bench(path=BENCH):
+    """The bench's timings, in the shape read_marks returns.
+
+    review.py appends one line per judgment and never rewrites one, so this
+    is the same kind of thing ground_truth.csv is: a person watched a
+    recording and wrote down what they saw. It was not reaching this command,
+    which is the only gate a timestamp change has to pass, so the work of
+    filling it in could not affect anything.
+
+    THE OBSERVATION IS THE DATUM, NOT THE VERDICT. Until 9 September the
+    bench displayed the schedule offset rather than the published time, so
+    nine verdicts grade a number no reader was shown. Those verdicts are
+    unusable and review.py --report says so. The stopwatch readings beside
+    them are unaffected -- a person timing a hearing is not made wrong by
+    what the screen said next to the player -- so they are read here and the
+    verdict is not read at all.
+
+    A LAST LOOK SUPERSEDES AN EARLIER ONE. The ledger is append-only, so a
+    second judgment of the same proceeding is a second line rather than a
+    replacement, and the last line is the one that counts.
+
+    Returns (marks, confirmed), where confirmed counts the proceedings a
+    person looked at and accepted without timing. Those are real evidence but
+    they are NOT marks: "the published time is right" is a weaker claim than
+    a stopwatch, and folding it in as an error of zero would flatter every
+    method scored here. They are reported on their own line instead.
+    """
+    p = Path(path)
+    if not p.exists():
+        return [], 0
+    last = {}
+    for line in p.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            e = json.loads(line)
+        except ValueError:
+            continue
+        if e.get("kind") != "timestamp":
+            continue
+        shown = e.get("shown") or {}
+        key = (shown.get("video_id"), str(shown.get("bill") or "").upper(),
+               str(shown.get("proceeding") or "").lower())
+        if not key[0]:
+            continue
+        last[key] = e
+    marks, confirmed = [], 0
+    for (vid, bill, kind), e in last.items():
+        f = e.get("fields") or {}
+        shown = e.get("shown") or {}
+        obs = _sec(f.get("observed_start"))
+        if obs is None:
+            # Nothing timed. An accepted time is a confirmation, counted
+            # separately; anything else -- wrong with no time, unsure,
+            # skipped -- says the published time is doubted and says nothing
+            # about where the truth is, so it is not evidence of a number.
+            if e.get("verdict") == "correct" and shown.get("start") is not None:
+                confirmed += 1
+            continue
+        marks.append({"bill": bill, "video": vid, "kind": kind,
+                      "committee": shown.get("committee") or "",
+                      "sched": None, "obs": obs,
+                      "end": _sec(f.get("observed_end")),
+                      "src": p.name})
+    marks.sort(key=lambda m: (m["video"], m["bill"], m["kind"]))
+    return marks, confirmed
+
+
+def _merge_bench(marks, bench):
+    """Add the bench's marks to the file's, and say where they disagree.
+
+    ground_truth.csv keeps the proceeding where both have timed it. It is the
+    older and more deliberate record, and a generator quietly overruling a
+    person's file is the failure this project has had twice. The disagreement
+    is printed instead, so whoever owns both files decides.
+    """
+    have = {(str(m["video"]), str(m["bill"]).strip().upper(),
+             str(m["kind"]).strip().lower()) for m in marks}
+    added, clash = [], []
+    for b in bench:
+        k = (str(b["video"]), b["bill"], b["kind"])
+        if k in have:
+            same = next(m for m in marks
+                        if (str(m["video"]), str(m["bill"]).strip().upper(),
+                            str(m["kind"]).strip().lower()) == k)
+            if abs((same["obs"] or 0) - (b["obs"] or 0)) > 5:
+                clash.append((k, same["obs"], b["obs"]))
+        else:
+            added.append(b)
+    return marks + added, added, clash
 
 
 def _join_schedule(marks):
@@ -1080,6 +1181,23 @@ def _join_schedule(marks):
             print(f"  schedule baseline for {got} of {len(marks)} joined from "
                   f"{mp.name}")
         return
+
+
+def _by_source(marks, field):
+    """Median error per hand-made file, where more than one is in play."""
+    groups = defaultdict(list)
+    for m in marks:
+        if m.get(field) is None:
+            continue
+        groups[m.get("src") or "?"].append(abs(m[field] - m["obs"]))
+    if len(groups) < 2:
+        return
+    print("\n    by which hand-made file the mark came from:")
+    for src in sorted(groups):
+        v = sorted(groups[src])
+        near = sum(1 for x in v if x <= 60)
+        print(f"      {src:<22} {len(v):>3} placed, median "
+              f"{hms(v[len(v) // 2])}, {near}/{len(v)} within a minute")
 
 
 def hms(s):
@@ -1320,10 +1438,31 @@ def load_candidate(path, marks):
     return got
 
 
-def ground_truth(manifest, site=None, candidate=None):
+def ground_truth(manifest, site=None, candidate=None, bench=True):
     marks = read_marks(manifest)
+    n_file, added, clash, confirmed = len(marks), [], [], 0
+    if bench:
+        bmarks, confirmed = read_bench()
+        marks, added, clash = _merge_bench(marks, bmarks)
+        if added:
+            _join_schedule(added)
     print(f"{'=' * 74}\nGROUND TRUTH: {len(marks)} proceedings a person timed by "
           f"hand\n{'=' * 74}")
+    if added or confirmed or clash:
+        print(f"  {n_file} from {Path(manifest).name}, {len(added)} from the "
+              f"bench ({BENCH})")
+        if confirmed:
+            print(f"  {confirmed} more were looked at and accepted without "
+                  "being timed. Those say\n  the published time is right, "
+                  "which is weaker than a stopwatch, so they are\n  counted "
+                  "here and nowhere else.")
+        for (vid, bill, kind), a, b in clash:
+            print(f"  {bill} {kind}: {Path(manifest).name} says {hms(a)} and "
+                  f"the bench says {hms(b)}.\n    Keeping the file's. Both are "
+                  "a person's; only one can be the mark.")
+        print("  --no-bench scores against " + Path(manifest).name
+              + " alone, which is what every\n  number recorded before "
+                "9 September was measured on.")
     vids = {}
     for m in marks:
         vids.setdefault(m["video"], []).append(m)
@@ -1390,6 +1529,13 @@ def ground_truth(manifest, site=None, candidate=None):
                     print("      The weak markers are markedly worse. They buy "
                           "coverage with\n      accuracy, and that is a trade "
                           "to make deliberately or not at all.")
+
+            # WHICH FILE THE MARKS CAME FROM. The measuring stick grows
+            # every time somebody sits down with the bench, and a median that
+            # moved because eight harder proceedings joined the set is not
+            # the same event as a median that moved because the method got
+            # worse. Reported side by side so the two cannot be confused.
+            _by_source(marks, "cand")
 
             ends = [m for m in marks if m.get("cand_end") and m.get("end")]
             if ends:
@@ -1500,8 +1646,13 @@ def main():
                                    "against the marked times")
     ap.add_argument("--truth", nargs="?", const="ground_truth.csv",
                     help="score every method against the hand-marked times. "
-                         "Reads ground_truth.csv by default, or a manifest "
-                         "with observed_start filled in.")
+                         "Reads ground_truth.csv AND review/checked.jsonl by "
+                         "default, or a manifest with observed_start filled "
+                         "in.")
+    ap.add_argument("--no-bench", action="store_true",
+                    help="score against the truth file alone, leaving out "
+                         "review/checked.jsonl. Use it to compare with a "
+                         "number recorded before the bench was read here.")
     a = ap.parse_args()
 
     if a.missing:
@@ -1554,7 +1705,8 @@ def main():
         return
 
     if a.truth:
-        ground_truth(a.truth, a.site, a.candidate)
+        ground_truth(a.truth, a.site, a.candidate,
+                     bench=not a.no_bench)
         return
 
     rp = Path("committee_reports.json")
