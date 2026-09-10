@@ -142,3 +142,17 @@ journals_senate/
 # --refresh. review/checked.jsonl is NOT ignored: it is the record a
 # person made, and it belongs in git beside ground_truth.csv.
 review/.pool-*.json
+
+# ---- credentials ---------------------------------------------------------
+# The only secret this repository has is a YouTube Data API key, and
+# secrets.example.json shows the shape without carrying one. This repository
+# is meant to be shared: a key committed once lives in the history forever,
+# and preflight fails if a tracked file starts to look like it holds one.
+#
+# probe_db.py's database credentials are NOT secret and stay in the open --
+# the General Court publishes them at gc.nh.gov/downloads for public use.
+secrets.json
+.env
+*.pem
+*.key
+!secrets.example.json

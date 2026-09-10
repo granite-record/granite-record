@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.1
+# GRANITE_VERSION: 2026-09-04.2
 """
 Step 1 of verification: pull the NH House/Senate YouTube video index.
 
@@ -197,12 +197,21 @@ def to_eastern_clock(iso_utc):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--key", required=True, help="YouTube Data API v3 key")
+    # NOT REQUIRED, AND BETTER LEFT OUT. An argument on a command line is
+    # visible to every process on the machine, lands in shell history, and is
+    # echoed by anything that logs the command it ran. Without --key this
+    # reads secrets.json, which is gitignored. The flag stays for a one-off
+    # against a different key.
+    ap.add_argument("--key", help="YouTube Data API v3 key. Omit it and "
+                                  "secrets.json is read instead.")
     ap.add_argument("--chamber", choices=["house", "senate"], default="house")
     ap.add_argument("--start", default="2025-01-01")
     ap.add_argument("--end", default="2025-06-30")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
+    if not a.key:
+        import keys
+        a.key = keys.youtube()
 
     start = datetime.strptime(a.start, "%Y-%m-%d").date()
     end = datetime.strptime(a.end, "%Y-%m-%d").date()

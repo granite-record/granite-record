@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.84
+# GRANITE_VERSION: 2026-09-04.85
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -69,6 +69,71 @@ def imp(name):
 
 
 # =========================================================== code: the files ==
+
+@check("files", "no tracked file carries a credential")
+def _no_secrets():
+    """What git would publish, checked before git publishes it.
+
+    This repository is meant to be shared. A key committed once is in the
+    history forever, and rewriting published history is not a thing anybody
+    does calmly at the moment they notice. secrets.json is gitignored and
+    keys.py reads it; this is what makes that arrangement true rather than
+    merely intended.
+
+    The General Court's database host, user and password are deliberately NOT
+    matched here. They are published at gc.nh.gov/downloads in "ODBC and Data
+    Table Structure.pdf" for public use against a read-only account, they are
+    documented as such in probe_db.py, and hiding a published credential would
+    protect nothing while stopping somebody reproducing this work.
+    """
+    import subprocess
+    try:
+        out = subprocess.run(["git", "ls-files"], capture_output=True,
+                             text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError) as e:
+        return "skip", f"git would not list the tracked files ({e})"
+    if out.returncode != 0:
+        return "skip", "not a git repository"
+    names = [n for n in out.stdout.splitlines() if n.strip()]
+    if not names:
+        return "skip", "git tracks nothing here"
+
+    # Shapes that are a credential and nothing else. Deliberately narrow: a
+    # pattern loose enough to catch "password = " would fire on prose and on
+    # probe_db.py, and a check that cries wolf gets silenced.
+    import re
+    SHAPES = [
+        ("a Google API key", re.compile(r"AIza[0-9A-Za-z_\-]{30,}")),
+        ("an OpenAI key", re.compile(r"sk-[A-Za-z0-9]{32,}")),
+        ("a GitHub token", re.compile(r"gh[pousr]_[A-Za-z0-9]{30,}")),
+        ("a Slack token", re.compile(r"xox[baprs]-[A-Za-z0-9-]{10,}")),
+        ("an AWS access key", re.compile(r"AKIA[0-9A-Z]{16}")),
+        ("a private key", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
+        ("a Cloudflare token", re.compile(r"CLOUDFLARE_API_TOKEN\s*[:=]\s*"
+                                          r"[\"\']?[A-Za-z0-9_\-]{20,}")),
+    ]
+    found = []
+    for n in names:
+        f = Path(n)
+        if not f.exists() or f.stat().st_size > 4_000_000:
+            continue
+        try:
+            body = f.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for what, rx in SHAPES:
+            m = rx.search(body)
+            if m:
+                line = body[:m.start()].count(chr(10)) + 1
+                found.append(f"{n}:{line} looks like {what}")
+    if found:
+        return ("fail", f"{len(found)} tracked file(s) carry something "
+                        "shaped like a credential, and this repository is "
+                        "meant to be shared: " + "; ".join(found[:4]))
+    return "ok", (f"{len(names)} tracked files, none carrying a key. "
+                  "secrets.json is gitignored; probe_db.py's published "
+                  "credentials are public by design.")
+
 
 @check("files", "every listed script parses")
 def _parse_all():

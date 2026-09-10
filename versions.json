@@ -33,7 +33,7 @@
     "fetch_bill_text.py": "2026-09-04.20",
     "fetch_calendar_archive.py": "2026-09-08.5",
     "fetch_captions.py": "2026-09-05.10",
-    "fetch_channel_index.py": "2026-09-04.1",
+    "fetch_channel_index.py": "2026-09-04.2",
     "fetch_committee_reports.py": "2026-09-04.21",
     "fetch_committee_details.py": "2026-09-07.3",
     "fetch_committees.py": "2026-09-04.2",
@@ -51,7 +51,7 @@
     "netcheck.py": "2026-09-04.2",
     "nightly.py": "2026-09-04.5",
     "parse_districts.py": "2026-09-04.1",
-    "preflight.py": "2026-09-04.84",
+    "preflight.py": "2026-09-04.85",
     "probe_alignment.py": "2026-09-05.58",
     "probe_amendments.py": "2026-09-04.3",
     "probe_archive.py": "2026-09-04.1",
@@ -94,7 +94,8 @@
     "app.css": "2026-09-07.38",
     "fetch_members_db.py": "2026-09-07.1",
     "build_bill_versions.py": "2026-09-09.5",
-    "site_read.py": "2026-09-09.1"
+    "site_read.py": "2026-09-09.1",
+    "keys.py": "2026-09-10.1"
   },
   "generated": "2026-09-04"
 }
