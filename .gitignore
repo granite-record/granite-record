@@ -171,3 +171,7 @@ sponsors_form.html
 
 # The General Court's own list of past and present legislators, one request.
 past_members.json
+
+# The roll call detail pages, fetched for the party they carry.
+rollcall_party_pages/
+member_party.json

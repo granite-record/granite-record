@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.97
+# GRANITE_VERSION: 2026-09-04.98
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3066,6 +3066,51 @@ def _testimony_dated(build_site_v2):
     assert f({"raw": "Ought to Pass: MA VV 03/06/2026", "date": "2026-03-06"},
              tdb, None) == {}, "a floor vote was given a sign-in count"
     return "ok", "the hearing's own count, or the bill's, and it says which"
+
+
+@check("narrative", "a ballot row gives up a member's party and district",
+       needs=("fetch_rollcall_parties",))
+def _ballot_row(fetch_rollcall_parties):
+    """Real markup from the 2004 roll call a person found on 10 September.
+
+    It is the only source on this disk that carries a PARTY for the people who
+    voted before 2017 -- 773,506 ballots with none -- and it is addressed by
+    what RollCallSummary already holds, sy and vs and lb, with the bill number
+    and LSR the site's own link carries turning out to be ignored.
+
+    Two things the fixture pins. The header row has five cells like every
+    other row and is dropped by its party column not being a party, not by
+    position. And "Adams, Jarvis" of Hillsborough sat in districts 02 and 31
+    of the same chamber in the same year, so a member is (name, district) and
+    never a name alone.
+    """
+    row = ('<tr><td width="36%">{who}</td><td width="20%">{party}</td>'
+           '<td width="20%">{county}</td><td width="12%">{dist}</td>'
+           '<td width="12%">{vote}</td></tr>')
+    page = "<table>" + "".join([
+        row.format(who="", party="<strong>Party</strong>",
+                   county="<strong>County</strong>",
+                   dist="<strong>District</strong>", vote="<strong>Vote</strong>"),
+        row.format(who="\n\tAdams, Jarvis\n\n", party="Republican",
+                   county="Hillsborough", dist="02", vote="Nay"),
+        row.format(who="\nAdams, Jarvis\n", party="Republican",
+                   county="Hillsborough", dist="31", vote="Nay"),
+        row.format(who="\nAllison, David\n", party="Democrat",
+                   county="Sullivan", dist="22", vote="Excused"),
+    ]) + "</table>"
+    got = fetch_rollcall_parties.parse(page)
+    assert len(got) == 3, f"{len(got)} ballots; the header must not be one"
+    assert [r["party"] for r in got] == ["R", "R", "D"], got
+    # The county is written the way every other file on this disk writes it,
+    # so a member from here sits beside one from former_members.json.
+    assert got[0]["county"] == "Hills", got[0]
+    assert got[2]["county"] == "Sull", got[2]
+    assert [r["district"] for r in got[:2]] == ["02", "31"], (
+        "two members share a name in one chamber; district is what parts them")
+    # Excused is a ballot too: it is how the fullest roll call of a year names
+    # almost the whole chamber rather than only those present.
+    assert got[2]["vote"] == "Excused", got[2]
+    return "ok", "three ballots, header dropped, two members sharing a name"
 
 
 @check("narrative", "a past member's label gives up their name and district",
