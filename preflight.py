@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.90
+# GRANITE_VERSION: 2026-09-04.91
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -40,6 +40,7 @@ import argparse
 import ast
 import csv
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -50,6 +51,24 @@ from collections import Counter
 from pathlib import Path
 
 CHECKS = []
+
+
+def _run(cmd, **kw):
+    """subprocess.run, with the child's output read as UTF-8.
+
+    Every child here is Python or node. Python on Windows writes to a pipe
+    in the console code page -- an em dash is the single byte 0x97 -- while
+    this process, run with -X utf8, read the pipe as UTF-8. The reader
+    thread died on the first such byte, printed a traceback the summary
+    never counted, and the check that ran the child went on with nothing
+    for that stream. Seven reads failed that way on 10 September, under a
+    line that said 77 passed. PYTHONUTF8 makes the child write UTF-8;
+    errors="replace" means nothing a child can print will stop the read.
+    """
+    env = dict(os.environ, PYTHONUTF8="1")
+    env.update(kw.pop("env", None) or {})
+    kw.pop("text", None)
+    return subprocess.run(cmd, env=env, encoding="utf-8", errors="replace", **kw)
 
 
 def check(group, name, needs=()):
@@ -163,7 +182,7 @@ def _upcoming_shape():
         for f in [x.name for x in here.glob("*.py")]:
             if (here / f).exists():
                 shutil.copy(here / f, root / f)
-        r = subprocess.run(
+        r = _run(
             [sys.executable, "build_site_v2.py", "--data", "data",
              "--out", "site", "--segments", "work"],
             cwd=root, capture_output=True, text=True, timeout=300)
@@ -208,7 +227,7 @@ def _one_address():
     import subprocess
     CORRECT = "contact@graniterecord.org"
     try:
-        out = subprocess.run(["git", "ls-files"], capture_output=True,
+        out = _run(["git", "ls-files"], capture_output=True,
                              text=True, timeout=60)
     except (OSError, subprocess.SubprocessError) as e:
         return "skip", f"git would not list the tracked files ({e})"
@@ -254,7 +273,7 @@ def _no_secrets():
     """
     import subprocess
     try:
-        out = subprocess.run(["git", "ls-files"], capture_output=True,
+        out = _run(["git", "ls-files"], capture_output=True,
                              text=True, timeout=60)
     except (OSError, subprocess.SubprocessError) as e:
         return "skip", f"git would not list the tracked files ({e})"
@@ -598,7 +617,7 @@ def _tally_match():
         lines.append("0:03:00 197 in the affirmative, 151 in the negative")
         lines.append("0:03:30 the committee report is adopted")
         (d / "t.txt").write_text("\n".join(lines), encoding="utf-8")
-        r = subprocess.run([sys.executable, "floor_markers.py",
+        r = _run([sys.executable, "floor_markers.py",
                             "--transcript", str(d / "t.txt"),
                             "--summary", str(d / "RollCallSummary.txt")],
                            capture_output=True, text=True, timeout=120)
@@ -680,7 +699,7 @@ def _fixture(root):
 
 
 def _run_markers(root, *flags):
-    return subprocess.run(
+    return _run(
         [sys.executable, "apply_markers.py", "--workdir", str(root / "work"),
          "--manifest", str(root / "manifest.csv"), *flags],
         capture_output=True, text=True, timeout=180)
@@ -780,7 +799,7 @@ def _verify_bands():
     try:
         _fixture(root)
         _run_markers(root, "--apply")
-        r = subprocess.run([sys.executable, "verify_batch.py",
+        r = _run([sys.executable, "verify_batch.py",
                             "--work", str(root / "work"),
                             "--manifest", str(root / "manifest.csv")],
                            capture_output=True, text=True, timeout=120)
@@ -902,7 +921,7 @@ def _bills_html():
         js = "\n".join(_re.findall(r"<script>(.*?)</script>", t, _re.S))
         f = Path(tempfile.mkdtemp()) / "b.js"
         f.write_text(js, encoding="utf-8")
-        r = subprocess.run(["node", "--check", str(f)], capture_output=True, text=True)
+        r = _run(["node", "--check", str(f)], capture_output=True, text=True)
         shutil.rmtree(f.parent, ignore_errors=True)
         assert r.returncode == 0, "node --check: " + r.stderr.strip()[:150]
         extra = ", node --check clean"
@@ -1265,7 +1284,7 @@ def _marker_cases():
     f = Path("tests/test_markers.py")
     if not f.exists():
         return "skip", "tests/test_markers.py not here"
-    r = subprocess.run([sys.executable, str(f)], capture_output=True, text=True)
+    r = _run([sys.executable, str(f)], capture_output=True, text=True)
     assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
     return "ok", r.stdout.strip().splitlines()[-1][:70]
 
@@ -1685,7 +1704,7 @@ for (var fi = 0; fi < fixtures.length; fi++) {
 }
 console.log("ok");
 """, encoding="utf-8")
-        r = subprocess.run(["node", "go.js"], cwd=root, capture_output=True,
+        r = _run(["node", "go.js"], cwd=root, capture_output=True,
                            text=True, timeout=90)
         assert r.returncode == 0, (r.stdout + r.stderr).strip().splitlines()[0][:150]
         return "ok", ("loaded in node, drew a bill and rendered its detail "
@@ -2106,9 +2125,26 @@ def _site_fixture(root):
     for f in ("build_proceedings.py", "proceedings.py"):
         if Path(f).exists():
             shutil.copy(f, root / f)
-    r = subprocess.run([sys.executable, "build_proceedings.py"], cwd=root,
+    r = _run([sys.executable, "build_proceedings.py"], cwd=root,
                        capture_output=True, text=True)
     assert r.returncode == 0, "fixture proceedings: " + (r.stderr or r.stdout)[-200:]
+
+
+@check("build", "every child process is read through _run")
+def _children_through_run():
+    """A raw subprocess.run(text=True) decodes in whatever the console
+    speaks, and a child that prints one em dash takes the whole stream with
+    it -- silently, as far as the pass/fail line is concerned."""
+    # Counted as calls in the syntax tree, not as text: the text of this
+    # file mentions subprocess.run in this docstring and in _run's, and a
+    # count of the words reported three where there is one call.
+    tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
+    raw = sum(1 for n in ast.walk(tree)
+              if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+              and n.func.attr == "run" and isinstance(n.func.value, ast.Name)
+              and n.func.value.id == "subprocess")
+    assert raw == 1, f"{raw} raw subprocess.run calls; every child goes through _run"
+    return "ok", "one raw call, inside _run"
 
 
 @check("build", "every builder runs end to end on a fixture site")
@@ -2139,7 +2175,7 @@ def _proceedings_table():
              "motions":["OTPA"],"tallies":["197-151"],"kind":"floor debate",
              "debate_end":21197.0,"window_start":18954.0,"precise":True}]}),
             encoding="utf-8")
-        r = subprocess.run([sys.executable, "build_proceedings.py"], cwd=root,
+        r = _run([sys.executable, "build_proceedings.py"], cwd=root,
                            capture_output=True, text=True)
         assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
         sys.path.insert(0, str(root))
@@ -2193,13 +2229,13 @@ def _chain():
              "site/feed/all.xml"),
         ]
         for script, args, produces in steps:
-            r = subprocess.run([sys.executable, str(here / script), *args],
+            r = _run([sys.executable, str(here / script), *args],
                                cwd=root, capture_output=True, text=True, timeout=180)
             if r.returncode != 0:
                 tail = (r.stderr or r.stdout).strip().splitlines()
                 raise AssertionError(f"{script}: " + (tail[-1][:120] if tail else "?"))
             assert (root / produces).exists(), f"{script} produced no {produces}"
-        r = subprocess.run([sys.executable, str(here / "check_site.py"),
+        r = _run([sys.executable, str(here / "check_site.py"),
                             "--site", "site", "--base", base],
                            cwd=root, capture_output=True, text=True, timeout=120)
         bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
@@ -2309,7 +2345,7 @@ def _feed_needs_a_year():
                         "events": [{"date": "2026-02-01",
                                     "text": "It was introduced."}]}),
             encoding="utf-8")
-        r = subprocess.run([sys.executable, str(here / "build_feeds.py"),
+        r = _run([sys.executable, str(here / "build_feeds.py"),
                             "--site", "site", "--base", "https://x.test"],
                            cwd=root, capture_output=True, text=True, timeout=120)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-160:]
@@ -2344,7 +2380,7 @@ def _reports_old_shape():
             nested = json.loads((root / name).read_text(encoding="utf-8"))
             flat = {b: r for byb in nested.values() for b, r in byb.items()}
             (root / name).write_text(json.dumps(flat), encoding="utf-8")
-            r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+            r = _run([sys.executable, str(here / "build_site_v2.py"),
                                 "--data", "data", "--out", "site",
                                 "--segments", "work"],
                                cwd=root, capture_output=True, text=True,
@@ -2386,7 +2422,7 @@ def _bills_by_term():
                     "title": "an entirely different bill of the same number"})
         bills["2023-2024"] = {"HB1442": old}
         (root / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
-        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, str(here / "build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-160:]
@@ -2464,7 +2500,7 @@ def _termed_status_and_text():
                         "Be it Enacted by the Senate and House"}},
         }), encoding="utf-8")
 
-        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, str(here / "build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
@@ -2514,7 +2550,7 @@ def _narratives_old_shape():
         nested = json.loads((root / "narratives.json").read_text(encoding="utf-8"))
         flat = {b: r for byb in nested.values() for b, r in byb.items()}
         (root / "narratives.json").write_text(json.dumps(flat), encoding="utf-8")
-        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, str(here / "build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode != 0, ("the build accepted a narratives.json keyed "
@@ -2547,7 +2583,7 @@ def _disposed_beats_stale_status():
     root = Path(tempfile.mkdtemp())
     try:
         _site_fixture(root)
-        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, str(here / "build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
@@ -2588,7 +2624,7 @@ def _senate_reports():
     root = Path(tempfile.mkdtemp())
     try:
         _site_fixture(root)
-        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, str(here / "build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
@@ -2641,7 +2677,7 @@ def _rollcalls_by_term():
     root = Path(tempfile.mkdtemp())
     try:
         _site_fixture(root)
-        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, str(here / "build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
@@ -2689,7 +2725,7 @@ def _rollcalls_old_shape():
             for bill, votes in byterm.items():
                 flat.setdefault(bill, []).extend(votes)
         (root / "rollcalls.json").write_text(json.dumps(flat), encoding="utf-8")
-        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, str(here / "build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode != 0, ("the build accepted a rollcalls.json keyed on "
@@ -2709,7 +2745,7 @@ def _chain_output():
     root = Path(tempfile.mkdtemp())
     try:
         _site_fixture(root)
-        r = subprocess.run([sys.executable, str(here / "build_site_v2.py"),
+        r = _run([sys.executable, str(here / "build_site_v2.py"),
                             "--data", "data", "--out", "site", "--segments", "work"],
                            cwd=root, capture_output=True, text=True, timeout=180)
         assert r.returncode == 0, (r.stderr or r.stdout).strip()[-140:]
@@ -3151,7 +3187,7 @@ def _fetch_writes_its_term():
             "<tr><td>Body: H</td></tr><tr><td>Gen Status: SIGNED BY GOVERNOR"
             "</td></tr></table></body></html>", encoding="utf-8")
 
-        r = subprocess.run(
+        r = _run(
             [sys.executable, str(here / "fetch_bill_status.py"),
              "--reparse", "--term", "2023-2024", "--data", "data",
              "--out", "bill_status.json", "--cache", "status_pages"],
