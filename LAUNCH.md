@@ -32,16 +32,23 @@ allows.** MIT-licensed, with a README, since the 10th.
 
 ## 2. Running
 
-- **Docket**: 2017-2018 and 2019-2020 are done. 2021-2022 was **stopped by
-  hand at 500 of 1,752** on the 10th, because that term's bill list came back
-  with 1,485 hearing dates from 2025-2026 and it was worth understanding
-  before fetching more of it. 2015-2016, the Senate calendars and the bill
-  text wait behind it.
+- **Docket**: 2017-2018 and 2019-2020 are done. **2021-2022 resumed on the
+  10th at 588 of 1,752** -- about five and a half hours -- once the hearing
+  dates were traced to the General Court's own server rather than to anything
+  here. The 588 pages already on disk were checked first and are the right
+  term: the session year is an explicit request parameter, 5 of 5 sampled
+  pages carry the 2021-2022 title, and 4,718 of 4,720 action dates fall inside
+  the term. 2016 and the Senate calendars wait behind it.
 - **The 380-page sample of `gc.nh.gov/legislation/<year>/<BILL>.html` is
   done**: 297 pages saved, the parser read against them in three passes, and
   every bill asked for under 1996, 2016 and 2022 onward answered 404. The
-  full run for the five terms without sponsors waits on the docket chain and
-  on someone opening one 1996 and one 2016 address in a browser.
+  full run for the five terms without sponsors waits on the docket and on
+  three addresses a person can open in a browser. 2016's own status page
+  links no `legislation/` address at all and offers only
+  `bs2016/billText.aspx?id=<lsr><year>`; 1996's links its text as
+  `legislation/1996/hb297.htm` -- lower case, unpadded, `.htm` -- where every
+  other year 1989-2015 is `legislation/<year>/HB0109.html`. Both years sit
+  exactly on a change of the tool that generated the pages.
 - **Captions**, no longer throttled: about 60 a cycle, ~2,400 folders.
 
 `refusal.py` stops every fetch for 24 hours when the address says no, and
@@ -219,10 +226,20 @@ example on this site of a number outliving its premise.
   left is the terms whose dockets have not been fetched, and 1989-2014, for
   which the calendars are the only source: 61,767 bill-days parsed from PDFs
   already on disk, never merged. Still an architecture decision.
-- **`data/bills.json` had 1,485 hearing dates from the wrong term** on
-  2021-2022 bills -- what the legacy search returned for that year. Guarded on
-  the 10th: a hearing dated outside its own term is dropped. Re-fetching that
-  term's list is the real fix and waits on the chain.
+- ~~**`data/bills.json` had 1,485 hearing dates from the wrong term.**~~
+  *Diagnosed and closed on the 10th, and re-fetching was NOT the fix.* Asked
+  for session year 2021 or 2022, the legacy search returns the right bills and
+  fills the date of "Next/Last Hearing" from the 2025-2026 record with the
+  same legislationID -- an id that restarts each term. 1,481 of the 1,485
+  match the current session's hearing to the minute against the General
+  Court's own database dump; none disagree; no other term does it. The 93
+  dates that were inside the term are conference-committee meetings, not
+  hearings, so the whole field is dropped for that term and its hearings come
+  from its docket. Two findings fell out of the measurement: **1989-1998 have
+  no hearing dates at all** (all 8,524 bills read "Time not specified", and
+  were counted as hearings until now), and conference meetings sit in this
+  field for every archived term -- 79 in 2017-2018, 78 in 2023-2024 -- which
+  is not fixed, because the date alone cannot tell them apart.
 - **`end_stated` was not what it said** until 9 September, and any number
   recorded against it before then counted a next-boundary guess as a chair's
   spoken close.
