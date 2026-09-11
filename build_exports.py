@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.5
+# GRANITE_VERSION: 2026-09-10.6
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -110,8 +110,10 @@ def coverage(out):
 
 def bills(out, site):
     idx = load(site / "index.json", [])
+    # chapter goes last so a reader who counted columns before it existed
+    # still finds each one where it was.
     cols = ["term", "year", "bill", "title", "sponsor", "committee", "topic",
-            "status", "outcome", "passage", "roll_calls"]
+            "status", "outcome", "passage", "roll_calls", "chapter"]
     rows = ([b.get("term", ""), b.get("year", ""), b.get("id", ""),
              b.get("title", ""), b.get("sponsor", ""),
              "; ".join(b.get("committees") or ([b["committee"]]
@@ -119,12 +121,13 @@ def bills(out, site):
              b.get("topic", ""), b.get("status", ""), b.get("kind", ""),
              # Five characters: where it started and each stop it reached.
              # Documented on the data page rather than left as a code.
-             b.get("passage", ""), b.get("nrc", 0)]
+             b.get("passage", ""), b.get("nrc", 0), b.get("chapter", "")]
             for b in sorted(idx, key=lambda b: (str(b.get("term")),
                                                 str(b.get("id")))))
     return write(out, "bills.csv", cols, rows,
                  "Every bill of every term: title, sponsor, committee, "
-                 "outcome and how far it got.")
+                 "outcome, how far it got, and the chapter of the laws it "
+                 "became.")
 
 
 def legislators(out, site):
@@ -357,6 +360,12 @@ def data_page(site, out, tables, base, cov=()):
       <code>x</code> stopped there, <code>-</code> never reached it. A
       resolution has three characters rather than five, because it has fewer
       places to go.</p>
+    <p class="src"><b>The <code>chapter</code> column</b> is the chapter of
+      that year's session laws the bill became, as the General Court's docket
+      records it &mdash; &ldquo;1, special session&rdquo; for a special
+      session's own numbering. It is empty for a bill that did not become law, and for the
+      few whose docket gives the same number to two bills in one year, where
+      one of them is a typing error the docket cannot say which.</p>
     <p class="src"><b>Where a number is missing it is missing on purpose.</b> A
       hearing with no start time is one nobody has placed in the recording
       yet, not one that did not happen; a bill with no roll calls was decided

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.71
+# GRANITE_VERSION: 2026-09-05.72
 """
 Generate the faceted site from real General Court data.
 
@@ -2209,7 +2209,7 @@ Disposition = namedtuple("Disposition",
 
 
 def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
-                   narr, rcs, coverage, carried, dates):
+                   narr, rcs, coverage, carried, dates, chapter=""):
     """One bill's row in the search index.
 
     STEP 9 OF SPLITTING build_bills, and the last. It comes after
@@ -2252,6 +2252,10 @@ def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
                             disp.status,
                            bid),
         "last_action": dates[-1] if dates else "",
+        # Only on a bill that became one, so the 21,864 that did not cost
+        # the up-front index nothing. bills.csv reads it from here, which
+        # keeps the download and the page from disagreeing.
+        **({"chapter": chapter} if chapter else {}),
         "nrc": len([r for r in rcs if not r.get("procedural")]),
         "votedays": sorted({r["date"] for r in rcs if r.get("date")}),
     }
@@ -2690,9 +2694,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                  (("House", b.get("house_committee") or ""),
                   ("Senate", b.get("senate_committee") or "")) if nm]
         cmte = cmtes[0] if cmtes else ""
+        chapter = chapter_of(st, (chapters or {}).get(term, {}).get(bid),
+                             n_chapter)
         index.append(bill_index_row(
             bid, b, year, term, cmte, cmtes, disp, prime,
-            narr, rcs, coverage, carried, dates))
+            narr, rcs, coverage, carried, dates, chapter))
 
         # ---- one detail file per bill, loaded only when expanded
         # ---- the official documents behind this bill --------------------
@@ -2794,8 +2800,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             "status_source": ("General Court docket" if settled
                               else "General Court bill status page" if told
                               else "derived from the docket"),
-            "chapter": chapter_of(st, (chapters or {}).get(term, {}).get(bid),
-                                  n_chapter),
+            "chapter": chapter,
             # Named for what it is rather than for the format the
             # scrape guessed at: the General Court's own text of
             # this bill, in the form its status page links to.
