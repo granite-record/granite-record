@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.2
+# GRANITE_VERSION: 2026-09-08.3
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -598,14 +598,20 @@ SRC_SENATE_SCHEDULE = ("Senate meeting schedule",
                        GC + "/senate/schedule/dailyschedule.aspx")
 SRC_CALENDARS = ("House calendars and journals",
                  GC + "/house/calendars_journals/")
-SRC_COUNCIL = ("The Executive Council", NH + "/council")
-SRC_GOVERNOR = ("The Governor's office", NH + "/governor")
+# The three below were NH + "/council", "/governor" and "/agencies" until
+# 11 September, when a browser found each one a "Page Not Found" on nh.gov.
+# The replacements are the addresses nh.gov itself links to: the governor
+# from its front page, the council from its agency list, and the list
+# from its front page's "State Agency" link.
+SRC_COUNCIL = ("The Executive Council", "https://www.council.nh.gov/")
+SRC_GOVERNOR = ("The Governor's office", "https://www.governor.nh.gov/")
 SRC_COURTS = ("New Hampshire Judicial Branch", "https://www.courts.nh.gov")
 SRC_RULES = ("Administrative rules, RSA 541-A",
              RSA + "/NHTOC/NHTOC-LV-541-A.htm")
 SRC_JLCAR = ("Joint Legislative Committee on Administrative Rules",
              GC + "/rules")
-SRC_AGENCIES = ("State agencies, A to Z", NH + "/agencies")
+SRC_AGENCIES = ("State agencies, A to Z",
+                NH + "/government/state-government-agencies")
 SRC_SOS = ("Secretary of State", "https://www.sos.nh.gov")
 
 
