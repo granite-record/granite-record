@@ -250,6 +250,11 @@ count, it belongs in `handoff.py` instead.
 just built -- because wrangler has reported success for deployments the
 production domain never took. The gate has also run too early: a deploy that
 "did not land" thirty seconds after upload had landed by the second check.
+Until 11 September it did not run at all: `npx` is `npx.cmd`, and without
+`CALL` a batch file that runs another never gets control back, so every
+publish ended at wrangler's own "Deployment complete!". A publish log that
+ends there, with no "Confirming the world is getting what was just built"
+after it, is that fault back.
 
 Deploying is a person's decision. When the person is away from the keyboard
 they have sometimes said so and permitted it; that is per-absence, not
@@ -267,7 +272,7 @@ from 08:57, with the person's leave to fetch for that absence):
 
 | | |
 |---|---|
-| `watchers/gc_lane.py` | **the one General Court worker**: runs `watchers/gc_lane.queue` step by step holding `archive/.lock` -- the 2015-2016 docket, then bill text 2017-2024 in 800-request runs with an hour's rest between. **Stopped at 11:36 on the 11th on a refusal** (two read timeouts); waits for a person: `netcheck.py`, then `refusal.py --clear`, then start it again |
+| `watchers/gc_lane.py` | **the one General Court worker**: runs `watchers/gc_lane.queue` step by step holding `archive/.lock` -- the 2015-2016 docket, then bill text 2017-2024 in 800-request runs with an hour's rest between. Stopped at 11:36 on the 11th on a refusal (two read timeouts); **restarted at 12:47** after `netcheck.py` and `refusal.py --clear`, on the person's leave, at 25 s a page |
 | `watchers/captions_watch.py` | YouTube, not the General Court; 676 captions wanted at the start |
 | `review.py --port 8799 --refresh --no-open` | the bench, loopback only; pools are cached on disk in `review/.pool-*.json`, so it needs `--refresh` after any parser change or rebuild, across restarts too |
 | one `http.server` on 8787 | serves `site/` (the `site` entry in `.claude/launch.json`) |
