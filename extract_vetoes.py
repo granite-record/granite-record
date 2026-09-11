@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.14
+# GRANITE_VERSION: 2026-09-07.15
 """
 The governor's veto messages, from the House calendars already on disk.
 
@@ -64,10 +64,33 @@ import proceedings as P
 
 # The heading, tolerant of what -layout does to a two-column page: HC012 has
 # "HOUSE                                    BILL  451-FN" with 40 spaces in it.
+#
+# AND THE OLDER HEADINGS, 1997-2014, read off the calendars rather than
+# imagined: "GOVERNOR'S VETO MESSAGE ON HB 149" (167 of them), "...REGARDING
+# HB 1", "...ON hb 12", "...ON HOUSE BILL 1220", "...of HB 403", "Regarding
+# Senate Bill 391". Those are accepted only when the heading stands ALONE on
+# its line, because the same words open the calendar's contents entries --
+# "Governor's Veto Message on HB 1220 / and HB 1333, Meetings and Notices" --
+# and a contents entry read as a heading would put the calendar's welcome
+# letter in a governor's mouth. messages() then requires such a message to
+# name its own bill, which a contents entry never does.
 HEAD = re.compile(
     r"GOVERNOR'?S\s+VETO\s+MESSAGE\s+REGARDING\s+"
-    r"(?P<kind>HOUSE|SENATE)\s+BILL\s+(?P<num>\d+)(?P<suffix>-[A-Z]+)?",
+    r"(?P<kind>HOUSE|SENATE)\s+BILL\s+(?P<num>\d+)(?P<suffix>-[A-Z]+)?"
+    r"|GOVERNOR'?S[ \t]+VETO[ \t]+MESSAGE[ \t]+(?:ON|REGARDING|OF)[ \t]+"
+    r"(?:(?P<okind>HOUSE|SENATE)[ \t]+BILL[ \t]+|(?P<abbr>HB|SB)[ \t]*)"
+    r"(?P<onum>\d+)(?P<osuffix>(?:-[A-Z]+)*)[ \t]*(?=\n|$)",
     re.I)
+# A date on its own line straight after an older heading -- "June 19, 1997",
+# "April 26th, 2004" -- where Shaheen and Benson dated their messages.
+TOPDATE = re.compile(r"^\s*([A-Z][a-z]+\s+\d{1,2})(?:st|nd|rd|th)?,\s*(\d{4})\s*$",
+                     re.M)
+# A signature that is a name, not the rule it is signed on or the date line:
+# a 2010 Senate block prints "Date: July 20, 2010 ______" where the name is.
+NAMEISH = re.compile(r"^[A-Z][A-Za-z.'\-]+(?:\s+[A-Z][A-Za-z.'\-]*)*(?:,\s*Governor)?$")
+# The 1997-1999 calendars are printouts of web pages, and the browser's own
+# footer lands in the text: "file:///C/Users/.../houcal75.htm[11/8/2021 ...]".
+PRINTOUT = re.compile(r"^[^\n]*file:///[^\n]*$", re.M)
 # The signature block that ends one.
 SIGN = re.compile(
     # A comma on most, a full stop on SB501.
@@ -98,7 +121,7 @@ SOFT = re.compile(r"(\w)-\n[ \t]*([a-z])")
 # noticed. HC029 heads one message "HOUSE BILL 1358" and ends it "I have vetoed
 # House Bill 1385"; one of those is a typo at the source and this site does not
 # get to decide which.
-INBODY = re.compile(r"\b(?:House|Senate)\s+Bill\s+(\d+)\b", re.I)
+INBODY = re.compile(r"\b(?:House\s+Bill|Senate\s+Bill|HB|SB)\s*(\d+)\b", re.I)
 HEALED = [0]
 
 
@@ -117,9 +140,23 @@ PAGEHEAD = re.compile(
     # The House's running header names the record: "13 JUNE2025HOUSERECORD 3".
     # The Senate's is a bare page number on its own line. Both are the line
     # straight after a form feed, and both land inside a sentence when a
-    # message runs over a page.
-    r"\n*\x0c[ \t]*(?:[^\n]*(?:HOUSE|SENATE)\s*RECORD[^\n]*|\d{1,4})[ \t]*\n*",
+    # message runs over a page. The 1997-2000 calendars are browser printouts
+    # whose page header is "House Calendar 62" or "House Calendar No. 12":
+    # it landed in HB1310 of 1998 as "...can be accepted. House Calendar 62
+    # H.B. 1310 would impose...". Only straight after a form feed, so a
+    # sentence that mentions a calendar is never touched.
+    r"\n*\x0c[ \t]*(?:[^\n]*(?:HOUSE|SENATE)\s*RECORD[^\n]*|\d{1,4}"
+    r"|(?:HOUSE|SENATE)\s+CALENDAR(?:\s+NO\.?)?\s*\d*[A-Z]?)[ \t]*\n*",
     re.I)
+# A governor's name as the calendar printed it can carry the typesetter's
+# slip -- "Margret Wood Hassan", "Jeanne Shaheen Governor" -- and a byline is
+# a person's name, which this site gives correctly rather than as mistyped.
+# The message itself is quoted exactly; only the byline is normalised, and
+# only for the governors of the years on disk.
+GOVERNORS = {"shaheen": "Jeanne Shaheen", "benson": "Craig R. Benson",
+             "lynch": "John H. Lynch", "hassan": "Margaret Wood Hassan",
+             "sununu": "Christopher T. Sununu", "ayotte": "Kelly A. Ayotte",
+             "merrill": "Stephen Merrill", "gregg": "Judd Gregg"}
 ENDS_SENTENCE = re.compile(r"[.!?:\u201d\"]\s*$")
 
 
@@ -196,6 +233,7 @@ def tidy(text):
 
 def messages(text, source):
     """Every veto message in one calendar."""
+    text = PRINTOUT.sub("", text)
     text, healed = unpaginate(text)
     HEALED[0] += healed
     found = []
@@ -204,6 +242,11 @@ def messages(text, source):
     for i, m in enumerate(marks):
         end = marks[i + 1].start() if i + 1 < len(marks) else len(text)
         block = text[m.end():end]
+        old = m.group("onum") is not None
+        # An older heading's date line, before it can become paragraph one.
+        top = TOPDATE.match(block.lstrip("\n")) if old else None
+        if top:
+            block = block.lstrip("\n")[top.end():]
         sig = SIGN.search(block)
         body = block[:sig.start()] if sig else block
         paras, joins = tidy(body)
@@ -214,18 +257,45 @@ def messages(text, source):
             paras = paras[1:]
         if not paras:
             continue
-        bill = ("HB" if m.group("kind").upper() == "HOUSE" else "SB") + m.group("num")
+        if old:
+            kind = m.group("okind") or ("HOUSE" if m.group("abbr").upper() == "HB"
+                                        else "SENATE")
+            bill = ("HB" if kind.upper() == "HOUSE" else "SB") + m.group("onum")
+        else:
+            bill = ("HB" if m.group("kind").upper() == "HOUSE" else "SB") + m.group("num")
         said = {x for x in INBODY.findall(" ".join(paras))}
+        # AN OLDER HEADING MUST BE MET BY ITS OWN BILL IN THE TEXT. Shaheen,
+        # Benson, Lynch and Hassan all end "I have vetoed HB 503" or name the
+        # bill in the first sentence; a contents entry that slipped past the
+        # alone-on-its-line rule names nothing. The modern form keeps its
+        # old behaviour -- HC029's "HB 1358"/"House Bill 1385" typo is the
+        # source's own and is published as it stands.
+        if old and re.sub(r"\D", "", bill) not in said:
+            dropped.append((bill, "does not name its own bill"))
+            continue
         # "Kelly A. Ayotte, Governor" and "Christopher T. Sununu, Governor"
         # -- one name shape, whichever line the title arrived on.
         who = (sig.group("who").strip().rstrip(",") if sig else "")
         if sig and sig.group("title") and "governor" not in who.lower():
             who = f"{who}, {sig.group('title').strip()}"
+        if who and not NAMEISH.match(who):
+            dropped.append((bill, f"signed {who[:30]!r}, which is not a name"))
+            continue
+        # The byline, normalised to the governor's own name; a signature that
+        # is the title alone names nobody.
+        words = re.sub(r",?\s*Governor\s*$", "", who, flags=re.I).split()
+        if who and not words:
+            dropped.append((bill, "signed 'Governor' and no name"))
+            continue
+        if words and words[-1].lower() in GOVERNORS:
+            who = f"{GOVERNORS[words[-1].lower()]}, Governor"
         when = iso(sig.group("date")) if (sig and sig.group("date")) else ""
         if not when:
             m2 = SAIDDATE.search(" ".join(paras))
             if m2:
                 when = iso(m2.group(1))
+        if not when and top:
+            when = iso(f"{top.group(1)}, {top.group(2)}")
         # SHAPE FIRST. A message that runs past a plausible length, or that
         # carries a heading belonging to another section, is not a veto
         # message that needs trimming -- it is the end boundary having been
