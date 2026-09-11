@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.2
+# GRANITE_VERSION: 2026-09-10.3
 """The committee a bill was referred to, read out of the docket.
 
     python3 referrals.py            # what it finds, by year, no network
@@ -93,7 +93,9 @@ AMP = re.compile(r"\s*[&+]\s*")
 # corpus. A phrase is tried before its words so that "H & HS" becomes Health
 # and Human Services rather than two lone letters.
 PHRASES = [
-    (r"\bEXEC\.?\s*DEPTS?\.?\s*(?:&|\+|AND)\s*ADMIN\.?\b",
+    # ADM as well as ADMIN: the clerk of 1989 wrote "EXEC DEPTS & ADM",
+    # which reached the site as "Exec Depts and Adm".
+    (r"\bEXEC\.?\s*DEPTS?\.?\s*(?:&|\+|AND)\s*ADM(?:IN)?\.?\b",
      "Executive Departments and Administration"),
     (r"\bMUN\.?\s*(?:&|/|\+|AND)?\s*C(?:N?TY|OUNTY)\.?\s*GOVT?\.?\b",
      "Municipal and County Government"),

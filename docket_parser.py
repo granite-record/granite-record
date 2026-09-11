@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.7
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -64,6 +64,142 @@ SENATE_SCHED_RE = re.compile(
     r"(?P<time>\d{1,2}:\d{2}\s*[ap]m)",
     re.IGNORECASE,
 )
+
+# THE ARCHIVE'S OWN SHORTHAND, 1989-1998.
+#
+#   HEARING   02/08/89       10:00 REP HALL  FOR: EXEC DEPTS & ADM
+#   HEARING MAR17 08:30 RM101,LOB    FOR: TRANSPORTATION
+#   RESCHEDULED HEARING 3/06/90 10:00  RM209LOB FOR: EDUCATION
+#   COMMERCE HEARING SECS.5-14 MAR24 01:30 RM207,LOB
+#
+# 15,401 lines mention a hearing across those ten terms and 14,836 carry a
+# date and a time -- 96%. Nothing else on this disk has them: the calendars
+# start in 1997 and the video starts in 2020, so for eight of these ten terms
+# this line is the only record that a bill was ever heard.
+#
+# A DATE AND A TIME MUST FOLLOW THE WORD, which is what keeps "SEN RUSSMAN
+# SUSP RULES FOR HEARING, MA 2/3VV; SJ15,P371" from becoming a hearing.
+LEGACY_SCHED_RE = re.compile(
+    # Up to ten characters of padding, because the clerk aligned these by eye
+    # and "HEARING       02/07/89" carries seven spaces.
+    r"\bHEARING\b[^0-9A-Za-z]{0,10}"
+    # Three date forms: with a year, without one, and by month name. The
+    # yearless ones take their year from the row that announced them.
+    r"(?P<date>\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{2,4}"
+    r"|\d{1,2}\s*/\s*\d{1,2}|[A-Z]{3}\s*\d{1,2})"
+    # NOON is a time. It is written 39 times and means exactly midday.
+    r"\s+(?P<time>\d{1,2}:\d{2}|NOON)"
+    r"(?P<rest>.*)$", re.I)
+# The committee is named after FOR, with or without its colon, and sometimes
+# with the room run into it: "RM105-A,SHFOR: APPROPRIATIONS".
+LEGACY_FOR_RE = re.compile(r"FOR\s*:?\s*(?P<committee>[A-Z][^;]*?)\s*$", re.I)
+MONTHS = {m: i for i, m in enumerate(
+    "JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split(), 1)}
+
+
+def _legacy_date(s, written, session=None):
+    """The hearing's date. Two forms, and only one of them states a year.
+
+    "4/5/89" is a date. "MAR17" is not -- it takes its year from the row that
+    announced it, which is the only year on the line. A row is written days or
+    weeks BEFORE the hearing it announces (02/08 announced on 01/25), so where
+    the month-name form would fall well before the row was written, it belongs
+    to the following year: a December row announcing a January sitting.
+    """
+    s = re.sub(r"\s+", "", s or "")
+    m = re.match(r"(\d{1,2})/(\d{1,2})/(\d{2,4})$", s)
+    if m:
+        mo, dy, yr = (int(x) for x in m.groups())
+        two_digit = len(m.group(3)) <= 2
+        if yr < 100:
+            yr += 1900 if yr >= 60 else 2000
+        try:
+            got = date(yr, mo, dy)
+        except ValueError:
+            return None
+        # A TWO-DIGIT YEAR IS ONE KEYSTROKE FROM A DIFFERENT DECADE. One row
+        # in the 1989-1990 docket reads "HEARING 3/20/99" and was written on
+        # 13 March 1990, announcing a hearing the following week; read
+        # literally it put a 1990 hearing in 1999. Where the row that
+        # announced it is on the record and the stated year is more than a
+        # year away from it, the row's own year is taken instead -- and only
+        # when that lands the hearing within a year, so a genuinely distant
+        # date is kept rather than dragged closer.
+        if two_digit and written and abs((got - written.date()).days) > 400:
+            try:
+                near = date(written.year, mo, dy)
+            except ValueError:
+                return got
+            if abs((near - written.date()).days) <= 400:
+                return near
+        return got
+    # "3/15", a month and a day with no year at all.
+    m = re.match(r"(\d{1,2})/(\d{1,2})$", s)
+    if m:
+        mo, dy = int(m.group(1)), int(m.group(2))
+    else:
+        m = re.match(r"([A-Za-z]{3})(\d{1,2})$", s)
+        if not m or m.group(1).upper() not in MONTHS:
+            return None
+        mo, dy = MONTHS[m.group(1).upper()], int(m.group(2))
+    if not written:
+        return None
+    # THE ROW'S OWN TIMESTAMP IS NOT ALWAYS SANE. Ten rows of these ten terms
+    # carry a written year more than a year from their session year, and one
+    # of them -- SB623, "01/06/1904" for a 1994 row -- put a hearing in 1904
+    # and invented a 1903-1904 term in proceedings.csv. Where the two
+    # disagree, the session year is the better of them: it is the year the
+    # docket file is FOR, and it is not a keystroke.
+    if session and abs(written.year - session) > 1:
+        written = written.replace(year=session)
+    try:
+        got = date(written.year, mo, dy)
+    except ValueError:
+        return None
+    if (got - written.date()).days < -60:
+        try:
+            got = date(written.year + 1, mo, dy)
+        except ValueError:
+            return None
+    return got
+
+
+def _legacy_time(s):
+    """The stated time, on a twenty-four hour reading of a twelve-hour clock.
+
+    The old docket writes "01:30" and "10:00" and never says which half of the
+    day it means. The modern docket does say, and it settles the convention by
+    counting rather than by assumption -- across 31,000 modern hearings:
+
+        1:00 pm 7,196 / am 21      8:00 am    93 / pm  0
+        2:00 pm 2,780 / am  4      9:00 am 6,000 / pm  0
+        3:00 pm   638 / am  0     10:00 am 11,116 / pm 10
+        4:00 pm    63 / am  0     11:00 am  3,439 / pm 15
+        12:00 pm  333 / am  3
+
+    So one to six is the afternoon and eight to eleven is the morning, and
+    the legacy hours fall in exactly those two clusters: 10:00 is the commonest
+    at 4,993 and 1:00 next at 2,242, with nothing between 12 and 1 either way.
+
+    Seven is the one guess on this page. It occurs 15 times in the old docket
+    and once in the whole modern one, where it is 7 am -- so it is read as
+    morning, on a single instance of evidence, and it is worth knowing that is
+    all that stands behind it.
+    """
+    if (s or "").strip().upper() == "NOON":
+        return time(12, 0)
+    try:
+        h, mi = (int(x) for x in s.split(":"))
+    except (ValueError, AttributeError):
+        return None
+    if not (0 <= mi < 60):
+        return None
+    if 1 <= h <= 6:
+        h += 12
+    if not (0 <= h < 24):
+        return None
+    return time(h, mi)
+
 
 # Trailing journal/calendar citation: "HJ 2  P. 5", "SJ 3", "SC 7", "HC 5  P. 7".
 # Must be stripped BEFORE referral extraction -- flag-cleaning collapses runs of
@@ -231,6 +367,18 @@ def committee_on(timeline, bill, when):
     return current or (entries[0][1] if entries else None)
 
 
+def _legacy_committee(raw):
+    """"EXEC DEPTS & ADM" as a committee's name, or None."""
+    if not raw:
+        return None
+    try:
+        import referrals
+    except ImportError:
+        return normalize_committee(raw)
+    got = referrals.committee("INTRODUCED AND REF TO " + raw)
+    return got or normalize_committee(raw)
+
+
 def parse_proceedings(rows, timeline):
     out = []
     for r in rows:
@@ -241,23 +389,60 @@ def parse_proceedings(rows, timeline):
             venue = f"{m.group('bldg').upper()} {m.group('room')}"
         else:
             m = HOUSE_SCHED_RE.search(clean)
-            if not m:
-                continue
-            kind = m.group("kind").lower()
-            venue = (m.group("venue") or "").strip() or None
+            if m:
+                kind = m.group("kind").lower()
+                venue = (m.group("venue") or "").strip() or None
+            else:
+                m = LEGACY_SCHED_RE.search(clean)
+                if not m:
+                    continue
+                kind = "hearing"
+                rest = m.group("rest") or ""
+                fm = LEGACY_FOR_RE.search(rest)
+                venue = (rest[:fm.start()] if fm else rest).strip(" .,:") or None
+                legacy_cmte = fm.group("committee").strip() if fm else None
 
         if kind not in VIDEO_KINDS:
             continue
 
-        d = _parse_date(m.group("date"))
-        t = _parse_time(m.group("time")) if m.group("time") else None
+        legacy = m.re is LEGACY_SCHED_RE
+        if legacy:
+            written = None
+            try:
+                written = datetime.strptime(r["created"].strip(),
+                                            "%m/%d/%Y %I:%M:%S %p")
+            except ValueError:
+                try:
+                    written = datetime.strptime(r["created"].strip()[:10],
+                                                "%m/%d/%Y")
+                except ValueError:
+                    written = None
+            session = None
+            head = (r.get("lsr") or "").split("-")[0]
+            if head.isdigit():
+                session = int(head)
+            d = _legacy_date(m.group("date"), written, session)
+            if d is None:
+                continue
+            t = _legacy_time(m.group("time"))
+        else:
+            legacy_cmte = None
+            d = _parse_date(m.group("date"))
+            t = _parse_time(m.group("time")) if m.group("time") else None
 
         p = Proceeding(
             bill=r["bill"], body=r["body"], lsr=r["lsr"], kind=kind,
             sched_date=d.isoformat(),
             sched_time=t.strftime("%H:%M") if t else None,
             venue=venue, flags=flags,
-            committee=committee_on(timeline, r["bill"], d),
+            # The legacy line names its own committee -- "FOR: EXEC DEPTS
+            # & ADM" -- which is a better answer than the referral timeline,
+            # because that timeline is built from "Introduced ... and referred
+            # to", and the clerk of 1989 wrote "INTRODUCED AND REF TO". The
+            # name is expanded through referrals, which knows the General
+            # Court's own key to its shorthand.
+            committee=(_legacy_committee(legacy_cmte)
+                       or committee_on(timeline, r["bill"], d)),
             raw=r["desc"].strip(), row_created=r["created"], row_updated=r["updated"],
         )
 
