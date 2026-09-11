@@ -380,6 +380,17 @@ example on this site of a number outliving its premise.
   status-field table tested "overridden" first; the docket reader already
   had it right. 1989-2012, each confirmed from its docket; found because
   none had a chapter.
+- ~~**Archived statuses this site made up.**~~ *Closed on the 11th*
+  (5e8bd26, 5a12efd). 495 bills of closed terms read "In committee" or "In
+  progress" -- `classify()`'s last resort -- over fields saying REPORT
+  FILED, CONFERENCE COMMITTEE or CONFERENCE REPORT ADOPTED, which they now
+  read; HB 1075 of 1998, signed, read "In committee"; fifteen closed-term
+  vetoes read "awaiting an override vote", thirteen of them with a docket
+  line saying it failed. The signature and failed-override lines come from
+  `extract_chapters.py` for the twelve terms whose dockets are not narrated.
+  Each change was measured on every bill before and after: 496, then 38,
+  exactly those. Also one name each now for "Died on the table" and
+  "Referred for interim study", which the facet listed twice.
 
 ## 6a. Filled from disk on the 11th, no request made
 
