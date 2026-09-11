@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.107
+# GRANITE_VERSION: 2026-09-04.108
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3693,6 +3693,31 @@ def _fetch_writes_its_term():
             "the term that was not being fetched was overwritten")
         return "ok", ("the fetched term is written and the other term "
                       "survives it")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "an archived term's manifest cannot overwrite the current term's")
+def _manifest_out():
+    """build_proceedings reads every verification_manifest*.csv, and
+    build_manifest's --out defaults to the current term's. A run over an
+    archived docket that forgot --out would replace the current term's rows
+    with the archived term's: the current term gone from proceedings.csv, the
+    other in it twice. It is refused before anything is read."""
+    here = Path(".").resolve()
+    if not (here / "build_manifest.py").exists():
+        return "skip", "build_manifest.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        r = _run([sys.executable, str(here / "build_manifest.py"),
+                  "--docket", "Docket_2019-2020.txt", "--videos", "none.csv"],
+                 cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout or "") + (r.stderr or "")
+        assert r.returncode != 0 and "verification_manifest_2019-2020.csv" in said, (
+            "an archived docket with the default --out was not refused: "
+            + said.strip()[-160:])
+        assert not (root / "verification_manifest.csv").exists()
+        return "ok", "an archived docket must name its own manifest"
     finally:
         shutil.rmtree(root, ignore_errors=True)
 

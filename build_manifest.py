@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.6
+# GRANITE_VERSION: 2026-09-05.7
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
@@ -265,6 +265,17 @@ def main():
     # Naming the file it wants and the command that gets it costs one run and
     # keeps the decision with a person.
     docket_path = a.docket or "Docket.txt"
+    # AN ARCHIVED TERM IS WRITTEN TO ITS OWN FILE. --out defaults to
+    # verification_manifest.csv, the current term's, and build_proceedings
+    # reads every verification_manifest*.csv: a run over Docket_2019-2020.txt
+    # that forgot --out would replace the current term's manifest with
+    # 2019-2020's rows, so the current term would vanish from
+    # proceedings.csv and 2019-2020 would appear in it twice.
+    m = re.match(r"Docket(?:_db)?_(\d{4}-\d{4})\.txt$", Path(docket_path).name)
+    if m and Path(a.out).name == "verification_manifest.csv":
+        sys.exit(f"{docket_path} is the {m.group(1)} term's docket, and --out "
+                 "is the current term's manifest. Pass\n"
+                 f"    --out verification_manifest_{m.group(1)}.csv")
     if not Path(docket_path).exists():
         sys.exit(
             f"No {docket_path}.\n\n"

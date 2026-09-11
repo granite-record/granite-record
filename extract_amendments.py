@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Amendment text, out of the calendars already on this disk.
 
@@ -189,6 +189,9 @@ def main():
     ap.add_argument("--out", default="amendments.json")
     ap.add_argument("--show", type=int, default=0, help="print N, write nothing")
     ap.add_argument("--check", action="store_true", help="coverage only")
+    ap.add_argument("--replace", action="store_true",
+                    help="rewrite amendments.json from this run alone, "
+                         "rather than merging into it")
     a = ap.parse_args()
 
     pdfs = sorted(set(list(Path(a.calendars).rglob("*.pdf"))
@@ -250,17 +253,34 @@ def main():
         return
 
     out = Path(a.out)
+    prior = {}
     if out.exists():
         try:
-            had = len(json.loads(out.read_text(encoding="utf-8")))
+            prior = json.loads(out.read_text(encoding="utf-8"))
         except Exception:
-            had = 0
-        if had and len(found) < had * 0.5:
-            print(f"\nNOT WRITING {a.out}: {len(found):,} found against "
-                  f"{had:,} on file.\nThat is a read that failed, not "
-                  "amendments that were withdrawn.")
+            prior = {}
+    if not isinstance(prior, dict):
+        prior = {}
+    # MERGED, NOT REPLACED. The only guard here was a shrink below half, so
+    # a run over one year's calendars -- 660 found for 2019 against 663 on
+    # file -- passed it and wrote a file holding 2019 and nothing of 2025-2026.
+    # Every amendment number carries its year ("2025-0067h"), so this run's
+    # finds replace their own numbers and leave every other one alone. A
+    # full rewrite from what this run found is a flag, not an accident.
+    if a.replace:
+        if prior and len(found) < len(prior) * 0.5:
+            print(f"\nNOT WRITING {a.out}: --replace with {len(found):,} "
+                  f"found against {len(prior):,} on file. That is a read that "
+                  "failed, not amendments that were withdrawn.")
             return
-    out.write_text(json.dumps(found, indent=2), encoding="utf-8")
+        merged = found
+    else:
+        merged = {**prior, **found}
+        kept = len(set(prior) - set(found))
+        if kept:
+            print(f"  kept {kept:,} on file that this run did not read "
+                  f"(--replace to rewrite from this run alone)")
+    out.write_text(json.dumps(merged, indent=2), encoding="utf-8")
     print(f"\n-> {a.out}")
     print("build_site_v2.py joins these to bills on the numbers the docket "
           "cites.")
