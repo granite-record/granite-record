@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.9
+# GRANITE_VERSION: 2026-09-09.10
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -263,6 +263,106 @@ def show_timestamps(it):
             'end. Leave a box empty to say the published time is right.</p>')
 
 
+def sample_late():
+    """Every proceeding on a recording whose captions run an hour behind it.
+
+    Nine recordings of 2024-2026 carry a YouTube caption track an hour
+    behind its own video -- seen in YouTube's own player on 11 September:
+    "going to open the hearing on House Bill 1130" is captioned at 0:17:28
+    over the blue starting slate, and said at 1:17:28. build_site_v2
+    withholds every time read off those captions, so their stations print no
+    start, and sample_timestamps() -- which only draws a station that prints
+    one -- could never offer them. Shifting them by 3,600 seconds would put
+    76 stated starts back, and that is a new way of making a timestamp, so it
+    is timed here first.
+
+    The same key shape as a timing item, so probe_alignment reads the
+    stopwatch readings beside every other bench mark.
+    """
+    import caption_span as CS
+    work = Path("work")
+    if not work.is_dir():
+        return []
+    late, _compared, _undated = CS.out_of_step(
+        [d.name for d in work.iterdir() if d.is_dir()])
+    if not late:
+        return []
+    # Already timed with a stopwatch under the timing kind -- HB1130 on
+    # 28 January was, on the 10th, which is how the hour was found -- is not
+    # asked for twice.
+    timed = {key for (kd, key), es in judged().items() if kd == "timestamp"
+             and any((e.get("fields") or {}).get("observed_start") for e in es)}
+    out = []
+    for year, bid, rec in _site_records():
+        for st in (rec.get("stations") or []):
+            vid = st.get("video_id")
+            if vid not in late:
+                continue
+            if f'{vid}|{bid}|{st.get("what") or ""}' in timed:
+                continue
+            last, dur = late[vid]
+            out.append({
+                "key": f'{vid}|{bid}|{st.get("what") or ""}',
+                "bill": bid, "year": year, "video_id": vid,
+                "committee": st.get("committee") or "",
+                "date": st.get("when") or "",
+                "proceeding": st.get("what") or "",
+                "title": st.get("title") or "",
+                # Nothing published to judge; the schedule, only to start the
+                # player somewhere near. The number under test -- the stated
+                # boundary plus an hour -- is deliberately not shown, so the
+                # stopwatch is not anchored on it.
+                "start": None, "end": None,
+                "scheduled": st.get("predicted"),
+                "short_by": round(dur - last),
+            })
+    return out
+
+
+def show_late(it):
+    def sec(x):
+        try:
+            return int(float(x))
+        except (TypeError, ValueError):
+            return None
+    sched = sec(it.get("scheduled"))
+    open_at = max(0, (sched or 0) - 300)
+    rows = [
+        ("Bill", f'{E(it["bill"])} <span class="dim">({E(it.get("year") or "")})</span>'),
+        ("Proceeding", f'{E(it["proceeding"])} &middot; {E(it["committee"])}'
+                       f' &middot; {E(it["date"])}'),
+        ("Recording", f'<a href="{E(_yt(it["video_id"]))}" target="_blank" '
+                      f'rel="noopener">{E(it["title"] or it["video_id"])}</a>'),
+        ("Why it is here", '<span class="dim">this recording\'s captions stop '
+                           f'{E(_hms(it.get("short_by")))} before the video does '
+                           '&mdash; an hour behind it &mdash; so the site prints '
+                           'no time for it. Nothing published is being judged: '
+                           'you are finding the time.</span>'),
+        ("The schedule", f'<span class="dim">{E(_hms(sched))} &mdash; when the '
+                         'meeting was called for. The player opens five minutes '
+                         'before it.</span>' if sched is not None else
+                         '<span class="dim">none</span>'),
+    ]
+    body = "".join(f'<tr><th>{E(k)}</th><td>{v}</td></tr>' for k, v in rows)
+    player = (f'<div class="player"><div id="ytplayer"></div></div>'
+              f'<div id="ytdata" data-video="{E(it["video_id"])}" '
+              f'data-start="{open_at}" data-end=""></div>')
+    controls = (
+        '<p class="jump">'
+        '<button type="button" class="btn" data-seek="start">'
+        f'Play from {E(_hms(open_at))}</button>'
+        '<button type="button" class="btn grab" data-grab="observed_start">'
+        'Use what is playing as the start</button>'
+        '<button type="button" class="btn grab" data-grab="observed_end">'
+        'Use what is playing as the end</button>'
+        f'<a class="btn" href="{E(_yt(it["video_id"], open_at))}" target="_blank" '
+        'rel="noopener">Open on YouTube</a></p>')
+    return (f'<table class="facts">{body}</table>{player}{controls}'
+            '<p class="ask">Find where the chair opens this bill, press <b>Use '
+            'what is playing as the start</b>, and the same where they close it. '
+            'Go by the sound: the captions on this recording are an hour out.</p>')
+
+
 def sample_narratives():
     """A bill's plain-language history, beside the docket it was built from."""
     p = Path("narratives.json")
@@ -447,6 +547,19 @@ KINDS = {
         "sample": sample_timestamps, "show": show_timestamps,
         "fields": [("observed_start", "The real start", "1:10:01 or 4201"),
                    ("observed_end", "The real end", "1:24:30 or 5070")],
+    },
+    "late": {
+        "label": "Hour-late recordings (time withheld)",
+        "blurb": "Nine recordings whose captions run an hour behind the video, "
+                 "so the site prints no time for them. Time where the chair "
+                 "opens each bill; enough of these decide whether an hour's "
+                 "shift can put 76 starts back.",
+        "sample": sample_late, "show": show_late,
+        "fields": [("observed_start", "The real start", "1:17:48 or 4668"),
+                   ("observed_end", "The real end", "1:58:29 or 7109")],
+        # Nothing is published to be right or wrong, so the verdict is only
+        # whether it could be timed.
+        "verdicts": [("timed", "Timed it"), ("unsure", "Cannot tell")],
     },
     "narrative": {
         "label": "Plain-language histories",
@@ -642,11 +755,12 @@ def form_html(kind, item):
         f'<input type="hidden" name="shown" value="{E(json.dumps(item))}">'
         + k["show"](item)
         + '<div class="verdicts">'
-          '<label><input type="radio" name="verdict" value="correct" checked>'
-          'Correct as published</label>'
-          '<label><input type="radio" name="verdict" value="wrong">Wrong</label>'
-          '<label><input type="radio" name="verdict" value="unsure">'
-          'Cannot tell</label></div>'
+        + "".join(f'<label><input type="radio" name="verdict" value="{E(v)}"'
+                  f'{" checked" if i == 0 else ""}>{E(lab)}</label>'
+                  for i, (v, lab) in enumerate(k.get("verdicts") or [
+                      ("correct", "Correct as published"), ("wrong", "Wrong"),
+                      ("unsure", "Cannot tell")]))
+        + '</div>'
         + fields
         + '<label class="f">Notes'
           '<textarea name="note" placeholder="Anything worth saying about this '

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.59
+# GRANITE_VERSION: 2026-09-05.60
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
@@ -1109,7 +1109,10 @@ def read_bench(path=BENCH):
             e = json.loads(line)
         except ValueError:
             continue
-        if e.get("kind") != "timestamp":
+        # "late" is a proceeding on a recording whose captions run an hour
+        # behind it, timed with no published time to anchor on. A stopwatch
+        # reading is a stopwatch reading either way.
+        if e.get("kind") not in ("timestamp", "late"):
             continue
         shown = e.get("shown") or {}
         key = (shown.get("video_id"), str(shown.get("bill") or "").upper(),
