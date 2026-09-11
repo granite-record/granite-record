@@ -61,7 +61,7 @@
     "probe_schema.py": "2026-09-04.1",
     "proceedings.py": "2026-09-05.3",
     "resolve_members.py": "2026-09-04.5",
-    "rollcall_parser.py": "2026-09-04.6",
+    "rollcall_parser.py": "2026-09-04.7",
     "score_alignment.py": "2026-09-04.2",
     "segment_markers.py": "2026-09-05.32",
     "setup_archive.py": "2026-09-04.1",

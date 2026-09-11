@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -38,7 +38,7 @@ import json
 import proceedings as P
 import re
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 from datetime import datetime
 
@@ -152,6 +152,13 @@ def parse(path, want_bill=None):
                 voting = yeas + nays
                 not_voting = f7 + f8
             seated = yeas + nays + f7 + f8 if body == "H" else SEATS["S"]
+            # More members than seats is not a count, it is a misread column:
+            # the database's House rows of 1999-2013 do not use fields 7 and 8
+            # as the download does. parse_all() replaces this from the ballots
+            # wherever they add up to the tally; where they do not, unknown
+            # is said rather than a number that cannot be.
+            if body == "H" and seated > SEATS["H"]:
+                not_voting = seated = None
 
             need, rule, basis = threshold(std, bill, body, yeas, nays)
             if need is None:
@@ -175,12 +182,41 @@ def parse(path, want_bill=None):
                 "question": std, "question_raw": raw_q, "question_plain": plain,
                 "yeas": yeas, "nays": nays, "voting": voting, "not_voting": not_voting,
                 "seats": SEATS[body], "seated": seated,
-                "vacancies": SEATS[body] - seated,
+                "vacancies": None if seated is None else SEATS[body] - seated,
                 "threshold_needed": need, "threshold_rule": rule,
                 "passed": passed, "threshold_note": margin_note,
                 "title": p[12].strip(),
             })
     return out
+
+
+def ballot_counts(current="RollCallHistory.txt", extra_dir="rollcalls"):
+    """{(year, body, number): Counter of ballot codes}, from the member ballots.
+
+    WHO DID NOT VOTE, FROM THE BALLOTS. The summary's fields 7 and 8 were
+    read as the House's two kinds of non-voter, which is what they are in the
+    current download (2026 roll call 3: 193|152|16|34, and the ballots say 15
+    not excused plus the presiding officer, and 34 excused). In the
+    database's files for 1999-2013 they are not: roll call 4 of 1999 reads
+    276|41|335|81 and its 399 ballots say 46 excused, 35 not excused and one
+    presiding -- 81 in field 8 alone. Adding the two put "733 seated" and 416
+    non-voters on 2,483 House votes in /data/rollcalls.csv. Every roll call
+    from 1999 has its ballots on this disk, each naming its own code, so the
+    count comes from them, the same way in every year, and settles the old
+    question of which field is "excused" by not needing either.
+    """
+    counts = defaultdict(Counter)
+    files = [Path(current)] if Path(current).exists() else []
+    d = Path(extra_dir)
+    if d.is_dir():
+        files += sorted(d.glob("RollCallHistory_*.txt"))
+    for f in files:
+        with open(f, encoding="utf-8-sig", errors="replace") as fh:
+            for line in fh:
+                p = line.rstrip("\n").split("|")
+                if len(p) > 6 and p[2].strip().isdigit():
+                    counts[(p[0].strip(), p[1].strip(), int(p[2]))][p[6].strip()] += 1
+    return counts
 
 
 def parse_all(current, extra_dir):
@@ -202,6 +238,8 @@ def parse_all(current, extra_dir):
         files += sorted(d.glob("RollCallSummary_*.txt"))
     if not files:
         return [], []
+    ballots = ballot_counts(extra_dir=extra_dir)
+    from_ballots = differ = 0
     for f in files:
         kept = 0
         for r in parse(f):
@@ -209,9 +247,29 @@ def parse_all(current, extra_dir):
             if key in seen:
                 continue
             seen.add(key)
+            c = ballots.get(key)
+            if c:
+                n = sum(c.values())
+                if (c.get("Yea", 0), c.get("Nay", 0)) != (r["yeas"], r["nays"]):
+                    # The summary's tally is the record's; the ballots are
+                    # its members. Where they disagree the tally stands and
+                    # the count of non-voters is not taken from ballots that
+                    # do not add up to it.
+                    differ += 1
+                else:
+                    r["excused"] = c.get("Not Voting/Excused", 0)
+                    r["not_excused"] = c.get("Not Voting/Not Excused", 0)
+                    r["presiding"] = c.get("Presiding", 0)
+                    r["not_voting"] = n - r["yeas"] - r["nays"]
+                    r["seated"] = n
+                    r["vacancies"] = r["seats"] - n
+                    from_ballots += 1
             out.append(r)
             kept += 1
         print(f"  {f}: {kept:,} roll calls")
+    print(f"  who did not vote, from the ballots: {from_ballots:,} roll calls"
+          + (f"; {differ:,} whose ballots do not add up to the tally keep the "
+             "summary's count" if differ else ""))
     return out, files
 
 
