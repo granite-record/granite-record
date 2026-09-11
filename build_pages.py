@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.37
+# GRANITE_VERSION: 2026-09-04.38
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -193,6 +193,7 @@ footer .in{max-width:34em;margin:0 auto;padding:0 24px}
   .tabs button{font-size:14px;padding:6px 10px}
   .searchrow{flex-direction:column;align-items:stretch;gap:8px}
   .searchbig{flex-direction:column}
+  .searchbig input{flex:none}
   .searchbig button{padding:11px 20px}
   #year{width:100%}
   .qhint{flex-wrap:wrap;gap:8px}

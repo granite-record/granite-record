@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.50
+// GRANITE_VERSION: 2026-09-07.51
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -366,7 +366,7 @@ function fgroup(key,label,vals,counts,searchable){
     const shown=f?vals.filter(v=>v.toLowerCase().includes(f)).slice(0,15):[];
     inner=`${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")
       ?`<div class="chosen">${[...chosen].map(v=>`<span class="pill">${esc(v)}<button data-unpick="${esc(v)}">×</button></span>`).join("")}</div>`:""}
-      <input class="sbox" id="sbox" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">`
+      <input class="sbox" id="sbox" aria-label="Find a prime sponsor by name" placeholder="Type a name…" value="${esc(sponsorFilter)}" autocomplete="off">`
       +(shown.map(v=>`<label class="fopt ${!counts[v]?'off':''}"><input type="checkbox" data-f="${key}"
         value="${esc(v)}" ${chosen.has(v)?"checked":""}><span>${esc(v)}</span>
         <span class="c">${counts[v]||0}</span></label>`).join("")

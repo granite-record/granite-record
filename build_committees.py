@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.16
+# GRANITE_VERSION: 2026-09-07.17
 """
 A page's worth of data for every committee.
 
@@ -497,7 +497,10 @@ def main():
                   # Without this the template's own marker stays on Bills,
                   # and every committee page told a screen reader it was
                   # Bills. shell.page only moves the marker when told where.
-                  nav_current="committees.html"),
+                  nav_current="committees.html",
+                  # The page draws the committee's own <h1>; the template's
+                  # hidden "New Hampshire bills" one went first until now.
+                  sr_title=""),
             encoding="utf-8")
         urls.append(a.base + S.canon(path))
         written += 1
@@ -580,7 +583,7 @@ def main():
                      "each day it met."),
         globals={"GR_STATIC": True},
         noscript="", skip_label="Skip to the committees",
-                  nav_current="committees.html")
+                  nav_current="committees.html", sr_title="")
     # A plain listing rather than an app view: there is nothing to filter and
     # 56 links do not need JavaScript to draw.
     page_html = page_html.replace(

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.112
+# GRANITE_VERSION: 2026-09-04.113
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4392,6 +4392,32 @@ def _chapters():
         return "ok", "five spellings, sections and see-alsos refused, clashes withheld"
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("data", "no page but the search page opens with the hidden heading \"New Hampshire bills\"")
+def _sr_heading():
+    """bills.html carries a visually hidden <h1>New Hampshire bills</h1>, and
+    every page built from it inherits the line unless shell.page is told
+    otherwise. The bill pages were told on the 11th; the 406 member pages, the
+    committee pages and the committees index were not, so a screen reader
+    opening Rep. Aboul Khan's page heard "New Hampshire bills" as its first
+    heading and the member's name as its second. Read from the built pages:
+    a bill page from every year, and every other page built from the
+    template."""
+    site = Path("site")
+    if not (site / "bills.html").exists():
+        return "skip", "no site built"
+    line = '<h1 class="sr">New Hampshire bills</h1>'
+    pages = [p for p in site.glob("*.html") if p.name != "bills.html"]
+    for sub in ("legislator", "committee", "learn", "town"):
+        pages += sorted((site / sub).glob("*.html"))
+    for d in sorted((site / "bill").glob("*")):
+        pages += sorted(d.glob("*.html"))[:3]
+    bad = [str(p.relative_to(site)) for p in pages
+           if line in p.read_text(encoding="utf-8", errors="replace")]
+    assert not bad, (f"{len(bad)} of {len(pages)} pages still open with it: "
+                     + ", ".join(bad[:4]))
+    return "ok", f"{len(pages):,} pages, each with its own first heading"
 
 
 @check("data", "a committee report cites the calendar of its own year")

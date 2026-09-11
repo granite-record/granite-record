@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -115,7 +115,12 @@ def main():
             noscript=noscript(m), skip_label="Skip to this member",
             # Without this the template's marker stays on Bills, and all 406
             # member pages told a screen reader they were Bills.
-            nav_current="legislators.html"),
+            nav_current="legislators.html",
+            # And the template's hidden "New Hampshire bills" <h1> went, as
+            # the first heading, before the member's own -- which the page
+            # draws (and its noscript carries), so the hidden one is removed
+            # rather than renamed: two headings saying one name is worse.
+            sr_title=""),
             encoding="utf-8")
         urls.append(a.base + S.canon(path))
         written += 1

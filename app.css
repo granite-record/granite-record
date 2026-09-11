@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.44 */
+/* GRANITE_VERSION: 2026-09-07.45 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -593,6 +593,10 @@ text-align:center;color:var(--ink-2);font-size:14px}
   .tabs button{font-size:14px;padding:7px 0}
   .searchrow{flex-direction:column;align-items:stretch;gap:8px}
   .searchbig{flex-direction:column}
+  /* flex:1 is for the row: turned into a column it sizes the box's HEIGHT
+     from nothing, and the home page's search box came out 21px tall beside
+     a 44px button on a phone. */
+  .searchbig input{flex:none}
   .searchbig button{padding:11px 20px}
   /* The term selector and the search box share a flex row, and at 375px the
      selector was squeezed to 68px -- "2025-2026 term" showing as "2025".
