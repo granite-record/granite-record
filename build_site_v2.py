@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.68
+# GRANITE_VERSION: 2026-09-05.69
 """
 Generate the faceted site from real General Court data.
 
@@ -1999,6 +1999,11 @@ def archive_coverage(bills, narratives, sponsors, reports, rollcalls,
             "video": any(p.get("video_id")
                          for (t_, _b), ps in (procs or {}).items()
                          if t_ == term for p in ps),
+            # A committee proceeding on record at all. 1989-1998 have their
+            # hearings from the docket's shorthand and no roll call; 1999-2014
+            # the other way round. The page has to be able to say which.
+            "hearings": any(t_ == term and ps
+                            for (t_, _b), ps in (procs or {}).items()),
             "committee": any(b.get("house_committee") or b.get("senate_committee")
                              for b in bills[term].values()),
         }

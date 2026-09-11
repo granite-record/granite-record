@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.105
+# GRANITE_VERSION: 2026-09-04.107
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -109,7 +109,8 @@ def _archived_coverage():
         import site_read as SR
     except ImportError:
         return "skip", "site_read.py will not import"
-    KEYS = {"docket", "sponsors", "reports", "votes", "video", "committee"}
+    KEYS = {"docket", "sponsors", "reports", "votes", "video", "committee",
+            "hearings"}
     bare, objects, terms = 0, 0, {}
     seen = 0
     for year, bid, rec in SR.records(site):
@@ -4115,21 +4116,23 @@ def _veto_messages():
     reached the chamber, not the day it was signed. A date is required to be
     well formed if it is there, and not required to be there.
     """
-    root = Path("site/bills")
-    if not root.exists():
-        return "skip", "no bill JSON built"
+    # FROM THE PAGES. This read site/bills/<year>/<ID>.json, which since the
+    # records moved inside the pages holds only the few too large to inline,
+    # so it checked a handful of messages and passed while 108 of 175 cited a
+    # calendar from another year.
+    if not Path("site/bill").is_dir():
+        return "skip", "no bill pages built"
+    import site_read as SR
     # EXACTLY two stops, not three. The governor quotes a letter in
     # HB475's message with a real ellipsis in it, and a pattern reading
     # "..." as a defect flags the site's most careful quotation as its
     # worst.
     junk = re.compile(r"HOUSERECORD|SENATERECORD|\x0c|(?<!\.)\.\.(?!\.)"
                       r"|\w- \w|  ")
+    url_year = re.compile(r"(?:calendars|journals)(?:%5C|\\|/)(\d{4})(?:%5C|\\|/)",
+                          re.I)
     n, bad = 0, []
-    for f in sorted(root.rglob("*.json")):
-        try:
-            d = json.loads(f.read_text(encoding="utf-8"))
-        except ValueError:
-            continue
+    for _year, _bid, d in SR.records("site"):
         v = d.get("veto_message")
         if not v:
             continue
@@ -4147,11 +4150,18 @@ def _veto_messages():
             bad.append(f"{d.get('id')} has a date of {v['date']!r}")
         elif not (v.get("source") or {}).get("url"):
             bad.append(f"{d.get('id')} cites no calendar")
+        else:
+            src = v["source"]
+            m = url_year.search(src.get("url") or "")
+            if m and str(src.get("year") or "") and m.group(1) != str(src["year"]):
+                bad.append(f"{d.get('id')} of {d.get('term')} was printed in "
+                           f"{src['year']} and cites a {m.group(1)} calendar")
     if not n:
         return "skip", "no bill carries a veto message"
     assert not bad, (f"{len(bad)} of {n} veto messages are not fit to quote: "
                      f"{'; '.join(bad[:3])}")
-    return "ok", f"{n} veto messages, each whole, attributed and citable"
+    return "ok", (f"{n} veto messages, each whole, attributed and citing a "
+                  f"calendar of its own year")
 
 
 @check("data", "the passage rail agrees with the outcome it sits beside")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.13
+# GRANITE_VERSION: 2026-09-07.14
 """
 The governor's veto messages, from the House calendars already on disk.
 
@@ -54,6 +54,7 @@ worse than no quotation.
 
 import argparse
 import collections
+import csv
 import json
 import re
 import sys
@@ -284,7 +285,47 @@ def quotable(paras, who, when, source):
         return f"date is {when!r}"
     if not (source or {}).get("url"):
         return "cites no calendar"
+    # THE CITATION MUST BE FROM THE MESSAGE'S OWN YEAR. All 108 messages of
+    # 2013-2022 cited a calendar of 2023 or 2024 -- 2015's HB151 linked
+    # "No40 November 08 2024.pdf" for a message printed in June 2015 -- left
+    # by a run before the year went into the key, and kept by the merge,
+    # because this asked only that a URL exist.
+    m = URL_YEAR.search(source["url"])
+    if m and str(source.get("year") or "") and m.group(1) != str(source["year"]):
+        return f"cites a {m.group(1)} calendar for one printed in {source['year']}"
     return None
+
+
+# The year folder in a calendar's address: fileName=calendars%5C2015%5C...
+URL_YEAR = re.compile(r"(?:calendars|journals)(?:%5C|\\|/)(\d{4})(?:%5C|\\|/)",
+                      re.I)
+
+
+def queue_urls(path="archive/queue.csv"):
+    """{calendar PDF on disk: the address it was fetched from}.
+
+    The drain's queue names every calendar's address and the file it went
+    to, which calendars.json never did for the years before 2023. Where
+    several listed documents share one file -- a Senate supplement saved at
+    its base calendar's path, two 2018 calendars given one number -- the
+    address is the one row that records fetching it, and where that is not
+    one row, no address: a quotation must cite the document it came from.
+    """
+    try:
+        rows = list(csv.DictReader(open(path, encoding="utf-8")))
+    except OSError:
+        return {}
+    by = collections.defaultdict(list)
+    for r in rows:
+        if r.get("kind") == "calendar" and r.get("state") == "held":
+            by[r["path"].replace("\\", "/").lower()].append(r)
+    out = {}
+    for p, rs in by.items():
+        fetched = [r for r in rs if r.get("fetched")]
+        pick = rs if len(rs) == 1 else fetched
+        if len(pick) == 1 and pick[0].get("url"):
+            out[p] = pick[0]["url"]
+    return out
 
 
 # A VETO MESSAGE HAS A SHAPE, AND THESE ARE NOT IT.
@@ -343,6 +384,9 @@ def main():
         cal_url = json.loads(Path(a.index).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         cal_url = {}
+    # The address of the very file a message is read from, where the drain's
+    # queue can say it; calendars.json, keyed by name and year, where not.
+    by_file = queue_urls()
 
     # (term, bill) -> the earliest printing, plus every later one for comparison
     best, copies = {}, collections.defaultdict(list)
@@ -369,8 +413,9 @@ def main():
         # quotable() drops it rather than publishing a quotation attached to
         # a document it did not come from. Citing the wrong source is worse
         # than citing no source.
+        pdf = str(f.with_suffix(".pdf")).replace("\\", "/").lower()
         src = {"calendar": f.stem, "year": year, "name": name,
-               "url": cal_url.get(f"{name} {year}", "")}
+               "url": by_file.get(pdf) or cal_url.get(f"{name} {year}", "")}
         for msg in messages(f.read_text(encoding="utf-8", errors="replace"), src):
             term = P.term_of(year)
             key = (term, msg["bill"])

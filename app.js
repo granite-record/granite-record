@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.48
+// GRANITE_VERSION: 2026-09-07.50
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -809,25 +809,42 @@ function archivedNote(d){
   const P=s=>`<p class="note" style="margin:10px 0 0">${s} The bill's own
     record at the General Court is linked above.</p>`;
 
-  if(!c.docket&&!c.committee)
-    return P(`This term is archived, and thinly. Its bills come from the
-      General Court's own search, which for a session this old gives the title
-      and the status in each chamber and nothing else: no docket, no sponsors,
-      no committee, no reports and no votes have been fetched for it yet.`);
+  // The first year of the term. Roll calls are on record from 1999 and
+  // hearings on video from May 2020; before those, no such thing exists to
+  // fetch, and the page must not say it is merely missing.
+  const y=parseInt(String(d.term||d.year||"").slice(0,4),10)||0;
+  const and=xs=>xs.join(", ").replace(/, ([^,]*)$/," and $1");
 
-  if(!c.docket)
-    return P(`This term is archived. Its bills come from the General Court's
-      own search &#8212; the title, the status in each chamber and the
-      committee it went to. The docket, the sponsors, the committee reports
-      and the recorded votes are a separate request per bill and have not been
-      fetched yet.`);
+  if(!c.docket){
+    // WHAT IS HERE, THEN WHAT IS NOT. This branch told every bill of
+    // 1999-2016 that "the recorded votes ... have not been fetched yet" --
+    // 15,389 pages, each with a Votes tab beside the sentence -- because it
+    // never looked at c.votes, and it said nothing of the hearings that
+    // 1989-1998 have. It reads every flag now.
+    const have=["the title and the status in each chamber"];
+    if(c.committee)have.push("the committee it went to");
+    if(c.hearings)have.push("its hearings");
+    // No comma inside an item: and() turns the last comma into "and", which
+    // made this "its roll calls and member by member".
+    if(c.votes)have.push("each member's vote on its roll calls");
+    if(c.sponsors)have.push("its sponsors");
+    if(c.reports)have.push("the committee's written report");
+    const gaps=["the docket's full history"];
+    if(!c.sponsors)gaps.push("the sponsors");
+    if(!c.reports)gaps.push("the written committee reports");
+    if(!c.votes&&y>=1999)gaps.push("the roll calls");
+    if(!c.hearings)gaps.push("its hearings");
+    return P(`This term is archived. Here: ${and(have)}. Not yet on this
+      site for it: ${and(gaps)}.${!c.votes&&y&&y<1999?` No roll call from
+      before 1999 is in the General Court's own record of votes.`:""}`);
+  }
 
   // Has a docket. What is missing beyond it is what the reader needs told.
   const gaps=[];
   if(!c.sponsors)gaps.push("the sponsors");
   if(!c.reports)gaps.push("the written committee reports");
-  if(!c.votes)gaps.push("the roll calls naming individual members");
-  if(!c.video)gaps.push("a recording of any hearing");
+  if(!c.votes&&y>=1999)gaps.push("the roll calls naming individual members");
+  if(!c.video&&y>=2019)gaps.push("a recording of any hearing");
   if(!gaps.length)
     return P(`This term is archived, but its record is close to complete: the
       docket, the sponsors, the committee reports and the recorded votes are
@@ -835,8 +852,7 @@ function archivedNote(d){
       linked rather than loaded.`);
   return P(`This term is archived, and its docket is here: every action the
     General Court recorded, and the committee's recommendation and the vote on
-    it. Not yet fetched for this term: ${gaps.join(", ").replace(/, ([^,]*)$/,
-    " and $1")}.`);
+    it. Not yet fetched for this term: ${and(gaps)}.`);
 }
 
 function renderSummary(b,d,rsa){
