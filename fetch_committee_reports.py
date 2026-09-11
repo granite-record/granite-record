@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.23
+# GRANITE_VERSION: 2026-09-04.24
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -100,15 +100,25 @@ _DATE = rf"\d{{1,2}}\s*(?:{_MON})\s*\d{{4}}"
 # authorization for the use of military force".
 #
 # Every separator is optional now. The day still needs its digits and the year
-# still needs four of them, and every branch but the first requires the words
+# still needs four of them, and every branch but the last requires the words
 # HOUSE RECORD, which do not follow a date in a member's sentence.
+#
+# 2013-2016 PRINT THE MONTH IN LOWER CASE AND NUMBER PAGES PAST 999: "13
+# december 2013 HOUSE RECORD 1920", "1927 13 december 2013 HOUSE RECORD",
+# "6 3 january 2014 HOUSE RECORD". None of it matched, and 254 of the 3,270
+# reports those four years print carried a header mid-sentence. The lower-case
+# month is accepted only where HOUSE RECORD is part of the match; the last
+# branch, which has no such anchor, keeps to capitals and three digits, so a
+# date in a member's own sentence is never read as a header.
+_DATE_ANY = rf"\d{{1,2}}\s*(?i:{_MON})\s*\d{{4}}"
 PAGE_FURNITURE = re.compile(
     r"\s*(?:"
-    rf"\d{{1,3}}\s*HOUSE\s*RECORD\s*{_DATE}"
-    rf"|HOUSE\s*RECORD\s*\d{{1,3}}\s*{_DATE}"
-    rf"|{_DATE}\s*\d{{1,3}}\s*HOUSE\s*RECORD"
-    rf"|{_DATE}\s*HOUSE\s*RECORD(?:\s*\d{{1,3}})?"
-    rf"|HOUSE\s*RECORD\s*{_DATE}"
+    rf"\d{{1,4}}\s*HOUSE\s*RECORD\s*{_DATE_ANY}"
+    rf"|HOUSE\s*RECORD\s*\d{{1,4}}\s*{_DATE_ANY}"
+    rf"|\d{{1,4}}\s*{_DATE_ANY}\s*HOUSE\s*RECORD(?:\s*\d{{1,4}}\b)?"
+    rf"|{_DATE_ANY}\s*\d{{1,4}}\s*HOUSE\s*RECORD"
+    rf"|{_DATE_ANY}\s*HOUSE\s*RECORD(?:\s*\d{{1,4}}\b)?"
+    rf"|HOUSE\s*RECORD\s*{_DATE_ANY}"
     rf"|\d{{1,3}}\s*{_DATE}(?:\s*HOUSE\s*RECORD)?"
     r")\s*")
 
@@ -146,8 +156,14 @@ VOTE_TAIL = re.compile(
 # generous and still far short of a paragraph.
 VOTE_TAIL_SLACK = 60
 
+# A surname can carry a lower-case particle, and a letter the PDF's font
+# cannot name: "Rep. Matt Sabourin dit Choini�re" signs two 2026 reports,
+# the e-grave arriving from pdftotext as U+FFFD. A name made only of
+# capitalised word characters stopped at "dit", and at the U+FFFD, and a
+# re-read of the calendars lost both reports.
 AUTHOR = re.compile(
-    r"(?P<who>(?:Rep|Sen)\.\s+[A-Z][\w'’.\-]*(?:\s+[A-Z][\w'’.\-]*){0,3})\s+for\s+"
+    r"(?P<who>(?:Rep|Sen)\.\s+[A-Z][\w'’.\-�]*"
+    r"(?:\s+(?:(?:dit|de|du|da|di|van|von|der|des|la|le)\s+)?[A-Z][\w'’.\-�]*){0,3})\s+for\s+"
     r"(?:the\s+(?P<side>Majority|Minority)\s+of\s+)?"
     r"(?P<committee>[A-Z][A-Za-z,&\-\s]{2,60}?)\s*\.\s+",
     re.I)
