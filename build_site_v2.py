@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.73
+# GRANITE_VERSION: 2026-09-05.74
 """
 Generate the faceted site from real General Court data.
 
@@ -2269,7 +2269,27 @@ def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
         "votedays": sorted({r["date"] for r in rcs if r.get("date")}),
     }
 
-def bill_disposition(b, bid, st, narr, rcs, term, current):
+# The record's own name for a stage a bill stopped at, for bill_disposition's
+# last resort. Latest stage first: a bill whose fields read CONFERENCE
+# COMMITTEE and CONFERENCE REPORT ADOPTED got as far as the report. The
+# report's being adopted says nothing about whether the conferees agreed --
+# 1989's HB 42 was adopted "UNABLE TO AGREE" and died -- so the label says
+# only what the field says.
+STAGE_STATED = [
+    ("conference report adopted", "Conference committee report adopted"),
+    ("conference committee", "In a committee of conference"),
+    ("report filed", "Committee report filed"),
+]
+
+
+def stated_stage(st):
+    blob = " ".join((st.get(f) or "").lower()
+                    for f in ("gen_status", "house_status", "senate_status"))
+    return next((label for needle, label in STAGE_STATED if needle in blob),
+                None)
+
+
+def bill_disposition(b, bid, st, narr, rcs, term, current, law_line=""):
     """What became of this bill, and where that answer came from.
 
     STEP 8 OF SPLITTING build_bills, and the first of the two that are
@@ -2285,11 +2305,20 @@ def bill_disposition(b, bid, st, narr, rcs, term, current):
     Returns a namedtuple rather than a tuple: this has seven fields
     and positional unpacking of seven things is the shape of the bug
     build_bills' own docstring is about.
+
+    law_line is the docket line that numbered the bill's chapter, from
+    extract_chapters. A term whose docket is not narrated has no events for
+    docket_outcome to read, but it has that line, and it is the same
+    evidence: HB 1075 of 1998 -- the ABC plan, "SIGNED BY GOVERNOR 10/01/98
+    ... CHAP.0389" -- read "In committee", because its status fields stop at
+    CONFERENCE REPORT ADOPTED, which nothing in STATED names.
     """
     stated = stale = 0
     prefix = bill_prefix(bid)
     told = classify_stated(st, prefix)
     settled = docket_outcome(narr)
+    if not settled and not narr and law_line:
+        settled = docket_outcome({"events": [{"raw": law_line}]})
     disposed = floor_disposed(narr)
     if settled:
         # A dated docket line beats a status field that has not caught up.
@@ -2309,6 +2338,19 @@ def bill_disposition(b, bid, st, narr, rcs, term, current):
         stated = 1
     else:
         kind, status = classify(narr, rcs, prefix)
+        # classify's last two answers, "In committee" and "In progress", are
+        # this site's words for a bill it knows nothing more about. Where
+        # the status fields name a stage STATED has no entry for, that is
+        # something more: 495 bills of closed terms read "In committee" or
+        # "In progress" over fields saying REPORT FILED (the committee had
+        # reported), CONFERENCE COMMITTEE or CONFERENCE REPORT ADOPTED. Not
+        # added to STATED, where it would also outrank a docket's "Killed"
+        # or a CACR's "goes to the voters": measured that way it overrode
+        # "Killed" on 20 narrated bills. Here it replaces only the guess.
+        if status in ("In committee", "In progress"):
+            said = stated_stage(st)
+            if said:
+                status = said
     # A TERM THAT HAS ENDED HAS NO BILLS IN PROGRESS. The General Court's
     # status field stops being updated when a term closes, so 1,954
     # archived bills across eighteen terms still say "In committee",
@@ -2660,7 +2702,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         if not st and not own:
             st = {k: b.get(k, "") for k in ("gen_status", "house_status",
                                             "senate_status", "text_pdf")}
-        disp = bill_disposition(b, bid, st, narr, rcs, term, current)
+        disp = bill_disposition(
+            b, bid, st, narr, rcs, term, current,
+            law_line=((chapters or {}).get(term, {}).get(bid) or {}).get("line", ""))
         kind, status = disp.kind, disp.status
         told, settled, prefix = disp.told, disp.settled, disp.prefix
         n_stated += disp.stated

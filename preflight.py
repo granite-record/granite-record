@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.115
+# GRANITE_VERSION: 2026-09-04.116
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -510,6 +510,38 @@ def _veto_split_stated(build_site_v2):
                               "senate_status": "VETO OVERRIDDEN"}, "HB")
     assert both and both[0] == "law", f"overridden in both came out as {both}"
     return "ok", "sustained in either chamber is a veto; overridden in both is law"
+
+
+@check("status", "a bill with no narrated docket is read from its signature line and its fields' own stage",
+       needs=("build_site_v2",))
+def _unnarrated_status(build_site_v2):
+    """Two rules for the twelve terms whose dockets are not narrated.
+
+    HB 1075 of 1998 was signed (\"SIGNED BY GOVERNOR 10/01/98 ... CHAP.0389\")
+    and read "In committee", its fields stopping at CONFERENCE REPORT
+    ADOPTED: the signature line extract_chapters keeps now settles it. And
+    495 bills read "In committee" or "In progress" -- this site's guess --
+    over fields naming a stage; the field's stage replaces the guess, but
+    never a docket's own outcome."""
+    B = build_site_v2
+    conf = {"gen_status": "SENATE", "house_status": "CONFERENCE REPORT ADOPTED",
+            "senate_status": "CONFERENCE REPORT ADOPTED"}
+    d = B.bill_disposition({}, "HB1075", conf, None, [], "1997-1998",
+                           "2025-2026", law_line="SIGNED BY GOVERNOR  10/01/98 "
+                           "EFF: 10/01/98* CHAP.0389")
+    assert (d.kind, d.status) == ("law", "Signed into law"), d
+    d = B.bill_disposition({}, "HB42", conf, None, [], "1989-1990", "2025-2026")
+    assert d.status == "Conference committee report adopted", d.status
+    filed = {"gen_status": "HOUSE", "house_status": "REPORT FILED",
+             "senate_status": ""}
+    d = B.bill_disposition({}, "HB190", filed, None, [], "1989-1990", "2025-2026")
+    assert (d.kind, d.status) == ("done", "Committee report filed"), d
+    killed = _narr(["Inexpedient to Legislate: MA VV 03/06/2024"])
+    killed["events"][0].update(type="floor", motion="MA",
+                               action="Inexpedient to Legislate")
+    d = B.bill_disposition({}, "HB1", filed, killed, [], "2023-2024", "2025-2026")
+    assert d.status == "Killed", f"a docket's kill gave way to a field: {d.status}"
+    return "ok", "signed from the line; the field's stage, never over the docket"
 
 
 @check("status", "law without a signature reads as law", needs=("build_site_v2",))
