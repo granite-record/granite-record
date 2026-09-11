@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.119
+# GRANITE_VERSION: 2026-09-04.120
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4547,6 +4547,43 @@ def _sr_heading():
     assert not bad, (f"{len(bad)} of {len(pages)} pages still open with it: "
                      + ", ".join(bad[:4]))
     return "ok", f"{len(pages):,} pages, each with its own first heading"
+
+
+@check("data", "a proceeding is matched only to its own chamber's recording")
+def _manifest_chamber():
+    """build_manifest keyed recordings on committee and date, and both
+    chambers have an Education, a Judiciary, a Finance and more that sit on
+    the same days: all 91 Senate hearings of 2021-2022 that had a recording
+    had the House committee's, and 79 House proceedings of 2023-2024 and 19
+    of the current term had the Senate's. A committee of conference, which
+    sits for both, is the one exception. Read from every manifest on disk,
+    the chamber of a recording from the index file it came from."""
+    import glob
+    mans = sorted(glob.glob("verification_manifest*.csv"))
+    if not mans:
+        return "skip", "no manifest on disk"
+    body_of = {}
+    for f in glob.glob("videos_*.csv"):
+        b = "S" if "senate" in f.lower() else "H"
+        with open(f, encoding="utf-8", newline="") as fh:
+            for r in csv.DictReader(fh):
+                body_of[r["video_id"]] = b
+    n, bad = 0, []
+    for m in mans:
+        with open(m, encoding="utf-8", newline="") as fh:
+            for r in csv.DictReader(fh):
+                v = r.get("video_id")
+                if not v or v not in body_of:
+                    continue
+                n += 1
+                if (body_of[v] != r.get("body")
+                        and r.get("proceeding") != "committee of conference"):
+                    bad.append(f"{r['bill']} {r['body']} {r['proceeding']} "
+                               f"{r['sched_date']} on {r['video_title'][:40]!r}"
+                               f" ({m})")
+    assert not bad, (f"{len(bad):,} of {n:,} matched proceedings are on the "
+                     f"other chamber's recording: " + "; ".join(bad[:3]))
+    return "ok", f"{n:,} matched proceedings, each on its own chamber's recording"
 
 
 @check("data", "no law or veto says \"No recorded action yet\"")

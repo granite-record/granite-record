@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.7
+# GRANITE_VERSION: 2026-09-05.8
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
@@ -338,15 +338,36 @@ def main():
         print(f"  {len(procs):,} proceedings, {inside:,} on a day something "
               f"was recorded, {len(procs) - inside:,} on a day nothing was")
 
+    # THE CHAMBER IS PART OF THE KEY. Both chambers have an Education, a
+    # Judiciary, a Finance, a Transportation, a Ways and Means and an
+    # Executive Departments and Administration, and they sit on the same
+    # days. Keyed on committee and date alone, every one of the 91 Senate
+    # hearings of 2021-2022 that had a recording had the HOUSE committee's
+    # recording of that day -- SB 232's Senate Education hearing of
+    # 11 January 2022 on "House Education (01/11/22)" -- and 79 House
+    # proceedings of 2023-2024 and 19 of the current term had the other
+    # chamber's. Found on 11 September; the bill's number is spoken on 2 of
+    # the 82 captioned ones.
+    #
+    # A committee of conference sits for both chambers and may be streamed
+    # on either channel, so it alone may fall back to the other chamber's
+    # recordings, and only when its own has none.
     exact = defaultdict(list)
     fam = defaultdict(list)
     for v in vids:
-        exact[(v["committee"], v["date"])].append(v)
-        fam[(v["family"], v["date"])].append(v)
+        exact[(v["body"], v["committee"], v["date"])].append(v)
+        fam[(v["body"], v["family"], v["date"])].append(v)
+
+    def candidates(p, body):
+        return (exact.get((body, p.committee, p.sched_date))
+                or fam.get((body, family(p.committee or ""), p.sched_date))
+                or [])
 
     out, stats = [], defaultdict(int)
     for p in procs:
-        cands = exact.get((p.committee, p.sched_date)) or fam.get((family(p.committee or ""), p.sched_date)) or []
+        cands = candidates(p, p.body)
+        if not cands and p.kind == "committee of conference":
+            cands = candidates(p, "S" if p.body == "H" else "H")
 
         named = [v for v in cands if p.bill in v["bills_in_title"]]
         if named:
