@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.10
+# GRANITE_VERSION: 2026-09-08.11
 """
 Who is hearing what, when, and in which room -- out of the calendars on disk.
 
@@ -144,16 +144,46 @@ WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday",
             "saturday", "sunday"]
 
 # NAME, Room 232, GP   |   NAME (RSA 79:32), Room 154, GP   |   NAME, <address>
-HEADER = re.compile(
-    r"^([A-Z][A-Z0-9 ,'&/\.\-]{2,}?)"          # the committee, shouting
-    r"(?:\s*\(RSA[^)]*\))?"                     # an optional statute cite
-    r"\s*,\s*(.+?)\s*$")
+#
+# THE NAME HAS COMMAS OF ITS OWN. "HEALTH, HUMAN SERVICES AND ELDERLY AFFAIRS,
+# Room 205, LOB" was cut at its first comma, so the committee was "Health" and
+# the rest failed the room pattern and was kept as though it were an address.
+# Four standing House committees are named with a comma, five in the Senate,
+# and dozens of study commissions -- 16,375 House rows and 3,747 Senate rows on
+# 10 September. So a header is cut into its comma-separated parts with any
+# parenthesis kept whole, since "(RSA 161-F:7, I)" has a comma too, and the
+# name is every leading part that shouts. It ends at the first part that does
+# not ("Room 205", "Map Room", "Legislative Office Building"), at a room or a
+# building or a street number written in capitals, or at the statute that set
+# the body up. The calendar writes NAME (CITATION), PLACE, and the places that
+# shout -- "NHDES, 29 Hazen Drive", "UNH, Durham", "DHHS, Brown Bldg.",
+# "REMOTE" -- come after a citation, every one.
+CITE = re.compile(r"\((?:RSA|Chapter|(?:HB|SB|HJR|SJR|HCR|SCR|CACR)\s*\d)[^)]*\)",
+                  re.I)
+PLACE = re.compile(r"^(?:ROOMS?\s+\S.*|LOB\.?|SH|GP|SL|\d.*)$")
 
 ROOM = re.compile(r"^Room\s+([\w\-]+)\s*,\s*(SH|LOB|GP|SL)$", re.I)
+
+# A LINE THAT OPENS WITH A BILL NUMBER IS BUSINESS, NEVER A COMMITTEE. It
+# shouts and has a comma -- "HB 1540-FN, relative to ranked-choice voting." --
+# which is all SHOUT used to ask. So where the two columns slipped and a
+# bill's line arrived with no time beside it, it was read as a header: the
+# committee became "Hb 1540-Fn", the room became the bill's title, and every
+# hearing below it until the next real header inherited both. 5,054 House rows
+# in 410 calendars and 219 Senate rows, on 10 September.
+LEAD = r"(?:HB|SB|CACR|HCR|SCR|HJR|SJR|HR|SR)\s*\d"
+BILL_LEAD = re.compile("^" + LEAD)
 # A header opens with the committee's name in capitals. Everything after the
 # first comma -- the room, the building, a street address -- is mixed case,
 # so the test is on the opening run and not on the line.
-SHOUT = re.compile(r"^[A-Z][A-Z0-9'&/\.\- ]{3,}?(?:\s*\(RSA[^)]*\))?\s*,")
+SHOUT = re.compile(r"^(?!" + LEAD + r")"
+                   r"[A-Z][A-Z0-9'&/\.\- ]{3,}?(?:\s*\(RSA[^)]*\))?\s*,")
+# What section() takes as evidence that a day heading has business under it:
+# SHOUT's looser old question, bills included. 1998's HC037 opens its first
+# day on "FINANCE - (DIVISION II), ROOM 209, LOB", which SHOUT cannot read, and
+# it is the bills under it that say the section has begun -- asked the new
+# question, the whole of that Monday went missing.
+BUSINESS = re.compile(r"^[A-Z][A-Z0-9'&/\.\- ]{3,}?(?:\s*\(RSA[^)]*\))?\s*,")
 TIME = re.compile(r"^\s*(\d{1,2}):(\d{2})\s*([ap])\.?\s?m\.?\s*(.*)$", re.I)
 BILL = re.compile(r"\b(HB|SB|CACR|HR|SR|HCR|SCR)\s*0*(\d{1,4})"
                   r"((?:-(?:FN|A|L|LOCAL))*)\b")
@@ -229,7 +259,7 @@ def section(text, head, ends):
         d = None
         for cand in DAY.finditer(text):
             after = text[cand.end():cand.end() + 400]
-            if any(SHOUT.match(l.strip()) for l in after.split("\n")):
+            if any(BUSINESS.match(l.strip()) for l in after.split("\n")):
                 d = cand
                 break
         if not d:
@@ -325,6 +355,48 @@ def _room(tail):
     if m:
         return f"{m.group(2).upper()} {m.group(1)}", ""
     return "", tail.strip()
+
+
+def _parts(s):
+    """A header's comma-separated parts, with any parenthesis kept whole.
+
+    A header cut off inside its citation -- "SETBACK REQUIREMENTS FOR SEPTAGE,
+    BIOSOLIDS AND SHORT PAPER FIBERS STUDY (SB 87, Chapter", 62 times -- is
+    closed at the end, so the unfinished citation stays with the name instead
+    of being read as the place."""
+    s += ")" * max(0, s.count("(") - s.count(")"))
+    out, cur, depth = [], [], 0
+    for ch in s:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth = max(0, depth - 1)
+        if ch == "," and depth == 0:
+            out.append("".join(cur).strip())
+            cur = []
+        else:
+            cur.append(ch)
+    out.append("".join(cur).strip())
+    return out
+
+
+def _split_header(whole):
+    """(name, place) out of a committee header. See CITE and PLACE."""
+    ps = _parts(whole)
+    name, closed = [ps[0]], bool(CITE.search(ps[0]))
+    for p in ps[1:]:
+        if closed:
+            break
+        bare = re.sub(r"\([^)]*\)", "", p).strip()
+        # A part that is only a parenthesis annotates the name before it:
+        # "HEALTH AND HUMAN SERVICES OVERSIGHT COMMITTEE, (RSA 126-A:13)".
+        if bare and (re.search(r"[a-z]", bare) or PLACE.match(p)):
+            break
+        name.append(p)
+        closed = bool(CITE.search(p))
+    # A stray bracket or an empty part carries nothing a reader needs.
+    place = [p for p in ps[len(name):] if re.search(r"\w", p)]
+    return ", ".join(name), ", ".join(place)
 
 
 def _bills(s):
@@ -423,7 +495,13 @@ def parse(text, chamber):
                 if not nxt.strip():
                     i += 1
                     continue
-                if TIME.match(nxt) or DAY.match(nxt) or SHOUT.match(nxt.strip()):
+                # BUSINESS, not SHOUT: a bill's own line -- "HB 1540-FN,
+                # relative to ranked-choice voting." -- still ends the entry
+                # above it, as it always has, and the main loop below records
+                # it as unpaired instead of reading it as a committee. Welding
+                # it on would give it the time of the bill above, which on 23
+                # January 2018 is wrong by two hours.
+                if TIME.match(nxt) or DAY.match(nxt) or BUSINESS.match(nxt.strip()):
                     break
                 if len(nxt) - len(nxt.lstrip()) < 12:
                     break
@@ -437,6 +515,15 @@ def parse(text, chamber):
                 flush(when, seg)
             continue
         stripped = line.strip()
+        if BILL_LEAD.match(stripped):
+            # A bill with no time beside it. The columns slipped and its time
+            # is on another line: on 23 January 2018 HB 1540 sat alone and
+            # the docket puts it at 1:00, the time printed one line BELOW it,
+            # beside HB 1240 -- which the docket puts at 1:30. Which time is
+            # whose cannot be read off the text, so it is counted with the
+            # other unpaired lines rather than given one.
+            unpaired.append((date, committee, "", stripped[:40]))
+            continue
         if SHOUT.match(stripped):
             # A HEADER WRAPS, AND ONLY ITS NAME IS SHOUTED. "WAYS AND MEANS,
             # Room 159, GP" is not an upper-case line -- "Room" is not -- and
@@ -454,13 +541,10 @@ def parse(text, chamber):
                 buf.append(nxt.strip())
                 i += 1
             whole = re.sub(r"\s{2,}", " ", " ".join(buf))
-            h = HEADER.match(whole)
-            if h:
-                committee = _name(h.group(1))
-                room, venue = _room(h.group(2))
-            else:
-                committee = _name(whole)
-                room, venue = "", ""
+            name, place = _split_header(whole)
+            # The statute is not part of the name, whichever kind it is.
+            committee = _name(CITE.sub("", name))
+            room, venue = _room(place) if place else ("", "")
             continue
     return rows, pub, unpaired
 

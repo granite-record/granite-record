@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.102
+# GRANITE_VERSION: 2026-09-04.103
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2300,6 +2300,88 @@ spoke against it and the vote was unanimous. Vote 18-0.
 """
 
 
+# Printed lines, not composed ones. The Election Law block is House Calendar 2
+# of 2018 as pdftotext gave it, its two columns out of step at HB 1540; the
+# Resources header and its work session are House Calendar 20 of 2005, and the
+# Oversight header House Calendar 21 of 1999. Only the masthead's date and the
+# stitching between blocks are this file's.
+CALENDAR_FIELDS = """\
+ Vol.40         Concord,N.H.  Friday,January12,2018                    No.2X
+
+                              COMMITTEE MEETINGS
+
+                    TUESDAY, JANUARY 23
+
+ELECTION LAW, Room 308, LOB
+
+10:00 a.m.  HB 1520, relative to access to ballots and relative to verification counts of machine-counted ballots.
+10:30 a.m.  HB 1582, relative to the authority of the moderator to verify the device count.
+11:00 a.m.  HB 1486, relative to "over voted" ballots.
+            HB 1540-FN, relative to ranked-choice voting.
+ 1:00 p.m.  HB 1240, allowing voters to vote for multiple candidates for an office.
+ 1:30 p.m.  Executive session on pending legislation may be held throughout the day, time permitting, from
+            the time the committee is initially convened.
+
+RESOURCES, RECREATION AND DEVELOPMENT, Room 305, LOB
+2:00 p.m.   Subcommittee work session on HB 491, relative to the inherent dangers of OHRV
+            operation and limiting landowner liability for certain fish and game related land uses
+            and HB 355, establishing a committee to study the environmental impact and
+            damage mitigation of ATV use on public and private trails.
+
+   HEALTH AND HUMAN SERVICES OVERSIGHT COMMITTEE, (RSA 126-A:13), Room 205, LOB
+                                        1:30 p.m. Regular meeting.
+"""
+
+
+@check("calendar", "a committee's name keeps its commas, and a bill's line is never a committee",
+       needs=("calendar_meetings",))
+def _calendar_fields(calendar_meetings):
+    """The two ways a calendar header was split in the wrong place.
+
+    A name with a comma of its own was cut at it: "HEALTH, HUMAN SERVICES AND
+    ELDERLY AFFAIRS, Room 205, LOB" became the committee "Health" with the rest
+    kept as an address. And a bill's own line -- "HB 1540-FN, relative to
+    ranked-choice voting.", which shouts and has a comma -- was read as a
+    header wherever the columns slipped and left it with no time, so HB 1240
+    was heard by the committee "Hb 1540-Fn" in the room "relative to
+    ranked-choice voting.". Both were marked wrong on the bench. 16,375 and
+    5,054 House rows on 10 September.
+    """
+    rows, pub, unpaired = calendar_meetings.parse(CALENDAR_FIELDS, "H")
+    assert pub == (2018, 1, 12), f"the masthead read as {pub}"
+    by = {r["bill"]: r for r in rows if r["bill"]}
+    lead = re.compile(r"^(?:Hb|Sb|Hr|Sr|Hcr|Scr|Cacr|Hjr)\s*\d", re.I)
+    bad = [r["committee"] for r in rows if lead.match(r["committee"] or "")]
+    assert not bad, f"a bill's line was read as a committee: {bad}"
+    want = [
+        ("HB1240", "Election Law", "LOB 308"),
+        ("HB355", "Resources, Recreation and Development", "LOB 305"),
+        ("HB491", "Resources, Recreation and Development", "LOB 305"),
+    ]
+    for bill, com, room in want:
+        r = by.get(bill)
+        assert r, f"{bill} was not read at all"
+        assert (r["committee"], r["room"]) == (com, room), (
+            f"{bill} reads as {r['committee']!r} in {r['room'] or r['venue']!r}, "
+            f"not {com!r} in {room!r}")
+    over = [r for r in rows if r["kind"] == "regular meeting"]
+    assert over and over[0]["committee"] == \
+        "Health and Human Services Oversight Committee" and \
+        over[0]["room"] == "LOB 205", (
+        "a citation standing as its own part kept the room out of the room "
+        f"field: {[(r['committee'], r['room'] or r['venue']) for r in over]}")
+    # HB 1540's line has no time beside it, and the docket puts it at 1:00 --
+    # the time printed a line below it. It is not given 11:00 by being welded
+    # to HB 1486, and it is not given a time at all; it is counted.
+    assert "HB1540" not in by, (
+        f"HB 1540 was given a time the calendar does not print beside it: "
+        f"{by['HB1540']['time']}")
+    assert any("HB 1540" in u[3] for u in unpaired), \
+        "HB 1540's untimed line was dropped without being counted"
+    return "ok", (f"{len(rows)} rows: whole names, rooms in the room field, and "
+                  "the untimed HB 1540 counted rather than timed or made a committee")
+
+
 @check("reports", "a bill number inside a sentence does not start a new report",
        needs=("fetch_committee_reports",))
 def _prose_bill_number(fetch_committee_reports):
@@ -3751,6 +3833,15 @@ def _calendar_meetings():
         f"only {len(hearings):,} public hearings parsed out of the calendars; "
         "8 September measured 7,293, and a collapse here means a format the "
         "parser stopped recognising rather than a quiet session")
+    # A bill's own line is never a committee -- see the calendar check that
+    # says so on printed lines. This is the same claim over every file.
+    lead = re.compile(r"^(?:Hb|Sb|Hr|Sr|Hcr|Scr|Cacr|Hjr)\s*\d", re.I)
+    billcom = [r for r in rows if lead.match(r["committee"] or "")]
+    assert not billcom, (
+        f"{len(billcom):,} calendar rows name a bill as their committee, e.g. "
+        f"{billcom[0]['bill']} on {billcom[0]['date']} heard by "
+        f"{billcom[0]['committee']!r} in {billcom[0]['calendar']}: a bill's line "
+        "was read as a header again")
 
     # A notice cannot follow the thing it notices. All 7,293 were published on
     # or before the day of the hearing when this was written, median five days
