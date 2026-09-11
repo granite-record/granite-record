@@ -423,7 +423,14 @@ carry the measurements.
 1. Run `check_civics_links.py`.
 2. The proposal's own instruction that somebody who knows the building reads
    the civics pages before they ship.
-3. An accessibility pass at 360, 768 and 1440.
+3. ~~An accessibility pass at 360, 768 and 1440.~~ *A first one on the
+   11th*, read from the DOM in the browser at each width rather than by
+   eye: nothing scrolls sideways; 460 pages opened with the wrong hidden
+   heading, the home search box was 21px tall on a phone, and the sponsor
+   filter had no label -- all fixed (9f4e80e). Not done: a pass with a
+   screen reader, and colour contrast beyond the Nay/Failed fix. Left as
+   found: bill pages jump from the hidden `<h1>` to `<h3>`, and the civics
+   pages' "All topics" link is 22px tall.
 4. `probe_alignment.py --truth` if anything about timestamps changed — the
    rule in `CLAUDE.md`. Last run on the 10th: candidate median 0m 01s to
    0m 02s depending on how many bench marks had landed, worst published end
