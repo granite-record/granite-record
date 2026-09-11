@@ -9,14 +9,14 @@
 # Lines are "key: value". Milestones are "milestone: DATE | LABEL | NOTE".
 # Anything after # is ignored. Delete a line to drop it from the page.
 
-updated: 2026-09-03
+updated: 2026-09-11
 
 # One of: in session, between sessions, out of session, veto day pending
 phase: out of session
 
 headline: The House and Senate have finished the 2026 session.
 
-note: Both chambers adjourned in August after Veto Day. The remaining bills referred to interim study may continue to have executive or work sessions. Primary Election Day is September 8th. General Election Day is November 2nd.
+note: Both chambers adjourned in August after Veto Day. The remaining bills referred to interim study may continue to have executive or work sessions. The state primary was on September 8th. General Election Day is Tuesday, November 3rd.
 
 milestone: 2027-01-07 | 2027 session convenes | The first year of the next two-year term.
 
