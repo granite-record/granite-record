@@ -13,10 +13,10 @@ is renumbered here in one pass.
 
 ## 1. Live
 
-Published 9 September and five times on the 10th, the last of them at
-about ten in the evening. **85 preflight checks, `check_site` ready,
-49,624 files — 49% of the 100,000 Cloudflare Pages
-allows.** MIT-licensed, with a README, since the 10th.
+Published 9 September, five times on the 10th, and at 12:44 on the 11th
+with that day's 24 commits. **92 preflight checks then, `check_site` ready,
+55,318 files — 55% of the 100,000 Cloudflare Pages allows.** MIT-licensed,
+with a README, since the 10th.
 
 The 10th was the day the archive stopped being a list of bills and became a
 record: votes for twenty-four years, committees for ten terms that had none,
@@ -44,18 +44,20 @@ Everything the General Court is asked now goes through **one lane**,
 `watchers/gc_lane.py`, which runs `watchers/gc_lane.queue` a step at a time
 holding `archive/.lock`. `watchers/README.md` says how to watch it.
 
-**Stopped on a refusal at 11:36 on the 11th, as designed.** The 2015-2016
+**Running again since 12:47 on the 11th, at 25 seconds a page rather than
+15.** It stopped itself at 11:36 on a refusal, as designed: the 2015-2016
 docket met two read timeouts (the address not answering within 60 s), and
-two dropped connections is this address's sign of refusing: the fetch
-recorded it in `archive/refused.json`, the lane stopped and released the
-lock. 381 of the 1,072 pages for 2016 are on disk. Nothing asks the General
-Court anything until a person runs `python3 netcheck.py` and decides on
-`python3 refusal.py --clear`. Then `python3 watchers/gc_lane.py` resumes the
-queue where it was; what it has already fetched is never asked for again.
-Both runs that day slowed or stopped about 90 minutes in and during
-business hours -- a guess, not a finding, that the evenings would go
-better. `build_all` now skips its own General Court steps while a refusal
-or the lane's lock is on file.
+two dropped connections is this address's sign of refusing, so the fetch
+recorded it in `archive/refused.json` and the lane stopped and released the
+lock with 381 of the 1,072 pages for 2016 on disk. `netcheck.py` at 12:37
+found the address answering as in every run on record -- a browser's agent,
+HTTP/1.1 on both hostnames and plain http all answered, HTTP/1.0 refused as
+it always has -- and the refusal was cleared on the person's standing
+permission. The first pages after the restart came back whole, so our own
+agent is answered too. Both earlier runs that day slowed or stopped about 90
+minutes in and during business hours -- a guess, not a finding, that the
+evenings go better, and the reason for the slower pace. `build_all` skips
+its own General Court steps while a refusal or the lane's lock is on file.
 
 - **Docket**: 2017-2022 are done. **2015-2016 is running** (from the 11th):
   the database's "2016" rows turned out to be the 2015 history of 190
@@ -363,9 +365,16 @@ example on this site of a number outliving its premise.
   from the database's Legislation view, which equals LSRs.txt on every bill
   both carry.
 - ~~**No 404 page.**~~ *Closed on the 11th.*
-- **The home page's status note says the general election is 2 November.**
-  It is Tuesday 3 November 2026, and the primary line is in the present
-  tense. `status/status.txt` is written by hand.
+- ~~**The home page's status note says the general election is 2 November.**~~
+  *Closed on the 11th*: Tuesday 3 November, and the primary in the past
+  tense. `status/status.txt` is still written by hand.
+- ~~**`publish` never ran its live check.**~~ *Closed on the 11th.* npx is
+  `npx.cmd`, and a batch file that runs another without `CALL` never gets
+  control back, so every publish since the gate was added ended at
+  wrangler's "Deployment complete!" and `check_live --gate` never ran. The
+  12:44 publish's log stopped one line early, which is how it showed. Run by
+  hand afterwards, the gate said the deploy landed. `preflight` now fails a
+  bare `npx` in `publish.bat`.
 
 ## 6a. Filled from disk on the 11th, no request made
 
@@ -373,8 +382,14 @@ Committee reports and their reasoning for **every term 1997-2026** (from
 2023-2026 alone), each vote checked against the docket at 96.9-99.8%;
 veto messages back to **1997-1998** under the older headings (261, from
 176); amendment texts **2011-2024** (4,577, from 663); sign-in counts for
-**2024's** hearings (963 bills); and the current term's **2025 committees
-and subjects** (847 bills). The commits carry the measurements.
+**2024's** hearings (963 bills); the current term's **2025 committees
+and subjects** (847 bills); and **the chapter each law became, for all
+nineteen terms** (11,819 bills, from 1,273), read from the docket's
+signature line and checked against the enrolled text on disk (46 of 46)
+and the status page's field (1,268 of 1,270, the two being the docket's
+typing). 14 are withheld where the docket gives one number to two bills;
+the enrolled text, which the lane is fetching, settles each. The commits
+carry the measurements.
 - **Marker coverage.** The denominator tripled on the 10th when four more
   terms of hearings landed, most without recordings. Of 29,827 published
   stations, 8,388 carry a start. On the recorded ones the phrases are the
