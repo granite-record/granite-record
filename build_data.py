@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.20
+# GRANITE_VERSION: 2026-09-04.21
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -471,6 +471,43 @@ def main():
     for b, t in fetched_titles.items():
         if b in bills and not bills[b].get("title"):
             bills[b]["title"] = t
+    # THE WHOLE FIRST YEAR OF THE TERM HAD NO COMMITTEE AND NO SUBJECT.
+    # LSRs.txt covers session-year 2026 only, so every bill filed in 2025 --
+    # 847 of them -- was a stub above, and the committee pages listed only
+    # 2026's: House Election Law showed 73 bills "referred to this committee
+    # in 2025-2026" and 2025's HB151 was not among them. The database's
+    # Legislation view is the same record for both years. On the 1,387 bills
+    # the two carry in common its columns 18, 26 and 12 equal LSRs.txt's 13,
+    # 21 and 12 -- House committee, Senate committee, subject -- 1,387 of
+    # 1,387 each, as do the LSRs. So it fills the same fields from the same
+    # record, only where a bill has none, and only for the bill whose LSR it
+    # names.
+    lp = d / "db" / "Legislation.psv"
+    if lp.exists():
+        leg_filled = Counter()
+        with open(lp, encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                f = line.rstrip("\n").split("|")
+                if len(f) < 27:
+                    continue
+                rec = bills.get(f[14].strip().upper())
+                if not rec or str(rec.get("lsr_num") or "").lstrip("0") != \
+                        f[3].strip().lstrip("0"):
+                    continue
+                hc, sc, subj = f[18].strip(), f[26].strip(), f[12].strip()
+                if hc and not rec.get("house_committee"):
+                    rec["house_committee"] = committees.get(hc, {}).get("name", hc)
+                    leg_filled["House committee"] += 1
+                if sc and not rec.get("senate_committee"):
+                    rec["senate_committee"] = committees.get(sc, {}).get("name", sc)
+                    leg_filled["Senate committee"] += 1
+                if subj and not rec.get("subject_code"):
+                    rec["subject_code"] = subj
+                    rec["subject"] = subjects.get(subj, {}).get("name", "")
+                    leg_filled["subject"] += 1
+        if leg_filled:
+            print("db/Legislation.psv, for bills LSRs.txt does not carry: "
+                  + ", ".join(f"{v:,} {k}" for k, v in leg_filled.items()))
     nsuf = Counter()
     for b in bills.values():
         if b.get("suffix"):
