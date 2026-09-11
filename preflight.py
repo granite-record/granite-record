@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.111
+# GRANITE_VERSION: 2026-09-04.112
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4309,6 +4309,89 @@ def _veto_messages():
                      f"{'; '.join(bad[:3])}")
     return "ok", (f"{n} veto messages, each whole, attributed and citing a "
                   f"calendar of its own year")
+
+
+@check("build", "a chapter is read in every form the clerks wrote it, and a clash is withheld")
+def _chapters():
+    """extract_chapters.py on a docket written to exercise each rule it
+    states: the five spellings from 1989 to 2026; a section ("Chapter 23:1")
+    and a "see" are not chapters; the date is the signature's, not the first
+    on the line (SB 39 of 2009's "Sec 3 eff 12/31/10 ... Chapter 0014" is not
+    2010's chapter 14); two bills with one number in one year are both
+    withheld; a special session and a January signature number on their
+    own; and a row under another bill's LSR is not read."""
+    here = Path(".").resolve()
+    if not (here / "extract_chapters.py").exists():
+        return "skip", "extract_chapters.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "db").mkdir()
+        (root / "data").mkdir()
+        rows = [
+            ("1989", "0010", "HB  0010", "05/08/1989 10:00:00", "HB10",
+             "SIGNED BY GOVERNOR  5/8/89   EFF:  7/7/89     CHAP: 112"),
+            ("1989", "0011", "HB  0011", "06/09/1989 10:00:00", "HB11",
+             "SIGNED BY GOVERNOR  06/09/89 EFF: 01/01/90 CHAP.0179"),
+            ("2001", "0100", "SB  0100", "06/29/2001 10:00:00", "SB100",
+             "Signed by the Governor on   6/29/2001   Eff-  6/29/2001   Chap-  0149"),
+            ("2001", "0101", "SB  0101", "06/29/2001 10:00:00", "SB101",
+             "Chapter 23:1 Committee Members Appointed by President: Senators"),
+            ("2001", "0102", "HB  0102", "05/01/2001 10:00:00", "HB102",
+             "Signed by the Governor on 5/1/2001 Eff: 7/1/2001 Chap:  0069"),
+            ("2001", "0102", "HB  0102", "05/01/2001 10:00:00", "HB102",
+             "  *Multiple Effective Dates, See Chapter 240 for additional dates"),
+            ("2009", "0039", "SB  0039", "04/21/2009 10:00:00", "SB39",
+             "Signed by the Governor on 4/17/09; Sections 1 and 4 Eff. 06/17/09;"),
+            ("2009", "0039", "SB  0039", "04/21/2009 10:00:00", "SB39",
+             "Sec 3 eff 12/31/10, Remainder eff. 04/17/09; Chapter 0014"),
+            ("2010", "2001", "HB  0546", "05/10/2010 10:00:00", "HB546",
+             "Signed By the Governor 05/07/2010; Chapter 0014"),
+            ("2009", "0028", "SB  0028", "05/15/2009 10:00:00", "SB28",
+             "Signed by the Governor on 05/15/09; Chapter 0028"),
+            ("2009", "0109", "SB  0109", "05/08/2009 10:00:00", "SB109",
+             "Signed by the Governor on 05/08/09; Chapter 0028"),
+            ("2010", "3001", "SSHB 0001", "06/10/2010 10:00:00", "SSHB1",
+             "Signed by the Governor 06/10/2010; Chapter 0001"),
+            ("2010", "2002", "SB  0300", "01/14/2010 10:00:00", "SB300",
+             "Signed by the Governor on 1/14/10; Chapter 0001"),
+            ("2010", "9999", "HB  1400", "06/01/2010 10:00:00", "HB1400",
+             "Signed by the Governor on 6/1/10; Chapter 0200"),
+        ]
+        (root / "db" / "Docket.psv").write_text(
+            "".join("|".join([y, l, e, d, b, "H", t, "x", "1", d, "1"]) + "\n"
+                    for y, l, e, d, b, t in rows), encoding="utf-8")
+        term = lambda y: f"{y}-{int(y) + 1}"
+        bills = {}
+        for y, l, e, d, b, t in rows:
+            bills.setdefault(term(str(int(y) - (1 - int(y) % 2))), {})[b] = {
+                "bill": b, "lsr_num": l}
+        bills["2009-2010"]["HB1400"]["lsr_num"] = "2003"
+        (root / "data" / "bills.json").write_text(json.dumps(bills),
+                                                  encoding="utf-8")
+        r = _run([sys.executable, str(here / "extract_chapters.py")],
+                 cwd=root, capture_output=True, text=True, timeout=60,
+                 env={**os.environ, "PYTHONPATH": str(here)})
+        assert r.returncode == 0, (r.stdout + r.stderr).strip()[-300:]
+        got = json.loads((root / "chapters.json").read_text(encoding="utf-8"))
+
+        def ch(t, b):
+            return (got.get(t, {}).get(b) or {}).get("chapter")
+        want = {("1989-1990", "HB10"): 112, ("1989-1990", "HB11"): 179,
+                ("2001-2002", "SB100"): 149, ("2001-2002", "SB101"): None,
+                ("2001-2002", "HB102"): 69, ("2009-2010", "SB39"): 14,
+                ("2009-2010", "HB546"): 14, ("2009-2010", "SB28"): None,
+                ("2009-2010", "SB109"): None, ("2009-2010", "SSHB1"): 1,
+                ("2009-2010", "SB300"): 1, ("2009-2010", "HB1400"): None}
+        wrong = [f"{b} of {t}: {ch(t, b)}, not {n}"
+                 for (t, b), n in want.items() if ch(t, b) != n]
+        assert not wrong, "; ".join(wrong)
+        assert got["2009-2010"]["SB28"].get("withheld"), \
+            "a clash is left blank without saying why"
+        assert got["2009-2010"]["SSHB1"].get("special"), \
+            "a special session's chapter is not marked as one"
+        return "ok", "five spellings, sections and see-alsos refused, clashes withheld"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
 
 
 @check("data", "a committee report cites the calendar of its own year")

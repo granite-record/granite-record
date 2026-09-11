@@ -48,6 +48,7 @@ data/
 narratives.json
 bill_status.json
 committee_reports.json
+chapters.json
 senate_reports.json
 testimony_db.json
 archive_bills.json

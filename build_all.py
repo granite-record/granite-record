@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.15
+# GRANITE_VERSION: 2026-09-05.16
 """
 Run the whole pipeline in the right order.
 
@@ -136,6 +136,16 @@ def plan(a):
              produces=["veto_messages.json"],
              note="34 of the current term's 34 House vetoes; the Senate's are "
                   "in the Senate calendars, which this project does not fetch"),
+
+        # The chapter each bill became, from the line in its docket that
+        # records the signature. Every term's docket is on disk; before this
+        # a chapter was on the page for 2023-2026 only.
+        Step("the chapter of the session laws each bill became",
+             ["extract_chapters.py"],
+             needs=["data/bills.json"],
+             produces=["chapters.json"],
+             note="11,812 bills across all 19 terms; 18 withheld where the "
+                  "docket gives one number to two bills"),
 
         # An archived term's docket, and the histories built from it. Both
         # are skipped when the file is not there, so a checkout without the

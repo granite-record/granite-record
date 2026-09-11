@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.70
+# GRANITE_VERSION: 2026-09-05.71
 """
 Generate the faceted site from real General Court data.
 
@@ -2550,10 +2550,41 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
     return rc_out
 
 
+def chapter_of(st, docket, tally):
+    """The chapter of the session laws a bill became, as the page prints it.
+
+    The status page's own field for the terms it was fetched for; the
+    docket's law line, as extract_chapters.py reads it, for every term. Where
+    both exist they agree on 1,268 of 1,270 bills, and the two that differ
+    are the docket's typing -- SB 62 of 2025 is chapter 38 in its enrolled
+    text and the field, 39 in the docket -- so the field is shown and every
+    difference counted. Leading zeros go: the field says "0043", the docket
+    "Chapter 43" or "CHAP.0043", and the law is chapter 43.
+    """
+    stated = str((st or {}).get("chapter") or "").strip()
+    found = (docket or {}).get("chapter")
+    if stated:
+        num = str(int(stated)) if stated.isdigit() else stated
+        tally["the status page"] += 1
+        # A number the docket withheld as a clash is still a number it
+        # wrote, and still counts as a difference if it is not this one.
+        said = found or (docket or {}).get("docket")
+        if said and str(said) != num:
+            tally["differ"] += 1
+        return num
+    if found:
+        tally["the docket"] += 1
+        return f"{found}, special session" if docket.get("special") else str(found)
+    if (docket or {}).get("withheld"):
+        tally["withheld"] += 1
+    return ""
+
+
 def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
-                votes_by_bill, vetoes=None, notes=None, coverage=None):
+                votes_by_bill, vetoes=None, notes=None, coverage=None,
+                chapters=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -2594,6 +2625,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     # guard below for the same reason.
     current = max(bills) if bills else ""
     n_stale = 0
+    n_chapter = Counter()
     for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
         # numbers are unique across the whole term, so the term -- not the year
@@ -2762,7 +2794,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             "status_source": ("General Court docket" if settled
                               else "General Court bill status page" if told
                               else "derived from the docket"),
-            "chapter": st.get("chapter", ""),
+            "chapter": chapter_of(st, (chapters or {}).get(term, {}).get(bid),
+                                  n_chapter),
             # Named for what it is rather than for the format the
             # scrape guessed at: the General Court's own text of
             # this bill, in the form its status page links to.
@@ -2844,6 +2877,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             print(f"  {n_stale:,} bills in closed terms read as still moving "
                   "and are marked finished;")
             print("    the status word the record gave them is unchanged")
+    if n_chapter:
+        print(f"  chapter of the session laws: {n_chapter['the status page']:,}"
+              f" from the status page, {n_chapter['the docket']:,} from the "
+              f"docket; {n_chapter['differ']} where the two differ (the "
+              f"page's field shown), {n_chapter['withheld']} withheld")
     return index, years, unnamed, dict(sponsored)
 
 
@@ -2869,6 +2907,9 @@ def main():
                     help="governor's veto messages, from extract_vetoes.py; "
                          "skipped if the file is not there")
     ap.add_argument("--senate-reports", default="senate_reports.json")
+    ap.add_argument("--chapters", default="chapters.json",
+                    help="the chapter each bill became, from "
+                         "extract_chapters.py; skipped if not there")
 
     ap.add_argument("--status", default="status/status.txt")
     ap.add_argument("--districts", default="site/districts.json")
@@ -2947,6 +2988,11 @@ def main():
     if vetoes:
         print(f"  {sum(len(v) for v in vetoes.values())} veto message(s) "
               f"across {len(vetoes)} term(s)")
+
+    chapters = load(a.chapters, {})
+    if chapters and not N.is_term_keyed(chapters):
+        sys.exit(f"{a.chapters} is not keyed on term. "
+                 "Delete it and run extract_chapters.py again.")
 
     senate = load(a.senate_reports, {})
     # Both are {term: {bill: [reports]}} now, for the reason every per-bill file
@@ -3131,6 +3177,7 @@ def main():
                                procs, floor, segs, marks, sources,
                                legs, leg_by_sort, leg_by_name,
                                votes_by_bill, vetoes=vetoes, notes=notes,
+                               chapters=chapters,
                                coverage=archive_coverage(
                                    bills, narratives, sponsors, reports,
                                    rollcalls, procs,
