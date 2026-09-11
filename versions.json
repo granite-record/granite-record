@@ -34,7 +34,7 @@
     "fetch_calendar_archive.py": "2026-09-08.5",
     "fetch_captions.py": "2026-09-05.11",
     "fetch_channel_index.py": "2026-09-04.2",
-    "fetch_committee_reports.py": "2026-09-04.24",
+    "fetch_committee_reports.py": "2026-09-04.25",
     "fetch_committee_details.py": "2026-09-07.4",
     "fetch_committees.py": "2026-09-04.3",
     "fetch_journals.py": "2026-09-04.6",

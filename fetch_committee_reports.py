@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.24
+# GRANITE_VERSION: 2026-09-04.25
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -122,6 +122,14 @@ PAGE_FURNITURE = re.compile(
     rf"|\d{{1,3}}\s*{_DATE}(?:\s*HOUSE\s*RECORD)?"
     r")\s*")
 
+# The header carries the calendar's date from about 2005 -- "House Calendar
+# No. 22 - March 17, 2006" -- and landed mid-sentence in 158 reports of
+# 2005-2008 until the pattern allowed it. Still only after a form feed.
+PRINTOUT = re.compile(
+    r"^[^\n]*file:///[^\n]*$"
+    r"|^\x0c[ \t]*House\s+Calendar(?:\s+No\.?)?\s*\d*[A-Za-z]?"
+    r"(?:\s*[-–]\s*[A-Z][a-z]+\s+\d{1,2},\s*\d{4})?[ \t]*$", re.M)
+
 # Enough to notice a consent-calendar section, not enough to classify one.
 CONSENT_HINT = re.compile(r"consent calendar", re.I)
 
@@ -132,7 +140,11 @@ RECS = (r"OUGHT TO PASS WITH AMENDMENT|OUGHT TO PASS W/ ?AMENDMENT|OUGHT TO PASS
 
 MAJ_MIN = re.compile(rf"MAJORITY\s*:\s*(?P<maj>{RECS})\s*\.?\s*"
                      rf"(?:MINORITY\s*:\s*(?P<min>{RECS})\s*\.?)?", re.I)
-SOLO_REC = re.compile(rf"(?<![:\w])(?P<rec>{RECS})\s*\.", re.I)
+# The recommendation ends in a full stop -- or, in the calendars of the
+# 2000s, stands on its own line with none, straight before the member who
+# signs: "INEXPEDIENT TO LEGISLATE / Rep. Eric G. Stohl for ...".
+SOLO_REC = re.compile(rf"(?<![:\w])(?P<rec>{RECS})\s*(?:\.|(?=\s*(?:Rep|Sen)\.\s))",
+                      re.I)
 
 # "Rep. Rick Ladd for the Majority of Education Funding."
 # "Rep. Jennifer Rhodes for the Majority of Criminal Justice and Public Safety."
@@ -161,11 +173,15 @@ VOTE_TAIL_SLACK = 60
 # the e-grave arriving from pdftotext as U+FFFD. A name made only of
 # capitalised word characters stopped at "dit", and at the U+FFFD, and a
 # re-read of the calendars lost both reports.
+# ...and the member's line ends in a full stop from 2015, a COLON before it:
+# "Rep. Debra L DeSimone for Children and Family Law: The committee
+# believes...". Wanting the full stop, the parser read not one report out of
+# a calendar of 1997-2014.
 AUTHOR = re.compile(
     r"(?P<who>(?:Rep|Sen)\.\s+[A-Z][\w'’.\-�]*"
     r"(?:\s+(?:(?:dit|de|du|da|di|van|von|der|des|la|le)\s+)?[A-Z][\w'’.\-�]*){0,3})\s+for\s+"
     r"(?:the\s+(?P<side>Majority|Minority)\s+of\s+)?"
-    r"(?P<committee>[A-Z][A-Za-z,&\-\s]{2,60}?)\s*\.\s+",
+    r"(?P<committee>[A-Z][A-Za-z,&\-\s]{2,60}?)\s*[.:]\s+",
     re.I)
 
 
@@ -176,6 +192,12 @@ def clean_pdf_text(t):
     the rejoin has to happen BEFORE soft hyphens are stripped, or "ef<shy>fect"
     silently becomes "ef fect".
     """
+    # The 1997-2000 calendars are browser printouts: every page break is the
+    # browser's "file:///C/Users/..." footer, a form feed, and a "House
+    # Calendar No. 7" header. Gone before the lines are joined, or they land
+    # mid-sentence in a member's reasoning. The header only after a form
+    # feed, so a sentence citing a calendar is left alone.
+    t = PRINTOUT.sub("", t)
     t = re.sub(r"(\w)[\u00ad\-\u2010\u2011]\s*\n\s*(\w)", r"\1\2", t)  # rejoin first
     t = t.replace("\u00ad", "")
     t = re.sub(r"[·•]\s*", " ", t)
