@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.1
+# GRANITE_VERSION: 2026-09-09.2
 """
 The built site, read back: one reader of the record inside a page.
 
@@ -81,6 +81,28 @@ def stations(site="site", years=None):
     for year, bid, rec in records(site, years):
         for s in (rec.get("stations") or []):
             yield year, bid, s
+
+
+def by_bill(site="site", years=None, fields=None):
+    """{(year, BILLID): record}, from one walk, for callers that look bills up.
+
+    The committee pages and the feeds used to open site/bills/<year>/<ID>.json
+    one bill at a time, and when the records moved inside the pages those
+    files stopped existing for all but the largest few. A missing file read as
+    "this bill has nothing", so for two days the committee pages printed no
+    time for 9,672 proceedings the bill pages timed, and 5,436 bill pages
+    advertised a feed nobody wrote. A lookup keyed the same way as the old
+    path, filled from here, cannot drift from the pages again.
+
+    fields keeps only those keys of each record: the feeds need the events
+    and sponsors of 9,739 bills, not every ballot of 33,683. The year is the
+    folder the page sits in, as a string, and the bill is upper case.
+    """
+    out = {}
+    for year, bid, rec in records(site, years):
+        out[(year, bid)] = ({k: rec[k] for k in fields if k in rec}
+                            if fields else rec)
+    return out
 
 
 def video_years(default=("2025", "2026")):

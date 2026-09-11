@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -27,6 +27,7 @@ import argparse
 import json
 import proceedings as P
 import re
+import site_read as SR
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -141,12 +142,17 @@ def main():
     all_items, by_cmte, by_topic, nbill = [], {}, {}, 0
     noyear = []
     sponsored = {}
+    # Each bill's record, read from its page. It used to be opened from
+    # site/bills/<year>/<ID>.json, which since the records moved inside the
+    # pages exists only for the few too large to inline -- so for two days this
+    # wrote 173 feeds and skipped every other bill without a word, while 5,436
+    # bill pages linked a feed that was never written.
+    recs = SR.by_bill(site, fields=("events", "sponsors", "next_step"))
     for b in idx:
         # Under the filing year, like the feed's own output path below.
-        f = site / "bills" / str(b.get("year") or "") / f"{b['id']}.json"
-        if not f.exists():
+        d = recs.get((str(b.get("year") or ""), b["id"].upper()))
+        if d is None:
             continue
-        d = json.loads(f.read_text(encoding="utf-8"))
         url = bill_url(b)
         events = [e for e in (d.get("events") or []) if e.get("date")]
         events.sort(key=lambda e: e["date"], reverse=True)

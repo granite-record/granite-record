@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.15
+# GRANITE_VERSION: 2026-09-07.16
 """
 A page's worth of data for every committee.
 
@@ -52,6 +52,7 @@ from pathlib import Path
 import proceedings as P
 import names
 import shell as S
+import site_read as SR
 
 # The kinds proceedings.csv records, in the order a committee day runs, with
 # the plural the narrative needs.
@@ -282,7 +283,12 @@ def main():
     days = collections.defaultdict(lambda: collections.defaultdict(list))
     bill_meta = {(b.get("term"), b.get("id")): b for b in idx}
 
-    _station_cache = {}
+    # Every bill's stations, read from the pages themselves. This used to open
+    # site/bills/<year>/<ID>.json one bill at a time, and since the records
+    # moved inside the pages that file exists only for the few too large to
+    # inline -- so for two days a missing file read as "no station", and these
+    # pages printed no time for 9,672 proceedings their bill pages timed.
+    _stations = SR.by_bill(site, fields=("stations",))
 
     def station_of(year, bill, date, kind):
         """The bill page's own station for this proceeding, or None.
@@ -290,16 +296,9 @@ def main():
         One source for a proceeding's start, because two sources disagreed by
         four hours and neither page said which was which.
         """
-        key = (year, bill)
-        if key not in _station_cache:
-            f = site / "bills" / str(year) / f"{bill}.json"
-            try:
-                _station_cache[key] = json.loads(
-                    f.read_text(encoding="utf-8")).get("stations") or []
-            except (OSError, ValueError):
-                _station_cache[key] = []
+        rec = _stations.get((str(year or ""), (bill or "").upper())) or {}
         want = (kind or "").strip().lower()
-        for st in _station_cache[key]:
+        for st in (rec.get("stations") or []):
             if st.get("when") != date:
                 continue
             if want and want not in (st.get("what") or "").strip().lower():

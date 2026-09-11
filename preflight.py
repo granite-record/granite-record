@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.103
+# GRANITE_VERSION: 2026-09-04.104
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2252,22 +2252,39 @@ def _chain():
             ("build_pages.py", ["--out", "site"], "site/legislators.html"),
             ("build_bill_pages.py", ["--site", "site", "--base", base],
              "site/sitemap.xml"),
+            # After the bill pages, as in build_all: it reads their stations.
+            ("build_committees.py", ["--site", "site", "--data", "data",
+                                     "--base", base], "site/committees.json"),
             ("build_feeds.py", ["--site", "site", "--base", base],
              "site/feed/all.xml"),
         ]
         for script, args, produces in steps:
+            if not (here / script).exists():
+                continue
             r = _run([sys.executable, str(here / script), *args],
                                cwd=root, capture_output=True, text=True, timeout=180)
             if r.returncode != 0:
                 tail = (r.stderr or r.stdout).strip().splitlines()
                 raise AssertionError(f"{script}: " + (tail[-1][:120] if tail else "?"))
             assert (root / produces).exists(), f"{script} produced no {produces}"
+        # Every bill page that advertises a feed has one. The records moved
+        # inside the pages on 9 September and build_feeds went on reading the
+        # old side files, so 5,436 pages linked a feed nobody wrote -- and this
+        # chain passed, because all.xml was still produced.
+        sys.path.insert(0, str(here))
+        import site_read as SR
+        for year, bid, rec in SR.records(root / "site"):
+            if any(e.get("date") for e in (rec.get("events") or [])):
+                fx = root / "site" / "feed" / "bill" / year / f"{bid.lower()}.xml"
+                assert fx.exists(), (f"{bid} of {year} has dated events and its "
+                                     f"page links a feed, but none was written")
         r = _run([sys.executable, str(here / "check_site.py"),
                             "--site", "site", "--base", base],
                            cwd=root, capture_output=True, text=True, timeout=120)
         bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
         assert not bad, "check_site: " + "; ".join(bad)[:140]
-        return "ok", "5 builders, then check_site, on a 2-bill fixture"
+        return "ok", ("6 builders, then check_site, on a 2-bill fixture; "
+                      "every page that links a feed has one")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -2431,7 +2448,7 @@ def _feed_needs_a_year():
     root = Path(tempfile.mkdtemp())
     try:
         site = root / "site"
-        (site / "bills" / "2026").mkdir(parents=True)
+        (site / "bill" / "2026").mkdir(parents=True)
         rows = [{"id": "HB1", "n": "HB 1", "year": 2026, "term": "2025-2026",
                  "title": "a bill with a year", "committee": "", "topic": "",
                  "status": "In committee", "kind": "active", "nrc": 0,
@@ -2441,19 +2458,18 @@ def _feed_needs_a_year():
                  "status": "In committee", "kind": "active", "nrc": 0,
                  "last_action": "2026-02-01", "votedays": []}]
         (site / "index.json").write_text(json.dumps(rows), encoding="utf-8")
+        # Records travel inside their pages, as build_bill_pages writes them.
+        # This fixture used to write site/bills/2026/<ID>.json, the layout the
+        # site stopped having on 9 September -- so it went on passing while
+        # build_feeds read that dead path and skipped every real bill.
+        d = {"next_step": "", "sponsors": [],
+             "events": [{"date": "2026-02-01", "text": "It was introduced."}]}
         for r in rows:
-            d = {"next_step": "", "sponsors": [],
-                 "events": [{"date": "2026-02-01", "text": "It was introduced."}]}
-            (site / "bills" / "2026" / f"{r['id']}.json").write_text(
-                json.dumps(d), encoding="utf-8")
-        # HB2 has no year, so its record cannot be found under bills/<year>/
-        # either; put it where a yearless bill would have been written.
-        (site / "bills").mkdir(exist_ok=True)
-        (site / "bills" / "HB2.json").write_text(
-            json.dumps({"next_step": "", "sponsors": [],
-                        "events": [{"date": "2026-02-01",
-                                    "text": "It was introduced."}]}),
-            encoding="utf-8")
+            # HB2's page sits in a year folder, but the index gives it no
+            # year: a record the index cannot place must still get no feed.
+            (site / "bill" / "2026" / f"{r['id'].lower()}.html").write_text(
+                '<script type="application/json" id="gr-data">'
+                + json.dumps(d) + "</script>", encoding="utf-8")
         r = _run([sys.executable, str(here / "build_feeds.py"),
                             "--site", "site", "--base", "https://x.test"],
                            cwd=root, capture_output=True, text=True, timeout=120)
@@ -4194,44 +4210,55 @@ def _one_start():
     stays true, because the failure is silent: both pages render, both look
     confident, and only somebody opening the recording finds out.
     """
-    croot, broot = Path("site/committee"), Path("site/bills")
-    if not croot.exists() or not broot.exists():
-        return "skip", "committee or bill JSON not built"
-    checked, bad = 0, []
-    cache = {}
+    # IT READ THE WRONG PLACE FOR TWO DAYS AND PASSED. It opened
+    # site/bills/<year>/<ID>.json, which since the records moved inside the
+    # pages exists only for the few too large to inline; a missing file was
+    # skipped, and it only looked at committee items that already had a start.
+    # So it checked 298 proceedings and passed while the committee pages
+    # printed no time for 9,672 the bill pages timed. Now it reads the pages,
+    # checks every item that has a recording -- a start on one page and none
+    # on the other is a disagreement too -- and fails on an item it cannot
+    # find on its bill page rather than stepping round it.
+    croot = Path("site/committee")
+    if not croot.exists() or not Path("site/bill").is_dir():
+        return "skip", "committee JSON or bill pages not built"
+    import site_read as SR
+    recs = SR.by_bill("site", SR.video_years(), fields=("stations",))
+    checked, bad, lost = 0, [], []
     for f in sorted(croot.glob("*.json")):
         c = json.loads(f.read_text(encoding="utf-8"))
         for sess in c.get("sessions", []):
             for it in sess.get("items", []):
-                if it.get("start") is None:
+                if not it.get("video_id"):
                     continue
-                key = (str(it.get("year") or ""), it.get("bill"))
-                if key not in cache:
-                    bf = broot / key[0] / f"{key[1]}.json"
-                    try:
-                        cache[key] = json.loads(
-                            bf.read_text(encoding="utf-8")).get("stations") or []
-                    except (OSError, ValueError):
-                        cache[key] = []
+                key = (str(it.get("year") or ""), (it.get("bill") or "").upper())
                 want = (it.get("kind") or "").strip().lower()
-                st = next((x for x in cache[key]
+                st = next((x for x in ((recs.get(key) or {}).get("stations")
+                                       or [])
                            if x.get("when") == sess.get("date")
                            and (not want
                                 or want in (x.get("what") or "").lower())), None)
                 if not st:
+                    lost.append(f"{c.get('code')} {sess.get('date')} "
+                                f"{it.get('bill')} ({it.get('year')})")
                     continue
                 checked += 1
                 a, b = it.get("start"), st.get("start")
-                if b is None or abs(float(a) - float(b)) > 1:
+                if (a is None) != (b is None) or (
+                        a is not None and abs(float(a) - float(b)) > 1):
                     bad.append(f"{c.get('code')} {sess.get('date')} "
                                f"{it.get('bill')}: committee says {a}, "
                                f"the bill page says {b}")
-    if not checked:
-        return "skip", "no committee item matched a bill station"
+    if not checked and not lost:
+        return "skip", "no committee item carries a recording"
+    assert not lost, (
+        f"{len(lost)} committee item(s) with a recording have no matching "
+        f"station on their bill page: {'; '.join(lost[:3])}")
     assert not bad, (
         f"{len(bad)} of {checked:,} proceedings start at a different moment on "
         f"the committee page than on the bill page: {'; '.join(bad[:2])}")
-    return "ok", (f"{checked:,} proceedings, one start each, on both pages")
+    return "ok", (f"{checked:,} recorded proceedings, one start each, on both "
+                  f"pages")
 
 
 @check("data", "no published time was read off captions out of step with the recording")
