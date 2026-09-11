@@ -261,24 +261,24 @@ standing.
 it, and two of the same fetcher is two fetchers. `watchers/README.md` holds the
 detail and a one-liner that lists them.
 
-Late on 10 September, running:
+On 11 September, running (Windows Update restarted the machine at 03:18 and
+took down everything listed here the day before; these were started again
+from 08:57, with the person's leave to fetch for that absence):
 
 | | |
 |---|---|
-| `watchers/narrative_watch.py` | waits for a docket to finish, then narrates it |
-| `review.py --port 8799` | the bench, on the loopback address |
-| three `http.server` instances | 8787 serves `site/`, the others are older previews |
+| `watchers/gc_lane.py` | **the one General Court worker**: runs `watchers/gc_lane.queue` step by step holding `archive/.lock` -- the 2015-2016 docket, then bill text 2017-2024 in 800-request runs with an hour's rest between |
+| `watchers/captions_watch.py` | YouTube, not the General Court; 676 captions wanted at the start |
+| `review.py --port 8799 --refresh --no-open` | the bench, loopback only; pools are cached on disk in `review/.pool-*.json`, so it needs `--refresh` after any parser change or rebuild, across restarts too |
+| one `http.server` on 8787 | serves `site/` (the `site` entry in `.claude/launch.json`) |
 
-**Not running, and worth restarting: the caption watcher.** It stopped by
-design at 21:31 on the 10th after thirty hours -- 69 cycles, 2,762 captions,
-no refusal in any of them -- with **676 still wanted**. The thirty-hour cap is
-deliberate: it is a loop with no end otherwise. It touches YouTube, not the
-General Court, so it does not contend with a docket fetch. Restart it with
-`python3 watchers/captions_watch.py` from the repository root once a person
-has said to.
+**Not running, on purpose: `watchers/narrative_watch.py`.** The 2015-2016
+docket mixes database lines the narrator fails on with web lines; narrate it
+by hand. See `watchers/README.md`.
 
-Nothing is fetching from the General Court. `archive/refused.json` is absent,
-which is what "no refusal in force" looks like.
+A refusal stops the lane and every fetcher. `archive/refused.json` absent is
+what "no refusal in force" looks like; `python3 netcheck.py` then
+`python3 refusal.py --clear` is a person's decision.
 
 **Those watchers used to live in a session scratchpad** -- a temp directory
 keyed to one conversation -- so when the conversation ended they kept running

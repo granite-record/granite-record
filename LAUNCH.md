@@ -40,27 +40,31 @@ party on nearly every ballot ever cast.
 
 ## 2. Running
 
-- **Docket**: 2017-2018 and 2019-2020 are done. **2021-2022 resumed on the
-  10th at 588 of 1,752** -- about five and a half hours -- once the hearing
-  dates were traced to the General Court's own server rather than to anything
-  here. The 588 pages already on disk were checked first and are the right
-  term: the session year is an explicit request parameter, 5 of 5 sampled
-  pages carry the 2021-2022 title, and 4,718 of 4,720 action dates fall inside
-  the term. 2016 and the Senate calendars wait behind it.
-- **The 380-page sample of `gc.nh.gov/legislation/<year>/<BILL>.html` is
-  done**: 297 pages saved, the parser read against them in three passes, and
-  every bill asked for under 1996, 2016 and 2022 onward answered 404. The
-  **every bill of every term from 1989 to 2026 now has an address** --
-  27,171 by the static path, 6,512 by `billText.aspx`, none unreachable,
-  against 2,103 unreachable on the morning of the 10th. Six addresses opened
-  by hand in a browser settled it: 2016 and 2022-2026 have no static
-  directory and are served by the application; 2022, 2025 and 2026 take the
-  id `data/bills.json` already stores while 2023 and 2024 want the session
-  year appended to it; and 1996 is served at `.htm`, padded and upper-case
-  like every other year, the only address that fails being the one the
-  archive itself publishes. The full run waits on the docket, and on nothing
-  else.
-- **Captions**, no longer throttled: about 60 a cycle, ~2,400 folders.
+Everything the General Court is asked now goes through **one lane**,
+`watchers/gc_lane.py`, which runs `watchers/gc_lane.queue` a step at a time
+holding `archive/.lock`. `watchers/README.md` says how to watch it.
+
+- **Docket**: 2017-2022 are done. **2015-2016 is running** (from the 11th):
+  the database's "2016" rows turned out to be the 2015 history of 190
+  carried-over bills, so all 1,072 bills filed under 2016 are asked from
+  their own pages, seeded by `Docket_db_2015.txt` (the 716 bills filed under
+  2015, with their own LSR).
+- **Bill text**, queued behind it: `fetch_legislation.py`, one request a
+  bill, 31,003 for 1989-2024 by `--plan`. Every address was settled by hand
+  in a browser: the static path for 1989-2021 (1996 at `.htm`, even-year
+  four-digit bills included), and `billText.aspx` with **the stored id and
+  `sy=<year>`** for 2016 and 2022-2024 -- opened on the 11th, `id=32&sy=2023`
+  serves 2023 HB42. The rule this document stated until then, that 2023-2024
+  want the year appended, was wrong for 1,826 of 1,996 bills and would have
+  saved 615 of them under another bill's name. Floor resolutions (LSR 8000+)
+  have no text (1990 HR55, opened by hand) and are not asked. Before any of
+  it ran, three read-only reviewers went through the fetchers: every page
+  must print the bill's own LSR, 404s go on an address-keyed gone-list, and
+  both fetchers read refusals through `refusal.classify()` -- a reset wrapped
+  in a URLError is a dropped connection, a 503 or the block page a refusal.
+  **No consumer yet**: the pages are raw-first and wait for the decision on
+  what an archived bill page shows.
+- **Captions**, YouTube: the watcher, restarted on the 11th with 676 wanted.
 
 **Sponsors: `byAnyMember.aspx` answers, and it changes the plan.** Opened by
 hand on the 10th. One combobox of **2,614 distinct past and present
@@ -144,9 +148,16 @@ pause, press, rather than read-off-and-retype.
 and `probe_alignment.py --truth` reads them beside `ground_truth.csv`. Related
 bills and auto-assigned topics still wait on a checked sample of their own.
 
-Its samples are built when it starts and held in memory, so after a parser
-changes or the site is rebuilt it goes on serving the old ones until it is
+Its samples are built when it starts and **cached on disk** in
+`review/.pool-<kind>.json`, so after a parser changes or the site is rebuilt
+it goes on serving the old ones -- across restarts too -- until it is
 restarted with `--refresh`.
+
+A sixth kind since the 11th, **Hour-late recordings**: every proceeding on
+the nine recordings whose YouTube caption track runs an hour behind its own
+video (seen in YouTube's own player). The page prints no time for them, so
+the bench shows none either and asks for the time. One timing per recording
+decides whether an hour's shift can put 76 stated starts back.
 
 ---
 
@@ -309,11 +320,26 @@ example on this site of a number outliving its premise.
   columns slip, the times after the slip belong one line up: the docket puts
   HB 1540 of 2018 at 1:00 and HB 1240 at 1:30, and the parser still gives
   HB 1240 1:00.
-- **Veto coverage.** 175 messages publish and every one is correctly cited,
-  but only 67 were newly extracted on the last run against 124 before, because
-  the wrong-citation fallback was removed. `calendars.json` covers 976 of
-  2,564 calendars; a calendar with no known address cannot be cited and so is
-  not quoted. Rebuilding that index recovers them.
+- ~~**Veto coverage.**~~ *Closed on the 11th, and the sentence here was
+  wrong.* It said every one of 175 messages was correctly cited; 108 of them
+  (all of 2013-2022) cited a calendar of 2023 or 2024, and the live site
+  carries them until the next publish. The address now comes from the
+  drain's own queue for the very file a message was read from, and
+  `quotable()` refuses a citation from another year: 176 messages, none
+  citing another year.
+- ~~**Three readers of files that no longer exist.**~~ *Closed on the 11th.*
+  Since records moved inside the pages on the 9th, the committee pages
+  printed no time for 9,672 proceedings the bill pages time, 5,436 bill
+  pages linked a feed nobody wrote, and preflight's `_one_start` and veto
+  checks read the dead path and passed. All read the pages through
+  `site_read` now.
+- ~~**The archived-term note.**~~ *Closed on the 11th*: it told 15,389 bills
+  of 1999-2016 their votes were not fetched, beside a Votes tab.
+- ~~**The bulk download's start time.**~~ *Closed on the 11th*:
+  `/data/proceedings.csv` exported the schedule as `start_seconds`.
+- **Amendment text** carried the next amendment's heading at its end (97%)
+  and a running page header inside (52%), on the live site's current term.
+  Fixed in `extract_amendments.py` on the 11th; see the commit.
 - **Marker coverage.** The denominator tripled on the 10th when four more
   terms of hearings landed, most without recordings. Of 29,827 published
   stations, 8,388 carry a start. On the recorded ones the phrases are the

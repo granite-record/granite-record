@@ -20,6 +20,33 @@ python3 -c "import subprocess;print(subprocess.run(['powershell','-NoProfile','-
 
 ---
 
+## `gc_lane.py` -- the one worker for the General Court
+
+Runs the General Court's fetches one after another from `gc_lane.queue`, a
+line per step (what would follow `python3`), and records each finished line
+in `logs/gc_lane.done` so a restarted lane picks up where it was. Lines can be
+added while it runs; an empty queue is waited on for twelve hours.
+
+It holds `archive/.lock` for its whole life and touches it every minute, and
+the fetchers check with `refusal.hold()` that their parent is the lane that
+holds it -- because several fetchers never looked at the lock, and
+`fetch_calendar_archive` deletes one more than an hour old. A step marked
+`handover` takes the lock itself and is given it for that step. It stops on
+any step that exits non-zero, and before every step if
+`archive/refused.json` exists at all.
+
+```
+python3 watchers/gc_lane.py            # from the repository root
+tail -f logs/gc_lane.log                # the lane; each step logs to logs/gc_<time>_<step>.log
+```
+
+`rest.py SECONDS label` is a pause the lane can run as a step, so the
+address sees bounded runs with an hour between them rather than one crawl.
+
+Started 11 September with the person's leave for that absence: the
+2015-2016 docket, then bill text 2017-2024 in 800-request runs. What is
+queued is in `gc_lane.queue`, with the reasoning beside each line.
+
 ## `captions_watch.py`
 
 Asks YouTube for captions again every so often and drains a little when it says
@@ -58,11 +85,18 @@ Pulls text out of calendar and journal PDFs as they arrive. No network.
 
 ## `docket_chain.py`
 
-Runs the archive fetches one after another, holding `archive/.lock` so two
-cannot overlap. **Not running**, and worth reading before it is: its tail end
-queues bill-text runs through `fetch_archive_text.py`, which is the two-request
-per-bill route that `fetch_legislation.py` superseded on 10 September — the
-legislation path gets sponsors, committee, title, analysis and the full text in
-one request, and every bill of every term from 1989 to 2026 now has an address.
+**Superseded by `gc_lane.py`; do not start it.** It ran the archive fetches
+one after another holding `archive/.lock`, and its tail queues bill-text runs
+through `fetch_archive_text.py`, the two-request route `fetch_legislation.py`
+superseded on 10 September. Its seed for 2015-2016 is also wrong: the
+database's "2016" rows are the 2015 history of 190 carried-over bills, so
+seeding from them skips those bills' whole 2016 record. The lane's queue
+uses `Docket_db_2015.txt` instead. Kept for its reasoning.
 
-Starting the chain unedited would spend days on the worse route.
+## Not running, on purpose: `narrative_watch.py`
+
+It narrates a docket the moment its fetch finishes. The 2015-2016 docket
+now being fetched mixes the database's lines for 2015 -- which the
+narrator's grammar fails on 42-64% of -- with web lines for 2016, and
+narrating it unattended is how wrong passage rails reached the site on the
+10th. Narrate it by hand once the grammar for the older lines is in.
