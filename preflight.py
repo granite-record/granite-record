@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.120
+# GRANITE_VERSION: 2026-09-04.121
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4549,6 +4549,28 @@ def _sr_heading():
     return "ok", f"{len(pages):,} pages, each with its own first heading"
 
 
+@check("data", "the note about voice votes is not printed over the roll calls")
+def _vote_note_truth():
+    """narrative counts the floor votes the DOCKET calls voice or division
+    votes; the table under the note comes from RollCallSummary, which knows
+    votes the docket line never mentions. On 7,872 bills of five terms the
+    note read "there is no record of how individual legislators voted"
+    directly above the record of how they voted."""
+    if not Path("site/bill").is_dir():
+        return "skip", "no bill pages built"
+    import site_read as SR
+    bad, n = [], 0
+    for year, bid, rec in SR.records("site"):
+        if not rec.get("rollcalls"):
+            continue
+        n += 1
+        if (rec.get("vote_note") or "").startswith("Every floor vote"):
+            bad.append(f"{bid} of {year}")
+    assert not bad, (f"{len(bad):,} of {n:,} bills with roll calls say every "
+                     f"vote was a voice vote: {', '.join(bad[:4])}")
+    return "ok", f"{n:,} bills with roll calls, none denying them"
+
+
 @check("data", "a proceeding is matched only to its own chamber's recording")
 def _manifest_chamber():
     """build_manifest keyed recordings on committee and date, and both
@@ -4606,8 +4628,17 @@ def _next_step_settled():
         if kinds.get((year, bid)) not in ("law", "veto"):
             continue
         n += 1
-        if (rec.get("next_step") or "").startswith("No recorded action"):
-            bad.append(f"{bid} of {year}")
+        step = rec.get("next_step") or ""
+        if step.startswith("No recorded action"):
+            bad.append(f"{bid} of {year}: no action recorded")
+        # AND NOTHING STILL MOVING. The signature was read off the last
+        # docket line alone, so anything filed after it -- an effective
+        # date, a chaptering row -- left 185 laws saying "In progress" or
+        # "Enrolled. Pending the governor's signature" under a chip that
+        # said they were law, 31 of them in the current term.
+        elif kinds.get((year, bid)) == "law" and re.match(
+                r"(In progress|In committee|Pending|Enrolled\. Pending)", step):
+            bad.append(f"{bid} of {year}: {step[:40]!r} under \"law\"")
     assert not bad, (f"{len(bad):,} of {n:,} laws and vetoes say no action "
                      f"is recorded: {', '.join(bad[:4])}")
     return "ok", f"{n:,} laws and vetoes, each saying what became of it"

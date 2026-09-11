@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.76
+# GRANITE_VERSION: 2026-09-05.77
 """
 Generate the faceted site from real General Court data.
 
@@ -999,7 +999,13 @@ def next_step(narr, bill, prefix=""):
     if ("without the signature of the governor" in every
             or "law without signature" in every):
         return "Became law without the governor's signature"
-    if SIGNED_RE.search(raw):
+    # THE SIGNATURE, LIKE THE VETO ABOVE, IS READ FROM THE WHOLE HISTORY.
+    # Read off the last line alone it was missed whenever anything followed
+    # it -- an effective-date row, a chaptering line, a same-day row that
+    # sorts after it -- and 185 bills whose chip said "Signed into law" had a
+    # status box reading "In progress" or "Enrolled. Pending the governor's
+    # signature", 31 of them in the current term.
+    if SIGNED_RE.search(every):
         return "Signed into law"
     if "vetoed" in raw:
         return "Vetoed. Awaiting a possible override vote"
@@ -2634,6 +2640,14 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
     return rc_out
 
 
+def vote_note_for(narr, rollcalls):
+    """The note above the votes table, silenced where it would contradict it."""
+    note = (narr or {}).get("vote_note", "")
+    if rollcalls and note.startswith("Every floor vote"):
+        return ""
+    return note
+
+
 def chapter_of(st, docket, tally):
     """The chapter of the session laws a bill became, as the page prints it.
 
@@ -2863,7 +2877,15 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                        + [x for x in [closing_stage(status, narr)] if x]),
             "notes": (narr or {}).get("notes", []),
             # Belongs on the Votes tab, not above the history.
-            "vote_note": (narr or {}).get("vote_note", ""),
+            # NOT OVER THE TOP OF THE ROLL CALLS. narrative counts the
+            # floor votes the DOCKET records as voice or division votes; the
+            # table under this note comes from RollCallSummary, which knows
+            # votes the docket line does not mention. On 7,872 bills the note
+            # said "there is no record of how individual legislators voted"
+            # directly above the record of how they voted. The partial form
+            # ("3 of the floor votes were voice votes") is still true beside
+            # them and is kept.
+            "vote_note": vote_note_for(narr, rc_out),
             # Each action keeps the citation it ends with -- "HJ 7 P. 55" -- and
             # the URL of that journal or calendar where we have it. That is the
             # official record of the line being displayed, and it is the thing
