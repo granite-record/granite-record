@@ -44,6 +44,19 @@ Everything the General Court is asked now goes through **one lane**,
 `watchers/gc_lane.py`, which runs `watchers/gc_lane.queue` a step at a time
 holding `archive/.lock`. `watchers/README.md` says how to watch it.
 
+**Stopped on a refusal at 11:36 on the 11th, as designed.** The 2015-2016
+docket met two read timeouts (the address not answering within 60 s), and
+two dropped connections is this address's sign of refusing: the fetch
+recorded it in `archive/refused.json`, the lane stopped and released the
+lock. 363 of the 1,072 pages for 2016 are on disk. Nothing asks the General
+Court anything until a person runs `python3 netcheck.py` and decides on
+`python3 refusal.py --clear`. Then `python3 watchers/gc_lane.py` resumes the
+queue where it was; what it has already fetched is never asked for again.
+Both runs that day slowed or stopped about 90 minutes in and during
+business hours -- a guess, not a finding, that the evenings would go
+better. `build_all` now skips its own General Court steps while a refusal
+or the lane's lock is on file.
+
 - **Docket**: 2017-2022 are done. **2015-2016 is running** (from the 11th):
   the database's "2016" rows turned out to be the 2015 history of 190
   carried-over bills, so all 1,072 bills filed under 2016 are asked from
@@ -337,9 +350,31 @@ example on this site of a number outliving its premise.
   of 1999-2016 their votes were not fetched, beside a Votes tab.
 - ~~**The bulk download's start time.**~~ *Closed on the 11th*:
   `/data/proceedings.csv` exported the schedule as `start_seconds`.
-- **Amendment text** carried the next amendment's heading at its end (97%)
-  and a running page header inside (52%), on the live site's current term.
-  Fixed in `extract_amendments.py` on the 11th; see the commit.
+- ~~**Amendment text**~~ *Closed on the 11th*: it carried the next
+  amendment's heading at its end (97%) and a running page header inside
+  (52%), on the live site's current term.
+- ~~**Committee report citations.**~~ *Closed on the 11th*: all 7,376 of
+  2013-2022 linked a 2023 or 2024 calendar and printed its date; every
+  report of 1997-2024 now links its own year's calendar, from the queue.
+- ~~**Roll calls' "not voting".**~~ *Closed on the 11th*: 2,483 House votes
+  of 1999-2013 showed more members than the House has; counted from the
+  ballots now.
+- ~~**2025's bills had no committee and no subject.**~~ *Closed on the 11th*,
+  from the database's Legislation view, which equals LSRs.txt on every bill
+  both carry.
+- ~~**No 404 page.**~~ *Closed on the 11th.*
+- **The home page's status note says the general election is 2 November.**
+  It is Tuesday 3 November 2026, and the primary line is in the present
+  tense. `status/status.txt` is written by hand.
+
+## 6a. Filled from disk on the 11th, no request made
+
+Committee reports and their reasoning for **every term 1997-2026** (from
+2023-2026 alone), each vote checked against the docket at 96.9-99.8%;
+veto messages back to **1997-1998** under the older headings (261, from
+176); amendment texts **2011-2024** (4,577, from 663); sign-in counts for
+**2024's** hearings (963 bills); and the current term's **2025 committees
+and subjects** (847 bills). The commits carry the measurements.
 - **Marker coverage.** The denominator tripled on the 10th when four more
   terms of hearings landed, most without recordings. Of 29,827 published
   stations, 8,388 carry a start. On the recorded ones the phrases are the
