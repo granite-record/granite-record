@@ -144,6 +144,10 @@ pause, press, rather than read-off-and-retype.
 and `probe_alignment.py --truth` reads them beside `ground_truth.csv`. Related
 bills and auto-assigned topics still wait on a checked sample of their own.
 
+Its samples are built when it starts and held in memory, so after a parser
+changes or the site is rebuilt it goes on serving the old ones until it is
+restarted with `--refresh`.
+
 ---
 
 ## 4. What is left
@@ -280,6 +284,31 @@ example on this site of a number outliving its premise.
 
 ## 6. Known bugs
 
+- ~~**Nine recordings published an hour early.**~~ *Closed late on the 10th.*
+  Their YouTube caption track starts an hour into the recording, so the
+  chair's stated boundary and the clustering beside it were both an hour
+  early -- 74 starts, 55 drawn as stated. The bench's mark on HB1130 was
+  3,622 seconds out. `caption_span.py` compares where the captions stop with
+  the duration YouTube published, and `build_site_v2` withholds both sources
+  past fifty minutes short; the page falls back to the schedule. What is
+  still open: the shift looks like exactly 3,600 seconds on every recording
+  measured, and moving those times rather than withholding them would put
+  74 starts back -- but that is a new way of making a timestamp and wants a
+  few of the nine timed at the bench first.
+- ~~**Calendar headers split in the wrong place.**~~ *Closed late on the
+  10th*: a committee name with a comma of its own is kept whole (22,454
+  rows), and a bill's untimed line is no longer read as a committee (4,841).
+  What is still open, and measured: **2021's headers print with no room**
+  ("CRIMINAL JUSTICE AND PUBLIC SAFETY") and are not read at all, so its 383
+  rows that had only a misread bill number for a committee now have none and
+  are not produced; the Senate prints many standing commissions the same way,
+  and their meetings inherit the committee above. A lookup against names
+  printed in full elsewhere was tried and moves 622 rows between real
+  committees -- Finance prints budget hearings under agency sub-headings that
+  are also committee names -- so it is not a fix yet. And where the two
+  columns slip, the times after the slip belong one line up: the docket puts
+  HB 1540 of 2018 at 1:00 and HB 1240 at 1:30, and the parser still gives
+  HB 1240 1:00.
 - **Veto coverage.** 175 messages publish and every one is correctly cited,
   but only 67 were newly extracted on the last run against 124 before, because
   the wrong-citation fallback was removed. `calendars.json` covers 976 of
