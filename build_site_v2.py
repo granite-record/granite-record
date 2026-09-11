@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.72
+# GRANITE_VERSION: 2026-09-05.73
 """
 Generate the faceted site from real General Court data.
 
@@ -430,10 +430,19 @@ STATED = [
     # override vote, one where the override failed, and one where it succeeded
     # are three different situations, and lumping them as "Vetoed" hides the
     # only part anyone wants to know.
-    ("veto overridden", "law", "Veto overridden, became law"),
-    ("override adopted", "law", "Veto overridden, became law"),
+    #
+    # SUSTAINED BEFORE OVERRIDDEN, as classify() already has it for the
+    # docket: an override needs two-thirds in both chambers, so one chamber
+    # sustaining ends the bill whatever the other did. The fields are read
+    # together, and a bill whose House field says VETO OVERRIDDEN and whose
+    # Senate field says VETO SUSTAINED read "Veto overridden, became law" --
+    # eleven of them, 1989 to 2012, every one confirmed by its docket as an
+    # override that failed in the second chamber. The fourteen in terms with
+    # a narrated docket were rescued by docket_outcome.
     ("veto sustained", "veto", "Vetoed, override failed"),
     ("override failed", "veto", "Vetoed, override failed"),
+    ("veto overridden", "law", "Veto overridden, became law"),
+    ("override adopted", "law", "Veto overridden, became law"),
     ("veto override", "veto", "Vetoed, override vote pending"),
     ("vetoed by governor", "veto", "Vetoed, awaiting an override vote"),
     ("inexpedient to legislate", "done", "Killed"),

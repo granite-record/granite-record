@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.113
+# GRANITE_VERSION: 2026-09-04.114
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -488,6 +488,28 @@ def _veto_status(build_site_v2):
     step = B.next_step(both, {})
     assert "dead" in step.lower(), step
     return "ok", f"{label} / {step}"
+
+
+@check("status", "a stated override in one chamber and sustained veto in the other is a veto",
+       needs=("build_site_v2",))
+def _veto_split_stated(build_site_v2):
+    """The same rule as the check above, for the status fields rather than
+    the docket. HB 503 of 2003: VETOED BY GOVERNOR, House VETO OVERRIDDEN,
+    Senate VETO SUSTAINED -- published as "Veto overridden, became law"
+    until 11 September, with ten others like it."""
+    B = build_site_v2
+    for house, senate in (("VETO OVERRIDDEN", "VETO SUSTAINED"),
+                          ("VETO SUSTAINED", "VETO OVERRIDDEN")):
+        got = B.classify_stated({"gen_status": "VETOED BY GOVERNOR",
+                                 "house_status": house,
+                                 "senate_status": senate}, "HB")
+        assert got and got[0] == "veto", (
+            f"House {house}, Senate {senate} came out as {got}")
+    both = B.classify_stated({"gen_status": "VETOED BY GOVERNOR",
+                              "house_status": "VETO OVERRIDDEN",
+                              "senate_status": "VETO OVERRIDDEN"}, "HB")
+    assert both and both[0] == "law", f"overridden in both came out as {both}"
+    return "ok", "sustained in either chamber is a veto; overridden in both is law"
 
 
 @check("status", "law without a signature reads as law", needs=("build_site_v2",))
