@@ -16,3 +16,33 @@ fetch_archive_docket.py --term 2015-2016 --seed Docket_db_2015-2016.txt --delay 
 # one of the 1,072 bills filed under 2016 then comes from its own page; the
 # 883 above are cached, so this asks for the other 189 and rewrites the file.
 fetch_archive_docket.py --term 2015-2016 --seed Docket_db_2015.txt --delay 15 --stop-refused 2
+watchers/rest.py 3600 after-docket
+
+# BILL TEXT, 1989-2024: 31,003 requests by --plan, one per bill, 15s apart.
+# Bounded runs of 800 with an hour's rest between. A proving run first, on
+# the static path, where 96 of 96 sampled House and Senate bills served.
+fetch_legislation.py --all --from 2021 --to 2021 --kinds HB,SB --budget 20 --note proving
+watchers/rest.py 1800 after-proving
+# 2017-2021, static: 4,280.
+fetch_legislation.py --all --from 2017 --to 2021 --budget 800 --note 2017-21-a
+watchers/rest.py 3600 after-2017-21-a
+fetch_legislation.py --all --from 2017 --to 2021 --budget 800 --note 2017-21-b
+watchers/rest.py 3600 after-2017-21-b
+fetch_legislation.py --all --from 2017 --to 2021 --budget 800 --note 2017-21-c
+watchers/rest.py 3600 after-2017-21-c
+fetch_legislation.py --all --from 2017 --to 2021 --budget 800 --note 2017-21-d
+watchers/rest.py 3600 after-2017-21-d
+fetch_legislation.py --all --from 2017 --to 2021 --budget 800 --note 2017-21-e
+watchers/rest.py 3600 after-2017-21-e
+fetch_legislation.py --all --from 2017 --to 2021 --budget 800 --note 2017-21-f
+watchers/rest.py 3600 after-2017-21-f
+# 2023-2024, the application, stored id with sy: 1,996. A short run first,
+# so the LSR check meets the application's pages before it meets 800 of them.
+fetch_legislation.py --all --from 2023 --to 2024 --budget 25 --note 2023-24-proving
+watchers/rest.py 1800 after-2023-24-proving
+fetch_legislation.py --all --from 2023 --to 2024 --budget 800 --note 2023-24-a
+watchers/rest.py 3600 after-2023-24-a
+fetch_legislation.py --all --from 2023 --to 2024 --budget 800 --note 2023-24-b
+watchers/rest.py 3600 after-2023-24-b
+fetch_legislation.py --all --from 2023 --to 2024 --budget 800 --note 2023-24-c
+watchers/rest.py 3600 after-2023-24-c
