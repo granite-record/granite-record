@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.114
+# GRANITE_VERSION: 2026-09-04.115
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4378,6 +4378,9 @@ def _chapters():
              "Signed by the Governor on 1/14/10; Chapter 0001"),
             ("2010", "9999", "HB  1400", "06/01/2010 10:00:00", "HB1400",
              "Signed by the Governor on 6/1/10; Chapter 0200"),
+            ("2011", "0012", "SB  0012", "07/13/2011 10:00:00", "SB12",
+             "Signed by the Governor on 07/13/11; Chapter 0241I. Section 2 "
+             "Effective 12/31/13I"),
         ]
         (root / "db" / "Docket.psv").write_text(
             "".join("|".join([y, l, e, d, b, "H", t, "x", "1", d, "1"]) + "\n"
@@ -4403,7 +4406,8 @@ def _chapters():
                 ("2001-2002", "HB102"): 69, ("2009-2010", "SB39"): 14,
                 ("2009-2010", "HB546"): 14, ("2009-2010", "SB28"): None,
                 ("2009-2010", "SB109"): None, ("2009-2010", "SSHB1"): 1,
-                ("2009-2010", "SB300"): 1, ("2009-2010", "HB1400"): None}
+                ("2009-2010", "SB300"): 1, ("2009-2010", "HB1400"): None,
+                ("2011-2012", "SB12"): 241}
         wrong = [f"{b} of {t}: {ch(t, b)}, not {n}"
                  for (t, b), n in want.items() if ch(t, b) != n]
         assert not wrong, "; ".join(wrong)

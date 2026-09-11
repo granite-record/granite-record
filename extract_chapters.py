@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.1
+# GRANITE_VERSION: 2026-09-11.2
 """
 The chapter of the session laws each bill became, read out of the docket.
 
@@ -66,8 +66,12 @@ DB = Path("db/Docket.psv")
 BILLS = Path("data/bills.json")
 OUT = Path("chapters.json")
 
-CHAPTER = re.compile(r"\bchap(?:ter)?\s*[.:\-]?\s*0*(\d{1,4})\b"
-                     r"(?![:\-]\s*[0-9A-Z])", re.I)
+# The number ends at a word boundary, or where the clerk ran it into the
+# first of a list of effective dates -- "Chapter 0241I. Section 2 Effective
+# 12/31/13", 2011's habit, which cost 21 laws of 2011-2012 their number
+# until the I. was allowed for.
+CHAPTER = re.compile(r"\bchap(?:ter)?\s*[.:\-]?\s*0*(\d{1,4})"
+                     r"(?:(?=I{1,3}\.)|\b(?![:\-]\s*[0-9A-Z]))", re.I)
 SEE = re.compile(r"\(?\bsee\b[^)]*\)?", re.I)
 SPECIAL = re.compile(r"spec(?:ial)?\.?\s*sess", re.I)
 # The lines that make a bill law, or record that it did. A failed override
