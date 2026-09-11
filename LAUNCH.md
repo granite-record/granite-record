@@ -391,6 +391,14 @@ example on this site of a number outliving its premise.
   Each change was measured on every bill before and after: 496, then 38,
   exactly those. Also one name each now for "Died on the table" and
   "Referred for interim study", which the facet listed twice.
+- ~~**About 9,000 archived laws said "No recorded action yet".**~~ *A
+  regression made and closed on the 11th*, live from 14:10 to 15:01. The
+  signature line that settles an unnarrated bill also sent its status box
+  to `next_step()`, which reads a narrated history and, finding none, says
+  that. The before/after diff behind the change compared kind, status and
+  rail and not that line; preflight now reads it (d35ce77). The lesson for
+  any status change: diff every field the page prints, not the ones the
+  change was meant to move.
 
 ## 6a. Filled from disk on the 11th, no request made
 
