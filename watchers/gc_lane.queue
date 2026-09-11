@@ -1,0 +1,18 @@
+# The General Court lane, one step per line, run in order by watchers/gc_lane.py.
+# A step is what follows "python3". "handover " in front means the step takes
+# archive/.lock itself. A line is run once; logs/gc_lane.done lists what has run.
+# Add a step only once its fetcher has been read for the one-worker rules.
+
+# 2015-2016: the 883 bills the database's Docket view does not reach (it
+# stops part way through 2016). Its 905 covered bills are seeded, never asked.
+fetch_archive_docket.py --term 2015-2016 --seed Docket_db_2015-2016.txt --delay 15 --stop-refused 2
+
+# 2015-2016 again, with the seed corrected. The database's "2016" is not 2016:
+# its 1,962 SessionYear-2016 rows are all dated 2015, the first-year history
+# of 190 bills carried over, and two of them carry another bill's LSR. So the
+# step above skips 190 bills whose whole 2016 record is missing. This seed
+# (Docket_db_2015.txt) keeps only session-2015 rows of bills data/bills.json
+# files under 2015, with the bill's own LSR: 8,322 rows on 716 bills. Every
+# one of the 1,072 bills filed under 2016 then comes from its own page; the
+# 883 above are cached, so this asks for the other 189 and rewrites the file.
+fetch_archive_docket.py --term 2015-2016 --seed Docket_db_2015.txt --delay 15 --stop-refused 2
