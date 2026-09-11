@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.69
+# GRANITE_VERSION: 2026-09-05.70
 """
 Generate the faceted site from real General Court data.
 
@@ -320,14 +320,64 @@ def _cite(ev, sources, year=""):
         return {}
     page = (ev.get("cite_page") or "").strip()
     out = {"cite": key + (f", page {page}" if page else "")}
-    url = sources.get(f"{key} {year}") if year else None
-    if not url:
-        # The bare key, taken only where it agrees with the action's year.
-        m = SOURCE_YEAR.search(sources.get(key, ""))
-        if m and m.group(1) == year:
-            url = sources[key]
+    url = _source_url(sources, key, year)
     if url:
         out["cite_url"] = url
+    return out
+
+
+def _source_url(sources, key, year):
+    """The address for a calendar or journal cited in a given year, or "".
+
+    The year-qualified key first; the bare key only where the address it holds
+    is from that same year. One rule for every citation on the site --
+    committee_reports() used to take the bare key unguarded, and all 7,376
+    House report citations of 2013-2022 linked a 2023 or 2024 calendar and
+    printed that calendar's date as the day the report was printed.
+    """
+    if not key:
+        return ""
+    url = sources.get(f"{key} {year}") if year else None
+    if url:
+        return url
+    bare = sources.get(key, "")
+    m = SOURCE_YEAR.search(bare)
+    return bare if (m and year and m.group(1) == str(year)) else ""
+
+
+def calendar_keys_from_queue(path="archive/queue.csv"):
+    """{"HC 18 2015": address} for every calendar the drain fetched.
+
+    calendars.json has year-qualified keys only for the years its fetcher
+    ran, 2023-2026. The drain's queue names the address of every calendar on
+    this disk and the file it went to, and a calendar's number is its file's
+    number within its year -- so the key is the file's own. Only a base
+    edition answers: a supplement or a verbatim saved at the base calendar's
+    path would otherwise answer every citation of the base, and where several
+    listed documents share one file it is the one row that records fetching
+    it, or none. Journals are not here: in 1997-2012 the docket's "HJ n" is
+    the House Record's issue number, not the file's.
+    """
+    import csv
+    try:
+        rows = list(csv.DictReader(open(path, encoding="utf-8")))
+    except OSError:
+        return {}
+    by = defaultdict(list)
+    for r in rows:
+        if r.get("kind") == "calendar" and r.get("state") == "held":
+            by[r["path"].replace("\\", "/").lower()].append(r)
+    out = {}
+    for p, rs in by.items():
+        pick = rs if len(rs) == 1 else [r for r in rs if r.get("fetched")]
+        if len(pick) != 1 or not pick[0].get("url"):
+            continue
+        if re.search(r"supplement|verbatim", pick[0].get("name") or "", re.I):
+            continue
+        m = re.match(r"^calendars(_senate)?/(\d{4})/(hc|sc)0*(\d+)([a-z]?)\.pdf$", p)
+        if m:
+            out[f"{m.group(3).upper()} {int(m.group(4))}{m.group(5).upper()} "
+                f"{m.group(2)}"] = pick[0]["url"]
     return out
 
 
@@ -1746,8 +1796,7 @@ def committee_reports(recs, narr, sources, house_cmte, senate_cmte):
     for r in recs:
         key, year = _cal_key(r.get("source"))
         seen_cal.add(key)
-        url = sources.get(f"{key} {year}") if year else None
-        url = url or sources.get(key, "")
+        url = _source_url(sources, key, year)
         rr = dict(r)
         if signed.get(key):
             rr["date"], rr["dated"] = signed[key], "signed"
@@ -1771,8 +1820,7 @@ def committee_reports(recs, narr, sources, house_cmte, senate_cmte):
                     rr["date"], rr["dated"] = when, "signed"
                 cite = match.get("cite", "")
                 rr["cite"] = cite
-                rr["cite_url"] = (sources.get(f"{cite} {rr['date'][:4]}")
-                                  or sources.get(cite, "")) if cite else ""
+                rr["cite_url"] = _source_url(sources, cite, rr["date"][:4])
         out.append(rr)
     out.sort(key=lambda x: x.get("date") or "9999")
 
@@ -1807,8 +1855,8 @@ def committee_reports(recs, narr, sources, house_cmte, senate_cmte):
             "amendment": e.get("amendment", ""),
             "new_title": bool(e.get("new_title")),
             "cite": e.get("cite", ""),
-            "cite_url": (sources.get(f"{e['cite']} {(e.get('date') or '')[:4]}")
-                         or sources.get(e.get("cite", ""), "")),
+            "cite_url": _source_url(sources, e.get("cite", ""),
+                                    (e.get("date") or "")[:4]),
         })
     docket.sort(key=lambda x: x.get("date") or "9999")
 
@@ -2933,6 +2981,10 @@ def main():
         print(f"{n:,} bill texts loaded")
     # Journal and calendar URLs, so every docket line can cite its source.
     sources = {**load("calendars.json", {}), **load("journals.json", {})}
+    # Every calendar the drain fetched, under its own year, where the files
+    # above have no key for that year. What calendars.json already says wins.
+    for _k, _u in calendar_keys_from_queue().items():
+        sources.setdefault(_k, _u)
     # Sign-in counts, attached to the hearing they were filed for.
     testimony = load("testimony.json", {})
     # Counts per bill AND per hearing, from the General Court's database:

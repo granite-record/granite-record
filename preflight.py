@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.109
+# GRANITE_VERSION: 2026-09-04.110
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4283,6 +4283,37 @@ def _veto_messages():
                      f"{'; '.join(bad[:3])}")
     return "ok", (f"{n} veto messages, each whole, attributed and citing a "
                   f"calendar of its own year")
+
+
+@check("data", "a committee report cites the calendar of its own year")
+def _report_citations():
+    """All 7,376 House report citations of 2013-2022 linked a 2023 or 2024
+    calendar -- committee_reports() fell back to calendars.json's bare "HC n"
+    key, which holds the latest year -- and 4,391 printed that calendar's date
+    as the day the report was printed: 2015's CACR1 read "printed 2024-05-03".
+    The veto messages had the same fault and a check; the reports had none.
+    Read from the pages: a report's link must be to the year its source
+    names."""
+    if not Path("site/bill").is_dir():
+        return "skip", "no bill pages built"
+    import site_read as SR
+    url_year = re.compile(r"(?:%5C|/)(\d{4})(?:%5C|/)", re.I)
+    n, bad = 0, []
+    for year, bid, rec in SR.records("site"):
+        for rep in (rec.get("reports") or []):
+            m = url_year.search(rep.get("cite_url") or "")
+            sy = re.search(r"(\d{4})\s*$", rep.get("source") or "")
+            if not (m and sy):
+                continue
+            n += 1
+            if m.group(1) != sy.group(1):
+                bad.append(f"{bid} of {year}: {rep.get('source')} links a "
+                           f"{m.group(1)} calendar")
+    if not n:
+        return "skip", "no committee report carries a calendar link"
+    assert not bad, (f"{len(bad):,} of {n:,} report citations link a calendar "
+                     f"from another year: {'; '.join(bad[:3])}")
+    return "ok", f"{n:,} report citations, each to its own year's calendar"
 
 
 @check("data", "the passage rail agrees with the outcome it sits beside")
