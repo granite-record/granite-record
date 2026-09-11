@@ -16,7 +16,12 @@
 # files under 2015, with the bill's own LSR: 8,322 rows on 716 bills. Every
 # one of the 1,072 bills filed under 2016 comes from its own page; those
 # already cached are not asked again.
-fetch_archive_docket.py --term 2015-2016 --seed Docket_db_2015.txt --delay 15 --stop-refused 2
+# Stopped at 11:36 on the 11th, 381 of the 1,072 cached, on two 60-second read
+# timeouts 97 minutes in -- the second run in a row to slow or stop about
+# ninety minutes into business hours. netcheck at 12:37 found the address
+# answering as it always has. Resumed at 25s apart rather than 15.
+# fetch_archive_docket.py --term 2015-2016 --seed Docket_db_2015.txt --delay 15 --stop-refused 2
+fetch_archive_docket.py --term 2015-2016 --seed Docket_db_2015.txt --delay 25 --stop-refused 2
 watchers/rest.py 3600 after-docket
 
 # BILL TEXT, 1989-2024: 31,003 requests by --plan, one per bill, 15s apart.
