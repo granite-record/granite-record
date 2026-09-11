@@ -261,15 +261,21 @@ standing.
 it, and two of the same fetcher is two fetchers. `watchers/README.md` holds the
 detail and a one-liner that lists them.
 
-On the evening of 10 September, running:
+Late on 10 September, running:
 
 | | |
 |---|---|
-| `watchers/captions_watch.py` | asks YouTube for captions and drains a little when it says yes. YouTube, not the General Court, so it does not contend with a docket fetch |
-| `fetch_archive_captions.py` | the drain that watcher starts, 60 a cycle at 20s |
 | `watchers/narrative_watch.py` | waits for a docket to finish, then narrates it |
 | `review.py --port 8799` | the bench, on the loopback address |
 | three `http.server` instances | 8787 serves `site/`, the others are older previews |
+
+**Not running, and worth restarting: the caption watcher.** It stopped by
+design at 21:31 on the 10th after thirty hours -- 69 cycles, 2,762 captions,
+no refusal in any of them -- with **676 still wanted**. The thirty-hour cap is
+deliberate: it is a loop with no end otherwise. It touches YouTube, not the
+General Court, so it does not contend with a docket fetch. Restart it with
+`python3 watchers/captions_watch.py` from the repository root once a person
+has said to.
 
 Nothing is fetching from the General Court. `archive/refused.json` is absent,
 which is what "no refusal in force" looks like.
