@@ -13,21 +13,29 @@ is renumbered here in one pass.
 
 ## 1. Live
 
-Published 9 September and four times on the 10th. **76 preflight checks,
-`check_site` ready, 49,304 files — 49% of the 100,000 Cloudflare Pages
+Published 9 September and five times on the 10th, the last of them at
+about ten in the evening. **85 preflight checks, `check_site` ready,
+49,624 files — 49% of the 100,000 Cloudflare Pages
 allows.** MIT-licensed, with a README, since the 10th.
+
+The 10th was the day the archive stopped being a list of bills and became a
+record: votes for twenty-four years, committees for ten terms that had none,
+hearings for ten terms whose hearings were thought lost, and a name and a
+party on nearly every ballot ever cast.
 
 | | |
 |---|---|
 | Bills | **33,683 across 19 terms**, 1989 to 2026, each with its own page |
 | Legislators | 406 sitting, **2,192 who have served** |
 | Committees | 53 |
-| Data | **seven CSV tables at `/data`**, 524,850 rows, a manifest, rebuilt every run |
+| Data | **nineteen CSV tables at `/data`**, 2,419,330 rows, a manifest, rebuilt every run |
 | Towns | **320 town-and-ward pages** — everyone who represents you, with contact |
 | Civics | 11 topics at `/learn/` |
 | Feeds | per bill, committee, topic and hearing |
 | Veto messages | 175, each cited to the calendar it was printed in |
-| Hearings parsed from calendars | **61,429 bill-days, 1997–2026** |
+| Roll calls | **9,565 across 1999–2026**, 2.3M ballots, every term named and partied |
+| Hearings | **50,911 proceedings across eleven terms**, 1989–2026 |
+| Hearings parsed from calendars | **61,429 bill-days, 1997–2026** (not yet merged) |
 | The archive on disk | 28 database views / 3.1M rows; House calendars and journals 100% |
 
 ## 2. Running

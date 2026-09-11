@@ -255,8 +255,46 @@ Deploying is a person's decision. When the person is away from the keyboard
 they have sometimes said so and permitted it; that is per-absence, not
 standing.
 
+## What is already running
+
+**Check this before starting anything.** Loops from an earlier session outlive
+it, and two of the same fetcher is two fetchers. `watchers/README.md` holds the
+detail and a one-liner that lists them.
+
+On the evening of 10 September, running:
+
+| | |
+|---|---|
+| `watchers/captions_watch.py` | asks YouTube for captions and drains a little when it says yes. YouTube, not the General Court, so it does not contend with a docket fetch |
+| `fetch_archive_captions.py` | the drain that watcher starts, 60 a cycle at 20s |
+| `watchers/narrative_watch.py` | waits for a docket to finish, then narrates it |
+| `review.py --port 8799` | the bench, on the loopback address |
+| three `http.server` instances | 8787 serves `site/`, the others are older previews |
+
+Nothing is fetching from the General Court. `archive/refused.json` is absent,
+which is what "no refusal in force" looks like.
+
+**Those watchers used to live in a session scratchpad** -- a temp directory
+keyed to one conversation -- so when the conversation ended they kept running
+and could not be found again. One of them polled for eleven hours and forty
+minutes for a token a crashed build was never going to write. They are in
+`watchers/` now for that reason.
+
 ## Starting a new session
 
-Run the three commands at the top. Read `STATE.md`, which they just wrote. The
-person you are working with knows this system well, has caught several wrong
-answers, and prefers being told when something is a guess.
+Run the three commands at the top. Read `STATE.md`, which they just wrote, and
+then `LAUNCH.md`, which says what to do next and is the newer answer wherever
+it disagrees with this page.
+
+The person you are working with knows this system well, has caught several
+wrong answers, and prefers being told when something is a guess. Several of the
+best sources in this archive were found by them opening a URL in a browser
+after the code had concluded the data did not exist -- the 1996 bill text, the
+list of everyone who ever served, the roll call page carrying every member's
+party, and the General Court's own key to its docket shorthand. When something
+looks unreachable, say so plainly and say what a person could open; do not
+quietly conclude it is impossible.
+
+Two habits they asked for and should not have to ask for again: a brief status
+of any running fetch at the end of every reply, and the next two steps named.
+
