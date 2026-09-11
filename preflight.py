@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.117
+# GRANITE_VERSION: 2026-09-04.118
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4495,6 +4495,33 @@ def _sr_heading():
     assert not bad, (f"{len(bad)} of {len(pages)} pages still open with it: "
                      + ", ".join(bad[:4]))
     return "ok", f"{len(pages):,} pages, each with its own first heading"
+
+
+@check("data", "no law or veto says \"No recorded action yet\"")
+def _next_step_settled():
+    """next_step() reads a narrated docket, and with none it answers "No
+    recorded action yet". When the docket's signature line began settling
+    the twelve unnarrated terms' bills on 11 September, about 10,000 laws
+    of 1989-2016 said that in their status box, under a chip reading
+    "Signed into law", and it was published before anything looked. Read
+    from the built pages and the index together."""
+    site = Path("site")
+    if not (site / "index.json").exists():
+        return "skip", "no site built"
+    import site_read as SR
+    kinds = {(str(r.get("year")), r["id"].upper()): r.get("kind")
+             for r in json.loads((site / "index.json").read_text(
+                 encoding="utf-8"))}
+    bad, n = [], 0
+    for year, bid, rec in SR.records("site"):
+        if kinds.get((year, bid)) not in ("law", "veto"):
+            continue
+        n += 1
+        if (rec.get("next_step") or "").startswith("No recorded action"):
+            bad.append(f"{bid} of {year}")
+    assert not bad, (f"{len(bad):,} of {n:,} laws and vetoes say no action "
+                     f"is recorded: {', '.join(bad[:4])}")
+    return "ok", f"{n:,} laws and vetoes, each saying what became of it"
 
 
 @check("data", "a committee report cites the calendar of its own year")

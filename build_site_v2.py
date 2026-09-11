@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.75
+# GRANITE_VERSION: 2026-09-05.76
 """
 Generate the faceted site from real General Court data.
 
@@ -2517,8 +2517,18 @@ def bill_next_step(narr, b, prefix, st, settled, told):
     Behaviour is unchanged, which the manifest diff is there to prove rather
     than to assert: the site was rebuilt into a scratchpad tree and every one
     of 34,114 files hashed identical before and after.
+
+    A bill with no narrated docket has no history for next_step() to read,
+    and it answers "No recorded action yet" -- which on 11 September, once
+    the docket's signature line began settling those bills, the status box
+    of about 10,000 laws of 1989-2016 said. Such a bill says what settled
+    it, the way next_step() says "Signed into law" for a narrated one; and
+    one nothing settled says what its fields say, which is a recorded
+    action, rather than that there is none.
     """
-    if settled or not told:
+    if settled and not narr:
+        return settled[1]
+    if narr and (settled or not told):
         return next_step(narr, b, prefix)
     joined = " \u00b7 ".join(x for x in [
         f"House: {st['house_status']}" if st.get("house_status") else "",
