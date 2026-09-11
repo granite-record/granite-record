@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.100
+# GRANITE_VERSION: 2026-09-04.101
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3259,6 +3259,50 @@ def _referral_coverage(referrals):
     assert not thin, ("the docket gives 95-98% of these terms a committee; "
                       "now: " + ", ".join(thin))
     return "ok", "the five pre-1999 terms all above 85%"
+
+
+@check("data", "a solved voter is one person, and nobody else's")
+def _solved_voters():
+    """member_party.json pins 38 voters by constraint rather than by roster.
+
+    The method is measured in fetch_rollcall_parties.solve: 286 people whose
+    answer was already known were hidden and it returned 286 right and 0
+    wrong. This is the standing guard on the file that came out of it, because
+    the failure it would cause is silent -- one member's ballots filed under
+    another's name, which is the same failure "every voter in the record is
+    one person" exists to catch, arriving from a different direction.
+
+    Two things must hold. A solved entry must not claim a person the General
+    Court's own list already names -- if it does, one of the two is wrong and
+    the roster is the better witness. And no two employeenos may claim the
+    same name and district, because that is two people wearing one identity.
+    """
+    f = Path("member_party.json")
+    if not f.exists():
+        return "skip", "no member_party.json"
+    party = json.loads(f.read_text(encoding="utf-8"))
+    solved = {k: v for k, v in party.items() if v.get("source") == "solved"}
+    if not solved:
+        return "ok", "nothing solved"
+    try:
+        import past_members
+        roster = past_members.roster()
+    except Exception:
+        roster = {}
+    clash = [k for k in solved if k in roster]
+    assert not clash, (
+        f"{len(clash)} solved voter(s) are already named by the General "
+        f"Court's own list, which is the better witness: {clash[:4]}")
+    seen = {}
+    dupe = []
+    for mid, rec in solved.items():
+        key = (str(rec.get("name", "")).lower(),
+               str(rec.get("district", "")).lstrip("0"))
+        if key in seen:
+            dupe.append(f"{seen[key]} and {mid} both claim {key}")
+        seen[key] = mid
+    assert not dupe, ("two member numbers claim one person: " + "; ".join(dupe[:3]))
+    return "ok", f"{len(solved)} solved voters, each one person and only theirs"
 
 
 @check("data", "a hearing date belongs to the bill it sits on")

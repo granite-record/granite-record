@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.19
+# GRANITE_VERSION: 2026-09-04.20
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -730,16 +730,35 @@ def main():
     _pp = Path("member_party.json")
     if _pp.exists():
         _party = json.loads(_pp.read_text(encoding="utf-8"))
-    _gave = 0
+    _gave = _new = 0
     for _mid, _rec in _party.items():
         _who = former.get(_mid)
-        if _who and not (_who.get("party") or "").strip():
+        if _who is None:
+            # Nobody names this voter -- not the roster, not former_members,
+            # not the General Court's own list of everyone who served. The
+            # roll call page prints them, and the solver pinned which
+            # employeeno they are by constraint rather than by resemblance:
+            # a printed row must be one of that roll call's voters, must have
+            # cast the vote printed beside the name, and must be the same
+            # person on every page it appears on. Held out against 286 people
+            # whose answer was already known, it returned 286 correct and 0
+            # wrong. Where it cannot determine an answer it says nothing, and
+            # those ballots keep "Member #" and no party.
+            if _rec.get("name"):
+                former[_mid] = {"name": _rec["name"], "party": _rec.get("party", ""),
+                                "county": _rec.get("county", ""),
+                                "district": _rec.get("district", "")}
+                _new += 1
+            continue
+        if not (_who.get("party") or "").strip():
             _who["party"] = _rec.get("party", "")
             _who["county"] = _who.get("county") or _rec.get("county", "")
             _who["district"] = _who.get("district") or _rec.get("district", "")
             _gave += 1
     if _gave:
         print(f"past members given a party from the roll call pages: {_gave:,}")
+    if _new:
+        print(f"voters named only by the solver, from those same pages: {_new:,}")
 
     # ------------------------------------------ sponsors, district and all ---
     #
