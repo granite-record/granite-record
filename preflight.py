@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.118
+# GRANITE_VERSION: 2026-09-04.119
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3874,6 +3874,48 @@ def _docket_fetch_stops():
             results.append(name)
         finally:
             shutil.rmtree(root, ignore_errors=True)
+    # A page cached whole but empty -- SB 68 of 2017 -- is asked again with
+    # --refetch-empty, and only then. Four bills, one cached empty.
+    empty = "<html><h1>Docket of HB1000</h1>Bill Title: x" + "y" * 2000 + "</html>"
+    for flag, want_asked in (("", 3), ("--refetch-empty", 4)):
+        root = Path(tempfile.mkdtemp())
+        try:
+            (root / "data").mkdir()
+            (root / "docket_pages").mkdir()
+            (root / "docket_pages" / "2016_2000_HB1000.html").write_text(
+                empty, encoding="utf-8")
+            (root / "data" / "bills.json").write_text(json.dumps({"2015-2016": {
+                f"HB{1000 + i}": {"lsr_year": "2016", "lsr_num": str(2000 + i)}
+                for i in range(4)}}), encoding="utf-8")
+            (root / "wrap.py").write_text(
+                "import sys\n"
+                f"sys.path.insert(0, {str(here)!r})\n"
+                "import fetch_archive_docket as D\n"
+                f"answers = [{repr(good)}] * 4\n"
+                "asked = []\n"
+                "def get(url, timeout):\n"
+                "    asked.append(url)\n"
+                "    return answers.pop(0), None\n"
+                "D.get = get\n"
+                "D.time.sleep = lambda s: None\n"
+                "sys.argv = ['x', '--term', '2015-2016', '--delay', '0'"
+                + (f", {flag!r}" if flag else "") + "]\n"
+                "rc = D.main()\n"
+                "print('ASKED', len(asked))\n"
+                "sys.exit(rc)\n", encoding="utf-8")
+            r = _run([sys.executable, "wrap.py"], cwd=root, capture_output=True,
+                     text=True, timeout=60)
+            assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
+            assert f"ASKED {want_asked}" in r.stdout, (
+                f"{flag or 'no flag'}: {r.stdout.strip()[-120:]}")
+            again = (root / "docket_pages" / "2016_2000_HB1000.html").read_text(
+                encoding="utf-8")
+            assert ("Introduced" in again) == bool(flag), (
+                f"{flag or 'no flag'}: the empty page was "
+                + ("not " if flag else "") + "replaced")
+            results.append(f"empty page {'re-asked' if flag else 'kept'}")
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
     return "ok", "; ".join(results) + " -- each behaves"
 
 
@@ -3956,6 +3998,16 @@ def _legislation_fetch(FL):
         # A run: two dropped connections end it, and the refusal outlives it.
         class A:
             lo, hi, note, delay, budget, stop_refused = 2019, 2019, "", 0, 50, 2
+            newest_first = False
+        # Newest first, when asked: a run over 2018 and 2019 with room for one
+        # request asks 2019's bill.
+        class B(A):
+            budget, newest_first = 1, True
+        FL.urlopen = server([page("19-0041")])
+        FL.run(B, {2018: ["HB40"], 2019: ["HB41"]},
+               {(2018, "HB40"): {"lsr_year": "2018", "lsr_num": "40"},
+                (2019, "HB41"): {"lsr_year": "2019", "lsr_num": "41"}}, 2)
+        assert "/2019/HB0041" in asked[-1], f"newest first asked {asked[-1]}"
         by = {(2019, f"HB{i}"): {"lsr_year": "2019", "lsr_num": str(i)}
               for i in range(20, 26)}
         FL.urlopen = server([http.client.RemoteDisconnected("x")] * 2)

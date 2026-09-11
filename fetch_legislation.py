@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.14
+# GRANITE_VERSION: 2026-09-10.15
 """
 The bill itself, from an address that can simply be constructed.
 
@@ -755,6 +755,15 @@ def main():
                     help="a label for the log, so a lane can queue a range twice")
     ap.add_argument("--plan", action="store_true",
                     help="say what would be asked for; no network, no lock")
+    # NEWEST FIRST, because the recent terms are the ones people look up:
+    # the person asked on 11 September for the text to come down from 2024
+    # backwards, all of it eventually. The order within a year is unchanged
+    # (bills, then constitutional amendments, then resolutions), and a run
+    # still skips what is on disk, so the same line queued again carries on
+    # from where the last one stopped.
+    ap.add_argument("--newest-first", action="store_true",
+                    help="work from the latest year in the range back to the "
+                         "earliest")
     ap.add_argument("--parse", action="store_true",
                     help="read the saved pages and report; no network")
     a = ap.parse_args()
@@ -778,7 +787,7 @@ def main():
     # What a run would ask for, from disk alone.
     gone = gone_list()
     plan = {}
-    for year in sorted(picked):
+    for year in sorted(picked, reverse=a.newest_first):
         c = Counter()
         first = []
         for bid in picked[year]:
@@ -849,7 +858,7 @@ def run(a, picked, by_bill, to_ask):
               + ", ".join(f"{v:,} {k}" for k, v in tally.most_common()),
               flush=True)
 
-    for year in sorted(picked):
+    for year in sorted(picked, reverse=a.newest_first):
         for bid in picked[year]:
             if asked >= a.budget:
                 summary()

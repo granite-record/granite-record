@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.6
+# GRANITE_VERSION: 2026-09-07.7
 """
 The docket of every bill of an archived term, in Docket.txt's own format.
 
@@ -121,7 +121,19 @@ def main():
                     help="a Docket-shaped file whose bills are already "
                          "accounted for; its lines are kept and those bills "
                          "are never asked for")
+    # A cached page with the bill's title and not one docket row. SB 68 of
+    # 2017 was cached that way on 9 September, and on the 11th the same
+    # address showed a person twelve rows ending in the governor's signature
+    # and chapter 35: the page had been served whole but empty. Seventeen
+    # of 2017-2022's pages are like it, and a cached page is never asked for
+    # again -- so without this they stand for those bills' dockets for good.
+    ap.add_argument("--refetch-empty", action="store_true",
+                    help="ask again for any cached page that has no docket "
+                         "row on it")
     a = ap.parse_args()
+    if a.refetch_empty and a.reparse:
+        sys.exit("--refetch-empty asks the server; --reparse asks nothing. "
+                 "One or the other.")
 
     # A refusal is a fact about the address, so it stops this run even though
     # it was some other run that was told no.
@@ -182,8 +194,14 @@ def main():
         if not yr or not lsr:
             continue
         f = cache / f"{yr}_{lsr}_{bid.upper()}.html"
+        stale = False
         if f.exists():
             page = f.read_text(encoding="utf-8", errors="replace")
+            stale = a.refetch_empty and not rows_of(page)
+            if stale:
+                print(f"  {bid}: cached with no docket row; asking again",
+                      flush=True)
+        if f.exists() and not stale:
             cached_n += 1
         elif a.reparse:
             continue

@@ -24,36 +24,117 @@
 fetch_archive_docket.py --term 2015-2016 --seed Docket_db_2015.txt --delay 25 --stop-refused 2
 watchers/rest.py 3600 after-docket
 
-# BILL TEXT, 1989-2024: 31,003 requests by --plan, one per bill, 15s apart.
-# Bounded runs of 800 with an hour's rest between. A proving run first, on
-# the static path, where 96 of 96 sampled House and Senate bills served.
-fetch_legislation.py --all --from 2021 --to 2021 --kinds HB,SB --budget 20 --note proving
-watchers/rest.py 1800 after-proving
-# 2017-2021, static, bills and constitutional amendments first: resolutions
-# are where the static 404s cluster, and three in a row would stop the lane.
-fetch_legislation.py --all --from 2017 --to 2021 --kinds HB,SB,CACR --budget 800 --note 2017-21-a
-watchers/rest.py 3600 after-2017-21-a
-fetch_legislation.py --all --from 2017 --to 2021 --kinds HB,SB,CACR --budget 800 --note 2017-21-b
-watchers/rest.py 3600 after-2017-21-b
-fetch_legislation.py --all --from 2017 --to 2021 --kinds HB,SB,CACR --budget 800 --note 2017-21-c
-watchers/rest.py 3600 after-2017-21-c
-fetch_legislation.py --all --from 2017 --to 2021 --kinds HB,SB,CACR --budget 800 --note 2017-21-d
-watchers/rest.py 3600 after-2017-21-d
-fetch_legislation.py --all --from 2017 --to 2021 --kinds HB,SB,CACR --budget 800 --note 2017-21-e
-watchers/rest.py 3600 after-2017-21-e
-fetch_legislation.py --all --from 2017 --to 2021 --kinds HB,SB,CACR --budget 800 --note 2017-21-f
-watchers/rest.py 3600 after-2017-21-f
-# 2023-2024, the application, stored id with sy: 1,996. A short run first,
-# so the LSR check meets the application's pages before it meets 800 of them.
-fetch_legislation.py --all --from 2023 --to 2024 --budget 25 --note 2023-24-proving
-watchers/rest.py 1800 after-2023-24-proving
-fetch_legislation.py --all --from 2023 --to 2024 --budget 800 --note 2023-24-a
-watchers/rest.py 3600 after-2023-24-a
-fetch_legislation.py --all --from 2023 --to 2024 --budget 800 --note 2023-24-b
-watchers/rest.py 3600 after-2023-24-b
-fetch_legislation.py --all --from 2023 --to 2024 --budget 800 --note 2023-24-c
-watchers/rest.py 3600 after-2023-24-c
-# 2017-2021's resolutions, on their own: where the static 404s were (8 of 55
-# sampled HR/SR), under the run's 404 cap.
-fetch_legislation.py --all --from 2017 --to 2021 --kinds HR,SR,HCR,SCR,HJR,SJR --budget 400 --note 2017-21-resolutions
-watchers/rest.py 3600 after-2017-21-resolutions
+# EMPTY DOCKET PAGES, asked again. 17 cached pages of 2017-2022 carry the
+# bill's title and no docket row; a person opened SB 68 of 2017 on the 11th
+# and saw twelve rows ending in its signature and chapter 35. With
+# --refetch-empty a run asks for those pages and for any bill never cached
+# (12 more), and nothing else: about 29 requests across the three terms.
+fetch_archive_docket.py --term 2017-2018 --delay 25 --stop-refused 2 --refetch-empty
+watchers/rest.py 600 after-refetch-2017-2018
+fetch_archive_docket.py --term 2019-2020 --delay 25 --stop-refused 2 --refetch-empty
+watchers/rest.py 600 after-refetch-2019-2020
+fetch_archive_docket.py --term 2021-2022 --delay 25 --stop-refused 2 --refetch-empty
+watchers/rest.py 1800 after-refetch-2021-2022
+
+# BILL TEXT, 2024 BACK TO 1989, newest first -- the person's order of the
+# 11th: the modern terms are the useful ones, and all of it eventually.
+# --plan: 30,049 requests for bills and constitutional amendments, 954
+# more for resolutions and the rest. Runs of 800 at 20s apart, an hour's
+# rest between; each run skips what is on disk, so the same range queued
+# again carries on where the last stopped.
+#
+# A short run first on 2024: the application's path (stored id with sy),
+# so the LSR check meets its pages before it meets 800 of them.
+# Superseded, in the old oldest-first order:
+# fetch_legislation.py --all --from 2021 --to 2021 --kinds HB,SB --budget 20 --note proving
+# fetch_legislation.py --all --from 2017 --to 2021 --kinds HB,SB,CACR --budget 800 --note 2017-21-a
+# fetch_legislation.py --all --from 2023 --to 2024 --budget 25 --note 2023-24-proving
+# fetch_legislation.py --all --from 2023 --to 2024 --budget 800 --note 2023-24-a
+# fetch_legislation.py --all --from 2017 --to 2021 --kinds HR,SR,HCR,SCR,HJR,SJR --budget 400 --note 2017-21-resolutions
+fetch_legislation.py --all --from 2024 --to 2024 --kinds HB,SB --delay 20 --budget 25 --note proving-2024
+watchers/rest.py 1800 after-proving-2024
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-01
+watchers/rest.py 3600 after-bills-01
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-02
+watchers/rest.py 3600 after-bills-02
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-03
+watchers/rest.py 3600 after-bills-03
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-04
+watchers/rest.py 3600 after-bills-04
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-05
+watchers/rest.py 3600 after-bills-05
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-06
+watchers/rest.py 3600 after-bills-06
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-07
+watchers/rest.py 3600 after-bills-07
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-08
+watchers/rest.py 3600 after-bills-08
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-09
+watchers/rest.py 3600 after-bills-09
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-10
+watchers/rest.py 3600 after-bills-10
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-11
+watchers/rest.py 3600 after-bills-11
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-12
+watchers/rest.py 3600 after-bills-12
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-13
+watchers/rest.py 3600 after-bills-13
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-14
+watchers/rest.py 3600 after-bills-14
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-15
+watchers/rest.py 3600 after-bills-15
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-16
+watchers/rest.py 3600 after-bills-16
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-17
+watchers/rest.py 3600 after-bills-17
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-18
+watchers/rest.py 3600 after-bills-18
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-19
+watchers/rest.py 3600 after-bills-19
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-20
+watchers/rest.py 3600 after-bills-20
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-21
+watchers/rest.py 3600 after-bills-21
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-22
+watchers/rest.py 3600 after-bills-22
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-23
+watchers/rest.py 3600 after-bills-23
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-24
+watchers/rest.py 3600 after-bills-24
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-25
+watchers/rest.py 3600 after-bills-25
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-26
+watchers/rest.py 3600 after-bills-26
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-27
+watchers/rest.py 3600 after-bills-27
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-28
+watchers/rest.py 3600 after-bills-28
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-29
+watchers/rest.py 3600 after-bills-29
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-30
+watchers/rest.py 3600 after-bills-30
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-31
+watchers/rest.py 3600 after-bills-31
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-32
+watchers/rest.py 3600 after-bills-32
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-33
+watchers/rest.py 3600 after-bills-33
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-34
+watchers/rest.py 3600 after-bills-34
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-35
+watchers/rest.py 3600 after-bills-35
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-36
+watchers/rest.py 3600 after-bills-36
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-37
+watchers/rest.py 3600 after-bills-37
+fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-38
+watchers/rest.py 3600 after-bills-38
+# Then everything else a year holds -- resolutions, addresses, petitions --
+# newest first. Floor resolutions (LSR 8000 and up) have no text and are
+# never asked; 404s go on the gone-list and a run stops at ten.
+fetch_legislation.py --all --from 1989 --to 2024 --newest-first --delay 20 --budget 400 --note everything-else-01
+watchers/rest.py 3600 after-everything-else-01
+fetch_legislation.py --all --from 1989 --to 2024 --newest-first --delay 20 --budget 400 --note everything-else-02
+watchers/rest.py 3600 after-everything-else-02
+fetch_legislation.py --all --from 1989 --to 2024 --newest-first --delay 20 --budget 400 --note everything-else-03
+watchers/rest.py 3600 after-everything-else-03
