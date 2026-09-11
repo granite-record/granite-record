@@ -48,7 +48,7 @@ holding `archive/.lock`. `watchers/README.md` says how to watch it.
 docket met two read timeouts (the address not answering within 60 s), and
 two dropped connections is this address's sign of refusing: the fetch
 recorded it in `archive/refused.json`, the lane stopped and released the
-lock. 363 of the 1,072 pages for 2016 are on disk. Nothing asks the General
+lock. 381 of the 1,072 pages for 2016 are on disk. Nothing asks the General
 Court anything until a person runs `python3 netcheck.py` and decides on
 `python3 refusal.py --clear`. Then `python3 watchers/gc_lane.py` resumes the
 queue where it was; what it has already fetched is never asked for again.

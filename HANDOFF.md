@@ -267,7 +267,7 @@ from 08:57, with the person's leave to fetch for that absence):
 
 | | |
 |---|---|
-| `watchers/gc_lane.py` | **the one General Court worker**: runs `watchers/gc_lane.queue` step by step holding `archive/.lock` -- the 2015-2016 docket, then bill text 2017-2024 in 800-request runs with an hour's rest between |
+| `watchers/gc_lane.py` | **the one General Court worker**: runs `watchers/gc_lane.queue` step by step holding `archive/.lock` -- the 2015-2016 docket, then bill text 2017-2024 in 800-request runs with an hour's rest between. **Stopped at 11:36 on the 11th on a refusal** (two read timeouts); waits for a person: `netcheck.py`, then `refusal.py --clear`, then start it again |
 | `watchers/captions_watch.py` | YouTube, not the General Court; 676 captions wanted at the start |
 | `review.py --port 8799 --refresh --no-open` | the bench, loopback only; pools are cached on disk in `review/.pool-*.json`, so it needs `--refresh` after any parser change or rebuild, across restarts too |
 | one `http.server` on 8787 | serves `site/` (the `site` entry in `.claude/launch.json`) |
