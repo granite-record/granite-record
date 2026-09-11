@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.2
+# GRANITE_VERSION: 2026-09-11.3
 """
 The chapter of the session laws each bill became, read out of the docket.
 
@@ -50,6 +50,15 @@ FINAL VERSION" -- and fetch_legislation.py is bringing it down.
 
 --check also scores the numbers against every enrolled text already on disk
 under legislation/, which nothing here wrote.
+
+AND A FAILED OVERRIDE
+
+A vetoed bill has no chapter, and in the twelve terms whose dockets are not
+narrated nothing else on the page can say what happened to the veto: the
+status fields stop at VETOED BY GOVERNOR. So the line that says the
+override failed -- "OVERRIDE GOV VETO, ML <FAILED 2/3> RC(14-10)", "Veto
+Sustained, RC 165-175" -- is kept as override_failed on a bill with no
+number, and build_site_v2 reads it the way it reads the signature line.
 """
 import argparse
 import glob
@@ -79,7 +88,14 @@ SPECIAL = re.compile(r"spec(?:ial)?\.?\s*sess", re.I)
 # right: it is counted as a law line with no chapter, not given one.
 LAW = re.compile(r"signed by|governor signed|without (?:the )?signature"
                  r"|law without|overrid|became law|chaptered", re.I)
-FAILED = re.compile(r"fail|sustain", re.I)
+# A law line that did not make law. "ML" is the 1990s docket's "motion
+# lost": "OVERRIDE GOV VETO, ML RC(17-299)" is HB 149 of 1997's veto standing.
+FAILED = re.compile(r"fail|sustain|\bML\b", re.I)
+# The veto standing, in every way the clerks wrote it: "Veto Sustained",
+# "=VETO SUSTAINED=", "OVERRIDE VETO FAILED 2/3", "OVERRIDE GOVERNOR'S VETO
+# FAILS 2/3", "OVERRIDE GOV VETO, ML <FAILED 2/3>".
+VETO_STOOD = re.compile(r"veto\s+sustained|overrid[^;]*?(?:\bfail|\bML\b)",
+                        re.I)
 DATE = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{2}(?:\d{2})?)\b")
 
 
@@ -118,7 +134,8 @@ def read(bills):
     """{(term, bill): facts} from every docket, and a Counter of what was
     passed over."""
     found = defaultdict(lambda: {"numbers": {}, "law": False,
-                                 "special": False, "dates": []})
+                                 "special": False, "dates": [],
+                                 "failed": ""})
     skipped = Counter()
     for src, year, lsr, bid, rowdate, text in rows():
         term = P.term_of(year)
@@ -134,6 +151,8 @@ def read(bills):
             f["law"] = True
             if not FAILED.search(text):
                 f["dates"].append(when(text, rowdate))
+        if VETO_STOOD.search(text) and not f["failed"]:
+            f["failed"] = text.strip()
         for m in CHAPTER.finditer(SEE.sub(" ", text)):
             n = int(m.group(1))
             if not 0 < n < 1500:
@@ -153,6 +172,13 @@ def settle(found):
     many, taken = [], defaultdict(list)
     for (term, bid), f in found.items():
         if not f["numbers"]:
+            # No law, and a line saying the override failed: kept, because
+            # a term with no narrated docket has nothing else that says so,
+            # and its status fields stop at VETOED BY GOVERNOR -- which the
+            # page read as "awaiting an override vote" twenty-eight years on.
+            if f["failed"]:
+                out[term][bid] = {"chapter": None,
+                                  "override_failed": f["failed"][:200]}
             continue
         if len(f["numbers"]) > 1:
             many.append((term, bid, sorted(f["numbers"])))
@@ -242,6 +268,9 @@ def main():
         total += got
         print(f"  {term}: {got:4,} chapters  ({law:,} bills with a law line)")
     print(f"  {total:,} bills in {len(out)} terms have a chapter")
+    failed = sum(1 for t in out.values() for r in t.values()
+                 if r.get("override_failed"))
+    print(f"  {failed:,} vetoed bills whose docket says the override failed")
     for k, n in skipped.most_common():
         print(f"  {n:,} docket rows passed over: {k}")
     if withheld:

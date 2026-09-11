@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.116
+# GRANITE_VERSION: 2026-09-04.117
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -541,7 +541,22 @@ def _unnarrated_status(build_site_v2):
                                action="Inexpedient to Legislate")
     d = B.bill_disposition({}, "HB1", filed, killed, [], "2023-2024", "2025-2026")
     assert d.status == "Killed", f"a docket's kill gave way to a field: {d.status}"
-    return "ok", "signed from the line; the field's stage, never over the docket"
+    # A veto in a closed term: the docket's failed override where there is
+    # one, and never "awaiting an override vote" twenty-eight years on.
+    vetoed = {"gen_status": "VETOED BY GOVERNOR", "house_status": "",
+              "senate_status": ""}
+    d = B.bill_disposition({}, "HB149", vetoed, None, [], "1997-1998",
+                           "2025-2026", override_failed="OVERRIDE GOV VETO, "
+                           "ML RC(17-299)")
+    assert d.status == "Vetoed, override failed", d.status
+    d = B.bill_disposition({}, "HB1407", vetoed, None, [], "1991-1992",
+                           "2025-2026")
+    assert d.status == "Vetoed", d.status
+    d = B.bill_disposition({}, "HB9", vetoed, None, [], "2025-2026",
+                           "2025-2026")
+    assert d.status == "Vetoed, awaiting an override vote", d.status
+    return "ok", ("signed from the line; the field's stage, never over the "
+                  "docket; a closed term's veto awaits nothing")
 
 
 @check("status", "law without a signature reads as law", needs=("build_site_v2",))
@@ -4413,6 +4428,8 @@ def _chapters():
             ("2011", "0012", "SB  0012", "07/13/2011 10:00:00", "SB12",
              "Signed by the Governor on 07/13/11; Chapter 0241I. Section 2 "
              "Effective 12/31/13I"),
+            ("1997", "0149", "HB  0149", "06/25/1997 10:00:00", "HB149",
+             "OVERRIDE GOV VETO, ML RC(17-299); HJ79,P2183-2186"),
         ]
         (root / "db" / "Docket.psv").write_text(
             "".join("|".join([y, l, e, d, b, "H", t, "x", "1", d, "1"]) + "\n"
@@ -4447,6 +4464,8 @@ def _chapters():
             "a clash is left blank without saying why"
         assert got["2009-2010"]["SSHB1"].get("special"), \
             "a special session's chapter is not marked as one"
+        assert (got.get("1997-1998", {}).get("HB149") or {}).get(
+            "override_failed"), "a failed override (\"ML\") was not kept"
         return "ok", "five spellings, sections and see-alsos refused, clashes withheld"
     finally:
         shutil.rmtree(root, ignore_errors=True)

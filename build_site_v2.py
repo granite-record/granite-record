@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.74
+# GRANITE_VERSION: 2026-09-05.75
 """
 Generate the faceted site from real General Court data.
 
@@ -950,9 +950,11 @@ def classify(narr, rcs, prefix=""):
         # killed -- it is parked for the committee to work on out of session,
         # and it can come back. Grouping it with bills that were voted down
         # said something untrue about it every time.
-        return "study", "Interim study"
+        # The same words as STATED's, or the status facet lists one outcome
+        # twice: "Interim study" (4) beside "Referred for interim study".
+        return "study", "Referred for interim study"
     if "died on table" in text:
-        return "done", "Died on table"
+        return "done", "Died on the table"
     if "retained in committee" in text:
         return "active", "Retained in committee"
     # A floor motion the chamber carried, however the vote was taken. This
@@ -2289,7 +2291,8 @@ def stated_stage(st):
                 None)
 
 
-def bill_disposition(b, bid, st, narr, rcs, term, current, law_line=""):
+def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
+                     override_failed=""):
     """What became of this bill, and where that answer came from.
 
     STEP 8 OF SPLITTING build_bills, and the first of the two that are
@@ -2312,6 +2315,10 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line=""):
     evidence: HB 1075 of 1998 -- the ABC plan, "SIGNED BY GOVERNOR 10/01/98
     ... CHAP.0389" -- read "In committee", because its status fields stop at
     CONFERENCE REPORT ADOPTED, which nothing in STATED names.
+
+    override_failed is the same kind of line for a veto that stood: HB 149
+    of 1997, "OVERRIDE GOV VETO, ML RC(17-299)", read "Vetoed, awaiting an
+    override vote" because its fields stop at VETOED BY GOVERNOR.
     """
     stated = stale = 0
     prefix = bill_prefix(bid)
@@ -2319,6 +2326,8 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line=""):
     settled = docket_outcome(narr)
     if not settled and not narr and law_line:
         settled = docket_outcome({"events": [{"raw": law_line}]})
+    if not settled and not narr and override_failed:
+        settled = ("veto", "Vetoed, override failed")
     disposed = floor_disposed(narr)
     if settled:
         # A dated docket line beats a status field that has not caught up.
@@ -2367,6 +2376,16 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line=""):
     if kind == "active" and term != current:
         kind = "done"
         stale = 1
+    # The veto labels are the one place the words themselves are this
+    # site's and say the bill is still waiting. "Awaiting an override vote"
+    # expands VETOED BY GOVERNOR; in a closed term nothing is awaited, and
+    # the veto stood -- whether or not a vote was ever taken, which the
+    # record does not always say (HB 1407 of 1992 has no override line at
+    # all). So a closed term says what the field says.
+    if (kind == "veto" and term != current
+            and status in ("Vetoed, awaiting an override vote",
+                           "Vetoed, override vote pending")):
+        status = "Vetoed"
     return Disposition(kind, status, told, settled, prefix,
                        stated, stale)
 
@@ -2702,9 +2721,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         if not st and not own:
             st = {k: b.get(k, "") for k in ("gen_status", "house_status",
                                             "senate_status", "text_pdf")}
+        dl = (chapters or {}).get(term, {}).get(bid) or {}
         disp = bill_disposition(
             b, bid, st, narr, rcs, term, current,
-            law_line=((chapters or {}).get(term, {}).get(bid) or {}).get("line", ""))
+            law_line=dl.get("line", ""),
+            override_failed=dl.get("override_failed", ""))
         kind, status = disp.kind, disp.status
         told, settled, prefix = disp.told, disp.settled, disp.prefix
         n_stated += disp.stated
