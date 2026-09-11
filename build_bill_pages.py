@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.46
+# GRANITE_VERSION: 2026-09-04.47
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -156,7 +156,12 @@ def shell(t, b, d, base, raw=None, data_url=None):
         description=describe(b), alternate=feed,
         globals={"GR_BILL": f"{yr}/{bid}", "GR_STANDALONE": True},
         data_json=raw, data_url=data_url,
-        noscript=noscript(b, d, data_url), skip_label="Skip to this bill")
+        noscript=noscript(b, d, data_url), skip_label="Skip to this bill",
+        # The page's heading for a screen reader. Every bill page kept the
+        # search page's own hidden "New Hampshire bills", so 33,683 pages
+        # announced themselves as the search.
+        sr_title=(f"{n} ({yr}): {clean_title(title)}" if yr
+                  else f"{n}: {clean_title(title)}"))
 
 
 # The record as it was written into a page, for a run that happens after the

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.43 */
+/* GRANITE_VERSION: 2026-09-07.44 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -922,7 +922,11 @@ a.ccard:hover{border-color:var(--rule-2);background:var(--surface)}
    own column. */
 .votes .vcast{font-weight:600}
 .votes .v-yea{color:var(--yes)}
-.votes .v-nay{color:var(--no)}
+/* The word "Nay" is text and needs 4.5:1; --no is 3.58:1 on white and 2.75
+   on the wash, and stays on the donut and the legend swatches, which are
+   graphics and need 3:1. --st-done is the palette's own "failed" red,
+   7.43:1 on white and 5.71 on the wash. */
+.votes .v-nay{color:var(--st-done)}
 .votes .none{color:var(--ink-2);font-style:italic}
 /* WITH OR AGAINST THEIR OWN PARTY, in ink and not in colour. Green for
    agreeing with your party and red for not would be this page rating a
@@ -933,7 +937,7 @@ a.ccard:hover{border-color:var(--rule-2);background:var(--surface)}
 .votes .pm.broke{color:var(--ink);font-weight:600}
 .votes td.o .pass,.votes td.o .fail,.votes td.o i{white-space:nowrap}
 .votes td.o .pass{color:var(--yes);font-weight:600}
-.votes td.o .fail{color:var(--no);font-weight:600}
+.votes td.o .fail{color:var(--st-done);font-weight:600}
 .votes td.o i{font-style:normal;color:var(--ink-2)}
 .votes td.o .thr{display:block;font-size:12px;margin-top:3px}
 

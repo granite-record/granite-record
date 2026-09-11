@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.36
+# GRANITE_VERSION: 2026-09-04.37
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -19,6 +19,7 @@ import hashlib
 import html as _html
 import shell as _shell
 import json
+import re
 import shutil
 from collections import defaultdict
 from pathlib import Path
@@ -427,6 +428,30 @@ or school districts</td></tr>
 <p>You do not need to be invited, and you do not need to speak. You can sign in for
 or against a bill online before the hearing, submit written testimony, or come and
 say your piece in person. Committees generally hear anyone who signs up.</p>
+"""
+
+NOT_FOUND = """
+<p class="note">NO PAGE AT THIS ADDRESS</p>
+<h1>Nothing is published here</h1>
+<p class="lead">The address may be mistyped, or name a bill in a year it does
+not exist in: every bill since 1989 has a page at <code>/bill/&lt;year&gt;/&lt;number&gt;</code>,
+and a bill number starts again every two years.</p>
+<p id="nf-bill" hidden></p>
+<p><a href="bills.html">Search every bill</a> &middot;
+<a href="legislators.html">Legislators</a> &middot;
+<a href="committees.html">Committees</a> &middot; <a href="index.html">Home</a></p>
+<script>
+(function(){
+  var m=location.pathname.match(/^\\/bill\\/(\\d{4})\\/([a-z]+)0*(\\d+)/i);
+  if(!m)return;
+  var id=(m[2]+m[3]).toUpperCase(),p=document.getElementById("nf-bill");
+  var a=document.createElement("a");
+  a.href="/bills.html?q="+encodeURIComponent(id);
+  a.textContent="Search for "+id+" in every term";
+  p.appendChild(document.createTextNode("No page for "+id+" of "+m[1]+". "));
+  p.appendChild(a);p.hidden=false;
+})();
+</script>
 """
 
 ABOUT = """
@@ -1202,8 +1227,26 @@ one per committee and one per subject.</p>"""
                    "from, and how to report something that is wrong."),
         encoding="utf-8")
 
+    # THERE WAS NO 404 PAGE. Cloudflare Pages treats a project with no
+    # top-level 404.html as a single-page app: every address it cannot find
+    # is answered with the home page and a 200. A mistyped bill -- or a bill
+    # number that exists in another year -- looked like a working page, and a
+    # search engine would index the home page under every one of them.
+    #
+    # It is served AT the address that was asked for, so every link in it
+    # must be absolute: from /bill/2026/hb99999 a relative "style.css" is
+    # /bill/2026/style.css. And it is not a page to index, so it carries no
+    # canonical address and asks not to be.
+    page404 = shell("No page at this address | Granite Record", "", NOT_FOUND,
+                    desc="There is no page at this address.")
+    page404 = re.sub(r'(href|src)="(?!https?:|/|#|mailto:)([^"]+)"', r'\1="/\2"',
+                     page404)
+    page404 = re.sub(r'<link rel="canonical"[^>]*>',
+                     '<meta name="robots" content="noindex">', page404)
+    (out / "404.html").write_text(page404, encoding="utf-8")
+
     print(f"wrote legislators.html ({len(legs)} members), "
-          f"about.html, style.css -> {out}/  (learn.html: build_civics.py)")
+          f"about.html, 404.html, style.css -> {out}/  (learn.html: build_civics.py)")
     if not legs:
         print("  legislators.json missing — run build_site_v2.py first")
 
