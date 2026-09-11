@@ -16,7 +16,7 @@
     "build_manifest.py": "2026-09-05.6",
     "build_pages.py": "2026-09-04.36",
     "build_proceedings.py": "2026-09-05.3",
-    "build_site_v2.py": "2026-09-05.67",
+    "build_site_v2.py": "2026-09-05.68",
     "check_live.py": "2026-09-04.10",
     "calendar_meetings.py": "2026-09-08.10",
     "check_civics_links.py": "2026-09-08.2",
@@ -51,7 +51,7 @@
     "netcheck.py": "2026-09-04.3",
     "nightly.py": "2026-09-04.7",
     "parse_districts.py": "2026-09-04.1",
-    "preflight.py": "2026-09-04.101",
+    "preflight.py": "2026-09-04.102",
     "probe_alignment.py": "2026-09-05.59",
     "probe_amendments.py": "2026-09-04.3",
     "probe_archive.py": "2026-09-04.3",
@@ -103,7 +103,8 @@
     "fetch_sponsors_by_member.py": "2026-09-10.1",
     "past_members.py": "2026-09-10.1",
     "rollcalls_from_db.py": "2026-09-10.1",
-    "fetch_rollcall_parties.py": "2026-09-10.2"
+    "fetch_rollcall_parties.py": "2026-09-10.2",
+    "caption_span.py": "2026-09-10.1"
   },
   "generated": "2026-09-04"
 }

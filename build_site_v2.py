@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.67
+# GRANITE_VERSION: 2026-09-05.68
 """
 Generate the faceted site from real General Court data.
 
@@ -23,6 +23,7 @@ Standard library only.
 """
 
 import argparse
+import caption_span
 import narrative as N
 import fiscal
 import proceedings as P
@@ -1243,6 +1244,51 @@ def station_for_floor(f, bid, marks):
             st["debate_end"] = said_f["end"]
             st["state"] = "floor_stated"
     return st
+
+
+def withhold_late_captions(segs, marks, work):
+    """Take every time read off a caption track that is out of step with its
+    recording out of both sources, before a station is drawn from either.
+
+    The chair's stated boundary and the clustering estimate are both read off
+    the captions, so a track that starts an hour late puts both an hour early.
+    On 10 September that was 74 published starts on nine recordings, 55 of
+    them drawn as the moment the chair opened the proceeding. caption_span.py
+    holds the measurement and the line.
+
+    What is left is the schedule, which comes from the stream's own clock: the
+    page opens the recording five minutes before the scheduled time and says
+    the start was not identified, which is true. The consent calendar goes
+    too -- "never named on the recording" is read off the same track, and a
+    track that stops short of its recording may simply not reach the bill.
+    """
+    vids = set(segs) | {k for k in marks if not k.startswith("_")}
+    late, compared, undated = caption_span.out_of_step(vids, work)
+    said = sum(len(c) for v in late for c in (marks.get(v) or {}).values())
+    placed = sum(1 for v in late for s in (segs.get(v) or []) if s.get("located"))
+    for v in late:
+        segs.pop(v, None)
+        marks.pop(v, None)
+        for side in ("_absent", "_sequence"):
+            if isinstance(marks.get(side), dict):
+                marks[side].pop(v, None)
+    print(f"caption tracks: {compared:,} recordings compared with the length "
+          "YouTube published")
+    # Nothing compared is not the same as nothing late, and the two print
+    # differently.
+    if vids and not compared:
+        print(f"  NONE could be compared -- no caption file under {work}/ for "
+              f"any of {len(vids):,} recordings, or no videos_*.csv here -- so "
+              "nothing was checked and nothing withheld")
+    if undated:
+        print(f"  {len(undated):,} have captions and no published length, so "
+              f"were not compared: {', '.join(undated[:4])}")
+    if late:
+        print(f"  {len(late):,} stop more than {caption_span.SLACK // 60} "
+              f"minutes short of their recording; {said:,} stated boundaries "
+              f"and {placed:,} clustered placements read off them are "
+              f"withheld: {', '.join(sorted(late))}")
+    return late
 
 
 def vote_date(s):
@@ -2996,6 +3042,9 @@ def main():
         nb = sum(len(v) for v in vids.values())
         print(f"{nb:,} stated boundaries across {len(vids):,} recordings "
               f"from {mp2.name}")
+    # Both of the above are read off captions, and a caption track can be an
+    # hour out of step with its recording.
+    withhold_late_captions(segs, marks, a.segments)
     # A silent mismatch here looks exactly like poor alignment accuracy: every
     # hearing reads "start time not identified" because the transcripts are for
     # a different set of videos than the manifest now points at.

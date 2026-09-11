@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.101
+# GRANITE_VERSION: 2026-09-04.102
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2909,6 +2909,79 @@ def _chain_output():
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("build", "captions that stop an hour short put no time on the page")
+def _late_captions_fixture():
+    """A caption track can start an hour into its recording, and then every
+    time read off it is an hour early: the chair's stated boundary, drawn as
+    the chair's own moment, and the clustering beside it. On 10 September that
+    was 74 published starts on nine recordings, and nothing on any page looked
+    wrong, because a start an hour early is still a start.
+
+    caption_span.py compares where the captions stop with where the recording
+    does, and build_site_v2 withholds both sources for a track past the line.
+    Here the fixture's VID4 -- a stated start at 0:05:00 and a clustered one
+    at 1:23:20 -- gets captions that stop at twenty minutes of two hours, and
+    VID1 gets captions that reach the end of its fifteen. One must lose its
+    times and the other must keep them, or the guard is either missing or
+    withholding what it has no reason to doubt.
+    """
+    here = Path(".").resolve()
+    if not ((here / "build_site_v2.py").exists()
+            and (here / "caption_span.py").exists()):
+        return "skip", "build_site_v2.py or caption_span.py not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-late-"))
+    try:
+        _site_fixture(root)
+
+        def track(cues):
+            # YouTube's json3 as yt-dlp writes it: a window spanning the
+            # track, then one event per cue, indented a field to a line.
+            ev = [{"tStartMs": 0, "dDurationMs": cues[-1][0] + 4000, "id": 1,
+                   "wpWinPosId": 1, "wsWinStyleId": 1}]
+            ev += [{"tStartMs": t, "dDurationMs": 4000, "wWinId": 1,
+                    "segs": [{"utf8": s}]} for t, s in cues]
+            return json.dumps({"wireMagic": "pb3", "events": ev}, indent=2)
+
+        (root / "work" / "VID4" / "captions.en.json3").write_text(track([
+            (300000, "will open the executive session on House Bill 1442"),
+            (1196000, "we are adjourned")]), encoding="utf-8")
+        (root / "work" / "VID1" / "captions.en.json3").write_text(track([
+            (150000, "I am opening the hearing on House Bill 1442"),
+            (892000, "thank you all")]), encoding="utf-8")
+        with open(root / "videos_house_fixture.csv", "w", newline="",
+                  encoding="utf-8") as fh:
+            wr = csv.writer(fh)
+            wr.writerow(["video_id", "title", "duration_iso"])
+            wr.writerow(["VID1", "House Commerce", "PT15M30S"])
+            wr.writerow(["VID4", "House Commerce", "PT2H"])
+        r = _run([sys.executable, str(here / "build_site_v2.py"),
+                  "--data", "data", "--out", "site", "--segments", "work"],
+                 cwd=root, capture_output=True, text=True, timeout=180)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
+        rec = json.loads((root / "site" / "bills" / "2026" / "HB1442.json")
+                         .read_text(encoding="utf-8"))
+        by = {s.get("video_id"): s for s in rec.get("stations") or []}
+        late, kept = by.get("VID4"), by.get("VID1")
+        assert late and kept, (
+            "the fixture's two recorded proceedings are not both on HB1442's "
+            f"record: {sorted(k for k in by if k)}")
+        assert late.get("start") is None and late.get("state") == "approximate", (
+            "VID4's captions stop 100 minutes short of its recording and its "
+            f"station still reads {late.get('state')} at {late.get('start')}: "
+            "a time read off an out-of-step track reached the page")
+        assert kept.get("start") is not None, (
+            "VID1's captions reach the end of its recording and its station "
+            "lost its start: the guard is withholding a time it has no reason "
+            "to doubt")
+        assert "withheld" in r.stdout and "VID4" in r.stdout, (
+            "the build withheld VID4's times without saying so")
+        return "ok", ("a track stopping 100 minutes short loses its stated and "
+                      "clustered times, one reaching its end keeps them, and "
+                      "the build names what it withheld")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 # ================================================================ data checks ==
 
 @check("data", "former_members.json is the shape the site expects")
@@ -4068,6 +4141,59 @@ def _one_start():
         f"{len(bad)} of {checked:,} proceedings start at a different moment on "
         f"the committee page than on the bill page: {'; '.join(bad[:2])}")
     return "ok", (f"{checked:,} proceedings, one start each, on both pages")
+
+
+@check("data", "no published time was read off captions out of step with the recording")
+def _late_captions_site():
+    """The guard, on the site as built.
+
+    build_site_v2 withholds every time read off a caption track that stops
+    well short of its recording -- see caption_span.py, and the build check
+    of the same name. A site built before that, or by a build that skipped
+    it, still carries them, and nothing on the page looks wrong. So this
+    reads what the pages publish: for every recording whose captions stop
+    more than caption_span.SLACK short of it, does any station on it carry a
+    time read off those captions -- a stated or clustered start, a stated
+    floor boundary, or a consent-calendar finding?
+    """
+    try:
+        import caption_span as CS
+        import proceedings as P
+        import site_read
+    except ImportError:
+        return "skip", "caption_span, proceedings or site_read is not here"
+    if not (Path("site/bill").is_dir() and Path("work").is_dir()):
+        return "skip", "no built site, or no work/ to compare it with"
+    late, compared, undated = CS.out_of_step(
+        [d.name for d in Path("work").iterdir() if d.is_dir()])
+    if not compared:
+        return "skip", ("no recording under work/ has both captions and a "
+                        "published length")
+    short = f"{CS.SLACK // 60} minutes"
+    if not late:
+        return "ok", f"{compared:,} recordings compared; none stops {short} short"
+    # Only the terms those recordings belong to: the pages are the slow part.
+    rows = P.by_video(P.load())
+    years = sorted({y for v in late for r in rows.get(v, [])
+                    for y in str(r.get("term") or "").split("-") if y.isdigit()})
+    CAPTIONED = {"stated", "located", "floor_stated", "consent"}
+    n, bad = 0, []
+    for y, b, s in (site_read.stations("site", years) if years else ()):
+        if s.get("video_id") not in late:
+            continue
+        n += 1
+        if s.get("state") in CAPTIONED or s.get("start_stated"):
+            bad.append(f"{b} of {y}, {s.get('when')}, on {s['video_id']}: "
+                       f"{s.get('state')} at {s.get('start')}")
+    assert not bad, (
+        f"{len(bad)} published station(s) carry a time read off captions that "
+        f"stop more than {short} short of their recording -- an hour early, on "
+        f"every one measured: {'; '.join(bad[:2])}. Rebuild the site.")
+    return "ok", (f"{compared:,} recordings compared; {len(late)} stop more "
+                  f"than {short} short, and none of the {n} stations on them "
+                  "publishes a time read off their captions"
+                  + (f"; {len(undated)} have no published length to compare"
+                     if undated else ""))
 
 
 @check("data", "a committee is credited only with its own recommendations")
