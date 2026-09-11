@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.14
+# GRANITE_VERSION: 2026-09-05.15
 """
 Run the whole pipeline in the right order.
 
@@ -352,6 +352,22 @@ def main():
     steps = plan(a)
     if a.local:
         steps = [s for s in steps if not s.network]
+    # ONE WORKER FOR THE GENERAL COURT, and it may be the lane. While
+    # archive/.lock is held -- watchers/gc_lane.py fetching the archive for
+    # days -- or a refusal is on file, a full build's network steps would be
+    # a second fetcher asking the same address, which is how it was blocked
+    # the second time: `publish YOURKEY` beside the lane. They are skipped,
+    # and said so. The YouTube video index is another host and still runs.
+    gc_busy = [w for w, p in (("archive/.lock is held (the General Court "
+                               "lane, or another fetch)", "archive/.lock"),
+                              ("archive/refused.json is on file",
+                               "archive/refused.json")) if Path(p).exists()]
+    if gc_busy and any(s.network for s in steps):
+        held = [s for s in steps if s.network
+                and "fetch_channel_index.py" not in s.args[0]]
+        steps = [s for s in steps if s not in held]
+        print(f"  {'; '.join(gc_busy)}: skipping {len(held)} step(s) that "
+              f"would ask the General Court -- " + ", ".join(s.name for s in held))
     if not a.key:
         steps = [s for s in steps if "fetch_channel_index.py" not in s.args[0]]
     if not a.with_superseded:
