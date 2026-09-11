@@ -44,7 +44,11 @@ if "%1"=="--check" (
 
 echo.
 echo === Publishing ===
-npx wrangler pages deploy site --project-name=%PROJECT% --commit-dirty=true
+REM CALL, because npx is npx.cmd: a batch file that runs another batch file
+REM without CALL hands over to it and never comes back. Until 11 September
+REM every publish ended at wrangler's "Deployment complete!" with npx's exit
+REM code, and the check_live gate below never ran once.
+call npx wrangler pages deploy site --project-name=%PROJECT% --commit-dirty=true
 if errorlevel 1 goto :failed
 
 echo.
