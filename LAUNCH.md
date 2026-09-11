@@ -375,6 +375,11 @@ example on this site of a number outliving its premise.
   12:44 publish's log stopped one line early, which is how it showed. Run by
   hand afterwards, the gate said the deploy landed. `preflight` now fails a
   bare `npx` in `publish.bat`.
+- ~~**Eleven vetoed bills read "Veto overridden, became law".**~~ *Closed on
+  the 11th* (d376ab6). One chamber overrode, the other sustained, and the
+  status-field table tested "overridden" first; the docket reader already
+  had it right. 1989-2012, each confirmed from its docket; found because
+  none had a chapter.
 
 ## 6a. Filled from disk on the 11th, no request made
 
@@ -384,7 +389,7 @@ veto messages back to **1997-1998** under the older headings (261, from
 176); amendment texts **2011-2024** (4,577, from 663); sign-in counts for
 **2024's** hearings (963 bills); the current term's **2025 committees
 and subjects** (847 bills); and **the chapter each law became, for all
-nineteen terms** (11,819 bills, from 1,273), read from the docket's
+nineteen terms** (11,846 bills, from 1,273), read from the docket's
 signature line and checked against the enrolled text on disk (46 of 46)
 and the status page's field (1,268 of 1,270, the two being the docket's
 typing). 14 are withheld where the docket gives one number to two bills;
@@ -420,7 +425,13 @@ carry the measurements.
 
 ## 7. Before the next publish
 
-1. Run `check_civics_links.py`.
+1. ~~Run `check_civics_links.py`.~~ *Half done on the 11th.* The five links
+   off the General Court's server were opened in a browser (a script's HEAD
+   gets 403 from every state host): the Governor's, the Council's and the
+   agency list were nh.gov "Page Not Found" and now point where nh.gov's own
+   pages do (8c9cb5c). The eleven on gc.nh.gov are unchecked, because that
+   is the address the lane is fetching from; `python3 check_civics_links.py
+   --list` prints them, for a browser or for the lane once it is idle.
 2. The proposal's own instruction that somebody who knows the building reads
    the civics pages before they ship.
 3. ~~An accessibility pass at 360, 768 and 1440.~~ *A first one on the
