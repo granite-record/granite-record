@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.1
+# GRANITE_VERSION: 2026-09-09.2
 """
 One refusal stops every fetch, not just the one that was refused.
 
@@ -83,6 +83,59 @@ def check(who=""):
         "fetch and not only that one.\n\n"
         "  python3 netcheck.py          what kind of refusal it was\n"
         "  python3 refusal.py --clear   when a person has decided to go on\n")
+
+
+# ---- one worker ------------------------------------------------------------
+#
+# archive/.lock says a fetch from the General Court is running. Only three
+# fetchers ever looked at it, one of them deleted any lock more than an hour
+# old, and nothing refreshed one while it ran -- so any run longer than an hour
+# could be joined by a second worker, which is how this address was blocked
+# the second time. hold() is the rule in one place: take the lock, or run
+# under the lane that holds it (watchers/gc_lane.py, whose pid is in the lock
+# and who is this process's parent), or do not run at all.
+
+LOCK = Path("archive/.lock")
+
+
+class hold:
+    """with refusal.hold("fetch_legislation"): ... -- one worker, or none."""
+
+    def __init__(self, who):
+        self.who, self.mine, self._stop = who, False, None
+
+    def __enter__(self):
+        import os
+        import threading
+        if LOCK.exists():
+            held = LOCK.read_text(encoding="utf-8", errors="replace").strip()
+            if held.isdigit() and int(held) == os.getppid():
+                return self            # the lane that started us holds it
+            sys.exit(f"\narchive/.lock is held (pid {held or '?'}): another "
+                     f"fetch from the General Court is running, and {self.who} "
+                     "will not be a second one. If nothing is running, a "
+                     "person may remove the lock.\n")
+        LOCK.parent.mkdir(exist_ok=True)
+        LOCK.write_text(str(os.getpid()), encoding="utf-8")
+        self.mine = True
+        # Touched every minute, so no rule about a lock's age can mistake a
+        # long run for an abandoned one.
+        self._stop = threading.Event()
+
+        def beat():
+            while not self._stop.wait(60):
+                try:
+                    os.utime(LOCK, None)
+                except OSError:
+                    pass
+        threading.Thread(target=beat, daemon=True).start()
+        return self
+
+    def __exit__(self, *exc):
+        if self.mine:
+            self._stop.set()
+            LOCK.unlink(missing_ok=True)
+        return False
 
 
 def main():

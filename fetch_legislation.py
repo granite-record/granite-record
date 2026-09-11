@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.12
+# GRANITE_VERSION: 2026-09-10.13
 """
 The bill itself, from an address that can simply be constructed.
 
-    python3 fetch_legislation.py --sample 10 --from 1989 --to 2026
+    python3 fetch_legislation.py --plan --from 1989 --to 2024   # no network
+    python3 fetch_legislation.py --all --from 2021 --to 2021 --budget 800
+    python3 fetch_legislation.py --sample 10 --from 1989 --to 2024
     python3 fetch_legislation.py --parse            # no network; read what is saved
 
 WHY THIS PATH AND NOT THE OTHER ONE
@@ -65,6 +67,7 @@ the General Court while this runs.
 
 import argparse
 import json
+import random
 import re
 from html import unescape as _unescape
 import sys
@@ -121,10 +124,24 @@ TEXT = ("https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
 #
 #     2016   stored 882016   used as stored   confirmed in a browser
 #     2022   stored 1130     used as stored   confirmed in a browser
-#     2023   stored 1        wants 12023      the saved status pages, which
-#     2024   stored 4        wants 42024      link 12023 and 42024
+#     2023   stored 32       used as stored   confirmed in a browser, 11 Sep
+#     2024   stored 4        used as stored   the same form as 2023
 #     2025   stored 7        used as stored   the saved status pages
 #     2026   stored 6        used as stored   the saved status pages
+#
+# 2023 AND 2024 SAID "WANTS THE YEAR APPENDED" UNTIL 11 SEPTEMBER, AND THAT WAS
+# WRONG FOR 1,826 OF 1,996 BILLS. The saved status pages link lsr_num+year --
+# a VERSIONED form ("v=HI&id=20372022") that the court also publishes -- and
+# the rule generalised from the first page of each year, where the stored id
+# happened to equal the LSR. Stored id + year is a form the court never
+# publishes: for 615 bills it is ANOTHER bill's id, whose text would have
+# been saved under this bill's name, and for 1,211 it is no bill at all. The
+# court's own docket pages (docket_pages/, 1,203/1,203 for 2022, 675/675 and
+# 1,321/1,321 for 2023-2024) link the plain form, the stored id as-is with
+# sy=<year>; and billText.aspx?sy=2023&id=32 was opened by hand and serves
+# 2023 HB42, its bill. So every application year takes the stored id, and
+# the session named by sy is what makes a short id unambiguous. The LSR check
+# in fetch() is what would catch it if that were ever not so.
 #
 # 2022 was the year nothing on this disk could answer -- there is no saved
 # 2022 status page -- and both candidate forms were opened by hand:
@@ -142,8 +159,44 @@ TEXT = ("https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
 # WHICH LEAVES NOTHING. Every bill of every term from 1989 to 2026 now has an
 # address: 27,171 by the static path and 6,512 by the application.
 STATIC_404 = {2016, 2022, 2023, 2024, 2025, 2026}
-ID_AS_STORED = {2016, 2022, 2025, 2026}
-ID_PLUS_YEAR = {2023, 2024}
+ID_AS_STORED = {2016, 2022, 2023, 2024, 2025, 2026}
+ID_PLUS_YEAR = set()
+
+# The terms this site already has the text of, from the database and
+# bill_text/. A run asks for the archive, not for them.
+CURRENT_FROM = 2025
+
+# FLOOR RESOLUTIONS HAVE NO TEXT HERE. A resolution introduced on the floor --
+# memorials, honourings, organisation-day housekeeping -- carries an LSR in
+# the 8000s or 9000s, and the General Court publishes a docket for it and no
+# text: legislation/1990/HR0055.html is a 404, and advanced search finds its
+# docket (bill_docket.aspx?lsr=9055&sy=1990) and no text either, both opened
+# by hand on 11 September. 5 of the 8 sampled were 404. So they are not asked
+# for; their one docket line is already on this disk in db/Docket.psv.
+# Bills are not in this rule: the 1989 special-session HB1 is LSR 9100 and
+# its page serves.
+FLOOR_KINDS = {"HR", "SR", "HCR", "SCR", "HJR", "SJR"}
+FLOOR_LSR = 8000
+
+# What the firewall and a struggling server send instead of a bill, with a
+# 200. The first two are this address being refused, and a run that saved
+# them would keep them forever as bills. From fetch_bill_text.NOT_A_BILL.
+BLOCKED = re.compile(r"Web Page Blocked|Attack ID", re.I)
+BROKEN = re.compile(r"Runtime Error|Server Error in|Service Unavailable", re.I)
+
+# A page names its own LSR near the top -- "05-1078 10/09", "89-0002 08" --
+# on 268 of the 269 static pages in the sample that print one and on all
+# 2,220 pages in bill_text/ that do. A bill carried into its second year
+# prints its first year's: 1990 HB33 is LSR 1990-114 in data/bills.json and
+# its page says 89-0114.
+PAGE_LSR = re.compile(r"(?<![\d/-])(\d\d)-(\d{4})(?![\d/])")
+
+# Addresses that answered 404 or an application error, kept so that no run
+# asks for one twice. A person may delete an entry to have it asked again.
+# Keyed by the ADDRESS, not the bill: 70 of the sample's 83 "missing" were
+# 1996, 2016 and 2022-2026 bills asked for at a static address those years
+# do not have, and a bill is not gone because a wrong address for it was.
+GONE = Path("legislation/_gone.json")
 
 # What the application says instead of 404ing. Both were met rather than
 # imagined: the first by opening a wrong id by hand on 10 September, the
@@ -236,49 +289,136 @@ def sample(bills, per_year, lo, hi):
     return picked
 
 
-def fetch(year, bid, delay, rec=None):
-    """One page, saved.
+def lsr_of(rec):
+    """(year, number) of a bill's LSR from data/bills.json, or None."""
+    rec = rec or {}
+    y, n = str(rec.get("lsr_year") or ""), str(rec.get("lsr_num") or "")
+    if not (y.isdigit() and n.isdigit()):
+        m = re.match(r"^(\d{4})-(\d+)$", str(rec.get("lsr") or ""))
+        if not m:
+            return None
+        y, n = m.groups()
+    return int(y), int(n)
 
-    Returns "saved", "cached", "missing", "refused" or "unreachable" -- the
-    last meaning no address is known for that year, which is a fact about the
-    archive and not a failure of the run. Both addresses save to the same
-    place, so --parse never learns which one a page came from and does not
-    need to: they serve the same document.
+
+def is_floor_resolution(bid, rec):
+    m = PAD.match((bid or "").strip().upper())
+    lsr = lsr_of(rec)
+    return bool(m and m.group(1) in FLOOR_KINDS and lsr and lsr[1] >= FLOOR_LSR)
+
+
+def page_lsr(text):
+    """The LSR a page prints about itself, as (two-digit year, number)."""
+    m = PAGE_LSR.search(text[:1500])
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+def same_bill(text, rec):
+    """True, False, or None where the page prints no LSR to check."""
+    got, want = page_lsr(text), lsr_of(rec)
+    if not got or not want:
+        return None
+    yy, num = got
+    return num == want[1] and yy in (want[0] % 100, (want[0] - 1) % 100)
+
+
+def gone_list():
+    try:
+        return json.loads(GONE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def mark_gone(url, why):
+    """Merge one entry into the gone-list; never rewrite it from a subset."""
+    g = gone_list()
+    g[url] = f"{why}, {time.strftime('%Y-%m-%d')}"
+    GONE.parent.mkdir(parents=True, exist_ok=True)
+    GONE.write_text(json.dumps(g, indent=1, sort_keys=True), encoding="utf-8")
+
+
+# The opener, a name so a check can stand a fake server in for the real one.
+urlopen = urllib.request.urlopen
+
+
+def fetch(year, bid, delay, rec=None):
+    """One page, saved, or the reason it was not.
+
+    Returns (outcome, detail). Outcomes that asked nothing of the server:
+    "cached", "gone" (answered 404 or an error before; never asked twice),
+    "floor" (a floor resolution, which has no text), "unreachable" (no
+    address is known), "skipped". Outcomes that asked: "saved", "missing"
+    (404 or 410), "error page", "failed" (5xx, a timeout, a dropped link),
+    "dropped" (accepted and closed with no answer -- this address's sign of
+    being refused), "refused" (403, 429 or the firewall's own block page),
+    "wrong bill" (the page names another LSR; not saved).
+
+    Both addresses save to the same place, so --parse never learns which one a
+    page came from and does not need to: they serve the same document.
     """
     pad = padded(bid)
     if not pad:
-        return "skipped"
+        return "skipped", ""
     f = OUT / str(year) / f"{pad}.html"
     if f.exists() and f.stat().st_size > 200:
-        return "cached"
+        return "cached", ""
+    if is_floor_resolution(bid, rec):
+        return "floor", ""
     url, _why = address(year, bid, rec)
     if not url:
-        return "unreachable"
-    f.parent.mkdir(parents=True, exist_ok=True)
-    time.sleep(delay)
+        return "unreachable", _why
+    if url in gone_list():
+        return "gone", ""
+    # A refusal another process met while this one slept is a refusal here
+    # too. refusal.check() at the start of a run cannot see it.
+    if refusal.MARK.exists():
+        return "refused", "archive/refused.json appeared during the run"
+    time.sleep(delay * random.uniform(0.75, 1.25) if delay else 0)
+    import http.client
     try:
         req = urllib.request.Request(url, headers=UA)
-        with urllib.request.urlopen(req, timeout=30) as r:
+        with urlopen(req, timeout=30) as r:
             body = r.read()
     except urllib.error.HTTPError as e:
         if e.code in (403, 429):
-            refusal.note("fetch_legislation", f"HTTP {e.code} on {url}")
-            return "refused"
-        return "missing"
-    except (urllib.error.URLError, TimeoutError):
-        return "missing"
+            return "refused", f"HTTP {e.code} on {url}"
+        if e.code in (404, 410):
+            mark_gone(url, f"HTTP {e.code}")
+            return "missing", f"HTTP {e.code}"
+        return "failed", f"HTTP {e.code}"
+    except (http.client.RemoteDisconnected, ConnectionResetError,
+            ConnectionAbortedError) as e:
+        return "dropped", f"{type(e).__name__}: {e}"
+    except (urllib.error.URLError, TimeoutError, http.client.HTTPException,
+            OSError) as e:
+        return "failed", f"{type(e).__name__}: {e}"
+    text = decode(body)
+    if BLOCKED.search(text[:4000]):
+        return "refused", "the firewall's block page, with a 200"
+    if BROKEN.search(text[:4000]):
+        return "failed", "a server error page, with a 200"
     # An error is not a document, and this one arrives wearing HTTP 200.
     # Saved, it would sit in legislation/ looking like a bill and be counted
     # as one -- a page with no sponsor, no committee and no title, which is
     # indistinguishable from the housekeeping resolutions that genuinely have
     # none. Checked before the write so it never reaches the disk.
-    if ERROR_PAGE.search(decode(body)[:4000]):
-        return "error page"
+    if ERROR_PAGE.search(text[:4000]):
+        mark_gone(url, "application error")
+        return "error page", ""
+    # THE PAGE MUST BE THE BILL. 615 bills of 2023-2024 were one address rule
+    # away from being saved under another bill's name, and nothing would have
+    # said so: --parse would have reported that bill's sponsors as these.
+    if same_bill(flatten(text), rec) is False:
+        why = (f"prints LSR {page_lsr(flatten(text))}, data/bills.json has "
+               f"{lsr_of(rec)}")
+        mark_gone(url, why)
+        return "wrong bill", f"{url} {why}"
     # The bytes as served. Decoding is decode()'s job at parse time, so a
     # wrong guess about the encoding is corrected by re-parsing, not by
     # asking the General Court for the page again.
+    f.parent.mkdir(parents=True, exist_ok=True)
     f.write_bytes(body)
-    return "saved"
+    return "saved", ""
 
 
 # ------------------------------------------------------------------ parsing
@@ -527,14 +667,57 @@ def report():
     return 0
 
 
+def every_bill(bills, lo, hi, kinds=None):
+    """{year: [bill, ...]} for every bill in the range, kind by kind."""
+    by_year = defaultdict(list)
+    for _term, bs in bills.items():
+        for bid, rec in bs.items():
+            y = str(rec.get("year") or rec.get("lsr_year") or "")[:4]
+            m = PAD.match(bid.strip().upper())
+            if not (y.isdigit() and lo <= int(y) <= hi and m):
+                continue
+            if kinds and m.group(1) not in kinds:
+                continue
+            by_year[int(y)].append(bid)
+    rank = {k: i for i, k in enumerate(KIND_ORDER)}
+    for y in by_year:
+        by_year[y].sort(key=lambda b: (rank.get(PAD.match(b).group(1), 99),
+                                       PAD.match(b).group(1),
+                                       int(PAD.match(b).group(2))))
+    return dict(by_year)
+
+
+# What each outcome means for the run. Asking outcomes count toward --budget.
+ASKED = {"saved", "missing", "error page", "failed", "dropped", "refused",
+         "wrong bill"}
+FAILURE = {"missing", "error page", "failed"}
+MAX_IN_A_ROW = 3     # consecutive failures that end a run
+MAX_MISSING = 10     # 404s that end a run: past this it is a scan, not a gap
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sample", type=int, default=10,
                     help="bills per year, spread across the kinds that year has")
+    ap.add_argument("--all", action="store_true",
+                    help="every bill in the range, not a sample")
+    ap.add_argument("--kinds", default="",
+                    help="only these kinds, comma-separated: HB,SB")
     ap.add_argument("--from", dest="lo", type=int, default=1989)
-    ap.add_argument("--to", dest="hi", type=int, default=2026)
-    ap.add_argument("--delay", type=float, default=15.0)
-    ap.add_argument("--stop-refused", type=int, default=2)
+    # Not the current term: its text is in bill_text/ already, from the
+    # database's own route, and asking again would be 2,234 requests for
+    # nothing.
+    ap.add_argument("--to", dest="hi", type=int, default=CURRENT_FROM - 1)
+    ap.add_argument("--delay", type=float, default=15.0,
+                    help="seconds between requests, jittered a quarter either way")
+    ap.add_argument("--budget", type=int, default=400,
+                    help="requests this run may make before it stops")
+    ap.add_argument("--stop-refused", type=int, default=2,
+                    help="dropped connections that end the run; a 403 ends it at one")
+    ap.add_argument("--note", default="",
+                    help="a label for the log, so a lane can queue a range twice")
+    ap.add_argument("--plan", action="store_true",
+                    help="say what would be asked for; no network, no lock")
     ap.add_argument("--parse", action="store_true",
                     help="read the saved pages and report; no network")
     a = ap.parse_args()
@@ -542,9 +725,10 @@ def main():
     if a.parse:
         return report()
 
-    refusal.check("The legislation fetch")
     bills = json.loads(Path("data/bills.json").read_text(encoding="utf-8"))
-    picked = sample(bills, a.sample, a.lo, a.hi)
+    kinds = {k.strip().upper() for k in a.kinds.split(",") if k.strip()}
+    picked = (every_bill(bills, a.lo, a.hi, kinds) if a.all
+              else sample(bills, a.sample, a.lo, a.hi))
     # The record travels with the bill because the text address is keyed by an
     # id that only the record carries.
     by_bill = {}
@@ -553,39 +737,157 @@ def main():
             y = str(rec.get("year") or rec.get("lsr_year") or "")[:4]
             if y.isdigit():
                 by_bill[(int(y), bid)] = rec
-    total = sum(len(v) for v in picked.values())
-    blocked = sorted({y for y in picked
-                      for bid in picked[y]
-                      if not address(y, bid, by_bill.get((y, bid)))[0]})
-    if blocked:
-        print("no address known for: "
-              + ", ".join(str(y) for y in blocked)
-              + " -- those bills are skipped, not asked for")
-    print(f"{total:,} bills across {len(picked)} years, {a.delay:g}s apart "
-          f"-- about {total * a.delay / 60:.0f} minutes if none are cached")
-    print()
-    tally, refused = Counter(), 0
+
+    # What a run would ask for, from disk alone.
+    gone = gone_list()
+    plan = {}
     for year in sorted(picked):
-        line = []
+        c = Counter()
+        first = []
         for bid in picked[year]:
-            what = fetch(year, bid, a.delay if tally else 0,
-                         rec=by_bill.get((year, bid)))
+            rec = by_bill.get((year, bid))
+            pad = padded(bid)
+            f = OUT / str(year) / f"{pad}.html" if pad else None
+            if not pad:
+                c["skipped"] += 1
+            elif f.exists() and f.stat().st_size > 200:
+                c["cached"] += 1
+            elif is_floor_resolution(bid, rec):
+                c["floor"] += 1
+            else:
+                url, why = address(year, bid, rec)
+                if not url:
+                    c["unreachable"] += 1
+                elif url in gone:
+                    c["gone"] += 1
+                else:
+                    c["to ask"] += 1
+                    c[why] += 1
+                    if len(first) < 2:
+                        first.append(url)
+        plan[year] = (c, first)
+    to_ask = sum(c["to ask"] for c, _ in plan.values())
+
+    if a.plan:
+        print(f"{'year':6}{'bills':>7}{'cached':>8}{'gone':>6}{'floor':>7}"
+              f"{'no addr':>9}{'to ask':>8}  by")
+        for year, (c, first) in plan.items():
+            by = "billText" if c["billText"] else ("static" if c["static"] else "-")
+            print(f"{year:<6}{len(picked[year]):>7}{c['cached']:>8}{c['gone']:>6}"
+                  f"{c['floor']:>7}{c['unreachable']:>9}{c['to ask']:>8}  {by}"
+                  + (f"   e.g. {first[0]}" if first else ""))
+        hours = to_ask * a.delay / 3600
+        print(f"\n{to_ask:,} requests to ask, about {hours:.0f} hours of "
+              f"requests at {a.delay:g}s; floor resolutions and addresses "
+              f"already answered 404 are not among them.")
+        return 0
+
+    refusal.check("The legislation fetch")
+    with refusal.hold("fetch_legislation"):
+        return run(a, picked, by_bill, to_ask)
+
+
+def run(a, picked, by_bill, to_ask):
+    t0 = time.time()
+    print(f"{to_ask:,} to ask in {a.lo}-{a.hi}"
+          + (f" ({a.note})" if a.note else "")
+          + f"; this run stops at {a.budget:,} requests. {a.delay:g}s apart, "
+          f"jittered. Two dropped connections, or one 403, end it.",
+          flush=True)
+    tally, asked, in_a_row, dropped, wrong = Counter(), 0, 0, 0, 0
+
+    def summary():
+        mins = (time.time() - t0) / 60
+        print(f"\n{asked:,} asked in {mins:.0f} min: "
+              + ", ".join(f"{v:,} {k}" for k, v in tally.most_common()),
+              flush=True)
+
+    for year in sorted(picked):
+        for bid in picked[year]:
+            if asked >= a.budget:
+                summary()
+                print(f"budget of {a.budget:,} reached. Nothing already on "
+                      "disk is asked for again, so the same command continues "
+                      "from here.", flush=True)
+                return 0
+            what, why = fetch(year, bid, a.delay, rec=by_bill.get((year, bid)))
             tally[what] += 1
-            line.append(f"{bid}:{what[0]}")
+            if what not in ASKED:
+                continue
+            asked += 1
+            if what == "saved":
+                in_a_row = 0
+            if asked % 25 == 0:
+                print(f"  {year} {bid}: {asked:,} asked, {tally['saved']:,} "
+                      f"saved, {tally['missing']:,} missing, "
+                      f"{(time.time() - t0) / 60:.0f} min", flush=True)
             if what == "refused":
-                refused += 1
-                if refused >= a.stop_refused:
-                    print(f"  {year}: " + " ".join(line))
-                    print()
-                    print(f"{refused} refusals. Stopping, and refusal.py now "
-                          "holds one for 24 hours.")
-                    print("python3 netcheck.py says what kind it is without "
-                          "making it worse.")
+                refusal.note("fetch_legislation", why)
+                summary()
+                print(f"\nREFUSED: {why}. Stopping, and refusal.py now holds "
+                      "one: every fetch stops until a person clears it.\n"
+                      "python3 netcheck.py says what kind it is without "
+                      "making it worse.", flush=True)
+                return 2
+            if what == "dropped":
+                dropped += 1
+                if dropped >= a.stop_refused:
+                    refusal.note("fetch_legislation", why)
+                    summary()
+                    print(f"\n{dropped} dropped connections ({why}): the "
+                          "address closing on us without an answer, which is "
+                          "what being refused looks like here. Stopping; "
+                          "refusal.py holds it.", flush=True)
                     return 2
-        print(f"  {year}: " + " ".join(line))
-    print()
-    print(", ".join(f"{v:,} {k}" for k, v in tally.most_common()))
-    print(f"-> {OUT}/   then: python3 fetch_legislation.py --parse")
+                print(f"  dropped ({why}) on {year} {bid}; cooling off 120s",
+                      flush=True)
+                time.sleep(120)
+                continue
+            if what == "wrong bill":
+                # One can be the record rather than the rule: 1989's special
+                # session HB1 carries a made-up LSR (9100) in data/bills.json
+                # and its page prints the real one. A wrong rule is wrong on
+                # every request, so two in a run is the signal.
+                wrong += 1
+                print(f"  WRONG BILL: {year} {bid} -- {why}. Not saved; on "
+                      "the gone-list for a person to read.", flush=True)
+                if wrong >= 2:
+                    summary()
+                    print(f"\n{wrong} pages in one run name another bill. An "
+                          "address rule is naming the wrong bill, and every "
+                          "page after this would be filed under the wrong "
+                          "name. Stopping for a person to look.", flush=True)
+                    return 3
+                continue
+            if what in FAILURE:
+                in_a_row += 1
+                print(f"  {what} on {year} {bid}"
+                      + (f" ({why})" if why else ""), flush=True)
+                if in_a_row >= MAX_IN_A_ROW:
+                    summary()
+                    print(f"\n{in_a_row} failures in a row. Something has "
+                          "changed -- the address, the server or this "
+                          "script's idea of where a bill lives -- and asking "
+                          "on regardless is how the last block was earned. "
+                          "Stopping.", flush=True)
+                    return 3
+                if tally["missing"] >= MAX_MISSING:
+                    summary()
+                    print(f"\n{tally['missing']} addresses answered 404 in "
+                          "one run. They are on the gone-list and will not be "
+                          "asked again, but this many is a rule that is wrong "
+                          "about where a year's bills live, and a run asking "
+                          "on would be probing. Stopping.", flush=True)
+                    return 3
+    summary()
+    # Silence is not success: a run that asked and saved nothing is a run
+    # that met a wall it could not name.
+    if asked and not tally["saved"]:
+        print("asked and saved nothing. Stopping for a person to look.",
+              flush=True)
+        return 3
+    print(f"the range is done. -> {OUT}/   then: python3 fetch_legislation.py "
+          "--parse", flush=True)
     return 0
 
 

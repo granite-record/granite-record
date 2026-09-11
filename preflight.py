@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.104
+# GRANITE_VERSION: 2026-09-04.105
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3693,6 +3693,109 @@ def _fetch_writes_its_term():
         return "ok", ("the fetched term is written and the other term "
                       "survives it")
     finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "the bill-text fetch saves only the bill it asked for, and stops when told no",
+       needs=("fetch_legislation",))
+def _legislation_fetch(FL):
+    """Thirty-one thousand requests to an address that has blocked us twice.
+
+    Every behaviour here was missing from fetch_legislation.py on 10
+    September, found by reading it before the full run rather than during:
+    2023-2024 addresses that named another bill for 615 bills, a dropped
+    connection that crashed the run with no refusal recorded, 404s asked for
+    again on every run, and the firewall's block page saved as a bill. None
+    of it can be tested against the real server without being the problem
+    it guards against, so a fake server stands in: no request leaves here.
+    """
+    import http.client
+    import io
+    import urllib.error
+    import refusal
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp())
+    saved = (os.getcwd(), FL.urlopen, FL.time.sleep)
+    try:
+        os.chdir(root)
+        FL.time.sleep = lambda s: None
+        # --- where each era's text lives
+        u, how = FL.address(2023, "HB42", {"text_pdf": "billText.aspx?id=32&sy=2023"})
+        assert how == "billText" and "id=32&" in u and "sy=2023" in u, u
+        assert FL.address(1996, "HB1025", {})[0].endswith("/1996/HB1025.htm")
+        assert FL.address(2014, "HB1101", {})[0].endswith("/2014/HB1101.html")
+        floor = {"lsr_year": "1990", "lsr_num": "9055"}
+        assert FL.is_floor_resolution("HR55", floor)
+        assert not FL.is_floor_resolution("HB1", {"lsr_year": "1989", "lsr_num": "9100"})
+
+        asked = []
+
+        def server(answers):
+            def op(req, timeout=30):
+                asked.append(req.full_url)
+                a = answers.pop(0)
+                if isinstance(a, Exception):
+                    raise a
+                return io.BytesIO(a.encode("utf-8"))
+            return op
+
+        # Longer than 200 bytes, which is where a saved page counts as held.
+        page = lambda lsr: (f"<html>2019 SESSION {lsr} 10/04 HOUSE BILL 5 "
+                            "AN ACT relative to things. SPONSORS: Rep. A "
+                            "ANALYSIS This bill does a thing. " + "x " * 120
+                            + "</html>")
+        rec = {"lsr_year": "2019", "lsr_num": "789"}
+        # Right bill: saved.
+        FL.urlopen = server([page("19-0789")])
+        assert FL.fetch(2019, "HB5", 0, rec)[0] == "saved"
+        assert (root / "legislation" / "2019" / "HB0005.html").exists()
+        assert FL.fetch(2019, "HB5", 0, rec)[0] == "cached"
+        # Another bill's page: not saved, and not asked for twice.
+        FL.urlopen = server([page("19-0123")])
+        assert FL.fetch(2019, "HB6", 0, rec)[0] == "wrong bill"
+        assert not (root / "legislation" / "2019" / "HB0006.html").exists()
+        # A 404: on the gone-list, and the next run does not ask.
+        n = len(asked)
+        FL.urlopen = server([urllib.error.HTTPError("u", 404, "nf", {}, None)])
+        assert FL.fetch(2019, "HB7", 0, rec)[0] == "missing"
+        assert FL.fetch(2019, "HB7", 0, rec)[0] == "gone"
+        assert len(asked) == n + 1, "a 404 was asked for twice"
+        # The refusals.
+        FL.urlopen = server([http.client.RemoteDisconnected("closed")])
+        assert FL.fetch(2019, "HB8", 0, rec)[0] == "dropped"
+        FL.urlopen = server(["<h1>Web Page Blocked</h1> Attack ID: 1234"])
+        assert FL.fetch(2019, "HB9", 0, rec)[0] == "refused"
+        assert not (root / "legislation" / "2019" / "HB0009.html").exists()
+        FL.urlopen = server([urllib.error.HTTPError("u", 403, "no", {}, None)])
+        assert FL.fetch(2019, "HB10", 0, rec)[0] == "refused"
+        # A floor resolution is never asked.
+        n = len(asked)
+        assert FL.fetch(1990, "HR55", 0, floor)[0] == "floor" and len(asked) == n
+
+        # A run: two dropped connections end it, and the refusal outlives it.
+        class A:
+            lo, hi, note, delay, budget, stop_refused = 2019, 2019, "", 0, 50, 2
+        by = {(2019, f"HB{i}"): {"lsr_year": "2019", "lsr_num": str(i)}
+              for i in range(20, 26)}
+        FL.urlopen = server([http.client.RemoteDisconnected("x")] * 2)
+        rc = FL.run(A, {2019: [f"HB{i}" for i in range(20, 26)]}, by, 6)
+        assert rc == 2, f"two dropped connections gave status {rc}, not 2"
+        assert refusal.MARK.exists(), "the refusal was not recorded"
+        # And with a refusal on file, nothing more is asked.
+        n = len(asked)
+        assert FL.fetch(2019, "HB30", 0, rec)[0] == "refused" and len(asked) == n
+        refusal.MARK.unlink()
+        # Two wrong bills in a run end it.
+        FL.urlopen = server([page("19-0001"), page("19-0002")])
+        by = {(2019, f"HB{i}"): {"lsr_year": "2019", "lsr_num": "700"}
+              for i in range(40, 44)}
+        rc = FL.run(A, {2019: [f"HB{i}" for i in range(40, 44)]}, by, 4)
+        assert rc == 3, f"two wrong bills gave status {rc}, not 3"
+        return "ok", ("right bill saved, wrong bill refused, 404 asked once, "
+                      "dropped/403/block page stop it, floor resolutions skipped")
+    finally:
+        os.chdir(saved[0])
+        FL.urlopen, FL.time.sleep = saved[1], saved[2]
         shutil.rmtree(root, ignore_errors=True)
 
 
