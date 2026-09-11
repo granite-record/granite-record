@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.18
+# GRANITE_VERSION: 2026-09-04.19
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -711,6 +711,35 @@ def main():
             _added += 1
     if _added:
         print(f"past members named from the General Court's own list: {_added:,}")
+
+    # And the party, from the roll call pages.
+    #
+    # past_members.json names people and carries no party, so 773,506 ballots
+    # were named and partyless. A person found the page that has it: the
+    # legacy roll call detail prints every member's party, county and district
+    # beside their vote, and fetch_rollcall_parties.py took the fullest vote
+    # of each year and chamber -- 54 requests for 2,078 members.
+    #
+    # This fills a party where there is none and NEVER replaces one. A party
+    # already on a record came from the roster the General Court publishes for
+    # sitting members; this came from one roll call of one year, and where the
+    # two disagree the roster is the better witness. The county and district
+    # are taken the same way, because past_members gives both and this
+    # confirms them.
+    _party = {}
+    _pp = Path("member_party.json")
+    if _pp.exists():
+        _party = json.loads(_pp.read_text(encoding="utf-8"))
+    _gave = 0
+    for _mid, _rec in _party.items():
+        _who = former.get(_mid)
+        if _who and not (_who.get("party") or "").strip():
+            _who["party"] = _rec.get("party", "")
+            _who["county"] = _who.get("county") or _rec.get("county", "")
+            _who["district"] = _who.get("district") or _rec.get("district", "")
+            _gave += 1
+    if _gave:
+        print(f"past members given a party from the roll call pages: {_gave:,}")
 
     # ------------------------------------------ sponsors, district and all ---
     #

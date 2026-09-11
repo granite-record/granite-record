@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.98
+# GRANITE_VERSION: 2026-09-04.100
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3219,7 +3219,17 @@ def _referral(referrals):
     assert c("Rereferred to Committee, MA, VV; SJ 20, P 543") == ""
     # The shout is unshouted before the ampersand is spelled, or the
     # lower-case "and" drops it below the 90% that triggers unshouting.
-    assert c("INTRODUCED AND REF TO JUDICIARY & F L") == "Judiciary and F L"
+    assert c("INTRODUCED AND REF TO WAYS & MEANS") == "Ways and Means"
+    # This line asserted "Judiciary and F L" for half a day, which was the
+    # right answer while it was: nothing in the docket or in any bill's text
+    # spells that committee out, and a plausible expansion of a committee's
+    # name is still an invented one. Then the General Court's own key to its
+    # docket turned up -- docket_abbrev.json -- and JUD is Judiciary and
+    # Family Law. The expectation moved because the evidence did, and the
+    # rule that produced the cautious answer is unchanged.
+    assert c("INTRODUCED AND REF TO JUDICIARY & F L") == "Judiciary and Family Law"
+    # Still abbreviated, because the key does not cover these either.
+    assert c("INTRODUCED AND REF TO CORR & CJ") == "Corr and Cj"
     return "ok", "seven real docket lines, and two that name no committee"
 
 
@@ -4194,38 +4204,38 @@ def _vote_identity():
         f"{nameless}. past_members.json is missing or stale; "
         "fetch_sponsors_by_member.py --members writes it in one request.")
 
-    # A PARTY, WHERE A PARTY IS KNOWABLE. The original 5% rule stays, on the
-    # terms it was written for and can hold: the General Court's roster views
-    # reach members who served recently, and the list of everyone who ever
-    # served -- the only source that names the rest -- carries no party at
-    # all. Measured on 10 September, ballots with no party:
+    # A PARTY, ON EVERY TERM. This rule covered every term, was narrowed to
+    # 2017 onward for one afternoon, and covers every term again -- and the
+    # reason is worth keeping, because it is the difference between a guard
+    # that was loosened and one that was true at the time.
     #
-    #     1999-2000  88%     2007-2008  75%     2015-2016   6%
-    #     2001-2002  85%     2009-2010  66%     2017-2018   2%
-    #     2003-2004  82%     2011-2012  57%     2019-2020   1%
-    #     2005-2006  78%     2013-2014  36%     2021-2026   0%
+    # 24 years of roll calls landed on 10 September and 773,506 of their
+    # ballots had no party: 88% of 1999-2000, 57% of 2011-2012. No roster on
+    # this disk carried one for those people, and the tempting fix -- guessing
+    # from a later namesake, or from how somebody voted -- would have
+    # fabricated the fact a reader is most likely to act on. So the rule was
+    # narrowed to where it was achievable and the rest was REPORTED, with the
+    # numbers, rather than asserted or invented.
     #
-    # So the rule is applied from 2017-2018 on, which is where it is
-    # achievable, and the earlier terms are reported rather than asserted.
-    # Lowering it to pass would have hidden the case it exists for: 63,065 of
+    # Then a person found the page that has it. The legacy roll call detail
+    # prints every member's party beside their vote, and because a party is a
+    # fact about a member in a term rather than about a vote, the fullest
+    # roll call of each year and chamber names almost the whole chamber: 54
+    # requests, 2,078 members, and every term came back inside 5%.
+    #
+    # The case the rule exists for is still the one that matters: 63,065 of
     # the 2023-2024 term's votes lost their party letter once, and a reader
-    # found it before this file did. Inventing a party for a 1999
-    # representative -- from a later namesake, or from how they voted -- would
-    # be worse than saying nothing, because party is the fact a reader is
-    # most likely to act on.
+    # found it before this file did.
     bad = {t: f"{n:,}/{tot:,}" for t, (tot, n, _) in per_term.items()
-           if tot and n > tot * 0.05 and t >= "2017-2018"}
-    assert not bad, (f"a term since 2017 is missing party on more than 5% of "
-                     f"its votes: {bad}. former_members.json is stale or was "
-                     "not read; fetch_members_db.py fills it from the "
-                     "legislators table.")
-    old = sum(n for t, (_, n, _) in per_term.items() if t < "2017-2018")
-    census = ", ".join(f"{t} {n:,}/{tot:,}"
-                       for t, (tot, n, _) in sorted(per_term.items())
-                       if n > tot * 0.05)
-    return "ok", (f"{len(by_emp):,} distinct voters, every term named; "
-                  f"{old:,} ballots before 2017 carry no party "
-                  f"(no source on this disk has one): {census}")
+           if tot and n > tot * 0.05}
+    assert not bad, (
+        f"a term is missing party on more than 5% of its votes: {bad}. "
+        "former_members.json is stale, or member_party.json is missing -- "
+        "fetch_rollcall_parties.py writes it from 54 roll call pages.")
+    worst = max(((n / tot, t) for t, (tot, n, _) in per_term.items() if tot),
+                default=(0, ""))
+    return "ok", (f"{len(by_emp):,} distinct voters, every term named and "
+                  f"partied; worst term {worst[1]} at {worst[0] * 100:.0f}%")
 
 
 @check("frontend", "a page says what it is once, and says where it lives")
