@@ -25,7 +25,7 @@
     "dom_stub.js": "2026-09-04.2",
     "extract_calendar_text.py": "2026-09-08.1",
     "extract_vetoes.py": "2026-09-07.14",
-    "extract_amendments.py": "2026-09-04.4",
+    "extract_amendments.py": "2026-09-04.5",
     "fetch_archive_captions.py": "2026-09-08.2",
     "fetch_archive_db.py": "2026-09-08.4",
     "fetch_archive_years.py": "2026-09-08.1",

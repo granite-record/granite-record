@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Amendment text, out of the calendars already on this disk.
 
@@ -134,11 +134,36 @@ def repair_hyphens(doc):
     return re.sub(r"(\w{2,})-\s*\n\s*([a-z]\w+)", fix, doc)
 
 
+# THE HEADER ARRIVES JAMMED, AND THE NEXT HEADING ARRIVES AT THE END.
+#
+# RUNNING_HEAD above wants a space between every part, and pdftotext gives
+# the House's header as "5 APRIL2019HOUSERECORD 75": 52% of the published
+# 2025-2026 amendment texts, and 53% of 2017-2024's, carried one mid-text.
+# fetch_committee_reports met the same thing in the members' reasoning and
+# its pattern is the tested one, jammed and lower-case forms both, so it is
+# used here too rather than a second copy that drifts.
+#
+# And an amendment runs from its number to the next number, and the next
+# amendment's heading is printed BEFORE its number: "Amendment to HB 85-FN
+# (2026-0123h)". So 97% of the texts ended in the following amendment's
+# heading -- "...shall take effect upon its passage. Amendment to HB 85-FN (".
+# That fragment is cut off the end.
+try:
+    from fetch_committee_reports import PAGE_FURNITURE as _HEADER
+except Exception:
+    _HEADER = RUNNING_HEAD
+NEXT_HEADING = re.compile(
+    r"\s*(?:Floor\s+)?Amendment\s+to\s+(?:SS)?(?:HB|SB|CACR|HCR|SCR|HJR|SJR|HR|SR)"
+    r"\s*\d+(?:-[A-Z]+)*\s*\(\s*$", re.I)
+
+
 def clean(text):
     """Join the lines back into prose without the page furniture."""
     lines = [ln for ln in text.splitlines() if not NOISE.match(ln)]
     joined = re.sub(r"\s+", " ", "\n".join(lines)).strip()
-    return re.sub(r"\s{2,}", " ", RUNNING_HEAD.sub(" ", joined)).strip()
+    joined = _HEADER.sub(" ", RUNNING_HEAD.sub(" ", joined))
+    joined = re.sub(r"\s{2,}", " ", joined).strip()
+    return NEXT_HEADING.sub("", joined).rstrip()
 
 
 def amendments_in(text, source):
