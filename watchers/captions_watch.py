@@ -102,6 +102,17 @@ while time.time() < deadline:
         wait = max(WAIT_MIN, wait // 2)
         delay = FAST if got >= PROBE else SLOW
         left = re.search(r"([\d,]+) still wanted", out)
+        # NOTHING LEFT IS A REASON TO STOP, not to poll. On 11 September
+        # all 676 landed at 14:56 and this went on asking every five minutes
+        # for recordings that only a refreshed video index can add, until a
+        # person stopped it. A new index means a new run of this.
+        # fetch_archive_captions says "0 to fetch" and asks YouTube nothing
+        # when the list is empty, so those five-minute cycles cost no
+        # requests -- but they were noise, and they never ended.
+        if not got and re.search(r"^0 to fetch", out, re.M):
+            say(f"cycle {cycles}: nothing is wanted. Stopping; run this "
+                "again after the video index is refreshed.")
+            break
         say(f"cycle {cycles}: {got} fetched, no refusal"
             + (f", {left.group(1)} still wanted" if left else "")
             + f". Next {batch} in {wait // 60} min at {delay:.0f}s.")
