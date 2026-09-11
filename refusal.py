@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.2
+# GRANITE_VERSION: 2026-09-09.3
 """
 One refusal stops every fetch, not just the one that was refused.
 
@@ -35,6 +35,7 @@ longer block.
 
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -72,7 +73,8 @@ def check(who=""):
     if not s:
         return
     d, hours = s
-    sys.exit(
+    # Status 2, which every fetcher and the lane read as "refused".
+    print(
         f"\nThis address was refused {hours:.1f} hours ago and nothing has "
         f"asked it since.\n"
         f"  when   {d.get('at')}\n"
@@ -82,7 +84,64 @@ def check(who=""):
         "address, not about\nthe run that found it, so it applies to every "
         "fetch and not only that one.\n\n"
         "  python3 netcheck.py          what kind of refusal it was\n"
-        "  python3 refusal.py --clear   when a person has decided to go on\n")
+        "  python3 refusal.py --clear   when a person has decided to go on\n",
+        file=sys.stderr)
+    sys.exit(2)
+
+
+# ---- what an answer means --------------------------------------------------
+#
+# One reading of an answer, for every fetcher. The docket fetch matched
+# refusals by substring of the error's text, and urllib wraps a reset at
+# connect time as "<urlopen error [WinError 10054] ...>", which contains
+# neither "RemoteDisconnected" nor "ConnectionReset": a connection being
+# refused was counted as an ordinary failure, with no cool-off, no stop and
+# no record. And neither fetch knew that a server shedding load says 503 with
+# a Retry-After, which is a request to go away, not a flaky link.
+
+BLOCKED = re.compile(r"Web Page Blocked|Attack ID", re.I)
+BROKEN = re.compile(r"Runtime Error|Server Error in|Service Unavailable", re.I)
+
+
+def classify(err=None, body=None):
+    """"refused", "dropped", "missing", "failed", or None for a fine answer.
+
+    refused  -- 403, 429, 503, a Retry-After, or the firewall's block page:
+                the address saying no. One ends a run.
+    dropped  -- accepted and closed without an answer, reset, aborted or
+                timed out, at connect or mid-read: this address's usual
+                sign of refusing. Two end a run.
+    missing  -- 404 or 410: no such document.
+    failed   -- anything else that is not a page.
+    """
+    import http.client
+    import socket
+    import ssl
+    import urllib.error
+    if err is not None:
+        if isinstance(err, urllib.error.HTTPError):
+            if err.code in (403, 429, 503) or (err.headers or {}).get("Retry-After"):
+                return "refused"
+            try:
+                head = err.read(4000).decode("utf-8", "replace")
+            except Exception:
+                head = ""
+            if BLOCKED.search(head):
+                return "refused"
+            return "missing" if err.code in (404, 410) else "failed"
+        inner = err.reason if isinstance(err, urllib.error.URLError) else err
+        if isinstance(inner, (http.client.RemoteDisconnected, ConnectionResetError,
+                              ConnectionAbortedError, ConnectionRefusedError,
+                              TimeoutError, socket.timeout, ssl.SSLEOFError)):
+            return "dropped"
+        if isinstance(inner, str) and "timed out" in inner:
+            return "dropped"
+        return "failed"
+    if body is not None:
+        head = body[:4000] if isinstance(body, str) else ""
+        if BLOCKED.search(head):
+            return "refused"
+    return None
 
 
 # ---- one worker ------------------------------------------------------------
@@ -111,10 +170,11 @@ class hold:
             held = LOCK.read_text(encoding="utf-8", errors="replace").strip()
             if held.isdigit() and int(held) == os.getppid():
                 return self            # the lane that started us holds it
-            sys.exit(f"\narchive/.lock is held (pid {held or '?'}): another "
-                     f"fetch from the General Court is running, and {self.who} "
-                     "will not be a second one. If nothing is running, a "
-                     "person may remove the lock.\n")
+            print(f"\narchive/.lock is held (pid {held or '?'}): another "
+                  f"fetch from the General Court is running, and {self.who} "
+                  "will not be a second one. If nothing is running, a "
+                  "person may remove the lock.\n", file=sys.stderr)
+            sys.exit(3)
         LOCK.parent.mkdir(exist_ok=True)
         LOCK.write_text(str(os.getpid()), encoding="utf-8")
         self.mine = True
@@ -131,10 +191,34 @@ class hold:
         threading.Thread(target=beat, daemon=True).start()
         return self
 
+    def still(self):
+        """Whether this run may still ask for anything. Before every request.
+
+        A run that took the lock keeps it fresh itself. A run under the lane
+        relies on the lane's heartbeat, so it checks that the lane is still
+        there: the lock present, naming our parent, touched within three
+        minutes. A lane killed hard leaves its child fetching with nobody
+        refreshing the lock, and a lock nobody refreshes is one any other
+        fetcher may decide is abandoned."""
+        import os
+        if self.mine:
+            return True
+        try:
+            held = LOCK.read_text(encoding="utf-8", errors="replace").strip()
+            fresh = time.time() - LOCK.stat().st_mtime < 180
+        except OSError:
+            return False
+        return held.isdigit() and int(held) == os.getppid() and fresh
+
     def __exit__(self, *exc):
         if self.mine:
             self._stop.set()
-            LOCK.unlink(missing_ok=True)
+            # Only our own lock. Another worker's is not ours to remove.
+            try:
+                if LOCK.read_text(encoding="utf-8").strip() == str(__import__("os").getpid()):
+                    LOCK.unlink(missing_ok=True)
+            except OSError:
+                pass
         return False
 
 

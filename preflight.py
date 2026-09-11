@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.108
+# GRANITE_VERSION: 2026-09-04.109
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3722,6 +3722,66 @@ def _manifest_out():
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("build", "the docket fetch stops at a block page or a dropped connection, and caches no error")
+def _docket_fetch_stops():
+    """fetch_archive_docket read refusals by substring of an error's text,
+    and urllib wraps a reset at connect time as "<urlopen error [WinError
+    10054] ...>", which matched nothing; and it cached any 200, the
+    firewall's block page included, and exited 0 -- so under a block the lane
+    would have gone on into the next step. A fake server stands in: each
+    case runs the real main() in a subprocess in a temp directory."""
+    here = Path(".").resolve()
+    if not (here / "fetch_archive_docket.py").exists():
+        return "skip", "fetch_archive_docket.py not here"
+    good = ('<tr><td>01/05/2016</td><td>H</td><td>Introduced and referred to '
+            'Education</td></tr>' * 3)
+    good = "<html>" + good + "x" * 2000 + "</html>"
+    cases = {
+        "block page": (['"<h1>Web Page Blocked</h1> Attack ID: 99" + "x"*2000'], 2, True),
+        "two resets": (["urllib.error.URLError(ConnectionResetError(10054, 'r'))"] * 2, 2, True),
+        "three 500s": (["urllib.error.HTTPError('u', 500, 'e', {}, None)"] * 3, 3, False),
+        "error, then fine": (['"Index 0 is either negative or above rows count" + "x"*2000',
+                              repr(good), repr(good), repr(good)], 0, False),
+    }
+    results = []
+    for name, (answers, want_rc, want_refusal) in cases.items():
+        root = Path(tempfile.mkdtemp())
+        try:
+            (root / "data").mkdir()
+            (root / "data" / "bills.json").write_text(json.dumps({"2015-2016": {
+                f"HB{1000 + i}": {"lsr_year": "2016", "lsr_num": str(2000 + i)}
+                for i in range(4)}}), encoding="utf-8")
+            (root / "wrap.py").write_text(
+                "import sys, urllib.error\n"
+                f"sys.path.insert(0, {str(here)!r})\n"
+                "import fetch_archive_docket as D\n"
+                f"answers = [{', '.join(answers)}]\n"
+                "def get(url, timeout):\n"
+                "    a = answers.pop(0)\n"
+                "    return (None, a) if isinstance(a, Exception) else (a, None)\n"
+                "D.get = get\n"
+                "D.time.sleep = lambda s: None\n"
+                "sys.argv = ['x', '--term', '2015-2016', '--delay', '0']\n"
+                "sys.exit(D.main())\n", encoding="utf-8")
+            r = _run([sys.executable, "wrap.py"], cwd=root, capture_output=True,
+                     text=True, timeout=60)
+            refused = (root / "archive" / "refused.json").exists()
+            cached = sorted(p.name for p in (root / "docket_pages").glob("*.html")) \
+                if (root / "docket_pages").exists() else []
+            assert r.returncode == want_rc, (
+                f"{name}: status {r.returncode}, not {want_rc}: "
+                + (r.stderr or r.stdout).strip()[-200:])
+            assert refused == want_refusal, f"{name}: refusal recorded {refused}"
+            assert not (root / "archive" / ".lock").exists(), f"{name}: lock left behind"
+            if name == "error, then fine":
+                assert "2016_2000_HB1000.html" not in cached, "an error page was cached"
+                assert len(cached) == 3, f"cached {cached}"
+            results.append(name)
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+    return "ok", "; ".join(results) + " -- each behaves"
+
+
 @check("build", "the bill-text fetch saves only the bill it asked for, and stops when told no",
        needs=("fetch_legislation",))
 def _legislation_fetch(FL):
@@ -3807,10 +3867,46 @@ def _legislation_fetch(FL):
         rc = FL.run(A, {2019: [f"HB{i}" for i in range(20, 26)]}, by, 6)
         assert rc == 2, f"two dropped connections gave status {rc}, not 2"
         assert refusal.MARK.exists(), "the refusal was not recorded"
-        # And with a refusal on file, nothing more is asked.
+        # And with a refusal on file, nothing more is asked -- and the record
+        # is left as it is, not overwritten with this run's name.
         n = len(asked)
-        assert FL.fetch(2019, "HB30", 0, rec)[0] == "refused" and len(asked) == n
+        before = refusal.MARK.read_text(encoding="utf-8")
+        assert FL.fetch(2019, "HB30", 0, rec)[0] == "halted" and len(asked) == n
+        assert refusal.MARK.read_text(encoding="utf-8") == before
         refusal.MARK.unlink()
+        # What urllib actually raises. A reset at connect time arrives WRAPPED
+        # in a URLError, and was an ordinary failure until the 11th.
+        import socket
+        for exc, want in [
+                (urllib.error.URLError(ConnectionResetError(10054, "reset")), "dropped"),
+                (urllib.error.URLError(socket.timeout("timed out")), "dropped"),
+                (TimeoutError("read timed out"), "dropped"),
+                (urllib.error.HTTPError("u", 503, "busy", {}, None), "refused"),
+                (urllib.error.HTTPError("u", 302, "moved", {}, None), "failed")]:
+            FL.urlopen = server([exc])
+            got = FL.fetch(2019, f"HB{50 + len(asked)}", 0, rec)[0]
+            assert got == want, f"{exc!r} read as {got}, not {want}"
+        # An empty 200 is not a bill, and is not saved.
+        FL.urlopen = server(["<html><body></body></html>"])
+        assert FL.fetch(2019, "HB90", 0, rec)[0] == "empty"
+        assert not (root / "legislation" / "2019" / "HB0090.html").exists()
+        # The lane gone: nothing asked.
+        class Gone:
+            def still(self):
+                return False
+        FL.HOLD, n = Gone(), len(asked)
+        assert FL.fetch(2019, "HB91", 0, rec)[0] == "halted" and len(asked) == n
+        FL.HOLD = None
+        # A gone-list that will not read stops the run rather than being
+        # rewritten from nothing.
+        good = FL.GONE.read_text(encoding="utf-8")
+        FL.GONE.write_text("{not json", encoding="utf-8")
+        try:
+            FL.fetch(2019, "HB92", 0, rec)
+            raise AssertionError("an unreadable gone-list was read as empty")
+        except SystemExit:
+            pass
+        FL.GONE.write_text(good, encoding="utf-8")
         # Two wrong bills in a run end it.
         FL.urlopen = server([page("19-0001"), page("19-0002")])
         by = {(2019, f"HB{i}"): {"lsr_year": "2019", "lsr_num": "700"}

@@ -102,7 +102,18 @@ class Lock:
 
     def release(self):
         self.held = False
-        LOCK.unlink(missing_ok=True)
+        # Only our own. A lock naming another pid is another worker's.
+        try:
+            if LOCK.read_text(encoding="utf-8").strip() == str(os.getpid()):
+                LOCK.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+    def ours(self):
+        try:
+            return LOCK.read_text(encoding="utf-8").strip() == str(os.getpid())
+        except OSError:
+            return False
 
     def _beat(self):
         while not self._stop.wait(HEARTBEAT):
@@ -144,6 +155,10 @@ def main():
                     "refusal is a fact about the address, and clearing one is "
                     "a person's decision (netcheck.py, then refusal.py --clear).")
                 return 3
+            if not lock.ours():
+                say("archive/.lock no longer names this lane. Something else "
+                    "took or removed it; stopping rather than running beside it.")
+                return 4
             todo = [s for s in queued() if s not in done()]
             if not todo:
                 if idle_since is None:

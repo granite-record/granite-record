@@ -3,18 +3,19 @@
 # archive/.lock itself. A line is run once; logs/gc_lane.done lists what has run.
 # Add a step only once its fetcher has been read for the one-worker rules.
 
-# 2015-2016: the 883 bills the database's Docket view does not reach (it
-# stops part way through 2016). Its 905 covered bills are seeded, never asked.
-fetch_archive_docket.py --term 2015-2016 --seed Docket_db_2015-2016.txt --delay 15 --stop-refused 2
+# 2015-2016: the 883 bills the database's Docket view does not reach. Stopped
+# at 09:51 on the 11th, 102 pages in, when a review found this fetcher cached
+# the firewall's block page and missed a reset wrapped in a URLError; the step
+# below supersedes it, and the 102 pages are cached.
+# fetch_archive_docket.py --term 2015-2016 --seed Docket_db_2015-2016.txt --delay 15 --stop-refused 2
 
-# 2015-2016 again, with the seed corrected. The database's "2016" is not 2016:
-# its 1,962 SessionYear-2016 rows are all dated 2015, the first-year history
-# of 190 bills carried over, and two of them carry another bill's LSR. So the
-# step above skips 190 bills whose whole 2016 record is missing. This seed
+# 2015-2016, with the seed corrected. The database's "2016" is not 2016: its
+# 1,962 SessionYear-2016 rows are all dated 2015, the first-year history of
+# 190 bills carried over, and two of them carry another bill's LSR. This seed
 # (Docket_db_2015.txt) keeps only session-2015 rows of bills data/bills.json
 # files under 2015, with the bill's own LSR: 8,322 rows on 716 bills. Every
-# one of the 1,072 bills filed under 2016 then comes from its own page; the
-# 883 above are cached, so this asks for the other 189 and rewrites the file.
+# one of the 1,072 bills filed under 2016 comes from its own page; those
+# already cached are not asked again.
 fetch_archive_docket.py --term 2015-2016 --seed Docket_db_2015.txt --delay 15 --stop-refused 2
 watchers/rest.py 3600 after-docket
 
@@ -23,18 +24,19 @@ watchers/rest.py 3600 after-docket
 # the static path, where 96 of 96 sampled House and Senate bills served.
 fetch_legislation.py --all --from 2021 --to 2021 --kinds HB,SB --budget 20 --note proving
 watchers/rest.py 1800 after-proving
-# 2017-2021, static: 4,280.
-fetch_legislation.py --all --from 2017 --to 2021 --budget 800 --note 2017-21-a
+# 2017-2021, static, bills and constitutional amendments first: resolutions
+# are where the static 404s cluster, and three in a row would stop the lane.
+fetch_legislation.py --all --from 2017 --to 2021 --kinds HB,SB,CACR --budget 800 --note 2017-21-a
 watchers/rest.py 3600 after-2017-21-a
-fetch_legislation.py --all --from 2017 --to 2021 --budget 800 --note 2017-21-b
+fetch_legislation.py --all --from 2017 --to 2021 --kinds HB,SB,CACR --budget 800 --note 2017-21-b
 watchers/rest.py 3600 after-2017-21-b
-fetch_legislation.py --all --from 2017 --to 2021 --budget 800 --note 2017-21-c
+fetch_legislation.py --all --from 2017 --to 2021 --kinds HB,SB,CACR --budget 800 --note 2017-21-c
 watchers/rest.py 3600 after-2017-21-c
-fetch_legislation.py --all --from 2017 --to 2021 --budget 800 --note 2017-21-d
+fetch_legislation.py --all --from 2017 --to 2021 --kinds HB,SB,CACR --budget 800 --note 2017-21-d
 watchers/rest.py 3600 after-2017-21-d
-fetch_legislation.py --all --from 2017 --to 2021 --budget 800 --note 2017-21-e
+fetch_legislation.py --all --from 2017 --to 2021 --kinds HB,SB,CACR --budget 800 --note 2017-21-e
 watchers/rest.py 3600 after-2017-21-e
-fetch_legislation.py --all --from 2017 --to 2021 --budget 800 --note 2017-21-f
+fetch_legislation.py --all --from 2017 --to 2021 --kinds HB,SB,CACR --budget 800 --note 2017-21-f
 watchers/rest.py 3600 after-2017-21-f
 # 2023-2024, the application, stored id with sy: 1,996. A short run first,
 # so the LSR check meets the application's pages before it meets 800 of them.
@@ -46,3 +48,7 @@ fetch_legislation.py --all --from 2023 --to 2024 --budget 800 --note 2023-24-b
 watchers/rest.py 3600 after-2023-24-b
 fetch_legislation.py --all --from 2023 --to 2024 --budget 800 --note 2023-24-c
 watchers/rest.py 3600 after-2023-24-c
+# 2017-2021's resolutions, on their own: where the static 404s were (8 of 55
+# sampled HR/SR), under the run's 404 cap.
+fetch_legislation.py --all --from 2017 --to 2021 --kinds HR,SR,HCR,SCR,HJR,SJR --budget 400 --note 2017-21-resolutions
+watchers/rest.py 3600 after-2017-21-resolutions

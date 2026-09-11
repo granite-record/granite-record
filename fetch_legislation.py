@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.13
+# GRANITE_VERSION: 2026-09-10.14
 """
 The bill itself, from an address that can simply be constructed.
 
@@ -67,6 +67,7 @@ the General Court while this runs.
 
 import argparse
 import json
+import os
 import random
 import re
 from html import unescape as _unescape
@@ -260,14 +261,15 @@ def address(year, bid, rec):
     return None, f"no id known for {year}; see the table in this file"
 
 
-def sample(bills, per_year, lo, hi):
+def sample(bills, per_year, lo, hi, kinds=None):
     """A stratified draw: every kind a year has, before any kind twice."""
     by_year = defaultdict(lambda: defaultdict(list))
     for _term, bs in bills.items():
         for bid, rec in bs.items():
             y = str(rec.get("year") or rec.get("lsr_year") or "")[:4]
             m = PAD.match(bid.strip().upper())
-            if y.isdigit() and lo <= int(y) <= hi and m:
+            if y.isdigit() and lo <= int(y) <= hi and m and (
+                    not kinds or m.group(1) in kinds):
                 by_year[int(y)][m.group(1)].append(bid)
     picked = {}
     for year in sorted(by_year):
@@ -323,22 +325,49 @@ def same_bill(text, rec):
 
 
 def gone_list():
+    """The gone-list, or {} if there is none yet. A file that will not parse
+    stops the run: read as empty, the next mark_gone() would rewrite it from
+    nothing, and every address known to 404 would be askable again."""
+    if not GONE.exists():
+        return {}
     try:
         return json.loads(GONE.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
+    except (OSError, ValueError) as e:
+        raise SystemExit(f"{GONE} will not read ({e}). Not asking anything "
+                         "until a person looks at it.")
+
+
+def write_atomically(path, data):
+    """Bytes to a temporary name, then into place: a run killed mid-write
+    leaves the old file or none, never a truncated one that counts as held."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".part")
+    tmp.write_bytes(data)
+    os.replace(tmp, path)
 
 
 def mark_gone(url, why):
     """Merge one entry into the gone-list; never rewrite it from a subset."""
     g = gone_list()
     g[url] = f"{why}, {time.strftime('%Y-%m-%d')}"
-    GONE.parent.mkdir(parents=True, exist_ok=True)
-    GONE.write_text(json.dumps(g, indent=1, sort_keys=True), encoding="utf-8")
+    write_atomically(GONE, json.dumps(g, indent=1, sort_keys=True).encode("utf-8"))
+
+
+# NO REDIRECTS. urlopen follows them silently, so one fetch could make
+# several requests that are neither paced nor counted against --budget, and a
+# redirect to a block or login page would come back as a 200. A 3xx is an
+# HTTPError here, and a failure.
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *a, **k):
+        return None
 
 
 # The opener, a name so a check can stand a fake server in for the real one.
-urlopen = urllib.request.urlopen
+urlopen = urllib.request.build_opener(_NoRedirect).open
+
+# The lock this run holds, or the lane's; set by main(), asked before every
+# request whether the run may still ask.
+HOLD = None
 
 
 def fetch(year, bid, delay, rec=None):
@@ -369,34 +398,39 @@ def fetch(year, bid, delay, rec=None):
         return "unreachable", _why
     if url in gone_list():
         return "gone", ""
-    # A refusal another process met while this one slept is a refusal here
-    # too. refusal.check() at the start of a run cannot see it.
-    if refusal.MARK.exists():
-        return "refused", "archive/refused.json appeared during the run"
     time.sleep(delay * random.uniform(0.75, 1.25) if delay else 0)
-    import http.client
+    # A refusal another process met while this one slept is a refusal here
+    # too -- so this is asked AFTER the sleep, directly before the request.
+    # "halted", not "refused": the record on file is somebody else's and is
+    # not to be overwritten with this run's name.
+    if refusal.MARK.exists():
+        return "halted", "archive/refused.json is on file"
+    if HOLD is not None and not HOLD.still():
+        return "halted", "the lane holding archive/.lock is gone"
     try:
         req = urllib.request.Request(url, headers=UA)
         with urlopen(req, timeout=30) as r:
             body = r.read()
-    except urllib.error.HTTPError as e:
-        if e.code in (403, 429):
-            return "refused", f"HTTP {e.code} on {url}"
-        if e.code in (404, 410):
+    except Exception as e:
+        # One reading of an error for every fetcher: a reset or a timeout
+        # wrapped in a URLError is a dropped connection, not a failure, and
+        # a 503 or a Retry-After is the server asking us to go away.
+        kind = refusal.classify(e)
+        why = (f"HTTP {e.code} on {url}" if isinstance(e, urllib.error.HTTPError)
+               else f"{type(e).__name__}: {e}")
+        if kind == "missing":
             mark_gone(url, f"HTTP {e.code}")
-            return "missing", f"HTTP {e.code}"
-        return "failed", f"HTTP {e.code}"
-    except (http.client.RemoteDisconnected, ConnectionResetError,
-            ConnectionAbortedError) as e:
-        return "dropped", f"{type(e).__name__}: {e}"
-    except (urllib.error.URLError, TimeoutError, http.client.HTTPException,
-            OSError) as e:
-        return "failed", f"{type(e).__name__}: {e}"
+        return kind, why
     text = decode(body)
-    if BLOCKED.search(text[:4000]):
+    if refusal.classify(body=text) == "refused":
         return "refused", "the firewall's block page, with a 200"
     if BROKEN.search(text[:4000]):
         return "failed", "a server error page, with a 200"
+    # Nothing, or a skeleton: not a bill, and not a gap either. Saved, a body
+    # over 200 bytes would count as held for good. The shortest real page on
+    # disk that prints no LSR still has 139 characters of text.
+    if len(flatten(text)) < 100 and page_lsr(flatten(text)) is None:
+        return "empty", f"{len(body)} bytes and no bill in them"
     # An error is not a document, and this one arrives wearing HTTP 200.
     # Saved, it would sit in legislation/ looking like a bill and be counted
     # as one -- a page with no sponsor, no committee and no title, which is
@@ -416,8 +450,7 @@ def fetch(year, bid, delay, rec=None):
     # The bytes as served. Decoding is decode()'s job at parse time, so a
     # wrong guess about the encoding is corrected by re-parsing, not by
     # asking the General Court for the page again.
-    f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_bytes(body)
+    write_atomically(f, body)
     return "saved", ""
 
 
@@ -689,10 +722,14 @@ def every_bill(bills, lo, hi, kinds=None):
 
 # What each outcome means for the run. Asking outcomes count toward --budget.
 ASKED = {"saved", "missing", "error page", "failed", "dropped", "refused",
-         "wrong bill"}
-FAILURE = {"missing", "error page", "failed"}
+         "wrong bill", "empty"}
+FAILURE = {"missing", "error page", "failed", "empty"}
 MAX_IN_A_ROW = 3     # consecutive failures that end a run
-MAX_MISSING = 10     # 404s that end a run: past this it is a scan, not a gap
+MAX_MISSING = 10     # 404s (and the application's not-found) that end a run:
+                     # past this it is a scan, not a gap
+MAX_FAILURES = 10    # failures of any kind in one run, in a row or not: a
+                     # server failing every other request is not a server to
+                     # keep asking
 
 
 def main():
@@ -728,7 +765,7 @@ def main():
     bills = json.loads(Path("data/bills.json").read_text(encoding="utf-8"))
     kinds = {k.strip().upper() for k in a.kinds.split(",") if k.strip()}
     picked = (every_bill(bills, a.lo, a.hi, kinds) if a.all
-              else sample(bills, a.sample, a.lo, a.hi))
+              else sample(bills, a.sample, a.lo, a.hi, kinds))
     # The record travels with the bill because the text address is keyed by an
     # id that only the record carries.
     by_bill = {}
@@ -782,8 +819,18 @@ def main():
               f"already answered 404 are not among them.")
         return 0
 
+    # Silence is not success: a range with nothing in it is a mistake in the
+    # range, and a lane would record it as done for good.
+    if not sum(len(v) for v in picked.values()):
+        print(f"no bills in {a.lo}-{a.hi}"
+              + (f" of kinds {','.join(sorted(kinds))}" if kinds else "")
+              + " in data/bills.json. Nothing to do is not the same as done.")
+        return 3
+
     refusal.check("The legislation fetch")
-    with refusal.hold("fetch_legislation"):
+    global HOLD
+    with refusal.hold("fetch_legislation") as held:
+        HOLD = held
         return run(a, picked, by_bill, to_ask)
 
 
@@ -812,6 +859,11 @@ def run(a, picked, by_bill, to_ask):
                 return 0
             what, why = fetch(year, bid, a.delay, rec=by_bill.get((year, bid)))
             tally[what] += 1
+            if what == "halted":
+                summary()
+                print(f"\nHALTED before asking: {why}. Nothing more is asked; "
+                      "the record on file is left as it is.", flush=True)
+                return 2 if "refused" in why else 3
             if what not in ASKED:
                 continue
             asked += 1
@@ -871,14 +923,26 @@ def run(a, picked, by_bill, to_ask):
                           "on regardless is how the last block was earned. "
                           "Stopping.", flush=True)
                     return 3
-                if tally["missing"] >= MAX_MISSING:
+                # The application answers a missing id with an error page
+                # and a 200, so on its path this IS the 404.
+                gone_n = tally["missing"] + tally["error page"]
+                if gone_n >= MAX_MISSING:
                     summary()
-                    print(f"\n{tally['missing']} addresses answered 404 in "
-                          "one run. They are on the gone-list and will not be "
-                          "asked again, but this many is a rule that is wrong "
-                          "about where a year's bills live, and a run asking "
-                          "on would be probing. Stopping.", flush=True)
+                    print(f"\n{gone_n} addresses answered 404 or not-found "
+                          "in one run. They are on the gone-list and will not "
+                          "be asked again, but this many is a rule that is "
+                          "wrong about where a year's bills live, and a run "
+                          "asking on would be probing. Stopping.", flush=True)
                     return 3
+                if sum(tally[k] for k in FAILURE) >= MAX_FAILURES:
+                    summary()
+                    print(f"\n{MAX_FAILURES} failures in one run, between "
+                          "saves. A server failing every other request is "
+                          "not one to keep asking. Stopping.", flush=True)
+                    return 3
+                if what in ("failed", "empty"):
+                    # A server that failed gets longer before the next one.
+                    time.sleep(a.delay * 3)
     summary()
     # Silence is not success: a run that asked and saved nothing is a run
     # that met a wall it could not name.

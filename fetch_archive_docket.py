@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.5
+# GRANITE_VERSION: 2026-09-07.6
 """
 The docket of every bill of an archived term, in Docket.txt's own format.
 
@@ -65,6 +65,11 @@ ROW = re.compile(
     r"<td[^>]*>(?P<body>[^<]*?)</td>\s*"
     r"<td[^>]*>(?P<desc>.*?)</td>\s*</tr>", re.S | re.I)
 TAGS = re.compile(r"<[^>]+>")
+# The application's own errors, served with a 200. Not a docket by
+# themselves -- but see the loop: 27 real dockets carry the first one in
+# their title panel, above a table that renders.
+ERROR_PAGE = re.compile(
+    r"is either negative or above rows count|is neither a DataColumn", re.I)
 NL = chr(10)
 WS = re.compile(r"[\s ]+")
 
@@ -120,8 +125,15 @@ def main():
 
     # A refusal is a fact about the address, so it stops this run even though
     # it was some other run that was told no.
+    lock = None
     if not a.reparse:
         refusal.check("The docket fetch")
+        # One worker: this run takes archive/.lock, or runs under the lane
+        # that holds it, or does not run. Released on any exit but a kill.
+        import atexit
+        lock = refusal.hold("fetch_archive_docket")
+        lock.__enter__()
+        atexit.register(lock.__exit__, None, None, None)
 
     bills = json.loads((Path(a.data) / "bills.json").read_text(encoding="utf-8"))
     if a.term not in bills:
@@ -137,7 +149,7 @@ def main():
           + (", no network" if a.reparse else f", {a.delay}s apart"))
 
     lines, fetched, cached_n, failed, empty = [], 0, 0, Counter(), 0
-    refused = 0
+    refused, in_a_row = 0, 0
 
     # A BILL THE DATABASE ALREADY ACCOUNTS FOR IS NOT ASKED FOR AGAIN. The
     # public database's Docket view holds 1989-2014 whole and then stops part
@@ -185,42 +197,76 @@ def main():
                 "lsr": lsr, "sy": yr, "txtsessionyear": yr,
                 "txtbillnumber": bid.lower(), "sortoption": "billnumber"})
             time.sleep(a.delay)
+            # A refusal another process recorded while this one slept, or the
+            # lane that holds the lock gone: either way, ask nothing more.
+            if refusal.MARK.exists() or (lock and not lock.still()):
+                out_path.write_text(NL.join(lines) + NL, encoding="utf-8")
+                print(f"{NL}stopping before the next request: "
+                      + ("archive/refused.json is on file" if refusal.MARK.exists()
+                         else "the lane holding archive/.lock is gone"),
+                      flush=True)
+                sys.exit(2 if refusal.MARK.exists() else 3)
             page, err = get(f"{BASE}?{q}", a.timeout)
             fetched += 1
+            # A REFUSAL IS NOT A FAILURE AMONG OTHERS. A server that accepts
+            # the connection and closes it without sending a byte, or answers
+            # 403 or 429, or sends its firewall's block page with a 200, is
+            # not a flaky link -- it is this address being told no, and it is
+            # what being blocked looks like from here. That has happened
+            # twice on this project and cost days each time.
+            #
+            # This read refusals by substring of the error's text until 11
+            # September, and urllib wraps a reset at connect time as
+            # "<urlopen error [WinError 10054] ...>", which matched nothing:
+            # a refused connection was an ordinary failure, with no cool-off,
+            # no stop and no record. And a 200 was cached whatever it was, the
+            # block page included. refusal.classify() reads both now.
+            kind = refusal.classify(err) if page is None else refusal.classify(body=page)
+            why = (f"{type(err).__name__}: {err}" if page is None
+                   else "the firewall's block page, with a 200")
+            if kind == "refused" or kind == "dropped":
+                refused += 1 if kind == "dropped" else a.stop_refused
+                if refused >= a.stop_refused:
+                    out_path.write_text(NL.join(lines) + NL, encoding="utf-8")
+                    refusal.note("fetch_archive_docket", why)
+                    print(f"{NL}REFUSED ({why}). Stopping, and not coming "
+                          f"back tonight.{NL}"
+                          f"  {fetched:,} fetched this run, {len(lines):,} "
+                          f"docket lines written to {out_path}.{NL}"
+                          "  netcheck.py says what kind of refusal it is "
+                          "without making it worse.", flush=True)
+                    sys.exit(2)
+                print(f"{NL}  dropped ({why}) -- cooling off 120s", flush=True)
+                time.sleep(120)
+                continue
+            # A page with no docket line on it that carries an error, or is
+            # too short to be a page, is not cached: cached, it would stand
+            # for the bill's docket for good. 27 real dockets carry the
+            # application's "Index 0 is either negative" in their TITLE panel
+            # above a table that renders -- so the test is no rows AND an
+            # error, never the error alone.
+            if page is not None and not rows_of(page) and (
+                    ERROR_PAGE.search(page) or refusal.BROKEN.search(page)
+                    or len(page) < 1500):
+                err, page = ValueError("an error page, with a 200"), None
             if page is None:
                 failed[type(err).__name__] += 1
-                # A REFUSAL IS NOT A FAILURE AMONG OTHERS. A server that
-                # accepts the connection and closes it without sending a byte,
-                # or answers 403 or 429, is not a flaky link -- it is this
-                # address being told no, and it is what being blocked looks
-                # like from here. That has happened twice on this project and
-                # cost days each time.
-                #
-                # Everything before this counted failures and kept going.
-                # Over 7,500 requests that is the difference between one bad
-                # minute and an address that stops being served, so a refusal
-                # now ends the run with the work so far written out. Nothing
-                # already on disk is asked for again, so starting again later
-                # resumes for free.
-                why = f"{type(err).__name__}: {err}"
-                if any(k in why for k in ("RemoteDisconnected",
-                                          "ConnectionReset", "403", "429")):
-                    refused += 1
-                    if refused >= a.stop_refused:
-                        out_path.write_text(NL.join(lines) + NL,
-                                            encoding="utf-8")
-                        refusal.note("fetch_archive_docket", why)
-                        sys.exit(
-                            f"{NL}{refused} refusals ({why}). Stopping, and "
-                            f"not coming back tonight.{NL}"
-                            f"  {fetched:,} fetched this run, {len(lines):,} "
-                            f"docket lines written to {out_path}.{NL}"
-                            "  netcheck.py says what kind of refusal it is "
-                            "without making it worse.")
-                    print(f"{NL}  refused ({why}) -- cooling off 120s",
+                in_a_row += 1
+                print(f"  failed on {bid}: {type(err).__name__}: {err}",
+                      flush=True)
+                if in_a_row >= 3:
+                    out_path.write_text(NL.join(lines) + NL, encoding="utf-8")
+                    print(f"{NL}{in_a_row} failures in a row. Something has "
+                          "changed -- the address, the server, or this "
+                          "script's idea of the page -- and asking on "
+                          "regardless is how the last block was earned. "
+                          f"Stopping; {len(lines):,} docket lines written.",
                           flush=True)
-                    time.sleep(120)
+                    sys.exit(3)
+                # A server that failed gets longer before the next question.
+                time.sleep(a.delay * 3)
                 continue
+            in_a_row = 0
             f.write_text(page, encoding="utf-8")
 
         got = rows_of(page)
