@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.4
+# GRANITE_VERSION: 2026-09-10.5
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -195,23 +195,69 @@ def votes(out, data):
     return made
 
 
-def proceedings_table(out):
+def proceedings_table(out, site):
+    """Every proceeding, with the time its bill's page prints.
+
+    THE PAGE'S TIME, NOT THE SCHEDULE. start_seconds was proceedings.csv's
+    predicted_offset -- the meeting's called time minus the stream's start --
+    and how_placed was the manifest's match method, "single video". So 13,987
+    rows told anyone who downloaded them that the schedule was when a bill
+    was heard, while the pages print the boundary the chair stated for
+    12,751 of them. It is the mix-up the bench made on 9 September, in the
+    one file meant for other people to build on.
+
+    Now start_seconds and end_seconds are the bill page's own station, read
+    from the page, and how_placed is the page's word for how it was placed;
+    the schedule is kept, named for what it is. A proceeding the page gives
+    no time -- none recorded, or captions an hour out of step with their
+    recording -- has none here either.
+    """
     import proceedings as P
+    import site_read as SR
     cols = ["term", "bill", "body", "kind", "date", "time", "committee",
             "venue", "video_id", "video_title", "start_seconds",
-            "end_seconds", "how_placed"]
-    rows = []
+            "end_seconds", "how_placed", "end_how", "scheduled_seconds"]
+    idx = load(Path(site) / "index.json", [])
+    folder = {(b.get("term"), b.get("id")): str(b.get("year") or "")
+              for b in (idx if isinstance(idx, list) else [])}
+    stations = SR.by_bill(site, SR.video_years(), fields=("stations",))
+
+    def published(r):
+        key = (folder.get((r.get("term"), r.get("bill"))),
+               (r.get("bill") or "").upper())
+        sts = (stations.get(key) or {}).get("stations") or []
+        here = [s for s in sts if s.get("when") == r.get("date")
+                and s.get("video_id") == r.get("video_id")]
+        want = (r.get("kind") or "").strip().lower()
+        if len(here) > 1 and want:
+            here = [s for s in here if want in (s.get("what") or "").lower()] or here
+        return here[0] if here else {}
+
+    rows, placed = [], 0
     for r in P.load():
+        st = published(r) if r.get("video_id") else {}
+        placed += st.get("start") is not None
         rows.append([r.get("term", ""), r.get("bill", ""), r.get("body", ""),
                      r.get("kind", ""), r.get("date", ""), r.get("time", ""),
                      r.get("committee", ""), r.get("venue", ""),
                      r.get("video_id", ""), r.get("video_title", ""),
-                     r.get("predicted_offset") or "",
-                     r.get("debate_end") or "", r.get("match", "")])
+                     "" if st.get("start") is None else st["start"],
+                     "" if st.get("end") is None else st["end"],
+                     st.get("state") or "", st.get("end_from") or "",
+                     r.get("predicted_offset") or ""])
     rows.sort(key=lambda r: (r[4], r[1]))
+    print(f"  proceedings.csv: {placed:,} rows carry the time their page "
+          "prints")
     return write(out, "proceedings.csv", cols, rows,
                  "Every hearing, executive session and floor debate on "
-                 "record, and the recording it is on where there is one.")
+                 "record, and the recording it is on where there is one. "
+                 "start_seconds and end_seconds are the moment in the "
+                 "recording the bill's page gives, and how_placed says how it "
+                 "was found: stated (the chair said it), floor_stated, "
+                 "floor_precise (a roll call's clock time), located (estimated "
+                 "from the captions; the page says approximate). "
+                 "scheduled_seconds is the meeting's called time minus the "
+                 "stream's start, which is the schedule and not a finding.")
 
 
 def sponsors(out, data):
@@ -381,7 +427,7 @@ def main():
 
     print("Bulk downloads:")
     tables = [bills(out, site), legislators(out, site), rollcalls(out),
-              proceedings_table(out), sponsors(out, a.data)]
+              proceedings_table(out, site), sponsors(out, a.data)]
     tables += votes(out, a.data)
 
     over = [t for t in tables if t["over_cap"]]

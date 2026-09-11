@@ -96,7 +96,7 @@
     "build_bill_versions.py": "2026-09-09.5",
     "site_read.py": "2026-09-09.2",
     "keys.py": "2026-09-10.1",
-    "build_exports.py": "2026-09-10.4",
+    "build_exports.py": "2026-09-10.5",
     "fetch_legislation.py": "2026-09-10.13",
     "referrals.py": "2026-09-10.3",
     "child.py": "2026-09-10.1",
