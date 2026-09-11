@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.110
+# GRANITE_VERSION: 2026-09-04.111
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3720,6 +3720,32 @@ def _manifest_out():
         return "ok", "an archived docket must name its own manifest"
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "publish.bat CALLs every batch script it runs, so the steps after it run")
+def _publish_calls():
+    """npx is npx.cmd, and cmd hands a batch file that runs another batch
+    file without CALL over to it for good. publish.bat ran `npx wrangler`
+    bare, so every publish ended at "Deployment complete!" and the check_live
+    gate after it -- the one step that says whether the deploy landed -- never
+    ran, with exit 0 and no message. Found on 11 September by reading a
+    publish log that stopped one line early."""
+    bat = Path("publish.bat")
+    if not bat.exists():
+        return "skip", "no publish.bat"
+    scripts = {"npx", "npm", "yarn", "pnpm", "wrangler"}
+    bad = []
+    for i, line in enumerate(bat.read_text(encoding="utf-8",
+                                           errors="replace").splitlines(), 1):
+        words = line.strip().lstrip("@").split()
+        if not words or words[0].upper() == "REM" or words[0].startswith("::"):
+            continue
+        first = words[0].lower().strip('"')
+        if first in scripts or first.endswith((".bat", ".cmd")):
+            bad.append(f"line {i}: {line.strip()[:60]}")
+    assert not bad, ("publish.bat runs a batch script without CALL, so "
+                     "nothing after it runs: " + "; ".join(bad))
+    return "ok", "every batch script publish.bat runs is CALLed"
 
 
 @check("build", "the docket fetch stops at a block page or a dropped connection, and caches no error")
