@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.124
+# GRANITE_VERSION: 2026-09-04.125
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4265,6 +4265,79 @@ def _sponsor_fetch(S):
         S.get, S.time.sleep = saved[1], saved[2]
         S.HOLD = None
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a vote on an amendment names it only when the docket can say which",
+       needs=("build_site_v2",))
+def _amendment_votes(BS):
+    """"Adopt Amendment" is what 196 of 420 amendment votes say, and not one of
+    the 420 carries a number: the roll call file's question_raw holds "Adopt
+    Amendment", "Floor Amendment", "Committee Amendment" and nothing else. The
+    number is joined from the docket's amendment events instead.
+
+    The case that makes this worth a check is HB 675. On 8 January 2026 the
+    House took THREE amendment roll calls -- numbers 35, 36 and 37 -- and the
+    docket records ONE amendment that day, 2025-3013h. Matching each vote to
+    "the only candidate" handed all three the same number, which reads as the
+    House voting on one amendment three times. At most one of them was
+    2025-3013h, nothing on this disk says which, and so none is named.
+
+    Naming the wrong amendment is worse than naming none: the page would cite
+    a document that was not what was voted on, and nothing would look wrong.
+    """
+    def amd(num, day, body, where="", vote_kind=""):
+        return {"num": num, "date": day, "body": body, "where": where,
+                "vote_kind": vote_kind}
+
+    def vote(day, body, q="Adopt Amendment"):
+        return {"question": q, "date": day, "body": body, "amendment": None}
+
+    # One vote, one amendment that day: named.
+    rc = [vote("2026-01-08", "H")]
+    BS.name_amendment_votes(rc, [amd("2026-0123h", "01/08/2026", "H")])
+    assert rc[0]["amendment"] == "2026-0123h", rc
+    # Both date shapes are read: the roll call file writes 2026-01-08 and the
+    # docket writes 01/08/2026, and the join is between the two.
+    assert BS._day("01/08/2026") == BS._day("2026-01-08") == "2026-01-08"
+
+    # HB 675: three votes, one amendment. None named, and no number used twice.
+    rc = [vote("2026-01-08", "H"), vote("2026-01-08", "H", "Adopt Floor Amendment"),
+          vote("2026-01-08", "H", "Adopt Floor Amendment")]
+    BS.name_amendment_votes(rc, [amd("2025-3013h", "01/08/2026", "H", vote_kind="RC")])
+    assert [r["amendment"] for r in rc] == [None, None, None], rc
+
+    # Several amendments, one decided by a roll call -- and this record is one.
+    rc = [vote("2026-02-05", "H")]
+    BS.name_amendment_votes(rc, [
+        amd("2026-0001h", "02/05/2026", "H", vote_kind="VV"),
+        amd("2026-0002h", "02/05/2026", "H", vote_kind="RC")])
+    assert rc[0]["amendment"] == "2026-0002h", rc
+
+    # Several, none distinguishable: not named rather than guessed.
+    rc = [vote("2026-03-03", "S")]
+    BS.name_amendment_votes(rc, [amd("2026-0010s", "03/03/2026", "S", vote_kind="RC"),
+                                 amd("2026-0011s", "03/03/2026", "S", vote_kind="RC")])
+    assert rc[0]["amendment"] is None, rc
+
+    # The other chamber's amendment on the same day is not this vote's.
+    rc = [vote("2026-04-01", "H")]
+    BS.name_amendment_votes(rc, [amd("2026-0500s", "04/01/2026", "S")])
+    assert rc[0]["amendment"] is None, rc
+
+    # THE KIND COMES FROM THE DOCKET OR NOT AT ALL. bill_amendments states the
+    # rule this follows: "Committee or floor is not a label this invents."
+    rc = [vote("2026-05-06", "H")]
+    BS.name_amendment_votes(rc, [amd("2026-0700h", "05/06/2026", "H", where="committee")])
+    assert rc[0]["question"] == "Adopt Committee Amendment", rc
+    rc = [vote("2026-05-07", "H")]
+    BS.name_amendment_votes(rc, [amd("2026-0701h", "05/07/2026", "H")])
+    assert rc[0]["question"] == "Adopt Amendment", ("no word, no upgrade", rc)
+    # A question that already names its kind is never rewritten.
+    rc = [vote("2026-05-08", "H", "Adopt Floor Amendment")]
+    BS.name_amendment_votes(rc, [amd("2026-0702h", "05/08/2026", "H", where="committee")])
+    assert rc[0]["question"] == "Adopt Floor Amendment", rc
+    return "ok", ("named on a clean match, silent where three votes share one "
+                  "amendment, and the kind only ever the docket's own word")
 
 
 @check("files", "a writer of a shared file reads it before writing it")

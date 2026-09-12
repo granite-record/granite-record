@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.79
+# GRANITE_VERSION: 2026-09-05.80
 """
 Generate the faceted site from real General Court data.
 
@@ -2723,6 +2723,88 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
     return rc_out
 
 
+AMD_VOTE = re.compile(r"^Adopt (?:Committee |Floor )?Amendment$")
+
+
+def _day(d):
+    """A date as yyyy-mm-dd, from either shape the two sources use.
+
+    The roll call file writes 2025-01-08; the docket writes 01/08/2025. They
+    are joined here, so both have to be read.
+    """
+    s = str(d or "")
+    m = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", s)
+    return f"{m.group(3)}-{int(m.group(1)):02d}-{int(m.group(2)):02d}" if m else s[:10]
+
+
+def name_amendment_votes(rc_out, bill_amds):
+    """WHICH amendment a vote to adopt an amendment was about.
+
+    "Adopt Amendment" is what 196 of the 420 amendment votes say, and not one
+    of the 420 carries the amendment's number: question_raw holds "Adopt
+    Amendment", "Floor Amendment", "Committee Amendment" and nothing else. So
+    the number has to come from the docket's own amendment events, joined on
+    the bill, the chamber and the day.
+
+    Measured across every term: 213 votes have exactly one amendment that
+    bill, chamber and day. Of the 152 with more than one, 47 have exactly one
+    that was decided by a ROLL CALL -- and a roll call is what this record is
+    -- and 9 more are settled because the question names a kind and only one
+    candidate is of it. 269 of 420 in total. The remaining 151 keep the bare
+    label rather than a guess.
+
+    The KIND is upgraded only where the docket states it, which is the rule
+    bill_amendments already keeps: "Committee or floor is not a label this
+    invents: it is the word the docket line used, and where the line says only
+    'Amendment' that is what the reader is told." So a vote reading "Adopt
+    Amendment" becomes "Adopt Committee Amendment" when the amendment it
+    matched is recorded as a committee amendment, and stays as it is when the
+    docket is silent.
+    """
+    numbered = [a for a in (bill_amds or []) if a.get("num")]
+    if not numbered:
+        return rc_out
+    # AN AMENDMENT BELONGS TO ONE VOTE. On 8 January 2026 the House took three
+    # amendment roll calls on HB 675 -- numbers 35, 36 and 37 -- and the docket
+    # records one amendment that day, 2025-3013h. Matching each vote to "the
+    # only candidate" gave all three the same number, which says the House
+    # voted on one amendment three times. At most one of them was 2025-3013h
+    # and nothing on this disk says which, so none of them is named.
+    #
+    # So a vote is named only when it is the ONLY amendment vote its bill saw
+    # in that chamber that day. Where the chamber took several, the docket has
+    # fewer events than there were votes and the pairing is unrecoverable.
+    votes = [r for r in rc_out
+             if not r.get("amendment") and AMD_VOTE.match((r.get("question") or "").strip())]
+    crowd = Counter((_day(r.get("date")), r.get("body")) for r in votes)
+    for r in votes:
+        q = (r.get("question") or "").strip()
+        if crowd[(_day(r.get("date")), r.get("body"))] != 1:
+            continue
+        cands = [a for a in numbered
+                 if _day(a.get("date")) == _day(r.get("date"))
+                 and a.get("body") == r.get("body")]
+        if len(cands) > 1:
+            # This record IS a roll call, so an amendment the docket records
+            # as decided by one is the better candidate.
+            rc = [a for a in cands if (a.get("vote_kind") or "").upper() == "RC"]
+            if len(rc) == 1:
+                cands = rc
+            else:
+                want = ("committee" if "Committee" in q
+                        else "floor" if "Floor" in q else "")
+                by_kind = [a for a in cands if want and a.get("where") == want]
+                if len(by_kind) == 1:
+                    cands = by_kind
+        if len(cands) != 1:
+            continue
+        a = cands[0]
+        r["amendment"] = a["num"]
+        if q == "Adopt Amendment" and a.get("where") in ("committee", "floor"):
+            r["question"] = f"Adopt {a['where'].capitalize()} Amendment"
+    return rc_out
+
+
 def vote_note_for(narr, rollcalls):
     """The note above the votes table, silenced where it would contradict it."""
     note = (narr or {}).get("vote_note", "")
@@ -2925,6 +3007,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
 
         rc_out = bill_rollcalls(bid, term, rcs, narr,
                                 votes_by_bill, legs, unnamed)
+        # Which amendment each "Adopt Amendment" vote was about. bill_amds is
+        # built three lines above and is the only place the number exists.
+        name_amendment_votes(rc_out, bill_amds)
         for r in rc_out:
             r.pop("_ord", None)
 
