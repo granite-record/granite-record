@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.13
+# GRANITE_VERSION: 2026-09-09.14
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -935,6 +935,37 @@ def _field_html(spec):
             f'<select name="{E(nm)}">{opts}</select></label>')
 
 
+def field_names(kind):
+    """The answer boxes a kind asks for, by name.
+
+    ONE READER OF THE SPEC. A field is (name, label, placeholder) and may
+    carry a fourth element that makes it a dropdown. do_POST used to unpack
+    three of them, so the moment the topic kind grew its fourth the save
+    handler raised ValueError before writing any response -- which the browser
+    reports as "127.0.0.1 didn't send any data", and which loses the judgment
+    silently as far as the ledger is concerned.
+
+    The renderer and the saver now read the shape through here and through
+    _field_html, and neither unpacks it.
+    """
+    return [spec[0] for spec in KINDS[kind]["fields"]]
+
+
+def collected_fields(kind, get):
+    """{name: value} for the answers a person actually filled in.
+
+    `get` is whatever reads one form value by name. Empty answers are left
+    out rather than stored as "", because every one of these fields is
+    optional and an empty string in the ledger reads like an answer.
+    """
+    out = {}
+    for nm in field_names(kind):
+        v = (get(nm) or "").strip()
+        if v:
+            out[nm] = v
+    return out
+
+
 def form_html(kind, item):
     k = KINDS[kind]
     fields = "".join(_field_html(spec) for spec in k["fields"])
@@ -1025,10 +1056,9 @@ class Bench(BaseHTTPRequestHandler):
         entry = {"kind": kind, "key": g("key"),
                  "verdict": "skipped" if action == "skip" else g("verdict"),
                  "note": g("note"), "by": "hand"}
-        for nm, _, _ in KINDS[kind]["fields"]:
-            v = g(nm).strip()
-            if v:
-                entry.setdefault("fields", {})[nm] = v
+        got = collected_fields(kind, g)
+        if got:
+            entry["fields"] = got
         try:
             entry["shown"] = json.loads(g("shown") or "{}")
         except ValueError:

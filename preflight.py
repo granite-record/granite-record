@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.131
+# GRANITE_VERSION: 2026-09-04.132
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4740,6 +4740,52 @@ def _topic_model(TP):
         assert t == TP.MISC or t in model["logprior"], t
     return "ok", ("placed on evidence, withheld above its margin, and "
                   "Miscellaneous where it has seen nothing")
+
+
+@check("build", "every bench kind can be drawn and saved", needs=("review",))
+def _bench_fields(RV):
+    """A judgment the bench loses is worse than one it never asked for.
+
+    The topic kind's "a better topic" field became a dropdown on the 12th,
+    which meant a fourth element in its spec tuple. do_POST unpacked three:
+
+        for nm, _, _ in KINDS[kind]["fields"]:
+        ValueError: too many values to unpack (expected 3, got 4)
+
+    The handler raised before writing any response, so the browser said
+    "127.0.0.1 didn't send any data" and the person's verdict was gone. It was
+    the first verdict anyone tried to enter on the new kind.
+
+    Nothing caught it because the renderer and the saver read the same spec in
+    two places and only one was changed. They read it through field_names and
+    _field_html now, and this walks every kind through both -- so a kind added
+    later, or a field given a fifth element, fails here rather than in front of
+    somebody who has just spent a minute reading a bill.
+    """
+    assert RV.KINDS, "no kinds at all"
+    for kind, k in RV.KINDS.items():
+        for spec in k["fields"]:
+            assert isinstance(spec, tuple), (kind, spec)
+            assert 3 <= len(spec) <= 4, (
+                f"{kind}: a field spec is (name, label, placeholder) and may "
+                f"carry a fourth for a dropdown; this has {len(spec)}")
+            # The renderer must survive it, dropdown or not.
+            html = RV._field_html(spec)
+            assert f'name="{spec[0]}"' in html, (kind, spec[0], html[:120])
+            if len(spec) > 3:
+                assert "<select" in html and "<option" in html, (kind, spec)
+            else:
+                assert "<input" in html, (kind, spec)
+        names = RV.field_names(kind)
+        assert names == [s[0] for s in k["fields"]], kind
+        # And the save path, which is where it actually broke.
+        filled = {n: f" value for {n} " for n in names}
+        got = RV.collected_fields(kind, filled.get)
+        assert got == {n: f"value for {n}" for n in names}, (kind, got)
+        assert RV.collected_fields(kind, {}.get) == {}, (
+            f"{kind}: a blank form must record no fields, not empty strings")
+    return "ok", (f"{len(RV.KINDS)} kinds drawn and collected, "
+                  "dropdowns and text boxes alike")
 
 
 @check("files", "a writer of a shared file reads it before writing it")
