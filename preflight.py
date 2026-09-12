@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.129
+# GRANITE_VERSION: 2026-09-04.130
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1261,6 +1261,81 @@ def _palette():
                 "show this; only the number can.")
     assert not bad, "; ".join(bad[:4])
     return "ok", f"{n} pairs across both schemes, all above their threshold"
+
+
+@check("frontend", "the civics examples are not on a charged subject")
+def _civics_examples():
+    """Every bill the learn pages cite, checked against its own subject.
+
+    The civics section teaches with worked examples, and a teaching example is
+    held to a different standard from a record: it has to be a bill a student
+    of any politics can look at and argue about fairly. Two had slipped in --
+    SB 71 on cooperation with federal immigration authorities, and HB 1442 on
+    permitting classification of individuals by biological sex, whose own
+    topic field reads "Discrimination". Both were cited only to illustrate a
+    procedural outcome, which is exactly how it happens: nobody chose them for
+    their subject, so nobody checked their subject.
+
+    The list below is a judgement, not a measurement, and it is meant to be
+    edited. It errs toward stopping the build: a false positive costs somebody
+    thirty seconds and a sentence in this docstring, and a false negative puts
+    a charged example in front of a classroom.
+    """
+    CHARGED = re.compile(
+        r"abortion|abort|fetal|contracept|reproduct|gender|transgender|"
+        r"biological sex|lgbt|conversion therapy|sexual|obscen|porn|"
+        r"firearm|gun|weapon|pistol|"
+        r"immigrat|refugee|alien|sanctuary|"
+        r"vaccin|immuniz|marijuana|cannabis|psiloc|"
+        r"voter|ballot|electioneer|"
+        r"religio|prayer|divisive concept|critical race|"
+        r"death penalty|capital murder|"
+        r"parental right|parental bill of rights|education freedom|school choice|"
+        r"discriminat|environmental justice|medicaid work", re.I)
+
+    try:
+        import civics
+    except Exception as e:                      # noqa: BLE001
+        return "skip", f"civics.py did not import ({e})"
+
+    # The bills the pages actually LINK, because a linked bill is one a reader
+    # is invited to open. A bill number mentioned without a link -- "there is
+    # only ever one HB 84 in 2025-2026" -- is an illustration of numbering and
+    # carries no subject with it.
+    linked = []
+    for t in civics.TOPICS:
+        for m in re.finditer(r'bill/(\d{4})/([a-z0-9]+)\.html', t["body"]):
+            linked.append((t["slug"], m.group(1), m.group(2).upper()))
+    if not linked:
+        return "skip", "the learn pages link no bills"
+
+    idx = {}
+    for f in Path("site/idx").glob("*.json"):
+        try:
+            for b in json.loads(f.read_text(encoding="utf-8")):
+                idx.setdefault((str(b.get("year")), b.get("id")), b)
+        except (ValueError, OSError):
+            continue
+    if not idx:
+        return "skip", "no built index to check subjects against"
+
+    bad, unknown = [], []
+    for slug, year, bid in linked:
+        b = idx.get((year, bid))
+        if not b:
+            unknown.append(f"{bid} ({year}) on {slug}")
+            continue
+        hit = CHARGED.search((b.get("title") or "") + " " + (b.get("topic") or ""))
+        if hit:
+            bad.append(f'{slug} cites {bid} ({year}), whose subject matches '
+                       f'"{hit.group(0)}": {(b.get("title") or "")[:70]}')
+    assert not bad, "; ".join(bad[:3])
+    # A citation this cannot check is worth saying out loud rather than
+    # counting as a pass.
+    note = f"{len(linked)} linked bills, subjects clear"
+    if unknown:
+        note += f"; {len(unknown)} not in any built index ({unknown[0]})"
+    return "ok", note
 
 
 @check("frontend", "nowrap is never applied to a block by element name")
@@ -4593,6 +4668,78 @@ def _senate_calendars(SC):
                       "403/429/reset read the one way, 20s pace")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a guessed topic is withheld rather than guessed twice",
+       needs=("topics",))
+def _topic_model(TP):
+    """29,449 bills have no topic and this guesses one, which makes the way it
+    DECLINES the part worth guarding.
+
+    Scored on a held-out half of the only term the General Court labelled, it
+    is right 60.9% of the time over 46 topics. At the threshold it publishes
+    at, it is right 74.2% of the time on the bills it places and says
+    Miscellaneous for the rest. A wrong topic is worse than none: a reader
+    filtering by Elections and not finding an elections bill has been misled
+    rather than underserved.
+
+    Two ways that goes wrong silently. A bill whose words the model has never
+    seen would otherwise be handed the commonest topic, because with no
+    evidence the prior alone decides -- and the answer would look exactly like
+    a real one. And the split that produces the score has to be the same split
+    every run, or the number moves on its own and nobody can tell tuning from
+    noise.
+    """
+    rows = [
+        ("HB1", {"bill": "HB1", "title": "relative to school district funding "
+                 "for pupils", "house_committee": "Education Funding",
+                 "subject": "Education - Finance"}),
+        ("HB2", {"bill": "HB2", "title": "relative to absentee ballots and "
+                 "voter registration", "house_committee": "Election Law",
+                 "subject": "Elections"}),
+        ("HB3", {"bill": "HB3", "title": "relative to the registration of "
+                 "motor vehicles", "house_committee": "Transportation",
+                 "subject": "Motor Vehicles"}),
+        ("HB4", {"bill": "HB4", "title": "relative to ballots cast by voters "
+                 "at an election", "house_committee": "Election Law",
+                 "subject": "Elections"}),
+    ]
+    model = TP.train(rows)
+
+    # Evidence it has seen, and plenty of it: placed, and placed correctly.
+    clear = {"bill": "HB9", "title": "relative to absentee ballots for voters",
+             "house_committee": "Election Law"}
+    topic, margin, _second = TP.classify(model, clear, threshold=0.5)
+    assert topic == "Elections", (topic, margin)
+    assert margin > 0
+
+    # THE SAME BILL, WITH THE BAR RAISED ABOVE ITS MARGIN: withheld.
+    topic, _m, _s = TP.classify(model, clear, threshold=margin + 1)
+    assert topic == TP.MISC, topic
+
+    # NOTHING THE MODEL HAS EVER SEEN. Not the commonest topic -- which is what
+    # the prior alone would give, and it would be indistinguishable from a real
+    # answer on the page.
+    unseen = {"bill": "HB99", "title": "zzzq wibblefish quonked",
+              "house_committee": "Committee On Nothing At All"}
+    topic, margin, _s = TP.classify(model, unseen, threshold=0.0)
+    assert topic == TP.MISC, ("no evidence must mean Miscellaneous", topic)
+    assert margin == 0.0, margin
+
+    # The split is a function of the bill id and nothing else, so the score is
+    # the same score every run.
+    assert TP.split_half("HB1442") == TP.split_half("HB1442")
+    halves = {TP.split_half(f"HB{i}") for i in range(400)}
+    assert halves == {0, 1}, "the split puts every bill in one half"
+
+    # Miscellaneous is not one of the General Court's topics and must never be
+    # confused for one; the model may only ever answer a topic it was taught.
+    assert TP.MISC not in model["logprior"]
+    for rec in (clear, unseen, rows[0][1]):
+        t, _m, _s = TP.classify(model, rec, threshold=0.0)
+        assert t == TP.MISC or t in model["logprior"], t
+    return "ok", ("placed on evidence, withheld above its margin, and "
+                  "Miscellaneous where it has seen nothing")
 
 
 @check("files", "a writer of a shared file reads it before writing it")

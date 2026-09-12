@@ -46,6 +46,7 @@ SubjectCodes.txt
 # Every one of these is produced by a build_* step from the files above.
 data/
 narratives.json
+topics_assigned.json
 bill_status.json
 committee_reports.json
 chapters.json

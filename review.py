@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.11
+# GRANITE_VERSION: 2026-09-09.12
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -431,6 +431,72 @@ def _docket_lines(term, bill):
     return []
 
 
+def sample_topics():
+    """A topic this project assigned, for a bill the General Court never
+    labelled.
+
+    47 topics exist and the General Court's own assignment reaches one term:
+    2,221 bills of 2025-2026. topics.py learns from those and answers for the
+    other 29,449, or says Miscellaneous where it cannot.
+
+    Scored against a held-out half of the labelled term it is right 60.9% of
+    the time overall and 74.2% of the time on the bills it is confident enough
+    to place at all -- which is a measurement against the General Court's
+    labelling, not against whether a reader would agree with it. That second
+    question is this kind's whole purpose.
+
+    Newest terms first, because that is where the committee still exists and
+    so where the answers are strongest, and because those are the bills a
+    reader is likeliest to be looking for.
+    """
+    p = Path("topics_assigned.json")
+    if not p.exists():
+        return []
+    assigned = json.loads(p.read_text(encoding="utf-8"))
+    bills = json.loads(Path("data/bills.json").read_text(encoding="utf-8"))
+    out = []
+    for term in sorted(assigned, reverse=True):
+        for bill, got in assigned[term].items():
+            rec = bills.get(term, {}).get(bill) or {}
+            out.append({
+                "key": f"topic|{term}|{bill}",
+                "kind": "topic",
+                "term": term,
+                "bill": bill,
+                "title": rec.get("title") or "",
+                "committee": (rec.get("house_committee")
+                              or rec.get("senate_committee") or ""),
+                "topic": got.get("subject") or "",
+                "margin": got.get("margin"),
+                "why": got.get("why") or [],
+            })
+    return out
+
+
+def show_topics(it):
+    why = ", ".join(str(w).replace("CMTE:", "the committee ").replace("_", " ")
+                    for w in it["why"])
+    misc = it["topic"] == "Miscellaneous"
+    verdict_hint = (
+        "This one it declined to place. Is that right -- is there really no "
+        "good topic for it -- or is there an obvious one it missed?"
+        if misc else
+        "Is that the topic a reader looking for this bill would expect? A "
+        "defensible second choice still counts as right; a topic that would "
+        "send someone to the wrong list does not.")
+    return (f'<table class="facts">'
+            f'<tr><th>Bill</th><td>{E(it["bill"])} &middot; {E(it["term"])}</td></tr>'
+            f'<tr><th>Title</th><td>{E(it["title"])}</td></tr>'
+            f'<tr><th>Committee</th><td>{E(it["committee"] or "none on record")}'
+            f'</td></tr></table>'
+            f'<h3>The topic this site would give it</h3>'
+            f'<p class="prose"><strong>{E(it["topic"])}</strong></p>'
+            + (f'<h3>Why</h3><p class="prose">{E(why)}</p>' if why else "")
+            + f'<p class="note">confidence margin {E(it["margin"])}; '
+              f'below 4 the answer is withheld as Miscellaneous</p>'
+            f'<p class="ask">{verdict_hint}</p>')
+
+
 def show_narratives(it):
     lines = _docket_lines(it["term"], it["bill"])
     raw = ("".join(f"<li>{E(x)}</li>" for x in lines) if lines
@@ -566,6 +632,25 @@ def show_reports(it):
 # Each kind: where the samples come from, how to show one, and what to ask.
 # A field is (name, label, placeholder).
 KINDS = {
+    "topic": {
+        "label": "Topics for bills that never had one",
+        "blurb": "The General Court assigned topics to one term out of "
+                 "nineteen. topics.py learns from those 2,221 bills and "
+                 "answers for the other 29,449, or says Miscellaneous where "
+                 "it cannot. It is right 74% of the time on the ones it "
+                 "places, scored against the General Court's own labels -- "
+                 "what that score cannot say is whether the answers are ones "
+                 "a reader would accept. Newest terms first.",
+        "sample": sample_topics, "show": show_topics,
+        "fields": [("better_topic", "A better topic, if this one is wrong",
+                    "Elections"),
+                   ("note", "Anything else worth recording", "")],
+        # "Right" here means defensible, not identical to what the General
+        # Court would have said -- there is no General Court answer for these
+        # bills, which is the entire reason the topic is being guessed.
+        "verdicts": [("correct", "Defensible"), ("wrong", "Wrong topic"),
+                     ("unsure", "Cannot tell")],
+    },
     "timestamp": {
         "label": "Bill hearing timings",
         # No HTML entities here: the template escapes a blurb, so "&mdash;"
