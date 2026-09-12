@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.39
+# GRANITE_VERSION: 2026-09-04.40
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -311,6 +311,34 @@ def style_query():
     return "?v=" + hashlib.md5(css.encode("utf-8")).hexdigest()[:8]
 
 
+# WHAT A POWER USER NEEDS, IN THE FOOTER, WHERE THEY WILL LOOK FOR IT.
+# data.html and manifest.json have described every table since the 10th and
+# nothing linked them from the bottom of a page, so the only way to find the
+# bulk downloads was to already know they existed. The same line says when the
+# data was last rebuilt: a reader deciding whether to trust a status should not
+# have to go to the home page to find out how old it is.
+#
+# The date is read from build.json rather than baked in, because this function
+# runs at step 15 of 22 and build.json is written after step 22 -- a baked
+# stamp would always be a few minutes early and would differ page to page.
+# It is one small cached request, and the line simply does not appear if the
+# fetch fails.
+FOOT_JS = (
+    '<script>fetch(new URL("build.json",location.origin+"/").href)'
+    '.then(r=>r.json()).then(B=>{'
+    'var e=document.getElementById("built");'
+    'if(!e||!B.finished)return;'
+    'e.textContent=" Data rebuilt "+new Date(B.finished)'
+    '.toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})+".";'
+    '}).catch(function(){});</script>')
+
+# The one sentence that explains the bulk data, used in both footers so they
+# cannot drift. "Every table" is literal: data.html builds from the same
+# manifest the tables are written from.
+FOOT_DATA = ('<a href="data.html">Bulk data</a> — every table on this '
+             'site as CSV, with a manifest naming each column.')
+
+
 def shell(title, current, body, wide=False, script="", desc="",
           base="https://graniterecord.org"):
     nav = []
@@ -361,7 +389,9 @@ General Court. Not affiliated with the General Court.
 <a href="about.html">How this is made</a>.
 <span class="corrections">Found an error?
 <a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>
-</span></div></footer>
+</span>
+<p class="footdata">{FOOT_DATA}<span id="built"></span></p>
+</div></footer>{FOOT_JS}
 {script}</body></html>"""
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.32
+# GRANITE_VERSION: 2026-09-05.33
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -70,6 +70,33 @@ from pathlib import Path
 WORK_FILES = ["captions.en.json3", "captions.en-orig.json3", "transcript.json"]
 WS = re.compile(r"\s+")
 NONWORD = re.compile(r"[^a-z0-9 ]+")
+
+# A chair saying what MIGHT happen, immediately before a phrase that
+# otherwise opens a proceeding. See the guard in find_markers for the
+# recording this came from. "would" and "should" are deliberately not here:
+# "I would like to open the hearing on HB 123" opens a hearing.
+# FIRST PERSON ONLY, and that restriction was learned the hard way. The first
+# version of this took any pronoun and included "could", which read a chair's
+# politeness as a hypothesis: "Representative, if you could introduce yourself
+# and the bill", "Senator Alvis, welcome again -- and if you could introduce
+# 464 when you're ready", "we have the prime sponsor for our next bill and you
+# could introduce yourself". Every one of those IS the chair taking the bill
+# up, and the sponsor starts speaking straight after it. It dropped about
+# fifteen real boundaries to fix one.
+#
+# probe_alignment did not catch it: the candidate median stayed at 0m 01s,
+# because a median over 44 marked proceedings is robust to fifteen changes
+# elsewhere. Reading all 23 removed boundaries one at a time caught it. That is
+# the argument for diffing what a guard drops and not only scoring what
+# survives.
+#
+# A chair hedging about their own plan says "we" or "I". A chair asking
+# somebody else to begin says "you", and that is not a hedge.
+HEDGE = re.compile(
+    r"\b(?:we|i)\s+(?:might|may)\s*$"
+    r"|\b(?:we|i)\s+(?:hope|plan|intend)\s+to\s*$"
+    r"|\bwe'?re\s+(?:hoping|planning|intending)\s+to\s*$"
+    r"|\bdon'?t\s+think\s+we'?(?:ll|re)\s*$", re.I)
 
 # The thing being opened or closed. "hearing" alone is common; so is
 # "executive session"; "public hearing" is the formal version of the first.
@@ -443,6 +470,28 @@ def find_markers(words, candidates, titles, span=28, floor=False):
                      if re.search(r"\b" + re.sub(r"[^0-9]", "", c) + r"\b",
                                   after[:120])}
             if len(named) >= 3:
+                continue
+            # A PLAN IS NOT A BOUNDARY. On 3 April 2023, an hour behind
+            # schedule and in the middle of another bill's hearing, the chair
+            # of Science, Technology and Energy explained the day:
+            #
+            #   "it doesn't look like we're going to get to those bills
+            #    before the lunch break -- we might start the hearing on 68
+            #    before the lunch break, I have over a dozen pink cards for
+            #    Senate Bill 68 by itself"
+            #
+            # "start the hearing on 68" is the phrase this file looks for, so
+            # SB 68 was placed at 2:03:38. The chair opened it at 2:14:36 --
+            # "I'm going to open a public hearing on Senate Bill 68" -- which
+            # is in the same transcript and is a stronger marker. Marked wrong
+            # at the bench, eleven minutes out.
+            #
+            # A modal is what separates the two: "we might start" is a
+            # hypothesis, "we're going to start" is the chair doing it. Only
+            # the unambiguous ones are listed -- "would" and "should" are
+            # absent on purpose, because "I would like to open the hearing on
+            # HB 123" is a real opening and is exactly this shape.
+            if HEDGE.search(text[max(0, m.start() - 40):m.start()]):
                 continue
             t = when(m.start())
             # Within a minute of one already found for the same bill and the

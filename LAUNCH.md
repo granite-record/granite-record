@@ -520,3 +520,148 @@ that are different committees.
    0m 02s depending on how many bench marks had landed, worst published end
    12m 05s (was 93m 48s). `--no-bench` for a number comparable with anything
    recorded before 9 September.
+
+---
+
+## 8. The feedback batch of 11 September, evening
+
+Eleven items from the person, recorded verbatim in substance so none is lost.
+**[back]** is the data and functionality side; **[vis]** belongs to the
+visuals/dark-mode session working in parallel; **[both]** needs one of each.
+Nothing here is done unless it says so.
+
+1. **[back] DONE (bulk data and the rebuild date; GitHub waits for a URL). The footer carries the power-user items.** Link and explain
+   the bulk data downloads, say when the site was last updated, and eventually
+   link the GitHub repository. `data.html` and `manifest.json` already exist
+   and already describe every table; the footer does not mention them, so the
+   only way to find them is to know they are there.
+
+2. **[back] A vote on an amendment should name which amendment.** "Adopt
+   Committee Amendment (2247h)" or "Adopt Floor Amendment (1234h)", not a bare
+   "Adopt Amendment".
+
+   *Measured before starting:* 420 amendment-adoption roll calls across all
+   terms — 196 of them labelled only "Adopt Amendment", 180 "Adopt Floor
+   Amendment", 44 "Adopt Committee Amendment". **The amendment number is in
+   none of them:** 0 of 420 `question_raw` values carry one. So both halves of
+   this — which kind of amendment, and its number — have to be joined from the
+   docket's own amendment events by bill, chamber and date.
+
+   *The join, measured against the 19,105 amendment events on 9,895 bills:*
+
+   | | roll calls |
+   |---|---|
+   | exactly one amendment that bill, chamber and day | **213** |
+   | several, but only one was decided by a roll call | **47** |
+   | several, and the question's own wording picks one | **9** |
+   | **resolvable** | **269 of 420 (64%)** |
+   | several roll-call amendments the same day | 70 |
+   | no amendment event that day, or none at all | 55 |
+   | still ambiguous | 26 |
+
+   So 269 votes can name their amendment with certainty and 151 cannot. The
+   151 keep the bare label: `bill_amendments` already states the rule this
+   follows — "Committee or floor is not a label this invents: it is the word
+   the docket line used, and where the line says only 'Amendment' that is what
+   the reader is told."
+
+   The page is already built for it: `app.js` renders
+   `<span class="ramd">${esc(rc.amendment)}</span>` in the vote header, and
+   `rc.amendment` is `None` on all 9,565 roll calls today. The join belongs
+   beside `bill_amds` and `rc_out`, which `build_site_v2.py` builds three
+   lines apart.
+
+3. **[back] DONE. "Division Vote" and "Voice Vote", capitalised.** `build_site_v2.py`
+   has `VK = {"VV": ("voice vote", False), "DV": ("division vote", False)}`.
+   Care is needed: the same words are used mid-sentence elsewhere ("decided on
+   a voice vote"), where lower case is correct.
+
+4. **[back] DONE. A roll call is labelled above the vote diagram** the way
+   division and voice votes already are.
+
+5. **[back] Close every gap in coverage, or know the remainder is
+   unrecoverable.** Missing bills, unknown members, missing dockets, broken
+   links. The standard the person set: a remaining gap should be a document
+   genuinely absent from the official record, *not* a parsing error of ours.
+   A census is running: every gap classified PARSING / NOT-FETCHED /
+   UNRECOVERABLE.
+
+6. **[back] Bill search: expanded rows stay open across a term change.** Expand
+   some bills, switch term, and the open state is applied to whatever bills now
+   sit in those positions — so the wrong bill shows as open. Almost certainly
+   open-state keyed on row position rather than on the bill.
+
+7. **[both] The Learn tab.** Accurate, straightforward explanations of
+   structure and function, with diagrams, examples and links. Specifically:
+   double-check the language, replace the example bills with neutral ones from
+   terms further back, and add diagrams that carry the concept visually. The
+   site is static with no runtime, so diagrams are inline SVG.
+
+8. **[vis] DONE (the label; the layout pass is still open). "Versions" is now "Bill Text" in the tab strip** — `app.js`
+   renders the tab label and the "Full text" / "What changed" toggle.
+
+9. **[vis] The version view needs a layout pass.** Full text and what-changed
+   are right in principle and read as cramped and hard to parse.
+
+10. **[both] The town page.** Reformat so elected officials are grouped by
+    branch and paired, rather than listed flat **[vis]**; and find a source for
+    polling location per district and for clerk information **[back]**.
+
+11. **[back] Municipal elected officials** — selectboard, city council, mayor.
+    No source on this disk today. Being researched: whether any statewide list
+    exists or whether this is 234 municipalities by hand.
+
+### 8a. What the coverage audit found (11 September, overnight)
+
+Five read-only agents audited every source. The findings below are measured;
+the adversarial pass that would have checked them died on a spend limit, so
+the two that matter most were verified by hand instead and are marked so.
+
+**THE BIGGEST RECOVERABLE GAP IS NOT A FETCH. It is a match.** *(verified by
+hand)*
+
+- **1,930 of the 4,296 captioned recordings have no row in
+  `proceedings.csv`**, so `segment_markers.py` never opens them. Only 2,413
+  recordings are referenced. Nearly half the captions on this disk are read by
+  nothing.
+- **554 of the 4,427 indexed videos fail `title_parsed`, and
+  `build_manifest.py:135` drops every one of them** (`if r["title_parsed"] !=
+  "yes": continue`). **536 of those 554 carry an exact livestream start time**,
+  so the date is known for certain and is being thrown away. 532 of the 554
+  are 2020-2022 — which is the whole reason those years look thin.
+
+  The titles say why, and all three shapes are the parser's fault rather than
+  the clerk's: `Ways and Means - Revenue Estimates (5/27/20 - morning
+  session)` puts trailing text inside the parentheses; `Ways and Means:
+  Revenue Estimates (6/1/20 - morning session)` adds a colon; `Children and
+  Family Law Orientation Meeting 1/11/21` has no parentheses at all.
+
+  **The fix does not need the title at all.** Where a video carries
+  `actual_start_utc`, the date is that start's date, exactly. 536 rows come
+  back for nothing. It touches the matching pipeline, so it needs
+  `probe_alignment --truth` scored before and after.
+
+Other findings, not yet verified by hand:
+
+- **664 Senate calendars (1998-2007)** have sat as "wanted" in
+  `archive/queue.csv` since a 403 stopped the drain on 9 September. Not in the
+  lane. They are the only source for Senate committee reports 2008-2024.
+- **86,718 rows / 187 MB of dumped database views have no reader at all**:
+  `NH_RSA`, `VHearings`, `Sponsors`, `StatStud*`, `DistrictPast`,
+  `CandH_Reports`. `VHearings` is worth looking at first — hearings 1999-2014
+  is an open question and the view is already on this disk.
+- **`db/document_versions.json` is a declared `build_all` dependency with no
+  generator anywhere in the repo.**
+- Four `build_all` steps still re-query the SQL host for views already dumped.
+- **`fetch_members`, `fetch_leadership`, `fetch_session` and
+  `fetch_archive_text` have never run.** The last is superseded by
+  `fetch_legislation` and should be marked so; `ARCHIVE_PLAN.md` is stale on
+  that point.
+- The calendar/journal citation index covers 12 of 30 years, though every PDF
+  is on disk and needs no network.
+- **Every one of the 34,481 built pages asks the reader's browser for Google
+  Fonts**, and no document records a decision about it. Worth one, given this
+  project's care about not leaking its readers to third parties.
+- Neither YouTube channel has anything before **2020-05-14**, so 2017-2018 and
+  all of 1989-2016 have no recordings and never will. That gap is
+  UNRECOVERABLE and can be stated as such on the site.

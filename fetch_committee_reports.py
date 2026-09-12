@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.25
+# GRANITE_VERSION: 2026-09-04.26
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -419,7 +419,24 @@ def parse_reports(text, source, skipped=None, skipped_samples=None):
                 entry["vote_nays"] = int(v.group("n"))
                 if v.group("cal"):
                     entry["calendar"] = v.group("cal").upper()
-                body = body[:v.start()].strip(" .;,")
+                # THE SENTENCE KEEPS ITS OWN FULL STOP. This was
+                # .strip(" .;,"), which took the period off both ends -- and
+                # the period at the END belongs to the report's last
+                # sentence, not to the vote line being cut off. 25,499 of
+                # 30,588 report texts ended without one, which reads on the
+                # page exactly like a text that was truncated, and is what
+                # the bench kept reporting as "missing a period and looks
+                # like it got cut off". Nothing was cut off: the calendar
+                # says "...our NH National Guard.Vote 11-6." and the period
+                # is the sentence's.
+                #
+                # A semicolon or comma before the vote is the clerk's
+                # punctuation joining two clauses and is still dropped. Where
+                # the cut lands on one of those the text simply has no
+                # terminal period, because the source gave it none, and
+                # inventing one would be writing punctuation into a quotation.
+                body = body[:v.start()].lstrip(" .;,").rstrip()
+                body = body.rstrip(";,").rstrip()
             entry["text"] = body
             entries.append(entry)
 

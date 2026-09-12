@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.51
+// GRANITE_VERSION: 2026-09-07.52
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -637,7 +637,11 @@ function fullRecord(bid,i,rc){
 
 // Pure and identical for every bill, so built once here rather than
 // rebuilt inside a map callback that runs for each of 2,234 of them.
-const AVK={VV:"voice vote",DV:"division vote",RC:"roll call"};
+// How a vote was taken, title-cased because every place this appears is a
+// LABEL beside a date rather than a clause in a sentence: "12 March 2025 ·
+// House · Voice Vote". Prose elsewhere still says "decided on a voice vote" in
+// lower case, which is correct there and is not this constant.
+const AVK={VV:"Voice Vote",DV:"Division Vote",RC:"Roll Call"};
 // A committee report's colour, from what was MOVED rather than from who won.
 //
 // It used to be chosen from `side` alone: Committee and Majority green,
@@ -918,7 +922,7 @@ function renderVotes(b,d){
       <div class="rchead"><span class="rcq">${esc(rc.question)}${
         rc.amendment?` <span class="ramd">${esc(rc.amendment)}</span>`:""}</span>
       <span class="rcd">${fdate(rc.date)} · ${rc.body==="H"?"House":"Senate"}${
-        vk!=="RC"?` · ${esc(rc.vote_kind_label||"")}`:""}</span>
+        AVK[vk]?` · ${AVK[vk]}`:""}</span>
       <span class="rcres ${rc.passed?'pass':'fail'}">${rc.passed?"Adopted":"Failed"}</span></div>
       ${rc.mover?`<p class="rcby">Moved by ${esc(rc.mover)}</p>`:""}
       ${rc.threshold_note?`<p class="note" style="margin:6px 0 0">${esc(rc.threshold_note)}</p>`:""}
@@ -1533,7 +1537,7 @@ function renderVersions(b,d){
   const mode=VMODE[key]||"changes";
   const i=Math.min(VPICK[key],Math.max(0,vs.length-1));
 
-  const picker=vs.length?`<div class="vpick" role="tablist" aria-label="Versions of this bill">${
+  const picker=vs.length?`<div class="vpick" role="tablist" aria-label="Versions of this bill's text">${
     vs.map((v,j)=>`<button class="vbtn${j===i?" sel":""}" data-ver="${esc(key)}|${j}"
       aria-current="${j===i?"true":"false"}">${esc(v.title)}<i>${
       esc((v.date||"").split(" ")[0])}</i></button>`).join("")}</div>`:"";
@@ -1652,7 +1656,7 @@ function renderDetail(b,d){
        manifest build_bill_versions.py writes. */
     (d.nver||0)>1||(d.namd||0)
       ? `<button class="tab" role="tab" id="tab_${b.id}_6" aria-controls="pane_${b.id}_6"
-          aria-selected="false" data-t="6">Versions${d.nver>1?` (${d.nver})`:""}</button>`
+          aria-selected="false" data-t="6">Bill Text${d.nver>1?` (${d.nver})`:""}</button>`
       : ""}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_0" aria-labelledby="tab_${b.id}_0" tabindex="0" data-t="0">${renderSummary(b,d,rsa)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_1" aria-labelledby="tab_${b.id}_1" tabindex="0" data-t="1" hidden>${paneNote("votes")}${renderVotes(b,d)}</div>

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.35 -->
+<!-- GRANITE_VERSION: 2026-09-05.36 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -56,7 +56,21 @@ General Court. Not affiliated with the General Court.
 <a href="about.html">How this is made</a>.
 <span class="corrections">Found an error?
 <a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>
-</span></div></footer>
+</span>
+<!-- This file is the TEMPLATE every bill page is built from (shell.template
+     reads it out of site/), so this footer is the footer on 33,683 pages as
+     well as on the search page. It must stay in step with build_pages.py's
+     FOOT_DATA and FOOT_JS, which say the same thing for the dozen pages that
+     function writes. -->
+<p class="footdata"><a href="data.html">Bulk data</a> &mdash; every table on
+this site as CSV, with a manifest naming each column.<span id="built"></span></p>
+</div></footer>
+<script>fetch(new URL("build.json",location.origin+"/").href).then(r=>r.json()).then(B=>{
+  var e=document.getElementById("built");
+  if(!e||!B.finished)return;
+  e.textContent=" Data rebuilt "+new Date(B.finished)
+    .toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})+".";
+}).catch(function(){});</script>
 <script src="app.js"></script>
 </body>
 </html>

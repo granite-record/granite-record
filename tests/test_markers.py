@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.4
+# GRANITE_VERSION: 2026-09-05.5
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -121,6 +121,23 @@ MUST_MATCH = [
      "is allowing public schools", "bare open, no pronoun before it"),
     ("let's just go let's get it right into 1174 right now", "get right into"),
 
+    # -- the chair's politeness, which is not a hedge ---------------------
+    #
+    # Spoken, word for word, and every one of them IS the chair taking the
+    # bill up: the sponsor starts speaking immediately after. They are here
+    # because the first version of the HEDGE guard read "you could" as a
+    # hypothesis and dropped about fifteen boundaries of exactly this shape
+    # to fix one real false positive. The median did not move, so only a
+    # boundary-by-boundary diff found it.
+    ("Uh welcome. Uh if you could introduce HB1442",
+     "'if you could' is a request, not a hedge (HpDeBZsI2wU 0:16:54)"),
+    ("Senator Alvis, welcome again. And if you could introduce HB1442 when "
+     "you're ready", "the same, with the bill by bare number (JXCR09--m6w)"),
+    ("we have the prime sponsor for our next bill and you could introduce "
+     "yourself and HB1442", "'and you could' (7zQ2ckW27Ks 0:02:25)"),
+    ("Representative, if you could introduce HB1442 for us",
+     "'if you could' again (Rmk7jA6ze74 1:05:28)"),
+
     # -- the floor: the clerk's script ----------------------------------
     ("Majority of the Committee on Finance to which was referred Senate Bill 408, "
      "relative to insurance coverage for prosthetics", "House, standard"),
@@ -147,6 +164,17 @@ MUST_NOT_MATCH = [
     ("I strongly support HB1442. These bills would protect", "a witness"),
     ("Oh, this is for HB1442. I'm so sorry, I read the wrong card",
      "a pink card being sorted"),
+    # SPOKEN, word for word, by the chair of Science, Technology and Energy on
+    # 3 April 2023 (Ud-N9egBHQI at 2:03:37), an hour behind schedule and in
+    # the middle of another bill's hearing. "start the hearing on" is a real
+    # opening phrase and this is not an opening: the chair opened HB1442's
+    # real-world counterpart eleven minutes later, with "I'm going to open a
+    # public hearing on". Marked wrong at the bench.
+    ("it doesn't look like we're going to get to those bills before the lunch "
+     "break, we might start the hearing on HB1442 before the lunch break, I "
+     "have over a dozen pink cards for it", "a plan, not a boundary"),
+    ("we may open the hearing on HB1442 after we finish this one",
+     "a plan, not a boundary"),
 ]
 
 
