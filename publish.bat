@@ -48,8 +48,28 @@ REM CALL, because npx is npx.cmd: a batch file that runs another batch file
 REM without CALL hands over to it and never comes back. Until 11 September
 REM every publish ended at wrangler's "Deployment complete!" with npx's exit
 REM code, and the check_live gate below never ran once.
+REM FOUR ATTEMPTS, because the failure this hits is a timeout and not a
+REM refusal. wrangler packs assets into buckets of up to 40 MB and posts
+REM each as one body; the fat files here -- index.json at 21.5 MB and
+REM fifteen vote exports of 9 to 20 MB -- make bodies that take longer to
+REM send than undici waits for a response header, and five such failures
+REM anywhere abort the whole deploy. Pages assets are content-addressed,
+REM so every attempt begins with what the last one managed: on
+REM 12 September a run reported 34,887 files uploaded and 20,465 already
+REM there, which was the previous attempt's work being skipped.
+set ATTEMPT=0
+
+:upload
+set /a ATTEMPT+=1
 call npx wrangler pages deploy site --project-name=%PROJECT% --commit-dirty=true
-if errorlevel 1 goto :failed
+if not errorlevel 1 goto :uploaded
+if %ATTEMPT% GEQ 4 goto :failed
+echo.
+echo *** Upload attempt %ATTEMPT% of 4 failed. Trying again -- the files
+echo *** that did upload are kept, so this starts where that one stopped.
+goto :upload
+
+:uploaded
 
 echo.
 echo === Confirming the world is getting what was just built ===
