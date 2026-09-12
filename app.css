@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.49 */
+/* GRANITE_VERSION: 2026-09-07.51 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1119,6 +1119,78 @@ padding-left:22px;margin:0 0 14px}
 .civics li{margin-bottom:8px}
 .civics .crumb{font-family:var(--sans);font-size:13px;margin:0 0 4px}
 .civics .crumb a{color:var(--ink-2)}
+
+/* ---- THE COURSE OF A BILL, AS A DIAGRAM -------------------------------
+   A diagram and not a picture. It is an ordered list of ordered lists --
+   four phases, and the stages inside each -- so a screen reader reads it as
+   the sequence it is, a reader with no CSS gets the same sequence, and there
+   is no image to fail to load and nothing to keep in step with the prose.
+   SVG was the obvious choice and the wrong one: a four-lane flow that has to
+   become one column at 360px is a layout problem, and CSS already solves
+   layout. The only thing drawn rather than written is the connector.
+
+   The structure carries the information, which is the brief's rule: the
+   phases are the two chambers and the two ends, the steps are in the order
+   they happen, and a step a bill can die at says so and is marked. That last
+   part is the point of the whole diagram -- the course is not a pipeline,
+   it is a series of places to stop, and most bills stop. */
+.flow{margin:20px 0 26px}
+/* ONE COLUMN FIRST. Four phases across needs about 235px each to be worth
+   reading, and the civics pages are a 560px measure -- four columns in that
+   came out at 115px, which is a column of broken words rather than a
+   diagram. So it stacks by default and goes across only where there is
+   genuinely room, which is the 1100px below. */
+.flowphases{list-style:none;margin:0;padding:0;display:grid;
+grid-template-columns:1fr;gap:18px 0;align-items:start}
+.phase{position:relative;min-width:0}
+/* The connector, drawn on the phase rather than between them so adding a
+   phase cannot leave a line pointing at nothing. Vertical while stacked. */
+.phase:not(:last-child):after{content:"";position:absolute;top:100%;
+left:15px;width:1px;height:18px;background:var(--rule-2)}
+.phname{font-size:12px;font-weight:600;letter-spacing:.05em;
+text-transform:uppercase;color:var(--ink-2);margin:0 0 9px;padding-bottom:6px;
+border-bottom:1px solid var(--rule-2)}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.step{background:var(--surface);border:1px solid var(--rule);
+border-radius:var(--r-out);padding:9px 11px}
+.step b{display:block;font-size:14px;font-weight:600;line-height:1.3}
+.step span{display:block;font-size:13px;color:var(--ink-2);margin-top:3px;
+line-height:1.45}
+/* A STAGE A BILL CAN DIE AT. The left edge is the mark, in the red the site
+   already uses for a bill that was voted down, and the word says so too --
+   the brief's rule is that no state is carried by colour alone.
+
+   NAMED .dies AND NOT .stop, WHICH IS WHAT IT WAS FIRST. `.stop` is the
+   passage rail's class, 800 lines above, where `.stop b` is an absolutely
+   positioned 15px circle with `color:transparent` -- so every "Executive
+   session" and "Floor vote" in this diagram rendered as invisible text in a
+   little grey disc. Nothing errored; the contrast sweep found it at 1:1,
+   which is the signature of text the same colour as its background.
+   This is the third time one class name has been two components here: the
+   file already records `.ctitle` being both a card title and a bill title
+   inside a committee day, and `.p-R` being both a tinted chip and a solid
+   bar segment. A new component gets its own prefix. */
+.step.dies{border-left:3px solid var(--st-done)}
+.step .mark{display:block;font-style:normal;font-size:12px;font-weight:600;
+color:var(--st-done);margin-top:5px}
+/* And one a member of the public can speak at, which is the other thing a
+   reader wants from this diagram. */
+.step.say{border-left:3px solid var(--pine)}
+.step .say-m{display:block;font-style:normal;font-size:12px;font-weight:600;
+color:var(--pine);margin-top:5px}
+/* FOUR ACROSS, AND OUT OF THE MEASURE. The note on .civics anticipated this
+   -- "a diagram is coming" -- and left .wide for it, which was never
+   written. This is that: the diagram is the one wide thing on a prose page,
+   and it breaks out of the 560px column symmetrically rather than being
+   squeezed into it. 230px a side puts it at 1020px inside the 1132px the
+   page column has at 1440, so it never reaches the page's own edge.
+   Below 1100px it stays stacked, because four readable columns do not fit
+   and a cramped diagram is worse than a tall one. */
+@media (min-width:1100px){
+  .civics .flow{margin-left:-230px;margin-right:-230px}
+  .flowphases{grid-template-columns:repeat(4,minmax(0,1fr));gap:0 26px}
+  .phase:not(:last-child):after{top:11px;left:100%;width:26px;height:1px}
+}
 
 /* A block that points into the record: the whole argument for this section
    living here rather than being a link to somebody else's explainer. */

@@ -261,6 +261,54 @@ for a person to call.
 
 ---
 
+## Diagrams
+
+The first one is on *How a bill becomes law*, and it is **not an image**. It
+is an ordered list of ordered lists — four phases, and the stages inside each
+— so a screen reader reads it as the sequence it is, a reader with no CSS
+gets the same sequence, and there is nothing to fail to load or to fall out
+of step with the prose beside it. SVG was the obvious choice and the wrong
+one: a four-lane flow that has to become one column at 360px is a layout
+problem, and CSS already solves layout. The only thing actually drawn is the
+connector between phases.
+
+**The structure carries the argument**, which is this brief's rule. The
+phases are the two chambers and the two ends; the steps are in the order they
+happen; and every stage a bill can die at says so and is marked, as is every
+stage a member of the public may speak at. That last part is the whole point.
+A reader arrives thinking a bill moves along a pipeline, and what they should
+leave with is a course with exits almost everywhere — seven of the twelve
+stages can end it.
+
+It stacks below 1100px and only goes four-across above, because four
+readable columns need about 230px each and the civics measure is 560px: the
+first attempt squeezed them to 115px, which is a column of broken words
+rather than a diagram. Above 1100px it breaks out of the measure by 230px a
+side — the wide thing on a prose page that the note on `.civics` anticipated
+and left `.wide` for, which was never actually written.
+
+---
+
+## One class name is one component
+
+Third occurrence, so it belongs in the brief rather than in a comment. The
+diagram's "can die here" state was first called `.stop`, which is the
+**passage rail's** class, where `.stop b` is an absolutely positioned 15px
+circle with `color: transparent` — so every "Executive session" and "Floor
+vote" rendered as invisible words inside a small grey disc. Nothing errored.
+The contrast sweep found it at **1:1**, which is the signature of text the
+same colour as its background.
+
+The file already records the same mistake twice: `.ctitle` was both a card
+title and a bill title inside a committee day, and `.p-R` was both a tinted
+chip and a solid bar segment. **A new component gets its own prefix**
+(`.cal*` for the calendar, `.off*` for the officials rows, `.step`/`.phase`
+for the diagram). A check for this would be worth having and does not exist;
+what caught all three was reading the rendered page rather than the
+stylesheet.
+
+---
+
 ## Typography
 
 One family, or two that are clearly distinct. Set a type scale deliberately

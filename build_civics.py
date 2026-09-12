@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.8
+# GRANITE_VERSION: 2026-09-08.9
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -77,7 +77,25 @@ def hub(topics):
     out = ['<h1>How New Hampshire works</h1>',
            '<p class="lead">Eleven short pages on the parts of state '
            'government, each one linked to where you can watch it happening '
-           'in the record.</p>']
+           'in the record.</p>',
+           # WHAT THIS IS FOR, SAID ONCE. The hub was a numbered list and
+           # nothing else: a reader arriving cold could not tell whether
+           # these were explainers written from a textbook or written from
+           # the record, and that distinction is the only reason this section
+           # exists rather than linking to somebody else's civics site.
+           '<p>Every figure on these pages is one this site can produce from '
+           'the record, and every page says what it counts and over what '
+           'period. Where the record holds nothing &mdash; the courts, the '
+           'Executive Council &mdash; the page is short and says so rather '
+           'than being padded with prose nobody here can check.</p>',
+           # THE ONE PAGE MOST PEOPLE WANT. Eleven equal items in a list made
+           # the reader choose before they knew what they were choosing
+           # between, and nine times in ten the answer is the same page.
+           '<div class="shows"><h4>If you read one</h4>'
+           '<p><a href="learn/how-a-bill-becomes-law.html">How a bill becomes '
+           'law</a> &mdash; the course a bill runs, the stages it can die at, '
+           'and two bills of 2024 followed all the way through with the '
+           'recording of every hearing and vote.</p></div>']
     for group, note in civics.GROUPS:
         rows = [(i, t) for i, t in enumerate(topics) if t["group"] == group]
         if not rows:

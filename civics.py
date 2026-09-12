@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.3
+# GRANITE_VERSION: 2026-09-08.6
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -71,6 +71,91 @@ def topic(slug, title, group, blurb, body, sources, holds=""):
 # ---------------------------------------------------------------------------
 
 SHOWS = ('<div class="shows"><h4>In the record</h4>{}</div>')
+
+
+# ---------------------------------------------------------------------------
+# THE COURSE OF A BILL, AS A DIAGRAM.
+#
+# Written as data rather than as a wall of HTML so the sequence can be read
+# and corrected here, in one place, by somebody who knows the building. It
+# renders as nested ordered lists -- see the .flow rules in app.css for why
+# that rather than an SVG.
+#
+# Each step is (name, what happens, mark), where mark is:
+#   "stop" -- the bill can die here, and most bills die at one of these
+#   "say"  -- a member of the public can speak here
+#   ""     -- neither
+# The marks are the argument of the diagram. A reader arrives thinking a bill
+# moves along a pipeline; the shape they should leave with is a course with
+# exits at almost every stage.
+# ---------------------------------------------------------------------------
+FLOW = [
+    ("Before it is a bill", [
+        ("Filed as an LSR", "A title and an idea, filed in the autumn. "
+         "Attorneys at the Office of Legislative Services draft the text.", ""),
+    ]),
+    ("The first chamber", [
+        ("Introduced and referred", "It gets a number and goes to a committee "
+         "chosen by subject.", ""),
+        ("Public hearing", "The sponsor introduces it, then anyone may speak "
+         "for or against, or sign in without speaking.", "say"),
+        ("Executive session", "The committee votes on what to recommend. A "
+         "separate meeting from the hearing, often days later.", "stop"),
+        ("Floor vote", "The full chamber decides, and is not bound by the "
+         "committee's recommendation.", "stop"),
+    ]),
+    ("The second chamber", [
+        ("Referred again", "The whole course repeats. Moving between chambers "
+         "is called crossover, and there is a deadline for it.", ""),
+        # TWO STEPS AND NOT ONE. Folded together, the diagram showed a single
+        # "you may speak here" in the whole course, which is wrong and is
+        # wrong in the direction that matters: a bill gets a public hearing in
+        # each chamber, so a reader who missed the first has not missed their
+        # chance. Splitting it also makes the two chambers read as the same
+        # course run twice, which is the point of the page.
+        ("Public hearing", "A second committee, a second public hearing. "
+         "Missing the first chamber's does not cost you this one.", "say"),
+        ("Executive session", "The second committee votes on its own "
+         "recommendation.", "stop"),
+        ("Floor vote", "If this chamber changes the bill, the first must "
+         "agree to the change.", "stop"),
+        ("Committee of conference", "Where it will not agree: members of both "
+         "chambers try to write a version each will accept. Both chambers "
+         "must then adopt the report unchanged.", "stop"),
+    ]),
+    ("The Governor", [
+        ("Enrolment", "A final check of the text for errors before it is "
+         "sent.", ""),
+        ("Signed, vetoed, or left unsigned", "A bill left unsigned becomes "
+         "law anyway.", "stop"),
+        ("Override", "Two thirds of those voting in both chambers, or the "
+         "veto stands.", "stop"),
+    ]),
+]
+
+# The CSS class is .dies, not .stop: .stop belongs to the passage rail,
+# where `.stop b` is a transparent-text circle, and reusing it rendered
+# every marked step as invisible words in a grey disc. app.css says more.
+MARKS = {"stop": ("dies", "mark", "Can die here"),
+         "say": ("say", "say-m", "You may speak here")}
+
+
+def flow_diagram(flow=FLOW, heading="The course of a bill"):
+    """The sequence as nested lists. No image, no script, no SVG."""
+    out = [f'<div class="flow" role="group" aria-label="{heading}">'
+           '<ol class="flowphases">']
+    for name, steps in flow:
+        out.append('<li class="phase">'
+                   f'<h3 class="phname">{name}</h3><ol class="steps">')
+        for step, what, mark in steps:
+            cls, mcls, label = MARKS.get(mark, ("", "", ""))
+            out.append(f'<li class="step{" " + cls if cls else ""}">'
+                       f'<b>{step}</b><span>{what}</span>'
+                       + (f'<i class="{mcls}">{label}</i>' if label else "")
+                       + "</li>")
+        out.append("</ol></li>")
+    out.append("</ol></div>")
+    return "".join(out)
 
 
 BODY_GENERAL_COURT = """
@@ -148,34 +233,16 @@ they voted.</p>""")
 BODY_BILL = """
 <p>A bill has to clear the same course twice, once in each chamber, and can
 stop at any point on it. Most do.</p>
-
-<ol>
-<li><b>Filed as an LSR.</b> Before a bill exists it is a Legislative Service
-Request &mdash; a title and an idea, filed in the autumn. Attorneys at the
-Office of Legislative Services draft the text.</li>
-<li><b>Introduced and referred.</b> The bill gets a number and goes to a
-committee chosen by subject.</li>
-<li><b>Public hearing.</b> The sponsor introduces it, then members of the
-public speak for and against. You can sign in supporting or opposing whether
-or not you speak. See
-<a href="learn/testifying.html">Testifying and attending</a>.</li>
-<li><b>Executive session.</b> The committee votes on what to recommend. This
-is a separate meeting from the hearing, often days later, and usually covers
-several bills at once.</li>
-<li><b>Floor vote.</b> The full chamber votes, and is not bound by the
-committee's recommendation.</li>
-<li><b>The other chamber.</b> The whole process repeats. Moving from one
-chamber to the other is called crossover, and there is a deadline for it.</li>
-<li><b>Resolving differences.</b> If the second chamber changed the bill, the
-first must concur. If it will not, a committee of conference &mdash; members
-of both chambers &mdash; tries to write a version both will accept.</li>
-<li><b>Enrolment.</b> A final check of the text before it goes to the
-Governor.</li>
-<li><b>The Governor.</b> Sign it, veto it, or allow it to become law
-unsigned. See
+""" + flow_diagram() + """
+<p>Two of those stages are worth separating, because they are the two most
+often confused. A <b>public hearing</b> is where anyone may speak; the
+committee takes no decision at it. An <b>executive session</b> is where the
+committee votes on what to recommend, usually days later and usually covering
+several bills at once. See
+<a href="learn/testifying.html">Testifying and attending</a> for what happens
+at each, and
 <a href="learn/governor-and-council.html">The Governor and the Executive
-Council</a>.</li>
-</ol>
+Council</a> for the last stage.</p>
 
 <h2>Most bills stop somewhere</h2>
 <p>Of the 2,234 bills filed in the 2025&ndash;2026 term, <b>855 were
@@ -206,7 +273,47 @@ or nearly so and no dissenting member objected to it being placed there. It
 then passes without floor debate, along with everything else on the calendar,
 in a single vote. Ten members may petition to pull a bill off and have it
 taken up separately.</p>
+
+<h2>Two bills, followed all the way</h2>
+<p>These two are here because the whole course is on the record for both, and
+because each divided the House without dividing it by party &mdash; which is
+the useful kind of example. In both, a majority of Republicans voted one way
+and a majority of Democrats the other, and in both a substantial minority of
+each party voted against its own side. There is a real argument on each
+side of them.</p>
+
+<h3>HB 1002 (2024) &mdash; what a public record may cost</h3>
+<p>The ordinary course, start to finish. A town or agency answering a
+right-to-know request may charge for the copies; the question was whether it
+may also charge for the staff time spent finding and reviewing the records.
+Supporters said small towns without full-time staff absorb real cost for
+requests that can run to thousands of pages. Opponents said a fee that
+tracks staff time can be set high enough to price an ordinary resident out of
+oversight. It was signed into law.</p>
+<p>Its page carries the <b>public hearing of 17 January 2024</b> and two
+<b>executive sessions</b>, each with the recording and the moment the
+committee took the bill up &mdash; so the difference between the two kinds of
+meeting can be watched rather than taken on trust. The House divided
+<b>193 to 179</b>: 62 Republicans for and 125 against, 128 Democrats for and
+53 against.</p>
+
+<h3>HB 1215 (2024) &mdash; the complicated path</h3>
+<p>The same course, but it took the longer road: a Special Committee on
+Housing, then a second chamber that changed it, then a <b>committee of
+conference</b> to settle the difference. Conference is the stage hardest to
+picture and the one least often recorded; here it is. The bill dealt with how
+long a town has to decide a development application and what may be appealed
+&mdash; local control of what gets built against the time and cost of getting
+anything built. Six of its proceedings are on video.</p>
+<p class="caveat">Both are offered as examples of the process and not as
+settled questions. The site takes no position on either; the arguments above
+are summarised from what was said for and against, and the recordings are
+there so you can check whether that summary is fair.</p>
 """ + SHOWS.format("""
+<p>Follow the two worked examples through the record:
+<a href="bill/2024/hb1002.html">HB 1002 (2024)</a> and
+<a href="bill/2024/hb1215.html">HB 1215 (2024)</a> &mdash; each hearing, each
+committee vote, each floor vote, and the recording of each.</p>
 <p><b>Killed in committee:</b>
 <a href="bill/2026/sb71.html">SB 71-FN</a>, on cooperation with federal immigration
 authorities &mdash; three roll calls before it died.</p>
