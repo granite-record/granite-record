@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.134
+# GRANITE_VERSION: 2026-09-04.135
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1287,6 +1287,55 @@ def _palette():
     return "ok", f"{n} pairs across both schemes, all above their threshold"
 
 
+@check("frontend", "the built stylesheet carries one copy of the shared region")
+def _shared_region():
+    """A comment that named a slot pasted the whole region into itself.
+
+    build_pages.py's CSS string has __PALETTE__ and __SHARED__ slots that are
+    filled from app.css, for the reason palette() and shared() both give: a
+    component copied into two files diverges on the first fix. On 12 September
+    the nav joined them, and the comment left behind in build_pages.py saying
+    where it had gone named the slot -- so the substitution filled it. The
+    whole shared region was pasted into the middle of a CSS comment, and
+    because a CSS comment does not nest, the first `*/` inside the pasted
+    region closed it and everything after that was parsed as live CSS.
+
+    Nothing errored. style.css was 8KB larger, had two copies of the calendar,
+    the theme control and the nav, and a line of prose being read as a
+    selector. What found it was grepping the built file for one distinctive
+    rule and getting two.
+
+    So: exactly one copy, byte-identical to app.css's, and no slot left
+    unfilled -- which also catches a shared() that reads to the wrong marker
+    and hands over half a component.
+    """
+    built = Path("site/style.css")
+    if not built.exists():
+        return "skip", "site/style.css not built"
+    t = built.read_text(encoding="utf-8")
+    src = Path("app.css").read_text(encoding="utf-8")
+
+    left = sorted(set(re.findall(r"__[A-Z][A-Z_]*__", t)))
+    assert not left, (
+        "site/style.css still has " + ", ".join(left) + " in it: a slot in "
+        "build_pages.py's CSS string that nothing filled. The page will load "
+        "and most of it will look right.")
+
+    n = t.count("/* SHARED:START")
+    assert n == 1, (
+        f"site/style.css has {n} copies of the shared region, not one. A "
+        "comment that names __SHARED__ is how this happens; the substitution "
+        "does not know it is inside a comment, and a CSS comment does not "
+        "nest.")
+
+    a, b = src.index("/* SHARED:START"), src.index("/* SHARED:END")
+    region = src[a:b].rstrip()
+    assert region in t, (
+        "the shared region in site/style.css is not app.css's. shared() reads "
+        "between the two markers and rstrips; if the built copy differs, one "
+        "of the markers has moved or something is rewriting the region on the "
+        "way through.")
+    return "ok", f"{len(region):,} bytes, once, identical to app.css's"
 @check("frontend", "the civics examples are not on a charged subject")
 def _civics_examples():
     """Every bill the learn pages cite, checked against its own subject.

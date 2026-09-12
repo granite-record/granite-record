@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.47
+# GRANITE_VERSION: 2026-09-04.48
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -100,11 +100,13 @@ min-height:100dvh;display:flex;flex-direction:column}
 body > *{flex-shrink:0;width:100%}
 :focus-visible{outline:2px solid var(--pine);outline-offset:2px}
 a{color:var(--pine)}button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
-nav.top{background:var(--surface);border-bottom:1px solid var(--rule)}
-nav.top .in{max-width:1180px;margin:0 auto;padding:13px 24px;display:flex;align-items:baseline;gap:24px;flex-wrap:wrap}
-nav.top .brand{font-size:16px;font-weight:600}
-nav.top a{font-size:14px;text-decoration:none;color:var(--ink-2)}
-nav.top a[aria-current]{color:var(--ink);font-weight:600;box-shadow:0 2px 0 var(--pine)}
+/* THE NAV IS NOT HERE ANY MORE. It is one component in app.css's SHARED
+   region, which arrives above through the slot at the top of this string --
+   five rules and two media queries that used to be kept by hand in both
+   files. The palette taught this lesson; the nav was next in line to learn
+   it. (Naming that slot in this comment is how the first draft of it shipped
+   the whole shared region twice: the substitution does not know it is inside
+   a comment, and a CSS comment does not nest.) */
 /* ONE LEFT EDGE. The nav is a 1180px column and this is an 820px one, both
    centred, so on the home page the brand sat at 130px and the heading under
    it at 310px -- and the footer, centred at its own width, started at a
@@ -327,20 +329,8 @@ footer .in{max-width:var(--measure);margin:0;padding:0 24px}
   .twoup{grid-template-columns:1fr}
   .entry{grid-template-columns:1fr}
   .statgrid{grid-template-columns:1fr 1fr}
-  /* padding-left and -right as well as top and bottom. `nav.top .in` is two
-     classes and outranks the `.wrap,.in` rule at the top of this block, so
-     the nav kept its 24px gutter while the page moved to 14px -- a 10px step
-     between the brand and the heading directly under it. */
-  nav.top .in{flex-wrap:wrap;gap:10px 14px;padding:10px 14px}
-  nav.top a{font-size:14px}
-  /* box-shadow draws on the box, and the 44px tap target below makes this
-     anchor 44px tall around a 17px word, so the current-page rule was
-     landing 25px under its own label. Underline the text instead. */
-  nav.top a[aria-current]{box-shadow:none;text-decoration:underline;
-    text-decoration-color:var(--pine);text-decoration-thickness:2px;
-    text-underline-offset:5px}
   .note,.cite,footer,.corrections{font-size:14px}
-  button,.hit,summary,nav.top a{min-height:44px}
+  button,.hit,summary{min-height:44px}
 }
 @media (max-width: 420px){
   .statgrid{grid-template-columns:1fr}
@@ -555,7 +545,7 @@ def calendar_html(H, out):
 
 def shell(title, current, body, wide=False, script="", desc="",
           base="https://graniterecord.org"):
-    nav = []
+    tabs = []
     for href, label in (("index.html", "Home"), ("bills.html", "Bills"),
                         ("legislators.html", "Legislators"),
                         ("committees.html", "Committees"),
@@ -568,10 +558,15 @@ def shell(title, current, body, wide=False, script="", desc="",
                         ("learn.html", "Learn"), ("data.html", "Data"),
                         ("about.html", "About")):
         cur = ' aria-current="page"' if href == current else ""
-        nav.append(f'<a href="{href}"{cur}>{label}</a>')
-    # The same control bills.html carries, read from there rather than
-    # written again here.
-    nav.append(themer("BTN"))
+        tabs.append(f'<a href="{href}"{cur}>{label}</a>')
+    # ONE WRAPPER, WRITTEN TWICE BECAUSE THE NAV IS. bills.html carries the
+    # same <div class="navtabs"> around the same seven links and app.css
+    # styles it once; without it the links wrap through the middle of the row
+    # and the theme control is stranded on a line of its own.
+    nav = [f'<div class="navtabs">{"".join(tabs)}</div>',
+           # The same control bills.html carries, read from there rather than
+           # written again here.
+           themer("BTN")]
     STYLE_Q = style_query()
     # THE PAGES A SEARCH ENGINE REACHES FIRST HAD THE LEAST IN THEIR HEAD.
     # Every one of the 33,683 bill pages carries a description, a canonical

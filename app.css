@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.57 */
+/* GRANITE_VERSION: 2026-09-07.58 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -208,17 +208,63 @@ line-height:22px}
   .fbk{min-height:44px;line-height:28px}
   .fbknote{flex:1 1 100%}
 }
+/* THE HEADER TABS. Seven sections, and until now the only thing that said
+   which one you were on was a 2px pine rule under a 14px grey word -- at a
+   glance indistinguishable from the six beside it. On a phone it was worse:
+   the tap-target minimum makes each anchor 44px tall around a 17px word, so
+   the rule sat 25px below the thing it marked and a whole rule had to exist
+   to turn it into an underline instead.
+
+   So a section is a box. Its own padding, its own hover, and the current one
+   filled and outlined in pine -- which holds at any box height and needs no
+   second rule for the phone. NOT solid pine: this file keeps that for "do
+   this" (the search button, the feedback block). A tab is where you are, not
+   something to press.
+
+   .navtabs is a wrapper the links did not have. It exists so the strip wraps
+   as one unit -- identity and control on the first line, the seven sections
+   on their own beneath -- rather than the links wrapping through the middle
+   of the row and leaving the theme control alone on a line. Both emitters
+   write it: bills.html, which every one of the 33,683 record pages is built
+   from, and build_pages.py's shell() for the other five pages. */
+nav.top{background:var(--surface);border-bottom:1px solid var(--rule)}
+nav.top .in{max-width:1180px;margin:0 auto;padding:9px 24px;display:flex;
+align-items:center;gap:6px 18px;flex-wrap:wrap}
+nav.top .brand{font-size:16px;font-weight:600;flex:0 0 auto}
+.navtabs{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
+nav.top a{font-size:14px;text-decoration:none;color:var(--ink-2);
+display:flex;align-items:center;min-height:36px;padding:0 12px;
+border:1px solid transparent;border-radius:var(--r-in);white-space:nowrap}
+nav.top a:hover{background:var(--wash);color:var(--ink)}
+nav.top a[aria-current]{background:var(--pine-soft);color:var(--pine);
+font-weight:600;border-color:var(--pine)}
+/* ONE ROW NEEDS 783px: the brand at 113, the strip at 529 with Legislators
+   as the current one, the control at 57 with Light as its label, two 18px
+   gaps and the 48px gutter -- measured in the browser, not added up from the
+   stylesheet. Left to the 720 breakpoint the strip would wrap through itself
+   between 720 and 783 and the last sections would end up under the brand, so
+   it splits at 860 -- a tenth of the requirement as slack for a font that
+   loads late or not at all, and, better than a number of its own, the width
+   at which four other things here already give up a column: the facet
+   sidebar, the footer, .ctwo and the legislator finder. Below it the row
+   splits on purpose: identity and control first, the seven sections
+   beneath. */
+@media (max-width:860px){
+  nav.top .in{padding:8px 24px}
+  /* order:3, because the strip is the second of three children and a
+     full-width flex item only starts a new line where it sits. */
+  .navtabs{flex:1 0 100%;order:3}
+}
+@media (max-width:720px){
+  nav.top .in{gap:6px 14px;padding:8px 14px}
+  nav.top a{min-height:44px;padding:0 11px}
+  .themer{min-height:44px}
+}
 .themer{margin-left:auto;font-size:14px;color:var(--ink-2);
 border:1px solid var(--edge);border-radius:var(--r-in);
 padding:3px 11px;background:var(--surface);cursor:pointer;
 font-variant-numeric:tabular-nums;flex:0 0 auto}
 .themer:hover{border-color:var(--pine);color:var(--pine);background:var(--paper)}
-@media (max-width:720px){
-  /* The nav wraps to two rows on a phone and margin-left:auto on a wrapped
-     flex item pushes it to the end of ITS row, which left the control alone
-     on a line of its own. Left alone it just follows the last link. */
-  .themer{margin-left:0;min-height:44px}
-}
 /* ------------------------------------------------------------------------
    Rules that BOTH stylesheets need, copied into style.css by build_pages.py
    the way the palette is. The homepage is built by build_pages.py and loads
@@ -319,11 +365,7 @@ a{color:var(--pine)}
 /* Two weights on the scale, and the browser's default bold is a
    third one nobody chose. */
 b,strong,h1,h2,h3,h4{font-weight:600}button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
-nav.top{background:var(--surface);border-bottom:1px solid var(--rule)}
-nav.top .in{max-width:1180px;margin:0 auto;padding:13px 24px;display:flex;align-items:baseline;gap:24px;flex-wrap:wrap}
-nav.top .brand{font-size:16px;font-weight:600}
-nav.top a{font-size:14px;text-decoration:none;color:var(--ink-2)}
-nav.top a[aria-current]{color:var(--ink);font-weight:600;box-shadow:0 2px 0 var(--pine)}
+/* The nav is a shared component: see THE HEADER TABS above. */
 .searchrow{background:var(--surface);border-bottom:1px solid var(--rule)}
 .searchrow .in{max-width:1180px;margin:0 auto;padding:14px 24px}
 /* Capped. At 1440 the field was 962px of empty box; the placeholder ends
@@ -996,25 +1038,13 @@ text-align:center;color:var(--ink-2);font-size:14px}
   .twoup{grid-template-columns:1fr}
   .entry{grid-template-columns:1fr}
   .statgrid{grid-template-columns:1fr 1fr}
-  nav.top .in{flex-wrap:wrap;gap:10px 14px;padding:10px 14px}
-  nav.top a{font-size:14px}
-  /* THE CURRENT-PAGE RULE WAS 25px BELOW ITS OWN WORD. box-shadow draws on
-     the box, and the 44px tap-target minimum below makes this anchor 44px
-     tall around a 17px word -- so on a phone the 2px pine rule sat under
-     the middle of nothing, beside the row the links had wrapped onto.
-     Underlining the text puts the same rule back on the thing it marks,
-     whatever the box does. Above 720px the anchor is only as tall as its
-     text and the box-shadow is already in the right place. */
-  nav.top a[aria-current]{box-shadow:none;text-decoration:underline;
-    text-decoration-color:var(--pine);text-decoration-thickness:2px;
-    text-underline-offset:5px}
   /* The supporting text carries the site's hedging -- "estimated within
      +/- 5 min", the date of a proceeding, a sign-in count's caveat -- and
      at 12px on a phone it was the least readable part of the page. */
   .cmeta,.note,.qhint,.cite,.tolnote,.vbox p,.stn .w,.tnote,.corrections{font-size:14px}
   .m{font-size:14px}
   .fopt{padding:6px 0}
-  button,.hit,summary,nav.top a,.detail{min-height:44px}
+  button,.hit,summary,.detail{min-height:44px}
   .jump{min-height:36px;padding:6px 10px}
 }
 @media (max-width: 420px){

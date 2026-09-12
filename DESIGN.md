@@ -261,6 +261,61 @@ for a person to call.
 
 ---
 
+## The header tabs
+
+Seven sections, and the only thing that said which one you were looking at
+was a 2px pine rule under a 14px grey word. The six beside it were the same
+word in the same grey, so "where am I" took a second look every time. On a
+phone it was worse than quiet: the tap-target minimum makes each anchor 44px
+tall around a 17px word, so `box-shadow: 0 2px 0` drew the rule 25px *below*
+the label, and a second rule existed in both stylesheets to turn it into a
+text underline instead.
+
+Now a section is a box: its own padding, its own hover (`--wash`), and the
+current one filled `--pine-soft`, outlined `--pine`, labelled `--pine` at
+600. The fill holds at any box height, so the phone needs no special rule at
+all and the underline workaround is gone. It is deliberately **not** solid
+pine — this site keeps that for "do this" (the search button, the feedback
+block), and a tab is where you are, not something to press. 9.34:1 in light
+and 5.70:1 in dark for the label; the border is 10.92:1 and 6.60:1 against
+the band, so the shape survives on a bad screen in sunlight.
+
+The links gained a wrapper, `.navtabs`, which is the whole reason the layout
+works: the strip wraps as one unit instead of the links wrapping through the
+middle of the row. One row needs **783px** — brand 113, strip 529, control
+57, two 18px gaps, 48px gutter, measured in the browser rather than added up
+from the stylesheet — so below 860px the row splits, identity and control on
+the first line and the seven sections beneath. 860 is not a new number: the
+facet sidebar, the footer, `.ctwo` and the legislator finder already give up
+a column there.
+
+| width | nav height | before |
+|---|---|---|
+| 1440 | 55px, one row | 56px |
+| 768 | 88px, two zones | 56px |
+| 360 | 159px, two zones | 132px |
+
+The phone costs 27px more chrome than it did. That is the trade and it was
+made on purpose: 27px once, against a second look on every page.
+
+**Two traps worth recording.** The nav had been kept by hand in both
+stylesheets, like the palette before it, so it moved into app.css's SHARED
+region and `build_pages.py` reads it — and the comment left behind in
+`build_pages.py` explaining where it went *named the substitution slot*. The
+build does not know it is inside a comment: the whole shared region was
+pasted into the middle of it, and because a CSS comment does not nest, the
+first `*/` in the pasted region ended the comment and the rest was parsed as
+live CSS. Nothing errored; `style.css` simply had two copies of everything
+and a line of garbage. Grepping the built file for one distinctive rule is
+what found it.
+
+The second is the same lesson the rest of this file keeps learning. The 783px
+figure started life as 872px, added up from label widths in the stylesheet,
+which put the breakpoint 96px too early and would have stacked the nav on
+every 800px laptop for no reason. Measuring it took one function call.
+
+---
+
 ## Diagrams
 
 The first one is on *How a bill becomes law*, and it is **not an image**. It
