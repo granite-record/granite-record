@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.127
+# GRANITE_VERSION: 2026-09-04.128
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1129,12 +1129,42 @@ def _palette():
     It also fails if the two stylesheets stop sharing one palette.
     build_pages.py used to carry its own copy, which had drifted: --st-veto
     was #7C2D3A in one file and #8C4A2F in the other.
+
+    BOTH SCHEMES, since 12 September. Dark mode shipped with its pairs
+    measured by hand and nothing to stop them drifting, which is the same
+    position the light palette was in before the 7 September audit. The two
+    things checked here that a hand measurement keeps forgetting:
+
+      * Dark defines EVERY colour the light block does. A token missing from
+        one scheme is not a slightly-wrong colour, it is the light value
+        surviving into the dark page -- white text on a white chip. This is
+        the failure mode, and it is the cheap one to catch.
+      * A card is still visibly a card. The note at the top of app.css
+        records that the page ground was darkened on purpose to put 1.20:1
+        between a card and the paper behind it, 1.08:1 being below the level
+        at which most people see an edge at all. The first dark ground
+        drafted gave that back at 1.13:1 and looked fine in a screenshot,
+        because an edge you cannot see is exactly what a screenshot cannot
+        show.
     """
-    def root_of(text):
-        i = text.find(":root{")
+    def root_of(text, which="light"):
+        # Everything the palette owns stops at the marker; build_pages.py
+        # reads the same region, so the two cannot disagree about where the
+        # palette ends.
+        end = text.find("/* PALETTE END")
+        head = text[:end] if end > 0 else text
+        i = head.find(":root{")
         if i < 0:
             return {}
-        block = text[i:text.index("}", text.index('--sans:', i)) + 1]
+        shut = head.index("}", head.index("--sans:", i))
+        if which == "light":
+            block = head[i:shut + 1]
+        else:
+            rest = head[shut + 1:]
+            j = rest.find(":root{")
+            if j < 0:
+                return {}
+            block = rest[j:rest.index("}", j) + 1]
         # Keyed WITHOUT the leading "--", because that is how the pairs
         # below name them and a dict keyed the other way silently matches
         # nothing while every assertion still runs.
@@ -1158,18 +1188,45 @@ def _palette():
     css = Path("app.css")
     if not css.exists():
         return "skip", "app.css is not there"
-    tok = root_of(css.read_text(encoding="utf-8"))
+    text = css.read_text(encoding="utf-8")
+    tok = root_of(text, "light")
     assert tok, "app.css has no :root block this can read"
+    dark = root_of(text, "dark")
+    assert dark, (
+        "app.css has no dark :root block. It is a "
+        "@media(prefers-color-scheme:dark) block under the light one, above "
+        "the /* PALETTE END */ marker.")
+
+    # EVERY COLOUR, IN BOTH. A token defined once is the light value showing
+    # through on the dark page.
+    missing = sorted(set(tok) - set(dark))
+    assert not missing, (
+        "the dark palette does not redefine " + ", ".join("--" + m for m in missing)
+        + ". Every token is redefined in both blocks; a colour inherited from "
+        "the light block is how white text ends up on a white chip.")
+    spare = sorted(set(dark) - set(tok))
+    assert not spare, (
+        "the dark palette defines " + ", ".join("--" + s for s in spare)
+        + ", which the light one does not. A token that exists in one scheme "
+        "only will fall back to nothing in the other.")
 
     built = Path("site/style.css")
     if built.exists():
-        other = root_of(built.read_text(encoding="utf-8"))
-        drift = [k for k in set(tok) & set(other)
-                 if tok[k].lower() != other[k].lower()]
-        assert not drift, (
-            f"app.css and style.css disagree about {', '.join(sorted(drift))}. "
-            "The palette is meant to have one definition; build_pages.py reads "
-            "app.css's.")
+        btext = built.read_text(encoding="utf-8")
+        for which in ("light", "dark"):
+            other = root_of(btext, which)
+            mine = tok if which == "light" else dark
+            drift = [k for k in set(mine) & set(other)
+                     if mine[k].lower() != other[k].lower()]
+            assert not drift, (
+                f"app.css and style.css disagree about {', '.join(sorted(drift))} "
+                f"in the {which} palette. The palette is meant to have one "
+                "definition; build_pages.py reads app.css's.")
+            assert other or which == "light", (
+                "site/style.css carries no dark palette. build_pages.py's "
+                "palette() reads app.css from :root to the /* PALETTE END */ "
+                "marker; if it stops earlier the pages built there stay light "
+                "while every record page goes dark.")
 
     TEXT = [("ink", "surface"), ("ink", "paper"),
             ("ink-2", "surface"), ("ink-2", "paper"), ("ink-2", "wash"),
@@ -1180,17 +1237,124 @@ def _palette():
              ("pine", "surface"), ("pine", "paper")]
 
     bad, n = [], 0
-    for pairs, need, kind in ((TEXT, 4.5, "text"), (BOUND, 3.0, "boundary")):
-        for fg, bg in pairs:
-            if fg not in tok or bg not in tok:
-                bad.append(f"--{fg} or --{bg} is not defined")
-                continue
-            n += 1
-            r = ratio(tok[fg], tok[bg])
-            if r < need:
-                bad.append(f"--{fg} on --{bg} is {r:.2f}:1, {kind} needs {need}")
+    for scheme, t in (("light", tok), ("dark", dark)):
+        for pairs, need, kind in ((TEXT, 4.5, "text"), (BOUND, 3.0, "boundary")):
+            for fg, bg in pairs:
+                if fg not in t or bg not in t:
+                    bad.append(f"--{fg} or --{bg} is not defined in {scheme}")
+                    continue
+                n += 1
+                r = ratio(t[fg], t[bg])
+                if r < need:
+                    bad.append(f"--{fg} on --{bg} is {r:.2f}:1 in {scheme}, "
+                               f"{kind} needs {need}")
+        # A CARD HAS TO LOOK LIKE AN OBJECT. Not a WCAG threshold -- it is
+        # this site's own decision, recorded at the top of app.css, and the
+        # floor is set below the 1.20:1 that decision picked rather than at
+        # it, so a deliberate future adjustment is not a failure.
+        sep = ratio(t["surface"], t["paper"])
+        if sep < 1.15:
+            bad.append(
+                f"a card is {sep:.2f}:1 against the page in {scheme}, and the "
+                "note at the top of app.css sets 1.20:1 on purpose -- at "
+                "1.08:1 most people see no edge at all. A screenshot cannot "
+                "show this; only the number can.")
     assert not bad, "; ".join(bad[:4])
-    return "ok", f"{n} pairs, all above their threshold"
+    return "ok", f"{n} pairs across both schemes, all above their threshold"
+
+
+@check("frontend", "nowrap is never applied to a block by element name")
+def _nowrap():
+    """The shape of the defect that made every legislator page scroll sideways.
+
+    `.votes td.o .pass,.votes td.o .fail,.votes td.o i{white-space:nowrap}`
+    was written to keep the outcome words on one line -- "Adopted", "292-25".
+    The third selector names an ELEMENT, so it also caught `.votes td.o .thr`,
+    which is an <i> in the same cell, is `display:block`, and holds a
+    sentence: "A majority voted yes, but this needed 214 (two thirds of
+    members voting)". At 169px of column that wanted 519px, and with nowrap it
+    pushed the document 435px wide at 768 and 210px at 1440 -- on every
+    legislator page carrying a two-thirds vote, which is most of them. Below
+    720px the table is already reflowed into blocks, which is why the
+    accessibility pass of 11 September, done at phone widths, found nothing.
+
+    WHAT THIS CANNOT DO, said plainly: it does not measure overflow. That
+    needs layout, and preflight has no layout -- dom_stub.js is a shim whose
+    querySelectorAll returns []. The width sweep is a browser job and lives in
+    DESIGN.md. What is checkable here is the mistake itself, and it is a
+    narrow one worth naming: a nowrap rule whose last compound is a bare
+    element name reaches everything of that element type in that context,
+    including something a later rule gave a class and made a block. A block
+    that cannot wrap and has no scroller of its own overflows as soon as its
+    text is long, and "is its text long" is not a question CSS can be asked.
+
+    So: keep nowrap on classes. `.votes td.o .thr` needed the exception and
+    now carries `white-space:normal` explicitly, which is also allowed.
+    """
+    css = Path("app.css")
+    if not css.exists():
+        return "skip", "app.css is not there"
+    text = re.sub(r"/\*.*?\*/", "", css.read_text(encoding="utf-8"), flags=re.S)
+
+    rules = re.findall(r"([^{}]+)\{([^{}]*)\}", text)
+    nowrap, blocks, released = [], [], set()
+    for sel, body in rules:
+        sel = " ".join(sel.split())
+        if not sel or sel.startswith("@"):
+            continue
+        decls = body.replace(" ", "")
+        # The visually-hidden idiom carries nowrap and is exempt: it is 1px
+        # square and clipped, so it has no column to overflow. This is the
+        # `.vfull thead` rule that hides a table's header from sight while
+        # keeping it for a screen reader.
+        hidden = "position:absolute" in decls and ("clip:" in decls
+                                                   or "width:1px" in decls)
+        for one in sel.split(","):
+            one = one.strip()
+            if not one:
+                continue
+            if "white-space:nowrap" in decls and not hidden:
+                nowrap.append(one)
+            if "white-space:normal" in decls:
+                released.add(one)
+            if "display:block" in decls:
+                blocks.append(one)
+
+    # The last compound of a selector, and everything before it.
+    def split_last(s):
+        parts = s.replace(" > ", " ").split()
+        return " ".join(parts[:-1]), parts[-1] if parts else ""
+
+    bad = []
+    for nsel in nowrap:
+        prefix, last = split_last(nsel)
+        # Only a BARE element name is the trap: .thr or [data-x] name one
+        # thing, `i` names every <i> that happens to be there.
+        if not re.fullmatch(r"[a-z]+", last):
+            continue
+        for bsel in blocks:
+            if bsel in released:
+                continue
+            bprefix, blast = split_last(bsel)
+            if bprefix != prefix or blast == last:
+                continue
+            # And the block must be named by a CLASS. Two bare element names
+            # in the same place are two different elements -- `thead` does not
+            # match a `tbody` -- and flagging that pair was this check's first
+            # and only false positive. A class can sit on an element of the
+            # nowrap rule's type, which is exactly how `.thr` was an <i>.
+            if re.fullmatch(r"[a-z]+", blast):
+                continue
+            bad.append(
+                f"{{{nsel}}} sets white-space:nowrap by element name, and "
+                f"{{{bsel}}} in the same place is display:block. A block that "
+                "cannot wrap overflows its column as soon as its text is a "
+                "sentence -- name the class, or give the block "
+                "white-space:normal.")
+    assert not bad, "; ".join(bad[:3])
+    return "ok", (f"{len(nowrap)} nowrap selectors, "
+                  f"{sum(1 for s in nowrap if re.fullmatch(r'[a-z]+', split_last(s)[1]))}"
+                  " of them by element name, none reaching a block")
 
 
 # ============================================================= code: pipeline ==

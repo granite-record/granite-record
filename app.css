@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.46 */
+/* GRANITE_VERSION: 2026-09-07.47 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -367,6 +367,23 @@ a.cite{color:var(--pine)}
 .status.s-law{background:var(--st-law-bg);border-left-color:var(--st-law)}.status.s-law .lab{color:var(--st-law)}
 .status.s-done{background:var(--st-done-bg);border-left-color:var(--st-done)}.status.s-done .lab{color:var(--st-done)}
 .status.s-veto{background:var(--st-veto-bg);border-left-color:var(--st-veto)}.status.s-veto .lab{color:var(--st-veto)}
+/* A LAW'S STATUS BOX SAID THE CHIP'S WORDS BACK. On a signed bill the chip in
+   the card head reads "Signed into law", the rail shows four filled stops,
+   and this panel said CURRENT STATUS / Signed into law underneath both. Three
+   statements of one fact, and the panel was the loudest.
+   Only for s-law. Measured across all six kinds on the current term before
+   touching it, because "redundant" was true of the bill in front of us and
+   false of 1,585 of the term's 2,234: a killed bill's chip says "Killed" and
+   its box says "House: INEXPEDIENT TO LEGISLATE"; HB 54's chip says "Laid on
+   the table" and its box says "House: PASSED/ADOPTED - Senate: LAID ON
+   TABLE", which is two chambers the rail draws as glyphs and never spells
+   out. Those stay.
+   What does NOT go, in any case, is the line under it: the chapter number the
+   bill became and the link to its text appear nowhere else on the page, so
+   the panel loses its heading, its value and its chrome, and keeps its
+   citation. */
+.status.s-law{background:none;border-left:0;padding:0}
+.status.s-law > .lab,.status.s-law > .val{display:none}
 .rc{border:1px solid var(--rule);border-radius:var(--r-out);padding:15px 17px;margin-bottom:14px}
 .rchead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
 .rcq{font-size:16px;font-weight:600}.rcd{font-size:14px;color:var(--ink-2)}
@@ -792,7 +809,25 @@ padding:22px max(0px,calc(50% - 590px))}
    their own and the footer read as four stray lines. The gutter belongs to
    the band; the measure belongs to this box; the inline flow is left
    alone. */
-footer .in{max-width:var(--measure);margin:0;padding:0 24px}
+/* ANOTHER PASS, because aligning it was only half the job. Left-aligning the
+   column put its first word under the page's first word, which was the fix,
+   and left a 560px strip of text in an 1180px band with 620px of empty
+   footer beside it -- the same "narrow measure in a wide box" this file keeps
+   answering, now in the footer. It reads as offset rather than as placed.
+   Two columns, because the footer is three short things and not one: what
+   this is, how to report an error, and where the bulk data is. The mechanism
+   is multi-column and not grid or flex for the reason recorded above -- both
+   of those promote every child to an item, and the "How this is made" link
+   is a direct child, so it would take a row of its own. Columns leave inline
+   flow alone. The two element blocks are told not to split across the
+   boundary; the opening sentence is allowed to, and is the only thing that
+   can. One column again below 860px, the width the facet rail collapses at,
+   where there is no spare room to put a second one. */
+footer .in{max-width:1180px;margin:0;padding:0 24px;
+columns:2;column-gap:56px}
+footer .corrections,footer .footdata{break-inside:avoid}
+footer .footdata{margin:0}
+@media (max-width:860px){footer .in{columns:1;max-width:var(--measure)}}
 /* Here rather than in the narrow-screens block 90 lines above, because these
    two rules are declared after it and would outrank it on source order --
    which is exactly what happened on the first attempt: the nav and the
@@ -1212,7 +1247,11 @@ table.cov{border-collapse:collapse;font-size:13px;width:100%;min-width:420px}
 /* The standing note sits above the official analysis and must not be mistaken
    for it. Same box, different edge: this site's words get the pine rule, the
    General Court's keep the plain one. */
-.anbox.billnote{border-left:3px solid var(--pine)}
+/* The rule needs room. .anbox carries no padding -- it is a bare block
+   everywhere else -- so adding a left border to it put the pine rule hard
+   against the first letter of every line, on the one note the site writes in
+   its own voice. 15px is the gap .shows uses for the same device. */
+.anbox.billnote{border-left:3px solid var(--pine);padding:2px 0 4px 15px}
 .anbox.billnote .anlab{color:var(--pine)}
 
 /* Who moved it, under a voice vote's heading rather than inside it. */
