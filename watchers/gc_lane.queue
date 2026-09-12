@@ -86,6 +86,17 @@ watchers/rest.py 1800 after-sponsor-probe
 fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-02
 watchers/rest.py 3600 after-bills-02
 
+# FINISH 2023 BEFORE PIVOTING, on the person's condition of the 12th: "if bill
+# text is retrieved going back to 2023 ... we're fine to pivot to the Senate
+# calendar proving run and other quicker fetches".
+#
+# 2024 is complete, 1,300 of 1,300. 2023 is 470 of 638 because bills-02 spent
+# most of its 800 finishing 2024. 168 requests, under an hour, and it closes
+# the whole 2023-2024 term rather than leaving it three-quarters done -- which
+# matters because a term is the unit a reader browses in.
+fetch_legislation.py --all --from 2023 --to 2023 --kinds HB,SB,CACR --delay 20 --budget 200 --note finish-2023
+watchers/rest.py 1800 after-finish-2023
+
 # THE SENATE CALENDARS OF 1998-2008, asked for by the person on the 12th.
 # 664 of them are still marked "wanted" in archive/queue.csv from 9 September,
 # each with "HTTP Error 403: Forbidden" against it, and that 403 is the reason
