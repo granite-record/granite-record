@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.51 */
+/* GRANITE_VERSION: 2026-09-07.52 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -518,6 +518,42 @@ letter-spacing:.04em;text-transform:uppercase}
 .card .pane > table,
 .card .pane > .docket,
 .card .pane > .full{max-width:none}
+
+/* ---- TWO COLUMNS ON A BILL'S OWN PAGE ---------------------------------
+   The pane is 1094px at 1440 and the prose in it is 560px, because 560px is
+   76 characters and the floor is 80. Those two facts cannot both be fixed by
+   a width: the prose cannot fill 1094px, so the box should not be 1094px of
+   single column. The record moves beside the prose instead.
+
+   The DOM order is the phone order -- analysis, then the facts table -- and
+   that is deliberate: one column below this breakpoint means DOM order is
+   reading order, so the table lands under the analysis with no rule needed.
+   Here it is lifted into the second column's first row, level with the top of
+   the prose.
+
+   1100px and not 860px: the second column needs about 440px to hold "Amends
+   RSA chapters" and a status field without wrapping every value, and at 860
+   the pane leaves it 206px.
+
+   Everything unassigned stays in the prose column, which is the safe
+   direction -- a block added later is narrow, not broken. */
+@media (min-width:1100px){
+  .card.focus .pane{display:grid;
+    grid-template-columns:minmax(0,var(--measure)) minmax(0,1fr);
+    column-gap:46px;row-gap:22px;align-items:start}
+  /* The rhythm rule below sets margin-top on every adjacent child; in a grid
+     that double-counts against row-gap and pushed the second column 18px out
+     of line with the first. row-gap owns the spacing here. */
+  .card.focus .pane > *{grid-column:1;margin-top:0;margin-bottom:0}
+  .card.focus .pane > .facts{grid-column:2;grid-row:1;max-width:none}
+  .card.focus .pane > .docket,
+  .card.focus .pane > .rc,
+  .card.focus .pane > .stn,
+  .card.focus .pane > .chosen,
+  .card.focus .pane > .fnwrap,
+  .card.focus .pane > table,
+  .card.focus .pane > .full{grid-column:1 / -1}
+}
 /* THE DOCKET IS A TABLE, AND THE RULE ABOVE ALREADY SAYS A TABLE FILLS ITS
    PANE. It is built from <ul>/<li> rather than <table>, so it was being
    capped as though it were prose -- and it is not prose: it is a date and the
@@ -929,14 +965,25 @@ clip:rect(0 0 0 0);white-space:nowrap;border:0}
 /* The "On the record" table: the General Court's own status fields, quoted.
    Ported verbatim from build_bill_pages.py, which rendered these bills a
    second time in Python until 7 September. */
-.facts{margin:14px 0 4px}
-.facts h3{font-size:14px;font-weight:600;color:var(--ink-2);letter-spacing:.04em;
-text-transform:uppercase;margin:0 0 4px}
-.facttab{width:auto;border-collapse:collapse;font-size:14px;margin:8px 0}
-.facttab th,.facttab td{padding:6px 16px 6px 0;border-bottom:1px solid var(--rule);
+/* A PANEL, because it is the one block on the summary that is a record
+   rather than a sentence, and because at wide widths it sits on its own
+   beside the prose and needs an edge to be a thing rather than a stray
+   table. */
+.facts{background:var(--surface);border:1px solid var(--rule-2);
+border-radius:var(--r-out);padding:13px 15px}
+.facts h3{font-size:12px;font-weight:600;color:var(--ink-2);letter-spacing:.05em;
+text-transform:uppercase;margin:0 0 8px}
+.facttab{width:100%;border-collapse:collapse;font-size:14px;margin:0}
+.facttab th,.facttab td{padding:7px 0;border-bottom:1px solid var(--rule);
 text-align:left;vertical-align:top}
-.facttab th{color:var(--ink-2);font-weight:600;white-space:nowrap}
-@media(max-width:620px){.facttab th,.facttab td{padding:6px 10px 6px 0}}
+.facttab tr:last-child th,.facttab tr:last-child td{border-bottom:0}
+/* The label column is fixed rather than shrink-to-wrap: "House Committee" and
+   "Amends RSA chapters" are the longest and the values line up under each
+   other either way. Not nowrap -- "Amends RSA chapters" wants two lines in a
+   side column and nowrap on a th is how a table pushes a page sideways. */
+.facttab th{color:var(--ink-2);font-weight:600;width:42%;padding-right:14px}
+.facts .src{margin:10px 0 0}
+@media (max-width:620px){.facttab th{width:46%}}
 
 /* ==================================== a legislator's page and a committee's ==
    Both are this app with one record open, the way a bill's page is, so they

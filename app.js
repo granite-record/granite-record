@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.54
+// GRANITE_VERSION: 2026-09-07.56
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -882,20 +882,88 @@ function archivedNote(d){
     it. Not yet fetched for this term: ${and(gaps)}.`);
 }
 
+// ===================================================== the bill's own facts ==
+// THE GENERAL COURT'S OWN FIELDS, AS A TABLE, replacing the CURRENT STATUS
+// panel. On a law that panel said the card's chip back word for word, and
+// where it did not it concatenated three separate fields into one line --
+// "House: PASSED/ADOPTED - Senate: LAID ON TABLE" -- which a reader had to
+// unpick. They are three fields, so they are three rows.
+//
+// Measured on the current term's 847 bills before this was written: every one
+// carries a general status, 763 a House status, 526 a Senate status, and the
+// two chambers disagree on 321 of them. The per-chamber rows are not
+// decoration, which is why they are kept and the panel is not.
+//
+// CHAPTER IS NOT AN RSA CHAPTER. Both are called a chapter and they are
+// different numberings. `chapter` is the session law: HB 1 of 2025 became
+// Chapter 140 of the Laws of 2025. The RSA chapters are the ones the bill
+// amends, and HB 1 amends five of them. Two rows, and only the RSA row is
+// linked -- every URL there is one already used elsewhere on this page, where
+// gc.nh.gov's address for a chaptered law has never been checked and guessing
+// it would put a broken link on 305 bills of this term alone.
+function rsaChapters(d){
+  const seen=new Map();
+  for (const [k,u] of Object.entries(d.rsa||{})){
+    const m=/^RSA\s+([0-9]+(?:-[A-Za-z]+)?)/.exec(k);
+    // The link is to the first SECTION of that chapter the bill cites,
+    // because that is the address this site has and can stand behind. It
+    // lands the reader in the right chapter either way.
+    if(m && !seen.has(m[1])) seen.set(m[1], u);
+  }
+  return [...seen.entries()];
+}
+
+function factsTable(b,d){
+  const f=d.facts||{};
+  const rows=[];
+  const add=(k,v)=>{ if(v) rows.push([k,v]); };
+
+  // NOT facts.gen_status, WHICH IS NOT A STATUS ON MOST BILLS. Counted over
+  // the current term's 2,234: it reads "HOUSE" on 1,065 and "SENATE" on 454
+  // -- 68% -- because the field records which chamber the bill is in, not
+  // what happened to it. A row labelled "Bill Status" saying "HOUSE" is
+  // worse than no row. Where it IS a status (SIGNED BY GOVERNOR, VETOED BY
+  // GOVERNOR, PASSED, LAW WITHOUT SIGNATURE, VETO OVERRIDDEN, 715 bills) the
+  // site's own classification says the same thing in words a reader uses, so
+  // nothing is lost by taking it from there for all of them.
+  add("Bill Status", esc(b.status||d.next_step||""));
+  // The Court's own per-chamber fields, which ARE the extra information: 763
+  // bills carry a House status, 526 a Senate status, and the two differ on
+  // 321 of them.
+  if(f.house_status) add("House Status", esc(f.house_status));
+  if(f.senate_status && f.senate_status!==f.house_status)
+    add("Senate Status", esc(f.senate_status));
+  if(d.chapter)
+    add("Chapter", `Chapter ${esc(d.chapter)}`
+      + (d.year?`, Laws of ${esc(d.year)}`:""));
+  const ch=rsaChapters(d);
+  if(ch.length)
+    add(ch.length===1?"Amends RSA chapter":"Amends RSA chapters",
+      ch.map(([n,u])=>`<a class="rsa" href="${esc(u)}" target="_blank"`
+        +` rel="noopener">${esc(n)}</a>`).join(", "));
+  if(d.house_committee) add("House Committee", cmteLink("House "+d.house_committee));
+  if(d.senate_committee) add("Senate Committee", cmteLink("Senate "+d.senate_committee));
+  add("Subject", esc(d.subject||""));
+  add("Introduced", esc(f.date_introduced||""));
+  add("LSR", esc(f.lsr||""));
+  if(!rows.length) return "";
+  return `<section class="facts"><h3>On the record</h3>
+    <table class="facttab"><tbody>${rows.map(([k,v])=>
+      `<tr><th scope="row">${esc(k)}</th><td>${v}</td></tr>`).join("")}</tbody></table>
+    ${d.docket_url?`<p class="src"><a href="${esc(d.docket_url)}" target="_blank"
+      rel="noopener">This bill on gencourt &#8599;</a></p>`:""}</section>`;
+}
+
 function renderSummary(b,d,rsa){
   const _an=billNote(d)+analysis(d,rsa);
-  // The citation at the end of a docket line names the journal or calendar
-  // that recorded the action. Linking it turns each line from something the
-  // reader has to take on trust into something they can check.
-  return _an + `
+  // THE FACTS TABLE COMES AFTER THE ANALYSIS IN THE DOM, and that is the
+  // whole of how it behaves on a phone: one column there, so DOM order is
+  // reading order and the table sits below the analysis. In the two-column
+  // view the stylesheet puts it in the second column's first row, level with
+  // the top of the prose. One order, two layouts, no duplicated markup.
+  return _an + factsTable(b,d) + `
 ${d._error?`<div class="loaderr"><b>This bill's detail did not
     load.</b><span>${esc(d._error)}</span></div>`:""}
-    <div class="status ${KIND[b.kind]}"><div class="lab">CURRENT STATUS</div>
-    <div class="val">${esc(d.next_step)}</div>
-    ${d.status_source?`<div style="font-size:12px;color:var(--ink-2);margin-top:6px">
-      ${esc(d.status_source)}${d.chapter?` \u00b7 Chapter ${esc(d.chapter)}`:""}
-      ${d.text_url?` \u00b7 <a href="${esc(d.text_url)}" target="_blank"
-        rel="noopener">bill text</a>`:""}</div>`:""}</div>
     ${(d.notes||[]).map(x=>`<p class="note">${esc(x)}</p>`).join("")}
     ${(d.stages&&d.stages.length)
       ? `<div class="story">${d.stages.map(st=>
@@ -1654,9 +1722,25 @@ function renderDetail(b,d){
         renderBillText(b,d,rsa)}</section>`
     : "";
 
+  // BILL TEXT SITS SECOND, and the data-t numbers are deliberately NOT
+  // renumbered. They are the tab's identity: PAGE_TAB holds one, the pane
+  // carries the matching one, and a bookmark or a back button restores by it.
+  // Renumbering to match the new order would silently repoint every saved
+  // tab -- somebody's link to the Votes tab would open Bill Text. So the
+  // order here is the DOM order, which is what a reader and the keyboard both
+  // follow, and 6 stays 6.
+  const btTab=(d.nver||0)>1||(d.namd||0)
+    ? `<button class="tab" role="tab" id="tab_${b.id}_6" aria-controls="pane_${b.id}_6"
+        aria-selected="false" data-t="6">Bill Text${d.nver>1?` (${d.nver})`:""}</button>`
+    : "";
+  const btPane=(d.nver||0)>1||(d.namd||0)
+    ? `<div class="pane" role="tabpanel" id="pane_${b.id}_6" aria-labelledby="tab_${b.id}_6"
+        tabindex="0" data-t="6" hidden>${renderVersions(b,d)}</div>`
+    : "";
+
   return `<div class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab_${b.id}_0" aria-controls="pane_${b.id}_0" aria-selected="true" data-t="0">Summary</button>
-
+    ${btTab}
     <button class="tab" role="tab" id="tab_${b.id}_1" aria-controls="pane_${b.id}_1" aria-selected="false" data-t="1">Votes${
         // What the pane draws, not the index row's count. b.nrc is the roll
         // calls that are not procedural; the pane draws d.rollcalls, which
@@ -1672,16 +1756,12 @@ function renderDetail(b,d){
 
     <button class="tab" role="tab" id="tab_${b.id}_5" aria-controls="pane_${b.id}_5"
       aria-selected="false" data-t="5">Documents${
-        (d.documents||[]).length?` (${d.documents.length})`:""}</button>${
-    /* ONLY WHERE THERE IS SOMETHING TO SHOW. 1,149 of 2,234 bills have a
-       second version; a tab on the other 1,085 would say "there is one
-       version" and fetch a file that is not there. nver comes from the
-       manifest build_bill_versions.py writes. */
-    (d.nver||0)>1||(d.namd||0)
-      ? `<button class="tab" role="tab" id="tab_${b.id}_6" aria-controls="pane_${b.id}_6"
-          aria-selected="false" data-t="6">Bill Text${d.nver>1?` (${d.nver})`:""}</button>`
-      : ""}</div>
+        (d.documents||[]).length?` (${d.documents.length})`:""}</button></div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_0" aria-labelledby="tab_${b.id}_0" tabindex="0" data-t="0">${renderSummary(b,d,rsa)}</div>
+    ${/* ONLY WHERE THERE IS SOMETHING TO SHOW. 1,149 of 2,234 bills have a
+          second version; a tab on the other 1,085 would say "there is one
+          version" and fetch a file that is not there. nver comes from the
+          manifest build_bill_versions.py writes. */ btPane}
     <div class="pane" role="tabpanel" id="pane_${b.id}_1" aria-labelledby="tab_${b.id}_1" tabindex="0" data-t="1" hidden>${paneNote("votes")}${renderVotes(b,d)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_2" aria-labelledby="tab_${b.id}_2" tabindex="0" data-t="2" hidden>${paneNote("hearings")}${renderHearings(b,d)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_3" aria-labelledby="tab_${b.id}_3" tabindex="0" data-t="3" hidden>${paneNote("reports")}${renderReports(b,d,rsa)}</div>
@@ -1689,11 +1769,7 @@ function renderDetail(b,d){
 
     <div class="pane" role="tabpanel" id="pane_${b.id}_4" aria-labelledby="tab_${b.id}_4" tabindex="0" data-t="4" hidden>${renderSponsors(b,d)}</div>
     <div class="pane" role="tabpanel" id="pane_${b.id}_5" aria-labelledby="tab_${b.id}_5"
-      tabindex="0" data-t="5" hidden>${renderDocuments(b,d)}</div>${
-    (d.nver||0)>1||(d.namd||0)
-      ? `<div class="pane" role="tabpanel" id="pane_${b.id}_6" aria-labelledby="tab_${b.id}_6"
-          tabindex="0" data-t="6" hidden>${renderVersions(b,d)}</div>`
-      : ""}${btsec}`;
+      tabindex="0" data-t="5" hidden>${renderDocuments(b,d)}</div>${btsec}`;
 }
 
 // ===================================================== member and committee ==
