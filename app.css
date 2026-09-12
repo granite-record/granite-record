@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.71 */
+/* GRANITE_VERSION: 2026-09-07.72 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -241,7 +241,21 @@ line-height:22px}
 nav.top{background:var(--surface);border-bottom:1px solid var(--rule)}
 nav.top .in{max-width:1180px;margin:0 auto;padding:9px 24px;display:flex;
 align-items:center;gap:6px 18px;flex-wrap:wrap}
-nav.top .brand{font-size:16px;font-weight:600;flex:0 0 auto}
+/* THE MARK, AS A MASK. An <img> cannot take the colour of the text beside
+   it and the nav is two colours deep -- near-white in light, #272D2E in dark
+   -- so the profile is a mask over `currentColor` and follows .brand's own
+   colour in both. One file, fetched once for 33,683 pages, and if it fails
+   to load the wordmark is still a wordmark. 15x24 because the drawn shape is
+   0.628 as wide as it is tall, measured with getBBox rather than guessed.
+   The whole lockup as an image was the other option and is worse: 16px of
+   serif drawn at 22px would be soft, it would not invert, and a reader could
+   not select the site's name. */
+nav.top .brand{font-size:16px;font-weight:600;flex:0 0 auto;
+display:inline-flex;align-items:center;gap:9px}
+nav.top .brand::before{content:"";flex:0 0 auto;width:15px;height:24px;
+background:currentColor;
+-webkit-mask:url(/mark.svg) center/contain no-repeat;
+mask:url(/mark.svg) center/contain no-repeat}
 .navtabs{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
 nav.top a{font-size:14px;text-decoration:none;color:var(--ink-2);
 display:flex;align-items:center;min-height:36px;padding:0 12px;

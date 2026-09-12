@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.5
+# GRANITE_VERSION: 2026-09-09.6
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -255,14 +255,69 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
                                 [f'<span class="offtel">{E(hours)}</span>']
                                 if hours else [],
                                 "Polling place"))
+        # A TOWN THAT VOTES IN MORE THAN ONE PLACE. Eight of them -- Berlin,
+        # Derry, Farmington, Goffstown, Hudson, Merrimack, Salem, Walpole --
+        # are one town in the district file this site's pages are named after
+        # and several voting wards on the Secretary of State's list. Naming
+        # one of four would be wrong three times out of four, so all of them
+        # are named, each with its ward.
+        for w in loc.get("polling_by_ward") or []:
+            hours = w.get("state_hours") or ""
+            rows.append(off_row(E(w.get("polling_place") or ""),
+                                [f'<span class="offtel">{E(hours)}</span>']
+                                if hours else [],
+                                f'Polling place, ward {E(w.get("ward"))}'))
         if rows:
             body.append('<ul class="offlist">' + "".join(rows) + "</ul>")
-        if not loc.get("polling_place"):
+        if not loc.get("polling_place") and not loc.get("polling_by_ward"):
             # The Secretary of State's own instruction where the field is
             # blank, which it is for 110 of the 331 rows.
             body.append('<p class="note">The Secretary of State\'s list has '
                         'no polling place recorded for here. The town clerk '
                         'above is who to ask.</p>')
+
+    # ---- who runs the town ------------------------------------------------
+    # THE QUESTION THIS PAGE COULD NOT ANSWER. It named everyone who
+    # represents a town in Concord and in Washington and nobody who represents
+    # it at home. This is NHDOT's "City and Town Officials of the State of New
+    # Hampshire", September 2025, parsed by parse_officials.py: 1,414 named
+    # offices across all 234 municipalities the directory covers.
+    #
+    # A city's wards share one selectboard, so the offices are looked up by
+    # the town's own slug and not the ward's -- a ward elects a councillor,
+    # and the town is what the board governs.
+    town_off = (off.get("_offices") or {}).get(slug(town, "0"))
+    if town_off and town_off.get("officials"):
+        body.append('<h2 class="offsec">Who runs ' + E(town) + '</h2>')
+        rows = []
+        for o in town_off["officials"]:
+            how = []
+            if o.get("phone"):
+                how.append(f'<span class="offtel">{E(o["phone"])}</span>')
+            if o.get("email"):
+                how.append(f'<a href="mailto:{E(o["email"])}">{E(o["email"])}</a>')
+            rows.append(off_row(f'<span class="mchip">{E(o["name"])}</span>',
+                                how, E(o.get("position") or "")))
+        body.append('<ul class="offlist">' + "".join(rows) + "</ul>")
+        how = []
+        if town_off.get("phone"):
+            how.append(f'<span class="offtel">{E(town_off["phone"])}</span>')
+        if town_off.get("email"):
+            how.append(f'<a href="mailto:{E(town_off["email"])}">'
+                       f'{E(town_off["email"])}</a>')
+        if town_off.get("website"):
+            how.append(f'<a href="{E(town_off["website"])}" rel="noopener">'
+                       f'{E(town)} town website</a>')
+        if town_off.get("mailing") or how:
+            body.append('<ul class="offlist">'
+                        + off_row(E(town_off.get("mailing") or town),
+                                  how, "Town offices")
+                        + '</ul>')
+        body.append('<p class="note">These are the offices the Department of '
+                    'Transportation\'s directory of city and town officials '
+                    'lists, as of September 2025. An election changes them and '
+                    'this page does not: the town\'s own website above is '
+                    'where to check.</p>')
 
     # WHEN, as well as where. These offices change at an election and the
     # names here do not; the official link does not go stale, and a reader
@@ -282,6 +337,10 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
                 + (' The clerk and the polling place are the Secretary of '
                    'State\'s own list of clerks and polling places.'
                    if (off.get("_local") or {}).get(slug(town, ward)) else "")
+                + (' The town\'s own offices are the Department of '
+                   'Transportation\'s directory of city and town officials, '
+                   'September 2025.'
+                   if (off.get("_offices") or {}).get(slug(town, "0")) else "")
                 + '</p>')
 
     path = f"/town/{slug(town, ward)}.html"
@@ -305,7 +364,9 @@ def main():
     ap.add_argument("--base", default="https://graniterecord.org")
     ap.add_argument("--officials", default="officials.json")
     ap.add_argument("--local", default="town_clerks.json",
-                    help="clerks and polling places, if fetched")
+                    help="clerks and polling places, if parsed")
+    ap.add_argument("--offices", default="town_officials.json",
+                    help="the town's own officials, if parsed")
     a = ap.parse_args()
 
     site = Path(a.site)
@@ -328,6 +389,21 @@ def main():
     else:
         print(f"  local offices: {local} is not on disk, so the clerk and "
               "polling place section is not drawn")
+    # The same contract as --local: absent means the section is not drawn
+    # rather than drawn empty.
+    offices = Path(a.offices)
+    if offices.exists():
+        try:
+            off["_offices"] = json.loads(offices.read_text(encoding="utf-8"))
+            n = sum(len(v.get("officials") or [])
+                    for v in off["_offices"].values())
+            print(f"  town officials: {len(off['_offices'])} municipalities, "
+                  f"{n} named offices from {offices}")
+        except ValueError as e:
+            print(f"  town officials: {offices} did not parse ({e}); skipped")
+    else:
+        print(f"  town officials: {offices} is not on disk, so the "
+              "\"who runs\" section is not drawn")
     tmpl = S.template(site)
 
     out = site / "town"

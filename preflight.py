@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.138
+# GRANITE_VERSION: 2026-09-04.139
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1338,8 +1338,8 @@ def _shared_region():
     return "ok", f"{len(region):,} bytes, once, identical to app.css's"
 
 
-@check("frontend", "no source file carries a NUL byte")
-def _no_nul_bytes():
+@check("frontend", "no source file carries a control character")
+def _no_control_bytes():
     """app.js was a binary file for two days and nothing said so.
 
     cmteUpcoming joins a term and a bill number with U+0000, because that is
@@ -1347,35 +1347,48 @@ def _no_nul_bytes():
     contain -- a good separator. It was written into app.js as the *byte*
     rather than as the two characters JavaScript reads as that byte, five
     times, and a single NUL is all it takes for git, grep, diff and most other
-    text tools to treat a file as binary.
+    text tools to treat a file as binary: git stopped normalising the file's
+    line endings, so an edit on Windows rewrote all 3,058 lines and hid eleven
+    real changes inside them, and any step that reads text and stops at a NUL
+    would have truncated the site's whole script at line 2396 with no error.
 
-    What that cost, and what it nearly cost: git stopped normalising the
-    file's line endings, so an edit on Windows rewrote all 3,058 lines and hid
-    eleven real changes inside them; grep reported "Binary file matches"
-    instead of the line; and any step that reads text and stops at a NUL --
-    a minifier, a template, a copy through a shell -- would have truncated
-    the whole site's JavaScript at line 2396 with no error.
+    The same afternoon, the same cause wrote 0x01 and 0x02 into a regular
+    expression's backreferences in parse_clerks.py -- `re.sub(r"...\\1", r"\\1\\2")`
+    became `re.sub(r"...\x01", r"\x01\x02")` -- which does not error, does not
+    look wrong, and quietly replaced a substitution with a deletion. CLAUDE.md
+    warns that a heredoc in either shell eats backslash escapes and says to
+    write patch scripts with the editor instead; this is what it costs when
+    that is forgotten.
 
-    The escape is identical at runtime. This check is cheap and there is no
-    case where a NUL belongs in one of these files.
+    So: no control character except tab, newline and carriage return, in any
+    source file in the tree. Naming ten files by hand was the first version of
+    this check and it did not cover the second incident.
     """
-    bad = []
-    for name in ("app.js", "app.css", "bills.html", "build_pages.py",
-                 "civics.py", "build_civics.py", "shell.py", "preflight.py",
-                 "build_site_v2.py", "build_bill_pages.py"):
-        p = Path(name)
-        if not p.exists():
+    ok = {0x09, 0x0A, 0x0D}
+    exts = {".py", ".css", ".js", ".html", ".json", ".md", ".bat"}
+    skip = ("site/", "work/", "archive/", "obsolete/", "logs/", "data/", "db/",
+            "docket_pages/", "bill_text/", "legislation/", "captions/",
+            "review/", ".git/", "sources/", "brand/", "assets/")
+    bad, n = [], 0
+    for f in sorted(Path(".").rglob("*")):
+        if not f.is_file() or f.suffix.lower() not in exts:
             continue
-        raw = p.read_bytes()
-        n = raw.count(b"\x00")
-        if n:
-            at = raw.count(b"\n", 0, raw.find(b"\x00")) + 1
-            bad.append(f"{name}: {n}, first at line {at}")
+        rel = f.as_posix().lstrip("./")
+        if rel.startswith(skip):
+            continue
+        n += 1
+        raw = f.read_bytes()
+        hits = sorted({c for c in raw if c < 0x20 and c not in ok})
+        if hits:
+            at = raw.count(b"\n", 0, min(raw.index(bytes([hits[0]])),
+                                         len(raw))) + 1
+            bad.append(f"{rel}: {', '.join(hex(h) for h in hits)}"
+                       f" (first near line {at})")
     assert not bad, (
-        "NUL bytes in " + "; ".join(bad) + ". Write the escape (backslash u "
-        "0000) rather than the byte: one NUL makes the file binary to git and "
-        "grep, and truncates it in anything that reads it as text.")
-    return "ok", "10 files, none binary"
+        "control characters in " + "; ".join(bad[:4]) + ". Write the escape "
+        "rather than the byte -- a heredoc turns \\1 into 0x01 and \\0 into NUL, "
+        "and neither is visible in a diff.")
+    return "ok", f"{n} source files, none with a control character"
 
 
 @check("frontend", "a heading outline never skips a level")

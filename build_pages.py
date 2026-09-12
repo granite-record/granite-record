@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.50
+# GRANITE_VERSION: 2026-09-04.52
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -661,6 +661,22 @@ def shell(title, current, body, wide=False, script="", desc="",
     # The host serves /legislators, not /legislators.html, and redirects
     # the second to the first. shell.canon is where that is written down.
     _canon = (base + _shell.canon("/" + current)) if current else (base + "/")
+    # The same block bills.html carries, for the same reasons -- written
+    # twice because the two emitters are, and kept next to each other in both
+    # files so a change to one is obvious in the other.
+    BRAND_HEAD = """<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/icon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#EAEBE7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171B1C" media="(prefers-color-scheme: dark)">
+<meta property="og:image" content="https://graniterecord.org/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Granite Record">
+<meta name="twitter:image" content="https://graniterecord.org/icon-512.png">
+"""
     HEAD_SEO = (f'<meta name="description" content="{_e(desc)}">'
                 f'<link rel="canonical" href="{_canon}">'
                 f'<meta property="og:type" content="website">'
@@ -671,7 +687,7 @@ def shell(title, current, body, wide=False, script="", desc="",
                 f'<meta name="twitter:card" content="summary">') if desc else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title>{HEAD_SEO}{FONTS}{themer("HEAD")}<link rel="stylesheet" href="style.css{STYLE_Q}">
+<title>{title}</title>{HEAD_SEO}{FONTS}{BRAND_HEAD}{themer("HEAD")}<link rel="stylesheet" href="style.css{STYLE_Q}">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — all activity"
  href="/feed/all.xml">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — upcoming hearings"
@@ -908,6 +924,24 @@ and the useful thing is that a link lands where the bill was actually taken
 up.</p>
 <p>Speech recognition is worst at exactly the things that matter most — names,
 numbers and organisations. Check the recording before quoting anything.</p>
+
+<h2>What this site knows about you</h2>
+<p>Page views are counted: how many there are, and which pages. That is
+Cloudflare Web Analytics, which runs on the pages this site is served from.
+It sets no cookies, it does not follow anyone between sites, and it does not
+build a profile of a reader &mdash; what comes back is a count per page, with
+the country, browser and referrer of the visit in aggregate. Nobody here can
+tell one reader from another, and nothing about what you read is stored
+against you.</p>
+<p>Nothing else is collected. There are no accounts, no email addresses and
+no advertising. The feeds need no subscription, so nothing knows who takes
+them. The search box works in your own browser against files this site
+serves; what you type is never sent anywhere. Video is embedded from
+YouTube&rsquo;s no-cookie address, which still means YouTube sees a request
+when a player is opened &mdash; a player only loads if you press play.</p>
+<p>The one thing a reader sends deliberately is feedback, through the form
+linked in the footer. That is a Google form, and what you put in it goes to
+Google and to us.</p>
 
 <h2>Corrections</h2>
 <p>If something here misrepresents the record, it should be corrected. The official
@@ -1366,8 +1400,9 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
        Committee and executive session votes are excluded: a committee's
        recommendation is not binding on the chamber, and a 10\u20139 in committee
        is a different thing from a 201\u2013199 on the floor. This counts the
-       record, not what people read here \u2014 nothing on this site tracks
-       visitors.</p>
+       record, not what people read here. The site counts page views \u2014
+       how many, and which pages \u2014 and nothing more; see
+       <a href="about.html">About</a>.</p>
        <table><tbody>${co.map(b=>
        `<tr><td style="width:86px">${b.nrc} votes</td>
         <td><a href="bills.html#${esc(b.id)}">${esc(b.n)}</a>
@@ -1429,6 +1464,26 @@ def main():
     # URLs get versioned here instead. Without it the search page holds a
     # four-hour-old app.js after a publish, the same way every other page did
     # until 7 September.
+    # THE DRAWN FILES. brand/ holds the originals, build_brand.py derives
+    # assets/, and this is the step that puts them beside the pages -- site/
+    # is generated and gitignored, so anything left there by hand is gone on
+    # the next build and was never in the repository.
+    brand = Path("assets")
+    if brand.is_dir():
+        moved = 0
+        for f in sorted(brand.iterdir()):
+            if not f.is_file():
+                continue
+            dst = out / f.name
+            b = f.read_bytes()
+            if not dst.exists() or dst.read_bytes() != b:
+                dst.write_bytes(b)
+                moved += 1
+        print(f"  brand: {len(list(brand.iterdir()))} files in assets/, "
+              f"{moved} copied into the site folder")
+    else:
+        print("  brand: no assets/ -- run python3 build_brand.py")
+
     import shell as _S
     _q = _S.asset_query(out)
     for name in ("bills.html", "app.css", "app.js"):

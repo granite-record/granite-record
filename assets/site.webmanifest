@@ -1,0 +1,16 @@
+{
+  "name": "Granite Record",
+  "short_name": "Granite Record",
+  "description": "Every bill, vote, hearing and floor debate of the New Hampshire General Court.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#F4F5F3",
+  "theme_color": "#111514",
+  "icons": [
+    {"src": "/icon.svg", "type": "image/svg+xml", "sizes": "any"},
+    {"src": "/icon-180.png", "type": "image/png", "sizes": "180x180"},
+    {"src": "/icon-512.png", "type": "image/png", "sizes": "512x512"},
+    {"src": "/icon-512-pad.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable"}
+  ]
+}

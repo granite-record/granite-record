@@ -1,0 +1,24 @@
+# core.autocrlf is on for this repository, which is right for the source and
+# wrong for anything that is not text: git announced that it would replace LF
+# with CRLF inside sources/sos-clerks-and-polling-places.pdf, which would have
+# committed a corrupted document and only shown up when somebody tried to
+# open it. These are bytes, not lines.
+*.pdf   -text
+*.png   -text
+*.ico   -text
+*.jpg   -text
+*.jpeg  -text
+*.webp  -text
+*.gz    -text
+*.zip   -text
+
+# And these are text, everywhere, whatever the checkout does: the version
+# stamps and the palette are compared byte for byte by preflight.
+*.py    text
+*.js    text
+*.css   text
+*.html  text
+*.json  text
+*.md    text
+*.svg   text
+*.csv   text
