@@ -49,8 +49,24 @@ def palette(src="app.css"):
     return text[i:text.index("/* PALETTE END")].rstrip()
 
 
+def shared(src="app.css"):
+    """The rules both stylesheets need, read rather than copied.
+
+    Same reason as palette(): a component pasted into two files diverges on
+    the first fix, and each file goes on looking internally consistent while
+    it happens. The hearing calendar is on the home page, which is built here
+    and loads style.css, and is going on the committee pages, which app.js
+    renders against app.css. One definition, between the markers.
+    """
+    text = Path(src).read_text(encoding="utf-8")
+    a = text.index("/* SHARED:START")
+    b = text.index("/* SHARED:END")
+    return text[a:b].rstrip()
+
+
 CSS = """
 __PALETTE__
+__SHARED__
 *{box-sizing:border-box}html,body{margin:0}
 body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:16px;
 line-height:1.55;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1;
@@ -307,7 +323,7 @@ FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
 # the release that breaks, silently, for four hours, for everyone who visited
 # that morning.
 def style_query():
-    css = CSS.replace("__PALETTE__", palette())
+    css = CSS.replace("__PALETTE__", palette()).replace("__SHARED__", shared())
     return "?v=" + hashlib.md5(css.encode("utf-8")).hexdigest()[:8]
 
 
@@ -337,6 +353,151 @@ FOOT_JS = (
 # manifest the tables are written from.
 FOOT_DATA = ('<a href="data.html">Bulk data</a> — every table on this '
              'site as CSV, with a manifest naming each column.')
+
+
+# ===================================================== the hearing calendar ==
+# home.json's `upcoming` is ONE ROW PER BILL -- date, time, committee, what,
+# venue, bill -- and a reader does not think in bill-rows. They think "who is
+# meeting this week, about how much, and can I speak". Four rows of HB/SB
+# numbers was a list of bills that happened to have dates on them; the same
+# four rows grouped are two meetings.
+#
+# So the grouping is (date, time, committee, what, venue) and the bills fall
+# inside it. Nothing new is fetched: the field names below are the ones
+# build_site_v2 already writes.
+#
+# Titles are resolved HERE, at build time, out of site/idx/<term>.json -- 1.19
+# MB that the home page must not load to print four of them. If the index is
+# not on disk yet the bill still gets its number and its link and the build
+# says how many titles it could not resolve, because a calendar that silently
+# prints bare bill numbers looks like a calendar that is working.
+MEET_KIND = {"public hearing": ("Public hearing", "k-hearing"),
+             "hearing": ("Public hearing", "k-hearing"),
+             "executive session": ("Executive session", "k-exec"),
+             "work session": ("Work session", ""),
+             "subcommittee work session": ("Subcommittee work session", "")}
+
+
+def calendar_html(H, out):
+    """The next fortnight of committee business, by day and then by meeting."""
+    import datetime as _dt
+    from collections import OrderedDict
+
+    # main()'s esc is nested inside it and this is module level, so it gets
+    # its own -- the same one shell() uses two hundred lines down.
+    esc = lambda s: _html.escape(str(s or ""), quote=True)
+
+    up = H.get("upcoming") or []
+    if not up:
+        # The honest out-of-session state. The General Court is a part-time
+        # legislature and this is what the page says for half the year, so it
+        # says when business resumes rather than just "nothing".
+        return ('<section class="cal"><h2>Coming up</h2>'
+                '<p class="note">No committee meetings are scheduled in the '
+                'next two weeks. The General Court sits from January to June, '
+                'and committees meet on bills from the autumn filing period '
+                'onwards.</p></section>')
+
+    # --- titles and years, from the term index, once per term ---------------
+    titles, years, missing = {}, {}, 0
+    for term in {u.get("term") for u in up if u.get("term")}:
+        f = out / "idx" / f"{term}.json"
+        if not f.exists():
+            continue
+        try:
+            for b in json.loads(f.read_text(encoding="utf-8")):
+                titles[b.get("id")] = b.get("title") or ""
+                years[b.get("id")] = b.get("year")
+        except (ValueError, OSError):
+            continue
+
+    # --- committee name -> its own page -------------------------------------
+    code = {}
+    cf = out / "committees.json"
+    if cf.exists():
+        try:
+            for c in json.loads(cf.read_text(encoding="utf-8")):
+                if c.get("name") and c.get("code"):
+                    code[c["name"].strip().lower()] = c["code"]
+        except (ValueError, OSError):
+            pass
+
+    meets = OrderedDict()
+    for u in up:
+        key = (u.get("date") or "", u.get("time") or "",
+               u.get("committee") or "", u.get("what") or "", u.get("venue") or "")
+        meets.setdefault(key, []).append(u)
+
+    today = _dt.date.today()
+
+    def when(d):
+        """Tue 15 Sep, and how far off it is -- the part a reader acts on."""
+        try:
+            dd = _dt.date.fromisoformat(d)
+        except ValueError:
+            return d, ""
+        off = (dd - today).days
+        rel = ("today" if off == 0 else "tomorrow" if off == 1
+               else f"in {off} days" if 0 < off < 14 else "")
+        return dd.strftime("%a %d %b").replace(" 0", " "), rel
+
+    days = OrderedDict()
+    for key in sorted(meets, key=lambda k: (k[0], k[1])):
+        days.setdefault(key[0], []).append(key)
+
+    html = ['<section class="cal"><h2>Coming up</h2>']
+    for date, keys in days.items():
+        label, rel = when(date)
+        html.append('<div class="calday"><h3 class="caldate">'
+                    f'<span>{esc(label)}</span>'
+                    + (f'<span class="cdrel">{esc(rel)}</span>' if rel else "")
+                    + "</h3>")
+        for key in keys:
+            _d, time, cmte, what, venue = key
+            rows = meets[key]
+            word, kcls = MEET_KIND.get(what.strip().lower(),
+                                       (what.capitalize() if what else "Meeting", ""))
+            n = len(rows)
+            html.append('<details class="calmeet"><summary>')
+            if time:
+                html.append(f'<span class="caltime">{esc(time)}</span>')
+            html.append(f'<span class="calcmte">{esc(cmte)}</span>')
+            html.append(f'<span class="calkind {kcls}">{esc(word)}</span>')
+            html.append(f'<span class="calcount">{n} bill{"" if n == 1 else "s"}</span>')
+            if venue:
+                html.append(f'<span class="calwhere">{esc(venue)}</span>')
+            html.append('<span class="caret"></span></summary>'
+                        '<div class="calbody"><ul class="calbills">')
+            for r in rows:
+                bid = (r.get("bill") or "").strip()
+                yr, ti = years.get(bid), titles.get(bid)
+                if not ti:
+                    missing += 1
+                href = (f'bill/{yr}/{bid.lower()}.html' if yr
+                        else f'bills.html#{esc(bid)}')
+                num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bid)
+                html.append(f'<li><a class="cbn" href="{esc(href)}">{esc(num)}</a>'
+                            + (f'<span class="cbt">{esc(ti)}</span>' if ti else "")
+                            + "</li>")
+            html.append("</ul>")
+            cc = code.get(cmte.strip().lower())
+            if cc:
+                html.append('<p class="calmore">'
+                            f'<a href="committee/{esc(cc)}.html">'
+                            f'The {esc(cmte)} committee</a></p>')
+            html.append("</div></details>")
+        html.append("</div>")
+    # A public hearing is the one a reader can speak at; an executive session
+    # is the one where the committee votes. Worth saying once.
+    html.append('<p class="note">Anyone may attend and speak at a public '
+                'hearing, or sign in for or against without speaking. An '
+                'executive session is where the committee votes on what to '
+                'recommend; it is open to watch but not to testify.</p>'
+                "</section>")
+    if missing:
+        print(f"  calendar: {missing} of {len(up)} upcoming bills had no title "
+              f"in site/idx (the number and the link are still printed)")
+    return "".join(html)
 
 
 def shell(title, current, body, wide=False, script="", desc="",
@@ -991,20 +1152,15 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       <div class="stat"><b>${(c.votes||0).toLocaleString()}</b><span>recorded votes</span></div>
     </div>`;
 
-  // What is coming sits above what has happened: someone who learns on Tuesday
-  // that a hearing is Thursday can still turn up and speak.
-  const up=H.upcoming||[];
-  document.getElementById("upcoming").innerHTML=up.length
-    ?`<h2>Coming up</h2><table><tbody>${up.map(u=>
-      `<tr><td style="width:90px">${fd(u.date)}${u.time?` ${esc(u.time)}`:""}</td>
-       <td><a href="bills.html#${esc(u.bill)}">${esc(u.bill)}</a>
-       — ${esc(u.committee||"")} ${esc(u.what||"")}
-       ${u.venue?`<span style="color:var(--ink-2)">· ${esc(u.venue)}</span>`:""}</td>
-       </tr>`).join("")}</tbody></table>
-      <p class="note">Anyone may attend a public hearing and speak, or sign in for or
-      against without speaking.</p>`
-    :`<h2>Coming up</h2><p class="note">No hearings scheduled in the next two weeks.
-      The General Court sits from January to June.</p>`;
+  // #upcoming IS NOT TOUCHED HERE, ON PURPOSE. The calendar is rendered into
+  // the page by calendar_html() at build time, from the same home.json this
+  // script reads -- so re-rendering it here would be a second renderer of one
+  // thing, which is the mistake this project has paid for more than once, and
+  // it would render it WORSE: the bill titles are resolved out of
+  // site/idx/<term>.json, 1.19 MB that the home page must not fetch to print
+  // four of them, and the meeting rows are <details> elements that need no
+  // script to open. Leaving it alone means the calendar also works before this
+  // file loads and with JavaScript off.
 
   document.getElementById("recent").innerHTML=`<h2>Latest activity</h2>
     <table><tbody>${(H.recent||[]).map(r=>
@@ -1071,7 +1227,8 @@ def main():
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     (out / "style.css").write_text(
-        CSS.replace("__PALETTE__", palette()), encoding="utf-8")
+        CSS.replace("__PALETTE__", palette()).replace("__SHARED__", shared()),
+        encoding="utf-8")
 
     # bills.html is the one page written by hand rather than generated, and
     # nothing in the pipeline was copying it into the output folder. So an edit
@@ -1250,13 +1407,7 @@ record. Searching a committee name lists everyone on it.</p>
                    "recorded vote they cast.",
               wide=True, script=TOWN_JS + LEG_JS), encoding="utf-8")
 
-    static_up = ""
-    if H.get("upcoming"):
-        static_up = "<h2>Coming up</h2><table><tbody>" + "".join(
-            f'<tr><td>{fd(u.get("date"))}</td><td>'
-            f'<a href="bills.html#{esc(u.get("bill"))}">{esc(u.get("bill"))}</a>'
-            f' — {esc(u.get("committee"))} {esc(u.get("what"))}</td></tr>'
-            for u in H["upcoming"][:12]) + "</tbody></table>"
+    static_up = calendar_html(H, out)
 
     static_recent = ""
     if H.get("recent"):

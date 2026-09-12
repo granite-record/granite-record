@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.47 */
+/* GRANITE_VERSION: 2026-09-07.48 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -143,6 +143,83 @@ color-scheme:light}
 color-scheme:dark}
 }
 /* PALETTE END -- build_pages.py reads everything above this line. */
+
+/* SHARED:START ------------------------------------------------------------
+   Rules that BOTH stylesheets need, copied into style.css by build_pages.py
+   the way the palette is. The homepage is built by build_pages.py and loads
+   style.css; the committee pages are rendered by app.js and load this file;
+   and the hearing calendar is going on both. The palette already taught this
+   lesson once -- build_pages.py carried its own copy of the colours and
+   --st-veto drifted to a different hue in each file, invisibly, because each
+   file was internally consistent. A component is the same thing: copy it and
+   the two copies diverge on the first fix. So it lives here once.
+
+   THE HEARING CALENDAR. What is coming sits above what has happened, because
+   somebody who learns on Tuesday that a hearing is Thursday can still turn
+   up and speak.
+
+   A day, then the meetings in it, each a <details>. Native disclosure and
+   not a script: it works before app.js loads, it works with JavaScript off,
+   the browser maintains aria-expanded itself, and the keyboard already
+   knows how to open it. A static site should reach for this first. */
+.cal{margin:26px 0 30px}
+.calday{margin:0 0 4px}
+/* The date as a label rather than a sentence -- the same small caps the rest
+   of the site uses for a section heading, so a reader learns the shape once. */
+.caldate{font-size:14px;font-weight:600;letter-spacing:.05em;
+text-transform:uppercase;color:var(--ink-2);margin:18px 0 7px;
+padding-bottom:6px;border-bottom:1px solid var(--rule);
+display:flex;align-items:baseline;gap:8px}
+.caldate .cdrel{font-weight:400;letter-spacing:0;text-transform:none;
+font-size:14px;color:var(--ink-2);margin-left:auto}
+.calmeet{background:var(--surface);border:1px solid var(--rule-2);
+border-radius:var(--r-out);margin:0 0 8px}
+.calmeet[open]{box-shadow:0 3px 10px var(--shadow)}
+.calmeet > summary{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+padding:12px 15px;cursor:pointer;list-style:none;min-height:44px}
+.calmeet > summary::-webkit-details-marker{display:none}
+.calmeet > summary:hover{background:var(--paper)}
+.calmeet > summary:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+/* Tabular figures so a column of times lines up rather than shimmering. */
+.caltime{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;
+flex:0 0 auto}
+.calcmte{font-size:16px;color:var(--pine);font-weight:600;min-width:0}
+/* The kind of meeting, as a word in a shape. A public hearing is the one a
+   member of the public can speak at and an executive session is the one where
+   the committee votes, so the difference is the whole reason this is on the
+   page -- it is never left to a colour. */
+.calkind{font-size:12px;font-weight:600;padding:3px 10px;
+border-radius:var(--r-pill);white-space:nowrap;flex:0 0 auto;
+background:var(--wash);color:var(--ink-2)}
+.calkind.k-hearing{background:var(--st-active-bg);color:var(--st-active)}
+.calkind.k-exec{background:var(--pine-soft);color:var(--pine)}
+.calcount{font-size:14px;color:var(--ink-2);font-variant-numeric:tabular-nums;
+flex:0 0 auto}
+.calwhere{font-size:14px;color:var(--ink-2);min-width:0}
+.calmeet .caret{margin-left:auto;color:var(--ink-2);flex:none}
+.calmeet[open] > summary .caret{transform:rotate(90deg)}
+.calbody{padding:0 15px 14px;border-top:1px solid var(--rule)}
+.calbills{list-style:none;margin:0;padding:0}
+.calbills li{display:flex;gap:12px;align-items:baseline;padding:8px 0;
+border-bottom:1px solid var(--rule);font-size:14px}
+.calbills li:last-child{border-bottom:0}
+.calbills .cbn{flex:0 0 88px;font-weight:600;font-variant-numeric:tabular-nums}
+.calbills .cbt{color:var(--ink-2);line-height:1.45}
+.calmore{margin:11px 0 0;font-size:14px;display:flex;gap:16px;flex-wrap:wrap}
+/* Said once, under the meetings, rather than on each of them. */
+.cal > .note{margin-top:14px}
+@media (max-width:720px){
+  /* The summary is five facts and 360px holds about two of them on a line.
+     Stacked, with the time and the committee on the first row, because those
+     are the two a reader scans for. */
+  .calmeet > summary{gap:4px 10px;padding:11px 13px}
+  .calcmte{flex:1 1 100%;order:2}
+  .calkind,.calcount,.calwhere{order:3}
+  .calmeet .caret{order:1;margin-left:auto}
+  .calbills li{flex-direction:column;gap:2px}
+  .calbills .cbn{flex:none}
+}
+/* SHARED:END ------------------------------------------------------------ */
 
 *{box-sizing:border-box}html,body{margin:0}
 body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:16px;
