@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.12
+# GRANITE_VERSION: 2026-09-09.13
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -431,6 +431,26 @@ def _docket_lines(term, bill):
     return []
 
 
+def topic_options():
+    """Every topic the site can file a bill under, for the dropdown.
+
+    The General Court's own list from data/subjects.json, less the one row
+    that has a name and no code ("Regular Meeting", which is not a subject),
+    plus Miscellaneous -- this project's word for "none of these fits", and a
+    legitimate answer for a reader to give back.
+
+    Read when the form is drawn rather than at import, so a topic added to
+    data/subjects.json appears without restarting the bench.
+    """
+    names = []
+    p = Path("data/subjects.json")
+    if p.exists():
+        for v in json.loads(p.read_text(encoding="utf-8")).values():
+            if v.get("code") and v.get("name"):
+                names.append(v["name"])
+    return sorted(set(names)) + ["Miscellaneous"]
+
+
 def sample_topics():
     """A topic this project assigned, for a bill the General Court never
     labelled.
@@ -642,8 +662,12 @@ KINDS = {
                  "what that score cannot say is whether the answers are ones "
                  "a reader would accept. Newest terms first.",
         "sample": sample_topics, "show": show_topics,
+        # A dropdown rather than a box: 46 topic names is too many to retype
+        # correctly, and a verdict naming a topic the site does not have is a
+        # verdict nothing can act on. topic_options() is the General Court's
+        # own list, plus Miscellaneous.
         "fields": [("better_topic", "A better topic, if this one is wrong",
-                    "Elections"),
+                    "leave blank if the topic shown is right", topic_options),
                    ("note", "Anything else worth recording", "")],
         # "Right" here means defensible, not identical to what the General
         # Court would have said -- there is no General Court answer for these
@@ -800,8 +824,12 @@ button.btn{cursor:pointer}
  border:1px solid var(--pine-soft);border-radius:6px;padding:7px 12px;
  text-decoration:none;font-size:14px;margin:0 6px 6px 0}
 label.f{display:block;margin:12px 0 0;font-size:13px;color:var(--ink-2)}
-label.f input,label.f textarea{width:100%;margin-top:4px;padding:8px 10px;
- border:1px solid var(--rule);border-radius:6px;background:#fff}
+label.f input,label.f textarea,label.f select{width:100%;margin-top:4px;
+ padding:8px 10px;border:1px solid var(--rule);border-radius:6px;
+ background:#fff}
+/* A select is the one control a browser will not size like the others
+   without being told: it inherits the UA font rather than the page's. */
+label.f select{font:inherit;color:var(--ink);height:auto}
 textarea{min-height:74px;resize:vertical}
 .verdicts{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 0}
 .verdicts label{border:1px solid var(--rule);border-radius:999px;padding:7px 14px;
@@ -879,12 +907,37 @@ __SAVED__
 """
 
 
+def _field_html(spec):
+    """One answer box. A fourth element in the tuple makes it a dropdown.
+
+    A free-text box for "a better topic" asks the reader to reproduce one of
+    46 names exactly, and a verdict that says "Elections " or "elections" or
+    "Election Law" is a verdict nothing downstream can count. The list is the
+    General Court's own, so the answer comes back as a value the site already
+    uses.
+    """
+    nm, lab, ph = spec[0], spec[1], spec[2]
+    options = spec[3] if len(spec) > 3 else None
+    # Callable, so the list is read when the form is drawn rather than when
+    # KINDS is built -- which also keeps the ordering of definitions in this
+    # file from mattering.
+    if callable(options):
+        options = options()
+    if not options:
+        return (f'<label class="f">{E(lab)}'
+                f'<input name="{E(nm)}" placeholder="{E(ph)}" '
+                f'autocomplete="off"></label>')
+    # The blank option is first and selected, because every one of these
+    # fields is optional: a verdict of "Defensible" leaves it empty.
+    opts = f'<option value="">{E(ph or "—")}</option>' + "".join(
+        f'<option value="{E(o)}">{E(o)}</option>' for o in options)
+    return (f'<label class="f">{E(lab)}'
+            f'<select name="{E(nm)}">{opts}</select></label>')
+
+
 def form_html(kind, item):
     k = KINDS[kind]
-    fields = "".join(
-        f'<label class="f">{E(lab)}'
-        f'<input name="{E(nm)}" placeholder="{E(ph)}" autocomplete="off"></label>'
-        for nm, lab, ph in k["fields"])
+    fields = "".join(_field_html(spec) for spec in k["fields"])
     return (
         f'<form method="post" action="/save">'
         f'<input type="hidden" name="kind" value="{E(kind)}">'
