@@ -649,10 +649,31 @@ hand)*
   Revenue Estimates (6/1/20 - morning session)` adds a colon; `Children and
   Family Law Orientation Meeting 1/11/21` has no parentheses at all.
 
-  **The fix does not need the title at all.** Where a video carries
-  `actual_start_utc`, the date is that start's date, exactly. 536 rows come
-  back for nothing. It touches the matching pipeline, so it needs
-  `probe_alignment --truth` scored before and after.
+  **Half the fix does not need the title at all.** Where a video carries
+  `actual_start_utc`, the date is that start's date, exactly -- a stream's
+  start IS the day the sitting happened. That removes the parsing problem
+  rather than solving it, and it is sound.
+
+  **The other half is the committee, and it is harder than it looks.** A first
+  attempt on the 12th was written and reverted the same hour. It took the
+  committee as the longest prefix of the title matching a name the index had
+  already parsed, which measured 411 of 554 resolved and 788 unmatched
+  proceedings on those days -- and recovered only 126 when actually wired in,
+  because:
+
+  - `_load_one` reads ONE csv at a time, so the list of known committees is
+    per file rather than across all twelve;
+  - and `parsed_committee` is not a clean committee name. It holds
+    `'Judiciary :'` and `'Ways and Mean : Work Session and Revenue Estimates'`,
+    so a longest-first match picks the noise, and a committee like that will
+    never match a proceeding.
+
+  The right source for the committee list is the DOCKET's own committee names,
+  which this project already has, rather than a list scraped out of the video
+  titles. That is the next attempt. It touches the matching pipeline, so it
+  needs `probe_alignment --truth` scored before and after, and a wrong
+  committee would put the wrong recording against a proceeding -- which is
+  worse than leaving the row dropped.
 
 Other findings, not yet verified by hand:
 
