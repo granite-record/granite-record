@@ -85,6 +85,54 @@ fetch_sponsors_by_member.py --probe 6 --delay 20
 watchers/rest.py 1800 after-sponsor-probe
 fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-02
 watchers/rest.py 3600 after-bills-02
+
+# THE SENATE CALENDARS OF 1998-2008, asked for by the person on the 12th.
+# 664 of them are still marked "wanted" in archive/queue.csv from 9 September,
+# each with "HTTP Error 403: Forbidden" against it, and that 403 is the reason
+# the drain stopped. 2008-2026 are already on disk -- 984 PDFs, each with its
+# text beside it -- so this is the ten years before them, plus fourteen
+# stragglers of 2008.
+#
+# They are the only source for the Senate's committee reports of 2008-2024 and
+# for the governor's veto messages on Senate bills, which are printed in the
+# chamber the bill came from.
+#
+# fetch_senate_calendars had NONE of the safety the other fetchers were given
+# on the 10th until the 12th: no lock, no refusal check, no one reading of an
+# error, and a 2.5-second delay at the address that has blocked this project
+# twice. It now takes the lane's lock, stops on a refusal, refuses to save
+# anything that is not a PDF (a block page arrives with HTTP 200), writes
+# atomically, and asks every 20 seconds.
+#
+# FIVE REQUESTS FIRST. The open question is whether that 403 was the ADDRESS
+# refusing us or those particular documents not being served. Five requests
+# answer it; 664 would answer it expensively. If they come back, the years
+# below run; if they 403 again, the run stops itself and the answer is that
+# these documents are not served, which is worth knowing and is the end of it.
+fetch_senate_calendars.py --year 2007 --budget 5 --delay 20
+watchers/rest.py 600 after-senate-1998-2008-proving
+fetch_senate_calendars.py --year 2007 --delay 20
+watchers/rest.py 1800 after-senate-2007
+fetch_senate_calendars.py --year 2006 --delay 20
+watchers/rest.py 1800 after-senate-2006
+fetch_senate_calendars.py --year 2005 --delay 20
+watchers/rest.py 1800 after-senate-2005
+fetch_senate_calendars.py --year 2004 --delay 20
+watchers/rest.py 1800 after-senate-2004
+fetch_senate_calendars.py --year 2003 --delay 20
+watchers/rest.py 1800 after-senate-2003
+fetch_senate_calendars.py --year 2002 --delay 20
+watchers/rest.py 1800 after-senate-2002
+fetch_senate_calendars.py --year 2001 --delay 20
+watchers/rest.py 1800 after-senate-2001
+fetch_senate_calendars.py --year 2000 --delay 20
+watchers/rest.py 1800 after-senate-2000
+fetch_senate_calendars.py --year 1999 --delay 20
+watchers/rest.py 1800 after-senate-1999
+fetch_senate_calendars.py --year 1998 --delay 20
+watchers/rest.py 1800 after-senate-1998
+fetch_senate_calendars.py --year 2008 --delay 20
+watchers/rest.py 3600 after-senate-2008-stragglers
 fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-03
 watchers/rest.py 3600 after-bills-03
 fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-04

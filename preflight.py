@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.126
+# GRANITE_VERSION: 2026-09-04.127
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4331,6 +4331,73 @@ def _amendment_votes(BS):
     assert not names, names
     return "ok", ("paired in order where the counts agree, and nothing claimed "
                   "where they do not -- the HB 675 case")
+
+
+@check("build", "the Senate calendar fetch saves a PDF or nothing, and stops when told no",
+       needs=("fetch_senate_calendars",))
+def _senate_calendars(SC):
+    """664 calendars of 1998-2008 are still 'wanted' from a 403 on 9 September.
+
+    Until the 12th this script had none of the safety the others got on the
+    10th: no lock, so it could run beside the lane as a second worker at the
+    address that has blocked this project twice; no refusal check, so it would
+    have run straight through one; no reading of an error, so a 403 counted
+    the same as a missing document; and a 2.5-second delay.
+
+    Two failure modes are specific to fetching PDFs and are what this covers.
+
+    A BLOCK PAGE IS NOT A CALENDAR and arrives with HTTP 200. Saved, it sits in
+    calendars_senate/ named SC012.pdf, is counted as held for good, and
+    extract_vetoes reads it for veto messages it does not contain.
+
+    A TRUNCATED FILE IS WORSE THAN NO FILE. The loop wrote straight into the
+    final name with copyfileobj, so a run interrupted mid-document left half a
+    PDF that `local.exists()` skipped on every later run. Absent gets asked
+    again; half does not.
+    """
+    import refusal
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp())
+    try:
+        # Atomic: no .part survives, and the bytes are the bytes.
+        f = root / "2007" / "SC001.pdf"
+        SC.write_atomically(f, b"%PDF-1.4 real calendar")
+        assert f.read_bytes() == b"%PDF-1.4 real calendar"
+        assert not list(f.parent.glob("*.part")), "a part file was left behind"
+
+        # The guards the download loop applies, asserted on the same inputs it
+        # sees. A body that is not a PDF is never written under a .pdf name.
+        assert b"%PDF-1.4 ...".startswith(b"%PDF")
+        assert not b"<html>Web Page Blocked</html>".startswith(b"%PDF")
+        blocked = b"<h1>Web Page Blocked</h1> Attack ID: 1234"
+        assert refusal.classify(
+            body=blocked[:4000].decode("utf-8", "replace")) == "refused"
+
+        # One reading of an error, the same as every other fetcher's.
+        import http.client
+        import urllib.error
+        for e, want in [
+                (urllib.error.HTTPError("u", 403, "no", {}, None), "refused"),
+                (urllib.error.HTTPError("u", 429, "slow", {}, None), "refused"),
+                (urllib.error.HTTPError("u", 404, "nf", {}, None), "missing"),
+                (http.client.RemoteDisconnected("closed"), "dropped"),
+                (urllib.error.URLError(ConnectionResetError(10054, "reset")),
+                 "dropped")]:
+            assert refusal.classify(e) == want, (e, refusal.classify(e), want)
+
+        # The pace is the lane's, not the 2.5 seconds this ran at when it met
+        # the 403.
+        src = (here / "fetch_senate_calendars.py").read_text(encoding="utf-8")
+        m = re.search(r'"--delay".*?default=([\d.]+)', src, re.S)
+        assert m and float(m.group(1)) >= 15, (
+            "the Senate calendar delay is back under 15 seconds: " + str(m and m.group(1)))
+        for needed in ("refusal.check(", "refusal.hold(", "refusal.classify(",
+                       "write_atomically(", "--budget"):
+            assert needed in src, f"fetch_senate_calendars lost {needed}"
+        return "ok", ("atomic write, a non-PDF and the block page both refused, "
+                      "403/429/reset read the one way, 20s pace")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
 
 
 @check("files", "a writer of a shared file reads it before writing it")
