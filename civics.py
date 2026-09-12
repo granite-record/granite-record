@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.6
+# GRANITE_VERSION: 2026-09-08.7
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -136,8 +136,21 @@ FLOW = [
 # The CSS class is .dies, not .stop: .stop belongs to the passage rail,
 # where `.stop b` is a transparent-text circle, and reusing it rendered
 # every marked step as invisible words in a grey disc. app.css says more.
+#
+# A mark is either one of these keys, or a (key, label) pair where the label
+# differs step by step -- a constitutional threshold is a different number in
+# each chamber, and "Needs a threshold" would be a worse sentence than the
+# number it stands for.
 MARKS = {"stop": ("dies", "mark", "Can die here"),
-         "say": ("say", "say-m", "You may speak here")}
+         "say": ("say", "say-m", "You may speak here"),
+         "needs": ("needs", "needs-m", "")}
+
+
+def mark_of(mark):
+    if isinstance(mark, (tuple, list)) and len(mark) == 2:
+        cls, mcls, _ = MARKS.get(mark[0], ("", "", ""))
+        return cls, mcls, mark[1]
+    return MARKS.get(mark, ("", "", ""))
 
 
 def flow_diagram(flow=FLOW, heading="The course of a bill"):
@@ -148,7 +161,7 @@ def flow_diagram(flow=FLOW, heading="The course of a bill"):
         out.append('<li class="phase">'
                    f'<h3 class="phname">{name}</h3><ol class="steps">')
         for step, what, mark in steps:
-            cls, mcls, label = MARKS.get(mark, ("", "", ""))
+            cls, mcls, label = mark_of(mark)
             out.append(f'<li class="step{" " + cls if cls else ""}">'
                        f'<b>{step}</b><span>{what}</span>'
                        + (f'<i class="{mcls}">{label}</i>' if label else "")
@@ -156,6 +169,77 @@ def flow_diagram(flow=FLOW, heading="The course of a bill"):
         out.append("</ol></li>")
     out.append("</ol></div>")
     return "".join(out)
+
+
+# ---------------------------------------------------------------------------
+# AMENDING THE CONSTITUTION. Every step and every threshold here is one the
+# prose on that page already states and cites to the Constitution itself; the
+# diagram reorganises it rather than adding to it. The thresholds ARE the
+# teaching point -- three fifths of the whole membership in each chamber, then
+# two thirds of the voters, and no part for the Governor at any stage -- so
+# they are the per-step labels rather than a generic mark.
+# ---------------------------------------------------------------------------
+FLOW_CACR = [
+    ("How it starts", [
+        ("Filed as a CACR", "A Constitutional Amendment Concurrent "
+         "Resolution. Statutes change by bill; the constitution does not.",
+         ""),
+    ]),
+    ("The first chamber", [
+        ("Three fifths of the whole membership", "Not three fifths of those "
+         "voting. 240 of the 400 House seats, whether or not everyone is "
+         "there, so an absence counts against it.",
+         ("needs", "240 of 400 in the House")),
+    ]),
+    ("The second chamber", [
+        ("The same threshold again", "Three fifths of the entire "
+         "membership of the other chamber, on the same terms.",
+         ("needs", "Three fifths of all seats")),
+    ]),
+    ("The voters", [
+        ("At the next general election", "Put to the people, where it needs "
+         "a two-thirds majority to take effect.",
+         ("needs", "Two thirds of those voting")),
+        ("The Governor has no part", "No signature and no veto, at any point "
+         "in this course.", ""),
+    ]),
+]
+
+# ---------------------------------------------------------------------------
+# TESTIFYING, in the order a person actually does it. Same source as the
+# prose beside it: the chamber rules and the General Court's own sign-in
+# system. The two things worth separating are that signing in and speaking
+# are different acts, and that the second chamber gives a second chance.
+# ---------------------------------------------------------------------------
+FLOW_TESTIFY = [
+    ("Find out", [
+        ("The calendar", "Hearings are announced in the chamber's weekly "
+         "calendar and on the General Court's meeting schedule. The median "
+         "notice in the hearings parsed here is five days; some give one.",
+         ""),
+    ]),
+    ("Sign in", [
+        ("Online, for or against", "Your name and town, whether you are a "
+         "member of the public or representing an organisation, and which "
+         "side. You may attach written testimony.",
+         ("needs", "Counted, and published")),
+        ("Before the day ends", "The window opens once the hearing is "
+         "scheduled and closes at the end of the day of the hearing.", ""),
+    ]),
+    ("At the hearing", [
+        ("Speaking is separate", "A different act from signing in, and you "
+         "fill in a card to do it. The sponsor speaks first.", "say"),
+        ("You need not speak", "A sign-in without a word said is in the "
+         "record and is counted.", ""),
+    ]),
+    ("Afterwards", [
+        ("Executive session", "The committee votes on its recommendation at "
+         "a later meeting. Testimony is not taken at it.", ""),
+        ("The other chamber", "If the bill passes, it gets a hearing in the "
+         "second chamber and a second sign-in window on the same terms.",
+         "say"),
+    ]),
+]
 
 
 BODY_GENERAL_COURT = """
@@ -412,16 +496,8 @@ Council, the courts, and how each is chosen.</p>
 <p>A statute changes when a bill passes both chambers and the Governor signs
 it. The constitution does not. A change starts as a <b>CACR</b> &mdash; a
 Constitutional Amendment Concurrent Resolution &mdash; and it has to clear
-three things:</p>
-<ol>
-<li><b>Three fifths of the entire membership of each chamber.</b> Not three
-fifths of those voting: 240 of the 400 House seats, whether or not everyone is
-there. An absence counts against it.</li>
-<li><b>The other chamber, on the same terms.</b></li>
-<li><b>The voters, at the next general election</b>, where it needs a
-two-thirds majority.</li>
-</ol>
-<p>The Governor has no part in it at all &mdash; no signature, no veto.</p>
+three thresholds, none of which involves the Governor.</p>
+""" + flow_diagram(FLOW_CACR, "How the constitution is amended") + """
 
 <h2>Why almost none get through</h2>
 <p>The first step is the one that stops most of them, because a three-fifths
@@ -555,6 +631,9 @@ published afterwards.</p>
 scheduled and published, and closes at the end of the day of the hearing. If
 the bill passes one chamber and gets a hearing in the other, there is a second
 window on the same terms.</p>
+
+<h2>All of it, in order</h2>
+""" + flow_diagram(FLOW_TESTIFY, "How to testify, in order") + """
 
 <h2>Speaking</h2>
 <p>Speaking is a separate thing from signing in, and you fill in a card to do

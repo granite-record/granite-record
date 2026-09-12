@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.52 */
+/* GRANITE_VERSION: 2026-09-07.53 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1225,6 +1225,15 @@ color:var(--st-done);margin-top:5px}
 .step.say{border-left:3px solid var(--pine)}
 .step .say-m{display:block;font-style:normal;font-size:12px;font-weight:600;
 color:var(--pine);margin-top:5px}
+/* A THRESHOLD, which is a third kind of thing and needs a third mark. On the
+   constitution page the number IS the teaching point -- 240 of 400, three
+   fifths of all seats, two thirds of those voting -- so the label is written
+   per step rather than being one generic word. Amber, the colour this site
+   already uses for a bill still moving, and the number carries it in any
+   case: the brief's rule is that nothing is told by colour alone. */
+.step.needs{border-left:3px solid var(--st-active)}
+.step .needs-m{display:block;font-style:normal;font-size:12px;font-weight:600;
+color:var(--st-active);margin-top:5px}
 /* FOUR ACROSS, AND OUT OF THE MEASURE. The note on .civics anticipated this
    -- "a diagram is coming" -- and left .wide for it, which was never
    written. This is that: the diagram is the one wide thing on a prose page,
