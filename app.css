@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.66 */
+/* GRANITE_VERSION: 2026-09-07.71 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -608,7 +608,11 @@ a.cite{color:var(--pine)}
 .status.s-law > .lab,.status.s-law > .val{display:none}
 .rc{border:1px solid var(--rule);border-radius:var(--r-out);padding:15px 17px;margin-bottom:14px}
 .rchead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
-.rcq{font-size:16px;font-weight:600}.rcd{font-size:14px;color:var(--ink-2)}
+/* margin:0 because this is an h2 now: every roll call is a section of the
+   Votes tab and its question is the heading of it, which is what gives the
+   member lists inside an expansion something to sit under. The type is
+   unchanged -- the level is the outline, not the size. */
+.rcq{font-size:16px;font-weight:600;margin:0}.rcd{font-size:14px;color:var(--ink-2)}
 .rcres{margin-left:auto;font-size:12px;font-weight:600;padding:2px 9px;border-radius:var(--r-pill)}
 .pass{background:var(--st-law-bg);color:var(--st-law)}.fail{background:var(--st-done-bg);color:var(--st-done)}
 .votewrap{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;margin-top:10px}
@@ -818,6 +822,19 @@ margin:9px 0 0;max-width:var(--measure)}
 /* Set apart from the tabbed area rather than continuing it. The tabs are one
    object -- views of the record -- and the bill itself is another, sitting
    below them. A single rule read as one more section inside a tab. */
+/* THE DOCUMENT FOLDS. Same control as the chapter list, for the same reason
+   at a different scale: HB 2's text and its 43 amendments are a million
+   characters, and this section is not in a tab -- it sits under whichever one
+   is open. Open below 30,000 characters, which is every bill but four in the
+   current term. */
+.btdoc{margin-top:4px}
+.btdoc > summary{display:inline-block;font-size:14px;color:var(--pine);
+cursor:pointer;list-style:none;padding:5px 0;min-height:32px}
+.btdoc > summary::-webkit-details-marker{display:none}
+.btdoc > summary::marker{content:""}
+.btdoc > summary:hover{text-decoration:underline}
+.btdoc > summary:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.btdoc:not([open]) .open,.btdoc[open] .shut{display:none}
 .btsec{margin:40px 2px 8px;padding:20px 20px 10px;background:var(--paper);
 border:1px solid var(--rule-2);border-radius:var(--r-out)}
 .btsec > .amdsec{font-size:16px;letter-spacing:.06em;color:var(--ink);
@@ -1106,7 +1123,12 @@ text-align:center;color:var(--ink-2);font-size:14px}
      this committee", "Back to bill search" -- and were 33 and 36px on a phone
      because this list names elements and two classes. A control is a control
      whichever tag it is. */
-  button,.hit,summary,.detail,.btn,.backto{min-height:44px}
+  /* .rsamore's and .btdoc's own summaries are `.class > summary`, which
+     outranks the bare `summary` here -- so a 24px and a 32px control
+     would have kept those sizes on a phone. Named rather than reordered:
+     the sizes above are the desktop ones and are right there. */
+  button,.hit,summary,.detail,.btn,.backto,
+  .rsamore > summary,.btdoc > summary{min-height:44px}
   .jump{min-height:36px;padding:6px 10px}
 }
 @media (max-width: 420px){
@@ -1198,6 +1220,27 @@ text-align:left;vertical-align:top}
    "Amends RSA chapters" are the longest and the values line up under each
    other either way. Not nowrap -- "Amends RSA chapters" wants two lines in a
    side column and nowrap on a th is how a table pushes a page sideways. */
+/* THE CHAPTER LIST, EIGHT AT A TIME. HB 2 of 2025 amends 238 of them, and
+   a reader who wants all 238 can have them -- in front of the eight they
+   did not ask for is the wrong place. A <details>, so it works with no
+   script, and two spans for the label because CSS can swap which one shows
+   but cannot rewrite a summary's text. */
+.rsaset{display:block}
+.rsamore{display:block;margin-top:3px}
+/* NO min-height HERE. This block sits after the narrow-screen rules, and
+   `.rsamore > summary` is the same specificity there as here -- so a 24px
+   declaration won on source order and the control stayed 24px on a phone
+   while .btdoc's, written before that block, took the 44px. Fourth time
+   source order has decided something in this file. The padding gives 26px
+   on a desktop, which is what it needs there. */
+.rsamore > summary{display:inline-block;font-size:13px;color:var(--pine);
+cursor:pointer;list-style:none;padding:3px 0}
+.rsamore > summary::-webkit-details-marker{display:none}
+.rsamore > summary::marker{content:""}
+.rsamore > summary:hover{text-decoration:underline}
+.rsamore > summary:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.rsamore:not([open]) .open,.rsamore[open] .shut{display:none}
+.rsamore .rsaset{margin-top:4px}
 .facttab th{color:var(--ink-2);font-weight:600;width:42%;padding-right:14px}
 .facts .src{margin:10px 0 0}
 @media (max-width:620px){.facttab th{width:46%}}

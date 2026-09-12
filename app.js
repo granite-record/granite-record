@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.60
+// GRANITE_VERSION: 2026-09-07.64
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -966,11 +966,28 @@ function factsTable(b,d){
   if(d.chapter)
     add("Chapter", `Chapter ${esc(d.chapter)}`
       + (d.year?`, Laws of ${esc(d.year)}`:""));
+  // HB 2 OF 2025 AMENDS 238 CHAPTERS, from 685 cited sections. Written out
+  // in full, that single row is about thirty lines of the table on a desktop
+  // and most of a screen on a phone -- in the panel a reader meets first, in
+  // front of everything they came for. Eight, and the rest behind a native
+  // disclosure: no script, the count is in the control so the scale of it is
+  // still stated, and eight chapters is enough to see what kind of bill this
+  // is. Ten or fewer are all shown, because hiding two behind a control that
+  // costs a line is not a saving.
   const ch=rsaChapters(d);
-  if(ch.length)
+  const rsaLink=([n,u])=>`<a class="rsa" href="${esc(u)}" target="_blank"`
+    +` rel="noopener">${esc(n)}</a>`;
+  const RSA_SHOWN=8;
+  if(ch.length && ch.length<=RSA_SHOWN+2)
     add(ch.length===1?"Amends RSA chapter":"Amends RSA chapters",
-      ch.map(([n,u])=>`<a class="rsa" href="${esc(u)}" target="_blank"`
-        +` rel="noopener">${esc(n)}</a>`).join(", "));
+      ch.map(rsaLink).join(", "));
+  else if(ch.length)
+    add("Amends RSA chapters",
+      `<span class="rsaset">${ch.slice(0,RSA_SHOWN).map(rsaLink).join(", ")}</span>`
+      +`<details class="rsamore"><summary><span class="shut">Show all ${
+        ch.length} chapters</span><span class="open">Show fewer</span></summary>`
+      +`<span class="rsaset">${ch.slice(RSA_SHOWN).map(rsaLink).join(", ")}</span>`
+      +`</details>`);
   if(d.house_committee) add("House Committee", cmteLink("House "+d.house_committee));
   if(d.senate_committee) add("Senate Committee", cmteLink("Senate "+d.senate_committee));
   add("Subject", esc(d.subject||""));
@@ -986,17 +1003,22 @@ function factsTable(b,d){
 
 function renderSummary(b,d,rsa){
   const _an=billNote(d)+analysis(d,rsa);
-  // THE FACTS TABLE IS EMITTED FIRST, and the stylesheet moves it on narrow
-  // screens rather than the other way round. It was emitted after the
-  // analysis, which read better in source order and cost a 274px hole in the
-  // page: a grid row is as tall as its tallest item, so the row holding the
-  // 482px panel gave the 208px analysis beside it a dead tail, and no span
-  // fixed every bill -- two rows left 75px on HB 1, three left an empty row
-  // on HB 751. A float cannot push in-flow content down at all, which is the
-  // property actually wanted, and a float has to come first to sit at the
-  // top. So: first in the DOM, floated right above 1100px, and ordered back
-  // below the analysis underneath that. See .facts in app.css.
-  return factsTable(b,d) + _an + `
+  // WHAT A BILL OPENS WITH IS THE WRITING, NOT THE TABLE. Asked for in those
+  // terms: the note that says what this bill number is for, then the General
+  // Court's own analysis, then On the record. Below 1100px the stylesheet was
+  // already doing this with order:1 and order:2; above it the table floated
+  // right at the top of the pane, level with the note, and a floated box has
+  // to come first in the DOM to sit at the top -- so the order the reader
+  // gets is the order the markup is in, and the float now starts below the
+  // prose and sits beside the story instead.
+  //
+  // What that cost, and why it is still a float: a grid row is as tall as its
+  // tallest item, so the row holding the 488px panel gave the analysis beside
+  // it a 274px dead tail, and no span fixed every bill -- two rows left 75px
+  // on HB 1, three left an empty row on HB 751. A float cannot push in-flow
+  // content down at all, which is the property actually wanted. See .facts in
+  // app.css.
+  return _an + factsTable(b,d) + `
 ${d._error?`<div class="loaderr"><b>This bill's detail did not
     load.</b><span>${esc(d._error)}</span></div>`:""}
     ${(d.notes||[]).map(x=>`<p class="note">${esc(x)}</p>`).join("")}
@@ -1045,8 +1067,8 @@ function renderVotes(b,d){
         of how any member voted.</p>`;
     }
     return `<section class="rc">
-      <div class="rchead"><span class="rcq">${esc(rc.question)}${
-        rc.amendment?` <span class="ramd">${esc(rc.amendment)}</span>`:""}</span>
+      <div class="rchead"><h2 class="rcq">${esc(rc.question)}${
+        rc.amendment?` <span class="ramd">${esc(rc.amendment)}</span>`:""}</h2>
       <span class="rcd">${fdate(rc.date)} · ${rc.body==="H"?"House":"Senate"}${
         AVK[vk]?` · ${AVK[vk]}`:""}</span>
       <span class="rcres ${rc.passed?'pass':'fail'}">${rc.passed?"Adopted":"Failed"}</span></div>
@@ -1752,9 +1774,26 @@ function renderDetail(b,d){
   // where it is used, so there is nothing left to order wrongly.
   const btsec=(focused===b.id&&((d.billtext&&d.billtext.body)
     ||(d.amendments||[]).length))
-    ? `<section class="btsec"><h2 class="amdsec">Bill text</h2>
-        <p class="btwhat">The bill and its amendments, as the General Court publishes them. Everything above is this site’s account of the record; this is the document.</p>${
-        renderBillText(b,d,rsa)}</section>`
+    ? (()=>{
+        // HOW LONG THE DOCUMENT IS, MEASURED, because this block is not in a
+        // tab: it sits below whichever one is open and was never hidden. HB 2
+        // of 2025 is 478,101 characters of text and 527,359 more across 43
+        // amendments, which laid the card out at 222,985px on a desktop and
+        // 504,778px on a phone -- three hundred and fifty screens of document
+        // under the summary of it. The median bill of the term is 11,511
+        // characters and wants no ceremony, so it opens as it always has.
+        const bodyLen=((d.billtext||{}).body||"").length;
+        const amdLen=(d.amendments||[]).reduce((n,a)=>n+((a&&a.text)||"").length,0);
+        const nAmd=(d.amendments||[]).length;
+        const LONG=30000;
+        const shut=bodyLen+amdLen>LONG;
+        const what=nAmd?`the text and ${nAmd} amendment${nAmd===1?"":"s"}`
+                       :"the text";
+        return `<section class="btsec"><h2 class="amdsec">Bill text</h2>
+        <p class="btwhat">The bill and its amendments, as the General Court publishes them. Everything above is this site’s account of the record; this is the document.</p>
+        <details class="btdoc"${shut?"":" open"}><summary><span class="shut">Show ${
+          what}</span><span class="open">Hide ${what}</span></summary>${
+        renderBillText(b,d,rsa)}</details></section>`;})()
     : "";
 
   // BILL TEXT SITS SECOND, and the data-t numbers are deliberately NOT
@@ -1942,26 +1981,36 @@ const anOpen=new Set();
 // characters are three lines on a desktop and eight on a phone.
 function clampAnalysis(){
   document.querySelectorAll(".card").forEach(card=>{
-    const id=card.dataset.id, box=card.querySelector(".anbox");
-    if(!box)return;
-    const text=box.querySelector(".antext");
-    const open=anOpen.has(id);
-    box.classList.toggle("clamped",!open);
-    const over=text.scrollHeight>text.clientHeight+2;
-    let btn=box.querySelector(".anmore");
-    if(over||open){
-      if(!btn){
-        btn=document.createElement("button");
-        btn.className="anmore";
-        btn.type="button";
-        box.insertBefore(btn,box.querySelector(".src"));
+    const id=card.dataset.id;
+    // EVERY .anbox ON THE CARD, not the first one. querySelector returned the
+    // bill note, so on the two bills that have a note AND an analysis the
+    // analysis was never clamped and never got a button: HB 2 of 2025 put
+    // 13,340px of it -- twenty screens at 1440, thirty-six on a phone -- in
+    // front of the table, the story and the docket. The open state is keyed
+    // per box for the same reason; one key for the card would have opened
+    // both or neither.
+    card.querySelectorAll(".anbox").forEach((box,i)=>{
+      const text=box.querySelector(".antext");
+      if(!text)return;
+      const key=id+"#"+i;
+      const open=anOpen.has(key);
+      box.classList.toggle("clamped",!open);
+      const over=text.scrollHeight>text.clientHeight+2;
+      let btn=box.querySelector(".anmore");
+      if(over||open){
+        if(!btn){
+          btn=document.createElement("button");
+          btn.className="anmore";
+          btn.type="button";
+          box.insertBefore(btn,box.querySelector(".src"));
+        }
+        btn.textContent=open?"Show less":"Show more";
+        btn.setAttribute("aria-expanded",String(open));
+        btn.dataset.an=key;
+      }else if(btn){
+        btn.remove();
       }
-      btn.textContent=open?"Show less":"Show more";
-      btn.setAttribute("aria-expanded",String(open));
-      btn.dataset.an=id;
-    }else if(btn){
-      btn.remove();
-    }
+    });
   });
 }
 
