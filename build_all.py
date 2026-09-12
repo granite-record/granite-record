@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.17
+# GRANITE_VERSION: 2026-09-05.18
 """
 Run the whole pipeline in the right order.
 
@@ -115,6 +115,18 @@ def plan(a):
              ["build_data.py", "--dir", ".", "--out", "data"],
              needs=["Docket.txt"], produces=["data/bills.json"],
              note="picks up the names and titles the two steps above found"),
+
+        # AFTER build_data, because it reads data/bills.json, and before
+        # build_site_v2, which merges its answers in. Regenerated every run
+        # rather than kept, so a term the General Court labels later simply
+        # stops being guessed at: topics.py never answers for a bill that
+        # already has a topic.
+        Step("a topic for the bills the General Court gave none",
+             ["topics.py", "--apply"],
+             needs=["data/bills.json"], produces=["topics_assigned.json"],
+             note="learns from the 2,221 bills of 2025-2026 that carry the "
+                  "General Court's own topic and answers for the other "
+                  "29,449, or says Miscellaneous where it cannot"),
 
         Step("plain-language bill histories",
              ["narrative.py", "--docket", "Docket.txt", "--all",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.81
+# GRANITE_VERSION: 2026-09-05.82
 """
 Generate the faceted site from real General Court data.
 
@@ -2329,6 +2329,9 @@ def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
         "sponsor_label": prime.get("display", "") if prime else "",
         "committee": cmte, "committees": cmtes,
         "topic": b.get("subject", ""),
+        # Whether the General Court filed it there or this site did.
+        # The facet mixes the two and a reader is entitled to know which.
+        "topic_by": b.get("subject_source", ""),
         "kind": disp.kind, "status": disp.status,
         "term": term, "carried": carried,
         # An archived term, whose bills come from the General Court's
@@ -2723,6 +2726,56 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
     return rc_out
 
 
+TOPICS_GUESSED = Path("topics_assigned.json")
+
+
+def merge_guessed_topics(bills):
+    """Fill a topic for the eighteen terms the General Court gave none.
+
+    Its own assignment reaches 2,221 bills of 2025-2026 and no others, so the
+    topic facet has been a filter that hides 29,449 bills. topics.py learns
+    from the term they did label and answers for the rest, or says
+    Miscellaneous where it cannot -- at the threshold it publishes at, 14 of
+    15 of its answers were judged defensible at the bench and none wrong.
+
+    NEVER OVER A TOPIC THE GENERAL COURT GAVE. A record that already carries
+    one keeps it, so 2025-2026 is untouched and a later term the General Court
+    labels will overwrite nothing.
+
+    AND IT IS MARKED AS OURS. subject_source distinguishes the two on every
+    record that has a topic at all, because a reader filtering by Elections
+    should be able to find out whether the General Court filed a bill there or
+    this site did. That is the same distinction the page already draws between
+    a boundary the chair spoke and one a model placed, and between a veto
+    message quoted and a bill note written here.
+
+    Absent the file, nothing happens and the site is exactly as it was.
+    """
+    if not TOPICS_GUESSED.exists():
+        return 0
+    try:
+        guessed = json.loads(TOPICS_GUESSED.read_text(encoding="utf-8"))
+    except ValueError:
+        return 0
+    n = 0
+    for term, by_bill in bills.items():
+        for bid, rec in by_bill.items():
+            if rec.get("subject"):
+                rec.setdefault("subject_source", "general court")
+                continue
+            got = (guessed.get(term) or {}).get(bid)
+            if not got or not got.get("subject"):
+                continue
+            rec["subject"] = got["subject"]
+            rec["subject_code"] = got.get("subject_code") or ""
+            rec["subject_source"] = "granite record"
+            n += 1
+    if n:
+        print(f"  {n:,} bills given a topic by topics.py "
+              f"(the General Court gave none); marked subject_source")
+    return n
+
+
 def vote_note_for(narr, rollcalls):
     """The note above the votes table, silenced where it would contradict it."""
     note = (narr or {}).get("vote_note", "")
@@ -3053,6 +3106,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # side, where the words are quoted and attributed.
             "bill_note": bill_note(notes, term, bid),
             "subject": b.get("subject", ""),
+            "subject_source": b.get("subject_source", ""),
             "house_committee": names.committee(b.get("house_committee", "")),
             "senate_committee": names.committee(b.get("senate_committee", "")),
             "lsr": b.get("lsr", ""),
@@ -3151,6 +3205,7 @@ def main():
     if bills and not P.term_keyed(bills):
         sys.exit(f"{D / 'bills.json'} is keyed on bill number, not on term. "
                  "Rebuild it: python3 build_data.py --dir . --out data")
+    merge_guessed_topics(bills)
     sponsors = load(D / "sponsors.json", {})
     legs = {m["id"]: m for m in load(D / "legislators.json", [])}
     # Sponsor records carry a name but not a party or a district. The roster
