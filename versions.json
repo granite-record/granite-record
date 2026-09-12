@@ -105,7 +105,7 @@
     "fetch_legislation.py": "2026-09-10.15",
     "referrals.py": "2026-09-10.5",
     "child.py": "2026-09-10.1",
-    "fetch_sponsors_by_member.py": "2026-09-10.3",
+    "fetch_sponsors_by_member.py": "2026-09-10.4",
     "past_members.py": "2026-09-10.1",
     "rollcalls_from_db.py": "2026-09-10.1",
     "fetch_rollcall_parties.py": "2026-09-10.2",

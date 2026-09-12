@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.3
+# GRANITE_VERSION: 2026-09-10.4
 """Who sponsored what, asked one legislator at a time instead of one bill at a time.
 
     python3 fetch_sponsors_by_member.py --plan        # no network at all
@@ -362,12 +362,36 @@ def roster(fetch=False):
 
 # ------------------------------------------------------------------ scoring
 
-def known_sponsors():
-    """{(term, bill): {"prime": {name}, "co": {name}}} from data/sponsors.json.
+HON_CHAMBER = {"rep": "H", "representative": "H", "sen": "S", "senator": "S"}
 
-    The two terms the General Court's own database covers. This script did
-    not generate them, which is the whole reason they are worth scoring
-    against.
+
+def chamber_of(label):
+    """"Rep. Abbas, Daryl(Rock. 08)" -> "H". "" when the label does not say.
+
+    THE SAME PERSON IS IN THE LIST TWICE when they have served in both
+    chambers, under two member ids and with two separate records. Daryl Abbas
+    is "Rep. Abbas, Daryl(Rock. 08)" and "Sen. Abbas, Daryl(Dist. 22)", and
+    his 2023-2026 sponsorships belong to the Senate one.
+
+    Scoring on the surname alone charged the Senator's 30 prime bills to the
+    Representative as well, so his House entry came back 0 of 30 while his
+    Senate entry came back 29 of 30. That is what dragged the first probe to
+    38% and made a working parser look broken.
+    """
+    m = re.match(r"\s*([A-Za-z]+)\.?\s", label or "")
+    return HON_CHAMBER.get((m.group(1) if m else "").lower(), "")
+
+
+def known_sponsors():
+    """{(term, bill): {"prime": {(surname, chamber)}, "co": {...}}}.
+
+    From data/sponsors.json -- the two terms the General Court's own database
+    covers. This script did not generate them, which is the whole reason they
+    are worth scoring against.
+
+    Keyed on the chamber as well as the surname, for the reason chamber_of
+    gives: a member who has served in both is two people to this list and one
+    person to a surname.
     """
     p = Path("data/sponsors.json")
     if not p.exists():
@@ -378,7 +402,7 @@ def known_sponsors():
             d = out.setdefault((term, bill), {"prime": set(), "co": set()})
             for r in rows:
                 d["prime" if r.get("prime") else "co"].add(
-                    surname(r.get("name", "")))
+                    (surname(r.get("name", "")), (r.get("chamber") or "").upper()))
     return out
 
 
@@ -444,7 +468,7 @@ def score(people):
           f"{'found':>7}{'extra':>7}")
     hit = miss = 0
     for mid, label in people:
-        who = surname(label)
+        who = (surname(label), chamber_of(label))
         for mode in MODES:
             page = load(mid, mode)
             if page is None:
