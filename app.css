@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.48 */
+/* GRANITE_VERSION: 2026-09-07.49 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1059,16 +1059,49 @@ margin-top:2px}
    same kind of page: server-rendered prose in the same shell, read once
    rather than searched. The measure keeps it readable; the lists inside it
    are wider than the measure only where a name and an address share a line. */
-.officials{max-width:var(--measure);margin:0 auto;padding:6px 0 40px}
+/* Wider than the measure and aligned left, not centred. This is a lookup and
+   not an essay: a row is a person, their seat and two ways to reach them, and
+   560px made that wrap every time. The prose inside it -- the lead, the
+   floterial note, the sources -- keeps the measure by its own rules below.
+   margin:0 rather than 0 auto so the heading starts where the brand and the
+   footer start; .shell already holds the page's gutter. */
+.officials{max-width:760px;margin:0;padding:6px 0 40px}
 .offtitle{font-size:28px;line-height:1.2;margin:6px 0 10px}
 .officials .lead{font-size:19px;line-height:1.6;color:var(--ink);margin:0 0 22px}
 .offsec{font-size:19px;margin:34px 0 6px;padding-top:14px;
   border-top:1px solid var(--rule)}
 .offh{font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
   color:var(--ink-2);margin:22px 0 8px}
-.offlist{list-style:none;padding:0;margin:0 0 10px}
-.offrow{margin:0 0 8px;font-size:14px;line-height:1.6}
-.offrow .mchip{margin-right:2px}
+.offlist{list-style:none;padding:0;margin:0 0 16px}
+/* A PERSON, AND HOW TO REACH THEM. These rows were name &middot; email
+   &middot; phone -- the middle-dot meta string the design brief lists as a
+   default to avoid -- and at 360px three facts joined that way wrapped into a
+   ribbon with no shape. Two columns: who on the left, how on the right, one
+   row per person with a hairline between them so a district with three
+   representatives reads as three people rather than as a paragraph. */
+/* A FIXED FIRST COLUMN, not 1fr with the contact pushed right. Right-aligning
+   the second cell gave every row a different gap -- Beth Richards' email sat
+   100px from her name and Jim Snodgrass's 200px from his -- so the pair read
+   as two unrelated things that happened to share a line. Both columns start
+   at the same x in every row now, which is what makes it a table. */
+.offrow{display:grid;grid-template-columns:minmax(0,290px) minmax(0,1fr);
+gap:2px 22px;align-items:baseline;padding:8px 0;
+border-bottom:1px solid var(--rule);font-size:14px;line-height:1.55}
+.offrow:last-child{border-bottom:0}
+.offwho{min-width:0}
+.offwho .mchip{margin:0}
+/* The seat under the name rather than beside it: a floterial district and a
+   town district are both "who represents you" and the reader is placing the
+   person, not reading a list of codes. */
+.offseat{display:block;color:var(--ink-2);font-size:12px;margin-top:2px}
+.offhow{display:flex;flex-wrap:wrap;gap:2px 14px;
+color:var(--ink-2);font-variant-numeric:tabular-nums}
+.offhow .offtel{white-space:nowrap}
+@media (max-width:620px){
+  /* One column: 290px of name and a column of contact beside it does not fit
+     360px, and the row becomes name-then-contact stacked. */
+  .offrow{grid-template-columns:1fr;gap:3px}
+}
 .officials .note{font-family:var(--serif);font-size:15px;line-height:1.6;
   color:var(--ink-2);margin:0 0 12px;max-width:var(--measure)}
 .officials .srcs{margin-top:34px;border-top:1px solid var(--rule);

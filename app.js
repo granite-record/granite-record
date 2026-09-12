@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.53
+// GRANITE_VERSION: 2026-09-07.54
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1709,6 +1709,10 @@ function renderDetail(b,d){
 
 let PAGE = null;          // {kind:"member"|"committee", data:{...}}
 let PAGE_TAB = 0;
+// home.json's `upcoming`, once, for the committee page's own calendar.
+// null while unasked, [] once asked and empty -- the two are not the same
+// thing and the page must not say "nothing is scheduled" before it knows.
+let UPCOMING = null;
 
 // Redraw whatever is on screen. The bill search and a record page are two
 // renderers, and the controls INSIDE an expanded bill card -- the segment
@@ -2267,13 +2271,157 @@ function renderCommitteeSessions(c){
     + ss.map(sessionHtml).join("");
 }
 
+// ======================================================= upcoming session ==
+// The same block the home page prints, for one committee. It reads
+// home.json's `upcoming`, which is where the site publishes what is
+// scheduled; a second file carrying the same facts is how a record ends up
+// with two answers, and this project has paid for that more than once.
+//
+// MATCHED BY NAME AND BY BILL, not by name alone. Seven committee names
+// belong to both chambers -- Finance, Judiciary, Education, Transportation,
+// Ways and Means, Children and Family Law, Executive Departments and
+// Administration -- and `upcoming` carries no chamber. So a bare name match
+// would put a Senate Finance hearing on House Finance's page. A meeting is
+// this committee's only if the name matches AND at least one of its bills is
+// in this committee's own bill list. Where nothing matches, nothing is shown:
+// omitting a real meeting is recoverable, and attributing one to the wrong
+// committee is the kind of error somebody quotes.
+function cmteUpcoming(c){
+  if(!Array.isArray(UPCOMING)||!UPCOMING.length)return [];
+  const name=String(c.name||"").trim().toLowerCase();
+  if(!name)return [];
+  // KEYED BY TERM AND NUMBER, because a bill number is not a key. CACR 1 is
+  // a different bill in every biennium and House Finance carries three of
+  // them -- 2001, 2005 and 2019. Collapsing the terms would let a CACR 1 of
+  // 2001 vouch for a 2026 meeting about something else entirely, which is
+  // the join CLAUDE.md warns about in as many words: the pair is bill+term.
+  // Found by a test whose own fixture was wrong, which is the only reason
+  // the flaw showed at all.
+  const mine=new Set();
+  Object.entries(c.bills||{}).forEach(([t,rows])=>(rows||[]).forEach(b=>{
+    if(b&&b.id)mine.add(t+" "+String(b.id).toUpperCase());
+  }));
+  return UPCOMING.filter(u=>
+    String(u.committee||"").trim().toLowerCase()===name
+    && mine.has(String(u.term||"")+" "+String(u.bill||"").toUpperCase()));
+}
+
+// The kinds the General Court's schedule actually uses, in the words a reader
+// needs: a public hearing is the one they may speak at, an executive session
+// is the one where the committee votes.
+const MEET_KIND={"public hearing":["Public hearing","k-hearing"],
+                 "hearing":["Public hearing","k-hearing"],
+                 "executive session":["Executive session","k-exec"],
+                 "work session":["Work session",""],
+                 "subcommittee work session":["Subcommittee work session",""]};
+
+// THE MARKUP HERE MUST MATCH build_pages.py's calendar_html(). Both emit the
+// same component against one set of rules in app.css's SHARED region, and
+// preflight fails if the class names drift apart -- which is the only thing
+// keeping two renderers of one component honest.
+function calendarBlock(rows,heading){
+  if(!rows.length)return "";
+  const meets=new Map();
+  rows.forEach(u=>{
+    const k=[u.date||"",u.time||"",u.committee||"",u.what||"",u.venue||""].join(" ");
+    if(!meets.has(k))meets.set(k,[]);
+    meets.get(k).push(u);
+  });
+  const keys=[...meets.keys()].sort();
+  const days=new Map();
+  keys.forEach(k=>{
+    const d=k.split(" ")[0];
+    if(!days.has(d))days.set(d,[]);
+    days.get(d).push(k);
+  });
+  const today=new Date(); today.setHours(0,0,0,0);
+  const when=d=>{
+    const dd=new Date(d+"T00:00:00");
+    if(isNaN(dd))return [d,""];
+    const off=Math.round((dd-today)/86400000);
+    const rel=off===0?"today":off===1?"tomorrow":(off>0&&off<14)?`in ${off} days`:"";
+    return [dd.toLocaleDateString(undefined,
+      {weekday:"short",day:"numeric",month:"short"}),rel];
+  };
+  const out=[`<section class="cal"><h2>${esc(heading)}</h2>`];
+  days.forEach((ks,date)=>{
+    const [label,rel]=when(date);
+    out.push(`<div class="calday"><h3 class="caldate"><span>${esc(label)}</span>`
+      +(rel?`<span class="cdrel">${esc(rel)}</span>`:"")+`</h3>`);
+    ks.forEach(k=>{
+      const [,time,cmte,what,venue]=k.split(" ");
+      const bills=meets.get(k);
+      const [word,kcls]=MEET_KIND[String(what||"").trim().toLowerCase()]
+        ||[what?what.charAt(0).toUpperCase()+what.slice(1):"Meeting",""];
+      out.push(`<details class="calmeet"><summary>`
+        +(time?`<span class="caltime">${esc(time)}</span>`:"")
+        +`<span class="calcmte">${esc(cmte)}</span>`
+        +`<span class="calkind ${kcls}">${esc(word)}</span>`
+        +`<span class="calcount">${bills.length} bill${bills.length===1?"":"s"}</span>`
+        +(venue?`<span class="calwhere">${esc(venue)}</span>`:"")
+        +`<span class="caret"></span></summary>`
+        +`<div class="calbody"><ul class="calbills">`);
+      bills.forEach(b=>{
+        const id=String(b.bill||"");
+        const num=id.replace(/^([A-Za-z]+)(\d)/,"$1 $2");
+        // billHref resolves the year the same way every other link on this
+        // page does, so a calendar row and a card row cannot disagree.
+        // The title from the row if the builder put one there, otherwise out
+        // of the term index this page has already loaded. `upcoming` carries
+        // no title, so without this the committee page would print a column
+        // of bare bill numbers while the home page prints the same four with
+        // their titles -- one component, two answers.
+        const ti=b.title||billTitle(id);
+        out.push(`<li><a class="cbn" href="${esc(billHref(id))}">${esc(num)}</a>`
+          +(ti?`<span class="cbt">${esc(ti)}</span>`:"")+`</li>`);
+      });
+      out.push(`</ul></div></details>`);
+    });
+    out.push(`</div>`);
+  });
+  out.push(`<p class="note">Anyone may attend and speak at a public hearing,
+    or sign in for or against without speaking. An executive session is where
+    the committee votes on what to recommend; it is open to watch but not to
+    testify.</p></section>`);
+  return out.join("");
+}
+
+// A bill's own page, by the year its number belongs to. yearOf is what the
+// rest of this file uses, so a calendar link and a card link agree.
+function billHref(id){
+  const y=(typeof yearOf==="function"&&yearOf(id))||null;
+  return y?`bill/${y}/${String(id).toLowerCase()}.html`
+          :`bills.html#${encodeURIComponent(id)}`;
+}
+
+function billTitle(id){
+  if(!Array.isArray(IDX))return "";
+  const b=IDX.find(x=>x.id===id&&(!term||x.term===term))||IDX.find(x=>x.id===id);
+  return (b&&b.title)||"";
+}
+
+function renderCommitteeUpcoming(c){
+  if(UPCOMING===null)return "";               // not asked yet: say nothing
+  const rows=cmteUpcoming(c);
+  if(!rows.length)
+    return `<section class="cal"><h2>Upcoming session</h2>
+      <p class="note">Nothing is scheduled for this committee in the next two
+      weeks. The General Court sits from January to June.</p></section>`;
+  return calendarBlock(rows,"Upcoming session");
+}
+
 function renderCommittee(c){
   // Counted for the term the page is showing, not across every term. "Bills
   // (107)" over a list of 32 is the tab disagreeing with itself.
   const tabs=[["Bills",cmteBills(c).length],["Sessions",cmteSessions(c).length]];
   const body=[()=>renderCommitteeBills(c),()=>renderCommitteeSessions(c)][PAGE_TAB]
     ||(()=>"");
-  return renderCommitteeHead(c) + termControl() + tabStrip(tabs)
+  // Who they are, then what is coming, then the record. The calendar sits
+  // above the term control because it is not about a term: it is about this
+  // week, and a reader who came to find out whether they can still turn up
+  // and speak should not have to scroll past nineteen years of bills.
+  return renderCommitteeHead(c) + renderCommitteeUpcoming(c)
+    + termControl() + tabStrip(tabs)
     + `<div class="pane" role="tabpanel" tabindex="0">${body()}</div>`;
 }
 
@@ -2392,6 +2540,16 @@ function openPage(kind,ref){
     // And on the way in: a member whose newest term is not the site's opens
     // on their own, whose index nothing has asked for either.
     if(PAGE.term)ensureTerm(PAGE.term).then(renderPage);
+    // What is scheduled, for the committee page's own calendar. 13 KB, asked
+    // once, and asked AFTER the record it belongs to -- the page is useful
+    // without it and must not wait on it. A failure leaves UPCOMING null,
+    // which draws nothing rather than claiming nothing is scheduled.
+    if(kind==="committee"&&UPCOMING===null){
+      fetch(DATA("home.json"))
+        .then(r=>r.ok?r.json():null)
+        .then(h=>{UPCOMING=(h&&h.upcoming)||[];renderPage();})
+        .catch(()=>{});
+    }
   })
     .catch(e=>{if(el)el.innerHTML=`<div class="empty"><b>This page's record did
       not load.</b><br><br><code>${esc(e.message||e)}</code><br><br>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.128
+# GRANITE_VERSION: 2026-09-04.129
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1525,6 +1525,37 @@ def _marker_cases():
     r = _run([sys.executable, str(f)], capture_output=True, text=True)
     assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
     return "ok", r.stdout.strip().splitlines()[-1][:70]
+
+
+@check("frontend", "a meeting is matched to one committee, in one term")
+def _cmte_match():
+    """tests/test_cmte_match.js, against app.js's own source.
+
+    The committee page's Upcoming session block has to decide whether a
+    scheduled meeting is this committee's, out of a row that names the
+    committee and not the chamber -- and seven committee names belong to both
+    chambers. The rule is name plus a bill from that committee's own list for
+    that TERM, and the term half is what the first version got wrong: it
+    collapsed every term into one set, so House Finance's CACR 1 of 2001
+    would have vouched for a 2026 meeting about a different CACR 1.
+
+    The test reads the function out of app.js by source text rather than
+    keeping a copy, so it cannot pass against a version the browser does not
+    run.
+    """
+    import subprocess, sys
+    f = Path("tests/test_cmte_match.js")
+    if not f.exists():
+        return "skip", "tests/test_cmte_match.js not here"
+    if not Path("site/committee/H34.json").exists():
+        return "skip", "the committee records are not built yet"
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not on PATH"
+    r = _run([node, str(f)], capture_output=True, text=True)
+    assert r.returncode == 0, (r.stdout or r.stderr).strip()[-400:]
+    n = sum(1 for ln in r.stdout.splitlines() if "[ ok ]" in ln)
+    return "ok", f"{n} cases, including both chambers' Finance"
 
 
 def _strip_js_comments(js):
