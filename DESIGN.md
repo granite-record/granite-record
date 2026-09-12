@@ -282,21 +282,35 @@ the band, so the shape survives on a bad screen in sunlight.
 
 The links gained a wrapper, `.navtabs`, which is the whole reason the layout
 works: the strip wraps as one unit instead of the links wrapping through the
-middle of the row. One row needs **783px** — brand 113, strip 529, control
-57, two 18px gaps, 48px gutter, measured in the browser rather than added up
-from the stylesheet — so below 860px the row splits, identity and control on
-the first line and the seven sections beneath. 860 is not a new number: the
-facet sidebar, the footer, `.ctwo` and the legislator finder already give up
-a column there.
+middle of the row. Below the split, identity and control take the first line
+and the sections take the next.
 
-| width | nav height | before |
-|---|---|---|
-| 1440 | 55px, one row | 56px |
-| 768 | 88px, two zones | 56px |
-| 360 | 159px, two zones | 132px |
+**Then there were four.** Data and About are pages for somebody who already
+knows what they want and both had carried a footer link since the footer was
+written, so they lost their tabs and kept their links. Home lost its tab
+because the mark and the wordmark beside it are the way home on every site a
+reader uses — here they simply were not a link. They are now, with
+`aria-current` on the brand at home so a screen reader still hears which page
+it is, and the chip that marks a tab scoped to `.navtabs` so the site's name
+does not render as one.
 
-The phone costs 27px more chrome than it did. That is the trade and it was
-made on purpose: 27px once, against a second look on every page.
+Four tabs need **635px** on one row — brand 163 with its mark, strip 331,
+control 57, two 18px gaps, 48px gutter — against 783px for seven. So the
+split moved from 860 to **720**, which is the width the rest of this site
+already breaks at: 86px of slack, and one breakpoint for the nav instead of
+two.
+
+| width | now | seven tabs | before all of it |
+|---|---|---|---|
+| 1440 | 55px, one row | 55px, one row | 56px |
+| 768 | 55px, one row | 88px, two zones | 56px |
+| 360 | 111px, two zones, tabs on one row | 159px, two rows of tabs | 132px |
+| 320 | 159px, tabs wrap | — | — |
+
+The phone ended up 21px *cheaper* than it started, with the current section
+unmistakable. That was not the trade offered this morning — 27px more chrome
+was — and it is worth recording that the thing which paid for it was cutting
+three tabs rather than any cleverness in the CSS.
 
 **Two traps worth recording.** The nav had been kept by hand in both
 stylesheets, like the palette before it, so it moved into app.css's SHARED
@@ -391,6 +405,65 @@ was clipped on screen anyway — the harness does not load Public Sans, so
 the element measure itself: put the placeholder in as the field's `value` and
 read `scrollWidth - clientWidth`, which uses the same font, kerning and
 padding the placeholder will.
+
+---
+
+## The town page, and one way in
+
+Two decisions worth keeping, both from the same instruction: a reader who
+opens a page called "who represents me" is looking up their own government,
+not reading an index of what this site covers.
+
+**The order is the content.** The page opened with the General Court, because
+the General Court is what the rest of the site is about. It now runs the way
+a resident holds it — Executive Branch, Federal Delegation, Legislative
+Branch, Town Officials, senator before representative — and what they came
+for most often is first of all: "How to Vote (Next Election: November 3rd)",
+with where they vote, the town website and the clerk to ring. The heading
+says "Next Election" only while the date is ahead of the build and "Election
+on file" after it, because a page still promising "next" in December is wrong
+about the one thing it was opened for.
+
+Eight towns are one page here and several voting wards on the Secretary of
+State's list — Berlin, Derry, Farmington, Goffstown, Hudson, Merrimack, Salem
+and Walpole — so there is no ward for the page to be about. Four addresses in
+a row was the first answer and it is three too many: the count goes on the
+line and the addresses go behind it. That is the third place on this site
+using the same shape — the chapter list on a bill, the filter panel on a
+phone, the polling places here — and it is worth naming as the shape: **the
+answer on the line, the rest on request.**
+
+**The finder is a way in, not a destination.** Picking a town used to draw
+that town's seats inside the legislators page — which is what a town page
+does, better, and has done since it was written. A click now goes to the
+town's own page instead, and two thirds of that script went away with the
+in-place rendering: `wardsOf`, `houseOf`, `reps`, `senators`, `people` and
+`show` all existed to draw something a page already draws.
+
+**And nothing else about it changed, on instruction.** The first attempt at
+this replaced the browsable list with a type-ahead that listed every ward as
+its own match — twelve rows in front of somebody who typed "manch". The
+correction was exact: *"I preferred the old way that town searching showed
+the list of matching towns and the wards, I just wanted it so that when you
+clicked a town in that searchbar that it would take you straight to the full
+town page."* So the list is back: all 259 towns, scrollable, ranked as you
+type, one row per town with its ward count, and the wards appearing under a
+town when you pick it. A town without wards is a link; a town with them is a
+button that opens them, because there is no page for Concord -- only Concord
+Ward 1 through 10 -- so the wards are the links, as the chips the live page
+put in a card below the list. The one field also matches members, because a
+name typed into it has to go somewhere.
+
+The second correction took three labels off those rows: "Town" on a row in a
+list of towns, "Go" on a link, and "who represents it" on every one of them,
+on a page whose heading already asks the question. What is left is the name,
+and the ward count where a name is not the whole answer.
+
+The lesson is the one this file keeps recording in other forms: an
+instruction to change where a click goes is not an instruction to redesign
+the thing that was clicked. The roster below it does fold by county now, shut
+until asked, because 406 members under ten open headings is not a list
+anybody reads in order — and that was asked for.
 
 ---
 

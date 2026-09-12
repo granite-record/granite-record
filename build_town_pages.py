@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.8
+# GRANITE_VERSION: 2026-09-09.9
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -128,26 +128,34 @@ MONTHS = ("January", "February", "March", "April", "May", "June", "July",
           "August", "September", "October", "November", "December")
 
 
-def election_line(raw):
-    """"11/03/2026-STATE GENERAL ELECTION" as something a person reads.
+def ordinal(n):
+    return f"{n}{'th' if 11 <= n % 100 <= 13 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
 
-    Called "Next election" only while it is still ahead of the build. The
-    Secretary of State's export names one election, and a page that still
-    called it "next" in December would be wrong about the one thing a reader
-    came to it for.
+
+def election_line(raw):
+    """"11/03/2026-STATE GENERAL ELECTION" as a date in a heading.
+
+    Returns the parenthetical for the section title: "November 3rd". The year
+    is added only when it is not this one, because a reader looking at a page
+    in 2026 does not need to be told that November is in 2026 and does need
+    to be told when it is not.
+
+    It says "Next Election" only while the date is ahead of the build. After
+    that it says "Election on file": a heading still promising "next" in
+    December would be wrong about the one thing the section is for.
     """
     m = re.match(r"\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*-\s*(.+)$", raw or "")
     if not m:
-        return "", ""
+        return ""
     mm, dd, yy = int(m.group(1)), int(m.group(2)), int(m.group(3))
     if not 1 <= mm <= 12:
-        return "", ""
-    name = " ".join(w.capitalize() for w in m.group(4).split())
-    when = f"{dd} {MONTHS[mm - 1]} {yy}"
-    ahead = (yy, mm, dd) >= (dt.date.today().year, dt.date.today().month,
-                             dt.date.today().day)
-    return ("Next election" if ahead else "Election on file",
-            f"{name}, {when}")
+        return ""
+    today = dt.date.today()
+    when = f"{MONTHS[mm - 1]} {ordinal(dd)}"
+    if yy != today.year:
+        when += f", {yy}"
+    ahead = (yy, mm, dd) >= (today.year, today.month, today.day)
+    return f"{'Next Election' if ahead else 'Election on file'}: {when}"
 
 
 def office_block(title, holder, fallback_url, note=""):
@@ -242,20 +250,19 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
                 E(loc["polling_place"]),
                 [f'<span class="offwhen">{E(hours)}</span>'] if hours else [],
                 "Where you vote"))
-        # A TOWN THAT VOTES IN MORE THAN ONE PLACE. Eight of them -- Berlin,
-        # Derry, Farmington, Goffstown, Hudson, Merrimack, Salem and Walpole
-        # -- are one town in the district file this site's pages are named
-        # after and several voting wards on the Secretary of State's list.
-        # Naming one of four would be wrong three times out of four.
-        for w in loc.get("polling_by_ward") or []:
-            hours = w.get("state_hours") or ""
-            rows.append(off_row(
-                E(w.get("polling_place") or ""),
-                [f'<span class="offwhen">{E(hours)}</span>'] if hours else [],
-                f'Where you vote, ward {E(w.get("ward"))}'))
-        when_label, when_text = election_line(loc.get("election", ""))
-        if when_text:
-            rows.append(off_row(E(when_text), [], when_label))
+        # A TOWN THAT VOTES IN MORE THAN ONE PLACE, BEHIND ONE LINE. Eight of
+        # them -- Berlin, Derry, Farmington, Goffstown, Hudson, Merrimack,
+        # Salem and Walpole -- are one town in the district file this site's
+        # pages are named after and several voting wards on the Secretary of
+        # State's list, so there is no ward for this page to be about and no
+        # way to ask the reader which is theirs.
+        #
+        # Four addresses in a row was the first answer and it is three
+        # addresses too many: a reader wants one. So the number is stated and
+        # the list is behind it, which is the same shape as the chapter list
+        # on a bill and the filter panel on a phone -- the answer first, the
+        # rest on request.
+        by_ward = loc.get("polling_by_ward") or []
         site_url = town_off.get("website") or loc.get("website") or ""
         if site_url:
             rows.append(off_row(weblink(site_url), [], "Town website"))
@@ -269,8 +276,26 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
             rows.append(off_row(
                 f'<span class="mchip">{E(loc["clerk"])}</span>', how,
                 "Town or city clerk"))
+        if by_ward:
+            inner = []
+            for w in by_ward:
+                hours = w.get("state_hours") or ""
+                inner.append(off_row(
+                    E(w.get("polling_place") or ""),
+                    [f'<span class="offwhen">{E(hours)}</span>']
+                    if hours else [],
+                    f'Ward {E(w.get("ward"))}'))
+            rows.append(
+                '<li class="offrow offwards"><details class="wards">'
+                f'<summary>{E(town)} votes in {len(by_ward)} places, by '
+                'ward &mdash; show them</summary>'
+                '<ul class="offlist">' + "".join(inner) + "</ul></details></li>")
         if rows:
-            body.append(f'<h2 class="offsec">Voting in {E(town)}</h2>')
+            when = election_line(loc.get("election", ""))
+            body.append('<h2 class="offsec">How to Vote'
+                        + (f' <span class="offwhen">({E(when)})</span>'
+                           if when else "")
+                        + "</h2>")
             body.append('<ul class="offlist">' + "".join(rows) + "</ul>")
             if not loc.get("polling_place") and not loc.get("polling_by_ward"):
                 # The Secretary of State's own list is blank here, as it is
@@ -280,7 +305,7 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
                             'clerk above is who to ask.</p>')
 
     # ---- the state executive ----------------------------------------------
-    body.append('<h2 class="offsec">The state executive</h2>')
+    body.append('<h2 class="offsec">Executive Branch</h2>')
     g = off.get("governor", {})
     body.append(office_block("Governor of New Hampshire", g,
                              g.get("official_url", ""),
@@ -295,7 +320,7 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
             " ".join(c.get("about") or [])))
 
     # ---- the federal delegation -------------------------------------------
-    body.append('<h2 class="offsec">Federal delegation</h2>')
+    body.append('<h2 class="offsec">Federal Delegation</h2>')
     us = off.get("us_senate", {})
     body.append('<h3 class="offh">US Senate</h3>')
     seats = us.get("seats") or []
@@ -322,7 +347,7 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
             " ".join(u.get("about") or [])))
 
     # ---- the General Court, senator before representative -----------------
-    body.append('<h2 class="offsec">In the General Court</h2>')
+    body.append('<h2 class="offsec">Legislative Branch</h2>')
     sd = dist.get("senate")
     if sd:
         who = [m for m in legs if m.get("chamber") == "S"
@@ -340,7 +365,7 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
     # ward's -- a ward elects a councillor, and the town is what the board
     # governs.
     if town_off.get("officials"):
-        body.append(f'<h2 class="offsec">{E(town)} officials</h2>')
+        body.append(f'<h2 class="offsec">{E(town)} Officials</h2>')
         rows = []
         for o in town_off["officials"]:
             how = []

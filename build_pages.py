@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.53
+# GRANITE_VERSION: 2026-09-04.59
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -148,8 +148,10 @@ display:inline-block;margin:0 5px 5px 0}
 .p-R{background:var(--rep-soft);color:var(--rep)}.p-D{background:var(--dem-soft);color:var(--dem)}
 .p-I{background:var(--ind-soft);color:var(--ind)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:2px 20px}
-.ownpage{float:right;font-size:14px;margin-left:14px}
 .mem{padding:4px 0;font-size:14px}
+/* The district beside a name in the roster. It was an inline style on all
+   406 rows. */
+.mdist{color:var(--ink-2);font-size:12px}
 .count{font-size:14px;color:var(--ink-2);margin:10px 0}
 .hit{display:block;width:100%;text-align:left;padding:12px 2px;border-bottom:1px solid var(--rule);cursor:pointer}
 /* Flex, for the reason .statgrid is: in a 482px column auto-fit makes two
@@ -240,52 +242,84 @@ var(--rule-2) 3px,var(--surface) 3px,var(--surface) 6px);border:1px solid var(--
 .pstub{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;gap:10px;
 cursor:pointer;background:#14181A;color:#C8CFD1;font-size:14px}
 .pstub:hover{background:#1D2225}
-/* ---- THE LEGISLATORS PAGE'S TWO WAYS IN ------------------------------
-   By town and by name, side by side where there is room. They are
-   alternatives, not steps, and stacked they read as a procedure the reader
-   has to work through -- which is what made this page feel cluttered: three
-   things to get past before the first legislator, and 1,236px to reach one.
-   One column below 860px, the width the rest of the site stacks at. */
-.legfind{display:grid;grid-template-columns:1fr 1fr;gap:0 26px;
-margin:16px 0 26px;align-items:start}
-.legway{min-width:0;background:var(--surface);border:1px solid var(--rule-2);
-border-radius:var(--r-out);padding:14px 16px}
-.legway h2{font-size:12px;font-weight:600;letter-spacing:.05em;
-text-transform:uppercase;color:var(--ink-2);margin:0 0 9px}
-.legway .count{margin:8px 0 0}
-.legway .src{margin:8px 0 0}
-@media(max-width:860px){.legfind{grid-template-columns:1fr;gap:14px 0}}
+/* ---- ONE WAY IN, AT THE TOP ------------------------------------------
+   This page had two boxes side by side -- by town, by name -- which read as
+   two procedures to choose between before reaching a single legislator. One
+   field searches both: 406 sitting members and the 320 town-and-ward pages,
+   and every match is a link to the page that answers it.
+
+   The matches appear under the field once two letters are in, which is how
+   the prime sponsor filter on the bill search behaves and is what was asked
+   for here. Below two letters it says what it will match rather than
+   listing 726 things. */
+.lfind{margin:18px 0 26px}
+.lfind input[type=search]{font-size:18px;height:52px}
+.lfind .count{margin:8px 2px 0}
+/* A WINDOW ON THE LIST, NOT THE WHOLE LIST. Every town is in here so that
+   somebody who is not sure how their town is spelled -- or lives in one of
+   the unincorporated places with a name like "Atk. & Gil. Academy Grant" --
+   can scroll to it rather than having to type it. 260px of window, because
+   340 was a third of a phone screen spent on a list nobody reads in order. */
+.lmatch{margin:10px 0 0;max-height:260px;overflow-y:auto;overflow-x:hidden;
+border:1px solid var(--rule);border-radius:var(--r-out);
+background:var(--surface)}
+.lmatch:empty{display:none}
+.lmrow{display:flex;width:100%;align-items:baseline;gap:10px;
+padding:9px 13px;text-align:left;text-decoration:none;color:inherit;
+border-bottom:1px solid var(--rule);min-height:44px;font-size:14px}
+.lmrow:last-child{border-bottom:0}
+.lmrow:hover{background:var(--paper)}
+.lmrow.sel{background:var(--pine-soft);font-weight:600}
+.lmrow b{font-weight:600;min-width:0}
+.lmrow .lmwhat{margin-left:auto;font-size:12px;letter-spacing:.04em;
+text-transform:uppercase;color:var(--ink-2);flex:0 0 auto}
+.lmrow .lmwhere{font-size:14px;color:var(--ink-2);min-width:0}
+.lmhead{font-size:12px;font-weight:600;letter-spacing:.05em;
+text-transform:uppercase;color:var(--ink-2);padding:9px 13px 5px;
+background:var(--paper);border-bottom:1px solid var(--rule)}
+.lmnone{font-size:14px;color:var(--ink-2);padding:11px 13px}
+
+/* ---- THE ROSTER, FOLDED BY COUNTY -----------------------------------
+   406 members in ten counties is a page nobody reads in order, and the
+   counties were ten headings with everything under all of them open. Each
+   one is a disclosure now, shut until asked. A query opens the ones it
+   matched, because a search that returns a list of closed boxes has not
+   answered anything. */
+.cgrp{border-bottom:1px solid var(--rule)}
+.cgrp > summary{display:flex;align-items:center;gap:9px;padding:11px 2px;
+font-size:15px;font-weight:600;cursor:pointer;list-style:none;min-height:44px}
+.cgrp > summary::-webkit-details-marker{display:none}
+.cgrp > summary::marker{content:""}
+.cgrp > summary:hover{color:var(--pine)}
+.cgrp > summary:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+.cgrp .ccount{font-weight:400;color:var(--ink-2);font-size:14px}
+.cgrp .caret{margin-left:auto;color:var(--ink-2);font-size:12px;
+transition:transform .12s}
+.cgrp[open] > summary .caret{transform:rotate(90deg)}
+.cgrp .grid{padding:0 0 12px}
 /* The composition charts sit after the roster now. A reader who types a name
    should get the answer, not 359px of party bars between the box and the
    result. */
 .comp-wrap{margin:38px 0 0;padding-top:20px;border-top:1px solid var(--rule-2)}
 .comp-wrap > h2{font-size:12px;font-weight:600;letter-spacing:.05em;
 text-transform:uppercase;color:var(--ink-2);margin:0 0 14px}
-/* 220px, not 340. It is a type-ahead list of 259 towns and it only ever
-   shows a window of them; 340px of window was a third of a phone screen
-   spent on a list nobody reads in order. */
-.townlist{max-height:220px;overflow-y:auto;border:1px solid var(--rule);border-radius:var(--r-out);
-background:var(--surface);margin-top:10px}
-/* AFTER the base rule, not in the narrow-screens block above it. Same
-   specificity, so source order decides, and declared first this lost and the
-   list stayed 220px on a phone -- which is the third time in this stylesheet
-   that a media query placed before the rule it meant to override has
-   silently done nothing. On a phone the two panes stack and the town list is
-   most of that stack; it is a browse affordance, since the box above it is
-   how anyone actually finds their town, so it gets a shorter window rather
-   than pushing the name search off the screen. */
-@media(max-width:720px){.townlist{max-height:150px}}
-.townrow{display:flex;width:100%;text-align:left;padding:8px 13px;font-size:14px;
-border-bottom:1px solid var(--rule);cursor:pointer;align-items:baseline;gap:10px}
-.townrow:last-child{border-bottom:none}
-.townrow:hover{background:var(--paper)}
-.townrow.sel{background:var(--pine-soft);font-weight:600}
 .wct{margin-left:auto;font-size:12px;color:var(--ink-2)}
 .wards{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
 .wbtn{border:1px solid var(--edge);border-radius:var(--r-out);padding:5px 12px;font-size:14px;
 background:var(--surface);cursor:pointer}
 .wbtn:hover{border-color:var(--pine)}
 .wbtn.sel{background:var(--pine);color:var(--on-pine);border-color:var(--pine)}
+/* The same chips, inside the finder now: they sit under the city whose wards
+   they are, so they take the list's own padding and its divider, and each one
+   is an anchor. A phone gets the 44px the rest of this site gives a target --
+   declared after the base rule, because same specificity means source order
+   decides and a media query above the rule it overrides does nothing. */
+.lmatch .wards{margin:0;padding:9px 13px;background:var(--paper);
+border-bottom:1px solid var(--rule)}
+.lmatch .wbtn{display:inline-flex;align-items:center;min-height:32px;
+text-decoration:none;color:inherit}
+.lmatch .wbtn:hover{background:var(--surface);color:var(--pine)}
+@media(max-width:720px){.lmatch .wbtn{min-height:44px;padding:5px 14px}}
 .hit:hover{background:var(--surface)}
 /* The same footer app.css draws, which it was not: this one was a 476px
    column and that one a 560px column, both centred in the window, and the
@@ -961,302 +995,178 @@ record at gencourt.state.nh.us always takes precedence over anything shown here.
 It takes no position on any bill.</p>
 """
 
-LEG_JS = """
-<script>
-const P={R:"Republican",D:"Democrat",I:"Independent",L:"Libertarian",X:"Not on file"};
-const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let L=[],q="",open=null,det={};
-// Anchored to the site root, not to the page. legislators.html is served at
-// /legislators, and a legislators/ folder of per-member data sits beside it --
-// so /legislators can be redirected to /legislators/, and a relative
-// "legislators/377204.json" then resolves to /legislators/legislators/... and
-// 404s. The bill page had the same trap and it cost an evening.
-window.DATA=window.DATA||((f)=>new URL(f, location.origin+"/").href);
-fetch(DATA("legislators.json")).then(r=>r.json()).then(d=>{
-  L=d.map(m=>({...m,hay:[m.name,m.party,m.county,"district "+m.district,
-    m.title||"",(m.committees||[]).join(" "),
-    (m.towns||[]).join(" ")].join(" ").toLowerCase()}));
-  /* ?q= arrives from the home page's finder, the same way ?town= does. */
-  const el=document.getElementById("q"), pre=(new URLSearchParams(
-    location.search).get("q")||"").trim();
-  el.disabled=false;
-  if(pre){ q=pre; el.value=pre; }
-  render();
-  if(pre) el.focus();});
-function render(){
-  const rows=q?L.filter(m=>q.toLowerCase().split(/\\s+/).every(w=>m.hay.includes(w))):L;
-  document.getElementById("count").textContent=
-    `${rows.length} of ${L.length} legislators`;
-  const by={};
-  rows.forEach(m=>{(by[m.chamber==="S"?"Senate":"House"]=by[m.chamber==="S"?"Senate":"House"]||[]).push(m);});
-  document.getElementById("out").innerHTML=Object.entries(by).map(([ch,ms])=>{
-    const byc={};
-    ms.forEach(m=>{(byc[m.county||"—"]=byc[m.county||"—"]||[]).push(m);});
-    return `<h2>${ch} — ${ms.length}</h2>`+Object.keys(byc).sort().map(c=>
-      `<h3>${esc(c)}</h3><div class="grid">`+byc[c]
-        // By district number, then by name. Alphabetical order inside a county
-        // scattered the members of one district across the list, when the
-        // district is the thing a reader is looking for: it is what a town
-        // lookup returns and what a ballot is organised by. Several members
-        // share a district, so the name is the tiebreaker rather than the key.
-        .sort((a,b)=>(parseInt(a.district,10)||0)-(parseInt(b.district,10)||0)
-                     ||a.name.localeCompare(b.name)).map(m=>
-        `<div class="mem"><button class="hit" style="border:none;padding:2px 0"
-          data-id="${esc(m.id)}">${esc(m.display_plain||m.name)}</button>
-          <span class="chip p-${esc((m.party||"X")[0])}">${esc((m.party||"?")[0])}</span>
-          <span style="color:var(--ink-2);font-size:12px">${esc(m.district_label||("dist "+m.district))}</span>
-          ${open===m.id?detail(m):""}</div>`).join("")+`</div>`).join("");}).join("");
-}
-function detail(m){
-  const d=det[m.id];
-  if(!d)return `<div class="note" style="margin-top:8px">Loading…</div>`;
-  const c=d.counts||{};
-  const votes=(d.votes||[]).slice(0,60);
-  // The member's own page, which is where a reader following a name expects
-  // to end up. Every name on this site linked back to this same search page
-  // until now.
-  const own=m.slug||d.slug;
-  return `<div class="card" style="margin-top:8px">
-    ${own?`<a class="ownpage" href="legislator/${esc(own)}.html">Full page
-      &#8594;</a>`:""}
-    <p style="margin:0 0 8px"><b>${own?`<a href="legislator/${esc(own)}.html"
-      >${esc(d.display_plain||d.name)}</a>`:esc(d.display_plain||d.name)}</b>
-      — ${esc(P[d.party_code]||d.party||"")},
-      ${esc(d.county)} district ${esc(d.district)}
-      ${d.url?` · <a href="${esc(d.url)}" target="_blank" rel="noopener">official
-        page</a>`:""}
-      · <a href="feed/legislator/${esc(m.id)}.xml">votes feed</a></p>
-    <p class="statemeta" style="margin:0 0 8px">The official page carries a photo,
-      biography, committee positions and towns represented. It stops resolving once
-      a member leaves office; for those, the General Court keeps
-      <a href="https://gc.nh.gov/bill_Status/byAnyMember.aspx" target="_blank"
-      rel="noopener">a search across past members</a>.</p>
-    ${(d.committees||[]).length?`<p style="font-size:13px;margin:0 0 8px">
-      <b>Committees:</b> ${d.committees.map(esc).join(", ")}
-      <span class="statemeta">Committee membership is where most of the work
-      happens — every bill gets a hearing and a recommendation before the full
-      chamber ever sees it.</span></p>`:""}
-    ${(d.towns||[]).length?`<p style="font-size:13px;color:var(--ink-2);margin:0 0 8px">
-      Represents ${d.towns.map(esc).join(", ")}</p>`:""}
-    ${d.phone?`<p style="font-size:13px;color:var(--ink-2);margin:0 0 8px">
-      ${esc(d.phone)}${d.email?` · <a href="mailto:${esc(d.email)}">${esc(d.email)}</a>`:""}</p>`:""}
-    <p style="font-size:13px;margin:0 0 8px">
-      ${c.Yea||0} yes · ${c.Nay||0} no
-      ${c.Presiding?` · presided over ${c.Presiding} roll calls without voting`:""}
-      ${c["Not Voting/Excused"]?` · excused ${c["Not Voting/Excused"]}`:""}
-      ${c["Not Voting/Not Excused"]?` · absent ${c["Not Voting/Not Excused"]}`:""}</p>
-    <p class="note" style="margin:0 0 10px">Roll calls only. Voice and division votes
-      record no individual positions, so they are missing here for everyone equally.</p>
-    ${votes.length?`<details><summary>Show voting record
-      (${(d.votes||[]).length} recorded votes)</summary>
-      <table style="margin-top:10px"><thead><tr><th>Date</th><th>Bill</th>
-      <th>Question</th><th>Vote</th></tr></thead><tbody>${votes.map(v=>
-      // #<year>/<bill>, not a bare number. A bill number exists in both
-      // terms about a third of the time, and the app resolves a bare one to
-      // whichever comes first in the index -- so these links opened the wrong
-      // biennium's bill. v.y is the filing year, added to the vote record for
-      // exactly this.
-      `<tr><td>${esc(v.d)}</td><td>${v.b?`<a href="bills.html#${
-        v.y?esc(v.y)+"/":""}${esc(v.b)}">${esc(v.b)}</a>`:"&mdash;"}</td>
-       <td>${esc(v.q)}</td><td>${esc(v.v)}</td></tr>`).join("")}</tbody></table>
-      ${(d.votes||[]).length>60?`<p class="count">Showing the 60 most recent of
-        ${d.votes.length}.</p>`:""}</details>`:""}</div>`;
-}
-document.addEventListener("click",e=>{
-  const b=e.target.closest("[data-id]"); if(!b)return;
-  const id=b.dataset.id;
-  if(open===id){open=null;render();return;}
-  open=id;
-  if(det[id]){render();return;}
-  render();
-  fetch(DATA(`legislators/${id}.json`)).then(r=>r.json()).then(d=>{det[id]=d;render();})
-    .catch(()=>{det[id]={name:"(unavailable)",votes:[]};render();});
-});
-document.getElementById("q").addEventListener("input",e=>{q=e.target.value;render();});
-</script>"""
-
-TOWN_JS = """
+LEGFIND_JS = """
 <script>
 (function(){
-// Scoped: this runs alongside the roster search on the same page,
-// so its element ids are its own and nothing leaks between them.
-const ID={q:"tq",count:"tcount",list:"towns",out:"tout"};
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const num=x=>String(parseInt(x,10));
-let T={},L=[],D={},TOWNS=[],town=null,ward=null;
-
 // Anchored to the site root, not to the page. legislators.html is served at
 // /legislators, and a legislators/ folder of per-member data sits beside it --
 // so /legislators can be redirected to /legislators/, and a relative
 // "legislators/377204.json" then resolves to /legislators/legislators/... and
 // 404s. The bill page had the same trap and it cost an evening.
 window.DATA=window.DATA||((f)=>new URL(f, location.origin+"/").href);
-Promise.all([fetch(DATA("towns.json")).then(r=>r.json()),
-             fetch(DATA("legislators.json")).then(r=>r.json()),
-             fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({}))])
- .then(([t,l,d])=>{
-   T=t;L=l;D=d;TOWNS=Object.keys(T).sort();
-   const box=document.getElementById(ID.q);
-   box.disabled=false;
-   document.getElementById(ID.count).textContent=`${TOWNS.length} towns and cities`;
-   /* ?town= ARRIVES FROM THE HOME PAGE'S FINDER, which is a plain GET form.
-      An exact name opens that town; anything else is left in the box as a
-      filter and the ranked list does the rest, because "Hampton" is three
-      real towns and choosing one of them for the reader would be a guess. */
-   const params=new URLSearchParams(location.search);
-   const want=(params.get("town")||"").trim();
-   if(want){
-     box.value=want;
-     /* Set the town BEFORE listing, the way the click handler does: list()
-        is what marks the chosen row, so listing first left Dover's seats on
-        the page with nothing in the list looking chosen. */
-     const hit=TOWNS.find(t=>t.toLowerCase()===want.toLowerCase());
-     if(hit){ town=hit;
-       const ws=wardsOf(hit); ward=ws.length>1?null:(ws[0]||"0"); }
-     list(want);
-     if(hit) show();
-   } else { list(""); }
-   /* Not when a name arrived: that reader is looking at the other box, and
-      moving the caret out from under them is the kind of thing that makes a
-      page feel like it is fighting you. */
-   if(!params.get("q")) box.focus();});
+const SHOW=12;            // matches at once: a screen of them, not a scroll
+const MIN=2;              // letters before the list appears
 
-function wardsOf(t){
-  const seats=T[t]||[], dw=D[t]||{};
-  return [...new Set(seats.map(s=>s.ward||"0").concat(Object.keys(dw)))]
-    .sort((a,b)=>parseInt(a)-parseInt(b));
-}
-function houseOf(t,w){
-  // Prefer districts.json: it includes floterial districts, which the General
-  // Court's own district file omits entirely. A resident is in two House
-  // districts at once -- their town's, and the floterial overlaying it.
-  const d=(D[t]||{})[w];
-  if(d&&d.house&&d.house.length)return d.house;
-  return (T[t]||[]).filter(s=>(s.ward||"0")===w)
-    .map(s=>({county:s.county,district:parseInt(s.district,10),
-              seats:null,floterial:false}));
-}
+let TOWNS=[], MEM=[], picked=null;
 
-/* Always show a browsable list, not only type-ahead. Someone who is not sure
-   how their town is spelled, or lives in one of the unincorporated places with
-   names like "Atk. & Gil. Academy Grant", needs to be able to scroll to it. */
-/* RANKED, NOT JUST FILTERED. TOWNS is alphabetical and the match was a plain
-   substring test, so somebody typing "Dover" was shown Andover first and
-   their own town second -- under a town they do not live in. Three tiers:
+function slugOf(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-")
+  .replace(/^-|-$/g,"");}
+
+/* RANKED, NOT JUST FILTERED. Somebody typing "Dover" was shown Andover first
+   and their own town second, under a town they do not live in. Three tiers:
    the exact name, then names that BEGIN with what was typed, then names that
-   merely contain it. Alphabetical inside each tier, because Array.sort is
-   stable and TOWNS arrives sorted, so the tier is the only reordering.
-   Nothing is dropped: Andover still appears when you type Dover, below it,
-   which is the point -- "Hampton" should list Hampton, then Hampton Falls,
-   then New Hampton, and all three are real answers to what was typed. */
-function list(q){
-  const box=document.getElementById(ID.list);
-  const n=(q||"").trim().toLowerCase();
-  const tier=t=>{const s=t.toLowerCase();
-    return s===n?0:s.startsWith(n)?1:s.includes(n)?2:3;};
-  const rows=n?TOWNS.map(t=>[tier(t),t]).filter(r=>r[0]<3)
-                    .sort((a,b)=>a[0]-b[0]).map(r=>r[1])
-              :TOWNS;
-  box.innerHTML=rows.length?rows.map(t=>{
-    const w=wardsOf(t);
-    return `<button class="townrow ${t===town?'sel':''}" data-town="${esc(t)}">
-      <span>${esc(t)}</span>${w.length>1
-        ?`<span class="wct">${w.length} wards</span>`:""}</button>`;}).join("")
-   :`<p class="note">Nothing matches that.</p>`;
+   merely contain it. Nothing is dropped -- "Hampton" lists Hampton, Hampton
+   Falls and New Hampton, and all three are real answers. */
+function tier(hay,n){const s=hay.toLowerCase();
+  return s===n?0:s.startsWith(n)?1:s.includes(n)?2:3;}
+
+function townRow(t){
+  // ONE ROW PER TOWN, and the row says one thing: the name. The live list
+  // said the name and, for a city, how many wards it has -- and that is all
+  // it needs to say. "Town", "Go" and "who represents it" were three labels
+  // repeating what a row in a list of towns obviously is.
+  // A town without wards is a link straight to its page. A city cannot be:
+  // there is no town/concord.html, only concord-ward-1 through 10. So it
+  // opens its wards, one chip each, and the chip is the link.
+  if(t.wards.length>1)
+    return `<button type="button" class="lmrow${picked===t.town?" sel":""}"
+      data-town="${esc(t.town)}"><b>${esc(t.town)}</b>
+      <span class="wct">${t.wards.length} wards</span></button>`
+      + (picked===t.town ? `<div class="wards">` + t.wards.map(w=>
+          `<a class="wbtn" href="town/${esc(t.slug)}-ward-${esc(w)}.html"
+            >Ward ${esc(w)}</a>`).join("") + `</div>` : "");
+  return `<a class="lmrow" href="town/${esc(t.slug)}.html"
+    ><b>${esc(t.town)}</b></a>`;
 }
 
-// The same slug build_town_pages.py writes. Two places compute it because
-// one is Python at build time and one is JavaScript in the browser; they are
-// checked against each other by preflight rather than trusted to agree.
-function slugOf(t,w){
-  const s=String(t).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
-  return (w&&w!=="0")?`${s}-ward-${w}`:s;
-}
-
-function reps(county,district){
-  return L.filter(m=>m.chamber==="H"&&m.county===county&&
-    num(m.district)===num(district));
-}
-function senators(dist){
-  return L.filter(m=>m.chamber==="S"&&num(m.district)===num(dist));
-}
-function people(list){
-  return list.length?`<div class="grid">${list.map(m=>
-    `<div class="mem"><a href="${m.slug?`legislator/${esc(m.slug)}.html`
-       :"legislators.html"}">${esc(m.display_plain||m.name)}</a>
-     <span class="chip p-${esc((m.party||"X")[0])}">${esc((m.party||"?")[0])}</span>
-     ${m.towns&&m.towns.length>1?`<span style="color:var(--ink-2);font-size:12px">
-       also ${esc(m.towns.filter(x=>x!==town).slice(0,3).join(", "))}</span>`:""}
-     </div>`).join("")}</div>`
-    :`<p class="note">No sitting member matched to this district.</p>`;
-}
-
-function show(){
-  const out=document.getElementById(ID.out);
-  if(!town){out.innerHTML="";return;}
-  const seats=T[town]||[], dw=D[town]||{}, ws=wardsOf(town);
-  // A city's wards fall in different districts, so showing every seat in the
-  // city at once buries the answer. Dover has six wards and eleven
-  // representatives; a resident of ward 3 wants the ones who represent ward 3.
-  const picker=ws.length>1?`<p style="margin:0 0 8px;font-size:14px;
-    color:var(--ink-2)">${esc(town)} is divided into wards. Choose yours:</p>
-    <div class="wards">${ws.map(w=>
-      `<button class="wbtn ${w===ward?'sel':''}" data-ward="${esc(w)}">
-        Ward ${esc(w)}</button>`).join("")}</div>`:"";
-
-  let body="";
-  if(ws.length>1&&!ward){
-    body=`<p class="note">Select a ward to see who represents you. Your ward is on
-      your voter registration, and the city clerk can confirm it.</p>`;
-  }else{
-    const w=ward||ws[0]||"0";
-    const hd=houseOf(town,w);
-    const dist=dw[w]||{};
-    const house=hd.length?hd.map(h=>
-      `<p style="margin:14px 0 4px"><b>House</b> &mdash; ${esc(h.county)} district
-        ${h.district}${h.seats?` &middot; ${h.seats} seat${h.seats>1?"s":""}`:""}
-        ${h.floterial?`<span class="chip" style="margin-left:6px">floterial</span>`:""}
-        </p>${people(reps(h.county,h.district))}
-        ${h.floterial?`<p class="note" style="margin:6px 0 0">A floterial district
-          overlays several towns that each already have their own representative,
-          and elects additional members across the combined population. You are
-          represented by both.</p>`:""}`).join("")
-      :`<p class="note" style="margin-top:14px">No House district on file for this
-        ward.</p>`;
-    const sen=dist.senate?`<p style="margin:16px 0 4px"><b>Senate</b> — district
-      ${dist.senate}</p>${people(senators(dist.senate))}`:"";
-    const cou=dist.council?`<p style="margin:16px 0 4px"><b>Executive Council</b> —
-      district ${dist.council}</p>
-      <p class="note" style="margin:4px 0 0">The Executive Council approves state
-      contracts, judicial nominations and pardons. Its members are elected but
-      rarely covered, and this site does not track their votes.</p>`:"";
-    // The congressional district was in districts.json all along and had
-    // never been shown, so a reader who came here to find out who represents
-    // them was told about two of their four elected bodies.
-    const con=dist.congress?`<p style="margin:16px 0 4px"><b>US House</b> —
-      New Hampshire district ${dist.congress}</p>`:"";
-    // And the whole answer, on a page that can be shared, printed or found in
-    // a search. "Who represents Concord Ward 3" is a question people type.
-    const full=`<p style="margin:18px 0 0"><a href="town/${slugOf(town,w)}.html"
-      ><b>Everyone who represents ${esc(town)}${ws.length>1?` Ward ${esc(w)}`:""}</b>,
-      with how to reach them &#8594;</a></p>`;
-    body=house+sen+cou+con+full;
+function render(){
+  const box=document.getElementById("lq");
+  const out=document.getElementById("lmatch");
+  const n=(box.value||"").trim().toLowerCase();
+  /* RANKED, NOT JUST FILTERED, AND NEVER EMPTY. With nothing typed this is
+     every town in the state, scrollable -- which is what it was before, and
+     what somebody unsure of their spelling needs. Typing ranks it and adds
+     the members that match. */
+  const towns=(n?TOWNS.map(t=>[tier(t.town,n),t]).filter(r=>r[0]<3)
+                   .sort((a,b)=>a[0]-b[0]||a[1].i-b[1].i)
+               :TOWNS.map(t=>[0,t]));
+  const mem=n.length>=MIN
+    ? MEM.map(m=>[Math.min(tier(m.name,n),m.hay.includes(n)?2:3),m])
+         .filter(r=>r[0]<3)
+         .sort((a,b)=>a[0]-b[0]||a[1].sortname.localeCompare(b[1].sortname))
+    : [];
+  const parts=[];
+  if(towns.length){
+    if(mem.length)parts.push('<p class="lmhead">Towns</p>');
+    parts.push(towns.map(([,t])=>townRow(t)).join(""));
   }
-  out.innerHTML=`<div class="card"><h2 style="margin:0 0 10px">${esc(town)}
-    ${ward&&ws.length>1?`<span style="font-weight:400;color:var(--ink-2)">
-      · Ward ${esc(ward)}</span>`:""}</h2>${picker}${body}</div>`;
+  if(mem.length){
+    parts.push('<p class="lmhead">Members</p>');
+    parts.push(mem.slice(0,SHOW).map(([,m])=>
+      `<a class="lmrow" href="legislator/${esc(m.slug)}.html">`
+      +`<b>${esc(m.display)}</b>`
+      +`<span class="chip p-${esc(m.p)}">${esc(m.p)}</span>`
+      +`<span class="lmwhere">${esc(m.where)}</span>`
+      +`<span class="lmwhat">${m.chamber==="S"?"Senate":"House"}</span></a>`)
+      .join(""));
+    if(mem.length>SHOW)parts.push(`<p class="lmnone">and ${mem.length-SHOW}`
+      +` more members &mdash; type another letter or two.</p>`);
+  }
+  // No apostrophe in these sentences on purpose: this is JavaScript inside a
+  // Python string, where a backslash belongs to whichever one reads it
+  // first. Python read one, dropped it, and left the JavaScript with an
+  // unterminated string and the whole page with no script.
+  out.innerHTML=parts.length?parts.join("")
+    :'<p class="lmnone">Nothing matches that. Towns and wards, member names, '
+     +'counties, parties and committees are all searched.</p>';
+  /* The chips into view, and no further than the row they belong to. */
+  const wb=out.querySelector(".wards");
+  if(wb){
+    const lr=out.getBoundingClientRect(), wr=wb.getBoundingClientRect();
+    if(wr.bottom>lr.bottom)
+      out.scrollTop+=Math.min(wr.bottom-lr.bottom,
+        wb.previousElementSibling.getBoundingClientRect().top-lr.top);
+  }
 }
 
-document.addEventListener("click",e=>{
-  const t=e.target.closest("[data-town]");
-  if(t){ town=t.dataset.town;
-    const ws=wardsOf(town); ward=ws.length>1?null:(ws[0]||"0");
-    list(document.getElementById(ID.q).value); show();
-    document.getElementById(ID.out).scrollIntoView({block:"nearest"}); return; }
-  const w=e.target.closest("[data-ward]");
-  if(w){ ward=w.dataset.ward; show(); }
-});
-document.getElementById(ID.q).addEventListener("input",e=>list(e.target.value));
+/* The roster: every member, by chamber and then by county, each county shut
+   until it is asked for. */
+function roster(){
+  const by={};
+  MEM.forEach(m=>{const ch=m.chamber==="S"?"Senate":"House";
+    (by[ch]=by[ch]||{});
+    (by[ch][m.county||"Not on file"]=by[ch][m.county||"Not on file"]||[]).push(m);});
+  const html=["Senate","House"].filter(ch=>by[ch]).map(ch=>{
+    const counties=Object.keys(by[ch]).sort();
+    const total=counties.reduce((n,c)=>n+by[ch][c].length,0);
+    return `<h2>${ch} &mdash; ${total}</h2>`+counties.map(c=>{
+      // By district number, then by name. Alphabetical order inside a county
+      // scattered the members of one district across the list, when the
+      // district is the thing a reader is looking for: it is what a town
+      // lookup returns and what a ballot is organised by.
+      const ms=by[ch][c].slice().sort((a,b)=>
+        (parseInt(a.district,10)||0)-(parseInt(b.district,10)||0)
+        ||a.sortname.localeCompare(b.sortname));
+      return `<details class="cgrp"><summary><span>${esc(c)}</span>`
+        +`<span class="ccount">${ms.length}</span>`
+        +`<span class="caret">&#9656;</span></summary><div class="grid">`
+        +ms.map(m=>`<div class="mem">`
+          +`<a href="legislator/${esc(m.slug)}.html">${esc(m.display)}</a>`
+          +` <span class="chip p-${esc(m.p)}">${esc(m.p)}</span>`
+          +` <span class="mdist">${esc(m.dlabel)}</span></div>`).join("")
+        +`</div></details>`;
+    }).join("");
+  }).join("");
+  document.getElementById("out").innerHTML=html;
+}
+
+Promise.all([fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({})),
+             fetch(DATA("legislators.json")).then(r=>r.json())])
+ .then(([D,L])=>{
+   if(!Array.isArray(L))L=Object.values(L);
+   // ONE ENTRY PER TOWN, with its wards inside it. 259 rows a reader can
+   // scroll, not 320 with Concord taking ten of them.
+   Object.keys(D).sort().forEach(town=>{
+     const wards=Object.keys(D[town]||{})
+       .sort((a,b)=>parseInt(a)-parseInt(b));
+     TOWNS.push({town:town, slug:slugOf(town), wards:wards, i:TOWNS.length});
+   });
+   MEM=L.map(m=>({
+     slug:m.slug, chamber:m.chamber, county:m.county||"",
+     district:m.district, dlabel:m.district_label||("dist "+m.district),
+     display:m.display_plain||m.name, sortname:m.sort||m.name||"",
+     // [.] and [ ] rather than the escapes: this JavaScript lives inside a
+     // Python string, and a backslash in one is a warning in the other.
+     name:(m.display_plain||m.name||"").replace(/^(Rep|Sen)[.][ ]*/,""),
+     p:(m.party||"X")[0].toUpperCase(),
+     where:[m.county,m.district_label].filter(Boolean).join(" "),
+     hay:[m.name,m.party,m.county,"district "+m.district,m.district_label,
+          m.title||"",(m.committees||[]).join(" "),
+          (m.towns||[]).join(" ")].join(" ").toLowerCase()}));
+   const box=document.getElementById("lq");
+   box.disabled=false;
+   document.getElementById("lcount").textContent=
+     TOWNS.length+" towns and cities, "+MEM.length+" sitting members";
+   roster();
+   /* ?town= and ?q= arrive from the home page's finder. Both fill the one
+      field: a town that is warded cannot be resolved to a page without
+      knowing the ward, so the reader picks it from the matches. */
+   const pr=new URLSearchParams(location.search);
+   const pre=(pr.get("town")||pr.get("q")||"").trim();
+   if(pre)box.value=pre;
+   render();
+   box.focus();
+   box.addEventListener("input",()=>{picked=null;render();});
+   /* One handler on the list rather than one per row: the list is rebuilt on
+      every keystroke and a listener per row would be rebuilt with it. */
+   document.getElementById("lmatch").addEventListener("click",e=>{
+     const b=e.target.closest("[data-town]");
+     if(!b)return;
+     picked=picked===b.dataset.town?null:b.dataset.town;
+     render();
+   });
+ });
 })();
 </script>"""
 
@@ -1514,7 +1424,7 @@ def main():
 
 
     # The "Your town" page was here. The finder it held is the top of the
-    # legislators page, built from the same towns.json by the same TOWN_JS,
+    # legislators page, built from the same towns.json by the same finder,
     # so this page was a second address for one thing and a seventh item in
     # the nav.
     # Render the home page content at build time as well as in the browser.
@@ -1642,23 +1552,14 @@ def main():
     # steps: a reader should see both at once and pick. One heading and one
     # sentence instead of two of each.
     leg_body = f"""<h1>Legislators</h1>
-<p class="lead">{len(legs)} sitting members. Find yours by town, or search the
-roster by name, county, party or committee.</p>
-<div class="legfind">
-  <section class="legway">
-    <h2>By town</h2>
-    <label for="tq" class="sr">Your town</label>
-    <input id="tq" type="search" placeholder="Your town, e.g. Dover" disabled>
-    <p class="count" id="tcount">Loading&hellip;</p>
-    <div class="townlist" id="towns"></div><div id="tout"></div>
-  </section>
-  <section class="legway">
-    <h2>By name</h2>
-    <label for="q" class="sr">Search legislators</label>
-    <input id="q" type="search" placeholder="Name, town, county, party, or committee" disabled>
-    <p class="count" id="count">Loading&hellip;</p>
-    <p class="src">A committee name lists everyone on it.</p>
-  </section>
+<p class="lead">{len(legs)} sitting members. Type a town to see who represents
+it, or a name, county, party or committee to find a member.</p>
+<div class="lfind">
+  <label for="lq" class="sr">Your town, or a legislator&rsquo;s name</label>
+  <input id="lq" type="search" autocomplete="off"
+    placeholder="Your town, or a legislator&rsquo;s name" disabled>
+  <p class="count" id="lcount">Loading&hellip;</p>
+  <div class="lmatch" id="lmatch"></div>
 </div>
 <div id="out"></div>
 {('<div class="comp-wrap"><h2>Who holds the seats</h2>' + static_bar("S")
@@ -1668,7 +1569,7 @@ roster by name, county, party or committee.</p>
               desc="Every member of the New Hampshire House and Senate: their "
                    "district, their party, the bills they sponsored and every "
                    "recorded vote they cast.",
-              wide=True, script=TOWN_JS + LEG_JS), encoding="utf-8")
+              wide=True, script=LEGFIND_JS), encoding="utf-8")
 
     static_up = calendar_html(H, out)
 

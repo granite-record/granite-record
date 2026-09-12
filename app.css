@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.75 */
+/* GRANITE_VERSION: 2026-09-07.76 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1414,6 +1414,25 @@ margin-top:2px}
 gap:2px 22px;align-items:baseline;padding:8px 0;
 border-bottom:1px solid var(--rule);font-size:14px;line-height:1.55}
 .offrow:last-child{border-bottom:0}
+/* ONE TOWN, SEVERAL POLLING PLACES. Eight towns are one page here and several
+   voting wards on the Secretary of State's list, so the page cannot know
+   which ward a reader is in. The count goes on the line and the addresses go
+   behind it: the answer first, the rest on request, the same shape as the
+   chapter list on a bill. This row spans both columns because it is not a
+   who-and-how pair. */
+.offrow.offwards{display:block}
+.wards > summary{display:inline-block;font-size:14px;color:var(--pine);
+cursor:pointer;list-style:none;padding:3px 0}
+.wards > summary::-webkit-details-marker{display:none}
+.wards > summary::marker{content:""}
+.wards > summary:hover{text-decoration:underline}
+.wards > summary:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+.wards .offlist{margin:4px 0 2px}
+.wards .offrow{padding:6px 0}
+/* The date beside "How to Vote", which is a fact about the heading rather
+   than part of it. */
+.offsec .offwhen{font-weight:400;font-size:14px;color:var(--ink-2);
+white-space:nowrap}
 .offwho{min-width:0}
 .offwho .mchip{margin:0}
 /* The seat under the name rather than beside it: a floterial district and a
