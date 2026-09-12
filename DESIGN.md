@@ -62,6 +62,38 @@ calendars, journals, the chamber. Granite. Not a generic civic-tech blue.
 
 ---
 
+## The logo and the favicon — not settled, and nothing shipped
+
+Still open as of 11 September, and **deliberately not built**. Permission is
+being sought from the artist, so no asset is in the repository and no
+`<link rel="icon">` has been added. What is on file is the intended
+direction: a high-contrast ink drawing of the Old Man of the Mountain beside
+"Granite Record" set in a high-contrast serif.
+
+Three things follow from it that are worth writing down before anyone builds
+the favicon:
+
+- **The drawing and the favicon are two different problems.** It is an
+  intricate ink mark; at 16px in a tab strip that resolves to a dark blob.
+  The header logo can be the drawing; the favicon needs a simplified
+  silhouette derived from it, drawn at 16px and checked at 16px.
+- **It has to work on both grounds.** The mark is black on white, and the
+  page is now `#171B1C` in dark mode. Either a light variant, or a mark that
+  carries its own ground.
+- **The wordmark is a serif and the nav brand is not.** The brand is
+  currently Public Sans 600 at 16px. If the wordmark ships as drawn, the
+  brand should move to `--serif` to match it — one decision, made when the
+  logo lands, not before.
+
+**`site/` is in `.gitignore`.** A favicon dropped there works until the next
+build and then disappears, so it cannot simply be committed as a file: it
+needs a build step to write it and a `<link>` in three places — the `shell()`
+head in `build_pages.py`, `bills.html`, and `shell.py`. A `/favicon.ico` at
+the site root is the exception that needs no markup, because browsers ask for
+that address on their own.
+
+---
+
 ## Defaults to avoid
 
 These are the current tells of a generated page. Each is legitimate for some
@@ -84,6 +116,148 @@ brief and a default for none, and none of them was chosen for this one.
 
 If a proposal contains one of these, either justify it against this brief in a
 sentence or replace it.
+
+---
+
+## Dark mode
+
+Added 11 September. Both schemes are defined in `app.css`, the light palette
+in `:root` and the dark one in a `@media (prefers-color-scheme: dark)` block
+directly under it, ending at a `/* PALETTE END */` marker. **Everything above
+that marker is the palette**, and `build_pages.py` reads the whole of it into
+`style.css` — so the home page, the legislator index, About and 404 get both
+schemes from the same definition that the record pages get. Before the marker
+existed that reader stopped at the first `}`, which with a second block under
+it would have shipped half a scheme: white cards that never went dark, on
+four of the pages a reader is most likely to arrive on.
+
+**Every token is redefined in the dark block. None is inherited.** A
+half-defined scheme is how a white chip ends up with white text on it.
+
+It is measured with the same arithmetic `preflight` uses — 4.5:1 for text,
+3:1 for the boundary of a control or a graphic. All 34 pairs pass and the
+tightest sits 1.07× its threshold, where the light palette has one pair
+exactly on it (`--edge` on `--wash`, 3.00:1).
+
+Two numbers were copied across deliberately rather than left where they fell.
+The note at the top of `app.css` records that the page ground was darkened on
+purpose to put **1.20:1** between a card and the paper behind it, 1.08:1
+being below the level at which most people see an edge at all. Dark mode
+hands that straight back if the ground is chosen by eye: the first candidate
+here measured 1.13:1. The shipped pair is 1.24:1, and `--rule-2` is set to
+2.03:1 on a card against the light palette's 1.99:1. **A card has to look as
+much like an object in the dark as in the light.**
+
+Granite in both. The dark ground is a cool grey with the blue left in it, not
+a tinted near-black, and pine is the same colour lifted to where it can be
+read rather than swapped for a brighter hue — the "near-black background with
+a single acid accent" in the list above is the thing being avoided.
+
+Three tokens exist because of dark mode and are worth knowing about:
+
+- `--on-pine` — the ink that goes *on* a solid pine block (the filter badge,
+  the skip link, the home page's Search button, a selected ward). It was
+  `#fff` in all four, which is right on the light palette and wrong on the
+  dark one, where pine is the light colour. "White" was never the claim;
+  "readable on pine" was.
+- `--shadow` — the lift under an opened card. A dark shadow says nothing on a
+  dark ground.
+- `--wait` / `--wait-bg` — the home page's session box between sittings.
+  These were literals in `build_pages.py`, the last pair of colours outside
+  the palette and so the last pair nothing could measure or re-theme.
+
+`color-scheme` is set in both blocks, so scrollbars, select menus and the
+search field's own furniture follow the page instead of staying light
+against it.
+
+---
+
+## How a change here gets checked
+
+Screenshots at 360, 768 and 1440 are the floor, not the whole job: **a colour
+pair that fails is invisible in a screenshot.** The pass on 11 September read
+the *rendered* colours off every text element — walking up for the first
+non-transparent background, compositing alpha — and compared each against its
+own WCAG threshold by font size. 13 page types × 3 widths × 2 schemes, about
+26,700 text elements.
+
+That is what found the one real contrast defect in the existing palette:
+**the passage rail's unreached stop had its label in `--edge`**, which is the
+token specified for the outline of a control and carries a 3:1 requirement.
+As 12px words it needs 4.5:1 and had 3.91:1 on white and 3.74:1 on a dark
+card. `preflight`'s palette check could not see it, and is not wrong to: it
+measures `--edge` against 3:1 because nothing was supposed to set type in it.
+The rail's circle already says whether the bill got there — a check, a cross,
+a ring or an empty outline — so the state was never the colour's job.
+
+**The lesson worth keeping: check the tokens *and* check what the page
+actually drew.** The first sweep of the day reported everything passing while
+half the pages were being served a cached copy of the old stylesheet. A pass
+measured against the wrong bytes is the "silence is not success" rule wearing
+a green tick.
+
+Two checks belong in `preflight` and are not there yet, because that file was
+out of scope for this pass:
+
+1. The dark palette's pairs. The light ones are checked; the dark ones are
+   measured only by hand.
+2. `documentElement.scrollWidth` against `clientWidth` at 360, 768 and 1440.
+   Every legislator page carrying a two-thirds vote scrolled sideways at
+   every width above 720px and nothing caught it — see below.
+
+---
+
+## Width: the measure belongs to the box, and a table is not prose
+
+This is the rule the top of `app.css` sets out, and two things were breaking
+it in ways worth naming, because both are the shape the complaint always
+takes — *a narrow column of text inside a much wider painted box*.
+
+- **The home page's session box** was a 772px tinted panel with its
+  paragraphs capped at 476px: 296px of empty box beside every line. The cap
+  moved to the box, which is the thing with an edge. 548px rather than the
+  560px `--measure`, because the text inside it is 14px and 560 would run to
+  85 characters; 548 leaves 78.
+- **A bill's docket history** was being held to the prose measure. It is not
+  prose — it is a date and the General Court's own record line, `21 CAL DAY
+  EXTENSION GRANTED (NEW DUE DATE: 03/03/93); HJ22,P430` — and `app.css`
+  already says a table fills its pane. It is built from `<ul>`/`<li>` rather
+  than `<table>`, which is the only reason it was caught by the default.
+
+**Still open, and it is a layout question rather than a CSS one.** On a bill
+page at 1440 the card is 1132px and the pane 1094px, and the prose inside it
+is 560px because 560px is 76 characters and the floor above is 80. Those two
+facts cannot both be satisfied by a width: the prose cannot fill 1094px, so
+**the box should not be 1094px of single column**. The answer is either a
+narrower column on the Summary tab or a second column carrying the
+structured material — the status panel, the documents, the citations — beside
+the prose. Both change markup that `build_site_v2.py` owns, so neither was
+done here.
+
+---
+
+## One left edge
+
+The nav, the page and the footer were three different columns: at 1440 on the
+home page the brand began at 130px, the heading under it at 310px, and the
+footer — a measure-width column centred in the *window* — at 432px. The
+footer was the worst of it, because its text is identical on every page of the
+site and it was a different width in each stylesheet (476px in one, 560px in
+the other).
+
+The measure was never the problem; the alignment was. The band keeps the
+page's gutter (`padding: 22px max(0px, calc(50% - 590px))`, 590px being half
+the 1180px the nav and `.shell` share) and the column inside it starts where
+the page starts. `display:grid` was the first attempt and is worth recording
+as a trap: it promotes every *child* to a grid item, so "How this is made"
+and the full stop after it each took a row of their own.
+
+One thing stayed deliberately out of line. `/learn/`, the town pages and
+`/data` are centred reading columns, and DESIGN.md calls the civics section
+the one place where the reading measure *is* the page. They now sit centred
+under a left-aligned nav and footer, which is either correct or the last
+inconsistency, and it is a preference rather than a defect — so it was left
+for a person to call.
 
 ---
 

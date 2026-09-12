@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.38
+# GRANITE_VERSION: 2026-09-04.39
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -29,16 +29,39 @@ from pathlib import Path
 # file and #8C4A2F in the other, the same token name naming a plum and a rust,
 # and nothing could see it because each file was internally consistent.
 def palette(src="app.css"):
+    """The palette: the light block and the dark block that follows it.
+
+    This used to stop at the first `}` after --sans, which was the whole
+    palette for as long as there was only one. With a
+    @media(prefers-color-scheme:dark) block under it that slice carries half
+    a scheme -- style.css would define --surface:#fff and never redefine it,
+    so the four pages built here (the home page, the legislator index, About
+    and 404) would have stayed white while every record page went dark, and
+    the drift check in preflight would have passed, because the tokens it
+    compares would still have agreed.
+
+    The end is a marker rather than a brace count, so that adding a token or
+    a second media query cannot silently truncate it; a missing marker raises
+    here instead of shipping a half-built stylesheet.
+    """
     text = Path(src).read_text(encoding="utf-8")
     i = text.index(":root{")
-    return text[i:text.index("}", text.index('--sans:"Public Sans"')) + 1]
+    return text[i:text.index("/* PALETTE END")].rstrip()
 
 
 CSS = """
 __PALETTE__
 *{box-sizing:border-box}html,body{margin:0}
 body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:16px;
-line-height:1.55;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1}
+line-height:1.55;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1;
+/* 404 and About both run out of content well above the fold, and the
+   footer's white band was being drawn wherever the text stopped -- a
+   stripe across the middle of the page with the page's own grey below
+   it. The footer takes the slack (margin-top:auto). width:100% because
+   .wrap centres itself with an auto margin, and an auto margin in the
+   cross axis cancels a flex item's stretch. */
+min-height:100dvh;display:flex;flex-direction:column}
+body > *{flex-shrink:0;width:100%}
 :focus-visible{outline:2px solid var(--pine);outline-offset:2px}
 a{color:var(--pine)}button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
 nav.top{background:var(--surface);border-bottom:1px solid var(--rule)}
@@ -46,7 +69,16 @@ nav.top .in{max-width:1180px;margin:0 auto;padding:13px 24px;display:flex;align-
 nav.top .brand{font-size:16px;font-weight:600}
 nav.top a{font-size:14px;text-decoration:none;color:var(--ink-2)}
 nav.top a[aria-current]{color:var(--ink);font-weight:600;box-shadow:0 2px 0 var(--pine)}
-.wrap{max-width:820px;margin:0 auto;padding:26px 24px 80px}
+/* ONE LEFT EDGE. The nav is a 1180px column and this is an 820px one, both
+   centred, so on the home page the brand sat at 130px and the heading under
+   it at 310px -- and the footer, centred at its own width, started at a
+   third place again. 820px is right for these pages and is kept; what was
+   wrong was centring it under a wider nav. It is aligned to the nav's own
+   gutter instead: 590px is half of 1180, and max() collapses the offset once
+   the window is narrower than the nav's column. legislators.html passes
+   wide=True and is 1180px, so it already shared the nav's edge. */
+.wrap{max-width:820px;margin:0 auto 0 max(0px,calc(50% - 590px));
+padding:26px 24px 80px}
 .wide{max-width:1180px}
 h1{font-size:24px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
 h2{font-size:16px;font-weight:600;margin:32px 0 10px}
@@ -95,26 +127,37 @@ background:var(--rule);border:1px solid var(--rule);border-radius:var(--r-out);o
 .stat span{font-size:14px;color:var(--ink-2)}
 .searchbig{display:flex;gap:8px;margin:18px 0 4px}
 .searchbig input{flex:1}
-.searchbig button{background:var(--pine);color:#fff;border-radius:var(--r-out);padding:0 20px;font-size:14px}
+.searchbig button{background:var(--pine);color:var(--on-pine);border-radius:var(--r-out);padding:0 20px;font-size:14px}
 .fresh{font-size:14px;color:var(--ink-2);margin:0 0 14px;display:flex;
 align-items:center;gap:7px}
 .fresh:empty{display:none}
 .fresh .fdot{width:8px;height:8px;border-radius:50%;background:var(--pine);flex:0 0 auto}
 .fresh.stale{color:var(--st-veto)}
 .fresh.stale .fdot{background:var(--st-veto)}
+/* THE BOX IS THE MEASURE. This is the most prominent block on the home page
+   -- whether the House is sitting, and what it did last -- and it was a
+   772px tinted panel with its paragraphs capped at 476px inside it: 296px
+   of empty box to the right of every line, which is the "narrow measure in
+   a wide box" the top of app.css is about. The cap moves to the box, which
+   is the thing with an edge, and its paragraphs fill it.
+   548px, not --measure's 560px, because the text inside is 14px: 548 less
+   36px of padding leaves 512px, which is 78 characters of Public Sans at
+   that size and so still under the 80 the design brief sets as a floor.
+   At 560px it would be 85. */
 .statebox{border:1px solid var(--rule);border-left:4px solid var(--ink-2);border-radius:var(--r-out);
-padding:15px 18px;margin:0 0 24px;background:var(--surface)}
+padding:15px 18px;margin:0 0 24px;background:var(--surface);max-width:548px}
 .statebox.live{border-left-color:var(--pine);background:var(--pine-soft)}
-.statebox.wait{border-left-color:#8A6D2F;background:#FBF3E2}
+.statebox.wait{border-left-color:var(--wait);background:var(--wait-bg)}
 .statebox.off{border-left-color:var(--ink-2)}
 .stateline{display:flex;align-items:center;gap:9px;font-size:16px;flex-wrap:wrap}
 .stateline .dot{width:9px;height:9px;border-radius:50%;background:var(--ink-2);flex:0 0 auto}
 .statebox.live .dot{background:var(--pine)}
-.statebox.wait .dot{background:#8A6D2F}
+.statebox.wait .dot{background:var(--wait)}
 .statemeta{font-size:14px;color:var(--ink-2);font-weight:400}
 .statehead{font-size:16px;margin:8px 0 0}
-.statenote{font-size:14px;color:var(--ink-2);margin:8px 0 0;
-line-height:1.6;max-width:34em}
+/* No cap of its own any more: .statebox carries it, so the panel and the
+   sentence end in the same place. */
+.statenote{font-size:14px;color:var(--ink-2);margin:8px 0 0;line-height:1.6}
 .statebox p:last-child{margin-bottom:0}
 .twoup{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
 details.vac{margin-top:10px}
@@ -156,11 +199,22 @@ border-bottom:1px solid var(--rule);cursor:pointer;align-items:baseline;gap:10px
 .wbtn{border:1px solid var(--edge);border-radius:var(--r-out);padding:5px 12px;font-size:14px;
 background:var(--surface);cursor:pointer}
 .wbtn:hover{border-color:var(--pine)}
-.wbtn.sel{background:var(--pine);color:#fff;border-color:var(--pine)}
+.wbtn.sel{background:var(--pine);color:var(--on-pine);border-color:var(--pine)}
 .hit:hover{background:var(--surface)}
-footer{border-top:1px solid var(--rule);background:var(--surface);padding:22px 0;font-size:14px;color:var(--ink-2)}
-footer .in{max-width:34em;margin:0 auto;padding:0 24px}
+/* The same footer app.css draws, which it was not: this one was a 476px
+   column and that one a 560px column, both centred in the window, and the
+   text is identical on every page of the site. One width, one left edge --
+   the band keeps the nav's gutter and the column starts where the nav and
+   the page start. */
+footer{border-top:1px solid var(--rule);background:var(--surface);
+font-size:14px;color:var(--ink-2);margin-top:auto;
+padding:22px max(0px,calc(50% - 590px))}
+footer .in{max-width:var(--measure);margin:0;padding:0 24px}
 @media(max-width:640px){.wrap{padding:20px 18px 60px}}
+@media(max-width:720px){
+  footer{padding-left:0;padding-right:0}
+  footer .in{padding-left:14px;padding-right:14px}
+}
 /* ---- narrow screens ---------------------------------------------------
    Most people arrive from a search result on a phone. Three things break at
    380px, and each is fixed by reflowing rather than by horizontal scrolling,
@@ -204,8 +258,18 @@ footer .in{max-width:34em;margin:0 auto;padding:0 24px}
   .twoup{grid-template-columns:1fr}
   .entry{grid-template-columns:1fr}
   .statgrid{grid-template-columns:1fr 1fr}
-  nav.top .in{flex-wrap:wrap;gap:10px 14px;padding-top:10px;padding-bottom:10px}
+  /* padding-left and -right as well as top and bottom. `nav.top .in` is two
+     classes and outranks the `.wrap,.in` rule at the top of this block, so
+     the nav kept its 24px gutter while the page moved to 14px -- a 10px step
+     between the brand and the heading directly under it. */
+  nav.top .in{flex-wrap:wrap;gap:10px 14px;padding:10px 14px}
   nav.top a{font-size:14px}
+  /* box-shadow draws on the box, and the 44px tap target below makes this
+     anchor 44px tall around a 17px word, so the current-page rule was
+     landing 25px under its own label. Underline the text instead. */
+  nav.top a[aria-current]{box-shadow:none;text-decoration:underline;
+    text-decoration-color:var(--pine);text-decoration-thickness:2px;
+    text-underline-offset:5px}
   .note,.cite,footer,.corrections{font-size:14px}
   button,.hit,summary,nav.top a{min-height:44px}
 }
@@ -217,7 +281,7 @@ footer .in{max-width:34em;margin:0 auto;padding:0 24px}
 /* Focus must be visible. Keyboard users navigate by it, and the default
    outline is removed by most resets without anything put back. */
 :focus-visible{outline:2px solid var(--pine);outline-offset:2px;border-radius:var(--r-in)}
-.skip{position:absolute;left:-9999px;top:0;background:var(--pine);color:#fff;
+.skip{position:absolute;left:-9999px;top:0;background:var(--pine);color:var(--on-pine);
 padding:10px 16px;z-index:99;border-radius:0 0 var(--r-out) 0}
 .skip:focus{left:0}
 /* Reduced motion: honour the system preference rather than overriding it. */
