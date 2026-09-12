@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.40
+# GRANITE_VERSION: 2026-09-04.43
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -203,8 +203,41 @@ var(--rule-2) 3px,var(--surface) 3px,var(--surface) 6px);border:1px solid var(--
 .pstub{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;gap:10px;
 cursor:pointer;background:#14181A;color:#C8CFD1;font-size:14px}
 .pstub:hover{background:#1D2225}
-.townlist{max-height:340px;overflow-y:auto;border:1px solid var(--rule);border-radius:var(--r-out);
+/* ---- THE LEGISLATORS PAGE'S TWO WAYS IN ------------------------------
+   By town and by name, side by side where there is room. They are
+   alternatives, not steps, and stacked they read as a procedure the reader
+   has to work through -- which is what made this page feel cluttered: three
+   things to get past before the first legislator, and 1,236px to reach one.
+   One column below 860px, the width the rest of the site stacks at. */
+.legfind{display:grid;grid-template-columns:1fr 1fr;gap:0 26px;
+margin:16px 0 26px;align-items:start}
+.legway{min-width:0;background:var(--surface);border:1px solid var(--rule-2);
+border-radius:var(--r-out);padding:14px 16px}
+.legway h2{font-size:12px;font-weight:600;letter-spacing:.05em;
+text-transform:uppercase;color:var(--ink-2);margin:0 0 9px}
+.legway .count{margin:8px 0 0}
+.legway .src{margin:8px 0 0}
+@media(max-width:860px){.legfind{grid-template-columns:1fr;gap:14px 0}}
+/* The composition charts sit after the roster now. A reader who types a name
+   should get the answer, not 359px of party bars between the box and the
+   result. */
+.comp-wrap{margin:38px 0 0;padding-top:20px;border-top:1px solid var(--rule-2)}
+.comp-wrap > h2{font-size:12px;font-weight:600;letter-spacing:.05em;
+text-transform:uppercase;color:var(--ink-2);margin:0 0 14px}
+/* 220px, not 340. It is a type-ahead list of 259 towns and it only ever
+   shows a window of them; 340px of window was a third of a phone screen
+   spent on a list nobody reads in order. */
+.townlist{max-height:220px;overflow-y:auto;border:1px solid var(--rule);border-radius:var(--r-out);
 background:var(--surface);margin-top:10px}
+/* AFTER the base rule, not in the narrow-screens block above it. Same
+   specificity, so source order decides, and declared first this lost and the
+   list stayed 220px on a phone -- which is the third time in this stylesheet
+   that a media query placed before the rule it meant to override has
+   silently done nothing. On a phone the two panes stack and the town list is
+   most of that stack; it is a browse affordance, since the box above it is
+   how anyone actually finds their town, so it gets a shorter window rather
+   than pushing the name search off the screen. */
+@media(max-width:720px){.townlist{max-height:150px}}
 .townrow{display:flex;width:100%;text-align:left;padding:8px 13px;font-size:14px;
 border-bottom:1px solid var(--rule);cursor:pointer;align-items:baseline;gap:10px}
 .townrow:last-child{border-bottom:none}
@@ -1384,22 +1417,41 @@ def main():
     # Built here, after home.json has been read: the legislators page now
     # carries the party composition, so it cannot be written before the
     # data that composition comes from.
+    # TWO WAYS IN, SIDE BY SIDE, AND THE CHARTS AFTER THE ROSTER.
+    #
+    # This page stacked three things before the first legislator and measured
+    # 1,236px to reach one at 1440: a 471px town picker, then a second heading
+    # and a second lead, then a full-width search box, and then 359px of party
+    # composition charts sitting BETWEEN the search box and its own results --
+    # so typing a name pushed the answer 380px down the page.
+    #
+    # The charts are context, not a way in, so they go below the roster. The
+    # two ways in -- by town, by name -- become one block of two panes, side
+    # by side where there is room, because they are alternatives rather than
+    # steps: a reader should see both at once and pick. One heading and one
+    # sentence instead of two of each.
     leg_body = f"""<h1>Legislators</h1>
-<p class="lead">Start with your town, or search the full roster below.</p>
-<div class="card" style="margin-bottom:26px">
-  <label for="tq" style="position:absolute;left:-9999px">Your town</label>
-  <input id="tq" type="search" placeholder="Your town, e.g. Dover" disabled>
-  <p class="count" id="tcount">Loading\u2026</p>
-  <div class="townlist" id="towns"></div><div id="tout" style="margin-top:16px"></div>
+<p class="lead">{len(legs)} sitting members. Find yours by town, or search the
+roster by name, county, party or committee.</p>
+<div class="legfind">
+  <section class="legway">
+    <h2>By town</h2>
+    <label for="tq" class="sr">Your town</label>
+    <input id="tq" type="search" placeholder="Your town, e.g. Dover" disabled>
+    <p class="count" id="tcount">Loading&hellip;</p>
+    <div class="townlist" id="towns"></div><div id="tout"></div>
+  </section>
+  <section class="legway">
+    <h2>By name</h2>
+    <label for="q" class="sr">Search legislators</label>
+    <input id="q" type="search" placeholder="Name, town, county, party, or committee" disabled>
+    <p class="count" id="count">Loading&hellip;</p>
+    <p class="src">A committee name lists everyone on it.</p>
+  </section>
 </div>
-<h2 style="margin-top:0">Everyone</h2>
-<p class="lead">{len(legs)} members, with their committees and full roll call
-record. Searching a committee name lists everyone on it.</p>
-<label for="q" style="position:absolute;left:-9999px">Search legislators</label>
-<input id="q" type="search" placeholder="Name, town, county, party, or committee" disabled>
-{('<div class="comp-wrap">' + static_bar("S") + static_bar("H") + vacancies + "</div>")
- if C else ""}
-<p class="count" id="count">Loading…</p><div id="out"></div>"""
+<div id="out"></div>
+{('<div class="comp-wrap"><h2>Who holds the seats</h2>' + static_bar("S")
+  + static_bar("H") + vacancies + "</div>") if C else ""}"""
     (out / "legislators.html").write_text(
         shell("Legislators | Granite Record", "legislators.html", leg_body,
               desc="Every member of the New Hampshire House and Senate: their "
