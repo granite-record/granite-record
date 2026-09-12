@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.123
+# GRANITE_VERSION: 2026-09-04.124
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4127,6 +4127,21 @@ def _sponsor_fetch(S):
     import http.client
     import urllib.error
     import refusal
+    # THE JOIN THE SCORE IS BUILT ON. --probe is only worth its twelve
+    # requests because it compares the answers against data/sponsors.json,
+    # which came from the General Court's database; that comparison is made on
+    # a surname, and the two sides write a member differently -- byAnyMember
+    # gives "Rep. Vartanian, Elsie(Rock. 20)" and the database gives
+    # "Vartanian, Elsie". The first draft returned "repvartanian" against
+    # "vartanian", which would have scored zero on every member and pointed at
+    # the row parser instead. Found before a single page was fetched, and kept
+    # here because a silent zero is the worst possible outcome for a check
+    # whose whole job is to tell you whether the parser works.
+    for a, b in [("Rep. Vartanian, Elsie(Rock. 20)", "Vartanian, Elsie"),
+                 ("Sen. Barnes, Jr., John(Dist. 17)", "Barnes, John"),
+                 ("Rep. McGough, Tim(Hills. 12)", "Tim McGough")]:
+        assert S.surname(a) == S.surname(b) != "", (a, S.surname(a), b, S.surname(b))
+    assert S.term_of("1989") == "1989-1990" and S.term_of("2026") == "2025-2026"
     root = Path(tempfile.mkdtemp())
     saved = (os.getcwd(), S.get, S.time.sleep)
     asked = []

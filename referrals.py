@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.4
+# GRANITE_VERSION: 2026-09-10.5
 """The committee a bill was referred to, read out of the docket.
 
     python3 referrals.py            # what it finds, by year, no network
@@ -47,7 +47,8 @@ bill_status/legacy/bs2016/docket_abbrev.htm, kept here as docket_abbrev.json.
 Where the key speaks it wins, and it settled two that nothing in the corpus
 ever spelled out: JUD is Judiciary and Family Law (314 bills read "Judiciary
 and F L" until now) and ECON DEVEL is Economic Development (130). Where the
-key is silent, "Corr and Cj" still stands as the clerk wrote it.
+key was silent on "Corr and Cj" and on "Pub Prot", and both stood as the clerk
+wrote them until the witness below was read.
 
 A FOURTH WITNESS, since 11 September: the resolution each House adopts its
 rules by defines every standing committee in one sentence -- "the Committee on
@@ -108,7 +109,10 @@ PHRASES = [
     # the "and" optional ("Exec Depts Admin"), and ADMINSTRATION -- which is
     # how the House wrote its own committee's name five times -- because each
     # of those was on the site abbreviated or misspelt on the 11th.
-    (r"\bEXEC(?:UTIVE|TIVE)?\.?\s*DEPTS?\.?\s*(?:(?:&|\+|AND)\s*)?"
+    # "Ex." as well, which one clerk of 2000 used: "Ex. Dept. and Admin". It
+    # is only allowed to mean Executive here because DEPT and ADM have to
+    # follow it, so there is nothing else it could be short for.
+    (r"\bEX(?:EC(?:UTIVE|TIVE)?)?\.?\s*DEPTS?\.?\s*(?:(?:&|\+|AND)\s*)?"
      r"ADM(?:IN|INISTRATION|INSTRATION)?\.?\b",
      "Executive Departments and Administration"),
     (r"\bMUN(?:ICIPAL)?\.?\s*(?:&|/|\+|AND)?\s*C(?:N?TY|OUNTY)\.?\s*"

@@ -442,6 +442,60 @@ carry the measurements.
 - **`check_civics_links.py` has never been run.** The civics section's
   outbound source URLs are unverified.
 
+## 6b. The archived histories, scanned twice on the 11th
+
+The 1989–2016 histories went on 20,600 pages that had none, so they were
+scanned for every defect this kind of sentence has actually had — the list
+built from what the bench and a person reading had already caught — before and
+after fixing. **526 findings, then 3.** Zero for unfilled markers, doubled
+spaces, `..`, zero-padded chapters, wrong tense, duplicate sentences, dates
+outside the term.
+
+Six causes, each read out of the record rather than guessed:
+
+- *"The committee reported: None."* is the clerk's own word. SB 466 of 2000
+  has `Committee Report None`, and the next line has Sen. Trombly moving to
+  suspend Rule #22A "to allow no committee recommendation before the body".
+- *"referred to the &nbsp;committee"* on six pages: HB 246 of 1999 reads
+  `Re-Referred to committee` and names none, because it went back to the one
+  it came from. The sentence stops saying which.
+- 41 sentences ended `Jr..` — the full stop added to a name that had one.
+- Six impossible dates (`April 26, 2089`, an amendment rejected `June 16,
+  2062`). `docket_vocab` had clamped mistyped years for 1989–2016 since the
+  11th; the fetched dockets of 2017–2026 never reached it. Same rule now for
+  every term: the day and month are the clerk's, the year is the session's.
+  Effective dates are exempt — a law of 2014 really can take effect in 2020.
+- 426 pages named a committee in shorthand. Thirteen expansions.
+
+**A fourth witness for committee names, and worth knowing about.**
+`referrals.py` expands an abbreviation only where a source spells the name
+out, and `Pub Prot` (104 pages) and `Corr & Cj` (152) stood in its own
+comments as unexpandable: all 584 referral strings searched for PROTECTION
+turn up only Consumer Protection, a different committee. The resolution each
+House adopts its rules by defines every standing committee in a sentence —
+*"the Committee on Public Protection and Veterans Affairs to consider all
+matters affecting public protection…"* — and two are on this disk as bill
+text. `--check` now reads them. It is not circular: the pattern is the
+resolution's grammar, so it returned 22 committees, most of which nothing
+here had asked about, including Corrections and Criminal Justice.
+
+Still abbreviated: `Pub Instit`, two referrals, two candidates on this disk
+that are different committees.
+
+**Two findings from the same pass, not fixed, both with the cause located.**
+
+1. `segment_markers` reads a *plan* as a boundary. On 3 April 2023 the chair,
+   an hour behind schedule and in the middle of another bill's hearing, said
+   "we might start the hearing on 68 before the lunch break"; `OPEN_RE`'s bare
+   `start\b` fired, putting SB 68 eleven minutes early. The real opener — "I'm
+   going to open a public hearing on Senate Bill 68" — is in the same
+   transcript at 2:14:36, two seconds from the bench's mark. A modal guard
+   separates the two, and it is a timestamp change, so it needs its own score.
+2. **25,499 of 30,588 committee report texts end without a full stop.** Not
+   truncation, which is what it looks like: `fetch_committee_reports.py`
+   cuts at the vote line with `.strip(" .;,")` and eats the sentence's own
+   period. The source reads "…our NH National Guard.Vote 11-6."
+
 ## 7. Before the next publish
 
 1. ~~Run `check_civics_links.py`.~~ *Half done on the 11th.* The five links

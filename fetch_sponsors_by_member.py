@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.2
+# GRANITE_VERSION: 2026-09-10.3
 """Who sponsored what, asked one legislator at a time instead of one bill at a time.
 
     python3 fetch_sponsors_by_member.py --plan        # no network at all
@@ -382,14 +382,38 @@ def known_sponsors():
     return out
 
 
+HONORIFIC = re.compile(r"^(?:rep|sen|representative|senator|hon)\.?\s+", re.I)
+SUFFIX = re.compile(r",?\s*\b(?:jr|sr|ii|iii|iv)\b\.?\s*$", re.I)
+
+
 def surname(name):
-    """"McGough, Tim" and "Tim McGough" both reduce to "mcgough"."""
+    """"Rep. Vartanian, Elsie(Rock. 20)" and "Vartanian, Elsie" both give
+    "vartanian".
+
+    THE TWO SIDES OF THE SCORE WRITE A MEMBER DIFFERENTLY, and this is the
+    join between them. byAnyMember's list carries the honorific and the seat
+    -- "Rep. Vartanian, Elsie(Rock. 20)" -- while data/sponsors.json carries
+    "Vartanian, Elsie". Until this stripped the honorific it returned
+    "repvartanian" against "vartanian", so --probe would have matched nobody,
+    scored zero on every member, and pointed at the row parser or the radio
+    mapping -- none of which would have been wrong.
+
+    Found by running the scoring half against data/sponsors.json before any
+    page was fetched, which cost nothing and would otherwise have cost twelve
+    requests and a wrong conclusion.
+    """
     n = flat(name).strip()
+    n = re.sub(r"\([^)]*\)", " ", n)        # "(Rock. 20)" is a seat, not a name
+    n = HONORIFIC.sub("", n.strip()).strip()
+    n = SUFFIX.sub("", n).strip()
     if "," in n:
+        # "Barnes, Jr., John" -- the suffix sits between surname and first
+        # name, and the surname is still what comes before the first comma.
         n = n.split(",")[0]
     else:
-        n = n.split()[-1] if n.split() else ""
-    return re.sub(r"[^a-z]", "", n.lower())
+        parts = n.split()
+        n = parts[-1] if parts else ""
+    return re.sub(r"[^a-z]", "", SUFFIX.sub("", n).lower())
 
 
 def term_of(year):
