@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.72 */
+/* GRANITE_VERSION: 2026-09-07.75 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -251,7 +251,10 @@ align-items:center;gap:6px 18px;flex-wrap:wrap}
    serif drawn at 22px would be soft, it would not invert, and a reader could
    not select the site's name. */
 nav.top .brand{font-size:16px;font-weight:600;flex:0 0 auto;
-display:inline-flex;align-items:center;gap:9px}
+display:inline-flex;align-items:center;gap:9px;
+color:var(--ink);text-decoration:none}
+nav.top .brand:hover{color:var(--pine)}
+nav.top .brand:hover::before{background:var(--pine)}
 nav.top .brand::before{content:"";flex:0 0 auto;width:15px;height:24px;
 background:currentColor;
 -webkit-mask:url(/mark.svg) center/contain no-repeat;
@@ -261,21 +264,23 @@ nav.top a{font-size:14px;text-decoration:none;color:var(--ink-2);
 display:flex;align-items:center;min-height:36px;padding:0 12px;
 border:1px solid transparent;border-radius:var(--r-in);white-space:nowrap}
 nav.top a:hover{background:var(--wash);color:var(--ink)}
-nav.top a[aria-current]{background:var(--pine-soft);color:var(--pine);
+/* .navtabs a, not nav.top a: the brand is an anchor now and carries
+   aria-current on the home page, and it should read as the site's name
+   rather than as a filled tab. */
+.navtabs a[aria-current]{background:var(--pine-soft);color:var(--pine);
 font-weight:600;border-color:var(--pine)}
-/* ONE ROW NEEDS 783px: the brand at 113, the strip at 529 with Legislators
-   as the current one, the control at 57 with Light as its label, two 18px
-   gaps and the 48px gutter -- measured in the browser, not added up from the
-   stylesheet. Left to the 720 breakpoint the strip would wrap through itself
-   between 720 and 783 and the last sections would end up under the brand, so
-   it splits at 860 -- a tenth of the requirement as slack for a font that
-   loads late or not at all, and, better than a number of its own, the width
-   at which four other things here already give up a column: the facet
-   sidebar, the footer, .ctwo and the legislator finder. Below it the row
-   splits on purpose: identity and control first, the seven sections
-   beneath. */
-@media (max-width:860px){
-  nav.top .in{padding:8px 24px}
+/* ONE ROW NEEDS 635px: the brand at 163 with its mark, the strip at 331 with
+   Legislators as the current one, the control at 57 with Light as its label,
+   two 18px gaps and the 48px gutter -- measured in the browser, not added up
+   from the stylesheet.
+   It was 783px and split at 860, which was right for seven tabs. Four tabs
+   need 148px less, so the split moves to the width this site already breaks
+   at: 720. That leaves 86px of slack, a seventh of the requirement, for a
+   font that loads late or not at all -- and one breakpoint for the nav
+   instead of two, which is worth more than the twelve pixels a tighter
+   number would save. Below it the row splits on purpose: identity and
+   control first, the four sections beneath. */
+@media (max-width:720px){
   /* order:3, because the strip is the second of three children and a
      full-width flex item only starts a new line where it sits. */
   .navtabs{flex:1 0 100%;order:3}
@@ -1421,7 +1426,13 @@ color:var(--ink-2);font-variant-numeric:tabular-nums}
    on a town page somebody actually taps, and it was the smallest target on
    it. */
 .offhow a{display:inline-block;padding:3px 0}
-.offhow .offtel{white-space:nowrap}
+/* A time or a date is one thing and does not break across a line, the same as
+   a phone number beside it. Its own class because it is its own thing:
+   .offtel is a number you can ring, .offwhen is when something happens. */
+.offhow .offtel,.offhow .offwhen{white-space:nowrap}
+/* A number that dials looks like the link it is. The row's own colour is
+   --ink-2, which would have hidden that it is now tappable. */
+.offhow a.offtel{color:var(--pine)}
 @media (max-width:620px){
   /* One column: 290px of name and a column of contact beside it does not fit
      360px, and the row becomes name-then-contact stacked. */

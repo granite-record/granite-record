@@ -15,56 +15,84 @@
     "stale and the official_url is still right, which is why the page links to",
     "it either way.",
     "",
-    "PARTY IS RECORDED ONLY WHERE AN OFFICIAL SOURCE STATED IT. senate.gov",
-    "gives a party for each senator. governor.nh.gov, council.nh.gov and the",
-    "members' own house.gov sites do not, so those are blank -- not because",
-    "the answer is unknown to the world, but because this file holds what a",
-    "source said, and a party chip is a visible claim about a person."
+    "PARTY IS RECORDED ONLY WHERE A SOURCE STATED IT, AND THE SOURCE IS NAMED.",
+    "senate.gov gives a party for each senator. governor.nh.gov,",
+    "council.nh.gov and the members' own house.gov sites do not, so those",
+    "eight were blank until 12 September 2026, when the site's author",
+    "supplied them: Ayotte R, Kenney R, Liot Hill D, Stevens R, Stephen R,",
+    "Wheeler R, Pappas D, Goodlander D. That is a person's statement rather",
+    "than a page's, which is the whole reason this file is a person's file.",
+    "A party chip is a visible claim about a real person; if one of these is",
+    "wrong, it is wrong here and nowhere else."
   ],
   "_checked": "2026-09-09",
   "governor": {
     "office": "Governor of New Hampshire",
     "scope": "statewide",
     "name": "Kelly Ayotte",
-    "party": "",
+    "party": "R",
     "phone": "(603) 271-2121",
     "email": "GovernorAyotte@governor.nh.gov",
     "official_url": "https://www.governor.nh.gov/",
     "contact_url": "https://www.governor.nh.gov/contact-governor-ayotte",
-    "source": "https://www.governor.nh.gov/"
+    "source": "https://www.governor.nh.gov/",
+    "about": [
+      "As the head of state government, the Governor signs or vetoes legislation passed in the General Court, oversees state agencies, and proposes the state budget for legislative approval."
+    ]
   },
   "council": {
     "office": "Executive Council",
     "scope": "district",
     "about": [
-      "Five councillors, elected from five districts. The Council approves",
-      "state contracts over $10,000, judicial and agency nominations, and",
-      "pardons. It meets with the Governor and its votes are public."
+      "Five councilors, elected from five districts. The Executive Council approves state contracts over $10,000, judicial and agency nominations, and pardons."
     ],
     "official_url": "https://www.council.nh.gov/",
     "source": "https://www.council.nh.gov/",
     "districts": {
-      "1": {"name": "Joseph D. Kenney", "party": "", "phone": "", "official_url": "https://www.council.nh.gov/district-1"},
-      "2": {"name": "Karen Liot Hill", "party": "", "phone": "", "official_url": "https://www.council.nh.gov/district-2"},
-      "3": {"name": "Janet Stevens", "party": "", "phone": "", "official_url": "https://www.council.nh.gov/district-3"},
-      "4": {"name": "John Stephen", "party": "", "phone": "", "official_url": "https://www.council.nh.gov/district-4"},
-      "5": {"name": "David K. Wheeler", "party": "", "phone": "", "official_url": "https://www.council.nh.gov/district-5"}
+      "1": {
+        "name": "Joseph D. Kenney",
+        "party": "R",
+        "phone": "",
+        "official_url": "https://www.council.nh.gov/district-1"
+      },
+      "2": {
+        "name": "Karen Liot Hill",
+        "party": "D",
+        "phone": "",
+        "official_url": "https://www.council.nh.gov/district-2"
+      },
+      "3": {
+        "name": "Janet Stevens",
+        "party": "R",
+        "phone": "",
+        "official_url": "https://www.council.nh.gov/district-3"
+      },
+      "4": {
+        "name": "John Stephen",
+        "party": "R",
+        "phone": "",
+        "official_url": "https://www.council.nh.gov/district-4"
+      },
+      "5": {
+        "name": "David K. Wheeler",
+        "party": "R",
+        "phone": "",
+        "official_url": "https://www.council.nh.gov/district-5"
+      }
     }
   },
   "us_house": {
     "office": "United States House of Representatives",
     "scope": "district",
     "about": [
-      "New Hampshire elects two members of the US House, one from each",
-      "congressional district. They are not part of the General Court and",
-      "nothing they do appears elsewhere on this site."
+      "New Hampshire elects two members of the US House, one from each congressional district."
     ],
     "official_url": "https://www.sos.nh.gov/congressional-delegation",
     "source": "https://www.sos.nh.gov/congressional-delegation, and each member's own site for the district",
     "districts": {
       "1": {
         "name": "Chris Pappas",
-        "party": "",
+        "party": "D",
         "phone": "(603) 285-4300",
         "phone_dc": "(202) 225-5456",
         "official_url": "https://pappas.house.gov",
@@ -72,7 +100,7 @@
       },
       "2": {
         "name": "Maggie Goodlander",
-        "party": "",
+        "party": "D",
         "phone": "(603) 226-1002",
         "phone_dc": "(202) 225-5206",
         "official_url": "https://goodlander.house.gov",

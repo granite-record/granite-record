@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.6
+# GRANITE_VERSION: 2026-09-09.8
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -37,6 +37,7 @@ official directory, which is correct and does not go stale.
 """
 
 import argparse
+import datetime as dt
 import json
 import re
 from pathlib import Path
@@ -95,6 +96,60 @@ def member_block(members, empty, seat=""):
     return '<ul class="offlist">' + "".join(out) + "</ul>"
 
 
+def tel(num):
+    """A number that dials, on the device most readers are holding.
+
+    These were plain text. A town clerk's number on a town page is the single
+    most likely thing on this site to be tapped, and tapping it did nothing.
+    """
+    digits = re.sub(r"[^0-9]", "", num or "")
+    if len(digits) == 10:
+        digits = "1" + digits
+    if len(digits) < 11:
+        return f'<span class="offtel">{E(num)}</span>'
+    return f'<a class="offtel" href="tel:+{digits}">{E(num)}</a>'
+
+
+def weblink(url, label=None):
+    """An outward link labelled with where it goes.
+
+    "official page" told a reader nothing about which page; the host does, and
+    it is what they would read off the address bar anyway. The arrow is this
+    site's mark for a link that leaves it.
+    """
+    if not url:
+        return ""
+    host = re.sub(r"^https?://(?:www\.)?", "", url).rstrip("/").split("/")[0]
+    return (f'<a href="{E(url)}" rel="noopener">{E(label or host)}'
+            " &#8599;</a>")
+
+
+MONTHS = ("January", "February", "March", "April", "May", "June", "July",
+          "August", "September", "October", "November", "December")
+
+
+def election_line(raw):
+    """"11/03/2026-STATE GENERAL ELECTION" as something a person reads.
+
+    Called "Next election" only while it is still ahead of the build. The
+    Secretary of State's export names one election, and a page that still
+    called it "next" in December would be wrong about the one thing a reader
+    came to it for.
+    """
+    m = re.match(r"\s*(\d{1,2})/(\d{1,2})/(\d{4})\s*-\s*(.+)$", raw or "")
+    if not m:
+        return "", ""
+    mm, dd, yy = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    if not 1 <= mm <= 12:
+        return "", ""
+    name = " ".join(w.capitalize() for w in m.group(4).split())
+    when = f"{dd} {MONTHS[mm - 1]} {yy}"
+    ahead = (yy, mm, dd) >= (dt.date.today().year, dt.date.today().month,
+                             dt.date.today().day)
+    return ("Next election" if ahead else "Election on file",
+            f"{name}, {when}")
+
+
 def office_block(title, holder, fallback_url, note=""):
     """One office this site does not track: what it is, who holds it if we
     were told, and the official page either way."""
@@ -108,15 +163,14 @@ def office_block(title, holder, fallback_url, note=""):
         who = f'<span class="mchip p-{E(p)}">{link}</span>'
         how = []
         if holder.get("phone"):
-            how.append(f'<span class="offtel">{E(holder["phone"])}</span>')
+            how.append(tel(holder["phone"]))
         if holder.get("phone_dc"):
-            how.append(f'<span class="offtel">{E(holder["phone_dc"])}'
-                       " (Washington)</span>")
+            how.append(tel(holder["phone_dc"]) + " (Washington)")
         if holder.get("email"):
             how.append(f'<a href="mailto:{E(holder["email"])}">'
                        f'{E(holder["email"])}</a>')
         if url:
-            how.append(f'<a href="{E(url)}" rel="noopener">official page</a>')
+            how.append(weblink(url))
         row = off_row(who, how)
     else:
         # NOT AN APOLOGY AND NOT AN EMPTY SPACE. The district is the useful
@@ -124,19 +178,19 @@ def office_block(title, holder, fallback_url, note=""):
         # was not told, and the office's own directory is where it is right.
         row = off_row(f'<a href="{E(url)}" rel="noopener">'
                       "who holds this seat, on the official directory</a>", [])
+    # THE NOTE GOES UNDER THE NAME. Asked for, and it is the right way round:
+    # the heading says which office, the row says who holds it, and the note
+    # says what the office does. A reader who came to find out who their
+    # councillor is should not have to read three sentences about the Council
+    # to get to the name; a reader who wants to know what the Council does has
+    # it immediately after.
     return ((f'<h3 class="offh">{E(title)}</h3>' if title else "")
-            + (f'<p class="note">{E(note)}</p>' if note else "")
-            + '<ul class="offlist">' + row + "</ul>")
+            + '<ul class="offlist">' + row + "</ul>"
+            + (f'<p class="note">{E(note)}</p>' if note else ""))
 
 
-def build(town, ward, wards, dist, legs, off, base, tmpl):
-    label = where(town, ward, wards)
-    body = [f'<h1 class="offtitle">{E(label)}</h1>',
-            '<p class="lead">Everyone elected to represent the people who live '
-            'here, and how to reach them.</p>']
-
-    # ---- the General Court, which this site does track --------------------
-    body.append('<h2 class="offsec">In the General Court</h2>')
+def state_house(dist, legs, body):
+    """The representatives, after the senator: more seats, smaller district."""
     house = dist.get("house") or []
     for h in house:
         who = [m for m in legs
@@ -160,6 +214,115 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
         body.append('<p class="note">No House district is on file for this '
                     'ward.</p>')
 
+
+def build(town, ward, wards, dist, legs, off, base, tmpl):
+    """One town, highest office to lowest, with the vote at the top.
+
+    THE ORDER IS THE POINT. This page used to open with the General Court,
+    because the General Court is what the rest of the site is about -- and a
+    reader who comes to a page called "who represents me" is not reading an
+    index of this site's coverage. They are looking up their own government,
+    and it runs Governor, Council, Congress, Senate, House, town hall. What
+    they came for most often is simpler still and used to be two thirds of the
+    way down: where do I vote, when, and who do I ring about it.
+    """
+    label = where(town, ward, wards)
+    loc = (off.get("_local") or {}).get(slug(town, ward)) or {}
+    town_off = (off.get("_offices") or {}).get(slug(town, "0")) or {}
+    body = [f'<h1 class="offtitle">{E(label)}</h1>',
+            '<p class="lead">Everyone elected to represent the people who live '
+            'here, and how to reach them.</p>']
+
+    # ---- the vote, first --------------------------------------------------
+    if loc or town_off:
+        rows = []
+        if loc.get("polling_place"):
+            hours = loc.get("state_hours") or ""
+            rows.append(off_row(
+                E(loc["polling_place"]),
+                [f'<span class="offwhen">{E(hours)}</span>'] if hours else [],
+                "Where you vote"))
+        # A TOWN THAT VOTES IN MORE THAN ONE PLACE. Eight of them -- Berlin,
+        # Derry, Farmington, Goffstown, Hudson, Merrimack, Salem and Walpole
+        # -- are one town in the district file this site's pages are named
+        # after and several voting wards on the Secretary of State's list.
+        # Naming one of four would be wrong three times out of four.
+        for w in loc.get("polling_by_ward") or []:
+            hours = w.get("state_hours") or ""
+            rows.append(off_row(
+                E(w.get("polling_place") or ""),
+                [f'<span class="offwhen">{E(hours)}</span>'] if hours else [],
+                f'Where you vote, ward {E(w.get("ward"))}'))
+        when_label, when_text = election_line(loc.get("election", ""))
+        if when_text:
+            rows.append(off_row(E(when_text), [], when_label))
+        site_url = town_off.get("website") or loc.get("website") or ""
+        if site_url:
+            rows.append(off_row(weblink(site_url), [], "Town website"))
+        if loc.get("clerk"):
+            how = []
+            if loc.get("phone"):
+                how.append(tel(loc["phone"]))
+            if loc.get("email"):
+                how.append(f'<a href="mailto:{E(loc["email"])}">'
+                           f'{E(loc["email"])}</a>')
+            rows.append(off_row(
+                f'<span class="mchip">{E(loc["clerk"])}</span>', how,
+                "Town or city clerk"))
+        if rows:
+            body.append(f'<h2 class="offsec">Voting in {E(town)}</h2>')
+            body.append('<ul class="offlist">' + "".join(rows) + "</ul>")
+            if not loc.get("polling_place") and not loc.get("polling_by_ward"):
+                # The Secretary of State's own list is blank here, as it is
+                # for 109 of its 331 rows.
+                body.append('<p class="note">The Secretary of State\'s list '
+                            'has no polling place recorded for here. The town '
+                            'clerk above is who to ask.</p>')
+
+    # ---- the state executive ----------------------------------------------
+    body.append('<h2 class="offsec">The state executive</h2>')
+    g = off.get("governor", {})
+    body.append(office_block("Governor of New Hampshire", g,
+                             g.get("official_url", ""),
+                             " ".join(g.get("about") or [])))
+    cd = dist.get("council")
+    if cd:
+        c = off.get("council", {})
+        body.append(office_block(
+            f"Executive Council \u2014 district {cd}",
+            (c.get("districts") or {}).get(str(cd)),
+            c.get("official_url", ""),
+            " ".join(c.get("about") or [])))
+
+    # ---- the federal delegation -------------------------------------------
+    body.append('<h2 class="offsec">Federal delegation</h2>')
+    us = off.get("us_senate", {})
+    body.append('<h3 class="offh">US Senate</h3>')
+    seats = us.get("seats") or []
+    if seats:
+        # No per-seat heading. Both are elected by the whole state and both
+        # represent this town, so the names are what tells them apart --
+        # senate.gov lists them in seniority order and calling one "senior"
+        # here would be reading more into that order than it states.
+        rows = [office_block("", seat, us.get("official_url", ""))
+                for seat in seats]
+        body.append(re.sub(r"</ul><ul class=\"offlist\">", "", "".join(rows)))
+    else:
+        body.append(office_block("", {}, us.get("official_url", "")))
+    # Under the names, the same way round as every other office here.
+    if us.get("about"):
+        body.append(f'<p class="note">{E(" ".join(us["about"]))}</p>')
+    gd = dist.get("congress")
+    if gd:
+        u = off.get("us_house", {})
+        body.append(office_block(
+            f"US House \u2014 New Hampshire district {gd}",
+            (u.get("districts") or {}).get(str(gd)),
+            u.get("official_url", ""),
+            " ".join(u.get("about") or [])))
+
+    # ---- the General Court, senator before representative -----------------
+    body.append('<h2 class="offsec">In the General Court</h2>')
     sd = dist.get("senate")
     if sd:
         who = [m for m in legs if m.get("chamber") == "S"
@@ -167,181 +330,47 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
         body.append(f'<h3 class="offh">Senate &mdash; district {sd}</h3>')
         body.append(member_block(who, "No sitting senator is matched to this "
                                       "district."))
+    state_house(dist, legs, body)
 
-    # ---- BY BRANCH, not "everything else" ---------------------------------
-    # These four offices were one section called "Other offices", which put
-    # the Governor, the Executive Council, a US Representative and two US
-    # Senators under one heading whose only meaning was "not the General
-    # Court". That is not how a reader holds them: the Governor and the
-    # Council are the STATE executive and act on the very bills this site
-    # tracks, and the congressional delegation is a different government
-    # altogether. Two headings say that; one heading said nothing.
-    body.append('<h2 class="offsec">The state executive</h2>')
-    body.append('<p class="note">Elected by the same voters, and not part of '
-                'the General Court. The Governor signs or vetoes the bills on '
-                'this site, and the Executive Council votes on state '
-                'contracts, judicial nominations and senior appointments.</p>')
-
-    g = off.get("governor", {})
-    body.append(office_block("Governor of New Hampshire", g,
-                             g.get("official_url", "")))
-
-    cd = dist.get("council")
-    if cd:
-        c = off.get("council", {})
-        body.append(office_block(
-            f"Executive Council — district {cd}",
-            (c.get("districts") or {}).get(str(cd)),
-            c.get("official_url", ""),
-            " ".join(c.get("about") or [])))
-
-    body.append('<h2 class="offsec">In Congress</h2>')
-    body.append('<p class="note">Federal offices. Nothing they do appears '
-                'elsewhere on this site, which is a record of the New '
-                'Hampshire legislature; they are here because they represent '
-                'the people who live here.</p>')
-
-    gd = dist.get("congress")
-    if gd:
-        u = off.get("us_house", {})
-        body.append(office_block(
-            f"US House — New Hampshire district {gd}",
-            (u.get("districts") or {}).get(str(gd)),
-            u.get("official_url", ""),
-            " ".join(u.get("about") or [])))
-
-    us = off.get("us_senate", {})
-    body.append('<h3 class="offh">US Senate</h3>')
-    if us.get("about"):
-        body.append(f'<p class="note">{E(" ".join(us["about"]))}</p>')
-    seats = us.get("seats") or []
-    if seats:
-        # No per-seat heading. Both are elected by the whole state and both
-        # represent this town, so the names are what tells them apart --
-        # senate.gov lists them in seniority order and calling one "senior"
-        # here would be reading more into that order than it states.
-        # One list rather than one list each, so the two read as a pair.
-        rows = [office_block("", seat, us.get("official_url", ""))
-                for seat in seats]
-        body.append(re.sub(r"</ul><ul class=\"offlist\">", "", "".join(rows)))
-    else:
-        body.append(office_block("", {}, us.get("official_url", "")))
-
-    # ---- voting, and the clerk who runs it --------------------------------
-    # WRITTEN AND SILENT UNTIL THE DATA IS THERE. The Secretary of State
-    # publishes one page carrying the clerk and the polling place for all 331
-    # towns and wards -- app.sos.nh.gov/statelistclerkandpolling -- and it has
-    # not been fetched: that is a person's decision, not this script's. Until
-    # town_clerks.json exists this section does not render at all, rather than
-    # rendering a heading with nothing under it.
-    loc = (off.get("_local") or {}).get(slug(town, ward))
-    if loc:
-        body.append('<h2 class="offsec">Voting, and your town clerk</h2>')
-        who = E(loc.get("clerk") or "")
-        how = []
-        if loc.get("phone"):
-            how.append(f'<span class="offtel">{E(loc["phone"])}</span>')
-        if loc.get("email"):
-            how.append(f'<a href="mailto:{E(loc["email"])}">'
-                       f'{E(loc["email"])}</a>')
-        if loc.get("website"):
-            how.append(f'<a href="{E(loc["website"])}" rel="noopener">'
-                       f'{E(town)} town website</a>')
-        rows = [off_row(f'<span class="mchip">{who}</span>', how,
-                        "Town or city clerk")] if who else []
-        if loc.get("polling_place"):
-            hours = loc.get("state_hours") or ""
-            rows.append(off_row(E(loc["polling_place"]),
-                                [f'<span class="offtel">{E(hours)}</span>']
-                                if hours else [],
-                                "Polling place"))
-        # A TOWN THAT VOTES IN MORE THAN ONE PLACE. Eight of them -- Berlin,
-        # Derry, Farmington, Goffstown, Hudson, Merrimack, Salem, Walpole --
-        # are one town in the district file this site's pages are named after
-        # and several voting wards on the Secretary of State's list. Naming
-        # one of four would be wrong three times out of four, so all of them
-        # are named, each with its ward.
-        for w in loc.get("polling_by_ward") or []:
-            hours = w.get("state_hours") or ""
-            rows.append(off_row(E(w.get("polling_place") or ""),
-                                [f'<span class="offtel">{E(hours)}</span>']
-                                if hours else [],
-                                f'Polling place, ward {E(w.get("ward"))}'))
-        if rows:
-            body.append('<ul class="offlist">' + "".join(rows) + "</ul>")
-        if not loc.get("polling_place") and not loc.get("polling_by_ward"):
-            # The Secretary of State's own instruction where the field is
-            # blank, which it is for 110 of the 331 rows.
-            body.append('<p class="note">The Secretary of State\'s list has '
-                        'no polling place recorded for here. The town clerk '
-                        'above is who to ask.</p>')
-
-    # ---- who runs the town ------------------------------------------------
-    # THE QUESTION THIS PAGE COULD NOT ANSWER. It named everyone who
-    # represents a town in Concord and in Washington and nobody who represents
-    # it at home. This is NHDOT's "City and Town Officials of the State of New
-    # Hampshire", September 2025, parsed by parse_officials.py: 1,414 named
-    # offices across all 234 municipalities the directory covers.
-    #
-    # A city's wards share one selectboard, so the offices are looked up by
-    # the town's own slug and not the ward's -- a ward elects a councillor,
-    # and the town is what the board governs.
-    town_off = (off.get("_offices") or {}).get(slug(town, "0"))
-    if town_off and town_off.get("officials"):
-        body.append('<h2 class="offsec">Who runs ' + E(town) + '</h2>')
+    # ---- the town's own offices -------------------------------------------
+    # NHDOT's "City and Town Officials of the State of New Hampshire",
+    # September 2025, parsed by parse_officials.py: 1,414 named offices across
+    # all 234 municipalities the directory covers. A city's wards share one
+    # selectboard, so these are looked up by the town's slug and not the
+    # ward's -- a ward elects a councillor, and the town is what the board
+    # governs.
+    if town_off.get("officials"):
+        body.append(f'<h2 class="offsec">{E(town)} officials</h2>')
         rows = []
         for o in town_off["officials"]:
             how = []
             if o.get("phone"):
-                how.append(f'<span class="offtel">{E(o["phone"])}</span>')
+                how.append(tel(o["phone"]))
             if o.get("email"):
-                how.append(f'<a href="mailto:{E(o["email"])}">{E(o["email"])}</a>')
+                how.append(f'<a href="mailto:{E(o["email"])}">'
+                           f'{E(o["email"])}</a>')
             rows.append(off_row(f'<span class="mchip">{E(o["name"])}</span>',
                                 how, E(o.get("position") or "")))
         body.append('<ul class="offlist">' + "".join(rows) + "</ul>")
         how = []
         if town_off.get("phone"):
-            how.append(f'<span class="offtel">{E(town_off["phone"])}</span>')
+            how.append(tel(town_off["phone"]))
         if town_off.get("email"):
             how.append(f'<a href="mailto:{E(town_off["email"])}">'
                        f'{E(town_off["email"])}</a>')
         if town_off.get("website"):
-            how.append(f'<a href="{E(town_off["website"])}" rel="noopener">'
-                       f'{E(town)} town website</a>')
+            how.append(weblink(town_off["website"]))
         if town_off.get("mailing") or how:
             body.append('<ul class="offlist">'
                         + off_row(E(town_off.get("mailing") or town),
                                   how, "Town offices")
-                        + '</ul>')
-        body.append('<p class="note">These are the offices the Department of '
-                    'Transportation\'s directory of city and town officials '
-                    'lists, as of September 2025. An election changes them and '
-                    'this page does not: the town\'s own website above is '
-                    'where to check.</p>')
+                        + "</ul>")
+        body.append('<p class="note">Source: DoT directory of city and town '
+                    'officials lists, as of September 2025. Check official '
+                    'town website for up-to-date information.</p>')
 
-    # WHEN, as well as where. These offices change at an election and the
-    # names here do not; the official link does not go stale, and a reader
-    # who can see the date can tell which half they are looking at.
-    checked = (off.get("_checked") or "").strip()
-    body.append('<p class="srcs">Districts from the General Court\'s own '
-                'district files, including the floterial districts its '
-                'legislator list omits. Members of the House and Senate from '
-                'the General Court roster, which the rest of this site is '
-                'drawn from. The state executive and congressional offices '
-                'are in no General Court file: they were read from the '
-                'Governor\'s office, the Executive Council, the Secretary of '
-                'State\'s congressional delegation page and senate.gov'
-                + (f', on {E(checked)}' if checked else '')
-                + '. Each links to its own official page, which stays right '
-                'after an election when a name here would not.'
-                + (' The clerk and the polling place are the Secretary of '
-                   'State\'s own list of clerks and polling places.'
-                   if (off.get("_local") or {}).get(slug(town, ward)) else "")
-                + (' The town\'s own offices are the Department of '
-                   'Transportation\'s directory of city and town officials, '
-                   'September 2025.'
-                   if (off.get("_offices") or {}).get(slug(town, "0")) else "")
-                + '</p>')
+    body.append('<p class="srcs">Source: NH General Court, Secretary of '
+                'State, DoT Municipal Directory</p>')
 
     path = f"/town/{slug(town, ward)}.html"
     desc = (f"Who represents {label}: state representatives, state senator, "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.52
+# GRANITE_VERSION: 2026-09-04.53
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -629,7 +629,13 @@ def calendar_html(H, out):
 def shell(title, current, body, wide=False, script="", desc="",
           base="https://graniterecord.org"):
     tabs = []
-    for href, label in (("index.html", "Home"), ("bills.html", "Bills"),
+    # FOUR TABS. Data and About came off: both are pages for somebody who
+    # already knows what they want, both have carried a footer link since the
+    # footer was written, and seven similar words is what made the row hard to
+    # read in the first place. Home came off because the mark beside the
+    # wordmark is the way home on every site a reader uses -- it only needed
+    # to be a link.
+    for href, label in (("bills.html", "Bills"),
                         ("legislators.html", "Legislators"),
                         ("committees.html", "Committees"),
                         # A second nav emitter. bills.html carries the nav
@@ -638,8 +644,7 @@ def shell(title, current, body, wide=False, script="", desc="",
                         # when Data was added to the first it was not added
                         # here, so three pages lacked the link the other
                         # 34,000 had.
-                        ("learn.html", "Learn"), ("data.html", "Data"),
-                        ("about.html", "About")):
+                        ("learn.html", "Learn")):
         cur = ' aria-current="page"' if href == current else ""
         tabs.append(f'<a href="{href}"{cur}>{label}</a>')
     # ONE WRAPPER, WRITTEN TWICE BECAUSE THE NAV IS. bills.html carries the
@@ -650,6 +655,10 @@ def shell(title, current, body, wide=False, script="", desc="",
            # The same control bills.html carries, read from there rather than
            # written again here.
            themer("BTN")]
+    # The home page has no tab any more, so the brand is what carries the
+    # "you are here" for it -- said to a screen reader, not drawn, because the
+    # chip that marks a tab is scoped to .navtabs and the brand is not one.
+    BRAND_CUR = ' aria-current="page"' if current == "index.html" else ""
     STYLE_Q = style_query()
     # THE PAGES A SEARCH ENGINE REACHES FIRST HAD THE LEAST IN THEIR HEAD.
     # Every one of the 33,683 bill pages carries a description, a canonical
@@ -692,7 +701,7 @@ def shell(title, current, body, wide=False, script="", desc="",
  href="/feed/all.xml">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — upcoming hearings"
  href="/feed/hearings.xml"></head><body>
-<a class="skip" href="#main">Skip to the content</a>\n<nav class="top"><div class="in"><span class="brand">Granite Record</span>
+<a class="skip" href="#main">Skip to the content</a>\n<nav class="top"><div class="in"><a class="brand" href="index.html"{BRAND_CUR}>Granite Record</a>
 {''.join(nav)}</div></nav>
 <main class="wrap{' wide' if wide else ''}" id="main">{body}</main>
 <footer><div class="in">
