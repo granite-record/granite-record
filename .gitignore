@@ -45,6 +45,7 @@ SubjectCodes.txt
 # ---- generated data ------------------------------------------------------
 # Every one of these is produced by a build_* step from the files above.
 data/
+.build.lock
 narratives.json
 topics_assigned.json
 bill_status.json

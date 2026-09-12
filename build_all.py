@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.18
+# GRANITE_VERSION: 2026-09-05.19
 """
 Run the whole pipeline in the right order.
 
@@ -23,12 +23,79 @@ captions. Run transcribe_and_align.py separately, then rebuild.
 
 import argparse
 import json
+import os
 import subprocess
 import sys
+import threading
 import time
 import child
 from datetime import datetime
 from pathlib import Path
+
+
+BUILD_LOCK = Path(".build.lock")
+# A build touches its lock every half minute. A lock older than this belonged
+# to a build that was killed, and is taken rather than obeyed -- otherwise one
+# interrupted build stops every later one until somebody deletes a file.
+STALE_AFTER = 180
+
+
+class building:
+    """One build at a time. `with building(): ...`
+
+    TWO BUILDS AT ONCE DESTROYED narratives.json ON 12 SEPTEMBER. One was
+    started, its log file did not appear within a few seconds, it was assumed
+    not to have started, and a second was launched. Both ran. Both wrote
+    narratives.json, and the file ended as a complete JSON document with more
+    data after it -- "JSONDecodeError: Extra data: line 309112" -- with seven
+    of its nineteen terms gone. Nothing was published; it was caught because
+    the floor-index step reads that file and failed on it.
+
+    The fetch lane has had a lock since the address blocked this project a
+    second time, for exactly this reason, and the build had none. Every step
+    here writes a derived file that another step reads, so two builds are two
+    writers on all of them at once.
+
+    The lock keeps a pid for a person to read, and its own freshness is what
+    decides whether it is live: a build that is killed leaves the file behind,
+    and a rule that trusts the file alone would block every later build until
+    somebody worked out what it was.
+    """
+
+    def __enter__(self):
+        if BUILD_LOCK.exists():
+            age = time.time() - BUILD_LOCK.stat().st_mtime
+            held = BUILD_LOCK.read_text(encoding="utf-8", errors="replace").strip()
+            if age < STALE_AFTER:
+                print(f"\n{BUILD_LOCK} is held (pid {held or '?'}) and was "
+                      f"touched {age:.0f}s ago: another build is running, and "
+                      f"this will not be a second one.\n\n"
+                      f"Two builds at once is what emptied seven terms out of "
+                      f"narratives.json on 12 September. Wait for it, or -- if "
+                      f"nothing is really running -- delete {BUILD_LOCK}.\n",
+                      file=sys.stderr)
+                sys.exit(3)
+            print(f"  {BUILD_LOCK} (pid {held or '?'}) has not been touched "
+                  f"for {age / 60:.0f} minutes; that build is gone, taking it")
+        BUILD_LOCK.write_text(str(os.getpid()), encoding="utf-8")
+        self._stop = threading.Event()
+
+        def beat():
+            while not self._stop.wait(30):
+                try:
+                    os.utime(BUILD_LOCK, None)
+                except OSError:
+                    pass
+        threading.Thread(target=beat, daemon=True).start()
+        return self
+
+    def __exit__(self, *exc):
+        self._stop.set()
+        try:
+            BUILD_LOCK.unlink()
+        except OSError:
+            pass
+        return False
 
 
 class Step:
@@ -409,6 +476,13 @@ def main():
             print(f"    {flag}" + (f"  ({s.note})" if s.note else ""))
         return
 
+    # NOTHING BELOW THIS LINE MAY RUN TWICE AT ONCE. --dry-run returns above
+    # and never reaches here, so listing the plan while a build runs is fine.
+    with building():
+        return _run_steps(steps, a)
+
+
+def _run_steps(steps, a):
     results, failed = [], None
     t0 = time.time()
     for i, s in enumerate(steps, 1):

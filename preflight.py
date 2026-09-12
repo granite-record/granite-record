@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.133
+# GRANITE_VERSION: 2026-09-04.134
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4810,6 +4810,67 @@ def _bench_fields(RV):
             f"{kind}: a blank form must record no fields, not empty strings")
     return "ok", (f"{len(RV.KINDS)} kinds drawn and collected, "
                   "dropdowns and text boxes alike")
+
+
+@check("build", "two builds cannot run at once", needs=("build_all",))
+def _build_lock(BA):
+    """Every step of a build writes a derived file another step reads, so two
+    builds are two writers on all of them.
+
+    On 12 September two were started -- the first's log file had not appeared
+    within a few seconds, so it was assumed not to have started. Both ran.
+    Both wrote narratives.json, and it ended as a complete JSON document with
+    more data after it:
+
+        json.decoder.JSONDecodeError: Extra data: line 309112 column 2
+
+    Seven of its nineteen terms were gone. Nothing was published, and it was
+    caught only because the floor-index step reads that file and failed on it.
+
+    The fetch lane has held a lock since this address blocked the project a
+    second time. The build had none.
+
+    A LOCK THAT ONLY EXISTS IS NOT ENOUGH: a killed build leaves the file
+    behind, and obeying it would stop every later build until somebody worked
+    out what it was. So the lock is heartbeated and its freshness is what
+    counts.
+    """
+    import time
+    root = Path(tempfile.mkdtemp())
+    here = os.getcwd()
+    saved = BA.BUILD_LOCK
+    try:
+        os.chdir(root)
+        BA.BUILD_LOCK = Path(".build.lock")
+        # A live lock refuses, with a status a script can read.
+        BA.BUILD_LOCK.write_text("99999", encoding="utf-8")
+        try:
+            with BA.building():
+                raise AssertionError("a second build was allowed to start")
+        except SystemExit as e:
+            assert e.code == 3, f"refused with status {e.code}, not 3"
+        # A lock nobody has touched for longer than STALE_AFTER belonged to a
+        # build that is gone, and is taken rather than obeyed.
+        old = time.time() - BA.STALE_AFTER - 60
+        os.utime(BA.BUILD_LOCK, (old, old))
+        with BA.building():
+            assert BA.BUILD_LOCK.read_text(encoding="utf-8") == str(os.getpid())
+        assert not BA.BUILD_LOCK.exists(), "the lock outlived the build"
+        # And it is released even when the build raises.
+        try:
+            with BA.building():
+                raise RuntimeError("a step blew up")
+        except RuntimeError:
+            pass
+        assert not BA.BUILD_LOCK.exists(), (
+            "a build that failed left its lock behind, which blocks every "
+            "later build for STALE_AFTER seconds")
+        return "ok", ("a live lock refuses with status 3, a stale one is "
+                      "taken, and it is released even on a failure")
+    finally:
+        os.chdir(here)
+        BA.BUILD_LOCK = saved
+        shutil.rmtree(root, ignore_errors=True)
 
 
 @check("files", "a writer of a shared file reads it before writing it")
