@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.43
+# GRANITE_VERSION: 2026-09-04.44
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -964,9 +964,23 @@ function houseOf(t,w){
 /* Always show a browsable list, not only type-ahead. Someone who is not sure
    how their town is spelled, or lives in one of the unincorporated places with
    names like "Atk. & Gil. Academy Grant", needs to be able to scroll to it. */
+/* RANKED, NOT JUST FILTERED. TOWNS is alphabetical and the match was a plain
+   substring test, so somebody typing "Dover" was shown Andover first and
+   their own town second -- under a town they do not live in. Three tiers:
+   the exact name, then names that BEGIN with what was typed, then names that
+   merely contain it. Alphabetical inside each tier, because Array.sort is
+   stable and TOWNS arrives sorted, so the tier is the only reordering.
+   Nothing is dropped: Andover still appears when you type Dover, below it,
+   which is the point -- "Hampton" should list Hampton, then Hampton Falls,
+   then New Hampton, and all three are real answers to what was typed. */
 function list(q){
   const box=document.getElementById(ID.list);
-  const rows=q?TOWNS.filter(t=>t.toLowerCase().includes(q.toLowerCase())):TOWNS;
+  const n=(q||"").trim().toLowerCase();
+  const tier=t=>{const s=t.toLowerCase();
+    return s===n?0:s.startsWith(n)?1:s.includes(n)?2:3;};
+  const rows=n?TOWNS.map(t=>[tier(t),t]).filter(r=>r[0]<3)
+                    .sort((a,b)=>a[0]-b[0]).map(r=>r[1])
+              :TOWNS;
   box.innerHTML=rows.length?rows.map(t=>{
     const w=wardsOf(t);
     return `<button class="townrow ${t===town?'sel':''}" data-town="${esc(t)}">
