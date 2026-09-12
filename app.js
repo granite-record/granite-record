@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.56
+// GRANITE_VERSION: 2026-09-07.57
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -593,9 +593,22 @@ function yn(GAP,R,won){
   // The legend beside the donut is taller than the donut, so this space costs
   // nothing.
   const Y=188;
+  // --ink-2 FOR THE LOSING LETTER, and it was --ink-3, which has not existed
+  // since the palette went to two inks on 7 September. An unresolved var() in
+  // an SVG fill does not inherit and does not warn: it falls back to the
+  // property's initial value, which for fill is BLACK. On the light palette
+  // black read as emphasis and nobody noticed for five days; on the dark one
+  // the losing side's Y or N was black on a dark card and effectively gone.
+  //
+  // Worth knowing why every search missed it: the token name is BUILT here by
+  // concatenation, so the string "--ink-3" appears nowhere in this file and
+  // grep for it finds only comments. The same shape of bug is already
+  // recorded in app.css about --brick, which was used and never defined, so
+  // color-mix() dropped the whole declaration silently. A var() that does not
+  // resolve is the quietest failure in this codebase.
   const at=(x,txt,won)=>`<text x="${x}" y="${Y}" text-anchor="middle" font-size="30"
       letter-spacing=".04em" font-weight="${won?700:400}"
-      fill="var(--ink${won?"":"-3"})">${txt}</text>`
+      fill="var(--ink${won?"":"-2"})">${txt}</text>`
     // Bold and underlined, so the prevailing side survives being printed in
     // grey, photocopied, or read by somebody who cannot see the colours.
     +(won?`<line x1="${x-14}" y1="${Y+8}" x2="${x+14}" y2="${Y+8}"
@@ -956,12 +969,17 @@ function factsTable(b,d){
 
 function renderSummary(b,d,rsa){
   const _an=billNote(d)+analysis(d,rsa);
-  // THE FACTS TABLE COMES AFTER THE ANALYSIS IN THE DOM, and that is the
-  // whole of how it behaves on a phone: one column there, so DOM order is
-  // reading order and the table sits below the analysis. In the two-column
-  // view the stylesheet puts it in the second column's first row, level with
-  // the top of the prose. One order, two layouts, no duplicated markup.
-  return _an + factsTable(b,d) + `
+  // THE FACTS TABLE IS EMITTED FIRST, and the stylesheet moves it on narrow
+  // screens rather than the other way round. It was emitted after the
+  // analysis, which read better in source order and cost a 274px hole in the
+  // page: a grid row is as tall as its tallest item, so the row holding the
+  // 482px panel gave the 208px analysis beside it a dead tail, and no span
+  // fixed every bill -- two rows left 75px on HB 1, three left an empty row
+  // on HB 751. A float cannot push in-flow content down at all, which is the
+  // property actually wanted, and a float has to come first to sit at the
+  // top. So: first in the DOM, floated right above 1100px, and ordered back
+  // below the analysis underneath that. See .facts in app.css.
+  return factsTable(b,d) + _an + `
 ${d._error?`<div class="loaderr"><b>This bill's detail did not
     load.</b><span>${esc(d._error)}</span></div>`:""}
     ${(d.notes||[]).map(x=>`<p class="note">${esc(x)}</p>`).join("")}

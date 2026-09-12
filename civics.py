@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.7
+# GRANITE_VERSION: 2026-09-08.8
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -398,20 +398,23 @@ there so you can check whether that summary is fair.</p>
 <a href="bill/2024/hb1002.html">HB 1002 (2024)</a> and
 <a href="bill/2024/hb1215.html">HB 1215 (2024)</a> &mdash; each hearing, each
 committee vote, each floor vote, and the recording of each.</p>
-<p><b>Killed in committee:</b>
-<a href="bill/2026/sb71.html">SB 71-FN</a>, on cooperation with federal immigration
-authorities &mdash; three roll calls before it died.</p>
+<p><b>Killed:</b>
+<a href="bill/2025/hb66.html">HB 66</a>, on what counts as material a public
+body must disclose under the right-to-know law &mdash; two roll calls before it
+died.</p>
 <p><b>Signed into law:</b>
 <a href="bill/2025/hb2.html">HB 2</a>, the budget trailer bill, with 44 recorded
 votes and a fiscal note running to four years.</p>
 <p><b>Vetoed, and the override failed:</b>
-<a href="bill/2026/hb1442.html">HB 1442-FN</a> &mdash; passed both chambers, vetoed,
-and the House fell short of two thirds on the override.</p>
+<a href="bill/2026/hb349.html">HB 349</a>, on whether optometrists may perform
+ophthalmic laser procedures &mdash; passed both chambers, vetoed, and the
+override fell at 145 to 206 where two thirds of those voting was needed.</p>
 <p><b>Vetoed, and overridden anyway:</b>
 <a href="bill/2026/hb2026.html">HB 2026</a>, on the ten-year transportation
 plan.</p>
 <p><b>Carried over</b> into the second year:
-<a href="bill/2026/hb751.html">HB 751-FN</a>.</p>
+<a href="bill/2026/hb649.html">HB 649</a>, on the maintenance obligations of
+motor vehicle operators, which passed in the second year and became law.</p>
 <p>Of the 2,233 bills with a narrative this term, <b>1,068 reached both
 chambers</b> and <b>86 went to a committee of conference</b>. 649 became law:
 632 signed, 10 without a signature, and 7 over a veto.</p>""")

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.54 */
+/* GRANITE_VERSION: 2026-09-07.55 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -537,22 +537,50 @@ letter-spacing:.04em;text-transform:uppercase}
 
    Everything unassigned stays in the prose column, which is the safe
    direction -- a block added later is narrow, not broken. */
+/* A FLOAT, AFTER GRID WAS TRIED AND MEASURED. Grid was the obvious tool and
+   the wrong one: a grid row is as tall as its tallest item, so the row
+   holding the 482px panel gave the 208px analysis beside it a 274px dead
+   tail, and making the panel span rows only moved the problem -- two rows
+   left 75px gaps on HB 1, three rows left an empty row and a 44px gap on
+   HB 751 and HB 349. There is no way to tell grid that one item should not
+   contribute to its row's height.
+   A float is out of flow and therefore CANNOT push in-flow content down,
+   which is exactly the property wanted: the prose keeps a perfectly even
+   rhythm whatever the panel's height. The cost is that a float must come
+   first in the DOM to sit at the top, which is why renderSummary emits the
+   panel before the analysis and the narrow layout orders it back.
+   The prose is capped at --measure (560px) and the float takes 488px of a
+   1094px pane, so the two never meet: 560 + 46 + 488 = 1094. */
 @media (min-width:1100px){
-  .card.focus .pane{display:grid;
-    grid-template-columns:minmax(0,var(--measure)) minmax(0,1fr);
-    column-gap:46px;row-gap:22px;align-items:start}
-  /* The rhythm rule below sets margin-top on every adjacent child; in a grid
-     that double-counts against row-gap and pushed the second column 18px out
-     of line with the first. row-gap owns the spacing here. */
-  .card.focus .pane > *{grid-column:1;margin-top:0;margin-bottom:0}
-  .card.focus .pane > .facts{grid-column:2;grid-row:1;max-width:none}
+  .card.focus .pane > .facts{float:right;width:488px;max-width:none;
+    margin:0 0 22px 46px}
+  /* Anything that takes the full pane has to start below the float rather
+     than under it. Where the prose is long the float has already ended and
+     this does nothing. */
   .card.focus .pane > .docket,
   .card.focus .pane > .rc,
   .card.focus .pane > .stn,
-  .card.focus .pane > .chosen,
   .card.focus .pane > .fnwrap,
   .card.focus .pane > table,
-  .card.focus .pane > .full{grid-column:1 / -1}
+  .card.focus .pane > .full{clear:right}
+}
+/* Below that, one column -- and the panel goes back under the analysis,
+   which is where a reader on a phone wants it. The pane becomes a flex
+   column so order can do that; the rhythm moves to row-gap because `* + *`
+   counts DOM order and would put its margins on the wrong blocks once the
+   order changes. */
+@media (max-width:1099px){
+  /* :not([hidden]) IS LOAD BEARING. `.pane[hidden]{display:none}` is two
+     selectors and so is `.card.focus .pane`, so setting a display here won
+     on source order and every hidden pane became visible: all six tabs'
+     content stacked under the summary, and the tabs themselves did nothing
+     because nothing was ever hidden to reveal. A rule that sets `display` on
+     something the page hides by attribute has to say so. */
+  .card.focus .pane:not([hidden]){display:flex;flex-direction:column;
+    align-items:stretch;row-gap:18px}
+  .card.focus .pane:not([hidden]) > *{order:3;margin-top:0;margin-bottom:0}
+  .card.focus .pane:not([hidden]) > .anbox{order:1}
+  .card.focus .pane:not([hidden]) > .facts{order:2}
 }
 /* THE DOCKET IS A TABLE, AND THE RULE ABOVE ALREADY SAYS A TABLE FILLS ITS
    PANE. It is built from <ul>/<li> rather than <table>, so it was being
