@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.77
+# GRANITE_VERSION: 2026-09-05.79
 """
 Generate the faceted site from real General Court data.
 
@@ -847,6 +847,34 @@ def closing_stage(label, narr):
     return {"label": "How it ended", "text": text}
 
 
+def veto_outcome(evs):
+    """What became of a veto, read per chamber and in order, or None.
+
+    An override needs two-thirds in BOTH chambers, so one chamber sustaining
+    ends the bill whatever the other did -- SB 434 of 2026, where the Senate
+    overrode 16Y-8N and the House sustained 165-140 the same day. But a
+    chamber may reconsider its own vote: HB 542 of 2011 was sustained
+    244-130, reconsidered, and overridden 255-112 that morning, and it is
+    Chapter 271. So the answer is each chamber's LAST word, and a sustain by
+    either of them wins.
+    """
+    said = {}
+    for e in evs:
+        raw = (e.get("raw") or "").lower()
+        word = (e.get("outcome") or "").lower()
+        body = (e.get("body") or "").upper() or "?"
+        if "veto sustained" in raw or word == "sustained":
+            said[body] = "veto"
+        elif ("veto overridden" in raw or "veto overriden" in raw
+              or "=veto override=" in raw or word == "overridden"):
+            said[body] = "law"
+    if not said:
+        return None
+    if "veto" in said.values():
+        return "veto", "Vetoed, override failed"
+    return "law", "Veto overridden, became law"
+
+
 def docket_outcome(narr):
     """The outcome as the DOCKET states it, or None.
 
@@ -865,11 +893,14 @@ def docket_outcome(narr):
     Sustained is tested before overridden for the reason it always is: both
     chambers must override, so one sustaining ends the bill.
     """
-    text = " ".join(e.get("raw", "") for e in (narr or {}).get("events", [])).lower()
-    if "veto sustained" in text:
-        return "veto", "Vetoed, override failed"
-    if "veto overridden" in text:
-        return "law", "Veto overridden, became law"
+    evs = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
+    text = " ".join(e.get("raw", "") for e in evs).lower()
+    # THE LAST OUTCOME IN THE RECORD, for the reason classify() gives: one
+    # chamber sustaining ends the bill (SB 434), but a chamber may reconsider
+    # and override an hour later (HB 542 of 2011, Chapter 271).
+    outcome = veto_outcome(evs)
+    if outcome:
+        return outcome
     if ("without the signature of the governor" in text
             or "law without signature" in text):
         return "law", "Became law unsigned"
@@ -921,21 +952,32 @@ def floor_disposed(narr):
 
 
 def classify(narr, rcs, prefix=""):
-    """Map a bill to one of four display states."""
-    text = " ".join(e.get("raw", "") for e in (narr or {}).get("events", [])).lower()
-    # The veto outcomes are tested first, and SUSTAINED before OVERRIDDEN.
-    # Both chambers must override; one of them sustaining ends the bill. SB 434
-    # carries both words in its docket -- the House sustained, the Senate
-    # overrode -- so reading "overridden" first would call a dead bill law.
-    #
-    # This whole function is only the fallback for bills the status page does
-    # not cover. That page states the outcome per chamber and is preferred, and
-    # it is what would be needed to tell apart a veto sustained and then
-    # reconsidered.
-    if "veto sustained" in text:
-        return "veto", "Vetoed, override failed"
-    if "veto overridden" in text:
-        return "law", "Veto overridden, became law"
+    """Map a bill to one of four display states, from the docket alone.
+
+    Only the fallback for bills the status page does not cover: 804 of
+    33,683 once the archived terms have histories.
+
+    A DECISION IS A MOTION THE CHAMBER ADOPTED, NOT A WORD IN THE DOCKET.
+    This read substrings of the whole history, and "inexpedient to
+    legislate" is in every MINORITY report, in every committee report
+    recommending it, and in the question the chamber then voted down. When
+    the 1989-2016 histories arrived that called 36 bills "Killed" that no
+    chamber had killed -- including HB 589 of 2002, which died because its
+    committee of conference never signed a report. The tests below read the
+    events: type "floor", motion MA, and the action the chamber carried,
+    which is the same rule floor_disposed() uses.
+    """
+    evs = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
+    text = " ".join(e.get("raw", "") for e in evs).lower()
+    # THE LAST VETO OUTCOME, NOT ANY OF THEM. Both chambers must override, so
+    # one sustaining ends the bill -- SB 434, where the House sustained and
+    # the Senate overrode. But a chamber may reconsider: HB 542 of 2011 was
+    # sustained 244-130, reconsidered, and overridden 255-112 the same
+    # morning, and it is Chapter 271. Reading "sustained" anywhere called a
+    # law a dead bill; reading the last outcome in the record gets both right.
+    outcome = veto_outcome(evs)
+    if outcome:
+        return outcome
     if ("without the signature of the governor" in text
             or "law without signature" in text):
         return "law", "Became law unsigned"
@@ -943,30 +985,56 @@ def classify(narr, rcs, prefix=""):
         return "law", "Signed into law"
     if "vetoed" in text:
         return "veto", "Vetoed"
-    if "inexpedient to legislate" in text and "ma" in text:
+    carried = " | ".join((e.get("action") or "").lower() for e in evs
+                         if e.get("type") == "floor"
+                         and (e.get("motion") or "").upper() == "MA")
+    if "inexpedient to legislate" in carried:
         return "done", "Killed"
-    if "interim study" in text:
+    if re.search(r"interim study|refer for study", carried):
         # Its own kind, not "done". A bill sent to interim study has not been
         # killed -- it is parked for the committee to work on out of session,
         # and it can come back. Grouping it with bills that were voted down
         # said something untrue about it every time.
-        # The same words as STATED's, or the status facet lists one outcome
-        # twice: "Interim study" (4) beside "Referred for interim study".
         return "study", "Referred for interim study"
+    if "indefinitely postpone" in carried:
+        return "done", "Indefinitely postponed"
+    # A MOTION TO PASS THAT FAILED IS AN ANSWER. Where nothing else carried
+    # after it, the chamber voted and the bill did not pass -- which is what
+    # happened to every constitutional amendment that fell short of three
+    # fifths. Until the floor pattern could read "MF RC 202-171 Lacking
+    # Necessary Three-Fifths Vote", those bills had no outcome at all, and 78
+    # of them took the word "Killed" from a MINORITY report.
+    if not carried and any(
+            e.get("type") == "floor" and (e.get("motion") or "").upper() in ("MF", "ML")
+            and re.search(r"ought to pass|passage", e.get("action") or "", re.I)
+            for e in evs):
+        return "done", "Failed to pass"
     if "died on table" in text:
         return "done", "Died on the table"
-    if "retained in committee" in text:
+    # THE SESSION ENDING IS AN ENDING. The docket's own last line says so --
+    # "Died, Session ended 10/10/2024" -- and without this a bill whose kill
+    # motion FAILED fell through to "In committee": CACR 17 of 2024, where
+    # Inexpedient to Legislate lost 174-186 and Ought to Pass then lost
+    # 180-183 for want of three fifths. The same words STATED uses.
+    if "session ended" in text or "died, session" in text:
+        return "done", "Died when the session ended"
+    # A CHAMBER'S OWN RULE IS A DECISION, even though the clerk records it
+    # with no motion code: "Inexpedient to Legislate, Senate Rule 3-23,
+    # Adjournment" is how a bill left on the table dies at adjournment. 80
+    # bills of 2017-2026 say exactly that and nothing else.
+    if re.search(r"inexpedient to legislate,\s*(?:senate|house)\s+rule", text):
+        return "done", "Killed"
+    if any(e.get("type") == "retained" for e in evs):
         return "active", "Retained in committee"
-    # A floor motion the chamber carried, however the vote was taken. This
-    # asked the roll calls and nothing else, so a resolution adopted on a VOICE
-    # vote -- which is how most of them are adopted -- fell past it. HR16 sat
-    # on "In committee" with "Ought to Pass with Amendment: MA VV" in its
-    # docket and the House's adoption of it on the page above.
-    #
-    # The motion has to be an adoption. Thirteen of these resolutions carried a
-    # motion of Inexpedient to Legislate and two carried one to lay on the
-    # table; both are caught further up, and naming the motion here means they
-    # stay caught if that order ever changes.
+    # THE LAST THING THE RECORD SAYS. Where a committee has reported and no
+    # floor vote is on the page, that is the honest answer: 51 bills of 2021
+    # carry a majority report of Inexpedient to Legislate, a minority report
+    # the other way, and nothing after them. Reading the majority's
+    # recommendation as the chamber's decision called them "Killed"; reading
+    # nothing called them "In committee", which is where they are not.
+    if evs and evs[-1].get("type") == "report" and not any(
+            e.get("type") == "floor" for e in evs):
+        return "active", "Committee report filed"
     adopted_floor = any(
         e.get("type") == "floor" and (e.get("motion") or "").upper() == "MA"
         and re.search(r"ought to pass|adopted", e.get("action") or "", re.I)
@@ -1953,6 +2021,14 @@ def passage(stages, kind, status="", bill=""):
     hands = [st.get("hand", "") for st in (stages or []) if st.get("hand")]
     if not hands:
         return ""
+    # A RAIL IS FOUR CLAIMS, AND IT MAY NOT CONTRADICT THE FIFTH. It is drawn
+    # from the hands the docket names, and an archived docket does not always
+    # name them all: 29 bills that became law came out as "House: stopped
+    # here ... Law: passed". Where the marks disagree with the outcome beside
+    # them, no rail is drawn -- as for the 21,000 archived bills that had
+    # none at all until now.
+    if kind == "law" and not {"H", "S"} <= {h.split(":")[0] for h in hands}:
+        return ""
 
     # TWO STOPS, NOT FOUR. The rail drew a resolution against a Senate it was
     # never going to see and a Law it could never become, and marked its own
@@ -2330,9 +2406,16 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
     prefix = bill_prefix(bid)
     told = classify_stated(st, prefix)
     settled = docket_outcome(narr)
-    if not settled and not narr and law_line:
+    # THE DOCKET LINE THAT NUMBERED THE CHAPTER, OR RECORDED A FAILED
+    # OVERRIDE, COUNTS WHENEVER THE HISTORY ITSELF SAYS NOTHING -- not only
+    # when there is no history at all. Gated on "no narrative" it switched
+    # itself off the moment the archived terms were narrated, and nine bills
+    # of 1997-1998 went back from "Vetoed, override failed" to "Vetoed"
+    # because their own wording ("OVERRIDE GOV VETO, ML") is not one
+    # docket_outcome reads.
+    if not settled and law_line:
         settled = docket_outcome({"events": [{"raw": law_line}]})
-    if not settled and not narr and override_failed:
+    if not settled and override_failed:
         settled = ("veto", "Vetoed, override failed")
     disposed = floor_disposed(narr)
     if settled:
@@ -2648,6 +2731,16 @@ def vote_note_for(narr, rollcalls):
     return note
 
 
+PENDING = re.compile(r"(In progress|In committee|Pending|Enrolled\.)", re.I)
+
+
+def settled_step(step, status, term, current):
+    """The status box, with nothing left pending once a term has closed."""
+    if term != current and PENDING.match(step or ""):
+        return status or step
+    return step
+
+
 def chapter_of(st, docket, tally):
     """The chapter of the session laws a bill became, as the page prints it.
 
@@ -2742,9 +2835,20 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # vocabulary classify_stated already reads -- for a term the file does
         # not hold yet.
         st = P.per_term(status_pages, term, current).get(bid, {})
+        # A BLANK FIELD IS NOT AN ANSWER. bill_status.json comes from the
+        # status pages and leaves fields empty or null -- HB 523 of 2023 has
+        # no House status there -- while data/bills.json carries what the
+        # General Court's own search said about the same bill, in the same
+        # vocabulary ("INEXPEDIENT TO LEGISLATE"). The page's value wins
+        # where it has one; where it has none, the record fills it. Without
+        # this, 79 bills killed by their chamber fell through to a status
+        # derived from the docket, which called them "In committee".
+        fields = ("gen_status", "house_status", "senate_status", "text_pdf")
         if not st and not own:
-            st = {k: b.get(k, "") for k in ("gen_status", "house_status",
-                                            "senate_status", "text_pdf")}
+            st = {k: b.get(k, "") for k in fields}
+        elif st:
+            st = {**st, **{k: b.get(k) for k in fields
+                           if not (st.get(k) or "").strip() and b.get(k)}}
         dl = (chapters or {}).get(term, {}).get(bid) or {}
         disp = bill_disposition(
             b, bid, st, narr, rcs, term, current,
@@ -2900,7 +3004,16 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # Where the docket has settled the bill, the per-chamber fields
             # are describing a superseded state and reading them beside
             # "Vetoed, override failed" is a contradiction. Say what happened.
-            "next_step": bill_next_step(narr, b, prefix, st, settled, told),
+            # A CLOSED TERM HAS NOTHING PENDING. next_step reads the last
+            # recognised event, and on an archived bill that is often a
+            # committee report or a conference that never reported, so the
+            # box read "In progress" or "Pending a vote of the full chamber"
+            # under a chip saying what became of the bill -- 488 bills once
+            # the 1989-2016 histories arrived. The chip's own words are the
+            # answer there; the current term is untouched.
+            "next_step": settled_step(
+                bill_next_step(narr, b, prefix, st, settled, told),
+                status, term, current),
             **({"archived": (coverage or {}).get(term) or True}
                if b.get("archived") else {}),
             "status_source": ("General Court docket" if settled

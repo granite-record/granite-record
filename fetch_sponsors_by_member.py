@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.1
+# GRANITE_VERSION: 2026-09-10.2
 """Who sponsored what, asked one legislator at a time instead of one bill at a time.
 
-    python3 fetch_sponsors_by_member.py --members      # the roster, 1 request
-    python3 fetch_sponsors_by_member.py --probe 6      # a handful, both modes
-    python3 fetch_sponsors_by_member.py --budget 200   # fetch, then stop
-    python3 fetch_sponsors_by_member.py --parse        # no network at all
+    python3 fetch_sponsors_by_member.py --plan        # no network at all
+    python3 fetch_sponsors_by_member.py --members     # the roster, 1 request
+    python3 fetch_sponsors_by_member.py --probe 6     # a handful, and score them
+    python3 fetch_sponsors_by_member.py --budget 200  # fetch, then stop
+    python3 fetch_sponsors_by_member.py --parse       # read the disk; no network
 
 WHY THIS AND NOT ONE PAGE PER BILL
 
-Seventeen of nineteen terms have no sponsors. The obvious route is the bill's
-own text -- gc.nh.gov/legislation/<year>/<BILL>.html carries "SPONSORS:" --
-and that is 33,000 requests for the archive, or 7,830 for the five terms with
-nothing at all.
+Seventeen of nineteen terms have no sponsors: data/sponsors.json holds
+2023-2024 and 2025-2026 and nothing else. The obvious route is the bill's own
+text -- gc.nh.gov/legislation/<year>/<BILL>.html carries "SPONSORS:" -- and
+that is 33,000 requests for the archive.
 
-byAnyMember.aspx asks the other way round. It offers 2,614 past and present
+byAnyMember.aspx asks the other way round. It offers past and present
 legislators in one list, has NO session-year selector, and returns a member's
 whole career in one answer:
 
@@ -22,24 +23,46 @@ whole career in one answer:
     1989   HB175     SIGNED BY GOVERNOR    relative to bail commissioners' fees.
     1990   HB1092    SIGNED BY GOVERNOR    (2nd New Title) relative to low and ...
 
-Two requests a member -- Prime Sponsored, then CoSponsored -- is 5,228 for
-EVERY term from 1989 to 2026, against 7,830 for five terms the other way.
+Two requests a member -- Prime Sponsored, then CoSponsored -- covers every
+term from 1989 to 2026 for a few thousand requests rather than tens of
+thousands.
 
 It is also better data. Each row links
-billinfo.aspx?sy=1989&Pastid=<lsr><year>, so the LSR is in the address and
-the join to data/bills.json is exact rather than a guess at which "Rep.
-Allard" is meant; and the list gives a member's full first name, where a
-bill's text gives only a surname.
+billinfo.aspx?sy=1989&Pastid=<lsr><year>, so the LSR is in the address and the
+join to data/bills.json is exact rather than a guess at which "Rep. Allard" is
+meant; and a member's own list states whether they were PRIME or a
+co-sponsor, where the status page infers it from the order names are printed
+in (`prime_inferred: True` on every archived row that route would give us).
+
+WHAT IS NOT KNOWN YET, AND WHY THE FIRST RUN IS SIX REQUESTS
+
+**No page from this endpoint is on disk.** Every regex below was written from
+markup read during a survey, not from a saved artefact, and this file's own
+rule is to read the artefact before modelling it. So the parser is a
+hypothesis, and --probe is the experiment:
+
+  --members   one GET: the member list, the hidden fields, and the real
+              markup of the form, saved to sponsors_form.html.
+  --probe N   N members, both modes, SCORED AGAINST data/sponsors.json.
+
+The scoring is the point. 2023-2026 sponsors came from the General Court's
+own database, not from this script, so a member who prime-sponsored HB1234 in
+2025 according to the database must appear with HB1234 in their Prime list
+here. That one comparison tests four things at once that no amount of reading
+the HTML can settle: whether parse_rows finds rows at all, whether MODES maps
+"prime" to the right radio value, whether this list's member ids are the same
+ids the database uses, and whether a member's list really does reach back
+across terms.
+
+A sweep of thousands of requests before that comparison has been run would be
+a sweep on a guess.
 
 THE ONE KNOWN GAP, MEASURED BEFORE THIS IS TRUSTED
 
 HB1 of 1989 is a SPECIAL SESSION bill, LSR 1989-9100, and its own text names
 Rep. Vartanian. It appears in neither of her lists. Whether special sessions
 are absent from this view or filed under another year is not known from one
-sample, which is what --probe is for: it fetches the members who sponsored
-bills we already hold saved text for, and reports which of those bills come
-back and which do not. Run it, read it, and only then decide whether this
-route stands alone or needs the per-bill pages behind it.
+sample. --probe reports it where the sample reaches it.
 
 HOW THE PAGE WORKS
 
@@ -50,19 +73,35 @@ __EVENTTARGET, the member and the radio. The tokens are reused across members
 options, and every member is listed -- and are refetched when the server
 stops accepting them.
 
+THE ANSWER MUST BE THE MEMBER ASKED FOR
+
+615 bills of 2023-2024 were one address rule away from being saved under
+another bill's name in fetch_legislation, and nothing would have said so.
+The same mistake here is worse: a postback that quietly returns the previous
+member's list would file one legislator's whole career under another's, and
+--parse would report it as fact. So every answer is checked against the
+member and the mode that were posted, read back out of the page's own
+selected <option> and checked radio, and a page that disagrees is never
+written. Where the markup carries neither, the answer is counted
+"unverified", saved for a person to read, and a sweep refuses to start.
+
 GENTLE, AND IT STOPS
 
-15 seconds between requests, --budget to end a run early, two refusals to end
-it immediately, and refusal.py to keep every other fetcher stopped for 24
-hours afterwards. Every answer is saved gzipped under sponsors_pages/ and
-never asked for twice, so the parser can be wrong as often as it likes
-without costing a request. This address has been blocked twice.
+One worker or none (refusal.hold, the same lock every other fetcher takes),
+15 seconds between requests with jitter, --budget to end a run early, a
+refusal ends it at once and two dropped connections do too, and refusal.py
+keeps every other fetcher stopped for 24 hours afterwards. Every answer is
+saved gzipped under sponsors_pages/ and never asked for twice, so the parser
+can be wrong as often as it likes without costing a request. This address has
+been blocked twice.
 """
 
 import argparse
 import gzip
 import html as _html
 import json
+import os
+import random
 import re
 import sys
 import time
@@ -78,12 +117,19 @@ import refusal
 URL = "https://gc.nh.gov/bill_Status/byAnyMember.aspx"
 OUT = Path("sponsors_pages")
 ROSTER = Path("sponsors_members.json")
+FORM = Path("sponsors_form.html")
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
                     "contact@graniterecord.org)"}
 
 HIDDEN = re.compile(r"<input[^>]+type=[\"']hidden[\"'][^>]*>", re.I)
-ATTR = re.compile(r"(\w+)\s*=\s*[\"']([^\"']*)[\"']")
-OPTION = re.compile(r"<option[^>]*value=[\"'](\d+)[\"'][^>]*>(.*?)</option>", re.I | re.S)
+ATTR = re.compile(r"([\w:$-]+)\s*=\s*[\"']([^\"']*)[\"']")
+OPTION = re.compile(r"<option([^>]*)>(.*?)</option>", re.I | re.S)
+VALUE = re.compile(r"value\s*=\s*[\"'](\d+)[\"']", re.I)
+SELECTED = re.compile(r"\bselected\b", re.I)
+# The radio pair that chooses Prime or Co. Read back out of the answer to
+# prove the mode that came back is the mode that was posted.
+RADIO = re.compile(r"<input[^>]*type=[\"']radio[\"'][^>]*>", re.I)
+
 # A result row is one <tr>, and inside it the four fields are DIVs in a
 # single cell rather than four <td>s: the year, the bill as a link, the
 # status, and the title behind a <b>title:</b> label. Written against the
@@ -101,6 +147,10 @@ ERROR_PAGE = re.compile(
     r"is either negative or above rows count|is neither a DataColumn", re.I)
 
 MODES = {"prime": "0", "co": "1"}
+MEMBER_FIELD = "ctl00$pageBody$lstMembers"
+MODE_FIELD = "ctl00$pageBody$rdoPrime"
+
+HOLD = None          # set in main(); None when nothing is holding the lock
 
 
 def flat(s):
@@ -129,13 +179,40 @@ def tokens(page):
 def members(page):
     """[(id, label)] -- every legislator the list offers, in its own order."""
     out, seen = [], set()
-    for mid, label in OPTION.findall(page):
+    for attrs, label in OPTION.findall(page):
+        v = VALUE.search(attrs)
         text = flat(_html.unescape(label))
-        if mid in seen or not text:
+        if not v or v.group(1) in seen or not text:
             continue
-        seen.add(mid)
-        out.append((mid, text))
+        seen.add(v.group(1))
+        out.append((v.group(1), text))
     return out
+
+
+def selected_member(page):
+    """The member id the ANSWER says it is about, or None if it does not say.
+
+    ASP.NET marks the chosen option `selected="selected"`. None is not a
+    pass: it means this page cannot be checked, and the caller says so
+    rather than assuming the answer is the one asked for.
+    """
+    for attrs, _label in OPTION.findall(page):
+        if SELECTED.search(attrs):
+            v = VALUE.search(attrs)
+            if v:
+                return v.group(1)
+    return None
+
+
+def checked_mode(page):
+    """The radio value the answer carries back, or None if it does not say."""
+    for tag in RADIO.findall(page):
+        a = {k.lower(): v for k, v in ATTR.findall(tag)}
+        if MODE_FIELD.lower() not in (a.get("name") or "").lower():
+            continue
+        if re.search(r"\bchecked\b", tag, re.I):
+            return a.get("value")
+    return None
 
 
 def parse_rows(page):
@@ -164,8 +241,8 @@ def parse_rows(page):
                            flat(_html.unescape(link.group("bill")))),
             # cols is [year, bill, status, title]; the status is the
             # third, and is empty rather than wrong where it is absent.
-            "status": cols[2].strip(" -| ") if len(cols) > 2 else "",
-            "title": (flat(_html.unescape(title.group(1))).lstrip("  ")
+            "status": cols[2].strip(" -| ") if len(cols) > 2 else "",
+            "title": (flat(_html.unescape(title.group(1))).lstrip("  ")
                       if title else ""),
         })
     return rows
@@ -175,10 +252,16 @@ def page_path(mid, mode):
     return OUT / mode / f"{mid}.html.gz"
 
 
+def write_atomically(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".part")
+    tmp.write_bytes(data)
+    os.replace(tmp, path)
+
+
 def save(mid, mode, page):
-    p = page_path(mid, mode)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_bytes(gzip.compress(page.encode("utf-8"), 6))
+    write_atomically(page_path(mid, mode),
+                     gzip.compress(page.encode("utf-8"), 6))
 
 
 def load(mid, mode):
@@ -187,38 +270,70 @@ def load(mid, mode):
 
 
 def fetch_member(mid, mode, form, delay):
-    """One answer, saved. "saved" / "cached" / "error page" / "refused" / "missing"."""
+    """One answer, saved. Returns (outcome, form, detail).
+
+    Outcomes that asked nothing: "cached", "halted".
+    Outcomes that asked: "saved", "unverified" (saved, but the page does not
+    say who it is about), "wrong member", "wrong mode" (not saved),
+    "error page", "stale" (tokens rejected), "refused", "dropped",
+    "missing", "failed".
+    """
     if page_path(mid, mode).exists():
-        return "cached", form
-    time.sleep(delay)
+        return "cached", form, ""
+    time.sleep(delay * random.uniform(0.75, 1.25) if delay else 0)
+    # A refusal another process met while this one slept is a refusal here
+    # too -- so this is asked AFTER the sleep, directly before the request.
+    if refusal.MARK.exists():
+        return "halted", form, "archive/refused.json is on file"
+    if HOLD is not None and not HOLD.still():
+        return "halted", form, "the lane holding archive/.lock is gone"
     fields = dict(form)
     fields.update({
-        "__EVENTTARGET": "ctl00$pageBody$lstMembers",
+        "__EVENTTARGET": MEMBER_FIELD,
         "__EVENTARGUMENT": "",
-        "ctl00$pageBody$lstMembers": mid,
-        "ctl00$pageBody$rdoPrime": MODES[mode],
+        MEMBER_FIELD: mid,
+        MODE_FIELD: MODES[mode],
     })
     try:
         page = get(URL, urllib.parse.urlencode(fields).encode())
-    except urllib.error.HTTPError as e:
-        if e.code in (403, 429):
-            refusal.note("fetch_sponsors_by_member", f"HTTP {e.code} on {URL}")
-            return "refused", form
-        if e.code == 500:
+    except Exception as e:
+        # One reading of an error for every fetcher: a reset or a timeout
+        # wrapped in a URLError is a dropped connection, not a failure, and
+        # a 503 or a Retry-After is the server asking us to go away.
+        kind = refusal.classify(e)
+        why = (f"HTTP {e.code} on {URL}" if isinstance(e, urllib.error.HTTPError)
+               else f"{type(e).__name__}: {e}")
+        if isinstance(e, urllib.error.HTTPError) and e.code == 500:
             # The tokens went stale. One GET replaces them; it is a request,
             # so it is counted like any other.
-            return "stale", form
-        return "missing", form
-    except (urllib.error.URLError, TimeoutError):
-        return "missing", form
+            return "stale", form, why
+        return kind, form, why
+    if refusal.classify(body=page) == "refused":
+        return "refused", form, "the firewall's block page, with a 200"
     if ERROR_PAGE.search(page[:6000]):
-        return "error page", form
+        return "error page", form, ""
+    # THE ANSWER MUST BE THE MEMBER ASKED FOR. A postback that returns the
+    # previous member's list would file one legislator's career under
+    # another's, and --parse would report it as fact.
+    said = selected_member(page)
+    if said is not None and said != mid:
+        return "wrong member", form, f"asked {mid}, the page says {said}"
+    said_mode = checked_mode(page)
+    if said_mode is not None and said_mode != MODES[mode]:
+        return "wrong mode", form, (f"asked {mode}={MODES[mode]}, the page "
+                                    f"says {said_mode}")
     save(mid, mode, page)
     # The answer carries fresh tokens; using them keeps the next post valid.
     fresh = tokens(page)
     if fresh.get("__VIEWSTATE"):
         form = fresh
-    return "saved", form
+    if said is None or said_mode is None:
+        missing = " and ".join(
+            x for x, ok in (("the selected member", said is not None),
+                            ("the checked mode", said_mode is not None))
+            if not ok)
+        return "unverified", form, f"the page does not state {missing}"
+    return "saved", form, ""
 
 
 def roster(fetch=False):
@@ -227,14 +342,109 @@ def roster(fetch=False):
         return [tuple(x) for x in json.loads(ROSTER.read_text(encoding="utf-8"))]
     if not fetch:
         return []
-    refusal.check("The sponsor fetch")
     print("1 request: the member list")
     page = get(URL)
+    if refusal.classify(body=page) == "refused":
+        refusal.note("fetch_sponsors_by_member", "block page on the member list")
+        sys.exit("REFUSED on the member list. refusal.py now holds one for "
+                 "24 hours; python3 netcheck.py says what kind it is.")
     got = members(page)
+    if not got:
+        sys.exit("the member list came back with no options in it; "
+                 f"{FORM} holds what was served, and nothing was written to "
+                 f"{ROSTER}.")
     ROSTER.write_text(json.dumps(got, indent=1), encoding="utf-8")
-    Path("sponsors_form.html").write_text(page, encoding="utf-8")
+    FORM.write_text(page, encoding="utf-8")
     print(f"  {len(got):,} legislators -> {ROSTER}")
+    print(f"  the form as served    -> {FORM}")
     return got
+
+
+# ------------------------------------------------------------------ scoring
+
+def known_sponsors():
+    """{(term, bill): {"prime": {name}, "co": {name}}} from data/sponsors.json.
+
+    The two terms the General Court's own database covers. This script did
+    not generate them, which is the whole reason they are worth scoring
+    against.
+    """
+    p = Path("data/sponsors.json")
+    if not p.exists():
+        return {}
+    out = {}
+    for term, by_bill in json.loads(p.read_text(encoding="utf-8")).items():
+        for bill, rows in by_bill.items():
+            d = out.setdefault((term, bill), {"prime": set(), "co": set()})
+            for r in rows:
+                d["prime" if r.get("prime") else "co"].add(
+                    surname(r.get("name", "")))
+    return out
+
+
+def surname(name):
+    """"McGough, Tim" and "Tim McGough" both reduce to "mcgough"."""
+    n = flat(name).strip()
+    if "," in n:
+        n = n.split(",")[0]
+    else:
+        n = n.split()[-1] if n.split() else ""
+    return re.sub(r"[^a-z]", "", n.lower())
+
+
+def term_of(year):
+    y = int(year)
+    return f"{y - 1}-{y}" if y % 2 == 0 else f"{y}-{y + 1}"
+
+
+def score(people):
+    """Read what is on disk against data/sponsors.json. No network.
+
+    Prints, for every member whose answers are saved, how many of the bills
+    the database says they sponsored in 2023-2026 came back in the list --
+    and how many bills the list claims that the database does not.
+    """
+    known = known_sponsors()
+    if not known:
+        print("data/sponsors.json is empty; nothing to score against.")
+        return
+    by_name = {}
+    for (term, bill), d in known.items():
+        for role in ("prime", "co"):
+            for who in d[role]:
+                by_name.setdefault(who, {"prime": set(), "co": set()})
+                by_name[who][role].add((term, bill))
+    print()
+    print("SCORED AGAINST data/sponsors.json (2023-2026, from the database)")
+    print(f"{'member':34}{'mode':7}{'rows':>7}{'expected':>10}"
+          f"{'found':>7}{'extra':>7}")
+    hit = miss = 0
+    for mid, label in people:
+        who = surname(label)
+        for mode in MODES:
+            page = load(mid, mode)
+            if page is None:
+                continue
+            rows = parse_rows(page)
+            got = {(term_of(r["year"]), r["bill"]) for r in rows
+                   if r["bill"] and r["year"]}
+            want = by_name.get(who, {}).get(mode, set())
+            want = {x for x in want if x in {k for k in known}}
+            found = got & want
+            extra = {x for x in got if x[0] in ("2023-2024", "2025-2026")} - want
+            hit += len(found)
+            miss += len(want) - len(found)
+            print(f"{label[:33]:34}{mode:7}{len(rows):>7}{len(want):>10}"
+                  f"{len(found):>7}{len(extra):>7}")
+            for t, b in sorted(want - found)[:4]:
+                print(f"    the database says {b} of {t}; the list does not")
+    print()
+    if hit + miss:
+        print(f"{hit:,} of {hit + miss:,} known sponsorships came back "
+              f"({100 * hit / (hit + miss):.0f}%)")
+    print("A low number here means the parser, the mode mapping or the member "
+          "ids are wrong -- not that the archive is missing. Fix it before "
+          "any sweep; the pages are on disk and cost nothing to re-read.")
 
 
 def report():
@@ -258,6 +468,10 @@ def report():
           f"({seen['prime']:,} prime, {seen['co']:,} co) "
           f"of {len(people) * 2:,}")
     if not by_bill:
+        print("No rows parsed out of them. If answers are on disk and this "
+              "says nothing, the parser is wrong -- read one: python3 -c "
+              "\"import gzip,sys;print(gzip.open(sys.argv[1]).read()"
+              ".decode()[:4000])\" sponsors_pages/prime/<id>.html.gz")
         return 0
     print(f"{len(by_bill):,} distinct (year, bill) pairs carry a sponsor")
     years = Counter(y for y, _ in by_bill)
@@ -265,75 +479,163 @@ def report():
     print("bills with a sponsor, by year:")
     for y in sorted(years):
         print(f"  {y}: {years[y]:,}")
+    score(people)
+    return 0
+
+
+def plan():
+    """What a full sweep would cost, and what is already done. No network."""
+    people = roster()
+    if not people:
+        print(f"No {ROSTER} yet. The first request of all is the member "
+              f"list:\n  python3 fetch_sponsors_by_member.py --members")
+        print("\nThe survey counted 2,614 legislators, so a full sweep is "
+              "about 5,228 requests -- at 15s apart, roughly 22 hours of "
+              "asking, which belongs in the lane a run at a time.")
+        return 0
+    cached = sum(1 for mid, _ in people for mode in MODES
+                 if page_path(mid, mode).exists())
+    want = len(people) * 2
+    print(f"{len(people):,} legislators x {len(MODES)} modes = {want:,} answers")
+    print(f"  {cached:,} on disk, {want - cached:,} still to ask")
+    print(f"  at 15s apart that is {(want - cached) * 15 / 3600:.1f} hours "
+          f"of asking, in runs of 200 with a rest between")
+    if not cached:
+        print("\nNothing has been fetched yet. --probe 6 first: six answers, "
+              "scored against data/sponsors.json, before any sweep.")
     return 0
 
 
 def main():
+    global HOLD
     ap = argparse.ArgumentParser()
     ap.add_argument("--members", action="store_true",
                     help="fetch the legislator list (one request)")
     ap.add_argument("--probe", type=int, default=0,
-                    help="fetch this many members, both modes, and report")
+                    help="fetch this many members, both modes, and score them")
     ap.add_argument("--budget", type=int, default=0,
                     help="stop after this many requests")
     ap.add_argument("--delay", type=float, default=15.0)
     ap.add_argument("--stop-refused", type=int, default=2)
     ap.add_argument("--parse", action="store_true",
                     help="read what is saved and report; no network")
+    ap.add_argument("--plan", action="store_true",
+                    help="what a sweep would cost; no network")
+    ap.add_argument("--allow-unverified", action="store_true",
+                    help="sweep even though the answers do not say which "
+                         "member they are about")
     a = ap.parse_args()
 
+    if a.plan:
+        return plan()
     if a.parse:
         return report()
 
-    people = roster(fetch=a.members)
-    if a.members:
-        return 0
-    if not people:
-        sys.exit(f"No {ROSTER}. Run --members first (one request).")
-    if not (a.probe or a.budget):
-        sys.exit("give --budget N (requests) or --probe N (members), so a run "
-                 "always has an end. 2,614 members x 2 modes is 5,228 requests.")
-
     refusal.check("The sponsor fetch")
-    form_page = Path("sponsors_form.html")
-    if not form_page.exists():
-        sys.exit("sponsors_form.html is missing; run --members again.")
-    form = tokens(form_page.read_text(encoding="utf-8", errors="replace"))
-    assert form.get("__VIEWSTATE"), "no __VIEWSTATE in the saved form page"
+    with refusal.hold("fetch_sponsors_by_member") as held:
+        HOLD = held
+        people = roster(fetch=a.members)
+        if a.members:
+            return 0
+        if not people:
+            sys.exit(f"No {ROSTER}. Run --members first (one request).")
+        if not (a.probe or a.budget):
+            sys.exit("give --budget N (requests) or --probe N (members), so a "
+                     "run always has an end. 2,614 members x 2 modes is "
+                     "5,228 requests.")
+        if not FORM.exists():
+            sys.exit(f"{FORM} is missing; run --members again.")
+        form = tokens(FORM.read_text(encoding="utf-8", errors="replace"))
+        if not form.get("__VIEWSTATE"):
+            sys.exit(f"no __VIEWSTATE in {FORM}; run --members again.")
 
-    todo = [(mid, mode) for mid, _ in people for mode in MODES]
-    if a.probe:
-        todo = [(mid, mode) for mid, _ in people[:a.probe] for mode in MODES]
-    budget = a.budget or len(todo)
-    print(f"{len(todo):,} answers wanted, {budget:,} requests this run, "
-          f"{a.delay:g}s apart")
-    tally, refused, spent = Counter(), 0, 0
-    for mid, mode in todo:
-        if spent >= budget:
-            break
-        what, form = fetch_member(mid, mode, form, a.delay if tally else 0)
-        if what == "stale":
-            print("  tokens stale; reloading the form")
-            spent += 1
-            form = tokens(get(URL))
-            what, form = fetch_member(mid, mode, form, a.delay)
-        tally[what] += 1
-        if what not in ("cached",):
-            spent += 1
-        if what == "refused":
-            refused += 1
-            if refused >= a.stop_refused:
-                print(f"\n{refused} refusals. Stopping, and refusal.py now "
-                      "holds one for 24 hours.")
+        # A SWEEP DOES NOT START ON UNCHECKABLE ANSWERS. If the pages already
+        # on disk never state which member they are about, this route cannot
+        # tell one legislator's career from another's, and thousands of
+        # requests would produce a file nobody should believe.
+        if a.budget and not a.probe:
+            unverified = [(mid, mode) for mid, _ in people for mode in MODES
+                          if (load(mid, mode) or "") and
+                          selected_member(load(mid, mode)) is None]
+            if unverified and not a.allow_unverified:
+                sys.exit(
+                    f"{len(unverified):,} answers on disk do not say which "
+                    "member they are about, so this sweep would be unable to "
+                    "tell whose bills it is filing. Read one, fix "
+                    "selected_member(), or pass --allow-unverified knowing "
+                    "that the check is off.")
+
+        todo = [(mid, mode) for mid, _ in people for mode in MODES]
+        if a.probe:
+            # Members the database already knows about, so the answers can be
+            # scored the moment they land.
+            known = {surname(n) for (t, b), d in known_sponsors().items()
+                     for role in ("prime", "co") for n in d[role]}
+            pick = [p for p in people if surname(p[1]) in known] or people
+            todo = [(mid, mode) for mid, _ in pick[:a.probe] for mode in MODES]
+        budget = a.budget or len(todo)
+        print(f"{len(todo):,} answers wanted, {budget:,} requests this run, "
+              f"{a.delay:g}s apart")
+        tally, refused, dropped, spent = Counter(), 0, 0, 0
+        for mid, mode in todo:
+            if spent >= budget:
+                break
+            what, form, why = fetch_member(mid, mode, form,
+                                           a.delay if tally else 0)
+            if what == "stale":
+                print("  tokens stale; reloading the form")
+                spent += 1
+                try:
+                    form = tokens(get(URL))
+                except Exception as e:
+                    print(f"  could not reload the form: {e}")
+                    break
+                what, form, why = fetch_member(mid, mode, form, a.delay)
+            tally[what] += 1
+            if what not in ("cached", "halted"):
+                spent += 1
+            if what in ("wrong member", "wrong mode", "unverified"):
+                print(f"  {mid} {mode}: {what} -- {why}")
+            if what == "halted":
+                print(f"\nStopping: {why}.")
+                break
+            if what == "refused":
+                refusal.note("fetch_sponsors_by_member", why)
+                print(f"\nREFUSED: {why}. Stopping, and refusal.py now holds "
+                      "one for 24 hours.")
                 print("python3 netcheck.py says what kind it is without "
                       "making it worse.")
                 return 2
-        if spent and spent % 50 == 0:
-            print(f"  {spent}/{budget}  " +
-                  ", ".join(f"{v:,} {k}" for k, v in tally.most_common()))
-    print()
-    print(", ".join(f"{v:,} {k}" for k, v in tally.most_common()))
-    print(f"-> {OUT}/   then: python3 fetch_sponsors_by_member.py --parse")
+            if what == "dropped":
+                dropped += 1
+                if dropped >= a.stop_refused:
+                    refusal.note("fetch_sponsors_by_member", why)
+                    print(f"\n{dropped} dropped connections -- this address's "
+                          "usual way of refusing. Stopping, and refusal.py "
+                          "holds it.")
+                    return 2
+            # A postback answering about the wrong member is not a bad page,
+            # it is a session this run no longer understands. One is a
+            # curiosity; three in a row means stop before anything is filed
+            # under the wrong name.
+            if what in ("wrong member", "wrong mode"):
+                refused += 1
+                if refused >= 3:
+                    print("\nThree answers came back about somebody else. "
+                          "Stopping; nothing was saved from them.")
+                    return 2
+            else:
+                refused = 0
+            if spent and spent % 50 == 0:
+                print(f"  {spent}/{budget}  " +
+                      ", ".join(f"{v:,} {k}" for k, v in tally.most_common()),
+                      flush=True)
+        print()
+        print(", ".join(f"{v:,} {k}" for k, v in tally.most_common()))
+        print(f"-> {OUT}/   then: python3 fetch_sponsors_by_member.py --parse")
+        if a.probe:
+            score([p for p in people if page_path(p[0], "prime").exists()
+                   or page_path(p[0], "co").exists()])
     return 0
 
 

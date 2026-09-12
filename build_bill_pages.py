@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.47
+# GRANITE_VERSION: 2026-09-04.48
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -132,17 +132,20 @@ def noscript(b, d, data_url=None):
 INLINE_CAP = 100 * 1024
 
 
-def shell(t, b, d, base, raw=None, data_url=None):
+def shell(t, b, d, base, raw=None, data_url=None, current_term=""):
     """One bill's page: bills.html, told which bill it is."""
     bid = b["id"]
     yr = str(b.get("year") or "")
     n = b.get("n") or bid
     title = b.get("title") or ""
     path = f"/bill/{yr}/{bid.lower()}.html"
-    # A per-bill feed exists only where there is a docket to report.
+    # A per-bill feed exists only where there is a docket to report AND the
+    # term is still sitting. build_feeds stopped writing them for closed
+    # terms when the 1989-2016 histories arrived: 22,840 files that could
+    # never gain an item. A page must not advertise one that is not there.
     feed = (f'<link rel="alternate" type="application/rss+xml" '
             f'title="{E(n)} updates" href="/feed/bill/{yr}/{bid.lower()}.xml">'
-            if d.get("events") else "")
+            if d.get("events") and b.get("term") == current_term else "")
     return S.page(
         t, path=path, base=base,
         # THE YEAR IS PART OF THE NAME. Bill numbers repeat every two
@@ -196,6 +199,8 @@ def main():
     # The year is part of the path because bill numbers are only unique within
     # a term. There really is an HB 84 in several of them, and /bill/hb84.html
     # could only ever point at one.
+    # The term still sitting: the only one whose bills get a feed of their own.
+    current_term = max((b.get("term") or "" for b in idx), default="")
     written, missing, noyear = 0, 0, 0
     inlined, kept = 0, 0
     urls = []
@@ -223,7 +228,8 @@ def main():
         (out / yr).mkdir(parents=True, exist_ok=True)
         html = shell(t, b, d, a.base,
                      raw=raw if small else None,
-                     data_url=None if small else f"/bills/{yr}/{b['id']}.json")
+                     data_url=None if small else f"/bills/{yr}/{b['id']}.json",
+                     current_term=current_term)
         page.write_text(html, encoding="utf-8")
         # THE PAGE IS WRITTEN BEFORE THE FILE IS REMOVED, and only the one
         # file whose contents are now inside it. A run that stops half way

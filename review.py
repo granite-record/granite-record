@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.10
+# GRANITE_VERSION: 2026-09-09.11
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -382,11 +382,42 @@ def sample_narratives():
     return out
 
 
+def sample_older():
+    """A published timing on a recording from before 2025.
+
+    Every stopwatch reading this project has -- 35 in ground_truth.csv and
+    the bench's own -- is of a 2025 or 2026 recording, so the boundaries
+    published for 2021-2024 have never been scored, and the 2020-2022
+    recordings being matched now cannot be. These are the same items the
+    "Bill hearing timings" pool draws, restricted to the older years.
+    """
+    return [it for it in pool_for("timestamp")
+            if (it.get("date") or "9999")[:4] < "2025"]
+
+
+def sample_archive():
+    """A history of 1989-2016, beside the docket rows it was written from.
+
+    Those terms had no history at all until 11 September, when a vocabulary
+    for the older dockets was written: 24% of their lines were recognised
+    before it and 85% after. Every check run on it so far is internal -- it
+    catches a page contradicting itself, not a sentence that reads well and
+    says something the docket does not.
+    """
+    return [it for it in sample_narratives() if it["term"] <= "2015-2016"]
+
+
 def _docket_lines(term, bill):
     """The raw rows the narrative was written from, so the two can be read
     against each other. This is the whole point: a narrative that reads well
     and says something the docket does not is the failure worth catching."""
-    for name in (f"Docket_{term}.txt", "Docket.txt"):
+    # THE RIGHT TERM'S DOCKET, OR NONE. Falling back to Docket.txt showed an
+    # archived bill beside the CURRENT term's rows of the same number --
+    # HB171 of 1993 against HB171 of 2026 -- which is a reviewer being asked
+    # to check a narrative against another bill. The database's own file is
+    # named Docket_db_<term>.txt and was never looked for at all, so every
+    # bill of 1989-2014 showed "no docket rows".
+    for name in (f"Docket_{term}.txt", f"Docket_db_{term}.txt"):
         p = Path(name)
         if not p.exists():
             continue
@@ -560,6 +591,27 @@ KINDS = {
         # Nothing is published to be right or wrong, so the verdict is only
         # whether it could be timed.
         "verdicts": [("timed", "Timed it"), ("unsure", "Cannot tell")],
+    },
+    "older": {
+        "label": "Timings before 2025",
+        "blurb": "The same judgment as the hearing timings, on recordings of "
+                 "2020-2024. Every timed reading this project has is of a "
+                 "2025 or 2026 recording, so nothing older has ever been "
+                 "scored. Six or ten of these make the older years "
+                 "measurable.",
+        "sample": sample_older, "show": show_timestamps,
+        "fields": [("observed_start", "The real start", "1:10:01 or 4201"),
+                   ("observed_end", "The real end", "1:24:30 or 5070")],
+    },
+    "archive": {
+        "label": "Histories of 1989-2016",
+        "blurb": "The histories written on 11 September for the terms that "
+                 "had none, beside the docket rows they were built from. "
+                 "Does the sentence say what the docket says, in the right "
+                 "order, without adding anything?",
+        "sample": sample_archive, "show": show_narratives,
+        "fields": [("wrong_sentence", "A sentence that is wrong, if one is",
+                    "paste it")],
     },
     "narrative": {
         "label": "Plain-language histories",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -140,6 +140,7 @@ def main():
         return f"{base}/bill/{b.get('year','')}/{b['id'].lower()}.html"
 
     all_items, by_cmte, by_topic, nbill = [], {}, {}, 0
+    skipped_closed = 0
     noyear = []
     sponsored = {}
     # Each bill's record, read from its page. It used to be opened from
@@ -148,6 +149,14 @@ def main():
     # wrote 173 feeds and skipped every other bill without a word, while 5,436
     # bill pages linked a feed that was never written.
     recs = SR.by_bill(site, fields=("events", "sponsors", "next_step"))
+    # A FEED IS FOR A BILL THAT CAN STILL DO SOMETHING. One per bill of a
+    # closed term is a file that will never gain an item: nobody subscribes
+    # to 1993. Writing them for every archived bill once the 1989-2016
+    # histories arrived would have put 22,840 more files on a deployment
+    # already at 55,318 of the 100,000 Cloudflare Pages allows -- and it is
+    # the per-bill feed only. The all-bills, committee and topic feeds are
+    # unchanged, and every archived bill's history is on its page.
+    current = max((b.get("term") or "" for b in idx), default="")
     for b in idx:
         # Under the filing year, like the feed's own output path below.
         d = recs.get((str(b.get("year") or ""), b["id"].upper()))
@@ -174,7 +183,9 @@ def main():
                 f"{b.get('term','')}:{b['id']}:{e['date']}:"
                 f"{slug(e.get('text',''))[:40]}"))
 
-        if items and not str(b.get("year") or "").strip():
+        if items and (b.get("term") or "") != current:
+            skipped_closed += 1
+        elif items and not str(b.get("year") or "").strip():
             # Without a year the path collapses to feed/bill/<id>.xml, where
             # the next term's bill of the same number lands on top of it.
             noyear.append(b["id"])
@@ -313,6 +324,9 @@ def main():
 
     total = sum(p.stat().st_size for p in fd.rglob("*.xml"))
     print(f"{nbill:,} bill feeds")
+    if skipped_closed:
+        print(f"  {skipped_closed:,} bills of closed terms got no feed of "
+              "their own: their history is on the page and cannot change")
     if noyear:
         print(f"  {len(noyear):,} bills have no filing year and got no feed, "
               f"rather than one at feed/bill/ where the next term's bill of "

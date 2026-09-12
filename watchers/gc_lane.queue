@@ -55,6 +55,34 @@ fetch_legislation.py --all --from 2024 --to 2024 --kinds HB,SB --delay 20 --budg
 watchers/rest.py 1800 after-proving-2024
 fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-01
 watchers/rest.py 3600 after-bills-01
+
+# SPONSORS, 1989-2022: THE PROVING RUN, AND IT IS THIRTEEN REQUESTS.
+# Seventeen of nineteen terms have no sponsor at all -- data/sponsors.json
+# holds 2023-2024 and 2025-2026 and nothing else -- and byAnyMember.aspx
+# answers per legislator rather than per bill, so the whole archive is a few
+# thousand requests instead of thirty thousand. The person asked for this on
+# the 11th, after the bill text and alongside it.
+#
+# NO PAGE FROM THAT ENDPOINT IS ON THIS DISK. Every regex in the fetcher was
+# written from markup read during a survey, so the parser is a hypothesis and
+# a sweep on a hypothesis is a sweep on a guess. These two steps are the
+# experiment instead:
+#   --members   one GET: the real member list, the real hidden fields, saved
+#               as sponsors_form.html for a person to read.
+#   --probe 6   six legislators, both modes, 12 requests, SCORED against
+#               data/sponsors.json -- which came from the General Court's own
+#               database and not from this script. A member the database says
+#               prime-sponsored HB1234 in 2025 must come back with HB1234 in
+#               their Prime list. That one comparison tests four things no
+#               amount of reading the HTML can settle: whether the row parser
+#               finds rows, whether prime is radio 0 or radio 1, whether this
+#               list's member ids are the database's ids, and whether a
+#               member's list really does reach back across terms.
+# The sweep proper is not queued: it waits for that score to be read.
+fetch_sponsors_by_member.py --members
+watchers/rest.py 600 after-sponsor-roster
+fetch_sponsors_by_member.py --probe 6 --delay 20
+watchers/rest.py 1800 after-sponsor-probe
 fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-02
 watchers/rest.py 3600 after-bills-02
 fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-03

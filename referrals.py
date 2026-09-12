@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.3
+# GRANITE_VERSION: 2026-09-10.4
 """The committee a bill was referred to, read out of the docket.
 
     python3 referrals.py            # what it finds, by year, no network
@@ -47,8 +47,17 @@ bill_status/legacy/bs2016/docket_abbrev.htm, kept here as docket_abbrev.json.
 Where the key speaks it wins, and it settled two that nothing in the corpus
 ever spelled out: JUD is Judiciary and Family Law (314 bills read "Judiciary
 and F L" until now) and ECON DEVEL is Economic Development (130). Where the
-key is silent, "Corr and Cj" and "Pub Prot" still stand as the clerk wrote
-them.
+key is silent, "Corr and Cj" still stands as the clerk wrote it.
+
+A FOURTH WITNESS, since 11 September: the resolution each House adopts its
+rules by defines every standing committee in one sentence -- "the Committee on
+Public Protection and Veterans Affairs to consider all matters affecting
+public protection ..." -- and two of them are on this disk as bill text. That
+is the body naming its own committees, it names 22 of them, and it settled
+"Pub Prot", which the docket abbreviates nine ways across 1989-1996 and never
+once writes out. It also corroborates Judiciary and Family Law independently
+of the key, and it names "Corrections and Criminal Justice", which is the
+evidence "Corr and Cj" has been waiting for.
 """
 
 import argparse
@@ -94,14 +103,21 @@ AMP = re.compile(r"\s*[&+]\s*")
 # and Human Services rather than two lone letters.
 PHRASES = [
     # ADM as well as ADMIN: the clerk of 1989 wrote "EXEC DEPTS & ADM",
-    # which reached the site as "Exec Depts and Adm".
-    (r"\bEXEC\.?\s*DEPTS?\.?\s*(?:&|\+|AND)\s*ADM(?:IN)?\.?\b",
+    # which reached the site as "Exec Depts and Adm". EXECUTIVE and the
+    # clerk's "EXECTIVE" as well as EXEC, a singular DEPT as well as DEPTS,
+    # the "and" optional ("Exec Depts Admin"), and ADMINSTRATION -- which is
+    # how the House wrote its own committee's name five times -- because each
+    # of those was on the site abbreviated or misspelt on the 11th.
+    (r"\bEXEC(?:UTIVE|TIVE)?\.?\s*DEPTS?\.?\s*(?:(?:&|\+|AND)\s*)?"
+     r"ADM(?:IN|INISTRATION|INSTRATION)?\.?\b",
      "Executive Departments and Administration"),
-    (r"\bMUN\.?\s*(?:&|/|\+|AND)?\s*C(?:N?TY|OUNTY)\.?\s*GOVT?\.?\b",
+    (r"\bMUN(?:ICIPAL)?\.?\s*(?:&|/|\+|AND)?\s*C(?:N?TY|OUNTY)\.?\s*"
+     r"(?:(?:&|\+|AND)\s*)?GOVT?\.?\b",
      "Municipal and County Government"),
-    (r"\bCRIM\.?\s*JUST\.?\s*(?:&|\+|AND)\s*P\.?\s*SFTY\.?\b",
+    (r"\bCRIM\.?\s*JUST\.?\s*(?:&|\+|AND)\s*"
+     r"P(?:\.?\s*SFTY|SAFETY|UB\.?\s*SAFETY)\.?\b",
      "Criminal Justice and Public Safety"),
-    (r"\bRES\.?\,?\s*REC\.?\s*(?:&|\+|AND)?\s*DEV\.?\b",
+    (r"\bRES\.?\,?\s*REC\.?\,?\s*(?:&|\+|AND)?\s*DEV\.?\b",
      "Resources, Recreation and Development"),
     (r"\bENV\.?\s*(?:&|\+|AND)\s*AGRIC?\.?\b", "Environment and Agriculture"),
     (r"\bWAYS\s*(?:&|\+)\s*MEANS\b", "Ways and Means"),
@@ -110,22 +126,73 @@ PHRASES = [
     (r"\bSCI(?:ENCE)?\.?\s*[,/]?\s*TECH\.?\s*(?:&|\+|/|AND)?\s*EN(?:ERGY)?\b",
      "Science, Technology and Energy"),
     (r"\bPUB\.?\s*WORKS\b", "Public Works"),
-    (r"\bPUB\.?\s*AFFAIRS\b", "Public Affairs"),
-    (r"\bINTERNAL\s*AFFAIRS\b", "Internal Affairs"),
+    # AFFS as well as AFFAIRS. "Internal Affs" and "Public Affs" were on 24
+    # pages, and are the same two committees these patterns already cover.
+    (r"\bPUB(?:LIC)?\.?\s*AFF(?:AIR)?S\.?\b", "Public Affairs"),
+    (r"\bINTERNAL\s*AFF(?:AIR)?S\.?\b", "Internal Affairs"),
     (r"\bELEC\.?\s*LAW\b", "Election Law"),
     (r"\bAPPROP\.?\b", "Appropriations"),
     (r"\bTRANS\.?$", "Transportation"),
     # Added after the first build put these on the site abbreviated. Each is
     # proven the same way -- --check finds it spelled out in the docket or in
     # a bill's own text -- and the ones that are NOT spelled out anywhere are
-    # deliberately absent: "Judiciary & F L", "Corr & Cj", "Econ Dev",
-    # "Pub Prot" and "Child Y&Jj" keep the clerk's letters, because a
-    # plausible expansion of a committee name is still an invented one.
+    # deliberately absent: "Child Y&Jj" and "Pub Instit" keep the clerk's
+    # letters, because a plausible expansion of a committee name is still an
+    # invented one. ("Pub Instit" is two referrals, and the two candidates on
+    # this disk -- Public Institutions, Health and Human Services, and State
+    # Institutions and Housing -- are different committees.)
+    #
+    # "Corr & Cj" came off that list on the same evidence as "Pub Prot": the
+    # rules resolution names "the Committee on Corrections and Criminal
+    # Justice". 159 referrals on 152 pages, which read "the House Corr and Cj
+    # committee" until the 11th.
+    (r"\bCORR\.?\s*(?:&|\+|AND)\s*CJ\b", "Corrections and Criminal Justice"),
+    #
+    # "Pub Prot" was on that list until the 11th, and came off it on
+    # evidence rather than on a hunch. The docket never writes it out: a
+    # search of all 584 referral strings for "PROTECTION" finds only
+    # Consumer Protection, which is a different committee, and one
+    # "PUB PROTECTION" of 1991, which is still abbreviated. The bills' own
+    # text does write it out, and writes it out as a charter:
+    # legislation/1995/HR0001.html -- the House resolution adopting its rules
+    # -- names "Public Protection and Veterans Affairs to consider all
+    # matters affecting public protection including, but not limited to, law
+    # enforcement and the training of law enforcement officers", and
+    # legislation/2008/HR0020.html names it again. The docket's own ladder of
+    # spellings runs to the same place across 1989-1996: PUB PROT (82),
+    # PUBLIC PROT (40), PUB PROTECT (6), PUB PROTEC, PUB PROTECTION, and
+    # PUBLIC PROT & VETS AFFS (15), which carries the second half of the name
+    # the resolution states in full. 148 referrals on 104 pages.
+    (r"\bPUB(?:LIC)?\.?\s*PROT(?:EC|ECT|ECTION)?\b",
+     "Public Protection and Veterans Affairs"),
+    # Same evidence, different committee: legislation/1993/HBI0002.html
+    # writes "Commerce, Small Business and Consumer Affairs", which is this
+    # abbreviation element for element and adds nothing to it. By 1995 the
+    # House had renamed it -- legislation/1995/HR0001.html has "Commerce,
+    # Small Business, Consumer Affairs and Economic Development" -- and the
+    # abbreviation is only ever written in 1990, before that, so the
+    # three-part name is the one this era means. 49 referrals.
+    (r"\bCOMMERCE\s*,?\s*SM\.?\s*BUS\.?\s*(?:&|\+|AND)\s*CONS\.?\s*AFFS?\.?\b",
+     "Commerce, Small Business and Consumer Affairs"),
+    # Spelled out 258 times in the docket itself, and in the same 1995
+    # resolution. SRVCS as well as SVCS: "LABOR, INDUS & REHAB SRVCS" is the
+    # clerk of one year dropping a different letter.
+    (r"\bLABOR\s*,?\s*INDUS(?:TRIAL)?\.?\s*(?:&|\+|AND)\s*"
+     r"REHAB(?:ILITATIVE)?\.?\s*S(?:E?RVI?CE?S|VCS|RVCS)\.?\b",
+     "Labor, Industrial and Rehabilitative Services"),
     (r"\bHEALTH\s*[,]?\s*(?:HUMAN\s*)?(?:SVCS?|HS)\s*(?:&|\+|AND)\s*EA\b",
+     "Health, Human Services and Elderly Affairs"),
+    # HUM for HUMAN, SRVCS for SERVICES and ELD AFFS for ELDERLY AFFAIRS, all
+    # in one string: "Health, Hum Srvcs and Eld Affs", on 34 pages.
+    (r"\bHEALTH\s*,?\s*HUM(?:AN)?\.?\s*S(?:E?RVI?CE?S|VCS|RVCS)\.?\s*"
+     r"(?:&|\+|AND)\s*(?:ELD(?:ERLY)?\.?\s*AFF(?:AIR)?S|EA)\.?\b",
      "Health, Human Services and Elderly Affairs"),
     (r"\bHEALTH\s*,\s*HUMAN\s*SVCS?\.?\s*(?:&|\+|AND)\s*ELDERLY\s*AFFAIRS\b",
      "Health, Human Services and Elderly Affairs"),
-    (r"\bPUB(?:LIC)?\.?\s*INST(?:ITUTIONS)?\.?\s*[,/]?\s*H(?:EALTH)?\s*"
+    # INSTIT as well as INST and INSTITUTIONS: "Pub. Instit. H and Hs" broke
+    # this pattern on the two letters between them, and SB 201 of 1997 named
+    # its committee that way on the site.
+    (r"\bPUB(?:LIC)?\.?\s*INST(?:IT)?(?:UTIONS)?\.?\s*[,/]?\s*H(?:EALTH)?\s*"
      r"(?:&|\+|AND)\s*H(?:UMAN\s*)?S(?:ERVICES)?\b",
      "Public Institutions, Health and Human Services"),
     (r"\bWILDLIFE\s*(?:&|\+|AND)\s*REC\.?$", "Wildlife and Recreation"),
@@ -133,11 +200,17 @@ PHRASES = [
     (r"\bLOC\.?\s*(?:&|\+|AND)\s*REG\.?\s*REV\.?\b",
      "Local and Regulated Revenues"),
     (r"\bREG\.?\s*REV\.?$", "Regulated Revenues"),
-    (r"\bST\.?[- ]?FED\.?\s*REL\.?\s*(?:&|\+|AND)\s*VETS?\.?\b",
+    # REL optional: "St-Fed and Vets Affs" drops it, and there is no other
+    # State-Federal committee for it to be confused with.
+    (r"\bST\.?[- ]?FED\.?\s*(?:REL\.?\s*)?(?:&|\+|AND)\s*VETS?\.?\b",
      "State-Federal Relations and Veterans Affairs"),
     (r"\bCHILD(?:REN)?\.?\s*(?:&|\+|AND)\s*FAM(?:ILY)?\.?\s*LAW\b",
      "Children and Family Law"),
-    (r"\bEXEC\.?\s*DEPTS?\.?$", "Executive Departments and Administration"),
+    # The name with no "and Administration" after it, however the clerk spelt
+    # the first word -- "Exective Dept" included, which is one referral and
+    # was one page.
+    (r"\bEXEC(?:UTIVE|TIVE)?\.?\s*DEPTS?\.?$",
+     "Executive Departments and Administration"),
     (r"\bEXEC\.?\s*(?:&|\+|AND)\s*ADMIN\.?\b",
      "Executive Departments and Administration"),
     # From the General Court's own key (docket_abbrev.json): JUD is Judiciary
@@ -261,24 +334,66 @@ def _key_names():
             for v in raw.values()]
 
 
+# THE HOUSE NAMING ITS OWN STANDING COMMITTEES. The resolution that adopts
+# the rules for a term defines each committee in one construction -- "It shall
+# be the duty of the Committee on Science, Technology and Energy to consider
+# all matters relating to ..." -- and legislation/1995/HR0001.html and
+# legislation/1997/HR0001.html carry 22 of them between them.
+#
+# This is the strongest witness on the disk after the General Court's own key,
+# and for the same reason: it is the body saying what its committees are
+# called, in a sentence whose whole purpose is to say so. It is also not
+# circular. The pattern is the resolution's grammar, not a name this file
+# hopes to prove, so it finds committees nothing here asked about -- among
+# them "Corrections and Criminal Justice", whose abbreviation "Corr & Cj"
+# stands unexpanded a few lines above for want of exactly this evidence.
+RULES_COMMITTEE = re.compile(
+    r"Committee on ([A-Z][A-Za-z,'&\-. ]{4,70}?)\s+to consider all matters")
+
+
+def _rules_names():
+    """Committee names the chamber's own rules resolution writes out."""
+    out = collections.Counter()
+    pages = Path("legislation")
+    if not pages.is_dir():
+        return out
+    for f in pages.rglob("*.html"):
+        try:
+            text = f.read_bytes().decode("utf-8", errors="replace")
+        except OSError:
+            continue
+        if "to consider all matters" not in text:
+            continue
+        flat = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", text))
+        for name in RULES_COMMITTEE.findall(flat):
+            out[name.strip(" .,")] += 1
+    return out
+
+
 def _spelled_out():
-    """Committee names written in full, from the three sources that write them.
+    """Committee names written in full, from the four sources that write them.
 
     The docket, where a later clerk spelled out what an earlier one
     abbreviated; the bills saved under legislation/, where the committee is
-    printed beside REFERRED TO: in the bill's own text; and the General
-    Court's own key, which is the best of the three because it is the body
-    saying what its own shorthand means rather than this project inferring it.
+    printed beside REFERRED TO: in the bill's own text; the resolution each
+    House adopts its rules by, which defines every standing committee by name;
+    and the General Court's own key, which is the best of the four because it
+    is the body saying what its own shorthand means rather than this project
+    inferring it.
 
     The bill texts are the only witness to "Constitutional and Statutory
     Revision", which the docket only ever abbreviates. The key is the only
     witness to "Judiciary and Family Law" and "Economic Development", which
-    nothing else on this disk ever writes out.
+    nothing else on this disk ever writes out. The rules resolutions are the
+    only witness to "Public Protection and Veterans Affairs", which the
+    docket abbreviates nine ways across 1989-1996 and never once writes out.
     """
     out = collections.Counter()
     for name in _key_names():
         out[name] += 1
     for name, n in _corpus().items():
+        out[name] += n
+    for name, n in _rules_names().items():
         out[name] += n
     pages = Path("legislation")
     if pages.is_dir():

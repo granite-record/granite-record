@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.16
+# GRANITE_VERSION: 2026-09-05.17
 """
 Run the whole pipeline in the right order.
 
@@ -154,20 +154,20 @@ def plan(a):
         # narrative.py MERGES, and has to: it is run twice here, once per
         # docket, and the second run would otherwise replace the first term's
         # 2,233 bills with the other's 1,996 and build clean.
-        Step("plain-language histories for the archived term",
-             ["narrative.py", "--docket", "Docket_2023-2024.txt", "--all",
-              "--out", "narratives.json",
-              "--members", "data/legislators.json"],
-             needs=["Docket_2023-2024.txt", "data/legislators.json"],
+        # EVERY ARCHIVED TERM WHOSE DOCKET IS ON DISK, not just the one that
+        # was narrated by hand. narrative.py merges, and has to: run per
+        # docket, each term's bills are added to narratives.json rather than
+        # replacing the last term's. Until 11 September this step named
+        # Docket_2023-2024.txt alone, so a rebuild from a clean
+        # narratives.json produced two terms out of nineteen.
+        Step("plain-language histories for every archived term",
+             ["narrate_archive.py"],
+             needs=["data/legislators.json"],
              produces=["narratives.json"],
-             note="fetch_archive_docket.py writes that docket in Docket.txt's "
-                  "own seven columns, so this is the same parser the current "
-                  "term uses"),
+             note="18 terms, 1989-2024: the database's own dockets for "
+                  "1989-2014 and the fetched ones for 2015-2024. The older "
+                  "vocabulary is read by docket_vocab.py"),
 
-        # Never a step until now, which is the only reason no chair, vice
-        # chair, aide, room or phone is anywhere on disk: fetch_committees.py
-        # has always parsed all of them, for both chambers, and has simply
-        # never been run by the pipeline. --probe prints and writes nothing.
         Step("committee membership and leadership",
              ["fetch_committees.py"],
              produces=["committees.json"],

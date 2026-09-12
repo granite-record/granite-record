@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.1
+# GRANITE_VERSION: 2026-09-11.3
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 
@@ -43,6 +43,7 @@ An era module is docket_era_1989.py, docket_era_1999.py, docket_era_2007.py.
 """
 
 import re
+from datetime import date as _date
 
 import narrative
 
@@ -90,15 +91,63 @@ _PRINTS_A_DATE = ("introduced", "hearing", "exec", "worksession",
 _DATE_OK = re.compile(r"^\d{1,2}/\d{1,2}/\d{4}$")
 
 
-def _ensure_date(d, created):
-    if d.get("_type") not in _PRINTS_A_DATE or created is None:
+def _ensure_date(d, created, session=None):
+    """A date on every event that prints one, and inside its own session.
+
+    Two things go wrong in the dump. The clerk mistypes ("Signed by the
+    Governor on 5/2/8/1999"), which leaves no date at all and prints "on ."
+    -- 699 of them. And a year can be wrong in the record itself: a 1990
+    hearing typed "3/20/99", a row whose own timestamp is 1904. A date
+    outside the bill's own session is not a fact about the bill, so the day
+    and month are kept and the year is the session's.
+    """
+    if d.get("_type") not in _PRINTS_A_DATE:
         return d
     if not _DATE_OK.match(str(d.get("date") or "")):
+        if created is None:
+            return d
         d["date"] = created.strftime("%m/%d/%Y")
+    try:
+        year = int(str(session)[:4])
+    except (TypeError, ValueError):
+        return d
+    mo, dy, yr = (int(x) for x in d["date"].split("/"))
+    if not (year - 1 <= yr <= year + 1):
+        for y in (year, year - 1, year + 1):
+            try:
+                d["date"] = _date(y, mo, dy).strftime("%m/%d/%Y")
+                break
+            except ValueError:
+                continue
     return d
 
 
-def _event(pid, typ, m, fixed, clean, mod, created):
+# THE COMMITTEE'S NAME, NOT THE CLERK'S SHORTHAND. The older dockets write
+# "Mun & Cnty Govt", "Crim Just & PSfty", "Elec Law" -- 176 spellings across
+# 6,396 stage labels -- and referrals.expand() with names.committee() already
+# knows how to read all but a handful of them. The 1989 table expanded its own
+# matches from the start; the 1999 and 2007 tables did not, so a reader of a
+# 2003 bill was told "House Mun & Cnty Govt committee".
+def _committee_name(raw):
+    if not raw or not raw.strip():
+        return raw
+    try:
+        import names
+        import referrals
+        return referrals.AMP.sub(
+            " and ", names.committee(referrals.expand(referrals.clean(raw))))
+    except Exception:                                       # pragma: no cover
+        return raw
+
+
+def _expand_committees(d):
+    for k in ("committee", "refer"):
+        if d.get(k):
+            d[k] = _committee_name(d[k])
+    return d
+
+
+def _event(pid, typ, m, fixed, clean, mod, created, session=None):
     d = dict(m.groupdict())
     for k, v in (fixed or {}).items():
         if not d.get(k):
@@ -115,7 +164,7 @@ def _event(pid, typ, m, fixed, clean, mod, created):
             fix(d, created)
     if typ == "report":
         d.update(narrative.report_fields(d.pop("rest", "") or ""))
-    return _ensure_date(d, created)
+    return _expand_committees(_ensure_date(d, created, session))
 
 
 def classify(desc, created=None, session=None):
@@ -132,7 +181,7 @@ def classify(desc, created=None, session=None):
     for pid, typ, pat, fixed in first:
         m = pat.search(clean)
         if m:
-            return _event(pid, typ, m, fixed, clean, mod, created)
+            return _event(pid, typ, m, fixed, clean, mod, created, session)
     ev = narrative.classify(desc)
     if ev["_type"] != "other":
         # A modern pattern read it; it still needs this era's glue, because
@@ -143,11 +192,11 @@ def classify(desc, created=None, session=None):
                 fix(ev, created)
             except TypeError:
                 fix(ev, ev["_type"], created)
-        return _ensure_date(ev, created)
+        return _expand_committees(_ensure_date(ev, created, session))
     for pid, typ, pat, fixed in after:
         m = pat.search(clean)
         if m:
-            return _event(pid, typ, m, fixed, clean, mod, created)
+            return _event(pid, typ, m, fixed, clean, mod, created, session)
     for name, pat in routine:
         if pat.search(clean):
             return {"_type": "other", "_raw": clean, "_era": "routine:" + name}
@@ -157,17 +206,30 @@ def classify(desc, created=None, session=None):
 def join_rows(rows, session=None):
     """Rows of one bill, with an action split across several joined up.
 
-    The database splits a long action across rows -- a fixed-width report
-    wrapping, or a motion on one row and its result on the next -- and each
-    piece alone is unreadable. Returns the rows unchanged where the era has
-    no rule.
+    narrative.py holds a row as a dict; an era's rule works on
+    (created, bill, body, desc), which is all any of them compares. The
+    joined row keeps the first piece's timestamp and citation, which is what
+    the action was recorded under.
     """
     era = era_for(session)
-    if era is None:
+    if era is None or not rows:
         return rows
-    mod = era[0]
-    fn = getattr(mod, "join_rows", None)
+    fn = getattr(era[0], "join_rows", None)
     if fn is None:
         return rows
-    out = fn(rows)
-    return out[0] if isinstance(out, tuple) else out
+    tup = [(r.get("created"), "", r.get("body", ""), r.get("desc", ""))
+           for r in rows]
+    out = fn(tup)
+    if isinstance(out, tuple):
+        out = out[0]
+    if len(out) == len(rows):
+        return rows
+    # Map each joined line back onto the row it started from, in order.
+    joined, i = [], 0
+    for created, _b, _body, desc in out:
+        while i < len(rows) and rows[i].get("created") != created:
+            i += 1
+        base = rows[i] if i < len(rows) else rows[-1]
+        joined.append({**base, "desc": desc})
+        i += 1
+    return joined

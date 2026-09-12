@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.29
+# GRANITE_VERSION: 2026-09-04.32
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -82,7 +82,7 @@ RECOMMENDATION = {
     "rereferred to committee": "send it back to committee",
     "without recommendation": "make no recommendation",
     "no recommendation": "make no recommendation",
-    "lay on table": "set it aside without killing it",
+    "lay on table": "lay it on the table",
     # THE SENATE'S SPELLING. The House clerk writes "Lay on Table" and the
     # Senate clerk writes "Laid on Table", and this is a prefix match, so
     # the second fell through and was printed in the docket's own words
@@ -91,8 +91,8 @@ RECOMMENDATION = {
     # "vacated from committee and laid on table", "introduced ..., and laid
     # on table" -- start with a different verb and are two actions in one
     # line; they are left as the clerk wrote them rather than losing half.
-    "laid on table": "set it aside without killing it",
-    "table": "set it aside without killing it",
+    "laid on table": "lay it on the table",
+    "table": "lay it on the table",
     "indefinitely postpone": "kill it and bar the subject for the rest of the term",
     "adopt": "adopt it",
     "concur": "agree to the other chamber's changes",
@@ -171,9 +171,9 @@ CALENDAR_RE = re.compile(r"\bVote\s*\d+\s*-\s*\d+\s*;\s*(?P<cal>CC|RC)\b", re.I)
 # Plain-language notes attached to particular outcomes.
 NUANCE = {
     "interim study": "In practice this often ends a bill's progress for the term.",
-    "lay on table": "A tabled bill can be taken back up later, but dies at the "
+    "lay on table": "Laying a bill on the table sets it aside without voting it down. A tabled bill can be taken back up later, but dies at the "
                     "end of the session if it is not.",
-    "laid on table": "A tabled bill can be taken back up later, but dies at the "
+    "laid on table": "Laying a bill on the table sets it aside without voting it down. A tabled bill can be taken back up later, but dies at the "
                      "end of the session if it is not.",
     "retained in committee": "A retained bill stays with the committee into the "
                              "second year of the term. Sometimes that means more work "
@@ -192,6 +192,60 @@ def fdate(d):
         return datetime.strptime(d, "%m/%d/%Y").strftime(MONTH)
     except ValueError:
         return d
+
+
+ONE_DATE = re.compile(r"^\d{1,2}/\d{1,2}/\d{4}$")
+
+
+def clamp_year(ev, session):
+    """A date outside the bill's own session, brought back into it.
+
+    This is docket_vocab._ensure_date's rule and its words, applied to the
+    terms that function never sees. It reads 1989-2016 from the database dump
+    and has clamped their mistyped years since the 11th; the fetched dockets
+    of 2017-2026 went through classify() instead and kept theirs, which is why
+    HB 1484 of 2018 said it was "enrolled on April 26, 2089" and HB 1247 of
+    2020 had an amendment rejected "on June 16, 2062". Six such dates across
+    four terms, each a clerk's slip on a digit.
+
+    A date outside the bill's own session is not a fact about the bill, so the
+    day and month are kept -- they are the clerk's and are almost certainly
+    right -- and the year is the session's. The year that would be correct is
+    often guessable from an amendment number, and guessing it is still
+    inventing a date, so this does not.
+
+    ev["eff"] is deliberately untouched: a law of 2014 really can take effect
+    in 2020, and two do.
+    """
+    d = str(ev.get("date") or "")
+    if not ONE_DATE.match(d):
+        return ev
+    try:
+        year = int(str(session)[:4])
+    except (TypeError, ValueError):
+        return ev
+    mo, dy, yr = (int(x) for x in d.split("/"))
+    if year - 1 <= yr <= year + 1:
+        return ev
+    for y in (year, year - 1, year + 1):
+        try:
+            ev["date"] = datetime(y, mo, dy).strftime("%m/%d/%Y")
+            break
+        except ValueError:
+            continue
+    return ev
+
+
+def _stop(s):
+    """A sentence ended with exactly one full stop.
+
+    A mover's surname can carry its own: 41 floor sentences of 2021-2022 ended
+    "on a motion by Rep. Alexander Jr..", because the period that ends the
+    sentence was added to a name that already had one. The name is right and
+    the sentence is right; only the join was wrong.
+    """
+    s = s.rstrip()
+    return s if s.endswith(".") else s + "."
 
 
 # TODAY, so a scheduled meeting is not written as a held one. Overridable
@@ -216,8 +270,20 @@ def ahead(d):
         return False
 
 
+# The older dockets' vocabulary. Optional: without it, a database-era bill
+# is read by the modern patterns alone, which is what happened until
+# 11 September and left the archive with no histories before 2017.
+try:
+    import docket_vocab as _VOCAB
+except ImportError:                                         # pragma: no cover
+    _VOCAB = None
+
+
 def clean(s):
-    s = re.sub(r"==\s*[A-Z][A-Z ]*?\s*==", " ", s)
+    # "== BILL KILLED ==" and "=== BILL KILLED ===". Two equals signs were
+    # allowed for and three were not, so 717 floor lines kept a flag in the
+    # middle and no pattern could read them.
+    s = re.sub(r"=={1,}\s*[A-Z][A-Z ]*?\s*=={1,}", " ", s)
     s = re.sub(r"\s*(?:HJ|SJ|HC|SC)\s+\d+\b.*$", "", s)
     return re.sub(r"\s{2,}", " ", s).strip(" .;,")
 
@@ -405,6 +471,14 @@ PATTERNS = [
         # date and was stopping the whole line from parsing.
         r"(?:Refer(?:red)?\s+to\s+(?P<refer>[A-Z][A-Za-z ]+?)"
         r"(?:\s+Rule\s*[\d\-]+)?[,;\s]*)?"
+        # WHAT THE CHAMBER SAID ABOUT ITS OWN VOTE, between the tally and the
+        # date: "Lacking Necessary Two-Thirds Vote", "by necessary two-thirds
+        # vote", "(In recess of)". 2,024 floor lines across the archive and
+        # the current term ended at this clause and were never read as votes
+        # at all -- including every constitutional amendment that failed for
+        # want of three fifths, which then had no outcome but a minority
+        # report's words.
+        r"(?:[A-Za-z(][^;]{0,70}?)?[,;\s]*"
         r"(?P<date>\d{1,2}/\d{1,2}/\d{4})", re.I)),
     ("amendment", AMEND_RE),
     ("enrolled", ENROLLED_RE),
@@ -748,6 +822,21 @@ def collapse(sentences, chamber="House"):
             if merged:
                 continue
 
+        # ENROLMENT IS ONE STEP, NOT TWO. Each chamber records its own
+        # enrolment row, so a bill that passed both reads "The bill was
+        # enrolled on May 30, 2012 ... The bill was enrolled on June 5,
+        # 2012", which is the same check announced twice. The later date is
+        # when it was finished, and the explanation is written once.
+        if i + 1 < len(sentences):
+            a = ENROLLED.match(sentences[i].strip())
+            b = ENROLLED.match(sentences[i + 1].strip())
+            if a and b:
+                when = b.group("when") or a.group("when") or ""
+                out.append(f"The bill was enrolled{when} — the final "
+                           "check of the text before it goes to the governor.")
+                i += 2
+                continue
+
         # A divided committee: majority and minority are one decision.
         if i + 1 < len(sentences):
             a = DIVIDED[0].match(sentences[i].strip())
@@ -940,6 +1029,12 @@ def split_mover(action):
     return action, ""
 
 
+def _chapter_plain(ev):
+    """The chapter without the clerk's leading zeros: "0213" is Chapter 213."""
+    c = str(ev.get("chapter") or "").strip()
+    return int(c) if c.isdigit() else c
+
+
 def describe(ev, body, seen_intro=False):
     """One sentence for one docket event, or None to skip."""
     t = ev["_type"]
@@ -989,8 +1084,20 @@ def describe(ev, body, seen_intro=False):
             if rec.startswith(k):
                 plain = v
                 break
-        vote = (f" by a vote of {ev['y']}\u2013{ev['n']}"
-                if ev.get("y") and ev.get("n") else "")
+        # UNANIMOUS, WHERE IT WAS. "by a vote of 11-0" is the record, but a
+        # committee that agreed without a dissenting voice is worth saying
+        # plainly, and a tie is worth saying too: a tied committee vote
+        # carries no majority. Where no vote was recorded, nothing is said.
+        _y, _n = str(ev.get("y") or ""), str(ev.get("n") or "")
+        vote = ""
+        if _y.isdigit() and _n.isdigit():
+            if int(_n) == 0 and int(_y) > 0:
+                vote = f" unanimously, {_y}–{_n}"
+            elif int(_y) == int(_n):
+                vote = (f" on a tied vote, {_y}–{_n}, which carries no "
+                        "majority")
+            else:
+                vote = f" by a vote of {_y}–{_n}"
         calm = CALENDAR_RE.search(ev.get("_raw", ""))
         cal = ""
         if calm:
@@ -1006,7 +1113,17 @@ def describe(ev, body, seen_intro=False):
         if plain:
             return (f"{who} recommended that the {chamber} {plain}"
                     f"{amend}{vote}{cal}.")
-        return f"{who} reported: {ev.get('rec', '').strip()}{vote}."
+        rec = (ev.get("rec") or "").strip()
+        # THE CLERK'S OWN WORD FOR NO RECOMMENDATION. SB 466 of 2000 read
+        # "The committee reported: None." -- which looks like this site
+        # failing to fill a template, and is not: the docket line is
+        # "Committee Report None, 05/03/2000", and the next line is
+        # "Sen. Trombly moved to suspend Rule #22A to allow no committee
+        # recommendation before the body". The committee reported without
+        # recommending, and that is worth a sentence rather than a blank.
+        if not rec or rec.lower() in ("none", "no recommendation", "n/a"):
+            return f"{who} made no recommendation{vote}."
+        return f"{who} reported: {rec}{vote}."
 
     if t == "floor":
         action, who = split_mover(ev.get("action"))
@@ -1043,7 +1160,7 @@ def describe(ev, body, seen_intro=False):
         if ev.get("refer"):
             base += (f", then sent it on to the {ev['refer'].strip()} committee "
                      "under the chamber's rules")
-        return base + mover + "."
+        return _stop(base + mover)
 
     if t == "amendment":
         kind = (ev.get("what") or "Amendment").strip()
@@ -1100,7 +1217,7 @@ def describe(ev, body, seen_intro=False):
 
     if t == "unsigned_law":
         when = f" on {fdate(ev['date'])}" if ev.get("date") else ""
-        ch = f", as Chapter {ev['chapter']}" if ev.get("chapter") else ""
+        ch = f", as Chapter {_chapter_plain(ev)}" if ev.get("chapter") else ""
         return (f"It became law without the governor's signature{when}{ch}. The "
                 "governor neither signed it nor returned it, and the docket "
                 "records it as enacted under Part II, Article 44 of the state "
@@ -1145,8 +1262,17 @@ def describe(ev, body, seen_intro=False):
         return f"The bill died on the table{when}, having been set aside and never taken back up."
 
     if t == "rereferred":
-        return (f"On {fdate(ev['date'])} the bill was referred to the "
-                f"{ev['committee'].strip()} committee.")
+        # THE CLERK DOES NOT ALWAYS NAME IT. HB 246 of 1999 reads
+        # "Re-Referred to committee; HJ40, p907" and nothing more -- it went
+        # back to the committee it came from, which the House did not need to
+        # name. Printed through the sentence below that became "referred to
+        # the  committee", with the gap where a name should be, on six pages.
+        # Naming the committee it probably meant would be inventing a fact
+        # the docket declines to state, so the sentence simply stops saying
+        # which.
+        c = (ev.get("committee") or "").strip()
+        where = f" to the {c} committee" if c else " back to committee"
+        return f"On {fdate(ev['date'])} the bill was referred{where}."
 
     if t == "governor":
         w = (ev.get("what") or "").lower()
@@ -1154,9 +1280,22 @@ def describe(ev, body, seen_intro=False):
         if "signed" in w:
             s = f"The governor signed it on {when}"
             if ev.get("chapter"):
-                s += f", making it Chapter {ev['chapter']} of the session laws"
+                # WITHOUT THE CLERK'S LEADING ZEROS. The docket writes
+                # "Chapter 0213" and the status line beside this sentence
+                # writes "Chapter 213"; one fact, printed two ways, on 345
+                # of the current terms' 1,270 sentences and on 2,800 of the
+                # archived ones.
+                _ch = str(ev["chapter"]).strip()
+                s += (f", making it Chapter {int(_ch) if _ch.isdigit() else _ch}"
+                      " of the session laws")
             if ev.get("eff"):
-                s += f". It takes effect {fdate(ev['eff'])}"
+                # TENSE. "It takes effect January 1, 1994" on a law from
+                # 1993 reads as a promise about the future; the date passed
+                # thirty years ago. ahead() is the same test every meeting
+                # sentence uses.
+                s += (f". It takes effect {fdate(ev['eff'])}"
+                      if ahead(ev["eff"]) else
+                      f". It took effect on {fdate(ev['eff'])}")
             return s + "."
         if "vetoed" in w:
             # Some veto lines carry no parsed date; rather than "vetoed it on ."
@@ -1175,9 +1314,20 @@ def describe(ev, body, seen_intro=False):
 
 def build(bill, rows):
     rows = sorted(rows, key=lambda r: r["created"])
+    # A DATABASE-ERA BILL IS READ IN ITS OWN DECADE'S VOCABULARY. The dump
+    # covers 1989-2016, whose lines abbreviate almost everything and date
+    # almost nothing; docket_vocab reads those and returns events in exactly
+    # the shape classify() does. A 2017-2026 row never reaches it, and the
+    # import is optional so a checkout without those modules builds as before.
+    session = next((r.get("session") for r in rows if r.get("session")), None)
+    vocab = None
+    if _VOCAB is not None and _VOCAB.era_for(session) is not None:
+        vocab = _VOCAB
+        rows = vocab.join_rows(rows, session)
     evs = []
     for r in rows:
-        ev = classify(r["desc"])
+        ev = (vocab.classify(r["desc"], r["created"], r.get("session"))
+              if vocab is not None else None) or classify(r["desc"])
         # The hearing sentence looks its own sign-ins up by bill and date.
         ev["_bill"] = bill
         # Off the raw line: clean() has already removed it from ev["_raw"].
@@ -1185,6 +1335,7 @@ def build(bill, rows):
         ev["body"] = r["body"]
         ev["cancelled"] = "CANCELLED" in r["flags"]
         ev["recessed"] = "RECESSED" in r["flags"]
+        clamp_year(ev, r.get("session") or session)
         ev["when"] = event_date(ev, r["created"])
         evs.append(ev)
     evs.sort(key=lambda e: e["when"])

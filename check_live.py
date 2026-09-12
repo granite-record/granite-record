@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 What is the live site actually serving?
 
@@ -103,6 +103,14 @@ CF_SIGNS = [
      "a script is appended to every page."),
     (b"/cdn-cgi/apps/", "a Cloudflare app injection", ""),
 ]
+
+# SETTINGS THE PERSON HAS CHOSEN. Email Address Obfuscation is on because
+# the contact address on every page should reach a person and not a scraper,
+# and its own decoder script (/cdn-cgi/scripts/<hash>/cloudflare-static/
+# email-decode.min.js) is the "script injection" that came with it -- one
+# switch, not two. They are still reported, because a rewritten page is
+# worth knowing about, but they are not counted as problems.
+ACCEPTED = {"Email Address Obfuscation", "a Cloudflare script injection"}
 
 
 def first_difference(served, local):
@@ -345,7 +353,9 @@ def main():
                     print(f"    Cloudflare is applying {name}.")
                     for ln in _wrap(why, 66):
                         print(f"      {ln}")
-                    problems.append(f"Cloudflare is applying {name} to /bills")
+                    if name not in ACCEPTED:
+                        problems.append(
+                            f"Cloudflare is applying {name} to /bills")
             d = first_difference(body, lb)
             if d:
                 i, was, now = d

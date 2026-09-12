@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.1
+# GRANITE_VERSION: 2026-09-11.2
 """
 The 1989-1998 docket's own vocabulary, mapped onto narrative.py's events.
 
@@ -266,6 +266,12 @@ def norm_date(tok, created, forward=False):
         if m.group(3):
             yr = int(m.group(3))
             yr = yr + (1900 if yr >= 50 else 2000) if yr < 100 else yr
+    # "HEARING 03/28/8910:00 RM202" -- the clerk ran the time onto the date,
+    # and 19 events came out dated in the year 8910. Four digits that are not
+    # a year are a two-digit year with the hour stuck to it.
+    if yr is not None and not (1900 <= yr <= 2100):
+        t2 = re.match(r"^(\d{2})", str(m.group(3) or ""))
+        yr = int(t2.group(1)) + (1900 if int(t2.group(1)) >= 50 else 2000) if t2 else None
     if yr is None:
         best = None
         for y in (created.year - 1, created.year, created.year + 1):
@@ -427,3 +433,87 @@ def fix(d, typ, created):
     if typ in NEEDS_DATE and not d.get("date"):
         d["date"] = created.strftime("%m/%d/%Y")
     return d
+
+
+# --------------------------------------------------- continuation rows
+#
+# The database splits one action across rows, and each piece alone is
+# unreadable. 2,957 joins across these ten years, most of them a citation
+# that wrapped ("HJ42,P1409-1411" on its own row), a motion whose outcome is
+# on the next row ("SUBSTITUTE MOTION: RECOMMIT" then "MOTION ADOPTED"), or a
+# phrase that stops mid-sentence ("... LAID ON" + "THE TABLE, SEN GORDON MA
+# VV"). Without the join the bill's status can be read off the wrong half.
+#
+# The join needs no leading whitespace: the version that uses it and the
+# content-only version below agree to within 0.1% (81.4% vs 81.3% of lines
+# recognised), and docket_from_db.py strips it.
+
+CITE_END = re.compile(
+    r"(?:\b(?:HJ|SJ|HC|SC)\s*\d+[A-Z]?(?:\s*\([IV]+\))?\s*,?\s*P\.?\s*\d+[\d\s\-+&,]*"
+    r"|\(SEE PERM JRNL(?: ALSO)?\)|\(JRNL CORR[^)]*\))\s*[)>\]]?\s*$", re.I)
+OPEN_END = re.compile(
+    r"(?:[;,&]|\b(?:WITH|W/|TO|AND|OF|FOR|THE|REP|SEN|REPS|SENS|ON|BY|FL|"
+    r"MOVED|HJ\d*[A-Z]?|SJ\d*[A-Z]?|P|NEC|MA|ML|AA|AL|AF|SUBST|SUB|PASSED))\s*$", re.I)
+CITE_FRAG = re.compile(
+    r"^(?:[+\-]\s*P?\s*\d|P\s*\d+\s*(?:[-+]|$|\d)|\d+\s*(?:[-+)]\s*\d*\s*)*$|"
+    r"(?:HJ|SJ)\s*\d+[A-Z]?\s*,\s*P)", re.I)
+FRAG = re.compile(
+    r"^(?:(?:HJ|SJ)\s*\d+[A-Z]?\s*,|P\s*\d+|\+\s*\d|"
+    r"(?:AA|AL|AF|MA|ML|MF)\b|VV\b|RC\s*\(|DIV\s*\(|\d\s*/\s*\d\s*(?:VV|DIV|RC)|"
+    r"AM\s+(?:RC|VV|DIV)\b|\d+-\d+\)|(?:WITH|W/)\s*AM\b|AND\s+REF\b|"
+    r"MOTION\s+(?:ADOPTED|FAILED|LOST)\b|\((?:NO\s+)?(?:SEN|S|H|HOUSE)\s+AM\b)", re.I)
+STANDALONE = re.compile(
+    r"^[<(\[{]?\s*(?://[A-Z ]+//)?\s*(?:SPKR|PRES)\s+APPTS|^[<(\[{]|^//|"
+    r"^(?:PROP\b|SUBCOM|SUB-?COMM|RE-?REF\b|RE-?REFER\w*\s+(?:SUBCOM|FULL|WORK|ORG|EXEC|STUDY|COMM\b)|"
+    r"INT(?:ERIM)?\s+STUD|IN\s+STUDY|RESCHED|CONTINUED\s+HEARING|HEARING|"
+    r"FULL\s+COMM|DIV\s+[IVX]+|EXEC\s+SESS|WORK\s+SESS|CONF\s+COMM\s+MEET|"
+    r"CONFEREE|NOTICE)", re.I)
+# A row that opens on a connector word finishes the phrase before it:
+# "REFERRED TO SCI,TECH&EN" + "  FOR INTERIM STUDY VV; HJ54,P1454".
+CONNECT = re.compile(r"^(?:FOR|TO|WITH|AND|OF|BY|IN|ON|AT)\s+(?!SEAT\b)", re.I)
+MOTION_NO_OUTCOME = re.compile(r"\b(?:SUSP\w*|MOVED?|MOTION|SUBST?|SUB)\b", re.I)
+OUTCOME = re.compile(r"\b(?:MA|ML|MF|AA|AL|AF|ADOPTED|FAILED|LOST|PASSED)\b", re.I)
+
+
+def _same_action(prev, row):
+    """Same bill, same chamber, same day -- or it is a different action."""
+    (pc, pb, pbody, _pd), (c, b, body, _d) = prev, row
+    if (pb, pbody) != (b, body):
+        return False
+    if pc and c and pc.date() != c.date():
+        return False
+    return True
+
+
+def _why(prev, row):
+    """The rule that joins this row onto the one before it, or None."""
+    pd, d = prev[3], row[3]
+    if CITE_FRAG.match(d) and (not CITE_END.search(pd)
+                               or pd.rstrip().endswith(("+", "-", ",", "P"))):
+        return "citation"
+    if CITE_END.search(pd):
+        return None
+    if FRAG.match(d):
+        return "fragment"
+    if STANDALONE.match(d):
+        return None
+    if OPEN_END.search(pd):
+        return "open end"
+    if CONNECT.match(d):
+        return "connector"
+    if (MOTION_NO_OUTCOME.search(pd) and not OUTCOME.search(pd)
+            and OUTCOME.search(d[:45])):
+        return "outcome"
+    return None
+
+
+def join_rows(rows):
+    """[(created, bill, body, desc)] -> the same, continuations joined on."""
+    out = []
+    for r in rows:
+        if out and _same_action(out[-1], r) and _why(out[-1], r):
+            c, b, body, desc = out[-1]
+            out[-1] = (c, b, body, (desc + " " + r[3]).strip())
+            continue
+        out.append(tuple(r))
+    return out

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.121
+# GRANITE_VERSION: 2026-09-04.123
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -477,12 +477,21 @@ def _narr(lines, body="H"):
 @check("status", "a sustained veto beats an overridden one", needs=("build_site_v2",))
 def _veto_status(build_site_v2):
     B = build_site_v2
+    # The chambers, as the real docket has them: the Senate overrode and the
+    # House sustained, on the same day. An override needs both.
     both = _narr(["Vetoed by Governor 07/15/2026",
                   "Veto Sustained 08/19/2026: RC 165-140 Lacking Necessary "
-                  "Two-Thirds Vote",
-                  "Notwithstanding the Governor's Veto, Shall SB 434 Become "
-                  "Law: RC 16Y-8N, Veto Overridden by necessary two-thirds "
-                  "vote; 08/19/2026"])
+                  "Two-Thirds Vote"])
+    both["events"] += _narr(["Notwithstanding the Governor's Veto, Shall SB 434 "
+                             "Become Law: RC 16Y-8N, Veto Overridden by "
+                             "necessary two-thirds vote; 08/19/2026"],
+                            body="S")["events"]
+    # And one chamber reconsidering its own vote: sustained, then overridden.
+    same = _narr(["Vetoed By Governor 07/13/2011",
+                  "Shall HB 542 Become Law: Veto Sustained, RC 244-130",
+                  "Veto Overridden: RC 255-112 By Required Two-Thirds Vote"])
+    assert B.classify(same, [])[0] == "law", "a chamber may reconsider"
+    assert B.docket_outcome(same)[0] == "law", "a chamber may reconsider"
     kind, label = B.classify(both, [])
     assert kind == "veto", f"SB 434 shape came out as {kind}/{label}"
     step = B.next_step(both, {})
@@ -2343,11 +2352,19 @@ def _chain():
         # chain passed, because all.xml was still produced.
         sys.path.insert(0, str(here))
         import site_read as SR
+        # A per-bill feed is written for the term still sitting, and a page
+        # links one only where it was written. Closed terms stopped getting
+        # them when the 1989-2016 histories arrived: 22,840 files that could
+        # never gain an item, on a deployment near a file limit.
         for year, bid, rec in SR.records(root / "site"):
-            if any(e.get("date") for e in (rec.get("events") or [])):
-                fx = root / "site" / "feed" / "bill" / year / f"{bid.lower()}.xml"
-                assert fx.exists(), (f"{bid} of {year} has dated events and its "
-                                     f"page links a feed, but none was written")
+            page = (root / "site" / "bill" / year / f"{bid.lower()}.html").read_text(
+                encoding="utf-8", errors="replace")
+            fx = root / "site" / "feed" / "bill" / year / f"{bid.lower()}.xml"
+            links = f'/feed/bill/{year}/{bid.lower()}.xml"' in page
+            assert links == fx.exists(), (
+                f"{bid} of {year}: the page "
+                + ("links a feed that was not written"
+                   if links else "has a feed it does not link"))
         r = _run([sys.executable, str(here / "check_site.py"),
                             "--site", "site", "--base", base],
                            cwd=root, capture_output=True, text=True, timeout=120)
@@ -3469,9 +3486,25 @@ def _referral(referrals):
     # Family Law. The expectation moved because the evidence did, and the
     # rule that produced the cautious answer is unchanged.
     assert c("INTRODUCED AND REF TO JUDICIARY & F L") == "Judiciary and Family Law"
-    # Still abbreviated, because the key does not cover these either.
-    assert c("INTRODUCED AND REF TO CORR & CJ") == "Corr and Cj"
-    return "ok", "seven real docket lines, and two that name no committee"
+    # And this one moved on 11 September, for the third time and on the same
+    # rule. The key does not cover "CORR & CJ" either, so it stood as the
+    # clerk's letters on 152 pages -- until a fourth witness was read: the
+    # resolution each House adopts its rules by defines every standing
+    # committee in one sentence, and legislation/1995/HR0001.html names "the
+    # Committee on Corrections and Criminal Justice". referrals._rules_names
+    # reads those, --check counts them as evidence like any other source, and
+    # the same witness settled "Pub Prot" (104 pages) the same day.
+    #
+    # The pattern is the resolution's grammar rather than a name this project
+    # hoped to find, which is what makes it evidence: it turned up 22
+    # committees, most of which nothing here had asked about.
+    assert c("INTRODUCED AND REF TO CORR & CJ") == "Corrections and Criminal Justice"
+    assert c("INTRODUCED AND REF TO PUB PROT") == \
+        "Public Protection and Veterans Affairs"
+    # Still abbreviated: two referrals, and the two candidates on this disk
+    # are different committees, so there is nothing to choose between them.
+    assert c("INTRODUCED AND REF TO PUB INSTIT") == "Pub Instit"
+    return "ok", "nine real docket lines, and two that name no committee"
 
 
 @check("data", "an archived bill's committee came from a source that has one",
@@ -4065,6 +4098,157 @@ def _legislation_fetch(FL):
     finally:
         os.chdir(saved[0])
         FL.urlopen, FL.time.sleep = saved[1], saved[2]
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "the sponsor fetch files an answer under the member it asked for",
+       needs=("fetch_sponsors_by_member",))
+def _sponsor_fetch(S):
+    """A postback is a conversation, and this one can answer about somebody else.
+
+    fetch_legislation had to be taught that a page can be the wrong bill. The
+    same mistake here is worse: byAnyMember.aspx is one address answering
+    about whichever member the session last selected, so an answer arriving
+    for the previous member would file one legislator's whole career under
+    another's name -- and --parse would then report it as fact, with no
+    symptom anywhere. There is no bill number in the answer to check against,
+    only the page's own selected <option> and checked radio, so those are
+    what every answer is checked against before it is written.
+
+    "unverified" is the case that matters most and is the easiest to get
+    wrong: markup that states neither must not be read as agreement. It is
+    saved -- a page that cost a request is never thrown away -- but it is
+    counted apart, and it is the condition a sweep refuses to start on.
+
+    No request leaves here; a fake server stands in, because this address has
+    blocked us twice and the guard cannot be tested against it without being
+    the problem it guards against.
+    """
+    import http.client
+    import urllib.error
+    import refusal
+    root = Path(tempfile.mkdtemp())
+    saved = (os.getcwd(), S.get, S.time.sleep)
+    asked = []
+    try:
+        os.chdir(root)
+        S.time.sleep = lambda s: None
+
+        def answer(mid="100", mode_value="0", *, select=True, radio=True):
+            """One postback's markup: the tokens, the list, the radio pair."""
+            opt = (f'<option value="{mid}" selected="selected">Vartanian, '
+                   'Elsie</option>' if select else
+                   f'<option value="{mid}">Vartanian, Elsie</option>')
+            return (
+                '<input type="hidden" name="__VIEWSTATE" value="fresh" />'
+                '<input type="hidden" name="__EVENTVALIDATION" value="ev" />'
+                '<select name="ctl00$pageBody$lstMembers">' + opt +
+                '<option value="200">Other, Someone</option></select>'
+                '<input type="radio" name="ctl00$pageBody$rdoPrime" '
+                f'value="{mode_value}"' + (' checked="checked"' if radio else '')
+                + ' /><table><tr><td><div class="container"><div class="row">'
+                '<div class="col-sm-2">1989</div>'
+                '<div class="col-sm-2"><a href="billinfo.aspx?sy=1989&amp;'
+                'Pastid=11711989">HB750</a></div>'
+                '<div class="col-sm-2">SIGNED BY GOVERNOR</div>'
+                '<div class="col-sm"><b>title:</b> relative to things.</div>'
+                '</div></div></td></tr></table>')
+
+        def server(answers):
+            def op(url, data=None, timeout=90):
+                asked.append(url)
+                a = answers.pop(0)
+                if isinstance(a, Exception):
+                    raise a
+                return a
+            return op
+
+        # The form's own markup gives up the list and the hidden fields.
+        form_page = answer()
+        assert ("100", "Vartanian, Elsie") in S.members(form_page)
+        assert S.tokens(form_page)["__VIEWSTATE"] == "fresh"
+        assert S.selected_member(form_page) == "100"
+        assert S.checked_mode(form_page) == "0"
+
+        form = {"__VIEWSTATE": "old", "__EVENTVALIDATION": "old"}
+        # The member asked for: saved, and the answer's fresh tokens kept.
+        S.get = server([answer("100", "0")])
+        what, form, _why = S.fetch_member("100", "prime", form, 0)
+        assert what == "saved", what
+        assert S.page_path("100", "prime").exists()
+        assert form["__VIEWSTATE"] == "fresh", "the fresh tokens were dropped"
+        assert S.parse_rows(S.load("100", "prime"))[0]["lsr"] == "1171"
+        # And never asked for twice.
+        n = len(asked)
+        assert S.fetch_member("100", "prime", form, 0)[0] == "cached"
+        assert len(asked) == n, "a cached answer was asked for again"
+
+        # ANOTHER MEMBER'S LIST: not written, under either name.
+        S.get = server([answer("200", "0")])
+        assert S.fetch_member("101", "prime", form, 0)[0] == "wrong member"
+        assert not S.page_path("101", "prime").exists()
+        assert not S.page_path("200", "prime").exists()
+        # The other radio: the co-sponsored list is not the prime one.
+        S.get = server([answer("102", "1")])
+        assert S.fetch_member("102", "prime", form, 0)[0] == "wrong mode"
+        assert not S.page_path("102", "prime").exists()
+        S.get = server([answer("102", "1")])
+        assert S.fetch_member("102", "co", form, 0)[0] == "saved"
+
+        # SAYS NEITHER: saved, counted apart, and the condition a sweep
+        # refuses to start on -- not silently treated as the right member.
+        S.get = server([answer("103", "0", select=False, radio=False)])
+        what, form, why = S.fetch_member("103", "prime", form, 0)
+        assert what == "unverified", what
+        assert S.page_path("103", "prime").exists(), "a paid-for answer was lost"
+        assert "selected member" in why and "checked mode" in why, why
+        assert S.selected_member(S.load("103", "prime")) is None, (
+            "the sweep guard reads this page as checkable when it is not")
+
+        # The refusals, read the one way every fetcher reads them.
+        for a, want in [
+                ("<h1>Web Page Blocked</h1> Attack ID: 1234", "refused"),
+                (urllib.error.HTTPError("u", 403, "no", {}, None), "refused"),
+                (urllib.error.HTTPError("u", 429, "slow", {}, None), "refused"),
+                (urllib.error.HTTPError("u", 503, "busy", {}, None), "refused"),
+                (http.client.RemoteDisconnected("closed"), "dropped"),
+                (urllib.error.URLError(ConnectionResetError(10054, "reset")),
+                 "dropped"),
+                (TimeoutError("read timed out"), "dropped"),
+                (urllib.error.HTTPError("u", 500, "err", {}, None), "stale"),
+                (urllib.error.HTTPError("u", 404, "nf", {}, None), "missing"),
+                ("is neither a DataColumn nor a DataRelation", "error page")]:
+            S.get = server([a])
+            mid = f"9{len(asked)}"
+            got = S.fetch_member(mid, "prime", form, 0)[0]
+            assert got == want, f"{a!r} read as {got}, not {want}"
+            assert not S.page_path(mid, "prime").exists(), (
+                f"a {want} answer was saved as a member's list")
+
+        # A refusal on file stops it before the request, and is left as it is
+        # rather than overwritten with this run's name.
+        refusal.note("somebody else", "a refusal from another run")
+        before, n = refusal.MARK.read_text(encoding="utf-8"), len(asked)
+        assert S.fetch_member("300", "prime", form, 0)[0] == "halted"
+        assert len(asked) == n, "a request went out with a refusal on file"
+        assert refusal.MARK.read_text(encoding="utf-8") == before
+        refusal.MARK.unlink()
+
+        # The lane that holds archive/.lock gone: nothing asked.
+        class Gone:
+            def still(self):
+                return False
+        S.HOLD, n = Gone(), len(asked)
+        assert S.fetch_member("301", "prime", form, 0)[0] == "halted"
+        assert len(asked) == n
+        S.HOLD = None
+        return "ok", ("right member saved once, another member's list and the "
+                      "wrong radio refused, unverified kept apart, block page/"
+                      "403/429/503/reset/timeout stop it")
+    finally:
+        os.chdir(saved[0])
+        S.get, S.time.sleep = saved[1], saved[2]
+        S.HOLD = None
         shutil.rmtree(root, ignore_errors=True)
 
 
