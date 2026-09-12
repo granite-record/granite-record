@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.36 -->
+<!-- GRANITE_VERSION: 2026-09-05.38 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -14,6 +14,19 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600&family=Newsreader:opsz,wght@6..72,400;6..72,600&display=swap" rel="stylesheet">
+<!-- THEMER:HEAD -->
+<script>
+/* BEFORE THE FIRST PAINT, and that is the whole reason this is inline in the
+   head rather than in app.js. app.js loads at the end of the body: by the
+   time it ran, a reader who had chosen dark would have already been shown a
+   white page. Three lines, no dependencies, and wrapped in try/catch because
+   localStorage throws outright in a locked-down browser rather than
+   returning null. Absent or unrecognised means follow the system, which is
+   what the stylesheet does on its own. */
+try{var t=localStorage.getItem("gr-theme");
+if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
+</script>
+<!-- /THEMER:HEAD -->
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
@@ -25,6 +38,9 @@
 <a href="committees.html">Committees</a>
 <a href="learn.html">Learn</a><a href="data.html">Data</a>
       <a href="about.html">About</a>
+<!-- THEMER:BTN -->
+<button class="themer" id="themer" type="button" hidden>Auto</button>
+<!-- /THEMER:BTN -->
 </div></nav>
 <div class="searchrow"><div class="in">
 <div class="qline">
@@ -51,7 +67,11 @@
 <main id="main"><h1 class="sr">New Hampshire bills</h1>
 <p class="count" id="summary"></p><div id="results"></div></main></div>
 
-<footer><div class="in">Built from public records published by the New Hampshire
+<footer><div class="in">
+<p class="fbkwrap"><a class="fbk" href="https://forms.gle/PYw9c3xgpDDwvX7E9" target="_blank"
+ rel="noopener">Tell us what you think</a>
+<span class="fbknote">This site is new and being tested. Two minutes of your feedback is worth more than a week of our guessing.</span></p>
+Built from public records published by the New Hampshire
 General Court. Not affiliated with the General Court.
 <a href="about.html">How this is made</a>.
 <span class="corrections">Found an error?
@@ -72,5 +92,35 @@ this site as CSV, with a manifest naming each column.<span id="built"></span></p
     .toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})+".";
 }).catch(function(){});</script>
 <script src="app.js"></script>
+<!-- THEMER:JS -->
+<script>
+/* The control. Three states and not two: a reader who has picked light or
+   dark should be able to get back to following their system, and a two-state
+   switch strands them. The button names the state it is IN, which is what a
+   reader checking their own setting wants to read.
+   It starts hidden and is revealed here, so a reader with JavaScript off is
+   not shown a control that cannot do anything -- the stylesheet still
+   follows their system, which is the sensible default and needs no script. */
+(function(){
+  var b=document.getElementById("themer"); if(!b) return;
+  var K="gr-theme", MODES=["auto","light","dark"];
+  function stored(){ try{ return localStorage.getItem(K)||"auto"; }catch(e){ return "auto"; } }
+  function apply(v){
+    var r=document.documentElement;
+    if(v==="auto"){ delete r.dataset.theme; } else { r.dataset.theme=v; }
+    b.textContent=v.charAt(0).toUpperCase()+v.slice(1);
+    b.setAttribute("aria-label","Colour theme: "
+      +(v==="auto"?"following your system":v)+". Activate to change it.");
+  }
+  var cur=stored(); if(MODES.indexOf(cur)<0) cur="auto";
+  b.hidden=false; apply(cur);
+  b.addEventListener("click",function(){
+    cur=MODES[(MODES.indexOf(cur)+1)%MODES.length];
+    try{ localStorage.setItem(K,cur); }catch(e){}
+    apply(cur);
+  });
+})();
+</script>
+<!-- /THEMER:JS -->
 </body>
 </html>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.132
+# GRANITE_VERSION: 2026-09-04.133
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1160,11 +1160,18 @@ def _palette():
         if which == "light":
             block = head[i:shut + 1]
         else:
-            rest = head[shut + 1:]
-            j = rest.find(":root{")
-            if j < 0:
+            # BY MARKER, NOT BY THE SECOND ":root{". There are two dark blocks
+            # now -- one behind the media query for the system preference and
+            # one behind [data-theme="dark"] for the reader's own choice --
+            # and neither selector is a bare ":root{" any more, so the old
+            # search found nothing and would have reported a complete palette
+            # as having no dark half at all.
+            tag = {"dark": "/* DARK:OS", "dark2": "/* DARK:CHOSEN"}[which]
+            k = head.find(tag)
+            if k < 0:
                 return {}
-            block = rest[j:rest.index("}", j) + 1]
+            block = head[k:head.find("/* DARK:", k + len(tag))
+                         if head.find("/* DARK:", k + len(tag)) > 0 else len(head)]
         # Keyed WITHOUT the leading "--", because that is how the pairs
         # below name them and a dict keyed the other way silently matches
         # nothing while every assertion still runs.
@@ -1199,6 +1206,23 @@ def _palette():
 
     # EVERY COLOUR, IN BOTH. A token defined once is the light value showing
     # through on the dark page.
+    # THE TWO DARK BLOCKS MUST BE THE SAME TOKENS. They are the same values
+    # written twice because CSS cannot put one declaration block behind both a
+    # media query and a selector; app.css says why at length. This is what
+    # makes the duplication safe: drift is a failed build, not a page that is
+    # the wrong colour by one route and right by the other.
+    dark2 = root_of(text, "dark2")
+    assert dark2, ("app.css has no /* DARK:CHOSEN */ block. The theme control "
+                   "in the nav sets [data-theme] and needs one.")
+    drift2 = sorted(k for k in set(dark) | set(dark2)
+                    if dark.get(k, "").lower() != dark2.get(k, "").lower())
+    assert not drift2, (
+        "the two dark blocks disagree about "
+        + ", ".join("--" + k for k in drift2[:4])
+        + ". DARK:OS serves the system preference and DARK:CHOSEN the "
+          "reader's own choice; they are the same palette and must stay "
+          "identical.")
+
     missing = sorted(set(tok) - set(dark))
     assert not missing, (
         "the dark palette does not redefine " + ", ".join("--" + m for m in missing)

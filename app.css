@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.55 */
+/* GRANITE_VERSION: 2026-09-07.57 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -117,8 +117,12 @@ color-scheme:light}
    Granite, still. Not a tinted near-black with one accent: the ground is a
    cool grey with the blue left in it, and pine is the same colour lifted to
    where it can be read, rather than swapped for a brighter hue. */
+/* DARK:OS -- what the reader's system asks for.
+   :not([data-theme="light"]) so that an explicit choice of light beats the
+   system preference; without it a reader on a dark phone who picked light
+   would still be served dark. */
 @media (prefers-color-scheme: dark){
-:root{
+:root:not([data-theme="light"]){
 --paper:#171B1C;--surface:#272D2E;--wash:#31383A;
 --on-pine:#0F1414;          /* 8.76:1 on pine */
 --shadow:rgba(0,0,0,.5);
@@ -142,9 +146,80 @@ color-scheme:light}
 --brick:#E4877E;
 color-scheme:dark}
 }
+/* DARK:CHOSEN -- what the reader picked with the control in the nav, which
+   must win over the system in either direction.
+
+   THESE TWO BLOCKS ARE THE SAME TOKENS TWICE, which is a real cost that was
+   weighed rather than missed. CSS cannot put one declaration block behind
+   both a media query and a selector, and every alternative was worse: naming
+   each dark value again as --d-paper and mapping it duplicates the same
+   number of lines; light-dark() does it once and is too new to bet a palette
+   on, because a browser that does not know the function gets NOTHING for
+   those tokens rather than a fallback. So they are duplicated, and preflight
+   fails if the two ever stop being identical -- drift becomes a failed build
+   rather than a page that is subtly the wrong colour by one of the two routes
+   to it. */
+:root[data-theme="dark"]{
+--paper:#171B1C;--surface:#272D2E;--wash:#31383A;
+--on-pine:#0F1414;          /* 8.76:1 on pine */
+--shadow:rgba(0,0,0,.5);
+--ink:#E6E9E8;--ink-2:#A7B0B0;
+--rule:#3D4547;             /* 1.43:1 on a card; light ships 1.42:1 */
+--rule-2:#525C5D;           /* 2.03:1 on a card; light ships 1.99:1 */
+--edge:#7C8687;             /* 3.74:1 on a card, 4.64:1 on the page */
+--pine:#79BFB2;--pine-soft:#1E3B38;
+--st-active:#E3C46A;--st-active-bg:#3A3116;
+--st-law:#7FCB9C;--st-law-bg:#1C3A28;
+--st-done:#F0938C;--st-done-bg:#43211F;
+--st-study:#EDAE6E;--st-study-bg:#402C14;
+--st-veto:#EE9BA8;--st-veto-bg:#41222A;
+--wait:#E0BE7C;--wait-bg:#3A3116;
+--rep:#E88E86;--dem:#8FB4E8;--ind:#B9A9E0;
+--rep-soft:#3B2422;--dem-soft:#22304A;--ind-soft:#2E2842;
+/* Kept at clearly different lightness as well as different hue, which is
+   the reason the light pair gives: the ring still reads for a reader who
+   cannot separate the two by hue. */
+--yes:#79C9A4;--no:#E4877E;
+--brick:#E4877E;
+color-scheme:dark}
 /* PALETTE END -- build_pages.py reads everything above this line. */
 
 /* SHARED:START ------------------------------------------------------------
+
+   THE THEME CONTROL, which both stylesheets need because it is in the nav
+   and the nav is on every page. It sits last in the nav row and is pushed to
+   the end, so it reads as a setting rather than as an eighth section of the
+   site. Sized as a real tap target on a phone like every other nav item. */
+/* THE FEEDBACK BUTTON, first thing in the footer because it is being asked
+   for rather than offered: the site is in front of its first testers and a
+   form they cannot find is a form nobody fills in. A solid pine block, which
+   is the one shape on this site that means "do this" -- the same treatment as
+   the home page's Search button, and the only one in the footer, so it does
+   not compete with the correction address beneath it. */
+.fbkwrap{margin:0 0 14px;display:flex;gap:12px;align-items:baseline;
+flex-wrap:wrap}
+.fbk{display:inline-block;background:var(--pine);color:var(--on-pine);
+font-size:14px;font-weight:600;text-decoration:none;
+padding:8px 16px;border-radius:var(--r-out);flex:0 0 auto;min-height:38px;
+line-height:22px}
+.fbk:hover{text-decoration:underline}
+.fbknote{font-size:14px;color:var(--ink-2);min-width:0;flex:1 1 260px}
+@media (max-width:620px){
+  .fbk{min-height:44px;line-height:28px}
+  .fbknote{flex:1 1 100%}
+}
+.themer{margin-left:auto;font-size:14px;color:var(--ink-2);
+border:1px solid var(--edge);border-radius:var(--r-in);
+padding:3px 11px;background:var(--surface);cursor:pointer;
+font-variant-numeric:tabular-nums;flex:0 0 auto}
+.themer:hover{border-color:var(--pine);color:var(--pine);background:var(--paper)}
+@media (max-width:720px){
+  /* The nav wraps to two rows on a phone and margin-left:auto on a wrapped
+     flex item pushes it to the end of ITS row, which left the control alone
+     on a line of its own. Left alone it just follows the last link. */
+  .themer{margin-left:0;min-height:44px}
+}
+/* ------------------------------------------------------------------------
    Rules that BOTH stylesheets need, copied into style.css by build_pages.py
    the way the palette is. The homepage is built by build_pages.py and loads
    style.css; the committee pages are rendered by app.js and load this file;

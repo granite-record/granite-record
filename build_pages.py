@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.44
+# GRANITE_VERSION: 2026-09-04.47
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -47,6 +47,26 @@ def palette(src="app.css"):
     text = Path(src).read_text(encoding="utf-8")
     i = text.index(":root{")
     return text[i:text.index("/* PALETTE END")].rstrip()
+
+
+
+def themer(part, src="bills.html"):
+    """One piece of the theme control, read out of bills.html.
+
+    READ, NOT COPIED, for the same reason palette() reads app.css. bills.html
+    is the template every record page is built from, so the control has to
+    live there; these four pages are built here instead and need the same
+    three pieces. A second copy would be two controls that drift, and the
+    drift would show as the toggle working on a bill and not on the home page.
+
+    part is "HEAD" (the pre-paint script), "BTN" (the nav button) or "JS"
+    (the handler). A missing marker raises rather than quietly emitting a page
+    with no control on it.
+    """
+    text = Path(src).read_text(encoding="utf-8")
+    a = text.index(f"<!-- THEMER:{part} -->")
+    b = text.index(f"<!-- /THEMER:{part} -->")
+    return text[a:b].split("-->", 1)[1].strip()
 
 
 def shared(src="app.css"):
@@ -549,6 +569,9 @@ def shell(title, current, body, wide=False, script="", desc="",
                         ("about.html", "About")):
         cur = ' aria-current="page"' if href == current else ""
         nav.append(f'<a href="{href}"{cur}>{label}</a>')
+    # The same control bills.html carries, read from there rather than
+    # written again here.
+    nav.append(themer("BTN"))
     STYLE_Q = style_query()
     # THE PAGES A SEARCH ENGINE REACHES FIRST HAD THE LEAST IN THEIR HEAD.
     # Every one of the 33,683 bill pages carries a description, a canonical
@@ -570,7 +593,7 @@ def shell(title, current, body, wide=False, script="", desc="",
                 f'<meta name="twitter:card" content="summary">') if desc else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title>{HEAD_SEO}{FONTS}<link rel="stylesheet" href="style.css{STYLE_Q}">
+<title>{title}</title>{HEAD_SEO}{FONTS}{themer("HEAD")}<link rel="stylesheet" href="style.css{STYLE_Q}">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — all activity"
  href="/feed/all.xml">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — upcoming hearings"
@@ -578,7 +601,11 @@ def shell(title, current, body, wide=False, script="", desc="",
 <a class="skip" href="#main">Skip to the content</a>\n<nav class="top"><div class="in"><span class="brand">Granite Record</span>
 {''.join(nav)}</div></nav>
 <main class="wrap{' wide' if wide else ''}" id="main">{body}</main>
-<footer><div class="in">Built from public records published by the New Hampshire
+<footer><div class="in">
+<p class="fbkwrap"><a class="fbk" href="https://forms.gle/PYw9c3xgpDDwvX7E9" target="_blank"
+ rel="noopener">Tell us what you think</a>
+<span class="fbknote">This site is new and being tested. Two minutes of your feedback is worth more than a week of our guessing.</span></p>
+Built from public records published by the New Hampshire
 General Court. Not affiliated with the General Court.
 <a href="about.html">How this is made</a>.
 <span class="corrections">Found an error?
@@ -586,6 +613,7 @@ General Court. Not affiliated with the General Court.
 </span>
 <p class="footdata">{FOOT_DATA}<span id="built"></span></p>
 </div></footer>{FOOT_JS}
+{themer("JS")}
 {script}</body></html>"""
 
 
@@ -1521,7 +1549,14 @@ next two weeks, in time to attend or sign in.</li>
 one per committee and one per subject.</p>"""
     (out / "index.html").write_text(
         shell("Granite Record \u2014 the New Hampshire legislative record",
-              "index.html", home_body, script=HOME_JS,
+              # THE FULL PAGE WIDTH, which is what "offset to the left"
+              # was. .wrap is 820px aligned to the nav's own gutter, so on a
+              # 1440px screen the home page was an 820px column with 360px of
+              # empty ground to the right of it -- aligned, and unbalanced.
+              # wide=True makes it the 1180px the nav and every record page
+              # already use, so the stat grid and the three entry cards fill
+              # the width instead of stopping two thirds across.
+              "index.html", home_body, script=HOME_JS, wide=True,
               desc="Every bill, vote, hearing and floor debate of the New "
                    "Hampshire General Court, linked to the moment in the "
                    "recording where it happened."),
