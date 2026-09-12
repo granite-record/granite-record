@@ -316,6 +316,125 @@ every 800px laptop for no reason. Measuring it took one function call.
 
 ---
 
+## The front page, in three columns
+
+Asked for in one sentence: "three columns, center column, upper left status
+banner, below the status banner is the coming up sessions readout, on the top
+right side should be a town and legislator search bar, and below that the most
+recent house and senate sessions stacked on top of each other."
+
+So: **left** is where the General Court is and what is coming up; **middle**
+is the site itself — its name, its search box, its five numbers and the three
+ways in; **right** is finding your own legislators and the two chambers' last
+floor sessions. Latest activity, the composition charts and the feeds sit
+below all three at full width.
+
+Only above **1180px**, which is where the 1180px column can give 300 and 290
+to the sides and still leave the middle the widest of the three. Below that
+the page is the single column it has always been, in document order.
+
+**The middle column is written first in the markup**, and the grid places it
+second. A reader on a screen reader should meet the page's own name and its
+search box before a fortnight of hearings, and a reader on a keyboard should
+not have to tab past the calendar to reach the search field. The cost is that
+the second tab stop is the left column rather than where the eye starts. Each
+column is a labelled region and self-contained, so that reads as three panels
+in an order — which is what they are. Burying the h1 under the calendar to
+make the tab order left-to-right would be the worse trade, and it is worth
+saying out loud that this is a trade rather than a solution.
+
+The columns are 1130, 790 and 680 tall, because a fortnight of hearings is
+longer than a search box. They end ragged, which is what columns do; the rule
+under them says the columns have ended and a full-width band has begun, so
+the 340px of white to the right of the calendar reads as layout rather than
+as something that failed to load.
+
+### The finder is a form, not a script
+
+The box top right is two plain `<form method="get" action="legislators.html">`
+rows, which produce exactly the `?town=` and `?q=` the legislators page now
+reads. It works with JavaScript off, the browser remembers what was typed,
+and the Enter key needs no handler. The type-ahead over all 259 towns stays
+on the legislators page, where the data it needs is already being fetched.
+
+An exact town name opens that town; anything else is left in the box as a
+filter and the ranked list does the rest, because "Hampton" is three real
+towns and choosing one for the reader would be a guess. The town has to be
+set *before* the list is drawn — `list()` is what marks the chosen row — and
+getting that order wrong the first time left Dover's seats on the page with
+nothing in the list looking chosen.
+
+### Two things the measurement found
+
+**"2,303,047" was being clipped.** `.statgrid` was `auto-fit` with a 120px
+floor and `overflow: hidden`, and the number is 132px of 24px type: in a
+143px cell with 32px of padding it did not fit, so on a 768px screen the last
+stat read "2,303,0". It is now flex-wrap with a **164px** floor, measured,
+which also fixes what grid does with a wrapped row — five cells in a
+four-column grid leave one cell of content and three of bare `--rule`
+background, a hole. Flex items grow into the space, so the last row is always
+full at every width. The entry cards had the same fault and the same fix.
+
+**Placeholder text was 3.04:1 in dark.** Nothing in either stylesheet had
+ever set a `::placeholder` colour, so every search box on the site rendered
+its instruction in the browser's own `#757575`: 4.61:1 on white, and 3.04:1
+on the dark card. It is text, it is the only instruction those boxes carry,
+and it had been below the line on every page for as long as dark mode
+existed. `--ink-2` is 7.74:1 and 6.32:1, and `preflight` now names the rule
+that has to exist, because a colour a browser picks is invisible to a check
+that reads the tokens this file declares.
+
+A note on measuring text, since it wasted twenty minutes: a canvas in the
+*harness* page measured "Name or committee" at 145px in a 151px box, and it
+was clipped on screen anyway — the harness does not load Public Sans, so
+`measureText` had been using a narrower fallback. The reliable way is to make
+the element measure itself: put the placeholder in as the field's `value` and
+read `scrollWidth - clientWidth`, which uses the same font, kerning and
+padding the placeholder will.
+
+---
+
+## A level is not a size
+
+Three sets of pages skipped a heading level, and all three did it for the same
+reason: the level had been chosen to get the right *look*.
+
+`app.css` styled its section headings as `.stg h3`, `.bttext h3`, `.mlist h3`,
+`.facts h3`, `.rephead h3` — so every section of every tab on a record page
+was written at level 3, because that is what the stylesheet drew. A bill page
+went from its hidden `h1` to an `h3` with no level 2 anywhere on it, across
+sixteen sections. The civics pages did the same one level down: the flow
+diagram's phase names were `h3` wherever the diagram sat, and the hub's "If
+you read one" was an `h4` because that is what the label looked like.
+
+The fix is to separate the two. Those selectors are now `:is(h2,h3)`, which
+has the same specificity as the bare type selector, so a heading can move up
+a level without moving a pixel; `flow_diagram` takes the level it is written
+at, because that depends on where the diagram sits and not on the diagram.
+Where a component is used at two depths — the `.shows` box is the first thing
+after the hub's `h1` and sits under a section on a topic page — the rule
+matches both and the level follows the page.
+
+Measured rather than looked at: every heading on two bill pages and a
+committee page was captured before and after with its tag, class, text,
+font-size, weight, colour, transform, letter-spacing and margins. **38
+headings moved from `h3` to `h2` and not one of the other properties changed
+on any of them.** The same capture is what proved the first attempt was
+meaningless: the record pages in `site/` still asked for the previous
+`app.js?v=`, so the browser served what it already had and the comparison
+came back identical because *nothing had been reloaded*. A cached asset does
+not announce itself.
+
+Two things are deliberately still at `h3`. "The bill" and "How it got here"
+sit inside the `.btsec` section that now carries the `h2`, which is correct
+nesting. The member lists inside a roll call's expansion have no section
+heading to sit under, because the Votes pane gives each vote a `<section>`
+and no heading — fixing that means giving every vote's question a heading,
+which is a markup change to that pane rather than a level change, and it is
+recorded here instead of half-done.
+
+---
+
 ## Diagrams
 
 The first one is on *How a bill becomes law*, and it is **not an image**. It

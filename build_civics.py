@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.9
+# GRANITE_VERSION: 2026-09-08.10
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -91,7 +91,7 @@ def hub(topics):
            # THE ONE PAGE MOST PEOPLE WANT. Eleven equal items in a list made
            # the reader choose before they knew what they were choosing
            # between, and nine times in ten the answer is the same page.
-           '<div class="shows"><h4>If you read one</h4>'
+           '<div class="shows"><h2>If you read one</h2>'
            '<p><a href="learn/how-a-bill-becomes-law.html">How a bill becomes '
            'law</a> &mdash; the course a bill runs, the stages it can die at, '
            'and two bills of 2024 followed all the way through with the '

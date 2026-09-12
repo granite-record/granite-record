@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.58 */
+/* GRANITE_VERSION: 2026-09-07.64 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -208,6 +208,17 @@ line-height:22px}
   .fbk{min-height:44px;line-height:28px}
   .fbknote{flex:1 1 100%}
 }
+/* PLACEHOLDER TEXT IS TEXT, and no rule in either stylesheet had ever given
+   it a colour -- so it was the browser's own #757575 everywhere: 4.61:1 on
+   white, which passes, and 3.04:1 on the dark card, which does not. On this
+   site the placeholder carries the instruction rather than decoration ("Bill
+   number, or words from the title", "Name or committee"), and every
+   search box on every page uses one. --ink-2 is 7.74:1 in light and 6.32:1
+   in dark, and stays clearly quieter than the --ink a typed value gets.
+   opacity:1 because Firefox dims the placeholder on top of whatever colour
+   it is handed. Found by measuring the computed ::placeholder colour rather
+   than by looking: grey on grey at 3:1 looks deliberate. */
+::placeholder{color:var(--ink-2);opacity:1}
 /* THE HEADER TABS. Seven sections, and until now the only thing that said
    which one you were on was a 2px pine rule under a 14px grey word -- at a
    glance indistinguishable from the six beside it. On a phone it was worse:
@@ -324,9 +335,15 @@ flex:0 0 auto}
 .calbills li{display:flex;gap:12px;align-items:baseline;padding:8px 0;
 border-bottom:1px solid var(--rule);font-size:14px}
 .calbills li:last-child{border-bottom:0}
-.calbills .cbn{flex:0 0 88px;font-weight:600;font-variant-numeric:tabular-nums}
+/* 22px TALL: the row is 38px but the link was only its own line box, which
+   is 2px under the 24px minimum for a pointer target. The padding goes on the
+   link, not the row -- the row is already spaced. */
+.calbills .cbn{flex:0 0 88px;font-weight:600;font-variant-numeric:tabular-nums;
+display:inline-block;padding:3px 0}
 .calbills .cbt{color:var(--ink-2);line-height:1.45}
 .calmore{margin:11px 0 0;font-size:14px;display:flex;gap:16px;flex-wrap:wrap}
+/* The same 22px the bill numbers above them had. */
+.calmore a{display:inline-block;padding:3px 0}
 /* Said once, under the meetings, rather than on each of them. */
 .cal > .note{margin-top:14px}
 @media (max-width:720px){
@@ -596,7 +613,7 @@ text-align:left;border-bottom:1px solid var(--rule)}
 .otherhd{display:flex;font-size:12px;font-weight:600;color:var(--ink-2);padding:0 0 5px}
 .otherhd .c{margin-left:auto;font-weight:400;font-style:italic}
 .mlist{margin-top:12px;border-top:1px solid var(--rule);padding-top:11px}
-.mlist h3{margin-top:14px}
+.mlist :is(h2,h3){margin-top:14px}
 /* 250px, not 228: names now carry an honorific and a party letter. */
 .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:1px 18px}
 .m{font-size:14px;padding:2px 0}.m .p{color:var(--ink-2)}
@@ -613,7 +630,7 @@ border-bottom:1px solid var(--rule);vertical-align:top}
 table.votes th{font-weight:600;color:var(--ink-2);font-size:12px;
 letter-spacing:.04em;text-transform:uppercase}
 .full{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:22px}
-.full h3{font-size:14px;margin:0 0 8px;font-weight:600}
+.full :is(h2,h3){font-size:14px;margin:0 0 8px;font-weight:600}
 /* EVERY BLOCK IN THE PANE, NOT THE ONES I HAPPENED TO NAME.
    This is the fourth go at the same complaint, and it kept coming back
    because each attempt capped a list of selectors and the list was never the
@@ -749,11 +766,18 @@ font-variant-numeric:tabular-nums;color:var(--pine);background:var(--paper)}
    not each have their own idea of what a heading looks like: the reader learns
    the shape once. Capitals and letter-spacing at a small size read as a label
    rather than as a sentence, which is what these are. */
-.stg h3,.btan h3,.bttext h3,.spgrp,.mlist h3,.amdsec{
+/* h2 OR h3 ON EVERY ONE OF THESE. The level says where a section sits in
+   the page's outline and the class says what it looks like, and writing them
+   as `.stg h3` tied the two together: every section of every tab was level 3
+   because that is what this rule styled, so a record page went from its
+   hidden h1 to an h3 with no level 2 anywhere on it. Now a heading can move
+   up a level without moving a pixel. */
+.stg :is(h2,h3),.btan :is(h2,h3),.bttext :is(h2,h3),.spgrp,
+.mlist :is(h2,h3),.amdsec{
 font-size:14px;font-weight:600;color:var(--ink-2);letter-spacing:.05em;
 text-transform:uppercase;margin:0 0 7px;padding-bottom:6px;
 border-bottom:1px solid var(--rule)}
-.spgrp span,.mlist h3 span{font-weight:400;letter-spacing:0;text-transform:none;
+.spgrp span,.mlist :is(h2,h3) span{font-weight:400;letter-spacing:0;text-transform:none;
 font-size:14px;color:var(--ink-2)}
 .story .stg{margin-top:22px}
 .story .stg:first-child{margin-top:2px}
@@ -867,7 +891,7 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 6px}
 color:var(--ink-2);margin:0 0 8px}
 /* Whose report this is, as a heading rather than as small print. */
 .rephead{border-top:1px solid var(--rule);padding-top:13px;margin-bottom:10px}
-.rephead h3{font-size:12px;font-weight:600;letter-spacing:.05em;
+.rephead :is(h2,h3){font-size:12px;font-weight:600;letter-spacing:.05em;
 text-transform:uppercase;color:var(--ink-2);margin:0 0 5px}
 .repmeta{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
 .antext{font-family:var(--serif);font-size:16px;line-height:1.65;max-width:var(--measure)}
@@ -1044,7 +1068,11 @@ text-align:center;color:var(--ink-2);font-size:14px}
   .cmeta,.note,.qhint,.cite,.tolnote,.vbox p,.stn .w,.tnote,.corrections{font-size:14px}
   .m{font-size:14px}
   .fopt{padding:6px 0}
-  button,.hit,summary,.detail{min-height:44px}
+  /* .btn and .backto are links drawn as controls -- "Email the 13 members of
+     this committee", "Back to bill search" -- and were 33 and 36px on a phone
+     because this list names elements and two classes. A control is a control
+     whichever tag it is. */
+  button,.hit,summary,.detail,.btn,.backto{min-height:44px}
   .jump{min-height:36px;padding:6px 10px}
 }
 @media (max-width: 420px){
@@ -1126,7 +1154,7 @@ clip:rect(0 0 0 0);white-space:nowrap;border:0}
    table. */
 .facts{background:var(--surface);border:1px solid var(--rule-2);
 border-radius:var(--r-out);padding:13px 15px}
-.facts h3{font-size:12px;font-weight:600;color:var(--ink-2);letter-spacing:.05em;
+.facts :is(h2,h3){font-size:12px;font-weight:600;color:var(--ink-2);letter-spacing:.05em;
 text-transform:uppercase;margin:0 0 8px}
 .facttab{width:100%;border-collapse:collapse;font-size:14px;margin:0}
 .facttab th,.facttab td{padding:7px 0;border-bottom:1px solid var(--rule);
@@ -1220,7 +1248,7 @@ background:var(--paper)}
 
 /* One sitting day of a committee. */
 .cday{margin:0 0 22px;padding:0 0 16px;border-bottom:1px solid var(--rule)}
-.cday h3{font-size:14px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+.cday :is(h2,h3){font-size:14px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
 color:var(--ink-2);margin:0 0 6px}
 .cnarr{font-size:16px;line-height:1.65;margin:0 0 10px;max-width:var(--measure)}
 /* The bill's title inside a committee day. NOT .ctitle: that is the card
@@ -1298,6 +1326,10 @@ border-bottom:1px solid var(--rule);font-size:14px;line-height:1.55}
 .offseat{display:block;color:var(--ink-2);font-size:12px;margin-top:2px}
 .offhow{display:flex;flex-wrap:wrap;gap:2px 14px;
 color:var(--ink-2);font-variant-numeric:tabular-nums}
+/* Same 22px as the calendar's bill numbers: an email address is the one thing
+   on a town page somebody actually taps, and it was the smallest target on
+   it. */
+.offhow a{display:inline-block;padding:3px 0}
 .offhow .offtel{white-space:nowrap}
 @media (max-width:620px){
   /* One column: 290px of name and a column of contact beside it does not fit
@@ -1407,7 +1439,11 @@ color:var(--st-active);margin-top:5px}
    living here rather than being a link to somebody else's explainer. */
 .shows{border-left:3px solid var(--pine);background:var(--pine-soft);
 padding:12px 15px;margin:0 0 16px;border-radius:0 var(--r-in) var(--r-in) 0}
-.shows h4{font-family:var(--sans);font-size:12px;font-weight:600;
+/* h2 OR h3, because the box is used at two depths: the hub's "If you read
+   one" is the first thing after that page's h1, and a topic page's "In the
+   record" sits under a section heading. The label looks the same either way
+   -- the level is about the outline, not about the type. */
+.shows :is(h2,h3){font-family:var(--sans);font-size:12px;font-weight:600;
 letter-spacing:.05em;text-transform:uppercase;color:var(--pine);margin:0 0 6px}
 .shows p{margin:0 0 8px;font-size:15px}
 .shows p:last-child{margin-bottom:0}
@@ -1448,7 +1484,15 @@ border-radius:var(--r-out);padding:10px 14px;background:var(--surface)}
 text-transform:uppercase;color:var(--ink-2)}
 .tnav b{display:block;font-size:16px;color:var(--pine);margin-top:2px}
 .tnav .prev b{color:var(--ink)}
-.tnav .all{align-self:center;font-size:14px;color:var(--ink-2)}
+/* 22px TALL, BESIDE TWO 58px CARDS. LAUNCH.md 7.3 recorded it and left it;
+   it is the third item in a row of three and the only one that was not a
+   target. Stretched to the row's height with padding of its own it is the
+   same quiet link, and the same 44px minimum every other link on the site
+   gets on a phone. */
+.tnav .all{align-self:stretch;display:flex;align-items:center;
+font-size:14px;color:var(--ink-2);padding:10px 13px;min-height:44px;
+border-radius:var(--r-in)}
+.tnav .all:hover{background:var(--wash);color:var(--ink)}
 @media(max-width:520px){.tnav .next,.tnav .prev{flex:1 1 100%}}
 
 /* The committees index: a way into the 56 pages that nothing linked to. */

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.48
+# GRANITE_VERSION: 2026-09-04.50
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -152,15 +152,30 @@ display:inline-block;margin:0 5px 5px 0}
 .mem{padding:4px 0;font-size:14px}
 .count{font-size:14px;color:var(--ink-2);margin:10px 0}
 .hit{display:block;width:100%;text-align:left;padding:12px 2px;border-bottom:1px solid var(--rule);cursor:pointer}
-.entry{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:20px 0 30px}
+/* Flex, for the reason .statgrid is: in a 482px column auto-fit makes two
+   columns and the third card took half of row two, floating beside nothing.
+   A flex item grows into the row it lands in. */
+.entry{display:flex;flex-wrap:wrap;gap:12px;margin:20px 0 30px}
+.entry > a{flex:1 1 210px;min-width:0}
 .entry a{display:block;background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-out);
 padding:15px 17px;text-decoration:none;color:inherit}
 .entry a:hover{border-color:var(--pine)}
 .entry b{display:block;font-size:16px;margin-bottom:3px;color:var(--pine)}
 .entry span{font-size:14px;color:var(--ink-2)}
-.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:1px;
+/* FLEX, NOT GRID, AND THE FLOOR IS MEASURED. Two faults, one cause: the
+   row was auto-fit with a 120px floor, and "2,303,047" is 132px of 24px
+   type. In a 143px cell with 32px of padding it did not fit, and because
+   this box clips (overflow:hidden, which is what keeps the corners round)
+   the last stat on a 768px screen read "2,303,0". 164px is the number plus
+   its padding, measured in the browser.
+   The second fault is what grid does with a wrapped row: five cells in a
+   four-column grid leave one cell of content and three cells of bare
+   --rule background, which reads as a hole in the box rather than as a
+   row. Flex items grow into the space instead, so the last row is always
+   full whatever the width. */
+.statgrid{display:flex;flex-wrap:wrap;gap:1px;
 background:var(--rule);border:1px solid var(--rule);border-radius:var(--r-out);overflow:hidden;margin:12px 0 30px}
-.stat{background:var(--surface);padding:14px 16px}
+.stat{background:var(--surface);padding:14px 16px;flex:1 1 164px;min-width:0}
 .stat b{display:block;font-size:24px;font-weight:600}
 .stat span{font-size:14px;color:var(--ink-2)}
 .searchbig{display:flex;gap:8px;margin:18px 0 4px}
@@ -286,6 +301,74 @@ footer .in{max-width:var(--measure);margin:0;padding:0 24px}
   footer{padding-left:0;padding-right:0}
   footer .in{padding-left:14px;padding-right:14px}
 }
+/* ---- THE FRONT PAGE AS THREE COLUMNS ----------------------------------
+   Asked for in those words: the status banner top left, what is coming up
+   below it, a town and legislator search top right, and the two chambers'
+   most recent floor sessions stacked beneath that. The middle is the site
+   itself -- its name, its search box, its numbers and the three ways in.
+
+   Only above 1180px, which is where the 1180px column can hold 300 + 290 of
+   side and still leave the middle the widest of the three. Below it the page
+   is the single column it has always been, in document order.
+
+   .hmid IS FIRST IN THE MARKUP and sits in the middle column. A reader on a
+   screen reader should meet the page's own name and its search box before a
+   fortnight of hearings, and a reader on a keyboard should not have to pass
+   the calendar to reach the search. The cost is that the second tab stop is
+   the left column rather than where the eye starts; each column is a labelled
+   region and self-contained, so that reads as three panels in an order, which
+   is what they are. Burying the h1 under the calendar to make the tab order
+   left-to-right would be the worse trade.                                 */
+@media (min-width:1180px){
+  .hcols{display:grid;gap:0 30px;align-items:start;
+    grid-template-columns:minmax(0,300px) minmax(0,1fr) minmax(0,290px);
+    grid-template-areas:"left mid right"}
+  .hmid{grid-area:mid;min-width:0}
+  .hleft{grid-area:left;min-width:0}
+  .hright{grid-area:right;min-width:0}
+  /* A column heading is a label at this width, not a 16px heading floating
+     over a 290px panel -- the same small caps the composition block, the
+     calendar's dates and the legislator finder already use. */
+  .hside h2{font-size:12px;font-weight:600;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--ink-2);margin:0 0 9px}
+  .hside > :first-child{margin-top:0}
+  .hside .cal{margin-top:0}
+  /* Stacked, not side by side. .twoup's own floor is minmax(280px,1fr),
+     which in a 290px column is one column anyway -- this says so rather
+     than relying on it, because the ask was explicit. */
+  .hright .twoup{grid-template-columns:1fr}
+  /* Three numbers across a 482px column rather than two, which needs one
+     step down the type scale: 20px puts "2,303,047" at 110px, and 134px of
+     basis carries it with its padding. The middle column is the widest of
+     the three but it is not the whole page any more. */
+  .hmid .stat{flex-basis:134px;padding:13px 12px}
+  .hmid .stat b{font-size:20px}
+  .hmid h1{font-size:30px}
+  /* The three columns are 1130, 790 and 680 tall, because a fortnight of
+     hearings is longer than a search box. A rule under them reads as "the
+     columns end here", which is better than leaving 340px of white looking
+     like something failed to load. */
+  #recent{border-top:1px solid var(--rule);padding-top:6px}
+}
+/* THE FINDER ON THE RIGHT IS A FORM, not a script: method="get" on
+   legislators.html produces exactly the ?town= and ?q= those two boxes read,
+   so it works with JavaScript off, the browser remembers what was typed, and
+   the Enter key needs no handler. The type-ahead with all 259 towns stays on
+   the legislators page, where the data it needs is already being fetched. */
+.hfind{background:var(--surface);border:1px solid var(--rule-2);
+  border-radius:var(--r-out);padding:14px 12px;margin:0 0 22px}
+.hfind h2{margin:0 0 5px;font-size:12px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--ink-2)}
+.hfnote{font-size:14px;color:var(--ink-2);margin:0 0 11px}
+.hfrow{display:flex;gap:6px;margin:0 0 8px}
+.hfrow:last-child{margin-bottom:0}
+.hfrow input{flex:1 1 auto;min-width:0}
+/* One width for both, or the two inputs beside them end up different
+   lengths and the panel reads as two unrelated boxes. */
+.hfrow button{flex:0 0 auto;background:var(--wash);color:var(--ink);
+  border:1px solid var(--edge);border-radius:var(--r-in);padding:0 8px;
+  font-size:14px;min-height:42px;min-width:62px}
+.hfrow button:hover{border-color:var(--pine);color:var(--pine)}
 /* ---- narrow screens ---------------------------------------------------
    Most people arrive from a search result on a phone. Three things break at
    380px, and each is fixed by reflowing rather than by horizontal scrolling,
@@ -328,12 +411,12 @@ footer .in{max-width:var(--measure);margin:0;padding:0 24px}
   .pbar .jump{font-size:12px}
   .twoup{grid-template-columns:1fr}
   .entry{grid-template-columns:1fr}
-  .statgrid{grid-template-columns:1fr 1fr}
+  .stat{flex-basis:45%}
   .note,.cite,footer,.corrections{font-size:14px}
   button,.hit,summary{min-height:44px}
 }
 @media (max-width: 420px){
-  .statgrid{grid-template-columns:1fr}
+  .stat{flex-basis:100%}
   .plegend{gap:8px;font-size:12px}
 }
 
@@ -850,7 +933,13 @@ fetch(DATA("legislators.json")).then(r=>r.json()).then(d=>{
   L=d.map(m=>({...m,hay:[m.name,m.party,m.county,"district "+m.district,
     m.title||"",(m.committees||[]).join(" "),
     (m.towns||[]).join(" ")].join(" ").toLowerCase()}));
-  document.getElementById("q").disabled=false; render();});
+  /* ?q= arrives from the home page's finder, the same way ?town= does. */
+  const el=document.getElementById("q"), pre=(new URLSearchParams(
+    location.search).get("q")||"").trim();
+  el.disabled=false;
+  if(pre){ q=pre; el.value=pre; }
+  render();
+  if(pre) el.focus();});
 function render(){
   const rows=q?L.filter(m=>q.toLowerCase().split(/\\s+/).every(w=>m.hay.includes(w))):L;
   document.getElementById("count").textContent=
@@ -964,9 +1053,30 @@ Promise.all([fetch(DATA("towns.json")).then(r=>r.json()),
              fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({}))])
  .then(([t,l,d])=>{
    T=t;L=l;D=d;TOWNS=Object.keys(T).sort();
-   document.getElementById(ID.q).disabled=false;
+   const box=document.getElementById(ID.q);
+   box.disabled=false;
    document.getElementById(ID.count).textContent=`${TOWNS.length} towns and cities`;
-   list(""); document.getElementById(ID.q).focus();});
+   /* ?town= ARRIVES FROM THE HOME PAGE'S FINDER, which is a plain GET form.
+      An exact name opens that town; anything else is left in the box as a
+      filter and the ranked list does the rest, because "Hampton" is three
+      real towns and choosing one of them for the reader would be a guess. */
+   const params=new URLSearchParams(location.search);
+   const want=(params.get("town")||"").trim();
+   if(want){
+     box.value=want;
+     /* Set the town BEFORE listing, the way the click handler does: list()
+        is what marks the chosen row, so listing first left Dover's seats on
+        the page with nothing in the list looking chosen. */
+     const hit=TOWNS.find(t=>t.toLowerCase()===want.toLowerCase());
+     if(hit){ town=hit;
+       const ws=wardsOf(hit); ward=ws.length>1?null:(ws[0]||"0"); }
+     list(want);
+     if(hit) show();
+   } else { list(""); }
+   /* Not when a name arrived: that reader is looking at the other box, and
+      moving the caret out from under them is the kind of thing that makes a
+      page feel like it is fighting you. */
+   if(!params.get("q")) box.focus();});
 
 function wardsOf(t){
   const seats=T[t]||[], dw=D[t]||{};
@@ -1507,28 +1617,61 @@ roster by name, county, party or committee.</p>
             f'{esc(r.get("what"))}</span></td></tr>'
             for r in H["recent"][:12]) + "</tbody></table>"
 
-    home_body = f"""<h1>Granite Record</h1>
+    # THREE COLUMNS, AND THE MIDDLE ONE IS WRITTEN FIRST. The order here is
+    # the order a screen reader hears and the order the Tab key takes; the
+    # grid in style.css puts .hleft to the left of it. See the comment on
+    # .hcols for why that way round.
+    home_body = f"""<div class="hcols">
+<div class="hmid">
+<h1>Granite Record</h1>
 <p class="lead">A searchable record of the New Hampshire General Court: what each
 bill does, who sponsored it, when it was heard, how every legislator voted, and
 where in the recording it was discussed.</p>
 <div class="searchbig">
   <label for="hq" style="position:absolute;left:-9999px">Search bills</label>
-  <input id="hq" type="search" placeholder="Bill number, or a few words from the title">
+  <input id="hq" type="search" placeholder="Bill number, or words from the title">
   <button id="hgo">Search</button>
 </div>
 <div id="stats">{static_stats}</div>
 <div class="entry">
   <a href="bills.html"><b>Browse bills</b><span>Search by committee, topic, sponsor,
     status or the day it was voted on</span></a>
-  <a href="legislators.html"><b>Find your legislators</b><span>By town: your House,
-    Senate, Executive Council and congressional districts</span></a>
+  <!-- COMMITTEES, NOT LEGISLATORS. The finder in the right-hand column asks
+       for a town and says what a town gives you, in nearly the same sentence
+       this card used to -- so on a 1440px screen the same offer was made
+       twice, side by side. Committees had no route from the home page at all,
+       and it is where a reader who knows the subject rather than the bill
+       number starts. -->
+  <a href="committees.html"><b>Committees</b><span>Who sits on each of the 56
+    committees, and what it did on every day it met</span></a>
   <a href="learn.html"><b>Learn</b><span>How a bill moves, what the shorthand
     means, and how to testify</span></a>
 </div>
 <div id="fresh" class="fresh"></div>
+</div>
+<section class="hside hleft" aria-label="Where the General Court is, and what is coming up">
 <div id="state">{static_state}</div>
 <div id="upcoming">{static_up}</div>
+</section>
+<section class="hside hright" aria-label="Find your legislators, and what has just happened">
+<div class="hfind">
+  <h2>Find your legislators</h2>
+  <p class="hfnote">A town gives you its House and Senate districts, its
+  Executive Councillor and its member of Congress.</p>
+  <form class="hfrow" action="legislators.html" method="get">
+    <label for="ht" class="sr">Your town</label>
+    <input id="ht" name="town" type="search" placeholder="Your town or city">
+    <button type="submit">Find</button>
+  </form>
+  <form class="hfrow" action="legislators.html" method="get">
+    <label for="hn" class="sr">Search the roster by name, county, party or committee</label>
+    <input id="hn" name="q" type="search" placeholder="Name or committee">
+    <button type="submit">Search</button>
+  </form>
+</div>
 <div id="session"></div>
+</section>
+</div>
 <div id="recent">{static_recent}</div>
 <div id="composition"></div>
 <div id="notable" hidden></div>

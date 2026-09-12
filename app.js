@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.57
+// GRANITE_VERSION: 2026-09-07.58
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -793,7 +793,7 @@ function analysis(d, rsa){
   const t=((d.billtext||{}).analysis||"").trim();
   if(!t)return "";
   return `<section class="anbox" data-an="1">
-    <h3 class="anlab">Official legislative analysis</h3>
+    <h2 class="anlab">Official legislative analysis</h2>
     <div class="antext">${rsa?rsa(esc(t)):esc(t)}</div>
     <p class="src">Source: NH General Court</p></section>`;
 }
@@ -812,7 +812,7 @@ function billNote(d){
   const n=d&&d.bill_note;
   if(!n||!n.note)return "";
   return `<section class="anbox billnote">
-    <h3 class="anlab">${esc(n.label||"About this bill")}</h3>
+    <h2 class="anlab">${esc(n.label||"About this bill")}</h2>
     <div class="antext">${esc(n.note)}</div>
     <p class="src">Written by Granite Record, not quoted from the General
       Court. It describes what this bill number is for, which its title does
@@ -960,7 +960,7 @@ function factsTable(b,d){
   add("Introduced", esc(f.date_introduced||""));
   add("LSR", esc(f.lsr||""));
   if(!rows.length) return "";
-  return `<section class="facts"><h3>On the record</h3>
+  return `<section class="facts"><h2>On the record</h2>
     <table class="facttab"><tbody>${rows.map(([k,v])=>
       `<tr><th scope="row">${esc(k)}</th><td>${v}</td></tr>`).join("")}</tbody></table>
     ${d.docket_url?`<p class="src"><a href="${esc(d.docket_url)}" target="_blank"
@@ -985,7 +985,7 @@ ${d._error?`<div class="loaderr"><b>This bill's detail did not
     ${(d.notes||[]).map(x=>`<p class="note">${esc(x)}</p>`).join("")}
     ${(d.stages&&d.stages.length)
       ? `<div class="story">${d.stages.map(st=>
-          `<div class="stg">${st.label?`<h3>${esc(st.label)}</h3>`:""}
+          `<div class="stg">${st.label?`<h2>${esc(st.label)}</h2>`:""}
            <p>${esc(st.text)}</p>${(st.notes||[]).map(n=>
              `<p class="note">${esc(n)}</p>`).join("")}</div>`).join("")}</div>`
       : (d.narrative?`<p class="story"><span class="stg">${esc(d.narrative)}</span></p>`:"")}
@@ -1326,7 +1326,7 @@ function renderReports(b,d,rsa){
   // speaking before they read what it said.
   const head=(r,cmte,body)=>`<div class="rephead">
       ${[body,cmte].filter(Boolean).length
-        ? `<h3>${esc([body,cmte].filter(Boolean).join(" "))} committee</h3>`:""}
+        ? `<h2>${esc([body,cmte].filter(Boolean).join(" "))} committee</h2>`:""}
       <div class="repmeta">${when(r)}<span class="note"
         style="font-size:12px">${cited(r)}</span></div></div>`;
 
@@ -1419,7 +1419,7 @@ function veto(d){
         esc(v.source.name||"the House calendar")}</a>`
     : esc((v.source||{}).name||"the House calendar");
   return `<section class="vmsg">
-    <h3 class="amdsec">The governor&rsquo;s veto message</h3>
+    <h2 class="amdsec">The governor&rsquo;s veto message</h2>
     ${v.text.map(p=>`<p>${esc(p)}</p>`).join("")}
     <p class="vsig">${esc(v.governor||"")}${
       v.date?` <span class="secsub">${esc(fdate(v.date))}</span>`:""}</p>
@@ -1448,7 +1448,7 @@ function renderSponsors(b,d){
   // person was named on this site and could not be followed.
   const pill=pchip;
   const spBlock=ch=>{const l=spAll.filter(s=>chOf(s)===ch);return l.length
-    ?`<h3 class="spgrp">${CHNAME[ch]} <span>${l.length}</span></h3>
+    ?`<h2 class="spgrp">${CHNAME[ch]} <span>${l.length}</span></h2>
       <div class="chosen">${l.map(pill).join(" ")}</div>`:"";};
   const spRest=spAll.filter(s=>!["H","S"].includes(chOf(s)));
   // A count per party, and nothing said about it. Sorted by party code, so the
@@ -1462,7 +1462,7 @@ function renderSponsors(b,d){
     <p class="spcount">${spAll.length} sponsor${spAll.length===1?"":"s"}${
       spParty?` \u00b7 ${spParty}`:""}</p>
     ${spBlock(origin)}${spBlock(origin==="S"?"H":"S")}
-    ${spRest.length?`<h3 class="spgrp">Chamber not on file <span>${spRest.length}</span></h3>
+    ${spRest.length?`<h2 class="spgrp">Chamber not on file <span>${spRest.length}</span></h2>
       <div class="chosen">${spRest.map(pill).join(" ")}</div>`:""}`:"";
   return `${sp||`<p class="note">No sponsors on file.</p>`}
       <p class="note" style="margin-top:12px">Prime sponsor in bold. From the
@@ -1495,7 +1495,7 @@ function fiscalTable(f){
       }</tr>`).join("")}</tbody></table></div>
       ${t.footnote?`<p class="src">${esc(t.footnote)}</p>`:""}`;
   };
-  return `<section class="fnsec"><h3 class="amdsec">Fiscal impact</h3>
+  return `<section class="fnsec"><h2 class="amdsec">Fiscal impact</h2>
     ${f.lead?`<p class="fnlead">${esc(f.lead)}</p>`:""}
     ${(f.tables||[]).map(table).join("")}
     <p class="src">Source: NH General Court</p></section>`;
@@ -1679,7 +1679,7 @@ function renderVersions(b,d){
       :`<p class="note">That text could not be loaded.</p>`;
   }
 
-  const amdblock=amds.length?`<h3 class="amdsec">The amendments themselves</h3>
+  const amdblock=amds.length?`<h2 class="amdsec">The amendments themselves</h2>
     <p class="note">The General Court publishes the text of each amendment as
     its own document, naming the statute it amends and what it replaces. These
     are those, not versions of the bill.</p>
@@ -1735,7 +1735,7 @@ function renderDetail(b,d){
   // where it is used, so there is nothing left to order wrongly.
   const btsec=(focused===b.id&&((d.billtext&&d.billtext.body)
     ||(d.amendments||[]).length))
-    ? `<section class="btsec"><h3 class="amdsec">Bill text</h3>
+    ? `<section class="btsec"><h2 class="amdsec">Bill text</h2>
         <p class="btwhat">The bill and its amendments, as the General Court publishes them. Everything above is this site’s account of the record; this is the document.</p>${
         renderBillText(b,d,rsa)}</section>`
     : "";
@@ -2393,11 +2393,11 @@ function cmteUpcoming(c){
   // the flaw showed at all.
   const mine=new Set();
   Object.entries(c.bills||{}).forEach(([t,rows])=>(rows||[]).forEach(b=>{
-    if(b&&b.id)mine.add(t+" "+String(b.id).toUpperCase());
+    if(b&&b.id)mine.add(t+"\u0000"+String(b.id).toUpperCase());
   }));
   return UPCOMING.filter(u=>
     String(u.committee||"").trim().toLowerCase()===name
-    && mine.has(String(u.term||"")+" "+String(u.bill||"").toUpperCase()));
+    && mine.has(String(u.term||"")+"\u0000"+String(u.bill||"").toUpperCase()));
 }
 
 // The kinds the General Court's schedule actually uses, in the words a reader
@@ -2417,14 +2417,14 @@ function calendarBlock(rows,heading){
   if(!rows.length)return "";
   const meets=new Map();
   rows.forEach(u=>{
-    const k=[u.date||"",u.time||"",u.committee||"",u.what||"",u.venue||""].join(" ");
+    const k=[u.date||"",u.time||"",u.committee||"",u.what||"",u.venue||""].join("\u0000");
     if(!meets.has(k))meets.set(k,[]);
     meets.get(k).push(u);
   });
   const keys=[...meets.keys()].sort();
   const days=new Map();
   keys.forEach(k=>{
-    const d=k.split(" ")[0];
+    const d=k.split("\u0000")[0];
     if(!days.has(d))days.set(d,[]);
     days.get(d).push(k);
   });
@@ -2443,7 +2443,7 @@ function calendarBlock(rows,heading){
     out.push(`<div class="calday"><h3 class="caldate"><span>${esc(label)}</span>`
       +(rel?`<span class="cdrel">${esc(rel)}</span>`:"")+`</h3>`);
     ks.forEach(k=>{
-      const [,time,cmte,what,venue]=k.split(" ");
+      const [,time,cmte,what,venue]=k.split("\u0000");
       const bills=meets.get(k);
       const [word,kcls]=MEET_KIND[String(what||"").trim().toLowerCase()]
         ||[what?what.charAt(0).toUpperCase()+what.slice(1):"Meeting",""];

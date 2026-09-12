@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.135
+# GRANITE_VERSION: 2026-09-04.138
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1336,6 +1336,118 @@ def _shared_region():
         "of the markers has moved or something is rewriting the region on the "
         "way through.")
     return "ok", f"{len(region):,} bytes, once, identical to app.css's"
+
+
+@check("frontend", "no source file carries a NUL byte")
+def _no_nul_bytes():
+    """app.js was a binary file for two days and nothing said so.
+
+    cmteUpcoming joins a term and a bill number with U+0000, because that is
+    the one character no committee name, bill number, time or venue can
+    contain -- a good separator. It was written into app.js as the *byte*
+    rather than as the two characters JavaScript reads as that byte, five
+    times, and a single NUL is all it takes for git, grep, diff and most other
+    text tools to treat a file as binary.
+
+    What that cost, and what it nearly cost: git stopped normalising the
+    file's line endings, so an edit on Windows rewrote all 3,058 lines and hid
+    eleven real changes inside them; grep reported "Binary file matches"
+    instead of the line; and any step that reads text and stops at a NUL --
+    a minifier, a template, a copy through a shell -- would have truncated
+    the whole site's JavaScript at line 2396 with no error.
+
+    The escape is identical at runtime. This check is cheap and there is no
+    case where a NUL belongs in one of these files.
+    """
+    bad = []
+    for name in ("app.js", "app.css", "bills.html", "build_pages.py",
+                 "civics.py", "build_civics.py", "shell.py", "preflight.py",
+                 "build_site_v2.py", "build_bill_pages.py"):
+        p = Path(name)
+        if not p.exists():
+            continue
+        raw = p.read_bytes()
+        n = raw.count(b"\x00")
+        if n:
+            at = raw.count(b"\n", 0, raw.find(b"\x00")) + 1
+            bad.append(f"{name}: {n}, first at line {at}")
+    assert not bad, (
+        "NUL bytes in " + "; ".join(bad) + ". Write the escape (backslash u "
+        "0000) rather than the byte: one NUL makes the file binary to git and "
+        "grep, and truncates it in anything that reads it as text.")
+    return "ok", "10 files, none binary"
+
+
+@check("frontend", "a heading outline never skips a level")
+def _heading_levels():
+    """h1 to h3, on the page that explains how a bill becomes law.
+
+    LAUNCH.md 7.3 recorded two of these and left them: learn.html went from
+    its h1 to an h4, and the eleven topic pages went from h1 to h3 because
+    the flow diagram's phase names were written at level 3 wherever the
+    diagram happened to sit. A reader navigating by heading -- which is how
+    somebody using a screen reader reads a long page -- met four labels at
+    the wrong depth on the page most likely to be read by a class.
+
+    Static HTML only, and deliberately: the record pages build their headings
+    in app.js, so their file carries the hidden h1 and nothing else. This
+    catches the pages written by build_pages.py, build_civics.py and
+    build_town_pages.py, which is where every one of these came from.
+    """
+    site = Path("site")
+    if not (site / "index.html").exists():
+        return "skip", "site/index.html not built"
+    files = sorted(site.glob("*.html")) + sorted(site.glob("learn/*.html"))
+    towns = sorted(site.glob("town/*.html"))
+    files += towns[:3] + towns[len(towns) // 2:len(towns) // 2 + 2]
+    bad, n = [], 0
+    for f in files:
+        text = f.read_text(encoding="utf-8", errors="replace")
+        levels = [int(m.group(1)) for m in re.finditer(r"<h([1-6])[ >]", text)]
+        if not levels:
+            continue
+        n += 1
+        prev = 0
+        for lv in levels:
+            if prev and lv > prev + 1:
+                bad.append(f"{f.relative_to(site).as_posix()}: h{prev} -> h{lv}")
+                break
+            prev = lv
+    assert not bad, (
+        f"{len(bad)} pages skip a heading level: " + "; ".join(bad[:4])
+        + ". A level is not a size -- style the label and keep the depth.")
+    return "ok", f"{n} pages, no skipped level"
+
+@check("frontend", "placeholder text has a colour from the palette")
+def _placeholder_colour():
+    """3.04:1 in dark, because nothing had ever set it.
+
+    Neither stylesheet had a ::placeholder rule, so every search box on the
+    site rendered its instruction in the browser's default #757575 -- 4.61:1
+    on white and 3.04:1 on the dark card, against a 4.5 threshold. It is
+    text, it is the only instruction those boxes carry, and it was below the
+    line on every page in dark mode for as long as dark mode existed.
+
+    A colour a browser picks is not covered by the palette check, which reads
+    the tokens this file declares; the only way to catch it is to name the
+    rule that has to exist. It lives in app.css's shared region, so both
+    stylesheets get it from one definition.
+    """
+    want = "::placeholder{color:var(--ink-2)"
+    src = Path("app.css").read_text(encoding="utf-8")
+    assert want in src, (
+        "app.css has no ::placeholder colour. The browser's default is "
+        "#757575, which is 3.04:1 on --surface in dark -- below the 4.5 a "
+        "palette pair would have to clear.")
+    built = Path("site/style.css")
+    if not built.exists():
+        return "ok", "app.css only; site/style.css not built"
+    assert want in built.read_text(encoding="utf-8"), (
+        "site/style.css has no ::placeholder colour, so the pages "
+        "build_pages.py writes lost it on the way through shared().")
+    return "ok", "--ink-2: 7.74:1 light, 6.32:1 dark"
+
+
 @check("frontend", "the civics examples are not on a charged subject")
 def _civics_examples():
     """Every bill the learn pages cite, checked against its own subject.

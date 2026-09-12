@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.8
+# GRANITE_VERSION: 2026-09-08.10
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -70,7 +70,7 @@ def topic(slug, title, group, blurb, body, sources, holds=""):
 # check is exactly the failure the proposal warns about.
 # ---------------------------------------------------------------------------
 
-SHOWS = ('<div class="shows"><h4>In the record</h4>{}</div>')
+SHOWS = ('<div class="shows"><h3>In the record</h3>{}</div>')
 
 
 # ---------------------------------------------------------------------------
@@ -153,13 +153,24 @@ def mark_of(mark):
     return MARKS.get(mark, ("", "", ""))
 
 
-def flow_diagram(flow=FLOW, heading="The course of a bill"):
-    """The sequence as nested lists. No image, no script, no SVG."""
+def flow_diagram(flow=FLOW, heading="The course of a bill", level=2):
+    """The sequence as nested lists. No image, no script, no SVG.
+
+    level is what the phase names are written at, and it depends on where the
+    diagram sits rather than on the diagram. On the bill page it is the first
+    thing after the h1 and its four phases ARE that page's sections, so they
+    are h2; on the constitution and testifying pages it follows a section
+    heading and belongs under it, so they are h3. Written at 3 everywhere, the
+    bill page went from a hidden h1 straight to h3, which is the jump
+    LAUNCH.md records -- and a reader navigating by heading on the page that
+    explains the whole process met four labels at the wrong depth.
+    """
     out = [f'<div class="flow" role="group" aria-label="{heading}">'
            '<ol class="flowphases">']
     for name, steps in flow:
         out.append('<li class="phase">'
-                   f'<h3 class="phname">{name}</h3><ol class="steps">')
+                   f'<h{level} class="phname">{name}</h{level}>'
+                   '<ol class="steps">')
         for step, what, mark in steps:
             cls, mcls, label = mark_of(mark)
             out.append(f'<li class="step{" " + cls if cls else ""}">'
@@ -500,7 +511,7 @@ Council, the courts, and how each is chosen.</p>
 it. The constitution does not. A change starts as a <b>CACR</b> &mdash; a
 Constitutional Amendment Concurrent Resolution &mdash; and it has to clear
 three thresholds, none of which involves the Governor.</p>
-""" + flow_diagram(FLOW_CACR, "How the constitution is amended") + """
+""" + flow_diagram(FLOW_CACR, "How the constitution is amended", level=3) + """
 
 <h2>Why almost none get through</h2>
 <p>The first step is the one that stops most of them, because a three-fifths
@@ -636,7 +647,7 @@ the bill passes one chamber and gets a hearing in the other, there is a second
 window on the same terms.</p>
 
 <h2>All of it, in order</h2>
-""" + flow_diagram(FLOW_TESTIFY, "How to testify, in order") + """
+""" + flow_diagram(FLOW_TESTIFY, "How to testify, in order", level=3) + """
 
 <h2>Speaking</h2>
 <p>Speaking is a separate thing from signing in, and you fill in a card to do
