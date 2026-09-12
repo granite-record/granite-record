@@ -699,3 +699,57 @@ Other findings, not yet verified by hand:
 - Neither YouTube channel has anything before **2020-05-14**, so 2017-2018 and
   all of 1989-2016 have no recordings and never will. That gap is
   UNRECOVERABLE and can be stated as such on the site.
+
+### 8b. The unread database views, and the committee names (12 September)
+
+**The 86,718 unread rows are not a hidden archive.** Each was opened:
+
+- **`VHearings`** — 8,739 rows, **2024-2026 only**, and not one names a bill.
+  It is the current hearing and study-committee schedule. It does **not** fill
+  the 1999-2014 hearing gap, which was the reason for looking.
+- **`CandH_Reports`** — 5,597 full HTML documents, "Hearing Report" and
+  "Committee Report", **2025-2026 only**. The current term's reports, already
+  read from the database by another path.
+- **`StatStud*`, `DistrictPast`** — study committees and past districts, small.
+
+**`NH_RSA` is the one worth having: the complete New Hampshire statute
+corpus.** 29,785 sections, each with its title, chapter, section heading,
+source note and full text, 107 MB, already on this disk and needing no
+request. `build_site_v2.py` already finds RSA citations in committee reports
+and bill titles (`RSA_CITE_T`) and links them away to the state's own site. A
+reader who has to leave to find out what 91-A says usually does not come back
+— and the text to keep them here has been sitting in `db/` since 8 September.
+
+**A defect found on the way: `proceedings.csv` splits committees by
+truncation.** 137 of its committee names are under twelve characters, and many
+are the same committee cut at different lengths:
+
+| | rows | | rows |
+|---|---|---|---|
+| `Judiciary` | 3,250 | `Jud` | 264 |
+| `Education` | 2,824 | `Educ` | 265 |
+| `Commerce` | 1,328 | `Commer`, `Commerc`, `Comm` | 12 |
+
+with `Judici`, `Judicia`, `Judiciar`, `Educati`, `Educs`, `Healt`, `Healthm`,
+`Wildflife` and `Enrivon` besides. A committee page, a facet count and any
+join on this field are all split across the variants. Not yet fixed.
+
+**The captioned-recording recovery now has a clean vocabulary.** The attempt
+of the 12th failed because it matched titles against committee names scraped
+out of the video index, which are noisy. Measured against three sources:
+
+| vocabulary | of the 554 dropped rows, resolved |
+|---|---|
+| names scraped from `parsed_committee` | 126 |
+| `proceedings.csv`'s committee column | 461, but 40 of them to the junk name `Comm` |
+| **`data/committees.json`, the canonical 48** | **412, no junk** |
+
+So: the date comes from `actual_start_utc`, which is exact, and the committee
+from a longest-prefix match against the canonical list after an optional
+"House"/"Senate". 412 of 554. The 142 that remain are mostly not committee
+proceedings at all — "House Session 03/16/2022 (Entire Session)", "Speaker
+Packard's Legislative Staff Week Thank You" — and should stay out.
+
+It touches the matching pipeline, so it wants `probe_alignment --truth` scored
+before and after, and a wrong committee puts the wrong recording against a
+proceeding.
