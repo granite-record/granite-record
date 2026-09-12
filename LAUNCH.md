@@ -536,7 +536,7 @@ Nothing here is done unless it says so.
    and already describe every table; the footer does not mention them, so the
    only way to find them is to know they are there.
 
-2. **[back] A vote on an amendment should name which amendment.** "Adopt
+2. **[back] ALREADY DONE, and I nearly broke it.** A vote on an amendment should name which amendment. "Adopt
    Committee Amendment (2247h)" or "Adopt Floor Amendment (1234h)", not a bare
    "Adopt Amendment".
 
@@ -565,11 +565,24 @@ Nothing here is done unless it says so.
    the docket line used, and where the line says only 'Amendment' that is what
    the reader is told."
 
-   The page is already built for it: `app.js` renders
-   `<span class="ramd">${esc(rc.amendment)}</span>` in the vote header, and
-   `rc.amendment` is `None` on all 9,565 roll calls today. The join belongs
-   beside `bill_amds` and `rc_out`, which `build_site_v2.py` builds three
-   lines apart.
+   **`vote_chronology` in `build_site_v2.py` has done this all along, and
+   names 269 of the 420.** It pairs the day's roll calls with the docket's
+   floor actions IN ORDER within a chamber and a day, and claims nothing when
+   the counts disagree. `rc.amendment` is `None` in `rollcalls.json` — which
+   is what I measured, and it is the wrong file — and filled in the built
+   payload.
+
+   A second joiner written on top of it named 82 more and had to be reverted
+   the same night. On HB 675, `vote_chronology` named roll calls 35 and 37 and
+   left 36 alone; the addition saw 36 as "the only unnamed amendment vote that
+   day", found one candidate and gave it `2025-3013h` — which 35 already had.
+   One amendment, two votes, and nothing on the page would have looked wrong.
+   The 82 it added were exactly the cases the original declines *because* the
+   pairing is unknowable.
+
+   What is left is not a joiner. It is the 151 the docket cannot settle, and
+   they should stay unnamed. `preflight` now guards the refusal rather than
+   the naming.
 
 3. **[back] DONE. "Division Vote" and "Voice Vote", capitalised.** `build_site_v2.py`
    has `VK = {"VV": ("voice vote", False), "DV": ("division vote", False)}`.
@@ -586,7 +599,7 @@ Nothing here is done unless it says so.
    A census is running: every gap classified PARSING / NOT-FETCHED /
    UNRECOVERABLE.
 
-6. **[back] Bill search: expanded rows stay open across a term change.** Expand
+6. **[back] DONE. Bill search: expanded rows stayed open across a term change.** The cause was `openCards`, `openTab`, `segSel` and `fullOpen` being keyed on the bare bill number, which is not unique across terms; `detail` was already safe because `dkey()` keys it on the year too. Cleared on both term-change paths, and not on the deep-link path, where opening the named bill is the point. Expand
    some bills, switch term, and the open state is applied to whatever bills now
    sit in those positions — so the wrong bill shows as open. Almost certainly
    open-state keyed on row position rather than on the bill.

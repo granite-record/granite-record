@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.125
+# GRANITE_VERSION: 2026-09-04.126
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4267,77 +4267,70 @@ def _sponsor_fetch(S):
         shutil.rmtree(root, ignore_errors=True)
 
 
-@check("build", "a vote on an amendment names it only when the docket can say which",
+@check("build", "a vote on an amendment names it only when the pairing is certain",
        needs=("build_site_v2",))
 def _amendment_votes(BS):
-    """"Adopt Amendment" is what 196 of 420 amendment votes say, and not one of
-    the 420 carries a number: the roll call file's question_raw holds "Adopt
-    Amendment", "Floor Amendment", "Committee Amendment" and nothing else. The
-    number is joined from the docket's amendment events instead.
+    """vote_chronology pairs a day's roll calls with the docket's, in order.
 
-    The case that makes this worth a check is HB 675. On 8 January 2026 the
-    House took THREE amendment roll calls -- numbers 35, 36 and 37 -- and the
-    docket records ONE amendment that day, 2025-3013h. Matching each vote to
-    "the only candidate" handed all three the same number, which reads as the
-    House voting on one amendment three times. At most one of them was
-    2025-3013h, nothing on this disk says which, and so none is named.
+    "Adopt Amendment" is what 196 of the 420 amendment votes say, and the
+    number is in none of them: 0 of 420 question_raw values carry one. The
+    docket lists floor actions in the order they happened and names the
+    amendment in each, and the roll call file numbers its votes in that same
+    order, so the two are paired within a chamber and a day.
 
-    Naming the wrong amendment is worse than naming none: the page would cite
-    a document that was not what was voted on, and nothing would look wrong.
+    THE RULE THIS GUARDS IS THE REFUSAL. Where the docket shows fewer roll
+    calls that day than the roll call file does, something is missing from one
+    of them and lining them up would put the wrong number beside the wrong
+    vote -- so nothing is claimed.
+
+    It is guarded because a weaker rule was written on top of it on the 12th
+    and had to come out. On 8 January 2026 the House took three amendment roll
+    calls on HB 675 (numbers 35, 36 and 37) against one docket line, so this
+    function named 35 and 37 from a day where the counts DID agree and left 36
+    alone. The addition saw 36 as "the only unnamed amendment vote that day",
+    found a single candidate, and gave it 2025-3013h -- which 35 already had.
+    One amendment, two votes, and nothing on the page would have looked wrong.
+
+    Naming the wrong amendment is worse than naming none: the page cites a
+    document that is not what was voted on.
     """
-    def amd(num, day, body, where="", vote_kind=""):
-        return {"num": num, "date": day, "body": body, "where": where,
-                "vote_kind": vote_kind}
+    def ev(date, body, raw, vk="RC"):
+        return {"date": date, "body": body, "raw": raw, "vote_kind": vk}
 
-    def vote(day, body, q="Adopt Amendment"):
-        return {"question": q, "date": day, "body": body, "amendment": None}
+    def rc(number, date, body, q="Adopt Amendment"):
+        return {"number": number, "date": date, "body": body, "question": q}
 
-    # One vote, one amendment that day: named.
-    rc = [vote("2026-01-08", "H")]
-    BS.name_amendment_votes(rc, [amd("2026-0123h", "01/08/2026", "H")])
-    assert rc[0]["amendment"] == "2026-0123h", rc
-    # Both date shapes are read: the roll call file writes 2026-01-08 and the
-    # docket writes 01/08/2026, and the join is between the two.
-    assert BS._day("01/08/2026") == BS._day("2026-01-08") == "2026-01-08"
+    # Counts agree: paired in order, and each vote gets its own amendment.
+    rcs = [rc(1, "01/08/2026", "H"), rc(2, "01/08/2026", "H")]
+    narr = {"events": [ev("01/08/2026", "H", "Amendment # 2026-0001h, RC 200-100"),
+                       ev("01/08/2026", "H", "Amendment # 2026-0002h, RC 190-110")]}
+    _order, names = BS.vote_chronology(rcs, narr)
+    got = [names.get(("H", 1)), names.get(("H", 2))]
+    assert got == ["2026-0001h", "2026-0002h"], got
+    assert len(set(x for x in got if x)) == len(
+        [x for x in got if x]), ("one amendment named twice", got)
 
-    # HB 675: three votes, one amendment. None named, and no number used twice.
-    rc = [vote("2026-01-08", "H"), vote("2026-01-08", "H", "Adopt Floor Amendment"),
-          vote("2026-01-08", "H", "Adopt Floor Amendment")]
-    BS.name_amendment_votes(rc, [amd("2025-3013h", "01/08/2026", "H", vote_kind="RC")])
-    assert [r["amendment"] for r in rc] == [None, None, None], rc
+    # HB 675: three votes, one docket line. Nothing is claimed for any of them.
+    rcs = [rc(35, "01/08/2026", "H"), rc(36, "01/08/2026", "H"),
+           rc(37, "01/08/2026", "H")]
+    narr = {"events": [ev("01/08/2026", "H", "Amendment # 2025-3013h, RC 184-168")]}
+    _order, names = BS.vote_chronology(rcs, narr)
+    assert not names, ("the counts disagree, so nothing may be claimed", names)
 
-    # Several amendments, one decided by a roll call -- and this record is one.
-    rc = [vote("2026-02-05", "H")]
-    BS.name_amendment_votes(rc, [
-        amd("2026-0001h", "02/05/2026", "H", vote_kind="VV"),
-        amd("2026-0002h", "02/05/2026", "H", vote_kind="RC")])
-    assert rc[0]["amendment"] == "2026-0002h", rc
+    # A voice vote in the docket is not a roll call and is not paired with one.
+    rcs = [rc(9, "02/05/2026", "H")]
+    narr = {"events": [ev("02/05/2026", "H", "Amendment # 2026-0009h, VV", vk="VV"),
+                       ev("02/05/2026", "H", "Amendment # 2026-0010h, RC 5-4")]}
+    _order, names = BS.vote_chronology(rcs, narr)
+    assert names.get(("H", 9)) == "2026-0010h", names
 
-    # Several, none distinguishable: not named rather than guessed.
-    rc = [vote("2026-03-03", "S")]
-    BS.name_amendment_votes(rc, [amd("2026-0010s", "03/03/2026", "S", vote_kind="RC"),
-                                 amd("2026-0011s", "03/03/2026", "S", vote_kind="RC")])
-    assert rc[0]["amendment"] is None, rc
-
-    # The other chamber's amendment on the same day is not this vote's.
-    rc = [vote("2026-04-01", "H")]
-    BS.name_amendment_votes(rc, [amd("2026-0500s", "04/01/2026", "S")])
-    assert rc[0]["amendment"] is None, rc
-
-    # THE KIND COMES FROM THE DOCKET OR NOT AT ALL. bill_amendments states the
-    # rule this follows: "Committee or floor is not a label this invents."
-    rc = [vote("2026-05-06", "H")]
-    BS.name_amendment_votes(rc, [amd("2026-0700h", "05/06/2026", "H", where="committee")])
-    assert rc[0]["question"] == "Adopt Committee Amendment", rc
-    rc = [vote("2026-05-07", "H")]
-    BS.name_amendment_votes(rc, [amd("2026-0701h", "05/07/2026", "H")])
-    assert rc[0]["question"] == "Adopt Amendment", ("no word, no upgrade", rc)
-    # A question that already names its kind is never rewritten.
-    rc = [vote("2026-05-08", "H", "Adopt Floor Amendment")]
-    BS.name_amendment_votes(rc, [amd("2026-0702h", "05/08/2026", "H", where="committee")])
-    assert rc[0]["question"] == "Adopt Floor Amendment", rc
-    return "ok", ("named on a clean match, silent where three votes share one "
-                  "amendment, and the kind only ever the docket's own word")
+    # The other chamber's business that day is not this chamber's.
+    rcs = [rc(4, "03/03/2026", "S")]
+    narr = {"events": [ev("03/03/2026", "H", "Amendment # 2026-0500h, RC 1-2")]}
+    _order, names = BS.vote_chronology(rcs, narr)
+    assert not names, names
+    return "ok", ("paired in order where the counts agree, and nothing claimed "
+                  "where they do not -- the HB 675 case")
 
 
 @check("files", "a writer of a shared file reads it before writing it")

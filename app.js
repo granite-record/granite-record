@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.52
+// GRANITE_VERSION: 2026-09-07.53
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -173,6 +173,28 @@ const wideEnough=typeof matchMedia==="function"
 const openGroups=new Set(wideEnough?["committee"]:[]);
 let sponsorFilter="";
 const openCards=new Set(),openTab={},detail={},segSel={},fullOpen=new Set();
+
+// A BILL NUMBER IS NOT UNIQUE ACROSS TERMS, and four of those five are keyed
+// on the bare number. HB 100 exists in most terms and is a different bill in
+// each, so expanding a few rows and then changing the term left those same
+// numbers expanded -- showing the NEW term's bills opened, on the strength of
+// what a reader had opened in the old one, with whichever tab the old bill had
+// been left on.
+//
+// detail is the exception and needs no clearing: dkey() keys it on
+// `${yearOf(id)}/${id}`, so the cache is already per term and keeping it means
+// switching back does not refetch.
+//
+// This is the same confusion build_data.py guards against on the data side --
+// "HB100 of 2023 and HB100 of 2025 have different sponsors, and a flat file
+// gives the second to the first without saying so" -- arriving in the browser
+// as view state rather than as data.
+function forgetCardState(){
+  openCards.clear();
+  fullOpen.clear();
+  for (const k of Object.keys(openTab)) delete openTab[k];
+  for (const k of Object.keys(segSel)) delete segSel[k];
+}
 // Which bill is filling the screen, and where the reader was standing when
 // they opened it.
 let focused=null,focusY=0;
@@ -250,6 +272,7 @@ need("meta.json")
      // write one over the record.
      if(PAGE||window.GR_STATIC){location.href="bills.html";return;}
      term=e.target.value;
+     forgetCardState();
      // The term's bills may not be here yet. Fetch, then draw -- and say so
      // meanwhile, because a picker that does nothing for a moment reads as
      // broken.
@@ -2724,7 +2747,7 @@ document.addEventListener("click",e=>{
     }
     render();return;}
   const jt=e.target.closest("[data-term]");
-  if(jt){term=jt.dataset.term;$("#year").value=term;render();return;}
+  if(jt){term=jt.dataset.term;$("#year").value=term;forgetCardState();render();return;}
   if(e.target.id==="clear"){Object.values(sel).forEach(s=>s.clear());render();return;}
 });
 document.addEventListener("change",e=>{
