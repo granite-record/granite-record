@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.39 -->
+<!-- GRANITE_VERSION: 2026-09-05.40 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -63,7 +63,11 @@ if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
 </select>
 <span>press / to search</span><span id="synhint"></span></div>
 </div></div>
-<div class="shell"><aside class="facets" id="facets"></aside>
+<div class="shell"><button class="ftoggle" id="ftoggle" type="button"
+ aria-expanded="false" aria-controls="facets" hidden><span>Filter by topic,
+ sponsor or committee</span><span class="badge" hidden></span><span
+ class="chev">&#9656;</span></button>
+<aside class="facets" id="facets"></aside>
 <main id="main"><h1 class="sr">New Hampshire bills</h1>
 <p class="count" id="summary"></p><div id="results"></div></main></div>
 

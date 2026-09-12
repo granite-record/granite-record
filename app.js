@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.58
+// GRANITE_VERSION: 2026-09-07.60
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -283,6 +283,13 @@ need("meta.json")
      if(PAGE||window.GR_STATIC)return;
      sortBy=e.target.value;render();});
    $("#q").disabled=false;
+   // 63 CHARACTERS IN A 342px BOX. The placeholder overflowed by 212px at
+   // 420px wide, so a phone read "Bill number, key phrase, or several nu" --
+   // the clause about commas, which is the only place that feature is
+   // explained, was the part that fell off the end. Two strings, and the
+   // narrow one says what to type rather than everything you may type.
+   if(matchMedia("(max-width:720px)").matches)
+     $("#q").placeholder="Bill number, or a few words";
    // The button next to it does the same job on the focused view, so it waits
    // for the same data.
    $("#qgo").disabled=false;
@@ -432,6 +439,16 @@ function renderFacets(){
   const innerKeep=[...inner].map(el=>el.scrollTop);
   fx.innerHTML=h;
   fx.scrollTop=keep;
+  // THE COUNT HAS TO BE VISIBLE WITH THE PANEL SHUT. A reader who filtered by
+  // topic, scrolled, and came back to a closed panel would otherwise have no
+  // way of knowing why the list is short. Same badge the groups carry.
+  const ftb=document.getElementById("ftoggle");
+  if(ftb){
+    ftb.hidden=false;
+    const on=Object.values(sel).reduce((n,s)=>n+s.size,0);
+    const bd=ftb.querySelector(".badge");
+    if(bd){bd.textContent=on?String(on):"";bd.hidden=!on;}
+  }
   [...fx.querySelectorAll(".fbody")].forEach((el,i)=>{
     if(innerKeep[i]!==undefined)el.scrollTop=innerKeep[i];
   });
@@ -2938,6 +2955,15 @@ document.addEventListener("click",e=>{
   if(f){const k=f.dataset.full;fullOpen.has(k)?fullOpen.delete(k):fullOpen.add(k);repaint();return;}
   const g=e.target.closest(".fhead");
   if(g){openGroups.has(g.dataset.g)?openGroups.delete(g.dataset.g):openGroups.add(g.dataset.g);renderFacets();return;}
+  // The phone's filter disclosure. The class goes on .shell rather than on
+  // the panel because the stylesheet has to move three things -- the button,
+  // the panel and the results -- and one of them is the element being shown.
+  const ftb=e.target.closest("#ftoggle");
+  if(ftb){
+    const sh=document.querySelector(".shell");
+    const open=sh.classList.toggle("fopen");
+    ftb.setAttribute("aria-expanded",open?"true":"false");
+    return;}
   const un=e.target.dataset.unpick;
   if(un){sel.sponsor.delete(un);render();return;}
   // Left click opens in place; a modified or middle click falls through to

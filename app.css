@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.64 */
+/* GRANITE_VERSION: 2026-09-07.66 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -422,6 +422,13 @@ overflow-y:auto;overflow-x:hidden}
 .fgroup.open .chev{transform:rotate(90deg)}
 .fhead .badge{background:var(--pine);color:var(--on-pine);font-size:12px;padding:1px 6px;border-radius:var(--r-pill);font-weight:600}
 .fbody{padding:0 2px 12px;max-height:340px;overflow-y:auto;overflow-x:hidden}.fbody[hidden]{display:none}
+/* THE CONTROL THAT OPENS THE PANEL ON A PHONE. Nothing above 720px: there
+   the panel is a column of its own beside the results and always open. It
+   carries the same chevron and count badge .fhead does, scoped the same way
+   -- the parts are named for what they are and the component says where
+   they are. */
+.ftoggle{display:none}
+.shell.nofacets .ftoggle,.shell.focused .ftoggle{display:none}
 .fopt{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:14px;cursor:pointer}
 .fopt input{accent-color:var(--pine);margin:0;flex:0 0 auto}
 .fopt .c{margin-left:auto;font-size:12px;color:var(--ink-2)}
@@ -434,7 +441,11 @@ border:1px solid var(--edge);border-radius:var(--r-in);margin-bottom:7px}
 .chosen{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:7px}
 .pill{font-size:12px;background:var(--pine-soft);color:var(--pine);border-radius:var(--r-pill);padding:2px 8px}
 .pill button{margin-left:4px;color:var(--pine)}
+/* :empty, because #summary is written only on some views and an empty
+   paragraph still carries its 12px margin -- 12px of nothing between the
+   filter control and the first bill on a phone. */
 .count{font-size:14px;color:var(--ink-2);margin:0 0 12px}
+.count:empty{display:none}
 /* A bill has to read as an object, not as a band of the page. The card was
    white on #F6F6F4 behind a #E2E3E0 rule -- about three percent of lightness
    between the two -- so a screen of them ran together into one column of
@@ -1014,10 +1025,24 @@ text-align:center;color:var(--ink-2);font-size:14px}
      stretch, here it is an explicit start. A grid rule and a flex rule with
      the same name are not the same rule. */
   .shell{display:flex;flex-direction:column;align-items:stretch}
-  .shell > main{order:1;min-width:0}
+  /* THE FILTERS WERE 30,709px DOWN, which is what "the options to view by
+     topic or legislator have disappeared" looks like from a phone. Putting
+     the panel after the results fixed the first complaint -- the first bill
+     was 584px down -- and created a worse one: a hundred result cards is
+     eighty-five screens, and nobody scrolls past their answer to look for
+     the question.
+     So the panel is above the results again and shut: 44px of control that
+     names what is behind it, which is 196px cheaper than the collapsed panel
+     and reachable in one tap. Order matters more than position here -- the
+     button, then the panel it opens, then the results. */
+  /* gap:30px belongs to the two-column grid this becomes a flex column of;
+     as a row gap it put 30px between the filter control and the results. */
+  .shell{gap:0}
+  .ftoggle{order:1}
   .facets{order:2;position:static;max-height:none;width:auto;
-          margin:28px 0 0;border-right:none;border-bottom:none;
-          border-top:1px solid var(--rule-2);padding-top:16px}
+          margin:0 0 18px;border-right:none;border-bottom:none;padding:0}
+  .shell > main{order:3;min-width:0}
+  .shell:not(.fopen) .facets{display:none}
   .fbody{max-height:210px}
   .tl li{flex-direction:column;gap:2px;padding:10px 0}
   .tl .d{flex:none;font-weight:600}
@@ -1068,6 +1093,15 @@ text-align:center;color:var(--ink-2);font-size:14px}
   .cmeta,.note,.qhint,.cite,.tolnote,.vbox p,.stn .w,.tnote,.corrections{font-size:14px}
   .m{font-size:14px}
   .fopt{padding:6px 0}
+  .ftoggle{display:flex;align-items:center;gap:9px;width:100%;min-height:44px;
+    padding:10px 13px;margin:0 0 12px;font-size:14px;font-weight:600;
+    text-align:left;background:var(--surface);color:var(--ink);
+    border:1px solid var(--rule-2);border-radius:var(--r-out)}
+  .ftoggle .chev{margin-left:auto;color:var(--ink-2);font-size:12px;flex:0 0 auto}
+  .shell.fopen .ftoggle .chev{transform:rotate(90deg)}
+  .ftoggle .badge{background:var(--pine);color:var(--on-pine);font-size:12px;
+    padding:1px 7px;border-radius:var(--r-pill);flex:0 0 auto}
+  .shell.fopen .ftoggle{margin-bottom:10px}
   /* .btn and .backto are links drawn as controls -- "Email the 13 members of
      this committee", "Back to bill search" -- and were 33 and 36px on a phone
      because this list names elements and two classes. A control is a control
