@@ -1,0 +1,51 @@
+# GRANITE_VERSION: 2026-09-12.2
+#
+# The Pages project's configuration, which this file now owns. Until
+# 12 September there was none: the dashboard held a name and a compatibility
+# date and nothing else (wrangler pages download config), so adopting a file
+# loses no setting. From the first deploy that carries it, THIS FILE is the
+# source of truth and the dashboard shows these fields read-only.
+#
+# It exists for the report box (functions/api/report.js): the database it
+# writes to, and the addresses it accepts reports from. Production and preview
+# each name their own database explicitly, rather than trusting a top-level
+# binding to reach previews -- the documentation says top-level applies "to
+# local and production" -- so a test report sent to a preview deployment never
+# lands among real readers' reports. Bindings and vars are "non-inheritable":
+# each environment states all of its own.
+#
+# The ids are not secrets. They name a database; using one needs this
+# account's credentials. A fork creates its own and replaces them.
+
+name = "graniterecord"
+pages_build_output_dir = "site"
+compatibility_date = "2026-09-04"
+
+# Top level: what `wrangler pages dev` uses locally, against a local copy.
+[[d1_databases]]
+binding = "DB"
+database_name = "graniterecord-reports"
+database_id = "1fb4afb6-62dc-455a-9357-0125bcf7577a"
+
+[vars]
+REPORT_ORIGINS = "localhost:8788 localhost:8790 127.0.0.1:8788 127.0.0.1:8790"
+
+[env.production]
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "graniterecord-reports"
+database_id = "1fb4afb6-62dc-455a-9357-0125bcf7577a"
+
+# The site's names only. Every production deployment also answers at its own
+# <hash>.graniterecord.pages.dev address for good, and those are not the site.
+[env.production.vars]
+REPORT_ORIGINS = "graniterecord.org www.graniterecord.org"
+
+[env.preview]
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "graniterecord-reports-preview"
+database_id = "39c58ee3-73cd-41a5-b998-b259bcf1d902"
+
+[env.preview.vars]
+REPORT_ORIGINS = "*.graniterecord.pages.dev"

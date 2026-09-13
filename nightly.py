@@ -1,71 +1,93 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.11
 """
-The nightly run. Fetch what changed, rebuild, check, publish -- or don't.
+The nightly run. Fetch the day's bulk files, rebuild, check, compile what
+readers reported and what changed -- and publish only if told to.
 
-    python3 nightly.py                 fetch, rebuild, check, publish
-    python3 nightly.py --dry-run       everything except the deploy
-    python3 nightly.py --key YOURKEY   also refresh the video index
-    python3 nightly.py --force         publish even if the sanity gate objects
+    python3 nightly.py                 fetch, rebuild, check, write the day's reports
+    python3 nightly.py --deploy        ... and publish, if every gate passes
+    python3 nightly.py --no-fetch      rebuild and report from what is on disk
+    python3 nightly.py --force         past the census gate (never past the file ceiling)
 
 Meant for Task Scheduler. Everything it prints also goes to
-logs/nightly-YYYY-MM-DD.log, and the exit code is 0 only if the site was
-published or was already up to date.
+logs/nightly-YYYY-MM-DD.log.
 
-WHY THIS AND NOT publish.bat
+WHAT IT ASKS THE GENERAL COURT FOR: fourteen files, once
 
-publish.bat gates each step on the one before it, which is most of the job. Two
-things it does not do, and both matter more when nobody is watching:
+snapshot_gencourt.py's bulk files, a few seconds apart, and nothing else. They
+are enough to notice what a day changed -- Docket.txt drives the build, and a
+newly scheduled hearing, a status change, a referral, a roll call and a new
+sponsor all arrive through it -- and they are the one fetch that cannot be done
+later, because the files are live views overwritten as a session moves. Every
+other network step build_all has (bill pages, testimony, committee pages) has
+no refusal handling or budget and stays out of the nightly; the build runs
+--local.
 
-  1. `publish` with no argument runs build_all --local, which touches no
-     network. Correct for a hand-run rebuild; useless for a nightly, which
-     exists to pick up yesterday's docket.
+IT ASKS ONLY WHEN NOTHING ELSE IS ASKING. This address has blocked the project
+twice, the second time for two fetches at once, and the bill-text lane runs for
+days. So before any request: a refusal on file, at any age, means no fetch
+tonight (a run nobody watches does not decide a refusal is over); the lane's
+lock held means no fetch tonight; a build already running means no run at all.
+Deferring is not a failure and the log's first line says why. The lock is taken
+for the fetch and released before the hour of building, which asks nothing.
 
-  2. Nothing checks that the rebuilt site is still a site. If the General
-     Court is down, or an endpoint changes, or a bulk file arrives truncated,
-     every script can succeed on nothing and produce a valid, empty result.
-     check_site.py checks the site is well-formed. It cannot know that 2,234
-     bills became 41.
+IT DOES NOT PUBLISH UNLESS TOLD TO. `publish` deploys the live site, and a
+nightly that published by default would publish whatever the working tree held
+at three in the morning -- including someone's half-finished edit. With
+--deploy it publishes only a tree whose tracked files are all committed, and
+only past every gate.
 
-THE SANITY GATE
+THE GATES, before any deploy
 
-Before rebuilding, the counts in the live site are recorded. After, they are
-compared. A fall past the thresholds below stops the deploy and leaves the
-published site alone:
+  preflight --code passes; check_site passes;
+  the census has not fallen past its threshold (below); the site changed;
+  and the file count is under 95,000 of Cloudflare's 100,000 -- a ceiling
+  --force cannot lift, because stopping short of the cap beats having the
+  upload rejected halfway.
 
-    bills          more than 2% fewer in index.json
-    legislators    more than 2% fewer in legislators.json
-    bill_data      more than 2% fewer per-bill JSON files
-    bill_pages     more than 5% fewer static pages
+    bills          2% fewer in index.json
+    legislators    2% fewer in legislators.json
+    bill_data      2% fewer per-bill JSON files
+    bill_pages     5% fewer static pages
+    feeds          5% fewer feed files -- without this, a failed build_feeds
+                   unpublishes every feed and no other count moves
 
-Bills are only added during a session and the roster only changes at a special
-election, so any real fall is small and slow. A large one is a failure
-upstream, and the right response to a failure upstream is to keep yesterday's
-site.
+WHAT IT WRITES FOR THE MORNING
 
-Growth is never blocked. --force overrides, for the day a fall is real.
+  reports/gc-changes-<date>.md          what the General Court's files changed (gc_changes.py)
+  reports/triage-production-<date>.md   what readers reported, screened (compile_reports.py)
+  reports/FAILED-<date>.txt             written only when the reports step failed
 
-WHAT IT DOES NOT DO
+The triage file is named for the database it was pulled from. The nightly pulls
+production's; a file for the preview database is only ever made by hand, and is
+never triaged. Until 13 September this docstring and reports/TRIAGE.md both
+left the database out of the name -- a file nothing writes -- so the session
+told to open it would have found nothing on every night, and could not have
+told a failed pull from a quiet one.
 
-It does not re-transcribe or re-align video. Those cost hours and change only
-when a new recording appears; run align_all and apply_markers by hand.
-
-It does not run without the bulk files being fetchable. If snapshot_gencourt
-cannot reach the General Court, the build steps that read those files still
-run against yesterday's copies, and the gate then finds the counts unchanged
-and skips the deploy. Nothing breaks; nothing is published; the log says so.
+Neither can change the night's exit status: a broken report step is logged and
+the site is unaffected. But it is not allowed to be quiet either. The log gets
+a line beginning REPORTS FAILED: with the reason, and reports/FAILED-<date>.txt
+says so where the triage session looks. preflight's data check fails on that
+line in the newest log that reached the reports step, on a newest log more
+than 48 hours old once the logs show a schedule, and on seven nights meant to
+fetch that installed nothing, whatever stopped them. It reads the lines this
+file writes at the start of a line, so a change to their wording is a change
+to preflight too.
 """
 
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
-import urllib.request
 import time
-import child
 from datetime import datetime
 from pathlib import Path
+
+import child
+import refusal
 
 LOG = []
 
@@ -76,7 +98,18 @@ PRODUCTION_BRANCH = "master"
 # What a fall in each of these means: something upstream failed, not that the
 # legislature deleted its own record.
 GATES = [("bills", 0.02), ("legislators", 0.02), ("bill_data", 0.02),
-         ("bill_pages", 0.05)]
+         ("bill_pages", 0.05), ("feeds", 0.05)]
+FILE_CEILING = 95_000
+BUILD_LOCK = Path(".build.lock")
+BUILD_LIVE = 180          # build_all touches its lock every 30 s
+
+# What compile_reports.py writes for the production database, and what the
+# nightly writes in the same folder when that step fails. preflight holds the
+# first to the writer, and both to reports/TRIAGE.md, which tells the triage
+# session to open them.
+REPORTS = Path("reports")
+TRIAGE_NAME = "triage-production-{day}.md"
+FAILED_NAME = "FAILED-{day}.txt"
 
 
 def say(msg=""):
@@ -84,72 +117,98 @@ def say(msg=""):
     LOG.append(msg)
 
 
-def run(args, label):
-    """Stream the step's output as it happens, and log it too.
+def last_words(lines):
+    """The last line a step printed, from its stretch of LOG: the reason it gave.
 
-    This used to capture and print at the end, which meant a rebuild that
-    fetches 2,234 bill pages showed nothing for the best part of an hour.
-    Silence is indistinguishable from a crash, and the thing you least want in
-    something meant to run unattended is a person unable to tell whether it is
-    working.
+    run() logs a header, the step's own lines, and a closing "(Ns, exit N)".
+    """
+    said = [ln.strip() for ln in lines[1:-1] if ln.strip()]
+    return said[-1][:300] if said else "it printed nothing"
+
+
+def triage_written(days):
+    """Whether a production triage file exists for any of these dates.
+
+    compile_reports.py names a second compile on the same day -2, -3, so any
+    of those counts.
+    """
+    return any(next(REPORTS.glob(TRIAGE_NAME.format(day=d)[:-len(".md")] + "*.md"), None)
+               for d in days)
+
+
+def mark_reports_failed(day, log_name):
+    """The file the triage session finds on a night the reports step failed.
+
+    One fixed sentence and none of what the step printed: a failed pull's
+    output can carry whatever the database sent back, which includes what
+    strangers typed, and the session that reads this file must meet a reader's
+    words only inside the triage file's quotation. The reason is in the log,
+    for the person.
+    """
+    REPORTS.mkdir(exist_ok=True)
+    out = REPORTS / FAILED_NAME.format(day=day)
+    out.write_text(f"REPORTS FAILED: the reader reports for {day} were not compiled. "
+                   f"Nothing here says there were none. The reason is in logs/{log_name}, "
+                   "for the person to read.\n", encoding="utf-8", newline="\n")
+    return out
+
+
+def run(args, label):
+    """Stream the step's output as it happens, and log it too. The exit code.
+
+    A child of this process, run with this interpreter directly and no shell,
+    so a fetch it starts sees this process as its parent and runs under the
+    lock this process holds.
     """
     say(f"\n--- {label} ---")
     t0 = time.time()
     proc = child.popen([sys.executable, "-u"] + args,
-                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True, bufsize=1)
+                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                       text=True, bufsize=1)
     for ln in proc.stdout:
         say("  " + ln.rstrip())
     proc.wait()
     say(f"  ({time.time() - t0:.0f}s, exit {proc.returncode})")
-    return proc.returncode == 0
+    return proc.returncode
 
 
-def reachable():
-    """One request, before an hour of them.
+def gc_quiet():
+    """Whether tonight may ask the General Court for anything: (ok, why)."""
+    if refusal.MARK.exists():
+        try:
+            d = json.loads(refusal.MARK.read_text(encoding="utf-8"))
+            why = f"{d.get('where', '?')} at {d.get('at', '?')}"
+        except (ValueError, OSError):
+            why = "unreadable"
+        return False, (f"a refusal is on file ({why}); clearing one is a person's "
+                       "decision, after netcheck.py")
+    if refusal.LOCK.exists():
+        held = refusal.LOCK.read_text(encoding="utf-8", errors="replace").strip()
+        return False, f"archive/.lock is held (pid {held or '?'}): the lane or a fetch is running"
+    return True, ""
 
-    A run whose first step failed on a closed connection carried on through
-    seventeen more, each fetching nothing, and would have built a site from
-    whatever was already on disk. That build is not wrong so much as pointless,
-    and the danger is that it is only PARTLY pointless: enough fetched to pass
-    the sanity gate, not enough to be today's record.
 
-    So: ask for one page. If the General Court will not answer that, there is
-    nothing for tonight's run to do.
-    """
-    req = urllib.request.Request(
-        "https://gc.nh.gov/senate/about_senate/about.aspx",
-        headers={"User-Agent": "granite-record/1.0 (civic transparency "
-                               "project; contact@graniterecord.org)"})
+def build_running():
     try:
-        with urllib.request.urlopen(req, timeout=45) as r:
-            return r.status == 200, f"HTTP {r.status}"
-    except Exception as e:
-        return False, f"{type(e).__name__}: {e}"
+        return time.time() - BUILD_LOCK.stat().st_mtime < BUILD_LIVE
+    except OSError:
+        return False
 
 
 def census(site):
-    """The few numbers that say whether this is still the site.
-
-    All four come from what was built, not from the source files, because the
-    failure being guarded against is one where every source file reads fine and
-    the output is empty anyway.
-    """
+    """The few numbers that say whether this is still the site, from what was built."""
     def count_json(name):
         try:
-            v = json.loads((site / name).read_text(encoding="utf-8"))
-            return len(v)
+            return len(json.loads((site / name).read_text(encoding="utf-8")))
         except Exception:
             return 0
-
     return {"bills": count_json("index.json"),
             "legislators": count_json("legislators.json"),
-            # Per-bill data sits under its filing year. Both shapes are counted so
-            # that the gate reads the same number across the change rather than
-            # seeing every bill vanish at once.
             "bill_data": (sum(1 for _ in (site / "bills").glob("*/*.json"))
                           + sum(1 for _ in (site / "bills").glob("*.json"))),
-            "bill_pages": sum(1 for _ in (site / "bill").rglob("*.html"))}
+            "bill_pages": sum(1 for _ in (site / "bill").rglob("*.html")),
+            "feeds": sum(1 for _ in (site / "feed").rglob("*.xml")),
+            "files": sum(1 for p in site.rglob("*") if p.is_file())}
 
 
 def fingerprint(site):
@@ -162,148 +221,226 @@ def fingerprint(site):
     return h.hexdigest()[:16]
 
 
+def tree_clean():
+    """(clean, what): tracked files all committed, so a deploy publishes a commit."""
+    try:
+        r = child.run(["git", "status", "--porcelain", "--untracked-files=no"],
+                      capture_output=True)
+    except OSError as e:
+        return False, f"git would not run: {e}"
+    dirty = [ln for ln in (r.stdout or "").splitlines() if ln.strip()]
+    return (r.returncode == 0 and not dirty), ("; ".join(dirty[:6]) or f"git exit {r.returncode}")
+
+
+def gated(before, after, force):
+    """(blocked, lines) for the census gates and the file ceiling."""
+    lines = [f"  {'':<14}{'before':>10}{'after':>10}   change"]
+    blocked = []
+    for key, tol in GATES:
+        b, n = before[key], after[key]
+        if b and n < b * (1 - tol):
+            blocked.append(f"{key} fell from {b:,} to {n:,}")
+        pct = f"{(n - b) / b * 100:+.1f}%" if b else "n/a"
+        lines.append(f"  {key:<14}{b:>10,}{n:>10,}   {pct}")
+    ceiling = after["files"] >= FILE_CEILING
+    lines.append(f"  {'files':<14}{before['files']:>10,}{after['files']:>10,}   "
+                 f"ceiling {FILE_CEILING:,}")
+    hard = [f"{after['files']:,} files is past the {FILE_CEILING:,} ceiling"] if ceiling else []
+    return (hard + ([] if force else blocked)), blocked, lines
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
     ap.add_argument("--project", default="graniterecord")
     ap.add_argument("--base", default="https://graniterecord.org")
-    ap.add_argument("--key", help="YouTube key, to refresh the video index too")
-    ap.add_argument("--dry-run", action="store_true", help="never deploy")
-    ap.add_argument("--force", action="store_true", help="deploy past the gate")
+    ap.add_argument("--archive", default="nh-archive")
+    ap.add_argument("--deploy", action="store_true",
+                    help="publish if every gate passes (off unless given)")
+    ap.add_argument("--no-fetch", action="store_true")
+    ap.add_argument("--force", action="store_true", help="past the census gate")
     a = ap.parse_args()
 
-    # One at a time. build_all runs the same fetches this does, so a second
-    # run -- or a fetch started by hand in another window -- has two processes
-    # writing the same JSON files and asking the General Court for everything
-    # twice.
     lock = Path(".nightly.lock")
-    if lock.exists():
-        age = time.time() - lock.stat().st_mtime
-        who = lock.read_text(encoding="utf-8", errors="replace").strip()
-        if age < 6 * 3600:
-            print(f"Another run is already going: {who}\n"
-                  f"Started {age / 60:.0f} minutes ago. Two of these write the "
-                  f"same files.\nWait for it, or delete {lock} if you are sure "
-                  f"it died.")
-            return 1
-        print(f"Ignoring a stale lock from {age / 3600:.0f} hours ago.")
-    lock.write_text(f"{datetime.now():%Y-%m-%d %H:%M} pid {__import__('os').getpid()}",
-                    encoding="utf-8")
+    if lock.exists() and time.time() - lock.stat().st_mtime < 6 * 3600:
+        print(f"Another nightly is already going: "
+              f"{lock.read_text(encoding='utf-8', errors='replace').strip()}")
+        return 1
+    lock.write_text(f"{datetime.now():%Y-%m-%d %H:%M} pid {os.getpid()}", encoding="utf-8")
 
     started = datetime.now()
+    day = f"{started:%Y-%m-%d}"
+    site = Path(a.site)
+    code = 1
+    reports = True        # off only when a build is rewriting site/ under us
     say("=" * 74)
     say(f"Granite Record nightly  {started:%Y-%m-%d %H:%M}")
     say("=" * 74)
-
-    site = Path(a.site)
-    before = census(site)
-    before_fp = fingerprint(site)
-    say(f"\nlive now: " + ", ".join(f"{v:,} {k}" for k, v in before.items()))
-
-    code = 1
     try:
-        # Cheap and offline, so it runs first: a file that will not import is
-        # not worth an hour of fetching to find out about.
-        if not run(["preflight.py", "--code"], "preflight"):
-            say("\nSTOPPED: preflight failed. Nothing fetched, nothing published.")
-            return 1
-
-        say("\n--- can we reach the General Court? ---")
-        ok, how = reachable()
-        say(f"  {how}")
-        if not ok and not a.force:
-            say("\nSTOPPED: the General Court is not answering, so there is "
-                "nothing to\nfetch. The live site is untouched and no data "
-                "file was rewritten.\nRun netcheck.py to find out why, or "
-                "--force to build from what is\nalready on disk.")
-            return 1
-
-        args = ["build_all.py"] + (["--key", a.key] if a.key else [])
-        if not run(args, "rebuild"):
-            say("\nSTOPPED: the build failed. The live site is untouched.")
-            return 1
-
-        if not run(["check_site.py", "--site", a.site, "--base", a.base],
-                   "check the built site"):
-            say("\nSTOPPED: check_site failed. The live site is untouched.")
-            return 1
-
-        after = census(site)
-        say("\n--- sanity gate ---")
-        say(f"  {'':<14}{'before':>10}{'after':>10}   change")
-        blocked = []
-        for key, tol in GATES:
-            b, n = before[key], after[key]
-            if b and n < b * (1 - tol):
-                blocked.append(f"{key} fell from {b:,} to {n:,}")
-            pct = f"{(n - b) / b * 100:+.1f}%" if b else "n/a"
-            say(f"  {key:<14}{b:>10,}{n:>10,}   {pct}")
-
-        if blocked and not a.force:
-            say("\nSTOPPED: " + "; ".join(blocked))
-            say("A fall that size is a failure upstream, not a change in the\n"
-                "record. Yesterday's site is still live. Re-run by hand, and\n"
-                "if the fall is real, --force publishes it.")
-            return 1
-        if blocked:
-            say("\n  gate objected, --force given: " + "; ".join(blocked))
-
-        if fingerprint(site) == before_fp:
-            say("\nNothing changed since the last run. Not deploying an "
-                "identical site.")
+        if build_running():
+            say("\nDEFERRED: a build is running (.build.lock is fresh). Nothing done, "
+                "and no reports: they read the pages that build is rewriting.")
+            reports = False
             code = 0
             return 0
 
-        if a.dry_run:
-            say("\nChecks passed and the site changed. Not deploying, because "
-                "--dry-run.")
-            code = 0
-            return 0
-
-        say("\n--- publish ---")
-        # --branch names the production branch rather than letting wrangler
-        # take it from git; publish.bat says why. A nightly nobody watches is
-        # exactly where a deploy that quietly became a preview goes unseen.
-        r = child.run(["npx", "wrangler", "pages", "deploy", a.site,
-                            f"--project-name={a.project}",
-                            f"--branch={PRODUCTION_BRANCH}", "--commit-dirty=true"],
-                           capture_output=True, text=True, shell=(sys.platform
-                                                                  == "win32"))
-        for ln in ((r.stdout or "") + (r.stderr or "")).rstrip().splitlines():
-            say("  " + ln)
-        if r.returncode != 0:
-            say("\nSTOPPED: the deploy failed. The previous version is still "
-                "live.")
+        if run(["preflight.py", "--code"], "preflight") != 0:
+            say("\nSTOPPED: preflight failed. Nothing fetched, nothing built.")
             return 1
-        # The deploy reporting success means the upload finished, not that the
-        # world is getting what left this machine. That gap has produced three
-        # separate confusions, so it is now the last step rather than an
-        # assumption.
-        if Path("check_live.py").exists():
-            time.sleep(8)
-            if not run(["check_live.py", "--base", a.base, "--site", a.site],
-                       "what the live site is now serving"):
-                say("\nDEPLOYED, BUT THE LIVE SITE DOES NOT LOOK RIGHT.\n"
-                    "The upload succeeded; what it produced did not. A previous "
-                    "version can be\nrestored from the Deployments tab in "
-                    "Cloudflare.")
+
+        installed = False
+        if a.no_fetch:
+            say("\n--- fetch ---\n  skipped: --no-fetch")
+        else:
+            ok, why = gc_quiet()
+            if not ok:
+                say(f"\nFETCH DEFERRED: {why}")
+            else:
+                try:
+                    with refusal.hold("nightly"):
+                        rc = run(["snapshot_gencourt.py", "--dir", a.archive, "--into", "."],
+                                 "the day's bulk files")
+                except SystemExit as e:
+                    rc = e.code if isinstance(e.code, int) else 3
+                    say(f"  the lock was taken by someone else first (exit {rc})")
+                installed = rc == 0
+                if rc == 2:
+                    say("\nREFUSED while fetching. Recorded; every fetch now waits "
+                        "for a person.")
+                elif rc != 0:
+                    say(f"\nThe fetch did not complete (exit {rc}); nothing was "
+                        "installed, so tonight's build would be yesterday's.")
+
+        if installed:
+            run(["gc_changes.py", "--archive", a.archive,
+                 "--out", f"reports/gc-changes-{day}.md"], "what the General Court changed")
+
+        rebuilt = False
+        if installed or a.no_fetch:
+            before = census(site)
+            before_fp = fingerprint(site)
+            if run(["build_all.py", "--local"], "rebuild") != 0:
+                say("\nSTOPPED: the build failed. The live site is untouched.")
                 return 1
-        say(f"\nLive at {a.base}")
+            if run(["check_site.py", "--site", a.site, "--base", a.base],
+                   "check the built site") != 0:
+                say("\nSTOPPED: check_site failed. The live site is untouched.")
+                return 1
+            rebuilt = True
+            after = census(site)
+            stop, blocked, lines = gated(before, after, a.force)
+            say("\n--- gates ---")
+            for ln in lines:
+                say(ln)
+            if stop:
+                say("\nNOT PUBLISHABLE: " + "; ".join(stop))
+            elif blocked:
+                say("\n  the census objected, --force given: " + "; ".join(blocked))
+            changed = fingerprint(site) != before_fp
+            say(f"\n  the site {'changed' if changed else 'did not change'}")
+
+            if a.deploy and not stop and changed:
+                clean, what = tree_clean()
+                if not clean:
+                    say(f"\nNOT DEPLOYED: tracked files are not all committed ({what}). "
+                        "A nightly publishes a commit, not a working tree.")
+                else:
+                    if not deploy(a):
+                        return 1
+            elif not a.deploy:
+                say("\nNot deploying: --deploy was not given. Publishing is a person's "
+                    "decision unless they have handed it to the nightly.")
+            if stop:
+                return 1
+        else:
+            say("\nNothing new was installed, so there is nothing to rebuild.")
+
         code = 0
         return 0
     finally:
+        # The reports are written whatever happened above, and cannot change
+        # the exit status: a person reads them in the morning either way.
+        #
+        # Until 13 September a failure here was one indented line in the middle
+        # of the log, and the triage session, finding no file, had nothing to
+        # tell a failed pull from a night nobody reported anything. So a
+        # failure -- a non-zero exit, a step that could not start, or an exit 0
+        # that left no triage file -- now says REPORTS FAILED: at the start of
+        # a line, and leaves a marker beside where the triage file would be.
+        if reports:
+            failed = ""
+            t0 = datetime.now()
+            mark = len(LOG)
+            try:
+                rc = run(["compile_reports.py", "--site", a.site], "what readers reported")
+                if rc != 0:
+                    failed = f"compile_reports.py exit {rc}: {last_words(LOG[mark:])}"
+                elif not triage_written({f"{t0:%Y-%m-%d}", f"{datetime.now():%Y-%m-%d}"}):
+                    failed = ("compile_reports.py exit 0, but there is no "
+                              f"{REPORTS / TRIAGE_NAME.format(day=f'{t0:%Y-%m-%d}')}")
+            except Exception as e:                              # noqa: BLE001
+                failed = f"the reports step could not run: {e}"
+            if failed:
+                say(f"\nREPORTS FAILED: {failed}")
+                try:
+                    out = mark_reports_failed(f"{t0:%Y-%m-%d}", f"nightly-{day}.log")
+                    say(f"  {out} says so for the triage session. The site is unaffected, "
+                        "and the night's exit status is not changed by it.")
+                except OSError as e:
+                    say(f"  and the marker for the triage session could not be written: {e}")
         lock.unlink(missing_ok=True)
         say("\n" + "=" * 74)
         say(f"finished {datetime.now():%H:%M}, "
             f"{(datetime.now() - started).seconds // 60} min, exit {code}")
         logs = Path("logs")
         logs.mkdir(exist_ok=True)
-        (logs / f"nightly-{started:%Y-%m-%d}.log").write_text(
-            "\n".join(LOG) + "\n", encoding="utf-8")
-        # Two weeks is enough to see a pattern and not enough to notice.
-        keep = sorted(logs.glob("nightly-*.log"))[:-14]
-        for old in keep:
+        (logs / f"nightly-{day}.log").write_text("\n".join(LOG) + "\n", encoding="utf-8")
+        for old in sorted(logs.glob("nightly-*.log"))[:-14]:
             old.unlink()
+
+
+def current_branch():
+    try:
+        r = child.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True)
+        return (r.stdout or "").strip()
+    except OSError:
+        return ""
+
+
+def deploy(a):
+    say("\n--- publish ---")
+    # --branch sends the deploy to production whatever git says, so a branch
+    # checked out in this folder would be published as the site. publish.bat
+    # refuses the same way.
+    branch = current_branch()
+    if branch != PRODUCTION_BRANCH:
+        say(f"\nNOT DEPLOYED: this folder is on branch {branch or '(unknown)'}, not "
+            f"{PRODUCTION_BRANCH}. A deploy publishes whatever the folder holds.")
+        return False
+    for attempt in range(1, 5):
+        # --branch names the production branch rather than letting wrangler
+        # take it from git; publish.bat says why. Four attempts, as
+        # publish.bat: a timeout uploading the large files, not a refusal.
+        r = child.run(["npx", "wrangler", "pages", "deploy", a.site,
+                       f"--project-name={a.project}",
+                       f"--branch={PRODUCTION_BRANCH}", "--commit-dirty=true"],
+                      capture_output=True, shell=(sys.platform == "win32"))
+        for ln in ((r.stdout or "") + (r.stderr or "")).rstrip().splitlines()[-12:]:
+            say("  " + ln)
+        if r.returncode == 0:
+            break
+        say(f"  upload attempt {attempt} of 4 failed")
+    else:
+        say("\nSTOPPED: the deploy failed four times. The previous version is still live.")
+        return False
+    time.sleep(8)
+    if run(["check_live.py", "--gate", "--base", a.base, "--site", a.site],
+           "what the live site is now serving") != 0:
+        say("\nDEPLOYED, BUT THE LIVE SITE IS NOT SERVING WHAT WAS BUILT.\n"
+            "A previous version can be restored from the Deployments tab in Cloudflare.")
+        return False
+    say(f"\nLive at {a.base}")
+    return True
 
 
 if __name__ == "__main__":

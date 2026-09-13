@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.69
+// GRANITE_VERSION: 2026-09-07.70
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -326,6 +326,12 @@ need("meta.json")
    // "2,234 of 2,234 bills in the 2025-2026 term" above a single bill --
    // which at 360px was the whole first screen.
    if(window.GR_BILL)hideListControls();
+   // A record's own page gets the report box. Only its own page: the record
+   // and the address must agree for the report to be accepted, and a card
+   // expanded in the search list is not at its own address.
+   if(window.GR_BILL)mountReport("bill",String(window.GR_BILL));
+   if(window.GR_MEMBER)mountReport("member",String(window.GR_MEMBER));
+   if(window.GR_COMMITTEE)mountReport("committee",String(window.GR_COMMITTEE));
    if(window.GR_MEMBER){openPage("member",String(window.GR_MEMBER));return;}
    if(window.GR_COMMITTEE){openPage("committee",String(window.GR_COMMITTEE));return;}
    $("#q").focus();
@@ -1855,6 +1861,125 @@ function renderDetail(b,d){
     <div class="pane" role="tabpanel" id="pane_${b.id}_5" aria-labelledby="tab_${b.id}_5"
       tabindex="0" data-t="5" hidden>${renderDocuments(b,d)}</div>${btsec}`;
 }
+
+// ======================================================= report a problem ==
+//
+// A box at the foot of a record's own page. It posts to /api/report
+// (functions/api/report.js), the one thing on this site that runs.
+//
+// OUTSIDE #results, deliberately. Every tab click redraws #results, so a box
+// inside it would lose whatever the reader had typed the moment they checked
+// another tab to see if the problem was there too.
+//
+// WHAT IT SENDS is only what the page already knows -- the record, its
+// address, the open tab, what kind of thing is wrong (from the list), the
+// reader's words, the build the page came from, and how long the box was open
+// -- plus an empty field no person fills in. Nothing identifies the reader,
+// and the box says there is no way to reply.
+//
+// IF THE SEND FAILS, the reader keeps their words and gets an email link with
+// the same facts filled in, so a broken endpoint costs them a click, not a
+// retyping. With no JavaScript there is no box, and the footer's address is
+// the whole feature, as it was before.
+const REPORT_FIELDS=[["date","A date"],["status","The status"],["sponsor","A sponsor"],
+  ["vote","A vote or its count"],["hearing","A hearing, its day or its time"],
+  ["committee","A committee"],["text","The bill text or an amendment"],["link","A link"],
+  ["chapter","The chapter of law"],["veto","A veto message"],["topic","The topic"],
+  ["fiscal","The fiscal note"],["other","Something else"]];
+const REPORT_TO="contact@graniterecord.org";
+// The tabs the pages render. The Function accepts no other value, so a tab
+// renamed here and not there sends "", rather than having the report dropped.
+const REPORT_TABS=new Set(["Summary","Bill Text","Votes","Videos","Reports","Sponsors",
+  "Documents","Prime sponsored","Co-sponsored","Bills","Sessions"]);
+let reportBuild=null;       // site/build.json's "finished", fetched once, on first open
+
+function reportBox(kind,ref){
+  return `<details class="report" data-rkind="${esc(kind)}" data-rref="${esc(ref)}">
+  <summary>Report a problem with this page</summary>
+  <form class="reportform" novalidate>
+    <p class="reportwhat">Tell us what is wrong and we will check it against the official record.
+    Nothing here identifies you, which also means we cannot reply: for an answer, write to
+    <a href="mailto:${REPORT_TO}">${REPORT_TO}</a>.</p>
+    <p><label>What is wrong<br><select name="field"><option value="">Choose one</option>${
+      REPORT_FIELDS.map(([v,t])=>`<option value="${v}">${t}</option>`).join("")}</select></label></p>
+    <p><label>What does the record say instead?<br>
+    <textarea name="note" rows="4" maxlength="1000"></textarea></label></p>
+    <p style="position:absolute;left:-9999px" aria-hidden="true"><label>Leave this empty
+    <input name="website" tabindex="-1" autocomplete="off"></label></p>
+    <p><button type="submit">Send</button> <span class="reportstate" role="status" aria-live="polite"></span></p>
+  </form></details>`;
+}
+
+function mountReport(kind,ref){
+  if(document.getElementById("reportbox"))return;
+  const res=$("#results");
+  if(!res)return;
+  const div=document.createElement("div");
+  div.id="reportbox";
+  div.innerHTML=reportBox(kind,ref);
+  res.after(div);
+}
+
+function reportFallback(form,payload,why){
+  const st=form.querySelector(".reportstate");
+  const subject=`Problem on ${location.hostname}${payload.url}`;
+  const body=`${payload.note}\n\n--\npage: ${location.origin}${payload.url}\n`+
+    `record: ${payload.record}\nwhat: ${payload.field}\ntab: ${payload.tab||"-"}\nbuild: ${payload.build||"-"}\n`;
+  st.innerHTML=`That did not send (${esc(why)}). Your words are still in the box. `+
+    `<a href="mailto:${REPORT_TO}?subject=${encodeURIComponent(subject)}&amp;body=${encodeURIComponent(body)}">Send it by email instead</a>.`;
+}
+
+document.addEventListener("toggle",e=>{
+  const box=e.target;
+  if(!box.classList||!box.classList.contains("report")||!box.open)return;
+  const form=box.querySelector(".reportform");
+  if(form&&!form.dataset.opened)form.dataset.opened=String(Date.now());
+  if(reportBuild===null){
+    reportBuild="";
+    fetch("/build.json").then(r=>r.ok?r.json():{}).then(d=>{reportBuild=String((d&&d.finished)||"");})
+      .catch(()=>{});
+  }
+},true);
+
+document.addEventListener("submit",async e=>{
+  const form=e.target.closest&&e.target.closest(".reportform");
+  if(!form)return;
+  e.preventDefault();
+  const box=form.closest(".report"), st=form.querySelector(".reportstate");
+  const btn=form.querySelector("button[type=submit]");
+  const note=form.elements.note.value.trim();
+  if(!form.elements.field.value){st.textContent="Choose what is wrong from the list.";return;}
+  if(note.length<3){st.textContent="Say in a few words what is wrong.";return;}
+  const tab=document.querySelector('.tabs .tab[aria-selected="true"]');
+  // The label without its count, in any locale's way of writing a number.
+  const tabLabel=tab?tab.textContent.trim().replace(/\s*\([\d.,\s']+\)\s*$/,""):"";
+  const payload={
+    record:`${box.dataset.rkind}:${box.dataset.rref}`,
+    url:location.pathname.replace(/\.html$/,""),
+    tab:REPORT_TABS.has(tabLabel)?tabLabel:"",
+    field:form.elements.field.value,
+    note,
+    build:reportBuild||"",
+    elapsed:Date.now()-(+form.dataset.opened||Date.now()),
+    website:form.elements.website.value};
+  btn.disabled=true;
+  st.textContent="Sending…";
+  const ctl=new AbortController();
+  const timer=setTimeout(()=>ctl.abort(),6000);
+  try{
+    const r=await fetch("/api/report",{method:"POST",signal:ctl.signal,
+      headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    if(!r.ok)throw new Error(`the server answered ${r.status}`);
+    form.elements.note.value="";
+    st.textContent="Thank you. It will be checked against the record.";
+  }catch(err){
+    reportFallback(form,payload,err&&err.name==="AbortError"?"no answer in six seconds":
+      (err&&err.message)||"no connection");
+  }finally{
+    clearTimeout(timer);
+    btn.disabled=false;
+  }
+});
 
 // ===================================================== member and committee ==
 //
