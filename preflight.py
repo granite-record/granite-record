@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.149
+# GRANITE_VERSION: 2026-09-04.150
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3247,6 +3247,24 @@ def _committees_archived(BC):
     assert got(live) == ["H07", "H30", "S99"], got(live)
     assert BC.years(["1989-1990", "2023-2024"]) == "1989 to 2024"
     return "ok", "not listed and ended before this term; no record means no claim"
+
+
+@check("build", "a legislator's search description names the seat once and the places first",
+       needs=("build_legislator_pages",))
+def _legislator_description(BL):
+    """All 406 read "Rep. Aboul Khan (R - Rock 30) Rock 30." under the link
+    until 13 September: display_full carries the seat and it was appended again."""
+    m = {"display_full": "Rep. Michael Aron (R - Sull 8)", "district_label": "Sull 8", "chamber": "H",
+         "towns": ["Acworth", "Claremont Ward 10", "Claremont Ward 2", "Croydon", "Goshen",
+                   "Langdon", "Lempster", "Newport", "Unity"]}
+    d = BL.describe(m)
+    assert d.count("Sull 8") == 1, d
+    assert d.startswith("Rep. Michael Aron (R - Sull 8) represents Acworth, Claremont Ward 2, "
+                        "Claremont Ward 10,"), d
+    assert "and 3 more" in d, d
+    seven = dict(m, towns=m["towns"][:7])
+    assert "more" not in BL.describe(seven) and " and Lempster in" in BL.describe(seven), BL.describe(seven)
+    return "ok", "seat once, places first, wards in number order"
 
 
 @check("frontend", "tab strips keep the keyboard's place and a page opens on its own first tab")
