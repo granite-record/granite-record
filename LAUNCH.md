@@ -959,6 +959,46 @@ committed on `master` except where it says otherwise, and is on the built
   first tab; the version picker is a group of pressed buttons rather than a
   tablist with no tabs; and focus survives the bill text arriving
   asynchronously.
+- **The 1989-1998 hearing line's shorthand is read** (`referrals.py`, 13abc9f).
+  A hearing of those years names its committee after FOR: in letters the
+  referral line never uses -- "FOR: ED+A". Nine anchored expansions, each in
+  the General Court's key and each proven on the same bill: the referral line
+  of the same bill in the same chamber spells it out (ED&A 601 of 630 bills,
+  M&CG 253 of 261). `PUBLIC WKS` is deliberately absent, because the key
+  gives today's name, "Public Works and Highways", and the committee of 1990
+  was "Public Works". Proceedings naming no committee the site has: **9,094
+  -> 7,735**, more than planned because the five archive manifests were also
+  stale from the 10th and missed the 11th's expansions.
+- **Committees no longer listed go to the bottom of `/committees`**, under
+  "Not on the General Court's list today", each with the years its record
+  covers. Two facts, both required: not on the General Court's list, and
+  every bill and sitting day before this term. "Disbanded" is not claimed --
+  the records show when a committee stops appearing, not why. The roster
+  table cannot help: its `sitting` flag is about the legislator, not the seat,
+  so three special committees with no record and mostly sitting members stay
+  under "No bills or sessions on record", which claims nothing.
+- **A proceeding takes its own chamber's committee** (`docket_parser.py`).
+  The referral timeline was keyed by bill alone, so a Senate referral joined
+  the House's timeline: HB 115's House executive session of 1 April 2025 was
+  filed under the Senate's "Education", which is H05 by name in the House,
+  and that one row kept H05 Education out of the archived list. 48
+  proceedings across six terms. Reading why 2015-2016 then lost 318 more
+  found the larger defect under it: **that term's docket writes 1,255
+  introductions with no date** ("Introduced and Referred to Public Works and
+  Highways."), and none was read, so **2,918 of its proceedings had no
+  committee; 9 do now** -- with "(in recess of 3/12/2015)" and "&" taken off
+  the names, so they match the committee's page. Across the table: 53,814
+  proceedings, 49,158 naming a committee (43,701 before tonight), 7,710 naming
+  one the site has no code for, **5 of them from 2015 onward** -- the rest is
+  1989-1998 spelling, below. The 2015-2016 manifest was also a day stale
+  against its docket, which is why the table grew by 2,850 rows. H05
+  Education is in the archived list now, 1,530 bills and 496 sitting days.
+  Eight recordings change match: six clearly better
+  (CACR 21 in Judiciary's room now matches Judiciary's recording), HB 1288
+  loses one that came from a borrowed name, and HB 296's June 2022 work
+  session loses a House Judiciary match that was probably right by accident
+  -- its room is Judiciary's, and its House referral was Criminal Justice.
+  None of the eight is hand-timed or on the bench.
 
 **Found and not fixed:**
 
@@ -968,3 +1008,19 @@ committed on `master` except where it says otherwise, and is on the built
   the pattern or skip strings that start "Joint".
 - `H Commerce`, 759 hearings of 1989-1998, the clerk writing COMMERCE for a
   House committee renamed inside the decade. Left as written.
+- **What is left unmatched is spelling, and it wants a canonical list per
+  era before any of it is listed as a committee.** The Senate's insurance
+  committee is `Insurance` (292), `Insur` (144) and `Insuranc` (12); there is
+  `Jud`, `Educ`, `Environ`, `W and M`, and three spellings of `Dev Rec and
+  Env`. The archived section lists only committees with a code for that
+  reason. The historic committees with no code -- Constitutional and
+  Statutory Revision, Public Works, Banks, Insurance, Public Protection and
+  Veterans Affairs -- need the same per-bill proof as tonight's nine before
+  they get a section.
+- `ST-FED` (113 hearings) and `ST INST` (118) are not in the key and each
+  committee changed its name inside those years. Left as written.
+- **A House proceeding after a second referral is still filed under the
+  first committee.** The timeline reads introductions only, so "Referred to
+  Finance 03/13/2025" is not on it, and a Finance executive session is named
+  for the policy committee. The room would settle many (HB 296: LOB 206-208
+  is Judiciary's). Not measured yet.

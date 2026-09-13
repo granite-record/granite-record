@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -221,6 +221,14 @@ def normalize_committee(name):
         return None
     name = JOURNAL_TAIL_RE.sub("", name)
     name = re.sub(r"\s*\bP\.\s*\d+\b.*$", "", name)   # stray page refs
+    # "Commerce and Consumer Affairs (in recess of 3/12/2015)": the House's
+    # recess sittings of 2015, which reached the timeline once undated
+    # introductions were read, and 316 proceedings named no committee for it.
+    # Only that parenthesis: "(DCYF)" is part of a committee's name.
+    name = re.sub(r"\s*\(in recess (?:of|from)[^)]*\)", "", name, flags=re.I)
+    # "Health, Human Services & Elderly Affairs" is the committee its page
+    # spells with "and".
+    name = re.sub(r"\s*&\s*", " and ", name)
     name = re.sub(r"\s+", " ", name).strip(" .,;")
     return name or None
 
@@ -234,6 +242,10 @@ CMTE_REPORT_RE = re.compile(r"Committee Report:\s*(?P<rec>[^,(]+)")
 
 # Effective-date extraction for referral ordering
 INTRODUCED_RE = re.compile(r"Introduced(?:\s+\(in recess of\))?\s+(?P<date>\d{1,2}/\d{1,2}/\d{4})")
+# "Introduced and Referred to Finance." -- the same line with no date, which is
+# how the 2015-2016 docket writes 1,255 of them. Anchored at the start, so a
+# line that only mentions an introduction in passing is not a referral.
+UNDATED_INTRO_RE = re.compile(r"\s*Introduced\s+and\s+[Rr]eferred\s+to\b")
 
 # A proceeding that produces video. Committee Report does NOT: its date is the
 # calendar day the report is *published to the chamber*, not when the committee
@@ -330,7 +342,27 @@ def extract_flags(desc):
 
 
 def build_referral_timeline(rows):
-    """bill -> sorted [(effective_date, committee)] from referral + vacate rows."""
+    """(bill, body) -> sorted [(effective_date, committee, how)] from referral
+    and vacate rows.
+
+    KEYED BY CHAMBER, since 13 September. It was keyed by bill alone, so when a
+    House bill was introduced in the Senate its Senate committee joined the
+    House's timeline, and a House proceeding dated after that took the
+    Senate's committee's name. HB 115 of 2025 was introduced in the Senate on
+    27 March and referred to Education; the House's executive session of 1
+    April -- by then in House Finance -- was filed as House "Education",
+    which is H05, a committee not on the General Court's list, and it kept
+    H05 looking current. 48 proceedings across six terms were named after the
+    other chamber's committee that way, 15 of them in 2025-2026.
+
+    A proceeding whose own chamber has no referral row now has no committee,
+    where it used to borrow the other chamber's. That looked like 327 rows,
+    318 of them in 2015-2016 -- until the reason was read: that term's docket
+    writes its introductions without a date, and those lines were skipped
+    (see UNDATED_INTRO_RE). With them read, what is left without a committee
+    is small, and a station with none reads "House Executive Session", which
+    is true; "House Capital Budget" was not.
+    """
     timeline = defaultdict(list)
     for r in rows:
         _, clean = extract_flags(r["desc"])
@@ -341,23 +373,41 @@ def build_referral_timeline(rows):
             if eff is None:
                 m2 = re.search(r"(\d{1,2}/\d{1,2}/\d{4})", clean)
                 eff = _parse_date(m2.group(1)) if m2 else date.min
-            timeline[r["bill"]].append((eff, normalize_committee(m_vac.group("committee")), "vacated"))
+            timeline[(r["bill"], r["body"])].append(
+                (eff, normalize_committee(m_vac.group("committee")), "vacated"))
             continue
         if "Vacated" in clean:
             continue
         m_ref = REFERRAL_RE.search(clean)
-        if m_ref and INTRODUCED_RE.search(clean):
-            eff = _parse_date(INTRODUCED_RE.search(clean).group("date"))
-            timeline[r["bill"]].append((eff, normalize_committee(m_ref.group("committee")), "introduced"))
+        intro = INTRODUCED_RE.search(clean)
+        # UNDATED, TOO. The 2015-2016 docket writes 786 House and 469 Senate
+        # introductions as "Introduced and Referred to Public Works and
+        # Highways." with no date, and INTRODUCED_RE wants one, so none of them
+        # was read: 2,600 proceedings of that term had no committee, and 318
+        # more borrowed the other chamber's until the key took the chamber.
+        # The row's own timestamp stands in for the date -- the clerk writes
+        # the line when the bill is introduced, and a committee_on() asked
+        # about an earlier day still falls back to the first entry.
+        if m_ref and not intro and UNDATED_INTRO_RE.match(clean):
+            try:
+                eff = _parse_date(r["created"].split()[0])
+            except (ValueError, IndexError):
+                eff = date.min
+            timeline[(r["bill"], r["body"])].append(
+                (eff, normalize_committee(m_ref.group("committee")), "introduced"))
+        elif m_ref and intro:
+            eff = _parse_date(intro.group("date"))
+            timeline[(r["bill"], r["body"])].append(
+                (eff, normalize_committee(m_ref.group("committee")), "introduced"))
     for b in timeline:
         # vacated sorts after introduced on the same date
         timeline[b].sort(key=lambda t: (t[0], 0 if t[2] == "introduced" else 1))
     return timeline
 
 
-def committee_on(timeline, bill, when):
-    """Which committee held the bill on a given date."""
-    entries = timeline.get(bill, [])
+def committee_on(timeline, bill, when, body):
+    """Which of `body`'s committees held the bill on a given date."""
+    entries = timeline.get((bill, body), [])
     current = None
     for eff, cmte, _ in entries:
         if eff <= when:
@@ -442,7 +492,7 @@ def parse_proceedings(rows, timeline):
             # name is expanded through referrals, which knows the General
             # Court's own key to its shorthand.
             committee=(_legacy_committee(legacy_cmte)
-                       or committee_on(timeline, r["bill"], d)),
+                       or committee_on(timeline, r["bill"], d, r["body"])),
             raw=r["desc"].strip(), row_created=r["created"], row_updated=r["updated"],
         )
 

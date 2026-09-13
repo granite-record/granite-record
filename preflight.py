@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.148
+# GRANITE_VERSION: 2026-09-04.149
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3915,6 +3915,52 @@ def _dropped():
     assert ratio > 0.95, (f"{len(looks):,} rows look scheduled, {len(procs):,} "
                           f"parsed ({ratio:.0%}); the rest are dropped silently")
     return "ok", f"{len(looks):,} look scheduled, {len(procs):,} parsed ({ratio:.0%})"
+
+
+@check("narrative", "a proceeding takes its own chamber's committee, never the other's",
+       needs=("docket_parser",))
+def _referral_chamber(docket_parser):
+    """HB 115 of 2025, as the docket has it. The timeline was keyed by bill, so
+    the Senate's referral on 27 March joined the House's, and the House's
+    executive session of 1 April was filed under the Senate's Education
+    committee -- which is H05 by name in the House, and kept a committee no
+    longer on the General Court's list looking current."""
+    dp = docket_parser
+    rows = [
+        {"lsr": "2025-0061", "created": "1/6/2025 8:30:15 AM", "bill": "HB115", "body": "H",
+         "desc": "  Introduced 01/08/2025 and referred to Education Funding  HJ 2  P. 6",
+         "updated": "", "lineno": 1},
+        {"lsr": "2025-0061", "created": "3/26/2025 12:42:38 PM", "bill": "HB115", "body": "H",
+         "desc": "Executive Session: 04/01/2025 10:00 am LOB 210-211", "updated": "", "lineno": 2},
+        {"lsr": "2025-0061", "created": "4/11/2025 3:46:58 PM", "bill": "HB115", "body": "S",
+         "desc": "  Introduced 03/27/2025 and Referred to Education;  SJ 10", "updated": "", "lineno": 3},
+        # A Senate hearing on a bill whose Senate referral is missing borrows nothing.
+        {"lsr": "2025-0999", "created": "4/1/2025 9:00:00 AM", "bill": "HB999", "body": "H",
+         "desc": "  Introduced 01/08/2025 and referred to Housing  HJ 2  P. 6", "updated": "", "lineno": 4},
+        {"lsr": "2025-0999", "created": "4/2/2025 9:00:00 AM", "bill": "HB999", "body": "S",
+         "desc": "Hearing: 04/15/2025, Room 103, LOB, 09:30 am;  SC 5", "updated": "", "lineno": 5},
+    ]
+    # And 2015-2016's way of writing an introduction, with no date: 1,255 of
+    # them were skipped, and 2,600 proceedings of that term had no committee.
+    rows += [
+        {"lsr": "2015-1030", "created": "02/18/2015 10:38:31 AM", "bill": "HB25", "body": "H",
+         "desc": "Introduced and Referred to Public Works and Highways.", "updated": "", "lineno": 6},
+        {"lsr": "2015-1030", "created": "03/05/2015 01:42:48 PM", "bill": "HB25", "body": "H",
+         "desc": "Subcommittee Work Session: 3/13/2015 9:30 AM LOB 201", "updated": "", "lineno": 7},
+    ]
+    procs = {(p.bill, p.body): p.committee
+             for p in dp.parse_proceedings(rows, dp.build_referral_timeline(rows))}
+    assert procs.get(("HB115", "H")) == "Education Funding", procs
+    assert procs.get(("HB999", "S")) is None, "a Senate hearing borrowed the House's committee"
+    assert procs.get(("HB25", "H")) == "Public Works and Highways", \
+        "an undated introduction was skipped: " + repr(procs.get(("HB25", "H")))
+    n = dp.normalize_committee
+    assert n("Commerce and Consumer Affairs (in recess of 3/12/2015)") == "Commerce and Consumer Affairs"
+    assert n("Labor, Industrial and Rehabilitative Services (In Recess from 3/12/2015)") == \
+        "Labor, Industrial and Rehabilitative Services"
+    assert n("Health, Human Services & Elderly Affairs") == "Health, Human Services and Elderly Affairs"
+    assert n("Special Committee on the Division for Children, Youth and Families (DCYF)").endswith("(DCYF)")
+    return "ok", "own chamber's committee, undated introductions read, no borrowing"
 
 
 @check("data", "a committee report line gives up its recommendation and nothing else")
