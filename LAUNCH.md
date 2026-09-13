@@ -399,6 +399,28 @@ example on this site of a number outliving its premise.
   rail and not that line; preflight now reads it (d35ce77). The lesson for
   any status change: diff every field the page prints, not the ones the
   change was meant to move.
+- **`fetch_senate_calendars.py` finds nothing for 2007 and earlier. Open, and
+  deliberately not fixed.** It filters the index's document list with `str(year)
+  in label` (`:126`), and the older editions' labels do not name their year:
+  2007 is offered, and 61 of its calendars exist, and it reports "0 calendars
+  listed" and exits 1. Queued in the lane on the 12th it stopped the lane at
+  13:29 with 102 steps behind it, and nothing ran until the evening. The years
+  it was for, 1998-2008, are drained from `archive/queue.csv` instead, where
+  all 664 names have sat since discovery on the 9th; the script is still right
+  for 2008 onward, whose labels carry the year. The proving step did its job
+  -- five requests' worth of budget, and it stopped the lane before twelve
+  more steps failed the same way. What cost the afternoon is that a stopped
+  lane says so only in `logs/gc_lane.log`, and nobody was reading it. A lane
+  that stops needs to tell somebody.
+- ~~**`fetch_calendar_archive.py` could not run in the lane.**~~ *Closed on the
+  12th.* It kept `archive/.lock` by hand: it exited when the lock was under an
+  hour old -- the lane touches its lock every minute -- and unlinked the lock
+  unconditionally when it finished, so under the lane it would have stopped the
+  queue at once, and had it run it would have deleted the lane's lock. It also
+  needed two 403s to stop, missed a reset at connect time, and would have saved
+  the firewall's block page as a PDF. It takes the lock through `refusal.hold()`
+  and reads every answer through `refusal.classify()` now, and preflight drives
+  it through all of those on fake answers.
 
 ## 6a. Filled from disk on the 11th, no request made
 

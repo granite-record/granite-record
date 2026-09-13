@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.140
+# GRANITE_VERSION: 2026-09-04.141
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4867,6 +4867,113 @@ def _senate_calendars(SC):
                       "403/429/reset read the one way, 20s pace")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "the calendar drain runs under the lane and leaves its lock alone",
+       needs=("fetch_calendar_archive",))
+def _calendar_drain(CA):
+    """The 664 Senate calendars of 1998-2008 are drained by this script, in the lane.
+
+    It kept archive/.lock by hand until 12 September: exit if a lock was under
+    an hour old, delete it if older, and unlink it unconditionally when done.
+    The lane touches its lock every minute, so queued in the lane the drain
+    exited 1 at once -- which stops the whole queue, the way the Senate
+    calendar step had stopped it that afternoon with 102 steps behind it --
+    and had it run, it would have deleted the lane's lock on the way out.
+
+    It also recognised a refusal by searching error text, so a 403 needed a
+    second 403 to stop it, a reset at connect time was not a refusal at all,
+    and the firewall's block page served with HTTP 200 would have been saved
+    as a PDF and marked held for good.
+
+    Driven through main() on fake answers, so refusal.check() and
+    refusal.hold() are the ones the lane will meet. Nothing asks the network
+    and archive/ is never opened.
+    """
+    import contextlib
+    import http.client
+    import io
+    import time
+    import types
+    import urllib.error
+    import refusal
+
+    saved = (refusal.MARK, refusal.LOCK, CA.ROOT, CA.QUEUE, CA._get, CA.time,
+             sys.argv)
+    tmps = []
+    PDF = b"%PDF-1.4 a calendar"
+
+    def run(answers, n=2, lock=None):
+        tmp = Path(tempfile.mkdtemp())
+        tmps.append(tmp)
+        CA.ROOT, CA.QUEUE = tmp, tmp / "queue.csv"
+        refusal.MARK, refusal.LOCK = tmp / "refused.json", tmp / ".lock"
+        rows = [{"chamber": "S", "kind": "calendar", "year": "2007",
+                 "name": f"d{i}.pdf", "url": f"https://example.invalid/{i}",
+                 "path": str(tmp / "out" / f"SC{i:03}.pdf"), "state": "wanted",
+                 "attempts": "0", "error": "", "bytes": "", "fetched": ""}
+                for i in range(n)]
+        CA.save_queue(rows)
+        if lock is not None:
+            refusal.LOCK.write_text(str(lock), encoding="utf-8")
+        answers, asked = iter(answers), []
+
+        def fake(url, data=None, timeout=60):
+            asked.append(url)
+            a = next(answers)
+            if isinstance(a, BaseException):
+                raise a
+            return a
+        CA._get = fake
+        sys.argv = ["fetch_calendar_archive.py", "--chamber", "S", "--kind",
+                    "calendar", "--budget", str(n), "--delay", "1"]
+        # stderr too: the foreign-lock case prints hold()'s real warning, and
+        # "archive/.lock is held" in preflight's output would read as true.
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            try:
+                rc = CA.main()
+            except SystemExit as e:
+                rc = e.code if isinstance(e.code, int) else 1
+        return rc, CA.load_queue(), asked
+
+    try:
+        CA.time = types.SimpleNamespace(sleep=lambda s: None, time=time.time,
+                                        strftime=time.strftime)
+        # Under the lane: the lock names this process's parent.
+        rc, rows, asked = run([PDF, PDF], lock=os.getppid())
+        assert rc == 0, f"under the lane the drain exited {rc}"
+        assert all(r["state"] == "held" for r in rows)
+        assert refusal.LOCK.exists() and \
+            refusal.LOCK.read_text().strip() == str(os.getppid()), \
+            "the drain removed the lane's lock"
+        # Somebody else's lock: no request, their lock untouched, status 3.
+        rc, rows, asked = run([PDF], n=1, lock=99999999)
+        assert rc == 3 and not asked, (rc, asked)
+        assert refusal.LOCK.read_text().strip() == "99999999"
+        # One 403 ends it, is recorded, and the status says so.
+        rc, rows, asked = run([urllib.error.HTTPError("u", 403, "no", {}, None), PDF])
+        assert rc == 2 and len(asked) == 1 and refusal.MARK.exists(), (rc, asked)
+        # The block page with HTTP 200 is not a calendar.
+        rc, rows, asked = run([b"<h1>Web Page Blocked</h1> Attack ID: 9", PDF])
+        assert rc == 2 and not Path(rows[0]["path"]).exists(), rc
+        # Two dropped connections, the first a reset at connect time.
+        rc, rows, asked = run([urllib.error.URLError(ConnectionResetError(10054, "r")),
+                               PDF, http.client.RemoteDisconnected("x"), PDF], n=4)
+        assert rc == 2 and len(asked) == 3, (rc, asked)
+        # A broken page twice stops the run non-zero, so the lane stops too.
+        rc, rows, asked = run([b"<html>Server Error in '/'</html>"] * 2)
+        assert rc == 1 and not refusal.MARK.exists(), rc
+        src = Path("fetch_calendar_archive.py").read_text(encoding="utf-8")
+        assert "LOCK.unlink" not in src and "LOCK.write_text" not in src, \
+            "fetch_calendar_archive manages archive/.lock by hand again"
+        return "ok", ("runs under the lane's lock and leaves it; one 403, the "
+                      "block page and two drops each stop it with status 2")
+    finally:
+        (refusal.MARK, refusal.LOCK, CA.ROOT, CA.QUEUE, CA._get, CA.time,
+         sys.argv) = saved
+        for t in tmps:
+            shutil.rmtree(t, ignore_errors=True)
 
 
 @check("build", "a guessed topic is withheld rather than guessed twice",

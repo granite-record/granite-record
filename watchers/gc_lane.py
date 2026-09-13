@@ -19,10 +19,12 @@ fetchers do not all honour archive/.lock: fetch_archive_docket,
 fetch_sponsors_by_member, fetch_rollcall_parties and fetch_legislation neither
 take it nor look at it. So the rule has to be held from outside them. This
 holds the lock for as long as it runs, and touches it every minute --
-fetch_calendar_archive deletes a lock more than an hour old, and nothing else
-refreshed one, so any run longer than an hour could be joined by a second
-worker. A step that takes the lock itself is written with "handover " in front
-of it, and the lane lets go of the lock for exactly that step.
+fetch_calendar_archive used to delete a lock more than an hour old, and nothing
+else refreshed one, so any run longer than an hour could be joined by a second
+worker. (Since 12 September it takes the lock through refusal.hold() like the
+rest, which runs a child of this lane under the lane's lock, and it no longer
+needs a handover.) A step that takes the lock itself is written with "handover "
+in front of it, and the lane lets go of the lock for exactly that step.
 
 WHY IT STOPS RATHER THAN CARRIES ON
 

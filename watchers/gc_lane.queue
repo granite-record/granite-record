@@ -108,42 +108,43 @@ watchers/rest.py 1800 after-finish-2023
 # for the governor's veto messages on Senate bills, which are printed in the
 # chamber the bill came from.
 #
-# fetch_senate_calendars had NONE of the safety the other fetchers were given
-# on the 10th until the 12th: no lock, no refusal check, no one reading of an
-# error, and a 2.5-second delay at the address that has blocked this project
-# twice. It now takes the lane's lock, stops on a refusal, refuses to save
-# anything that is not a PDF (a block page arrives with HTTP 200), writes
-# atomically, and asks every 20 seconds.
+# THE FIRST VERSION OF THIS BLOCK STOPPED THE LANE, on the 12th at 13:29, and
+# the lane sat idle from then until the evening with 102 steps behind it.
+# It asked fetch_senate_calendars.py for 2007, which read the index, found no
+# document whose LABEL carried "2007", said "0 calendars listed" and exited 1.
+# The year IS offered -- the script prints something else when it is not --
+# so the older editions' labels simply do not name their year, and the filter
+# at fetch_senate_calendars.py:126 threw all 61 away. A deterministic failure,
+# not a refusal, and the lane stops on any non-zero exit.
 #
-# FIVE REQUESTS FIRST. The open question is whether that 403 was the ADDRESS
-# refusing us or those particular documents not being served. Five requests
-# answer it; 664 would answer it expensively. If they come back, the years
-# below run; if they 403 again, the run stops itself and the answer is that
-# these documents are not served, which is worth knowing and is the end of it.
-fetch_senate_calendars.py --year 2007 --budget 5 --delay 20
-watchers/rest.py 600 after-senate-1998-2008-proving
-fetch_senate_calendars.py --year 2007 --delay 20
-watchers/rest.py 1800 after-senate-2007
-fetch_senate_calendars.py --year 2006 --delay 20
-watchers/rest.py 1800 after-senate-2006
-fetch_senate_calendars.py --year 2005 --delay 20
-watchers/rest.py 1800 after-senate-2005
-fetch_senate_calendars.py --year 2004 --delay 20
-watchers/rest.py 1800 after-senate-2004
-fetch_senate_calendars.py --year 2003 --delay 20
-watchers/rest.py 1800 after-senate-2003
-fetch_senate_calendars.py --year 2002 --delay 20
-watchers/rest.py 1800 after-senate-2002
-fetch_senate_calendars.py --year 2001 --delay 20
-watchers/rest.py 1800 after-senate-2001
-fetch_senate_calendars.py --year 2000 --delay 20
-watchers/rest.py 1800 after-senate-2000
-fetch_senate_calendars.py --year 1999 --delay 20
-watchers/rest.py 1800 after-senate-1999
-fetch_senate_calendars.py --year 1998 --delay 20
-watchers/rest.py 1800 after-senate-1998
-fetch_senate_calendars.py --year 2008 --delay 20
-watchers/rest.py 3600 after-senate-2008-stragglers
+# The names were already on this disk. archive/queue.csv holds all 664, each
+# with the exact filename the index listed on 9 September, and the drain that
+# reads that queue never constructs or searches for anything. So the queue is
+# drained instead, by fetch_calendar_archive.py -- which could not run in the
+# lane either until the 12th: it kept archive/.lock by hand, exited at once
+# when the lock was fresh, and deleted the lock when it finished. It now takes
+# the lock through refusal.hold() like the others, reads every answer through
+# refusal.classify(), stops on ONE refusal, refuses to save anything that is
+# not a PDF, and writes atomically (preflight: "the calendar drain runs under
+# the lane and leaves its lock alone").
+#
+# Each step is a different year range because the lane knows a step by its
+# text, and five identical lines would be done after the first. Newest first.
+#
+# FIVE REQUESTS FIRST. The queue's first wanted row is 2008's 09B.pdf -- the
+# exact document that answered 403 on 9 September. If it comes back, the
+# address was not refusing us and the years below run; if it 403s again, the
+# drain records the refusal, exits 2, and the lane stops, which is the answer.
+fetch_calendar_archive.py --chamber S --kind calendar --from 2008 --to 2008 --budget 5 --delay 20
+watchers/rest.py 1800 after-senate-proving
+fetch_calendar_archive.py --chamber S --kind calendar --from 2006 --to 2008 --budget 140 --delay 20
+watchers/rest.py 1800 after-senate-2006-2008
+fetch_calendar_archive.py --chamber S --kind calendar --from 2003 --to 2005 --budget 170 --delay 20
+watchers/rest.py 1800 after-senate-2003-2005
+fetch_calendar_archive.py --chamber S --kind calendar --from 2000 --to 2002 --budget 210 --delay 20
+watchers/rest.py 1800 after-senate-2000-2002
+fetch_calendar_archive.py --chamber S --kind calendar --from 1998 --to 1999 --budget 170 --delay 20
+watchers/rest.py 3600 after-senate-1998-1999
 fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-03
 watchers/rest.py 3600 after-bills-03
 fetch_legislation.py --all --from 1989 --to 2024 --kinds HB,SB,CACR --newest-first --delay 20 --budget 800 --note bills-04

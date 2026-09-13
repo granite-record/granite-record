@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.5
+# GRANITE_VERSION: 2026-09-08.6
 """
 Thirty years of calendars and journals, a night at a time.
 
@@ -82,7 +82,9 @@ from fetch_committee_reports import (DOCNUM_RE, SEL_DOC, SEL_KIND, SEL_YEAR,
 
 ROOT = Path("archive")
 QUEUE = ROOT / "queue.csv"
-LOCK = ROOT / ".lock"
+# No LOCK here. The one-worker lock is refusal.LOCK, taken through
+# refusal.hold(); a second name for the same file is how this script came to
+# manage it by hand.
 FIELDS = ["chamber", "kind", "year", "name", "url", "path", "state",
           "attempts", "error", "bytes", "fetched"]
 
@@ -283,16 +285,29 @@ def main():
         return 0
 
     # ---- draining, and only one process may ------------------------------
-    if LOCK.exists():
-        age = time.time() - LOCK.stat().st_mtime
-        if age < 3600:
-            sys.exit(f"archive/.lock is {age / 60:.0f} minutes old: another "
-                     "run has the queue.\nTwo fetches at once is what got this "
-                     "address blocked. Delete the lock only\nif you are sure "
-                     "nothing else is running.")
-        LOCK.unlink()
+    #
+    # refusal.hold() is the one-worker rule: take archive/.lock, or run under
+    # the lane that holds it, or do not run. This block used to do it by hand
+    # -- exit if the lock was under an hour old, delete it if older, and
+    # unlink it unconditionally on the way out. Under watchers/gc_lane.py,
+    # whose lock is touched every minute, that meant exiting 1 at once, which
+    # stops the lane; and had it run, it would have deleted the lane's own
+    # lock when it finished. refusal.py names this script as the one that
+    # deleted locks.
     refusal.check("The calendar drain")
-    LOCK.write_text(str(os.getpid()), encoding="utf-8")
+    with refusal.hold("the calendar drain") as held:
+        return drain(rows, chambers, kinds, years, a, held)
+
+
+def drain(rows, chambers, kinds, years, a, held):
+    """Fetch up to --budget wanted documents. 0 done, 1 stopped, 2 refused.
+
+    A run that stops early says so in its exit status. The lane reads any
+    non-zero status as "stop here", and a drain that broke off on two failures
+    and exited 0 would have had the lane rest half an hour and send the next
+    batch at the same address.
+    """
+    stopped = ""
     try:
         todo = [r for r in rows
                 if r["state"] == "wanted"
@@ -311,43 +326,87 @@ def main():
                 r["state"] = "held"
                 r["bytes"] = str(path.stat().st_size)
                 continue
+            # Immediately before the request, not before the sleep that
+            # preceded it: a refusal another process met while this one
+            # waited, or a lane killed while it waited, stops it here.
+            if refusal.MARK.exists():
+                stopped = "refused"
+                print("\narchive/refused.json is on file. Stopping.")
+                break
+            if not held.still():
+                stopped = "the lane"
+                print("\nThe lane holding archive/.lock is gone. Stopping.")
+                break
             path.parent.mkdir(parents=True, exist_ok=True)
+            # ONE READING OF EVERY ANSWER. This loop used to recognise a
+            # refusal by searching the error text for RemoteDisconnected,
+            # ConnectionReset or 403 -- which missed a reset at connect time
+            # ("[WinError 10054]"), a 429, a 503, and the firewall's block
+            # page served with HTTP 200, which it would have saved as a PDF
+            # and marked held for ever. refusal.classify() is the reading
+            # every other fetch uses.
             try:
                 blob = _get(r["url"])
+                kind = refusal.classify(
+                    body=blob[:4000].decode("utf-8", "replace"))
+                why = "the firewall's block page, served as 200" if kind else ""
+                if not kind and not blob.startswith(b"%PDF"):
+                    kind, why = "failed", f"not a PDF ({len(blob):,} bytes)"
             except Exception as e:                      # noqa: BLE001
+                kind = refusal.classify(e) or "failed"
+                why = f"{type(e).__name__}: {e}"
+            if kind:
                 r["attempts"] = str(int(r["attempts"] or 0) + 1)
-                r["error"] = f"{type(e).__name__}: {e}"[:180]
+                r["error"] = why[:180]
+                fail += 1
+                print(f"  [{i}] {r['name']}: {kind}: {r['error'][:80]}",
+                      flush=True)
+                if kind == "refused":
+                    # The address saying no. One ends the run.
+                    refusal.note("fetch_calendar_archive", r["error"])
+                    stopped = "refused"
+                    print("\nRefused. Stopping and not coming back today.\n"
+                          "python3 netcheck.py says what kind of refusal it "
+                          "is without making it worse.")
+                    break
+                if kind == "missing":
+                    # Listed by the index and not served. Not a refusal and
+                    # not worth asking again: the index is where the name
+                    # came from, so a 404 is the index being out of date.
+                    r["state"] = "gone"
+                    time.sleep(a.delay * random.uniform(0.75, 1.25))
+                    continue
                 if int(r["attempts"]) >= 3:
                     r["state"] = "failed"
-                fail += 1
                 run += 1
-                # RemoteDisconnected is not one failure among others. It is
-                # the server accepting the connection and closing it without
-                # sending a byte, which is what being refused looks like from
-                # here. One is bad luck; two in a run is a pattern and the
-                # run is over.
-                blocklike = "RemoteDisconnected" in r["error"] or \
-                    "ConnectionReset" in r["error"] or "403" in r["error"]
-                if blocklike:
+                if kind == "dropped":
+                    # Accepted and closed without an answer. One is bad
+                    # luck; two in a run is this address refusing.
                     dropped += 1
-                print(f"  [{i}] {r['name']}: {r['error'][:80]}", flush=True)
-                if dropped >= 2:
-                    refusal.note("fetch_calendar_archive", r["error"])
-                    print("\nTwo refusals this run. Stopping and not coming "
-                          "back today.\npython3 netcheck.py says what kind of "
-                          "refusal it is without making it worse.")
-                    break
+                    if dropped >= 2:
+                        refusal.note("fetch_calendar_archive", r["error"])
+                        stopped = "refused"
+                        print("\nTwo dropped connections this run. Stopping "
+                              "and not coming back today.\npython3 "
+                              "netcheck.py says what kind of refusal it is "
+                              "without making it worse.")
+                        break
                 if run >= 2:
+                    stopped = "two in a row"
                     print("\nTwo in a row. Stopping. netcheck.py says why "
                           "without making it worse.")
                     break
-                cool = 120 if blocklike else a.delay * 3
+                cool = 120 if kind == "dropped" else a.delay * 3
                 print(f"      waiting {cool:.0f}s before the next one",
                       flush=True)
                 time.sleep(cool)
                 continue
             run = 0
-            path.write_bytes(blob)
+            # A part file, then a rename: a run killed mid-write must not
+            # leave half a PDF that path.exists() then calls held.
+            tmp = path.with_name(path.name + ".part")
+            tmp.write_bytes(blob)
+            os.replace(tmp, path)
             r["state"] = "held"
             r["bytes"] = str(len(blob))
             r["error"] = ""
@@ -360,17 +419,20 @@ def main():
                       f"{rate * 60:.0f}/min", flush=True)
             # Jittered, so a run does not arrive on a metronome.
             time.sleep(a.delay * random.uniform(0.75, 1.25))
-        save_queue(rows)
-        held = sum(1 for x in rows if x["state"] == "held")
-        print(f"\n{got:,} fetched, {fail} failed, {time.time() - t0:.0f}s")
-        print(f"{held:,} of {len(rows):,} held "
-              f"({sum(int(x['bytes'] or 0) for x in rows) / 1e6:.0f} MB)")
-        left = sum(1 for x in rows if x["state"] == "wanted")
-        if left:
-            print(f"{left:,} still wanted. Run again for the next {a.budget}.")
     finally:
-        LOCK.unlink(missing_ok=True)
-    return 0
+        # The queue is saved however the run ends. The lock is NOT touched
+        # here: refusal.hold() releases it, and only if it is this run's own.
+        save_queue(rows)
+    n_held = sum(1 for x in rows if x["state"] == "held")
+    print(f"\n{got:,} fetched, {fail} failed, {time.time() - t0:.0f}s")
+    print(f"{n_held:,} of {len(rows):,} held "
+          f"({sum(int(x['bytes'] or 0) for x in rows) / 1e6:.0f} MB)")
+    left = sum(1 for x in rows if x["state"] == "wanted")
+    if left and not stopped:
+        print(f"{left:,} still wanted. Run again for the next {a.budget}.")
+    if stopped == "refused":
+        return 2
+    return 1 if stopped else 0
 
 
 if __name__ == "__main__":
