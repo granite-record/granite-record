@@ -421,6 +421,38 @@ example on this site of a number outliving its premise.
   the firewall's block page as a PDF. It takes the lock through `refusal.hold()`
   and reads every answer through `refusal.classify()` now, and preflight drives
   it through all of those on fake answers.
+- **A refusal is on file from 21:36 on the 12th, and it is probably 44
+  documents rather than the address. Open, and a person's decision.** The first
+  proving run asked for 2008's `09B.pdf` -- chosen *because* it had answered 403
+  on the 9th -- and it answered 403 again on the first request. The drain did
+  what it should: one refusal, recorded, status 2, lane stopped. The choice was
+  the mistake: a 403 on a document already known to 403 cannot tell the address
+  from the document, and it costs a day of every fetch.
+
+  The record points at the documents. On the 9th the drain fetched 2008's `11A`,
+  `11`, `10B`, `10A`, `10` and `1.pdf` fifteen seconds apart, and the very next
+  name, `09B`, was refused, then `09A`. **All 998 Senate calendars ever fetched
+  have names that do not start with a zero; all 44 that do are unfetched** --
+  2008: 14, 2002: 10, 2001: 9, 2000: 11. And the lane's bill-text runs were
+  answered all day on the 12th. That is a reading, not a test.
+
+  So the 44 are `withheld` in `archive/queue.csv` -- not gone, and the drain
+  asks only for `wanted` -- and the proving run in the queue is now the first
+  never-tried name of the years wanted, 2007's `SC 45.pdf`. (`archive/` is not
+  in git; the queue file carries the reason on each row.) Three addresses
+  settle it in a browser before anything is cleared:
+
+  - the refused one, expected to fail:
+    https://gc.nh.gov/senate/calendars_journals/viewer.aspx?fileName=Calendars%5C2008%5C09B.pdf
+  - one this project already holds, expected to load:
+    https://gc.nh.gov/senate/calendars_journals/viewer.aspx?fileName=Calendars%5C2008%5C9.pdf
+  - the next proving run's first document, the real question:
+    https://gc.nh.gov/senate/calendars_journals/viewer.aspx?fileName=Calendars%5C2007%5CSC%2045.pdf
+
+  If the second loads and the first does not, the refusal was the document, and
+  `python3 refusal.py --clear` then the lane is safe. If the third fails too,
+  the pre-2008 Senate calendars are not served at these names, and the Senate
+  block should come out of the queue so bill text can start.
 
 ## 6a. Filled from disk on the 11th, no request made
 

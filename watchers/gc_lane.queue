@@ -131,17 +131,33 @@ watchers/rest.py 1800 after-finish-2023
 # Each step is a different year range because the lane knows a step by its
 # text, and five identical lines would be done after the first. Newest first.
 #
-# FIVE REQUESTS FIRST. The queue's first wanted row is 2008's 09B.pdf -- the
-# exact document that answered 403 on 9 September. If it comes back, the
-# address was not refusing us and the years below run; if it 403s again, the
-# drain records the refusal, exits 2, and the lane stops, which is the answer.
-fetch_calendar_archive.py --chamber S --kind calendar --from 2008 --to 2008 --budget 5 --delay 20
-watchers/rest.py 1800 after-senate-proving
-fetch_calendar_archive.py --chamber S --kind calendar --from 2006 --to 2008 --budget 140 --delay 20
-watchers/rest.py 1800 after-senate-2006-2008
-fetch_calendar_archive.py --chamber S --kind calendar --from 2003 --to 2005 --budget 170 --delay 20
-watchers/rest.py 1800 after-senate-2003-2005
-fetch_calendar_archive.py --chamber S --kind calendar --from 2000 --to 2002 --budget 210 --delay 20
+# THE FIRST PROVING RUN, 12 September 21:36, asked for 2008's 09B.pdf -- the
+# exact document that answered 403 on 9 September, chosen on purpose -- and it
+# answered 403 again on the first request. One refusal ends a run, so the
+# drain recorded it and the lane stopped. That choice was a mistake: a 403 on
+# a document already known to 403 cannot say whether the address or the
+# document is refusing, and it costs a day of every fetch.
+#
+# What the record says instead. On the 9th the drain fetched 2008's 11A, 11,
+# 10B, 10A, 10 and 1.pdf fifteen seconds apart, and the next name, 09B, was
+# refused, then 09A. All 998 Senate calendars ever fetched have names that do
+# not start with a zero; all 44 names that do (2008: 14, 2002: 10, 2001: 9,
+# 2000: 11) are unfetched. And the lane's bill-text runs were answered all
+# day on the 12th. It looks like those names are listed by the index and not
+# served -- a finding about 44 documents, not the address -- but it is a
+# reading of the record and not yet a test.
+#
+# So the 44 are "withheld" in archive/queue.csv (not gone; one command puts
+# them back), the drain asks only for "wanted", and the proving run is now
+# the first NEVER-TRIED name of the years actually wanted: 2007's SC 45.pdf.
+# A browser settles it for free before this runs -- see LAUNCH.md.
+fetch_calendar_archive.py --chamber S --kind calendar --from 2007 --to 2007 --budget 5 --delay 20
+watchers/rest.py 1800 after-senate-proving-2007
+fetch_calendar_archive.py --chamber S --kind calendar --from 2005 --to 2007 --budget 180 --delay 20
+watchers/rest.py 1800 after-senate-2005-2007
+fetch_calendar_archive.py --chamber S --kind calendar --from 2003 --to 2004 --budget 110 --delay 20
+watchers/rest.py 1800 after-senate-2003-2004
+fetch_calendar_archive.py --chamber S --kind calendar --from 2000 --to 2002 --budget 180 --delay 20
 watchers/rest.py 1800 after-senate-2000-2002
 fetch_calendar_archive.py --chamber S --kind calendar --from 1998 --to 1999 --budget 170 --delay 20
 watchers/rest.py 3600 after-senate-1998-1999
