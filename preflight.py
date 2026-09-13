@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.153
+# GRANITE_VERSION: 2026-09-04.155
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5243,8 +5243,19 @@ def _leadership_fetch(FL):
     PAGE = "<html><title>Leadership</title>President: Senator A B of C</html>"
     BLOCK = "<html><title>Web Page Blocked</title>Attack ID: 1</html>"
     tmps = []
+    # The saved navigation pages are not in git, so a clean checkout has none
+    # and every address would read as unlinked. The fetch is driven against a
+    # navigation page of its own; the real pages are checked separately, and
+    # only where they exist.
+    nav_dir = Path(tempfile.mkdtemp())
+    tmps.append(nav_dir)
+    nav = nav_dir / "nav.html"
+    nav.write_text("".join(f'<a href="{__import__("urllib.parse").parse.urlsplit(p[2]).path}">x</a>'
+                           for p in FL.PAGES), encoding="utf-8")
+    fixture = [(k, ch, url, str(nav)) for k, ch, url, _where in FL.PAGES]
 
     def run(answers, lock=None, pages=None):
+        pages = pages or fixture
         tmp = Path(tempfile.mkdtemp())
         tmps.append(tmp)
         FL.ROOT = tmp / "leadership"
@@ -5288,7 +5299,7 @@ def _leadership_fetch(FL):
         rc, asked, got = run([err404, PAGE])
         assert rc == 1 and len(asked) == 1, "a missing linked page did not stop the run"
         rc, asked, got = run([PAGE], pages=[("x", "H", "https://gc.nh.gov/house/guessed.aspx",
-                                             "committees_house.html")])
+                                             str(nav))])
         assert rc == 1 and not asked, "an address linked from nowhere was asked"
         rc, asked, got = run([PAGE], lock=99999999)
         assert rc == 3 and not asked, "a second fetch ran beside a held lock"
