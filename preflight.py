@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.145
+# GRANITE_VERSION: 2026-09-04.146
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3233,6 +3233,10 @@ def _tab_keyboard():
     open_page = js[js.find("function openPage("):][:800]
     assert "PAGE_TAB=0" in open_page.replace(" ", ""), "openPage does not reset PAGE_TAB"
     assert 'class="vpick" role="tablist"' not in js, "the version picker is a tablist with no tabs"
+    assert "const repaint=" in js, "app.js has no repaint()"
+    rep = js[js.find("const repaint="):][:700]
+    assert "document.activeElement" in rep and ".focus(" in rep, \
+        "an async redraw (the bill text arriving) drops focus to <body>"
     assert 'id="ptab_${i}" aria-controls="ppane"' in js and 'aria-labelledby="ptab_${PAGE_TAB}"' in js, \
         "member and committee tabs are not tied to their panel"
     return "ok", "focus survives a redraw, the tab resets per page, the picker is a group"

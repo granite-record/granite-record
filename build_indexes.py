@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.1
+# GRANITE_VERSION: 2026-09-13.2
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -55,10 +55,14 @@ def kind_of(bid):
     return (m.group(1), int(m.group(2))) if m else (bid, 0)
 
 
-def write(site, base, path, title, description, heading, lead, body, urls):
+def write(site, base, path, title, description, heading, lead, body, urls, nav="directory.html"):
     html = S.page(S.template(site), path=path, base=base, title=title, description=description,
                   og_title=heading, globals={"GR_STATIC": True}, noscript="",
                   skip_label="Skip to the list", sr_title="", og_type="website",
+                  # The template marks Bills as the page you are on. A list of bills
+                  # is under Bills and a list of legislators under Legislators; the
+                  # hub and the towns are under neither, and name themselves.
+                  nav_current=nav,
                   jsonld=LD.listing(heading, description, base, S.canon(path)))
     html = html.replace('<div id="results"></div>',
                         f'<div id="results"><div class="clist dirlist"><h1>{S.E(heading)}</h1>'
@@ -94,7 +98,7 @@ def bills_page(site, base, term, rows, urls):
           "term, by number, with each one's title and where it ended.",
           f"Every bill of {term}",
           f"{len(rows):,} bills and resolutions, by number. {jump}",
-          "".join(body), urls)
+          "".join(body), urls, nav="bills.html")
     return len(rows)
 
 
@@ -121,7 +125,7 @@ def legislators_page(site, base, legs, urls):
           "Every sitting legislator",
           f"{len(by['S'])} senators and {len(by['H'])} representatives, by surname. "
           f'<a href="{S.canon("legislators.html")}">Search by town or name</a> instead.',
-          "".join(body), urls)
+          "".join(body), urls, nav="legislators.html")
     return len(legs)
 
 

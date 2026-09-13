@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.67
+// GRANITE_VERSION: 2026-09-07.68
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1879,7 +1879,19 @@ let UPCOMING = null;
 // picker, the routine-lines toggle, the full-text toggle -- are shared by
 // both. Those called render() unconditionally, which on a committee's page
 // drew four hundred bill cards over the committee.
-const repaint=()=>PAGE?renderPage():render();
+// Every redraw after something arrives -- the bill text, a version, a member's
+// record -- goes through here. The redraw replaces the element that held focus
+// with a copy, and focus fell to <body>: a keyboard reader who arrowed onto
+// Bill Text lost their place the moment its text loaded. Put focus back on the
+// copy, matched by id or, for a member or committee tab, by its position.
+const repaint=()=>{
+  const a=document.activeElement;
+  const sel=a&&a!==document.body
+    ?(a.id?`#${CSS.escape(a.id)}`:a.dataset&&a.dataset.pt!==undefined?`.tab[data-pt="${a.dataset.pt}"]`:null)
+    :null;
+  if(PAGE)renderPage();else render();
+  if(sel){const f=document.querySelector(sel);if(f&&f!==document.activeElement)f.focus({preventScroll:true});}
+};
 
 // The term a record page is showing. One control for the whole record rather
 // than one per tab: a reader looking at 2023-2024 wants that term's bills AND
