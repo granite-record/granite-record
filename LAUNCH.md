@@ -454,6 +454,44 @@ example on this site of a number outliving its premise.
   the pre-2008 Senate calendars are not served at these names, and the Senate
   block should come out of the queue so bill text can start.
 
+## 6c. Member histories, verified on the 12th
+
+**What each legislator's page publishes is right, ballot for ballot.** Every
+sitting member's votes (406 pages, 647,285 ballots) were rebuilt a second way
+-- PersonID to employee number from the database's roster, then every ballot
+cast under that number in the database's own RollCallHistory -- and compared
+with what the page carries. All 406 identical. The page's route (the General
+Court's per-year export, whose field 4 is a PersonID they joined in) and the
+database's agree on every ballot.
+
+**But fifteen pages show only part of a career, and it is not a bug in the
+join: a member who changes chamber gets a new employee number and a new
+PersonID.** No page's votes span two chambers. Checked against three sources
+that do not depend on names -- years and chamber from the ballots, party,
+county and district from `member_party.json`, and the General Court's own
+`byAnyMember` label -- twelve are plainly one person moving from the House to
+the Senate (same name, party and county, consecutive service, no overlap):
+Rosenwald (1,399 votes on her page of 4,218), Gray, Lang, Fenton, K. Murphy,
+Pearl, Abbas, Altschiller, Rochefort, McConkey (208 of 3,897), McGough and
+V. Sullivan. Gary Daniels is the same shape the other way: House, the Senate
+for 2015-2022, the House again; his page has the House years only. Whether a
+member's page should carry the earlier chamber's votes is a decision about
+the page, not yet made.
+
+**`careers.json` has a wrong merge, and it is the kind its rule invites.** It
+joins employee numbers on first and last name where service does not overlap.
+Rep. Patrick Long of Hillsborough 23 (376696, 2007-2024) was joined to a
+different, newer Rep. Patrick Long of Hillsborough 26 (409256, from 2025) --
+two House numbers, consecutive, a different district -- while the continuation
+that looks real, **Sen. Pat Long** of District 20 (218767, from 2025, a
+Manchester Democrat like 376696), was missed because the roster spells him
+"Pat". That is a reading of the files, not a confirmation. **Mark Pearson**
+(a Democrat for Rockingham 4 in 2007-08, a Republican for Rockingham 34 from
+2017) cannot be told apart from this disk at all. Nothing on the site reads
+`careers.json` yet, so no page is wrong today; anything built on it should
+join on continuity of party and county as well as name, and send the doubtful
+ones to the bench.
+
 ## 6a. Filled from disk on the 11th, no request made
 
 Committee reports and their reasoning for **every term 1997-2026** (from
