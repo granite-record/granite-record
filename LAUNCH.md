@@ -1029,8 +1029,26 @@ committed on `master` except where it says otherwise, and is on the built
   they get a section.
 - `ST-FED` (113 hearings) and `ST INST` (118) are not in the key and each
   committee changed its name inside those years. Left as written.
-- **A House proceeding after a second referral is still filed under the
-  first committee.** The timeline reads introductions only, so "Referred to
+- **A proceeding after a second referral is still filed under the first
+  committee -- measured, and proposed rather than done, because it moves
+  recording matches.** The timeline reads introductions only, so "Referred to
   Finance 03/13/2025" is not on it, and a Finance executive session is named
-  for the policy committee. The room would settle many (HB 296: LOB 206-208
-  is Judiciary's). Not measured yet.
+  for the policy committee the bill left. **2,042 proceedings across six
+  terms, 309 of them in 2025-2026**, nearly all a policy committee standing
+  in for Finance or Ways and Means (2023-2024: Education 72, Health and Human
+  Services 68, ED&A 52, Children and Family Law 43).
+
+  The rooms say which is right, and they are a witness the parser does not
+  use. Each committee's home room was taken from the proceedings nobody
+  disputes; of the re-referred proceedings held in either committee's home
+  room, **571 were in the later committee's and 4 in the first's** (current
+  term, 2023-2024 and 2021-2022). The rest were in neither, mostly Finance's
+  divisions in their own rooms.
+
+  The change is small: read "Referred to X <date>" rows into the chamber's
+  timeline beside the introductions. What it moves is not: for the recorded
+  terms, a Finance session stops matching the policy committee's video of
+  that day and becomes "divisions - pick manually", which is honest, and
+  some matches change. So: scratch-build the manifests, list every changed
+  match, run `probe_alignment --truth` before and after, and let a person
+  look at the list first.
