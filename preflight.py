@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.159
+# GRANITE_VERSION: 2026-09-04.160
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2953,6 +2953,129 @@ def _calendar_fields(calendar_meetings):
         "HB 1540's untimed line was dropped without being counted"
     return "ok", (f"{len(rows)} rows: whole names, rooms in the room field, and "
                   "the untimed HB 1540 counted rather than timed or made a committee")
+
+
+# Printed lines, each with its time, copied out of the file named beside it;
+# only the indentation before the time and the line ending are dropped.
+CALENDAR_KIND_LINES = [
+    # calendars/2000/HC047.txt:561
+    ("8:30 a.m. Interim study subcommittee work session on HB 1152, relative to the establishment of",
+     "subcommittee work session"),
+    # calendars/2005/HC058.txt:562
+    ("10:00 a.m. Retained full committee work session on HB 690-FN, relative to medical services",
+     "full committee work session"),
+    # calendars/1997/HC013.txt:619
+    ("2:00 p.m. Telecommunications subcommittee work session on HB 254, relative to shared tenant telecommunication services.",
+     "subcommittee work session"),
+    # calendars/1999/HC038.txt:1531
+    ("9:00 a.m. Work and executive session on HB 596, making technical corrections to certain laws",
+     "executive session"),
+    # calendars/2009/HC056.txt:961
+    ("11:00 a.m. Or immediately following the House session, executive session on HB 139,",
+     "executive session"),
+    # calendars/1997/HC011.txt:244
+    ("10:15 a.m. Rescheduled public hearing on HB 143-LOCAL, requiring that SAU budgets be approved by vote at school district meetings.",
+     "public hearing"),
+    # calendars/2017/HC016.txt:404
+    ("10:00 a.m. Budget work session on HB 1-A, making appropriations for the expenses of certain departments",
+     "work session"),
+]
+# calendars/1998/HC005.txt:742 -- a title that says "public hearing".
+CALENDAR_KIND_TITLE = \
+    "10:30 a.m. HB 1282-LOCAL, requiring a public hearing and vote of the town before a conservation"
+
+# The same through parse(). Printed lines again: the masthead (line 7), the
+# section heading (1773), the day (2447) and the Finance block (2449-2456) are
+# House Calendar 14 of 2012; the Health block is House Calendar 58 of 2005,
+# lines 561-566. Only the stitching of the one block into the other is this
+# file's.
+CALENDAR_KINDS = """\
+Vol. 34 Concord, N.H.  Friday, February 17, 2012                                    No. 14
+
+                          COMMITTEE MEETINGS
+
+                              TUESDAY, MARCH 20
+
+HEALTH, HUMAN SERVICES AND ELDERLY AFFAIRS, Room 205, LOB
+10:00 a.m. Retained full committee work session on HB 690-FN, relative to medical services
+
+                     for children and pregnant women, HB 704-FN, establishing the New Hampshire Rx
+                     advantage program and continually appropriating a special fund, SB 110-FN-A,
+                     establishing the New Hampshire Rx plus program for prescription drugs.
+
+FINANCE,    Rooms 210-211, LOB
+11:00 a.m.      Executive session on HB 1274-FN, transferring the McAuliffe-Shepard
+                discovery center to a private operator and making a supplemental
+                appropriation therefor, HB 1285-FN, repealing the state art fund, HB 1521-
+                FN, relative to retired state employees group insurance participation,
+                rescheduled executive session on HB 234-FN-A, relative to food service
+                licensure and establishing a committee to study the regulation of food service
+                establishments, HB 533-FN-L, establishing a cap on the amount of school
+"""
+
+
+@check("calendar", "a qualified kind is read as the kind it qualifies, and a bill's title is never a kind",
+       needs=("calendar_meetings",))
+def _calendar_kinds(calendar_meetings):
+    """The clerk writes "Interim study subcommittee work session on HB 1152",
+    and the kind was read off a list anchored on the bare words -- so the line
+    matched nothing, named a bill, and was published as a public hearing on
+    it. 3,802 distinct House bill rows on 13 September, 2,819 of them
+    subcommittee work sessions. KIND_OF reads past the qualifier.
+
+    Two ways back to wrong, each checked here. A pattern loose enough to read
+    past "Interim study" can read "requiring a public hearing" out of a bill's
+    title, which is a public hearing only because it states nothing and names
+    a bill; so the title line must match no pattern at all. And the qualifier
+    list must stay out of the continuation split, where STATED decides what
+    starts a new item: asked there, "rescheduled executive session on HB
+    234-FN-A", a continuation line starting lower case, became an item of its
+    own and was discarded as a column slip, with the bills after it. So the
+    printed Finance block of 2012 must still give HB 234 its executive
+    session, and the Health block of 2005 must come out of parse() -- not only
+    out of kind_of() -- as a full committee work session.
+    """
+    CM = calendar_meetings
+
+    def rest(line):
+        t = CM.TIME.match(line)
+        assert t, f"not a time line: {line[:50]!r}"
+        return t.group(4)
+
+    for line, want in CALENDAR_KIND_LINES:
+        r = rest(line)
+        read = next((k for rx, k in CM.KIND_OF if rx.match(r.strip())), "")
+        got = CM.kind_of(r, CM._bills(r))
+        assert got == want, f"{r[:60]!r} reads as {got!r}, not {want!r}"
+        # A qualified public hearing would come out right by inference too,
+        # so the kind must be READ, not guessed from the bill.
+        assert read == want, (
+            f"{r[:60]!r} came out {got!r} only because it names a bill; no "
+            f"KIND_OF pattern read the {want!r} it states")
+
+    r = rest(CALENDAR_KIND_TITLE)
+    hit = [k for rx, k in CM.KIND_OF if rx.match(r.strip())]
+    assert not hit, (f"a bill's title was read as a kind: {r[:60]!r} matched "
+                     f"{hit}. It is a public hearing because it names a bill "
+                     "and states nothing.")
+    got = CM.kind_of(r, CM._bills(r))
+    assert got == "public hearing", f"{r[:60]!r} reads as {got!r}"
+
+    rows, pub, _ = CM.parse(CALENDAR_KINDS, "H")
+    assert pub == (2012, 2, 17), f"the masthead read as {pub}"
+    by = {r["bill"]: r["kind"] for r in rows if r["bill"]}
+    assert by.get("HB690") == "full committee work session", (
+        f"parse() read HB 690's retained full committee work session as "
+        f"{by.get('HB690')!r}: the kind is not being read through kind_of()")
+    lost = [b for b in ("HB234", "HB533") if b not in by]
+    assert not lost, (
+        f"{', '.join(lost)} vanished from the Finance block: a continuation line "
+        "that opens \"rescheduled executive session\" was split off as an item "
+        "and discarded as a column slip. The split asks STATED, not KIND_OF.")
+    assert by["HB234"] == "executive session", f"HB 234 reads as {by['HB234']!r}"
+    return "ok", (f"{len(CALENDAR_KIND_LINES)} qualified kinds read as stated, a "
+                  f"title that says \"public hearing\" matched by nothing, and "
+                  f"{len(by)} bills out of two printed blocks")
 
 
 @check("reports", "a bill number inside a sentence does not start a new report",

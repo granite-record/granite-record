@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.11
+# GRANITE_VERSION: 2026-09-08.12
 """
 Who is hearing what, when, and in which room -- out of the calendars on disk.
 
     python3 calendar_meetings.py --check          # parse and score, write nothing
+    python3 calendar_meetings.py --check --term 2009-2010
+                                                  # one term against its own docket
     python3 calendar_meetings.py --show 2         # print two files' meetings
     python3 calendar_meetings.py --out meetings.json
 
@@ -189,8 +191,11 @@ BILL = re.compile(r"\b(HB|SB|CACR|HR|SR|HCR|SCR)\s*0*(\d{1,4})"
                   r"((?:-(?:FN|A|L|LOCAL))*)\b")
 MEMBER = re.compile(r"^\s*(?:Sen|Rep)\.\s")
 
-# What a time line says it is, most specific first. Anything that matches none
-# of these and names a bill is a public hearing -- see the docstring.
+# Where a wrapped entry's continuation line states business of its own, and so
+# starts a new item at the same time -- see the continuation loop in parse().
+# This was also the list the kind was read from, until 13 September; KIND_OF
+# below reads the kind now, and this list is kept exactly as it was because
+# the split is not the same question. See KIND_OF for why.
 STATED = [
     (re.compile(r"^public hearing\b", re.I), "public hearing"),
     (re.compile(r"^continued public hearing\b", re.I), "public hearing"),
@@ -206,6 +211,65 @@ STATED = [
     (re.compile(r"^organizational meeting\b", re.I), "organizational meeting"),
     (re.compile(r"^continued\b", re.I), "continued"),
 ]
+
+# WHAT A TIME LINE SAYS IT IS, most specific first. Anything that matches none
+# of these and names a bill is a public hearing -- see the docstring.
+#
+# THE CLERK QUALIFIES THE KIND, AND STATED WAS ANCHORED ON THE BARE WORD. So
+# "Interim study subcommittee work session on HB 1152" matched nothing, named a
+# bill, and was published as a public hearing on it. Counted on the calendar
+# lines on 13 September: "Rescheduled public hearing" 1,363 times, "Interim
+# study subcommittee" 1,184, "Retained subcommittee" 436, a subcommittee named
+# by its subject ("Telecommunications subcommittee work session") about 330,
+# and "Or immediately following the House session, executive session" about
+# 60. 3,802 distinct House bill rows changed kind (3,816 counting the lines a
+# calendar prints twice), 2,819 of them from public hearing to subcommittee
+# work session; no Senate bill row and no row of 2025-2026 changed.
+#
+# A BILL'S TITLE IS NEVER A KIND. "HB 1282-LOCAL, requiring a public hearing
+# and vote of the town" is a public hearing because it names a bill and states
+# nothing, not because its title says "public hearing". Every pattern is
+# anchored, and _NAMED -- the words a named subcommittee may open with --
+# refuses a bill number, so a title can never be taken for a subcommittee's
+# name.
+#
+# AND THIS LIST IS NOT THE CONTINUATION SPLIT. parse() ends a wrapped entry
+# where a continuation line states its own business, and it asks STATED that
+# question. Asked with this list, "rescheduled executive session on HB
+# 234-FN-A" (House Calendar 14 of 2012), which is a continuation line starting
+# lower case, became an item of its own -- and flush() discards an item that
+# starts lower case as a column slip. 27 real House bill rows went that way
+# and 262 House rows appeared that were not there; asked only where the kind
+# is read, the rows are identical and only their kinds change.
+_BILL = r"(?:HB|SB|CACR|HCR|SCR|HJR|SJR|HR|SR)\s*\d"
+_QUAL = (r"(?:(?:rescheduled|continued|retained|interim\s+study|full\s+committee|"
+         r"joint|budget|capital\s+budget)\s+)*")
+_LEADIN = r"(?:or\s+(?:immediately\s+following|during|at)\b[^,.;\d]*[,.;]\s*)?"
+_NAMED = r"(?:(?!" + _BILL + r")[A-Za-z][\w/&'.\-]*\s+){1,4}?"
+KIND_OF = [
+    (re.compile(r"^" + _LEADIN + _QUAL + r"public\s+hearing\b", re.I), "public hearing"),
+    (re.compile(r"^" + _LEADIN + _QUAL + r"work\s+(?:and|&)\s+executive\s+session\b", re.I),
+     "executive session"),
+    (re.compile(r"^" + _LEADIN + _QUAL + r"executive\s+session\b", re.I), "executive session"),
+    (re.compile(r"^" + _QUAL + r"full\s+committee\s+work\s+session\b", re.I),
+     "full committee work session"),
+    (re.compile(r"^" + _QUAL + r"division\s+work\s+session\b", re.I), "division work session"),
+    (re.compile(r"^(?:" + _QUAL + r"|" + _NAMED + r")subcommittee\s+work\s+session\b", re.I),
+     "subcommittee work session"),
+    (re.compile(r"^" + _QUAL + r"work\s+session\b", re.I), "work session"),
+    (re.compile(r"^regular meeting\b", re.I), "regular meeting"),
+    (re.compile(r"^organizational meeting\b", re.I), "organizational meeting"),
+    (re.compile(r"^continued\b", re.I), "continued"),
+]
+
+
+def kind_of(rest, bills):
+    """The kind a time line states, or -- where it states none and names a
+    bill -- a public hearing, which is checked against the docket on every
+    --check run. `rest` is the line after its time; `bills` is _bills(rest)."""
+    return next((k for rx, k in KIND_OF if rx.match(rest.strip())), "") or (
+        "public hearing" if bills else "other")
+
 
 HYPHEN = re.compile(r"([A-Za-z]{2,})-\n\s+([a-z]{2,})")
 # The same break inside a shouted header, where the continuation is
@@ -443,12 +507,9 @@ def parse(text, chamber):
                          not in ("and", "or")):
             unpaired.append((date, committee, when, body_[:40]))
             return
-        kind = next((k for rx, k in STATED if rx.match(rest.strip())), "")
         bills = _bills(rest)
-        if not kind:
-            # Nothing said what it is and a bill is named: a public hearing.
-            # Checked against the docket on every --check run.
-            kind = "public hearing" if bills else "other"
+        # KIND_OF, never STATED: see KIND_OF for why the two lists differ.
+        kind = kind_of(rest, bills)
         for b in (bills or [""]):
             rows.append({"date": date, "committee": committee, "room": room,
                          "venue": venue, "time": when, "kind": kind,
@@ -506,6 +567,7 @@ def parse(text, chamber):
                 if len(nxt) - len(nxt.lstrip()) < 12:
                     break
                 stripped_next = nxt.strip()
+                # STATED, not KIND_OF -- see KIND_OF.
                 if any(rx.match(stripped_next) for rx, _ in STATED):
                     segs.append(stripped_next)
                 else:
@@ -552,12 +614,22 @@ def parse(text, chamber):
 UNPAIRED = []
 
 
-def load(chamber, limit=None):
+def load(chamber, limit=None, years=None):
+    """Every row the chamber's calendars announce.
+
+    `years`, an iterable of ints, reads only the calendars filed under those
+    years' folders -- a term's own two years and the one either side, since a
+    December calendar announces January's meetings and a folder can hold a
+    calendar reprinted into the next year. None reads every folder."""
     conf = CHAMBERS[chamber]
     root = Path(conf["dir"])
     if not root.exists():
         return []
     files = sorted(root.rglob(conf["glob"]))
+    if years is not None:
+        want = {int(y) for y in years}
+        files = [f for f in files
+                 if f.parent.name.isdigit() and int(f.parent.name) in want]
     if limit:
         files = files[:limit]
     out = []
@@ -672,15 +744,129 @@ def check(rows):
             "room disagreements": room_bad}
 
 
+# The families a kind belongs to. The Senate's docket says "hearing" where the
+# calendar says "public hearing"; they are one kind in two chambers' words.
+_FAMILY = {"hearing": "hearing", "public hearing": "hearing",
+           "subcommittee work session": "work",
+           "full committee work session": "work",
+           "work session": "work", "division work session": "work",
+           "executive session": "exec", "committee of conference": "conf"}
+_SAME_KIND = {"hearing": "public hearing"}
+
+
+def check_term(term, docket=None, chambers=("H", "S")):
+    """One term's calendar rows scored against that term's own docket.
+
+    --check scores against Docket.txt, which is the current term. The archived
+    terms have dockets of their own, and those are what a calendar row from
+    1999 or 2009 has to agree with. The docket is parsed in memory by
+    docket_parser, exactly as build_manifest parses it, and its cancelled rows
+    are dropped: a cancelled meeting is not a meeting to agree with.
+
+    Scored on (chamber, bill, day), one calendar row at a time, with a
+    reprinted notice counted once. Each figure has its own denominator, as in
+    check(). Prints; writes nothing.
+    """
+    import docket_parser as DP
+    import proceedings as P
+
+    m = re.fullmatch(r"(\d{4})-(\d{4})", term or "")
+    if not m or int(m.group(1)) % 2 == 0 or int(m.group(2)) != int(m.group(1)) + 1:
+        sys.exit(f"--term wants a term as this project writes one, "
+                 f"such as 2009-2010, not {term!r}")
+    y0, y1 = int(m.group(1)), int(m.group(2))
+    if docket is None:
+        docket = next((n for n in (f"Docket_{term}.txt", f"Docket_db_{term}.txt")
+                       if Path(n).exists()), None)
+        if docket is None:
+            sys.exit(f"Neither Docket_{term}.txt nor Docket_db_{term}.txt is "
+                     "here, so there is nothing to score against. Pass --docket.")
+    elif not Path(docket).exists():
+        sys.exit(f"{docket} is not here")
+
+    rows = DP.parse_rows(docket)
+    procs = DP.parse_proceedings(rows, DP.build_referral_timeline(rows))
+    live = [p for p in procs if "CANCELLED" not in p.flags]
+    # 1999-2000 writes the chamber as "h" three times and "s" 61 times.
+    docket_by = defaultdict(list)
+    for p in live:
+        docket_by[(p.body.strip().upper(), p.bill.strip().upper(),
+                   p.sched_date)].append(p)
+    print(f"{term}, against {docket}: {len(procs):,} proceedings parsed, "
+          f"{len(live):,} not cancelled")
+
+    def pct(n, d):
+        return f"{n:,} of {d:,} ({n / d:.1%})" if d else "none to compare"
+
+    for ch in chambers:
+        cal, seen = [], set()
+        for r in load(ch, years={y0 - 1, y0, y1, y1 + 1}):
+            if not (r["bill"] and r["date"]) or P.term_of(r["date"]) != term:
+                continue
+            key = (r["date"], r["committee"], r["time"], r["kind"], r["bill"],
+                   r["room"], r["venue"])
+            if key in seen:
+                continue                  # the same notice, reprinted
+            seen.add(key)
+            cal.append(r)
+        n_docket = sum(1 for k in docket_by if k[0] == ch)
+        known = [r for r in cal if (ch, r["bill"], r["date"]) in docket_by]
+        fam_ok = kind_ok = time_ok = time_n = room_ok = room_n = 0
+        kind_bad = Counter()
+        for r in known:
+            ds = docket_by[(ch, r["bill"], r["date"])]
+            mine = _SAME_KIND.get(r["kind"], r["kind"])
+            theirs = {_SAME_KIND.get(p.kind, p.kind) for p in ds}
+            fam_ok += _FAMILY.get(r["kind"]) in {_FAMILY.get(p.kind) for p in ds}
+            if mine in theirs:
+                kind_ok += 1
+                same = [p for p in ds if _SAME_KIND.get(p.kind, p.kind) == mine]
+            else:
+                kind_bad[f"{r['kind']} -> {'/'.join(sorted(theirs))}"] += 1
+                same = ds
+            when = {p.sched_time for p in same if p.sched_time}
+            if r["time"] and when:
+                time_n += 1
+                time_ok += r["time"] in when
+            digits = re.findall(r"\d+", r["room"] or "")
+            venues = [v for v in (re.findall(r"\d+", p.venue or "") for p in same) if v]
+            if digits and venues:
+                room_n += 1
+                room_ok += digits in venues
+        print(f"\n  {'House' if ch == 'H' else 'Senate'}: {n_docket:,} (bill, day) "
+              f"pairs in the docket; {len(cal):,} calendar bill rows in the term, "
+              f"{len(known):,} of them on a (bill, day) the docket also has")
+        print(f"    family agrees: {pct(fam_ok, len(known))}")
+        print(f"    kind agrees: {pct(kind_ok, len(known))}")
+        print(f"    time agrees, where both state one: {pct(time_ok, time_n)}")
+        print(f"    room digits agree, where both state one: {pct(room_ok, room_n)}")
+        if kind_bad:
+            print(f"    kind disagreements: {kind_bad.most_common(6)}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--term", default="",
+                    help="with --check: score this term's calendar rows "
+                         "against its own docket, e.g. 2009-2010")
+    ap.add_argument("--docket", default="",
+                    help="with --check --term: the docket to score against "
+                         "(default Docket_<term>.txt, else Docket_db_<term>.txt)")
     ap.add_argument("--show", type=int, default=0)
     ap.add_argument("--out", default="")
     ap.add_argument("--chamber", choices=["H", "S", "both"], default="both")
     a = ap.parse_args()
 
     chambers = ["H", "S"] if a.chamber == "both" else [a.chamber]
+    if a.docket and not a.term:
+        sys.exit("--docket goes with --check --term")
+    if a.term:
+        if not a.check or a.out or a.show:
+            sys.exit("--term scores one term and writes nothing: pass it with "
+                     "--check, and without --out or --show")
+        check_term(a.term, a.docket or None, chambers)
+        return
     rows = []
     for ch in chambers:
         got = load(ch, limit=a.show or None)
