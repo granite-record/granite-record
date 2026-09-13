@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.63
+# GRANITE_VERSION: 2026-09-04.64
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1706,8 +1706,9 @@ nothing here tracks who is subscribed because nothing here knows.</p>
 next two weeks, in time to attend or sign in.</li>
 <li><a href="feed/all.xml">All activity</a> — every recorded action, newest first.</li>
 </ul>
-<p class="note">Every bill has its own feed too, linked from its page, along with
-one per committee and one per subject.</p>"""
+<p class="note">A bill still moving through the General Court has its own feed
+too: give a feed reader the bill's page and it will find it. The feed ends when
+the bill is settled, because nothing more will happen to it.</p>"""
     (out / "index.html").write_text(
         shell("Granite Record \u2014 the New Hampshire legislative record",
               # THE FULL PAGE WIDTH, which is what "offset to the left"

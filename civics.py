@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.10
+# GRANITE_VERSION: 2026-09-08.11
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -762,8 +762,10 @@ is the evidence.</p>
 </tbody></table>
 
 <h2>Following a bill</h2>
-<p>Every bill, member and committee has an RSS feed, and there is one for
-upcoming hearings. No account, no email address, nothing to leak.</p>
+<p>Every bill still moving through the General Court has an RSS feed, and
+there is one for upcoming hearings. A feed reader finds a bill's feed from the
+bill's page; the feed ends once the bill is settled, since nothing more will
+happen to it. No account, no email address, nothing to leak.</p>
 
 <h2>Telling us we are wrong</h2>
 <p>This is assembled by machine from official sources and it will be wrong

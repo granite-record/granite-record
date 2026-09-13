@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.157
+# GRANITE_VERSION: 2026-09-04.158
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3273,6 +3273,19 @@ def _legislator_description(BL):
     seven = dict(m, towns=m["towns"][:7])
     assert "more" not in BL.describe(seven) and " and Lempster in" in BL.describe(seven), BL.describe(seven)
     return "ok", "seat once, places first, wards in number order"
+
+
+@check("frontend", "no page promises a feed for a bill that has none")
+def _feed_promises():
+    """On 13 September feeds narrowed to bills still moving, and the home page
+    went on saying "Every bill has its own feed too, linked from its page,
+    along with one per committee and one per subject" while the Learn page said
+    "Every bill, member and committee has an RSS feed" -- neither true, and a
+    reader who went looking would have found nothing on the page to click."""
+    for f, stale in (("build_pages.py", "Every bill has its own feed"),
+                     ("civics.py", "Every bill, member and committee has an RSS feed")):
+        assert stale not in Path(f).read_text(encoding="utf-8"), f"{f} still says: {stale}"
+    return "ok", "home and Learn say only bills still moving have feeds"
 
 
 @check("frontend", "the status box without JavaScript says what the scripted one says")
