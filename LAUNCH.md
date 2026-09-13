@@ -936,17 +936,33 @@ committed on `master` except where it says otherwise, and is on the built
    disconnected or `python.exe` split-tunnelled out of it, netcheck once. If
    HTTP/1.1 is still closed, the wait is days, as the first two blocks were.
    Nothing fetches until then, and nothing fetches through the VPN.
-2. **The report box, on branch `report-box` (`D:\nh-report`), not merged.**
-   A Pages Function writes to D1, `compile_reports.py` screens every report
-   for text aimed at the assistant before anything reads it, and
-   `reports/TRIAGE.md` is the rulebook for the nightly session. Both D1
-   databases exist and have the schema. Before merging: a Cloudflare WAF
-   rate-limit rule on `/api/report` (the free plan allows one), made in the
-   dashboard, because the Function stores nothing about who sent a report and
-   so cannot count per sender itself.
+2. **The report box is ready to merge, on branch `report-box-merge`
+   (`D:\nh-merge`)** -- master merged in (only version stamps conflicted),
+   then hardened on the 13th: the Function refuses any host outside
+   `REPORT_ORIGINS` and any path but `/api/report` exactly, because the
+   zone's rate rule sees neither `*.graniterecord.pages.dev` nor
+   `/api/report/`, which the Pages router also delivers. Merging it into
+   master and publishing is the person's decision.
+
+   **Cloudflare, as of the 13th** (from the person, and checked where it could
+   be): the zone is on **Pro**. The rate-limiting rule exists -- "URI Path
+   equals /api/report", Block, active (its rate and timeout should read 5 per
+   minute and 1 hour; not yet confirmed). The two `report-probe` preview
+   deployments (053c0b70, 737842cd) are deleted and answer 404. The Pages
+   project holds no production variables the merge could lose (read with
+   `wrangler pages download config`). The production database holds 0
+   reports; the preview one holds 3 test reports from the proving run.
+   contact@ routing is active. Super Bot Fight Mode is present -- if
+   "Definitely automated" is ever set to Block, `check_live` in publish will
+   be refused. The optional Bulk Redirect of `graniterecord.pages.dev` failed
+   to save for want of `https://` on the target; the Function's host check
+   makes it unnecessary.
 3. **The nightly, on the same branch.** Fetches only when nothing else is
    asking (no refusal, no lane lock, no build running), deploys only with
-   `--deploy` and only from `master` with a clean tree. Not yet scheduled.
+   `--deploy` and only from `master` with a clean tree. Not yet scheduled --
+   and on the 13th the person said their PC will not always be on and
+   scheduled work should run in the cloud, so where it runs is being
+   redesigned rather than put into Task Scheduler.
 4. **`fetch_leadership.py` is ready to run -- five requests, once the refusal
    is cleared** (d2606dc). It now saves the Senate's leadership and About
    pages and the House Speaker's, Majority and Minority office pages, each an
@@ -954,11 +970,16 @@ committed on `master` except where it says otherwise, and is on the built
    the first refusal. `--parse` then reads them with no request. The House
    pages have never been read, so the first `--parse` will print their lines
    for a pattern to be written against. No consumer on the site yet.
-5. **Email follow.** The design is the person's (12 September); the open
-   questions are the outbound mail service, what the About page promises
-   about holding an address, what a follow does when its bill concludes, and
+5. **Email follow.** The design is the person's (12 September). Decided on the
+   13th: **Resend** sends the mail (Cloudflare's own Email Service is in beta
+   and its terms cover transactional mail only); nobody -- the person, a Claude
+   session, a log -- sees who signed up or what they follow, and the only
+   number exposed is the total count of sign-ups; and it runs on Cloudflare,
+   not on the PC. Still open: Turnstile on the sign-up form (explained to the
+   person, not yet agreed), what a follow does when its bill concludes, and
    whether "as soon as available" and "daily" differ when the record
-   refreshes once a night.
+   refreshes once a night. The About page's "no accounts, no email addresses"
+   has to change before it ships.
 
 **Done tonight:**
 
