@@ -465,6 +465,34 @@ the thing that was clicked. The roster below it does fold by county now, shut
 until asked, because 406 members under ten open headings is not a list
 anybody reads in order — and that was asked for.
 
+**And the box at the top was somebody else's.** Every page on this site
+except a dozen is `bills.html` with one record substituted into it, so every
+page inherited bills.html's search row — a town page opened with "Search all
+bills" printed above the name of the town, and so did a member's page, a
+committee's, and all eleven civics pages. It is the same fault as the order
+of the sections, one line higher up: the first thing on the page was about
+the site rather than about the page.
+
+It is hidden now wherever the page is not a bill or a list of them. A bill's
+own page keeps it, because there the next bill is a plausible next thought
+rather than a change of subject, and the Bills tab is one click from
+everywhere else.
+
+Hidden, not removed, and the reason is worth keeping: `app.js` binds seven
+ids in that row when it loads and `shell.py` asserts every one of them is
+present in the template, because a missing `#q` once drew 33,683 blank
+pages. `[hidden]` on the wrapper takes the row out of the layout and out of
+the accessibility tree and leaves every binding where it was — and the rule
+is declared as `.searchrow[hidden]{display:none}`, the way `.fbody`,
+`.cbody` and `.pane` are, since the base rule sets no display and this file
+has four rules that assume one.
+
+One note on method. The first check of this reported the old behaviour on
+two page types, because the browser served the pages out of its own cache:
+the addresses were the same, and the `?v=` hash that would have told it
+otherwise is inside the HTML it had already stored. Every visual check of a
+rebuilt page now loads it with a throwaway query on the end.
+
 ---
 
 ## A level is not a size
