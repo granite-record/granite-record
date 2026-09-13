@@ -26,7 +26,7 @@ party on nearly every ballot ever cast.
 | | |
 |---|---|
 | Bills | **33,683 across 19 terms**, 1989 to 2026, each with its own page |
-| Legislators | 406 sitting, **2,192 who have served** |
+| Legislators | 406 sitting, **2,192 with a recorded roll-call vote, 1999–2026** (not "who have served": the site's bills go back to 1989 and the ballots do not) |
 | Committees | 53 |
 | Data | **nineteen CSV tables at `/data`**, 2,419,330 rows, a manifest, rebuilt every run |
 | Towns | **320 town-and-ward pages** — everyone who represents you, with contact |
@@ -999,6 +999,16 @@ committed on `master` except where it says otherwise, and is on the built
   session loses a House Judiciary match that was probably right by accident
   -- its room is Judiciary's, and its House referral was Criminal Justice.
   None of the eight is hand-timed or on the bench.
+- **An archived committee's own page says so** (29e6383): "Not on the
+  General Court's list of committees today. Its bills and sitting days on
+  this record run 1989 to 2024 ..." -- a reader from a search never sees the
+  listing.
+- **Legislator search descriptions** named the seat twice on all 406 pages
+  ("(R - Rock 30) Rock 30."). Now the name, the places, then what the page
+  holds (9911dfb).
+- `README.md`'s counts from `STATE.md`, and "2,192 people who have served"
+  corrected to what the number is. `CLAUDE.md` still says "who have served"
+  in its first paragraph; it is the person's file.
 
 **Found and not fixed:**
 

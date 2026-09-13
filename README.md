@@ -9,9 +9,9 @@ moment in the recording where the committee actually took it up.
 
 ```
 33,683 bills across 19 terms, 1989 to 2026
-   406 sitting legislators, and 2,192 people who have served
-29,837 proceedings across six terms, on 1,823 recordings
- 8,749 of those placed at a boundary the chair spoke aloud
+   406 sitting legislators, and 2,192 people with a recorded vote since 1999
+53,814 proceedings across eleven terms, on 2,415 recordings
+13,463 of those placed at a boundary the chair spoke aloud
 ```
 
 The General Court publishes all of this already. It publishes it as fixed-width
