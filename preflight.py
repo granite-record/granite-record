@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.160
+# GRANITE_VERSION: 2026-09-04.161
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2766,6 +2766,116 @@ def _proceedings_table():
         assert P.floor_videos(rows) == {"FLOORV"}
         assert rows[0]["term"] == "2025-2026", rows[0]["term"]
         return "ok", "2 rows, one of each kind, roll-call end carried"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a term that loses a fifth of its rows is refused even when the table is not")
+def _proceedings_term_shrink():
+    """build_proceedings refused to shrink by a fifth when the table held one
+    term. It holds every term now, and a rebuild that leaves
+    verification_manifest_2023-2024.csv out loses 6,998 docket rows while
+    keeping 87% of the table -- inside the old guard's allowance, so the term
+    would have left the site with nothing said. The guard now also counts
+    rows per (term, source).
+
+    The same thing in miniature: a prior table of 150 rows of 2023-2024 and
+    1,000 of 2025-2026, every one saying `manifest`, as each table written
+    before calendar rows did. A rebuild from both manifests goes through,
+    because `manifest` is the docket under its old name rather than a source
+    that vanished. Without the 2023-2024 manifest the table keeps 87% and is
+    refused, naming that term and no other, and left as it was.
+    --allow-shrink lets it through.
+    """
+    here = Path(".").resolve()
+    need = ("build_proceedings.py", "proceedings.py")
+    absent = [f for f in need if not (here / f).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    import importlib.util
+    root = Path(tempfile.mkdtemp(prefix="gr-termshrink-"))
+    try:
+        for f in need:
+            shutil.copy(here / f, root / f)
+        # The copy's own write(), under a name of its own, so no later check
+        # that imports proceedings is handed a module from a deleted folder.
+        spec = importlib.util.spec_from_file_location(
+            "_termshrink_proceedings", root / "proceedings.py")
+        P = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(P)
+        cols = ["bill", "body", "committee", "proceeding", "sched_date",
+                "sched_time", "venue", "tier", "bills_in_slot", "match",
+                "video_id", "video_title", "stream_start", "predicted_offset",
+                "watch_url", "candidates", "observed_start", "observed_end",
+                "notes"]
+        prior = []
+        for term, name, day, n in (
+                ("2023-2024", "verification_manifest_2023-2024.csv",
+                 "2024-02-06", 150),
+                ("2025-2026", "verification_manifest.csv", "2026-02-03", 1000)):
+            with (root / name).open("w", newline="", encoding="utf-8") as fh:
+                w = csv.writer(fh)
+                w.writerow(cols)
+                for i in range(1, n + 1):
+                    w.writerow([f"HB{i}", "H", "Judiciary", "public hearing",
+                                day, "10:00", "LOB 206", "A", 1,
+                                "no video found"] + [""] * 9)
+                    prior.append({"term": term, "bill": f"HB{i}", "body": "H",
+                                  "kind": "public hearing", "date": day,
+                                  "time": "10:00", "committee": "Judiciary",
+                                  "venue": "LOB 206",
+                                  "match": "no video found",
+                                  "source": "manifest"})
+        table = root / "proceedings.csv"
+
+        def rebuild(*args):
+            """The prior table put back, then one run over it. An inherited
+            GRANITE_PROCEEDINGS is emptied so the child writes here."""
+            P.write(prior, table)
+            was = table.read_bytes()
+            r = _run([sys.executable, "build_proceedings.py", *args],
+                     cwd=root, capture_output=True, text=True, timeout=120,
+                     env={"GRANITE_PROCEEDINGS": ""})
+            return r, was
+
+        r, _ = rebuild()
+        assert r.returncode == 0, (
+            "a rebuild from both manifests was refused; a prior `manifest` "
+            "row is the docket's and must count as `docket`: "
+            + ((r.stdout or "") + (r.stderr or "")).strip()[-300:])
+        got = Counter((x["term"], x["source"]) for x in P.load(table))
+        assert got == {("2023-2024", "docket"): 150,
+                       ("2025-2026", "docket"): 1000}, (
+            f"the rebuild from both manifests wrote {dict(got)}; wanted 150 "
+            "docket rows of 2023-2024 and 1,000 of 2025-2026")
+
+        (root / "verification_manifest_2023-2024.csv").unlink()
+        r, was = rebuild()
+        err = (r.stderr or "").strip()
+        assert r.returncode != 0, (
+            "without the 2023-2024 manifest the table kept 1,000 of 1,150 "
+            "rows, 87%, and the rebuild went through: a whole term left the "
+            "table with nothing said")
+        assert "2023-2024" in err, (
+            "refused, but the message does not name the term that lost its "
+            "rows: " + err[-300:])
+        assert "2025-2026" not in err, (
+            "the refusal names 2025-2026 too, which lost nothing: "
+            + err[-300:])
+        assert table.read_bytes() == was, (
+            "the rebuild was refused and still rewrote the table")
+
+        r, _ = rebuild("--allow-shrink")
+        assert r.returncode == 0, (
+            "--allow-shrink did not let the smaller table through: "
+            + ((r.stdout or "") + (r.stderr or "")).strip()[-300:])
+        kept = Counter(x["term"] for x in P.load(table))
+        assert kept == {"2025-2026": 1000}, (
+            f"--allow-shrink wrote {dict(kept)}; wanted 1,000 rows of 2025-2026")
+        return "ok", ("150 + 1,000 `manifest` rows rebuild as docket; without "
+                      "2023-2024's manifest the table keeps 87% and the "
+                      "rebuild is refused by that term's name; --allow-shrink "
+                      "writes it")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 

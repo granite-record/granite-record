@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.3
+# GRANITE_VERSION: 2026-09-05.4
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -19,7 +19,7 @@ recording. Columns:
                   terms and everything archival will be keyed on this
   bill            HB1442
   body            H or S
-  kind            public hearing | executive session | work session |
+  kind            public hearing | hearing | executive session | work session |
                   subcommittee work session | full committee work session |
                   floor debate | committee of conference
   date            2026-02-03
@@ -37,23 +37,49 @@ recording. Columns:
   motions         floor only, joined with " | "
   tallies         floor only, joined with " | "
   whole_video     true when the title names the bill (conference committees)
-  source          manifest | floor_index -- where this row came from
+  source          docket | calendar | floor_index -- where this row came from:
+                  docket, read from the General Court's docket; calendar, a
+                  meeting announced in the House or Senate Calendar that the
+                  part of the docket this site reads does not have; floor_index,
+                  a floor debate. A table written before calendar rows existed
+                  says manifest where it now says docket.
+  calendar        the calendar that announced the meeting, 2003/HC012: on every
+                  calendar row, and on a docket row whose committee came from it
+  noticed         calendar rows: the day that calendar was printed
+  committee_from  calendar, on a docket row whose committee name was taken from
+                  the calendar's notice for that bill and day
+  notice_times    calendar rows: 10:00;13:00 when the notice gives the bill more
+                  than one time that day, and time is then empty
 
 Hand-marked times are NOT here. They are in ground_truth.csv and join on
 (video_id, bill, kind).
+
+GRANITE_PROCEEDINGS, when set, names the file to read and write in place of
+proceedings.csv. It exists so a candidate table can be built and scored in
+scratch -- build_proceedings.py writes it, then the site builders and
+probe_alignment.py run against it -- without the live table being touched.
+build_site_v2, build_committees, build_exports, probe_alignment,
+segment_markers and site_read follow it because they read through load() and
+PATH. A tool that opens proceedings.csv by name does not: handoff.py reads the
+live table, and caption_gaps.py whatever its --proceedings says.
 """
 
 import csv
+import os
 import re
 from collections import defaultdict
 from pathlib import Path
 
-PATH = Path("proceedings.csv")
+# The live table, or the candidate GRANITE_PROCEEDINGS names (see above).
+PATH = Path(os.environ.get("GRANITE_PROCEEDINGS") or "proceedings.csv")
 
 COLS = ["term", "bill", "body", "kind", "date", "time", "committee", "venue",
         "video_id", "video_title", "stream_start", "predicted_offset", "match",
         "debate_end", "window_start", "precise", "motions", "tallies",
-        "whole_video", "source"]
+        "whole_video", "source",
+        # Where a committee row's meeting or its committee name came from,
+        # when that was a calendar's notice. Empty on every other row.
+        "calendar", "noticed", "committee_from", "notice_times"]
 
 FLOOR_KINDS = {"floor debate", "committee of conference"}
 

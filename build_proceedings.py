@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.3
+# GRANITE_VERSION: 2026-09-05.4
 """
 Build proceedings.csv: one row per (bill, date, kind, recording), whether it
 is a committee hearing or a floor debate.
 
     python3 build_proceedings.py
 
-Reads verification_manifest.csv (committee proceedings, from build_manifest.py)
-and floor_index.json (floor debates, from build_floor_index.py) and writes one
-table in one shape. The two producers stay as they are for now; this is the
-file everything downstream reads. Once every reader has moved, the producers
-can be merged too.
+Reads every verification_manifest*.csv -- one per term, from build_manifest.py:
+the committee proceedings read from the docket and, for a term built with
+--calendar, the meetings only a calendar announced -- and floor_index.json
+(floor debates, from build_floor_index.py), and writes one table in one shape.
+The producers stay as they are for now; this is the file everything
+downstream reads. Once every reader has moved, the producers can be merged
+too.
 
 Why: the two sources have different shapes and keys, and every tool that read
 one had to be separately taught the other. Five times in one day a tool
@@ -19,12 +21,15 @@ the fifth instance.
 
 What it refuses: to write a smaller table than last time without being told
 it may. A rebuild that halves the proceedings is a rebuild that lost a source.
+The same goes for one term's rows from one source, because the table holds
+every term and a whole term can leave it while the total barely moves.
 """
 
 import argparse
 import csv
 import json
 import sys
+from collections import Counter, defaultdict
 from pathlib import Path
 
 import proceedings as P
@@ -98,7 +103,17 @@ def from_manifest(path):
                 "match": (r.get("match") or "").strip(),
                 "debate_end": None, "window_start": None, "precise": False,
                 "motions": [], "tallies": [], "whole_video": False,
-                "source": "manifest",
+                # A manifest row is the docket's unless build_manifest
+                # --calendar wrote it from a calendar's notice. A manifest
+                # with no source column predates calendar rows, and every
+                # row in it is the docket's.
+                "source": ("calendar"
+                           if (r.get("source") or "").strip() == "calendar"
+                           else "docket"),
+                "calendar": (r.get("calendar") or "").strip(),
+                "noticed": (r.get("noticed") or "").strip(),
+                "committee_from": (r.get("committee_from") or "").strip(),
+                "notice_times": (r.get("notice_times") or "").strip(),
             })
     return rows
 
@@ -161,6 +176,28 @@ def from_floor_index(path):
     return rows
 
 
+def per_term_source(rows):
+    """{(term, source): rows}, with a `manifest` row counted as `docket`.
+
+    manifest is what every table written before calendar rows existed says of
+    the docket's rows. The first rebuild after the rename must not read that
+    as the whole docket leaving and a new source arriving.
+    """
+    n = Counter()
+    for r in rows:
+        src = (r.get("source") or "").strip()
+        n[(r.get("term") or "", "docket" if src == "manifest" else src)] += 1
+    return n
+
+
+def shrunk_groups(prior, rows, least=100, keep=0.8):
+    """[(term, source, was, now)] for every (term, source) of `prior` holding
+    at least `least` rows of which `rows` keeps fewer than `keep`."""
+    was, now = per_term_source(prior), per_term_source(rows)
+    return [(t, s, n, now.get((t, s), 0)) for (t, s), n in sorted(was.items())
+            if n >= least and now.get((t, s), 0) < keep * n]
+
+
 def main():
     ap = argparse.ArgumentParser()
     # A GLOB, NOT A FILE. verification_manifest.csv is the current term and
@@ -173,7 +210,8 @@ def main():
     ap.add_argument("--floor", default="floor_index.json")
     ap.add_argument("--out", default=str(P.PATH))
     ap.add_argument("--allow-shrink", action="store_true",
-                    help="write even if this table is smaller than the last")
+                    help="write even if this table, or one term's rows from "
+                         "one source, is a fifth smaller than the last")
     a = ap.parse_args()
 
     files = manifest_paths(a.manifest)
@@ -209,12 +247,31 @@ def main():
         sys.exit(f"Refusing: {len(uniq):,} rows, but {a.out} already holds "
                  f"{len(prior):,}.\nA table that shrinks by a fifth lost a "
                  "source. Pass --allow-shrink if that is intended.")
+    # ONE TERM AND ONE SOURCE AT A TIME, TOO. The guard above compares whole
+    # tables, and the table holds every term: leaving
+    # verification_manifest_2023-2024.csv out of a rebuild takes 6,998 docket
+    # rows with it and keeps 87% of the table, so that term would have left
+    # the site without a word. A term's manifest rebuilt by a parser that
+    # reads less, or with its calendar rows gone, is the same loss inside one
+    # term. Fewer than 100 rows is too few for a fifth to mean a lost file.
+    lost = shrunk_groups(prior, uniq)
+    if lost and not a.allow_shrink:
+        sys.exit(f"Refusing: {len(uniq):,} rows is "
+                 f"{100 * len(uniq) / len(prior):.0f}% of the {len(prior):,} "
+                 f"in {a.out}, but these lose a fifth or more of their rows:\n"
+                 + "\n".join(f"  {t or '(no date)'}  {s}: {was:,} rows, now "
+                             f"{now:,}" for t, s, was, now in lost)
+                 + "\nA term's rows from one source falling by a fifth means "
+                 "a manifest or the floor index went missing, or was rebuilt "
+                 "from less. Pass --allow-shrink if that is intended.")
 
     P.write(uniq, a.out)
 
     with_video = sum(1 for r in uniq if r["video_id"])
     floor = [r for r in uniq if r["kind"] in P.FLOOR_KINDS]
-    terms = sorted({r["term"] for r in uniq if r["term"]})
+    per_term = defaultdict(Counter)
+    for r in uniq:
+        per_term[r["term"]][r["source"]] += 1
     print(f"{len(uniq):,} proceedings -> {a.out}")
     print(f"  {len(cm):,} from {len(files)} manifest(s), "
           f"{len(fl):,} from the floor index")
@@ -225,7 +282,13 @@ def main():
     print(f"  {len(floor):,} floor rows, "
           f"{sum(1 for r in floor if r['precise']):,} with a roll-call end, "
           f"{sum(1 for r in floor if r['whole_video']):,} whole-video")
-    print(f"  terms: {', '.join(terms)}")
+    print("  rows per term:")
+    line = "      {:<11} {:>8}  {:>8}  {:>11}"
+    print(line.format("", "docket", "calendar", "floor_index"))
+    for t in sorted(per_term):
+        c = per_term[t]
+        print(line.format(t or "(no date)", f"{c['docket']:,}",
+                          f"{c['calendar']:,}", f"{c['floor_index']:,}"))
     if prior:
         print(f"  (was {len(prior):,})")
 
