@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.141
+# GRANITE_VERSION: 2026-09-04.142
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4317,6 +4317,31 @@ def _publish_calls():
     assert not bad, ("publish.bat runs a batch script without CALL, so "
                      "nothing after it runs: " + "; ".join(bad))
     return "ok", "every batch script publish.bat runs is CALLed"
+
+
+@check("build", "every deploy names the production branch, and both name the same one")
+def _deploy_branch():
+    """wrangler takes a deploy's branch from git unless told. On 6 September
+    the Pages production branch was main and this repo was on master, so
+    deploys went to a preview while wrangler printed "Deployment complete".
+    Every production deployment since has come from master. publish.bat and
+    nightly.py both deploy; a nightly that nobody watches is where a deploy
+    that quietly became a preview would go unseen longest."""
+    bat = Path("publish.bat").read_text(encoding="utf-8", errors="replace")
+    m = re.search(r"^set PRODUCTION_BRANCH=(\S+)", bat, re.M)
+    assert m, "publish.bat does not set PRODUCTION_BRANCH"
+    deploys = [ln for ln in bat.splitlines()
+               if "wrangler pages deploy" in ln and not ln.strip().upper().startswith("REM")]
+    assert deploys and all("--branch=%PRODUCTION_BRANCH%" in ln for ln in deploys), \
+        "a publish.bat deploy does not pass --branch=%PRODUCTION_BRANCH%"
+    night = Path("nightly.py").read_text(encoding="utf-8", errors="replace")
+    n = re.search(r'^PRODUCTION_BRANCH = "([^"]+)"', night, re.M)
+    assert n, "nightly.py does not set PRODUCTION_BRANCH"
+    assert n.group(1) == m.group(1), (
+        f"publish.bat deploys to {m.group(1)} and nightly.py to {n.group(1)}")
+    assert '"--branch={PRODUCTION_BRANCH}"' in night.replace("f\"", "\""), \
+        "nightly.py's deploy does not pass --branch"
+    return "ok", f"publish.bat and nightly.py both deploy to {m.group(1)}"
 
 
 @check("build", "the docket fetch stops at a block page or a dropped connection, and caches no error")

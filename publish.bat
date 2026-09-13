@@ -14,6 +14,14 @@ cd /d "%~dp0"
 
 set PROJECT=graniterecord
 set BASE=https://graniterecord.org
+REM The Pages project's production branch, as the dashboard has it. Named
+REM rather than left to wrangler, which takes the branch from git: on
+REM 6 September the production branch was main while this repo was on master,
+REM and every deploy went to a preview while wrangler printed "Deployment
+REM complete". Every production deployment since has come from master
+REM (wrangler pages deployment list, 12 September). Named here, a deploy lands
+REM on production whichever branch the working tree happens to be on.
+set PRODUCTION_BRANCH=master
 
 if "%1"=="--check" goto :build_local
 if "%1"=="" goto :build_local
@@ -61,7 +69,7 @@ set ATTEMPT=0
 
 :upload
 set /a ATTEMPT+=1
-call npx wrangler pages deploy site --project-name=%PROJECT% --commit-dirty=true
+call npx wrangler pages deploy site --project-name=%PROJECT% --branch=%PRODUCTION_BRANCH% --commit-dirty=true
 if not errorlevel 1 goto :uploaded
 if %ATTEMPT% GEQ 4 goto :failed
 echo.

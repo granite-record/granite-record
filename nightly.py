@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 The nightly run. Fetch what changed, rebuild, check, publish -- or don't.
 
@@ -68,6 +68,10 @@ from datetime import datetime
 from pathlib import Path
 
 LOG = []
+
+# The Pages project's production branch. The same value as publish.bat's
+# PRODUCTION_BRANCH, and preflight holds the two together.
+PRODUCTION_BRANCH = "master"
 
 # What a fall in each of these means: something upstream failed, not that the
 # legislature deleted its own record.
@@ -257,8 +261,12 @@ def main():
             return 0
 
         say("\n--- publish ---")
+        # --branch names the production branch rather than letting wrangler
+        # take it from git; publish.bat says why. A nightly nobody watches is
+        # exactly where a deploy that quietly became a preview goes unseen.
         r = child.run(["npx", "wrangler", "pages", "deploy", a.site,
-                            f"--project-name={a.project}", "--commit-dirty=true"],
+                            f"--project-name={a.project}",
+                            f"--branch={PRODUCTION_BRANCH}", "--commit-dirty=true"],
                            capture_output=True, text=True, shell=(sys.platform
                                                                   == "win32"))
         for ln in ((r.stdout or "") + (r.stderr or "")).rstrip().splitlines():
