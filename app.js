@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.64
+// GRANITE_VERSION: 2026-09-07.66
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -306,6 +306,13 @@ need("meta.json")
    //
    // Focus is not taken either: a reader who opened a member's page did not
    // ask to be put in the search box.
+   // Every page built from this template that is not a bill or a list of
+   // them: the towns, the members, the committees and the civics pages.
+   // A bill's own page is the exception and keeps the box -- GR_STANDALONE
+   // is on bill pages too, and there the next bill is a plausible next
+   // thought rather than a change of subject.
+   if(!window.GR_BILL&&(window.GR_STATIC||window.GR_STANDALONE))
+     hideBillSearch();
    if(window.GR_STATIC){
      // The content is in the HTML. Take the chrome down and leave it alone.
      const fac=$("#facets"); if(fac){fac.innerHTML="";fac.hidden=true;}
@@ -2655,6 +2662,20 @@ function hideListControls(){
   if(hint)hint.hidden=true;
   const q=$("#q");
   if(q)q.placeholder="Search all bills";
+}
+
+/* AND ON A PAGE THAT IS NOT A LIST OF BILLS AT ALL, the box itself goes.
+   A town page led with "Search all bills" above the name of the town; so did
+   a member's page, a committee's, and every civics page. The Bills tab is
+   one click away on all of them.
+   Hidden rather than removed: app.js binds seven ids in this row when it
+   loads and shell.py asserts every one of them is in the template, because a
+   missing #q once drew 33,683 blank pages. [hidden] on the wrapper takes it
+   out of the layout and out of what a screen reader walks, and leaves every
+   binding where it was. */
+function hideBillSearch(){
+  const row=document.querySelector(".searchrow");
+  if(row)row.hidden=true;
 }
 
 // Every term this record has anything in, newest first. Worked out once,
