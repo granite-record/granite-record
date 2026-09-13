@@ -492,6 +492,38 @@ Manchester Democrat like 376696), was missed because the roster spells him
 join on continuity of party and county as well as name, and send the doubtful
 ones to the bench.
 
+## 6d. The civics pages' facts, measured on the 12th
+
+Every checkable claim in `civics.py` was measured against the built site.
+**Right, exactly:** HB 1002 of 2024 -- the hearing of 17 January, two
+executive sessions, 193 to 179, and the split (62 Republicans for and 125
+against, 128 Democrats for and 53 against); HB 1215's committee of conference
+and six recorded proceedings; HB 66's two roll calls (its other two tallies
+are a division and a voice vote); HB 349's override failing 145 to 206; HB
+2026 overridden; HB 649 carried over and signed; 649 laws in 2025-2026 as 632
+signed, 10 unsigned and 7 over a veto.
+
+**Stale, all for one reason -- a count typed into prose when the site was two
+terms:**
+
+| the page says | the record says now |
+|---|---|
+| "Across the 4,230 bills on this site, 865 have at least one recorded roll call and 3,365 have none" | 33,683 bills; 4,920 with one; 28,763 without |
+| "Across the two terms on this site there are 68 vetoed bills. In 58 the override failed. In 9 it succeeded... One was still awaiting its override vote" | nineteen terms; 348 vetoed, 308 failed, 39 overridden, 1 unresolved. 2025-2026 alone: 44, 37 failed, 7 overridden. Veto Day was 19 August |
+| "this site carries 67 of the 68" veto messages | 261 messages on disk, 1997 onward |
+| 2025-2026: "855 were killed", "214 were sent for interim study" | 853 and 215 |
+| HB 2 "with 44 recorded votes" | 45 roll calls |
+
+Not checked: "1,068 reached both chambers", "86 went to a committee of
+conference", and the district counts (203 districts, 41 floterial, 65 seats).
+
+**The fix that lasts is not new numbers.** It is `build_civics.py` filling
+these from the data at build time, the way the home page's counts are, so the
+prose cannot drift again -- and it wants doing before the example bills are
+replaced with older, settled ones, which the person asked for and which will
+change most of these sentences anyway. Not edited: the civics pass is one
+the person reads with us.
+
 ## 6a. Filled from disk on the 11th, no request made
 
 Committee reports and their reasoning for **every term 1997-2026** (from
