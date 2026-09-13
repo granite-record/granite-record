@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.62
+# GRANITE_VERSION: 2026-09-04.63
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1197,6 +1197,11 @@ HOME_JS = """
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fd=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
   return new Date(y,m-1,dd).toLocaleDateString("en-US",{month:"short",day:"numeric"});};
+// With the year, for the status box: out of session, the last floor day and
+// the summary's date can be months back, and across a new year "Aug 19" is
+// ambiguous. The server-rendered copy below writes the same form.
+const fdy=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
+  return new Date(y,m-1,dd).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});};
 // If the nightly build stops running, nobody should be reading month-old data
 // believing it is current. The banner degrades into saying so.
 // Anchored to the site root, not to the page. legislators.html is served at
@@ -1240,7 +1245,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     <div class="statebox ${ph[0]}">
       <div class="stateline"><span class="dot"></span><b>${esc(ph[1])}</b>
         ${S.last_session?`<span class="statemeta">last floor session
-          ${fd(S.last_session)}</span>`:""}</div>
+          ${fdy(S.last_session)}</span>`:""}</div>
       ${S.headline?`<p class="statehead">${esc(S.headline)}</p>`:""}
       ${S.note?`<p class="statenote">${esc(S.note)}</p>`:""}
       ${ms?`<p class="statenote"><b>Next: ${esc(ms.label)}</b>, ${fd(ms.date)}.
@@ -1255,7 +1260,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       ${stale?`<p class="statenote" style="color:var(--st-veto)">This summary was
         last updated ${S.stale_days} days ago and may be out of date.</p>`
         :(S.updated?`<p class="statemeta" style="margin-top:8px">Summary updated
-          ${fd(S.updated)}</p>`:"")}
+          ${fdy(S.updated)}</p>`:"")}
     </div>`;
   const C=H.composition||{};
   // Five seats do not want a proportional bar; list them. The Council is also
@@ -1490,14 +1495,38 @@ def main():
               "out of session": ("off", "Out of session")}.get(
                   (S.get("phase") or "").lower(), ("off", S.get("phase") or ""))
         ms = (S.get("milestones") or [{}])[0]
+
+        def fdy(d):
+            """"Aug 19, 2026", the form HOME_JS's fdy() writes."""
+            try:
+                return f"{fd(d)}, {int(d[:4])}"
+            except (TypeError, ValueError):
+                return esc(d or "")
+        n14 = S.get("hearings_next_14") or 0
+        stale = (S.get("stale_days") or 0) > 45
+        # THE SAME BOX THE SCRIPT DRAWS, line for line. This copy is what a
+        # reader without JavaScript and every crawler get, and until 13
+        # September it had no last floor session, no count of hearings and
+        # no date -- so it could not say it was stale, which is the one thing
+        # a hand-kept summary most needs to be able to say. The livestream
+        # links stay script-only: they point at whatever is live right now.
         static_state = (
             f'<div class="statebox {ph[0]}"><div class="stateline">'
-            f'<span class="dot"></span><b>{esc(ph[1])}</b></div>'
+            f'<span class="dot"></span><b>{esc(ph[1])}</b>'
+            + (f'<span class="statemeta">last floor session {fdy(S["last_session"])}</span>'
+               if S.get("last_session") else "")
+            + "</div>"
             + (f'<p class="statehead">{esc(S["headline"])}</p>'
                if S.get("headline") else "")
             + (f'<p class="statenote">{esc(S["note"])}</p>' if S.get("note") else "")
             + (f'<p class="statenote"><b>Next: {esc(ms.get("label"))}</b>, '
                f'{fd(ms.get("date"))}. {esc(ms.get("note"))}</p>' if ms.get("label") else "")
+            + (f'<p class="statenote">{n14} hearing{"" if n14 == 1 else "s"} scheduled '
+               "in the next two weeks.</p>" if n14 else "")
+            + (f'<p class="statenote" style="color:var(--st-veto)">This summary was last '
+               f'updated {S["stale_days"]} days ago and may be out of date.</p>' if stale
+               else (f'<p class="statemeta" style="margin-top:8px">Summary updated '
+                     f'{fdy(S["updated"])}</p>' if S.get("updated") else ""))
             + "</div>")
 
     static_stats = ""

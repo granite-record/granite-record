@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.155
+# GRANITE_VERSION: 2026-09-04.157
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3273,6 +3273,28 @@ def _legislator_description(BL):
     seven = dict(m, towns=m["towns"][:7])
     assert "more" not in BL.describe(seven) and " and Lempster in" in BL.describe(seven), BL.describe(seven)
     return "ok", "seat once, places first, wards in number order"
+
+
+@check("frontend", "the status box without JavaScript says what the scripted one says")
+def _status_box_parity():
+    """The homepage status box is drawn twice: in Python for readers without
+    JavaScript and for crawlers, and again by HOME_JS. On 13 September the
+    person set what it should read, and the Python copy had no last floor
+    session, no count of hearings and no date -- so it could not say a stale
+    summary was stale."""
+    src = Path("build_pages.py").read_text(encoding="utf-8")
+    py = src[src.find("static_state = \"\""):][:3200]
+    js = src[src.find("document.getElementById(\"state\").innerHTML"):][:2400]
+    for what, needle_py, needle_js in (
+            ("the last floor session", 'S["last_session"]', "S.last_session"),
+            ("the hearings in the next two weeks", "hearings_next_14", "S.hearings_next_14"),
+            ("the summary's date", 'S["updated"]', "S.updated"),
+            ("the stale warning", "stale_days", "S.stale_days")):
+        assert needle_js in js, f"HOME_JS no longer draws {what}"
+        assert needle_py in py, f"the server-rendered status box lost {what}"
+    assert "fdy(S.last_session)" in js and 'fdy(S["last_session"])' in py, \
+        "the two copies write the last floor session's date differently"
+    return "ok", "floor session, hearings, date and stale warning in both copies"
 
 
 @check("frontend", "tab strips keep the keyboard's place and a page opens on its own first tab")
