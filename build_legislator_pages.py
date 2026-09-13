@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -31,6 +31,7 @@ import unicodedata
 from pathlib import Path
 
 import shell as S
+import structured as LD
 
 E = S.E
 
@@ -111,6 +112,9 @@ def main():
             title=f"{who} | Granite Record",
             og_title=f"{who} — New Hampshire General Court",
             description=describe(m),
+            # Name, office, chamber, party, district. Not email or telephone:
+            # structured.py says why.
+            jsonld=LD.person(m, a.base, S.canon(path)),
             globals={"GR_MEMBER": str(m.get("id", "")), "GR_STANDALONE": True},
             noscript=noscript(m), skip_label="Skip to this member",
             # Without this the template's marker stays on Bills, and all 406

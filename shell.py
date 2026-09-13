@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.12
+# GRANITE_VERSION: 2026-09-07.13
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -148,10 +148,39 @@ def title_of(lead, detail="", brand=True):
     return (f"{lead} \u2014 {detail}" if detail else lead) + tail
 
 
+def still_moving(row, current_term):
+    """Whether a bill can be followed: one of the sitting term, not concluded.
+
+    The person who owns the site, 12 September: "The only bills that need to be
+    followable by rss or email are bills that are still moving." A bill signed,
+    killed, vetoed and settled, sent to study or died has nothing more to
+    report. build_bill_pages advertises a feed and build_feeds writes one on
+    this same test, so a page never offers a feed that is not there.
+    """
+    return (row.get("term") or "") == current_term and row.get("kind") == "active"
+
+
+def ld_script(jsonld):
+    """Structured data as a script element, safe inside a page.
+
+    A dict or a list of dicts, wrapped in one schema.org graph. "</" is
+    written "<\\/" so a title containing "</script>" cannot end the element --
+    the same guard the page's own record gets. Until 13 September this was an
+    f-string interpolating a name, NL, that was never defined: no caller had
+    passed jsonld, so nothing had raised, and no page had structured data.
+    """
+    if not jsonld:
+        return ""
+    graph = jsonld if isinstance(jsonld, list) else [jsonld]
+    body = json.dumps({"@context": "https://schema.org", "@graph": graph},
+                      ensure_ascii=False, separators=(",", ":"))
+    return '\n<script type="application/ld+json">' + body.replace("</", "<\\/") + "</script>"
+
+
 def page(t, *, path, title, description, base, globals=None, noscript="",
          alternate="", skip_label="Skip to the content", og_title=None,
          sr_title=None, nav_current="", jsonld=None,
-         data_json=None, data_url=None):
+         data_json=None, data_url=None, og_type="article"):
     """One record's page: the template, told which record it is.
 
     sr_title replaces the template's own visually-hidden <h1>. bills.html
@@ -186,7 +215,9 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         + f'\n<meta name="description" content="{E(description)}">'
         + f'\n<link rel="canonical" href="{base}{canon(path)}">'
         + (f"\n{alternate}" if alternate else "")
-        + '\n<meta property="og:type" content="article">'
+        # "article" for a record's page, "website" for a list of them: the
+        # committees index and the directories are not articles.
+        + f'\n<meta property="og:type" content="{E(og_type)}">'
         # The card a link unfurls into wants the record's name, not
         # the browser tab's "... | Granite Record".
         + f'\n<meta property="og:title" content="{E(og_title or title)}">'
@@ -200,8 +231,7 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         # Structured data, where the page has something a search engine has a
         # vocabulary for. It is passed in rather than guessed at here, because
         # only the builder knows whether this is a bill, a person or a body.
-        + (f'{NL}<script type="application/ld+json">{jsonld}</script>'
-           if jsonld else ""))
+        + ld_script(jsonld))
 
     out = t.replace(NEEDS["viewport"], head, 1)
     # ONE TITLE PER PAGE. head starts with the viewport meta and adds a

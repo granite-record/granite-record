@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.144
+# GRANITE_VERSION: 2026-09-04.145
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3110,6 +3110,132 @@ def _feeds_keyed_and_current():
         return "ok", "committee feed at its code, from its sitting days; no .html links; stale pruned only when told"
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a page's structured data says what it is, stays inside its script, and names no contact details",
+       needs=("structured", "shell"))
+def _structured_data(LD, S):
+    """schema.org data on bill, legislator, committee and list pages, added 13
+    September. Until then shell.page()'s jsonld parameter interpolated a name,
+    NL, that was never defined -- no caller passed it, so nothing had raised and
+    no page had any. A title is a stranger's input as far as a script element is
+    concerned, so "</script>" in one must not end it; and a legislator's email
+    and telephone stay out, because the person running the site wants the
+    addresses kept from scrapers and structured data is where a scraper reads."""
+    b = {"id": "HB100", "n": "HB 100-FN", "year": 2026, "term": "2025-2026",
+         "title": "a bill </script><script>alert(1)</script>"}
+    s = S.ld_script(LD.bill(b, {"sponsors": [{"label": "Rep. A (R - Straf 1)"}]},
+                            "https://x.test", "/bill/2026/hb100"))
+    inner = s[s.index(">") + 1:-len("</script>")]
+    assert "</" not in inner, "structured data can end its own script element"
+    g = json.loads(inner)
+    assert [x["@type"] for x in g["@graph"]] == ["Legislation", "BreadcrumbList"], g
+    assert g["@graph"][0]["legislationJurisdiction"] == "US-NH"
+    m = {"name": "Doe, Jane", "display_plain": "Rep. Jane Doe", "chamber": "H",
+         "county": "Hillsborough", "district": "12", "party": "Democratic",
+         "email": "jane.doe@leg.state.nh.us", "phone": "603-555-0100", "address": "1 Main St"}
+    p = json.dumps(LD.person(m, "https://x.test", "/legislator/jane-doe-hills-12"))
+    for private in ("jane.doe@", "555-0100", "1 Main St"):
+        assert private not in p, f"a legislator's contact detail reached structured data: {private}"
+    assert json.loads(p)[0]["jobTitle"] == "State Representative"
+    assert S.ld_script(None) == ""
+    assert S.still_moving({"term": "2025-2026", "kind": "active"}, "2025-2026")
+    assert not S.still_moving({"term": "2025-2026", "kind": "law"}, "2025-2026"), \
+        "a concluded bill is offered as followable"
+    assert not S.still_moving({"term": "2023-2024", "kind": "active"}, "2025-2026")
+    return "ok", "Legislation, Person, GovernmentOrganization; no breakout; no contact details; only moving bills followable"
+
+
+@check("build", "every bill, legislator and town is one static link from a page a crawler can reach")
+def _directory_pages():
+    """build_indexes.py, added 13 September: the bill list and the legislator
+    search are drawn by script, so a bill page was reachable from the sitemap,
+    four homepage links and nothing else, the 406 legislator pages from the town
+    pages only, and the town pages from nothing."""
+    here = Path(".").resolve()
+    if not (here / "build_indexes.py").exists():
+        return "skip", "build_indexes.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        site = root / "site"
+        (site / "idx").mkdir(parents=True)
+        (site / "town").mkdir()
+        rows = {"2025-2026": [{"id": "HB1", "n": "HB 1", "year": 2025, "term": "2025-2026",
+                               "title": "the budget", "status": "Signed into law"},
+                              {"id": "SB2", "n": "SB 2", "year": 2026, "term": "2025-2026",
+                               "title": "a second bill", "status": "Killed"}],
+                "1989-1990": [{"id": "HB7", "n": "HB 7", "year": 1989, "term": "1989-1990",
+                               "title": "an old bill", "status": ""}]}
+        for term, r in rows.items():
+            (site / "idx" / f"{term}.json").write_text(json.dumps(r), encoding="utf-8")
+        (site / "legislators.json").write_text(json.dumps([
+            {"id": "1", "name": "Doe, Jane", "chamber": "H", "party": "Democratic",
+             "county": "Hillsborough", "district": "12", "slug": "jane-doe-hills-12",
+             "display_plain": "Rep. Jane Doe", "email": "jane@x.test"}]), encoding="utf-8")
+        (site / "towns.json").write_text(json.dumps({
+            "Concord": [{"county": "Merrimack", "ward": "1"}, {"county": "Merrimack", "ward": "2"}],
+            "Acworth": [{"county": "Sullivan", "ward": "0"}]}), encoding="utf-8")
+        for slug in ("concord-ward-1", "concord-ward-2", "acworth"):
+            (site / "town" / f"{slug}.html").write_text("<p>town</p>", encoding="utf-8")
+        shutil.copy(here / "bills.html", site / "bills.html")
+        (site / "sitemap.xml").write_text("<urlset>\n</urlset>\n", encoding="utf-8")
+        r = _run([sys.executable, str(here / "build_indexes.py"), "--site", "site",
+                  "--base", "https://x.test"], cwd=root, capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-300:]
+        bills = (site / "directory" / "bills-2025-2026.html").read_text(encoding="utf-8")
+        assert 'href="bill/2025/hb1"' in bills and 'href="bill/2026/sb2"' in bills, "a bill is not linked"
+        assert "<title>Every bill of the 2025-2026 term | Granite Record</title>" in bills
+        assert 'og:type" content="website"' in bills and "CollectionPage" in bills
+        people = (site / "directory" / "legislators.html").read_text(encoding="utf-8")
+        assert 'href="legislator/jane-doe-hills-12"' in people and "jane@x.test" not in people
+        towns = (site / "directory" / "towns.html").read_text(encoding="utf-8")
+        for slug in ("concord-ward-1", "concord-ward-2", "acworth"):
+            assert f'href="town/{slug}"' in towns, f"town page {slug} is not linked"
+        hub = (site / "directory.html").read_text(encoding="utf-8")
+        assert "directory/bills-1989-1990" in hub and "directory/towns" in hub
+        sm = (site / "sitemap.xml").read_text(encoding="utf-8")
+        assert sm.count("<loc>") == 5, sm
+        foot = (here / "bills.html").read_text(encoding="utf-8")
+        assert 'href="directory.html"' in foot, "the footer does not link the directory"
+        return "ok", "bills by term, legislators and towns linked statically, sitemapped, footer links them"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a committee day still to come is scheduled, not met", needs=("build_committees",))
+def _committee_tense(BC):
+    """On 13 September the Judiciary committee's page said it "met" on the 30th,
+    seventeen days before it did: the docket carries sittings ahead of time and
+    the day's sentence had one tense."""
+    import datetime
+    items = [{"kind": "executive session", "n": "HB 293", "bill": "HB293", "term": "2025-2026"}]
+    later = (datetime.date.today() + datetime.timedelta(days=30)).isoformat()
+    earlier = (datetime.date.today() - datetime.timedelta(days=30)).isoformat()
+    ahead = BC.narrate("Judiciary", "H", later, items, {})
+    past = BC.narrate("Judiciary", "H", earlier, items, {})
+    assert "is scheduled to meet" in ahead and " met on" not in ahead, ahead
+    assert " met on" in past and "scheduled" not in past, past
+    return "ok", "future days scheduled, past days met"
+
+
+@check("frontend", "tab strips keep the keyboard's place and a page opens on its own first tab")
+def _tab_keyboard():
+    """Three defects found reading app.js on 12 September. An arrow key clicked
+    the next tab, the click redrew the strip, and focus fell to <body> -- every
+    press lost the keyboard's place, on every tabbed view. PAGE_TAB outlived the
+    page it belonged to, so a committee opened after a member's Votes tab drew
+    nothing. And the version picker declared role="tablist" with no tabs."""
+    js = Path("app.js").read_text(encoding="utf-8")
+    handler = js[js.find('e.key==="ArrowLeft"'):][:900]
+    assert "next.click()" in handler and ".focus()" in handler and \
+        handler.find("next.click()") < handler.find("(fresh||next).focus()"), \
+        "the arrow-key handler focuses before the redraw, which destroys the tab"
+    open_page = js[js.find("function openPage("):][:800]
+    assert "PAGE_TAB=0" in open_page.replace(" ", ""), "openPage does not reset PAGE_TAB"
+    assert 'class="vpick" role="tablist"' not in js, "the version picker is a tablist with no tabs"
+    assert 'id="ptab_${i}" aria-controls="ppane"' in js and 'aria-labelledby="ptab_${PAGE_TAB}"' in js, \
+        "member and committee tabs are not tied to their panel"
+    return "ok", "focus survives a redraw, the tab resets per page, the picker is a group"
 
 
 @check("build", "a reports file keyed on bill number is refused, not ignored")

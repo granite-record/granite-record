@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -194,7 +194,7 @@ def main():
 
     all_items, by_topic, nbill = [], {}, 0
     bill_items = {}
-    skipped_closed = 0
+    skipped_closed = skipped_concluded = 0
     noyear = []
     sponsored = {}
     # Each bill's record, read from its page. It used to be opened from
@@ -239,6 +239,11 @@ def main():
 
         if items and (b.get("term") or "") != current:
             skipped_closed += 1
+        elif items and not S.still_moving(b, current):
+            # Concluded in the sitting term: signed, killed, studied, died.
+            # Nothing more will happen to it, and the person who owns the site
+            # asked that only bills still moving be followable.
+            skipped_concluded += 1
         elif items and not str(b.get("year") or "").strip():
             # Without a year the path collapses to feed/bill/<id>.xml, where
             # the next term's bill of the same number lands on top of it.
@@ -429,6 +434,9 @@ def main():
     if skipped_closed:
         print(f"  {skipped_closed:,} bills of closed terms got no feed of "
               "their own: their history is on the page and cannot change")
+    if skipped_concluded:
+        print(f"  {skipped_concluded:,} concluded bills of the sitting term got none either: "
+              "only a bill still moving can be followed")
     if noyear:
         print(f"  {len(noyear):,} bills have no filing year and got no feed, "
               f"rather than one at feed/bill/ where the next term's bill of "

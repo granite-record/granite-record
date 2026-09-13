@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.17
+# GRANITE_VERSION: 2026-09-07.18
 """
 A page's worth of data for every committee.
 
@@ -52,6 +52,7 @@ from pathlib import Path
 import proceedings as P
 import names
 import shell as S
+import structured as LD
 import site_read as SR
 
 # The kinds proceedings.csv records, in the order a committee day runs, with
@@ -161,14 +162,21 @@ def narrate(name, chamber, date, items, reports):
     # needs its article. 248 sitting days of the current term read that way,
     # which is the site speaking in its own voice and getting it wrong.
     art = "" if many else ("an " if noun[:1] in "aeiou" else "a ")
-    out.append(f"{who} met on {fdate(date)} for {art}{noun} on {bills}.")
+    # A day still to come is scheduled, not met. The docket carries sittings
+    # ahead of time -- on 13 September, the Judiciary committee's executive
+    # sessions of the 30th -- and the page said the committee "met" on a day
+    # seventeen days off.
+    ahead = str(date)[:10] > __import__("datetime").date.today().isoformat()
+    met, held = (("is scheduled to meet", "It is also scheduled to hold") if ahead
+                 else ("met", "It also held"))
+    out.append(f"{who} {met} on {fdate(date)} for {art}{noun} on {bills}.")
 
     for k in kinds[1:]:
         bs = andlist(spaced(i["n"] or i["bill"]) for i in by_kind[k])
         noun = PLURAL[k] if len(by_kind[k]) > 1 and k in PLURAL else k
-        out.append(f"It also held {'an' if noun[0] in 'aeiou' else 'a'} "
+        out.append(f"{held} {'an' if noun[0] in 'aeiou' else 'a'} "
                    f"{noun} on {bs}." if len(by_kind[k]) == 1
-                   else f"It also held {noun} on {bs}.")
+                   else f"{held} {noun} on {bs}.")
 
     # What it decided, where a report says so. Only executive sessions produce
     # a recommendation, and only some of those have a report on file yet.
@@ -492,6 +500,7 @@ def main():
             title=f"{name} — {chamber_word} committee | Granite Record",
             og_title=f"{name} — New Hampshire {chamber_word}",
             description=desc,
+            jsonld=LD.committee(code, name, a.base, S.canon(path)),
             globals={"GR_COMMITTEE": code, "GR_STANDALONE": True},
             noscript=nos, skip_label="Skip to this committee",
                   # Without this the template's own marker stays on Bills,
@@ -581,7 +590,10 @@ def main():
         description=("Every committee of the New Hampshire General Court: who "
                      "sits on it, the bills referred to it, and what it did on "
                      "each day it met."),
-        globals={"GR_STATIC": True},
+        globals={"GR_STATIC": True}, og_type="website",
+        jsonld=LD.listing("New Hampshire General Court committees",
+                          "Every committee of the New Hampshire General Court.",
+                          a.base, S.canon("/committees.html")),
         noscript="", skip_label="Skip to the committees",
                   nav_current="committees.html", sr_title="")
     # A plain listing rather than an app view: there is nothing to filter and
