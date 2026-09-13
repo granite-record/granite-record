@@ -466,14 +466,23 @@ example on this site of a number outliving its premise.
   have done.) Bill text 2024 and 2023 were fetched cleanly until 12:59 on the
   12th; when the block began between then and 21:36 is not known.
 
-  **A lead, not a finding:** the block page names the client address as
+  ~~**A lead, not a finding:** the block page names the client address as
   [address redacted], and ProtonVPN was running on this machine at 00:13. If that
   address is a VPN exit, the firewall may be refusing the VPN's shared address
-  rather than anything this project sent -- a shared exit carries every other
-  user's traffic too, and firewalls block such addresses routinely. Whether the
-  VPN was connected when the lane last fetched cleanly (12:59 on the 12th) is
-  the question that settles it; a person can check the address with the VPN on
-  and off, and run netcheck once with it off.
+  rather than anything this project sent.~~ **Closed on the 13th, by the
+  person: the VPN was not connected on the 12th** (it was causing wifi
+  trouble). The process was running, the tunnel was not, so [address redacted] is
+  this machine's own address and the block is on it, as the first two were.
+
+  **The VPN is connected again as of the morning of the 13th, and that changes
+  two things.** While it is connected, a request from this machine leaves from
+  the VPN's address, not this one -- so netcheck run through it says nothing
+  about whether the block on this address has lifted, and a fetch run through
+  it would be going around a block rather than waiting it out, which is the
+  one thing that turns a two-day block into a conversation with the Clerk's
+  office. **No General Court traffic goes through the VPN**: disconnect it for
+  netcheck and for the lane, or exclude `python.exe` from the tunnel with
+  Proton VPN's split tunnelling so every fetch leaves from this address.
 
   **For a person, in a browser on this machine:** https://gc.nh.gov/ -- if it
   loads there while the table above says refused, the block is on this
@@ -917,8 +926,12 @@ committed on `master` except where it says otherwise, and is on the built
 
 **Waiting on a person, in the order they unblock things:**
 
-1. **The refusal.** Check whether ProtonVPN was on when the lane last fetched
-   cleanly, then netcheck once with it off (§6). Nothing fetches until then.
+1. **The refusal.** The VPN was not on when the block happened (answered on
+   the 13th), so the block is on this machine's address. It is on file until
+   21:36 on the 13th by `refusal.py`'s clock; after that, with the VPN
+   disconnected or `python.exe` split-tunnelled out of it, netcheck once. If
+   HTTP/1.1 is still closed, the wait is days, as the first two blocks were.
+   Nothing fetches until then, and nothing fetches through the VPN.
 2. **The report box, on branch `report-box` (`D:\nh-report`), not merged.**
    A Pages Function writes to D1, `compile_reports.py` screens every report
    for text aimed at the assistant before anything reads it, and
