@@ -478,15 +478,17 @@ example on this site of a number outliving its premise.
   a person's home IP address does not belong in it. It remains in git history
   until that history is rewritten or the public repository starts fresh.)
 
-  **The VPN is connected again as of the morning of the 13th, and that changes
-  two things.** While it is connected, a request from this machine leaves from
-  the VPN's address, not this one -- so netcheck run through it says nothing
-  about whether the block on this address has lifted, and a fetch run through
-  it would be going around a block rather than waiting it out, which is the
-  one thing that turns a two-day block into a conversation with the Clerk's
-  office. **No General Court traffic goes through the VPN**: disconnect it for
-  netcheck and for the lane, or exclude `python.exe` from the tunnel with
-  Proton VPN's split tunnelling so every fetch leaves from this address.
+  **Settled by the person on the 13th: fetches go through the VPN.** The home
+  address was blocked early in the project by a faulty fetch command that ran
+  too fast and asked for incorrect addresses. The Clerk who oversees the
+  General Court's staff has approved the project; IT has not yet lifted that
+  leftover block, which the person is pursuing. Until it is lifted, every fetch
+  leaves through the VPN, one at a time, at the proven pace, under the refusal
+  procedure. (For most of the 13th this file said the opposite, on the
+  assistant's reading before the person explained; that reading is withdrawn.)
+  A 403 while the VPN is disconnected is the old home-address block, not news --
+  but it still stops the run. Check the VPN is up (https://1.1.1.1/cdn-cgi/trace
+  shows the outgoing address) before netcheck and a restart.
 
   **For a person, in a browser on this machine:** https://gc.nh.gov/ -- if it
   loads there while the table above says refused, the block is on this
@@ -930,12 +932,14 @@ committed on `master` except where it says otherwise, and is on the built
 
 **Waiting on a person, in the order they unblock things:**
 
-1. **The refusal.** The VPN was not on when the block happened (answered on
-   the 13th), so the block is on this machine's address. It is on file until
-   21:36 on the 13th by `refusal.py`'s clock; after that, with the VPN
-   disconnected or `python.exe` split-tunnelled out of it, netcheck once. If
-   HTTP/1.1 is still closed, the wait is days, as the first two blocks were.
-   Nothing fetches until then, and nothing fetches through the VPN.
+1. ~~**The refusal.**~~ **Cleared on the 13th at 15:26, and the lane is
+   running.** With the VPN connected, netcheck found the address answering
+   (every HTTP/1.1 request 200; HTTP/1.0 refused as always); the person cleared
+   the refusal; the lane restarted. **The 2007 Senate proving run fetched 5 of
+   5** -- so the pre-2008 Senate calendars are served at the names the queue
+   holds, which was the question left open on the 12th. The Senate calendars
+   back to 1998 follow, then bill text. The 44 zero-padded names stay
+   `withheld`. Still open: the person asking IT to lift the home address.
 2. **Published on the 13th, in the afternoon** (merge 6222d12, deployment
    27c1e2a2): the report box is live -- `/api/report` answers 405 to a GET, a
    well-formed report sent to the deployment's own pages.dev address was
