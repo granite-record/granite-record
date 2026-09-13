@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.143
+# GRANITE_VERSION: 2026-09-04.144
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5233,6 +5233,185 @@ def _triage_rules():
                  "compile_reports.py", "this file", "never published", "ALL of these hold"):
         assert must in t, f"reports/TRIAGE.md no longer says: {must}"
     return "ok", "claim-not-instruction, no fetch, held reports unread, proposals wait"
+
+
+# ---- the nightly ---------------------------------------------------------------
+
+@check("build", "the daily snapshot stops when told no, and installs all of tonight's files or none",
+       needs=("snapshot_gencourt",))
+def _snapshot_stops(SG):
+    """snapshot_gencourt.py is the one fetch meant to run every night unwatched.
+
+    Until 12 September it retried every failure three times, a 403 included;
+    took no lock; paused between nothing; saved whatever came back; and never
+    put what it fetched where the build reads -- the build's Docket.txt was ten
+    days old. Driven here on fake answers through its run(): one 403 ends it
+    with nothing installed; the block page served as 200 is not stored; one
+    broken file means none installed; a truncated Docket cannot replace a good
+    one; under the nightly's lock it runs and leaves the lock alone.
+    """
+    import argparse
+    import contextlib
+    import io
+    import time
+    import types
+    import urllib.error
+    import refusal
+    saved = (refusal.MARK, refusal.LOCK, SG.get, SG.time)
+    n = len(SG.targets())
+    data = b"2026|0001|12/4/2024 10:44:26 AM|SR1|S|Introduced and Adopted, VV\n" * 3
+    tmps = []
+
+    def run(answers, installed=None, lock=None):
+        tmp = Path(tempfile.mkdtemp())
+        tmps.append(tmp)
+        refusal.MARK, refusal.LOCK = tmp / "refused.json", tmp / ".lock"
+        root = tmp / "root"
+        root.mkdir()
+        for name, body in (installed or {}).items():
+            (root / name).write_bytes(body)
+        if lock is not None:
+            refusal.LOCK.write_text(str(lock))
+        it, asked = iter(answers), []
+
+        def fake(url):
+            asked.append(url)
+            a = next(it)
+            if isinstance(a, BaseException):
+                raise a
+            return a
+        SG.get = fake
+        a = argparse.Namespace(dir=str(tmp / "arch"), into=str(root), allow_shrink=False,
+                               delay=0.0, plan=False)
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                refusal.check("t")
+                with refusal.hold("t") as held:
+                    rc = SG.run(a, held)
+            except SystemExit as e:
+                rc = e.code if isinstance(e.code, int) else 1
+        return rc, asked, root
+
+    try:
+        SG.time = types.SimpleNamespace(sleep=lambda s: None, time=time.time)
+        rc, asked, root = run([data] * n)
+        assert rc == 0 and len(asked) == n and (root / "Docket.txt").read_bytes() == data, rc
+        rc, asked, root = run([data, urllib.error.HTTPError("u", 403, "no", {}, None)] + [data] * n)
+        assert rc == 2 and len(asked) == 2 and refusal.MARK.exists(), (rc, len(asked))
+        assert not any(root.iterdir()), "a refused night installed files"
+        rc, asked, root = run([b"<h1>Web Page Blocked</h1> Attack ID: 3"] + [data] * n)
+        assert rc == 2 and not any(root.iterdir()), rc
+        rc, asked, root = run([data, b"<!DOCTYPE html><html>Server Error</html>"] + [data] * n)
+        assert rc == 1 and not any(root.iterdir()) and not refusal.MARK.exists(), rc
+        good = data * 50
+        rc, asked, root = run([b"2026|1|x|HB1|H|short\n"] + [data] * n, installed={"Docket.txt": good})
+        assert rc == 1 and (root / "Docket.txt").read_bytes() == good, "a truncated Docket replaced a good one"
+        rc, asked, root = run([data] * n, lock=os.getppid())
+        assert rc == 0 and refusal.LOCK.read_text() == str(os.getppid()), "the nightly's lock was disturbed"
+        rc, asked, root = run([data] * n, lock=99999999)
+        assert rc == 3 and not asked, rc
+        src = Path("snapshot_gencourt.py").read_text(encoding="utf-8")
+        m = re.search(r'"--delay", type=float, default=([\d.]+)', src)
+        assert m and float(m.group(1)) >= 3, "the snapshot's pause between files fell under 3 s"
+        return "ok", ("one 403 stops it, block page and broken files not stored, all-or-none "
+                      "install, shrink guard, nightly lock respected")
+    finally:
+        refusal.MARK, refusal.LOCK, SG.get, SG.time = saved
+        for t in tmps:
+            shutil.rmtree(t, ignore_errors=True)
+
+
+@check("build", "the nightly asks nothing while anything else holds the General Court, and publishes only when told",
+       needs=("nightly",))
+def _nightly_guards(NI):
+    """The nightly runs with nobody watching, beside a lane that runs for days.
+
+    It must not ask the General Court while a refusal is on file (at any age:
+    an unwatched run does not decide a refusal is over) or while anything holds
+    archive/.lock; it holds the lock for the fetch and NOT for the hour of
+    building; and it does not publish unless --deploy was given, never past the
+    file ceiling, and never an uncommitted working tree.
+    """
+    import ast
+    import refusal
+    saved = (refusal.MARK, refusal.LOCK)
+    tmp = Path(tempfile.mkdtemp())
+    try:
+        refusal.MARK, refusal.LOCK = tmp / "refused.json", tmp / ".lock"
+        assert NI.gc_quiet()[0], "a quiet night was not quiet"
+        refusal.LOCK.write_text("1234")
+        assert not NI.gc_quiet()[0], "the nightly would fetch while the lane holds the lock"
+        refusal.LOCK.unlink()
+        refusal.MARK.write_text('{"at": "2020-01-01T00:00:00", "epoch": 0, "where": "old"}')
+        assert not NI.gc_quiet()[0], "a refusal from long ago let the nightly fetch"
+    finally:
+        refusal.MARK, refusal.LOCK = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    before = {"bills": 1000, "legislators": 400, "bill_data": 90, "bill_pages": 1000,
+              "feeds": 500, "files": 50_000}
+    stop, blocked, _ = NI.gated(before, dict(before, feeds=10), force=False)
+    assert stop, "the feeds all vanishing did not stop a deploy"
+    stop, blocked, _ = NI.gated(before, dict(before, feeds=10), force=True)
+    assert not stop and blocked, "--force did not pass the census gate it is for"
+    stop, _, _ = NI.gated(before, dict(before, files=NI.FILE_CEILING), force=True)
+    assert stop, "--force carried a deploy past the file ceiling"
+
+    tree = ast.parse(Path("nightly.py").read_text(encoding="utf-8"))
+    withs = [w for w in ast.walk(tree) if isinstance(w, ast.With)
+             and any("hold" in ast.unparse(i.context_expr) for i in w.items)]
+    assert withs, "the nightly takes no refusal.hold() for its fetch"
+    inside = " ".join(ast.unparse(w) for w in withs)
+    assert "snapshot_gencourt.py" in inside, "the snapshot does not run under the nightly's lock"
+    assert "build_all.py" not in inside, "the nightly holds the General Court's lock through the build"
+    src = Path("nightly.py").read_text(encoding="utf-8")
+    assert '"build_all.py", "--local"' in src, "the nightly's build is not --local"
+    assert re.search(r"if a\.deploy and not stop and changed:", src), "a deploy is not gated on --deploy"
+    assert "tree_clean()" in src, "a deploy does not require a committed tree"
+    return "ok", ("defers on a lock or any refusal; lock for the fetch only; feeds gate; "
+                  "ceiling beyond --force; deploy opt-in, committed tree only")
+
+
+@check("build", "what changed at the General Court is read from two copies of its files",
+       needs=("gc_changes",))
+def _gc_changes(GC):
+    """gc_changes.py writes the morning's account of the General Court's day
+    from two versions of its bulk files in the snapshot archive. A new veto
+    vote, a scheduled session and a new roll call must each be found, and a
+    line that did not change must not be reported as new."""
+    import gzip
+    import hashlib
+    tmp = Path(tempfile.mkdtemp())
+    saved = GC.ARCHIVE
+    try:
+        store = tmp / "store"
+        store.mkdir()
+        old = b"2026|1|x|HB1|H|Introduced 01/07/2026 and referred to Education|x\n"
+        new = old + (b"2026|2|x|HB2|H|Veto Sustained 08/19/2026: RC 152-167|x\n"
+                     b"2026|3|x|HB3|H|Executive Session: 09/30/2026 10:00 am GP 230|x\n")
+        rc_old = b"2026|H|1|1/7/2026 10:15:33 AM||321|2|34|38|||Call of the Roll|||\n"
+        rc_new = rc_old + b"2026|H|2|8/19/2026 2:50:26 PM|HB2|152|167|0|0|||Override|||\n"
+        index = {}
+        for name, versions in (("Docket.txt", (old, new)), ("RollCallSummary.txt", (rc_old, rc_new))):
+            hist = []
+            for day, body in zip(("2026-09-05", "2026-09-06"), versions):
+                d = hashlib.sha256(body).hexdigest()
+                with gzip.open(store / f"{d}.gz", "wb") as fh:
+                    fh.write(body)
+                hist.append([day, d])
+            index[name] = {"history": hist, "last_sha256": hist[-1][1]}
+        (tmp / "index.json").write_text(json.dumps(index), encoding="utf-8")
+        GC.ARCHIVE = tmp
+        md = GC.report()
+    finally:
+        GC.ARCHIVE = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert "2 new lines on 2 bills" in md, md[:400]
+    assert "signed, vetoed or became law -- 1" in md and "Veto Sustained" in md
+    assert "hearing or session scheduled -- 1" in md and "09/30/2026" in md
+    assert "Roll calls: 1 new" in md
+    assert "Introduced 01/07/2026" not in md, "an unchanged docket line was reported as new"
+    return "ok", "a veto vote, a scheduled session and a roll call found; the unchanged line not"
 
 
 @check("build", "a guessed topic is withheld rather than guessed twice",
