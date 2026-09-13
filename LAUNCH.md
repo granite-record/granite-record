@@ -466,6 +466,15 @@ example on this site of a number outliving its premise.
   have done.) Bill text 2024 and 2023 were fetched cleanly until 12:59 on the
   12th; when the block began between then and 21:36 is not known.
 
+  **A lead, not a finding:** the block page names the client address as
+  [address redacted], and ProtonVPN was running on this machine at 00:13. If that
+  address is a VPN exit, the firewall may be refusing the VPN's shared address
+  rather than anything this project sent -- a shared exit carries every other
+  user's traffic too, and firewalls block such addresses routinely. Whether the
+  VPN was connected when the lane last fetched cleanly (12:59 on the 12th) is
+  the question that settles it; a person can check the address with the VPN on
+  and off, and run netcheck once with it off.
+
   **For a person, in a browser on this machine:** https://gc.nh.gov/ -- if it
   loads there while the table above says refused, the block is on this
   program's requests rather than the whole address, and netcheck's docstring
