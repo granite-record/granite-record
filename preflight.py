@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.143
+# GRANITE_VERSION: 2026-09-04.144
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4404,6 +4404,14 @@ def _deploy_branch():
                if "wrangler pages deploy" in ln and not ln.strip().upper().startswith("REM")]
     assert deploys and all("--branch=%PRODUCTION_BRANCH%" in ln for ln in deploys), \
         "a publish.bat deploy does not pass --branch=%PRODUCTION_BRANCH%"
+    # And the folder must BE on that branch: --branch publishes whatever the
+    # folder holds as production, so a branch checked out here is a branch
+    # published. The guard has to come before the first upload.
+    guard = bat.find('if not "%BRANCH%"=="%PRODUCTION_BRANCH%" goto :wrongbranch')
+    assert guard != -1 and "git rev-parse --abbrev-ref HEAD" in bat, \
+        "publish.bat deploys without checking which branch the folder is on"
+    assert guard < bat.find("call npx wrangler pages deploy"), \
+        "publish.bat checks the branch only after uploading"
     night = Path("nightly.py").read_text(encoding="utf-8", errors="replace")
     n = re.search(r'^PRODUCTION_BRANCH = "([^"]+)"', night, re.M)
     assert n, "nightly.py does not set PRODUCTION_BRANCH"
