@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.142
+# GRANITE_VERSION: 2026-09-04.143
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3038,6 +3038,76 @@ def _feed_needs_a_year():
         x = (site / "feed" / "bill" / "2026" / "hb1.xml").read_text(encoding="utf-8")
         assert "2025-2026:HB1:" in x, "the guid does not carry the term"
         return "ok", "no year, no feed; and the guid names the term"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a feed is keyed the way its page is, links the address the host serves, and none is left stale")
+def _feeds_keyed_and_current():
+    """Three defects found on 12 September, one fix each.
+
+    Committee feeds were keyed on the name as the search index spells it --
+    274 feeds for 53 committees, six for one -- while the page is
+    /committee/H05, so a Follow button had no stable address to name. Every
+    feed link ended in .html, which the host answers with a 308. And nothing
+    removed a feed that stopped being written: 7,505 per-bill feeds of closed
+    terms and the 274 name-keyed committee feeds were shipped long after
+    anything updated them. The prune refuses a large fall unless told, since
+    a failed run would otherwise unpublish every feed and call it housekeeping.
+    """
+    here = Path(".").resolve()
+    if not (here / "build_feeds.py").exists():
+        return "skip", "build_feeds.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        site = root / "site"
+        (site / "bill" / "2026").mkdir(parents=True)
+        (site / "committee").mkdir()
+        rows = [{"id": "HB1", "n": "HB 1", "year": 2026, "term": "2025-2026",
+                 "title": "a bill", "committee": "House Education", "topic": "",
+                 "status": "In committee", "kind": "active", "nrc": 0,
+                 "last_action": "2026-02-01", "votedays": []}]
+        (site / "index.json").write_text(json.dumps(rows), encoding="utf-8")
+        d = {"next_step": "", "sponsors": [],
+             "events": [{"date": "2026-02-01", "text": "It was introduced."}]}
+        (site / "bill" / "2026" / "hb1.html").write_text(
+            '<script type="application/json" id="gr-data">' + json.dumps(d) + "</script>",
+            encoding="utf-8")
+        (site / "committee" / "H05.json").write_text(json.dumps({
+            "code": "H05", "name": "Education", "chamber": "House", "bills": {},
+            "sessions": [{"date": "2026-01-20", "term": "2025-2026",
+                          "narrative": "The Committee on Education met on January 20, 2026.",
+                          "items": [{"bill": "HB1", "n": "HB 1"}]}]}), encoding="utf-8")
+        stale = [site / "feed" / "committee" / "house-education.xml",
+                 site / "feed" / "bill" / "2017" / "hb9.xml"]
+        for p in stale:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text("<rss/>", encoding="utf-8")
+
+        def build(*extra):
+            r = _run([sys.executable, str(here / "build_feeds.py"), "--site", "site",
+                      "--base", "https://x.test", *extra],
+                     cwd=root, capture_output=True, text=True, timeout=120)
+            assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
+            return r.stdout
+
+        out = build()
+        cf = site / "feed" / "committee" / "H05.xml"
+        assert cf.exists(), "no feed at /feed/committee/H05.xml, where the page's code says"
+        x = cf.read_text(encoding="utf-8")
+        assert "committee:H05:2026-01-20" in x and "met on January 20, 2026" in x, \
+            "the committee feed is not its sitting days"
+        assert all(p.exists() for p in stale), "stale feeds were removed without --allow-prune"
+        assert "LEFT" in out, "a large fall was left without saying so"
+        build("--allow-prune")
+        assert not any(p.exists() for p in stale), "stale feeds survived --allow-prune"
+        assert not (site / "feed" / "bill" / "2017").exists(), "an emptied folder was left"
+        links = []
+        for f in (site / "feed").rglob("*.xml"):
+            links += re.findall(r"<link>([^<]+)</link>", f.read_text(encoding="utf-8"))
+        assert links and not [l for l in links if l.endswith(".html")], \
+            "a feed links an address the host redirects: " + str([l for l in links if l.endswith(".html")][:3])
+        return "ok", "committee feed at its code, from its sitting days; no .html links; stale pruned only when told"
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
