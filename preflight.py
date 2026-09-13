@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.151
+# GRANITE_VERSION: 2026-09-04.152
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5218,6 +5218,80 @@ def _senate_calendars(SC):
                       "403/429/reset read the one way, 20s pace")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "the leadership fetch asks once, stops on a refusal, and asks only linked pages",
+       needs=("fetch_leadership",))
+def _leadership_fetch(FL):
+    """fetch_leadership.py had no refusal import, retried five times with a
+    back-off -- so one 403 became five -- and asked three House addresses whose
+    pages had never been read. Driven on fake answers: nothing asks the network
+    and archive/ is never opened."""
+    import contextlib
+    import http.client
+    import io
+    import types
+    import urllib.error
+    import refusal
+
+    saved = (refusal.MARK, refusal.LOCK, FL.ROOT, FL._get, FL.time)
+    PAGE = "<html><title>Leadership</title>President: Senator A B of C</html>"
+    BLOCK = "<html><title>Web Page Blocked</title>Attack ID: 1</html>"
+    tmps = []
+
+    def run(answers, lock=None, pages=None):
+        tmp = Path(tempfile.mkdtemp())
+        tmps.append(tmp)
+        FL.ROOT = tmp / "leadership"
+        refusal.MARK, refusal.LOCK = tmp / "refused.json", tmp / ".lock"
+        if lock is not None:
+            refusal.LOCK.write_text(str(lock), encoding="utf-8")
+        answers, asked = iter(answers), []
+
+        def fake(url, timeout=60):
+            asked.append(url)
+            a = next(answers)
+            if isinstance(a, BaseException):
+                raise a
+            return a
+        FL._get = fake
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                refusal.check("test")
+                with refusal.hold("test") as held:
+                    rc = FL.fetch(held, delay=0, pages=pages)
+            except SystemExit as e:
+                rc = e.code if isinstance(e.code, int) else 1
+        return rc, asked, sorted(p.name for p in FL.ROOT.glob("*.html")) if FL.ROOT.exists() else []
+
+    try:
+        FL.time = types.SimpleNamespace(sleep=lambda s: None)
+        assert all(FL.linked(p) for p in FL.PAGES) or not Path("committees_house.html").exists(), \
+            "an address in PAGES is linked from no saved General Court page"
+        rc, asked, got = run([PAGE] * 5)
+        assert rc == 0 and len(asked) == 5 and len(got) == 5, (rc, len(asked), got)
+        err403 = urllib.error.HTTPError("u", 403, "Forbidden", {}, io.BytesIO(b""))
+        rc, asked, got = run([err403])
+        assert rc == 2 and len(asked) == 1 and refusal.MARK.exists() and not got, \
+            "a 403 was asked about again, or not recorded"
+        rc, asked, got = run([BLOCK])
+        assert rc == 2 and not got, "the block page served with a 200 was saved as a page"
+        drop = urllib.error.URLError(http.client.RemoteDisconnected("closed"))
+        rc, asked, got = run([drop, drop])
+        assert rc == 2 and len(asked) == 2, "two dropped connections did not end the run"
+        err404 = urllib.error.HTTPError("u", 404, "Not Found", {}, io.BytesIO(b""))
+        rc, asked, got = run([err404, PAGE])
+        assert rc == 1 and len(asked) == 1, "a missing linked page did not stop the run"
+        rc, asked, got = run([PAGE], pages=[("x", "H", "https://gc.nh.gov/house/guessed.aspx",
+                                             "committees_house.html")])
+        assert rc == 1 and not asked, "an address linked from nowhere was asked"
+        rc, asked, got = run([PAGE], lock=99999999)
+        assert rc == 3 and not asked, "a second fetch ran beside a held lock"
+    finally:
+        refusal.MARK, refusal.LOCK, FL.ROOT, FL._get, FL.time = saved
+        for t in tmps:
+            shutil.rmtree(t, ignore_errors=True)
+    return "ok", "one 403 or block page or two drops stop it; 404 stops; unlinked and locked ask nothing"
 
 
 @check("build", "the calendar drain runs under the lane and leaves its lock alone",
