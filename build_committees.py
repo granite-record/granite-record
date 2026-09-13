@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.19
+# GRANITE_VERSION: 2026-09-07.20
 """
 A page's worth of data for every committee.
 
@@ -597,6 +597,16 @@ def main():
     rows = [{**c, "span": span_of.get(c["code"], [])} for c in index]
     current_term = max((s[-1] for s in span_of.values() if s), default="")
     live, past, archived = listing_groups(rows, set(lead), current_term)
+    # The committee's own page says so as well. A reader who arrives at
+    # /committee/H05 from a search never sees this listing, and the page drew
+    # Education with 22 members as if it sat today. Written into the JSON the
+    # page draws, after the fact, because which committees are archived is
+    # only known once every committee's record has been read.
+    for c in archived:
+        f = out / f"{c['code']}.json"
+        rec = json.loads(f.read_text(encoding="utf-8"))
+        rec["archived"] = {"years": years(c["span"])}
+        f.write_text(json.dumps(rec), encoding="utf-8")
     body = []
     # THE TWO CHAMBERS SIDE BY SIDE. 25 House committees and 14 Senate ones
     # in one column put the Senate below a screen and a half of scrolling,

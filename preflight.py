@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.150
+# GRANITE_VERSION: 2026-09-04.151
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3246,6 +3246,14 @@ def _committees_archived(BC):
         "archived" if "H57" in got(archived) else "live")
     assert got(live) == ["H07", "H30", "S99"], got(live)
     assert BC.years(["1989-1990", "2023-2024"]) == "1989 to 2024"
+    # And the committee's own page says it, since a reader from a search never
+    # sees the listing.
+    src = Path("build_committees.py").read_text(encoding="utf-8")
+    assert 'rec["archived"] = {"years": years(c["span"])}' in src, \
+        "archived committees' JSON no longer carries the years"
+    head = Path("app.js").read_text(encoding="utf-8")
+    head = head[head.find("function renderCommitteeHead"):][:1200]
+    assert "c.archived" in head, "a committee's page no longer says it is not on the list today"
     return "ok", "not listed and ended before this term; no record means no claim"
 
 

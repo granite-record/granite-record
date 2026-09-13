@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.68
+// GRANITE_VERSION: 2026-09-07.69
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2367,6 +2367,9 @@ function renderCommitteeHead(c){
   return `<div class="phead">
     <h1>${esc(c.name||"")}</h1>
     <p class="pmeta">${esc(c.chamber==="S"?"State Senate":"House of Representatives")}</p>
+    ${c.archived?`<p class="src">Not on the General Court&rsquo;s list of committees today.
+      Its bills and sitting days on this record run ${esc(c.archived.years||"")}; the
+      records do not say whether it was renamed, divided, merged or ended.</p>`:""}
     <div class="cinfo">
       ${dl("cofficers",officers.map(o=>[o.role,
         o.slug?`<a href="legislator/${esc(o.slug)}.html">${esc(o.label||o.name)}</a>`
