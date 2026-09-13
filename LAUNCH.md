@@ -466,13 +466,17 @@ example on this site of a number outliving its premise.
   have done.) Bill text 2024 and 2023 were fetched cleanly until 12:59 on the
   12th; when the block began between then and 21:36 is not known.
 
-  ~~**A lead, not a finding:** the block page names the client address as
-  [address redacted], and ProtonVPN was running on this machine at 00:13. If that
-  address is a VPN exit, the firewall may be refusing the VPN's shared address
-  rather than anything this project sent.~~ **Closed on the 13th, by the
-  person: the VPN was not connected on the 12th** (it was causing wifi
-  trouble). The process was running, the tunnel was not, so [address redacted] is
-  this machine's own address and the block is on it, as the first two were.
+  ~~**A lead, not a finding:** the block page names the client address, and
+  ProtonVPN was running on this machine at 00:13. If that address is a VPN
+  exit, the firewall may be refusing the VPN's shared address rather than
+  anything this project sent.~~ **Closed on the 13th, by the person: the VPN
+  was not connected on the 12th** (it was causing wifi trouble), and with the
+  VPN connected on the 13th this machine leaves from a different address than
+  the one the block page named. So the refused address is this machine's own
+  home connection. (The address itself was written here on the 12th and has
+  been taken out: this file is in a repository headed for public release, and
+  a person's home IP address does not belong in it. It remains in git history
+  until that history is rewritten or the public repository starts fresh.)
 
   **The VPN is connected again as of the morning of the 13th, and that changes
   two things.** While it is connected, a request from this machine leaves from
