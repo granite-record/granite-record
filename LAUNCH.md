@@ -26,7 +26,7 @@ party on nearly every ballot ever cast.
 | | |
 |---|---|
 | Bills | **33,683 across 19 terms**, 1989 to 2026, each with its own page |
-| Legislators | 406 sitting, **2,192 who have served** |
+| Legislators | 406 sitting, **2,192 with a recorded roll-call vote, 1999–2026** (not "who have served": the site's bills go back to 1989 and the ballots do not) |
 | Committees | 53 |
 | Data | **nineteen CSV tables at `/data`**, 2,419,330 rows, a manifest, rebuilt every run |
 | Towns | **320 town-and-ward pages** — everyone who represents you, with contact |
@@ -454,6 +454,112 @@ example on this site of a number outliving its premise.
   the pre-2008 Senate calendars are not served at these names, and the Senate
   block should come out of the queue so bill text can start.
 
+  **Update, 13 September about 00:30: it is the address, not only the
+  documents.** The person allowed a tested fetch (bill text) overnight, through
+  the procedure. The procedure's first step, `netcheck.py`, found every HTTP/1.1
+  request **closed without an answer** -- our User-Agent, a full browser header
+  set, a raw socket, and the other hostname -- where on the 11th all of those
+  were answered. HTTP/1.0 got the firewall's 403 block page, as it always has;
+  plain http got its 301. That is the block's signature, so the refusal stays,
+  nothing was cleared, and the lane was not started. (netcheck was run twice,
+  16 requests, the second only to read the top of its own output -- once would
+  have done.) Bill text 2024 and 2023 were fetched cleanly until 12:59 on the
+  12th; when the block began between then and 21:36 is not known.
+
+  ~~**A lead, not a finding:** the block page names the client address as
+  [address redacted], and ProtonVPN was running on this machine at 00:13. If that
+  address is a VPN exit, the firewall may be refusing the VPN's shared address
+  rather than anything this project sent.~~ **Closed on the 13th, by the
+  person: the VPN was not connected on the 12th** (it was causing wifi
+  trouble). The process was running, the tunnel was not, so [address redacted] is
+  this machine's own address and the block is on it, as the first two were.
+
+  **The VPN is connected again as of the morning of the 13th, and that changes
+  two things.** While it is connected, a request from this machine leaves from
+  the VPN's address, not this one -- so netcheck run through it says nothing
+  about whether the block on this address has lifted, and a fetch run through
+  it would be going around a block rather than waiting it out, which is the
+  one thing that turns a two-day block into a conversation with the Clerk's
+  office. **No General Court traffic goes through the VPN**: disconnect it for
+  netcheck and for the lane, or exclude `python.exe` from the tunnel with
+  Proton VPN's split tunnelling so every fetch leaves from this address.
+
+  **For a person, in a browser on this machine:** https://gc.nh.gov/ -- if it
+  loads there while the table above says refused, the block is on this
+  program's requests rather than the whole address, and netcheck's docstring
+  says what to compare. If it does not load, it is the address, and the wait
+  is days, as the first two blocks were.
+
+## 6c. Member histories, verified on the 12th
+
+**What each legislator's page publishes is right, ballot for ballot.** Every
+sitting member's votes (406 pages, 647,285 ballots) were rebuilt a second way
+-- PersonID to employee number from the database's roster, then every ballot
+cast under that number in the database's own RollCallHistory -- and compared
+with what the page carries. All 406 identical. The page's route (the General
+Court's per-year export, whose field 4 is a PersonID they joined in) and the
+database's agree on every ballot.
+
+**But fifteen pages show only part of a career, and it is not a bug in the
+join: a member who changes chamber gets a new employee number and a new
+PersonID.** No page's votes span two chambers. Checked against three sources
+that do not depend on names -- years and chamber from the ballots, party,
+county and district from `member_party.json`, and the General Court's own
+`byAnyMember` label -- twelve are plainly one person moving from the House to
+the Senate (same name, party and county, consecutive service, no overlap):
+Rosenwald (1,399 votes on her page of 4,218), Gray, Lang, Fenton, K. Murphy,
+Pearl, Abbas, Altschiller, Rochefort, McConkey (208 of 3,897), McGough and
+V. Sullivan. Gary Daniels is the same shape the other way: House, the Senate
+for 2015-2022, the House again; his page has the House years only. Whether a
+member's page should carry the earlier chamber's votes is a decision about
+the page, not yet made.
+
+**`careers.json` has a wrong merge, and it is the kind its rule invites.** It
+joins employee numbers on first and last name where service does not overlap.
+Rep. Patrick Long of Hillsborough 23 (376696, 2007-2024) was joined to a
+different, newer Rep. Patrick Long of Hillsborough 26 (409256, from 2025) --
+two House numbers, consecutive, a different district -- while the continuation
+that looks real, **Sen. Pat Long** of District 20 (218767, from 2025, a
+Manchester Democrat like 376696), was missed because the roster spells him
+"Pat". That is a reading of the files, not a confirmation. **Mark Pearson**
+(a Democrat for Rockingham 4 in 2007-08, a Republican for Rockingham 34 from
+2017) cannot be told apart from this disk at all. Nothing on the site reads
+`careers.json` yet, so no page is wrong today; anything built on it should
+join on continuity of party and county as well as name, and send the doubtful
+ones to the bench.
+
+## 6d. The civics pages' facts, measured on the 12th
+
+Every checkable claim in `civics.py` was measured against the built site.
+**Right, exactly:** HB 1002 of 2024 -- the hearing of 17 January, two
+executive sessions, 193 to 179, and the split (62 Republicans for and 125
+against, 128 Democrats for and 53 against); HB 1215's committee of conference
+and six recorded proceedings; HB 66's two roll calls (its other two tallies
+are a division and a voice vote); HB 349's override failing 145 to 206; HB
+2026 overridden; HB 649 carried over and signed; 649 laws in 2025-2026 as 632
+signed, 10 unsigned and 7 over a veto.
+
+**Stale, all for one reason -- a count typed into prose when the site was two
+terms:**
+
+| the page says | the record says now |
+|---|---|
+| "Across the 4,230 bills on this site, 865 have at least one recorded roll call and 3,365 have none" | 33,683 bills; 4,920 with one; 28,763 without |
+| "Across the two terms on this site there are 68 vetoed bills. In 58 the override failed. In 9 it succeeded... One was still awaiting its override vote" | nineteen terms; 348 vetoed, 308 failed, 39 overridden, 1 unresolved. 2025-2026 alone: 44, 37 failed, 7 overridden. Veto Day was 19 August |
+| "this site carries 67 of the 68" veto messages | 261 messages on disk, 1997 onward |
+| 2025-2026: "855 were killed", "214 were sent for interim study" | 853 and 215 |
+| HB 2 "with 44 recorded votes" | 45 roll calls |
+
+Not checked: "1,068 reached both chambers", "86 went to a committee of
+conference", and the district counts (203 districts, 41 floterial, 65 seats).
+
+**The fix that lasts is not new numbers.** It is `build_civics.py` filling
+these from the data at build time, the way the home page's counts are, so the
+prose cannot drift again -- and it wants doing before the example bills are
+replaced with older, settled ones, which the person asked for and which will
+change most of these sentences anyway. Not edited: the civics pass is one
+the person reads with us.
+
 ## 6a. Filled from disk on the 11th, no request made
 
 Committee reports and their reasoning for **every term 1997-2026** (from
@@ -807,3 +913,171 @@ Packard's Legislative Staff Week Thank You" — and should stay out.
 It touches the matching pipeline, so it wants `probe_alignment --truth` scored
 before and after, and a wrong committee puts the wrong recording against a
 proceeding.
+
+---
+
+## 9. The night of 12-13 September
+
+The person went to bed and asked for launch work that needs no oversight. **Nothing was published and no request went to the General
+Court** -- netcheck at 00:30 found the address refusing (§6, the refusal
+entry), so the one fetch allowed overnight did not start. Everything below is
+committed on `master` except where it says otherwise, and is on the built
+`site/` but not on graniterecord.org.
+
+**Waiting on a person, in the order they unblock things:**
+
+1. **The refusal.** The VPN was not on when the block happened (answered on
+   the 13th), so the block is on this machine's address. It is on file until
+   21:36 on the 13th by `refusal.py`'s clock; after that, with the VPN
+   disconnected or `python.exe` split-tunnelled out of it, netcheck once. If
+   HTTP/1.1 is still closed, the wait is days, as the first two blocks were.
+   Nothing fetches until then, and nothing fetches through the VPN.
+2. **The report box, on branch `report-box` (`D:\nh-report`), not merged.**
+   A Pages Function writes to D1, `compile_reports.py` screens every report
+   for text aimed at the assistant before anything reads it, and
+   `reports/TRIAGE.md` is the rulebook for the nightly session. Both D1
+   databases exist and have the schema. Before merging: a Cloudflare WAF
+   rate-limit rule on `/api/report` (the free plan allows one), made in the
+   dashboard, because the Function stores nothing about who sent a report and
+   so cannot count per sender itself.
+3. **The nightly, on the same branch.** Fetches only when nothing else is
+   asking (no refusal, no lane lock, no build running), deploys only with
+   `--deploy` and only from `master` with a clean tree. Not yet scheduled.
+4. **`fetch_leadership.py` is ready to run -- five requests, once the refusal
+   is cleared** (d2606dc). It now saves the Senate's leadership and About
+   pages and the House Speaker's, Majority and Minority office pages, each an
+   address the General Court's own navigation links, 20 s apart, and stops on
+   the first refusal. `--parse` then reads them with no request. The House
+   pages have never been read, so the first `--parse` will print their lines
+   for a pattern to be written against. No consumer on the site yet.
+5. **Email follow.** The design is the person's (12 September); the open
+   questions are the outbound mail service, what the About page promises
+   about holding an address, what a follow does when its bill concludes, and
+   whether "as soon as available" and "daily" differ when the record
+   refreshes once a night.
+
+**Done tonight:**
+
+- **Every record page is reachable without JavaScript.** `/directory` and 21
+  lists beneath it -- every bill of each of 19 terms, every sitting
+  legislator, every town and ward -- 34,409 static links where there had been
+  almost none (`build_indexes.py`, a `build_all` step). Bill, legislator and
+  committee pages carry schema.org JSON-LD (`structured.py`): Legislation,
+  Person with no email or phone, GovernmentOrganization, and breadcrumbs.
+- **Feeds only for bills still moving**, per the person's rule: a concluded
+  bill's page links no feed and none is written. 107 bill feeds, committee
+  feeds keyed by code, stale ones pruned.
+- **`publish.bat` refuses to deploy from any branch but `master`**, and names
+  the branch on the deploy line, so a deploy can no longer land on a preview
+  because of which branch git was on.
+- **The data is the General Court's of 6 September**, from the archive copy,
+  with a record-by-record diff before and after showing only 2026 changes.
+  The Judiciary committee's 30 September executive session is on HB 293 and
+  on the committee's page -- where it said "met", seventeen days early,
+  until the tense was fixed for days still to come (5 committee pages).
+- **Keyboard:** arrow keys on a tab strip keep focus; a page opens on its own
+  first tab; the version picker is a group of pressed buttons rather than a
+  tablist with no tabs; and focus survives the bill text arriving
+  asynchronously.
+- **The 1989-1998 hearing line's shorthand is read** (`referrals.py`, 13abc9f).
+  A hearing of those years names its committee after FOR: in letters the
+  referral line never uses -- "FOR: ED+A". Nine anchored expansions, each in
+  the General Court's key and each proven on the same bill: the referral line
+  of the same bill in the same chamber spells it out (ED&A 601 of 630 bills,
+  M&CG 253 of 261). `PUBLIC WKS` is deliberately absent, because the key
+  gives today's name, "Public Works and Highways", and the committee of 1990
+  was "Public Works". Proceedings naming no committee the site has: **9,094
+  -> 7,735**, more than planned because the five archive manifests were also
+  stale from the 10th and missed the 11th's expansions.
+- **Committees no longer listed go to the bottom of `/committees`**, under
+  "Not on the General Court's list today", each with the years its record
+  covers. Two facts, both required: not on the General Court's list, and
+  every bill and sitting day before this term. "Disbanded" is not claimed --
+  the records show when a committee stops appearing, not why. The roster
+  table cannot help: its `sitting` flag is about the legislator, not the seat,
+  so three special committees with no record and mostly sitting members stay
+  under "No bills or sessions on record", which claims nothing.
+- **A proceeding takes its own chamber's committee** (`docket_parser.py`).
+  The referral timeline was keyed by bill alone, so a Senate referral joined
+  the House's timeline: HB 115's House executive session of 1 April 2025 was
+  filed under the Senate's "Education", which is H05 by name in the House,
+  and that one row kept H05 Education out of the archived list. 48
+  proceedings across six terms. Reading why 2015-2016 then lost 318 more
+  found the larger defect under it: **that term's docket writes 1,255
+  introductions with no date** ("Introduced and Referred to Public Works and
+  Highways."), and none was read, so **2,918 of its proceedings had no
+  committee; 9 do now** -- with "(in recess of 3/12/2015)" and "&" taken off
+  the names, so they match the committee's page. Across the table: 53,814
+  proceedings, 49,158 naming a committee (43,701 before tonight), 7,710 naming
+  one the site has no code for, **5 of them from 2015 onward** -- the rest is
+  1989-1998 spelling, below. The 2015-2016 manifest was also a day stale
+  against its docket, which is why the table grew by 2,850 rows. H05
+  Education is in the archived list now, 1,530 bills and 496 sitting days.
+  Eight recordings change match: six clearly better
+  (CACR 21 in Judiciary's room now matches Judiciary's recording), HB 1288
+  loses one that came from a borrowed name, and HB 296's June 2022 work
+  session loses a House Judiciary match that was probably right by accident
+  -- its room is Judiciary's, and its House referral was Criminal Justice.
+  None of the eight is hand-timed or on the bench.
+- **An archived committee's own page says so** (29e6383): "Not on the
+  General Court's list of committees today. Its bills and sitting days on
+  this record run 1989 to 2024 ..." -- a reader from a search never sees the
+  listing.
+- **Legislator search descriptions** named the seat twice on all 406 pages
+  ("(R - Rock 30) Rock 30."). Now the name, the places, then what the page
+  holds (9911dfb).
+- `README.md`'s counts from `STATE.md`, and "2,192 people who have served"
+  corrected to what the number is. `CLAUDE.md` still says "who have served"
+  in its first paragraph; it is the person's file.
+
+**Found and not fixed:**
+
+- A pre-existing expansion collapses a joint hearing -- "Joint Ed and a and
+  Sen Pub Affs", one row of 1991-1992 -- into "Public Affairs", because
+  `\bPUB AFFS\b` searches rather than anchors. One row; the fix is to anchor
+  the pattern or skip strings that start "Joint".
+- `H Commerce`, 759 hearings of 1989-1998, the clerk writing COMMERCE for a
+  House committee renamed inside the decade. Left as written.
+- **A second pass of the same proof took nine more** (`referrals.py`
+  2026-09-10.7): EDUC, W&M, CRIM JUST, SCIENCE, ENV & AG(R) -- all current
+  committees -- and INSUR, ENVIRON, PUB WKS, PUB INST, which are historic. 1,224
+  hearing rows of 1989-1998 renamed, each in the chamber its proof came from.
+  JUD and WILDLIFE are left because they mean different committees in the
+  two chambers and `expand()` is not told the chamber; giving it the chamber
+  is the next step for those two (269 and 232 rows). Proceedings naming a
+  committee the site has no code for: 7,710 -> **7,035** (9,094 at the start
+  of the night). Records moved only for 1989-2003 bills.
+- **What is left unmatched is spelling, and it wants a canonical list per
+  era before any of it is listed as a committee.** The Senate's insurance
+  committee is `Insurance` (292), `Insur` (144) and `Insuranc` (12); there is
+  `Jud`, `Educ`, `Environ`, `W and M`, and three spellings of `Dev Rec and
+  Env`. The archived section lists only committees with a code for that
+  reason. The historic committees with no code -- Constitutional and
+  Statutory Revision, Public Works, Banks, Insurance, Public Protection and
+  Veterans Affairs -- need the same per-bill proof as tonight's nine before
+  they get a section.
+- `ST-FED` (113 hearings) and `ST INST` (118) are not in the key and each
+  committee changed its name inside those years. Left as written.
+- **A proceeding after a second referral is still filed under the first
+  committee -- measured, and proposed rather than done, because it moves
+  recording matches.** The timeline reads introductions only, so "Referred to
+  Finance 03/13/2025" is not on it, and a Finance executive session is named
+  for the policy committee the bill left. **2,042 proceedings across six
+  terms, 309 of them in 2025-2026**, nearly all a policy committee standing
+  in for Finance or Ways and Means (2023-2024: Education 72, Health and Human
+  Services 68, ED&A 52, Children and Family Law 43).
+
+  The rooms say which is right, and they are a witness the parser does not
+  use. Each committee's home room was taken from the proceedings nobody
+  disputes; of the re-referred proceedings held in either committee's home
+  room, **571 were in the later committee's and 4 in the first's** (current
+  term, 2023-2024 and 2021-2022). The rest were in neither, mostly Finance's
+  divisions in their own rooms.
+
+  The change is small: read "Referred to X <date>" rows into the chamber's
+  timeline beside the introductions. What it moves is not: for the recorded
+  terms, a Finance session stops matching the policy committee's video of
+  that day and becomes "divisions - pick manually", which is honest, and
+  some matches change. So: scratch-build the manifests, list every changed
+  match, run `probe_alignment --truth` before and after, and let a person
+  look at the list first.

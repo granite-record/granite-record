@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.17
+# GRANITE_VERSION: 2026-09-07.20
 """
 A page's worth of data for every committee.
 
@@ -52,6 +52,7 @@ from pathlib import Path
 import proceedings as P
 import names
 import shell as S
+import structured as LD
 import site_read as SR
 
 # The kinds proceedings.csv records, in the order a committee day runs, with
@@ -161,14 +162,21 @@ def narrate(name, chamber, date, items, reports):
     # needs its article. 248 sitting days of the current term read that way,
     # which is the site speaking in its own voice and getting it wrong.
     art = "" if many else ("an " if noun[:1] in "aeiou" else "a ")
-    out.append(f"{who} met on {fdate(date)} for {art}{noun} on {bills}.")
+    # A day still to come is scheduled, not met. The docket carries sittings
+    # ahead of time -- on 13 September, the Judiciary committee's executive
+    # sessions of the 30th -- and the page said the committee "met" on a day
+    # seventeen days off.
+    ahead = str(date)[:10] > __import__("datetime").date.today().isoformat()
+    met, held = (("is scheduled to meet", "It is also scheduled to hold") if ahead
+                 else ("met", "It also held"))
+    out.append(f"{who} {met} on {fdate(date)} for {art}{noun} on {bills}.")
 
     for k in kinds[1:]:
         bs = andlist(spaced(i["n"] or i["bill"]) for i in by_kind[k])
         noun = PLURAL[k] if len(by_kind[k]) > 1 and k in PLURAL else k
-        out.append(f"It also held {'an' if noun[0] in 'aeiou' else 'a'} "
+        out.append(f"{held} {'an' if noun[0] in 'aeiou' else 'a'} "
                    f"{noun} on {bs}." if len(by_kind[k]) == 1
-                   else f"It also held {noun} on {bs}.")
+                   else f"{held} {noun} on {bs}.")
 
     # What it decided, where a report says so. Only executive sessions produce
     # a recommendation, and only some of those have a report on file yet.
@@ -189,6 +197,53 @@ def narrate(name, chamber, date, items, reports):
         said.append(bit + ".")
     out += said
     return " ".join(out)
+
+
+# A committee of conference is named for one bill whenever the chambers
+# disagree, every session. It is on no list of standing committees and it has
+# not gone anywhere, so it is never filed as archived.
+NEVER_ARCHIVED = {"committee of conference"}
+
+
+def years(span):
+    """["1989-1990", ..., "2023-2024"] -> "1989 to 2024"."""
+    first, last = span[0][:4], span[-1][-4:]
+    return first if first == last else f"{first} to {last}"
+
+
+def listing_groups(index, listed, current_term):
+    """The committees page's three lists, from what the record can say.
+
+    ARCHIVED IS TWO FACTS, NOT A GUESS. A committee goes to the bottom of the
+    page when the General Court's own list of committees today does not
+    include it AND everything this record holds for it -- bills referred,
+    sitting days -- ends before the term now sitting. That is H05 Education,
+    1,530 bills from 1989 to 2024, and the special committees of a term.
+    "Disbanded" is not claimed: the records show when a committee stops
+    appearing, not whether it was renamed, divided, merged or ended.
+
+    Not on the list is not enough alone. The roster table holds special
+    committees -- Commissions, the Family Division, DCYF -- that are on no
+    list and have no record at all, and whose members are mostly sitting
+    legislators; its "sitting" flag is about the legislator, not the seat, so
+    nothing here can say those have ended. They go with the other committees
+    that have no record, under a heading that makes no claim either way.
+
+    `index` rows carry "span", the sorted terms of their bills and sitting
+    days; `listed` is the codes the General Court's page names. Returns
+    (live, idle, archived).
+    """
+    live, idle, archived = [], [], []
+    for c in index:
+        span = c.get("span") or []
+        if not span:
+            idle.append(c)
+        elif (c["code"] in listed or c["name"].strip().lower() in NEVER_ARCHIVED
+              or span[-1] >= current_term):
+            live.append(c)
+        else:
+            archived.append(c)
+    return live, idle, archived
 
 
 def load(p, default):
@@ -352,6 +407,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     t = S.template(site)
     index, written, urls, skipped = [], 0, [], []
+    span_of = {}
 
     # H29 is "No Committee Assignment" -- the code the General Court files a
     # bill under when it has no committee. It is not a committee and must not
@@ -492,6 +548,7 @@ def main():
             title=f"{name} — {chamber_word} committee | Granite Record",
             og_title=f"{name} — New Hampshire {chamber_word}",
             description=desc,
+            jsonld=LD.committee(code, name, a.base, S.canon(path)),
             globals={"GR_COMMITTEE": code, "GR_STANDALONE": True},
             noscript=nos, skip_label="Skip to this committee",
                   # Without this the template's own marker stays on Bills,
@@ -504,6 +561,8 @@ def main():
             encoding="utf-8")
         urls.append(a.base + S.canon(path))
         written += 1
+        span_of[code] = sorted({t for t in rec["bills"] if t}
+                               | {s["term"] for s in sessions if s.get("term")})
         index.append({
             "code": code, "name": name, "chamber": chamber,
             "chair": rec["chair"], "n_members": len(members),
@@ -516,8 +575,10 @@ def main():
 
     # The way in. Committee pages were built, sitemapped and unreachable: no
     # link to one existed anywhere on the site.
-    def _card(c):
+    def _card(c, dated=False):
         bits = []
+        if dated and c.get("span"):
+            bits.append(years(c["span"]))
         if c["chair"]:
             bits.append(f"Chaired by {S.E(c['chair'])}")
         if c["n_members"]:
@@ -533,8 +594,19 @@ def main():
                 f'<span class="cc-n">{S.E(c["name"])}</span>'
                 f'<span class="cc-m">{" &middot; ".join(bits)}</span></a>')
 
-    live = [c for c in index if c["n_sessions"] or c["n_bills"]]
-    past = [c for c in index if c not in live]
+    rows = [{**c, "span": span_of.get(c["code"], [])} for c in index]
+    current_term = max((s[-1] for s in span_of.values() if s), default="")
+    live, past, archived = listing_groups(rows, set(lead), current_term)
+    # The committee's own page says so as well. A reader who arrives at
+    # /committee/H05 from a search never sees this listing, and the page drew
+    # Education with 22 members as if it sat today. Written into the JSON the
+    # page draws, after the fact, because which committees are archived is
+    # only known once every committee's record has been read.
+    for c in archived:
+        f = out / f"{c['code']}.json"
+        rec = json.loads(f.read_text(encoding="utf-8"))
+        rec["archived"] = {"years": years(c["span"])}
+        f.write_text(json.dumps(rec), encoding="utf-8")
     body = []
     # THE TWO CHAMBERS SIDE BY SIDE. 25 House committees and 14 Senate ones
     # in one column put the Senate below a screen and a half of scrolling,
@@ -562,17 +634,40 @@ def main():
         # that no bill was referred and no sitting day is on record -- which
         # is a statement about this record, and true. Whether the committee
         # meets is not something these files can say.
+        # "Rules, for one" was the example here until 13 September, and by
+        # then Rules had bills on record and was not in this list.
         body.append('<h2>No bills or sessions on record</h2>'
                     '<p class="src">These committees have a roster, and in '
                     "some cases a chair, but no bill referred to them and no "
-                    "session in the proceedings this site holds. Some no "
-                    "longer meet; others -- Rules, for one -- do work that "
-                    "does not arrive as a bill. Their pages are kept so the "
-                    'bills they once handled still have somewhere to point.'
+                    "session in the proceedings this site holds. Whether each "
+                    "still meets is not something those records say."
                     '</p><div class="ccards">'
                     + "".join(_card(c) for c in
                               sorted(past, key=lambda x: x["name"]))
                     + "</div>")
+    if archived:
+        # At the bottom, in the same two columns, most recent first. The
+        # chamber labels are h2 like the columns above: the stylesheet styles
+        # `.clist h2` and nothing else, and an h3 drew at 18.7px over 14px
+        # labels. By the outline they belong under this section's heading; an
+        # h3 rule in app.css is the visuals session's to add, then these follow.
+        cols = []
+        for ch, word in (("H", "House"), ("S", "Senate")):
+            rows_ = sorted((c for c in archived if c["chamber"] == ch),
+                           key=lambda x: (x["span"][-1], x["name"]), reverse=True)
+            if rows_:
+                cols.append(f"<section><h2>{word}</h2><div class=\"ccards\">"
+                            + "".join(_card(c, dated=True) for c in rows_)
+                            + "</div></section>")
+        body.append('<h2 id="archived">Not on the General Court&rsquo;s list today</h2>'
+                    '<p class="src">Committees on this record that the General '
+                    "Court does not list among its committees now, with the "
+                    "years their bills and sitting days cover. The records "
+                    "show when a committee stops appearing, not why&thinsp;&mdash;&thinsp;it may "
+                    "have been renamed, divided, merged or ended&thinsp;&mdash;&thinsp;and this "
+                    "page does not guess which. Each keeps its page, so the "
+                    "bills it handled still have somewhere to point.</p>"
+                    '<div class="ctwo">' + "".join(cols) + "</div>")
 
     page_html = S.page(
         S.template(site), path="/committees.html", base=a.base,
@@ -581,7 +676,10 @@ def main():
         description=("Every committee of the New Hampshire General Court: who "
                      "sits on it, the bills referred to it, and what it did on "
                      "each day it met."),
-        globals={"GR_STATIC": True},
+        globals={"GR_STATIC": True}, og_type="website",
+        jsonld=LD.listing("New Hampshire General Court committees",
+                          "Every committee of the New Hampshire General Court.",
+                          a.base, S.canon("/committees.html")),
         noscript="", skip_label="Skip to the committees",
                   nav_current="committees.html", sr_title="")
     # A plain listing rather than an app view: there is nothing to filter and

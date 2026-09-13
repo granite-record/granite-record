@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.145
+# GRANITE_VERSION: 2026-09-04.154
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3042,6 +3042,263 @@ def _feed_needs_a_year():
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("build", "a feed is keyed the way its page is, links the address the host serves, and none is left stale")
+def _feeds_keyed_and_current():
+    """Three defects found on 12 September, one fix each.
+
+    Committee feeds were keyed on the name as the search index spells it --
+    274 feeds for 53 committees, six for one -- while the page is
+    /committee/H05, so a Follow button had no stable address to name. Every
+    feed link ended in .html, which the host answers with a 308. And nothing
+    removed a feed that stopped being written: 7,505 per-bill feeds of closed
+    terms and the 274 name-keyed committee feeds were shipped long after
+    anything updated them. The prune refuses a large fall unless told, since
+    a failed run would otherwise unpublish every feed and call it housekeeping.
+    """
+    here = Path(".").resolve()
+    if not (here / "build_feeds.py").exists():
+        return "skip", "build_feeds.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        site = root / "site"
+        (site / "bill" / "2026").mkdir(parents=True)
+        (site / "committee").mkdir()
+        rows = [{"id": "HB1", "n": "HB 1", "year": 2026, "term": "2025-2026",
+                 "title": "a bill", "committee": "House Education", "topic": "",
+                 "status": "In committee", "kind": "active", "nrc": 0,
+                 "last_action": "2026-02-01", "votedays": []}]
+        (site / "index.json").write_text(json.dumps(rows), encoding="utf-8")
+        d = {"next_step": "", "sponsors": [],
+             "events": [{"date": "2026-02-01", "text": "It was introduced."}]}
+        (site / "bill" / "2026" / "hb1.html").write_text(
+            '<script type="application/json" id="gr-data">' + json.dumps(d) + "</script>",
+            encoding="utf-8")
+        (site / "committee" / "H05.json").write_text(json.dumps({
+            "code": "H05", "name": "Education", "chamber": "House", "bills": {},
+            "sessions": [{"date": "2026-01-20", "term": "2025-2026",
+                          "narrative": "The Committee on Education met on January 20, 2026.",
+                          "items": [{"bill": "HB1", "n": "HB 1"}]}]}), encoding="utf-8")
+        stale = [site / "feed" / "committee" / "house-education.xml",
+                 site / "feed" / "bill" / "2017" / "hb9.xml"]
+        for p in stale:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text("<rss/>", encoding="utf-8")
+
+        def build(*extra):
+            r = _run([sys.executable, str(here / "build_feeds.py"), "--site", "site",
+                      "--base", "https://x.test", *extra],
+                     cwd=root, capture_output=True, text=True, timeout=120)
+            assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
+            return r.stdout
+
+        out = build()
+        cf = site / "feed" / "committee" / "H05.xml"
+        assert cf.exists(), "no feed at /feed/committee/H05.xml, where the page's code says"
+        x = cf.read_text(encoding="utf-8")
+        assert "committee:H05:2026-01-20" in x and "met on January 20, 2026" in x, \
+            "the committee feed is not its sitting days"
+        assert all(p.exists() for p in stale), "stale feeds were removed without --allow-prune"
+        assert "LEFT" in out, "a large fall was left without saying so"
+        build("--allow-prune")
+        assert not any(p.exists() for p in stale), "stale feeds survived --allow-prune"
+        assert not (site / "feed" / "bill" / "2017").exists(), "an emptied folder was left"
+        links = []
+        for f in (site / "feed").rglob("*.xml"):
+            links += re.findall(r"<link>([^<]+)</link>", f.read_text(encoding="utf-8"))
+        assert links and not [l for l in links if l.endswith(".html")], \
+            "a feed links an address the host redirects: " + str([l for l in links if l.endswith(".html")][:3])
+        return "ok", "committee feed at its code, from its sitting days; no .html links; stale pruned only when told"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a page's structured data says what it is, stays inside its script, and names no contact details",
+       needs=("structured", "shell"))
+def _structured_data(LD, S):
+    """schema.org data on bill, legislator, committee and list pages, added 13
+    September. Until then shell.page()'s jsonld parameter interpolated a name,
+    NL, that was never defined -- no caller passed it, so nothing had raised and
+    no page had any. A title is a stranger's input as far as a script element is
+    concerned, so "</script>" in one must not end it; and a legislator's email
+    and telephone stay out, because the person running the site wants the
+    addresses kept from scrapers and structured data is where a scraper reads."""
+    b = {"id": "HB100", "n": "HB 100-FN", "year": 2026, "term": "2025-2026",
+         "title": "a bill </script><script>alert(1)</script>"}
+    s = S.ld_script(LD.bill(b, {"sponsors": [{"label": "Rep. A (R - Straf 1)"}]},
+                            "https://x.test", "/bill/2026/hb100"))
+    inner = s[s.index(">") + 1:-len("</script>")]
+    assert "</" not in inner, "structured data can end its own script element"
+    g = json.loads(inner)
+    assert [x["@type"] for x in g["@graph"]] == ["Legislation", "BreadcrumbList"], g
+    assert g["@graph"][0]["legislationJurisdiction"] == "US-NH"
+    m = {"name": "Doe, Jane", "display_plain": "Rep. Jane Doe", "chamber": "H",
+         "county": "Hillsborough", "district": "12", "party": "Democratic",
+         "email": "jane.doe@leg.state.nh.us", "phone": "603-555-0100", "address": "1 Main St"}
+    p = json.dumps(LD.person(m, "https://x.test", "/legislator/jane-doe-hills-12"))
+    for private in ("jane.doe@", "555-0100", "1 Main St"):
+        assert private not in p, f"a legislator's contact detail reached structured data: {private}"
+    assert json.loads(p)[0]["jobTitle"] == "State Representative"
+    assert S.ld_script(None) == ""
+    assert S.still_moving({"term": "2025-2026", "kind": "active"}, "2025-2026")
+    assert not S.still_moving({"term": "2025-2026", "kind": "law"}, "2025-2026"), \
+        "a concluded bill is offered as followable"
+    assert not S.still_moving({"term": "2023-2024", "kind": "active"}, "2025-2026")
+    return "ok", "Legislation, Person, GovernmentOrganization; no breakout; no contact details; only moving bills followable"
+
+
+@check("build", "every bill, legislator and town is one static link from a page a crawler can reach")
+def _directory_pages():
+    """build_indexes.py, added 13 September: the bill list and the legislator
+    search are drawn by script, so a bill page was reachable from the sitemap,
+    four homepage links and nothing else, the 406 legislator pages from the town
+    pages only, and the town pages from nothing."""
+    here = Path(".").resolve()
+    if not (here / "build_indexes.py").exists():
+        return "skip", "build_indexes.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        site = root / "site"
+        (site / "idx").mkdir(parents=True)
+        (site / "town").mkdir()
+        rows = {"2025-2026": [{"id": "HB1", "n": "HB 1", "year": 2025, "term": "2025-2026",
+                               "title": "the budget", "status": "Signed into law"},
+                              {"id": "SB2", "n": "SB 2", "year": 2026, "term": "2025-2026",
+                               "title": "a second bill", "status": "Killed"}],
+                "1989-1990": [{"id": "HB7", "n": "HB 7", "year": 1989, "term": "1989-1990",
+                               "title": "an old bill", "status": ""}]}
+        for term, r in rows.items():
+            (site / "idx" / f"{term}.json").write_text(json.dumps(r), encoding="utf-8")
+        (site / "legislators.json").write_text(json.dumps([
+            {"id": "1", "name": "Doe, Jane", "chamber": "H", "party": "Democratic",
+             "county": "Hillsborough", "district": "12", "slug": "jane-doe-hills-12",
+             "display_plain": "Rep. Jane Doe", "email": "jane@x.test"}]), encoding="utf-8")
+        (site / "towns.json").write_text(json.dumps({
+            "Concord": [{"county": "Merrimack", "ward": "1"}, {"county": "Merrimack", "ward": "2"}],
+            "Acworth": [{"county": "Sullivan", "ward": "0"}]}), encoding="utf-8")
+        for slug in ("concord-ward-1", "concord-ward-2", "acworth"):
+            (site / "town" / f"{slug}.html").write_text("<p>town</p>", encoding="utf-8")
+        shutil.copy(here / "bills.html", site / "bills.html")
+        (site / "sitemap.xml").write_text("<urlset>\n</urlset>\n", encoding="utf-8")
+        r = _run([sys.executable, str(here / "build_indexes.py"), "--site", "site",
+                  "--base", "https://x.test"], cwd=root, capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-300:]
+        bills = (site / "directory" / "bills-2025-2026.html").read_text(encoding="utf-8")
+        assert 'href="bill/2025/hb1"' in bills and 'href="bill/2026/sb2"' in bills, "a bill is not linked"
+        assert "<title>Every bill of the 2025-2026 term | Granite Record</title>" in bills
+        assert 'og:type" content="website"' in bills and "CollectionPage" in bills
+        people = (site / "directory" / "legislators.html").read_text(encoding="utf-8")
+        assert 'href="legislator/jane-doe-hills-12"' in people and "jane@x.test" not in people
+        towns = (site / "directory" / "towns.html").read_text(encoding="utf-8")
+        for slug in ("concord-ward-1", "concord-ward-2", "acworth"):
+            assert f'href="town/{slug}"' in towns, f"town page {slug} is not linked"
+        hub = (site / "directory.html").read_text(encoding="utf-8")
+        assert "directory/bills-1989-1990" in hub and "directory/towns" in hub
+        sm = (site / "sitemap.xml").read_text(encoding="utf-8")
+        assert sm.count("<loc>") == 5, sm
+        foot = (here / "bills.html").read_text(encoding="utf-8")
+        assert 'href="directory.html"' in foot, "the footer does not link the directory"
+        return "ok", "bills by term, legislators and towns linked statically, sitemapped, footer links them"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a committee day still to come is scheduled, not met", needs=("build_committees",))
+def _committee_tense(BC):
+    """On 13 September the Judiciary committee's page said it "met" on the 30th,
+    seventeen days before it did: the docket carries sittings ahead of time and
+    the day's sentence had one tense."""
+    import datetime
+    items = [{"kind": "executive session", "n": "HB 293", "bill": "HB293", "term": "2025-2026"}]
+    later = (datetime.date.today() + datetime.timedelta(days=30)).isoformat()
+    earlier = (datetime.date.today() - datetime.timedelta(days=30)).isoformat()
+    ahead = BC.narrate("Judiciary", "H", later, items, {})
+    past = BC.narrate("Judiciary", "H", earlier, items, {})
+    assert "is scheduled to meet" in ahead and " met on" not in ahead, ahead
+    assert " met on" in past and "scheduled" not in past, past
+    return "ok", "future days scheduled, past days met"
+
+
+@check("build", "a committee is archived only on two facts, and never on a guess",
+       needs=("build_committees",))
+def _committees_archived(BC):
+    """The launch list asked for disbanded committees at the bottom of /committees.
+    The record cannot say disbanded. It can say a committee is not on the General
+    Court's list today and that its bills and sitting days end before this term,
+    and it takes both: H05 Education is on no list and has 1,530 bills to 2024,
+    and three special committees are on no list with no record at all and mostly
+    sitting members, which is not evidence of anything having ended."""
+    rows = [
+        {"code": "H05", "name": "Education", "chamber": "H", "span": ["1989-1990", "2023-2024"]},
+        {"code": "H07", "name": "Executive Departments and Administration", "chamber": "H",
+         "span": ["1989-1990", "2025-2026"]},
+        {"code": "H30", "name": "Committee of Conference", "chamber": "H",
+         "span": ["1999-2000", "2015-2016"]},
+        {"code": "H57", "name": "Special Committee on Commissions", "chamber": "H", "span": []},
+        {"code": "S91", "name": "Education and Workforce Development", "chamber": "S",
+         "span": ["2019-2020"]},
+        {"code": "S99", "name": "On no list, but on this term's record", "chamber": "S",
+         "span": ["2025-2026"]},
+    ]
+    live, idle, archived = BC.listing_groups(rows, {"H07"}, "2025-2026")
+    got = lambda xs: sorted(c["code"] for c in xs)
+    assert got(archived) == ["H05", "S91"], got(archived)
+    assert got(idle) == ["H57"], "a committee with no record was filed as " + (
+        "archived" if "H57" in got(archived) else "live")
+    assert got(live) == ["H07", "H30", "S99"], got(live)
+    assert BC.years(["1989-1990", "2023-2024"]) == "1989 to 2024"
+    # And the committee's own page says it, since a reader from a search never
+    # sees the listing.
+    src = Path("build_committees.py").read_text(encoding="utf-8")
+    assert 'rec["archived"] = {"years": years(c["span"])}' in src, \
+        "archived committees' JSON no longer carries the years"
+    head = Path("app.js").read_text(encoding="utf-8")
+    head = head[head.find("function renderCommitteeHead"):][:1200]
+    assert "c.archived" in head, "a committee's page no longer says it is not on the list today"
+    return "ok", "not listed and ended before this term; no record means no claim"
+
+
+@check("build", "a legislator's search description names the seat once and the places first",
+       needs=("build_legislator_pages",))
+def _legislator_description(BL):
+    """All 406 read "Rep. Aboul Khan (R - Rock 30) Rock 30." under the link
+    until 13 September: display_full carries the seat and it was appended again."""
+    m = {"display_full": "Rep. Michael Aron (R - Sull 8)", "district_label": "Sull 8", "chamber": "H",
+         "towns": ["Acworth", "Claremont Ward 10", "Claremont Ward 2", "Croydon", "Goshen",
+                   "Langdon", "Lempster", "Newport", "Unity"]}
+    d = BL.describe(m)
+    assert d.count("Sull 8") == 1, d
+    assert d.startswith("Rep. Michael Aron (R - Sull 8) represents Acworth, Claremont Ward 2, "
+                        "Claremont Ward 10,"), d
+    assert "and 3 more" in d, d
+    seven = dict(m, towns=m["towns"][:7])
+    assert "more" not in BL.describe(seven) and " and Lempster in" in BL.describe(seven), BL.describe(seven)
+    return "ok", "seat once, places first, wards in number order"
+
+
+@check("frontend", "tab strips keep the keyboard's place and a page opens on its own first tab")
+def _tab_keyboard():
+    """Three defects found reading app.js on 12 September. An arrow key clicked
+    the next tab, the click redrew the strip, and focus fell to <body> -- every
+    press lost the keyboard's place, on every tabbed view. PAGE_TAB outlived the
+    page it belonged to, so a committee opened after a member's Votes tab drew
+    nothing. And the version picker declared role="tablist" with no tabs."""
+    js = Path("app.js").read_text(encoding="utf-8")
+    handler = js[js.find('e.key==="ArrowLeft"'):][:900]
+    assert "next.click()" in handler and ".focus()" in handler and \
+        handler.find("next.click()") < handler.find("(fresh||next).focus()"), \
+        "the arrow-key handler focuses before the redraw, which destroys the tab"
+    open_page = js[js.find("function openPage("):][:800]
+    assert "PAGE_TAB=0" in open_page.replace(" ", ""), "openPage does not reset PAGE_TAB"
+    assert 'class="vpick" role="tablist"' not in js, "the version picker is a tablist with no tabs"
+    assert "const repaint=" in js, "app.js has no repaint()"
+    rep = js[js.find("const repaint="):][:700]
+    assert "document.activeElement" in rep and ".focus(" in rep, \
+        "an async redraw (the bill text arriving) drops focus to <body>"
+    assert 'id="ptab_${i}" aria-controls="ppane"' in js and 'aria-labelledby="ptab_${PAGE_TAB}"' in js, \
+        "member and committee tabs are not tied to their panel"
+    return "ok", "focus survives a redraw, the tab resets per page, the picker is a group"
+
+
 @check("build", "a reports file keyed on bill number is refused, not ignored")
 def _reports_old_shape():
     """The third and fourth files off ARCHITECTURE item 3, same silence.
@@ -3686,6 +3943,52 @@ def _dropped():
     return "ok", f"{len(looks):,} look scheduled, {len(procs):,} parsed ({ratio:.0%})"
 
 
+@check("narrative", "a proceeding takes its own chamber's committee, never the other's",
+       needs=("docket_parser",))
+def _referral_chamber(docket_parser):
+    """HB 115 of 2025, as the docket has it. The timeline was keyed by bill, so
+    the Senate's referral on 27 March joined the House's, and the House's
+    executive session of 1 April was filed under the Senate's Education
+    committee -- which is H05 by name in the House, and kept a committee no
+    longer on the General Court's list looking current."""
+    dp = docket_parser
+    rows = [
+        {"lsr": "2025-0061", "created": "1/6/2025 8:30:15 AM", "bill": "HB115", "body": "H",
+         "desc": "  Introduced 01/08/2025 and referred to Education Funding  HJ 2  P. 6",
+         "updated": "", "lineno": 1},
+        {"lsr": "2025-0061", "created": "3/26/2025 12:42:38 PM", "bill": "HB115", "body": "H",
+         "desc": "Executive Session: 04/01/2025 10:00 am LOB 210-211", "updated": "", "lineno": 2},
+        {"lsr": "2025-0061", "created": "4/11/2025 3:46:58 PM", "bill": "HB115", "body": "S",
+         "desc": "  Introduced 03/27/2025 and Referred to Education;  SJ 10", "updated": "", "lineno": 3},
+        # A Senate hearing on a bill whose Senate referral is missing borrows nothing.
+        {"lsr": "2025-0999", "created": "4/1/2025 9:00:00 AM", "bill": "HB999", "body": "H",
+         "desc": "  Introduced 01/08/2025 and referred to Housing  HJ 2  P. 6", "updated": "", "lineno": 4},
+        {"lsr": "2025-0999", "created": "4/2/2025 9:00:00 AM", "bill": "HB999", "body": "S",
+         "desc": "Hearing: 04/15/2025, Room 103, LOB, 09:30 am;  SC 5", "updated": "", "lineno": 5},
+    ]
+    # And 2015-2016's way of writing an introduction, with no date: 1,255 of
+    # them were skipped, and 2,600 proceedings of that term had no committee.
+    rows += [
+        {"lsr": "2015-1030", "created": "02/18/2015 10:38:31 AM", "bill": "HB25", "body": "H",
+         "desc": "Introduced and Referred to Public Works and Highways.", "updated": "", "lineno": 6},
+        {"lsr": "2015-1030", "created": "03/05/2015 01:42:48 PM", "bill": "HB25", "body": "H",
+         "desc": "Subcommittee Work Session: 3/13/2015 9:30 AM LOB 201", "updated": "", "lineno": 7},
+    ]
+    procs = {(p.bill, p.body): p.committee
+             for p in dp.parse_proceedings(rows, dp.build_referral_timeline(rows))}
+    assert procs.get(("HB115", "H")) == "Education Funding", procs
+    assert procs.get(("HB999", "S")) is None, "a Senate hearing borrowed the House's committee"
+    assert procs.get(("HB25", "H")) == "Public Works and Highways", \
+        "an undated introduction was skipped: " + repr(procs.get(("HB25", "H")))
+    n = dp.normalize_committee
+    assert n("Commerce and Consumer Affairs (in recess of 3/12/2015)") == "Commerce and Consumer Affairs"
+    assert n("Labor, Industrial and Rehabilitative Services (In Recess from 3/12/2015)") == \
+        "Labor, Industrial and Rehabilitative Services"
+    assert n("Health, Human Services & Elderly Affairs") == "Health, Human Services and Elderly Affairs"
+    assert n("Special Committee on the Division for Children, Youth and Families (DCYF)").endswith("(DCYF)")
+    return "ok", "own chamber's committee, undated introductions read, no borrowing"
+
+
 @check("data", "a committee report line gives up its recommendation and nothing else")
 def _report_rec():
     if not (Path("Docket.txt").exists() and Path("narrative.py").exists()):
@@ -3973,7 +4276,27 @@ def _referral(referrals):
     # Still abbreviated: two referrals, and the two candidates on this disk
     # are different committees, so there is nothing to choose between them.
     assert c("INTRODUCED AND REF TO PUB INSTIT") == "Pub Instit"
-    return "ok", "nine real docket lines, and two that name no committee"
+    # The hearing line's shorthand (13 September). SB 143 of 1993 is referred
+    # to "EXEC DEPTS+ADMIN" and heard "FOR: ED+A"; until then its hearing sat
+    # under a committee called "Ed and a". Anchored: the letters are only a
+    # committee when they are the whole name, and a key entry right for one
+    # era only (PUBLIC WKS) is deliberately absent.
+    e = referrals.expand
+    assert c("INTRODUCED AND REF TO EXEC DEPTS+ADMIN; SJ2,P30") == \
+        "Executive Departments and Administration"
+    assert e("ED+A") == e("ED&A") == "Executive Departments and Administration"
+    assert e("E&A") == "Environment and Agriculture"
+    assert e("RR&D") == "Resources, Recreation and Development"
+    assert e("M&CG") == "Municipal and County Government"
+    assert e("LABOR") == "Labor, Industrial and Rehabilitative Services"
+    assert e("E&A + RR&D") == "E&A + RR&D", "a joint hearing is two committees, not one"
+    assert e("EDUC") == "Education" and e("W&M") == "Ways and Means"
+    assert e("ENV & AGR") == e("ENV&AG") == "Environment and Agriculture"
+    # Chamber-dependent, and this function is not told the chamber.
+    assert e("JUD") == "JUD" and e("WILDLIFE") == "WILDLIFE"
+    assert e("PUB INSTIT") == "PUB INSTIT"
+    assert e("ST-FED") == "ST-FED" and e("PUBLIC WKS") == "PUBLIC WKS"
+    return "ok", "ten real docket lines, the hearing shorthand, and two that name no committee"
 
 
 @check("data", "an archived bill's committee came from a source that has one",
@@ -4334,6 +4657,14 @@ def _deploy_branch():
                if "wrangler pages deploy" in ln and not ln.strip().upper().startswith("REM")]
     assert deploys and all("--branch=%PRODUCTION_BRANCH%" in ln for ln in deploys), \
         "a publish.bat deploy does not pass --branch=%PRODUCTION_BRANCH%"
+    # And the folder must BE on that branch: --branch publishes whatever the
+    # folder holds as production, so a branch checked out here is a branch
+    # published. The guard has to come before the first upload.
+    guard = bat.find('if not "%BRANCH%"=="%PRODUCTION_BRANCH%" goto :wrongbranch')
+    assert guard != -1 and "git rev-parse --abbrev-ref HEAD" in bat, \
+        "publish.bat deploys without checking which branch the folder is on"
+    assert guard < bat.find("call npx wrangler pages deploy"), \
+        "publish.bat checks the branch only after uploading"
     night = Path("nightly.py").read_text(encoding="utf-8", errors="replace")
     n = re.search(r'^PRODUCTION_BRANCH = "([^"]+)"', night, re.M)
     assert n, "nightly.py does not set PRODUCTION_BRANCH"
@@ -4892,6 +5223,80 @@ def _senate_calendars(SC):
                       "403/429/reset read the one way, 20s pace")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "the leadership fetch asks once, stops on a refusal, and asks only linked pages",
+       needs=("fetch_leadership",))
+def _leadership_fetch(FL):
+    """fetch_leadership.py had no refusal import, retried five times with a
+    back-off -- so one 403 became five -- and asked three House addresses whose
+    pages had never been read. Driven on fake answers: nothing asks the network
+    and archive/ is never opened."""
+    import contextlib
+    import http.client
+    import io
+    import types
+    import urllib.error
+    import refusal
+
+    saved = (refusal.MARK, refusal.LOCK, FL.ROOT, FL._get, FL.time)
+    PAGE = "<html><title>Leadership</title>President: Senator A B of C</html>"
+    BLOCK = "<html><title>Web Page Blocked</title>Attack ID: 1</html>"
+    tmps = []
+
+    def run(answers, lock=None, pages=None):
+        tmp = Path(tempfile.mkdtemp())
+        tmps.append(tmp)
+        FL.ROOT = tmp / "leadership"
+        refusal.MARK, refusal.LOCK = tmp / "refused.json", tmp / ".lock"
+        if lock is not None:
+            refusal.LOCK.write_text(str(lock), encoding="utf-8")
+        answers, asked = iter(answers), []
+
+        def fake(url, timeout=60):
+            asked.append(url)
+            a = next(answers)
+            if isinstance(a, BaseException):
+                raise a
+            return a
+        FL._get = fake
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                refusal.check("test")
+                with refusal.hold("test") as held:
+                    rc = FL.fetch(held, delay=0, pages=pages)
+            except SystemExit as e:
+                rc = e.code if isinstance(e.code, int) else 1
+        return rc, asked, sorted(p.name for p in FL.ROOT.glob("*.html")) if FL.ROOT.exists() else []
+
+    try:
+        FL.time = types.SimpleNamespace(sleep=lambda s: None)
+        assert all(FL.linked(p) for p in FL.PAGES) or not Path("committees_house.html").exists(), \
+            "an address in PAGES is linked from no saved General Court page"
+        rc, asked, got = run([PAGE] * 5)
+        assert rc == 0 and len(asked) == 5 and len(got) == 5, (rc, len(asked), got)
+        err403 = urllib.error.HTTPError("u", 403, "Forbidden", {}, io.BytesIO(b""))
+        rc, asked, got = run([err403])
+        assert rc == 2 and len(asked) == 1 and refusal.MARK.exists() and not got, \
+            "a 403 was asked about again, or not recorded"
+        rc, asked, got = run([BLOCK])
+        assert rc == 2 and not got, "the block page served with a 200 was saved as a page"
+        drop = urllib.error.URLError(http.client.RemoteDisconnected("closed"))
+        rc, asked, got = run([drop, drop])
+        assert rc == 2 and len(asked) == 2, "two dropped connections did not end the run"
+        err404 = urllib.error.HTTPError("u", 404, "Not Found", {}, io.BytesIO(b""))
+        rc, asked, got = run([err404, PAGE])
+        assert rc == 1 and len(asked) == 1, "a missing linked page did not stop the run"
+        rc, asked, got = run([PAGE], pages=[("x", "H", "https://gc.nh.gov/house/guessed.aspx",
+                                             "committees_house.html")])
+        assert rc == 1 and not asked, "an address linked from nowhere was asked"
+        rc, asked, got = run([PAGE], lock=99999999)
+        assert rc == 3 and not asked, "a second fetch ran beside a held lock"
+    finally:
+        refusal.MARK, refusal.LOCK, FL.ROOT, FL._get, FL.time = saved
+        for t in tmps:
+            shutil.rmtree(t, ignore_errors=True)
+    return "ok", "one 403 or block page or two drops stop it; 404 stops; unlinked and locked ask nothing"
 
 
 @check("build", "the calendar drain runs under the lane and leaves its lock alone",

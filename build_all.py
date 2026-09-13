@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.19
+# GRANITE_VERSION: 2026-09-05.20
 """
 Run the whole pipeline in the right order.
 
@@ -405,6 +405,15 @@ def plan(a):
                   "representatives and senator from the roster, and the "
                   "executive council, US House and Senate districts that were "
                   "in districts.json all along and had never been shown"),
+
+        Step("the whole record, as lists",
+             ["build_indexes.py", "--site", "site", "--base", a.base],
+             needs=["site/idx", "site/legislators.json", "site/towns.json", "site/town"],
+             produces=["site/directory.html"],
+             note="every bill of every term, every legislator and every town as plain "
+                  "links: the bill list and the legislator search are drawn by "
+                  "script, so without these a page was reachable from the sitemap "
+                  "and almost nothing else"),
 
         Step("bulk downloads",
              ["build_exports.py", "--site", "site", "--base", a.base],

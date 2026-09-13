@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.48
+# GRANITE_VERSION: 2026-09-04.49
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -49,6 +49,7 @@ from datetime import date
 from pathlib import Path
 
 import shell as S
+import structured as LD
 
 E = html.escape
 
@@ -140,14 +141,17 @@ def shell(t, b, d, base, raw=None, data_url=None, current_term=""):
     title = b.get("title") or ""
     path = f"/bill/{yr}/{bid.lower()}.html"
     # A per-bill feed exists only where there is a docket to report AND the
-    # term is still sitting. build_feeds stopped writing them for closed
-    # terms when the 1989-2016 histories arrived: 22,840 files that could
-    # never gain an item. A page must not advertise one that is not there.
+    # bill is still moving: the sitting term, not concluded (shell.still_moving,
+    # which build_feeds uses too). Closed terms stopped getting feeds when the
+    # 1989-2016 histories arrived; concluded bills of the sitting term stopped
+    # on 13 September, on the person's word that only a bill still moving
+    # needs following. A page must not advertise a feed that is not there.
     feed = (f'<link rel="alternate" type="application/rss+xml" '
             f'title="{E(n)} updates" href="/feed/bill/{yr}/{bid.lower()}.xml">'
-            if d.get("events") and b.get("term") == current_term else "")
+            if d.get("events") and S.still_moving(b, current_term) else "")
     return S.page(
         t, path=path, base=base,
+        jsonld=LD.bill(b, d, base, S.canon(path)),
         # THE YEAR IS PART OF THE NAME. Bill numbers repeat every two
         # years, so 192 pages shared a title with another term's bill --
         # fourteen of them "HB 25 — making appropriations for capital

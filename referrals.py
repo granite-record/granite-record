@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.5
+# GRANITE_VERSION: 2026-09-10.7
 """The committee a bill was referred to, read out of the docket.
 
     python3 referrals.py            # what it finds, by year, no network
@@ -223,6 +223,67 @@ PHRASES = [
     # rule, and a published key is the thing that lifts it.
     (r"\bJUDICIARY\s*(?:&|\+|AND)\s*F\.?\s*L\.?$", "Judiciary and Family Law"),
     (r"\bECON\.?\s*DEV(?:EL)?\.?$", "Economic Development"),
+    # THE HEARING LINE'S SHORTHAND, since 13 September. A hearing of 1989-1998
+    # names its committee after FOR:, in letters the referral line never uses
+    # -- "HEARING JAN28 08:30 RM104,LOB FOR: ED+A" -- and 9,094 rows of
+    # proceedings.csv named no committee the site has, "Ed and a" among them
+    # 598 times. Each entry below is in the General Court's key, and each is
+    # anchored to the whole string, because the key also holds entries that
+    # are only right for one era: PUBLIC WKS is "Public Works and Highways",
+    # the committee's name today, where the clerk of 1990 meant "Public
+    # Works". None of those is here.
+    #
+    # The proof is on the same bill. For every bill whose hearing line uses
+    # one of these, the referral line of the same bill in the same chamber
+    # was read, and it spells the expansion out: ED&A 601 of 630 bills, in
+    # both chambers; M&CG 253 of 261; RR&D 174 of 184; E&A 127 of 132; LABOR
+    # 178 of 186; HHS&EA 13 of 13; ST&E 9 of 9; CAP BUDGET 36 of 44, the rest
+    # a second referral to Transportation. What does not agree is a second
+    # committee -- Finance, Appropriations -- that the bill went to later.
+    # SB 143 of 1993 is the pattern: "REF TO EXEC DEPTS+ADMIN", then
+    # "HEARING ... FOR: ED+A".
+    #
+    # Left as the clerk wrote them, and why: "ST-FED" (113 hearings) and "ST
+    # INST" (118) are not in the key, and each committee changed its name
+    # inside these years, so which name a given year means is a guess.
+    (r"^E\.?\s*D\.?\s*(?:&|\+|AND)\s*A\.?$", "Executive Departments and Administration"),
+    (r"^E\.?\s*(?:&|\+|AND)\s*A\.?$", "Environment and Agriculture"),
+    (r"^R\.?\s*R\.?\s*(?:&|\+|AND)\s*D\.?$", "Resources, Recreation and Development"),
+    (r"^M\.?\s*(?:&|\+|AND)\s*C\.?\s*G?\.?$", "Municipal and County Government"),
+    (r"^S\.?\s*T\.?\s*(?:&|\+|AND)\s*E\.?$", "Science, Technology and Energy"),
+    (r"^H\.?\s*H\.?\s*S\.?\s*(?:&|\+|AND)\s*E\.?\s*A\.?$",
+     "Health, Human Services and Elderly Affairs"),
+    # LABOR alone is the clerk's name for the committee from 1989 to 2008 --
+    # 629 lines, every one in the House, where it has one Labor committee --
+    # and "LABOR IND REH" is the same name cut short twice.
+    (r"^LABOR(?:\s*,?\s*IND\.?\s*(?:&|\+|AND)?\s*REH\.?)?$",
+     "Labor, Industrial and Rehabilitative Services"),
+    # TRANS is above; these are the lengths the clerks stopped typing at.
+    (r"^TRANSP(?:O|OR|ORT|ORTATI)?\.?$", "Transportation"),
+    (r"^CAP(?:IT[AO]L)?\.?\s*BUDGET$", "Capital Budget"),
+    # THE SAME PROOF, a second pass the same night. Each is the whole string a
+    # hearing line wrote, and each agrees with the referral line of the same
+    # bill in the same chamber: EDUC 134 of 145 House bills and 110 of 114
+    # Senate ones; W&M 73 of 77 in the Senate; CRIM JUST 73 of 83; SCIENCE 102
+    # of 106; ENV & AG 35 of 36; INSUR 133 of 137; ENVIRON 79 of 80; PUB WKS 58
+    # of 60; PUB INST 187 of 207 (the rest Finance, which a bill went to next).
+    #
+    # Left alone, and why. JUD is Judiciary in the Senate (139 of 140) and
+    # Judiciary and Family Law in the House of 1995-1998, and WILDLIFE is
+    # Wildlife and Recreation in the Senate and its own name in the House:
+    # this function is not told the chamber, so either expansion would be
+    # wrong for one of them. HEALTH agrees 173 times of 250. CHILD Y&JJ, DEV
+    # REC & ENV and F&G & REC are spelled out nowhere on this disk. PUB INSTIT
+    # stays as the note above explains; the anchor keeps these from reaching it.
+    (r"^EDUC\.?$", "Education"),
+    (r"^W\s*(?:&|\+)\s*M$", "Ways and Means"),
+    (r"^CRIM\.?\s*JUST\.?$", "Criminal Justice and Public Safety"),
+    (r"^SCIENCE$", "Science, Technology and Energy"),
+    (r"^ENV\.?\s*(?:&|\+|AND)\s*AGR?\.?$", "Environment and Agriculture"),
+    (r"^INSUR\.?$", "Insurance"),
+    (r"^ENVIRON\.?$", "Environment"),
+    (r"^PUB\.?\s*WKS\.?$", "Public Works"),
+    (r"^PUB(?:LIC)?\.?\s*INST\.?$", "Public Institutions, Health and Human Services"),
 ]
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.61
+# GRANITE_VERSION: 2026-09-04.62
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -531,7 +531,9 @@ FOOT_JS = (
 # The one sentence that explains the bulk data, used in both footers so they
 # cannot drift. "Every table" is literal: data.html builds from the same
 # manifest the tables are written from.
-FOOT_DATA = ('<a href="data.html">Bulk data</a> — every table on this '
+FOOT_DATA = ('<a href="directory.html">The whole record, as lists</a> — every bill, '
+             'legislator and town as plain links. '
+             '<a href="data.html">Bulk data</a> — every table on this '
              'site as CSV, with a manifest naming each column.')
 
 

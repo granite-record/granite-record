@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.10
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -31,6 +31,7 @@ import unicodedata
 from pathlib import Path
 
 import shell as S
+import structured as LD
 
 E = S.E
 
@@ -57,18 +58,32 @@ def person_slug(m):
 
 def describe(m):
     """The sentence a search engine shows under the link."""
+    # THE SEAT ONCE. display_full already carries it -- "Rep. Aboul Khan (R -
+    # Rock 30)" -- and the seat was appended again, so all 406 of these read
+    # "(R - Rock 30) Rock 30." in a search result until 13 September. The
+    # places come straight after the name, because they are what a person
+    # searching a representative's name is usually checking.
     who = m.get("display_full") or m.get("display") or m.get("name") or ""
-    seat = m.get("district_label") or ""
-    bits = [who]
-    if seat:
-        bits.append(f"{seat}.")
-    towns = m.get("towns") or []
+    if not (m.get("display_full") or "") and m.get("district_label"):
+        who = f"{who} ({m['district_label']})"
+    body = "Senate" if m.get("chamber") == "S" else "House of Representatives"
+    # Ward 2 before Ward 10, which the roster's own order does not give.
+    towns = sorted(m.get("towns") or [],
+                   key=lambda t: [int(x) if x.isdigit() else x for x in re.split(r"(\d+)", t)])
     if towns:
-        bits.append("Represents " + ", ".join(towns[:6])
-                    + ("." if len(towns) <= 6 else " and others."))
-    bits.append("Sponsored bills and every recorded roll call vote, from the "
-                "New Hampshire General Court's own records.")
-    return re.sub(r"\s+", " ", " ".join(bits)).strip()[:300]
+        # "and 1 more" hides a name in the space it takes to say so.
+        shown = towns if len(towns) <= 7 else towns[:6]
+        more = len(towns) - len(shown)
+        places = (", ".join(shown[:-1]) + " and " + shown[-1] if len(shown) > 1 and not more
+                  else ", ".join(shown) + (f" and {more} more" if more else ""))
+        lead = f"{who} represents {places} in the New Hampshire {body}."
+    else:
+        lead = f"{who}, New Hampshire {body}."
+    text = (f"{lead} Bills sponsored and every recorded roll call vote, from the "
+            "General Court's own records.")
+    # A clip at a word, not a slice: [:300] would cut a word in half the day a
+    # member represented enough towns to reach it.
+    return S.clip(text, 300)
 
 
 def noscript(m):
@@ -111,6 +126,9 @@ def main():
             title=f"{who} | Granite Record",
             og_title=f"{who} — New Hampshire General Court",
             description=describe(m),
+            # Name, office, chamber, party, district. Not email or telephone:
+            # structured.py says why.
+            jsonld=LD.person(m, a.base, S.canon(path)),
             globals={"GR_MEMBER": str(m.get("id", "")), "GR_STANDALONE": True},
             noscript=noscript(m), skip_label="Skip to this member",
             # Without this the template's marker stays on Bills, and all 406

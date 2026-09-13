@@ -1,10 +1,33 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Who holds a leadership role in each chamber.
 
-    python3 fetch_leadership.py --probe      # print what the pages say, write nothing
-    python3 fetch_leadership.py              # write leadership.json
+    python3 fetch_leadership.py --plan     # the five addresses and where each is linked; no request
+    python3 fetch_leadership.py            # save the five pages to archive/leadership/, 20 s apart
+    python3 fetch_leadership.py --parse    # read what is saved, write leadership.json; no request
+
+FETCHING AND READING ARE TWO STEPS, since 13 September. The House pages have
+never been read, so the parser for them cannot be right the first time -- and
+a parser that is allowed to be wrong must not cost a request each time it is
+wrong. The fetch saves the pages whole and stops; --parse reads them as often
+as it takes. The same split fetch_legislation.py has.
+
+WHAT IT ASKS, AND WHAT MAKES IT STOP. Five pages, one request each, never
+retried, 20 seconds apart, under refusal.check() and refusal.hold() like every
+other fetch from this address. One refusal (403, 429, 503, the firewall's block
+page even with a 200) ends the run and is recorded for 24 hours; two dropped
+connections do the same; a linked page that answers 404 ends the run too,
+rather than going on to ask the next. Until then it retried five times with a
+back-off, which turned one 403 into five.
+
+AND ONLY ADDRESSES THE GENERAL COURT LINKS. This address was blocked once for
+asking for files that did not exist. Every page below is linked from a General
+Court page already on this disk -- the navigation of committees_senate.html
+and committees_house.html, which fetch_committees.py saved -- and one that is
+not is never asked. The Senate's own "Senate Leadership" page is new here; the
+About page is kept beside it because its list has been read and the other has
+not.
 
 Committee chair, vice chair and clerk come off a member's own page and are
 already collected by fetch_members.py. Chamber leadership is not on any member
@@ -32,10 +55,10 @@ roster, which is rebuilt from the roll every day.
 THE HOUSE
 
 The House has no equivalent single page. The Speaker's, Majority and Minority
-offices each have one, and their shape has never been read, so this fetches
-them and prints what it finds rather than guessing at a pattern. Run --probe,
-send the output, and the parser can be written against the real thing -- which
-is how the member pages and the RSA addresses were done.
+offices each have one, and their shape has never been read, so --parse prints
+what it finds on them rather than guessing at a pattern, and the parser can be
+written against the real thing -- which is how the member pages and the RSA
+addresses were done.
 
 WHAT IT WRITES
 
@@ -51,22 +74,38 @@ match has to be exact on the surname-first form of the name.
 
 import argparse
 import json
+import os
 import random
 import re
 import sys
 import time
+import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
+
+import refusal
 
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
                     "contact@graniterecord.org)"}
 WS = re.compile(r"\s+")
 TAG = re.compile(r"<[^>]+>")
 
-SENATE = "https://gc.nh.gov/senate/about_senate/about.aspx"
-HOUSE = [("Speaker's office", "https://gc.nh.gov/house/staff/speakersOffice.aspx"),
-         ("Majority office", "https://gc.nh.gov/house/staff/majorityOffice.aspx"),
-         ("Minority office", "https://gc.nh.gov/house/staff/MinorityOffice.aspx")]
+ROOT = Path("archive/leadership")
+# (saved as, chamber, address, the saved General Court page that links it)
+PAGES = [
+    ("senate-leadership", "S", "https://gc.nh.gov/senate/members/leadership.aspx",
+     "committees_senate.html"),
+    ("senate-about", "S", "https://gc.nh.gov/senate/about_senate/about.aspx",
+     "committees_senate.html"),
+    ("house-speaker", "H", "https://gc.nh.gov/house/staff/speakersOffice.aspx",
+     "committees_house.html"),
+    ("house-majority", "H", "https://gc.nh.gov/house/staff/majorityOffice.aspx",
+     "committees_house.html"),
+    ("house-minority", "H", "https://gc.nh.gov/house/staff/MinorityOffice.aspx",
+     "committees_house.html"),
+]
+DELAY = 20
 
 # "Majority Leader: Senator Regina Birdsell of Hampstead"
 # "Chair, Majority Policy Conference: Senator Dan Innis of Bradford"
@@ -95,52 +134,87 @@ def text_of(html):
     return "\n".join(WS.sub(" ", ln).strip() for ln in t.splitlines())
 
 
-# The General Court closes the connection without answering when it is being
-# asked for too much at once -- which is what a nightly run looks like from its
-# side. urllib reports that as RemoteDisconnected, whose message says nothing
-# about the cause, so it is named here instead of left to be puzzled over.
-REFUSED = ("remotedisconnected", "connection reset", "connection aborted",
-           "closed connection without response", "timed out")
+def linked(page):
+    """Whether a General Court page saved on this disk links this address."""
+    _key, _ch, url, where = page
+    p = Path(where)
+    if not p.exists():
+        return False
+    path = urllib.parse.urlsplit(url).path
+    return f'href="{path}"' in p.read_text(encoding="utf-8", errors="replace")
 
 
-def busy_note():
-    """Say the likely reason before the requests start, not after they fail."""
-    if Path(".nightly.lock").exists():
-        print("NOTE: a nightly run is going, and the General Court will refuse\n"
-              "      connections from a second one. Wait for it to finish.\n")
+def _get(url, timeout=60):
+    """One request. No retry: a second ask after a refusal is the harm."""
+    req = urllib.request.Request(url, headers=UA)
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read().decode("utf-8", errors="replace")
 
 
-def refused(err):
-    return any(w in f"{type(err).__name__} {err}".lower() for w in REFUSED)
+def saved(key):
+    return ROOT / f"{key}.html"
 
 
-def get(url, timeout=60, tries=5):
-    """Fetch, backing off properly when the far end is turning us away.
+def fetch(held, delay=DELAY, pages=None):
+    """Ask for each page not already saved. Returns the exit status.
 
-    Two seconds then four is the right shape for a blip and the wrong one for
-    throttling, which is what these failures were: six requests across three
-    scripts all refused at once while a nightly run held the connection budget.
-    Backing off 3, 9, 27 then 60 seconds gives a busy server time to mean it.
+    0 every page saved; 1 stopped for a reason that is not a refusal; 2 a
+    refusal, recorded in archive/refused.json for every fetch to see.
     """
-    last = None
-    for i in range(tries):
+    dropped, asked = 0, 0
+    for page in pages or PAGES:
+        key, _ch, url, where = page
+        if saved(key).exists():
+            print(f"  {key}: saved already, not asked")
+            continue
+        if not linked(page):
+            print(f"  {key}: {url} is not linked from {where} on this disk, so it "
+                  "is not asked. An address nobody has seen linked is a guess.")
+            return 1
+        if asked:
+            time.sleep(delay * random.uniform(0.8, 1.2))
+        # After the sleep, directly before the request: a refusal another
+        # process met meanwhile is a refusal here too.
+        if refusal.MARK.exists():
+            print("\nStopping: archive/refused.json is on file.")
+            return 2
+        if not held.still():
+            print("\nStopping: the lane holding archive/.lock is gone.")
+            return 1
+        asked += 1
         try:
-            req = urllib.request.Request(url, headers=UA)
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                return r.read().decode("utf-8", errors="replace"), None
+            html = _get(url)
         except Exception as e:
-            last = e
-            if i < tries - 1:
-                wait = min(60, 3 ** (i + 1)) + random.uniform(0, 1.5)
-                if refused(e):
-                    print(f"    refused, waiting {wait:.0f}s "
-                          f"({i + 1} of {tries - 1})")
-                time.sleep(wait)
-    if refused(last):
-        return None, (f"{last} -- the General Court refused the connection. "
-                      "This is\n  almost always another fetch running at the "
-                      "same time; nothing is wrong\n  with the address.")
-    return None, last
+            kind = refusal.classify(e)
+            why = (f"HTTP {e.code} on {url}" if isinstance(e, urllib.error.HTTPError)
+                   else f"{type(e).__name__}: {e} on {url}")
+            if kind == "refused" or (kind == "dropped" and dropped + 1 >= 2):
+                refusal.note("fetch_leadership", why)
+                print(f"\nREFUSED: {why}. Stopping, and refusal.py now holds one "
+                      "for 24 hours.\npython3 netcheck.py says what kind it is "
+                      "without making it worse.")
+                return 2
+            if kind == "dropped":
+                dropped += 1
+                print(f"  {key}: dropped ({why}). One more ends the run.")
+                continue
+            # A page the General Court links that is not there is worth a
+            # person's look, and not worth asking the next one to find out.
+            print(f"\n  {key}: {kind} -- {why}. Stopping.")
+            return 1
+        if refusal.classify(body=html) == "refused":
+            refusal.note("fetch_leadership", f"the firewall's block page, with a 200, on {url}")
+            print(f"\nREFUSED: the block page, served as a page, on {url}. Stopping.")
+            return 2
+        if "<title" not in html[:4000].lower():
+            print(f"\n  {key}: the answer is not a page, and is not saved. Stopping.")
+            return 1
+        ROOT.mkdir(parents=True, exist_ok=True)
+        tmp = saved(key).with_name(saved(key).name + ".part")
+        tmp.write_text(html, encoding="utf-8")
+        os.replace(tmp, saved(key))
+        print(f"  {key}: saved, {len(html):,} characters")
+    return 1 if dropped else 0
 
 
 def find_roles(text, chamber):
@@ -183,55 +257,82 @@ def name_key(raw):
     return (sur, ini)
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--data", default="data")
-    ap.add_argument("--out", default="leadership.json")
-    ap.add_argument("--probe", action="store_true",
-                    help="print what the pages say and write nothing")
-    a = ap.parse_args()
-
-    busy_note()
-    found = []
-    print(f"Senate: {SENATE}")
-    html, err = get(SENATE)
-    if html is None:
-        print(f"  could not fetch: {err}")
-    else:
-        t = text_of(html)
-        i = t.find("Senate Leadership")
-        found += find_roles(t[i:] if i >= 0 else t, "S")
-        print(f"  {len([x for x in found if x['chamber'] == 'S'])} roles")
-
-    for label, url in HOUSE:
-        print(f"\nHouse, {label}: {url}")
-        html, err = get(url)
-        if html is None:
-            print(f"  could not fetch: {err}")
+def parse(a):
+    """Read the saved pages; no request. Writes leadership.json unless --dry."""
+    found, seen, missing = [], set(), []
+    for key, ch, url, _where in PAGES:
+        f = saved(key)
+        if not f.exists():
+            missing.append(key)
             continue
-        t = text_of(html)
-        got = find_roles(t, "H")
+        t = text_of(f.read_text(encoding="utf-8", errors="replace"))
+        if key == "senate-about":
+            i = t.find("Senate Leadership")
+            t = t[i:] if i >= 0 else t
+        got = [x for x in find_roles(t, ch)
+               if (x["chamber"], x["role"], x["name"]) not in seen]
+        seen.update((x["chamber"], x["role"], x["name"]) for x in got)
         found += got
-        print(f"  {len(got)} roles")
-        if not got and a.probe:
-            # The House pages have never been read. Show enough to write a
-            # pattern against without another fetch.
+        print(f"{key}: {len(got)} roles  ({url})")
+        if not got:
+            # Never read before: show enough to write a pattern against, from
+            # the page on disk, at no cost.
             body = [ln for ln in t.splitlines()
                     if 12 < len(ln) < 160 and re.search(r"[A-Z][a-z]+ [A-Z]", ln)]
-            print("  nothing matched the labelled shape. Lines that mention a "
-                  "name:")
+            print("  nothing matched the labelled shape. Lines that mention a name:")
             for ln in body[:14]:
                 print(f"    {ln[:110]}")
+    if missing:
+        print(f"\nNot saved yet: {', '.join(missing)}. "
+              "python3 fetch_leadership.py fetches them.")
 
     print("\n" + "=" * 62)
     for x in found:
         print(f"  {x['chamber']}  {x['role']:<32} {x['name']} of {x['town']}")
+    if not found:
+        # Silence is not success: a leadership.json with nobody in it would
+        # tell the site nobody leads either chamber.
+        print("\nNo roles found, so nothing is written.")
+        return 1
+    if a.dry:
+        print("\nNothing was written (--dry).")
+        return 0
+    return write(a, found)
 
-    if a.probe:
-        print("\nNothing was written. Drop --probe once the list above looks "
-              "right.")
-        return
 
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--data", default="data")
+    ap.add_argument("--out", default="leadership.json")
+    ap.add_argument("--plan", action="store_true",
+                    help="the addresses and where each is linked; no request")
+    ap.add_argument("--parse", action="store_true",
+                    help="read the saved pages and write leadership.json; no request")
+    ap.add_argument("--dry", action="store_true", help="with --parse: write nothing")
+    ap.add_argument("--delay", type=float, default=DELAY,
+                    help=f"seconds between requests (at least 5; default {DELAY})")
+    a = ap.parse_args()
+
+    if a.plan:
+        for page in PAGES:
+            key, _ch, url, where = page
+            state = "saved" if saved(key).exists() else "wanted"
+            print(f"  {key:18} {state:7} {'linked from ' + where if linked(page) else 'NOT LINKED -- would not be asked'}")
+            print(f"  {'':18} {url}")
+        return 0
+    if a.parse:
+        return parse(a)
+
+    refusal.check("The leadership fetch")
+    with refusal.hold("fetch_leadership") as held:
+        rc = fetch(held, delay=max(a.delay, 5))
+    if rc == 0:
+        print("\nEvery page is saved. python3 fetch_leadership.py --parse reads "
+              "them, and asks nothing.")
+    return rc
+
+
+def write(a, found):
     lp = Path(a.data) / "legislators.json"
     if not lp.exists():
         sys.exit(f"No {lp}; run build_data.py first.")
@@ -256,7 +357,11 @@ def main():
 
     if unmatched:
         out["_unmatched"] = unmatched
-    Path(a.out).write_text(json.dumps(out, indent=2), encoding="utf-8")
+    # Whole or not at all: a reader of a half-written file sees fewer leaders.
+    dest = Path(a.out)
+    tmp = dest.with_name(dest.name + ".part")
+    tmp.write_text(json.dumps(out, indent=2), encoding="utf-8")
+    os.replace(tmp, dest)
     named = len([k for k in out if not k.startswith("_")])
     print(f"\n{named} members with a leadership role -> {a.out}")
     if unmatched:
@@ -265,7 +370,8 @@ def main():
             print(f"  {x['role']}: {x['name']} of {x['town']} ({x['chamber']})")
         print("Either the name is written differently on the roster, or two "
               "members\nshare it. Neither is guessed at.")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

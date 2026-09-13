@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.68
+// GRANITE_VERSION: 2026-09-07.70
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1698,9 +1698,12 @@ function renderVersions(b,d){
   const mode=VMODE[key]||"changes";
   const i=Math.min(VPICK[key],Math.max(0,vs.length-1));
 
-  const picker=vs.length?`<div class="vpick" role="tablist" aria-label="Versions of this bill's text">${
+  // A group of toggle buttons, not a tablist: it declared role="tablist" with
+  // no role="tab" inside, which a screen reader announces as an empty list of
+  // tabs, and no key handler moved through it.
+  const picker=vs.length?`<div class="vpick" role="group" aria-label="Versions of this bill's text">${
     vs.map((v,j)=>`<button class="vbtn${j===i?" sel":""}" data-ver="${esc(key)}|${j}"
-      aria-current="${j===i?"true":"false"}">${esc(v.title)}<i>${
+      aria-pressed="${j===i?"true":"false"}">${esc(v.title)}<i>${
       esc((v.date||"").split(" ")[0])}</i></button>`).join("")}</div>`:"";
 
   // The step that produced the version being shown, if there is one.
@@ -2001,7 +2004,19 @@ let UPCOMING = null;
 // picker, the routine-lines toggle, the full-text toggle -- are shared by
 // both. Those called render() unconditionally, which on a committee's page
 // drew four hundred bill cards over the committee.
-const repaint=()=>PAGE?renderPage():render();
+// Every redraw after something arrives -- the bill text, a version, a member's
+// record -- goes through here. The redraw replaces the element that held focus
+// with a copy, and focus fell to <body>: a keyboard reader who arrowed onto
+// Bill Text lost their place the moment its text loaded. Put focus back on the
+// copy, matched by id or, for a member or committee tab, by its position.
+const repaint=()=>{
+  const a=document.activeElement;
+  const sel=a&&a!==document.body
+    ?(a.id?`#${CSS.escape(a.id)}`:a.dataset&&a.dataset.pt!==undefined?`.tab[data-pt="${a.dataset.pt}"]`:null)
+    :null;
+  if(PAGE)renderPage();else render();
+  if(sel){const f=document.querySelector(sel);if(f&&f!==document.activeElement)f.focus({preventScroll:true});}
+};
 
 // The term a record page is showing. One control for the whole record rather
 // than one per tab: a reader looking at 2023-2024 wants that term's bills AND
@@ -2193,11 +2208,16 @@ function termControl(){
     ).join("")}</select></label></div>`;
 }
 
+// One strip per member or committee page, so the ids are fixed: ptab_<i> for a
+// tab and ppane for the panel it controls, which pagePane() writes.
 function tabStrip(tabs){
   return `<div class="tabs" role="tablist">${tabs.map((t,i)=>
-    `<button class="tab" role="tab" data-pt="${i}" aria-selected="${
+    `<button class="tab" role="tab" id="ptab_${i}" aria-controls="ppane" data-pt="${i}" aria-selected="${
       i===PAGE_TAB}">${esc(t[0])}${t[1]?` (${t[1].toLocaleString()})`:""}</button>`
   ).join("")}</div>`;
+}
+function pagePane(html){
+  return `<div class="pane" role="tabpanel" id="ppane" aria-labelledby="ptab_${PAGE_TAB}" tabindex="0">${html}</div>`;
 }
 
 // ONE CHIP FOR A PERSON, wherever they appear. A committee's members were
@@ -2428,8 +2448,7 @@ function renderMember(m){
               ["Votes",memberVotes(m).length]];
   const body=[()=>renderMemberBills(m,true),()=>renderMemberBills(m,false),
               ()=>renderMemberVotes(m)][PAGE_TAB]||(()=>"");
-  return renderMemberHead(m) + termControl() + tabStrip(tabs)
-    + `<div class="pane" role="tabpanel" tabindex="0">${body()}</div>`;
+  return renderMemberHead(m) + termControl() + tabStrip(tabs) + pagePane(body());
 }
 
 // ------------------------------------------------------------- committee ---
@@ -2473,6 +2492,9 @@ function renderCommitteeHead(c){
   return `<div class="phead">
     <h1>${esc(c.name||"")}</h1>
     <p class="pmeta">${esc(c.chamber==="S"?"State Senate":"House of Representatives")}</p>
+    ${c.archived?`<p class="src">Not on the General Court&rsquo;s list of committees today.
+      Its bills and sitting days on this record run ${esc(c.archived.years||"")}; the
+      records do not say whether it was renamed, divided, merged or ended.</p>`:""}
     <div class="cinfo">
       ${dl("cofficers",officers.map(o=>[o.role,
         o.slug?`<a href="legislator/${esc(o.slug)}.html">${esc(o.label||o.name)}</a>`
@@ -2713,8 +2735,7 @@ function renderCommittee(c){
   // week, and a reader who came to find out whether they can still turn up
   // and speak should not have to scroll past nineteen years of bills.
   return renderCommitteeHead(c) + renderCommitteeUpcoming(c)
-    + termControl() + tabStrip(tabs)
-    + `<div class="pane" role="tabpanel" tabindex="0">${body()}</div>`;
+    + termControl() + tabStrip(tabs) + pagePane(body());
 }
 
 // ------------------------------------------------------------------ boot ---
@@ -2820,6 +2841,10 @@ function recordTerms(kind,d){
 function openPage(kind,ref){
   PAGE={kind,data:null,terms:[],term:"",status:"",vfilter:"",
         vparty:"",vshow:0};
+  // A member's page has three tabs and a committee's two. Carried over, a
+  // member's Votes tab (2) opened a committee on a tab it does not have, and
+  // the page drew nothing under the strip.
+  PAGE_TAB=0;
   // The search chrome belongs to the search. Left up, the facet panel offered
   // filters for a list that is not on screen and the counter read "2,234 of
   // 2,234 bills" beside one member's name.
@@ -3275,5 +3300,13 @@ document.addEventListener("keydown",e=>{
     const i=tabs.indexOf(tab);
     const to=e.key==="Home"?0:e.key==="End"?tabs.length-1
       :(i+(e.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length;
-    e.preventDefault();tabs[to].focus();tabs[to].click();
+    // The click redraws the strip, which destroyed the tab just focused and
+    // sent focus to <body>: every arrow press lost the keyboard's place.
+    // Focus goes back to the tab of the same identity in the new strip.
+    const next=tabs[to];
+    const again=next.id?`#${CSS.escape(next.id)}`
+      :next.dataset.pt!==undefined?`.tab[data-pt="${next.dataset.pt}"]`:null;
+    e.preventDefault();next.click();
+    const fresh=again&&document.querySelector(again);
+    (fresh||next).focus();
   }});

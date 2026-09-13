@@ -65,6 +65,14 @@ REM anywhere abort the whole deploy. Pages assets are content-addressed,
 REM so every attempt begins with what the last one managed: on
 REM 12 September a run reported 34,887 files uploaded and 20,465 already
 REM there, which was the previous attempt's work being skipped.
+REM
+REM THE BRANCH THIS FOLDER IS ON, before anything is uploaded. --branch below
+REM sends the deploy to production whatever git says, so a branch checked out
+REM here -- a report-triage branch, an experiment -- would be published as the
+REM site. The deploy happens only from the production branch.
+set BRANCH=
+for /f "delims=" %%b in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set BRANCH=%%b
+if not "%BRANCH%"=="%PRODUCTION_BRANCH%" goto :wrongbranch
 set ATTEMPT=0
 
 :upload
@@ -100,6 +108,14 @@ echo.
 echo *** Uploaded, but the site is still serving the previous build. ***
 echo Check the Pages project's production branch, or promote the newest
 echo deployment from the Deployments tab, then run publish again.
+exit /b 1
+
+:wrongbranch
+echo.
+echo *** Not published: this folder is on branch "%BRANCH%", not %PRODUCTION_BRANCH%. ***
+echo A deploy publishes whatever this folder holds. Switch back with
+echo   git checkout %PRODUCTION_BRANCH%
+echo and work on other branches in a separate worktree.
 exit /b 1
 
 :failed
