@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.146
+# GRANITE_VERSION: 2026-09-04.148
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3218,6 +3218,37 @@ def _committee_tense(BC):
     return "ok", "future days scheduled, past days met"
 
 
+@check("build", "a committee is archived only on two facts, and never on a guess",
+       needs=("build_committees",))
+def _committees_archived(BC):
+    """The launch list asked for disbanded committees at the bottom of /committees.
+    The record cannot say disbanded. It can say a committee is not on the General
+    Court's list today and that its bills and sitting days end before this term,
+    and it takes both: H05 Education is on no list and has 1,530 bills to 2024,
+    and three special committees are on no list with no record at all and mostly
+    sitting members, which is not evidence of anything having ended."""
+    rows = [
+        {"code": "H05", "name": "Education", "chamber": "H", "span": ["1989-1990", "2023-2024"]},
+        {"code": "H07", "name": "Executive Departments and Administration", "chamber": "H",
+         "span": ["1989-1990", "2025-2026"]},
+        {"code": "H30", "name": "Committee of Conference", "chamber": "H",
+         "span": ["1999-2000", "2015-2016"]},
+        {"code": "H57", "name": "Special Committee on Commissions", "chamber": "H", "span": []},
+        {"code": "S91", "name": "Education and Workforce Development", "chamber": "S",
+         "span": ["2019-2020"]},
+        {"code": "S99", "name": "On no list, but on this term's record", "chamber": "S",
+         "span": ["2025-2026"]},
+    ]
+    live, idle, archived = BC.listing_groups(rows, {"H07"}, "2025-2026")
+    got = lambda xs: sorted(c["code"] for c in xs)
+    assert got(archived) == ["H05", "S91"], got(archived)
+    assert got(idle) == ["H57"], "a committee with no record was filed as " + (
+        "archived" if "H57" in got(archived) else "live")
+    assert got(live) == ["H07", "H30", "S99"], got(live)
+    assert BC.years(["1989-1990", "2023-2024"]) == "1989 to 2024"
+    return "ok", "not listed and ended before this term; no record means no claim"
+
+
 @check("frontend", "tab strips keep the keyboard's place and a page opens on its own first tab")
 def _tab_keyboard():
     """Three defects found reading app.js on 12 September. An arrow key clicked
@@ -4173,7 +4204,22 @@ def _referral(referrals):
     # Still abbreviated: two referrals, and the two candidates on this disk
     # are different committees, so there is nothing to choose between them.
     assert c("INTRODUCED AND REF TO PUB INSTIT") == "Pub Instit"
-    return "ok", "nine real docket lines, and two that name no committee"
+    # The hearing line's shorthand (13 September). SB 143 of 1993 is referred
+    # to "EXEC DEPTS+ADMIN" and heard "FOR: ED+A"; until then its hearing sat
+    # under a committee called "Ed and a". Anchored: the letters are only a
+    # committee when they are the whole name, and a key entry right for one
+    # era only (PUBLIC WKS) is deliberately absent.
+    e = referrals.expand
+    assert c("INTRODUCED AND REF TO EXEC DEPTS+ADMIN; SJ2,P30") == \
+        "Executive Departments and Administration"
+    assert e("ED+A") == e("ED&A") == "Executive Departments and Administration"
+    assert e("E&A") == "Environment and Agriculture"
+    assert e("RR&D") == "Resources, Recreation and Development"
+    assert e("M&CG") == "Municipal and County Government"
+    assert e("LABOR") == "Labor, Industrial and Rehabilitative Services"
+    assert e("E&A + RR&D") == "E&A + RR&D", "a joint hearing is two committees, not one"
+    assert e("ST-FED") == "ST-FED" and e("PUBLIC WKS") == "PUBLIC WKS"
+    return "ok", "ten real docket lines, the hearing shorthand, and two that name no committee"
 
 
 @check("data", "an archived bill's committee came from a source that has one",

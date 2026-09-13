@@ -904,3 +904,67 @@ Packard's Legislative Staff Week Thank You" — and should stay out.
 It touches the matching pipeline, so it wants `probe_alignment --truth` scored
 before and after, and a wrong committee puts the wrong recording against a
 proceeding.
+
+---
+
+## 9. The night of 12-13 September
+
+The person went to bed and asked for launch work that needs no oversight. **Nothing was published and no request went to the General
+Court** -- netcheck at 00:30 found the address refusing (§6, the refusal
+entry), so the one fetch allowed overnight did not start. Everything below is
+committed on `master` except where it says otherwise, and is on the built
+`site/` but not on graniterecord.org.
+
+**Waiting on a person, in the order they unblock things:**
+
+1. **The refusal.** Check whether ProtonVPN was on when the lane last fetched
+   cleanly, then netcheck once with it off (§6). Nothing fetches until then.
+2. **The report box, on branch `report-box` (`D:\nh-report`), not merged.**
+   A Pages Function writes to D1, `compile_reports.py` screens every report
+   for text aimed at the assistant before anything reads it, and
+   `reports/TRIAGE.md` is the rulebook for the nightly session. Both D1
+   databases exist and have the schema. Before merging: a Cloudflare WAF
+   rate-limit rule on `/api/report` (the free plan allows one), made in the
+   dashboard, because the Function stores nothing about who sent a report and
+   so cannot count per sender itself.
+3. **The nightly, on the same branch.** Fetches only when nothing else is
+   asking (no refusal, no lane lock, no build running), deploys only with
+   `--deploy` and only from `master` with a clean tree. Not yet scheduled.
+4. **Email follow.** The design is the person's (12 September); the open
+   questions are the outbound mail service, what the About page promises
+   about holding an address, what a follow does when its bill concludes, and
+   whether "as soon as available" and "daily" differ when the record
+   refreshes once a night.
+
+**Done tonight:**
+
+- **Every record page is reachable without JavaScript.** `/directory` and 21
+  lists beneath it -- every bill of each of 19 terms, every sitting
+  legislator, every town and ward -- 34,409 static links where there had been
+  almost none (`build_indexes.py`, a `build_all` step). Bill, legislator and
+  committee pages carry schema.org JSON-LD (`structured.py`): Legislation,
+  Person with no email or phone, GovernmentOrganization, and breadcrumbs.
+- **Feeds only for bills still moving**, per the person's rule: a concluded
+  bill's page links no feed and none is written. 107 bill feeds, committee
+  feeds keyed by code, stale ones pruned.
+- **`publish.bat` refuses to deploy from any branch but `master`**, and names
+  the branch on the deploy line, so a deploy can no longer land on a preview
+  because of which branch git was on.
+- **The data is the General Court's of 6 September**, from the archive copy,
+  with a record-by-record diff before and after showing only 2026 changes.
+  The Judiciary committee's 30 September executive session is on HB 293 and
+  on the committee's page -- where it said "met", seventeen days early,
+  until the tense was fixed for days still to come (5 committee pages).
+- **Keyboard:** arrow keys on a tab strip keep focus; a page opens on its own
+  first tab; the version picker is a group of pressed buttons rather than a
+  tablist with no tabs; and focus survives the bill text arriving
+  asynchronously.
+
+**Found and not fixed:**
+
+- A pre-existing expansion collapses a joint hearing -- "Joint Ed and a and
+  Sen Pub Affs", one row of 1991-1992 -- into "Public Affairs", because
+  `\bPUB AFFS\b` searches rather than anchors. One row; the fix is to anchor
+  the pattern or skip strings that start "Joint".
+- `H Commerce`, 759 hearings of 1989-1998, the clerk writing COMMERCE for a
+  House committee renamed inside the decade. Left as written.

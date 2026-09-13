@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.5
+# GRANITE_VERSION: 2026-09-10.6
 """The committee a bill was referred to, read out of the docket.
 
     python3 referrals.py            # what it finds, by year, no network
@@ -223,6 +223,44 @@ PHRASES = [
     # rule, and a published key is the thing that lifts it.
     (r"\bJUDICIARY\s*(?:&|\+|AND)\s*F\.?\s*L\.?$", "Judiciary and Family Law"),
     (r"\bECON\.?\s*DEV(?:EL)?\.?$", "Economic Development"),
+    # THE HEARING LINE'S SHORTHAND, since 13 September. A hearing of 1989-1998
+    # names its committee after FOR:, in letters the referral line never uses
+    # -- "HEARING JAN28 08:30 RM104,LOB FOR: ED+A" -- and 9,094 rows of
+    # proceedings.csv named no committee the site has, "Ed and a" among them
+    # 598 times. Each entry below is in the General Court's key, and each is
+    # anchored to the whole string, because the key also holds entries that
+    # are only right for one era: PUBLIC WKS is "Public Works and Highways",
+    # the committee's name today, where the clerk of 1990 meant "Public
+    # Works". None of those is here.
+    #
+    # The proof is on the same bill. For every bill whose hearing line uses
+    # one of these, the referral line of the same bill in the same chamber
+    # was read, and it spells the expansion out: ED&A 601 of 630 bills, in
+    # both chambers; M&CG 253 of 261; RR&D 174 of 184; E&A 127 of 132; LABOR
+    # 178 of 186; HHS&EA 13 of 13; ST&E 9 of 9; CAP BUDGET 36 of 44, the rest
+    # a second referral to Transportation. What does not agree is a second
+    # committee -- Finance, Appropriations -- that the bill went to later.
+    # SB 143 of 1993 is the pattern: "REF TO EXEC DEPTS+ADMIN", then
+    # "HEARING ... FOR: ED+A".
+    #
+    # Left as the clerk wrote them, and why: "ST-FED" (113 hearings) and "ST
+    # INST" (118) are not in the key, and each committee changed its name
+    # inside these years, so which name a given year means is a guess.
+    (r"^E\.?\s*D\.?\s*(?:&|\+|AND)\s*A\.?$", "Executive Departments and Administration"),
+    (r"^E\.?\s*(?:&|\+|AND)\s*A\.?$", "Environment and Agriculture"),
+    (r"^R\.?\s*R\.?\s*(?:&|\+|AND)\s*D\.?$", "Resources, Recreation and Development"),
+    (r"^M\.?\s*(?:&|\+|AND)\s*C\.?\s*G?\.?$", "Municipal and County Government"),
+    (r"^S\.?\s*T\.?\s*(?:&|\+|AND)\s*E\.?$", "Science, Technology and Energy"),
+    (r"^H\.?\s*H\.?\s*S\.?\s*(?:&|\+|AND)\s*E\.?\s*A\.?$",
+     "Health, Human Services and Elderly Affairs"),
+    # LABOR alone is the clerk's name for the committee from 1989 to 2008 --
+    # 629 lines, every one in the House, where it has one Labor committee --
+    # and "LABOR IND REH" is the same name cut short twice.
+    (r"^LABOR(?:\s*,?\s*IND\.?\s*(?:&|\+|AND)?\s*REH\.?)?$",
+     "Labor, Industrial and Rehabilitative Services"),
+    # TRANS is above; these are the lengths the clerks stopped typing at.
+    (r"^TRANSP(?:O|OR|ORT|ORTATI)?\.?$", "Transportation"),
+    (r"^CAP(?:IT[AO]L)?\.?\s*BUDGET$", "Capital Budget"),
 ]
 
 
