@@ -1025,6 +1025,15 @@ committed on `master` except where it says otherwise, and is on the built
   the pattern or skip strings that start "Joint".
 - `H Commerce`, 759 hearings of 1989-1998, the clerk writing COMMERCE for a
   House committee renamed inside the decade. Left as written.
+- **A second pass of the same proof took nine more** (`referrals.py`
+  2026-09-10.7): EDUC, W&M, CRIM JUST, SCIENCE, ENV & AG(R) -- all current
+  committees -- and INSUR, ENVIRON, PUB WKS, PUB INST, which are historic. 1,224
+  hearing rows of 1989-1998 renamed, each in the chamber its proof came from.
+  JUD and WILDLIFE are left because they mean different committees in the
+  two chambers and `expand()` is not told the chamber; giving it the chamber
+  is the next step for those two (269 and 232 rows). Proceedings naming a
+  committee the site has no code for: 7,710 -> **7,035** (9,094 at the start
+  of the night). Records moved only for 1989-2003 bills.
 - **What is left unmatched is spelling, and it wants a canonical list per
   era before any of it is listed as a committee.** The Senate's insurance
   committee is `Insurance` (292), `Insur` (144) and `Insuranc` (12); there is

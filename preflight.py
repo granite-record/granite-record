@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.152
+# GRANITE_VERSION: 2026-09-04.153
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4290,6 +4290,11 @@ def _referral(referrals):
     assert e("M&CG") == "Municipal and County Government"
     assert e("LABOR") == "Labor, Industrial and Rehabilitative Services"
     assert e("E&A + RR&D") == "E&A + RR&D", "a joint hearing is two committees, not one"
+    assert e("EDUC") == "Education" and e("W&M") == "Ways and Means"
+    assert e("ENV & AGR") == e("ENV&AG") == "Environment and Agriculture"
+    # Chamber-dependent, and this function is not told the chamber.
+    assert e("JUD") == "JUD" and e("WILDLIFE") == "WILDLIFE"
+    assert e("PUB INSTIT") == "PUB INSTIT"
     assert e("ST-FED") == "ST-FED" and e("PUBLIC WKS") == "PUBLIC WKS"
     return "ok", "ten real docket lines, the hearing shorthand, and two that name no committee"
 
