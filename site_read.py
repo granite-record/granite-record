@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.2
+# GRANITE_VERSION: 2026-09-09.3
 """
 The built site, read back: one reader of the record inside a page.
 
@@ -55,25 +55,44 @@ def records(site="site", years=None):
         if not d.is_dir():
             continue
         for f in sorted(d.glob("*.html")):
-            text = f.read_text(encoding="utf-8", errors="replace")
-            m = INLINE.search(text)
-            if m:
-                raw = m.group(1)
-            else:
-                mm = META.search(text)
-                if not mm:
-                    continue
-                side = site / mm.group(1).lstrip("/")
-                if not side.exists():
-                    continue
-                raw = side.read_text(encoding="utf-8")
-            try:
-                yield d.name, f.stem.upper(), json.loads(raw)
-            except ValueError:
-                # A page whose record will not parse is worth knowing about,
-                # but it is one page: the caller counts them rather than
-                # having the walk stop on it.
-                continue
+            rec = _page_record(site, f)
+            if rec is not None:
+                yield d.name, f.stem.upper(), rec
+
+
+def _page_record(site, f):
+    """The record one bill page carries, inlined or beside it; None if none.
+
+    A page whose record will not parse is worth knowing about, but it is one
+    page: the caller counts them rather than having the walk stop on it.
+    """
+    text = f.read_text(encoding="utf-8", errors="replace")
+    m = INLINE.search(text)
+    if m:
+        raw = m.group(1)
+    else:
+        mm = META.search(text)
+        if not mm:
+            return None
+        side = Path(site) / mm.group(1).lstrip("/")
+        if not side.exists():
+            return None
+        raw = side.read_text(encoding="utf-8")
+    try:
+        return json.loads(raw)
+    except ValueError:
+        return None
+
+
+def one(site, year, bid):
+    """One bill's record, by the folder year and the bill id; None if absent.
+
+    For a caller that wants a single bill -- the report compiler shows what a
+    page says beside what a reader said about it -- and should not walk a
+    year of pages to find it. Same convention, same reading, as records().
+    """
+    f = Path(site) / "bill" / str(year) / f"{str(bid).lower()}.html"
+    return _page_record(site, f) if f.is_file() else None
 
 
 def stations(site="site", years=None):

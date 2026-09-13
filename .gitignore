@@ -178,3 +178,14 @@ past_members.json
 # The roll call detail pages, fetched for the party they carry.
 rollcall_party_pages/
 member_party.json
+
+# ---- reader reports ------------------------------------------------------
+# What strangers typed into the report box stays on this machine: the rows
+# pulled nightly (issues-*.jsonl) and the triage files built from them. The
+# schema, the triage rules, and the ledger of what was done about each report
+# -- written in the closer's own words, never the reader's -- are tracked.
+reports/*
+!reports/schema.sql
+!reports/TRIAGE.md
+!reports/handled.jsonl
+.dev.vars

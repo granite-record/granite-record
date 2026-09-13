@@ -1,0 +1,39 @@
+# GRANITE_VERSION: 2026-09-12.1
+#
+# The Pages project's configuration, which this file now owns. Until
+# 12 September there was none: the dashboard held a name and a compatibility
+# date and nothing else (wrangler pages download config), so adopting a file
+# loses no setting. From the first deploy that carries it, THIS FILE is the
+# source of truth and the dashboard shows these fields read-only.
+#
+# It exists for one binding: the database the report box writes to
+# (functions/api/report.js). Production and preview each name their own
+# database explicitly, rather than trusting a top-level binding to reach
+# previews -- the documentation says top-level applies "to local and
+# production" -- and so that a test report sent to a preview deployment never
+# lands among real readers' reports.
+#
+# The ids are not secrets. They name a database; using one needs this
+# account's credentials. A fork creates its own and replaces them.
+
+name = "graniterecord"
+pages_build_output_dir = "site"
+compatibility_date = "2026-09-04"
+
+# Top level: what `wrangler pages dev` uses locally, against a local copy.
+[[d1_databases]]
+binding = "DB"
+database_name = "graniterecord-reports"
+database_id = "1fb4afb6-62dc-455a-9357-0125bcf7577a"
+
+[env.production]
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "graniterecord-reports"
+database_id = "1fb4afb6-62dc-455a-9357-0125bcf7577a"
+
+[env.preview]
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "graniterecord-reports-preview"
+database_id = "39c58ee3-73cd-41a5-b998-b259bcf1d902"
