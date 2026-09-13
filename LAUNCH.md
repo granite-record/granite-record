@@ -930,7 +930,14 @@ committed on `master` except where it says otherwise, and is on the built
 3. **The nightly, on the same branch.** Fetches only when nothing else is
    asking (no refusal, no lane lock, no build running), deploys only with
    `--deploy` and only from `master` with a clean tree. Not yet scheduled.
-4. **Email follow.** The design is the person's (12 September); the open
+4. **`fetch_leadership.py` is ready to run -- five requests, once the refusal
+   is cleared** (d2606dc). It now saves the Senate's leadership and About
+   pages and the House Speaker's, Majority and Minority office pages, each an
+   address the General Court's own navigation links, 20 s apart, and stops on
+   the first refusal. `--parse` then reads them with no request. The House
+   pages have never been read, so the first `--parse` will print their lines
+   for a pattern to be written against. No consumer on the site yet.
+5. **Email follow.** The design is the person's (12 September); the open
    questions are the outbound mail service, what the About page promises
    about holding an address, what a follow does when its bill concludes, and
    whether "as soon as available" and "daily" differ when the record
