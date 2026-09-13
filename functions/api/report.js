@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.2
+// GRANITE_VERSION: 2026-09-12.3
 /*
  * POST /api/report -- a reader says something on a page is wrong.
  *
@@ -12,7 +12,10 @@
  * thing is wrong (from a list), the reader's sentence, and the build the page
  * came from. No IP address, no cookie, no identifier, no referrer, no email.
  * Volume is limited by a Cloudflare rate rule in front of this path and a daily
- * ceiling below, neither of which needs to know who anyone is.
+ * ceiling below, neither of which needs to know who anyone is. The rate rule
+ * lives on the graniterecord.org zone and sees only the site's own names, so
+ * since 13 September a post sent to any other address, or to any path but
+ * /api/report exactly, is refused before its body is read.
  *
  * EVERY ANSWER TO A POST IS 204. Success, a honeypot, a bad field, a full day,
  * a database error: the same empty answer, so a script learns nothing.
@@ -128,6 +131,10 @@ export async function memberPageMatches(env, request, url, id) {
 
 // Same site only, by name. Comparing the request with itself accepted every
 // old deployment address, which Cloudflare keeps serving for good.
+//
+// It reads the host of whatever address it is given, so onRequest asks it
+// twice: once of the Origin header, and once of the address the request was
+// actually sent to. One list and one rule for both, so they cannot drift.
 export function originAllowed(origin, env) {
   if (!origin) return false;
   let host;
@@ -170,6 +177,23 @@ export async function onRequest(context) {
       status: 405, headers: { "Allow": "POST", "Content-Type": "text/plain" } });
   }
   try {
+    // The address the request came to, before anything else is read. The
+    // rate rule in front of this path is a rule on the graniterecord.org zone,
+    // and it does not see graniterecord.pages.dev or any <hash>.graniterecord
+    // .pages.dev address -- which, for a production deployment, runs with the
+    // production database bound. An Origin header is one line a script
+    // writes, so it cannot be what keeps those addresses out. Added 13
+    // September 2026.
+    if (!originAllowed(request.url, env)) return NOTHING();
+    // And the path it came to, for the same reason. The router hands this
+    // function more than /api/report: in wrangler 4.131.1 a route matches
+    // with path-to-regexp, not strict and not case-sensitive, and the
+    // _routes.json rule it writes allows a trailing slash, so /api/report/
+    // reaches it -- and a rate rule written as path eq "/api/report" does not
+    // count that request. Case variants are refused too, rather than trusting
+    // _routes.json to stop them. The page posts to exactly /api/report
+    // (app.js), so no reader is refused by this. Added 13 September 2026.
+    if (new URL(request.url).pathname !== "/api/report") return NOTHING();
     if (!originAllowed(request.headers.get("Origin"), env)) return NOTHING();
     if (!(request.headers.get("Content-Type") || "").startsWith("application/json"))
       return NOTHING();

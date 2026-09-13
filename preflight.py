@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.156
+# GRANITE_VERSION: 2026-09-04.157
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5473,6 +5473,49 @@ ok("a member report from another member's page is not", rows.length === 2);
 r = await onRequest({ env, request: req("https://graniterecord.org",
   { ...member, url: "/legislator/owner-verified-close-all-1", note: "third" }) });
 ok("a member report with no page to check is not", rows.length === 2);
+// The address a post was sent to, not only the Origin it claims (13 September
+// 2026). graniterecord.pages.dev and every production deployment's hash address
+// run with the production database bound, the zone's rate rule sees neither,
+// and a script writes whatever Origin it likes. The two lists are wrangler.toml's.
+const prod = { ...env, REPORT_ORIGINS: %s };
+const prev = { ...env, REPORT_ORIGINS: %s };
+const sentTo = (at, o, body) => new Request(at + "/api/report", { method: "POST",
+  headers: { "Origin": o, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+const before = rows.length;
+r = await onRequest({ env: prod, request: sentTo("https://graniterecord.pages.dev",
+  "https://graniterecord.org", { ...good, note: "sent to the project address" }) });
+ok("production, sent to graniterecord.pages.dev under the site's Origin: nothing stored",
+   r.status === 204 && rows.length === before);
+r = await onRequest({ env: prod, request: sentTo("https://a8c6a9db.graniterecord.pages.dev",
+  "https://graniterecord.org", { ...good, note: "sent to a deployment address" }) });
+ok("production, sent to a deployment's hash address under the site's Origin: nothing stored",
+   r.status === 204 && rows.length === before);
+r = await onRequest({ env: prod, request: sentTo("https://a8c6a9db.graniterecord.pages.dev",
+  "https://a8c6a9db.graniterecord.pages.dev", { ...good, note: "sent from and to a deployment" }) });
+ok("production, a hash address as both host and Origin: nothing stored",
+   r.status === 204 && rows.length === before);
+r = await onRequest({ env: prod, request: new Request("https://graniterecord.pages.dev/api/report") });
+ok("GET on a refused host is still 405", r.status === 405);
+r = await onRequest({ env: prod, request: sentTo("https://graniterecord.org",
+  "https://graniterecord.org", { ...good, note: "sent to the site itself" }) });
+ok("production, the site's own address and Origin: stored", r.status === 204 && rows.length === before + 1);
+// The path as well as the host (13 September 2026): the Pages router sends
+// /api/report/ here too, and a rate rule on path eq "/api/report" does not
+// count it. The page posts to /api/report and nothing else.
+const at = (path, note) => new Request("https://graniterecord.org" + path, { method: "POST",
+  headers: { "Origin": "https://graniterecord.org", "Content-Type": "application/json" },
+  body: JSON.stringify({ ...good, note }) });
+r = await onRequest({ env: prod, request: at("/api/report/", "sent with a trailing slash") });
+ok("production, sent to /api/report/ with a trailing slash: nothing stored",
+   r.status === 204 && rows.length === before + 1);
+r = await onRequest({ env: prod, request: at("/API/Report", "sent in other letters") });
+ok("production, sent to /API/Report: nothing stored", r.status === 204 && rows.length === before + 1);
+r = await onRequest({ env: prod, request: at("/api/report?from=box", "sent with a query") });
+ok("production, /api/report with a query string is still that path: stored",
+   r.status === 204 && rows.length === before + 2);
+r = await onRequest({ env: prev, request: sentTo("https://abc123.graniterecord.pages.dev",
+  "https://abc123.graniterecord.pages.dev", { ...good, note: "sent to a preview" }) });
+ok("preview, a preview deployment's own address: stored", r.status === 204 && rows.length === before + 3);
 console.log(fail.length ? "FAILED: " + fail.join("; ") : "ALL OK");
 process.exit(fail.length ? 1 : 0);
 """
@@ -5484,10 +5527,12 @@ def _report_function():
 
     It accepts a report only in the shape a record's own page sends -- a
     record, that record's own address, a field from the list, the reader's
-    words -- from the site's own origin, after the box has been open three
-    seconds, with the honeypot empty. It answers 204 to all of it, so a script
-    learns nothing. And it reads nothing that identifies a reader: no IP
-    header, no cookie; the schema has no column that could hold one.
+    words -- sent to one of the site's own addresses at /api/report exactly,
+    from the site's own origin, after the box has been open three seconds,
+    with the honeypot empty. It answers 204 to all of it, so a script learns
+    nothing. And it
+    reads nothing that identifies a reader: no IP header, no cookie; the
+    schema has no column that could hold one.
     """
     fn = Path("functions/api/report.js")
     if not fn.exists():
@@ -5508,16 +5553,30 @@ def _report_function():
     node = shutil.which("node")
     if not node:
         return "skip", "node is not on PATH"
+    # The host cases run against the lists wrangler.toml actually deploys, so a
+    # wildcard added to production's list fails here rather than in the
+    # database. The literals are for a folder without the file.
+    origins = {"production": "graniterecord.org www.graniterecord.org",
+               "preview": "*.graniterecord.pages.dev"}
+    toml = Path("wrangler.toml")
+    if toml.exists():
+        import tomllib
+        envs = tomllib.loads(toml.read_text(encoding="utf-8")).get("env", {})
+        for which in origins:
+            origins[which] = envs[which]["vars"]["REPORT_ORIGINS"]
     root = Path(tempfile.mkdtemp())
     try:
         t = root / "t.mjs"
-        t.write_text(REPORT_JS_TEST % json.dumps(fn.resolve().as_uri()), encoding="utf-8")
+        t.write_text(REPORT_JS_TEST % (json.dumps(fn.resolve().as_uri()),
+                                       json.dumps(origins["production"]),
+                                       json.dumps(origins["preview"])), encoding="utf-8")
         r = _run([node, str(t)], capture_output=True, text=True)
         assert r.returncode == 0 and "ALL OK" in r.stdout, (r.stdout + r.stderr).strip()[-400:]
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    return "ok", (f"{len(cols)} columns, none about the reader; origin, honeypot, "
-                  "dwell, shape and record-page agreement all enforced; always 204")
+    return "ok", (f"{len(cols)} columns, none about the reader; the host and path sent to and "
+                  "the origin, honeypot, dwell, shape and record-page agreement all enforced; "
+                  "always 204")
 
 
 REPORT_GENUINE = [
@@ -5715,6 +5774,60 @@ def _triage_rules():
     return "ok", "claim-not-instruction, no fetch, held reports unread, proposals wait"
 
 
+@check("build", "the triage session is told to open the file the compiler writes",
+       needs=("compile_reports", "nightly"))
+def _triage_file_name(CR, NI):
+    """compile_reports.py names the triage file for the database it pulled:
+    reports/triage-production-<date>.md. Until 13 September 2026 nightly.py and
+    reports/TRIAGE.md both told the reader to open a name without the database
+    in it, which nothing writes -- so the session told to read it would have
+    found no file on any night, and a failed pull would have looked exactly
+    like a night nobody reported anything.
+
+    The name is taken from the writer itself, run here in a throwaway folder
+    on a pull that returns no rows, rather than from a pattern copied out of
+    its source. Every triage file name the three documents give is held to
+    it, and so is the name of the marker nightly.py leaves when the step fails.
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    tmp = Path(tempfile.mkdtemp())
+    saved = (CR.OUT, CR.LEDGER, CR.pull, sys.argv)
+    first = _dt.date.today().isoformat()
+    try:
+        CR.OUT, CR.LEDGER = tmp / "reports", tmp / "reports" / "handled.jsonl"
+        CR.pull = lambda db, after: []
+        sys.argv = ["compile_reports.py", "--site", str(tmp / "site")]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            rc = CR.main()
+        written = sorted(p.name for p in CR.OUT.glob("triage-*.md"))
+    finally:
+        CR.OUT, CR.LEDGER, CR.pull, sys.argv = saved
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert rc == 0 and len(written) == 1, f"a compile of no rows wrote {written} (exit {rc})"
+    name = written[0]
+    # Two dates, in case the compile ran across midnight.
+    day = next((d for d in (first, _dt.date.today().isoformat())
+                if name == NI.TRIAGE_NAME.format(day=d)), None)
+    assert day, f"compile_reports.py writes reports/{name}; nightly.py looks for {NI.TRIAGE_NAME}"
+    for doc in ("nightly.py", "reports/TRIAGE.md", "compile_reports.py"):
+        text = Path(doc).read_text(encoding="utf-8")
+        named = re.findall(r"reports/(triage-[A-Za-z0-9<>_-]+\.md)", text)
+        assert named, f"{doc} no longer names the triage file"
+        for n in named:
+            assert n.replace("<db>", "production").replace("<date>", day) == name, \
+                f"{doc} names reports/{n}; compile_reports.py writes reports/{name}"
+    marker = NI.FAILED_NAME.format(day=day)
+    for doc in ("nightly.py", "reports/TRIAGE.md"):
+        named = re.findall(r"reports/(FAILED-[A-Za-z0-9<>_-]+\.txt)",
+                           Path(doc).read_text(encoding="utf-8"))
+        assert named and all(n.replace("<date>", day) == marker for n in named), \
+            f"{doc} names {named or 'no failure marker'}; nightly.py writes reports/{marker}"
+    return "ok", (f"compile_reports.py writes reports/{name.replace(day, '<date>')}, and "
+                  "nightly.py, TRIAGE.md and its own docstring all say so; the failure marker agrees")
+
+
 # ---- the nightly ---------------------------------------------------------------
 
 @check("build", "the daily snapshot stops when told no, and installs all of tonight's files or none",
@@ -5853,6 +5966,485 @@ def _nightly_guards(NI):
         "the nightly deploys without checking the folder is on the production branch"
     return "ok", ("defers on a lock or any refusal; lock for the fetch only; feeds gate; "
                   "ceiling beyond --force; deploy opt-in, committed tree only")
+
+
+# What nightly.py's logs say, in its own words. Its own lines start at the
+# beginning of a line; every line a step it runs prints is indented two spaces
+# by run(), so no child's output -- compile_reports.py printing a failed pull
+# included -- can write any of these.
+NIGHTLY_STALE_HOURS = 48      # two nights missed: one can be a machine switched off
+NIGHTLY_WEEK = 7              # a week; the nightly keeps fourteen logs
+NIGHTLY_SCHEDULE_RUN = 3      # three runs in a row about a day apart is a schedule
+NIGHTLY_DAY_APART = (18, 30)  # hours: a day, give or take a missed start run late
+NIGHTLY_STARTED = re.compile(r"^Granite Record nightly  (\d{4}-\d\d-\d\d \d\d:\d\d)", re.M)
+NIGHTLY_INSTALLED = re.compile(r"^--- what the General Court changed ---$", re.M)
+NIGHTLY_NO_FETCH = re.compile(r"^--- fetch ---\n  skipped: --no-fetch$", re.M)
+NIGHTLY_REPORTS_RAN = re.compile(r"^--- what readers reported ---$", re.M)
+NIGHTLY_REPORTS_FAILED = re.compile(r"^REPORTS FAILED:", re.M)
+# Why a night meant to fetch installed nothing. The first that matches wins.
+NIGHTLY_WHY = [
+    (re.compile(r"^DEFERRED: a build is running", re.M), "deferred to a running build"),
+    (re.compile(r"^STOPPED: preflight failed", re.M), "stopped at preflight"),
+    (re.compile(r"^FETCH DEFERRED: a refusal is on file", re.M), "waited out a refusal on file"),
+    (re.compile(r"^FETCH DEFERRED: archive/\.lock is held", re.M),
+     "found archive/.lock held by the lane or a fetch"),
+    (re.compile(r"^REFUSED while fetching", re.M), "were refused while fetching"),
+    (re.compile(r"^The fetch did not complete", re.M), "had a fetch that did not complete"),
+]
+NIGHTLY_WHY_UNNAMED = "installed nothing for a reason the log does not name"
+
+
+def _nightly_night(text):
+    """What one nightly log says its night did, from nightly.py's own lines."""
+    from datetime import datetime
+    m = NIGHTLY_STARTED.search(text)
+    failed = bool(NIGHTLY_REPORTS_FAILED.search(text))
+    return {"started": datetime.strptime(m.group(1), "%Y-%m-%d %H:%M") if m else None,
+            "installed": bool(NIGHTLY_INSTALLED.search(text)),
+            "no_fetch": bool(NIGHTLY_NO_FETCH.search(text)),
+            "why": next((w for p, w in NIGHTLY_WHY if p.search(text)), NIGHTLY_WHY_UNNAMED),
+            "reports_ran": failed or bool(NIGHTLY_REPORTS_RAN.search(text)),
+            "reports_failed": failed}
+
+
+def _nightly_log_findings(logs, now):
+    """(problems, summary, scheduled) for the nightly logs in `logs`, as of `now`.
+
+    problems is None when there is no log at all. scheduled is whether the logs
+    show the nightly running on a schedule -- three runs in a row, each 18 to 30
+    hours after the one before -- and only then is an old newest log a problem.
+    Until 13 September 2026 any old log was: master's one nightly log is from a
+    manual run on 4 September that stopped with exit 1, and nothing has
+    scheduled the nightly, so preflight there would have said "the nightly has
+    stopped running" of a nightly that never started.
+
+    No problem quotes a log: a REPORTS FAILED: line carries what the step
+    printed, which can be what the database sent back, and preflight's output
+    is read by assistant sessions. And each problem says whose it is to clear
+    and how it clears, because a session told to fix preflight first would
+    otherwise reach for nightly.py, which fetches from the General Court.
+    """
+    from datetime import datetime
+    found = sorted(Path(logs).glob("nightly-*.log"))
+    if not found:
+        return None, ("no logs/nightly-*.log here: the nightly has never run in this folder, "
+                      "which means it has not been scheduled (or runs somewhere else)"), False
+    nights = []
+    for f in found:
+        n = _nightly_night(f.read_text(encoding="utf-8", errors="replace"))
+        n["name"] = f.name
+        n["started"] = n["started"] or datetime.fromtimestamp(f.stat().st_mtime)
+        nights.append(n)
+    lo, hi = NIGHTLY_DAY_APART
+    streak = longest = 1
+    for a, b in zip(nights, nights[1:]):
+        gap = (b["started"] - a["started"]).total_seconds() / 3600
+        streak = streak + 1 if lo <= gap <= hi else 1
+        longest = max(longest, streak)
+    scheduled = longest >= NIGHTLY_SCHEDULE_RUN
+    newest = nights[-1]
+    hours = (now - newest["started"]).total_seconds() / 3600
+    problems = []
+
+    if scheduled and hours > NIGHTLY_STALE_HOURS:
+        problems.append(
+            f"The newest nightly log, logs/{newest['name']}, is from a run that started "
+            f"{newest['started']:%Y-%m-%d %H:%M}, {hours:.0f} hours ago, and the logs before it "
+            "show a schedule: the nightly has stopped running, or stopped reaching the end where "
+            "it writes its log. Starting it again, or deciding it should stay stopped, is the "
+            "person's decision, because it fetches from the General Court: tell them, and do not "
+            "run nightly.py in any form to clear this. It clears when the nightly next writes a log.")
+
+    meant = [n for n in nights if not n["no_fetch"]][-NIGHTLY_WEEK:]
+    if len(meant) == NIGHTLY_WEEK and not any(n["installed"] for n in meant):
+        causes = ", ".join(f"{k} {why}" for why, k in
+                           Counter(n["why"] for n in meant).most_common())
+        problems.append(
+            f"The last {NIGHTLY_WEEK} nightly logs meant to fetch, {meant[0]['name']} to "
+            f"{meant[-1]['name']}, installed none of the General Court's files: {causes}. Those "
+            "files are live views, and a day not fetched cannot be fetched later. Clearing what "
+            "stopped them is the person's decision -- a refusal (only after netcheck.py), "
+            "whatever holds archive/.lock, a fetch that fails: tell them, and do not run "
+            "nightly.py, a fetch_*.py script or refusal.py --clear to clear this. It clears on "
+            "the first night that installs the day's files.")
+
+    ran = [n for n in nights if n["reports_ran"]]
+    if ran and ran[-1]["reports_failed"]:
+        problems.append(
+            f"logs/{ran[-1]['name']}, the newest log whose night reached the reports step, "
+            "records REPORTS FAILED: those reader reports were not compiled, and no pull has "
+            "worked since. Do not open the log for the reason: that line can carry what the "
+            "database sent back, and it is for the person to read. Tell them, and do not run "
+            "compile_reports.py or nightly.py to repair the pull. It clears when a later "
+            "nightly's reports step succeeds.")
+
+    if not scheduled:
+        summary = (f"{len(nights)} nightly log{'s' if len(nights) != 1 else ''}, the newest "
+                   f"{newest['name']} from {newest['started']:%Y-%m-%d %H:%M}, and no "
+                   f"{NIGHTLY_SCHEDULE_RUN} in a row about a day apart: manual runs, not a "
+                   "schedule, so their age says nothing about whether the nightly is running")
+    else:
+        summary = (f"{len(nights)} nightly logs on a schedule; the newest, {newest['name']}, "
+                   f"started {hours:.0f} hours ago")
+    summary += (f"; the last reports step, in {ran[-1]['name']}, did not fail" if ran
+                else "; no log reached the reports step")
+    return problems, summary, scheduled
+
+
+def _nightly_log_selftest():
+    """The log reader on folders of made-up logs whose answers are known.
+
+    The bodies use nightly.py's own sentences; _nightly_reports_loud holds the
+    reader to logs nightly.main() really writes, so a sentence changed there
+    fails there rather than passing here.
+    """
+    import time
+    from datetime import datetime, timedelta
+    now = datetime(2026, 9, 13, 9, 0)
+    tmp = Path(tempfile.mkdtemp())
+    pre = "\n--- preflight ---\n  (12s, exit 0)\n"
+    nothing = "\nNothing new was installed, so there is nothing to rebuild.\n"
+    reports = "\n--- what readers reported ---\n  0 new, 0 for triage, 0 held, 0 malformed\n  (3s, exit 0)"
+    good = (pre + "\n--- the day's bulk files ---\n  (40s, exit 0)\n"
+            "\n--- what the General Court changed ---\n  (1s, exit 0)\n"
+            "\n--- rebuild ---\n  (900s, exit 0)\n" + reports)
+    refused = (pre + "\nFETCH DEFERRED: a refusal is on file (docket at 2026-09-12T21:36); "
+               "clearing one is a person's decision, after netcheck.py\n" + nothing + reports)
+    locked = (pre + "\nFETCH DEFERRED: archive/.lock is held (pid 1): the lane or a fetch is "
+              "running\n" + nothing + reports)
+    building = ("\nDEFERRED: a build is running (.build.lock is fresh). Nothing done, and no "
+                "reports: they read the pages that build is rewriting.")
+    fetch_failed = (pre + "\n--- the day's bulk files ---\n  (40s, exit 1)\n\nThe fetch did not "
+                    "complete (exit 1); nothing was installed, so tonight's build would be "
+                    "yesterday's.\n" + nothing + reports)
+    stopped = ("\n--- preflight ---\n  (12s, exit 1)\n\nSTOPPED: preflight failed. Nothing "
+               "fetched, nothing built.\n" + reports)
+    no_fetch = pre + "\n--- fetch ---\n  skipped: --no-fetch\n\n--- rebuild ---\n  (900s, exit 0)\n" + reports
+    pull_failed = good + "\n\nREPORTS FAILED: compile_reports.py exit 1: SECRET-WORDS"
+    # Master's one nightly log, 4 September: a run by hand from an older
+    # nightly.py, no fetch step, stopped in the build with exit 1.
+    by_hand = ("\nlive now: 2,234 bills, 406 legislators, 2,234 bill_data, 2,234 bill_pages\n"
+               + pre + "\n--- rebuild ---\n  18 steps, session 2026\n  [1/18] archive the bulk "
+               "files\n        FAILED after 15.5s\n\n" + "=" * 74 + "\nfinished 17:56, 3 min, exit 1")
+
+    def night(day, body=good, at="03:00", header=True):
+        head = f"{'=' * 74}\nGranite Record nightly  {day} {at}\n{'=' * 74}\n" if header else ""
+        f = tmp / f"nightly-{day}.log"
+        f.write_text(head + body + "\n", encoding="utf-8")
+        return f
+
+    def nights(bodies, last=now, at="03:00"):
+        """One log a night, a day apart, the last of them on `last`'s date."""
+        for k, body in enumerate(bodies):
+            night(f"{last - timedelta(days=len(bodies) - 1 - k):%Y-%m-%d}", body, at)
+
+    def read():
+        return _nightly_log_findings(tmp, now)
+
+    def findings():
+        return read()[0]
+
+    def says_whose(problem):
+        return "person" in problem and "It clears" in problem and "do not run" in problem
+
+    def clear():
+        for f in tmp.iterdir():
+            f.unlink()
+
+    try:
+        assert findings() is None, "a folder with no nightly log was not a skip"
+        (tmp / "build.log").write_text("DEFERRED: not the nightly's\n", encoding="utf-8")
+        assert findings() is None, "a log that is not the nightly's was read as one"
+        clear()
+        night("2026-09-13")
+        assert findings() == [], f"a good night this morning was a problem: {findings()}"
+
+        # Old is stale only once the logs show a schedule.
+        clear()
+        night("2026-09-04", by_hand, at="17:53")
+        problems, summary, scheduled = read()
+        assert problems == [] and not scheduled, \
+            f"one old log from a run by hand was read as a nightly that stopped: {problems}"
+        assert "manual runs" in summary, summary
+        night("2026-09-03", by_hand, at="17:10")
+        assert findings() == [], "two old runs by hand a day apart were read as a schedule"
+        clear()
+        for day in ("2026-09-01", "2026-09-03", "2026-09-05"):
+            night(day)
+        assert findings() == [] and not read()[2], "three runs two days apart were read as a schedule"
+        clear()
+        nights([good] * 3, last=datetime(2026, 9, 11), at="10:00")      # 47 hours
+        assert findings() == [] and read()[2], "a scheduled night 47 hours ago was called stale"
+        clear()
+        nights([good] * 3, last=datetime(2026, 9, 11), at="08:00")      # 49 hours
+        got = findings()
+        assert got and "stopped running" in got[0], "a scheduled night 49 hours ago was not stale"
+        assert says_whose(got[0]) and "nightly.py" in got[0], \
+            "the stale message does not say it is the person's, and how it clears"
+        clear()
+        nights([good] * 3, last=datetime(2026, 8, 22))
+        night("2026-09-04", by_hand, at="17:53")
+        got = findings()
+        assert got and "stopped running" in got[0], \
+            "a schedule that stopped, then one run by hand, was not stale"
+        clear()
+        nights([good] * 2, last=datetime(2026, 9, 10), at="07:00")
+        old = night("2026-09-11", header=False)               # no header: the file's own time
+        t = time.mktime((now - timedelta(hours=50)).timetuple())
+        os.utime(old, (t, t))
+        assert findings() and "stopped running" in findings()[0], "a headerless stale log passed"
+
+        # A week meant to fetch that installed nothing, whatever the cause.
+        clear()
+        nights([refused] * 7)
+        got = findings()
+        assert len(got) == 1 and "7 waited out a refusal" in got[0], f"a week of refusal: {got}"
+        assert says_whose(got[0]) and "refusal.py --clear" in got[0], \
+            "the week message does not say clearing it is the person's"
+        clear()
+        nights([locked, building] * 3 + [locked])
+        got = findings()
+        assert got and "4 found archive/.lock held" in got[0] and "3 deferred to a running build" \
+            in got[0], f"the causes of a week were not named: {got}"
+        clear()
+        nights([fetch_failed] * 7)
+        assert findings() and "did not complete" in findings()[0], "a week of failed fetches passed"
+        clear()
+        nights([stopped] * 7)
+        assert findings() and "stopped at preflight" in findings()[0], \
+            "a week stopped at preflight passed"
+        night(f"{now - timedelta(days=7):%Y-%m-%d}")          # an older good night changes nothing
+        assert findings(), "an eighth, older good night hid the week"
+        night(f"{now:%Y-%m-%d}")                              # the newest one fetched
+        assert findings() == [], "six nights stopped and a good one were a problem"
+        clear()
+        nights([refused] * 6)
+        assert findings() == [], "six nights without a fetch are not yet a week"
+        clear()
+        nights([refused] * 6 + [no_fetch])
+        assert findings() == [], "a --no-fetch night was counted as a night meant to fetch"
+        night(f"{now - timedelta(days=7):%Y-%m-%d}", refused)
+        assert findings(), "a --no-fetch night ended a week without a fetch"
+        clear()
+        nights([no_fetch] * 7)
+        assert findings() == [], "a week of rebuilds by hand with --no-fetch was a missed week"
+        clear()
+        nights([good + "\n  FETCH DEFERRED: said by a child"] * 7)
+        assert findings() == [], "a step's indented output was read as the nightly deferring"
+        clear()
+        nights([refused.replace("  (12s", "  --- what the General Court changed ---\n  (12s")] * 7)
+        assert findings(), "a step's indented output was read as the nightly installing"
+
+        # REPORTS FAILED: in the newest log whose night reached the reports step.
+        clear()
+        night("2026-09-12", pull_failed)
+        night("2026-09-13")
+        assert findings() == [], "a report failure two nights ago, followed by a good night, still failed"
+        night("2026-09-13", pull_failed)
+        got = findings()
+        assert got and "REPORTS FAILED" in got[0], "the newest log's REPORTS FAILED: passed"
+        assert "SECRET-WORDS" not in " ".join(got), "the check quoted what the failed step printed"
+        assert says_whose(got[0]) and "Do not open the log" in got[0], \
+            "the REPORTS FAILED message does not keep a session out of the log"
+        night("2026-09-13", building)
+        got = findings()
+        assert got and "nightly-2026-09-12.log" in got[0], \
+            "a failed pull followed by a night that ran no reports step passed"
+        clear()
+        night("2026-09-13", good.replace("  0 new", "  REPORTS FAILED: a child's line"))
+        assert findings() == [], "a step's indented output was read as the nightly's REPORTS FAILED:"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return ("empty folder skips; old logs are stale only on a schedule, 47 h fresh, 49 h stale; "
+            "seven nights meant to fetch that installed nothing fail, with the cause, and "
+            "--no-fetch nights do not count; REPORTS FAILED: counts from the newest log that "
+            "reached the reports step, and is never quoted")
+
+
+@check("build", "a failed report pull is loud in the log and where the triage session looks, "
+       "and changes nothing else", needs=("nightly",))
+def _nightly_reports_loud(NI):
+    """compile_reports.py runs in nightly.py's finally and never changes the
+    night's exit status; that stays. Until 13 September 2026 its failure was
+    one indented line in a long log, and the triage session, finding no file,
+    could not tell a failed pull from a night nobody reported anything.
+
+    Driven here through nightly.main() itself, in a throwaway folder, with
+    every step it runs faked: a step that exits 1, one that exits 0 and writes
+    nothing, and one that cannot start each leave a line beginning REPORTS
+    FAILED: with the reason, and reports/FAILED-<date>.txt without it; a step
+    that writes its file leaves neither; the night's exit status is 0 in every
+    case. And the logs those nights really wrote are read by the same reader
+    the data check uses on logs/, so the reader matches the writer's own words
+    rather than words typed into a test: a night that installed the day's
+    files, one that waited out a refusal, one that found the lane's lock, a
+    fetch that failed or was refused, a night stopped at preflight, a
+    --no-fetch night and a night deferred to a build are each read as what
+    they were. The refusal and the lock are real files in the throwaway
+    folder, read by nightly.gc_quiet() itself; no step runs.
+    """
+    import contextlib
+    import io
+    from datetime import datetime
+    import refusal
+    detail = _nightly_log_selftest()
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp())
+    saved = (NI.run, NI.gc_quiet, NI.build_running, NI.LOG, sys.argv)
+    saved_gc = (refusal.MARK, refusal.LOCK)
+    real_gc_quiet = NI.gc_quiet
+
+    def night(compile_rc=0, writes=True, raises=False, deferred=False, gc="lock", rcs=None,
+              argv=()):
+        for d in ("logs", "reports", "archive"):
+            shutil.rmtree(d, ignore_errors=True)
+        Path("archive").mkdir()
+        if gc == "lock":
+            refusal.LOCK.write_text("1", encoding="utf-8")
+        elif gc == "refusal":
+            refusal.MARK.write_text('{"at": "2026-09-12T21:36:00", "epoch": 0, "where": "docket"}',
+                                    encoding="utf-8")
+        NI.LOG = []
+        NI.build_running = lambda: deferred
+        NI.gc_quiet = real_gc_quiet
+
+        def fake(args, label):
+            NI.say(f"\n--- {label} ---")
+            rc = (rcs or {}).get(args[0], 0)
+            if args[0] == "compile_reports.py":
+                if raises:
+                    raise OSError("the interpreter is gone")
+                rc = compile_rc
+                if rc:
+                    NI.say("  RuntimeError: wrangler d1 execute failed: SECRET-WORDS")
+                elif writes:
+                    Path("reports").mkdir(exist_ok=True)
+                    (Path("reports") / NI.TRIAGE_NAME.format(day=f"{datetime.now():%Y-%m-%d}")
+                     ).write_text("# Reader reports\n", encoding="utf-8")
+                    NI.say("  0 new, 0 for triage, 0 held, 0 malformed")
+            NI.say(f"  (0s, exit {rc})")
+            return rc
+        NI.run = fake
+        sys.argv = ["nightly.py", *argv]
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = NI.main()
+        log = sorted(Path("logs").glob("nightly-*.log"))[-1].read_text(encoding="utf-8")
+        markers = sorted(Path("reports").glob("FAILED-*.txt"))
+        return code, log, markers
+
+    try:
+        os.chdir(tmp)
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        code, log, markers = night(compile_rc=1)
+        assert code == 0, f"a failed report step changed the night's exit status to {code}"
+        line = NIGHTLY_REPORTS_FAILED.search(log)
+        assert line, "a report step that exited 1 left no line beginning REPORTS FAILED:"
+        assert re.search(r"^REPORTS FAILED: compile_reports\.py exit 1: .*SECRET-WORDS", log, re.M), \
+            "the REPORTS FAILED: line does not carry the reason the step gave"
+        assert len(markers) == 1, f"no reports/FAILED-<date>.txt for the triage session: {markers}"
+        said = markers[0].read_text(encoding="utf-8")
+        assert said.startswith("REPORTS FAILED:") and len(said.strip().splitlines()) == 1, said
+        assert "SECRET-WORDS" not in said, "the marker the triage session reads carries the step's output"
+        assert re.search(r"logs/nightly-\d{4}-\d\d-\d\d\.log", said), "the marker does not name the log"
+        problems, _, _ = _nightly_log_findings(Path("logs"), datetime.now())
+        assert problems and any("REPORTS FAILED" in p for p in problems), \
+            "the log reader did not see the REPORTS FAILED: the nightly really wrote"
+        assert "SECRET-WORDS" not in " ".join(problems), "the reader quoted the failed pull"
+        failed_log = log
+
+        code, log, markers = night(compile_rc=0, writes=False)
+        assert code == 0 and NIGHTLY_REPORTS_FAILED.search(log) and markers, \
+            "a report step that exited 0 and wrote no triage file was taken for success"
+        code, log, markers = night(raises=True)
+        assert code == 0 and NIGHTLY_REPORTS_FAILED.search(log) and markers, \
+            "a report step that could not start was not REPORTS FAILED:"
+
+        code, log, markers = night()
+        assert code == 0 and not NIGHTLY_REPORTS_FAILED.search(log) and not markers, \
+            "a report step that worked was called a failure"
+        assert _nightly_log_findings(Path("logs"), datetime.now())[0] == [], \
+            "the log of a night that worked was a problem to the reader"
+        n = _nightly_night(log)
+        assert not n["installed"] and "archive/.lock" in n["why"] and n["reports_ran"], \
+            f"the reader misread a night that found the lane's lock: {n}"
+
+        # What each kind of night really writes, read back.
+        def reads(label, want, **kw):
+            n = _nightly_night(night(**kw)[1])
+            got = {k: n[k] for k in want if k != "why"}
+            assert got == {k: v for k, v in want.items() if k != "why"} and \
+                want.get("why", "") in n["why"], f"the reader misread {label}: {n}"
+        reads("a night that installed the day's files", {"installed": True, "no_fetch": False,
+              "reports_ran": True, "reports_failed": False}, gc="clear")
+        assert not refusal.LOCK.exists(), "the nightly left its own lock behind"
+        reads("a night that waited out a refusal", {"installed": False, "why": "refusal"},
+              gc="refusal")
+        reads("a fetch that failed", {"installed": False, "why": "did not complete"},
+              gc="clear", rcs={"snapshot_gencourt.py": 1})
+        reads("a fetch that was refused", {"installed": False, "why": "refused while fetching"},
+              gc="clear", rcs={"snapshot_gencourt.py": 2})
+        reads("a night stopped at preflight", {"installed": False, "reports_ran": True,
+              "why": "stopped at preflight"}, gc="clear", rcs={"preflight.py": 1})
+        reads("a --no-fetch night", {"installed": False, "no_fetch": True}, argv=["--no-fetch"])
+
+        code, log, markers = night(deferred=True)
+        n = _nightly_night(log)
+        assert code == 0 and "running build" in n["why"] and not n["installed"], \
+            f"the reader does not recognise the DEFERRED: a build-running night writes: {n}"
+        assert not n["reports_ran"] and not markers, "a deferred night ran or failed the report step"
+        # A failed pull, then a night deferred to a build: the failure still stands.
+        (Path("logs") / "nightly-2000-01-01.log").write_text(failed_log, encoding="utf-8")
+        problems = _nightly_log_findings(Path("logs"), datetime.now())[0]
+        assert problems and "nightly-2000-01-01.log" in problems[-1], \
+            "a night that ran no reports step hid the failed pull before it"
+    finally:
+        os.chdir(here)
+        NI.run, NI.gc_quiet, NI.build_running, NI.LOG, sys.argv = saved
+        refusal.MARK, refusal.LOCK = saved_gc
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("exit 1, exit 0 with no file, and a step that cannot start are each REPORTS "
+                  "FAILED: in the log and a marker without the reason; exit status untouched; "
+                  "the reader reads what nightly.py writes, night by kind. Reader: " + detail)
+
+
+@check("data", "the nightly is still running, and its last report pull worked")
+def _nightly_logs():
+    """The nightly runs from Task Scheduler with nobody watching, so the way to
+    notice it has stopped is its logs. Read from logs/:
+
+      - no nightly log at all is a skip: it has never been scheduled here;
+      - logs that show no schedule -- no three runs in a row about a day
+        apart -- are runs by hand, and their age is not a finding: the check
+        skips unless one of the two below fails;
+      - on a schedule, the newest log from a run that started more than 48
+        hours ago fails;
+      - the last seven logs of nights meant to fetch (not --no-fetch) that
+        installed none of the General Court's files fail, naming what stopped
+        each -- a refusal on file, the lane's lock, a build, preflight, a
+        failed fetch. Those files are live views and cannot be fetched later.
+        Until 13 September this looked for DEFERRED: instead, which failed a
+        week of waiting out a refusal and passed a week of failed fetches;
+      - the newest log whose night reached the reports step recording REPORTS
+        FAILED: fails, without quoting it. Until 13 September it read only the
+        newest log, so a night deferred to a build hid the failed pull before.
+
+    Every failure says the remedy is the person's and how it clears: nightly.py
+    fetches from the General Court and pulls from D1, and a session told to
+    make preflight green must not reach for it.
+
+    A data check, not a code one, on purpose: nightly.py gates itself on
+    preflight --code, and a check that failed on the nightly's own last log
+    would stop the next night's fetch because the last night's report pull
+    failed. The reader is unit-tested on made-up logs first (and, under
+    --code, on logs nightly.main() really writes).
+    """
+    from datetime import datetime
+    _nightly_log_selftest()
+    problems, summary, scheduled = _nightly_log_findings(Path("logs"), datetime.now())
+    if problems is None:
+        return "skip", summary
+    assert not problems, "\n".join(problems)
+    return ("ok" if scheduled else "skip"), summary
 
 
 @check("build", "what changed at the General Court is read from two copies of its files",

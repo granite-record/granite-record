@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -54,11 +54,26 @@ THE GATES, before any deploy
 
 WHAT IT WRITES FOR THE MORNING
 
-  reports/gc-changes-<date>.md   what the General Court's files changed (gc_changes.py)
-  reports/triage-<date>.md       what readers reported, screened (compile_reports.py)
+  reports/gc-changes-<date>.md          what the General Court's files changed (gc_changes.py)
+  reports/triage-production-<date>.md   what readers reported, screened (compile_reports.py)
+  reports/FAILED-<date>.txt             written only when the reports step failed
+
+The triage file is named for the database it was pulled from. The nightly pulls
+production's; a file for the preview database is only ever made by hand, and is
+never triaged. Until 13 September this docstring and reports/TRIAGE.md both
+left the database out of the name -- a file nothing writes -- so the session
+told to open it would have found nothing on every night, and could not have
+told a failed pull from a quiet one.
 
 Neither can change the night's exit status: a broken report step is logged and
-the site is unaffected.
+the site is unaffected. But it is not allowed to be quiet either. The log gets
+a line beginning REPORTS FAILED: with the reason, and reports/FAILED-<date>.txt
+says so where the triage session looks. preflight's data check fails on that
+line in the newest log that reached the reports step, on a newest log more
+than 48 hours old once the logs show a schedule, and on seven nights meant to
+fetch that installed nothing, whatever stopped them. It reads the lines this
+file writes at the start of a line, so a change to their wording is a change
+to preflight too.
 """
 
 import argparse
@@ -88,10 +103,54 @@ FILE_CEILING = 95_000
 BUILD_LOCK = Path(".build.lock")
 BUILD_LIVE = 180          # build_all touches its lock every 30 s
 
+# What compile_reports.py writes for the production database, and what the
+# nightly writes in the same folder when that step fails. preflight holds the
+# first to the writer, and both to reports/TRIAGE.md, which tells the triage
+# session to open them.
+REPORTS = Path("reports")
+TRIAGE_NAME = "triage-production-{day}.md"
+FAILED_NAME = "FAILED-{day}.txt"
+
 
 def say(msg=""):
     print(msg, flush=True)
     LOG.append(msg)
+
+
+def last_words(lines):
+    """The last line a step printed, from its stretch of LOG: the reason it gave.
+
+    run() logs a header, the step's own lines, and a closing "(Ns, exit N)".
+    """
+    said = [ln.strip() for ln in lines[1:-1] if ln.strip()]
+    return said[-1][:300] if said else "it printed nothing"
+
+
+def triage_written(days):
+    """Whether a production triage file exists for any of these dates.
+
+    compile_reports.py names a second compile on the same day -2, -3, so any
+    of those counts.
+    """
+    return any(next(REPORTS.glob(TRIAGE_NAME.format(day=d)[:-len(".md")] + "*.md"), None)
+               for d in days)
+
+
+def mark_reports_failed(day, log_name):
+    """The file the triage session finds on a night the reports step failed.
+
+    One fixed sentence and none of what the step printed: a failed pull's
+    output can carry whatever the database sent back, which includes what
+    strangers typed, and the session that reads this file must meet a reader's
+    words only inside the triage file's quotation. The reason is in the log,
+    for the person.
+    """
+    REPORTS.mkdir(exist_ok=True)
+    out = REPORTS / FAILED_NAME.format(day=day)
+    out.write_text(f"REPORTS FAILED: the reader reports for {day} were not compiled. "
+                   f"Nothing here says there were none. The reason is in logs/{log_name}, "
+                   "for the person to read.\n", encoding="utf-8", newline="\n")
+    return out
 
 
 def run(args, label):
@@ -301,13 +360,34 @@ def main():
     finally:
         # The reports are written whatever happened above, and cannot change
         # the exit status: a person reads them in the morning either way.
+        #
+        # Until 13 September a failure here was one indented line in the middle
+        # of the log, and the triage session, finding no file, had nothing to
+        # tell a failed pull from a night nobody reported anything. So a
+        # failure -- a non-zero exit, a step that could not start, or an exit 0
+        # that left no triage file -- now says REPORTS FAILED: at the start of
+        # a line, and leaves a marker beside where the triage file would be.
         if reports:
+            failed = ""
+            t0 = datetime.now()
+            mark = len(LOG)
             try:
                 rc = run(["compile_reports.py", "--site", a.site], "what readers reported")
                 if rc != 0:
-                    say(f"  (reports step exit {rc}; the site is unaffected)")
+                    failed = f"compile_reports.py exit {rc}: {last_words(LOG[mark:])}"
+                elif not triage_written({f"{t0:%Y-%m-%d}", f"{datetime.now():%Y-%m-%d}"}):
+                    failed = ("compile_reports.py exit 0, but there is no "
+                              f"{REPORTS / TRIAGE_NAME.format(day=f'{t0:%Y-%m-%d}')}")
             except Exception as e:                              # noqa: BLE001
-                say(f"  (reports step could not run: {e})")
+                failed = f"the reports step could not run: {e}"
+            if failed:
+                say(f"\nREPORTS FAILED: {failed}")
+                try:
+                    out = mark_reports_failed(f"{t0:%Y-%m-%d}", f"nightly-{day}.log")
+                    say(f"  {out} says so for the triage session. The site is unaffected, "
+                        "and the night's exit status is not changed by it.")
+                except OSError as e:
+                    say(f"  and the marker for the triage session could not be written: {e}")
         lock.unlink(missing_ok=True)
         say("\n" + "=" * 74)
         say(f"finished {datetime.now():%H:%M}, "
