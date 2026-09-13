@@ -936,7 +936,19 @@ committed on `master` except where it says otherwise, and is on the built
    disconnected or `python.exe` split-tunnelled out of it, netcheck once. If
    HTTP/1.1 is still closed, the wait is days, as the first two blocks were.
    Nothing fetches until then, and nothing fetches through the VPN.
-2. **The report box is ready to merge, on branch `report-box-merge`
+2. **Published on the 13th, in the afternoon** (merge 6222d12, deployment
+   27c1e2a2): the report box is live -- `/api/report` answers 405 to a GET, a
+   well-formed report sent to the deployment's own pages.dev address was
+   refused and stored nothing (production database: 0 rows before and after),
+   and `check_live --gate` passed. Everything below this line of the 12th and
+   13th went out with it. **Before the next publish that changes app.js or a
+   stylesheet:** the zone's Browser Cache TTL overrides the site's
+   `max-age=0` to 4 hours for .js and .css, and the pages no longer carry a
+   version query, so returning readers could get new pages with an old
+   script. The person sets Caching > Configuration > Browser Cache TTL to
+   "Respect Existing Headers" (or the version query comes back).
+
+   *What was merged:* **the report box, from branch `report-box-merge`
    (`D:\nh-merge`)** -- master merged in (only version stamps conflicted),
    then hardened on the 13th: the Function refuses any host outside
    `REPORT_ORIGINS` and any path but `/api/report` exactly, because the
