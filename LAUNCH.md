@@ -454,6 +454,24 @@ example on this site of a number outliving its premise.
   the pre-2008 Senate calendars are not served at these names, and the Senate
   block should come out of the queue so bill text can start.
 
+  **Update, 13 September about 00:30: it is the address, not only the
+  documents.** The person allowed a tested fetch (bill text) overnight, through
+  the procedure. The procedure's first step, `netcheck.py`, found every HTTP/1.1
+  request **closed without an answer** -- our User-Agent, a full browser header
+  set, a raw socket, and the other hostname -- where on the 11th all of those
+  were answered. HTTP/1.0 got the firewall's 403 block page, as it always has;
+  plain http got its 301. That is the block's signature, so the refusal stays,
+  nothing was cleared, and the lane was not started. (netcheck was run twice,
+  16 requests, the second only to read the top of its own output -- once would
+  have done.) Bill text 2024 and 2023 were fetched cleanly until 12:59 on the
+  12th; when the block began between then and 21:36 is not known.
+
+  **For a person, in a browser on this machine:** https://gc.nh.gov/ -- if it
+  loads there while the table above says refused, the block is on this
+  program's requests rather than the whole address, and netcheck's docstring
+  says what to compare. If it does not load, it is the address, and the wait
+  is days, as the first two blocks were.
+
 ## 6c. Member histories, verified on the 12th
 
 **What each legislator's page publishes is right, ballot for ballot.** Every
