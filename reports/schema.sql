@@ -1,4 +1,4 @@
--- GRANITE_VERSION: 2026-09-12.1
+-- GRANITE_VERSION: 2026-09-12.2
 -- What a reader's report is, as stored by functions/api/report.js.
 --
 -- Applied once to each database, by hand:
@@ -21,8 +21,17 @@ CREATE TABLE IF NOT EXISTS reports (
   note    TEXT NOT NULL,      -- the reader's words: UNTRUSTED, normalised, <= 1000
   build   TEXT NOT NULL,      -- site/build.json "finished", or ''
   hidden  INTEGER NOT NULL DEFAULT 0,  -- 1 if invisible characters were removed
-  dedup   TEXT NOT NULL       -- sha256 of record, field and the note, lowercased
+  dedup   TEXT NOT NULL       -- sha256 of the UTC day, record, field and the note, lowercased
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS reports_dedup ON reports(dedup);
 CREATE INDEX IF NOT EXISTS reports_at ON reports(at);
+
+-- The daily ceiling, counted in one row per day and raised in the same
+-- statement that checks it (INSERT ... ON CONFLICT ... WHERE n < ceiling
+-- RETURNING n). Counting the day's reports before inserting let simultaneous
+-- posts all read 499 and all go in, and made every post read the whole day.
+CREATE TABLE IF NOT EXISTS report_days (
+  day  TEXT PRIMARY KEY,      -- YYYY-MM-DD, UTC
+  n    INTEGER NOT NULL
+);

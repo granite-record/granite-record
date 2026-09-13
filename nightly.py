@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -319,8 +319,24 @@ def main():
             old.unlink()
 
 
+def current_branch():
+    try:
+        r = child.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True)
+        return (r.stdout or "").strip()
+    except OSError:
+        return ""
+
+
 def deploy(a):
     say("\n--- publish ---")
+    # --branch sends the deploy to production whatever git says, so a branch
+    # checked out in this folder would be published as the site. publish.bat
+    # refuses the same way.
+    branch = current_branch()
+    if branch != PRODUCTION_BRANCH:
+        say(f"\nNOT DEPLOYED: this folder is on branch {branch or '(unknown)'}, not "
+            f"{PRODUCTION_BRANCH}. A deploy publishes whatever the folder holds.")
+        return False
     for attempt in range(1, 5):
         # --branch names the production branch rather than letting wrangler
         # take it from git; publish.bat says why. Four attempts, as

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.67
+// GRANITE_VERSION: 2026-09-07.68
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1884,6 +1884,10 @@ const REPORT_FIELDS=[["date","A date"],["status","The status"],["sponsor","A spo
   ["chapter","The chapter of law"],["veto","A veto message"],["topic","The topic"],
   ["fiscal","The fiscal note"],["other","Something else"]];
 const REPORT_TO="contact@graniterecord.org";
+// The tabs the pages render. The Function accepts no other value, so a tab
+// renamed here and not there sends "", rather than having the report dropped.
+const REPORT_TABS=new Set(["Summary","Bill Text","Votes","Videos","Reports","Sponsors",
+  "Documents","Prime sponsored","Co-sponsored","Bills","Sessions"]);
 let reportBuild=null;       // site/build.json's "finished", fetched once, on first open
 
 function reportBox(kind,ref){
@@ -1893,7 +1897,7 @@ function reportBox(kind,ref){
     <p class="reportwhat">Tell us what is wrong and we will check it against the official record.
     Nothing here identifies you, which also means we cannot reply: for an answer, write to
     <a href="mailto:${REPORT_TO}">${REPORT_TO}</a>.</p>
-    <p><label>What is wrong<br><select name="field">${
+    <p><label>What is wrong<br><select name="field"><option value="">Choose one</option>${
       REPORT_FIELDS.map(([v,t])=>`<option value="${v}">${t}</option>`).join("")}</select></label></p>
     <p><label>What does the record say instead?<br>
     <textarea name="note" rows="4" maxlength="1000"></textarea></label></p>
@@ -1941,12 +1945,15 @@ document.addEventListener("submit",async e=>{
   const box=form.closest(".report"), st=form.querySelector(".reportstate");
   const btn=form.querySelector("button[type=submit]");
   const note=form.elements.note.value.trim();
+  if(!form.elements.field.value){st.textContent="Choose what is wrong from the list.";return;}
   if(note.length<3){st.textContent="Say in a few words what is wrong.";return;}
   const tab=document.querySelector('.tabs .tab[aria-selected="true"]');
+  // The label without its count, in any locale's way of writing a number.
+  const tabLabel=tab?tab.textContent.trim().replace(/\s*\([\d.,\s']+\)\s*$/,""):"";
   const payload={
     record:`${box.dataset.rkind}:${box.dataset.rref}`,
     url:location.pathname.replace(/\.html$/,""),
-    tab:tab?tab.textContent.trim().replace(/\s*\(\d[\d,]*\)$/,""):"",
+    tab:REPORT_TABS.has(tabLabel)?tabLabel:"",
     field:form.elements.field.value,
     note,
     build:reportBuild||"",
