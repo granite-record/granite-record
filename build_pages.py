@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.59
+# GRANITE_VERSION: 2026-09-04.61
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -15,7 +15,6 @@ styles and is untouched.
 """
 
 import argparse
-import hashlib
 import html as _html
 import shell as _shell
 import json
@@ -477,14 +476,35 @@ FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
          '&family=Newsreader:opsz,wght@6..72,400;6..72,600&display=swap" rel="stylesheet">')
 
 
-# The content hash of style.css, so a deploy cannot serve yesterday's.
-# A hash rather than the GRANITE_VERSION stamp, for the reason shell.py gives
-# about app.js: the stamp is bumped by hand and the once somebody forgets is
-# the release that breaks, silently, for four hours, for everyone who visited
-# that morning.
-def style_query():
-    css = CSS.replace("__PALETTE__", palette()).replace("__SHARED__", shared())
-    return "?v=" + hashlib.md5(css.encode("utf-8")).hexdigest()[:8]
+# THE HEADER THAT REPLACED THE VERSION QUERY.
+#
+# style.css, app.css and app.js used to carry "?v=<content hash>" in every
+# page that named them, so that a deploy could not serve yesterday's script
+# with today's page. Measured on the live site, that guard was needed:
+# Cloudflare Pages hands out app.css as `public, max-age=14400,
+# must-revalidate` -- four hours -- while it already serves HTML and JSON as
+# `public, max-age=0, must-revalidate`, always revalidated and never stale.
+#
+# So the three asset files are told to behave the way the HTML already does,
+# and the pages name them plainly. The query cost a gigabyte a publish: it
+# lives inside the HTML, so one changed byte of a stylesheet rewrote all
+# 34,000 record pages and every one of them became a file Cloudflare had
+# never seen.
+#
+# Pages reads this file from the root of the output directory and it is not
+# counted as an asset. Two-space indent under each path is the format.
+HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
+#
+# The same freshness HTML gets here by default: keep the file, ask before
+# reusing it. It is what makes naming these files without a version query
+# safe -- see THE VERSION QUERY, GONE in DESIGN.md.
+/app.js
+  Cache-Control: public, max-age=0, must-revalidate
+/app.css
+  Cache-Control: public, max-age=0, must-revalidate
+/style.css
+  Cache-Control: public, max-age=0, must-revalidate
+"""
 
 
 # WHAT A POWER USER NEEDS, IN THE FOOTER, WHERE THEY WILL LOOK FOR IT.
@@ -693,7 +713,6 @@ def shell(title, current, body, wide=False, script="", desc="",
     # "you are here" for it -- said to a screen reader, not drawn, because the
     # chip that marks a tab is scoped to .navtabs and the brand is not one.
     BRAND_CUR = ' aria-current="page"' if current == "index.html" else ""
-    STYLE_Q = style_query()
     # THE PAGES A SEARCH ENGINE REACHES FIRST HAD THE LEAST IN THEIR HEAD.
     # Every one of the 33,683 bill pages carries a description, a canonical
     # address and an unfurl card because shell.py writes them. The home page,
@@ -730,7 +749,7 @@ def shell(title, current, body, wide=False, script="", desc="",
                 f'<meta name="twitter:card" content="summary">') if desc else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{title}</title>{HEAD_SEO}{FONTS}{BRAND_HEAD}{themer("HEAD")}<link rel="stylesheet" href="style.css{STYLE_Q}">
+<title>{title}</title>{HEAD_SEO}{FONTS}{BRAND_HEAD}{themer("HEAD")}<link rel="stylesheet" href="style.css">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — all activity"
  href="/feed/all.xml">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — upcoming hearings"
@@ -1403,19 +1422,27 @@ def main():
     else:
         print("  brand: no assets/ -- run python3 build_brand.py")
 
-    import shell as _S
-    _q = _S.asset_query(out)
+    # Copied as they are. Nothing is rewritten on the way through any more:
+    # the version query these three used to gain is a header now, written
+    # below.
     for name in ("bills.html", "app.css", "app.js"):
         src = Path(name)
         if not src.exists():
             continue
         dst = out / name
-        body = (_S.bust(src.read_text(encoding="utf-8"), _q).encode("utf-8")
-                if name.endswith(".html") else src.read_bytes())
+        body = src.read_bytes()
         if not dst.exists() or dst.read_bytes() != body:
             dst.write_bytes(body)
-            print(f"copied {name} into the site folder"
-                  + (f" (assets at {_q})" if name.endswith(".html") else ""))
+            print(f"copied {name} into the site folder")
+
+    # LF, not the platform default: this file is parsed by Pages, not
+    # by anything on this machine, and write_text on Windows would
+    # give every line a carriage return Cloudflare never asked for.
+    hdr = out / "_headers"
+    if (not hdr.exists()
+            or hdr.read_text(encoding="utf-8", newline="") != HEADERS):
+        hdr.write_text(HEADERS, encoding="utf-8", newline="\n")
+        print("  _headers: the three asset files must be revalidated, not reused")
 
     legs = json.loads((out / "legislators.json").read_text(encoding="utf-8")) \
         if (out / "legislators.json").exists() else []

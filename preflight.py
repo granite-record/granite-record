@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.139
+# GRANITE_VERSION: 2026-09-04.140
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1002,54 +1002,55 @@ def _bills_html():
     return "ok", f"7 markers present, tags balanced{extra}"
 
 
-@check("frontend", "a page asks for the script it was built against")
-def _asset_version():
-    """The four hours in which the site was broken and every file was correct.
+@check("frontend", "the assets are revalidated, and no page names a version")
+def _asset_headers():
+    """What replaced "a page asks for the script it was built against".
 
-    app.js and app.css are served with Cache-Control: max-age=14400; the HTML
-    around them is not cached at all. So after a publish a returning visitor
-    holds the OLD script and receives the NEW page, and the two disagree in
-    whatever way that release changed them.
+    That check guarded `?v=<hash>`, which pointed every page at the exact
+    bytes it was built with. It worked, and it cost a gigabyte a publish: the
+    hash is inside the HTML, so one changed byte of app.css rewrote all
+    34,000 record pages and Cloudflare had to be sent every one of them.
 
-    On 7 September that was the legislator pages: 406 of them went live setting
-    window.GR_MEMBER, four-hour-old app.js had never heard of GR_MEMBER, and
-    every one of them quietly drew the bill search instead. The page was right,
-    the data was right, the deployed script was right, and the site was broken.
-
-    The URL now carries a hash of the two files, so a changed asset is a
-    changed address. This checks the built pages actually ask for the hash the
-    files on disk have -- a generator that stops adding it fails here rather
-    than four hours after the next deploy.
+    site/_headers does the same job from the other end -- the three asset
+    files are `max-age=0, must-revalidate`, which is what Pages already
+    serves HTML and JSON as -- so this asserts both halves: the file says it,
+    and no page has quietly started naming a version again.
     """
     site = Path("site")
     if not (site / "bills.html").exists():
         return "skip", "site/bills.html not built"
-    sh = imp("shell")
-    if not sh:
-        return "skip", "shell.py will not import"
-    q = sh.asset_query(site)
-    assert q, "neither app.js nor app.css is on disk, so no version was computed"
 
-    pages = [site / "bills.html"]
+    hdr = site / "_headers"
+    assert hdr.exists(), ("site/_headers is not there, so app.js and app.css "
+                          "are served max-age=14400 with nothing in the page "
+                          "to tell a browser they changed")
+    text = hdr.read_text(encoding="utf-8")
+    want = "max-age=0, must-revalidate"
+    missing = [a for a in ("/app.js", "/app.css", "/style.css")
+               if not re.search(re.escape(a) + r"\s*\n\s*Cache-Control:[^\n]*"
+                                + re.escape(want), text)]
+    assert not missing, (f"site/_headers does not give {', '.join(missing)} "
+                         f"{want}")
+
+    pages = [site / "bills.html", site / "index.html",
+             site / "legislators.html"]
     for folder, pat in (("bill", "*/*.html"), ("legislator", "*.html"),
-                        ("committee", "*.html")):
+                        ("committee", "*.html"), ("town", "*.html")):
         got = sorted((site / folder).glob(pat))
         if got:
             pages.append(got[len(got) // 2])
 
     bad = []
     for f in pages:
-        t = f.read_text(encoding="utf-8")
-        if 'src="app.js' not in t:
+        if not f.exists():
             continue
-        if f'src="app.js{q}"' not in t:
-            got = re.search(r'src="app\.js([^"]*)"', t)
-            bad.append(f"{f} asks for app.js{got.group(1) if got else ''} "
-                       f"but the files on disk are {q}")
-        if 'href="app.css' in t and f'href="app.css{q}"' not in t:
-            bad.append(f"{f} asks for an app.css that is not {q}")
-    assert not bad, "; ".join(bad[:3])
-    return "ok", f"{len(pages)} page kinds, all asking for app.js{q}"
+        for m in re.finditer(r'(?:src|href)="((?:app|style)\.(?:js|css))\?v=',
+                             f.read_text(encoding="utf-8")):
+            bad.append(f"{f} still names a version on {m.group(1)}")
+    assert not bad, "; ".join(sorted(set(bad))[:3])
+    return "ok", (f"_headers names all three, and none of "
+                  f"{len([f for f in pages if f.exists()])} page kinds "
+                  f"carries a version query")
 
 
 @check("frontend", "every record's own page is a working shell for app.js")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.12
 """
 What is the live site actually serving?
 
@@ -96,8 +96,11 @@ CF_SIGNS = [
     (b"/cdn-cgi/scripts/", "a Cloudflare script injection", ""),
     (b"static.cloudflareinsights.com", "Web Analytics",
      "a beacon script is appended to every page and reports each visit back "
-     "to Cloudflare. It is cookieless, and it is still analytics: the site "
-     "says it has none, and with this on that sentence is not true."),
+     "to Cloudflare. It is cookieless and it counts page views, which is "
+     "what /about now says this site collects -- so this one is on "
+     "purpose. It is listed because it still arrives by injection rather "
+     "than from the build: the page a reader gets is not the page that "
+     "was checked."),
     (b"cloudflareinsights", "Web Analytics", ""),
     (b"cf-web-analytics", "Web Analytics beacon",
      "a script is appended to every page."),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.9
+# GRANITE_VERSION: 2026-09-09.10
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -158,6 +158,40 @@ def election_line(raw):
     return f"{'Next Election' if ahead else 'Election on file'}: {when}"
 
 
+def ward_picker(town, ward, wards):
+    """The other wards of this town, behind the one you are in.
+
+    Dover has six wards and eleven representatives; a resident of ward 2 is
+    shown ward 2, which is the whole point of these pages. But the question
+    after "who represents me" is often "and who represents the rest of the
+    town", and the only way to ask it was to go back to the finder and pick
+    Dover again.
+
+    A disclosure with links inside, not a <select>: a select needs script to
+    navigate and hands a screen reader options with no addresses, where these
+    are plain links that work with the keyboard and with no JavaScript at
+    all. The ward you are in is in the list and is not a link.
+    """
+    if len(wards) < 2:
+        return ""
+    rows = []
+    # wards is the dict districts.json keys by ward, so the order is the
+    # file's and Ward 10 sorts before Ward 2 as text. Numeric, the way the
+    # loop that writes these pages already sorts them.
+    for w in sorted(wards, key=lambda x: int(x) if str(x).isdigit() else 0):
+        name = f"Ward {E(str(w))}"
+        if str(w) == str(ward):
+            rows.append(f'<span class="wpthis" aria-current="page">{name}'
+                        f'</span>')
+        else:
+            rows.append(f'<a href="{E(slug(town, w))}.html">{name}</a>')
+    return (f'<details class="wardpick"><summary><span class="wpnow">Ward '
+            f'{E(str(ward))}</span><span class="wpcue">{len(wards)} wards in '
+            f'{E(town)}</span><span class="chev">&#9656;</span></summary>'
+            f'<nav class="wplist" aria-label="Wards of {E(town)}">'
+            + "".join(rows) + '</nav></details>')
+
+
 def office_block(title, holder, fallback_url, note=""):
     """One office this site does not track: what it is, who holds it if we
     were told, and the official page either way."""
@@ -238,6 +272,7 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
     loc = (off.get("_local") or {}).get(slug(town, ward)) or {}
     town_off = (off.get("_offices") or {}).get(slug(town, "0")) or {}
     body = [f'<h1 class="offtitle">{E(label)}</h1>',
+            ward_picker(town, ward, wards),
             '<p class="lead">Everyone elected to represent the people who live '
             'here, and how to reach them.</p>']
 

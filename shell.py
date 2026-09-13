@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.11
+# GRANITE_VERSION: 2026-09-07.12
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -22,7 +22,6 @@ So the template IS bills.html, read at build time, and the substitutions assert
 that what they are replacing was actually there.
 """
 
-import hashlib
 import html
 import json
 import re
@@ -30,37 +29,11 @@ from pathlib import Path
 
 E = html.escape
 
-# The two files every page loads. Their URL carries a hash of their content.
-ASSETS = ("app.js", "app.css")
-
-
-def asset_query(site=Path("site")):
-    """"?v=1a2b3c4d", from the bytes of app.js and app.css together.
-
-    A hash rather than the GRANITE_VERSION stamp, because the stamp is bumped
-    by hand and the one time somebody forgets is the release that breaks --
-    silently, for four hours, for everyone who visited that morning.
-    """
-    h = hashlib.md5()
-    found = False
-    for name in ASSETS:
-        for base in (Path("."), Path(site)):
-            f = base / name
-            if f.exists():
-                h.update(f.read_bytes())
-                found = True
-                break
-    return f"?v={h.hexdigest()[:8]}" if found else ""
-
-
-def bust(text, q):
-    """Point every asset reference in a page at the versioned URL."""
-    if not q:
-        return text
-    for name in ASSETS:
-        text = text.replace(f'src="{name}"', f'src="{name}{q}"')
-        text = text.replace(f'href="{name}"', f'href="{name}{q}"')
-    return text
+# app.js and app.css are named plainly in every page, and site/_headers says
+# they must be revalidated before reuse -- see THE VERSION QUERY, GONE in
+# DESIGN.md. Until 12 September their URL carried a hash of their content
+# instead, which worked and cost a gigabyte a publish: the hash is inside the
+# HTML, so one changed byte of app.css rewrote all 34,000 record pages.
 
 # The pieces of bills.html that get substituted. If one stops being there,
 # every page is quietly wrong, so each is asserted rather than left to
@@ -274,4 +247,4 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         (noscript + "\n" if noscript else "")
         + block
         + f"<script>{decl}</script>\n{NEEDS['script']}", 1)
-    return bust(out, asset_query())
+    return out

@@ -172,6 +172,49 @@ against it.
 
 ---
 
+## The version query, gone
+
+Every page named its stylesheet as `app.css?v=1a2b3c4d`, a hash of the bytes
+of `app.js` and `app.css` together. It was there for a real reason, and the
+reason is still true: measured on the live site with `curl -sI`, Cloudflare
+Pages hands out `app.css` as `public, max-age=14400, must-revalidate` — four
+hours in which a browser may run yesterday's script against today's page.
+
+What it cost was not visible from the stylesheet. The hash lives *inside the
+HTML*, so one changed byte of `app.css` rewrites the asset URL in all 34,000
+record pages, and every one of them becomes a file Cloudflare has never seen.
+The publish of 12 September had **35,347 of 55,353 files missing** for that
+reason and no other — the data had not changed since the build before it —
+and wrangler sorts missing files largest-first into three concurrent 40 MB
+buckets, so the first three requests of the deploy were the fat ones, they
+timed out at ~200s, and five upload errors anywhere abort a deploy. Two
+publishes died that way, both after uploading 468 real files.
+
+The same `curl` that found the four hours found the fix: Pages already serves
+HTML and JSON as `public, max-age=0, must-revalidate` — kept, but revalidated
+before reuse, never stale. So `site/_headers` says the same thing about the
+three asset files, and the pages name them plainly:
+
+    /app.js
+      Cache-Control: public, max-age=0, must-revalidate
+
+The trade, stated plainly: two conditional requests per page view, answered
+`304` from the edge in a couple of hundred bytes, on a page that already
+makes several. What it buys is that **a page's bytes change when the page
+changes and at no other time** — a stylesheet tweak uploads three files
+instead of a gigabyte, and the record pages, which is 34,000 of the 55,353,
+move only when their own record moves.
+
+Two things to know if this ever looks wrong. It cannot be checked locally:
+the header comes from Pages, so the check is `curl -sI
+https://graniterecord.org/app.css` after a deploy, and if it does not say
+`max-age=0` then Pages is ignoring the file and the query should come back —
+one `git revert`. And the first publish after the change is still a big one,
+because removing the query from 34,000 pages changes 34,000 pages; the
+saving starts with the publish after that.
+
+---
+
 ## How a change here gets checked
 
 Screenshots at 360, 768 and 1440 are the floor, not the whole job: **a colour
@@ -464,6 +507,26 @@ instruction to change where a click goes is not an instruction to redesign
 the thing that was clicked. The roster below it does fold by county now, shut
 until asked, because 406 members under ten open headings is not a list
 anybody reads in order — and that was asked for.
+
+**A way to the next ward.** Dover has six wards and eleven
+representatives, and a resident of ward 2 is shown ward 2 — which is the
+whole point of these pages, and it left the next question with nowhere to go:
+*and who represents the rest of the town?* The only route was back to the
+finder, to pick Dover again.
+
+So a warded town's page carries a picker under its heading, reading **Ward 2
+· 6 wards in Dover ▸**, which opens to all six as links with the current one
+marked and not a link. A control that offers you where you already are is a
+control that does nothing once.
+
+A disclosure, not a `<select>`: a select needs script to navigate, and hands
+a screen reader a list of options with no addresses. These are six links that
+work with the keyboard, survive with JavaScript off, and are the fourth place
+on this site with the same shape — the chapter list on a bill, the filter
+panel on a phone, the ward chips in the finder, and now this. Measured: the
+summary is 44px on a phone and 39 on a desktop, the six chips wrap to two
+rows at 360px and sit on one at 1440, and in dark mode the links are 11.45:1
+on their ground and the marked ward 5.7:1.
 
 **And the box at the top was somebody else's.** Every page on this site
 except a dozen is `bills.html` with one record substituted into it, so every

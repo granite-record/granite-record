@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.77 */
+/* GRANITE_VERSION: 2026-09-07.79 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1425,6 +1425,40 @@ border-bottom:1px solid var(--rule);font-size:14px;line-height:1.55}
    chapter list on a bill. This row spans both columns because it is not a
    who-and-how pair. */
 .offrow.offwards{display:block}
+/* THE WARD PICKER, which is the same shape as the chapter list on a bill
+   and the ward chips in the legislators finder: the answer on the line,
+   the rest on request. The summary says which ward you are in, because a
+   control that does not say what it is set to is a control you have to
+   open to read. */
+.wardpick{margin:2px 0 14px}
+.wardpick > summary{display:inline-flex;align-items:center;gap:9px;
+padding:7px 13px;border:1px solid var(--edge);border-radius:var(--r-out);
+background:var(--surface);cursor:pointer;list-style:none;font-size:15px;
+min-height:38px}
+.wardpick > summary::-webkit-details-marker{display:none}
+.wardpick > summary::marker{content:""}
+.wardpick > summary:hover{border-color:var(--pine)}
+.wardpick > summary:focus-visible{outline:2px solid var(--pine);
+outline-offset:2px}
+.wardpick .wpnow{font-weight:600}
+.wardpick .wpcue{color:var(--ink-2);font-size:14px}
+.wardpick .chev{color:var(--ink-2);font-size:12px;transition:transform .12s}
+.wardpick[open] > summary .chev{transform:rotate(90deg)}
+.wplist{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0;max-width:640px}
+.wplist a,.wplist .wpthis{display:inline-flex;align-items:center;
+min-height:38px;padding:5px 12px;font-size:14px;border-radius:var(--r-out);
+border:1px solid var(--edge);background:var(--surface);text-decoration:none;
+color:inherit}
+.wplist a:hover{border-color:var(--pine);color:var(--pine)}
+.wplist .wpthis{background:var(--pine-soft);border-color:var(--pine);
+color:var(--pine);font-weight:600}
+/* AFTER the rules it overrides, not in the phone block 279 lines above
+   them: same specificity, so source order decides, and declared up there
+   it lost and the chips stayed 38px on a phone. That is the fifth time
+   this file has done it, and the fifth comment saying so. */
+@media (max-width: 720px){
+  .wardpick > summary,.wplist a,.wplist .wpthis{min-height:44px}
+}
 .wards > summary{display:inline-block;font-size:14px;color:var(--pine);
 cursor:pointer;list-style:none;padding:3px 0}
 .wards > summary::-webkit-details-marker{display:none}
