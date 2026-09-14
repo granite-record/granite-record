@@ -53,7 +53,13 @@ is renumbered here in one pass.
    filled from the data at build time (§6d). Phase 1 is complete.
 2. *Features.* Topics for the archived terms, where 37-64% of each term's bills
    are "Miscellaneous", scored at the bench; search that finds what was meant,
-   measured on a set of real queries; follow -- *done on the 14th*: committee
+   measured on a set of real queries -- *a first pass on the 14th*: words with
+   no subject skipped, plurals and hyphens matched, three synonym groups that
+   mixed subjects split, and eleven phrase concepts in the titles' own wording,
+   measured on 36 everyday searches (e.g. "public education funding" 11 to
+   107, "bills about guns" and "school choice" 0 to 30 and 33, "pfas" 38
+   unrelated to 5); what those results should be is the person's to judge, and
+   the 36 are a seed for a bench of real queries; follow -- *done on the 14th*: committee
    pages name their feeds (archived ones do not, and get none), a Follow
    control on every record page offers the feed its head names, a bill sent to
    interim study can be followed, and the email design is written up for after
