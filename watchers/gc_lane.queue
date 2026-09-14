@@ -3,6 +3,27 @@
 # archive/.lock itself. A line is run once; logs/gc_lane.done lists what has run.
 # Add a step only once its fetcher has been read for the one-worker rules.
 
+# DAILY STEPS, from 13 September. "daily HH:MM" runs a line once a day, at the
+# first step boundary after that time, before the next run-once step; gc_lane.py
+# says how, and logs/gc_lane.daily records what ran on which day.
+#
+# Why here: the nightly takes the General Court's bulk files only when nothing
+# holds archive/.lock, and the bill text below holds it for more than a week.
+# The files are live views overwritten as a session moves, so a day not taken
+# is gone. So the day's files are taken in this lane, between its other steps;
+# then compared with the last copy; then the site is rebuilt and the readers'
+# reports compiled by the nightly, which asks the General Court for nothing
+# itself (--no-fetch). A daily step that fails skips that day's later ones and
+# does not stop the lane; a refusal stops it, as always.
+#
+# snapshot_gencourt.py meets the fetch standard: refusal.check and .hold, every
+# answer through refusal.classify, all of a night's files installed or none
+# (preflight: "the daily snapshot stops when told no, and installs all of
+# tonight's files or none").
+daily 02:00 snapshot_gencourt.py --dir nh-archive --into .
+daily 02:00 gc_changes.py --archive nh-archive --out reports/gc-changes-{date}.md
+daily 02:00 nightly.py --no-fetch
+
 # 2015-2016: the 883 bills the database's Docket view does not reach. Stopped
 # at 09:51 on the 11th, 102 pages in, when a review found this fetcher cached
 # the firewall's block page and missed a reset wrapped in a URLError; the step

@@ -11,6 +11,60 @@ is renumbered here in one pass.
 
 ---
 
+## 0. The order to launch, agreed 13 September (evening)
+
+**Decided by the person that evening.**
+
+- **The interface is this session's.** The visuals session was disconnected by
+  a reinstall of the app, so tab navigation, the theme control, branding and
+  the homepage come here.
+- **A member who changed chamber keeps both bodies' history** on their page --
+  fifteen sitting members today (§6c). Linked on continuity of party, county
+  and service as well as name; doubtful pairs go to the bench.
+- **The public repository carries no personal email, no home IP address and no
+  keys**, by whatever method. Scoped the same evening by searching all 369
+  commits: the personal email is the author of the first commit only; the IP
+  is in four `LAUNCH.md` commits of the 12th and 13th; no API key shape
+  appears anywhere in history. So history is rewritten before anything is
+  pushed, and every commit hash changes -- the ones quoted in this file get
+  remapped in the same pass.
+- **The logo is the Old Man of the Mountain mark in `brand/`**, from clipart
+  the person bought the rights to. Temporary, and good to use.
+- **The theme control:** automatic from the reader's system by default; the
+  button shows light or dark and swaps to the other; the choice is
+  remembered; no Auto state.
+- **Bill text goes as far as it can before launch**, and launch waits a few
+  days for polish once the blockers are done.
+
+**The order**, each phase unblocking the next:
+
+0. *Today.* Lane restarted 20:47. Morning triage scheduled for 8:07, first run
+   waiting on its tool approvals. `_chain` registered and green (0fd0611). The
+   day's files as a daily lane step (e820318), queued once the lane restarts
+   on that code.
+1. *The data, before pages show it and search engines index it.* The
+   second-referral probe and install; committee name variants into one
+   committee; chamber changers' two histories; the Learn pages' counts filled
+   from the data.
+2. *Features.* Topics for the archived terms, where 37-64% of each term's bills
+   are "Miscellaneous", scored at the bench; search that finds what was meant,
+   measured on a set of real queries; follow (committee pages name their
+   feeds, a Follow control, the email backend written up); archived bill text
+   on its pages; the schedule service and new calendars daily, once
+   `fetch_schedule.py` meets the fetch standard.
+3. *The interface.* The theme control as above; tabs and mobile; the homepage
+   and status banner.
+4. *Launch prep.* The Learn read-through with the person; the About and Data
+   pages; the history rewrite and the public repository; the SEO last mile and
+   the sitemap; screenshots at 360, 768 and 1440, a full build, publish,
+   `check_live`.
+
+Then polish days, visuals and backend. After launch: email follows,
+automation off the PC, the 1999-2014 calendar hearings (spec C3-C7), sponsors
+for 1989-2022.
+
+---
+
 ## 1. Live
 
 Published 9 September, five times on the 10th, and at 12:44 on the 11th
@@ -962,8 +1016,15 @@ committed on `master` except where it says otherwise, and is on the built
 
    **Cloudflare, as of the 13th** (from the person, and checked where it could
    be): the zone is on **Pro**. The rate-limiting rule exists -- "URI Path
-   equals /api/report", Block, active (its rate and timeout should read 5 per
-   minute and 1 hour; not yet confirmed). The two `report-probe` preview
+   equals /api/report", Block, active -- and on the evening of the 13th the
+   person confirmed it reads 5 requests a minute per IP, answered 429 and
+   blocked for an hour, with 0 requests over the limit in its first week. The
+   live robots.txt was read the same evening and is exactly the site's own
+   (every crawler allowed, the sitemap named): Cloudflare's "block training in
+   robots.txt" and AI Labyrinth are off. Its AI bot policies carry three
+   configurations that act at the edge on AI crawlers, not on search engines;
+   whether assistants may read the site is the person's call and not a launch
+   blocker. The two `report-probe` preview
    deployments (053c0b70, 737842cd) are deleted and answer 404. The Pages
    project holds no production variables the merge could lose (read with
    `wrangler pages download config`). The production database holds 0
