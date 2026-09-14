@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.1
+# GRANITE_VERSION: 2026-09-13.2
 """
 Which sitting members voted under an earlier number in the other chamber.
 
@@ -264,6 +264,28 @@ def links(roster, votes_by_member, districts, prof=None):
                         else ["this number also fits another sitting member"])
             missed.append(r)
     return linked, missed
+
+
+def seats_held(roster, votes_by_member, linked, current_term):
+    """{sitting id: {("2023-2024", "H"), ...}}: each term and chamber a sitting
+    member sat in, from the votes under their own number and the numbers joined
+    to it -- and the chamber the roster seats them in for the current term,
+    which a member elected in a special election holds before their first roll
+    call. What a sponsor record matched on a name alone is tested against."""
+    out = {}
+    for m in roster:
+        sid = str(m.get("id"))
+        held = set()
+        for x in (sid, *linked.get(sid, [])):
+            for v in votes_by_member.get(x, []):
+                y = str(v.get("year") or "")
+                if y.isdigit() and v.get("body") in ("H", "S"):
+                    t = _term(y)
+                    held.add((f"{t}-{t + 1}", v["body"]))
+        if current_term and (m.get("chamber") or "")[:1] in ("H", "S"):
+            held.add((current_term, m["chamber"][:1]))
+        out[sid] = held
+    return out
 
 
 def service(votes):

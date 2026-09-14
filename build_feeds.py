@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.12
+# GRANITE_VERSION: 2026-09-04.13
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -230,6 +230,14 @@ def main():
     # the per-bill feed only. The all-bills, committee and topic feeds are
     # unchanged, and every archived bill's history is on its page.
     current = max((b.get("term") or "" for b in idx), default="")
+    # UNDER THE MEMBER THE BILL'S PAGE LINKS, where it links one. The record's
+    # own id is an employee number or nothing on most sponsor records, and a
+    # sitting member's feed filed under it missed the sponsorships their page
+    # lists -- build_site_v2.bill_sponsor_list files them the same way.
+    lp0 = site / "legislators.json"
+    by_slug = ({m["slug"]: str(m.get("id")) for m in
+                json.loads(lp0.read_text(encoding="utf-8")) if m.get("slug")}
+               if lp0.exists() else {})
     for b in idx:
         # Under the filing year, like the feed's own output path below.
         d = recs.get((str(b.get("year") or ""), b["id"].upper()))
@@ -239,9 +247,11 @@ def main():
         events = [e for e in (d.get("events") or []) if e.get("date")]
         events.sort(key=lambda e: e["date"], reverse=True)
         filed = events[-1]["date"] if events else ""
+        seen = set()
         for sp in (d.get("sponsors") or []):
-            mid = str(sp.get("member_id") or "")
-            if mid:
+            mid = by_slug.get(sp.get("slug")) or str(sp.get("member_id") or "")
+            if mid and mid not in seen:
+                seen.add(mid)
                 sponsored.setdefault(mid, []).append(
                     (b, url, bool(sp.get("prime")), filed))
 

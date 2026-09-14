@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.174
+# GRANITE_VERSION: 2026-09-04.175
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -8943,6 +8943,48 @@ def _member_links(member_links, build_site_v2):
                   "files carry both chambers newest first")
 
 
+@check("naming", "a sponsorship is filed under the member its bill page links, and a name is that member only where they sat",
+       needs=("build_site_v2", "member_links"))
+def _sponsor_filing(build_site_v2, member_links):
+    """bill_sponsor_list linked a sponsor's page by roster id or by name, and
+    filed the bill under the record's own id -- an employee number or nothing on
+    every 2023-2024 record -- so 349 of 406 members' Sponsored tabs missed
+    11,855 bills their bill pages credited them with. Filed under the member
+    the page links now, once per bill, and a record matched on a name is that
+    member only if they sat in that chamber that term: Rep. Patrick Long of
+    Hillsborough 23 sponsored in 2023-2024 and is not the Rep. Patrick Long who
+    sits for Hillsborough 26 now.
+    """
+    from collections import defaultdict
+    B, ML = build_site_v2, member_links
+    legs = {"43": {"id": "43", "name": "Watters, David", "chamber": "S", "party_code": "D",
+                   "district": "4", "county": "Strafford"},
+            "11177": {"id": "11177", "name": "Long, Patrick", "chamber": "H", "party_code": "D",
+                      "district": "26", "county": "Hillsborough"}}
+    by_sort = {B.sort_name(m["name"]): m for m in legs.values()}
+    by_name = {B.name_key(m["name"]): m for m in legs.values()}
+    votes = {"43": [{"year": "2024", "body": "S"}], "11177": [{"year": "2025", "body": "H"}],
+             "376885": [{"year": "2012", "body": "H"}]}
+    seats = ML.seats_held(legs.values(), votes, {"43": ["376885"]}, "2025-2026")
+    assert seats["43"] == {("2011-2012", "H"), ("2023-2024", "S"), ("2025-2026", "S")}, seats["43"]
+    sponsors = {"2023-2024": {"CACR13": [
+        {"member_id": "", "name": "David Watters", "chamber": "S", "prime": True},
+        {"member_id": "376885", "name": "David Watters", "chamber": "S", "prime": False},
+        {"member_id": "376696", "name": "Patrick Long", "chamber": "H", "prime": False}]}}
+    sponsored = defaultdict(list)
+    sp = B.bill_sponsor_list("CACR13", {"designation": "CACR 13", "title": "a resolution"},
+                             "2024", "2023-2024", "2025-2026", sponsors, legs, by_sort, by_name,
+                             sponsored, seats)
+    assert [(x["bill"], x["prime"]) for x in sponsored["43"]] == [("CACR13", True)], (
+        f"Watters's CACR 13 filed as {sponsored['43']}: wanted once, under his roster id, as prime")
+    assert "11177" not in sponsored and sponsored.get("376696"), (
+        "the 2023-2024 Patrick Long's sponsorship went to the Rep. Patrick Long sitting now")
+    assert [bool(s["slug"]) for s in sp] == [True, True, False], (
+        "the bill page links " + str([s["slug"] for s in sp]))
+    return "ok", ("a record with no id or an employee number filed once under the member its page links; "
+                  "a same-named member who did not sit that term neither linked nor credited")
+
+
 @check("data", "the built site's chamber changers carry both chambers' votes")
 def _member_links_built():
     """The code check above proves the rule; this, that the build used it.
@@ -8969,8 +9011,16 @@ def _member_links_built():
     for p in site.glob("*.json"):
         with open(p, encoding="utf-8", errors="replace") as fh:
             n += '"member_ids"' in fh.read(20000)
+    # And the Sponsored tabs: every 2023-2024 sponsor record carries an employee
+    # number or no id, so a site built before bill_sponsor_list filed by the
+    # member the page links lists no 2023-2024 sponsorship for anybody.
+    terms = Counter(x.get("term") for x in r.get("sponsored") or [])
+    assert terms.get("2023-2024"), (
+        f"Sen. Cindy Rosenwald's Sponsored tabs list {dict(terms)}: none of 2023-2024, so the "
+        "site was built filing sponsorships under the record's own id")
     return "ok", (f"Rosenwald's page holds {chambers['H']:,} House and {chambers['S']:,} Senate "
-                  f"votes; {n} member pages join two numbers")
+                  f"votes and {terms['2023-2024']} sponsorships of 2023-2024; {n} member pages "
+                  "join two numbers")
 
 
 @check("data", "a member is named the same way by both namers")

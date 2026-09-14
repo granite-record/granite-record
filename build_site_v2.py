@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.83
+# GRANITE_VERSION: 2026-09-05.84
 """
 Generate the faceted site from real General Court data.
 
@@ -2263,7 +2263,7 @@ def vote_member(m, body, legs, unnamed):
 
 
 def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
-                      leg_by_sort, leg_by_name, sponsored):
+                      leg_by_sort, leg_by_name, sponsored, seats=None):
     """Who put their name to this bill, and their own bill list, both.
 
     STEP 7 OF SPLITTING build_bills, and the last of the leaves.
@@ -2277,12 +2277,23 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
     `prime` stays in the loop. It is one line and it reads better
     beside the payload that uses it than as an extra return value.
     """
-    sp_list = []
+    sp_list, filed = [], set()
     for _s in P.per_term(sponsors, term, current).get(bid, []):
-        _m = (legs.get(_s.get("member_id"))
-              or leg_by_sort.get(sort_name(_s.get("name") or ""))
-              or leg_by_name.get(name_key(_s.get("name") or "") or ("", ""))
-              or {})
+        _m = legs.get(_s.get("member_id"))
+        if not _m:
+            _m = (leg_by_sort.get(sort_name(_s.get("name") or ""))
+                  or leg_by_name.get(name_key(_s.get("name") or "") or ("", "")))
+            # A NAME IS A PERSON ONLY WHERE THAT PERSON SAT. A record matched on
+            # its name alone is the member only if they held a seat in that
+            # chamber that term (member_links.seats_held); otherwise it is
+            # somebody else of the same name, and stays unlinked the way a
+            # former member does. On 13 September this turned nobody away.
+            ch = (_s.get("chamber") or "")[:1]
+            if _m and seats is not None and not any(
+                    t == term and (not ch or c == ch)
+                    for t, c in seats.get(str(_m.get("id")), ())):
+                _m = None
+        _m = _m or {}
         # The roster first, then whatever the sponsor record carries in
         # its own right. build_data fills the county and district in for a
         # member who has left, from former_members.json, so that they are
@@ -2301,9 +2312,15 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
         # is the honest outcome rather than a link that goes nowhere.
         _slug = member_slug(_m, _lab) if _m.get("id") else ""
         sp_list.append({**_s, **_lab, "slug": _slug})
-    for _s in sp_list:
-        _mid = str(_s.get("member_id") or "")
-        if _mid:
+        # FILED UNDER THE MEMBER THE PAGE LINKS. This used the record's own id,
+        # and every 2023-2024 record, with 4,569 of 2025-2026's, carries an
+        # employee number or none: 349 of 406 members' Sponsored tabs missed
+        # 11,855 bills their bill pages credited them with. A record matched to
+        # nobody keeps its own id, as before; one member twice on a bill is
+        # filed once.
+        _mid = str(_m.get("id") or _s.get("member_id") or "")
+        if _mid and _mid not in filed:
+            filed.add(_mid)
             sponsored[_mid].append({
                 "bill": bid, "n": b.get("designation") or bid,
                 "title": b.get("title", ""), "year": year, "term": term,
@@ -2842,7 +2859,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
                 votes_by_bill, vetoes=None, notes=None, coverage=None,
-                chapters=None):
+                chapters=None, seats=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -2932,7 +2949,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # different space, so that one falls back to matching on the name.
         sp_list = bill_sponsor_list(bid, b, year, term, current,
                                     sponsors, legs, leg_by_sort,
-                                    leg_by_name, sponsored)
+                                    leg_by_name, sponsored, seats)
         prime = next((s for s in sp_list if s.get("prime")), sp_list[0] if sp_list else None)
         years.add(year)
         ev = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
@@ -3404,6 +3421,19 @@ def main():
           f"{sum(len(x) for x in votes_by_member.values()):,} member votes")
     write_rollcall_index(out, rollcalls, votes_by_member)
 
+    # Sitting members who also voted under a number in the other chamber, joined
+    # on the rules member_links.py sets out -- not on the name alone, which is
+    # how careers.json came to merge two different Rep. Patrick Longs. Before
+    # the bills, because a sponsor matched on a name is tested against the
+    # seats the joined numbers held.
+    links, not_joined = ML.links(legs.values(), votes_by_member, load(a.districts, {}))
+    print(f"{len(links)} sitting member(s) also voted under a number in the other "
+          "chamber, and their pages carry both"
+          + (f"; {len(not_joined)} candidate(s) not joined, listed by "
+             "python3 member_links.py" if not_joined else ""))
+    seats = ML.seats_held(legs.values(), votes_by_member, links,
+                          max(bills) if bills else "")
+
     # The aligner writes work/<videoid>/segments.json; an earlier layout used
     # segments/<videoid>.json. Accept either so the site picks them up wherever
     # they are.
@@ -3470,7 +3500,7 @@ def main():
                                procs, floor, segs, marks, sources,
                                legs, leg_by_sort, leg_by_name,
                                votes_by_bill, vetoes=vetoes, notes=notes,
-                               chapters=chapters,
+                               chapters=chapters, seats=seats,
                                coverage=archive_coverage(
                                    bills, narratives, sponsors, reports,
                                    rollcalls, procs,
@@ -3510,14 +3540,6 @@ def main():
     # right one of two bills sharing a number.
     bill_year = {(t, b): str(r.get("lsr_year") or "")
                  for t, byb in bills.items() for b, r in byb.items()}
-    # Sitting members who also voted under a number in the other chamber, joined
-    # on the rules member_links.py sets out -- not on the name alone, which is
-    # how careers.json came to merge two different Rep. Patrick Longs.
-    links, not_joined = ML.links(legs.values(), votes_by_member, load(a.districts, {}))
-    print(f"{len(links)} sitting member(s) also voted under a number in the other "
-          "chamber, and their pages carry both"
-          + (f"; {len(not_joined)} candidate(s) not joined, listed by "
-             "python3 member_links.py" if not_joined else ""))
     lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
                            sponsored, bill_year, links)
 
