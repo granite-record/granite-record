@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.83 */
+/* GRANITE_VERSION: 2026-09-07.84 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1520,6 +1520,16 @@ color:var(--ink-2);font-variant-numeric:tabular-nums}
 .civics{max-width:var(--measure);margin:0 auto;padding:6px 0 40px}
 .civics h1{font-size:28px;line-height:1.2;margin:6px 0 10px}
 .civics h2{font-size:19px;margin:30px 0 8px}
+/* The record in numbers (learn_numbers.py): tables that scroll inside their
+   own box on a phone rather than pushing the page sideways. */
+.civics .tablewrap{overflow-x:auto;margin:10px 0 6px}
+.numtab{border-collapse:collapse;width:100%;font-size:14px}
+.numtab th,.numtab td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--rule);
+  vertical-align:top}
+.numtab th{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);
+  font-weight:600}
+.numtab td{font-variant-numeric:tabular-nums}
+.numlist{columns:2 16rem;font-size:14px;margin:8px 0}
 .civics h3{font-size:15px;font-weight:600;letter-spacing:.03em;
 text-transform:uppercase;color:var(--ink-2);margin:22px 0 6px}
 .civics p{font-family:var(--serif);font-size:16px;line-height:1.68;

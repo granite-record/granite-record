@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.12
+# GRANITE_VERSION: 2026-09-08.13
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -32,6 +32,7 @@ from collections import Counter
 from pathlib import Path
 
 import civics
+import learn_numbers
 import proceedings as P
 import shell as S
 
@@ -171,7 +172,16 @@ def footer_nav(i, topics):
     and these pages are built from that same template. So "../learn.html"
     would resolve to /../learn.html and a sibling "courts.html" to /courts.html.
     """
+    # PREVIOUS ON THE LEFT, NEXT ON THE RIGHT, in the order a reader reads --
+    # the person's correction of 14 September, when the next topic sat on the
+    # left. The markup is in the order it is drawn, so the keyboard meets them
+    # the same way round.
     bits = ['<nav class="tnav">']
+    if i:
+        prev = topics[i - 1]
+        bits.append(f'<a class="prev" href="learn/{E(prev["slug"])}.html">'
+                    f'<span>Previous</span><b>{E(prev["title"])}</b></a>')
+    bits.append('<a class="all" href="learn.html">All topics</a>')
     if i + 1 < len(topics):
         nxt = topics[i + 1]
         bits.append(f'<a class="next" href="learn/{E(nxt["slug"])}.html">'
@@ -179,11 +189,6 @@ def footer_nav(i, topics):
     else:
         bits.append('<a class="next" href="learn.html">'
                     '<span>Back to</span><b>All topics</b></a>')
-    if i:
-        prev = topics[i - 1]
-        bits.append(f'<a class="prev" href="learn/{E(prev["slug"])}.html">'
-                    f'<span>Previous</span><b>{E(prev["title"])}</b></a>')
-    bits.append('<a class="all" href="learn.html">All topics</a>')
     bits.append("</nav>")
     return "".join(bits)
 
@@ -301,6 +306,27 @@ def main():
                              + p[p.index("[["):p.index("[[") + 40])
         (out / f"{t['slug']}.html").write_text(p, encoding="utf-8")
         urls.append(a.base + S.canon(f"/learn/{t['slug']}.html"))
+
+    # ---- the record in numbers: a DRAFT, on no list ----------------------
+    # learn_numbers.py says what it is. noindex, not in the hub, not in the
+    # sitemap: the person reads it at its address before anyone else is led to it.
+    path = "/learn/by-the-numbers.html"
+    p = S.page(tmpl, path=path, base=a.base,
+               title=S.title_of("The record in numbers", "How New Hampshire works"),
+               og_title="The record in numbers",
+               description=("Statistics counted from the New Hampshire General Court's own "
+                            "record: vetoes, the closest votes, how votes are taken, and how "
+                            "often a chamber overrules its committee."),
+               alternate='<meta name="robots" content="noindex">',
+               og_image="og-learn.png", og_alt="Granite Record: how New Hampshire works",
+               globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the page",
+               sr_title="", nav_current="learn.html")
+    p = p.replace('<div id="results"></div>',
+                  '<div id="results"><div class="civics"><p class="crumb"><a href="learn.html">'
+                  'How New Hampshire works</a></p><h1>The record in numbers</h1>'
+                  + learn_numbers.body(site) + '</div></div>', 1)
+    (out / "by-the-numbers.html").write_text(p, encoding="utf-8")
+    print("  learn/by-the-numbers.html: the draft page of statistics (noindex, unlisted)")
 
     # ---- the sitemap, appended rather than rewritten -------------------
     sm = site / "sitemap.xml"

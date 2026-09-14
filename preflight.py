@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.180
+# GRANITE_VERSION: 2026-09-04.181
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -9098,6 +9098,31 @@ def _learn_figures():
         f"how-a-bill-becomes-law does not state the index's {n:,} bills: built before "
         "build_civics filled the figures, or from another index")
     return "ok", f"every Learn page filled; the bill page states the index's {n:,} bills"
+
+
+@check("data", "the draft page of numbers stays unlisted until the person has read it")
+def _numbers_draft_unlisted():
+    """learn_numbers.py writes /learn/by-the-numbers.html as a DRAFT, 14 September:
+    counted from the record, but not yet read by the person. Until it has been, it
+    asks search engines not to list it, and neither the Learn hub nor the sitemap
+    leads anyone to it. Listing it is a decision, made by removing this check in
+    the same edit, not a side effect of a template change."""
+    site = Path("site")
+    page = site / "learn" / "by-the-numbers.html"
+    if not page.exists():
+        return "skip", "learn/by-the-numbers.html not built"
+    text = page.read_text(encoding="utf-8", errors="replace")
+    assert '<meta name="robots" content="noindex">' in text, "the draft page lost its noindex"
+    assert "[[" not in text and "Traceback" not in text, "the draft page carries a build fault"
+    hub = site / "learn.html"
+    if hub.exists():
+        assert "by-the-numbers" not in hub.read_text(encoding="utf-8", errors="replace"), (
+            "learn.html links the draft page")
+    sm = site / "sitemap.xml"
+    if sm.exists():
+        assert "by-the-numbers" not in sm.read_text(encoding="utf-8", errors="replace"), (
+            "the sitemap lists the draft page")
+    return "ok", "noindex, off the Learn hub and out of the sitemap"
 
 
 @check("data", "the built site's chamber changers carry both chambers' votes")

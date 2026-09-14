@@ -1,0 +1,241 @@
+#!/usr/bin/env python3
+# GRANITE_VERSION: 2026-09-14.1
+"""
+The record in numbers: a DRAFT Learn page of statistics computed from the site's own data.
+
+    import learn_numbers; html = learn_numbers.body(site=Path("site"), root=Path("."))
+
+Asked for by the person on 13 September ("interesting data for the political science nerds")
+and defined by them the same evening -- LAUNCH.md section 0a has the list and their decisions.
+build_civics.py writes it to /learn/by-the-numbers.html, marked noindex and left out of the Learn
+hub and the sitemap until the person has read it.
+
+Every figure is counted at build time, never typed, and each section says what it counts, over
+what period, and how. Where a section needs something this disk does not hold -- the Secretary
+of State's certified results for constitutional amendments that reached the ballot, and the
+person's check that the most-attended hearings are not simply the most polarizing bills -- it
+says so and waits, rather than filling the gap.
+"""
+
+import html
+import json
+import re
+from collections import Counter, defaultdict
+from pathlib import Path
+
+E = lambda s: html.escape(str(s if s is not None else ""), quote=True)
+
+
+def _load(p, default):
+    p = Path(p)
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else default
+
+
+def _pct(n, d):
+    return f"{100 * n / d:.1f}%" if d else "&mdash;"
+
+
+def _table(head, rows, cls="numtab"):
+    return (f'<div class="tablewrap"><table class="{cls}"><thead><tr>'
+            + "".join(f"<th>{h}</th>" for h in head) + "</tr></thead><tbody>"
+            + "".join("<tr>" + "".join(f"<td>{c}</td>" for c in r) + "</tr>" for r in rows)
+            + "</tbody></table></div>")
+
+
+def _t(term):
+    return E(term).replace("-", "&ndash;")
+
+
+YEAR = {}   # (term, bill) -> filing year, from the index; filled by body()
+
+
+def _bill_link(term, bid, year=None):
+    y = year or YEAR.get((term, bid)) or term.split("-")[0]
+    shown = re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", bid)
+    return f'<a href="bill/{E(y)}/{E(bid.lower())}">{E(shown)}</a>'
+
+
+def _cat(text):
+    """PASS, KILL or STUDY from a motion or a report's recommendation."""
+    t = (text or "").lower()
+    if "interim study" in t:
+        return "STUDY"
+    if "ought to pass" in t:
+        return "PASS"
+    if "inexpedient to legislate" in t or "indefinitely postpone" in t:
+        return "KILL"
+    return None
+
+
+def overturned(narr):
+    """(per chamber {ch: (decided, against, passage<->kill)}, [(bid, ch, rec, floor)])."""
+    stats, cases = {}, []
+    for ch in ("H", "S"):
+        decided = against = swap = 0
+        for bid, rec in narr.items():
+            ev = rec.get("events") or []
+            reports = [e for e in ev if e.get("body") == ch and e.get("type") == "report"
+                       and not (e.get("raw") or "").lower().startswith("minority")]
+            if not reports:
+                continue
+            first = reports[0].get("date", "")
+            dec = next(((e, _cat(e.get("action"))) for e in ev
+                        if e.get("body") == ch and e.get("type") == "floor" and e.get("motion") == "MA"
+                        and _cat(e.get("action")) and e.get("date", "") >= first), None)
+            if not dec:
+                continue
+            e, fc = dec
+            before = [r for r in reports if r.get("date", "") <= e.get("date", "")]
+            rc = _cat(re.sub(r"^.*?report:\s*", "", (before or reports)[-1].get("raw") or "", flags=re.I))
+            if not rc:
+                continue
+            decided += 1
+            if rc != fc:
+                against += 1
+                swap += {rc, fc} == {"PASS", "KILL"}
+                cases.append((bid, ch, rc, fc))
+        stats[ch] = (decided, against, swap)
+    return stats, cases
+
+
+def body(site=Path("site"), root=Path(".")):
+    idx = _load(Path(site) / "index.json", [])
+    narr_all = _load(Path(root) / "narratives.json", {})
+    rollcalls = _load(Path(root) / "rollcalls.json", {})
+    YEAR.update({(r.get("term"), r.get("id")): str(r.get("year") or "") for r in idx})
+    terms = sorted({r.get("term") for r in idx if r.get("term")})
+    current = terms[-1] if terms else ""
+    recent = terms[-10:]
+    out = ['<p class="caveat"><b>Draft.</b> This page is not linked from the rest of the site '
+           'and asks search engines not to list it until it has been read and checked. Every '
+           'number on it is counted from the record when the site is built.</p>']
+
+    # 1. Committees overruled on the floor.
+    narr = narr_all.get(current, {})
+    st, cases = overturned(narr)
+    name = {"H": "House", "S": "Senate"}
+    label = {"PASS": "pass", "KILL": "kill", "STUDY": "interim study"}
+    rows = []
+    for ch in ("H", "S"):
+        d, a, s = st.get(ch, (0, 0, 0))
+        rows.append([name[ch], f"{d:,}", f"{a} ({_pct(a, d)})", f"{s} ({_pct(s, d)})"])
+    out.append(f"<h2>How often the full chamber overrules its committee</h2>"
+               f"<p>In the {_t(current)} term, a committee's recommendation "
+               "was followed by the chamber far more often than not. Counted here: each bill's "
+               "committee report in each chamber, against the first motion adopted on that "
+               "chamber's floor that decided the bill there &mdash; ought to pass, inexpedient to "
+               "legislate or indefinite postponement, or interim study.</p>"
+               + _table(["Chamber", "Recommendations decided on the floor", "Decided otherwise",
+                         "Passage and kill reversed"], rows))
+    if cases:
+        items = "".join(f"<li>{_bill_link(current, b)} &mdash; {name[c]}: committee "
+                        f"{label[r]}, floor {label[f]}</li>" for b, c, r, f in sorted(cases)[:60])
+        out.append(f"<details><summary>The {len(cases)} bills</summary><ul class=\"numlist\">"
+                   f"{items}</ul></details>")
+
+    # 2. Vetoes, of the bills that reached the governor.
+    vrows = []
+    for t in recent:
+        rs = [r for r in idx if r.get("term") == t]
+        st_ = Counter(r.get("status") for r in rs)
+        failed, over, pending = (st_["Vetoed, override failed"], st_["Veto overridden, became law"],
+                                 st_["Vetoed"])
+        vetoed = failed + over + pending
+        reached = st_["Signed into law"] + st_["Became law unsigned"] + vetoed
+        vrows.append([_t(t), f"{reached:,}", f"{vetoed} ({_pct(vetoed, reached)})",
+                      str(failed), str(over), str(pending) if pending else ""])
+    out.append("<h2>Vetoes</h2><p>Of the bills that reached the governor in each of the last ten "
+               "terms, how many were vetoed, and what became of the veto. A bill that became "
+               "law without a signature reached the governor and was not vetoed.</p>"
+               + _table(["Term", "Reached the governor", "Vetoed", "Veto sustained",
+                         "Overridden", "Awaiting"], vrows))
+
+    # 3. How the votes were taken, by year.
+    kinds = defaultdict(Counter)
+    for t in recent:
+        for rec in narr_all.get(t, {}).values():
+            for e in rec.get("events") or []:
+                if e.get("type") != "floor" or not (e.get("date") or "")[:4].isdigit():
+                    continue
+                vk = (e.get("vote_kind") or "").upper()
+                raw = (e.get("raw") or "") + " " + (e.get("action") or "")
+                if not vk:
+                    vk = "RC" if re.search(r"\bRC\b", raw) else "DV" if re.search(r"\bDV\b|division", raw, re.I) \
+                        else "VV" if re.search(r"\bVV\b", raw) else ""
+                if vk in ("RC", "DV", "VV"):
+                    kinds[e["date"][:4]][vk] += 1
+    krows = []
+    for y in sorted(kinds):
+        c = kinds[y]
+        n = sum(c.values())
+        krows.append([y, f"{n:,}", _pct(c["RC"], n), _pct(c["DV"], n), _pct(c["VV"], n)])
+    out.append("<h2>How the votes were taken</h2><p>Every recorded floor decision, by year and by "
+               "how it was decided: a roll call records each member by name, a division records "
+               "the count, and a voice vote records only which side sounded louder.</p>"
+               + _table(["Year", "Floor decisions", "Roll call", "Division", "Voice"], krows))
+
+    # 4. The closest roll calls of the current term.
+    close = []
+    for bid, rows_ in (rollcalls.get(current) or {}).items():
+        for r in rows_ or []:
+            y, n = r.get("yeas"), r.get("nays")
+            if not isinstance(y, int) or not isinstance(n, int) or r.get("procedural"):
+                continue
+            if y + n < (100 if r.get("body") == "H" else 10):
+                continue
+            close.append((abs(y - n), bid, r))
+    close.sort(key=lambda x: (x[0], x[1]))
+    crow = [[_bill_link(current, b, str(r.get("year") or "")), name.get(r.get("body"), ""),
+             E(r.get("question_plain") or r.get("question") or ""), f"{r['yeas']}&ndash;{r['nays']}",
+             E(r.get("date") or "")] for _m, b, r in close[:10]]
+    out.append(f"<h2>The closest votes of {_t(current)}</h2><p>The ten "
+               "roll calls on bills decided by the fewest votes, procedural motions left out.</p>"
+               + _table(["Bill", "Chamber", "Question", "Yeas&ndash;nays", "Date"], crow))
+
+    # 5. Consent calendar share by committee.
+    by_c = defaultdict(lambda: [0, 0])
+    rows_by = {r.get("id"): r for r in idx if r.get("term") == current}
+    for bid, rec in narr.items():
+        row = rows_by.get(bid) or {}
+        ev = rec.get("events") or []
+        off = {e.get("body") for e in ev if e.get("type") == "consent_off"}
+        for e in ev:
+            if e.get("type") != "report" or (e.get("raw") or "").lower().startswith("minority"):
+                continue
+            ch = e.get("body")
+            word = "House " if ch == "H" else "Senate "
+            cm = next((c for c in row.get("committees") or [] if c.startswith(word)), "")
+            if not cm:
+                continue
+            by_c[cm][0] += 1
+            if re.search(r"\bCC\b", e.get("raw") or "") and ch not in off:
+                by_c[cm][1] += 1
+    ccrows = sorted(([E(c), f"{n:,}", f"{k:,}", _pct(k, n)] for c, (n, k) in by_c.items() if n >= 10),
+                    key=lambda r: -float(r[3].rstrip("%")) if r[3].endswith("%") else 0)
+    out.append(f"<h2>Consent calendars, by committee</h2><p>A report goes on the consent calendar "
+               "when the committee was unanimous or nearly so, and it passes without debate unless "
+               f"a member has it removed. For each committee of {_t(current)} "
+               "with ten reports or more: the share that went on the consent calendar and stayed "
+               "there &mdash; a measure of how often the committee agreed with itself.</p>"
+               + _table(["Committee", "Reports", "On consent and kept there", "Share"], ccrows))
+
+    # 6. Laws without a signature.
+    urows = []
+    for t in recent:
+        rs = [r for r in idx if r.get("term") == t]
+        laws = sum(1 for r in rs if r.get("kind") == "law")
+        unsigned = sum(1 for r in rs if r.get("status") == "Became law unsigned")
+        urows.append([_t(t), f"{laws:,}", f"{unsigned} ({_pct(unsigned, laws)})"])
+    out.append("<h2>Laws without the governor's signature</h2><p>A bill the governor neither "
+               "signs nor vetoes becomes law anyway.</p>"
+               + _table(["Term", "Laws", "Without a signature"], urows))
+
+    out.append("<h2>Still to come</h2><ul>"
+               "<li>The constitutional amendments that reached the voters, with the results the "
+               "Secretary of State certified &mdash; read from the Secretary of State and kept "
+               "with their sources, since the results are not in this record.</li>"
+               "<li>The hearings with the most sign-ins, as counts only, once checked against "
+               "being simply a list of the most polarizing bills.</li>"
+               "<li>Bills passed as introduced against those amended, and how many amendments a "
+               "bill takes before it passes; each committee's passage rate.</li></ul>")
+    return "".join(out)

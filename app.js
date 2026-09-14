@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.76
+// GRANITE_VERSION: 2026-09-07.77
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -276,7 +276,7 @@ function groupWeight(b,g){
 // who does not know a bill number and has no other way in.
 function emptyResult(){
   const gs=query.trim()&&!billNumbers(query)?groupsFor(query.trim()):[];
-  const inTerm=IDX.filter(b=>!term||!b.term||b.term===term);
+  const inTerm=IDX.filter(inTermOf);
   // The parts: each group of a search of several, or each word of a phrase
   // that was the whole search ("teacher pay" finds nothing this term).
   const words=gs.length>1?gs.map(g=>g.word)
@@ -284,7 +284,7 @@ function emptyResult(){
   const parts=words.map(w=>{const g2=queryGroups(w);
     return [w,inTerm.filter(b=>g2.every(g=>groupWeight(b,g)>0)).length];}).filter(p=>p[1]);
   return `<div class="empty">No bills match${words.length?" all of that":""} in the
-    ${esc(term)} term.${parts.length?`<br><br>On their own: ${parts.map(([w,n])=>
+    ${esc(termPhrase())}.${parts.length?`<br><br>On their own: ${parts.map(([w,n])=>
       `<button class="link" data-q="${esc(w)}">${esc(w)}</button> (${n.toLocaleString()})`)
       .join(" &middot; ")}`:""}<br><br>Try removing a filter, or a different term.</div>`;
 }
@@ -301,6 +301,12 @@ const fdate=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
 const $=s=>document.querySelector(s);
 
 let IDX=[],META={},term=null,query="",sortBy="num",sortChosen=false;
+// "All terms" in the picker: every term's bills in one list. A bill number is
+// unique only within a term, so in that list a card is not opened in place --
+// two HB 1s would share one card's state -- and goes to its own page instead.
+const ALL_TERMS="all";
+const inTermOf=b=>term===ALL_TERMS||!term||!b.term||b.term===term;
+const termPhrase=()=>term===ALL_TERMS?"across all terms":`in the ${term} term`;
 // A bill number is unique within a two-year term and not beyond it, so
 // every address for one carries its filing year: the static page has done
 // so from the start, and the detail file and this view do now.
@@ -491,7 +497,10 @@ need("meta.json")
      :[...new Set(IDX.map(b=>b.term).filter(Boolean))].sort().reverse();
    term=wantedTerm(META)||terms[0];
    const ys=$("#year");
-   ys.innerHTML=terms.map(t=>`<option value="${t}">${t} Term</option>`).join("");
+   // ALL TERMS, above the current one: the person asked on 14 September for
+   // the picker to open on the current term with a way to search every term.
+   ys.innerHTML=`<option value="${ALL_TERMS}">All terms</option>`
+     +terms.map(t=>`<option value="${t}">${t} Term</option>`).join("");
    ys.value=term;
    ys.addEventListener("change",e=>{
      // On a record page there is no list to re-filter, and render() would
@@ -502,8 +511,10 @@ need("meta.json")
      // The term's bills may not be here yet. Fetch, then draw -- and say so
      // meanwhile, because a picker that does nothing for a moment reads as
      // broken.
-     const c=$("#count"); if(c&&!LOADED.has(term))c.textContent="loading "+term+"…";
-     ensureTerm(term).then(render);});
+     const want=term===ALL_TERMS?terms:[term];
+     const c=$("#count"); if(c&&want.some(x=>!LOADED.has(x)))
+       c.textContent=term===ALL_TERMS?"loading every term…":"loading "+term+"…";
+     Promise.all(want.map(ensureTerm)).then(render);});
    const so=$("#sort");
    if(so)so.addEventListener("change",e=>{
      if(PAGE||window.GR_STATIC)return;
@@ -621,9 +632,9 @@ function matches(b,ignore){
   // of unhelpful. When nothing matches in this term, the page says whether the
   // number exists in another rather than just showing nothing.
   const ids=billNumbers(query);
-  if(ids)return ids.includes(b.id.toUpperCase())&&(!b.term||!term||b.term===term);
+  if(ids)return ids.includes(b.id.toUpperCase())&&inTermOf(b);
 
-  if(b.term&&term&&b.term!==term)return false;
+  if(!inTermOf(b))return false;
   for(const k of["committee","topic","sponsor","kind"])
     if(k!==ignore&&sel[k].size&&!facetVals(b,k).some(v=>sel[k].has(v)))return false;
   if(ignore!=="voteday"&&sel.voteday.size&&!(b.votedays||[]).some(d=>sel.voteday.has(d)))return false;
@@ -657,7 +668,7 @@ function fgroup(key,label,vals,counts,searchable){
 }
 
 function renderFacets(){
-  const inYear=IDX.filter(b=>!term||!b.term||b.term===term);
+  const inYear=IDX.filter(inTermOf);
   const cnt=(k,ig)=>{const c={};inYear.filter(b=>matches(b,ig)).forEach(b=>{
     facetVals(b,k).forEach(v=>{if(v)c[v]=(c[v]||0)+1;});});return c;};
   const present=k=>[...new Set(inYear.flatMap(b=>facetVals(b,k)).filter(Boolean))].sort();
@@ -3222,7 +3233,7 @@ function render(more){
     if(sortBy!==want){sortBy=want;const so=$("#sort");if(so)so.value=want;}
   }
   const rows=sortRows(IDX.filter(b=>matches(b)));
-  const inTerm=IDX.filter(b=>!term||!b.term||b.term===term).length;
+  const inTerm=IDX.filter(inTermOf).length;
   // Say when a search matched on a synonym, so nobody wonders why a bill about
   // firearms turned up for "guns".
   const used=query.trim()?[...new Set(groupsFor(query.trim()).flatMap(g=>
@@ -3236,8 +3247,8 @@ function render(more){
   // 2025-2026 term" above a single bill.
   $("#count").textContent=focused?""
     :ids0
-    ?`${rows.length} matching in the ${term} term`
-    :`${rows.length.toLocaleString()} of ${inTerm.toLocaleString()} bills in the ${term} term`;
+    ?`${rows.length} matching ${termPhrase()}`
+    :`${rows.length.toLocaleString()} of ${inTerm.toLocaleString()} bills ${termPhrase()}`;
   // Same number, different term: say so instead of an empty page.
   const elsewhere=ids0&&!rows.length
     ? IDX.filter(b=>ids0.includes(b.id.toUpperCase())&&b.term&&b.term!==term)
@@ -3515,6 +3526,8 @@ document.addEventListener("click",e=>{
   if(PAGE)return;
   const head=e.target.closest(".chead");
   if(head&&!e.target.closest("a")){const id=head.closest(".card").dataset.id;
+    if(term===ALL_TERMS){const own=head.closest(".card").querySelector("a.detail");
+      if(own){location.href=own.href;return;}}
     if(openCards.has(id)){openCards.delete(id);render();}else openBill(id);return;}
   const tab=e.target.closest(".tab");
   if(tab){
