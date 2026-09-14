@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.20
+# GRANITE_VERSION: 2026-09-07.21
 """
 A page's worth of data for every committee.
 
@@ -244,6 +244,13 @@ def listing_groups(index, listed, current_term):
         else:
             archived.append(c)
     return live, idle, archived
+
+
+def feed_link(code, name):
+    """The head's link to a committee's feed, written once so it can be taken out
+    again exactly as it was put in."""
+    return (f'<link rel="alternate" type="application/rss+xml" '
+            f'title="{S.E(name)} committee updates" href="/feed/committee/{S.E(code)}.xml">')
 
 
 def load(p, default):
@@ -548,6 +555,11 @@ def main():
             title=f"{name} — {chamber_word} committee | Granite Record",
             og_title=f"{name} — New Hampshire {chamber_word}",
             description=desc,
+            # The committee's feed, named in its head the way a bill's and a
+            # member's are, so the Follow control finds it there. Taken out
+            # again below for a committee found to be archived, which is
+            # only known once every committee has been read.
+            alternate=feed_link(code, name) if S.committee_followable(rec) else "",
             jsonld=LD.committee(code, name, a.base, S.canon(path)),
             globals={"GR_COMMITTEE": code, "GR_STANDALONE": True},
             noscript=nos, skip_label="Skip to this committee",
@@ -607,6 +619,12 @@ def main():
         rec = json.loads(f.read_text(encoding="utf-8"))
         rec["archived"] = {"years": years(c["span"])}
         f.write_text(json.dumps(rec), encoding="utf-8")
+        # And its page stops naming a feed: shell.committee_followable, which
+        # build_feeds asks too, says an archived committee has none.
+        h = out / f"{c['code']}.html"
+        if h.exists():
+            h.write_text(h.read_text(encoding="utf-8").replace(
+                "\n" + feed_link(c["code"], c["name"]), ""), encoding="utf-8")
     body = []
     # THE TWO CHAMBERS SIDE BY SIDE. 25 House committees and 14 Senate ones
     # in one column put the Senate below a screen and a half of scrolling,

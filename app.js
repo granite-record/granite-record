@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.72
+// GRANITE_VERSION: 2026-09-07.73
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -332,6 +332,7 @@ need("meta.json")
    if(window.GR_BILL)mountReport("bill",String(window.GR_BILL));
    if(window.GR_MEMBER)mountReport("member",String(window.GR_MEMBER));
    if(window.GR_COMMITTEE)mountReport("committee",String(window.GR_COMMITTEE));
+   mountFollow(window.GR_BILL?"bill":window.GR_MEMBER?"member":window.GR_COMMITTEE?"committee":"");
    if(window.GR_MEMBER){openPage("member",String(window.GR_MEMBER));return;}
    if(window.GR_COMMITTEE){openPage("committee",String(window.GR_COMMITTEE));return;}
    $("#q").focus();
@@ -1919,6 +1920,46 @@ function mountReport(kind,ref){
   div.innerHTML=reportBox(kind,ref);
   res.after(div);
 }
+
+// FOLLOW, WHERE THERE IS SOMETHING TO FOLLOW. A record's page names its feed
+// in its head exactly where the build writes one -- a bill still moving, a
+// member with a vote or a bill, a committee not archived (shell.py decides
+// all three) -- so the control reads that link and asks nothing else. RSS
+// only for now: following by email is designed (FOLLOW.md) and not built, and
+// is not offered until it works.
+const FOLLOWS={bill:"each new action, hearing and vote on this bill",
+  member:"this member's newest votes and the bills they put their name to",
+  committee:"each day this committee sits, and what it does with each bill"};
+function mountFollow(kind){
+  const link=document.querySelector('link[rel="alternate"][type="application/rss+xml"]');
+  const res=$("#results");
+  if(!kind||!link||!res||document.getElementById("followbox"))return;
+  const href=link.getAttribute("href")||"";
+  const div=document.createElement("div");
+  div.id="followbox";
+  div.className="followrow";
+  div.innerHTML=`<details class="follow"><summary>Follow</summary>
+    <div class="followpane">
+      <p><b>By RSS</b>, in any feed reader: ${esc(FOLLOWS[kind]||"what is new here")}.
+        The record is rebuilt once a night, so an update arrives the morning after
+        it happens.</p>
+      <p class="feedurl"><input type="text" readonly aria-label="The feed's address"
+        value="${esc(new URL(href,location.origin).href)}">
+        <button type="button" class="link" data-copyfeed="1">Copy the address</button>
+        <a href="${esc(href)}">Open the feed</a></p>
+    </div></details>`;
+  res.before(div);
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest&&e.target.closest("[data-copyfeed]");
+  if(!b)return;
+  const input=b.parentNode.querySelector("input");
+  const done=()=>{b.textContent="Copied";setTimeout(()=>{b.textContent="Copy the address";},2000);};
+  const pick=()=>{input.focus();input.select();};
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(input.value).then(done,pick);
+  else pick();
+});
 
 function reportFallback(form,payload,why){
   const st=form.querySelector(".reportstate");

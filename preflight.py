@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.176
+# GRANITE_VERSION: 2026-09-04.177
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3006,6 +3006,16 @@ def _chain():
                 f"member {m['id']}: the page " + ("names a feed that was not written"
                                                   if links else "does not name its feed"))
             named += links
+        # And a committee's, since 14 September: the Follow control reads the
+        # feed a page names, so a page naming one that was not written offers a
+        # dead link, and one that does not name its feed offers nothing.
+        for cp in sorted((root / "site" / "committee").glob("*.html")):
+            page = cp.read_text(encoding="utf-8", errors="replace")
+            links = f'href="/feed/committee/{cp.stem}.xml"' in page
+            wrote = (root / "site" / "feed" / "committee" / f"{cp.stem}.xml").exists()
+            assert links == wrote, (
+                f"committee {cp.stem}: the page " + ("names a feed that was not written"
+                                                     if links else "does not name its feed"))
         # What a stylesheet asks for is a request too, and check_site reads only
         # the pages' own href and src. The nav's mark and, since 13 September,
         # the home page's lockup are CSS masks: a mask whose file is missing is
@@ -3495,6 +3505,30 @@ def _legislator_feed_dates():
                       "2025-2026 though HB221 exists in two terms; guids unchanged")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "what can be followed: a bill still moving or sent to study, and a committee not archived",
+       needs=("shell",))
+def _followable(shell):
+    """The person's rules, from 12 and 13 September: only a bill still moving can
+    be followed, and a bill referred for interim study is still moving; a
+    committee that will never sit again has nothing to follow."""
+    S, t = shell, "2025-2026"
+    assert S.still_moving({"term": t, "kind": "active"}, t), "an active bill cannot be followed"
+    assert S.still_moving({"term": t, "kind": "study"}, t), "a bill sent to interim study cannot be followed"
+    assert not S.still_moving({"term": t, "kind": "law"}, t), "a law can be followed"
+    assert not S.still_moving({"term": "2023-2024", "kind": "active"}, t), "a closed term's bill can be followed"
+    assert S.committee_followable({"code": "H05", "sessions": [{"date": "2026-02-03"}]}), (
+        "a sitting committee cannot be followed")
+    assert S.committee_followable({"code": "S10", "bills": {"2025-2026": [{"id": "SB1"}]}}), (
+        "a committee with bills and no sitting day on record cannot be followed")
+    assert not S.committee_followable({"code": "H99", "sessions": [{"date": "2010-02-03"}],
+                                       "archived": {"years": "1995-2012"}}), (
+        "an archived committee can be followed")
+    assert not S.committee_followable({"code": "C01", "sessions": [], "bills": {}}), (
+        "a committee with nothing on record can be followed")
+    return "ok", ("active and study bills of the sitting term; committees not archived "
+                  "and with a record")
 
 
 @check("build", "a member's page names a feed exactly where build_feeds writes one")

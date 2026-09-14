@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.82 */
+/* GRANITE_VERSION: 2026-09-07.83 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1284,6 +1284,23 @@ letter-spacing:-.015em}
 color:var(--ink-2);font-weight:600;margin-right:6px}
 .ptowns.note{color:var(--ink-2)}
 .pserv .svc{white-space:nowrap}
+/* FOLLOW, above a record's heading at the right, closed until asked for. The
+   pane opens over the page rather than into it: in the flow it pushed the
+   heading down a pane's height and stretched the button across the column. */
+.followrow{display:flex;justify-content:flex-end;margin:6px 0 -4px}
+.follow{position:relative}
+.follow summary{cursor:pointer;list-style:none;font-size:14px;color:var(--ink-2);
+  display:flex;align-items:center;border:1px solid var(--rule-2);
+  border-radius:var(--r-in);padding:5px 14px}
+.follow summary::-webkit-details-marker{display:none}
+.follow summary:hover,.follow[open] summary{color:var(--ink);border-color:var(--pine)}
+.followpane{position:absolute;right:0;top:calc(100% + 6px);z-index:20;
+  width:min(36rem,calc(100vw - 28px));padding:12px 14px;border:1px solid var(--rule-2);
+  border-radius:var(--r-in);background:var(--surface);font-size:14px}
+.followpane p{margin:0 0 8px}
+.feedurl{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin:0}
+.feedurl input{flex:1 1 16rem;min-width:0;font:inherit;padding:5px 8px;color:var(--ink);
+  background:var(--paper);border:1px solid var(--rule-2);border-radius:var(--r-in)}
 /* A committee's officers and its staff, side by side, the way the General
    Court's own committee page presents them -- which is the layout the people
    who already use those pages know how to read. */

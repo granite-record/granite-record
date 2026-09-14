@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.14
+# GRANITE_VERSION: 2026-09-07.15
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -156,8 +156,27 @@ def still_moving(row, current_term):
     killed, vetoed and settled, sent to study or died has nothing more to
     report. build_bill_pages advertises a feed and build_feeds writes one on
     this same test, so a page never offers a feed that is not there.
+
+    A bill referred for interim study is still moving, on the person's word of
+    13 September: the study committee reports whether it recommends future
+    legislation, and that is exactly what somebody following the bill is
+    waiting to hear.
     """
-    return (row.get("term") or "") == current_term and row.get("kind") == "active"
+    return (row.get("term") or "") == current_term and row.get("kind") in ("active", "study")
+
+
+def committee_followable(rec):
+    """Whether a committee has a feed: one not archived, with a record.
+
+    An archived committee is off the General Court's list and its record has
+    ended; it will not sit again, and a feed of it is a file no reader will
+    ever see change. One with no sitting day and no bill on record at all --
+    the commissions and boards the list names -- has nothing to report either.
+    build_feeds writes /feed/committee/<code>.xml on this test, empty or not,
+    and build_committees names the feed in the committee's page on the same.
+    """
+    return not rec.get("archived") and bool(
+        rec.get("sessions") or any((rec.get("bills") or {}).values()))
 
 
 def member_followable(m):

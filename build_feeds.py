@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.13
+# GRANITE_VERSION: 2026-09-04.14
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -327,6 +327,8 @@ def main():
             c = json.loads(cj.read_text(encoding="utf-8"))
         except ValueError:
             continue
+        if not S.committee_followable(c):
+            continue
         code = str(c.get("code") or cj.stem)
         chamber = {"H": "House", "S": "Senate"}.get(code[:1].upper(), "")
         who = f"{chamber} {c.get('name') or code}".strip()
@@ -348,8 +350,8 @@ def main():
             for rows in (c.get("bills") or {}).values():
                 for r in rows or []:
                     items += bill_items.get((str(r.get("year") or ""), str(r.get("id") or "").upper()), [])
-        if not items:
-            continue
+        # Written empty rather than skipped: the committee's page names this
+        # feed on the same test, and an address a page offers must answer.
         out = fd / "committee" / f"{code}.xml"
         written.append(out)
         out.write_text(
