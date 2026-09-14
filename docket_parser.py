@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -485,8 +485,98 @@ def _legacy_committee(raw):
     return got or normalize_committee(raw)
 
 
+# ONE COMMITTEE, ONE NAME, IN THE 1989-1998 HEARING LINES, since 13 September.
+# A hearing of those years names its committee after FOR: in whatever the clerk
+# typed that day -- JUD, JUDICIAR, INSURANC, WILDLIF, INT AFFS, HEALTH -- so one
+# committee reached proceedings.csv under a dozen names, and a committee's page
+# and every count split with them. HB 1247 of 1996 is the pattern: referred to
+# "JUDICIARY & F L", its three hearings say JUDICIARY, JU and JUD.
+#
+# The written-out name comes from the SAME BILL, never from a list: a hearing's
+# name becomes one of that bill's own referral committees in the same chamber,
+# when it is a shortening of exactly one of them -- each word a prefix of the
+# referral's word in order ("St-Fed" for State-Federal Relations), or a
+# contraction of it ("Affs" for Affairs). That is why JUD is Judiciary for a
+# Senate bill and Judiciary and Family Law for a House bill of 1995-1998, which
+# no table could say without being told the chamber and the year.
+#
+# The referral's name is taken only when it is itself a name worth having: a
+# committee the site has a page for, or one referrals.py has proven against the
+# General Court's key. A referral line can be shorthand too ("ST-FED REL"), and
+# trading one abbreviation for another is no gain. A written name of fewer than
+# three letters (JU, M) proves nothing, and a hearing a bill's referrals do not
+# explain -- Finance, where it went next -- keeps the name the line gave.
+# Measured on the five dockets of 1989-1998: 1,122 of 14,920 hearings take a
+# written-out name, 177 of them House "Judiciary" of bills referred to
+# Judiciary and Family Law.
+_TARGETS = None          # (proven names, {(chamber, name)} with a page); see _written_targets
+
+
+def _written_targets():
+    """(names referrals proved, {(chamber, name)} of committees with a page).
+
+    The second comes from data/committees.json, where it is on this disk; a
+    checkout without it takes only the proven names, which is fewer changes,
+    never a wrong one."""
+    global _TARGETS
+    if _TARGETS is None:
+        proven, coded = set(), set()
+        try:
+            import referrals
+            proven = {full.lower() for _, full in referrals.PHRASES}
+        except ImportError:
+            pass
+        p = Path("data/committees.json")
+        if p.exists():
+            try:
+                for code, rec in json.loads(p.read_text(encoding="utf-8")).items():
+                    coded.add((str(code)[:1].upper(), str(rec.get("name") or "").strip().lower()))
+            except (ValueError, OSError, AttributeError):
+                pass
+        _TARGETS = (proven, coded)
+    return _TARGETS
+
+
+def _name_words(s):
+    """A committee's words, lower case, "and" and any <NOTE ...> the clerk added dropped."""
+    s = re.sub(r"<[^>]*>", " ", s or "")
+    s = re.sub(r"\s*[&+]\s*", " and ", s)
+    return [w for w in re.findall(r"[a-z]+", s.lower()) if w != "and"]
+
+
+def _word_shortens(w, full):
+    if full.startswith(w):
+        return True
+    # A contraction: every letter in order, the first one first.
+    if len(w) >= 3 and w[0] == full[0]:
+        rest = iter(full)
+        return all(ch in rest for ch in w)
+    return False
+
+
+def written_out(written, referred, body):
+    """The one referral committee of this bill and chamber that a legacy
+    hearing's written name shortens, or None. See the note above."""
+    words = _name_words(written)
+    if not words or sum(map(len, words)) < 3 or (len(words) == 1 and len(words[0]) < 3):
+        return None
+    proven, coded = _written_targets()
+    hits = set()
+    for full in referred:
+        fw = _name_words(full)
+        if not fw or fw == words or len(words) > len(fw):
+            continue
+        name = full.strip().lower()
+        if name not in proven and (body, name) not in coded:
+            continue
+        if all(_word_shortens(w, f) for w, f in zip(words, fw)):
+            hits.add(full)
+    return hits.pop() if len(hits) == 1 else None
+
+
 def parse_proceedings(rows, timeline):
     out = []
+    referred = None      # {(bill, chamber): [its referral committees]}, read at the first legacy hearing
     for r in rows:
         flags, clean = extract_flags(r["desc"])
         m = SENATE_SCHED_RE.search(clean) if r["body"] == "S" else None
@@ -536,18 +626,34 @@ def parse_proceedings(rows, timeline):
             d = _parse_date(m.group("date"))
             t = _parse_time(m.group("time")) if m.group("time") else None
 
+        # The legacy line names its own committee -- "FOR: EXEC DEPTS & ADM"
+        # -- which is a better answer than the referral timeline, because that
+        # timeline is built from "Introduced ... and referred to", and the clerk
+        # of 1989 wrote "INTRODUCED AND REF TO". The name is expanded through
+        # referrals, which knows the General Court's own key to its shorthand,
+        # and then written out from the bill's own referral where it shortens
+        # one (see written_out).
+        legacy_name = _legacy_committee(legacy_cmte)
+        if legacy_name:
+            if referred is None:
+                referred = defaultdict(list)
+                try:
+                    import referrals
+                    for rr in rows:
+                        c = referrals.committee(rr["desc"])
+                        if c and c not in referred[(rr["bill"], rr["body"])]:
+                            referred[(rr["bill"], rr["body"])].append(c)
+                except ImportError:
+                    pass
+            legacy_name = written_out(legacy_name, referred.get((r["bill"], r["body"]), []),
+                                      r["body"]) or legacy_name
+
         p = Proceeding(
             bill=r["bill"], body=r["body"], lsr=r["lsr"], kind=kind,
             sched_date=d.isoformat(),
             sched_time=t.strftime("%H:%M") if t else None,
             venue=venue, flags=flags,
-            # The legacy line names its own committee -- "FOR: EXEC DEPTS
-            # & ADM" -- which is a better answer than the referral timeline,
-            # because that timeline is built from "Introduced ... and referred
-            # to", and the clerk of 1989 wrote "INTRODUCED AND REF TO". The
-            # name is expanded through referrals, which knows the General
-            # Court's own key to its shorthand.
-            committee=(_legacy_committee(legacy_cmte)
+            committee=(legacy_name
                        or committee_on(timeline, r["bill"], d, r["body"])),
             raw=r["desc"].strip(), row_created=r["created"], row_updated=r["updated"],
         )

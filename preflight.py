@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.170
+# GRANITE_VERSION: 2026-09-04.171
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4457,6 +4457,69 @@ def _referral_chamber(docket_parser):
     assert n("Health, Human Services & Elderly Affairs") == "Health, Human Services and Elderly Affairs"
     assert n("Special Committee on the Division for Children, Youth and Families (DCYF)").endswith("(DCYF)")
     return "ok", "own chamber's committee, undated introductions read, no borrowing"
+
+
+@check("narrative", "a 1989-1998 hearing takes the name of the committee its own bill was referred to, and only that",
+       needs=("docket_parser",))
+def _legacy_written_out(docket_parser):
+    """The hearing lines of 1989-1998 name their committee in whatever the clerk
+    typed: HB 1247 of 1996, referred to JUDICIARY & F L, has hearings for
+    JUDICIARY, JU and JUD, and one committee reached the record under a dozen
+    names. Every line below is copied from Docket_db_<term>.txt, not typed.
+
+    A written name becomes the bill's own referral committee in the same chamber
+    where it shortens exactly one of them, and that referral is a committee
+    with a page or a name referrals proved: JUD is Judiciary and Family Law for
+    HB 1247 in the House and Judiciary for SB 487 in the Senate. What stays as
+    the clerk wrote it: two letters (JU), a hearing the referrals already name
+    exactly (HB 560's Finance), and a referral that is shorthand itself (SCR 1's
+    ST-FED REL).
+    """
+    dp = docket_parser
+    rows = []
+    for lsr, created, bill, body, desc in (
+            ("1996-2345", "01/03/1996 03:04:56 PM", "HB1247", "H", "INTRODUCED AND REF TO JUDICIARY & F L; HJ4,P128"),
+            ("1996-2345", "01/08/1996 10:40:03 AM", "HB1247", "H", "//CANCELLED//HEARING JAN25 02:30 RM208,LOB    FOR: JUDICIARY"),
+            ("1996-2345", "01/10/1996 03:49:44 PM", "HB1247", "H", "//CANCELLED//RESCHEDULED HEARING JAN19 11:00 RM208,LOB    FOR: JU"),
+            ("1996-2345", "01/24/1996 10:41:04 AM", "HB1247", "H", "RESCHEDULED HEARING FEB16 02:00 RM208,LOB    FOR: JUD"),
+            ("1995-0208", "01/05/1995 02:45:04 PM", "HB560", "H", "INTRODUCED AND REF TO HEALTH HS&EA; HJ11,P160"),
+            ("1995-0208", "01/19/1995 03:09:55 PM", "HB560", "H", "HEARING FEB01 10:30 RM205,LOB    FOR: HEALTH"),
+            ("1995-0208", "03/02/1995 04:57:59 PM", "HB560", "H", "COMM AM, AA VV; PASSED WITH AM AND REF TO FINANCE VV;HJ31,P779-80"),
+            ("1995-0208", "03/02/1995 06:34:58 PM", "HB560", "H", "FIN HEARING MAR07 11:00 RM100,ST HOUSE    FOR: FINANCE"),
+            ("1995-0766", "02/16/1995 06:07:59 PM", "SCR1", "H", "INTRODUCED AND REF TO ST-FED REL; HJ26,P565"),
+            ("1995-0766", "03/30/1995 06:20:22 PM", "SCR1", "H", "<NOTE RM CHANGE>  HEARING APR07 10:30 RM104,LOB    FOR: ST-FED"),
+            ("1998-2825", "01/07/1998 01:51:54 PM", "SB487", "S", "INTRODUCED AND REF TO JUDICIARY; SJ1,P15"),
+            ("1998-2825", "01/22/1998 03:39:19 PM", "SB487", "S", "RESCHEDULED HEARING JAN28 10:45 RM103, ST HOUSE   FOR: JUD"),
+            ("1992-2557", "01/08/1992 10:52:37 AM", "SCR12", "S", "INTRODUCED AND REF TO INTERNAL AFFAIRS;  SJ 1,P 15"),
+            ("1992-2557", "01/13/1992 04:01:23 PM", "SCR12", "S", "RESCHEDULED HEARING FEB06 11:00 RM102,LOB    FOR: INT AFFS")):
+        rows.append({"lsr": lsr, "created": created, "bill": bill, "body": body, "desc": desc,
+                     "updated": "", "lineno": len(rows)})
+    saved = dp._TARGETS
+    try:
+        # The committees with a page, as data/committees.json names the ones
+        # this needs, so the check does not depend on that file being here.
+        dp._TARGETS = None
+        proven = dp._written_targets()[0]
+        dp._TARGETS = (proven, {("H", "judiciary"), ("S", "judiciary"), ("H", "finance"),
+                                ("S", "internal affairs")})
+        got = {(p.bill, p.sched_date): p.committee
+               for p in dp.parse_proceedings(rows, dp.build_referral_timeline(rows))}
+    finally:
+        dp._TARGETS = saved
+    want = {
+        ("HB1247", "1996-01-25"): "Judiciary and Family Law",
+        ("HB1247", "1996-01-19"): "Ju",
+        ("HB1247", "1996-02-16"): "Judiciary and Family Law",
+        ("HB560", "1995-02-01"): "Health, Human Services and Elderly Affairs",
+        ("HB560", "1995-03-07"): "Finance",
+        ("SCR1", "1995-04-07"): "St-Fed",
+        ("SB487", "1998-01-28"): "Judiciary",
+        ("SCR12", "1992-02-06"): "Internal Affairs",
+    }
+    wrong = {k: (got.get(k, "missing"), v) for k, v in want.items() if got.get(k, "missing") != v}
+    assert not wrong, "got, wanted: " + repr(wrong)
+    return "ok", ("JUD written out by its own bill's chamber and referral; JU, a name the referrals "
+                  "already give, and a shorthand referral left as the clerk wrote them")
 
 
 @check("narrative", "a proceeding after a second referral takes the second committee",
