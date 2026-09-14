@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.81 */
+/* GRANITE_VERSION: 2026-09-07.82 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1728,6 +1728,16 @@ a.ccard:hover{border-color:var(--rule-2);background:var(--surface)}
 .vfull th:nth-child(2){width:49%}
 .vfull th:nth-child(3){width:18%}
 .vfull th:nth-child(4){width:24%}
+/* THE DATE IS NEVER NARROWER THAN A DATE. 9% of the 720px table at 768 is
+   65px, "12/13/2018" wants about 97 with its padding, and every row's date ran
+   into the bill number beside it. Up to 1100px the date takes 14% from the
+   bill column; above that 9% is already wide enough. Not max(9%,6rem): a
+   fixed-layout table ignored it and split the width evenly between the first
+   two columns. Below 720 the table is blocks and none of this applies. */
+@media (max-width:1100px){
+  .vfull th:nth-child(1){width:14%}
+  .vfull th:nth-child(2){width:44%}
+}
 .votes .vt{display:block;color:var(--ink);font-size:14px;line-height:1.35;
   margin-top:3px}
 .votes .vq{display:block;color:var(--ink-2);font-size:13px;margin-top:4px}
