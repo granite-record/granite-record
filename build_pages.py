@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.68
+# GRANITE_VERSION: 2026-09-04.69
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -492,6 +492,11 @@ clip:rect(0 0 0 0);white-space:nowrap;border:0}
 }
 .corrections{font-size:14px;color:var(--ink-2);margin-top:10px}
 .corrections a{color:var(--pine)}
+/* The line under the home page's logo, which the person set on 14 September:
+   a sub-heading in the sans face, above the lead's serif sentence. A paragraph,
+   not a heading, so the page's outline still goes h1 to h2. */
+.slogan{font-size:21px;font-weight:600;letter-spacing:-.01em;line-height:1.3;
+color:var(--ink);margin:0 0 8px}
 
 """
 
@@ -1282,17 +1287,19 @@ window.DATA=window.DATA||((f)=>new URL(f, location.origin+"/").href);
 fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   const c=H.counts||{}, k=c.by_kind||{}, S=H.status||{};
 
-  const PHASE={"in session":["live","In session"],
+  // Title case, and a colon after each label, as the person wrote the box on
+  // 14 September. The Python copy below says the same.
+  const PHASE={"in session":["live","In Session"],
                "veto day pending":["wait","Awaiting Veto Day"],
-               "between sessions":["wait","Between sessions"],
-               "out of session":["off","Out of session"]};
+               "between sessions":["wait","Between Sessions"],
+               "out of session":["off","Out of Session"]};
   const ph=PHASE[(S.phase||"").toLowerCase()]||["off",S.phase||"Status unknown"];
   const ms=(S.milestones||[])[0];
   const stale=S.stale_days>45;
   document.getElementById("state").innerHTML=`
     <div class="statebox ${ph[0]}">
       <div class="stateline"><span class="dot"></span><b>${esc(ph[1])}</b>
-        ${S.last_session?`<span class="statemeta">last floor session
+        ${S.last_session?`<span class="statemeta">Last Floor Session:
           ${fdy(S.last_session)}</span>`:""}</div>
       ${S.headline?`<p class="statehead">${esc(S.headline)}</p>`:""}
       ${S.note?`<p class="statenote">${esc(S.note)}</p>`:""}
@@ -1300,14 +1307,9 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
         ${esc(ms.note||"")}</p>`:""}
       ${S.hearings_next_14?`<p class="statenote">${S.hearings_next_14} hearing${
         S.hearings_next_14===1?"":"s"} scheduled in the next two weeks.</p>`:""}
-      <p class="statenote" style="margin-top:10px">
-        ${(S.live||[]).map(l=>`<a href="${esc(l.url)}" target="_blank"
-          rel="noopener">${esc(l.chamber)} livestream</a>`).join(" &nbsp;·&nbsp; ")}
-        <span class="statemeta">these open whatever is streaming now, or the
-        channel if nothing is</span></p>
       ${stale?`<p class="statenote" style="color:var(--st-veto)">This summary was
         last updated ${S.stale_days} days ago and may be out of date.</p>`
-        :(S.updated?`<p class="statemeta" style="margin-top:8px">Summary updated
+        :(S.updated?`<p class="statemeta" style="margin-top:8px">Summary Updated:
           ${fdy(S.updated)}</p>`:"")}
     </div>`;
   const C=H.composition||{};
@@ -1549,10 +1551,10 @@ def main():
 
     static_state = ""
     if S.get("headline") or S.get("phase"):
-        ph = {"in session": ("live", "In session"),
+        ph = {"in session": ("live", "In Session"),
               "veto day pending": ("wait", "Awaiting Veto Day"),
-              "between sessions": ("wait", "Between sessions"),
-              "out of session": ("off", "Out of session")}.get(
+              "between sessions": ("wait", "Between Sessions"),
+              "out of session": ("off", "Out of Session")}.get(
                   (S.get("phase") or "").lower(), ("off", S.get("phase") or ""))
         ms = (S.get("milestones") or [{}])[0]
 
@@ -1569,11 +1571,12 @@ def main():
         # September it had no last floor session, no count of hearings and
         # no date -- so it could not say it was stale, which is the one thing
         # a hand-kept summary most needs to be able to say. The livestream
-        # links stay script-only: they point at whatever is live right now.
+        # links are gone from both copies: the person found them redundant on
+        # 14 September.
         static_state = (
             f'<div class="statebox {ph[0]}"><div class="stateline">'
             f'<span class="dot"></span><b>{esc(ph[1])}</b>'
-            + (f'<span class="statemeta">last floor session {fdy(S["last_session"])}</span>'
+            + (f'<span class="statemeta">Last Floor Session: {fdy(S["last_session"])}</span>'
                if S.get("last_session") else "")
             + "</div>"
             + (f'<p class="statehead">{esc(S["headline"])}</p>'
@@ -1585,7 +1588,7 @@ def main():
                "in the next two weeks.</p>" if n14 else "")
             + (f'<p class="statenote" style="color:var(--st-veto)">This summary was last '
                f'updated {S["stale_days"]} days ago and may be out of date.</p>' if stale
-               else (f'<p class="statemeta" style="margin-top:8px">Summary updated '
+               else (f'<p class="statemeta" style="margin-top:8px">Summary Updated: '
                      f'{fdy(S["updated"])}</p>' if S.get("updated") else ""))
             + "</div>")
 
@@ -1707,9 +1710,10 @@ it, or a name, county, party or committee to find a member.</p>
     home_body = f"""<div class="hcols">
 <div class="hmid">
 <h1 class="lockup"><span>Granite Record</span></h1>
-<p class="lead">A searchable record of the New Hampshire General Court: what each
-bill does, who sponsored it, when it was heard, how every legislator voted, and
-where in the recording it was discussed.</p>
+<p class="slogan">Public Records, Made Findable.</p>
+<p class="lead">Keep up with New Hampshire legislation, find bills on the issues you
+care about, learn how the legislature works, and explore the record from 1989 to
+today.</p>
 <div class="searchbig">
   <label for="hq" style="position:absolute;left:-9999px">Search bills</label>
   <input id="hq" type="search" placeholder="Bill number, or words from the title">
@@ -1757,18 +1761,7 @@ where in the recording it was discussed.</p>
 </div>
 <div id="recent">{static_recent}</div>
 <div id="composition"></div>
-<div id="notable" hidden></div>
-<h2>Follow along</h2>
-<p>Two feeds, no account and no email address. Any reader will take these, and
-nothing here tracks who is subscribed because nothing here knows.</p>
-<ul class="reading">
-<li><a href="feed/hearings.xml">Upcoming hearings</a> — what is scheduled in the
-next two weeks, in time to attend or sign in.</li>
-<li><a href="feed/all.xml">All activity</a> — every recorded action, newest first.</li>
-</ul>
-<p class="note">A bill still moving through the General Court has its own feed
-too: give a feed reader the bill's page and it will find it. The feed ends when
-the bill is settled, because nothing more will happen to it.</p>"""
+<div id="notable" hidden></div>"""
     (out / "index.html").write_text(
         shell("Granite Record \u2014 the New Hampshire legislative record",
               # THE FULL PAGE WIDTH, which is what "offset to the left"
