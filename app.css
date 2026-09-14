@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.79 */
+/* GRANITE_VERSION: 2026-09-07.80 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1279,8 +1279,8 @@ cursor:pointer;list-style:none;padding:3px 0}
 .phead h1{font-size:32px;line-height:1.2;margin:0 0 6px;
 letter-spacing:-.015em}
 .pmeta{color:var(--ink-2);font-size:14px;margin:2px 0}
-.ptowns,.pcmte{font-size:14px;color:var(--ink);margin:8px 0 0;line-height:1.6}
-.ptowns b,.pcmte b{font-size:12px;letter-spacing:.05em;text-transform:uppercase;
+.ptowns,.pcmte,.pserv{font-size:14px;color:var(--ink);margin:8px 0 0;line-height:1.6}
+.ptowns b,.pcmte b,.pserv b{font-size:12px;letter-spacing:.05em;text-transform:uppercase;
 color:var(--ink-2);font-weight:600;margin-right:6px}
 .ptowns.note{color:var(--ink-2)}
 /* A committee's officers and its staff, side by side, the way the General
@@ -1748,6 +1748,10 @@ a.ccard:hover{border-color:var(--rule-2);background:var(--surface)}
 .votes .pm{display:block;font-style:normal;font-size:12px;color:var(--ink-2);
   margin-top:4px}
 .votes .pm.broke{color:var(--ink);font-weight:600}
+/* The chamber a vote was cast in, under its date, on the rare term a member
+   sat in both. */
+.votes .vch{display:block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--ink-2);font-weight:600;margin-top:2px}
 .votes td.o .pass,.votes td.o .fail,.votes td.o i{white-space:nowrap}
 .votes td.o .pass{color:var(--yes);font-weight:600}
 .votes td.o .fail{color:var(--st-done);font-weight:600}

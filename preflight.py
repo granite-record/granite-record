@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.172
+# GRANITE_VERSION: 2026-09-04.173
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1915,7 +1915,7 @@ require("./stub.js");
 const src = require("fs").readFileSync("./page.js", "utf8");
 let scope;
 try { scope = (0, eval)(src +
-    "; ({render, IDX, renderDetail, yearOf, dkey, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
+    "; ({render, IDX, renderDetail, serviceLine, yearOf, dkey, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message);
             process.exit(1); }
 scope.IDX.length = 0;
@@ -2245,6 +2245,17 @@ for (var fi = 0; fi < fixtures.length; fi++) {
       process.exit(1); }
   }
 }
+
+// A member who sat in both chambers is told apart from one who did not, in
+// the order they sat, and a member of one chamber gets no line at all.
+var both = scope.serviceLine({service:[{chamber:"H",spans:[[2013,2014],[2025,2025]]},
+                                       {chamber:"S",spans:[[2015,2016]]}]});
+if (both.indexOf("Votes on record") < 0
+    || both.indexOf("House 2013&ndash;2014, 2025 &middot; Senate 2015&ndash;2016") < 0) {
+  console.log("SERVICELINE drew " + JSON.stringify(both)); process.exit(1); }
+if (scope.serviceLine({service:[{chamber:"H",spans:[[2019,2026]]}]}) !== ""
+    || scope.serviceLine({}) !== "") {
+  console.log("SERVICELINE drew a line for a member of one chamber"); process.exit(1); }
 console.log("ok");
 """, encoding="utf-8")
         r = _run(["node", "go.js"], cwd=root, capture_output=True,
@@ -8807,6 +8818,158 @@ def _careers():
     named = sum(1 for v in d.values() if v.get("named"))
     return "ok", (f"{len(d):,} people, {multi} holding more than one employee "
                   f"number, {named:,} named")
+
+
+@check("naming", "a member who changed chamber keeps both chambers' votes, and two people who share a name stay two",
+       needs=("member_links", "build_site_v2"))
+def _member_links(member_links, build_site_v2):
+    """member_links.links on the shapes the real files have, then build_legislators on its answer.
+
+    A member who moves between the House and the Senate is given a new number,
+    and until 13 September a page showed one chamber's votes: Sen. Cindy
+    Rosenwald's carried 1,399 of her 4,218. careers.json had already shown what
+    joining on the name does -- it merged two different Rep. Patrick Longs and
+    missed Sen. Pat Long -- so the join asks for the name, the party, the ground
+    and the time, and a case short of any of them stays apart. The members here
+    are the real cases, their rows cut down to what the rule reads, beside three
+    made-up ones that must not join: a party change, a seat in another county,
+    and two earlier numbers that both fit.
+    """
+    ML, B = member_links, build_site_v2
+
+    def row(mid, name, label, party, body, day, n=1):
+        return {"member_id": mid, "name": name, "label": label, "party": party, "body": body,
+                "year": day.split("/")[2], "vote_number": str(n), "bill": "HB1",
+                "question": "Ought to Pass", "date": day, "vote": "Yea"}
+
+    def seat(town, ward, senate, county, district):
+        return {town: {ward or "0": {"senate": senate,
+                                     "house": [{"county": county, "district": district}]}}}
+
+    districts = {}
+    for d in (seat("Nashua", "3", 13, "Hillsborough", 6), seat("Milford", "", 11, "Hillsborough", 43),
+              seat("Bedford", "", 9, "Hillsborough", 7), seat("Stratham", "", 24, "Rockingham", 19)):
+        districts.update(d)
+    districts["Manchester"] = {
+        "3": {"senate": 20, "house": [{"county": "Hillsborough", "district": 23}]},
+        "7": {"senate": 18, "house": [{"county": "Hillsborough", "district": 26}]}}
+
+    def member(mid, last, first, chamber, party, town, ward=""):
+        return {"id": mid, "last": last, "first": first, "name": f"{last}, {first}",
+                "chamber": chamber, "party_code": party, "party": party, "district": "1",
+                "county": "Hillsborough", "town_seats": [{"town": town, "ward": ward}]}
+
+    roster = [member("9406", "Rosenwald", "Cindy", "S", "D", "Nashua", "3"),
+              member("11463", "Long", "Pat", "S", "D", "Manchester", "3"),
+              member("11177", "Long", "Patrick", "H", "D", "Manchester", "7"),
+              member("423", "Daniels", "Gary", "H", "R", "Milford"),
+              member("10698", "Murphy", "Keith", "S", "R", "Bedford"),
+              member("5001", "Example", "Ann", "S", "R", "Stratham"),
+              member("6001", "Sample", "Sam", "S", "D", "Stratham"),
+              member("7001", "Twin", "Tom", "S", "R", "Stratham")]
+    rows = [
+        row("9406", "Rosenwald, Cindy", "Sen. Cindy Rosenwald (D - SD13)", "D", "S", "3/7/2019"),
+        row("9406", "Rosenwald, Cindy", "Sen. Cindy Rosenwald (D - SD13)", "D", "S", "2/5/2020", 2),
+        row("515", "Rosenwald, Cindy", "Rosenwald, Cindy(D) Hillsborough 30", "D", "H", "1/12/2017"),
+        row("515", "Rosenwald, Cindy", "Rosenwald, Cindy(D) Hillsborough 30", "D", "H", "5/3/2018", 2),
+        # Sen. Pat Long, the Hillsborough 23 number he held until 2024, and the
+        # other Rep. Patrick Long, who sits for Hillsborough 26 while he sits
+        # in the Senate and so voted on a day he did.
+        row("11463", "Long, Pat", "Sen. Pat Long (D - SD20)", "D", "S", "2/13/2025"),
+        row("540", "Long, Patrick", "Long, Patrick(D) Hillsborough 23", "D", "H", "5/23/2024"),
+        row("11177", "Long, Patrick", "Rep. Patrick Long (D - Hills 26)", "D", "H", "2/13/2025"),
+        # House, the Senate, and the House again under the first number.
+        row("423", "Daniels, Gary", "Rep. Gary Daniels (R - Hills 43)", "R", "H", "3/4/2013"),
+        row("423", "Daniels, Gary", "Rep. Gary Daniels (R - Hills 43)", "R", "H", "5/1/2014", 2),
+        row("423", "Daniels, Gary", "Rep. Gary Daniels (R - Hills 43)", "R", "H", "2/12/2025", 3),
+        row("923", "Daniels, Gary", "Daniels, Gary(R)  11", "R", "S", "1/8/2015"),
+        row("923", "Daniels, Gary", "Daniels, Gary(R)  11", "R", "S", "6/2/2016", 2),
+        # Keith Murphy's House seat was also held by Kelleigh Murphy: same
+        # surname, party and seat, a different first name.
+        row("10698", "Murphy, Keith", "Sen. Keith Murphy (R - SD16)", "R", "S", "1/5/2023"),
+        row("638", "Murphy, Keith", "Murphy, Keith(R) Hillsborough 07", "R", "H", "5/1/2018"),
+        row("377152", "Murphy, Kelleigh", "Murphy, Kelleigh(R) Hills 07", "R", "H", "1/10/2013"),
+        row("5001", "Example, Ann", "Sen. Ann Example (R - SD24)", "R", "S", "3/1/2023"),
+        row("5002", "Example, Ann", "Example, Ann(D) Rockingham 19", "D", "H", "3/1/2019"),
+        row("6001", "Sample, Sam", "Sen. Sam Sample (D - SD24)", "D", "S", "3/1/2023"),
+        row("6002", "Sample, Sam", "Sample, Sam(D) Coos 04", "D", "H", "3/1/2019"),
+        row("7001", "Twin, Tom", "Sen. Tom Twin (R - SD24)", "R", "S", "3/1/2023"),
+        row("7002", "Twin, Tom", "Twin, Tom(R) Rockingham 19", "R", "H", "3/1/2015"),
+        row("7003", "Twin, Thomas", "Twin, Thomas(R) Rock 19", "R", "H", "3/1/2019")]
+    by = {}
+    for r in rows:
+        by.setdefault(r["member_id"], []).append(r)
+
+    linked, missed = ML.links(roster, by, districts)
+    assert linked == {"9406": ["515"], "11463": ["540"], "423": ["923"], "10698": ["638"]}, (
+        f"joined {linked}; wanted Rosenwald, Pat Long, Daniels and Keith Murphy each to "
+        "their one earlier number, and nobody else")
+    why = {}
+    for r in missed:
+        why.setdefault(r["member"], []).extend(r["why"])
+    assert set(why) == {"5001", "6001", "7001"}, f"left apart with a reason: {sorted(why)}"
+    assert why["5001"][0].startswith("party") and why["6001"][0].startswith("ground"), why
+    assert all(w.startswith("more than one") for w in why["7001"]) and len(why["7001"]) == 2, why
+
+    root = Path(tempfile.mkdtemp(prefix="gr-links-"))
+    try:
+        (root / "legislators").mkdir()
+        legs = {m["id"]: m for m in roster}
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            B.build_legislators(root, legs, by, {}, set(), {}, {}, linked)
+        read = lambda mid: json.loads((root / "legislators" / f"{mid}.json").read_text(encoding="utf-8"))
+        r = read("9406")
+        assert [v["k"] for v in r["votes"]] == ["2020-S-2", "2019-S-1", "2018-H-2", "2017-H-1"], (
+            "Rosenwald's page does not carry both chambers' votes, newest first: "
+            + str([v["k"] for v in r["votes"]]))
+        assert r["member_ids"] == ["9406", "515"] and sum(r["counts"].values()) == 4, r.get("member_ids")
+        assert r["service"] == [{"chamber": "H", "spans": [[2017, 2018]]},
+                                {"chamber": "S", "spans": [[2019, 2020]]}], r["service"]
+        assert read("423")["service"] == [{"chamber": "H", "spans": [[2013, 2014], [2025, 2025]]},
+                                          {"chamber": "S", "spans": [[2015, 2016]]}], read("423")["service"]
+        other = read("11177")
+        assert [v["k"] for v in other["votes"]] == ["2025-H-1"] and "member_ids" not in other \
+            and "service" not in other, "Rep. Patrick Long (Hills 26) was given somebody else's votes"
+        index = {m["id"]: m for m in json.loads((root / "legislators.json").read_text(encoding="utf-8"))}
+        assert index["9406"]["n_votes"] == 4 and index["11177"]["n_votes"] == 1, (
+            "the index counts one number's votes")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("4 real chamber changers joined, Rep. Patrick Long and Kelleigh Murphy kept apart, and a "
+                  "party change, another county and two fitting numbers left for a person; the member "
+                  "files carry both chambers newest first")
+
+
+@check("data", "the built site's chamber changers carry both chambers' votes")
+def _member_links_built():
+    """The code check above proves the rule; this, that the build used it.
+
+    A districts file moved or a roster field renamed would make every link
+    quietly fail rule 5, and 20 pages would go back to one chamber with the
+    build exiting zero. Sen. Cindy Rosenwald's page must carry her House votes,
+    and Rep. Patrick Long of Hillsborough 26 -- who shares a name with Sen. Pat
+    Long, and sits at the same time -- must carry nobody's votes but his own.
+    """
+    site = Path("site") / "legislators"
+    a, b = site / "9406.json", site / "11177.json"
+    if not (a.exists() and b.exists()):
+        return "skip", "site/legislators has no file for 9406 or 11177"
+    r = json.loads(a.read_text(encoding="utf-8"))
+    chambers = Counter((str(v.get("k", "")).split("-") + ["", ""])[1] for v in r.get("votes") or [])
+    assert chambers.get("H") and chambers.get("S") and (r.get("member_ids") or [""])[0] == "9406", (
+        f"Sen. Cindy Rosenwald's page has {dict(chambers)} votes and member_ids "
+        f"{r.get('member_ids')}: the site was built without member_links, or before it")
+    o = json.loads(b.read_text(encoding="utf-8"))
+    assert "member_ids" not in o and all("-H-" in str(v.get("k")) for v in o.get("votes") or []), (
+        "Rep. Patrick Long (Hills 26) carries another number's votes")
+    n = 0
+    for p in site.glob("*.json"):
+        with open(p, encoding="utf-8", errors="replace") as fh:
+            n += '"member_ids"' in fh.read(20000)
+    return "ok", (f"Rosenwald's page holds {chambers['H']:,} House and {chambers['S']:,} Senate "
+                  f"votes; {n} member pages join two numbers")
 
 
 @check("data", "a member is named the same way by both namers")

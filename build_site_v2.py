@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.82
+# GRANITE_VERSION: 2026-09-05.83
 """
 Generate the faceted site from real General Court data.
 
@@ -29,6 +29,7 @@ import fiscal
 import proceedings as P
 import csv
 import json
+import member_links as ML
 import names
 import re
 import sys
@@ -1504,16 +1505,24 @@ def write_rollcall_index(out, rollcalls, votes_by_member):
 
 
 def build_legislators(out, legs, votes_by_member, towns, unnamed,
-                      sponsored=None, bill_year=None):
+                      sponsored=None, bill_year=None, links=None):
     """One JSON per member, plus the index and the town map.
 
     Split out of main(). main() was 808 lines even after the station
     builders came out, and the bug that cost 611 bills their facts was two
     different things sharing the name `st` 350 lines apart in this scope.
+
+    `links` is member_links.links(): the numbers a sitting member also voted
+    under in the other chamber.
     """
     lg = []
     for mid, m in legs.items():
-        mv = sorted(votes_by_member.get(mid, []),
+        # A MEMBER WHO CHANGED CHAMBER VOTED UNDER TWO NUMBERS, one for each:
+        # Sen. Cindy Rosenwald's page carried 1,399 of her 4,218 votes. The person decided on 13 September that a
+        # page keeps every chamber the member sat in. Own votes first, so a
+        # member nobody is joined to sorts exactly as before.
+        joined = (links or {}).get(mid, [])
+        mv = sorted([v for x in (mid, *joined) for v in votes_by_member.get(x, [])],
                     key=lambda v: vote_date(v.get("date")), reverse=True)
         counts = defaultdict(int)
         for v in mv:
@@ -1539,8 +1548,13 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
         mine = sorted((sponsored or {}).get(mid, []),
                       key=lambda x: (not x["prime"], x.get("year") or 0,
                                      x["bill"]), reverse=False)
+        # Which numbers the votes below were cast under, and the years in each
+        # chamber, for the page to say why a senator's list has House votes in
+        # it. Only where there are two: everyone else's file is as it was.
+        both = ({"member_ids": [mid, *joined], "service": ML.service(mv)}
+                if joined else {})
         (out / "legislators" / f"{mid}.json").write_text(json.dumps({
-            **m, **lab, "counts": dict(counts),
+            **m, **lab, "counts": dict(counts), **both,
             "n_sponsored": len(mine),
             "n_prime": sum(1 for x in mine if x["prime"]),
             "sponsored": mine,
@@ -3496,8 +3510,16 @@ def main():
     # right one of two bills sharing a number.
     bill_year = {(t, b): str(r.get("lsr_year") or "")
                  for t, byb in bills.items() for b, r in byb.items()}
+    # Sitting members who also voted under a number in the other chamber, joined
+    # on the rules member_links.py sets out -- not on the name alone, which is
+    # how careers.json came to merge two different Rep. Patrick Longs.
+    links, not_joined = ML.links(legs.values(), votes_by_member, load(a.districts, {}))
+    print(f"{len(links)} sitting member(s) also voted under a number in the other "
+          "chamber, and their pages carry both"
+          + (f"; {len(not_joined)} candidate(s) not joined, listed by "
+             "python3 member_links.py" if not_joined else ""))
     lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
-                           sponsored, bill_year)
+                           sponsored, bill_year, links)
 
     # ---- home page data ----------------------------------------------------
     # Everything the landing page needs, precomputed here where the full records

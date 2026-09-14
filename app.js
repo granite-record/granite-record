@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.70
+// GRANITE_VERSION: 2026-09-07.71
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2239,6 +2239,23 @@ const pchip=m=>{
 const mchip=pchip;
 
 // ---------------------------------------------------------------- member ---
+// ONE PERSON, TWO CHAMBERS. A member who moves between the House and the
+// Senate is given a new number there, and until 13 September a page showed the
+// votes cast under one of them: Sen. Cindy Rosenwald's carried 1,399 of her
+// 4,218. The build joins the numbers now (member_links.py says on what
+// evidence), and this line says which years are which, so a House vote on a
+// senator's page reads as her record rather than as a mistake. Years with a
+// recorded roll call, not years in office: that record begins in 1999.
+const CHAMBER_SHORT={H:"House",S:"Senate"};
+function serviceLine(m){
+  const s=m.service||[];
+  if(s.length<2)return "";
+  return `<p class="pserv"><b>Votes on record</b> ${s.map(c=>
+    `${esc(CHAMBER_SHORT[c.chamber]||c.chamber)} ${(c.spans||[]).map(([a,b])=>
+      a===b?esc(String(a)):`${esc(String(a))}&ndash;${esc(String(b))}`).join(", ")}`)
+    .join(" &middot; ")}</p>`;
+}
+
 function renderMemberHead(m){
   const towns = m.towns||[];
   return `<div class="phead">
@@ -2246,6 +2263,7 @@ function renderMemberHead(m){
     <p class="pmeta">${esc(m.chamber==="S"?"State Senate":"House of Representatives")}${
       m.district?` &middot; District ${esc(m.district)}`:""}${
       m.county?` &middot; ${esc(m.county)} County`:""}</p>
+    ${serviceLine(m)}
     ${towns.length?`<p class="ptowns"><b>Represents</b> ${
       towns.map(t=>esc(t)).join(" &middot; ")}</p>`:
       `<p class="ptowns note">The towns in this district are not on file.</p>`}
@@ -2348,12 +2366,21 @@ function renderMemberVotes(m){
     of them.</p>`;
   needRollcalls();
 
+  // Which chamber these were cast in, for a member who has sat in both. A
+  // term is one chamber's almost always; where it holds both -- a member who
+  // moved in the middle of one -- each row says which.
+  const chOf=x=>String(x.k||"").split("-")[1];
+  const chs=[...new Set(v.map(chOf))].filter(c=>CHAMBER_SHORT[c]).sort();
+  const castIn=(m.service||[]).length>1&&chs.length
+    ?` cast in the ${chs.map(c=>CHAMBER_SHORT[c]).join(" and the ")}`:"";
+
   // Resolved once per row: what the roll call decided, the bill's title from
   // the index this page already holds, and where the member stood in their
   // own party.
   const all=v.map(x=>{
     const rc=(RCX||{})[x.k]||null;
     return {x, rc, mark:partyMark(m,x,rc),
+            ch:castIn&&chs.length>1?chOf(x):"",
             b:(x.b&&x.y)?idxRow({id:x.b,year:x.y,term:termOfYear(x.y)}):null};
   });
 
@@ -2386,7 +2413,7 @@ function renderMemberVotes(m){
           esc(pname)}s (${broke.toLocaleString()})</option>
       </select></label>`:""}</div>
     <p class="src">${rows.length.toLocaleString()} of ${v.length.toLocaleString()}
-      recorded votes in ${esc(t)}, newest first. Every roll call this member is
+      recorded votes in ${esc(t)}${castIn}, newest first. Every roll call this member is
       recorded in, as it was cast and on what. Nothing here is rated or
       scored.${marked.length?` On the ${marked.length.toLocaleString()} where
       ${esc(pname)}s took a side, this member took the other one
@@ -2421,7 +2448,8 @@ function voteRow(r){
   const tallies=rc&&rc.y!=null&&rc.n!=null
     ? ` <i>${rc.y}–${rc.n}</i>`:"";
   return `<tr>
-    <td class="d" data-l="Date">${esc(x.d||"")}</td>
+    <td class="d" data-l="Date">${esc(x.d||"")}${r.ch?`<span class="vch">${
+      esc(CHAMBER_SHORT[r.ch]||r.ch)}</span>`:""}</td>
     <td class="b" data-l="On">${x.b&&x.y
       ? `<a href="bill/${esc(String(x.y))}/${esc(String(x.b).toLowerCase())
         }.html">${esc((b&&b.n)||x.b)}</a>`
