@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.43 -->
+<!-- GRANITE_VERSION: 2026-09-05.44 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -55,7 +55,7 @@ if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
 <a href="committees.html">Committees</a>
 <a href="learn.html">Learn</a></div>
 <!-- THEMER:BTN -->
-<button class="themer" id="themer" type="button" hidden>Auto</button>
+<button class="themer" id="themer" type="button" hidden>Light</button>
 <!-- /THEMER:BTN -->
 </div></nav>
 <div class="searchrow"><div class="in">
@@ -116,31 +116,42 @@ this site as CSV, with a manifest naming each column.<span id="built"></span></p
 <script src="app.js"></script>
 <!-- THEMER:JS -->
 <script>
-/* The control. Three states and not two: a reader who has picked light or
-   dark should be able to get back to following their system, and a two-state
-   switch strands them. The button names the state it is IN, which is what a
-   reader checking their own setting wants to read.
+/* The control, as the person set it out on 13 September. The page follows the
+   reader's system until they choose; the button names the theme on screen,
+   Light or Dark, and swaps to the other; the choice is kept, so it is made
+   once. There is no Auto to cycle through: following the system is what
+   happens before anyone chooses, and a third state was a click nobody asked
+   for. A value this control no longer writes ("auto", from the one before)
+   reads as no choice.
    It starts hidden and is revealed here, so a reader with JavaScript off is
    not shown a control that cannot do anything -- the stylesheet still
    follows their system, which is the sensible default and needs no script. */
 (function(){
   var b=document.getElementById("themer"); if(!b) return;
-  var K="gr-theme", MODES=["auto","light","dark"];
-  function stored(){ try{ return localStorage.getItem(K)||"auto"; }catch(e){ return "auto"; } }
-  function apply(v){
-    var r=document.documentElement;
-    if(v==="auto"){ delete r.dataset.theme; } else { r.dataset.theme=v; }
-    b.textContent=v.charAt(0).toUpperCase()+v.slice(1);
-    b.setAttribute("aria-label","Colour theme: "
-      +(v==="auto"?"following your system":v)+". Activate to change it.");
+  var K="gr-theme", r=document.documentElement;
+  var mq=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;
+  function chosen(){ try{ var v=localStorage.getItem(K); return v==="light"||v==="dark"?v:""; }
+                     catch(e){ return r.dataset.theme||""; } }
+  function shown(){ return chosen()||(mq&&mq.matches?"dark":"light"); }
+  function draw(){
+    var v=shown();
+    b.textContent=v==="dark"?"Dark":"Light";
+    b.setAttribute("aria-label","Colour theme: "+v+". Activate to switch to "
+      +(v==="dark"?"light":"dark")+".");
   }
-  var cur=stored(); if(MODES.indexOf(cur)<0) cur="auto";
-  b.hidden=false; apply(cur);
+  b.hidden=false; draw();
   b.addEventListener("click",function(){
-    cur=MODES[(MODES.indexOf(cur)+1)%MODES.length];
-    try{ localStorage.setItem(K,cur); }catch(e){}
-    apply(cur);
+    var next=shown()==="dark"?"light":"dark";
+    r.dataset.theme=next;
+    try{ localStorage.setItem(K,next); }catch(e){}
+    draw();
   });
+  // The system changing while nothing is chosen -- a laptop turning to its
+  // evening setting -- changes the page through the stylesheet; the label
+  // follows it.
+  if(mq){ var f=function(){ if(!chosen()) draw(); };
+    if(mq.addEventListener) mq.addEventListener("change",f);
+    else if(mq.addListener) mq.addListener(f); }
 })();
 </script>
 <!-- /THEMER:JS -->
