@@ -18,9 +18,10 @@ is renumbered here in one pass.
 - **The interface is this session's.** The visuals session was disconnected by
   a reinstall of the app, so tab navigation, the theme control, branding and
   the homepage come here.
-- **A member who changed chamber keeps both bodies' history** on their page --
-  fifteen sitting members today (§6c). Linked on continuity of party, county
-  and service as well as name; doubtful pairs go to the bench.
+- **A member who changed chamber keeps both bodies' history** on their page.
+  Done the same night for twenty sitting members (b9b7079, §6c): joined on
+  name, party, ground and time together, never the name alone, and a pair
+  short of any of them is listed for a person rather than joined.
 - **The public repository carries no personal email, no home IP address and no
   keys**, by whatever method. Scoped the same evening by searching all 369
   commits: the personal email is the author of the first commit only; the IP
@@ -42,10 +43,14 @@ is renumbered here in one pass.
    waiting on its tool approvals. `_chain` registered and green (0fd0611). The
    day's files as a daily lane step (e820318), queued once the lane restarts
    on that code.
-1. *The data, before pages show it and search engines index it.* The
-   second-referral probe and install; committee name variants into one
-   committee; chamber changers' two histories; the Learn pages' counts filled
-   from the data.
+1. *The data, before pages show it and search engines index it.* Done on the
+   13th: the second-referral install (1,946 rows take the second committee
+   and 877 a changed recording match; the median held at 0m 01s); committee
+   name variants into one committee (1,119 rows of 1989-1998; distinct names
+   House 202 to 148, Senate 117 to 85); chamber changers' two histories (20
+   members). Left: the Learn pages' counts filled from the data, and a
+   member's Sponsored tabs, which miss bills the bill pages credit them with
+   (§6c).
 2. *Features.* Topics for the archived terms, where 37-64% of each term's bills
    are "Miscellaneous", scored at the bench; search that finds what was meant,
    measured on a set of real queries; follow (committee pages name their
@@ -53,7 +58,9 @@ is renumbered here in one pass.
    on its pages; the schedule service and new calendars daily, once
    `fetch_schedule.py` meets the fetch standard.
 3. *The interface.* The theme control as above; tabs and mobile; the homepage
-   and status banner.
+   and status banner. Seen in the screenshots of the 14th: at 768px a member's
+   Votes table gives the date 9% of the width, and "9/13/2018" runs into the
+   bill number beside it, on every member's page.
 4. *Launch prep.* The Learn read-through with the person; the About and Data
    pages; the history rewrite and the public repository; the SEO last mile and
    the sitemap; screenshots at 360, 768 and 1440, a full build, publish,
@@ -637,6 +644,42 @@ Manchester Democrat like 376696), was missed because the roster spells him
 `careers.json` yet, so no page is wrong today; anything built on it should
 join on continuity of party and county as well as name, and send the doubtful
 ones to the bench.
+
+**Joined on the 13th (b9b7079).** The person decided that a member's page
+keeps every chamber they sat in. `member_links.py` joins an earlier number to
+a sitting member only when all of these hold: it voted in the other chamber
+only; the same surname, and the same first name or a short form of it; the
+two never sat at once; the same party on every vote; the same ground on
+today's map (a House seat's county among the senator's towns, a Senate
+district among the representative's); and no other number fits. Run over
+every number it joins **twenty** and leaves nothing doubtful: the thirteen
+above, and Sen. Pat Long (to the Hillsborough 23 number -- the other Rep.
+Patrick Long is joined to nothing), Tara Reardon, David Watters, Bill Gannon,
+Kevin Avard, Regina Birdsell and Sharon Carson. Mutated copies of real cases
+were all refused, and the 43 surname matches the first-name rule turned away
+are different people, five of whom would have passed on party and county
+alone. Rosenwald's page carries 4,218 votes now and McConkey's 3,897 -- the
+totals the database route reached on the 12th. The page says "Votes on
+record: House 2005-2018 · Senate 2019-2026" under the seat. Mark Pearson is
+untouched: two House numbers are two people to this rule.
+
+Sponsorships are not joined: `sponsors.json` holds 2023-2026 only.
+
+**Found the same night, not fixed yet: a member's Sponsored tabs miss most of
+the bills the bill pages credit them with.** `bill_sponsor_list` resolves a
+sponsor to the roster by id, then by name, and so links the right member's
+page -- but files the bill under the sponsor record's own id, and a member's
+file lists only what is filed under the roster's. Every 2023-2024 record
+carries an employee number or no id (8,890 of 8,890), and so do the 4,569
+records of 2025-2026 that came from the bill-status path. Measured on the
+built site: **349 of the 406 pages list fewer bills than the bill pages credit
+them with, 11,855 in all**, every 2023-2024 sponsorship among them -- Sen.
+David Watters's page lists 177 of 681. Nothing is listed that no record
+credits, no bill names one member twice, and no record resolved by name lands
+on a member who was not sitting in that chamber that term (the Patrick Long
+shape). That last is measured, not guarded. The fix is to file each bill under
+the member its page links, with that condition built in, and the joined
+numbers counting as the member's.
 
 ## 6d. The civics pages' facts, measured on the 12th
 
