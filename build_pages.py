@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.66
+# GRANITE_VERSION: 2026-09-04.67
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -473,17 +473,20 @@ clip:rect(0 0 0 0);white-space:nowrap;border:0}
    box. 1039x479 is the ink's own box. The words stay in the heading, hidden,
    for a screen reader and a search engine, and come back wherever the mask
    cannot be drawn: a browser without mask support, and forced colours, which
-   paints backgrounds away and would leave an empty heading. */
+   paints backgrounds away and would leave an empty heading.
+   Centred in its column, as the person asked the same evening; the lead and
+   the search under it keep their own alignment. */
 @supports ((-webkit-mask-image:url(x)) or (mask-image:url(x))){
-  h1.lockup{width:min(100%,280px);aspect-ratio:1039/479;margin:2px 0 18px;
+  h1.lockup{width:min(100%,280px);aspect-ratio:1039/479;margin:2px auto 18px;
     background:var(--ink);
-    -webkit-mask:url(/lockup.png) left center/contain no-repeat;
-    mask:url(/lockup.png) left center/contain no-repeat}
+    -webkit-mask:url(/lockup.png) center/contain no-repeat;
+    mask:url(/lockup.png) center/contain no-repeat}
   h1.lockup span{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;
     clip:rect(0 0 0 0);white-space:nowrap}
 }
 @media (forced-colors: active){
-  h1.lockup{background:none;-webkit-mask:none;mask:none;width:auto;aspect-ratio:auto}
+  h1.lockup{background:none;-webkit-mask:none;mask:none;width:auto;aspect-ratio:auto;
+    text-align:center}
   h1.lockup span{position:static;width:auto;height:auto;margin:0;overflow:visible;
     clip:auto;white-space:normal}
 }
