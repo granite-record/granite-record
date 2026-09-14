@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.175
+# GRANITE_VERSION: 2026-09-04.176
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -8983,6 +8983,27 @@ def _sponsor_filing(build_site_v2, member_links):
         "the bill page links " + str([s["slug"] for s in sp]))
     return "ok", ("a record with no id or an employee number filed once under the member its page links; "
                   "a same-named member who did not sit that term neither linked nor credited")
+
+
+@check("data", "the Learn pages state the record's own figures, and none is left unfilled")
+def _learn_figures():
+    """civics.py names each count as [[name]] and build_civics fills it from the
+    built site. They were typed until 14 September and had drifted: "4,230
+    bills on this site" of 33,683, "68 vetoed bills" across "two terms" of
+    nineteen. A page that published a bare [[name]], or a count that is not the
+    index's, fails here."""
+    page = Path("site") / "learn" / "how-a-bill-becomes-law.html"
+    idx = Path("site") / "index.json"
+    if not (page.exists() and idx.exists()):
+        return "skip", "the Learn pages or the index are not built"
+    unfilled = [p.name for p in (Path("site") / "learn").glob("*.html")
+                if "[[" in p.read_text(encoding="utf-8", errors="replace")]
+    assert not unfilled, f"a figure left unfilled on {unfilled}"
+    n = len(json.loads(idx.read_text(encoding="utf-8")))
+    assert f"Across the {n:,} bills on this site" in page.read_text(encoding="utf-8"), (
+        f"how-a-bill-becomes-law does not state the index's {n:,} bills: built before "
+        "build_civics filled the figures, or from another index")
+    return "ok", f"every Learn page filled; the bill page states the index's {n:,} bills"
 
 
 @check("data", "the built site's chamber changers carry both chambers' votes")

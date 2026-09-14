@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.10
+# GRANITE_VERSION: 2026-09-08.11
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -27,14 +27,129 @@ one place to reorder the section.
 import argparse
 import html
 import json
+import re
+from collections import Counter
 from pathlib import Path
 
 import civics
+import proceedings as P
 import shell as S
 
 
 def E(s):
     return html.escape(str(s or ""), quote=True)
+
+
+def _load(p, default):
+    p = Path(p)
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else default
+
+
+def record_figures(site, root=Path(".")):
+    """Every count the Learn pages state, from what the build has just written.
+
+    THEY WERE TYPED, AND THEY DRIFTED. Measured on 12 September against the
+    built site, the pages said "4,230 bills on this site" of a site holding
+    33,683, "68 vetoed bills" across "two terms" of nineteen, and "855 were
+    killed" of a term the record now puts at 853 -- each true on the day it
+    was written. civics.py names a figure as [[name]] and this fills it, each
+    by the definition the typed number had been counted by, checked the same
+    day: every one reproduced the typed figure wherever that was still right.
+    """
+    idx = _load(Path(site) / "index.json", [])
+    term = max((r.get("term") or "" for r in idx), default="")
+    cur = [r for r in idx if r.get("term") == term]
+    status = Counter(r.get("status") for r in cur)
+    kind = Counter(r.get("kind") for r in cur)
+    prefix = Counter(re.match(r"[A-Z]*", r.get("id") or "").group(0) for r in cur)
+
+    # The House from the district map, as build_composition counts it: seats per
+    # (county, district), and the sitting members from the roster.
+    house = {}
+    senate = set()
+    for wards in _load(Path(site) / "districts.json", {}).values():
+        for w in wards.values():
+            if w.get("senate"):
+                senate.add(w["senate"])
+            for h in w.get("house") or []:
+                house[(h.get("county"), h.get("district"))] = h
+    ordinary = [h for h in house.values() if not h.get("floterial")]
+    seats = sum(h.get("seats") or 1 for h in house.values())
+    sitting = sum(1 for m in _load(Path(site) / "legislators.json", []) if m.get("chamber") == "H")
+
+    # How many members each House roll call of the term recorded, voting or not.
+    first = term.split("-")[0]
+    seated = Counter()
+    if first.isdigit():
+        years = {first, str(int(first) + 1)}
+        for v in _load(Path(root) / "data" / "member_votes.json", []):
+            if v.get("body") == "H" and str(v.get("year")) in years:
+                seated[(v.get("year"), v.get("vote_number"))] += 1
+
+    narr = _load(Path(root) / "narratives.json", {}).get(term, {})
+
+    def chambers(rec):
+        labels = [" " + (s.get("label") or "") + " " for s in rec.get("stages") or []]
+        return {c for c, word in (("H", " House "), ("S", " Senate ")) if any(word in x for x in labels)}
+
+    vetoed = {(r.get("term"), r.get("id")) for r in idx
+              if r.get("status") in ("Vetoed, override failed", "Veto overridden, became law", "Vetoed")}
+    messages = _load(Path(root) / "veto_messages.json", {})
+    pending = sum(1 for r in idx if r.get("status") == "Vetoed")
+    # Constitutional amendments of the term, by the passage marks the index
+    # carries: origin, then first chamber, second chamber, governor, law.
+    cacrs = [r for r in cur if (r.get("id") or "").startswith("CACR")]
+    marks = lambda r: (r.get("passage") or "-----").ljust(5, "-")
+    both = sum(1 for r in cacrs if marks(r)[2] == "p")
+    # A hearing of a bill, once however many recordings it was matched against.
+    hearings = len({(r.get("term"), r.get("bill"), r.get("body"), r.get("date")) for r in P.load()
+                    if r.get("kind") in ("public hearing", "hearing")})
+    figures = {
+        "term": term.replace("-", "&ndash;"),
+        "bills": len(cur), "hb": prefix["HB"], "sb": prefix["SB"], "cacr": prefix["CACR"],
+        "resolutions": sum(n for p, n in prefix.items() if p.endswith("R") and p != "CACR"),
+        "killed": status["Killed"], "signed": status["Signed into law"],
+        "study": status["Referred for interim study"], "tabled": status["Died on the table"],
+        "session_end": status["Died when the session ended"],
+        "unsigned": status["Became law unsigned"], "overridden": status["Veto overridden, became law"],
+        "law": kind["law"],
+        "house_seats": seats, "house_sitting": sitting, "house_vacant": max(seats - sitting, 0),
+        "seated_most": max(seated.values(), default=0), "seated_fewest": min(seated.values(), default=0),
+        "house_districts": len(house), "senate_districts": len(senate), "ordinary": len(ordinary),
+        "single": sum(1 for h in ordinary if h.get("seats") == 1),
+        "two": sum(1 for h in ordinary if h.get("seats") == 2),
+        "largest": max((h.get("seats") or 1 for h in house.values()), default=0),
+        "floterial": len(house) - len(ordinary),
+        "all_bills": len(idx), "all_rollcall": sum(1 for r in idx if (r.get("nrc") or 0) > 0),
+        "all_no_rollcall": sum(1 for r in idx if not (r.get("nrc") or 0) > 0),
+        "hb2_rollcalls": len(_load(Path(root) / "rollcalls.json", {}).get(term, {}).get("HB2", [])),
+        "narrated": len(narr), "both_chambers": sum(1 for v in narr.values() if chambers(v) == {"H", "S"}),
+        "conference": sum(1 for v in narr.values()
+                          if any("conference" in (s.get("label") or "").lower() for s in v.get("stages") or [])),
+        "terms": len({r.get("term") for r in idx if r.get("term")}),
+        "vetoed": len(vetoed),
+        "veto_failed": sum(1 for r in idx if r.get("status") == "Vetoed, override failed"),
+        "veto_overridden": sum(1 for r in idx if r.get("status") == "Veto overridden, became law"),
+        "veto_messages": sum(1 for t, b in vetoed if b in messages.get(t, {})),
+        "veto_pending": ("" if not pending else " One is still awaiting its override vote."
+                         if pending == 1 else f" {pending} are still awaiting their override votes."),
+        "cacr_voters": ("<b>None of them reached the voters.</b>" if not both else
+                        f"<b>{both:,} passed both chambers and went to the voters.</b>"),
+        "cacr_killed": sum(1 for r in cacrs if r.get("status") == "Killed"),
+        "cacr_session_end": sum(1 for r in cacrs if r.get("status") == "Died when the session ended"),
+        "cacr_one_chamber": sum(1 for r in cacrs if marks(r)[1] == "p" and marks(r)[2] == "x"),
+        "hearings": hearings,
+    }
+    return {k: (f"{v:,}" if isinstance(v, int) else v) for k, v in figures.items()}
+
+
+def fill(text, figures):
+    """[[name]] -> its figure. A name with no figure stops the build: a page
+    that printed "[[killed]]", or nothing where a number was, would publish."""
+    unknown = sorted(set(re.findall(r"\[\[(\w+)\]\]", text or "")) - set(figures))
+    if unknown:
+        raise SystemExit(f"civics.py names figures build_civics does not count: {unknown}")
+    return re.sub(r"\[\[(\w+)\]\]", lambda m: str(figures[m.group(1)]), text or "")
 
 
 def sources_block(sources):
@@ -131,6 +246,9 @@ def main():
 
     tmpl = S.template(site)
     urls = [a.base + S.canon("/learn.html")]
+    figures = record_figures(site)
+    print(f"figures from the record: {figures['all_bills']} bills, {figures['terms']} terms, "
+          f"{figures['vetoed']} vetoed, {figures['bills']} in {figures['term'].replace('&ndash;', '-')}")
 
     # ---- the hub -------------------------------------------------------
     page = S.page(tmpl, path="/learn.html", base=a.base,
@@ -154,9 +272,9 @@ def main():
                 f'<h1>{E(t["title"])}</h1>']
         if t["blurb"]:
             body.append(f'<p class="lead">{E(t["blurb"])}</p>')
-        body.append(t["body"])
+        body.append(fill(t["body"], figures))
         if t.get("holds"):
-            body.append(f'<p class="caveat">{t["holds"]}</p>')
+            body.append(f'<p class="caveat">{fill(t["holds"], figures)}</p>')
         body.append(sources_block(t["sources"]))
         body.append(footer_nav(i, topics))
 
@@ -176,6 +294,9 @@ def main():
         p = p.replace('<div id="results"></div>',
                       f'<div id="results"><div class="civics">'
                       f'{"".join(body)}</div></div>', 1)
+        if "[[" in p:
+            raise SystemExit(f"learn/{t['slug']}.html would publish an unfilled figure: "
+                             + p[p.index("[["):p.index("[[") + 40])
         (out / f"{t['slug']}.html").write_text(p, encoding="utf-8")
         urls.append(a.base + S.canon(f"/learn/{t['slug']}.html"))
 

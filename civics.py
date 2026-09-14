@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.11
+# GRANITE_VERSION: 2026-09-08.12
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -310,14 +310,16 @@ holds the hearing, votes on a recommendation, and writes a report explaining
 it. The chamber is not bound by that recommendation, but it usually follows
 it.</p>
 """ + SHOWS.format("""
-<p>The 2025&ndash;2026 term filed <b>2,234 bills</b>: 1,564 House bills, 566
-Senate bills, 31 constitutional amendments and 73 resolutions.</p>
-<p>The House is <b>400 seats and 382 sitting members</b> as this was written,
-with 18 vacant. The record shows that moving: roll calls this term were taken
-with as many as 399 members seated and as few as 384.</p>
-<p>There are <b>203 House districts and 24 Senate districts</b>. Of the 162
-ordinary House districts, 75 elect a single member and 42 elect two; the
-largest elects ten. The other 41 are floterial &mdash; see
+<p>The [[term]] term filed <b>[[bills]] bills</b>: [[hb]] House bills, [[sb]]
+Senate bills, [[cacr]] constitutional amendments and [[resolutions]] resolutions.</p>
+<p>The House is <b>[[house_seats]] seats and [[house_sitting]] sitting members</b> as
+the record stands, with [[house_vacant]] vacant. The record shows that moving:
+roll calls this term were taken with as many as [[seated_most]] members seated
+and as few as [[seated_fewest]].</p>
+<p>There are <b>[[house_districts]] House districts and [[senate_districts]] Senate
+districts</b>. Of the [[ordinary]] ordinary House districts, [[single]] elect a single
+member and [[two]] elect two; the largest elects [[largest]]. The other
+[[floterial]] are floterial &mdash; see
 <a href="learn/your-representatives.html">Finding your
 representatives</a>.</p>
 <p><a href="committees.html">Every committee</a>, who sits on it, and what it
@@ -340,10 +342,11 @@ at each, and
 Council</a> for the last stage.</p>
 
 <h2>Most bills stop somewhere</h2>
-<p>Of the 2,234 bills filed in the 2025&ndash;2026 term, <b>855 were
+<p>Of the [[bills]] bills filed in the [[term]] term, <b>[[killed]] were
 killed</b> &mdash; the motion is <i>Inexpedient to Legislate</i> &mdash; and
-<b>632 were signed into law</b>. Another 214 were sent for interim study, 197
-died on the table, and 126 died when the session ended without a final vote.
+<b>[[signed]] were signed into law</b>. Another [[study]] were sent for interim
+study, [[tabled]] died on the table, and [[session_end]] died when the session
+ended without a final vote.
 Dying is the ordinary outcome, not a failure of the bill or its sponsor.</p>
 
 <h2>Most votes leave no record of who voted</h2>
@@ -351,8 +354,8 @@ Dying is the ordinary outcome, not a failure of the bill or its sponsor.</p>
 division. A voice vote records only which side sounded louder. A division
 records the count but not who voted which way. Only a roll call records each
 member by name.</p>
-<p>Across the 4,230 bills on this site, <b>865 have at least one recorded roll
-call and 3,365 have none</b>. For a great many bills there is simply no answer
+<p>Across the [[all_bills]] bills on this site, <b>[[all_rollcall]] have at least one
+recorded roll call and [[all_no_rollcall]] have none</b>. For a great many bills there is simply no answer
 to "how did my representative vote" &mdash; not because it is hidden, but
 because it was never recorded.</p>
 
@@ -414,8 +417,8 @@ committee vote, each floor vote, and the recording of each.</p>
 body must disclose under the right-to-know law &mdash; two roll calls before it
 died.</p>
 <p><b>Signed into law:</b>
-<a href="bill/2025/hb2.html">HB 2</a>, the budget trailer bill, with 44 recorded
-votes and a fiscal note running to four years.</p>
+<a href="bill/2025/hb2.html">HB 2</a>, the budget trailer bill, with [[hb2_rollcalls]]
+recorded votes and a fiscal note running to four years.</p>
 <p><b>Vetoed, and the override failed:</b>
 <a href="bill/2026/hb349.html">HB 349</a>, on whether optometrists may perform
 ophthalmic laser procedures &mdash; passed both chambers, vetoed, and the
@@ -426,9 +429,10 @@ plan.</p>
 <p><b>Carried over</b> into the second year:
 <a href="bill/2026/hb649.html">HB 649</a>, on the maintenance obligations of
 motor vehicle operators, which passed in the second year and became law.</p>
-<p>Of the 2,233 bills with a narrative this term, <b>1,068 reached both
-chambers</b> and <b>86 went to a committee of conference</b>. 649 became law:
-632 signed, 10 without a signature, and 7 over a veto.</p>""")
+<p>Of the [[narrated]] bills with a narrative this term, <b>[[both_chambers]]
+reached both chambers</b> and <b>[[conference]] went to a committee of
+conference</b>. [[law]] became law: [[signed]] signed, [[unsigned]] without a
+signature, and [[overridden]] over a veto.</p>""")
 
 
 BODY_GOVERNOR = """
@@ -440,13 +444,13 @@ signature.</p>
 <h2>A veto is not the end</h2>
 <p>The legislature can override a veto, but it takes two thirds of the members
 voting in each chamber. That is a high bar and most attempts fail.</p>
-<p>Across the two terms on this site there are <b>68 vetoed bills</b>. In
-<b>58</b> the override failed. In <b>9</b> it succeeded and the bill became law
-over the Governor's objection. One was still awaiting its override vote when
-this was written.</p>
+<p>Across the [[terms]] terms on this site there are <b>[[vetoed]] vetoed bills</b>.
+In <b>[[veto_failed]]</b> the override failed. In <b>[[veto_overridden]]</b> it
+succeeded and the bill became law over the Governor's objection.[[veto_pending]]</p>
 <p>When the Governor vetoes a bill, the reasons are set out in a message read
 into the record of the chamber the bill came from. Those messages are printed
-in the House and Senate calendars, and this site carries 67 of the 68.</p>
+in the House and Senate calendars, and this site carries [[veto_messages]] of the
+[[vetoed]].</p>
 
 <h2>The Executive Council</h2>
 <p>Five councillors, each elected by district, meeting with the Governor.
@@ -518,10 +522,10 @@ three thresholds, none of which involves the Governor.</p>
 threshold measured against the whole membership is very close to
 unattainable in a chamber where turnout varies.</p>
 """ + SHOWS.format("""
-<p>There are <b>57 CACRs</b> in the record across the two terms this site
-covers. <b>None of them reached the voters.</b> Nineteen were killed outright,
-twenty-seven died when the session ended, three passed one chamber and stopped,
-and the rest are still in committee or were postponed.</p>
+<p>There are <b>[[cacr]] CACRs</b> in the [[term]] term. [[cacr_voters]]
+[[cacr_killed]] were killed outright, [[cacr_session_end]] died when the session
+ended, [[cacr_one_chamber]] passed one chamber and stopped, and the rest are
+still in committee or were postponed.</p>
 <p>They sit in <a href="bills.html">the bill list</a> beside ordinary bills.
 A CACR that shows "Passed one chamber" has a much longer way to go than a bill
 with the same words beside it.</p>""")
@@ -664,8 +668,8 @@ a date in it.</p>
 executive session, which is public and which you may also attend. Sign-in
 counts and written testimony go into the record either way.</p>
 """ + SHOWS.format("""
-<p>This site has parsed <b>7,250 public hearings</b> out of the House and
-Senate calendars, each with the committee, the day, the time and the room.
+<p>This site holds <b>[[hearings]] public hearings</b> from the dockets and the
+House and Senate calendars, each with the committee and the day.
 Every bill's page shows its own hearings, and the Videos tab links the
 recording at the moment the bill was taken up.</p>
 <p>Bills also carry the sign-in counts: how many people registered supporting,
