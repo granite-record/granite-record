@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.166
+# GRANITE_VERSION: 2026-09-04.167
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5762,6 +5762,106 @@ def _leadership_fetch(FL):
         for t in tmps:
             shutil.rmtree(t, ignore_errors=True)
     return "ok", "one 403 or block page or two drops stop it; 404 stops; unlinked and locked ask nothing"
+
+
+@check("build", "the lane runs a daily step once a day between its other steps, and stops at a boundary when asked")
+def _lane_daily():
+    """watchers/gc_lane.py, driven for real in a temp folder on stub steps.
+
+    The nightly fetches the day's bulk files only when nothing holds
+    archive/.lock, and the bill-text lane holds it for more than a week: on 13
+    September no day's files would have been taken until bill text finished,
+    and those files are live views, so a day not taken is gone. So the day's
+    fetch became a daily step of the lane itself. What that has to mean:
+
+      - a "daily HH:MM" line runs at the first step boundary after HH:MM, once
+        a day, before the queue's next run-once step, and is never run as a
+        script called "daily";
+      - one that fails does not stop the lane, but skips that day's later
+        daily steps, which read what it should have made;
+      - a lane restarted the same day does not run them again;
+      - watchers/gc_lane.stop ends the lane at the next boundary, lock
+        released, file removed;
+      - a refusal recorded by a daily step still stops the lane before the
+        next step;
+      - a malformed daily line is reported and left out.
+    """
+    import time as _time
+    here = Path(".").resolve()
+    lane = here / "watchers" / "gc_lane.py"
+    if not lane.exists():
+        return "skip", "watchers/gc_lane.py not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-lane-"))
+    try:
+        (root / "refusal.py").write_text("# the lane checks it is at a repository root\n",
+                                         encoding="utf-8")
+        (root / "watchers").mkdir()
+        (root / "archive").mkdir()
+        (root / "stub.py").write_text(
+            "import pathlib, sys\n"
+            "name, code = sys.argv[1], int(sys.argv[2])\n"
+            "with open('trace.txt', 'a', encoding='utf-8') as fh:\n"
+            "    fh.write(name + '\\n')\n"
+            "if name.startswith('make-stop'):\n"
+            "    pathlib.Path('watchers/gc_lane.stop').write_text('stop', encoding='utf-8')\n"
+            "if len(sys.argv) > 3 and sys.argv[3] == 'refuse':\n"
+            "    pathlib.Path('archive/refused.json').write_text('{}', encoding='utf-8')\n"
+            "print(name, 'exit', code)\n"
+            "sys.exit(code)\n", encoding="utf-8")
+        # A daily line that is not due yet, when the clock leaves room for one.
+        late = _time.localtime().tm_hour <= 21
+        queue = root / "watchers" / "gc_lane.queue"
+
+        def lane_run(lines_):
+            queue.write_text("\n".join(lines_) + "\n", encoding="utf-8")
+            (root / "trace.txt").unlink(missing_ok=True)
+            r = _run([sys.executable, str(lane)], cwd=root, capture_output=True,
+                     text=True, timeout=90)
+            trace = ((root / "trace.txt").read_text(encoding="utf-8").split()
+                     if (root / "trace.txt").exists() else [])
+            return r.returncode, trace
+
+        first = ["# a comment",
+                 "daily 00:00 stub.py daily-a 0",
+                 "daily 00:00 stub.py daily-b 7",
+                 "daily 00:00 stub.py daily-c 0",
+                 "daily 25:00 stub.py malformed 0",
+                 "stub.py once-1 0",
+                 "stub.py make-stop 0",
+                 "stub.py once-2 0"] + (["daily 23:59 stub.py daily-late 0"] if late else [])
+        rc, trace = lane_run(first)
+        assert rc == 0, f"the lane exited {rc} on a planned stop"
+        assert trace == ["daily-a", "daily-b", "once-1", "make-stop"], (
+            f"the lane ran {trace}; wanted today's daily steps up to the one that failed, "
+            "then the queue, then a stop at the boundary before once-2")
+        assert not (root / "watchers" / "gc_lane.stop").exists(), "the stop file was left behind"
+        assert not (root / "archive" / ".lock").exists(), "a stopped lane left its lock"
+        today = _time.strftime("%Y-%m-%d")
+        recorded = (root / "logs" / "gc_lane.daily").read_text(encoding="utf-8").splitlines()
+        assert sorted(ln.split("\t", 1)[1] for ln in recorded if ln.startswith(today)) == sorted(
+            ["daily 00:00 stub.py daily-a 0", "daily 00:00 stub.py daily-b 7",
+             "daily 00:00 stub.py daily-c 0"]), f"today's daily record is {recorded}"
+        log = (root / "logs" / "gc_lane.log").read_text(encoding="utf-8")
+        assert "not a daily step this lane can run" in log, "a malformed daily line was not reported"
+
+        # The same day again: nothing daily runs twice; once-2 is next, and the
+        # queue ends -- but daily steps keep a lane alive, so stop it by hand.
+        again = [ln for ln in first if ln != "stub.py make-stop 0"] + ["stub.py make-stop-2 0"]
+        rc2, trace2 = lane_run(again)
+        assert rc2 == 0 and trace2 == ["once-2", "make-stop-2"], (
+            f"restarted the same day the lane ran {trace2} (exit {rc2}); wanted once-2 and "
+            "the stop, and no daily step again")
+
+        refused = again + ["daily 00:00 stub.py daily-refused 2 refuse", "stub.py after-refusal 0"]
+        rc3, trace3 = lane_run(refused)
+        assert rc3 == 3 and trace3 == ["daily-refused"], (
+            f"a daily step that recorded a refusal was followed by {trace3} (exit {rc3}); "
+            "wanted the lane to stop before its next step")
+        return "ok", ("daily steps once a day before the queue, a failure skipping the rest of the "
+                      "day's and not the lane, none again on a restart, a stop at the boundary, "
+                      "and a refusal still ending it")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
 
 
 @check("build", "the calendar drain runs under the lane and leaves its lock alone",
