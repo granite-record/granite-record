@@ -53,14 +53,17 @@ is renumbered here in one pass.
    filled from the data at build time (§6d). Phase 1 is complete.
 2. *Features.* Topics for the archived terms, where 37-64% of each term's bills
    are "Miscellaneous", scored at the bench; search that finds what was meant,
-   measured on a set of real queries; follow (committee pages name their
-   feeds, a Follow control, the email backend written up); archived bill text
+   measured on a set of real queries; follow -- *done on the 14th*: committee
+   pages name their feeds (archived ones do not, and get none), a Follow
+   control on every record page offers the feed its head names, a bill sent to
+   interim study can be followed, and the email design is written up for after
+   launch in `FOLLOW.md`; archived bill text
    on its pages; the schedule service and new calendars daily, once
    `fetch_schedule.py` meets the fetch standard.
-3. *The interface.* The theme control as above; tabs and mobile; the homepage
-   and status banner. Seen in the screenshots of the 14th: at 768px a member's
-   Votes table gives the date 9% of the width, and "9/13/2018" runs into the
-   bill number beside it, on every member's page.
+3. *The interface.* The theme control as above -- *done on the 14th*
+   (24acc19); tabs and mobile; the homepage and status banner. The Votes
+   table's date column at 768px, seen in the screenshots of the 14th, is
+   fixed (beec463).
 4. *Launch prep.* The Learn read-through with the person; the About and Data
    pages; the history rewrite and the public repository; the SEO last mile and
    the sitemap; screenshots at 360, 768 and 1440, a full build, publish,
