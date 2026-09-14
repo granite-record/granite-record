@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.165
+# GRANITE_VERSION: 2026-09-04.166
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2722,7 +2722,6 @@ def _child_encoding():
     return "ok", f"{n} direct subprocess calls, every text one names its encoding"
 
 
-@check("build", "every builder runs end to end on a fixture site")
 @check("build", "proceedings.csv builds from the fixture and both sources land in it")
 def _proceedings_table():
     """One table, both sources. This exists because five tools in one day
@@ -2880,29 +2879,58 @@ def _proceedings_term_shrink():
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("build", "every builder runs end to end on a fixture site")
 def _chain():
     """The check that would have caught the worst bug of the session.
 
     Importing a module and calling its pure functions never enters main(), so
     build_site_v2.py lost sixty-four lines of its loading code and every check
-    here stayed green until a real build failed. This builds a two-bill project
-    in the system temp directory and runs the whole chain over it: nothing
-    touches the real site, nothing touches the network.
+    here stayed green until a real build failed. This builds a four-bill project
+    in the system temp directory and runs the whole chain over it, in
+    build_all's order, then check_site: nothing touches the real site, nothing
+    touches the network.
+
+    IT NEVER RAN UNTIL 13 SEPTEMBER. Its decorator sat stacked on
+    _proceedings_table, from the repository's first commit, so this name ran
+    that function twice and this one not at all -- while its feed assertion was
+    the reason a page could not link a feed that was never written. Run by hand
+    that day it failed at its second builder: build_pages reads app.css, app.js
+    and bills.html from its working directory and copies assets/ beside the
+    pages, and the fixture had none of them. Once they were there, three more
+    builders had joined build_all since this was written and check_site called
+    their pages missing. The fixture now carries what each needs -- a committee
+    list, a district map, the offices file -- and all ten run.
     """
     here = Path(".").resolve()
     need = ["build_site_v2.py", "build_pages.py", "build_bill_pages.py",
-            "build_feeds.py", "check_site.py"]
+            "build_legislator_pages.py", "build_committees.py", "build_civics.py",
+            "build_town_pages.py", "build_indexes.py", "build_exports.py",
+            "build_feeds.py", "check_site.py", "app.css", "app.js", "bills.html"]
     absent = [x for x in need if not (here / x).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp())
     try:
         _site_fixture(root)
-        for src in ("bills.html", "site/bills.html"):
-            if (here / src).exists():
-                (root / "site").mkdir(exist_ok=True)
-                shutil.copy2(here / src, root / "site" / "bills.html")
-                break
+        (root / "site").mkdir(exist_ok=True)
+        shutil.copy2(here / "bills.html", root / "site" / "bills.html")
+        # What build_pages reads from its working directory, and the drawn
+        # assets it copies into site/: without them every page links an icon
+        # that is not there.
+        for name in ("app.css", "app.js", "bills.html", "officials.json"):
+            if (here / name).exists():
+                shutil.copy2(here / name, root / name)
+        if (here / "assets").is_dir():
+            shutil.copytree(here / "assets", root / "assets")
+        # The fixture's House committee, as data/committees.json names one, so
+        # build_committees has a page to write; and the fixture's two towns, as
+        # parse_districts writes them, so build_town_pages does.
+        (root / "data" / "committees.json").write_text(json.dumps(
+            {"H43": {"code": "H43", "name": "Commerce", "abbr": "COMMERCE"}}), encoding="utf-8")
+        seat = {"congress": 1, "council": 3, "senate": 24, "house": [
+            {"county": "Rockingham", "district": 13, "floterial": False, "seats": 2}]}
+        (root / "site" / "districts.json").write_text(json.dumps(
+            {"Raymond": {"0": seat}, "Stratham": {"0": seat}}), encoding="utf-8")
         base = "https://graniterecord.org"
         steps = [
             ("build_site_v2.py", ["--data", "data", "--out", "site",
@@ -2910,9 +2938,17 @@ def _chain():
             ("build_pages.py", ["--out", "site"], "site/legislators.html"),
             ("build_bill_pages.py", ["--site", "site", "--base", base],
              "site/sitemap.xml"),
+            ("build_legislator_pages.py", ["--site", "site", "--base", base],
+             "site/legislator"),
             # After the bill pages, as in build_all: it reads their stations.
             ("build_committees.py", ["--site", "site", "--data", "data",
                                      "--base", base], "site/committees.json"),
+            ("build_civics.py", ["--site", "site", "--base", base], "site/learn.html"),
+            ("build_town_pages.py", ["--site", "site", "--base", base], "site/town"),
+            ("build_indexes.py", ["--site", "site", "--base", base],
+             "site/directory.html"),
+            ("build_exports.py", ["--site", "site", "--base", base],
+             "site/data/manifest.json"),
             ("build_feeds.py", ["--site", "site", "--base", base],
              "site/feed/all.xml"),
         ]
@@ -2944,13 +2980,28 @@ def _chain():
                 f"{bid} of {year}: the page "
                 + ("links a feed that was not written"
                    if links else "has a feed it does not link"))
+        # And a member's page, in the pipeline's own order: the pages are
+        # written before the feeds, so this is where naming a feed the feed
+        # builder then skips would show.
+        members = json.loads((root / "site" / "legislators.json").read_text(encoding="utf-8"))
+        named = 0
+        for m in members:
+            page = (root / "site" / "legislator" / f"{m['slug']}.html").read_text(
+                encoding="utf-8", errors="replace")
+            links = f'href="/feed/legislator/{m["id"]}.xml"' in page
+            wrote = (root / "site" / "feed" / "legislator" / f"{m['id']}.xml").exists()
+            assert links == wrote, (
+                f"member {m['id']}: the page " + ("names a feed that was not written"
+                                                  if links else "does not name its feed"))
+            named += links
         r = _run([sys.executable, str(here / "check_site.py"),
                             "--site", "site", "--base", base],
                            cwd=root, capture_output=True, text=True, timeout=120)
         bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
         assert not bad, "check_site: " + "; ".join(bad)[:140]
-        return "ok", ("6 builders, then check_site, on a 2-bill fixture; "
-                      "every page that links a feed has one")
+        return "ok", (f"{len(steps)} builders in build_all's order, then check_site, on a "
+                      f"4-bill fixture; every bill and member page names only feeds that exist "
+                      f"({named} of {len(members)} members have one)")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
