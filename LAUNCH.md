@@ -113,7 +113,8 @@ is renumbered here in one pass.
    Console; screenshots at 360, 768 and 1440, a full build, publish,
    `check_live`.
 
-Then polish days, visuals and backend. After launch: email follows,
+Then polish days, visuals and backend -- the person's list for those is §0b,
+written on the 14th to pick up on Thursday the 17th. After launch: email follows,
 automation off the PC, the 1999-2014 calendar hearings (spec C3-C7). Sponsors
 for 1989-2022 come with the bill text as the lane fetches it (above), which
 may make the `byAnyMember.aspx` sweep of §2 unnecessary. That is the person's
@@ -182,6 +183,64 @@ with the table beside them, the method stated under every number.
 - laws that took effect without the governor's signature, by term;
 - the busiest single days on the floor and in committee;
 - the share of bills sent to interim study, and how few return.
+
+## 0b. Polishing before launch (the person's list, 14 September)
+
+**Added to everything above, and it replaces none of it.** The person wrote this
+list near the week's usage limit, while the bill text fetch kept running, as the top
+priorities before launch. It is to be picked up on Thursday the 17th. Their words
+come first. The note after each is only where the work lives, found without
+starting it.
+
+1. **Homepage and tab redesign.** The homepage is written by `build_pages.py`, and
+   the record pages' tabs are drawn in `app.js`.
+2. **Rethink "with or against party" on legislator pages.** The person suggests
+   "voted with the prevailing side" instead. This is a question of what the
+   measure means, to settle with the person before any code changes.
+3. **Committee session page redesign** (`build_committees.py`, the Sessions tab).
+4. **A floor session page** -- new: a page for a House or Senate floor day.
+5. **Committee of conference page redesign.**
+6. **Rework text spacing on a number of pages.** Screenshots at 360, 768 and 1440
+   first, and content fills the width it has.
+7. **Bill text and amendment diff redesign** (`build_bill_versions.py`, and the
+   text tab in `app.js`).
+8. **Reformat the legislator bubble cards** (`.mchip`). Seen on the 14th: the
+   prime sponsor's bold, weight 600 on a 13px chip, barely shows.
+9. **New and better diagrams in the Learn pages**, to the college civics standard
+   (`civics.py`).
+10. **Reformat the Learn home page** (`learn.html`, from `build_civics.py`).
+11. **Update the About and Data pages** (`about.html` from `build_pages.py`,
+    `data.html` from `build_exports.py`).
+12. **Fix the ward selection bug on town pages, whose links break**:
+    https://graniterecord.org/dover-ward-3.html (`build_town_pages.py`).
+13. **Duplicate videos on some House bills' public hearings** (the Videos tab,
+    fed from the proceedings table).
+14. **Overall font styles, and uniform header and colour styles** (`app.css`;
+    `DESIGN.md` is a reference, not a rule).
+15. **Resolve as many known bugs and information gaps as possible before launch,
+    unknown members among them.** Found on the 14th:
+    - four 2021-2022 House numbers vote as "Member #408966", "#409011",
+      "#409014" and "#409039". The bill text names representatives who match
+      no named ballot that term: Belanger (Rock. 9), Homola (Hills. 27),
+      Littlefield (Belk. 3), Moran (Hills. 34) and Shurtleff (Merr. 11).
+      Shurtleff has no named ballot in any term. Which of them the four numbers
+      are is not known;
+    - 2022 HB 52's page prints "SPONSORSF", so its sponsor (Rep. B. Griffin) is
+      not read;
+    - roll calls from December of an even year count in the outgoing term, when
+      the next House has already organised;
+    - a 2023-2024 sponsor from the database, where the member has changed
+      chamber since, is labelled with their seat now, while one read from the
+      bill text shows the seat printed on the bill.
+16. **"Cite this page"** on bills and other pages that may be cited in papers,
+    by news organisations and the like.
+17. **A list at the foot of the homepage of what is coming**, such as email
+    follows.
+18. **Review the codebase so the open-source GitHub release is usable by other
+    websites:** optimisations, streamlining, old programs and files moved into
+    `obsolete/`, and the documentation updated and reconciled. Nothing public
+    carries the personal email, home IP address or keys, and the history
+    rewrite in §0 comes before any push.
 
 ---
 

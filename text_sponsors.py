@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.1
+# GRANITE_VERSION: 2026-09-14.2
 """
 Sponsors read off each bill's own text, for the bills the database names none for.
 
@@ -42,9 +42,10 @@ Sat.resolve) and never prove one.
 
 Where nobody fits, the sponsor stays as the page prints them -- "Rep. C. Brown (Graf 14)",
 no party, no link. That is every sponsor before 1999, when the record of roll calls begins,
-and a few after: Speaker Shurtleff, who does not vote; Rep. Cote in 2023-2024, who cast no
-roll call; four 2021-2022 representatives whose votes are under a number the roster never
-named.
+and a few after. Rep. Shurtleff has no ballot under his name in any term on disk. Rep. Cote
+has none in 2023-2024. Belanger, Homola, Littlefield and Moran match nobody in 2021-2022,
+where four House numbers vote as "Member #". Whether those are the same people is not
+known.
 
 WHAT IT IS WORTH, measured against sources this did not produce (14 September)
 
