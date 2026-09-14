@@ -248,8 +248,9 @@ the firewall block is released. Their one ask is to go lightly on
 heaviest pages. That concerns us, because the archived docket fetches
 (`fetch_archive_docket.py`), 2016's bill text (`billText.aspx`), `fetch_bill_status.py`
 and `resolve_members.py` all go through bs2016. The static `/legislation/<year>/`
-pages the lane is reading now do not. **To build:** the lane holds bs2016 steps
-on House and Senate session days. They also pointed to the public SQL database
+pages the lane is reading now do not. **To build after launch** (the person's
+call on the 14th, since no session is running): the lane holds bs2016 steps on
+House and Senate session days. They also pointed to the public SQL database
 at `gc.nh.gov/downloads/`, which the `fetch_*_db.py` scripts already read.
 
 ---
