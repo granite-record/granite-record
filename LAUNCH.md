@@ -242,6 +242,16 @@ starting it.
     carries the personal email, home IP address or keys, and the history
     rewrite in §0 comes before any push.
 
+**From the General Court's IT office, 14 September** (relayed by the person):
+the firewall block is released. Their one ask is to go lightly on
+`gc.nh.gov/bill_status/legacy/bs2016/` pages on session days, which are their
+heaviest pages. That concerns us, because the archived docket fetches
+(`fetch_archive_docket.py`), 2016's bill text (`billText.aspx`), `fetch_bill_status.py`
+and `resolve_members.py` all go through bs2016. The static `/legislation/<year>/`
+pages the lane is reading now do not. **To build:** the lane holds bs2016 steps
+on House and Senate session days. They also pointed to the public SQL database
+at `gc.nh.gov/downloads/`, which the `fetch_*_db.py` scripts already read.
+
 ---
 
 ## 1. Live
