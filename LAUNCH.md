@@ -993,7 +993,11 @@ committed on `master` except where it says otherwise, and is on the built
    5** -- so the pre-2008 Senate calendars are served at the names the queue
    holds, which was the question left open on the 12th. The Senate calendars
    back to 1998 follow, then bill text. The 44 zero-padded names stay
-   `withheld`. Still open: the person asking IT to lift the home address.
+   `withheld`. Still open: the home address. On the evening of the 13th the
+   person wrote to the General Court's IT staff -- what the project is, why
+   the address was blocked, what now keeps its requests safe, and a request
+   to lift the block -- scheduled to send on the morning of Monday 14
+   September. Their answer decides whether fetches can leave the VPN.
 2. **Published on the 13th, in the afternoon** (merge 6222d12, deployment
    27c1e2a2): the report box is live -- `/api/report` answers 405 to a GET, a
    well-formed report sent to the deployment's own pages.dev address was
