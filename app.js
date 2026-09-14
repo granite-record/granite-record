@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.74
+// GRANITE_VERSION: 2026-09-07.75
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -51,18 +51,20 @@ const SYN=[
   ["housing","dwelling"],
   // Not "lease" (the state leases buildings) nor "subdivision" (every
   // "political subdivision"): measured, both pulled in bills about neither.
-  ["landlord","tenant","rent","eviction"],
+  ["landlord","tenant","eviction","rental housing"],
   ["zoning","land use","planning board"],
-  ["childcare","child care","daycare","day care"],
-  ["marijuana","cannabis","thc","weed"],
+  ["childcare","daycare"],
+  ["marijuana","cannabis","thc"],
   ["dui","dwi","intoxicated","impaired driving"],
   // Not "insurance": a search for health returned every auto and home policy bill.
   ["healthcare","health care","health","medical"],
-  ["police","law enforcement","officer","sheriff"],
+  ["police","law enforcement","police officer","peace officer","sheriff"],
   ["veteran","military","national guard","armed forces"],
   ["elderly","senior","older adult","aging"],
   ["vote","voting","election","ballot","absentee","voter"],
-  ["internet","broadband","telecommunication"],
+  // Broadband is internet ACCESS: with "internet" and "telecommunication" in
+  // the group it returned obscenity filters and wiretaps.
+  ["broadband","internet service","high speed internet"],
   ["road","highway","transportation","bridge"],
   ["climate","emission","greenhouse","renewable","solar"],
   ["trash","landfill","solid waste","recycling"],
@@ -76,16 +78,16 @@ const SYN=[
   ["transgender","gender identity","gender-affirming"],
   ["immigration","immigrant","noncitizen","alien"],
   ["minimum wage","hourly rate","wage"],
-  ["union","collective bargaining","labor"],
+  ["union","collective bargaining"],
   // Two groups: "pfas" found every bill naming water, docks and dams included.
   ["water","groundwater","drinking water"],
-  ["pfas","perfluoro","polyfluoro","forever chemical"],
-  ["prison","corrections","inmate","incarcerat"],
+  ["pfas","perfluoroalkyl","polyfluoroalkyl","forever chemical"],
+  ["prison","correctional","department of corrections","inmate","incarcerated","incarceration"],
   ["court","judicial","judge","judiciary"],
   ["property tax","assessment","abatement"],
-  ["energy","electric","utility","ratepayer"],
+  ["energy","electric","ratepayer"],
   ["mental health","behavioral health","psychiatric"],
-  ["disability","disabled","accessib"],
+  ["disability","disabled","accessible","accessibility"],
   ["farm","agriculture","livestock","dairy"],
 ];
 const SYNMAP={};
@@ -111,12 +113,20 @@ function expand(word){
   //
   // Partial matches need at least four characters, so "gun" does not fire on
   // "begun" and short words do not drag in whole groups.
+  // The word's own entry first. "wage" is in the minimum wage group; taking
+  // the longest entry it begins put it in the gambling group, by "wagering",
+  // and "minimum wage" returned the minimum age for sports betting.
+  if(SYNMAP[word])return [...new Set([word, ...SYNMAP[word]])];
   let best=null;
   for(const t in SYNMAP){
     // Prefix match, not "contains anywhere". "guns" should reach the firearm
-    // group; "begun" should not, and it does under a contains test.
-    const hit = word===t ||
-      (word.length>=4 && (word.startsWith(t)||t.startsWith(word)));
+    // group; "begun" should not, and it does under a contains test. Only
+    // one-word entries: "minimum" is not a way of saying "minimum wage", and
+    // reading it as one made every bill saying "wage" twice a match.
+    if(t.includes(" "))continue;
+    // A longer entry the word begins only for a word of six letters or more:
+    // "rates" begins "ratepayer", and "electric rates" found 77 energy bills.
+    const hit = word.length>=4 && (word.startsWith(t)||(word.length>=6&&t.startsWith(word)));
     if(hit && (!best||t.length>best.length)) best=t;
   }
   return best ? [...new Set([word, ...SYNMAP[best]])] : [word];
@@ -150,9 +160,31 @@ const CONCEPTS=[
     "education trust fund","education grant","school building aid","opportunity budget"]},
   {phrases:["school choice","education freedom account","education freedom accounts",
     "education savings account","education savings accounts","school voucher",
-    "school vouchers","voucher","vouchers"],
+    "school vouchers"],
+   // Not "voucher" alone: housing vouchers are vouchers too, and a landlord
+   // bill came up for "school choice".
    terms:["education freedom account","school choice","education savings account",
-    "voucher","scholarship organization","charter school","open enrollment"]},
+    "school voucher","scholarship organization","open enrollment"]},
+  // Phrases, because as two words each found bills about something else:
+  // "climate" and "change" a portfolio standard's changes, "teacher" and "pay"
+  // payments to schools, "sex" and "education" biological sex in athletics.
+  {phrases:["climate change","global warming"],
+   terms:["climate change","global warming","greenhouse gas","carbon emission"]},
+  {phrases:["teacher pay","teacher salary","teacher salaries","teacher wages",
+    "teacher compensation","educator pay"],
+   terms:["teacher pay","teacher salary","teacher salaries","teacher compensation",
+    "educator salary","educator salaries","minimum teacher salary","salaries of teachers"]},
+  {phrases:["sex education","sex ed","sexual education","sexuality education",
+    "sexual health education"],
+   terms:["sex education","sexual education","sexuality education","human sexuality",
+    "sexual health education"]},
+  {phrases:["right to work","right-to-work"],
+   terms:["right to work","union membership","labor organization"]},
+  {phrases:["term limits","term limit"],
+   terms:["term limit","term limits","consecutive terms"]},
+  // A phrase, because as two words "child" and "care" found foster care.
+  {phrases:["child care","childcare","day care","daycare"],
+   terms:["child care","childcare","day care","daycare"]},
   {phrases:["paid family leave","paid family and medical leave","family leave","paid leave"],
    terms:["family and medical leave","paid family","family leave","paid leave"]},
   {phrases:["short term rental","short term rentals","vacation rental","vacation rentals","airbnb"],
@@ -160,7 +192,7 @@ const CONCEPTS=[
   {phrases:["bail reform","bail","pretrial release"],
    terms:["bail","pretrial"]},
   {phrases:["affordable housing","workforce housing","housing affordability"],
-   terms:["affordable housing","workforce housing","housing affordab","housing champion"]},
+   terms:["affordable housing","workforce housing","housing affordability","housing champion"]},
   {phrases:["right to know","public records","open records","freedom of information","foia"],
    terms:["right to know","91 a","public records","governmental records"]},
   {phrases:["death penalty","capital punishment"],
@@ -202,11 +234,73 @@ function queryGroups(raw){
 }
 let QG_KEY=null,QG=[];
 function groupsFor(q){ if(q!==QG_KEY){QG_KEY=q;QG=queryGroups(q);} return QG; }
+
+/* WHERE A WORD MATCHES, AND HOW. Read against the bills 36 searches returned
+   (14 September), the irrelevant ones came from four places:
+   - the TOPIC label, a broad bucket: "mental health" returned 80 bills --
+     ambulance services, the prescription drug board -- whose only link was a
+     topic reading "...Mental Health". Text matching leaves it out; the Topic
+     filter is still there for anyone who wants the bucket.
+   - a SPONSOR's name read as the start of a word: "bail" found every bill of a
+     member named Bailey. A name matches as a whole word.
+   - a SYNONYM read as the start of a word: "alien" found "parental alienation".
+     The reader's own word still matches as a start ("educat" finds education),
+     but a word this file supplies matches as itself, or with an ending.
+   - no order: the 33 bills titled about school funding sat among 74 that only
+     share the Education Funding committee. Best match puts the title first. */
+const RXW={};
+function altRx(term){
+  return RXW[term]||(RXW[term]=new RegExp("\\b"
+    +term.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?:s|es|ed|d|ing|ings|er|ers|al)?\\b"));
+}
+// The reader's own word, or its singular: matched as the start of a word.
+const typedAlt=(g,alt)=>!alt.includes(" ")&&(alt===g.word||alt===stem(g.word));
+function inText(hay,g,alt){ return typedAlt(g,alt)?hasTerm(hay,alt):altRx(alt).test(hay); }
+// 3 in the title, 2 in the sponsor's name, 1 in a committee's name, 0 not at all.
+// A sponsor's name or a committee's matches only what the reader typed: a
+// synonym found in a committee's name ("energy", for "electric vehicles") put a
+// bill about hunting from a vehicle in the results.
+function groupWeight(b,g){
+  let w=0;
+  for(const alt of g.alts){
+    if(inText(b.hayT,g,alt))return 3;
+    if(!(typedAlt(g,alt)||alt===g.word))continue;
+    if(w<2&&altRx(alt).test(b.hayS))w=2;
+    if(w<1&&inText(b.hayC,g,alt))w=1;
+  }
+  return w;
+}
+// NOTHING FOUND is still an answer with somewhere to go. A search of several
+// parts that no bill has all of says which parts do find bills on their own,
+// with how many, as searches to run -- rather than a blank page for a reader
+// who does not know a bill number and has no other way in.
+function emptyResult(){
+  const gs=query.trim()&&!billNumbers(query)?groupsFor(query.trim()):[];
+  const inTerm=IDX.filter(b=>!term||!b.term||b.term===term);
+  // The parts: each group of a search of several, or each word of a phrase
+  // that was the whole search ("teacher pay" finds nothing this term).
+  const words=gs.length>1?gs.map(g=>g.word)
+    :gs.length===1&&gs[0].word.includes(" ")?gs[0].word.split(" ").filter(w=>!STOPSET.has(w)):[];
+  const parts=words.map(w=>{const g2=queryGroups(w);
+    return [w,inTerm.filter(b=>g2.every(g=>groupWeight(b,g)>0)).length];}).filter(p=>p[1]);
+  return `<div class="empty">No bills match${words.length?" all of that":""} in the
+    ${esc(term)} term.${parts.length?`<br><br>On their own: ${parts.map(([w,n])=>
+      `<button class="link" data-q="${esc(w)}">${esc(w)}</button> (${n.toLocaleString()})`)
+      .join(" &middot; ")}`:""}<br><br>Try removing a filter, or a different term.</div>`;
+}
+function scoreOf(b){
+  const gs=groupsFor(query.trim());
+  let s=gs.reduce((t,g)=>t+groupWeight(b,g),0);
+  // The search's own words, in order, in the title, is the strongest sign there is.
+  const words=gs.map(g=>g.word).join(" ");
+  if(gs.length>1&&b.hayT.includes(words))s+=2;
+  return s;
+}
 const fdate=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
   return new Date(y,m-1,dd).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});};
 const $=s=>document.querySelector(s);
 
-let IDX=[],META={},term=null,query="",sortBy="num";
+let IDX=[],META={},term=null,query="",sortBy="num",sortChosen=false;
 // A bill number is unique within a two-year term and not beyond it, so
 // every address for one carries its filing year: the static page has done
 // so from the start, and the detail file and this view do now.
@@ -254,6 +348,13 @@ function sortRows(rows){
                   || (a.status||"").localeCompare(b.status||"")
                   || billKey(a)[1]-billKey(b)[1],
   }[sortBy]||(()=>0);
+  // BEST MATCH: the most of the search in the title first, then the sponsor,
+  // then the committee, and bill number within each.
+  if(sortBy==="best"){
+    const sc=new Map(rows.map(b=>[b,scoreOf(b)]));
+    const num=(a,b)=>{const x=billKey(a),y=billKey(b);return x[0]-y[0]||x[1]-y[1];};
+    return rows.slice().sort((a,b)=>sc.get(b)-sc.get(a)||num(a,b));
+  }
   return rows.slice().sort(by);
 }
 const sel={committee:new Set(),topic:new Set(),sponsor:new Set(),kind:new Set(),
@@ -344,8 +445,12 @@ function ensureTerm(t){
   if(!t||LOADED.has(t))return Promise.resolve();
   return need("idx/"+encodeURIComponent(t)+".json").then(rows=>{
     LOADED.add(t);
-    rows.forEach(b=>b.hay=[b.id,b.n,b.title,b.sponsor,
-      ...(b.committees||[b.committee||""]),b.topic].join(" ").toLowerCase().replace(/-/g," "));
+    rows.forEach(b=>{
+      const norm=s=>String(s||"").toLowerCase().replace(/-/g," ");
+      b.hayT=norm([b.id,b.n,b.title].join(" "));
+      b.hayS=norm(b.sponsor);
+      b.hayC=norm((b.committees||[b.committee||""]).join(" | "));
+    });
     IDX=IDX.concat(rows);
   });
 }
@@ -378,7 +483,7 @@ need("meta.json")
    const so=$("#sort");
    if(so)so.addEventListener("change",e=>{
      if(PAGE||window.GR_STATIC)return;
-     sortBy=e.target.value;render();});
+     sortChosen=true;sortBy=e.target.value;render();});
    $("#q").disabled=false;
    // 63 CHARACTERS IN A 342px BOX. The placeholder overflowed by 212px at
    // 420px wide, so a phone read "Bill number, key phrase, or several nu" --
@@ -495,7 +600,7 @@ function matches(b,ignore){
   if(ignore!=="voteday"&&sel.voteday.size&&!(b.votedays||[]).some(d=>sel.voteday.has(d)))return false;
   const q=query.trim(); if(!q)return true;
   // Every group must match, and any of its alternatives will do.
-  return groupsFor(q).every(g=>g.alts.some(alt=>hasTerm(b.hay, alt)));
+  return groupsFor(q).every(g=>groupWeight(b,g)>0);
 }
 
 function fgroup(key,label,vals,counts,searchable){
@@ -3075,6 +3180,13 @@ function render(more){
   // Page scroll only. The facet panel restores itself inside renderFacets,
   // synchronously, which is the only way it survives the repaint.
   const _y=window.scrollY;
+  // A search in words is ordered by how well each bill matches it, until the
+  // reader picks an order themselves; a list with no search, or a search for
+  // bill numbers, keeps number order.
+  if(!sortChosen){
+    const want=query.trim()&&!billNumbers(query)?"best":"num";
+    if(sortBy!==want){sortBy=want;const so=$("#sort");if(so)so.value=want;}
+  }
   const rows=sortRows(IDX.filter(b=>matches(b)));
   const inTerm=IDX.filter(b=>!term||!b.term||b.term===term).length;
   // Say when a search matched on a synonym, so nobody wonders why a bill about
@@ -3127,8 +3239,7 @@ function render(more){
         ${elsewhere.map(b=>`${esc(b.n)} exists in the
           <button class="link" data-term="${esc(b.term)}">${esc(b.term)}</button>
           term — ${esc(b.title||"")}`).join("<br>")}</div>`
-      :`<div class="empty">No bills match. Try removing a filter, or a different
-        term.</div>`));
+      :emptyResult()));
   // Reaching the end of the list is the request for more of it. The button
   // in the sentinel does the same thing for a keyboard or a reader that never
   // fires an intersection.
@@ -3412,6 +3523,9 @@ document.addEventListener("click",e=>{
     render();return;}
   const jt=e.target.closest("[data-term]");
   if(jt){term=jt.dataset.term;$("#year").value=term;forgetCardState();render();return;}
+  // A part of a search that found nothing, offered on its own.
+  const jq=e.target.closest("[data-q]");
+  if(jq){query=jq.dataset.q;$("#q").value=query;render();return;}
   if(e.target.id==="clear"){Object.values(sel).forEach(s=>s.clear());render();return;}
 });
 document.addEventListener("change",e=>{

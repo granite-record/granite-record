@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.44 -->
+<!-- GRANITE_VERSION: 2026-09-05.45 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -73,7 +73,8 @@ if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
 <div class="qhint"><span id="count">Loading…</span>
 <label for="sort" style="position:absolute;left:-9999px">Sort order</label>
 <select id="sort">
-  <option value="num">Bill number</option>
+  <option value="best">Best match</option>
+  <option value="num" selected>Bill number</option>
   <option value="recent">Most recent action</option>
   <option value="status">Status</option>
 </select>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.178
+# GRANITE_VERSION: 2026-09-04.179
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1915,7 +1915,7 @@ require("./stub.js");
 const src = require("fs").readFileSync("./page.js", "utf8");
 let scope;
 try { scope = (0, eval)(src +
-    "; ({render, IDX, renderDetail, serviceLine, queryGroups, yearOf, dkey, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
+    "; ({render, IDX, renderDetail, serviceLine, queryGroups, expand, groupWeight, yearOf, dkey, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message);
             process.exit(1); }
 scope.IDX.length = 0;
@@ -2275,6 +2275,22 @@ if (qg("the law").length !== 2) {
   console.log("SEARCH: a search of nothing but skipped words searched for nothing"); process.exit(1); }
 if (qg("zoning")[0].indexOf("tenant") >= 0 || qg("pfas")[0].indexOf("water") >= 0) {
   console.log("SEARCH: zoning or pfas is grouped with a different subject again"); process.exit(1); }
+// The second pass, reading the bills each search returned. A word keeps its
+// own group ("wage", not "wagering"), a short word does not borrow a longer
+// entry ("rates" is not "ratepayer"), a name matches only as a whole word,
+// and a synonym only as itself or with an ending ("alien", not "alienation").
+if (scope.expand("wage").indexOf("wagering") >= 0 || scope.expand("rates").indexOf("ratepayer") >= 0) {
+  console.log("SEARCH: 'wage' or 'rates' expands into another subject's group"); process.exit(1); }
+var bill = function (t, s, c) { return {hayT: t, hayS: s || "", hayC: c || ""}; };
+var bail = scope.queryGroups("bail")[0], imm = scope.queryGroups("immigration")[0];
+if (scope.groupWeight(bill("hb1 relative to hunting licenses", "bailey, ann"), bail) > 0) {
+  console.log("SEARCH: 'bail' matched a sponsor named Bailey"); process.exit(1); }
+if (scope.groupWeight(bill("hb2 relative to parental alienation"), imm) > 0
+    || scope.groupWeight(bill("hb3 relative to aliens residing in new hampshire"), imm) !== 3) {
+  console.log("SEARCH: a synonym matched inside another word, or missed its plural"); process.exit(1); }
+var ev = scope.queryGroups("electric vehicles")[0];
+if (scope.groupWeight(bill("hb4 relative to hunting from a vehicle", "", "science, technology and energy"), ev) > 0) {
+  console.log("SEARCH: a synonym matched a committee's name"); process.exit(1); }
 console.log("ok");
 """, encoding="utf-8")
         r = _run(["node", "go.js"], cwd=root, capture_output=True,
