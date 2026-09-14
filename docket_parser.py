@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -247,6 +247,25 @@ INTRODUCED_RE = re.compile(r"Introduced(?:\s+\(in recess of\))?\s+(?P<date>\d{1,
 # line that only mentions an introduction in passing is not a referral.
 UNDATED_INTRO_RE = re.compile(r"\s*Introduced\s+and\s+[Rr]eferred\s+to\b")
 
+# A bill's SECOND committee, written on its own line once the first has
+# reported:
+#   "Referred to Finance 03/13/2025  HJ 8  P. 44"          (House)
+#   "Referred to Ways and Means, 05/15/2025;  SJ 13"       (Senate, once)
+#   "Referred to Finance; HJ 36, PG. 1579"                 (2015-2016)
+#   "Referred to Finance"                                  (2015-2016, 34 rows)
+# 744 rows across the six modern dockets. Anchored at the start, which is what
+# keeps out "Committee Report: Referred to Interim Study", "Referral Waived by
+# Committee Chair", "Sen. Gray Waived Referral to Finance" and "SB 83 is
+# vacated from Commerce and referred to". "Rereferred to Committee, MA, VV" is
+# the Senate sending a bill back to the committee it came from, which changes
+# nothing; LATER_REFERRAL_SKIP drops it, and those are the only rows it drops.
+LATER_REFERRAL_RE = re.compile(
+    r"^\s*(?:Re-?)?referred\s+to\s+(?:the\s+Committee\s+on\s+)?"
+    r"(?P<committee>.+?)"
+    r"(?:\s*,?\s*(?P<date>\d{1,2}/\d{1,2}/\d{4}))?"
+    r"\s*(?:;|\s(?:HJ|SJ)\s|$)", re.I)
+LATER_REFERRAL_SKIP = re.compile(r"(?:Committee|Interim\s+Study)\b", re.I)
+
 # A proceeding that produces video. Committee Report does NOT: its date is the
 # calendar day the report is *published to the chamber*, not when the committee
 # voted. The vote happens in the executive session.
@@ -342,8 +361,9 @@ def extract_flags(desc):
 
 
 def build_referral_timeline(rows):
-    """(bill, body) -> sorted [(effective_date, committee, how)] from referral
-    and vacate rows.
+    """(bill, body) -> sorted [(effective_date, committee, how)] from
+    introductions, later referrals and vacate rows; `how` is "introduced",
+    "referred" or "vacated".
 
     KEYED BY CHAMBER, since 13 September. It was keyed by bill alone, so when a
     House bill was introduced in the Senate its Senate committee joined the
@@ -399,14 +419,49 @@ def build_referral_timeline(rows):
             eff = _parse_date(intro.group("date"))
             timeline[(r["bill"], r["body"])].append(
                 (eff, normalize_committee(m_ref.group("committee")), "introduced"))
+        # THE SECOND REFERRAL, since 13 September. Only introductions and
+        # vacates were read, so "Referred to Finance 03/13/2025" was not on the
+        # timeline and a Finance executive session was filed under the policy
+        # committee the bill had left: HB 115's of 1 April 2025, in LOB 210-211,
+        # under Education Funding. 2,040 proceedings across six terms change
+        # committee, 308 of them in 2025-2026. The rooms were the witness: of
+        # the 877 recording matches this moved, one was held in the first
+        # committee's home room.
+        #
+        # A row with no date takes the row's own, as an undated introduction
+        # does. A referral later waived ("Referral Waived by Committee Chair")
+        # is left on the timeline: the bill was in that committee until the
+        # waiver, and 3 proceedings across six terms are dated after one, all
+        # of them 2016-2018, before the House streamed.
+        elif not intro:
+            m_later = LATER_REFERRAL_RE.match(clean)
+            if m_later:
+                name = normalize_committee(m_later.group("committee"))
+                if name and not LATER_REFERRAL_SKIP.match(name):
+                    # No date at all and it is left off: date.min would put
+                    # the second committee ahead of the first.
+                    try:
+                        eff = _parse_date(m_later.group("date")
+                                          or r["created"].split()[0])
+                    except (ValueError, IndexError):
+                        continue
+                    timeline[(r["bill"], r["body"])].append(
+                        (eff, name, "referred"))
     for b in timeline:
-        # vacated sorts after introduced on the same date
+        # A later referral and a vacate sort after an introduction on the same
+        # date, and among themselves keep the docket's row order.
         timeline[b].sort(key=lambda t: (t[0], 0 if t[2] == "introduced" else 1))
     return timeline
 
 
 def committee_on(timeline, bill, when, body):
-    """Which of `body`'s committees held the bill on a given date."""
+    """Which of `body`'s committees held the bill on a given date.
+
+    A day before every entry falls back to the first introduction or vacate,
+    never to a later referral: HB 1288 of 2022 has no House introduction row,
+    and its hearing of 24 January in LOB 302-304 would otherwise have been
+    filed under the Ways and Means it was not referred to until 16 February.
+    """
     entries = timeline.get((bill, body), [])
     current = None
     for eff, cmte, _ in entries:
@@ -414,7 +469,8 @@ def committee_on(timeline, bill, when, body):
             current = cmte
         else:
             break
-    return current or (entries[0][1] if entries else None)
+    return current or next(
+        (cmte for _, cmte, how in entries if how != "referred"), None)
 
 
 def _legacy_committee(raw):

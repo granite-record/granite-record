@@ -4443,6 +4443,97 @@ def _referral_chamber(docket_parser):
     return "ok", "own chamber's committee, undated introductions read, no borrowing"
 
 
+@check("narrative", "a proceeding after a second referral takes the second committee",
+       needs=("docket_parser",))
+def _second_referral(docket_parser):
+    """HB 115 of 2025 again, with the row the timeline did not read. The House
+    passed it on 13 March and referred it to Finance; its executive session of
+    1 April, in LOB 210-211, is Finance's, and was filed under Education
+    Funding because only introductions and vacates reached the timeline --
+    2,040 proceedings across six terms, nearly all Finance or Ways and Means."""
+    dp = docket_parser
+
+    def row(bill, body, created, desc):
+        return {"lsr": "2025-0061", "created": created, "bill": bill, "body": body,
+                "desc": desc, "updated": "", "lineno": 0}
+
+    rows = [
+        # HB 115's House rows as the docket has them.
+        row("HB115", "H", "1/6/2025 8:30:15 AM",
+            "  Introduced 01/08/2025 and referred to Education Funding  HJ 2  P. 6"),
+        row("HB115", "H", "2/27/2025 2:37:03 PM",
+            "Executive Session: 03/05/2025 11:00 am LOB 205-207"),
+        row("HB115", "H", "3/13/2025 12:00:44 PM",
+            "Referred to Finance 03/13/2025  HJ 8  P. 44"),
+        row("HB115", "H", "3/26/2025 12:42:38 PM",
+            "Executive Session: 04/01/2025 10:00 am LOB 210-211"),
+        # The Senate's later referral stays in the Senate, and is written with
+        # a comma before its date (HB 123's line of 15 May 2025).
+        row("HB123", "S", "3/27/2025 1:00:00 PM",
+            "  Introduced 03/27/2025 and Referred to Education;  SJ 10"),
+        row("HB123", "S", "4/15/2025 1:52:27 PM",
+            "Hearing: 04/22/2025, Room 101, LOB, 10:15 am;  SC 18"),
+        row("HB123", "S", "5/15/2025 1:00:00 PM",
+            "Referred to Ways and Means, 05/15/2025;  SJ 13"),
+        row("HB123", "S", "5/16/2025 1:00:00 PM",
+            "Hearing: 05/20/2025, Room 103, SH, 09:00 am;  SC 20"),
+        # Lines that mention a referral and are not one, each as the docket
+        # writes it: "Rereferred to Committee" sends a bill back to the
+        # committee it came from; a report recommending interim study and a
+        # chair's waiver name no new committee.
+        row("HB999", "S", "1/2/2025 9:00:00 AM",
+            "  Introduced 01/02/2025 and Referred to Judiciary;  SJ 1"),
+        row("HB999", "S", "2/13/2025 9:00:00 AM",
+            "Rereferred to Committee, MA, VV; 02/13/2025; SJ 5"),
+        row("HB999", "S", "2/14/2025 9:00:00 AM",
+            "Committee Report: Referred to Interim Study, 02/14/2025; Vote 5-0; CC; SC 46"),
+        row("HB999", "S", "2/20/2025 9:00:00 AM",
+            "Hearing: 02/25/2025, Room 100, SH, 09:00 am;  SC 9"),
+        row("HB998", "H", "1/2/2025 9:00:00 AM",
+            "  Introduced 01/08/2025 and referred to Transportation  HJ 2  P. 6"),
+        row("HB998", "H", "2/6/2025 9:00:00 AM",
+            "Referral Waived by Committee Chair per House Rule 47(f) 02/06/2025  HJ 4  P. 31"),
+        row("HB998", "H", "2/10/2025 9:00:00 AM",
+            "Committee Report: Refer for Interim Study 02/10/2025 (Vote 15-0; CC)  HC 10  P. 14"),
+        row("HB998", "H", "2/12/2025 9:00:00 AM",
+            "Executive Session: 02/18/2025 10:00 am LOB 203"),
+        # 2015-2016 writes the line with no date; the row's own stands in
+        # (HB 616's, 18 February 2015). The sessions are invented around it.
+        row("HB616", "H", "01/08/2015 09:58:49 AM",
+            "Introduced and Referred to Judiciary; HJ 12, PG. 232"),
+        row("HB616", "H", "02/18/2015 11:41:34 AM", "Referred to Finance"),
+        row("HB616", "H", "02/05/2015 10:57:35 AM",
+            "Executive Session: 2/12/2015 9:00 AM LOB 208"),
+        row("HB616", "H", "02/20/2015 11:41:34 AM",
+            "Executive Session: 3/3/2015 10:00 AM LOB 210-211"),
+        # HB 1288 of 2022 has no House introduction row. A day before its
+        # referral to Ways and Means is not Ways and Means's.
+        row("HB1288", "H", "1/24/2022 12:00:00 AM",
+            "Public Hearing: 01/24/2022 01:45 pm LOB 302-304"),
+        row("HB1288", "H", "2/17/2022 12:00:00 AM",
+            "Referred to Ways and Means 02/16/2022"),
+        row("HB1288", "H", "3/14/2022 12:00:00 AM",
+            "Full Committee Work Session: 03/18/2022 10:00 am LOB 202-204"),
+    ]
+    got = {(p.bill, p.body, p.sched_date): p.committee
+           for p in dp.parse_proceedings(rows, dp.build_referral_timeline(rows))}
+    want = {
+        ("HB115", "H", "2025-03-05"): "Education Funding",
+        ("HB115", "H", "2025-04-01"): "Finance",
+        ("HB123", "S", "2025-04-22"): "Education",
+        ("HB123", "S", "2025-05-20"): "Ways and Means",
+        ("HB999", "S", "2025-02-25"): "Judiciary",
+        ("HB998", "H", "2025-02-18"): "Transportation",
+        ("HB616", "H", "2015-02-12"): "Judiciary",
+        ("HB616", "H", "2015-03-03"): "Finance",
+        ("HB1288", "H", "2022-01-24"): None,
+        ("HB1288", "H", "2022-03-18"): "Ways and Means",
+    }
+    wrong = {k: (got.get(k, "missing"), v) for k, v in want.items() if got.get(k, "missing") != v}
+    assert not wrong, "got, wanted: " + repr(wrong)
+    return "ok", "Finance after 13 March, not before; waivers, interim study and 'Committee' add nothing"
+
+
 @check("data", "a committee report line gives up its recommendation and nothing else")
 def _report_rec():
     if not (Path("Docket.txt").exists() and Path("narrative.py").exists()):
