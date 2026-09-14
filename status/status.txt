@@ -18,7 +18,9 @@ headline: The House and Senate have finished the 2026 session.
 
 note: Both chambers adjourned in August after Veto Day. The remaining bills referred to interim study may continue to have executive or work sessions. General Election Day is Tuesday, November 3rd.
 
-milestone: 2027-01-07 | 2027 session convenes | The first year of the next two-year term.
+# Off the page since 14 September, at the person's word: the box says no "Next:" line.
+# Remove the "# " to show one again.
+# milestone: 2027-01-07 | 2027 session convenes | The first year of the next two-year term.
 
 # Filing for the next session usually opens in the autumn.
-milestone: 2026-09-15 | LSR filing opens | Legislators begin filing requests for 2027 bills.
+# milestone: 2026-09-15 | LSR filing opens | Legislators begin filing requests for 2027 bills.
