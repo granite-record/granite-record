@@ -59,7 +59,15 @@ is renumbered here in one pass.
    measured on 36 everyday searches (e.g. "public education funding" 11 to
    107, "bills about guns" and "school choice" 0 to 30 and 33, "pfas" 38
    unrelated to 5); what those results should be is the person's to judge, and
-   the 36 are a seed for a bench of real queries; follow -- *done on the 14th*: committee
+   the 36 are a seed for a bench of real queries. *A second pass the same day,
+   on the person's word that search is central*, read the bills themselves:
+   topic labels out of text matching ("mental health" 148 to 19), names and
+   committees only for the reader's own words ("bail" no longer finds a
+   sponsor Bailey), supplied words matched whole ("alien" not "alienation"),
+   short words kept to their own group ("wage" not "wagering", "rates" not
+   "ratepayer"), nine more phrases, results ordered by Best match when
+   searching, and a search that finds nothing offers its parts with counts;
+   48 searches read, the page's order checked against the review's; follow -- *done on the 14th*: committee
    pages name their feeds (archived ones do not, and get none), a Follow
    control on every record page offers the feed its head names, a bill sent to
    interim study can be followed, and the email design is written up for after
