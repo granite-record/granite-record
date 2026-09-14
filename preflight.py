@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.161
+# GRANITE_VERSION: 2026-09-04.162
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3341,6 +3341,79 @@ def _feeds_keyed_and_current():
         assert links and not [l for l in links if l.endswith(".html")], \
             "a feed links an address the host redirects: " + str([l for l in links if l.endswith(".html")][:3])
         return "ok", "committee feed at its code, from its sitting days; no .html links; stale pruned only when told"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a legislator's feed dates each vote the day it was cast, newest first, and links the bill's own page")
+def _legislator_feed_dates():
+    """A member file writes a vote's date as the roll call export does,
+    8/19/2026, and build_feeds read it as if it were 2026-08-19.
+
+    Three defects from that one misreading, all in every legislator feed on
+    the site until 13 September. rfc822() could not parse the date and gave
+    every vote the build time as its pubDate. newest() sorted the raw strings,
+    so 9/4/2025 came before 8/19/2026 and 12/2/2025 after both, and the sixty
+    items a feed keeps were chosen in that order. And find() took the term
+    from the date's first four characters, "8/19", found none, and linked the
+    generic bills page for any bill number used in more than one term.
+
+    The guid keeps the date as the member file writes it, so a reader already
+    subscribed does not see every vote again as new.
+    """
+    from datetime import datetime
+    here = Path(".").resolve()
+    if not (here / "build_feeds.py").exists():
+        return "skip", "build_feeds.py not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-legfeed-"))
+    try:
+        site = root / "site"
+        # HB221 in two terms, so only the vote's own date can say which bill
+        # a vote was on.
+        rows = [{"id": "HB221", "n": "HB 221", "year": year, "term": term,
+                 "title": f"a bill of {term}", "committee": "", "topic": "",
+                 "status": "In committee", "kind": "active", "nrc": 0,
+                 "last_action": f"{year}-02-01", "votedays": []}
+                for year, term in ((2023, "2023-2024"), (2025, "2025-2026"))]
+        (site / "legislators").mkdir(parents=True)
+        (site / "index.json").write_text(json.dumps(rows), encoding="utf-8")
+        for r in rows:
+            page = site / "bill" / str(r["year"]) / "hb221.html"
+            page.parent.mkdir(parents=True, exist_ok=True)
+            page.write_text('<script type="application/json" id="gr-data">'
+                            + json.dumps({"next_step": "", "sponsors": [], "events": []})
+                            + "</script>", encoding="utf-8")
+        (site / "legislators.json").write_text(json.dumps(
+            [{"id": "10004", "display": "Rep. Example", "n_votes": 3}]), encoding="utf-8")
+        # Out of order on purpose, the way the strings sort: 9/4 above 8/19
+        # above 12/2.
+        votes = [{"d": d, "b": "HB221", "q": q, "v": v} for d, q, v in (
+            ("9/4/2025", "Ought to Pass", "Yea"),
+            ("8/19/2026", "Veto Override", "Nay"),
+            ("12/2/2025", "Inexpedient to Legislate", "Yea"))]
+        (site / "legislators" / "10004.json").write_text(
+            json.dumps({"votes": votes}), encoding="utf-8")
+        r = _run([sys.executable, str(here / "build_feeds.py"), "--site", "site",
+                  "--base", "https://x.test"],
+                 cwd=root, capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
+        f = site / "feed" / "legislator" / "10004.xml"
+        assert f.exists(), "no feed was written for a member with three votes"
+        x = f.read_text(encoding="utf-8")
+        items = re.findall(r"<item>.*?</item>", x, re.S)
+        got = [re.search(r"<pubDate>([^<]+)</pubDate>", i).group(1) for i in items]
+        want = [datetime.strptime(d, "%Y-%m-%d").strftime("%a, %d %b %Y 00:00:00 +0000")
+                for d in ("2026-08-19", "2025-12-02", "2025-09-04")]
+        assert got == want, (
+            f"pubDates {got}; wanted the day each vote was cast, newest first: {want}")
+        links = [re.search(r"<link>([^<]+)</link>", i).group(1) for i in items]
+        assert all(l == "https://x.test/bill/2025/hb221" for l in links), (
+            f"a vote of the 2025-2026 term links {sorted(set(links))}, not "
+            "https://x.test/bill/2025/hb221")
+        assert "vote:10004:HB221:8/19/2026:" in x, (
+            "the guid changed shape, so every subscriber would see each vote again")
+        return "ok", ("three votes dated as cast, newest first, each linking HB 221 of "
+                      "2025-2026 though HB221 exists in two terms; guids unchanged")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 

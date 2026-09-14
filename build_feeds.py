@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -57,6 +57,25 @@ def rfc822(d):
         dt = datetime.now(timezone.utc)
     return (f"{DAYS[dt.weekday()]}, {dt.day:02d} {MONTHS[dt.month - 1]} "
             f"{dt.year} {dt.hour:02d}:{dt.minute:02d}:00 +0000")
+
+
+def iso_day(d):
+    """'8/19/2026' or '2026-08-19' -> '2026-08-19'; '' when it is neither.
+
+    A member file writes a vote's date as the roll call export does, M/D/YYYY,
+    and everything a vote's date is used for below -- the term its bill is
+    found in, the order items sort in, the pubDate a reader sees -- reads
+    YYYY-MM-DD. Until 13 September every vote in every legislator feed carried
+    the build time as its date, sorted 9/4 above 8/19 and 12/2 below both, and
+    linked the bills page for any bill number used in more than one term.
+    """
+    s = str(d or "").strip()
+    for fmt, n in (("%Y-%m-%d", 10), ("%m/%d/%Y", None)):
+        try:
+            return datetime.strptime(s[:n] if n else s, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return ""
 
 
 def clip(s, n=88):
@@ -379,6 +398,7 @@ def main():
     # every item rather than left to the description, where a reader scanning
     # headlines would never see it.
     nleg = 0
+    undated = 0
     lp = site / "legislators.json"
     if lp.exists():
         (fd / "legislator").mkdir(parents=True, exist_ok=True)
@@ -391,8 +411,15 @@ def main():
             vp = site / "legislators" / f"{mid}.json"
             if vp.exists():
                 rec = json.loads(vp.read_text(encoding="utf-8"))
-                for v in (rec.get("votes") or [])[:a.per_feed]:
-                    bb = find(v.get("b"), v.get("d", ""))
+                # Newest first by the day cast, before the cut: the file's own
+                # order is not a promise this feed can lean on. Stable, so one
+                # day's roll calls keep the order the file gives them.
+                votes = sorted(rec.get("votes") or [],
+                               key=lambda v: iso_day(v.get("d")), reverse=True)
+                for v in votes[:a.per_feed]:
+                    day = iso_day(v.get("d"))
+                    undated += not day
+                    bb = find(v.get("b"), day)
                     label = bb["n"] if bb else (v.get("b") or "")
                     how = VOTE_WORD.get(v.get("v"), v.get("v") or "")
                     q = v.get("q") or "the motion"
@@ -401,7 +428,9 @@ def main():
                         bill_url(bb) if bb else bills_page,
                         f"{(bb or {}).get('title', '')}\n\n{who} voted {how} on "
                         f"{q}.\n\nThe vote is on the motion, not the bill.",
-                        v.get("d", ""),
+                        day,
+                        # The date as the member file writes it: a guid that
+                        # changed shape would show a subscriber every vote again.
                         f"vote:{mid}:{v.get('b')}:{v.get('d')}:{q[:30]}"))
             for bb, burl, prime, filed in sponsored.get(mid, []):
                 role = "prime sponsor" if prime else "co-sponsor"
@@ -448,6 +477,9 @@ def main():
           "in hearings.xml")
     print(f"{ncmte} committee feeds, keyed by code, {len(by_topic)} topic feeds")
     print(f"{nleg:,} legislator feeds")
+    if undated:
+        print(f"  {undated:,} votes carry no date this reads (neither YYYY-MM-DD nor "
+              "M/D/YYYY), so a reader is shown the build time for them")
     print(f"{pruned:,} stale feeds removed")
     for note in notes:
         print(note)
