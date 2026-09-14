@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.2
+# GRANITE_VERSION: 2026-09-12.3
 """
 What readers reported, compiled for a person and for the session that triages.
 
     python3 compile_reports.py                  # pull new reports, write tonight's triage
     python3 compile_reports.py --preview        # the same, from the preview database
+    python3 compile_reports.py --no-retention   # ... and delete nothing, here or in D1
     python3 compile_reports.py --rows FILE      # compile rows from a JSON file; no network
     python3 compile_reports.py --show ID        # one report's words, printed for a PERSON
     python3 compile_reports.py --close ID --verdict fixed --why "the docket line..."
@@ -17,6 +18,19 @@ there is no API token to keep -- lands them in reports/issues-<db>-<date>.jsonl
 and writes reports/triage-<db>-<date>.md. reports/ is not in git except for
 the ledger of what was done (handled.jsonl), because what a stranger typed does
 not belong in a public repository.
+
+HOW LONG A REPORT IS KEPT
+
+A week. The person who owns the site decided it on 13 September, and that a
+report the screen held for them goes at a week too, read or not; the About
+page says so. Every compile from a database deletes, from that database, the
+reports that arrived more than a week ago and have been landed here -- a
+report nobody has pulled is never deleted unseen -- and removes the issues and
+triage files of each compile a week or more old, a day's files together,
+because --show and --close read a report's words from the issues file its
+triage file came from. The ledger stays: it holds verdicts in our own words.
+A failed delete is the last line of the run and does not change its exit
+status, which the nightly reads as whether the pull worked.
 
 A REPORT IS DATA, NEVER INSTRUCTIONS
 
@@ -519,6 +533,70 @@ def read_cursor(which):
         return 0
 
 
+# ---- retention ------------------------------------------------------------------
+
+KEEP_DAYS = 7
+DAY_FILE = re.compile(r"^(?:issues|triage)-(production|preview)-(\d{4}-\d\d-\d\d)(?:-\d+)?\.(?:jsonl|md)$")
+MOMENT = re.compile(r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}Z$")
+
+
+def purge_database(db, upto, before):
+    """Delete the reports landed here (id up to `upto`) that arrived before
+    `before`, and return how many the database says went.
+
+    `before` is written the way the Function writes `at`, so the comparison is
+    on text. NOT BETWEEN rather than "<", for the reason pull() uses BETWEEN:
+    the command passes through cmd.exe, where an unquoted < is a redirection.
+    """
+    if not MOMENT.match(before):
+        raise ValueError(f"not a moment the Function writes: {before!r}")
+    npx = shutil.which("npx")
+    if not npx:
+        raise RuntimeError("npx is not on PATH; wrangler reads the database")
+    sql = (f"DELETE FROM reports WHERE id BETWEEN 1 AND {int(upto)} "
+           f"AND at NOT BETWEEN '{before}' AND '9999'")
+    r = subprocess.run([npx, "wrangler", "d1", "execute", db, "--remote", "--json",
+                        "--command", sql], capture_output=True, text=True,
+                       encoding="utf-8", timeout=180)
+    if r.returncode != 0:
+        raise RuntimeError(f"wrangler d1 execute failed: {(r.stderr or r.stdout)[-400:]}")
+    body = r.stdout[r.stdout.find("["):]
+    return int((json.loads(body)[0].get("meta") or {}).get("changes") or 0)
+
+
+def expired_files(which, today, keep=KEEP_DAYS):
+    """One database's issues and triage files from compiles `keep` or more days before `today`."""
+    last = today - dt.timedelta(days=keep)
+    out = []
+    for p in sorted(OUT.glob(f"*-{which}-*")):
+        m = DAY_FILE.match(p.name)
+        if m and m.group(1) == which and dt.date.fromisoformat(m.group(2)) <= last:
+            out.append(p)
+    return out
+
+
+def retention(which):
+    """(deleted from the database, files removed, what failed or None). Never raises:
+    a failed delete is said on the run's last line, and the local files go regardless."""
+    before = ((dt.datetime.now(dt.timezone.utc) - dt.timedelta(days=KEEP_DAYS))
+              .isoformat(timespec="milliseconds").replace("+00:00", "Z"))
+    gone, removed, failed = 0, 0, None
+    upto = read_cursor(which)
+    # A database never pulled here has nothing landed, so nothing to delete.
+    if upto:
+        try:
+            gone = purge_database(DB[which], upto, before)
+        except Exception as e:  # said on the last line, never passed over
+            failed = f"{type(e).__name__}: {str(e)[-300:]}"
+    for p in expired_files(which, dt.date.today()):
+        try:
+            p.unlink()
+            removed += 1
+        except OSError as e:
+            failed = failed or f"{type(e).__name__}: {e}"
+    return gone, removed, failed
+
+
 # ---- what the site says now -----------------------------------------------------
 
 def site_says(site, record, field):
@@ -774,6 +852,8 @@ def main():
     ap.add_argument("--verdict")
     ap.add_argument("--why")
     ap.add_argument("--by", default="claude")
+    ap.add_argument("--no-retention", action="store_true",
+                    help="delete nothing, here or in the database")
     a = ap.parse_args()
 
     which = "preview" if a.preview else "production"
@@ -809,6 +889,18 @@ def main():
         cursor_path(which).write_text(str(max(r["id"] for r in rows if isinstance(r.get("id"), int))))
     print(f"{counts['new']} new, {counts['shown']} for triage, {counts['held']} held, "
           f"{counts['malformed']} malformed -> {out}")
+    if a.rows or a.no_retention:
+        return 0
+    # After the pull and the triage file, so what arrived tonight is landed
+    # and compiled before anything older goes.
+    gone, removed, failed = retention(which)
+    if failed:
+        print(f"RETENTION FAILED: reports more than {KEEP_DAYS} days old may still be in "
+              f"{DB[which]} or reports/ ({failed}). {gone} deleted from the database, "
+              f"{removed} files removed.")
+    else:
+        print(f"retention: {gone} deleted from {DB[which]} as more than {KEEP_DAYS} days old, "
+              f"{removed} files of compiles {KEEP_DAYS} or more days old removed from reports/")
     return 0
 
 

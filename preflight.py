@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.163
+# GRANITE_VERSION: 2026-09-04.164
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6229,6 +6229,125 @@ def _triage_file_name(CR, NI):
             f"{doc} names {named or 'no failure marker'}; nightly.py writes reports/{marker}"
     return "ok", (f"compile_reports.py writes reports/{name.replace(day, '<date>')}, and "
                   "nightly.py, TRIAGE.md and its own docstring all say so; the failure marker agrees")
+
+
+@check("build", "a report is deleted a week after it arrives, from the database and from reports/, and never before it is landed",
+       needs=("compile_reports",))
+def _report_retention(CR):
+    """The person who owns the site, 13 September: reports are kept for a week,
+    and one the screen held for them goes at a week too, read or not. The About
+    page says so, so a compile that forgot would be a promise broken quietly.
+
+    Driven through main() on a pull stubbed to return nothing, with the
+    database call stubbed to record what it was asked. Three compile days of
+    files -- eight, seven and six days old -- and a preview file older than all
+    of them: the first two production days go, each day's issues and triage
+    files together; the six-day-old one and the other database's file stay, and
+    so does the ledger, which holds verdicts and no reader's words. The
+    database is asked to delete only rows landed here, up to the cursor, that
+    arrived before a moment a week ago, in SQL with no < or > for cmd.exe to
+    read as a redirection. A failed delete is the last line of the run and does
+    not stop the local files going; --no-retention and --rows delete nothing.
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    tmp = Path(tempfile.mkdtemp(prefix="gr-retention-"))
+    saved = (CR.OUT, CR.LEDGER, CR.pull, CR.purge_database, sys.argv)
+    calls = []
+    today = _dt.date.today()
+    day = lambda n: (today - _dt.timedelta(days=n)).isoformat()
+
+    def lay_out():
+        out = tmp / "reports"
+        shutil.rmtree(out, ignore_errors=True)
+        out.mkdir(parents=True)
+        names = [f"issues-production-{day(8)}.jsonl", f"triage-production-{day(8)}.md",
+                 f"triage-production-{day(8)}-2.md", f"issues-production-{day(7)}.jsonl",
+                 f"triage-production-{day(7)}.md", f"issues-production-{day(6)}.jsonl",
+                 f"triage-production-{day(6)}.md", f"issues-preview-{day(9)}.jsonl"]
+        for n in names:
+            (out / n).write_text("x\n", encoding="utf-8")
+        (out / "handled.jsonl").write_text('{"db": "production", "id": 1}\n', encoding="utf-8")
+        (out / ".cursor-production").write_text("41", encoding="utf-8")
+        return out
+
+    def compile_(*argv):
+        CR.OUT, CR.LEDGER = tmp / "reports", tmp / "reports" / "handled.jsonl"
+        CR.pull = lambda db, after: []
+        sys.argv = ["compile_reports.py", "--site", str(tmp / "site"), *argv]
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(io.StringIO()):
+            rc = CR.main()
+        left = sorted(p.name for p in CR.OUT.iterdir())
+        return rc, buf.getvalue().strip().splitlines(), left
+
+    try:
+        def purge(db, upto, before):
+            calls.append((db, upto, before))
+            return 3
+        CR.purge_database = purge
+        lay_out()
+        rc, lines, left = compile_()
+        assert rc == 0, f"a compile with retention exited {rc}"
+        gone = {f"issues-production-{day(8)}.jsonl", f"triage-production-{day(8)}.md",
+                f"triage-production-{day(8)}-2.md", f"issues-production-{day(7)}.jsonl",
+                f"triage-production-{day(7)}.md"}
+        assert not gone & set(left), f"compile days a week old were kept: {sorted(gone & set(left))}"
+        for keep in (f"issues-production-{day(6)}.jsonl", f"triage-production-{day(6)}.md",
+                     f"issues-preview-{day(9)}.jsonl", "handled.jsonl", ".cursor-production"):
+            assert keep in left, f"{keep} was removed"
+        assert len(calls) == 1 and calls[0][:2] == (CR.DB["production"], 41), (
+            f"the database was asked {calls}; wanted one delete of production rows up to the cursor, 41")
+        before = _dt.datetime.strptime(calls[0][2], "%Y-%m-%dT%H:%M:%S.%fZ").replace(
+            tzinfo=_dt.timezone.utc)
+        age = _dt.datetime.now(_dt.timezone.utc) - before
+        assert _dt.timedelta(days=7) <= age < _dt.timedelta(days=7, minutes=5), (
+            f"rows before {calls[0][2]} are deleted, which is {age} ago, not a week")
+        assert lines[-1].startswith("retention: 3 "), f"the run ends {lines[-1]!r}"
+
+        def refuse(db, upto, before):
+            raise RuntimeError("wrangler d1 execute failed: no network")
+        CR.purge_database = refuse
+        lay_out()
+        rc, lines, left = compile_()
+        assert rc == 0, "a failed delete changed the compile's exit status, which the nightly reads as a failed pull"
+        assert lines[-1].startswith("RETENTION FAILED"), f"a failed delete ends the run with {lines[-1]!r}"
+        assert not gone & set(left), "a failed database delete kept the local files a week old"
+
+        for argv in (["--no-retention"], ["--rows", str(tmp / "rows.json")]):
+            (tmp / "rows.json").write_text("[]", encoding="utf-8")
+            calls.clear()
+            CR.purge_database = purge
+            lay_out()
+            rc, lines, left = compile_(*argv)
+            assert not calls and gone <= set(left), f"{argv[0]} deleted something"
+
+        # The statement itself, through a stubbed subprocess.
+        import subprocess as _sp
+        seen = {}
+
+        def fake_run(cmd, **kw):
+            seen["cmd"] = cmd
+            return _sp.CompletedProcess(cmd, 0, stdout='[{"results": [], "success": true, '
+                                                        '"meta": {"changes": 2}}]', stderr="")
+        real_run, real_which = CR.subprocess.run, CR.shutil.which
+        CR.subprocess.run, CR.shutil.which = fake_run, (lambda name: "npx")
+        try:
+            n = saved[3](CR.DB["production"], 41, "2026-09-06T23:12:34.567Z")
+        finally:
+            CR.subprocess.run, CR.shutil.which = real_run, real_which
+        sql = seen["cmd"][seen["cmd"].index("--command") + 1]
+        assert n == 2, f"the delete reported {n}, not the database's own count of 2"
+        assert "<" not in sql and ">" not in sql, f"cmd.exe would read a redirection in: {sql}"
+        assert sql.startswith("DELETE FROM reports WHERE id BETWEEN 1 AND 41 AND at NOT BETWEEN "
+                              "'2026-09-06T23:12:34.567Z' AND '9999'"), sql
+        return "ok", ("two compile days a week old removed, the six-day-old one, the other "
+                      "database and the ledger kept; landed rows older than a week deleted, loudly "
+                      "when that fails; --no-retention and --rows delete nothing")
+    finally:
+        CR.OUT, CR.LEDGER, CR.pull, CR.purge_database, sys.argv = saved
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 # ---- the nightly ---------------------------------------------------------------
