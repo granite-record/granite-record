@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.3
+# GRANITE_VERSION: 2026-09-12.4
 """
 What readers reported, compiled for a person and for the session that triages.
 
@@ -100,6 +100,7 @@ import secrets
 import shutil
 import subprocess
 import sys
+import time
 import unicodedata
 import urllib.parse
 from collections import Counter, defaultdict
@@ -475,6 +476,36 @@ def well_formed(r):
         return False
 
 
+D1_RETRY_PAUSE = 20      # seconds before the one retry after a 7403
+
+
+def d1_execute(npx, db, sql):
+    """One statement through `wrangler d1 execute --json`: its first result.
+
+    ONE MORE TRY AFTER A 7403. Cloudflare answered the nightly's pull on 13
+    September at 21:47 with API error 7403 -- "The given account is not valid
+    or is not authorized to access this service" -- and the same query through
+    the same login went through minutes later; the session's first live pull
+    that afternoon had needed a second try as well. So a 7403 is asked again
+    once, after a pause, and the run says so. A second 7403, and any other
+    failure, raise as before, so the nightly still marks the night as failed.
+    """
+    for attempt in (1, 2):
+        r = subprocess.run([npx, "wrangler", "d1", "execute", db, "--remote", "--json",
+                            "--command", sql], capture_output=True, text=True,
+                           encoding="utf-8", timeout=180)
+        if r.returncode == 0:
+            body = r.stdout[r.stdout.find("["):]
+            return json.loads(body)[0]
+        said = r.stderr or r.stdout or ""
+        if attempt == 1 and "7403" in said:
+            print(f"  Cloudflare answered 7403 (account not authorized); asking once more "
+                  f"in {D1_RETRY_PAUSE}s", flush=True)
+            time.sleep(D1_RETRY_PAUSE)
+            continue
+        raise RuntimeError(f"wrangler d1 execute failed: {said[-400:]}")
+
+
 def pull(db, after):
     """New rows from D1, through wrangler. `after` is an int, never text."""
     npx = shutil.which("npx")
@@ -485,13 +516,7 @@ def pull(db, after):
     sql = ("SELECT id, at, record, kind, url, tab, field, note, build, hidden "
            f"FROM reports WHERE id BETWEEN {int(after) + 1} AND 9223372036854775807 "
            "ORDER BY id LIMIT 1000")
-    r = subprocess.run([npx, "wrangler", "d1", "execute", db, "--remote", "--json",
-                        "--command", sql], capture_output=True, text=True,
-                       encoding="utf-8", timeout=180)
-    if r.returncode != 0:
-        raise RuntimeError(f"wrangler d1 execute failed: {(r.stderr or r.stdout)[-400:]}")
-    body = r.stdout[r.stdout.find("["):]
-    return json.loads(body)[0]["results"]
+    return d1_execute(npx, db, sql)["results"]
 
 
 # The words of every report are stored ENCODED in reports/issues-*.jsonl, so
@@ -555,13 +580,7 @@ def purge_database(db, upto, before):
         raise RuntimeError("npx is not on PATH; wrangler reads the database")
     sql = (f"DELETE FROM reports WHERE id BETWEEN 1 AND {int(upto)} "
            f"AND at NOT BETWEEN '{before}' AND '9999'")
-    r = subprocess.run([npx, "wrangler", "d1", "execute", db, "--remote", "--json",
-                        "--command", sql], capture_output=True, text=True,
-                       encoding="utf-8", timeout=180)
-    if r.returncode != 0:
-        raise RuntimeError(f"wrangler d1 execute failed: {(r.stderr or r.stdout)[-400:]}")
-    body = r.stdout[r.stdout.find("["):]
-    return int((json.loads(body)[0].get("meta") or {}).get("changes") or 0)
+    return int((d1_execute(npx, db, sql).get("meta") or {}).get("changes") or 0)
 
 
 def expired_files(which, today, keep=KEEP_DAYS):

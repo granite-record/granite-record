@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.167
+# GRANITE_VERSION: 2026-09-04.168
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6525,6 +6525,79 @@ def _report_retention(CR):
     finally:
         CR.OUT, CR.LEDGER, CR.pull, CR.purge_database, sys.argv = saved
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+@check("build", "a report pull asks Cloudflare once more after a 7403, and only then",
+       needs=("compile_reports",))
+def _report_pull_7403(CR):
+    """Cloudflare answered the nightly's report pull on 13 September at 21:47
+    with API error 7403 -- "The given account is not valid or is not authorized
+    to access this service" -- and the same query through the same login went
+    through minutes later. The session's first live pull that afternoon had
+    needed a second try as well. So a 7403 is asked again once, after a pause,
+    and the run says so; a second 7403, and any other failure, are raised as
+    before, so the nightly still marks the night's reports as failed.
+
+    Driven through pull() and purge_database() on a stubbed subprocess.run.
+    """
+    import contextlib
+    import io
+    import subprocess as _sp
+    denied = ('{"error": {"text": "A request to the Cloudflare API failed.", "notes": [{"text": '
+              '"The given account is not valid or is not authorized to access this service '
+              '[code: 7403]"}]}}')
+    other = '{"error": {"text": "no such table: reports [code: 7500]"}}'
+    ok_rows = '[{"results": [{"id": 2, "note": "x"}], "success": true, "meta": {"changes": 0}}]'
+    ok_del = '[{"results": [], "success": true, "meta": {"changes": 4}}]'
+
+    def scripted(*answers):
+        calls = []
+
+        def fake(cmd, **kw):
+            calls.append(cmd)
+            rc, out = answers[min(len(calls), len(answers)) - 1]
+            return _sp.CompletedProcess(cmd, rc, stdout=out if rc == 0 else "",
+                                        stderr="" if rc == 0 else out)
+        return fake, calls
+
+    saved = (CR.subprocess.run, CR.shutil.which, getattr(CR, "D1_RETRY_PAUSE", None))
+    try:
+        CR.shutil.which = lambda name: "npx"
+        CR.D1_RETRY_PAUSE = 0
+        fake, calls = scripted((1, denied), (0, ok_rows))
+        CR.subprocess.run = fake
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            got = CR.pull("graniterecord-reports", 1)
+        assert got == [{"id": 2, "note": "x"}] and len(calls) == 2, (
+            f"a 7403 then an answer gave {got!r} after {len(calls)} call(s); wanted the rows after two")
+        assert "7403" in buf.getvalue(), "the retry after a 7403 was not said"
+
+        for answers, n, why in (((1, denied), (1, denied)), 2, "a second 7403"), \
+                               (((1, other),), 1, "a failure that is not a 7403"):
+            fake, calls = scripted(*answers)
+            CR.subprocess.run = fake
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    CR.pull("graniterecord-reports", 1)
+                raise AssertionError(f"{why} did not raise")
+            except RuntimeError:
+                pass
+            assert len(calls) == n, f"{why} made {len(calls)} call(s), not {n}"
+
+        fake, calls = scripted((1, denied), (0, ok_del))
+        CR.subprocess.run = fake
+        with contextlib.redirect_stdout(io.StringIO()):
+            n = CR.purge_database("graniterecord-reports", 41, "2026-09-06T23:12:34.567Z")
+        assert n == 4 and len(calls) == 2, f"a delete after a 7403 reported {n} in {len(calls)} call(s)"
+    finally:
+        CR.subprocess.run, CR.shutil.which = saved[0], saved[1]
+        if saved[2] is None:
+            if hasattr(CR, "D1_RETRY_PAUSE"):
+                del CR.D1_RETRY_PAUSE
+        else:
+            CR.D1_RETRY_PAUSE = saved[2]
+    return "ok", "one 7403 asked again once, for a pull and a delete; a second 7403 or any other failure raised"
 
 
 # ---- the nightly ---------------------------------------------------------------
