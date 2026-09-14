@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.65
+# GRANITE_VERSION: 2026-09-04.66
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -465,6 +465,28 @@ padding:10px 16px;z-index:99;border-radius:0 0 var(--r-out) 0}
 }
 .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
 clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* THE HOME PAGE'S HEADING IS THE LOCKUP, since 13 September: the profile and
+   "Granite Record" as drawn, from assets/lockup.png, which build_brand.py cuts
+   from the black-on-white original. It is a mask over the text colour, as the
+   nav's mark is, so one file is right in both themes -- the drawn lockups
+   carry a solid black or white ground, and either would sit on the paper as a
+   box. 1039x479 is the ink's own box. The words stay in the heading, hidden,
+   for a screen reader and a search engine, and come back wherever the mask
+   cannot be drawn: a browser without mask support, and forced colours, which
+   paints backgrounds away and would leave an empty heading. */
+@supports ((-webkit-mask-image:url(x)) or (mask-image:url(x))){
+  h1.lockup{width:min(100%,280px);aspect-ratio:1039/479;margin:2px 0 18px;
+    background:var(--ink);
+    -webkit-mask:url(/lockup.png) left center/contain no-repeat;
+    mask:url(/lockup.png) left center/contain no-repeat}
+  h1.lockup span{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;
+    clip:rect(0 0 0 0);white-space:nowrap}
+}
+@media (forced-colors: active){
+  h1.lockup{background:none;-webkit-mask:none;mask:none;width:auto;aspect-ratio:auto}
+  h1.lockup span{position:static;width:auto;height:auto;margin:0;overflow:visible;
+    clip:auto;white-space:normal}
+}
 .corrections{font-size:14px;color:var(--ink-2);margin-top:10px}
 .corrections a{color:var(--pine)}
 
@@ -1654,7 +1676,7 @@ it, or a name, county, party or committee to find a member.</p>
     # .hcols for why that way round.
     home_body = f"""<div class="hcols">
 <div class="hmid">
-<h1>Granite Record</h1>
+<h1 class="lockup"><span>Granite Record</span></h1>
 <p class="lead">A searchable record of the New Hampshire General Court: what each
 bill does, who sponsored it, when it was heard, how every legislator voted, and
 where in the recording it was discussed.</p>

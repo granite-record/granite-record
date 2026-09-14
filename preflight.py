@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.169
+# GRANITE_VERSION: 2026-09-04.170
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2994,6 +2994,22 @@ def _chain():
                 f"member {m['id']}: the page " + ("names a feed that was not written"
                                                   if links else "does not name its feed"))
             named += links
+        # What a stylesheet asks for is a request too, and check_site reads only
+        # the pages' own href and src. The nav's mark and, since 13 September,
+        # the home page's lockup are CSS masks: a mask whose file is missing is
+        # drawn as nothing, silently, and the heading above the search box would
+        # be an empty band. And that heading is still its words to anything that
+        # cannot see it.
+        for css in ("style.css", "app.css"):
+            p = root / "site" / css
+            if not p.exists():
+                continue
+            for ref in sorted(set(re.findall(r"url\((/[^)\s\"']+)\)", p.read_text(encoding="utf-8")))):
+                assert (root / "site" / ref.lstrip("/")).exists(), (
+                    f"{css} asks for {ref}, which the build did not put in the site")
+        home = (root / "site" / "index.html").read_text(encoding="utf-8", errors="replace")
+        assert '<h1 class="lockup"><span>Granite Record</span></h1>' in home, (
+            "the home page's heading is not the lockup with its name kept as text")
         r = _run([sys.executable, str(here / "check_site.py"),
                             "--site", "site", "--base", base],
                            cwd=root, capture_output=True, text=True, timeout=120)

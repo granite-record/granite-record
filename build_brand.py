@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.1
+# GRANITE_VERSION: 2026-09-12.2
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -14,10 +14,10 @@ the next build and is never in the repository. The drawn originals live in
 which `build_pages.py` copies into `site/` beside the pages. One source, one
 copy step, and the originals are recoverable.
 
-The logo is TEMPORARY. It is the person's own drawing, standing in until the
-artist whose Old Man of the Mountain we want gives permission, and the whole
-point of keeping the originals and this script is that replacing it later is
-one command rather than an archaeology exercise.
+The logo is TEMPORARY. It is an Old Man of the Mountain made from clipart the
+person bought the rights to (13 September), good to use and likely to change,
+and the whole point of keeping the originals and this script is that
+replacing it later is one command rather than an archaeology exercise.
 
 WHAT IS DERIVED, AND WHY EACH ONE
 
@@ -37,6 +37,13 @@ WHAT IS DERIVED, AND WHY EACH ONE
   og.png            1200x630 for a shared link's card, the black-on-white
                     lockup padded onto white so the card is seamless rather
                     than a black block inside a white border.
+  lockup.png        the profile and "Granite Record" together, as the home
+                    page's heading: the black-on-white lockup turned into an
+                    alpha mask (ink opaque, paper clear) and cut to the ink's
+                    own box. Used as a CSS mask over the text colour, like
+                    mark.svg, so one file is right in both themes -- the two
+                    drawn lockups carry a solid black or white ground, which
+                    would sit on the page as a box in either.
 
 A NOTE ON THE ORIGINALS' NAMES. They arrived as "Logo Black.png" and "Logo
 White.png", named for their BACKGROUND: the first is the white wordmark on
@@ -162,6 +169,24 @@ def write_og():
     return f"og.png    {W}x{H}, logo at {im.width}x{im.height}"
 
 
+def write_lockup():
+    """The lockup as an alpha mask, cut to the ink: see the docstring."""
+    from PIL import Image
+    grey = Image.open(need(BRAND / "logo-on-white.png")).convert("L")
+    # Ink is dark on the white original, so opacity is how far from white a
+    # pixel is. The drawing's anti-aliased edge keeps its in-between values,
+    # which is what keeps the mask's edge smooth.
+    alpha = grey.point(lambda v: 255 - v)
+    box = alpha.getbbox()
+    if not box:
+        sys.exit("brand/logo-on-white.png has no ink; is it the lockup on white?")
+    alpha = alpha.crop(box)
+    im = Image.new("LA", alpha.size, 0)
+    im.putalpha(alpha)
+    im.save(OUT / "lockup.png", optimize=True)
+    return f"lockup.png {alpha.width}x{alpha.height}, cut to the ink"
+
+
 MANIFEST = """{
   "name": "Granite Record",
   "short_name": "Granite Record",
@@ -199,6 +224,7 @@ def main():
     said.append(write_icon_svg(d, frame))
     said.append(write_pngs())
     said.append(write_og())
+    said.append(write_lockup())
     (OUT / "site.webmanifest").write_text(MANIFEST, encoding="utf-8")
     said.append("site.webmanifest")
     for line in said:
