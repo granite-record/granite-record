@@ -1183,3 +1183,18 @@ committed on `master` except where it says otherwise, and is on the built
   some matches change. So: scratch-build the manifests, list every changed
   match, run `probe_alignment --truth` before and after, and let a person
   look at the list first.
+
+  **Done on the 13th, in the evening (00eafb8), on the person's choice of
+  "probe, install if it holds".** Every term's manifest was built in scratch
+  twice, with the code before and after; the before copies equalled the
+  installed manifests (the 35 hand-marked times carried as H:MM:SS where a
+  fresh build writes seconds -- the same moments). After: 1,899 manifest rows
+  of 2015-2026 and 47 of 1989-1998 change committee, and **877 change their
+  recording match** -- 596 had none and now have a candidate, 104 go to a
+  different recording, 41 lose one (nearly all Finance sessions in Finance's
+  own rooms, LOB 209, 210-211 and 212, now "pick manually"), 136 keep the
+  recording with a new note or offset. `probe_alignment --truth` on each:
+  **median 0m 01s before and after, with the bench and without it, worst
+  unchanged**, and the same again on what was installed. The one row still
+  worth a person's eye is SB 128's session of 15 November 2023 in LOB 206-208,
+  Judiciary's room, which loses its House Judiciary recording.
