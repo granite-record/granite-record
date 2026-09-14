@@ -48,9 +48,9 @@ is renumbered here in one pass.
    and 877 a changed recording match; the median held at 0m 01s); committee
    name variants into one committee (1,119 rows of 1989-1998; distinct names
    House 202 to 148, Senate 117 to 85); chamber changers' two histories (20
-   members). Left: the Learn pages' counts filled from the data, and a
-   member's Sponsored tabs, which miss bills the bill pages credit them with
-   (§6c).
+   members). Done on the 14th: a member's Sponsored tabs list what the bill
+   pages credit them with (0b1b47b, §6c), and the Learn pages' counts are
+   filled from the data at build time (§6d). Phase 1 is complete.
 2. *Features.* Topics for the archived terms, where 37-64% of each term's bills
    are "Miscellaneous", scored at the bench; search that finds what was meant,
    measured on a set of real queries; follow (committee pages name their
@@ -681,6 +681,14 @@ shape). That last is measured, not guarded. The fix is to file each bill under
 the member its page links, with that condition built in, and the joined
 numbers counting as the member's.
 
+**Fixed on the 14th (0b1b47b), that way.** A name-matched record counts as the
+member only where they sat in that chamber that term, by their own votes, the
+joined numbers' and the roster's current chamber; build_feeds files feed
+sponsorships by the same link. Built from HEAD and from the fix: bill records
+unchanged, 349 member files and legislators.json differ, 8,259 sponsorships
+listed become 20,114, and every member's list equals the records that resolve
+to them.
+
 ## 6d. The civics pages' facts, measured on the 12th
 
 Every checkable claim in `civics.py` was measured against the built site.
@@ -705,6 +713,17 @@ terms:**
 
 Not checked: "1,068 reached both chambers", "86 went to a committee of
 conference", and the district counts (203 districts, 41 floterial, 65 seats).
+
+**Done on the 14th.** Every count above, the three not checked, the district
+and House figures, the CACR paragraph and the hearings count are named in
+`civics.py` as `[[name]]` and filled by `build_civics.record_figures` from the
+built index, district map, roster, narratives, roll calls, veto messages and
+`proceedings.csv`. Each definition reproduced the typed figure wherever that
+was still right (2,234 bills, 1,068 both chambers, 86 conference, 400 seats and
+382 sitting, 203 districts, 399 and 384 seated). Two sentences changed with
+their numbers: the CACR paragraph is about the current term (31 CACRs, none to
+the voters), and the hearings count no longer says it was parsed only from the
+calendars. A name with no figure stops the build.
 
 **The fix that lasts is not new numbers.** It is `build_civics.py` filling
 these from the data at build time, the way the home page's counts are, so the
@@ -1096,12 +1115,11 @@ committed on `master` except where it says otherwise, and is on the built
    well-formed report sent to the deployment's own pages.dev address was
    refused and stored nothing (production database: 0 rows before and after),
    and `check_live --gate` passed. Everything below this line of the 12th and
-   13th went out with it. **Before the next publish that changes app.js or a
-   stylesheet:** the zone's Browser Cache TTL overrides the site's
-   `max-age=0` to 4 hours for .js and .css, and the pages no longer carry a
-   version query, so returning readers could get new pages with an old
-   script. The person sets Caching > Configuration > Browser Cache TTL to
-   "Respect Existing Headers" (or the version query comes back).
+   13th went out with it. The zone's Browser Cache TTL had overridden the
+   site's `max-age=0` to 4 hours for .js and .css, which with no version
+   query on the pages could serve new pages with an old script; the person
+   confirmed on the 14th that Caching > Configuration > Browser Cache TTL is
+   "Respect Existing Headers".
 
    *What was merged:* **the report box, from branch `report-box-merge`
    (`D:\nh-merge`)** -- master merged in (only version stamps conflicted),
