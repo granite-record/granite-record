@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.13
+# GRANITE_VERSION: 2026-09-07.14
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -158,6 +158,22 @@ def still_moving(row, current_term):
     this same test, so a page never offers a feed that is not there.
     """
     return (row.get("term") or "") == current_term and row.get("kind") == "active"
+
+
+def member_followable(m):
+    """Whether a sitting member has a feed: one with a vote or a bill on record.
+
+    build_feeds writes /feed/legislator/<id>.xml on this test and
+    build_legislator_pages names it in the member's page on the same one -- the
+    member's counterpart of still_moving. The page cannot look for the file
+    instead, because the feeds are written after the pages.
+
+    It reads the roster's counts, which build_site_v2 writes in the loop that
+    writes the member's own file: n_votes, the length of its vote list, and
+    n_sponsored, the bills naming the member a sponsor. On 13 September every
+    one of the 406 sitting members had one or both.
+    """
+    return bool(str(m.get("id") or "")) and bool(m.get("n_votes") or m.get("n_sponsored"))
 
 
 def ld_script(jsonld):

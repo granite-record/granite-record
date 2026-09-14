@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.162
+# GRANITE_VERSION: 2026-09-04.163
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3414,6 +3414,68 @@ def _legislator_feed_dates():
             "the guid changed shape, so every subscriber would see each vote again")
         return "ok", ("three votes dated as cast, newest first, each linking HB 221 of "
                       "2025-2026 though HB221 exists in two terms; guids unchanged")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a member's page names a feed exactly where build_feeds writes one")
+def _member_feed_links():
+    """build_feeds wrote a feed for 406 sitting members and no page linked one,
+    so the only way to a member's feed was already knowing its address.
+
+    The page is written first, so it cannot look for the file: both builders
+    ask shell.member_followable, the member's counterpart of still_moving. Three
+    members: one with votes, one with nothing on record, and one the roster
+    counts a vote for that the member's file does not carry -- a site built in
+    pieces -- whose page links a feed and so must get one, empty or not.
+    """
+    here = Path(".").resolve()
+    need = ("build_legislator_pages.py", "build_feeds.py", "bills.html")
+    absent = [f for f in need if not (here / f).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp(prefix="gr-memberfeed-"))
+    try:
+        site = root / "site"
+        (site / "legislators").mkdir(parents=True)
+        shutil.copy2(here / "bills.html", site / "bills.html")
+        (site / "index.json").write_text("[]", encoding="utf-8")
+        members = [
+            {"id": "100", "name": "Voter, Vera", "display": "Rep. Vera Voter",
+             "chamber": "H", "district_label": "Rock 1", "slug": "vera-voter-rock-1",
+             "n_votes": 2, "n_sponsored": 0},
+            {"id": "200", "name": "Newcomer, Ned", "display": "Rep. Ned Newcomer",
+             "chamber": "H", "district_label": "Rock 2", "slug": "ned-newcomer-rock-2",
+             "n_votes": 0, "n_sponsored": 0},
+            {"id": "300", "name": "Partial, Pat", "display": "Rep. Pat Partial",
+             "chamber": "H", "district_label": "Rock 3", "slug": "pat-partial-rock-3",
+             "n_votes": 1, "n_sponsored": 0}]
+        (site / "legislators.json").write_text(json.dumps(members), encoding="utf-8")
+        (site / "legislators" / "100.json").write_text(json.dumps({"votes": [
+            {"d": "3/6/2026", "b": "HB1", "q": "Ought to Pass", "v": "Yea"},
+            {"d": "3/5/2026", "b": "HB2", "q": "Inexpedient to Legislate", "v": "Nay"}]}),
+            encoding="utf-8")
+        (site / "legislators" / "300.json").write_text(json.dumps({"votes": []}),
+                                                         encoding="utf-8")
+        for script in ("build_legislator_pages.py", "build_feeds.py"):
+            r = _run([sys.executable, str(here / script), "--site", "site",
+                      "--base", "https://x.test"],
+                     cwd=root, capture_output=True, text=True, timeout=120)
+            assert r.returncode == 0, f"{script}: " + (r.stderr or r.stdout).strip()[-200:]
+        seen = {}
+        for m in members:
+            page = (site / "legislator" / f"{m['slug']}.html").read_text(encoding="utf-8")
+            links = f'href="/feed/legislator/{m["id"]}.xml"' in page
+            wrote = (site / "feed" / "legislator" / f"{m['id']}.xml").exists()
+            assert links == wrote, (
+                f"member {m['id']}: the page " + ("names a feed that was not written"
+                                                  if links else "does not name its feed"))
+            seen[m["id"]] = links
+        assert seen == {"100": True, "200": False, "300": True}, (
+            f"feeds named for {seen}; wanted the members with a vote or a sponsorship "
+            "on the roster (100 and 300) and not the one with neither (200)")
+        return "ok", ("a feed named and written for the member with votes and for the one the "
+                      "roster counts, neither for the member with nothing on record")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 

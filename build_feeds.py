@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.12
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -399,12 +399,17 @@ def main():
     # headlines would never see it.
     nleg = 0
     undated = 0
+    empty = []
     lp = site / "legislators.json"
     if lp.exists():
         (fd / "legislator").mkdir(parents=True, exist_ok=True)
         for m in json.loads(lp.read_text(encoding="utf-8")):
             mid = str(m.get("id") or "")
-            if not mid:
+            # THE TEST THE MEMBER'S PAGE NAMES ITS FEED ON. build_legislator_pages
+            # runs before this and has no file to look for, so both ask
+            # shell.member_followable. Until 13 September this wrote a feed
+            # wherever the items below came to something, and no page named one.
+            if not S.member_followable(m):
                 continue
             who = m.get("display") or m.get("name") or f"Member #{mid}"
             items = []
@@ -440,7 +445,11 @@ def main():
                     f"{bb.get('title', '')}\n\n{who} is the {role} of this bill.",
                     filed, f"sponsor:{mid}:{bb['id']}"))
             if not items:
-                continue
+                # The roster counts a vote or a sponsorship that neither the
+                # member's file nor any bill page carries: a site built in
+                # pieces. Written anyway, because the member's page names it,
+                # and counted below rather than passed over.
+                empty.append(mid)
             self_l = f"{base}/feed/legislator/{mid}.xml"
             written.append(fd / "legislator" / f"{mid}.xml")
             (fd / "legislator" / f"{mid}.xml").write_text(
@@ -477,6 +486,10 @@ def main():
           "in hearings.xml")
     print(f"{ncmte} committee feeds, keyed by code, {len(by_topic)} topic feeds")
     print(f"{nleg:,} legislator feeds")
+    if empty:
+        print(f"  {len(empty):,} of them have no items: legislators.json counts a vote or a "
+              "sponsorship that neither the member's file nor any bill page carries, so the "
+              f"site was built in pieces. Written anyway, since their pages name them: {empty[:5]}")
     if undated:
         print(f"  {undated:,} votes carry no date this reads (neither YYYY-MM-DD nor "
               "M/D/YYYY), so a reader is shown the build time for them")

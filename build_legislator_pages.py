@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -21,7 +21,8 @@ and outcome; every roll call they are recorded in, filterable by how they voted;
 the district they sit for and the towns in it, ward by ward where a city is
 split between members.
 
-Writes site/legislator/<slug>.html and appends them to sitemap.xml.
+Writes site/legislator/<slug>.html and appends them to sitemap.xml. Each page
+names the member's feed in its head, on the test build_feeds writes it on.
 """
 
 import argparse
@@ -121,11 +122,24 @@ def main():
         slug = m.get("slug") or person_slug(m)
         path = f"/legislator/{slug}.html"
         who = m.get("display_full") or m.get("display") or m.get("name") or ""
+        mid = str(m.get("id") or "")
+        # THE MEMBER'S FEED, WHERE ONE IS WRITTEN: their recorded votes and the
+        # bills they sponsored. Until 13 September build_feeds wrote one for
+        # each of the 406 and no page named any, so the only way to one was
+        # already knowing its address. A feed reader given this page finds it
+        # here, as it finds a bill's. build_feeds runs after this step, so
+        # there is no file to look for: shell.member_followable is the test
+        # both use. Titled as the feed titles itself.
+        named = m.get("display") or m.get("name") or f"Member #{mid}"
+        feed = (f'<link rel="alternate" type="application/rss+xml" '
+                f'title="{E(named)} — Granite Record" '
+                f'href="/feed/legislator/{E(mid)}.xml">'
+                if S.member_followable(m) else "")
         (out / f"{slug}.html").write_text(S.page(
             t, path=path, base=a.base,
             title=f"{who} | Granite Record",
             og_title=f"{who} — New Hampshire General Court",
-            description=describe(m),
+            description=describe(m), alternate=feed,
             # Name, office, chamber, party, district. Not email or telephone:
             # structured.py says why.
             jsonld=LD.person(m, a.base, S.canon(path)),
