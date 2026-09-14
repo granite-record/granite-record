@@ -87,7 +87,16 @@ is renumbered here in one pass.
    fixed (beec463).
 4. *Launch prep.* The Learn read-through with the person; the About and Data
    pages; the history rewrite and the public repository; the SEO last mile and
-   the sitemap; screenshots at 360, 768 and 1440, a full build, publish,
+   the sitemap -- *done on the 14th*: each kind of page unfurls its own wide
+   link card (build_brand.py draws og-bill, og-legislator, og-committee,
+   og-learn and og-town; the person chose section cards over per-record ones),
+   a bill's card is titled with what the bill is rather than "New Hampshire
+   General Court", the sitemap's lastmod is the day a bill last moved rather
+   than the build date, and every tab has an address (/bill/2026/hb1442/votes,
+   /legislator/<who>/votes, /committee/<code>/sessions) served the record's
+   page by site/_redirects, while the canonical link and the sitemap keep the
+   record's own address; then the person submits sitemap.xml in Search
+   Console; screenshots at 360, 768 and 1440, a full build, publish,
    `check_live`.
 
 Then polish days, visuals and backend. After launch: email follows,

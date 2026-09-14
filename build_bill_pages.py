@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.49
+# GRANITE_VERSION: 2026-09-04.50
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -159,7 +159,11 @@ def shell(t, b, d, base, raw=None, data_url=None, current_term=""):
         # The old title also cut the subject at ninety characters flat,
         # mid-word.
         title=S.title_of(f"{n} ({yr})" if yr else n, clean_title(title)),
-        og_title=f"{n} — New Hampshire General Court",
+        # WHAT THE BILL IS ABOUT, in the card a shared link unfurls into. It
+        # read "HB 1442-FN -- New Hampshire General Court": nothing about the
+        # bill, and a card that looked like the General Court's own page.
+        og_title=S.clip(f"{n} ({yr}): {clean_title(title)}" if yr and title else n, 110),
+        og_image="og-bill.png", og_alt="Granite Record: bills, votes and hearings",
         description=describe(b), alternate=feed,
         globals={"GR_BILL": f"{yr}/{bid}", "GR_STANDALONE": True},
         data_json=raw, data_url=data_url,
@@ -243,7 +247,13 @@ def main():
             inlined += 1
         else:
             kept += 1
-        urls.append(a.base + S.canon(f"/bill/{yr}/{b['id'].lower()}.html"))
+        # lastmod is the day the bill last moved, not the day of the build. Every
+        # one of 34,000 entries carried the build date, which tells a search
+        # engine every page changed every night -- and it learns to ignore the
+        # field, and to recrawl nothing sooner for it.
+        moved = str(b.get("last_action") or "")[:10]
+        urls.append((a.base + S.canon(f"/bill/{yr}/{b['id'].lower()}.html"),
+                     moved if re.fullmatch(r"\d{4}-\d{2}-\d{2}", moved) else generated))
         written += 1
         if written % 1000 == 0:
             print(f"  {written:,}...", flush=True)
@@ -259,13 +269,13 @@ def main():
               # build_pages.py, one level down.
               "committees.html", "learn.html", "data.html", "about.html"):
         if (site / p).exists():
-            urls.append(a.base + S.canon("/" + p))
+            urls.append((a.base + S.canon("/" + p), generated))
 
     (site / "sitemap.xml").write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        + "".join(f"<url><loc>{E(u)}</loc><lastmod>{generated}</lastmod></url>\n"
-                  for u in urls)
+        + "".join(f"<url><loc>{E(u)}</loc><lastmod>{m}</lastmod></url>\n"
+                  for u, m in urls)
         + "</urlset>\n", encoding="utf-8")
     (site / "robots.txt").write_text(
         f"User-agent: *\nAllow: /\nSitemap: {a.base}/sitemap.xml\n",
@@ -286,7 +296,7 @@ def main():
         print(f"{noyear:,} bills had no filing year and were skipped — the "
               "year is part of the URL, so a bill without one cannot be "
               "addressed")
-    years = sorted({u.split("/bill/")[1].split("/")[0] for u in urls
+    years = sorted({u.split("/bill/")[1].split("/")[0] for u, _m in urls
                     if "/bill/" in u})
     if years:
         print("years: " + ", ".join(years))

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.21
+# GRANITE_VERSION: 2026-09-07.22
 """
 A page's worth of data for every committee.
 
@@ -554,6 +554,7 @@ def main():
             t, path=path, base=a.base,
             title=f"{name} — {chamber_word} committee | Granite Record",
             og_title=f"{name} — New Hampshire {chamber_word}",
+            og_image="og-committee.png", og_alt="Granite Record: committees and hearings",
             description=desc,
             # The committee's feed, named in its head the way a bill's and a
             # member's are, so the Follow control finds it there. Taken out
@@ -691,6 +692,7 @@ def main():
         S.template(site), path="/committees.html", base=a.base,
         title="Committees | Granite Record",
         og_title="New Hampshire General Court committees",
+        og_image="og-committee.png", og_alt="Granite Record: committees and hearings",
         description=("Every committee of the New Hampshire General Court: who "
                      "sits on it, the bills referred to it, and what it did on "
                      "each day it met."),

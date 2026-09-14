@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.12
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -138,7 +138,10 @@ def main():
         (out / f"{slug}.html").write_text(S.page(
             t, path=path, base=a.base,
             title=f"{who} | Granite Record",
-            og_title=f"{who} — New Hampshire General Court",
+            # The member's name and seat and nothing after it: "-- New Hampshire
+            # General Court" in a link card read as the General Court's own page.
+            og_title=who, og_image="og-legislator.png",
+            og_alt="Granite Record: legislators and their voting records",
             description=describe(m), alternate=feed,
             # Name, office, chamber, party, district. Not email or telephone:
             # structured.py says why.

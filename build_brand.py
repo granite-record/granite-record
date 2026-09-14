@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.2
+# GRANITE_VERSION: 2026-09-12.3
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -169,6 +169,52 @@ def write_og():
     return f"og.png    {W}x{H}, logo at {im.width}x{im.height}"
 
 
+# ONE CARD PER KIND OF PAGE, chosen by the person on 14 September over one card
+# for everything or one for each record. The drawing og.png carries, a little
+# smaller, with the kind of page named under it in the site's small capitals,
+# so a shared bill and a shared legislator do not unfurl identically.
+OG_SECTIONS = {
+    "og-bill.png": "BILLS  \u00b7  VOTES  \u00b7  HEARINGS",
+    "og-legislator.png": "LEGISLATORS  \u00b7  VOTING RECORDS",
+    "og-committee.png": "COMMITTEES  \u00b7  HEARINGS",
+    "og-learn.png": "HOW NEW HAMPSHIRE WORKS",
+    "og-town.png": "WHO REPRESENTS YOUR TOWN",
+}
+# A bold sans for the label, wherever this runs. The cards are committed to
+# assets/, so this is needed only when they are drawn again.
+LABEL_FONTS = ("C:/Windows/Fonts/arialbd.ttf",
+               "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+               "/System/Library/Fonts/Supplemental/Arial Bold.ttf")
+
+
+def write_og_sections():
+    """og-<kind>.png, 1200x630: the logo above, the kind of page below."""
+    import os
+    from PIL import Image, ImageDraw, ImageFont
+    font_path = next((f for f in LABEL_FONTS if os.path.exists(f)), None)
+    if not font_path:
+        sys.exit("No bold sans font for the section cards' labels: add one to LABEL_FONTS.")
+    font = ImageFont.truetype(font_path, 30)
+    grey = Image.open(need(BRAND / "logo-on-white.png")).convert("L")
+    box = grey.point(lambda v: 255 - v).getbbox()
+    src = Image.open(BRAND / "logo-on-white.png").convert("RGB").crop(box)
+    W, H = 1200, 630
+    k = min(W * 0.78 / src.width, H * 0.60 / src.height)
+    im = src.resize((int(src.width * k), int(src.height * k)), Image.LANCZOS)
+    top = int((H - im.height - 30 - 58) / 2)
+    for name, label in OG_SECTIONS.items():
+        card = Image.new("RGB", (W, H), (255, 255, 255))
+        card.paste(im, ((W - im.width) // 2, top))
+        draw = ImageDraw.Draw(card)
+        widths = [draw.textlength(ch, font=font) for ch in label]
+        x = (W - (sum(widths) + 3 * (len(label) - 1))) / 2
+        for ch, w in zip(label, widths):
+            draw.text((x, top + im.height + 58), ch, font=font, fill=(70, 74, 72))
+            x += w + 3
+        card.save(OUT / name, optimize=True)
+    return "section cards: " + ", ".join(OG_SECTIONS)
+
+
 def write_lockup():
     """The lockup as an alpha mask, cut to the ink: see the docstring."""
     from PIL import Image
@@ -224,6 +270,7 @@ def main():
     said.append(write_icon_svg(d, frame))
     said.append(write_pngs())
     said.append(write_og())
+    said.append(write_og_sections())
     said.append(write_lockup())
     (OUT / "site.webmanifest").write_text(MANIFEST, encoding="utf-8")
     said.append("site.webmanifest")

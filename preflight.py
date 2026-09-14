@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.179
+# GRANITE_VERSION: 2026-09-04.180
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3050,6 +3050,32 @@ def _chain():
             assert links == wrote, (
                 f"committee {cp.stem}: the page " + ("names a feed that was not written"
                                                      if links else "does not name its feed"))
+        # THE CARD A SHARED LINK UNFURLS INTO, THE SITEMAP'S DATES AND THE TABS'
+        # ADDRESSES (14 September). A bill page and a member page each name their
+        # own section's wide card; a bill's card title says what the bill is and
+        # not "New Hampshire General Court"; lastmod is a date; and the tab slugs
+        # app.js reads are exactly the ones _redirects serves.
+        import build_pages as BP
+        bhead = next((root / "site" / "bill").rglob("*.html")).read_text(
+            encoding="utf-8", errors="replace")
+        assert 'og-bill.png"' in bhead and 'content="summary_large_image"' in bhead, (
+            "a bill page's link card is not the bills section's wide card")
+        ogt = re.search(r'property="og:title" content="([^"]*)"', bhead).group(1)
+        assert "General Court" not in ogt and ":" in ogt, f"a bill's link card is titled {ogt!r}"
+        if members:
+            mhead = (root / "site" / "legislator" / f"{members[0]['slug']}.html").read_text(
+                encoding="utf-8", errors="replace")
+            assert 'og-legislator.png"' in mhead, "a member page's link card is not the legislators card"
+        sm = (root / "site" / "sitemap.xml").read_text(encoding="utf-8")
+        assert re.search(r"<lastmod>\d{4}-\d{2}-\d{2}</lastmod>", sm), "the sitemap carries no dates"
+        red = (root / "site" / "_redirects").read_text(encoding="utf-8")
+        js = (here / "app.js").read_text(encoding="utf-8")
+        for name, slugs in (("BILL_TABS", BP.BILL_TAB_SLUGS), ("MEMBER_TABS", BP.MEMBER_TAB_SLUGS),
+                            ("COMMITTEE_TABS", BP.COMMITTEE_TAB_SLUGS)):
+            got = re.search(r"const " + name + r"=\{([^}]*)\}", js)
+            keys = set(re.findall(r"(\w+):", got.group(1))) if got else set()
+            assert keys == set(slugs), f"app.js {name} {sorted(keys)} and build_pages {slugs} disagree"
+            assert all(f"/{s} " in red for s in slugs), f"_redirects does not serve every {name} slug"
         # What a stylesheet asks for is a request too, and check_site reads only
         # the pages' own href and src. The nav's mark and, since 13 September,
         # the home page's lockup are CSS masks: a mask whose file is missing is

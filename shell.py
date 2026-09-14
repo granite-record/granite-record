@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.15
+# GRANITE_VERSION: 2026-09-07.16
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -50,7 +50,12 @@ NEEDS = {
     # canonical and unfurl card. Every record page built from it writes its
     # own, so this block is removed rather than inherited -- otherwise 34,000
     # pages would all claim to be the bill search page.
-    "seo": '''<meta name="description" content="Search every bill of the New Hampshire General Court by number, subject, sponsor or committee, with its votes, hearings and full history."><link rel="canonical" href="https://graniterecord.org/bills.html"><meta property="og:type" content="website"><meta property="og:title" content="New Hampshire bills | Granite Record"><meta property="og:description" content="Search every bill of the New Hampshire General Court by number, subject, sponsor or committee."><meta property="og:url" content="https://graniterecord.org/bills.html"><meta property="og:site_name" content="Granite Record"><meta name="twitter:card" content="summary">''',
+    "seo": '''<meta name="description" content="Search every bill of the New Hampshire General Court by number, subject, sponsor or committee, with its votes, hearings and full history."><link rel="canonical" href="https://graniterecord.org/bills.html"><meta property="og:type" content="website"><meta property="og:title" content="New Hampshire bills | Granite Record"><meta property="og:description" content="Search every bill of the New Hampshire General Court by number, subject, sponsor or committee."><meta property="og:url" content="https://graniterecord.org/bills.html"><meta property="og:site_name" content="Granite Record"><meta name="twitter:card" content="summary_large_image">''',
+    # The card a shared link unfurls into. The template names the bills
+    # section's card; page() puts each kind of page's own in its place.
+    "og_image": '<meta property="og:image" content="https://graniterecord.org/og-bill.png">',
+    "og_alt": '<meta property="og:image:alt" content="Granite Record: bills, votes and hearings">',
+    "tw_image": '<meta name="twitter:image" content="https://graniterecord.org/og-bill.png">',
 }
 
 # Every element app.js binds to on load.
@@ -215,7 +220,8 @@ def ld_script(jsonld):
 def page(t, *, path, title, description, base, globals=None, noscript="",
          alternate="", skip_label="Skip to the content", og_title=None,
          sr_title=None, nav_current="", jsonld=None,
-         data_json=None, data_url=None, og_type="article"):
+         data_json=None, data_url=None, og_type="article", og_image=None,
+         og_alt=None):
     """One record's page: the template, told which record it is.
 
     sr_title replaces the template's own visually-hidden <h1>. bills.html
@@ -262,13 +268,23 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         # headline from nowhere. Same address as the canonical, deliberately.
         + f'\n<meta property="og:url" content="{base}{canon(path)}">'
         + f'\n<meta property="og:site_name" content="{BRAND}">'
-        + '\n<meta name="twitter:card" content="summary">'
+        # The wide card: every page names a 1200x630 image, and "summary" had
+        # X draw a thumbnail of the square icon beside the words instead.
+        + '\n<meta name="twitter:card" content="summary_large_image">'
         # Structured data, where the page has something a search engine has a
         # vocabulary for. It is passed in rather than guessed at here, because
         # only the builder knows whether this is a bill, a person or a body.
         + ld_script(jsonld))
 
     out = t.replace(NEEDS["viewport"], head, 1)
+    # EACH KIND OF PAGE ITS OWN CARD (build_brand.py draws them): a shared bill
+    # and a shared legislator unfurled identically. A page that names none gets
+    # the plain logo card.
+    img = f"{base}/{og_image or 'og.png'}"
+    out = out.replace(NEEDS["og_image"], f'<meta property="og:image" content="{img}">', 1)
+    out = out.replace(NEEDS["tw_image"], f'<meta name="twitter:image" content="{img}">', 1)
+    out = out.replace(NEEDS["og_alt"], f'<meta property="og:image:alt" content="'
+                      f'{E(og_alt or BRAND)}">', 1)
     # ONE TITLE PER PAGE. head starts with the viewport meta and adds a
     # <title> after it, so the template's own title survived the substitution
     # and every one of the 34,152 generated pages carried two of them -- the

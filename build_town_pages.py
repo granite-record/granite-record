@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.10
+# GRANITE_VERSION: 2026-09-09.11
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -439,6 +439,7 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
     p = S.page(tmpl, path=path, base=base,
                title=S.title_of(f"Who represents {label}"),
                og_title=f"Who represents {label}",
+               og_image="og-town.png", og_alt="Granite Record: who represents your town",
                description=desc, globals={"GR_STATIC": True},
                noscript="", skip_label="Skip to the page", sr_title="",
                nav_current="legislators.html")

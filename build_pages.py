@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.67
+# GRANITE_VERSION: 2026-09-04.68
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -531,6 +531,15 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
   Cache-Control: public, max-age=0, must-revalidate
 """
 
+# Tab addresses, served their record's page: see where this is written.
+BILL_TAB_SLUGS = ("text", "votes", "videos", "reports", "sponsors", "documents")
+MEMBER_TAB_SLUGS = ("cosponsored", "votes")
+COMMITTEE_TAB_SLUGS = ("sessions",)
+REDIRECTS = ("# Written by build_pages.py. Not an asset; Pages reads it.\n"
+             + "".join(f"/bill/:year/:bill/{s} /bill/:year/:bill 200\n" for s in BILL_TAB_SLUGS)
+             + "".join(f"/legislator/:who/{s} /legislator/:who 200\n" for s in MEMBER_TAB_SLUGS)
+             + "".join(f"/committee/:code/{s} /committee/:code 200\n" for s in COMMITTEE_TAB_SLUGS))
+
 
 # WHAT A POWER USER NEEDS, IN THE FOOTER, WHERE THEY WILL LOOK FOR IT.
 # data.html and manifest.json have described every table since the 10th and
@@ -753,18 +762,24 @@ def shell(title, current, body, wide=False, script="", desc="",
     # The same block bills.html carries, for the same reasons -- written
     # twice because the two emitters are, and kept next to each other in both
     # files so a change to one is obvious in the other.
-    BRAND_HEAD = """<link rel="icon" href="/icon.svg" type="image/svg+xml">
+    # The card a shared link unfurls into, by kind of page (build_brand.py
+    # draws them); the plain logo card for the home page and About.
+    _card = {"legislators.html": ("og-legislator.png", "legislators and their voting records"),
+             "bills.html": ("og-bill.png", "bills, votes and hearings")}.get(current)
+    _img = f"https://graniterecord.org/{_card[0] if _card else 'og.png'}"
+    _alt = f"Granite Record: {_card[1]}" if _card else "Granite Record"
+    BRAND_HEAD = f"""<link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/icon-32.png" sizes="32x32" type="image/png">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#EAEBE7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#171B1C" media="(prefers-color-scheme: dark)">
-<meta property="og:image" content="https://graniterecord.org/og.png">
+<meta property="og:image" content="{_img}">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Granite Record">
-<meta name="twitter:image" content="https://graniterecord.org/icon-512.png">
+<meta property="og:image:alt" content="{_alt}">
+<meta name="twitter:image" content="{_img}">
 """
     HEAD_SEO = (f'<meta name="description" content="{_e(desc)}">'
                 f'<link rel="canonical" href="{_canon}">'
@@ -773,7 +788,7 @@ def shell(title, current, body, wide=False, script="", desc="",
                 f'<meta property="og:description" content="{_e(desc)}">'
                 f'<meta property="og:url" content="{_canon}">'
                 f'<meta property="og:site_name" content="Granite Record">'
-                f'<meta name="twitter:card" content="summary">') if desc else ""
+                f'<meta name="twitter:card" content="summary_large_image">') if desc else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title>{HEAD_SEO}{FONTS}{BRAND_HEAD}{themer("HEAD")}<link rel="stylesheet" href="style.css">
@@ -1483,6 +1498,18 @@ def main():
             or hdr.read_text(encoding="utf-8", newline="") != HEADERS):
         hdr.write_text(HEADERS, encoding="utf-8", newline="\n")
         print("  _headers: the three asset files must be revalidated, not reused")
+    # A TAB'S ADDRESS IS ITS RECORD'S PAGE. /bill/2026/hb1442/votes is not a
+    # file; Cloudflare Pages serves the record's own page there (a 200
+    # rewrite, not a redirect, so the address stays), and app.js opens the tab
+    # the address names. The page's canonical link is the record's own
+    # address and no tab address is in the sitemap, so each record is indexed
+    # once. The slugs here and BILL_TABS/MEMBER_TABS/COMMITTEE_TABS in app.js
+    # are the same lists; preflight holds them together.
+    red = out / "_redirects"
+    if (not red.exists()
+            or red.read_text(encoding="utf-8", newline="") != REDIRECTS):
+        red.write_text(REDIRECTS, encoding="utf-8", newline="\n")
+        print("  _redirects: a tab's address serves its record's page")
 
     legs = json.loads((out / "legislators.json").read_text(encoding="utf-8")) \
         if (out / "legislators.json").exists() else []

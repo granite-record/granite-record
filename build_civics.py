@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.11
+# GRANITE_VERSION: 2026-09-08.12
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -254,6 +254,7 @@ def main():
     page = S.page(tmpl, path="/learn.html", base=a.base,
                   title="How New Hampshire works | Granite Record",
                   og_title="How New Hampshire works",
+                  og_image="og-learn.png", og_alt="Granite Record: how New Hampshire works",
                   description=("Short, plain explanations of the parts of New "
                                "Hampshire state government, each linked to "
                                "where you can watch it happening."),
@@ -288,6 +289,7 @@ def main():
                    title=S.title_of(t["title"],
                                     "How New Hampshire works"),
                    og_title=t["title"], description=t["blurb"],
+                   og_image="og-learn.png", og_alt="Granite Record: how New Hampshire works",
                    globals={"GR_STATIC": True}, noscript="",
                    skip_label="Skip to the page", sr_title="",
                    nav_current="learn.html")

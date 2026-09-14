@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.75
+// GRANITE_VERSION: 2026-09-07.76
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -372,6 +372,30 @@ const openGroups=new Set(wideEnough?["committee"]:[]);
 let sponsorFilter="";
 const openCards=new Set(),openTab={},detail={},segSel={},fullOpen=new Set();
 
+/* A TAB HAS AN ADDRESS, 14 September. /bill/2026/hb1442/votes opens that
+   bill's Votes tab, /legislator/<who>/votes a member's, /committee/H05/sessions
+   a committee's; choosing a tab puts its address in the bar, so it can be
+   shared. The canonical link stays the record's own address and no tab
+   address is in the sitemap, so a search engine indexes each record once.
+   site/_redirects (build_pages.py, the same slugs) serves the record's page
+   at a tab's address. The first tab of each has no slug: its address is the
+   record's. */
+const BILL_TABS={text:"6",votes:"1",videos:"2",reports:"3",sponsors:"4",documents:"5"};
+const MEMBER_TABS={cosponsored:1,votes:2};
+const COMMITTEE_TABS={sessions:1};
+const TAB_PATH=/^(\/(?:bill\/\d{4}\/[a-z]{2,5}\d+|legislator\/[^\/]+|committee\/[^\/]+))\/([a-z]+)\/?$/i;
+const isTabSlug=s=>!!(BILL_TABS[s]||MEMBER_TABS[s]||COMMITTEE_TABS[s]);
+function tabFromPath(){
+  const m=TAB_PATH.exec(location.pathname);
+  return m&&isTabSlug(m[2].toLowerCase())?m[2].toLowerCase():"";
+}
+function tabAddress(slug){
+  const m=TAB_PATH.exec(location.pathname);
+  const base=m&&isTabSlug(m[2].toLowerCase())?m[1]:location.pathname.replace(/\/$/,"");
+  try{history.replaceState(history.state,"",base+(slug?"/"+slug:"")+location.search);}catch(_){}
+}
+const slugOf=(map,v)=>Object.keys(map).find(k=>map[k]===v)||"";
+
 // A BILL NUMBER IS NOT UNIQUE ACROSS TERMS, and four of those five are keyed
 // on the bare number. HB 100 exists in most terms and is a different bill in
 // each, so expanding a few rows and then changing the term left those same
@@ -566,6 +590,11 @@ need("meta.json")
        // A link into another term must switch the term first, or the
        // card it names is filtered out of the list it would be drawn in.
        if(row.term&&term&&row.term!==term){term=row.term;$("#year").value=term;}
+     }
+     // The tab this bill's own address names.
+     if(window.GR_BILL){
+       const t=BILL_TABS[tabFromPath()];
+       if(t){openTab[id]=t;if(t==="6"&&row)needVersions(row);}
      }
      openBill(id);
    }
@@ -3026,7 +3055,9 @@ function renderPage(){
 document.addEventListener("click",e=>{
   if(!PAGE)return;
   const t=e.target.closest("[data-pt]");
-  if(t){PAGE_TAB=+t.dataset.pt;renderPage();return;}
+  if(t){PAGE_TAB=+t.dataset.pt;
+    tabAddress(slugOf(PAGE.kind==="member"?MEMBER_TABS:COMMITTEE_TABS,PAGE_TAB));
+    renderPage();return;}
   // Not data-more: that one belongs to the bill list, is read by the
   // handler above this in the file, and calls render(), which would draw the
   // search over the member's record.
@@ -3117,6 +3148,9 @@ function openPage(kind,ref){
   // member's Votes tab (2) opened a committee on a tab it does not have, and
   // the page drew nothing under the strip.
   PAGE_TAB=0;
+  // Or the tab its own address names.
+  const tabs_=kind==="member"?MEMBER_TABS:COMMITTEE_TABS;
+  if(tabs_[tabFromPath()])PAGE_TAB=tabs_[tabFromPath()];
   // The search chrome belongs to the search. Left up, the facet panel offered
   // filters for a list that is not on screen and the counter read "2,234 of
   // 2,234 bills" beside one member's name.
@@ -3486,6 +3520,8 @@ document.addEventListener("click",e=>{
   if(tab){
     const cid=tab.closest(".card").dataset.id;
     openTab[cid]=tab.dataset.t;
+    // On a bill's own page, the tab's address goes in the bar.
+    if(window.GR_BILL&&focused===cid)tabAddress(slugOf(BILL_TABS,tab.dataset.t));
     // The versions index is fetched when the tab is opened and not before,
     // which is the whole reason it is a separate file.
     if(tab.dataset.t==="6"){
