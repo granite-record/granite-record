@@ -10,6 +10,17 @@ only when every guarantee below is true of the running system.
 The person's decisions are in the memory file `follow-feature-design` and in
 `LAUNCH.md`; this file turns them into a build.
 
+## The buttons, as the person set them out on the 14th
+
+A record's page carries up to three separate buttons, not one menu: **RSS**,
+**Email updates** (once built), and **Submit testimony** on a bill. The
+testimony button appears only for a bill that is active -- the sitting term,
+not dead, not passed -- and is shown greyed out, with the reason, when public
+testimony submission for it is closed. A bill from a past term, dead or passed
+shows none of them. Noticeable, not intrusive; the RSS button the quietest of
+the three, because most people browsing will not use it. Today's single
+"Follow" control (RSS only) becomes these when email and testimony are built.
+
 ## What a reader gets
 
 1. On a bill, member, committee or topic page, **Follow** offers the feed (today)
