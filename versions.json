@@ -2,7 +2,7 @@
   "files": {
     "align_all.py": "2026-09-04.2",
     "app.css": "2026-09-07.83",
-    "app.js": "2026-09-07.73",
+    "app.js": "2026-09-07.74",
     "compile_reports.py": "2026-09-12.4",
     "gc_changes.py": "2026-09-12.1",
     "functions/api/report.js": "2026-09-12.3",
@@ -98,7 +98,7 @@
     "parse_districts.py": "2026-09-04.1",
     "parse_officials.py": "2026-09-12.1",
     "past_members.py": "2026-09-10.1",
-    "preflight.py": "2026-09-04.177",
+    "preflight.py": "2026-09-04.178",
     "probe_alignment.py": "2026-09-05.61",
     "probe_amendments.py": "2026-09-04.3",
     "probe_archive.py": "2026-09-04.3",

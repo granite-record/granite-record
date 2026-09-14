@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.73
+// GRANITE_VERSION: 2026-09-07.74
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -43,12 +43,21 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 const SYN=[
   ["gun","firearm","weapon","pistol","rifle"],
   ["school","education","student","teacher","classroom"],
-  ["tax","taxation","revenue","levy"],
-  ["housing","zoning","dwelling","rent","landlord","tenant"],
+  // Not "revenue": the Department of Revenue Administration is named in bills
+  // that levy nothing.
+  ["tax","taxation","levy"],
+  // Three groups where there was one: "zoning" returned every landlord-tenant
+  // bill of the term, 166 of them, because all six words shared a group.
+  ["housing","dwelling"],
+  // Not "lease" (the state leases buildings) nor "subdivision" (every
+  // "political subdivision"): measured, both pulled in bills about neither.
+  ["landlord","tenant","rent","eviction"],
+  ["zoning","land use","planning board"],
   ["childcare","child care","daycare","day care"],
   ["marijuana","cannabis","thc","weed"],
   ["dui","dwi","intoxicated","impaired driving"],
-  ["healthcare","health care","health","medical","insurance"],
+  // Not "insurance": a search for health returned every auto and home policy bill.
+  ["healthcare","health care","health","medical"],
   ["police","law enforcement","officer","sheriff"],
   ["veteran","military","national guard","armed forces"],
   ["elderly","senior","older adult","aging"],
@@ -57,13 +66,20 @@ const SYN=[
   ["road","highway","transportation","bridge"],
   ["climate","emission","greenhouse","renewable","solar"],
   ["trash","landfill","solid waste","recycling"],
-  ["opioid","controlled substance","narcotic","drug","fentanyl"],
+  // Two groups: "opioids" found the prescription drug affordability board.
+  ["opioid","fentanyl","narcotic","heroin","overdose","naloxone","substance use",
+   "substance misuse","addiction"],
+  ["drug","controlled substance"],
+  ["vaccine","vaccination","immunization"],
+  ["betting","wagering","gambling","casino"],
   ["abortion","reproductive","pregnancy termination"],
   ["transgender","gender identity","gender-affirming"],
   ["immigration","immigrant","noncitizen","alien"],
   ["minimum wage","hourly rate","wage"],
   ["union","collective bargaining","labor"],
-  ["water","groundwater","pfas","drinking water"],
+  // Two groups: "pfas" found every bill naming water, docks and dams included.
+  ["water","groundwater","drinking water"],
+  ["pfas","perfluoro","polyfluoro","forever chemical"],
   ["prison","corrections","inmate","incarcerat"],
   ["court","judicial","judge","judiciary"],
   ["property tax","assessment","abatement"],
@@ -105,6 +121,87 @@ function expand(word){
   }
   return best ? [...new Set([word, ...SYNMAP[best]])] : [word];
 }
+
+/* THE WORDS A QUESTION IS ASKED IN. Measured on 14 September against 36
+   everyday searches: every word had to match, so "bills about guns" and "bail
+   reform" found nothing, and "public education funding" found 11 bills where
+   "education funding" found 95. A plural ("rentals") did not find its singular
+   and a hyphen ("short-term") did not find its two words. So: words that carry
+   no subject are skipped, unless they are all a search has; a plural is read
+   as its singular; hyphens are spaces on both sides. */
+const STOP=[
+  "a","an","the","of","and","or","for","to","in","on","at","by","about","with",
+  "from","regarding","relative","related","relating","concerning","bill","bills",
+  "law","laws","act","acts","legislation","nh","hampshire","reform","reforms",
+  "committee","committees"
+];
+const STOPSET=new Set(STOP);
+/* A PHRASE IS ONE IDEA, and the words people ask in are not the words a bill
+   is titled in: nobody files "public education funding", they file "the cost
+   of an adequate education". Groups, like SYN -- any phrase of a concept in a
+   search stands for all of its terms -- and the terms are the record's own
+   wording, read out of the titles, not a judgment about what a bill is for.
+   The longest phrase is taken first, and what it covers is not read again. */
+const CONCEPTS=[
+  {phrases:["public education funding","public school funding","education funding",
+    "school funding","funding for public schools","funding for schools","education aid",
+    "school aid","adequate education","education adequacy"],
+   terms:["education funding","school funding","adequate education","adequacy",
+    "education trust fund","education grant","school building aid","opportunity budget"]},
+  {phrases:["school choice","education freedom account","education freedom accounts",
+    "education savings account","education savings accounts","school voucher",
+    "school vouchers","voucher","vouchers"],
+   terms:["education freedom account","school choice","education savings account",
+    "voucher","scholarship organization","charter school","open enrollment"]},
+  {phrases:["paid family leave","paid family and medical leave","family leave","paid leave"],
+   terms:["family and medical leave","paid family","family leave","paid leave"]},
+  {phrases:["short term rental","short term rentals","vacation rental","vacation rentals","airbnb"],
+   terms:["short term rental","vacation rental"]},
+  {phrases:["bail reform","bail","pretrial release"],
+   terms:["bail","pretrial"]},
+  {phrases:["affordable housing","workforce housing","housing affordability"],
+   terms:["affordable housing","workforce housing","housing affordab","housing champion"]},
+  {phrases:["right to know","public records","open records","freedom of information","foia"],
+   terms:["right to know","91 a","public records","governmental records"]},
+  {phrases:["death penalty","capital punishment"],
+   terms:["death penalty","capital punishment","capital murder"]},
+  {phrases:["voter id","voter identification","photo id"],
+   terms:["voter identification","photo identification","government issued identification",
+    "voter id","proof of identity","voter identity","identification of voter"]},
+  // Sports only: with gambling in it, "sports betting" returned 26 bills about
+  // horse racing and video lottery. "gambling" alone still finds those (SYN).
+  {phrases:["sports betting","sports wagering","sports gambling","sportsbook"],
+   terms:["sports betting","sports wagering","sports book","sportsbook"]}
+];
+const CPHRASES=CONCEPTS.flatMap(c=>c.phrases.map(p=>[p,c]))
+  .sort((a,b)=>b[0].length-a[0].length);
+function stem(w){
+  if(w.length<5||/(ss|us|is)$/.test(w))return w;
+  if(/ies$/.test(w))return w.slice(0,-3)+"y";
+  if(/(xes|ches|shes|sses)$/.test(w))return w.slice(0,-2);
+  return w.endsWith("s")?w.slice(0,-1):w;
+}
+// The search as groups, every one required: a concept's phrase is one group of
+// its terms, each other word a group of its synonyms.
+function queryGroups(raw){
+  let q=" "+String(raw||"").toLowerCase().replace(/[,\-]/g," ").replace(/\s+/g," ").trim()+" ";
+  const out=[];
+  for(const [p,c] of CPHRASES){
+    if(q.includes(" "+p+" ")){
+      out.push({word:p,alts:[...new Set([p,...c.terms])]});
+      q=q.split(" "+p+" ").join(" ");
+    }
+  }
+  const words=q.split(" ").filter(Boolean);
+  const kept=words.filter(w=>!STOPSET.has(w));
+  (kept.length||out.length?kept:words).forEach(w=>{
+    const s=stem(w);
+    out.push({word:w,alts:[...new Set([w,...expand(s)])]});
+  });
+  return out;
+}
+let QG_KEY=null,QG=[];
+function groupsFor(q){ if(q!==QG_KEY){QG_KEY=q;QG=queryGroups(q);} return QG; }
 const fdate=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
   return new Date(y,m-1,dd).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});};
 const $=s=>document.querySelector(s);
@@ -248,7 +345,7 @@ function ensureTerm(t){
   return need("idx/"+encodeURIComponent(t)+".json").then(rows=>{
     LOADED.add(t);
     rows.forEach(b=>b.hay=[b.id,b.n,b.title,b.sponsor,
-      ...(b.committees||[b.committee||""]),b.topic].join(" ").toLowerCase());
+      ...(b.committees||[b.committee||""]),b.topic].join(" ").toLowerCase().replace(/-/g," "));
     IDX=IDX.concat(rows);
   });
 }
@@ -396,10 +493,9 @@ function matches(b,ignore){
   for(const k of["committee","topic","sponsor","kind"])
     if(k!==ignore&&sel[k].size&&!facetVals(b,k).some(v=>sel[k].has(v)))return false;
   if(ignore!=="voteday"&&sel.voteday.size&&!(b.votedays||[]).some(d=>sel.voteday.has(d)))return false;
-  const q=query.trim().toLowerCase(); if(!q)return true;
-  // Every word must match, but any of its synonyms will do.
-  return q.replace(/,/g," ").split(/\s+/).filter(Boolean)
-    .every(w=>expand(w).some(alt=>hasTerm(b.hay, alt)));
+  const q=query.trim(); if(!q)return true;
+  // Every group must match, and any of its alternatives will do.
+  return groupsFor(q).every(g=>g.alts.some(alt=>hasTerm(b.hay, alt)));
 }
 
 function fgroup(key,label,vals,counts,searchable){
@@ -2983,9 +3079,8 @@ function render(more){
   const inTerm=IDX.filter(b=>!term||!b.term||b.term===term).length;
   // Say when a search matched on a synonym, so nobody wonders why a bill about
   // firearms turned up for "guns".
-  const qw=query.trim().toLowerCase().replace(/,/g," ").split(/\s+/).filter(Boolean);
-  const used=[...new Set(qw.flatMap(w=>{const e=expand(w);
-    return e.length>1&&!e.includes(w)?e.slice(0,3):(e.length>1?e.filter(x=>x!==w).slice(0,3):[]);}))];
+  const used=query.trim()?[...new Set(groupsFor(query.trim()).flatMap(g=>
+    g.alts.filter(x=>x!==g.word&&x!==stem(g.word)).slice(0,3)))]:[];
   const sh=$("#synhint");
   if(sh)sh.textContent=used.length&&!billNumbers(query)
     ? `also matching: ${used.join(", ")}` : "";

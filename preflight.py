@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.177
+# GRANITE_VERSION: 2026-09-04.178
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1915,7 +1915,7 @@ require("./stub.js");
 const src = require("fs").readFileSync("./page.js", "utf8");
 let scope;
 try { scope = (0, eval)(src +
-    "; ({render, IDX, renderDetail, serviceLine, yearOf, dkey, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
+    "; ({render, IDX, renderDetail, serviceLine, queryGroups, yearOf, dkey, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message);
             process.exit(1); }
 scope.IDX.length = 0;
@@ -2257,6 +2257,24 @@ if (both.indexOf("Votes on record") < 0
 if (scope.serviceLine({service:[{chamber:"H",spans:[[2019,2026]]}]}) !== ""
     || scope.serviceLine({}) !== "") {
   console.log("SERVICELINE drew a line for a member of one chamber"); process.exit(1); }
+
+// WHAT A SEARCH IS READ AS, from the cases measured on 14 September: words
+// with no subject do not have to match, a phrase is one idea in the record's
+// own wording, a plural finds its singular, and a hyphen is a space.
+var qg = function (q) { return scope.queryGroups(q).map(function (g) { return g.alts; }); };
+var guns = qg("bills about guns");
+if (guns.length !== 1 || guns[0].indexOf("firearm") < 0) {
+  console.log("SEARCH: 'bills about guns' read as " + JSON.stringify(guns)); process.exit(1); }
+var funding = qg("public education funding");
+if (funding.length !== 1 || funding[0].indexOf("adequate education") < 0) {
+  console.log("SEARCH: 'public education funding' read as " + JSON.stringify(funding)); process.exit(1); }
+var rentals = qg("short-term rentals");
+if (rentals.length !== 1 || rentals[0].indexOf("short term rental") < 0) {
+  console.log("SEARCH: 'short-term rentals' read as " + JSON.stringify(rentals)); process.exit(1); }
+if (qg("the law").length !== 2) {
+  console.log("SEARCH: a search of nothing but skipped words searched for nothing"); process.exit(1); }
+if (qg("zoning")[0].indexOf("tenant") >= 0 || qg("pfas")[0].indexOf("water") >= 0) {
+  console.log("SEARCH: zoning or pfas is grouped with a different subject again"); process.exit(1); }
 console.log("ok");
 """, encoding="utf-8")
         r = _run(["node", "go.js"], cwd=root, capture_output=True,
