@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.1
+# GRANITE_VERSION: 2026-09-12.2
 """A topic for the 29,449 bills the General Court never gave one.
 
     python3 topics.py --score              # measure it; no files written
@@ -48,16 +48,25 @@ WHAT IT IS WORTH, measured on a half it never saw
 
     always the commonest topic          12.7%
     the committee's commonest topic     50.4%
-    this                                60.9%
+    this                                62.1%   (60.9% before 14 September)
 
 46 ways to be wrong, from a sentence and a committee name. The number that
 matters more is what happens when it is allowed to decline:
 
-    margin >= 0     100% of bills given a topic     60.9% of them right
-    margin >= 4      67%                            74.2%
-    margin >= 6      55%                            77.9%
-    margin >= 10     41%                            82.3%
-    margin >= 14     29%                            87.4%
+    margin >= 0     100% of bills given a topic     62.1% of them right
+    margin >= 2      81%                            69.3%
+    margin >= 4      69%                            74.1%   (67%, 74.2% before)
+    margin >= 6      58%                            77.0%
+    margin >= 10     43%                            82.4%
+    margin >= 14     32%                            85.8%
+
+On 14 September committees were carried across renames, both chambers'
+committees counted (the second once), and title words read singular. That
+moved the unseen half little -- its committees are today's already -- and the
+archive a great deal: the share of a term's bills whose committee the model
+knows went from 58% to 78% for 1989-1990 and from 72% to 93% for 1997-1998,
+and Miscellaneous fell by 2 to 12 points in every archived term. The person
+kept the threshold at 4 the same day, with these numbers in front of them.
 
 MISCELLANEOUS IS THE POINT OF THE THRESHOLD. Below it the model is guessing --
 the least confident quarter of its answers are right 26% of the time -- and a
@@ -142,25 +151,116 @@ such as per each every some more most less least also including""".split())
 WORD = re.compile(r"[a-z][a-z'-]{2,}")
 
 
+# COMMITTEES CARRIED ACROSS RENAMES, 14 September. The committee is the
+# strongest evidence there is and the model only knows 2025-2026's names, so a
+# bill of 1989-1990 heard by "COMMERCE" -- 504 bills, the same committee in
+# capitals -- or by "Public Works" (478), "Wildlife" (149) or "Child Y and Jj"
+# (62) counted no committee at all. Each name is now read case-blind against
+# the labelled term's own spelling, and a rename or abbreviation whose
+# successor is not in doubt is read as the successor. A committee divided
+# among several -- Public Affairs, Regulated Revenues, Public Protection and
+# Veterans Affairs, State Institutions, Constitutional and Statutory Revision,
+# Redress of Grievances -- is left as itself, which the model does not know,
+# rather than guessed into one of them.
+ALIAS = {
+    "public works": "Public Works and Highways",
+    "capital budget": "Public Works and Highways",
+    "judiciary and family law": "Judiciary",
+    "corrections and criminal justice": "Criminal Justice and Public Safety",
+    "wildlife": "Fish and Game and Marine Resources",
+    "wildlife and recreation": "Fish and Game and Marine Resources",
+    "fish and game": "Fish and Game and Marine Resources",
+    "appropriations": "Finance",
+    "insurance": "Commerce and Consumer Affairs",
+    "banks": "Commerce and Consumer Affairs",
+    "banks and insurance": "Commerce and Consumer Affairs",
+    "public institutions, health and human services": "Health and Human Services",
+    "health": "Health and Human Services",
+    "child y and jj": "Children and Family Law",
+    "children, youth and juv just": "Children and Family Law",
+    "child, yth and jj": "Children and Family Law",
+    "education and workforce development": "Education",
+    "commerce, small business and consumer affairs": "Commerce",
+    "commerce, labor and consumer protection": "Commerce",
+    "economic development": "Commerce",
+    "transportation and interstate cooperation": "Transportation",
+    "st-fed": "State-Federal Relations and Veterans Affairs",
+    "st-fed rel": "State-Federal Relations and Veterans Affairs",
+    "internal affairs": "Election Law",
+    "election law and internal affairs": "Election Law",
+    "environment": "Energy and Natural Resources",
+    "energy, environment and economic development": "Energy and Natural Resources",
+}
+# A committee of conference hears bills of every subject, and in the House
+# field of 633 bills it stood where the committee of referral would have.
+# "No Committee Assignment" is NOT here: in 2025-2026 it is the floor
+# resolutions, and dropping it cost them Legislature and Memorials.
+NOT_A_SUBJECT = {"committee of conference"}
+# lower-case name -> the labelled term's own spelling, filled by load().
+CANON = {}
+
+# BOTH CHAMBERS' COMMITTEES, the second counted once. A bill that crossed over
+# was heard twice, and the second hearing is evidence too; counted as heavily
+# as the first it let Finance and Judiciary, second committees of every
+# subject, drag topics away. Measured on the unseen half:
+#
+#                                     given a topic   of those right
+#     one committee (as before)            67%            74.2%
+#     both, equal                          70%            73.4%
+#     both, the second once                68%            74.4%
+SECOND_WEIGHT = 1
+
+
+def canon_committee(name):
+    key = re.sub(r"\s+", " ", (name or "").strip()).lower()
+    if not key or key in NOT_A_SUBJECT:
+        return ""
+    return CANON.get(key) or ALIAS.get(key) or (name or "").strip()
+
+
+def committees_of(rec):
+    """The committees that heard it, the House's first, each by its current name.
+    Both are kept when the two chambers' committees share a name: two hearings
+    in Judiciary are more evidence than one, and merged they scored lower."""
+    out = []
+    for field in ("house_committee", "senate_committee"):
+        c = canon_committee(rec.get(field))
+        if c:
+            out.append(c)
+    return out
+
+
 def committee_of(rec):
-    return (rec.get("house_committee") or rec.get("senate_committee") or "").strip()
+    cs = committees_of(rec)
+    return cs[0] if cs else ""
+
+
+def singular(w):
+    """"vehicles" as "vehicle", "counties" as "county": one title's plural is
+    another's singular, and the older titles are the ones it cost."""
+    if len(w) < 5 or w.endswith(("ss", "us", "is")):
+        return w
+    if w.endswith("ies"):
+        return w[:-3] + "y"
+    if w.endswith(("xes", "ches", "shes", "sses")):
+        return w[:-2]
+    return w[:-1] if w.endswith("s") else w
 
 
 def tokens(rec):
     """The evidence for one bill: the words of its title, adjacent pairs of
-    them, and the committee that heard it.
+    them, and the committees that heard it.
 
     The pairs are there for the phrases where neither word decides anything
     alone -- "motor vehicle", "school district", "right to know", "controlled
     drug" -- and they are cheap because a title is a dozen words long.
     """
     title = (rec.get("title") or "").lower()
-    words = [w for w in WORD.findall(title) if w not in STOP]
+    words = [singular(w) for w in WORD.findall(title) if w not in STOP]
     out = list(words)
     out += [f"{a}_{b}" for a, b in zip(words, words[1:])]
-    c = committee_of(rec)
-    if c:
-        out += ["CMTE:" + c] * CMTE_WEIGHT
+    for i, c in enumerate(committees_of(rec)):
+        out += ["CMTE:" + c] * (CMTE_WEIGHT if i == 0 else SECOND_WEIGHT)
     return out
 
 
@@ -245,7 +345,13 @@ def evidence(model, rec, topic, limit=6):
 def load():
     if not BILLS.exists():
         sys.exit(f"No {BILLS}. Run build_data.py first.")
-    return json.loads(BILLS.read_text(encoding="utf-8"))
+    bills = json.loads(BILLS.read_text(encoding="utf-8"))
+    for rec in bills.get(LABELLED_TERM, {}).values():
+        for field in ("house_committee", "senate_committee"):
+            c = re.sub(r"\s+", " ", (rec.get(field) or "").strip())
+            if c:
+                CANON.setdefault(c.lower(), c)
+    return bills
 
 
 def labelled(bills):
@@ -324,7 +430,7 @@ def score(threshold):
         known = sum(1 for r in recs if "CMTE:" + committee_of(r) in model["vocab"])
         cov = []
         for r in recs:
-            ws = [w for w in WORD.findall((r.get("title") or "").lower())
+            ws = [singular(w) for w in WORD.findall((r.get("title") or "").lower())
                   if w not in STOP]
             if ws:
                 cov.append(sum(1 for w in ws if w in model["vocab"]) / len(ws))

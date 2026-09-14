@@ -52,7 +52,14 @@ is renumbered here in one pass.
    pages credit them with (0b1b47b, §6c), and the Learn pages' counts are
    filled from the data at build time (§6d). Phase 1 is complete.
 2. *Features.* Topics for the archived terms, where 37-64% of each term's bills
-   are "Miscellaneous", scored at the bench; search that finds what was meant,
+   are "Miscellaneous", scored at the bench -- *improved on the 14th without
+   the bench*: committees carried across renames (1989-1990's known committees
+   58% to 78%), both chambers' committees counted, title words read singular;
+   on the unseen half of the General Court's own labels 69% given a topic at
+   74.1% right (67% at 74.2% before), the threshold kept at 4 by the person;
+   in the archive 3,300 bills gain a topic, 129 move, 1,623 drop back to
+   Miscellaneous, and a read sample of the gains was about 22 in 25 right; the
+   bench's topic kind is still how the person should judge it; search that finds what was meant,
    measured on a set of real queries -- *a first pass on the 14th*: words with
    no subject skipped, plurals and hyphens matched, three synonym groups that
    mixed subjects split, and eleven phrase concepts in the titles' own wording,
