@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.171
+# GRANITE_VERSION: 2026-09-04.172
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4490,6 +4490,9 @@ def _legacy_written_out(docket_parser):
             ("1995-0766", "03/30/1995 06:20:22 PM", "SCR1", "H", "<NOTE RM CHANGE>  HEARING APR07 10:30 RM104,LOB    FOR: ST-FED"),
             ("1998-2825", "01/07/1998 01:51:54 PM", "SB487", "S", "INTRODUCED AND REF TO JUDICIARY; SJ1,P15"),
             ("1998-2825", "01/22/1998 03:39:19 PM", "SB487", "S", "RESCHEDULED HEARING JAN28 10:45 RM103, ST HOUSE   FOR: JUD"),
+            # The same bill in the House, whose referral line opens with a date.
+            ("1998-2825", "03/31/1998 01:57:22 PM", "SB487", "H", "03/25/98  INTRODUCED AND REF TO JUDICIARY & F L; HJ34,P1460"),
+            ("1998-2825", "03/31/1998 03:38:59 PM", "SB487", "H", "HEARING APR07 10:00 RM208,LOB    FOR: JUD"),
             ("1992-2557", "01/08/1992 10:52:37 AM", "SCR12", "S", "INTRODUCED AND REF TO INTERNAL AFFAIRS;  SJ 1,P 15"),
             ("1992-2557", "01/13/1992 04:01:23 PM", "SCR12", "S", "RESCHEDULED HEARING FEB06 11:00 RM102,LOB    FOR: INT AFFS")):
         rows.append({"lsr": lsr, "created": created, "bill": bill, "body": body, "desc": desc,
@@ -4514,6 +4517,7 @@ def _legacy_written_out(docket_parser):
         ("HB560", "1995-03-07"): "Finance",
         ("SCR1", "1995-04-07"): "St-Fed",
         ("SB487", "1998-01-28"): "Judiciary",
+        ("SB487", "1998-04-07"): "Judiciary and Family Law",
         ("SCR12", "1992-02-06"): "Internal Affairs",
     }
     wrong = {k: (got.get(k, "missing"), v) for k, v in want.items() if got.get(k, "missing") != v}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -506,10 +506,14 @@ def _legacy_committee(raw):
 # trading one abbreviation for another is no gain. A written name of fewer than
 # three letters (JU, M) proves nothing, and a hearing a bill's referrals do not
 # explain -- Finance, where it went next -- keeps the name the line gave.
-# Measured on the five dockets of 1989-1998: 1,122 of 14,920 hearings take a
-# written-out name, 177 of them House "Judiciary" of bills referred to
-# Judiciary and Family Law.
+# Measured on the manifests of 1989-1998, built with and without this: 1,119
+# rows take a written-out name -- 177 of them House "Judiciary" on bills
+# referred to Judiciary and Family Law, and 39 of them read only because a
+# referral line that opens with a date is read too -- and no manifest of
+# 2015-2026 changes. Distinct committee names in proceedings.csv, House 202 to
+# 148 and Senate 117 to 85.
 _TARGETS = None          # (proven names, {(chamber, name)} with a page); see _written_targets
+LEGACY_DATED_RE = re.compile(r"^\s*\d{1,2}/\d{1,2}/\d{2,4}\s+")
 
 
 def _written_targets():
@@ -640,7 +644,13 @@ def parse_proceedings(rows, timeline):
                 try:
                     import referrals
                     for rr in rows:
-                        c = referrals.committee(rr["desc"])
+                        # A crossed-over bill's first line in the other
+                        # chamber can open with the day it arrived --
+                        # "03/25/98  INTRODUCED AND REF TO JUDICIARY & F L",
+                        # SB 487's in the House -- which referrals.committee,
+                        # anchored at "INTRODUCED", does not read. 224 such
+                        # lines in 1991-1998; the date is dropped here only.
+                        c = referrals.committee(LEGACY_DATED_RE.sub("", rr["desc"]))
                         if c and c not in referred[(rr["bill"], rr["body"])]:
                             referred[(rr["bill"], rr["body"])].append(c)
                 except ImportError:
