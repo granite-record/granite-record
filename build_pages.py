@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.64
+# GRANITE_VERSION: 2026-09-04.65
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1003,9 +1003,17 @@ them. The search box works in your own browser against files this site
 serves; what you type is never sent anywhere. Video is embedded from
 YouTube&rsquo;s no-cookie address, which still means YouTube sees a request
 when a player is opened &mdash; a player only loads if you press play.</p>
-<p>The one thing a reader sends deliberately is feedback, through the form
+<p>One thing a reader sends deliberately is feedback, through the form
 linked in the footer. That is a Google form, and what you put in it goes to
 Google and to us.</p>
+<p>The other is a report, from the box marked <i>Report a problem with this
+page</i> on bill, committee and legislator pages. A report holds the page and
+the record it is about, the tab that was open, the kind of problem chosen from
+a list, what you wrote, the time it arrived and which build of the site you
+were reading. Nothing in it identifies you &mdash; no IP address, no cookie, no
+email address &mdash; which is also why we cannot reply to one. It is read only
+to check the page against the official record and fix what is wrong, and it is
+deleted after a week.</p>
 
 <h2>Corrections</h2>
 <p>If something here misrepresents the record, it should be corrected. The official

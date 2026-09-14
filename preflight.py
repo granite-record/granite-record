@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.164
+# GRANITE_VERSION: 2026-09-04.165
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -6157,6 +6157,32 @@ def _report_databases():
     assert ids("") == prod, "the top-level database is not production's"
     assert re.search(r'^pages_build_output_dir = "site"', t, re.M)
     return "ok", "production and previews each write to their own database"
+
+
+@check("files", "the About page promises what the report box and the compiler actually do")
+def _about_reports():
+    """The About page is where a reader is told what a report holds and how long
+    it is kept. Until 13 September it said the one thing a reader sent was
+    feedback through a Google form, a day after the report box went live, and
+    nothing deleted a report at all. The promise is held to the code now: the
+    box named as app.js labels it, and the week as compile_reports deletes."""
+    bp, app, cr = Path("build_pages.py"), Path("app.js"), Path("compile_reports.py")
+    absent = [str(p) for p in (bp, app, cr) if not p.exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    about = " ".join(bp.read_text(encoding="utf-8").split())
+    m = re.search(r"<summary>(Report a problem[^<]*)</summary>", app.read_text(encoding="utf-8"))
+    assert m, "app.js no longer labels the report box"
+    label = " ".join(m.group(1).split())
+    assert f"<i>{label}</i>" in about, (
+        f"the About page does not name the box as the page labels it, <i>{label}</i>")
+    k = re.search(r"^KEEP_DAYS = (\d+)", cr.read_text(encoding="utf-8"), re.M)
+    assert k, "compile_reports.py no longer says how long a report is kept"
+    said = {7: "a week", 14: "two weeks", 30: "a month"}.get(int(k.group(1)))
+    assert said and f"deleted after {said}" in about, (
+        f"compile_reports deletes a report after {k.group(1)} days; the About page does not "
+        f"say \"deleted after {said or k.group(1) + ' days'}\"")
+    return "ok", f"the box named as it is labelled, and deleted after {said}, as the compiler does"
 
 
 @check("files", "the triage rules keep a person between a report and a substantial change")
