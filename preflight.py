@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.173
+# GRANITE_VERSION: 2026-09-04.174
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2251,7 +2251,8 @@ for (var fi = 0; fi < fixtures.length; fi++) {
 var both = scope.serviceLine({service:[{chamber:"H",spans:[[2013,2014],[2025,2025]]},
                                        {chamber:"S",spans:[[2015,2016]]}]});
 if (both.indexOf("Votes on record") < 0
-    || both.indexOf("House 2013&ndash;2014, 2025 &middot; Senate 2015&ndash;2016") < 0) {
+    || both.indexOf('<span class="svc">House 2013&ndash;2014, 2025</span> &middot; '
+                    + '<span class="svc">Senate 2015&ndash;2016</span>') < 0) {
   console.log("SERVICELINE drew " + JSON.stringify(both)); process.exit(1); }
 if (scope.serviceLine({service:[{chamber:"H",spans:[[2019,2026]]}]}) !== ""
     || scope.serviceLine({}) !== "") {

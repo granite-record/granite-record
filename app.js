@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.71
+// GRANITE_VERSION: 2026-09-07.72
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2250,9 +2250,11 @@ const CHAMBER_SHORT={H:"House",S:"Senate"};
 function serviceLine(m){
   const s=m.service||[];
   if(s.length<2)return "";
+  // A chamber and its years are one phrase: at 360px "Senate" ended one line
+  // and "2019–2026" began the next.
   return `<p class="pserv"><b>Votes on record</b> ${s.map(c=>
-    `${esc(CHAMBER_SHORT[c.chamber]||c.chamber)} ${(c.spans||[]).map(([a,b])=>
-      a===b?esc(String(a)):`${esc(String(a))}&ndash;${esc(String(b))}`).join(", ")}`)
+    `<span class="svc">${esc(CHAMBER_SHORT[c.chamber]||c.chamber)} ${(c.spans||[]).map(([a,b])=>
+      a===b?esc(String(a)):`${esc(String(a))}&ndash;${esc(String(b))}`).join(", ")}</span>`)
     .join(" &middot; ")}</p>`;
 }
 
