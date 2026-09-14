@@ -85,26 +85,33 @@ builds the same machinery -- numbers computed at build time from the record,
 never typed into prose -- and in the same Learn standard: charts as inline SVG
 with the table beside them, the method stated under every number.
 
-**What has to be settled before a number is published:**
-- the denominator for "vetoed" -- every bill, or every bill that reached the
-  governor (the second is the meaningful one; both can be shown);
-- what "passage rate" means for a committee -- its reports recommending
-  passage, or its referred bills that became law;
-- that a CACR's last step, the ballot, is not in this record (it is the
-  Secretary of State's): "closest to passing" can be measured against the
-  three-fifths vote each chamber needs, and a CACR that went to the voters
-  says so and links the result rather than stating it;
-- the consent calendar's marking in the older dockets, which has to be
-  measured term by term before a twenty-year line is drawn through it.
+**Decided by the person the same evening:**
+- **Vetoes** are measured against the bills that reached the governor, not
+  every bill, over the last twenty years -- with how many of those vetoes were
+  sustained and how many overridden.
+- **A committee's number** is the share of its referred bills that passed on
+  the consent calendar, so the page shows which committees are most often
+  unanimous and which most divided. The consent calendar's own rule -- what a
+  committee vote has to be for a report to go there -- is read from the House
+  rules on disk and stated on the page, not assumed; and the marking in the
+  older dockets is measured term by term before a twenty-year line is drawn
+  through it.
+- **Constitutional amendments:** the few that reached the voters are listed,
+  each with its result as the Secretary of State certified it and a citation
+  to that page. The results are not in this record, so they are read from the
+  Secretary of State by hand and kept with their sources, as officials.json is.
+- **The closest votes** are the few closest roll calls on bills of the most
+  recent term.
+- **The most sign-ins at a hearing** go in as counts only (testimony stays
+  aggregate), and only after checking that the list is not dominated by the
+  most polarizing bills -- the person asked for that check before it is
+  published, and its result goes to them first.
 
 **Proposed besides** (aggregate only, never a ranking of people):
-- how often a veto was overridden, by term (39 of 348 across nineteen terms);
 - the median time from introduction to signature, and the fastest bill to law;
-- the closest roll calls, and how many were decided by one vote;
 - laws that took effect without the governor's signature, by term;
 - the busiest single days on the floor and in committee;
-- the share of bills sent to interim study, and how few return;
-- the most sign-ins on a single hearing, as counts (testimony stays aggregate).
+- the share of bills sent to interim study, and how few return.
 
 ---
 
