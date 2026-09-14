@@ -74,7 +74,21 @@ is renumbered here in one pass.
    short words kept to their own group ("wage" not "wagering", "rates" not
    "ratepayer"), nine more phrases, results ordered by Best match when
    searching, and a search that finds nothing offers its parts with counts;
-   48 searches read, the page's order checked against the review's; follow -- *done on the 14th*: committee
+   48 searches read, the page's order checked against the review's -- and on
+   the person's word the same afternoon, the term picker opens on the current
+   term with **All terms** above it (ca15094); sponsors for the terms before
+   2023 -- *started on the 14th, and filling in as the lane goes*:
+   `text_sponsors.py` reads the sponsor line of each bill's saved text and
+   matches a surname to a member only among those who cast a roll call in
+   that chamber that term, where exactly one fits. Scored against the
+   database's own sponsors: 8,650 of the 8,652 names both list for 2023-2024
+   placed on the right member and none on anybody else, 12,783 of 12,784 for
+   2025-2026, and the first name on the line is the prime sponsor for 1,133 of
+   1,134 bills. Before 1999 there are no roll calls, so those sponsors stay as
+   printed ("Rep. C. Brown (Graf 14)"), without party or link. The text names
+   cosponsors the database does not (1,297 in 2023-2024), for a reason not
+   known, so the Sponsors tab says the names come from the bill's text. It
+   never replaces a sponsor the database gave; follow -- *done on the 14th*: committee
    pages name their feeds (archived ones do not, and get none), a Follow
    control on every record page offers the feed its head names, a bill sent to
    interim study can be followed, and the email design is written up for after
@@ -100,8 +114,10 @@ is renumbered here in one pass.
    `check_live`.
 
 Then polish days, visuals and backend. After launch: email follows,
-automation off the PC, the 1999-2014 calendar hearings (spec C3-C7), sponsors
-for 1989-2022.
+automation off the PC, the 1999-2014 calendar hearings (spec C3-C7). Sponsors
+for 1989-2022 come with the bill text as the lane fetches it (above), which
+may make the `byAnyMember.aspx` sweep of §2 unnecessary. That is the person's
+call once the text has landed.
 
 ## 0a. A Learn page of the record's own numbers (asked 13 September)
 
@@ -119,6 +135,20 @@ last twenty years (2007-2026, ten terms) unless it says otherwise:
 - bills that passed as introduced against those amended, and a chart of how
   many amendments a bill takes before it passes;
 - each committee's passage rate for the last completed term (2025-2026 now).
+
+**A draft is built, 14 September** (ca15094): `learn_numbers.py`, written by
+`build_civics.py` to `/learn/by-the-numbers.html`, noindex, on no list and out
+of the sitemap until the person has read it (preflight holds it there). It
+covers committees overruled on the floor, vetoes of bills that reached the
+governor, how votes were taken by year, the ten closest roll calls, consent
+calendars by committee and laws without a signature. The person's question
+the same day: in 2025-2026 the floor decided against its committee on 57 of
+2,996 recommendations (1.9%), and reversed passage and kill on 38 (1.3%). That
+is 38 of 1,803 in the House and 19 of 1,193 in the Senate, and 57 of 1,992
+bills (2.9%) in either chamber. Still to come: the CACRs with the Secretary of
+State's results, the sign-ins check, amended against as-introduced, and each
+committee's passage rate. The Learn pages' footer reads previous, all topics,
+next since the same commit.
 
 **Where it fits:** after the Learn counts come from the data (phase 1), which
 builds the same machinery -- numbers computed at build time from the record,

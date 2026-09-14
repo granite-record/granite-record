@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.77
+// GRANITE_VERSION: 2026-09-07.78
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1126,6 +1126,10 @@ function archivedNote(d){
   // fetch, and the page must not say it is merely missing.
   const y=parseInt(String(d.term||d.year||"").slice(0,4),10)||0;
   const and=xs=>xs.join(", ").replace(/, ([^,]*)$/," and $1");
+  // A TERM'S SPONSORS ARRIVE A BILL AT A TIME, from the text the lane saves, so
+  // the term's flag can be false on a bill whose Sponsors tab has names in it.
+  // The bill's own list is asked first.
+  const hasSp=c.sponsors||(d.sponsors||[]).length>0;
 
   if(!c.docket){
     // WHAT IS HERE, THEN WHAT IS NOT. This branch told every bill of
@@ -1139,10 +1143,10 @@ function archivedNote(d){
     // No comma inside an item: and() turns the last comma into "and", which
     // made this "its roll calls and member by member".
     if(c.votes)have.push("each member's vote on its roll calls");
-    if(c.sponsors)have.push("its sponsors");
+    if(hasSp)have.push("its sponsors");
     if(c.reports)have.push("the committee's written report");
     const gaps=["the docket's full history"];
-    if(!c.sponsors)gaps.push("the sponsors");
+    if(!hasSp)gaps.push("the sponsors");
     if(!c.reports)gaps.push("the written committee reports");
     if(!c.votes&&y>=1999)gaps.push("the roll calls");
     if(!c.hearings)gaps.push("its hearings");
@@ -1153,7 +1157,7 @@ function archivedNote(d){
 
   // Has a docket. What is missing beyond it is what the reader needs told.
   const gaps=[];
-  if(!c.sponsors)gaps.push("the sponsors");
+  if(!hasSp)gaps.push("the sponsors");
   if(!c.reports)gaps.push("the written committee reports");
   if(!c.votes&&y>=1999)gaps.push("the roll calls naming individual members");
   if(!c.video&&y>=2019)gaps.push("a recording of any hearing");
@@ -1758,9 +1762,19 @@ function renderSponsors(b,d){
     ${spBlock(origin)}${spBlock(origin==="S"?"H":"S")}
     ${spRest.length?`<h2 class="spgrp">Chamber not on file <span>${spRest.length}</span></h2>
       <div class="chosen">${spRest.map(pill).join(" ")}</div>`:""}`:"";
+  // WHERE THE NAMES WERE READ. Before 2023 the only list on this site is the
+  // sponsor line printed on the bill's own text (text_sponsors.py): the first
+  // name there is taken as prime, and a name matched to nobody who cast a roll
+  // call that term is shown as it is printed, without a party.
+  const fromText=spAll.length&&spAll.every(s=>s.source==="bill text");
+  const asPrinted=fromText&&spAll.some(s=>!s.member_id);
   return `${sp||`<p class="note">No sponsors on file.</p>`}
-      <p class="note" style="margin-top:12px">Prime sponsor in bold. From the
-      General Court sponsor file.
+      <p class="note" style="margin-top:12px">Prime sponsor in bold. ${fromText
+        ?`As named on the sponsor line of the bill's text, where the first name is
+          the prime sponsor.${asPrinted?` A name without a party is shown as the
+          text prints it: it could not be matched to one member who voted that
+          term.`:""}`
+        :"From the General Court sponsor file."}
       <a href="${esc(d.docket_url)}" target="_blank" rel="noopener">Full docket and bill text on gencourt</a></p>`;
 }
 

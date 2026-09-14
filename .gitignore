@@ -48,6 +48,7 @@ data/
 .build.lock
 narratives.json
 topics_assigned.json
+text_sponsors.json
 bill_status.json
 committee_reports.json
 chapters.json

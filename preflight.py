@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.181
+# GRANITE_VERSION: 2026-09-04.182
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -9079,6 +9079,111 @@ def _sponsor_filing(build_site_v2, member_links):
                   "a same-named member who did not sit that term neither linked nor credited")
 
 
+@check("naming", "a bill text's sponsor line is read as each era prints it, and a surname is a member only where one fits",
+       needs=("text_sponsors", "build_site_v2"))
+def _text_sponsors(text_sponsors, build_site_v2):
+    """text_sponsors.py, 14 September: the sponsors of every term before 2023, read off
+    the sponsor line of the bill's own text and matched to members who cast a roll call.
+
+    Every line below was printed on a saved page -- 1989's "of Merrimack Dist. 4", the
+    comma form from 1994, "Barnes, Jr.", "Muns, C", and the 2022 line that ran on into
+    the next heading. The members are a roll call record in miniature, and each rule is
+    the one the module states: an initial decides between two of a name, then the House
+    county, then the district; a label naming another county refuses a match (Rep.
+    Wendy Chase's label reads Belknap 5 and her bills print Strafford 18); an unnamed
+    "Member #" is nobody; and the text never replaces a sponsor the database gave.
+    """
+    T = text_sponsors
+    lines = {
+        "Rep. Millard of Merrimack Dist. 4; Sen. Preston of Dist. 23":
+            [("H", "Millard", "Merrimack", "4"), ("S", "Preston", "", "23")],
+        "Rep. W. Riley of Cheshire Dist. 5": [("H", "W. Riley", "Cheshire", "5")],
+        "Sen. Barnes, Jr., Dist 17; F. King, Dist 1":
+            [("S", "Barnes", "", "17"), ("S", "F. King", "", "1")],
+        "Rep. M. Fuller Clark, Rock 36; Rep. Guay, Coos 6":
+            [("H", "M. Fuller Clark", "Rockingham", "36"), ("H", "Guay", "Coos", "6")],
+        "Rep. Muns, C, Rock. 29": [("H", "C Muns", "Rockingham", "29")],
+        "Sen. Watters, Dist 4 commission: Resources, Recreation and Development":
+            [("S", "Watters", "", "4")],
+    }
+    for line, want in lines.items():
+        got = [(p["chamber"], " ".join(p["words"]), p["county"], p["district"])
+               for p in T.split(line)]
+        assert got == want, f"{line!r} was read as {got}"
+    assert T.split("Sen. Barnes, Jr., Dist 17")[0]["suffix"] == "Jr."
+    assert T.split("Sen. Watters, Dist 4 commission: Resources")[0]["printed"] == \
+        "Sen. Watters, Dist 4", "the heading the line ran into is kept as part of the sponsor"
+
+    def row(mid, name, label, body, year, party):
+        return {"member_id": mid, "name": name, "label": label, "body": body,
+                "year": year, "party": party}
+    sat = T.Sat([
+        row("1", "Riley, William", "Riley, William(D) Ches 05", "H", "1999", "D"),
+        row("2", "Riley, Ann", "Riley, Ann(R) Hills 12", "H", "1999", "R"),
+        row("3", "Chase, Wendy", "Chase, Wendy(D) Belknap 05", "H", "2021", "D"),
+        row("4", "Smith, John", "Smith, John(R) Rock 04", "H", "2021", "R"),
+        row("5", "Smith, Jane", "Smith, Jane(D) Rock 09", "H", "2021", "D"),
+        row("6", "Member #408966", "Member #408966", "H", "2021", ""),
+        row("7", "Barnes, Jr., John", "Barnes, Jr., John(R)  17", "S", "2009", "R"),
+    ])
+
+    def who(term, line):
+        m, _why = sat.resolve(term, T.split(line)[0])
+        return m["id"] if m else None
+    cases = [
+        ("1999-2000", "Rep. W. Riley, Ches 5", "1", "an initial decides between two of a name"),
+        ("1999-2000", "Rep. A. Riley, Hills 12", "2", "an initial decides between two of a name"),
+        ("1999-2000", "Rep. Riley, Ches 5", "1", "the county decides between two of a name"),
+        ("1999-2000", "Rep. Riley, Graf 5", None, "neither Riley sat for Grafton"),
+        ("2021-2022", "Rep. Chase, Straf. 18", None, "the only Chase's label names another county"),
+        ("2021-2022", "Rep. Smith, Rock. 9", "5", "the district decides within one county"),
+        ("2021-2022", "Rep. Belanger, Rock. 9", None, "nobody of the name, and a Member # is nobody"),
+        ("2009-2010", "Sen. Barnes, Jr., Dist 17", "7", "a suffix is not part of the surname"),
+        ("2019-2020", "Rep. W. Riley, Ches 5", None, "he cast no roll call that term"),
+        ("1999-2000", "Sen. Riley, Dist 5", None, "no Riley voted in the Senate"),
+    ]
+    for term, line, want, why in cases:
+        assert who(term, line) == want, f"{term} {line!r} placed on {who(term, line)}: {why}"
+    rec = T.record(0, T.split("Rep. W. Riley, Ches 5")[0], sat.resolve("1999-2000", T.split("Rep. W. Riley, Ches 5")[0])[0])
+    assert (rec["name"], rec["party"], rec["prime"], rec["source"]) == ("William Riley", "D", True, "bill text"), rec
+    bare = T.record(1, T.split("Rep. C. Brown, Graf. 14")[0], None)
+    assert (bare["name"], bare["party"], bare["member_id"], bare["prime"]) == ("C. Brown", "", "", False), bare
+
+    # On the bill's page, a sponsor read off its text keeps the seat the text printed
+    # and links to the member's page as they sit now: 2023 HB 25's "Rep. McConkey,
+    # Carr. 8" is not "Sen. Mark McConkey (R - SD3)" under the heading Representatives.
+    from collections import defaultdict
+    B = build_site_v2
+    legs = {"8": {"id": "8", "name": "McConkey, Mark", "chamber": "S", "party_code": "R",
+                  "district": "3", "county": "Carroll", "county_abbr": "Carr"}}
+    mc = T.Sat([row("8", "McConkey, Mark", "Sen. Mark McConkey (R - SD3)", "H", "2024", "R")])
+    sp_line = T.split("Rep. McConkey, Carr. 8")[0]
+    text_rec = T.record(0, sp_line, mc.resolve("2023-2024", sp_line)[0])
+    got = B.bill_sponsor_list("HB25", {"designation": "HB 25", "title": "capital improvements"}, "2023",
+                              "2023-2024", "2025-2026", {"2023-2024": {"HB25": [text_rec]}}, legs,
+                              {B.sort_name("McConkey, Mark"): legs["8"]},
+                              {B.name_key("McConkey, Mark"): legs["8"]}, defaultdict(list),
+                              {"8": {("2023-2024", "H"), ("2025-2026", "S")}})[0]
+    assert got["display_full"] == "Rep. Mark McConkey (R - Carr 8)", (
+        f"a sponsor read off the text is labelled {got['display_full']!r}, not the seat the text printed")
+    assert got["slug"] == "mark-mcconkey-sd-3", f"and links {got['slug']!r}, not the member's page"
+
+    import tempfile as _tf
+    with _tf.TemporaryDirectory() as tmp:
+        p = Path(tmp) / "text_sponsors.json"
+        p.write_text(json.dumps({"2023-2024": {"CACR1": [{"name": "Moffett"}, {"name": "Adjutant"}],
+                                               "HB25": [{"name": "McConkey"}]},
+                                 "2021-2022": {"HB115": [{"name": "Suzanne Smith"}]}}), encoding="utf-8")
+        sponsors = {"2023-2024": {"CACR1": [{"name": "Michael Moffett"}], "HB25": []}}
+        n = T.merge_into(sponsors, p)
+        assert sponsors["2023-2024"]["CACR1"] == [{"name": "Michael Moffett"}], (
+            "the bill text replaced a sponsor list the database gave")
+        assert n == 2 and sponsors["2023-2024"]["HB25"] and sponsors["2021-2022"]["HB115"], (
+            f"{n} bills gained sponsors; wanted the two the database names nobody for")
+    return "ok", ("six eras of sponsor line; initial, county and district decide in that order; "
+                  "another county refuses; the database's own list is never replaced")
+
+
 @check("data", "the Learn pages state the record's own figures, and none is left unfilled")
 def _learn_figures():
     """civics.py names each count as [[name]] and build_civics fills it from the
@@ -9123,6 +9228,59 @@ def _numbers_draft_unlisted():
         assert "by-the-numbers" not in sm.read_text(encoding="utf-8", errors="replace"), (
             "the sitemap lists the draft page")
     return "ok", "noindex, off the Learn hub and out of the sitemap"
+
+
+@check("data", "an archived bill's page names the sponsors its own text names, and a covered bill keeps the database's")
+def _text_sponsors_built():
+    """The code check above proves the reading; this, that the build used it.
+
+    build_site_v2 and build_exports each merge text_sponsors.json in. A merge dropped
+    or a path moved would put "No sponsors on file" back on every bill before 2023 and
+    exit zero, and a merge done the wrong way round would put the text's list over the
+    database's on 2023-2024. So: the first bills of the oldest terms the text covers
+    carry exactly its names, prime first, on their pages and in the search index; a
+    2023-2024 bill the database covers carries none of them; and sponsors.csv has both.
+    """
+    ts_p, idx_p = Path("text_sponsors.json"), Path("site") / "index.json"
+    if not (ts_p.exists() and idx_p.exists()):
+        return "skip", "text_sponsors.json or the built index is not here"
+    if ts_p.stat().st_mtime > idx_p.stat().st_mtime:
+        return "skip", "text_sponsors.json is newer than the built site; rebuild to check it"
+    try:
+        import site_read as SR
+    except ImportError:
+        return "skip", "site_read.py will not import"
+    ts = json.loads(ts_p.read_text(encoding="utf-8"))
+    rows = {(r.get("term"), r.get("id")): r for r in json.loads(idx_p.read_text(encoding="utf-8"))}
+    picked = [(t, b, recs) for t in sorted(ts) if t < "2023"
+              for b, recs in sorted(ts[t].items())[:1]][:4]
+    if not picked:
+        return "skip", "the text names no sponsors for a term before 2023 yet"
+    for t, b, recs in picked:
+        row = rows.get((t, b))
+        assert row, f"{t} {b} is in text_sponsors.json and not in the index"
+        rec = SR.one("site", row.get("year"), b)
+        assert rec, f"{t} {b}: its page carries no record"
+        got = [(s.get("name"), s.get("source"), bool(s.get("prime"))) for s in rec.get("sponsors") or []]
+        want = [(s["name"], "bill text", i == 0) for i, s in enumerate(recs)]
+        assert got == want, f"{t} {b}'s page names {got[:3]}; its text {want[:3]}"
+        assert row.get("sponsor") == recs[0]["name"], (
+            f"{t} {b}'s index row says {row.get('sponsor')!r}, its text's prime {recs[0]['name']!r}")
+    sp = json.loads((Path("data") / "sponsors.json").read_text(encoding="utf-8"))
+    covered = sorted((sp.get("2023-2024") or {}).items())[:1]
+    for b, db in covered:
+        row = rows.get(("2023-2024", b))
+        rec = SR.one("site", row.get("year"), b) if row else None
+        assert rec and rec.get("sponsors"), f"2023-2024 {b} lost its sponsors"
+        assert not any(s.get("source") == "bill text" for s in rec["sponsors"]), (
+            f"2023-2024 {b}'s database sponsors were replaced by its text's")
+    csv_p = Path("site") / "data" / "sponsors.csv"
+    if csv_p.exists() and csv_p.stat().st_mtime >= ts_p.stat().st_mtime:
+        text = csv_p.read_text(encoding="utf-8")
+        assert ",bill text" in text and ",bill status page" in text, (
+            "sponsors.csv does not carry both the database's sponsors and the text's")
+    return "ok", (f"{len(picked)} archived bills name their text's sponsors on page and index; "
+                  "the database's own list stands on 2023-2024")
 
 
 @check("data", "the built site's chamber changers carry both chambers' votes")

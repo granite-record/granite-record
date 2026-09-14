@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.20
+# GRANITE_VERSION: 2026-09-05.21
 """
 Run the whole pipeline in the right order.
 
@@ -194,6 +194,18 @@ def plan(a):
              note="learns from the 2,221 bills of 2025-2026 that carry the "
                   "General Court's own topic and answers for the other "
                   "29,449, or says Miscellaneous where it cannot"),
+
+        # AFTER build_data, for the same reason as topics: it reads
+        # data/sponsors.json to leave alone every bill the database already
+        # names sponsors for, and build_site_v2 merges its answer in. Every run,
+        # so each night's pages from the lane reach the next build.
+        Step("sponsors named on each bill's saved text",
+             ["text_sponsors.py", "--apply"],
+             needs=["data/bills.json", "data/member_votes.json", "legislation"],
+             produces=["text_sponsors.json"],
+             note="the sponsor line of the pages fetch_legislation.py saves, "
+                  "matched to members who cast a roll call that term; no "
+                  "network, and never over a sponsor the database names"),
 
         Step("plain-language bill histories",
              ["narrative.py", "--docket", "Docket.txt", "--all",

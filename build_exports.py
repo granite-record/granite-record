@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.6
+# GRANITE_VERSION: 2026-09-10.7
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -31,6 +31,8 @@ import argparse
 import csv
 import json
 from pathlib import Path
+
+import text_sponsors as TS
 
 # Cloudflare Pages refuses a file larger than this. Checked before writing,
 # because the alternative is finding out during a deploy.
@@ -265,8 +267,12 @@ def proceedings_table(out, site):
 
 def sponsors(out, data):
     sp = load(Path(data) / "sponsors.json", {})
+    # The same merge build_site_v2 makes, or the download would name nobody for
+    # the bills whose pages name their sponsors from the bill's own text.
+    if isinstance(sp, dict):
+        TS.merge_into(sp)
     cols = ["term", "bill", "member_id", "member", "party", "chamber",
-            "prime", "role"]
+            "prime", "role", "source"]
     rows = []
     for term, bills_ in (sp.items() if isinstance(sp, dict) else []):
         for bill, people in (bills_.items() if isinstance(bills_, dict) else []):
@@ -274,11 +280,17 @@ def sponsors(out, data):
                 rows.append([term, bill, m.get("member_id", ""),
                              m.get("label") or m.get("name", ""),
                              m.get("party", ""), m.get("chamber", ""),
-                             1 if m.get("prime") else 0, m.get("role", "")])
+                             1 if m.get("prime") else 0, m.get("role", ""),
+                             m.get("source") or "sponsor file"])
     rows.sort(key=lambda r: (r[0], r[1], -r[6]))
     return write(out, "sponsors.csv", cols, rows,
                  "Who put their name to which bill, and who was prime. "
-                 "Sponsoring is not voting and is not counted as one.")
+                 "Sponsoring is not voting and is not counted as one. source "
+                 "says where each name was read: the General Court's sponsor "
+                 "file, its bill status page, or the sponsor line printed on "
+                 "the bill's text (every term before 2023), where the first "
+                 "name is taken as prime and member_id is empty for anyone "
+                 "not matched to a member who cast a roll call that term.")
 
 
 # How the tables join, said once here rather than guessed at by everyone

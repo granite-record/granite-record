@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.84
+# GRANITE_VERSION: 2026-09-05.85
 """
 Generate the faceted site from real General Court data.
 
@@ -33,6 +33,7 @@ import member_links as ML
 import names
 import re
 import sys
+import text_sponsors as TS
 import unicodedata
 from collections import Counter, defaultdict, namedtuple
 from datetime import date as _date, timedelta as _td
@@ -2145,9 +2146,17 @@ def archive_coverage(bills, narratives, sponsors, reports, rollcalls,
     for term in bills:
         if term == current:
             continue
+        # SPONSORS BY SHARE, since they arrive a page at a time. The bill text
+        # the lane saves names them, so a term can hold ten sampled bills'
+        # sponsors and none for its other 1,600; "any" would tell all 1,600
+        # their term has them. Nine in ten is a judgement, not a measurement:
+        # the database's own term, 2023-2024, holds 93% and its gaps are real
+        # gaps. A bill that has sponsors in a term below the line says so for
+        # itself -- app.js reads the bill's own list before this flag.
+        _named = sum(1 for _b in bills[term] if ((sponsors or {}).get(term) or {}).get(_b))
         cov[term] = {
             "docket": bool((narratives or {}).get(term)),
-            "sponsors": bool((sponsors or {}).get(term)),
+            "sponsors": _named >= 0.9 * max(len(bills[term]), 1),
             "reports": bool((reports or {}).get(term)),
             "votes": bool((rollcalls or {}).get(term)),
             # A recording linked to a bill, not merely a proceeding on record.
@@ -2299,13 +2308,29 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
         # member who has left, from former_members.json, so that they are
         # named the same way as anyone else: "Rep. Suzanne Vail (D - Hills
         # 6)", not a bare name under a heading about a missing chamber.
-        _lab = member_labels(
-            _s.get("name"),
-            chamber=_m.get("chamber") or _s.get("chamber"),
-            party=_m.get("party_code") or _s.get("party"),
-            district=_m.get("district") or _s.get("district"),
-            county=_m.get("county") or _s.get("county"),
-            county_abbr=_m.get("county_abbr"))
+        #
+        # EXCEPT A SPONSOR READ OFF THE BILL'S TEXT, which carries the seat the
+        # text printed and the party of that term's roll calls -- the seat they
+        # held when they signed it. Built from the roster, 2023 HB 25's "Rep.
+        # McConkey, Carr. 8" read "Sen. Mark McConkey (R - SD3)" under the
+        # heading Representatives, and every House bill of a member now in the
+        # Senate would have done the same. The link still goes to their page.
+        if _s.get("source") == TS.SOURCE:
+            _lab = member_labels(
+                _s.get("name"),
+                chamber=_s.get("chamber") or _m.get("chamber"),
+                party=_s.get("party") or _m.get("party_code"),
+                district=_s.get("district") or _m.get("district"),
+                county=_s.get("county") or _m.get("county"),
+                county_abbr=None if _s.get("district") else _m.get("county_abbr"))
+        else:
+            _lab = member_labels(
+                _s.get("name"),
+                chamber=_m.get("chamber") or _s.get("chamber"),
+                party=_m.get("party_code") or _s.get("party"),
+                district=_m.get("district") or _s.get("district"),
+                county=_m.get("county") or _s.get("county"),
+                county_abbr=_m.get("county_abbr"))
         # The address of this member's own page, where the sponsor was
         # matched to the roster. Where they were not -- a former member,
         # or a name the join missed -- there is no page and no link, which
@@ -3238,6 +3263,13 @@ def main():
                  "Rebuild it: python3 build_data.py --dir . --out data")
     merge_guessed_topics(bills)
     sponsors = load(D / "sponsors.json", {})
+    # The sponsors each bill's own text names, for the bills the database names
+    # nobody for: every term before 2023, as the lane saves their pages.
+    # text_sponsors.py says how they are matched and what that was measured at;
+    # merge_into never replaces a sponsor the database gave.
+    _n = TS.merge_into(sponsors)
+    if _n:
+        print(f"  sponsors: {_n:,} bills named on their own text (text_sponsors.json)")
     legs = {m["id"]: m for m in load(D / "legislators.json", [])}
     # Sponsor records carry a name but not a party or a district. The roster
     # has both, so they are joined on the surname-first form of the name --
