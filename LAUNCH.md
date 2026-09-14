@@ -63,6 +63,49 @@ Then polish days, visuals and backend. After launch: email follows,
 automation off the PC, the 1999-2014 calendar hearings (spec C3-C7), sponsors
 for 1989-2022.
 
+## 0a. A Learn page of the record's own numbers (asked 13 September)
+
+"Interesting data for the political science nerds": statistics the site can
+compute from what it holds, as a Learn page. The person's list, each over the
+last twenty years (2007-2026, ten terms) unless it says otherwise:
+
+- the share of bills vetoed, by year;
+- the share of bills that die, and where -- the first chamber, the second, a
+  committee of conference;
+- constitutional amendments (CACRs) since 1989, and the closest any came to
+  passing;
+- the share of roll call, division and voice votes, by year;
+- the share of bills passed or killed unanimously on the consent calendar;
+- bills that passed as introduced against those amended, and a chart of how
+  many amendments a bill takes before it passes;
+- each committee's passage rate for the last completed term (2025-2026 now).
+
+**Where it fits:** after the Learn counts come from the data (phase 1), which
+builds the same machinery -- numbers computed at build time from the record,
+never typed into prose -- and in the same Learn standard: charts as inline SVG
+with the table beside them, the method stated under every number.
+
+**What has to be settled before a number is published:**
+- the denominator for "vetoed" -- every bill, or every bill that reached the
+  governor (the second is the meaningful one; both can be shown);
+- what "passage rate" means for a committee -- its reports recommending
+  passage, or its referred bills that became law;
+- that a CACR's last step, the ballot, is not in this record (it is the
+  Secretary of State's): "closest to passing" can be measured against the
+  three-fifths vote each chamber needs, and a CACR that went to the voters
+  says so and links the result rather than stating it;
+- the consent calendar's marking in the older dockets, which has to be
+  measured term by term before a twenty-year line is drawn through it.
+
+**Proposed besides** (aggregate only, never a ranking of people):
+- how often a veto was overridden, by term (39 of 348 across nineteen terms);
+- the median time from introduction to signature, and the fastest bill to law;
+- the closest roll calls, and how many were decided by one vote;
+- laws that took effect without the governor's signature, by term;
+- the busiest single days on the floor and in committee;
+- the share of bills sent to interim study, and how few return;
+- the most sign-ins on a single hearing, as counts (testimony stays aggregate).
+
 ---
 
 ## 1. Live
