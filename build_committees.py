@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.23
+# GRANITE_VERSION: 2026-09-07.24
 """
 A page's worth of data for every committee.
 
@@ -364,7 +364,10 @@ def main():
                          for nm in names_} - {None}
 
     def on_it_today(seat, code):
-        if not seat.get("sitting") or code not in lead:
+        # "sitting" is the seat table's Active flag as of its last fetch; the
+        # roster is refreshed daily, so a member who has left since is caught
+        # by not being on it.
+        if not seat.get("sitting") or code not in lead or str(seat.get("id")) not in legs:
             return False
         mine = assigned.get(str(seat.get("id")))
         return True if mine is None else code in mine

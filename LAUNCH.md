@@ -258,7 +258,20 @@ What came back first:
   the Senate names 5. Since `build_committees.py` 2026-09-07.23 a committee lists
   only members whose own roster entry names it, and preflight checks every seat.
   **Staff are still exploring**, so any roster still wrong after this is worth
-  hearing about committee by committee.
+  hearing about committee by committee. Published the 15th.
+- **The search for other stale records, the same day.** Committee chairs, vice
+  chairs and clerks (from the committee listing of 7 September) are all sitting
+  and all on their committees by the roster; the one unlinked name, Rules' clerk
+  Paul Smith, is the House Clerk, who is staff. The officials file was checked by
+  hand on the 12th. No leadership title is shown from a stale source. One question
+  for the person: **107 bills of 2025-2026 count as "still moving"** on the home
+  page and can be followed -- 50 laid on the table, 46 where one chamber did not
+  concur, 11 that passed one chamber (six of them House concurrent resolutions
+  last acted on in early 2025). The status box says the session is finished. In
+  2023-2024 the docket recorded "Died on Table, Session ended 10/10/2024" in
+  October, and until the General Court enters that line this term the site is
+  repeating the record's own status. Whether to call them finished before the
+  line arrives, and from what date, is the person's call.
 - **Attendance records** -- a feature, so third in the order. What is on disk: each
   ballot is recorded as Yea, Nay, Not Voting/Excused, Not Voting/Not Excused or
   Presiding (2025-2026: 17,156 excused and 10,259 not excused), and each session's
