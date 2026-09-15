@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Granite Record — Bill Text tab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6F5F1; --panel:#FFFFFF; --sunk:#EFEDE7; --page:#EDEBE5;
+  --line:#DCD9D1; --line-soft:#E8E5DE;
+  --ink:#191D1E; --ink-2:#4A5253; --ink-3:#7A8283;
+  --accent:#19776A; --accent-ink:#FFF; --accent-soft:#E2EFEC;
+  --add:#1E6B3A; --add-bg:#DDEEE1; --del:#A8352A; --del-bg:#F4E0DD;
+  --serif:"Playfair Display",Georgia,serif;
+  --read:"IBM Plex Serif",Georgia,serif;
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14191A; --panel:#1B2122; --sunk:#101415; --page:#181E1F;
+    --line:#2B3233; --line-soft:#232A2B;
+    --ink:#E7EBEA; --ink-2:#A8B1B1; --ink-3:#7C8586;
+    --accent:#63C7B1; --accent-ink:#0E1516; --accent-soft:#1E2E2C;
+    --add:#7FC98D; --add-bg:#1C2E22; --del:#E08A7E; --del-bg:#31211F;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14191A; --panel:#1B2122; --sunk:#101415; --page:#181E1F;
+  --line:#2B3233; --line-soft:#232A2B;
+  --ink:#E7EBEA; --ink-2:#A8B1B1; --ink-3:#7C8586;
+  --accent:#63C7B1; --accent-ink:#0E1516; --accent-soft:#1E2E2C;
+  --add:#7FC98D; --add-bg:#1C2E22; --del:#E08A7E; --del-bg:#31211F;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;font-variant-numeric:tabular-nums}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:2px}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.wrap{max-width:900px;margin:0 auto;padding:34px 24px 80px}
+
+.crumb{font-size:14px;color:var(--ink-3);margin:0 0 18px}
+h1{font-family:var(--serif);font-weight:500;font-size:29px;margin:0 0 5px;letter-spacing:-.01em}
+.title{margin:0 0 8px;font-size:16.5px;max-width:62ch;line-height:1.45}
+.by{margin:0 0 22px;color:var(--ink-3);font-size:14px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;margin:0 0 30px}
+.tabs::-webkit-scrollbar{display:none}
+.tabs a{color:var(--ink-2);font-size:14.5px;font-weight:500;padding:11px 14px;white-space:nowrap;border-bottom:2px solid transparent}
+.tabs a.here{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs a:hover{color:var(--ink);text-decoration:none}
+.tabs .n{color:var(--ink-3);font-weight:400;margin-left:5px;font-size:13.5px}
+
+/* ---- version rail ---- */
+.rail{position:relative;display:grid;grid-template-columns:repeat(4,1fr);margin:0 0 30px;padding-top:4px}
+.rail::before{content:"";position:absolute;left:8%;right:8%;top:11px;height:1px;background:var(--line)}
+.stop{background:none;border:0;padding:0;text-align:center;color:var(--ink-3);position:relative}
+.stop .dot{
+  width:15px;height:15px;border-radius:50%;border:1px solid var(--line);
+  background:var(--page);margin:0 auto 9px;display:block;position:relative;z-index:1;
+}
+.stop .lb{display:block;font-size:13.5px;font-weight:500;line-height:1.3;color:var(--ink-2);padding:0 4px}
+.stop .dt{display:block;font-size:12.5px;margin-top:2px;color:var(--ink-3)}
+.stop:hover .lb{color:var(--ink)}
+.stop[aria-selected="true"] .dot{background:var(--accent);border-color:var(--accent);box-shadow:0 0 0 3px var(--bg)}
+.stop[aria-selected="true"] .lb{color:var(--ink);font-weight:600}
+
+/* ---- comparison head ---- */
+.comphead{border-top:1px solid var(--line);padding-top:22px}
+.comphead h2{font-family:var(--serif);font-weight:500;font-size:21px;margin:0 0 3px;letter-spacing:-.005em}
+.baseline{margin:0 0 16px;font-size:14.5px;color:var(--ink-2)}
+.baseline select{appearance:auto;background:transparent;color:var(--ink);border:0;border-bottom:1px dotted var(--ink-3);font:inherit;font-size:14.5px;padding:0 2px}
+.controls{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin:0 0 6px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--panel)}
+.seg button{background:none;border:0;padding:8px 15px;font-size:14.5px;font-weight:500;color:var(--ink-2)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.legend{display:flex;gap:16px;font-size:13.5px;color:var(--ink-3);align-items:center;flex-wrap:wrap}
+.legend b{font-weight:500}
+.swatch{padding:1px 6px;border-radius:2px;font-size:13.5px}
+.sw-add{background:var(--add-bg);color:var(--add)}
+.sw-del{background:var(--del-bg);color:var(--del);text-decoration:line-through}
+
+/* ---- diff ---- */
+.doc{
+  margin:22px 0 0;border:1px solid var(--line);border-radius:4px;background:var(--panel);
+  font-family:var(--read);font-size:16px;line-height:1.72;
+}
+.doc p{margin:0;padding:18px 24px;max-width:72ch}
+ins{background:var(--add-bg);color:var(--add);text-decoration:none;padding:1px 2px;border-radius:2px;font-weight:600}
+del{background:var(--del-bg);color:var(--del);padding:1px 2px;border-radius:2px}
+.skip{
+  display:flex;width:100%;align-items:center;gap:14px;background:none;border:0;
+  padding:9px 24px;color:var(--ink-3);font-family:var(--sans);font-size:13px;text-align:left;
+  border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line-soft);
+}
+.skip:hover{color:var(--ink-2);background:var(--sunk)}
+.skip::after{content:"";flex:1;height:1px;background:var(--line-soft)}
+.skip .chev{color:var(--ink-3);font-size:11px}
+.hidden{display:none}
+.doc p.restored{color:var(--ink-3)}
+
+/* ---- amendments ---- */
+section.blk{margin:42px 0 0;border-top:1px solid var(--line);padding-top:24px}
+section.blk h2{font-family:var(--serif);font-weight:500;font-size:21px;margin:0 0 4px}
+section.blk .note{margin:0 0 18px;color:var(--ink-3);font-size:14.5px;max-width:74ch}
+.amd{display:grid;grid-template-columns:96px 1fr auto;gap:0 18px;padding:14px 0;border-bottom:1px solid var(--line-soft);align-items:baseline}
+.amd .when{font-size:14px;color:var(--ink-3)}
+.amd .what{font-size:15.5px}
+.amd .what a{font-weight:600}
+.amd .what .role{display:block;font-size:13.5px;color:var(--ink-3);margin-top:2px}
+.amd .size{font-size:13.5px;color:var(--ink-3);white-space:nowrap}
+@media (max-width:620px){
+  .amd{grid-template-columns:1fr;gap:3px}
+  .amd .size{margin-top:3px}
+  .rail{grid-template-columns:1fr;gap:0}
+  .rail::before{display:none}
+  .stop{display:grid;grid-template-columns:22px 1fr;text-align:left;padding:9px 0;border-bottom:1px solid var(--line-soft);align-items:center}
+  .stop .dot{margin:0}
+  .stop .lb{padding:0}
+}
+
+/* ---- legend box for bracket convention ---- */
+.convention{
+  border-left:3px solid var(--line);padding:12px 0 12px 16px;margin:0 0 18px;
+  font-size:14px;color:var(--ink-2);max-width:74ch;
+}
+.convention code{font-family:var(--read);background:var(--sunk);padding:1px 5px;border-radius:2px;color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="crumb"><a href="#">← 612 results</a> &nbsp;/&nbsp; 2025–2026 · House Criminal Justice and Public Safety</p>
+
+  <h1>HB 57 (2025)</h1>
+  <p class="title">(New Title) relative to the standards applicable to bail in criminal matters.</p>
+  <p class="by">Rep. David Meuse (D) · <a href="#">House Criminal Justice and Public Safety</a> · <a href="#">Senate Judiciary</a> · Signed into law, Chapter 160</p>
+
+  <nav class="tabs" aria-label="Bill sections">
+    <a href="#">Summary</a>
+    <a class="here" href="#" aria-current="page">Bill text<span class="n">4</span></a>
+    <a href="#">Votes<span class="n">5</span></a>
+    <a href="#">Videos<span class="n">6</span></a>
+    <a href="#">Reports<span class="n">2</span></a>
+    <a href="#">Sponsors<span class="n">1</span></a>
+    <a href="#">Documents<span class="n">7</span></a>
+  </nav>
+
+  <div class="rail" role="tablist" aria-label="Versions of this bill">
+    <button class="stop" role="tab" aria-selected="false"><span class="dot"></span><span class="lb">Introduced</span><span class="dt">23 Dec 2024</span></button>
+    <button class="stop" role="tab" aria-selected="false"><span class="dot"></span><span class="lb">Amended by the Senate</span><span class="dt">22 May 2025</span></button>
+    <button class="stop" role="tab" aria-selected="false"><span class="dot"></span><span class="lb">Adopted by both bodies</span><span class="dt">12 Jun 2025</span></button>
+    <button class="stop" role="tab" aria-selected="true"><span class="dot"></span><span class="lb">Chaptered final version</span><span class="dt">21 Jul 2025</span></button>
+  </div>
+
+  <div class="comphead">
+    <h2>What changed in the chaptered final version</h2>
+    <p class="baseline">Compared with
+      <select aria-label="Compare against">
+        <option>the version adopted by both bodies</option>
+        <option>the version amended by the Senate</option>
+        <option>the bill as introduced</option>
+      </select>
+      · 13 words added, 4 removed
+    </p>
+
+    <div class="controls">
+      <div class="seg" role="group" aria-label="View">
+        <button type="button" aria-pressed="true">What changed</button>
+        <button type="button" aria-pressed="false">Full text</button>
+      </div>
+      <div class="legend">
+        <span><span class="swatch sw-add">added</span></span>
+        <span><span class="swatch sw-del">removed</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc">
+    <button class="skip" type="button" data-target="r1"><span class="chev">▸</span> 200 words unchanged</button>
+    <p class="restored hidden" id="r1">AN ACT relative to the standards applicable to bail in criminal matters. Be it Enacted by the Senate and House of Representatives in General Court convened:</p>
+    <p>… convened: <del>1</del> <ins>160:1</ins> Bail and Recognizances; Release of a Defendant Pending Trial. Amend RSA 597:2, III(c) to read as follows: (c) Except as provided in RSA 597:1-c, a …</p>
+
+    <button class="skip" type="button" data-target="r2"><span class="chev">▸</span> 218 words unchanged</button>
+    <p class="restored hidden" id="r2">… person who is charged with a qualifying offense shall not be brought before a bail commissioner and shall, upon arrest, be detained pending arraignment before the court. Arraignment shall occur no later than 36 hours after the arrest, excluding weekends and holidays …</p>
+    <p>… applicable, temporarily detained pursuant to subparagraph I(d). A person arrested for violating the conditions of his or her bail for an offense listed in this <del>subparagraph,</del> <ins>subparagraph</ins> shall be held until they can be brought before the court at the first available date. If at a subsequent hearing, the court finds probable …</p>
+
+    <button class="skip" type="button" data-target="r3"><span class="chev">▸</span> 149 words unchanged</button>
+    <p class="restored hidden" id="r3">… cause exists that the person violated the conditions of his or her bail for any of the crimes listed in this subparagraph, the defendant shall be held pending trial …</p>
+    <p>… physical force against a person; or (14) Any felony offense, if the person has twice before been convicted of an offense listed in subparagraph (c). <del>2</del> <ins>160:2</ins> Effective Date. This act shall take effect 180 days after its <del>passage.</del> <ins>passage. Approved: July 15, 2025 Effective Date: January 11, 2026</ins></p>
+  </div>
+
+  <section class="blk">
+    <h2>The amendments, in the order they were taken up</h2>
+    <p class="note">Each amendment is a step from one version to the next. A committee amendment is considered before any floor amendment, and where two change the same section the later one governs. The General Court publishes each as its own document; these are those documents, not versions of the bill.</p>
+
+    <div class="amd">
+      <div class="when">16 May 2025</div>
+      <div class="what"><a href="#">Amendment 2025-2211h</a><span class="role">Committee amendment, offered in the House. Not adopted.</span></div>
+      <div class="size">4,342 characters</div>
+    </div>
+    <div class="amd">
+      <div class="when">21 May 2025</div>
+      <div class="what"><a href="#">Amendment 2025-2308s</a><span class="role">Committee amendment, adopted by the Senate 22 May 2025 · <a href="#">roll call</a></span></div>
+      <div class="size">3,289 characters</div>
+    </div>
+  </section>
+
+  <section class="blk">
+    <h2>The document itself</h2>
+    <p class="note">Everything above is this site’s account of the record. This is the bill as the General Court publishes it, unaltered.</p>
+    <div class="convention">
+      Text in <code>[brackets]</code> is being removed from current law. Text being added is printed in bold italics in the original; that formatting is lost when the page is read as plain text, so additions are not marked here.
+    </div>
+    <p style="margin:0"><a href="#">Show the final version and 2 amendments</a></p>
+  </section>
+
+</div>
+<script>
+(function(){
+  document.querySelectorAll('.skip').forEach(function(b){
+    b.addEventListener('click',function(){
+      var el=document.getElementById(b.dataset.target);
+      var open=el.classList.toggle('hidden')===false;
+      b.querySelector('.chev').textContent = open ? '▾' : '▸';
+    });
+  });
+  document.querySelectorAll('.seg button').forEach(function(b){
+    b.addEventListener('click',function(){
+      b.parentNode.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-pressed','false')});
+      b.setAttribute('aria-pressed','true');
+    });
+  });
+  document.querySelectorAll('.stop').forEach(function(b){
+    b.addEventListener('click',function(){
+      document.querySelectorAll('.stop').forEach(function(x){x.setAttribute('aria-selected','false')});
+      b.setAttribute('aria-selected','true');
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -194,6 +194,9 @@ amendment diff (https://claude.ai/artifact/BdRFmcb3V7wj8VM17ZorqC), and the Lear
 and a Learn page (https://claude.ai/artifact/BvqdXLBtD8oPryPjKEqRLg). They carry
 placeholder numbers and prose, not checked against the record, and the homepage one uses a
 different headline from the slogan set on the 14th. Design direction, not content.
+The same four, with that chat's plan for the pass, are committed under `design/`, whose
+README says what is out of date in the plan. The person does not agree with every choice
+in them.
 
 **Added to everything above, and it replaces none of it.** The person wrote this
 list near the week's usage limit, while the bill text fetch kept running, as the top

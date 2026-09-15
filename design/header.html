@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Granite Record — header and navigation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F6F5F1; --panel:#FFFFFF; --sunk:#EFEDE7; --page:#EDEBE5;
+  --line:#DCD9D1; --line-soft:#E8E5DE;
+  --ink:#191D1E; --ink-2:#4A5253; --ink-3:#7A8283;
+  --accent:#19776A; --accent-ink:#FFFFFF; --accent-soft:#E2EFEC;
+  --serif:"Playfair Display",Georgia,serif;
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14191A; --panel:#1B2122; --sunk:#101415; --page:#181E1F;
+    --line:#2B3233; --line-soft:#232A2B;
+    --ink:#E7EBEA; --ink-2:#A8B1B1; --ink-3:#7C8586;
+    --accent:#63C7B1; --accent-ink:#0E1516; --accent-soft:#1E2E2C;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14191A; --panel:#1B2122; --sunk:#101415; --page:#181E1F;
+  --line:#2B3233; --line-soft:#232A2B;
+  --ink:#E7EBEA; --ink-2:#A8B1B1; --ink-3:#7C8586;
+  --accent:#63C7B1; --accent-ink:#0E1516; --accent-soft:#1E2E2C;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.55;font-variant-numeric:tabular-nums}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:2px}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.sheet{max-width:1180px;margin:0 auto;padding:44px 24px 80px}
+.sheet > h1{font-family:var(--serif);font-weight:500;font-size:32px;margin:0 0 6px;letter-spacing:-.01em}
+.sheet > p.intro{margin:0 0 40px;color:var(--ink-2);max-width:62ch}
+.spec{margin:0 0 46px}
+.spec h2{font-family:var(--serif);font-weight:500;font-size:21px;margin:0 0 3px}
+.spec p.why{margin:0 0 14px;color:var(--ink-3);font-size:14.5px;max-width:74ch}
+.frame{border:1px solid var(--line);border-radius:5px;overflow:hidden;background:var(--page)}
+.frame.phone{width:390px;max-width:100%}
+
+/* ---------- masthead ---------- */
+.mast{background:var(--panel);border-bottom:1px solid var(--line)}
+.mast .in{display:flex;align-items:center;gap:26px;height:56px;padding:0 20px}
+.brand{display:flex;align-items:center;gap:9px;color:var(--ink)}
+.brand:hover{text-decoration:none}
+.brand svg{width:16px;height:23px;fill:var(--ink);display:block}
+.brand b{font-family:var(--serif);font-size:20px;font-weight:600}
+.nav{display:flex;gap:22px;flex:1}
+.nav a{color:var(--ink-2);font-size:15px;font-weight:500;padding:17px 0}
+.nav a:hover{color:var(--ink);text-decoration:none}
+.nav a.here{color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
+.quiet{background:none;border:0;color:var(--ink-3);padding:6px;font-size:14px}
+.quiet:hover{color:var(--ink-2)}
+.icon{background:none;border:0;color:var(--ink-2);padding:7px;display:grid;place-items:center}
+.icon svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round}
+
+/* ---------- search band (list view) ---------- */
+.band{background:var(--sunk);border-bottom:1px solid var(--line);padding:14px 20px}
+.band .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.term{
+  appearance:none;background:var(--panel);color:var(--ink);border:1px solid var(--line);
+  border-radius:3px;padding:10px 34px 10px 12px;font:inherit;font-size:14.5px;font-weight:600;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 17px) 50%,calc(100% - 12px) 50%;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat;
+}
+.searchwrap{position:relative;flex:1 1 320px;min-width:0}
+.searchwrap input{
+  width:100%;padding:11px 58px 11px 13px;font:inherit;font-size:15px;color:var(--ink);
+  background:var(--panel);border:1px solid var(--line);border-radius:3px;
+}
+.searchwrap input::placeholder{color:var(--ink-3)}
+.kbd{
+  position:absolute;right:9px;top:50%;transform:translateY(-50%);
+  font-size:11.5px;color:var(--ink-3);border:1px solid var(--line);border-radius:3px;
+  padding:2px 6px;background:var(--sunk);pointer-events:none;
+}
+.bandmeta{display:flex;gap:14px;align-items:center;margin-top:9px;font-size:13.5px;color:var(--ink-3);flex-wrap:wrap}
+.bandmeta select{appearance:auto;background:transparent;color:var(--ink-2);border:0;font:inherit;font-size:13.5px}
+
+/* ---------- context bar (detail view) ---------- */
+.ctx{background:var(--sunk);border-bottom:1px solid var(--line);padding:9px 20px;display:flex;gap:16px;align-items:center;font-size:14px;flex-wrap:wrap}
+.ctx .back{color:var(--ink-2);font-weight:500}
+.ctx .sep{color:var(--ink-3)}
+.ctx .crumb{color:var(--ink-3)}
+.ctx .spacer{flex:1}
+.ctx .mini{position:relative;width:210px}
+.ctx .mini input{width:100%;padding:7px 46px 7px 10px;font:inherit;font-size:13.5px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:3px}
+.ctx .mini input::placeholder{color:var(--ink-3)}
+
+/* ---------- content stub ---------- */
+.stub{padding:26px 20px 30px}
+.stub h3{font-family:var(--serif);font-weight:500;font-size:27px;margin:0 0 6px;letter-spacing:-.01em}
+.stub .title{margin:0 0 10px;color:var(--ink);font-size:16.5px;max-width:62ch;line-height:1.45}
+.stub .by{margin:0 0 20px;color:var(--ink-3);font-size:14px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
+.tabs a{
+  color:var(--ink-2);font-size:14.5px;font-weight:500;padding:11px 14px;white-space:nowrap;border-bottom:2px solid transparent;
+}
+.tabs a:hover{color:var(--ink);text-decoration:none}
+.tabs a.here{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs .n{color:var(--ink-3);font-weight:400;margin-left:5px;font-size:13.5px}
+.tabscroll{position:relative}
+.tabscroll::after{content:"";position:absolute;right:0;top:0;bottom:1px;width:34px;pointer-events:none;background:linear-gradient(90deg,transparent,var(--page))}
+
+/* ---------- mobile ---------- */
+.frame.phone .mast .in{height:52px;padding:0 14px;gap:8px}
+.frame.phone .brand b{font-size:18px}
+.frame.phone .nav{display:none}
+.frame.phone .spacer{flex:1}
+.msearch{padding:11px 14px;background:var(--sunk);border-bottom:1px solid var(--line)}
+.msearch .searchwrap{flex:1 1 auto}
+.msearch input{font-size:16px}
+.menu{border-bottom:1px solid var(--line);background:var(--panel);display:none}
+.menu.open{display:block}
+.menu a{display:block;padding:13px 16px;color:var(--ink);font-size:16px;font-weight:500;border-top:1px solid var(--line-soft)}
+.menu a:hover{text-decoration:none;background:var(--sunk)}
+.menu a.here{box-shadow:inset 3px 0 0 var(--accent)}
+.filterbar{padding:10px 14px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;font-size:14px;color:var(--ink-3)}
+.filterbtn{background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:3px;padding:6px 12px;font-size:14px;font-weight:600}
+.frame.phone .stub{padding:18px 14px 24px}
+.frame.phone .stub h3{font-size:23px}
+.frame.phone .tabs a{padding:11px 11px}
+.sticky-note{font-size:13px;color:var(--ink-3);padding:8px 14px;border-top:1px dashed var(--line);background:var(--sunk)}
+.pair{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<h1>Header and navigation</h1>
+<p class="intro">Four specimens. The rule underneath all of them: one accent, used only for links, the primary button and the current-item marker; one place for the brand, always left; and chrome that belongs to a list view does not follow you onto a detail view.</p>
+
+<!-- 1 -->
+<div class="spec">
+  <h2>Masthead, every page</h2>
+  <p class="why">Current page is an underline, not a box. The theme control has no border, so nothing outranks the nav. Data is promoted out of the footer. Brand sits on the same left rail as everything below it.</p>
+  <div class="frame">
+    <div class="mast"><div class="in">
+      <a class="brand" href="#"><svg viewBox="0 0 34 48" aria-hidden="true"><path d="M13 1 L24 3 L27 34 L28 45 L7 46 L5 22 L9 12 Z"/></svg><b>Granite Record</b></a>
+      <nav class="nav" aria-label="Main">
+        <a class="here" href="#" aria-current="page">Bills</a>
+        <a href="#">Legislators</a><a href="#">Committees</a><a href="#">Data</a><a href="#">Learn</a>
+      </nav>
+      <button class="quiet" type="button">Light</button>
+    </div></div>
+  </div>
+</div>
+
+<!-- 2 -->
+<div class="spec">
+  <h2>Bills, the list view — where the search band belongs</h2>
+  <p class="why">The term selector is styled as a first-class control, because it is the door to 37 years of records. The keyboard hint moves inside the field. The result count appears only when a filter narrows it; here 4 committees are selected, so it says something true.</p>
+  <div class="frame">
+    <div class="mast"><div class="in">
+      <a class="brand" href="#"><svg viewBox="0 0 34 48" aria-hidden="true"><path d="M13 1 L24 3 L27 34 L28 45 L7 46 L5 22 L9 12 Z"/></svg><b>Granite Record</b></a>
+      <nav class="nav" aria-label="Main"><a class="here" href="#" aria-current="page">Bills</a><a href="#">Legislators</a><a href="#">Committees</a><a href="#">Data</a><a href="#">Learn</a></nav>
+      <button class="quiet" type="button">Light</button>
+    </div></div>
+    <div class="band">
+      <div class="row">
+        <select class="term" aria-label="Legislative term">
+          <option>2025–2026</option><option>2023–2024</option><option>2021–2022</option><option>1989–1990</option>
+        </select>
+        <div class="searchwrap">
+          <label class="sr" for="s1" style="position:absolute;left:-9999px">Search bills</label>
+          <input id="s1" type="search" placeholder="Bill number, key phrase, or several numbers separated by commas">
+          <span class="kbd">/</span>
+        </div>
+      </div>
+      <div class="bandmeta">
+        <span>612 of 2,234 bills · 4 committees</span>
+        <span>Sorted by <select aria-label="Sort order"><option>bill number</option><option>most recent action</option><option>status</option></select></span>
+        <a href="#">Clear filters</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 3 -->
+<div class="spec">
+  <h2>A bill — the list chrome demoted to one line</h2>
+  <p class="why">Sort order, the facet column and the N-of-N count are gone, because none of them acts on this page. What remains is a way back to the results you came from and a search box you can still reach. Tabs keep their counts and use the same underline as the masthead.</p>
+  <div class="frame">
+    <div class="mast"><div class="in">
+      <a class="brand" href="#"><svg viewBox="0 0 34 48" aria-hidden="true"><path d="M13 1 L24 3 L27 34 L28 45 L7 46 L5 22 L9 12 Z"/></svg><b>Granite Record</b></a>
+      <nav class="nav" aria-label="Main"><a class="here" href="#" aria-current="page">Bills</a><a href="#">Legislators</a><a href="#">Committees</a><a href="#">Data</a><a href="#">Learn</a></nav>
+      <button class="quiet" type="button">Light</button>
+    </div></div>
+    <div class="ctx">
+      <a class="back" href="#">← 612 results</a>
+      <span class="sep">/</span>
+      <span class="crumb">2025–2026 · House Finance</span>
+      <span class="spacer"></span>
+      <div class="mini">
+        <label for="s2" style="position:absolute;left:-9999px">Search bills</label>
+        <input id="s2" type="search" placeholder="Search bills"><span class="kbd">/</span>
+      </div>
+    </div>
+    <div class="stub">
+      <h3>HB 1 (2025)</h3>
+      <p class="title">Making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2026 and June 30, 2027.</p>
+      <p class="by">Rep. Kenneth Weyler (R) · <a href="#">House Finance</a> · <a href="#">Senate Finance</a> · Signed into law, Chapter 140</p>
+      <div class="tabscroll"><nav class="tabs" aria-label="Bill sections">
+        <a class="here" href="#" aria-current="page">Summary</a>
+        <a href="#">Bill text<span class="n">5</span></a>
+        <a href="#">Votes<span class="n">10</span></a>
+        <a href="#">Videos<span class="n">11</span></a>
+        <a href="#">Reports<span class="n">3</span></a>
+        <a href="#">Sponsors<span class="n">4</span></a>
+        <a href="#">Documents<span class="n">6</span></a>
+      </nav></div>
+    </div>
+  </div>
+</div>
+
+<!-- 4 -->
+<div class="spec">
+  <h2>Phone</h2>
+  <p class="why">Wordmark stays, mark goes, because the type survives at small size and the carved profile does not. Search keeps its own row rather than hiding behind a tap. Nav goes behind the menu. Tabs scroll with the counts intact and an edge fade to show there is more. Tap the menu button on the left specimen.</p>
+  <div class="pair">
+
+    <div class="frame phone">
+      <div class="mast"><div class="in">
+        <a class="brand" href="#"><b>Granite Record</b></a>
+        <span class="spacer"></span>
+        <button class="icon" type="button" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg></button>
+        <button class="icon" id="mbtn" type="button" aria-label="Menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      </div></div>
+      <nav class="menu" id="mmenu" aria-label="Main">
+        <a class="here" href="#" aria-current="page">Bills</a>
+        <a href="#">Legislators</a><a href="#">Committees</a><a href="#">Data</a><a href="#">Learn</a>
+        <a href="#">About this site</a>
+      </nav>
+      <div class="msearch"><div class="row" style="display:flex;gap:8px">
+        <div class="searchwrap">
+          <label for="s3" style="position:absolute;left:-9999px">Search bills</label>
+          <input id="s3" type="search" placeholder="Bill number or key phrase">
+        </div>
+      </div></div>
+      <div class="filterbar">
+        <button class="filterbtn" type="button">Filters · 4</button>
+        <span>612 of 2,234 bills</span>
+      </div>
+      <div class="stub">
+        <h3 style="font-size:19px;margin-bottom:2px">HB 1 (2025)</h3>
+        <p class="title" style="font-size:15px">Making appropriations for the expenses of certain departments of the state.</p>
+        <p class="by" style="font-size:13px;margin-bottom:0">Signed into law · Chapter 140</p>
+      </div>
+    </div>
+
+    <div class="frame phone">
+      <div class="mast"><div class="in">
+        <a class="brand" href="#"><b>Granite Record</b></a>
+        <span class="spacer"></span>
+        <button class="icon" type="button" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg></button>
+        <button class="icon" type="button" aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+      </div></div>
+      <div class="ctx" style="padding:8px 14px;font-size:13.5px">
+        <a class="back" href="#">← 612 results</a>
+        <span class="sep">/</span><span class="crumb">House Finance</span>
+      </div>
+      <div class="stub">
+        <h3>HB 1 (2025)</h3>
+        <p class="title" style="font-size:15.5px">Making appropriations for the expenses of certain departments of the state for fiscal years ending June 30, 2026 and June 30, 2027.</p>
+        <p class="by" style="font-size:13.5px">Rep. Kenneth Weyler (R) · Signed into law, Chapter 140</p>
+        <div class="tabscroll"><nav class="tabs" aria-label="Bill sections">
+          <a class="here" href="#" aria-current="page">Summary</a>
+          <a href="#">Bill text<span class="n">5</span></a>
+          <a href="#">Votes<span class="n">10</span></a>
+          <a href="#">Videos<span class="n">11</span></a>
+          <a href="#">Reports<span class="n">3</span></a>
+          <a href="#">Sponsors<span class="n">4</span></a>
+          <a href="#">Documents<span class="n">6</span></a>
+        </nav></div>
+      </div>
+      <p class="sticky-note">This tab row is what sticks on scroll. The masthead scrolls away.</p>
+    </div>
+
+  </div>
+</div>
+
+</div>
+<script>
+(function(){
+  var b=document.getElementById('mbtn'), m=document.getElementById('mmenu');
+  b.addEventListener('click',function(){
+    var open=m.classList.toggle('open');
+    b.setAttribute('aria-expanded',open?'true':'false');
+  });
+})();
+</script>
+</body>
+</html>
