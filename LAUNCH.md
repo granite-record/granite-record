@@ -186,6 +186,15 @@ with the table beside them, the method stated under every number.
 
 ## 0b. Polishing before launch (the person's list, 14 September)
 
+**Concept mockups from the person's separate design chat, 15 September**, published as
+private artifacts on their account (readable here with the Artifact tool): the homepage
+(https://claude.ai/artifact/51GeCck4vNEocQ8CkwLGen), header and navigation with the
+phone layout (https://claude.ai/artifact/FH8hDHW1kPKUurCr1rQUvF), the Bill Text tab and
+amendment diff (https://claude.ai/artifact/BdRFmcb3V7wj8VM17ZorqC), and the Learn index
+and a Learn page (https://claude.ai/artifact/BvqdXLBtD8oPryPjKEqRLg). They carry
+placeholder numbers and prose, not checked against the record, and the homepage one uses a
+different headline from the slogan set on the 14th. Design direction, not content.
+
 **Added to everything above, and it replaces none of it.** The person wrote this
 list near the week's usage limit, while the bill text fetch kept running, as the top
 priorities before launch. It is to be picked up on Thursday the 17th. Their words
