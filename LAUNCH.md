@@ -242,6 +242,34 @@ starting it.
     carries the personal email, home IP address or keys, and the history
     rewrite in §0 comes before any push.
 
+## 0c. First users, and the order work is done in (15 September)
+
+The site went, as it stands, to General Court staff and legislators as its first power
+users, to find gaps and errors. An experienced legislator is proofreading the Learn
+sections with the person, separately. **The order from now on, set by the person:**
+factual errors first, because people will trust and repeat what the site says; then
+visual bugs and bugs that stop data from displaying; and only once the essentials of
+both are in hand, visual updates and font styles (the rest of §0b).
+
+What came back first:
+- **"A few wrong committee rosters"** -- a factual error, and found the same day.
+  The database's seat table keeps every seat ever held, and the pages listed them
+  all: Senate Finance showed 24 members, and Judiciary 11 sitting senators where
+  the Senate names 5. Since `build_committees.py` 2026-09-07.23 a committee lists
+  only members whose own roster entry names it, and preflight checks every seat.
+  **Staff are still exploring**, so any roster still wrong after this is worth
+  hearing about committee by committee.
+- **Attendance records** -- a feature, so third in the order. What is on disk: each
+  ballot is recorded as Yea, Nay, Not Voting/Excused, Not Voting/Not Excused or
+  Presiding (2025-2026: 17,156 excused and 10,259 not excused), and each session's
+  "Call of the Roll" is itself a roll call.
+- **A chart of chamber seat assignments** -- a feature. The SQL Legislators table
+  carries `seatno` (382 of the 406 sitting members have one, e.g. 4023). The layout
+  of the chamber the numbers refer to is not on disk; the House Clerk's seating
+  chart would be the source.
+- And: "Wow Wow Wow! This is a vision come to life", "an astonishingly helpful and
+  beautiful resource".
+
 **From the General Court's IT office, 14 September** (relayed by the person):
 the firewall block is released. Their one ask is to go lightly on
 `gc.nh.gov/bill_status/legacy/bs2016/` pages on session days, which are their

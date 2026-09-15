@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.182
+# GRANITE_VERSION: 2026-09-04.183
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -9228,6 +9228,38 @@ def _numbers_draft_unlisted():
         assert "by-the-numbers" not in sm.read_text(encoding="utf-8", errors="replace"), (
             "the sitemap lists the draft page")
     return "ok", "noindex, off the Learn hub and out of the sitemap"
+
+
+@check("data", "a committee's members are the ones on it today, not every seat the table still holds")
+def _committee_rosters_current():
+    """Staff reading the site on 15 September found wrong committee rosters.
+    The database's CommitteeMembers keeps a seat after its term, and the pages
+    listed every one: Senate Finance showed 24 members, and 11 sitting senators
+    on Judiciary where the Senate names 5. A member is on a committee's page
+    now only if their own roster entry lists that committee -- House Finance's
+    divisions counting as Finance -- or, for a sitting member whose entry lists
+    none, if the seat table does. No member who has left is on any roster."""
+    site = Path("site")
+    legs_p = site / "legislators.json"
+    files = sorted((site / "committee").glob("*.json"))
+    if not (legs_p.exists() and files):
+        return "skip", "the committee pages or the roster are not built"
+    legs = {str(m.get("id")): m for m in json.loads(legs_p.read_text(encoding="utf-8"))}
+    bad, n = [], 0
+    for f in files:
+        c = json.loads(f.read_text(encoding="utf-8"))
+        for m in c.get("members") or []:
+            n += 1
+            lg = legs.get(str(m.get("id")))
+            if not lg:
+                bad.append(f"{c.get('code')}: {m.get('name')} does not sit")
+                continue
+            mine = {re.sub(r"\s+-\s+Division\s+[IVX]+$", "", x).strip().lower()
+                    for x in lg.get("committees") or []}
+            if mine and (c.get("name") or "").strip().lower() not in mine:
+                bad.append(f"{c.get('code')} {c.get('name')}: {lg.get('name')} lists {sorted(mine)}")
+    assert not bad, f"{len(bad)} seats on a roster that is not today's: " + "; ".join(bad[:4])
+    return "ok", f"{n:,} seats across {len(files)} committees, every one on the member's own roster"
 
 
 @check("data", "an archived bill's page names the sponsors its own text names, and a covered bill keeps the database's")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.22
+# GRANITE_VERSION: 2026-09-07.23
 """
 A page's worth of data for every committee.
 
@@ -341,6 +341,34 @@ def main():
             if code:
                 lead[code] = {**c, "chamber": chamber}
 
+    # ---- who is on each committee TODAY ------------------------------------
+    # THE SEAT TABLE IS EVERY SEAT EVER HELD, NOT TODAY'S ROSTER. The
+    # database's CommitteeMembers keeps a seat after its term: on 15 September
+    # Senate Finance listed 24 members, 9 of them still in the Senate, where the
+    # Senate's own roster names 8 on it, and Senate Judiciary 11 sitting where
+    # it names 5. Staff reading the site found wrong rosters. So a seat is
+    # current only where the member's own roster entry -- data/legislators.json,
+    # from the General Court's daily Members file -- lists this committee. The
+    # House's Finance divisions are Finance. A sitting member whose roster entry
+    # lists no committee at all (32 members that day) keeps the table's seats,
+    # and only on a committee still on the General Court's list: there is no
+    # better source for them, and a committee that no longer exists has nobody
+    # on it today.
+    assigned = {}
+    for mid, lg in legs.items():
+        names_ = lg.get("committees") or []
+        if not names_:
+            continue
+        ch = (lg.get("chamber") or "")[:1].upper()
+        assigned[mid] = {code_of(re.sub(r"\s+-\s+Division\s+[IVX]+$", "", nm), ch)
+                         for nm in names_} - {None}
+
+    def on_it_today(seat, code):
+        if not seat.get("sitting") or code not in lead:
+            return False
+        mine = assigned.get(str(seat.get("id")))
+        return True if mine is None else code in mine
+
     # ---- what each committee heard, day by day --------------------------
     days = collections.defaultdict(lambda: collections.defaultdict(list))
     bill_meta = {(b.get("term"), b.get("id")): b for b in idx}
@@ -437,6 +465,8 @@ def main():
                    or (code[:1].upper() if code[:1].upper() in "HS" else ""))
         members = []
         for m in seats.get(code, []):
+            if not on_it_today(m, code):
+                continue
             lg = legs.get(m["id"]) or {}
             # A MEMBER WHO HAS LEFT IS NAMED LIKE ONE WHO HAS NOT. The roster
             # holds the 406 sitting members, and a committee's record reaches
