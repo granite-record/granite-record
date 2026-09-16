@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.24
+# GRANITE_VERSION: 2026-09-07.25
 """
 A page's worth of data for every committee.
 
@@ -180,8 +180,24 @@ def narrate(name, chamber, date, items, reports):
 
     # What it decided, where a report says so. Only executive sessions produce
     # a recommendation, and only some of those have a report on file yet.
+    #
+    # NOT FOR A SITTING THAT HAS NOT HAPPENED. `ahead` was worked out above and
+    # used only to choose the verb, so a committee page read "is scheduled to
+    # meet on September 30, 2026 ... On HB 1292-FN it recommended refer for
+    # interim study, 17-1" -- a tally under a meeting seventeen days off.
+    #
+    # The vote itself is real and stays where it belongs. HB 1292 was heard on
+    # 11 February, voted 17-1 in executive session on the 13th (reported in
+    # House Calendar 9), debated on the floor on 5 March, and has a SECOND
+    # executive session booked for 30 September for the interim study the
+    # report itself asks for. committee_reports.json carries no date, so
+    # recommendation() cannot tell the two sittings apart and attached the
+    # February vote to both. Suppressing it on the future one leaves it on the
+    # February page, which is the meeting it was taken at.
+    #
+    # 23 recommendations across 4 committee pages were being narrated this way.
     said = []
-    for it in by_kind.get("executive session", []):
+    for it in ([] if ahead else by_kind.get("executive session", [])):
         maj, minor, vote = recommendation(reports, it["term"], it["bill"], name)
         if not maj:
             continue
