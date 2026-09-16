@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.78
+// GRANITE_VERSION: 2026-09-07.79
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1260,6 +1260,30 @@ function factsTable(b,d){
       rel="noopener">This bill on gencourt &#8599;</a></p>`:""}</section>`;
 }
 
+// HOW A BILL ENDED WHEN NOTHING WAS VOTED ON IT. Two lines, both from the
+// record rather than from the status field, and both about bills whose last
+// docket line is not an outcome:
+//  - a committee that took a bill for interim study reports on it in the
+//    autumn, and that report is the end of the story. The docket prints it;
+//    the page said nothing, so "Referred for interim study" stood as the last
+//    word for months after the committee had answered.
+//  - a term that has run out of session days finishes every bill still
+//    pending. The chip keeps the record's own word ("Laid on the table");
+//    this says why nothing follows it. status/status.txt sets the date.
+function endNote(d){
+  const s=d.study_report,out=[];
+  if(s)out.push(`<p class="note"><b>Interim study report${s.date?`, ${
+    esc(fdate(s.date))}`:""}:</b> the committee ${s.recommended
+      ?"recommended the subject for future legislation"
+      :"did not recommend the subject for future legislation"}${
+      s.vote?`, ${esc(s.vote)}`:""}.</p>`);
+  if(d.session_over)out.push(`<p class="note">The chambers do not sit again
+    this term: the last session day was ${esc(fdate(d.session_over))}. A bill
+    that had not passed by then did not advance, whatever its last recorded
+    status says.</p>`);
+  return out.join("");
+}
+
 function renderSummary(b,d,rsa){
   const _an=billNote(d)+analysis(d,rsa);
   // WHAT A BILL OPENS WITH IS THE WRITING, NOT THE TABLE. Asked for in those
@@ -1287,6 +1311,7 @@ ${d._error?`<div class="loaderr"><b>This bill's detail did not
            <p>${esc(st.text)}</p>${(st.notes||[]).map(n=>
              `<p class="note">${esc(n)}</p>`).join("")}</div>`).join("")}</div>`
       : (d.narrative?`<p class="story"><span class="stg">${esc(d.narrative)}</span></p>`:"")}
+    ${endNote(d)}
     ${archivedNote(d)}
     ${(d.events||[]).length?`<details class="docket"><summary><span class="caret"></span>View docket</summary>
       <p class="note">Every action the General Court recorded, in its own words
@@ -3259,10 +3284,17 @@ function render(more){
   // A focused view is one bill. The count describes a list that is not on
   // screen, and on a bill's own page it read "2,234 of 2,234 bills in the
   // 2025-2026 term" above a single bill.
+  // A COUNT THAT SAYS N OF N SAYS NOTHING. Until something narrows the list,
+  // "2,234 of 2,234 bills in the 2025-2026 term" is the first line a reader
+  // meets and it cannot be false; the picker beside it already names the term.
+  // It appears when a search or a filter has taken something out.
+  const narrowed=rows.length!==inTerm;
   $("#count").textContent=focused?""
     :ids0
     ?`${rows.length} matching ${termPhrase()}`
-    :`${rows.length.toLocaleString()} of ${inTerm.toLocaleString()} bills ${termPhrase()}`;
+    :narrowed
+    ?`${rows.length.toLocaleString()} of ${inTerm.toLocaleString()} bills ${termPhrase()}`
+    :"";
   // Same number, different term: say so instead of an empty page.
   const elsewhere=ids0&&!rows.length
     ? IDX.filter(b=>ids0.includes(b.id.toUpperCase())&&b.term&&b.term!==term)

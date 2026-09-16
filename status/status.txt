@@ -14,6 +14,15 @@ updated: 2026-09-13
 # One of: in session, between sessions, out of session, veto day pending
 phase: out of session
 
+# THE DAY THE TERM RAN OUT OF SESSION DAYS. Set this only when the chambers
+# will not sit again this term: every bill still pending is then finished,
+# whatever its last status says, because nothing can be taken off the table or
+# concurred in without a session day. The General Court records "Died on Table,
+# Session ended" itself, but not until it closes the term -- 10 October last
+# time -- and until then the site would say 107 bills were still moving.
+# Delete the line in December, when the next term brings its own session days.
+session_over: 2026-08-19
+
 headline: The House and Senate have finished the 2026 session.
 
 note: Both chambers adjourned in August after Veto Day. The remaining bills referred to interim study may continue to have executive or work sessions. General Election Day is Tuesday, November 3rd.

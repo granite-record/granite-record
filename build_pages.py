@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.69
+# GRANITE_VERSION: 2026-09-04.70
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1352,14 +1352,11 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   const comp=document.getElementById("composition");
   if(comp)comp.innerHTML=exec?`<h2>Who holds office</h2>${exec}`:"";
 
-  document.getElementById("stats").innerHTML=`
-    <div class="statgrid">
-      <div class="stat"><b>${(c.bills||0).toLocaleString()}</b><span>bills</span></div>
-      <div class="stat"><b>${(k.law||0).toLocaleString()}</b><span>became law</span></div>
-      <div class="stat"><b>${(k.done||0).toLocaleString()}</b><span>concluded</span></div>
-      <div class="stat"><b>${(k.active||0).toLocaleString()}</b><span>still moving</span></div>
-      <div class="stat"><b>${(c.votes||0).toLocaleString()}</b><span>recorded votes</span></div>
-    </div>`;
+  // THE FIVE COUNTS ARE GONE, 15 September, at the person's word: they sat
+  // between the search box and the three cards that are the actual way in, and
+  // nobody arrives to be told how many bills exist. The scale of the record is
+  // said once, in the footer's link to the data. .statgrid still styles the
+  // same grid on the data page.
 
   // #upcoming IS NOT TOUCHED HERE, ON PURPOSE. The calendar is rendered into
   // the page by calendar_html() at build time, from the same home.json this
@@ -1592,15 +1589,10 @@ def main():
                      f'{fdy(S["updated"])}</p>' if S.get("updated") else ""))
             + "</div>")
 
-    static_stats = ""
-    if c:
-        static_stats = '<div class="statgrid">' + "".join(
-            f'<div class="stat"><b>{v:,}</b><span>{lab}</span></div>'
-            for v, lab in ((c.get("bills", 0), "bills"),
-                           (k.get("law", 0), "became law"),
-                           (k.get("done", 0), "concluded"),
-                           (k.get("active", 0), "still moving"),
-                           (c.get("votes", 0), "recorded votes"))) + "</div>"
+    # The five counts the home page drew here were taken out on 15 September at
+    # the person's word: they stood between the search box and the three cards
+    # that are the way in, and a visitor does not arrive to be told how many
+    # bills exist. The data page still counts, which is where counting belongs.
 
     def static_bar(ch):
         """The party composition of one chamber, with its thresholds.
@@ -1719,7 +1711,6 @@ today.</p>
   <input id="hq" type="search" placeholder="Bill number, or words from the title">
   <button id="hgo">Search</button>
 </div>
-<div id="stats">{static_stats}</div>
 <div class="entry">
   <a href="bills.html"><b>Browse bills</b><span>Search by committee, topic, sponsor,
     status or the day it was voted on</span></a>

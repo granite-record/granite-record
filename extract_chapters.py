@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.3
+# GRANITE_VERSION: 2026-09-11.4
 """
 The chapter of the session laws each bill became, read out of the docket.
 
@@ -222,9 +222,21 @@ def settle(found):
 
 def enrolled_check(out):
     """Score against the enrolled text under legislation/, which nothing
-    here wrote. Its heading is "CHAPTER 339 HB 110-FN - FINAL VERSION"."""
-    agree, differ, absent = 0, [], []
-    for p in glob.glob("legislation/*/*.html"):
+    here wrote. Its heading is "CHAPTER 339 HB 110-FN - FINAL VERSION".
+
+    Returns (agree, differ, absent, doubled). A HEADING TWO BILLS SHARE IS NOT
+    EVIDENCE ABOUT EITHER. Two laws cannot be one chapter, so where two of these
+    pages print the same number one of them is wrong on its face, and the
+    docket -- which numbers them distinctly -- is not what is in doubt. Both
+    pairs this has met are that: 2017 HB 455 and HB 474 both head "CHAPTER 224"
+    where the docket says 223 and 224, and 2018 HB 1331 and HB 1304 both head
+    "CHAPTER 61" where the docket says 62 and 61. They are reported and they do
+    not stop the build; a disagreement where the text's own numbering is
+    consistent still does, because that one would be this parser's fault.
+    """
+    agree, differ, absent, doubled = 0, [], [], []
+    said = {}
+    for p in sorted(glob.glob("legislation/*/*.html")):
         parts = Path(p).parts
         year, stem = parts[-2], Path(p).stem
         m = re.match(r"([A-Z]+)0*(\d+)$", stem)
@@ -237,15 +249,24 @@ def enrolled_check(out):
                       % (m.group(1), m.group(2)), re.sub(r"\s+", " ", t))
         if not h:
             continue
+        said.setdefault((year, int(h.group(1))), []).append(bid)
         rec = out.get(P.term_of(year), {}).get(bid)
         if not rec or not rec.get("chapter"):
             absent.append(f"{bid} of {year}")
         elif rec["chapter"] == int(h.group(1)):
             agree += 1
         else:
-            differ.append(f"{bid} of {year}: text {h.group(1)}, "
-                          f"docket {rec['chapter']}")
-    return agree, differ, absent
+            differ.append((year, int(h.group(1)), bid, rec["chapter"]))
+    kept = []
+    for year, text_ch, bid, docket_ch in differ:
+        others = [b for b in said.get((year, text_ch), []) if b != bid]
+        if others:
+            doubled.append(f"{bid} of {year}: its text heads chapter {text_ch}, "
+                           f"and so does {', '.join(others)}; the docket says "
+                           f"{docket_ch}")
+        else:
+            kept.append(f"{bid} of {year}: text {text_ch}, docket {docket_ch}")
+    return agree, kept, absent, doubled
 
 
 def main():
@@ -278,11 +299,16 @@ def main():
               f"two bills:")
         for term, bid, n, y in sorted(withheld):
             print(f"    {bid} of {term}: {out[term][bid]['withheld']}")
-    agree, differ, absent = enrolled_check(out)
+    agree, differ, absent, doubled = enrolled_check(out)
     print(f"  against the enrolled text on disk: {agree} agree, "
           f"{len(differ)} differ, {len(absent)} have no chapter here")
     for d in differ[:10]:
         print(f"    differs: {d}")
+    if doubled:
+        print(f"  {len(doubled)} the published text cannot settle, because two "
+              "bills' texts head the same chapter:")
+        for d in doubled:
+            print(f"    {d}")
     if not total:
         sys.exit("No chapter was read from any docket. Nothing written.")
     if differ:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.13
+# GRANITE_VERSION: 2026-09-08.14
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -144,13 +144,27 @@ def record_figures(site, root=Path(".")):
     return {k: (f"{v:,}" if isinstance(v, int) else v) for k, v in figures.items()}
 
 
+def dashes(text):
+    """" -- " as the dash it is meant to be.
+
+    The Learn prose is written in the plain-text shorthand this repository's own
+    documents use, and it was published that way: "The Council -- five members,
+    elected by district -- approves contracts", 5 times on the hub and 54 across
+    the eleven pages on 15 September. Nowhere else on the site prints it. Only a
+    hyphen pair with a space on each side is touched, so "Education - General",
+    a range, and anything inside a tag are left alone.
+    """
+    return re.sub(r"(?<=\s)--(?=\s)", "—", text or "")
+
+
 def fill(text, figures):
     """[[name]] -> its figure. A name with no figure stops the build: a page
     that printed "[[killed]]", or nothing where a number was, would publish."""
     unknown = sorted(set(re.findall(r"\[\[(\w+)\]\]", text or "")) - set(figures))
     if unknown:
         raise SystemExit(f"civics.py names figures build_civics does not count: {unknown}")
-    return re.sub(r"\[\[(\w+)\]\]", lambda m: str(figures[m.group(1)]), text or "")
+    return dashes(re.sub(r"\[\[(\w+)\]\]",
+                         lambda m: str(figures[m.group(1)]), text or ""))
 
 
 def sources_block(sources):
@@ -226,7 +240,7 @@ def hub(topics):
             out.append(
                 f'<li><a href="learn/{E(t["slug"])}.html">'
                 f'<b>{E(t["title"])}</b>'
-                f'<span>{E(t["blurb"])}</span></a></li>')
+                f'<span>{dashes(E(t["blurb"]))}</span></a></li>')
         out.append("</ol>")
     out.append(
         '<p class="note">Every page here ends with its sources. If something '
@@ -277,7 +291,7 @@ def main():
                 f'works</a></p>',
                 f'<h1>{E(t["title"])}</h1>']
         if t["blurb"]:
-            body.append(f'<p class="lead">{E(t["blurb"])}</p>')
+            body.append(f'<p class="lead">{dashes(E(t["blurb"]))}</p>')
         body.append(fill(t["body"], figures))
         if t.get("holds"):
             body.append(f'<p class="caveat">{fill(t["holds"], figures)}</p>')

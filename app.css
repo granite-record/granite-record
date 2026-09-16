@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.84 */
+/* GRANITE_VERSION: 2026-09-07.85 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -407,6 +407,12 @@ b,strong,h1,h2,h3,h4{font-weight:600}button{font:inherit;color:inherit;backgroun
    display, so the UA default would have carried it -- and this file has
    four rules that assume a display and lost to one. */
 .searchrow[hidden]{display:none}
+/* THE KEYBOARD HINT IS FOR A KEYBOARD. "press / to search" was drawn at every
+   width, including a phone, where there is no key to press and the line is
+   only noise above the results. Shown where a pointer can hover, which is the
+   nearest thing CSS has to asking whether there is a keyboard. */
+.kbdhint{display:none}
+@media (hover:hover) and (pointer:fine){.kbdhint{display:inline}}
 .searchrow .in{max-width:1180px;margin:0 auto;padding:14px 24px}
 /* Capped. At 1440 the field was 962px of empty box; the placeholder ends
    long before that and the eye has nothing to land on. The hint line

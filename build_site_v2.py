@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.85
+# GRANITE_VERSION: 2026-09-05.86
 """
 Generate the faceted site from real General Court data.
 
@@ -1719,6 +1719,28 @@ def build_composition(a, legs):
     return comp, vac
 
 
+def session_over(path):
+    """The day the current term ran out of session days, as status/status.txt
+    states it, or "".
+
+    Read on its own and before the bills are built, because it decides whether a
+    bill of the current term that is still pending is still moving. build_status
+    reads the same file later for the page's panel; this is one line of it, and
+    duplicating the read costs nothing next to threading the panel through the
+    bill loop.
+    """
+    p = Path(path)
+    if not p.exists():
+        return ""
+    for raw in p.read_text(encoding="utf-8").splitlines():
+        if raw.strip().startswith("#"):
+            continue
+        k, _, v = raw.split("#")[0].partition(":")
+        if k.strip().lower() == "session_over" and v.strip():
+            return v.strip()
+    return ""
+
+
 def build_status(a, index, procs, floor, today, latest_by_body, upcoming):
     """The site's "where the session is" panel.
 
@@ -1758,7 +1780,7 @@ def build_status(a, index, procs, floor, today, latest_by_body, upcoming):
                         "date": parts[0],
                         "label": parts[1] if len(parts) > 1 else "",
                         "note": parts[2] if len(parts) > 2 else ""})
-            elif k in ("updated", "phase", "headline", "note"):
+            elif k in ("updated", "phase", "headline", "note", "session_over"):
                 status[k] = v
         status["milestones"].sort(key=lambda m: m["date"])
         if status.get("updated"):
@@ -2432,8 +2454,39 @@ def stated_stage(st):
                 None)
 
 
+STUDY_REPORT = re.compile(
+    r"Interim Study Report:\s*(Not\s+)?Recommended for Future Legislation"
+    r"[^(]*(?:\(\s*Vote\s*([\d*]+)\s*-\s*([\d*]+))?", re.I)
+
+
+def study_report(narr):
+    """What the committee said about a bill it took for interim study, or None.
+
+    The docket prints one line per report -- "Interim Study Report: Not Recommended
+    for Future Legislation 09/02/2026 (Vote 18-0; )" -- and it is the end of that
+    bill's story: the committee either asks for the subject to come back as a new
+    bill next term or it does not. 10 are on file for 2025-2026 so far and the rest
+    arrive through the autumn; 129 in 2023-2024, 134 in 2021-2022. The bill's page
+    said nothing about it, which left "Referred for interim study" as the last word
+    on bills whose committee had since reported.
+    """
+    best = None
+    for e in (narr or {}).get("events", []) or []:
+        raw = (e.get("raw") or "")
+        m = STUDY_REPORT.search(raw)
+        if not m:
+            continue
+        rec = {"date": e.get("date", ""), "body": e.get("body", ""),
+               "recommended": not m.group(1),
+               "vote": (f"{m.group(2)}–{m.group(3)}"
+                        if m.group(2) and m.group(3) else "")}
+        if not best or (rec["date"] or "") >= (best["date"] or ""):
+            best = rec
+    return best
+
+
 def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
-                     override_failed=""):
+                     override_failed="", term_over=False):
     """What became of this bill, and where that answer came from.
 
     STEP 8 OF SPLITTING build_bills, and the first of the two that are
@@ -2520,8 +2573,17 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
     # changes is the KIND, which drives the colour and the rail: in a
     # closed term the bill did not go on from there, so it is finished
     # rather than moving. The current term is untouched -- a bill laid on
-    # the table in 2026 may yet be taken up.
-    if kind == "active" and term != current:
+    # the table in 2026 may yet be taken up -- UNTIL THE TERM RUNS OUT OF
+    # SESSION DAYS, which status/status.txt states as session_over and the
+    # person set on 15 September: "all bills have concluded including tabled
+    # bills as there are no more session days this term". 107 bills of
+    # 2025-2026 were still counted as moving, 50 of them laid on the table and
+    # 46 where one chamber had not concurred, and the home page called them
+    # still moving while the status box said the session was finished. The
+    # docket records "Died on Table, Session ended" for these, but not until
+    # the General Court closes the term -- 10 October last term -- so the site
+    # would have said it for another month.
+    if kind == "active" and (term != current or term_over):
         kind = "done"
         stale = 1
     # The veto labels are the one place the words themselves are this
@@ -2884,7 +2946,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
                 votes_by_bill, vetoes=None, notes=None, coverage=None,
-                chapters=None, seats=None):
+                chapters=None, seats=None, session_over=""):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -2961,6 +3023,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         dl = (chapters or {}).get(term, {}).get(bid) or {}
         disp = bill_disposition(
             b, bid, st, narr, rcs, term, current,
+            term_over=bool(session_over) and term == current,
             law_line=dl.get("line", ""),
             override_failed=dl.get("override_failed", ""))
         kind, status = disp.kind, disp.status
@@ -3141,6 +3204,14 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                       ("lsr", "body", "local", "gen_status", "house_status",
                        "senate_status", "date_introduced", "floor_date",
                        "committee_code") if st.get(k)},
+            # THE END OF A BILL THAT SIMPLY RAN OUT OF DAYS. The record's own
+            # word stays on the chip -- "Laid on the table" -- and this says
+            # why nothing follows it, on the bills of the current term only:
+            # an archived term says the same thing in its coverage note.
+            **({"session_over": session_over}
+               if session_over and term == current and disp.stale else {}),
+            # What the committee reported on a bill taken for interim study.
+            **({"study_report": study_report(narr)} if study_report(narr) else {}),
             "sponsors": sp_list, "rollcalls": rc_out, "stations": stations,
             "reports": rep_written,
             # Reports the docket records that no calendar this site has
@@ -3533,6 +3604,7 @@ def main():
                                legs, leg_by_sort, leg_by_name,
                                votes_by_bill, vetoes=vetoes, notes=notes,
                                chapters=chapters, seats=seats,
+                               session_over=session_over(a.status),
                                coverage=archive_coverage(
                                    bills, narratives, sponsors, reports,
                                    rollcalls, procs,
