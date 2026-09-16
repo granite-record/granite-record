@@ -48,6 +48,44 @@ exist because of specific failures this week; it has caught stamp mismatches
 three times and a dead-zone error once. Run it for the current count -- a
 number written here would be wrong within a day, and was.
 
+**A person can overrule a generator, in one file the generators cannot touch.**
+Five files are a person's: `ground_truth.csv`, `review/checked.jsonl`,
+`bill_notes.json`, `officials.json`, and since 16 September
+`member_corrections.json`. The fifth exists because a generated NAME can be
+wrong and nothing downstream can tell -- `resolve_members.py` deduces who a
+member id is by intersecting a saved roll call page with the ids that voted,
+and one of its 676 deductions put the wrong person's name on 4,250 ballots.
+The file it writes is regenerated on every run and is not tracked, so the
+correction had nowhere to live that survived a build. Corrections carry their
+evidence beside them, `build_data.py` applies them last over every generated
+name source, and preflight fails if any generator opens the file for writing.
+
+---
+
+## Three things about the pipeline that are easy to get wrong
+
+Written 16 September, each after getting it wrong.
+
+**The record travels inside the bill's page, so `build_bill_pages.py` must run
+after `build_site_v2.py`.** 33,585 of 33,683 records are embedded in the page
+rather than fetched; only the 98 over 100 KB keep a file. So rebuilding the
+site alone leaves every bill page carrying the record as it was, and the change
+you just made is in `site/bills/<year>/<id>.json` where nothing reads it. The
+symptom is a page that looks stale while the JSON beside it looks right.
+
+**`build_bill_pages.py` owns `sitemap.xml`, so running it alone truncates the
+sitemap.** It writes the file rather than appending to it, and the legislator,
+committee and town pages are added by steps that come later. Running it on its
+own to pick up one change dropped every `/legislator/` page from the sitemap,
+which preflight caught. **Use `build_all.py --local`** unless there is a reason
+not to; the step order is the point of it.
+
+**A relative `href` on any page built through `shell.py` resolves against the
+site root, because `bills.html` carries `<base href="/">`.** That is not a
+quirk to remember -- 462 links shipped broken for weeks through it. preflight
+now resolves every internal link a generator writes, honouring `<base>`, so a
+new generator cannot repeat it.
+
 ---
 
 ## proceedings.csv across terms, measured 10 September

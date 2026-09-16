@@ -223,6 +223,25 @@ is under half of the 100,000 files Cloudflare Pages allows on the Pro plan
 (`STATE.md` has the count). Term keying is
 finished across every per-bill file, and all 19 terms are live.
 
+**4. A label states the seat held when the record was made** -- the person's
+rule, 16 September, and half of it is still to do. Sponsor lines and roll call
+ballots now take their chamber, county and district from the bill's own printed
+line where the record can attest it, rather than from the roster of the House
+and Senate sitting today. Two gaps remain, both in `build_data.py`: a member who
+has LEFT still carries one seat for all time, and reads as a database row --
+`_former_label` builds "Shurtleff, Steve(D) Merrimack 15" where everybody else
+reads "Rep. Steve Shurtleff (D - Merr 15)". 676 members read that way, which is
+the opposite of showing members who have left exactly like the rest.
+
+**5. The docket parser, when the person says so.** 1,062 modern House docket
+lines take the 1989-98 path in `docket_parser.py` and carry a wrong proceeding
+kind and a garbled room, 1,029 of them in 2021-2022. It is the largest
+remaining bucket of factual error on bill pages. It is not a small fix:
+`HOUSE_SCHED_RE` changes, all eleven manifests rebuild, and video matching
+re-runs, because `build_sittings` keys on (committee, date, venue) and the
+venues are exactly what changes. Deferred by the person on the 16th, to come
+back to.
+
 ---
 
 ## Keeping the documents true

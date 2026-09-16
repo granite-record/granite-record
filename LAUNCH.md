@@ -221,12 +221,19 @@ starting it.
 9. **New and better diagrams in the Learn pages**, to the college civics standard
    (`civics.py`).
 10. **Reformat the Learn home page** (`learn.html`, from `build_civics.py`).
+    **Done on the 16th**: it was printing all eleven titles twice, once in the
+    body and once in a rail beside it, in a 560px column on a 1440px screen.
 11. **Update the About and Data pages** (`about.html` from `build_pages.py`,
     `data.html` from `build_exports.py`).
 12. **Fix the ward selection bug on town pages, whose links break**:
     https://graniterecord.org/dover-ward-3.html (`build_town_pages.py`).
+    **Done on the 16th** -- all 462 ward links on all 73 ward pages were
+    relative and resolved against the site root, and 64 town-website links
+    were dead for the same reason. See §0d.
 13. **Duplicate videos on some House bills' public hearings** (the Videos tab,
-    fed from the proceedings table).
+    fed from the proceedings table). **Done on the 16th**, 26 bills; the docket
+    announces a hearing and restates it on the day in a spelling the modern
+    parser cannot read. See §0d.
 14. **Overall font styles, and uniform header and colour styles** (`app.css`;
     `DESIGN.md` is a reference, not a rule).
 15. **Resolve as many known bugs and information gaps as possible before launch,
@@ -360,6 +367,147 @@ pages the lane is reading now do not. **To build after launch** (the person's
 call on the 14th, since no session is running): the lane holds bs2016 steps on
 House and Senate session days. They also pointed to the public SQL database
 at `gc.nh.gov/downloads/`, which the `fetch_*_db.py` scripts already read.
+
+---
+
+## 0d. The 16th, in order of what it was worth
+
+A long day, and the order below is the triage order of §0c rather than the
+order things were done in.
+
+### Factual errors, found and fixed
+
+- **A wrong name on 4,250 ballots.** Every ballot cast by member 376628
+  between 2005 and 2024 -- 362 of them presiding, which only the Speaker does
+  -- was labelled "Rep. Thomas Oppel". Thomas Oppel was first elected in 2024.
+  The member is Steve Shurtleff, Speaker in 2019-2020. The identification was
+  attacked rather than confirmed: the General Court's own saved pages name him
+  against that number, and that the website's `member=` id IS the data file's
+  Employeeno was proved by set equality across six roll calls rather than
+  assumed; the House Journals on disk put Shurtleff on 3,123 of those 3,127
+  ballots; and `past_members.json` holds that intake alphabetically --
+  Serlin, Shaw, **376628**, Sinclair, Smith -- with no Shurtleff among its
+  2,614 people. All 676 resolved names were audited four ways and five further
+  suspects were each checked independently and cleared. This was the only one
+  wrong, and the only entry keyed by an Employeeno rather than a PersonID,
+  which is the shape the deduction fell through.
+
+  **`member_corrections.json` is new, and is the fifth file no generator
+  writes.** `former_members.json` is regenerated on every run and is not
+  tracked, so a name corrected there is gone by the next build. The new file
+  carries the correction and the evidence for it, `build_data.py` applies it
+  last over every generated name source, and preflight guards it like the
+  other four.
+
+- **A label now states the seat held when the record was made.** The person's
+  rule, given that morning: a member reads as a representative when they were
+  one and a senator when they were one, on roll calls and on sponsor lines
+  alike. Both places took their label from the roster of the House and Senate
+  sitting today, and a roster holds one seat per member however many they have
+  held. 8,610 sponsor rows now take the chamber, county and district from the
+  line the bill itself printed -- 878 of them a corrected chamber, so 2023
+  CACR 10 no longer prints "Rep. Donna Soucy" and "Rep. Jeb Bradley", who was
+  Senate President. 174,119 ballots now carry their own term's seat: Kenneth
+  Weyler reads Rock 18 in 2001, Rock 79 in 2003, Rock 8 in 2005. The current
+  term deliberately keeps the roster, which for it is the contemporaneous
+  source -- the LSR file pairs a House county with chamber "S" on 6,405 rows.
+
+- **462 dead ward links, and 64 dead town-website links** (§0b item 12). Every
+  ward link on every one of the 73 ward pages was written relative, and
+  `bills.html` carries `<base href="/">`, so it resolved against the site root.
+  526 broken links on the town pages, and none now. **preflight has a new
+  check** that resolves every internal link a generator writes, honouring
+  `<base>`, so that class of bug fails the build.
+
+- **Seven towns had a Mayor named "Town" with the telephone number
+  "Officials".** The NHDOT directory prints a two-part banner over its table,
+  0.95pt above the first data line; on seven of thirty pages the ruling grid
+  gives it no row of its own and pdfplumber sorts the two lines into one,
+  character by character. 22 more officials' names and numbers were corrupted
+  the same way. Usable town addresses 216 -> 230 of 234. Grantham and Green's
+  Grant were a second bug -- a page break split GREEN'S / GRANT, and "GRANT"
+  matched Grantham and overwrote it -- and both towns are whole again.
+
+- **26 bills drew one hearing recording twice** (§0b item 13). The House docket
+  restates a hearing on the day and writes "9:00 a.m." where the announcement
+  writes "09:00 am", which falls through to the 1989-98 parser and comes back
+  as a different word for the same thing. Keyed on the event now.
+
+- **2022 HB 52's sponsor** (§0b item 15). The General Court typed an F where
+  the colon belongs, and 2020 SB 222 omits it entirely, losing fifteen
+  sponsors including the Senate Majority Leader.
+
+- **Four Learn source links answered 404**, which makes a page look written
+  from memory. Three replaced with addresses the person sent; the fourth, the
+  General Court's address lookup, points at our own `/directory`, which cannot
+  rot without preflight noticing.
+
+- **And one error of ours, caught by a checker**: a bill left unsigned becomes
+  law after FIVE days, Sundays excepted, and not at all if the legislature has
+  adjourned. The page had said ten.
+
+### Data that was on disk and not being shown
+
+- **Bill text for 8,422 archived bills** (§0b, and the person on the 16th:
+  "even 2024 bills don't have bill text even though it's fetched").
+  `bill_text.json` holds the current term alone, so every older bill had an
+  empty tab -- including 1,938 of 2023-2024's 1,996, whose pages have been here
+  since 10 September. `archive_text.py` reads them into the shape
+  `bill_text.json` already uses and merges UNDER it, never over. Two bills are
+  excluded and say why themselves: 2011 and 2013 HB 1 are the budget, which the
+  archive serves only as a PDF.
+
+### Interface
+
+- **The term picker no longer swaps the record.** On a bill's page, choosing
+  another term redrew it as the bill with the same number in the new term -- a
+  different bill at an address still naming the first. It now chooses the term
+  the next search runs in and leaves the record alone.
+- **"press / to search" is gone**, markup and stylesheet.
+- **One stylesheet, one type scale, one spacing scale, one palette.** The
+  pages' 24 KB moved into `app.css`; fifteen font sizes became seven tokens
+  named for the job; thirty-three spacing values became twelve steps; the video
+  player, written out twice with four bare hex values, became one definition
+  and four named colours. No colour literal is now written straight into a
+  rule. The two page shells had disagreed on a phone -- a 4px jump in the left
+  edge crossing from /bills to /about -- and are one rule.
+- **The Learn hub** stops printing its own contents twice and goes to two
+  columns (§0b item 10).
+
+### The Learn section (§0b item 9 and the read-through)
+
+The person rewrote five pages himself to set the register, and the remaining
+six were rewritten to match it: a plain definition first, functional headings,
+the shorthand a reader actually meets, and the site's commentary about itself
+out of the explanation. **Every figure is computed** -- eight new ones, from
+the municipal directory, the roster, the district map, the bill texts and the
+calendars -- because a page here may state a number only if the site can
+produce it. Two the copy asserted are now measured: "over 90% of bills follow
+the committee" is 98%, and one legislator per 3,400 people is nearer 3,300 on
+the census the districts are drawn from. A senior legislator has volunteered a
+fuller review.
+
+### Open, and what each needs
+
+- **1,062 modern House docket lines take the 1989-98 parser path** and carry a
+  wrong proceeding kind and a garbled room -- 1,029 of them in 2021-2022. This
+  is the largest remaining bucket of factual error on bill pages. Fixing it
+  means changing `HOUSE_SCHED_RE`, rebuilding all eleven manifests and
+  **re-running video matching**, because `build_sittings` keys on (committee,
+  date, venue). The person's call on the 16th: not yet, circle back.
+- **Wendy Chase's seat** in `former_members.json` is wrong (the name is right).
+  A correction can go in `member_corrections.json` whenever the right seat is
+  established.
+- **The four 2021-2022 unknown members are identified** -- Littlefield, Homola,
+  Moran, Belanger -- and are not yet shown, because they need ids the record
+  can join and the person's word on putting a deduced name on a ballot.
+- **A former member's label is a database row.** `_former_label` builds
+  "Shurtleff, Steve(D) Merrimack 15" where everyone else reads "Rep. Steve
+  Shurtleff (D - Merr 15)". 676 members read that way, which is the opposite
+  of treating members who have left exactly like the rest.
+- **Former members' seats are not dated per term**, only sitting members'.
+- **`parse_clerks.read_pdf` leaks "End Time"** into the polling hours of 53
+  towns.
 
 ---
 
