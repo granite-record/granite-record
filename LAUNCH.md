@@ -295,6 +295,24 @@ What came back first:
 - And: "Wow Wow Wow! This is a vision come to life", "an astonishingly helpful and
   beautiful resource".
 
+**What the IT office answered, 16 September** (the person asked the questions of
+§0c; their words, relayed):
+
+- **A one-time zip of the `/legislation/<year>/` bill-text archive is being
+  made.** "We are working on creating the archive zip. We're going to figure out
+  the best way to make it available once it's ready and will let you know." That
+  is the 21,669 pages this lane is fetching one at a time; when it arrives the
+  remaining runs stop and the zip is unpacked instead.
+- **Historical sponsors are coming to the public database.** "SQL Sponsor,
+  working on a fix for that to upload to PublicSQL." That is the source that
+  would name the four 2021-2022 representatives who vote as "Member #" and give
+  sponsors for every term without reading them off the bill text.
+- **The database updates immediately, and is safe to query during a session.**
+  "Updates immediatly to the website and to PublicSQL. No problem hitting
+  PublicSQL during a session as it doesn't touch the website." So the nightly
+  vote and calendar refresh should read the database rather than the pages, and
+  the session-day hold below is only about the web pages.
+
 **From the General Court's IT office, 14 September** (relayed by the person):
 the firewall block is released. Their one ask is to go lightly on
 `gc.nh.gov/bill_status/legacy/bs2016/` pages on session days, which are their
