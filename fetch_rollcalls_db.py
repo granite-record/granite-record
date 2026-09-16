@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.2
+# GRANITE_VERSION: 2026-09-06.3
 """
 The roll calls for one session year, from the General Court's own database.
 
@@ -70,8 +70,16 @@ import probe_db
 # Read off the 2026 rows, where the project holds the file and the view both.
 # Counts matched exactly on every one of 131,199 member votes, so this is a
 # measurement rather than a reading of documentation that does not exist.
+# 5 and 7 added on 16 September. They were never here, and a code this dict
+# does not cover passes through as its own digit -- which is how 411 ballots
+# reached the site reading "5" and 156 reading "7". Neither is a vote cast
+# either way: the General Court's own page for 2017 SB 133 shows the Vote
+# column EMPTY for the member whose ballot is code 7. What 5 means, in
+# 1999-2002, is not established here; it is named the same way because
+# whatever it is, it is not a Yea or a Nay.
 VOTE_WORD = {"0": "", "1": "Yea", "2": "Nay", "3": "Not Voting/Excused",
-             "4": "Not Voting/Not Excused", "6": "Presiding"}
+             "4": "Not Voting/Not Excused", "5": "No vote recorded",
+             "6": "Presiding", "7": "No vote recorded"}
 
 
 def vote_case(col):

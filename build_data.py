@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.23
+# GRANITE_VERSION: 2026-09-04.24
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -35,6 +35,7 @@ import argparse
 import json
 import names
 import proceedings as P
+import rollcall_parser as RP
 import re
 import sys
 from collections import Counter, defaultdict
@@ -1026,7 +1027,12 @@ def main():
             "label": (m["label"] if m else _former_label(mid)),
             "year": r[0], "body": r[1], "vote_number": r[2],
             "bill": s["bill"], "question": s["question"],
-            "date": s["datetime"].split(" ")[0], "vote": r[6],
+            "date": s["datetime"].split(" ")[0],
+            # An unmapped database code reached the site as a bare digit:
+            # 411 ballots read "5" and 156 read "7". See
+            # rollcall_parser.vote_word, which is the one place that
+            # decides what a ballot is called.
+            "vote": RP.vote_word(r[6]),
         })
     print(f"member votes: {len(member_votes):,}")
     _dated = date_ballot_seats(member_votes, legs)

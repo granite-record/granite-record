@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -190,6 +190,34 @@ def parse(path, want_bill=None):
     return out
 
 
+# WHAT THE DATABASE CALLS A VOTE, and the two codes nobody mapped.
+#
+# The General Court stores a ballot as a number and fetch_rollcalls_db.py
+# translates it in SQL: 1 Yea, 2 Nay, 3 excused, 4 not excused, 6 presiding,
+# 0 nothing. Codes 5 and 7 were never in that map, and a code the map does not
+# cover passes through as its own digit -- so 411 ballots reached the site
+# reading "5" and 156 reading "7", 567 in all, where a vote should be.
+#
+# Neither is a Yea or a Nay. The General Court's own roll call page for
+# 2017 SB 133 shows Sen. Scott McGilvray with the Vote column simply EMPTY,
+# and that ballot is code 7: the page says nothing was recorded, and so should
+# this site. Code 5 appears in 1999-2002 in both chambers and its meaning is
+# not established here; it is treated the same way, because whatever it means
+# it is not a vote cast either way.
+#
+# They are named rather than blanked so a reader can tell "the record shows no
+# vote" from a member who is simply absent from the list.
+NO_VOTE = "No vote recorded"
+VOTE_WORDS = {"Yea", "Nay", "Not Voting/Excused", "Not Voting/Not Excused",
+              "Presiding", ""}
+
+
+def vote_word(raw):
+    """One ballot as the site says it, with an unmapped code named honestly."""
+    v = (raw or "").strip()
+    return v if v in VOTE_WORDS else NO_VOTE
+
+
 def ballot_counts(current="RollCallHistory.txt", extra_dir="rollcalls"):
     """{(year, body, number): Counter of ballot codes}, from the member ballots.
 
@@ -215,7 +243,7 @@ def ballot_counts(current="RollCallHistory.txt", extra_dir="rollcalls"):
             for line in fh:
                 p = line.rstrip("\n").split("|")
                 if len(p) > 6 and p[2].strip().isdigit():
-                    counts[(p[0].strip(), p[1].strip(), int(p[2]))][p[6].strip()] += 1
+                    counts[(p[0].strip(), p[1].strip(), int(p[2]))][vote_word(p[6])] += 1
     return counts
 
 
@@ -251,25 +279,37 @@ def parse_all(current, extra_dir):
             if c:
                 n = sum(c.values())
                 if (c.get("Yea", 0), c.get("Nay", 0)) != (r["yeas"], r["nays"]):
-                    # The summary's tally is the record's; the ballots are
-                    # its members. Where they disagree the tally stands and
-                    # the count of non-voters is not taken from ballots that
-                    # do not add up to it.
+                    # THE BALLOTS ARE THE HEADLINE, and the summary's tally is
+                    # kept beside them. The person decided this on 16 September:
+                    # the ballots carry the actual record of who voted which
+                    # way, and in every one of these cases the difference does
+                    # not change the outcome.
+                    #
+                    # The General Court publishes two files and for 13 roll
+                    # calls of 9,565 they disagree -- 2018 SB 503 states 11-11
+                    # over a list of 12 yea and 10 nay. The page used to print
+                    # the stated tally above a member list that did not add up
+                    # to it, which asks a reader to believe both. Now it counts
+                    # the members and says what the summary said, so the
+                    # difference is visible and attributed rather than hidden.
+                    r["yeas_stated"], r["nays_stated"] = r["yeas"], r["nays"]
+                    r["yeas"], r["nays"] = c.get("Yea", 0), c.get("Nay", 0)
                     differ += 1
-                else:
-                    r["excused"] = c.get("Not Voting/Excused", 0)
-                    r["not_excused"] = c.get("Not Voting/Not Excused", 0)
-                    r["presiding"] = c.get("Presiding", 0)
-                    r["not_voting"] = n - r["yeas"] - r["nays"]
-                    r["seated"] = n
-                    r["vacancies"] = r["seats"] - n
-                    from_ballots += 1
+                r["excused"] = c.get("Not Voting/Excused", 0)
+                r["not_excused"] = c.get("Not Voting/Not Excused", 0)
+                r["presiding"] = c.get("Presiding", 0)
+                r["no_vote_recorded"] = c.get(NO_VOTE, 0)
+                r["not_voting"] = n - r["yeas"] - r["nays"]
+                r["seated"] = n
+                r["vacancies"] = r["seats"] - n
+                from_ballots += 1
             out.append(r)
             kept += 1
         print(f"  {f}: {kept:,} roll calls")
     print(f"  who did not vote, from the ballots: {from_ballots:,} roll calls"
-          + (f"; {differ:,} whose ballots do not add up to the tally keep the "
-             "summary's count" if differ else ""))
+          + (f"; {differ:,} where the General Court's summary and its ballots "
+             "disagree now take the headline from the ballots, and keep the "
+             "stated tally beside it" if differ else ""))
     return out, files
 
 
