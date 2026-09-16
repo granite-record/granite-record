@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.15
+# GRANITE_VERSION: 2026-09-08.16
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -39,6 +39,20 @@ import shell as S
 
 def E(s):
     return html.escape(str(s or ""), quote=True)
+
+
+def _follows_committee(narr):
+    """The percentage of this term's floor decisions that went the committee's way.
+
+    Rounded to a whole number, because a tenth of a point on a claim like this
+    is precision the sentence cannot carry. It counts only bills where a
+    committee reported and the chamber then took a majority-recommendation
+    vote -- the cases where the two can be compared at all.
+    """
+    stats, _ = learn_numbers.overturned(narr)
+    decided = sum(v[0] for v in stats.values())
+    against = sum(v[1] for v in stats.values())
+    return round(100 * (decided - against) / decided) if decided else 0
 
 
 def _load(p, default):
@@ -121,6 +135,14 @@ def record_figures(site, root=Path(".")):
         "two": sum(1 for h in ordinary if h.get("seats") == 2),
         "largest": max((h.get("seats") or 1 for h in house.values()), default=0),
         "floterial": len(house) - len(ordinary),
+        # How often a chamber went the way its committee recommended, from the
+        # record rather than from an impression. learn_numbers.overturned pairs
+        # each committee report with the floor vote that followed it and is
+        # what the draft page of numbers reports at length; this is the one
+        # figure of it the Learn page states. The prose used to say "usually
+        # follows it", which is true and says nothing: it is 98%, and the 2%
+        # is the interesting part.
+        "follows_committee": _follows_committee(narr),
         "all_bills": len(idx), "all_rollcall": sum(1 for r in idx if (r.get("nrc") or 0) > 0),
         "all_no_rollcall": sum(1 for r in idx if not (r.get("nrc") or 0) > 0),
         "hb2_rollcalls": len(_load(Path(root) / "rollcalls.json", {}).get(term, {}).get("HB2", [])),

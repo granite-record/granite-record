@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.12
+# GRANITE_VERSION: 2026-09-08.13
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -254,9 +254,9 @@ FLOW_TESTIFY = [
 
 
 BODY_GENERAL_COURT = """
-<p>The General Court is the legislature: a House of 400 representatives and
-a Senate of 24. It is the largest state legislature in the country, and the
-districts are correspondingly small.</p>
+<p>The New Hampshire legislative branch is made up of 400 representatives and
+24 senators. It is the largest state legislature in the country, with an
+average of around one legislator for every 3,300 people.</p>
 
 <p>Members are paid $100 a year plus mileage. Almost none have staff. Most
 have other jobs, and the session is arranged around that: the House meets on
@@ -269,9 +269,10 @@ the House moves.</p>
 <h2>A term is two years</h2>
 <p>The General Court sits in two-year terms beginning in odd years. Bill
 numbers are unique across the whole term, so there is only ever one HB 84 in
-2025&ndash;2026 &mdash; and there will be another in the next term. That is
-why every address on this site carries the year.</p>
-<p>Most bills are settled in the year they are filed. Some are not: a
+2025&ndash;2026, and there will be another in the next term. That is why every
+address on this site carries the year.</p>
+<p>Most bills are either passed or killed in the year they are filed. Some
+are not: a
 committee can retain a bill for further work, or the chamber can send it for
 interim study, and it is taken up again the following year. Those show as
 <b>carried over</b> here, and they are the ones people most often fail to
@@ -282,33 +283,46 @@ one.</p>
 <p>This is unusual. In most states a committee chair can decline to hear a
 bill and it dies without anyone speaking on it. In New Hampshire every bill
 introduced is referred to a committee and given a public hearing that anyone
-may attend and speak at. That is why the hearing recordings matter here more
-than they would elsewhere: the hearing is where the substantive argument
-actually happens.</p>
+may attend and speak at.</p>
 
 <h2>Bills and resolutions are not the same thing</h2>
 <p>Which chamber a measure starts in follows from its prime sponsor: a
 representative's bill begins in the House, a senator's in the Senate.</p>
 <table><tbody>
-<tr><td><b>HB</b></td><td>House Bill &mdash; begins in the House, must pass
-both chambers, goes to the Governor</td></tr>
-<tr><td><b>SB</b></td><td>Senate Bill &mdash; begins in the Senate, otherwise
-the same</td></tr>
-<tr><td><b>HR</b> / <b>SR</b></td><td>A resolution voted on by that chamber
-alone. It does not go to the other chamber or the Governor and does not change
+<tr><td><b>HB</b></td><td><b>House Bill:</b> a proposed change to New
+Hampshire law. Begins in the House, must pass both chambers, goes to the
+Governor.</td></tr>
+<tr><td><b>SB</b></td><td><b>Senate Bill:</b> begins in the Senate, otherwise
+the same as a House Bill.</td></tr>
+<tr><td><b>HR</b> / <b>SR</b></td><td><b>House or Senate Resolution:</b> a
+formal, non-binding expression of opinion, policy preference, or internal
+rule. It does not go to the other chamber or the Governor and does not change
 any law.</td></tr>
-<tr><td><b>HCR</b> / <b>SCR</b></td><td>Concurrent resolution &mdash;
-introduced in one chamber, voted on by both</td></tr>
-<tr><td><b>CACR</b></td><td>A proposed change to the state constitution, which
-works differently from everything else here. See
+<tr><td><b>HCR</b> / <b>SCR</b></td><td><b>House/Senate Concurrent
+Resolution:</b> similar to an HR or SR, but voted on by both chambers.</td></tr>
+<tr><td><b>CACR</b></td><td><b>Constitutional Amendment Concurrent
+Resolution:</b> a proposed change to the state constitution, requiring a
+three-fifths vote in both chambers and a two-thirds majority of voters. See
 <a href="learn/the-constitution.html">The Constitution</a>.</td></tr>
 </tbody></table>
 
-<h2>Committees do the work</h2>
+<h2>How committees work</h2>
 <p>Every bill is referred to a committee chosen by subject, and the committee
-holds the hearing, votes on a recommendation, and writes a report explaining
-it. The chamber is not bound by that recommendation, but it usually follows
-it.</p>
+holds the public hearing, votes on a recommendation following an executive
+session, and writes a report explaining its reasoning. If the committee is
+split on what action to recommend, there are separate reports from the
+majority and the minority. The full chamber is not bound by those
+recommendations, but [[follows_committee]]% of the bills it decided this term
+went the way its committee recommended.</p>
+
+<p>The motions a committee most often recommends are these:</p>
+<table><tbody>
+<tr><td><b>OTP</b></td><td>Ought to Pass</td></tr>
+<tr><td><b>OTP/A</b></td><td>Ought to Pass as Amended</td></tr>
+<tr><td><b>ITL</b></td><td>Inexpedient to Legislate &mdash; kill the bill</td></tr>
+<tr><td><b>IS</b></td><td>Interim Study</td></tr>
+<tr><td><b>Retain</b></td><td>Hold the bill in the committee</td></tr>
+</tbody></table>
 """ + SHOWS.format("""
 <p>The [[term]] term filed <b>[[bills]] bills</b>: [[hb]] House bills, [[sb]]
 Senate bills, [[cacr]] constitutional amendments and [[resolutions]] resolutions.</p>
@@ -317,9 +331,8 @@ the record stands, with [[house_vacant]] vacant. The record shows that moving:
 roll calls this term were taken with as many as [[seated_most]] members seated
 and as few as [[seated_fewest]].</p>
 <p>There are <b>[[house_districts]] House districts and [[senate_districts]] Senate
-districts</b>. Of the [[ordinary]] ordinary House districts, [[single]] elect a single
-member and [[two]] elect two; the largest elects [[largest]]. The other
-[[floterial]] are floterial &mdash; see
+districts</b>. [[floterial]] of those House districts are floterial districts,
+which cover several towns or wards together &mdash; see
 <a href="learn/your-representatives.html">Finding your
 representatives</a>.</p>
 <p><a href="committees.html">Every committee</a>, who sits on it, and what it
@@ -436,12 +449,17 @@ signature, and [[overridden]] over a veto.</p>""")
 
 
 BODY_GOVERNOR = """
+<p>The New Hampshire governor serves as the state's head of government and
+supreme executive magistrate, responsible for enforcing state laws, proposing
+the biennial state budget, and commanding the New Hampshire National
+Guard.</p>
+
 <p>The Governor is elected for two years, at the same election as the whole
 legislature. When a bill has passed both chambers the Governor may sign it,
-veto it, or do nothing &mdash; in which case it becomes law without a
-signature.</p>
+veto it, or do nothing, in which case it becomes law without a signature after
+ten days.</p>
 
-<h2>A veto is not the end</h2>
+<h2>A veto is not always the end</h2>
 <p>The legislature can override a veto, but it takes two thirds of the members
 voting in each chamber. That is a high bar and most attempts fail.</p>
 <p>Across the [[terms]] terms on this site there are <b>[[vetoed]] vetoed bills</b>.
@@ -454,14 +472,13 @@ in the House and Senate calendars, and this site carries [[veto_messages]] of th
 
 <h2>The Executive Council</h2>
 <p>Five councillors, each elected by district, meeting with the Governor.
-Almost no state has anything like it, and almost no resident could describe
-what it does.</p>
-<p>Its consent is required for a great deal of what the executive branch does:
-state contracts above a threshold, the appointment of commissioners and
-judges, and pardons. A Governor who has the legislature and not the Council
-cannot simply proceed. This is the concrete answer to what the Council is for
-&mdash; a commissioner nominated by the Governor takes office only when the
-Council confirms them.</p>
+Almost no state has anything like it, and not many people can describe what it
+does.</p>
+<p>Its approval is required for a great deal of what the executive branch
+does: state contracts above a threshold, the appointment of commissioners and
+judges, and pardons. A commissioner nominated by the Governor takes office
+only when the Council confirms them, and a Governor who has the legislature
+and not the Council cannot simply proceed.</p>
 <p>The Council is genuinely debated. Supporters say it is a check on
 executive power that no single elected officer should be without. Critics say
 it gives five people a veto over routine administration and slows work that
@@ -479,21 +496,23 @@ BODY_COURTS = """
 <p>New Hampshire has three courts. The <b>Supreme Court</b> hears appeals and
 is the final word on what a state law means. The <b>Superior Court</b> holds
 jury trials and hears the more serious civil and criminal cases. The
-<b>Circuit Court</b> handles most of what people actually encounter: district
-court matters, probate, and family cases.</p>
+<b>Circuit Court</b> handles the highest volume of cases each year, including
+misdemeanours, small claims, probate and domestic relations.</p>
 
 <h2>How a judge gets the job</h2>
 <p>The Governor nominates and the Executive Council confirms &mdash; the same
 route as a commissioner, which is the clearest illustration of what the
 Council is for. There is no judicial election in New Hampshire at any level.
-Judges serve until the age of seventy.</p>
+Judges serve until the age of seventy, which is set by the constitution
+itself: Part Two, Article 78.</p>
 
 <h2>Where the courts and the legislature meet</h2>
-<p>The legislature writes statutes; the courts decide what they mean when a
-case turns on it, and whether they are permitted by the state or federal
-constitution. A decision striking down or narrowing a statute is often
-followed by bills responding to it, and those bills are in the record here
-like any other.</p>
+<p>The legislature writes statutes, and the courts decide what they mean when
+there is a dispute over what was originally intended, and whether they are
+permitted by the state or federal constitution. A decision striking down or
+narrowing a statute is sometimes followed by bills amending the language
+around the new standard, and those bills are in the record here like any
+other.</p>
 """
 
 BODY_COURTS_HOLDS = """This site holds no court records: no opinions, no
@@ -522,7 +541,7 @@ three thresholds, none of which involves the Governor.</p>
 threshold measured against the whole membership is very close to
 unattainable in a chamber where turnout varies.</p>
 """ + SHOWS.format("""
-<p>There are <b>[[cacr]] CACRs</b> in the [[term]] term. [[cacr_voters]]
+<p>The [[term]] term filed <b>[[cacr]] CACRs</b>. [[cacr_voters]]
 [[cacr_killed]] were killed outright, [[cacr_session_end]] died when the session
 ended, [[cacr_one_chamber]] passed one chamber and stopped, and the rest are
 still in committee or were postponed.</p>
@@ -534,8 +553,8 @@ with the same words beside it.</p>""")
 BODY_AGENCIES = """
 <p>The legislature passes a law. An agency carries it out. Health and Human
 Services, Transportation, Environmental Services, Education, Safety, Revenue
-Administration and the rest are where a statute becomes something that happens
-to somebody.</p>
+Administration and the rest are where statutes get applied around New
+Hampshire.</p>
 
 <h2>How a commissioner gets the job</h2>
 <p>Nominated by the Governor, confirmed by the Executive Council. That is the
@@ -543,19 +562,22 @@ same route as a judge, and it is the most concrete answer to
 <a href="learn/governor-and-council.html">what the Council does</a>. A
 commissioner serves a fixed term and can be reappointed the same way.</p>
 
-<h2>You have probably already met them</h2>
+<h2>How departments interact with the legislature</h2>
 <p>A department is usually among the first bodies asked what a bill would
 actually do, and often the body that would have to do it, so agency staff
 appear at hearings regularly. An agency may support a bill, oppose it, or
 appear as neutral and simply explain the effect.</p>
-<p>If you have watched a hearing on this site and heard someone explain why a
-bill would be difficult to administer, that is what you were listening
-to.</p>
+<p>If you have watched a hearing on this site and heard a department's staff
+explain how a bill would be administered, or ask for a technical change, that
+is what you were listening to. Departments may request legislation, but the
+bill itself has to be filed by a legislator.</p>
 
 <h2>What an agency cannot do</h2>
 <p>It cannot give itself powers the statute does not grant. What it can do is
-decide the detail, and it does that by writing rules &mdash; which is the
-next page.</p>
+decide the detail, and it does that by writing
+<a href="learn/administrative-rules.html">administrative rules</a>, which the
+legislature approves through JLCAR, the Joint Legislative Committee on
+Administrative Rules.</p>
 """ + SHOWS.format("""
 <p>Hearing recordings are linked from every bill's Videos tab, at the moment
 the bill was taken up. <a href="committees.html">Committee pages</a> list
@@ -819,6 +841,16 @@ SRC_JLCAR = ("Joint Legislative Committee on Administrative Rules",
 SRC_AGENCIES = ("State agencies, A to Z",
                 NH + "/government/state-government-agencies")
 SRC_SOS = ("Secretary of State", "https://www.sos.nh.gov")
+# Not an authority, and labelled so. Every other source on these pages is
+# the body that made the thing; this is a third party's list, included
+# because it carries the vote share each amendment got at the polls and
+# the Secretary of State does not publish those in one place.
+SRC_BALLOT_LIST = ("Past amendments and their vote shares (Ballotpedia, "
+                   "a third party)",
+                   "https://ballotpedia.org/List_of_New_Hampshire_ballot_measures")
+# The office that answers for a court decision on a statute, which is
+# where a reader of the courts page most often wants to go next.
+SRC_DOJ = ("New Hampshire Department of Justice", "https://www.doj.nh.gov")
 
 
 # ---------------------------------------------------------------------------
@@ -857,7 +889,7 @@ TOPICS = [
           "Supreme, Superior and Circuit; how judges are appointed and how "
           "long they serve; and where the legislature and the courts meet.",
           BODY_COURTS,
-          [SRC_COURTS, SRC_CONSTITUTION],
+          [SRC_COURTS, SRC_CONSTITUTION, SRC_DOJ],
           BODY_COURTS_HOLDS),
 
     topic("the-constitution", "The Constitution", HOW,
@@ -865,7 +897,7 @@ TOPICS = [
           "statutes are: a CACR needs three fifths of both chambers and then "
           "the voters.",
           BODY_CONSTITUTION,
-          [SRC_CONSTITUTION, SRC_SOS]),
+          [SRC_CONSTITUTION, SRC_SOS, SRC_BALLOT_LIST]),
 
     topic("state-agencies", "State agencies", HOW,
           "Who actually carries out what the legislature passes, and how a "
