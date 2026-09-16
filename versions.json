@@ -20,9 +20,9 @@
     "build_indexes.py": "2026-09-13.3",
     "build_legislator_pages.py": "2026-09-04.12",
     "build_manifest.py": "2026-09-05.8",
-    "build_pages.py": "2026-09-04.71",
+    "build_pages.py": "2026-09-04.72",
     "build_proceedings.py": "2026-09-05.4",
-    "build_site_v2.py": "2026-09-05.86",
+    "build_site_v2.py": "2026-09-05.87",
     "build_town_pages.py": "2026-09-09.11",
     "calendar_meetings.py": "2026-09-08.12",
     "caption_gaps.py": "2026-09-06.1",
@@ -97,7 +97,7 @@
     "parse_districts.py": "2026-09-04.1",
     "parse_officials.py": "2026-09-12.1",
     "past_members.py": "2026-09-10.1",
-    "preflight.py": "2026-09-04.183",
+    "preflight.py": "2026-09-04.184",
     "probe_alignment.py": "2026-09-05.61",
     "probe_amendments.py": "2026-09-04.3",
     "probe_archive.py": "2026-09-04.3",
@@ -128,7 +128,8 @@
     "topics.py": "2026-09-12.2",
     "transcribe_and_align.py": "2026-09-04.2",
     "verify_batch.py": "2026-09-04.4",
-    "wrangler.toml": "2026-09-12.2"
+    "wrangler.toml": "2026-09-12.2",
+    "tests/test_cmte_match.js": "2026-09-12.2"
   },
   "generated": "2026-09-04"
 }

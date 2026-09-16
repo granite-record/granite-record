@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.86
+# GRANITE_VERSION: 2026-09-05.87
 """
 Generate the faceted site from real General Court data.
 
@@ -3745,7 +3745,13 @@ def main():
                    "votes": sum(len(x) for x in votes_by_member.values()),
                    "by_kind": dict(by_kind)},
         "terms": sorted({b["term"] for b in index if b["term"]}, reverse=True),
-        "recent": actions[:12], "upcoming": upcoming[:12],
+        # EIGHTY ROWS, NOT TWELVE. The status box beside this calendar counts
+        # the whole fortnight -- 39 bill-sittings on 16 September -- and the
+        # calendar was cut to twelve, so the page said 39 above a list of 12
+        # and dropped whole days off the end without saying so. The cut is
+        # still there because a fortnight in session is hundreds of rows, and
+        # build_pages says how many did not fit.
+        "recent": actions[:12], "upcoming": upcoming[:80],
         "contested": contested, "closest": closest[:6],
         "latest_session": latest_session,
         "latest_sessions": [latest_by_body[b] for b in ("H", "S")

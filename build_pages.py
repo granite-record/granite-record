@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.71
+# GRANITE_VERSION: 2026-09-04.72
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -534,6 +534,17 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
   Cache-Control: public, max-age=0, must-revalidate
 /style.css
   Cache-Control: public, max-age=0, must-revalidate
+/find.js
+  Cache-Control: public, max-age=0, must-revalidate
+# The two files a page reads to say what is true today: the home page's own
+# summary, and the header search's index of members, committees and towns. A
+# cached copy of either is a page contradicting itself -- on 16 September the
+# home page's built HTML said 39 hearings and its script, reading a cached
+# home.json, said 4.
+/home.json
+  Cache-Control: public, max-age=0, must-revalidate
+/find.json
+  Cache-Control: public, max-age=0, must-revalidate
 """
 
 # Tab addresses, served their record's page: see where this is written.
@@ -714,6 +725,14 @@ def calendar_html(H, out):
                             f'The {esc(cmte)} committee</a></p>')
             html.append("</div></details>")
         html.append("</div>")
+    # What did not fit. build_site_v2 caps the list it writes; the status box
+    # beside this counts the whole fortnight, and a count above a shorter list
+    # with no explanation is the page contradicting itself.
+    more = (H.get("status") or {}).get("hearings_next_14", 0) - len(up)
+    if more > 0:
+        html.append(f'<p class="note">{more} more bill{"" if more == 1 else "s"} '
+                    "sit in the fortnight beyond these; each one is on its own "
+                    "committee's page.</p>")
     # A public hearing is the one a reader can speak at; an executive session
     # is the one where the committee votes. Worth saying once.
     html.append('<p class="note">Anyone may attend and speak at a public '
@@ -1305,7 +1324,16 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   const ph=PHASE[(S.phase||"").toLowerCase()]||["off",S.phase||"Status unknown"];
   const ms=(S.milestones||[])[0];
   const stale=S.stale_days>45;
-  document.getElementById("state").innerHTML=`
+  // ONE RENDERER WINS, AND IT IS THE SERVER'S. The same box is written into the
+  // page at build time and again here, and on 16 September the two disagreed on
+  // screen: the HTML said 39 hearings and this said 4, because home.json came
+  // out of the browser's cache while the page itself is revalidated every time.
+  // The built copy is the one a crawler and a reader without JavaScript get, it
+  // is never stale, and preflight checks the two say the same thing -- so this
+  // draws only where the server drew nothing.
+  const _state=document.getElementById("state");
+  if(_state&&_state.querySelector(".statebox")){/* already drawn */}
+  else if(_state)_state.innerHTML=`
     <div class="statebox ${ph[0]}">
       <div class="stateline"><span class="dot"></span><b>${esc(ph[1])}</b>
         ${S.last_session?`<span class="statemeta">Last Floor Session:
@@ -1314,11 +1342,14 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       ${S.note?`<p class="statenote">${esc(S.note)}</p>`:""}
       ${ms?`<p class="statenote"><b>Next: ${esc(ms.label)}</b>, ${fd(ms.date)}.
         ${esc(ms.note||"")}</p>`:""}
-      ${S.hearings_next_14?`<p class="statenote">${S.hearings_next_14} hearing${
+      ${S.hearings_next_14?`<p class="statenote hearcount" data-total="${
+        S.hearings_next_14}">${S.hearings_next_14} hearing${
         S.hearings_next_14===1?"":"s"} scheduled in the next two weeks.</p>`:""}
-      ${stale?`<p class="statenote" style="color:var(--st-veto)">This summary was
+      ${stale?`<p class="statenote stalewarn" style="color:var(--st-veto)"
+        data-updated="${esc(S.updated||"")}">This summary was
         last updated ${S.stale_days} days ago and may be out of date.</p>`
-        :(S.updated?`<p class="statemeta" style="margin-top:8px">Summary Updated:
+        :(S.updated?`<p class="statemeta upd" style="margin-top:8px"
+          data-updated="${esc(S.updated)}">Summary Updated:
           ${fdy(S.updated)}</p>`:"")}
     </div>`;
   const C=H.composition||{};
@@ -1386,15 +1417,18 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   (function(){
     const now=new Date(); now.setHours(0,0,0,0);
     const days=[...document.querySelectorAll(".calday[data-d]")];
-    let left=0;
+    let left=0,gone=0;
     days.forEach(d=>{
       const p=d.dataset.d.split("-").map(Number);
       const off=Math.round((new Date(p[0],p[1]-1,p[2])-now)/86400000);
-      if(off<0){d.remove();return;}
+      if(off<0){gone+=d.querySelectorAll(".calbills li").length;d.remove();return;}
       left++;
       const rel=d.querySelector(".cdrel");
+      // Fourteen days out is still inside the fortnight this block covers, so
+      // it says how far off it is like every other day. `off<14` left the last
+      // day of the window with no label at all.
       if(rel)rel.textContent=off===0?"today":off===1?"tomorrow"
-        :off<14?`in ${off} days`:"";
+        :off<=14?`in ${off} days`:"";
     });
     const cal=document.querySelector(".cal");
     if(cal&&days.length&&!left){
@@ -1402,6 +1436,36 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
         scheduled in the next two weeks. The General Court sits from January to
         June, and committees meet on bills from the autumn filing period
         onwards.</p>`;
+    }
+    // The status box counts the same meetings, so it is counted again here
+    // rather than left saying what was true when the site was built.
+    // The count is the fortnight's whole number, which can be larger than the
+    // rows drawn here, so it is the build's total less the rows whose day has
+    // passed -- not a count of what is on screen.
+    const hc=document.querySelector(".statebox .hearcount");
+    if(hc){
+      const n=Math.max(0,(+hc.dataset.total||0)-gone);
+      if(!n)hc.remove();
+      else hc.textContent=`${n} hearing${n===1?"":"s"} scheduled in the next two weeks.`;
+    }
+    // "Last updated N days ago" is the one line whose whole job is to say the
+    // summary may be stale; it cannot be a number frozen at build time.
+    const up=document.querySelector(".statebox .upd,.statebox .stalewarn");
+    if(up&&up.dataset.updated){
+      const p=up.dataset.updated.split("-").map(Number);
+      const age=Math.round((now-new Date(p[0],p[1]-1,p[2]))/86400000);
+      const nice=new Date(p[0],p[1]-1,p[2]).toLocaleDateString("en-US",
+        {month:"short",day:"numeric",year:"numeric"});
+      if(age>45){
+        up.className="statenote stalewarn";
+        up.style.color="var(--st-veto)";
+        up.textContent=`This summary was last updated ${age} days ago and may be out of date.`;
+      }else{
+        up.className="statemeta upd";
+        up.style.color="";
+        up.style.marginTop="8px";
+        up.textContent=`Summary Updated: ${nice}`;
+      }
     }
   })();
 
@@ -1618,11 +1682,17 @@ def main():
             + (f'<p class="statenote">{esc(S["note"])}</p>' if S.get("note") else "")
             + (f'<p class="statenote"><b>Next: {esc(ms.get("label"))}</b>, '
                f'{fd(ms.get("date"))}. {esc(ms.get("note"))}</p>' if ms.get("label") else "")
-            + (f'<p class="statenote">{n14} hearing{"" if n14 == 1 else "s"} scheduled '
-               "in the next two weeks.</p>" if n14 else "")
-            + (f'<p class="statenote" style="color:var(--st-veto)">This summary was last '
+            # THE COUNT AND THE STALE WARNING CARRY THEIR OWN DATES, so the page
+            # can work them out again in the reader's clock. Both were written
+            # when the site was built and read for as long as the build stood.
+            + (f'<p class="statenote hearcount" data-total="{n14}">{n14} '
+               f'hearing{"" if n14 == 1 else "s"} scheduled in the next two '
+               "weeks.</p>" if n14 else "")
+            + (f'<p class="statenote stalewarn" style="color:var(--st-veto)" '
+               f'data-updated="{esc(S.get("updated") or "")}">This summary was last '
                f'updated {S["stale_days"]} days ago and may be out of date.</p>' if stale
-               else (f'<p class="statemeta" style="margin-top:8px">Summary Updated: '
+               else (f'<p class="statemeta upd" style="margin-top:8px" '
+                     f'data-updated="{esc(S.get("updated") or "")}">Summary Updated: '
                      f'{fdy(S["updated"])}</p>' if S.get("updated") else ""))
             + "</div>")
 

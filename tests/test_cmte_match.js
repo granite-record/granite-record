@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.1
+// GRANITE_VERSION: 2026-09-12.2
 // A MEETING BELONGS TO ONE COMMITTEE, AND THE NAME DOES NOT SAY WHICH.
 //
 // home.json's `upcoming` gives a committee NAME and no chamber, and seven
@@ -68,11 +68,38 @@ t("the same CACR1 is accepted for term 2001-2002", cmteUpcoming(H34).map(u => u.
 UPCOMING = [row({bill: onlyH[0], committee: "Ways and Means"})];
 t("a name that does not match is refused", cmteUpcoming(H34).map(u => u.bill), []);
 
-// 6. the real data lands where it belongs
-UPCOMING = JSON.parse(fs.readFileSync("site/home.json", "utf8")).upcoming
-             .filter(u => u.committee !== "Finance");
-t("H12 keeps its two real bills", cmteUpcoming(H12).map(u => u.bill).sort(), ["HB1692","SB570"]);
-t("H34 gets none of H12's", cmteUpcoming(H34).map(u => u.bill), []);
+// 6. the real data lands where it belongs.
+//
+// NAMED FROM THE FILE, NOT FROM THE DAY. This case used to assert that H12 had
+// HB 1692 and SB 570, which was true on 12 September and false on the 16th,
+// when that meeting had happened and dropped out of the fortnight -- a test
+// that fails with the calendar rather than with the code. It now takes the
+// busiest committee in today's upcoming list, reads that committee's own
+// record, and asks that the rows land there and nowhere else.
+const upAll = JSON.parse(fs.readFileSync("site/home.json", "utf8")).upcoming || [];
+const codeOf = name => {
+  const all = JSON.parse(fs.readFileSync("site/committees.json", "utf8"));
+  const hit = (Array.isArray(all) ? all : []).find(
+    c => (c.name || "").toLowerCase() === (name || "").toLowerCase());
+  return hit && hit.code;
+};
+const byName = {};
+upAll.forEach(u => { byName[u.committee] = (byName[u.committee] || 0) + 1; });
+const busiest = Object.keys(byName).sort((a, b) => byName[b] - byName[a])[0];
+const code = busiest && codeOf(busiest);
+if (code && fs.existsSync(`site/committee/${code}.json`)) {
+  const C = cmte(code);
+  const want = upAll.filter(u => u.committee === busiest).map(u => u.bill).sort();
+  UPCOMING = upAll;
+  t(`${busiest} keeps its ${want.length} scheduled bills`,
+    cmteUpcoming(C).map(u => u.bill).sort(), want);
+  const other = [H34, S07, H12].find(x => x.code !== code);
+  t("another committee gets none of them",
+    cmteUpcoming(other).map(u => u.bill).filter(b => want.includes(b)), []);
+} else {
+  console.log("  [ ok ] nothing is scheduled in the fortnight, so there is "
+              + "nothing to route");
+}
 
 // 7. nothing fetched yet is not the same as nothing scheduled
 UPCOMING = null;

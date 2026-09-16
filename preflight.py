@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.183
+# GRANITE_VERSION: 2026-09-04.184
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3838,7 +3838,15 @@ def _status_box_parity():
     summary was stale."""
     src = Path("build_pages.py").read_text(encoding="utf-8")
     py = src[src.find("static_state = \"\""):][:3200]
-    js = src[src.find("document.getElementById(\"state\").innerHTML"):][:2400]
+    js = src[src.find("else if(_state)_state.innerHTML="):][:2400]
+    # SINCE 16 SEPTEMBER THE SERVER'S COPY WINS. Both are still written -- the
+    # script's is what a page with no built box would get -- but the script
+    # draws only where the server drew nothing, because the two disagreed on
+    # screen when home.json came from the browser's cache: 39 hearings in the
+    # HTML, 4 in the script's box.
+    assert '_state.querySelector(".statebox")' in src, (
+        "HOME_JS no longer defers to the box build_pages.py rendered, so a "
+        "cached home.json can overwrite a fresh page")
     for what, needle_py, needle_js in (
             ("the last floor session", 'S["last_session"]', "S.last_session"),
             ("the hearings in the next two weeks", "hearings_next_14", "S.hearings_next_14"),
