@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.2
+# GRANITE_VERSION: 2026-09-13.3
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -166,6 +166,68 @@ def towns_page(site, base, towns, urls):
     return len(pages)
 
 
+def find_index(site, legs, towns):
+    """site/find.json: everything the header search can answer instantly.
+
+    Asked for on 15 September: one box that finds a legislator, a committee, a
+    town or a page, so that "Litchfield" offers the town and Rep. Melissa
+    Litchfield together. Bills are NOT in it -- 33,683 rows is a megabyte and a
+    half, and the bill search already exists -- so the box hands anything it
+    does not recognise to that search, which is one page load away.
+
+    Small on purpose: 406 members, the committees, every town and ward, and the
+    fixed pages. The box fetches it once, the first time somebody opens it.
+
+    Each row is [kind, name, detail, address, extra search words]. A list rather
+    than an object per row because this file is fetched by a phone: the keys
+    would be a third of it.
+    """
+    rows = []
+    for m in legs:
+        where = m.get("district_label") or m.get("county") or ""
+        rows.append(["legislator", m.get("display_full") or m.get("name") or "",
+                     " · ".join(x for x in (
+                         "Senate" if m.get("chamber") == "S" else "House",
+                         where, m.get("party") or "") if x),
+                     S.canon(f"legislator/{m.get('slug')}.html"),
+                     " ".join(str(x) for x in (m.get("last"), m.get("first"),
+                                               m.get("county"), m.get("email"))
+                              if x)])
+    cm = site / "committees.json"
+    for c in (json.loads(cm.read_text(encoding="utf-8")) if cm.exists() else []):
+        if not c.get("code"):
+            continue
+        rows.append(["committee", c.get("name") or c["code"],
+                     ("Senate" if str(c.get("chamber", "")).upper().startswith("S")
+                      else "House") + " committee",
+                     S.canon(f"committee/{c['code']}.html"), c.get("chair") or ""])
+    pages = {p.stem for p in (site / "town").glob("*.html")}
+    for town, seats in sorted(towns.items()):
+        county = (seats[0].get("county") if seats else "") or ""
+        stem = re.sub(r"[^a-z0-9]+", "-", town.lower()).strip("-")
+        wards = sorted({s.get("ward") or "0" for s in seats},
+                       key=lambda w: int(w) if str(w).isdigit() else 0)
+        for w in wards:
+            slug = f"{stem}-ward-{w}" if w and w != "0" else stem
+            if slug not in pages:
+                continue
+            rows.append(["town", town if w in ("", "0") else f"{town}, Ward {w}",
+                         (county + " County" if county else "") or "New Hampshire",
+                         S.canon(f"town/{slug}.html"), county])
+    for name, path, what in (
+            ("Bill search", "bills.html", "Every bill since 1989"),
+            ("Legislators", "legislators.html", "The sitting roster, by town or name"),
+            ("Committees", "committees.html", "Every committee and what it did"),
+            ("How New Hampshire works", "learn.html", "The Learn pages"),
+            ("The data, as tables", "data.html", "Every table as CSV"),
+            ("The whole record, as lists", "directory.html", "Plain lists of every page"),
+            ("About this site", "about.html", "How it is made, and by whom")):
+        rows.append(["page", name, what, S.canon(path), ""])
+    (site / "find.json").write_text(json.dumps(rows, separators=(",", ":")),
+                                    encoding="utf-8")
+    return rows
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
@@ -185,6 +247,9 @@ def main():
     n_leg = legislators_page(site, base, legs, urls)
     towns = json.loads((site / "towns.json").read_text(encoding="utf-8"))
     n_town = towns_page(site, base, towns, urls)
+    found = find_index(site, legs, towns)
+    print(f"  find.json: {len(found):,} rows for the header search "
+          f"({(site / 'find.json').stat().st_size / 1024:.0f} KB)")
 
     hub = ['<h2>Bills, by term</h2><ul class="dirterms">']
     hub += [f'<li><a href="{S.canon("directory/bills-" + t + ".html")}">{t}</a> '

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.79
+// GRANITE_VERSION: 2026-09-07.80
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2492,6 +2492,9 @@ function syncCards(ids){
   // After the panes are shown, because a clamped box inside a hidden pane
   // measures zero and would never get its button.
   clampAnalysis();
+  // A tab clicked on the strip moves the picker beside it, which is the same
+  // state told twice: this runs on the cards whose selection just changed.
+  showSelectedTab($("#results"));
 }
 
 // A record page names a bill by number, term and title and nothing else. The
@@ -2527,6 +2530,30 @@ function termControl(){
     <select data-pf="term">${ts.map(x=>
       `<option value="${esc(x)}"${x===t?" selected":""}>${esc(x)}</option>`
     ).join("")}</select></label></div>`;
+}
+
+/* ONE TAB STRIP, AND ON A PHONE IT SCROLLS (16 September).
+
+   Seven sections -- Summary, Bill Text, Votes, Videos, Reports, Sponsors,
+   Documents -- wrapped onto three rows at 360px: 120 pixels of chrome above a
+   record somebody had already chosen. A phone-only picker was tried first and
+   taken out the same day: the person's steer is that the site should be one
+   set of styles rather than several systems stitched together, and a second
+   control for the same seven sections is exactly that. So the strip stays the
+   strip everywhere and the stylesheet lets it scroll below 720px.
+
+   What that costs is that the last tabs sit off the edge, which is why the
+   selected one is scrolled into view here -- after a render and after a click,
+   so the strip always shows where you are, with the next tab half in frame to
+   say there is more. */
+function showSelectedTab(scope){
+  (scope||document).querySelectorAll(".tabs").forEach(strip=>{
+    if(strip.scrollWidth<=strip.clientWidth+2)return;
+    const on=strip.querySelector('.tab[aria-selected="true"]');
+    if(!on)return;
+    const want=on.offsetLeft-(strip.clientWidth-on.offsetWidth)/2;
+    strip.scrollTo({left:Math.max(0,want),behavior:"auto"});
+  });
 }
 
 // One strip per member or committee page, so the ids are fixed: ptab_<i> for a
@@ -3097,6 +3124,7 @@ function renderPage(){
   el.innerHTML = PAGE.kind==="member" ? renderMember(PAGE.data)
                                       : renderCommittee(PAGE.data);
   syncCards([...openCards]);
+  showSelectedTab(el);
 }
 
 // The tabs, the cards and the filter selects on these two pages. Kept apart
@@ -3345,6 +3373,7 @@ function render(more){
     }
   }
   syncCards(rows.filter(b=>openCards.has(b.id)).map(b=>b.id));
+  showSelectedTab($("#results"));
   renderFacets();
   if(window.scrollY!==_y)window.scrollTo(0,_y);
 }
@@ -3661,6 +3690,7 @@ $("#q").addEventListener("input",e=>{
   query=e.target.value;
   render();
 });
+
 $("#q").addEventListener("keydown",e=>{
   if(e.key==="Enter"){e.preventDefault();submitSearch();}
 });

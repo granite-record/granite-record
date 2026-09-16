@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.70
+# GRANITE_VERSION: 2026-09-04.71
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -669,9 +669,15 @@ def calendar_html(H, out):
     html = ['<section class="cal"><h2>Coming up</h2>']
     for date, keys in days.items():
         label, rel = when(date)
-        html.append('<div class="calday"><h3 class="caldate">'
+        # THE DAY'S OWN DATE TRAVELS WITH IT. This block is written when the
+        # site is built and read for as long as the build stands: on
+        # 16 September the home page still called the 15th "today", with a
+        # meeting that had already happened at the top of Coming up. HOME_JS
+        # reads this attribute in the reader's own clock, drops the days that
+        # have passed and writes the relative word again.
+        html.append(f'<div class="calday" data-d="{esc(date)}"><h3 class="caldate">'
                     f'<span>{esc(label)}</span>'
-                    + (f'<span class="cdrel">{esc(rel)}</span>' if rel else "")
+                    f'<span class="cdrel">{esc(rel)}</span>'
                     + "</h3>")
         for key in keys:
             _d, time, cmte, what, venue = key
@@ -817,6 +823,9 @@ General Court. Not affiliated with the General Court.
 <p class="footdata">{FOOT_DATA}<span id="built"></span></p>
 </div></footer>{FOOT_JS}
 {themer("JS")}
+<!-- The header's search, on every page this file writes. Its own file rather
+     than app.js, which these pages do not load: 6 KB against 200. -->
+<script src="/find.js" defer></script>
 {script}</body></html>"""
 
 
@@ -1368,6 +1377,34 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // script to open. Leaving it alone means the calendar also works before this
   // file loads and with JavaScript off.
 
+  // COMING UP, IN THE READER'S OWN CLOCK. The calendar block is written when
+  // the site is built, and a build stands for as long as it stands: on the
+  // morning of 16 September the home page still headed the 15th "today", with
+  // a Legislative Administration session that had already met at the top of
+  // the list. Each day carries its own date, so this drops the days that have
+  // gone and says how far off the rest are now. Nothing else here is touched.
+  (function(){
+    const now=new Date(); now.setHours(0,0,0,0);
+    const days=[...document.querySelectorAll(".calday[data-d]")];
+    let left=0;
+    days.forEach(d=>{
+      const p=d.dataset.d.split("-").map(Number);
+      const off=Math.round((new Date(p[0],p[1]-1,p[2])-now)/86400000);
+      if(off<0){d.remove();return;}
+      left++;
+      const rel=d.querySelector(".cdrel");
+      if(rel)rel.textContent=off===0?"today":off===1?"tomorrow"
+        :off<14?`in ${off} days`:"";
+    });
+    const cal=document.querySelector(".cal");
+    if(cal&&days.length&&!left){
+      cal.innerHTML=`<h2>Coming up</h2><p class="note">No committee meetings are
+        scheduled in the next two weeks. The General Court sits from January to
+        June, and committees meet on bills from the autumn filing period
+        onwards.</p>`;
+    }
+  })();
+
   document.getElementById("recent").innerHTML=`<h2>Latest activity</h2>
     <table><tbody>${(H.recent||[]).map(r=>
       `<tr><td style="width:80px">${fd(r.date)}</td>
@@ -1479,7 +1516,7 @@ def main():
     # Copied as they are. Nothing is rewritten on the way through any more:
     # the version query these three used to gain is a header now, written
     # below.
-    for name in ("bills.html", "app.css", "app.js"):
+    for name in ("bills.html", "app.css", "app.js", "find.js"):
         src = Path(name)
         if not src.exists():
             continue

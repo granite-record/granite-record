@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.46 -->
+<!-- GRANITE_VERSION: 2026-09-05.47 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -115,6 +115,9 @@ this site as CSV, with a manifest naming each column.<span id="built"></span></p
     .toLocaleDateString("en-US",{year:"numeric",month:"long",day:"numeric"})+".";
 }).catch(function(){});</script>
 <script src="app.js"></script>
+<!-- The header's search: its own file, because the pages build_pages.py
+     writes load it and do not load app.js. -->
+<script src="/find.js" defer></script>
 <!-- THEMER:JS -->
 <script>
 /* The control, as the person set it out on 13 September. The page follows the
