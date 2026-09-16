@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.14
+# GRANITE_VERSION: 2026-09-08.15
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -177,6 +177,32 @@ def sources_block(sources):
             f'<ul class="reading">{items}</ul></section>')
 
 
+def rail(topics, here=None):
+    """The eleven pages, beside whichever one is open.
+
+    THE SECTION READS AS A BOOK OR AS ELEVEN DEAD ENDS. Each page ended with the
+    next one by name and nothing else, so a reader who wanted the third page
+    from the second had to go back to the hub; and since these pages line up on
+    the site's left edge (16 September) the right two thirds of a Learn page was
+    empty, which is the shape the person has said reads as broken. The rail
+    fills it with the one thing a reader of a civics section wants: where they
+    are among the rest. It is the same list the hub draws, in the same order.
+    """
+    items = "".join(
+        f'<li><a href="{E(S.canon("learn/" + t["slug"] + ".html"))}"'
+        + (' aria-current="page"' if t["slug"] == here else "")
+        + f'>{E(t["title"])}</a></li>' for t in topics)
+    # The count comes from the list, like every other number on these pages, and
+    # it is spelled the way the prose spells a small number.
+    words = ["no", "one", "two", "three", "four", "five", "six", "seven",
+             "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen",
+             "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"]
+    n = len(topics)
+    return ('<aside class="lrail" aria-label="The pages of this section">'
+            f'<h2>The {words[n] if n < len(words) else n} pages</h2>'
+            f'<ol>{items}</ol></aside>')
+
+
 def footer_nav(i, topics):
     """The next topic by name, and the way back to the hub.
 
@@ -281,8 +307,9 @@ def main():
                   skip_label="Skip to the topics",
                   sr_title="", nav_current="learn.html")
     page = page.replace('<div id="results"></div>',
-                        f'<div id="results"><div class="civics hubpage">'
-                        f'{hub(topics)}</div></div>', 1)
+                        f'<div id="results"><div class="lcols">'
+                        f'<div class="civics hubpage">{hub(topics)}</div>'
+                        f'{rail(topics)}</div></div>', 1)
     (site / "learn.html").write_text(page, encoding="utf-8")
 
     # ---- one page a topic ----------------------------------------------
@@ -313,8 +340,9 @@ def main():
                    skip_label="Skip to the page", sr_title="",
                    nav_current="learn.html")
         p = p.replace('<div id="results"></div>',
-                      f'<div id="results"><div class="civics">'
-                      f'{"".join(body)}</div></div>', 1)
+                      f'<div id="results"><div class="lcols">'
+                      f'<div class="civics">{"".join(body)}</div>'
+                      f'{rail(topics, t["slug"])}</div></div>', 1)
         if "[[" in p:
             raise SystemExit(f"learn/{t['slug']}.html would publish an unfilled figure: "
                              + p[p.index("[["):p.index("[[") + 40])

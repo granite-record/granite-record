@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.86 */
+/* GRANITE_VERSION: 2026-09-07.87 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -267,8 +267,13 @@ nav.top a:hover{background:var(--wash);color:var(--ink)}
 /* .navtabs a, not nav.top a: the brand is an anchor now and carries
    aria-current on the home page, and it should read as the site's name
    rather than as a filled tab. */
-.navtabs a[aria-current]{background:var(--pine-soft);color:var(--pine);
-font-weight:600;border-color:var(--pine)}
+/* WHERE YOU ARE IS AN UNDERLINE; A BORDER MEANS SOMETHING YOU CAN PRESS.
+   The current section used to be a filled, outlined chip -- the same object as
+   the theme button beside it, so the page you were on read as a control, and
+   the site had two ways of saying "you are here": this and the underline on
+   every tab strip. One way now, and it is the tab strip's. */
+.navtabs a[aria-current]{color:var(--ink);font-weight:600;
+box-shadow:inset 0 -2px 0 var(--pine)}
 /* ONE ROW NEEDS 635px: the brand at 163 with its mark, the strip at 331 with
    Legislators as the current one, the control at 57 with Light as its label,
    two 18px gaps and the 48px gutter -- measured in the browser, not added up
@@ -1575,7 +1580,39 @@ color:var(--ink-2);font-variant-numeric:tabular-nums}
   color:var(--ink-2);margin:0 0 12px;max-width:var(--measure)}
 .officials .srcs{margin-top:34px;border-top:1px solid var(--rule);
   padding-top:14px;font-size:13px;color:var(--ink-2);line-height:1.6}
-.civics{max-width:var(--measure);margin:0 auto;padding:6px 0 40px}
+/* ONE LEFT EDGE, 16 September. DESIGN.md has asked for this since it was
+   written and the Learn and data pages did not keep it: at 1440 a bill, a
+   member, a committee and the bill list all begin 154 pixels in, the Learn
+   pages began at 440 and the data page at 269, because this column was centred
+   inside a container every other page fills from the left. A reader moving
+   between them saw the page slide sideways. The measure stays -- prose is read
+   at a measure -- and it starts where everything else does. What that leaves
+   empty on the right of a Learn page is the next thing to answer, with the
+   contents rail the mockups show. */
+.civics{max-width:var(--measure);margin:0;padding:6px 0 40px}
+/* The reading column and the section's own contents, side by side. The rail
+   follows the page down, because its job is "where am I among the eleven" and
+   that question is asked halfway through a page as often as at the top. */
+.lcols{display:grid;grid-template-columns:minmax(0,var(--measure)) 1fr;
+gap:56px;align-items:start}
+.lrail{position:sticky;top:20px;font-size:14px;padding-top:14px;
+justify-self:end;width:236px}
+.lrail h2{font-size:12px;letter-spacing:.04em;text-transform:uppercase;
+color:var(--ink-2);margin:0 0 8px;padding-bottom:8px;
+border-bottom:1px solid var(--rule)}
+.lrail ol{list-style:none;margin:0;padding:0;counter-reset:lr}
+.lrail li{counter-increment:lr}
+.lrail a{display:block;padding:6px 0 6px 12px;color:var(--ink-2);
+text-decoration:none;line-height:1.4;border-left:2px solid transparent}
+.lrail a:hover{color:var(--ink);background:var(--wash)}
+.lrail a[aria-current]{color:var(--ink);font-weight:600;
+border-left-color:var(--pine)}
+@media (max-width:860px){
+  /* The rail goes under the page on a narrow screen, where a second column is
+     a third of the width and the reading column is the page. */
+  .lcols{grid-template-columns:1fr;gap:28px}
+  .lrail{position:static;border-top:1px solid var(--rule);padding-top:16px}
+}
 .civics h1{font-size:28px;line-height:1.2;margin:6px 0 10px}
 .civics h2{font-size:19px;margin:30px 0 8px}
 /* The record in numbers (learn_numbers.py): tables that scroll inside their
