@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.48 -->
+<!-- GRANITE_VERSION: 2026-09-05.49 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -70,7 +70,17 @@ if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
      aria-label="Search">&#8629;</button>
   </div>
 </div>
-<div class="qhint"><span id="count">Loading…</span>
+<div class="qhint"><!-- role=status AND aria-live: a screen reader was never told the result
+     set had changed. Typing a search, ticking a facet or switching term
+     redraws the list silently, so a reader who cannot see it had no way
+     to know whether anything happened. This span already carries the one
+     sentence worth hearing -- "31 of 2,234 bills in the 2025-2026 term",
+     or "loading 2023-2024" while a term arrives -- and it is deliberately
+     EMPTY until something narrows the list, so it announces when there is
+     news and stays quiet when there is not. aria-atomic because the whole
+     sentence is replaced at once and half of it read aloud would be
+     worse than none. -->
+<span id="count" role="status" aria-live="polite" aria-atomic="true">Loading…</span>
 <label for="sort" style="position:absolute;left:-9999px">Sort order</label>
 <select id="sort">
   <option value="best">Best match</option>
