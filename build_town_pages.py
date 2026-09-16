@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.11
+# GRANITE_VERSION: 2026-09-09.12
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -50,6 +50,22 @@ E = S.E
 def slug(town, ward):
     s = re.sub(r"[^a-z0-9]+", "-", town.lower()).strip("-")
     return f"{s}-ward-{ward}" if ward and ward != "0" else s
+
+
+def town_file(town, ward):
+    """Where this town-ward's page is written, as a path from the site root."""
+    return f"/town/{slug(town, ward)}.html"
+
+
+def town_path(town, ward):
+    """The address the host serves that file at, and the only form a link to
+    it may take.
+
+    ONE FUNCTION BECAUSE THERE WERE THREE PLACES. The canonical tag, the
+    sitemap entry and the ward picker each built this address themselves, and
+    the ward picker built it differently and wrongly -- see ward_picker().
+    """
+    return S.canon(town_file(town, ward))
 
 
 def where(town, ward, wards):
@@ -111,17 +127,50 @@ def tel(num):
 
 
 def weblink(url, label=None):
-    """An outward link labelled with where it goes.
+    """An outward link labelled with where it goes, or nothing.
 
     "official page" told a reader nothing about which page; the host does, and
     it is what they would read off the address bar anyway. The arrow is this
     site's mark for a link that leaves it.
+
+    A SCHEME IS ADDED AND A NON-ADDRESS IS REFUSED. The DoT directory does not
+    write addresses the way a browser reads them, and this function used to
+    pass every value through untouched into an href:
+
+      * 17 of its 234 rows are a bare host -- "www.concordnh.gov". With no
+        scheme that is a RELATIVE link, and bills.html carries <base href="/">,
+        so it left the site for /www.concordnh.gov. 40 dead links.
+      * 4 rows are prose -- "no website", "website was discontinued" -- which
+        became links to /no%20website. 8 dead links.
+      * 7 more are the directory's two columns interleaved a character at a
+        time by parse_officials.py: "httpsT:o//wwnw wIn.bfooscawennh.gov/" is
+        "https://www.boscawennh.gov/" with "To www Info" threaded through it.
+        A parser bug, not this file's to fix -- but not this file's to publish
+        as a link either.
+
+    So the host is checked before anything is written. No dot, a space, or an
+    "@" (town_clerks.json records an email address as the website for two
+    towns) and it is not an address this page can send a reader to, and the
+    caller draws nothing rather than a link to a 404.
     """
+    url = (url or "").strip()
     if not url:
+        return ""
+    # https:// and not http://: a guess, and the safe one -- every host here
+    # that does carry a scheme carries this one, and a server that only speaks
+    # http will redirect where the reverse would not.
+    if not re.match(r"^https?://", url, re.I):
+        url = "https://" + url
+    if not _is_address(re.sub(r"^https?://", "", url, flags=re.I).split("/")[0]):
         return ""
     host = re.sub(r"^https?://(?:www\.)?", "", url).rstrip("/").split("/")[0]
     return (f'<a href="{E(url)}" rel="noopener">{E(label or host)}'
             " &#8599;</a>")
+
+
+def _is_address(host):
+    """Whether a host is one a reader could be sent to. See weblink()."""
+    return bool(host) and "." in host and " " not in host and "@" not in host
 
 
 MONTHS = ("January", "February", "March", "April", "May", "June", "July",
@@ -171,6 +220,22 @@ def ward_picker(town, ward, wards):
     navigate and hands a screen reader options with no addresses, where these
     are plain links that work with the keyboard and with no JavaScript at
     all. The ward you are in is in the list and is not a link.
+
+    EVERY ONE OF THESE LINKS WAS DEAD, AND THE ADDRESS SAYS WHY. They were
+    written relative -- href="dover-ward-4.html" -- which is the address a
+    reader of /town/dover-ward-3.html would expect to work. It does not,
+    because the template these pages are built from is bills.html and
+    bills.html carries <base href="/">: a relative href on any page built by
+    shell.py resolves against the SITE ROOT, not the folder the page is in. So
+    the ward picker on all 73 ward pages sent its reader to
+    /dover-ward-4.html, which is not a file and never was, and the 320 pages
+    are all in /town/. 462 links: twelve towns have wards, and each of their
+    pages links the other wards of that town.
+
+    Root-relative and extension-less now, which is the form every other link
+    this file writes already uses (/legislator/<slug>) and the address the
+    host actually serves -- shell.canon is the same function the canonical tag
+    and the sitemap entry for this page go through, so the three agree.
     """
     if len(wards) < 2:
         return ""
@@ -184,7 +249,7 @@ def ward_picker(town, ward, wards):
             rows.append(f'<span class="wpthis" aria-current="page">{name}'
                         f'</span>')
         else:
-            rows.append(f'<a href="{E(slug(town, w))}.html">{name}</a>')
+            rows.append(f'<a href="{E(town_path(town, w))}">{name}</a>')
     return (f'<details class="wardpick"><summary><span class="wpnow">Ward '
             f'{E(str(ward))}</span><span class="wpcue">{len(wards)} wards in '
             f'{E(town)}</span><span class="chev">&#9656;</span></summary>'
@@ -211,8 +276,9 @@ def office_block(title, holder, fallback_url, note=""):
         if holder.get("email"):
             how.append(f'<a href="mailto:{E(holder["email"])}">'
                        f'{E(holder["email"])}</a>')
-        if url:
-            how.append(weblink(url))
+        official_site = weblink(url)
+        if official_site:
+            how.append(official_site)
         row = off_row(who, how)
     else:
         # NOT AN APOLOGY AND NOT AN EMPTY SPACE. The district is the useful
@@ -298,9 +364,18 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
         # on a bill and the filter panel on a phone -- the answer first, the
         # rest on request.
         by_ward = loc.get("polling_by_ward") or []
-        site_url = town_off.get("website") or loc.get("website") or ""
-        if site_url:
-            rows.append(off_row(weblink(site_url), [], "Town website"))
+        # THE FALLBACK IS ON USABILITY, NOT ON EMPTINESS. This read
+        # `town_officials or town_clerks`, so a town whose DoT row holds
+        # "no website" or one of the seven interleaved strings got that
+        # instead of the perfectly good address the clerks file had -- the
+        # first value was not empty, so the second was never reached. Eleven
+        # towns' addresses were on this disk and none of them was shown.
+        # Five towns now show no website at all, Portsmouth among them,
+        # because every value either file holds for them is mangled. That is
+        # a parser to mend, not a link to guess: see parse_officials.py.
+        vote_site = weblink(town_off.get("website")) or weblink(loc.get("website"))
+        if vote_site:
+            rows.append(off_row(vote_site, [], "Town website"))
         if loc.get("clerk"):
             how = []
             if loc.get("phone"):
@@ -418,8 +493,9 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
         if town_off.get("email"):
             how.append(f'<a href="mailto:{E(town_off["email"])}">'
                        f'{E(town_off["email"])}</a>')
-        if town_off.get("website"):
-            how.append(weblink(town_off["website"]))
+        offices_site = weblink(town_off.get("website"))
+        if offices_site:
+            how.append(offices_site)
         if town_off.get("mailing") or how:
             body.append('<ul class="offlist">'
                         + off_row(E(town_off.get("mailing") or town),
@@ -432,7 +508,7 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
     body.append('<p class="srcs">Source: NH General Court, Secretary of '
                 'State, DoT Municipal Directory</p>')
 
-    path = f"/town/{slug(town, ward)}.html"
+    path = town_file(town, ward)
     desc = (f"Who represents {label}: state representatives, state senator, "
             "executive councillor, US representative, US senators and the "
             "governor, with how to reach each of them.")
@@ -506,7 +582,7 @@ def main():
                          a.base, tmpl)
             (out / f"{slug(town, ward)}.html").write_text(page,
                                                           encoding="utf-8")
-            urls.append(a.base + S.canon(f"/town/{slug(town, ward)}.html"))
+            urls.append(a.base + town_path(town, ward))
             n += 1
 
     # Silence is not success.
