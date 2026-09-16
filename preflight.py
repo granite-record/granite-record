@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.189
+# GRANITE_VERSION: 2026-09-04.190
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -7702,12 +7702,28 @@ def _nightly_reports_loud(NI):
         n = _nightly_night(log)
         assert code == 0 and "running build" in n["why"] and not n["installed"], \
             f"the reader does not recognise the DEFERRED: a build-running night writes: {n}"
-        assert not n["reports_ran"] and not markers, "a deferred night ran or failed the report step"
-        # A failed pull, then a night deferred to a build: the failure still stands.
+        # A DEFERRED NIGHT STILL PULLS THE REPORTS, and this assertion used to
+        # require the opposite. A reader's report sits in the D1 database until
+        # something fetches it, and compile_reports.py reads it with wrangler --
+        # a build rewriting site/ is a reason to skip the fetch and the rebuild
+        # and no reason to leave a reader's words unread. The old expectation
+        # cost two days: the nightly deferred on 15 and 16 September, exited 0
+        # both times, and a report filed on the 14th was still sitting in the
+        # database when the person asked whether reports were arriving.
+        assert n["reports_ran"], "a deferred night skipped the report pull"
+        assert not markers, "a deferred night failed the report step"
+        # A failed pull, then a night deferred to a build. The old scenario asked
+        # whether a night that SKIPPED the report step hid the failure before it;
+        # no night skips it any more, so that question cannot arise. What must
+        # still hold is the same property one step along: a deferred night whose
+        # own pull fails is exactly as loud as any other night's.
         (Path("logs") / "nightly-2000-01-01.log").write_text(failed_log, encoding="utf-8")
-        problems = _nightly_log_findings(Path("logs"), datetime.now())[0]
-        assert problems and "nightly-2000-01-01.log" in problems[-1], \
-            "a night that ran no reports step hid the failed pull before it"
+        code, log, markers = night(deferred=True, compile_rc=1)
+        assert code == 0, f"a deferred night with a failed pull exited {code}"
+        assert NIGHTLY_REPORTS_FAILED.search(log), \
+            "a deferred night whose report pull failed wrote no REPORTS FAILED: line"
+        assert markers, \
+            "a deferred night whose report pull failed left no marker for the triage session"
     finally:
         os.chdir(here)
         NI.run, NI.gc_quiet, NI.build_running, NI.LOG, sys.argv = saved

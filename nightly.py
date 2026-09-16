@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.12
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -272,15 +272,32 @@ def main():
     day = f"{started:%Y-%m-%d}"
     site = Path(a.site)
     code = 1
-    reports = True        # off only when a build is rewriting site/ under us
+    reports = True        # the reports are pulled on every run, including a
+                          # deferred one: see the build_running branch below
     say("=" * 74)
     say(f"Granite Record nightly  {started:%Y-%m-%d %H:%M}")
     say("=" * 74)
     try:
         if build_running():
-            say("\nDEFERRED: a build is running (.build.lock is fresh). Nothing done, "
-                "and no reports: they read the pages that build is rewriting.")
-            reports = False
+            # THE REPORTS ARE STILL PULLED, and the line above used to say the
+            # opposite. A reader's report sits in the D1 database until
+            # something fetches it; compile_reports.py reads it with wrangler
+            # and touches the built site only to list which member pages exist,
+            # for grouping. So a build running here is a reason to skip the
+            # fetch and the rebuild, and no reason at all to leave a reader's
+            # words in a database nobody has read.
+            #
+            # It cost two days. The nightly deferred on 15 and 16 September,
+            # wrote a 434-byte log and exited 0 both times, and a report filed
+            # on the evening of the 14th -- Senate Finance listing members from
+            # an older session -- was still unpulled when the person asked on
+            # the 16th whether reports were arriving. An exit 0 and a short log
+            # nobody reads is exactly what CLAUDE.md means by "silence is not
+            # success".
+            say("\nDEFERRED: a build is running (.build.lock is fresh). Nothing "
+                "fetched and nothing rebuilt. The reader reports are still "
+                "pulled below: they come from the database, not from the pages "
+                "the build is rewriting.")
             code = 0
             return 0
 
