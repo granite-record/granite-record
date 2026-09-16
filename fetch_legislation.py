@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.16
+# GRANITE_VERSION: 2026-09-10.17
 """
 The bill itself, from an address that can simply be constructed.
 
@@ -160,8 +160,22 @@ TEXT = ("https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
 # WHICH LEAVES NOTHING. Every bill of every term from 1989 to 2026 now has an
 # address: 27,171 by the static path and 6,512 by the application.
 STATIC_404 = {2016, 2022, 2023, 2024, 2025, 2026}
-ID_AS_STORED = {2016, 2022, 2023, 2024, 2025, 2026}
+ID_AS_STORED = {2022, 2023, 2024, 2025, 2026}
 ID_PLUS_YEAR = set()
+# 2016 IS THE OTHER WAY ROUND, and the table above said "used as stored,
+# confirmed in a browser" until 16 September, when bills-08 stopped itself
+# after three 56-byte answers in a row -- billText saying nothing rather than
+# 404ing. What data/bills.json stores for 2016 is the LSR with the year already
+# on it (CACR 2 is 882016), which is the same form that was wrong for 2023-2024
+# and for the same reason: the search results link a versioned id. The person
+# opened both in a browser that day:
+#
+#     id=882016&sy=2016   56 bytes, no bill
+#     id=88&sy=2016       serves 2016 CACR 2
+#
+# So the year comes off. fetch()'s LSR check is what would catch it if a
+# stripped id ever named another bill.
+ID_MINUS_YEAR = {2016}
 
 # The terms this site already has the text of, from the database and
 # bill_text/. A run asks for the archive, not for them.
@@ -238,6 +252,12 @@ def text_id(rec, year):
         return m.group(1)
     if year in ID_PLUS_YEAR:
         return f"{m.group(1)}{year}"
+    if year in ID_MINUS_YEAR:
+        # The stored id ends in the session year; without it, it is the LSR the
+        # address takes. An id that does not end in the year is left alone
+        # rather than trimmed to something shorter that names another bill.
+        s = m.group(1)
+        return s[:-4] if s.endswith(str(year)) and len(s) > 4 else s
     return None
 
 
