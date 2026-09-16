@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.16
+# GRANITE_VERSION: 2026-09-08.17
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -192,9 +192,20 @@ def fill(text, figures):
 def sources_block(sources):
     if not sources:
         return ""
-    items = "".join(
-        f'<li><a href="{E(u)}" target="_blank" rel="noopener">{E(label)}'
-        f'</a> &#8599;</li>' for label, u in sources)
+    # A SOURCE ON THIS SITE IS NOT AN OUTWARD LINK. Every entry here used to be
+    # somebody else's page, so every one got target="_blank" and the arrow this
+    # site uses to mean "this leaves the record". One of them is now our own
+    # directory -- the General Court's address lookup answers 404 and the town
+    # pages already hold what it gave -- and sending a reader to our own page in
+    # a new tab, marked as though it were elsewhere, tells them something untrue
+    # about where they are going.
+    def one(label, u):
+        away = u.startswith("http")
+        mark = ' target="_blank" rel="noopener"' if away else ""
+        arrow = " &#8599;" if away else ""
+        return f'<li><a href="{E(u)}"{mark}>{E(label)}</a>{arrow}</li>'
+
+    items = "".join(one(label, u) for label, u in sources)
     return (f'<section class="srcs"><h2>Where this comes from</h2>'
             f'<ul class="reading">{items}</ul></section>')
 

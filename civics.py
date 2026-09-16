@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.13
+# GRANITE_VERSION: 2026-09-08.14
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -812,13 +812,23 @@ GC = "https://gc.nh.gov"
 RSA = GC + "/rsa/html"
 NH = "https://www.nh.gov"
 
+# NOT on gc.nh.gov. The address this pointed at answers 404, and the state
+# publishes the constitution under nh.gov rather than the General Court.
 SRC_CONSTITUTION = ("The New Hampshire Constitution",
-                    GC + "/constitution/constitution.html")
-SRC_HOUSE_RULES = ("House Rules", GC + "/house/aboutthehouse/houserules.aspx")
-SRC_SENATE_RULES = ("Senate Rules", GC + "/senate/aboutthesenate/senaterules.aspx")
+                    "https://www.nh.gov/glance/state-constitution")
+# Both chambers publish their rules as a PDF now; the .aspx pages both of
+# these named answer 404, which is how a source link rots quietly.
+SRC_HOUSE_RULES = ("House Rules", GC + "/house/aboutthehouse/houseRules.pdf")
+SRC_SENATE_RULES = ("Senate Rules", GC + "/senate/about_senate/senate_rules.pdf")
 SRC_RSA = ("New Hampshire Revised Statutes Annotated", RSA)
-SRC_FIND_MEMBER = ("Find your legislators, by address",
-                   GC + "/house/members/wml.aspx")
+# THIS SITE, not the General Court. Their address-lookup page answers 404,
+# and the record already holds what it was there to give: a town page
+# names that town's House and Senate districts, its Executive Councillor
+# and its member of Congress, and the directory lists every town. A link
+# to our own pages cannot rot without us noticing, because preflight
+# resolves every internal link the builders write.
+SRC_FIND_MEMBER = ("Find your legislators, by town",
+                   "/directory")
 SRC_TESTIFY = ("House online testimony sign-in",
                GC + "/house/committees/remotetestimony/")
 SRC_SCHEDULE = ("House meeting schedule", GC + "/house/schedule/dailyschedule.aspx")
