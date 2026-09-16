@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.87 */
+/* GRANITE_VERSION: 2026-09-07.88 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1989,3 +1989,403 @@ table.cov{border-collapse:collapse;font-size:13px;width:100%;min-width:420px}
 
 /* Who moved it, under a voice vote's heading rather than inside it. */
 .rcby{font-size:14px;color:var(--ink-2);margin:5px 0 0}
+
+/* PAGES:START ---------------------------------------------------------
+   THE PAGES build_pages.py WRITES -- the home page, the roster, About,
+   404 and the town pages -- used to have a stylesheet of their own, and
+   two stylesheets is how a site grows two dialects: 216 font sizes here
+   and 62 there, a rule fixed in one and not the other, the same
+   component drawn twice. It is one file now. build_pages.py reads this
+   region, the palette and the SHARED region above it, and writes
+   style.css out of the three -- so this is the only copy, and editing
+   it changes both kinds of page.
+
+   Everything here is scoped to body.pg, which those pages carry and the
+   record pages do not: app.css is loaded by every bill, member and
+   committee page, and an unscoped h1 or p in this block would restyle
+   all 33,683 of them.
+   ------------------------------------------------------------------ */
+
+:where(body.pg) 
+
+*{box-sizing:border-box}html, body:where(.pg){margin:0}
+body:where(.pg){font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:16px;
+line-height:1.55;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1;
+
+min-height:100dvh;display:flex;flex-direction:column/* 404 and About both run out of content well above the fold, and the
+   footer's white band was being drawn wherever the text stopped -- a
+   stripe across the middle of the page with the page's own grey below
+   it. The footer takes the slack (margin-top:auto). width:100% because
+   .wrap centres itself with an auto margin, and an auto margin in the
+   cross axis cancels a flex item's stretch. */}
+body:where(.pg) > *{flex-shrink:0;width:100%}
+:where(body.pg) :focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+:where(body.pg) a{color:var(--pine)}:where(body.pg) button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
+/* THE NAV IS NOT HERE ANY MORE. It is one component in app.css's SHARED
+   region, which arrives above through the slot at the top of this string --
+   five rules and two media queries that used to be kept by hand in both
+   files. The palette taught this lesson; the nav was next in line to learn
+   it. (Naming that slot in this comment is how the first draft of it shipped
+   the whole shared region twice: the substitution does not know it is inside
+   a comment, and a CSS comment does not nest.) *//* ONE LEFT EDGE. The nav is a 1180px column and this is an 820px one, both
+   centred, so on the home page the brand sat at 130px and the heading under
+   it at 310px -- and the footer, centred at its own width, started at a
+   third place again. 820px is right for these pages and is kept; what was
+   wrong was centring it under a wider nav. It is aligned to the nav's own
+   gutter instead: 590px is half of 1180, and max() collapses the offset once
+   the window is narrower than the nav's column. legislators.html passes
+   wide=True and is 1180px, so it already shared the nav's edge. */:where(body.pg) .wrap{max-width:820px;margin:0 auto 0 max(0px,calc(50% - 590px));
+padding:26px 24px 80px}
+:where(body.pg) .wide{max-width:1180px}
+:where(body.pg) h1{font-size:24px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
+:where(body.pg) h2{font-size:16px;font-weight:600;margin:32px 0 10px}
+:where(body.pg) h3{font-size:14px;font-weight:600;margin:22px 0 8px}
+:where(body.pg) p{margin:0 0 12px}
+/* 34em is 68 characters at the body size. Without it the lead ran
+   to 148 and the footer to 182 on a 1440px screen. */:where(body.pg) .lead{font-family:var(--serif);font-size:19px;line-height:1.65;
+color:var(--ink);max-width:28em}
+:where(body.pg) .note, :where(body.pg) .statemeta, :where(body.pg) .corrections, :where(body.pg) .wrap>p:not(.lead), :where(body.pg) .wrap li{max-width:34em}
+:where(body.pg) b, :where(body.pg) strong{font-weight:600}
+:where(body.pg) .reading{font-family:var(--serif);font-size:16px;line-height:1.68}
+:where(body.pg) .reading li{margin-bottom:9px}
+:where(body.pg) .note{font-size:14px;color:var(--ink-2);background:var(--surface);border-left:3px solid var(--rule-2);
+padding:11px 14px;margin:0 0 14px;line-height:1.6}
+:where(body.pg) input[type=search], :where(body.pg) input[type=text]{width:100%;height:42px;padding:0 14px;font:inherit;font-size:16px;
+border:1px solid var(--rule-2);border-radius:var(--r-out);background:var(--surface)}
+:where(body.pg) input:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft)}
+:where(body.pg) table{width:100%;border-collapse:collapse;font-size:14px}
+:where(body.pg) th{text-align:left;font-size:12px;font-weight:600;color:var(--ink-2);padding:0 0 7px;border-bottom:1px solid var(--rule)}
+:where(body.pg) td{padding:9px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+/* THE SAME CARD app.css draws. It was a --rule border at 9px here
+   and a --rule-2 border at 6px there: one name, two objects, and
+   the edge at 1.19:1 against the page instead of 1.66:1. */:where(body.pg) .card{background:var(--surface);border:1px solid var(--rule-2);
+border-radius:var(--r-out);padding:15px 18px;margin-bottom:14px}
+:where(body.pg) .chip{font-size:12px;padding:3px 9px;border-radius:var(--r-pill);background:var(--wash);color:var(--ink-2);
+display:inline-block;margin:0 5px 5px 0}
+:where(body.pg) .p-R{background:var(--rep-soft);color:var(--rep)}:where(body.pg) .p-D{background:var(--dem-soft);color:var(--dem)}
+:where(body.pg) .p-I{background:var(--ind-soft);color:var(--ind)}
+:where(body.pg) .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:2px 20px}
+:where(body.pg) .mem{padding:4px 0;font-size:14px}
+/* The district beside a name in the roster. It was an inline style on all
+   406 rows. */:where(body.pg) .mdist{color:var(--ink-2);font-size:12px}
+:where(body.pg) .count{font-size:14px;color:var(--ink-2);margin:10px 0}
+:where(body.pg) .hit{display:block;width:100%;text-align:left;padding:12px 2px;border-bottom:1px solid var(--rule);cursor:pointer}
+/* Flex, for the reason .statgrid is: in a 482px column auto-fit makes two
+   columns and the third card took half of row two, floating beside nothing.
+   A flex item grows into the row it lands in. */:where(body.pg) .entry{display:flex;flex-wrap:wrap;gap:12px;margin:20px 0 30px}
+:where(body.pg) .entry > a{flex:1 1 210px;min-width:0}
+:where(body.pg) .entry a{display:block;background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-out);
+padding:15px 17px;text-decoration:none;color:inherit}
+:where(body.pg) .entry a:hover{border-color:var(--pine)}
+:where(body.pg) .entry b{display:block;font-size:16px;margin-bottom:3px;color:var(--pine)}
+:where(body.pg) .entry span{font-size:14px;color:var(--ink-2)}
+/* FLEX, NOT GRID, AND THE FLOOR IS MEASURED. Two faults, one cause: the
+   row was auto-fit with a 120px floor, and "2,303,047" is 132px of 24px
+   type. In a 143px cell with 32px of padding it did not fit, and because
+   this box clips (overflow:hidden, which is what keeps the corners round)
+   the last stat on a 768px screen read "2,303,0". 164px is the number plus
+   its padding, measured in the browser.
+   The second fault is what grid does with a wrapped row: five cells in a
+   four-column grid leave one cell of content and three cells of bare
+   --rule background, which reads as a hole in the box rather than as a
+   row. Flex items grow into the space instead, so the last row is always
+   full whatever the width. */:where(body.pg) .statgrid{display:flex;flex-wrap:wrap;gap:1px;
+background:var(--rule);border:1px solid var(--rule);border-radius:var(--r-out);overflow:hidden;margin:12px 0 30px}
+:where(body.pg) .stat{background:var(--surface);padding:14px 16px;flex:1 1 164px;min-width:0}
+:where(body.pg) .stat b{display:block;font-size:24px;font-weight:600}
+:where(body.pg) .stat span{font-size:14px;color:var(--ink-2)}
+:where(body.pg) .searchbig{display:flex;gap:8px;margin:18px 0 4px}
+:where(body.pg) .searchbig input{flex:1}
+:where(body.pg) .searchbig button{background:var(--pine);color:var(--on-pine);border-radius:var(--r-out);padding:0 20px;font-size:14px}
+:where(body.pg) .fresh{font-size:14px;color:var(--ink-2);margin:0 0 14px;display:flex;
+align-items:center;gap:7px}
+:where(body.pg) .fresh:empty{display:none}
+:where(body.pg) .fresh .fdot{width:8px;height:8px;border-radius:50%;background:var(--pine);flex:0 0 auto}
+:where(body.pg) .fresh.stale{color:var(--st-veto)}
+:where(body.pg) .fresh.stale .fdot{background:var(--st-veto)}
+/* THE BOX IS THE MEASURE. This is the most prominent block on the home page
+   -- whether the House is sitting, and what it did last -- and it was a
+   772px tinted panel with its paragraphs capped at 476px inside it: 296px
+   of empty box to the right of every line, which is the "narrow measure in
+   a wide box" the top of app.css is about. The cap moves to the box, which
+   is the thing with an edge, and its paragraphs fill it.
+   548px, not --measure's 560px, because the text inside is 14px: 548 less
+   36px of padding leaves 512px, which is 78 characters of Public Sans at
+   that size and so still under the 80 the design brief sets as a floor.
+   At 560px it would be 85. */:where(body.pg) .statebox{border:1px solid var(--rule);border-left:4px solid var(--ink-2);border-radius:var(--r-out);
+padding:15px 18px;margin:0 0 24px;background:var(--surface);max-width:548px}
+:where(body.pg) .statebox.live{border-left-color:var(--pine);background:var(--pine-soft)}
+:where(body.pg) .statebox.wait{border-left-color:var(--wait);background:var(--wait-bg)}
+:where(body.pg) .statebox.off{border-left-color:var(--ink-2)}
+:where(body.pg) .stateline{display:flex;align-items:center;gap:9px;font-size:16px;flex-wrap:wrap}
+:where(body.pg) .stateline .dot{width:9px;height:9px;border-radius:50%;background:var(--ink-2);flex:0 0 auto}
+:where(body.pg) .statebox.live .dot{background:var(--pine)}
+:where(body.pg) .statebox.wait .dot{background:var(--wait)}
+:where(body.pg) .statemeta{font-size:14px;color:var(--ink-2);font-weight:400}
+:where(body.pg) .statehead{font-size:16px;margin:8px 0 0}
+/* No cap of its own any more: .statebox carries it, so the panel and the
+   sentence end in the same place. */:where(body.pg) .statenote{font-size:14px;color:var(--ink-2);margin:8px 0 0;line-height:1.6}
+:where(body.pg) .statebox p:last-child{margin-bottom:0}
+:where(body.pg) .twoup{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+:where(body.pg) details.vac{margin-top:10px}
+:where(body.pg) details.vac summary{cursor:pointer;font-size:14px;color:var(--pine)}
+:where(body.pg) .comp{margin:0 0 20px}
+:where(body.pg) .compline{display:flex;align-items:baseline;gap:10px;font-size:16px;margin-bottom:7px}
+:where(body.pg) .pbar2{display:flex;height:16px;border-radius:var(--r-in);overflow:hidden;background:var(--wash)}
+:where(body.pg) .pseg{display:block;height:100%}
+/* A bar SEGMENT, not a chip. These were .p-R too -- the same class
+   name in the same file for a tinted chip and a solid block. */:where(body.pg) .seg-R{background:var(--rep)}:where(body.pg) .seg-D{background:var(--dem)}
+:where(body.pg) .seg-I{background:var(--ind)}:where(body.pg) .seg-L{background:var(--ind)}
+:where(body.pg) .seg-V{background:var(--rule-2)}
+:where(body.pg) .plegend{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:14px;color:var(--ink-2)}
+:where(body.pg) .pdot{display:inline-block;width:9px;height:9px;border-radius:var(--r-in);margin-right:5px}
+:where(body.pg) .compbox{margin:0 0 16px}
+:where(body.pg) .bar{display:flex;height:22px;border-radius:var(--r-in);overflow:hidden;margin:9px 0 8px;
+border:1px solid var(--rule)}
+:where(body.pg) .bar span{display:block}
+:where(body.pg) .legendrow{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--ink-2)}
+:where(body.pg) .legendrow i{display:inline-block;width:10px;height:10px;border-radius:var(--r-in);
+margin-right:5px;vertical-align:-1px}
+:where(body.pg) .legendrow i.vac{background:repeating-linear-gradient(45deg,var(--rule-2),
+var(--rule-2) 3px,var(--surface) 3px,var(--surface) 6px);border:1px solid var(--rule-2)}
+:where(body.pg) .player{margin-top:12px;border:1px solid var(--rule);border-radius:var(--r-out);overflow:hidden;background:#000}
+:where(body.pg) .player iframe{width:100%;aspect-ratio:16/9;border:0;display:block}
+:where(body.pg) .pstub{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;gap:10px;
+cursor:pointer;background:#14181A;color:#C8CFD1;font-size:14px}
+:where(body.pg) .pstub:hover{background:#1D2225}
+/* ---- ONE WAY IN, AT THE TOP ------------------------------------------
+   This page had two boxes side by side -- by town, by name -- which read as
+   two procedures to choose between before reaching a single legislator. One
+   field searches both: 406 sitting members and the 320 town-and-ward pages,
+   and every match is a link to the page that answers it.
+
+   The matches appear under the field once two letters are in, which is how
+   the prime sponsor filter on the bill search behaves and is what was asked
+   for here. Below two letters it says what it will match rather than
+   listing 726 things. */:where(body.pg) .lfind{margin:18px 0 26px}
+:where(body.pg) .lfind input[type=search]{font-size:18px;height:52px}
+:where(body.pg) .lfind .count{margin:8px 2px 0}
+/* A WINDOW ON THE LIST, NOT THE WHOLE LIST. Every town is in here so that
+   somebody who is not sure how their town is spelled -- or lives in one of
+   the unincorporated places with a name like "Atk. & Gil. Academy Grant" --
+   can scroll to it rather than having to type it. 260px of window, because
+   340 was a third of a phone screen spent on a list nobody reads in order. */:where(body.pg) .lmatch{margin:10px 0 0;max-height:260px;overflow-y:auto;overflow-x:hidden;
+border:1px solid var(--rule);border-radius:var(--r-out);
+background:var(--surface)}
+:where(body.pg) .lmatch:empty{display:none}
+:where(body.pg) .lmrow{display:flex;width:100%;align-items:baseline;gap:10px;
+padding:9px 13px;text-align:left;text-decoration:none;color:inherit;
+border-bottom:1px solid var(--rule);min-height:44px;font-size:14px}
+:where(body.pg) .lmrow:last-child{border-bottom:0}
+:where(body.pg) .lmrow:hover{background:var(--paper)}
+:where(body.pg) .lmrow.sel{background:var(--pine-soft);font-weight:600}
+:where(body.pg) .lmrow b{font-weight:600;min-width:0}
+:where(body.pg) .lmrow .lmwhat{margin-left:auto;font-size:12px;letter-spacing:.04em;
+text-transform:uppercase;color:var(--ink-2);flex:0 0 auto}
+:where(body.pg) .lmrow .lmwhere{font-size:14px;color:var(--ink-2);min-width:0}
+:where(body.pg) .lmhead{font-size:12px;font-weight:600;letter-spacing:.05em;
+text-transform:uppercase;color:var(--ink-2);padding:9px 13px 5px;
+background:var(--paper);border-bottom:1px solid var(--rule)}
+:where(body.pg) .lmnone{font-size:14px;color:var(--ink-2);padding:11px 13px}
+/* ---- THE ROSTER, FOLDED BY COUNTY -----------------------------------
+   406 members in ten counties is a page nobody reads in order, and the
+   counties were ten headings with everything under all of them open. Each
+   one is a disclosure now, shut until asked. A query opens the ones it
+   matched, because a search that returns a list of closed boxes has not
+   answered anything. */:where(body.pg) .cgrp{border-bottom:1px solid var(--rule)}
+:where(body.pg) .cgrp > summary{display:flex;align-items:center;gap:9px;padding:11px 2px;
+font-size:15px;font-weight:600;cursor:pointer;list-style:none;min-height:44px}
+:where(body.pg) .cgrp > summary::-webkit-details-marker{display:none}
+:where(body.pg) .cgrp > summary::marker{content:""}
+:where(body.pg) .cgrp > summary:hover{color:var(--pine)}
+:where(body.pg) .cgrp > summary:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
+:where(body.pg) .cgrp .ccount{font-weight:400;color:var(--ink-2);font-size:14px}
+:where(body.pg) .cgrp .caret{margin-left:auto;color:var(--ink-2);font-size:12px;
+transition:transform .12s}
+:where(body.pg) .cgrp[open] > summary .caret{transform:rotate(90deg)}
+:where(body.pg) .cgrp .grid{padding:0 0 12px}
+/* The composition charts sit after the roster now. A reader who types a name
+   should get the answer, not 359px of party bars between the box and the
+   result. */:where(body.pg) .comp-wrap{margin:38px 0 0;padding-top:20px;border-top:1px solid var(--rule-2)}
+:where(body.pg) .comp-wrap > h2{font-size:12px;font-weight:600;letter-spacing:.05em;
+text-transform:uppercase;color:var(--ink-2);margin:0 0 14px}
+:where(body.pg) .wct{margin-left:auto;font-size:12px;color:var(--ink-2)}
+:where(body.pg) .wards{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+:where(body.pg) .wbtn{border:1px solid var(--edge);border-radius:var(--r-out);padding:5px 12px;font-size:14px;
+background:var(--surface);cursor:pointer}
+:where(body.pg) .wbtn:hover{border-color:var(--pine)}
+:where(body.pg) .wbtn.sel{background:var(--pine);color:var(--on-pine);border-color:var(--pine)}
+/* The same chips, inside the finder now: they sit under the city whose wards
+   they are, so they take the list's own padding and its divider, and each one
+   is an anchor. A phone gets the 44px the rest of this site gives a target --
+   declared after the base rule, because same specificity means source order
+   decides and a media query above the rule it overrides does nothing. */:where(body.pg) .lmatch .wards{margin:0;padding:9px 13px;background:var(--paper);
+border-bottom:1px solid var(--rule)}
+:where(body.pg) .lmatch .wbtn{display:inline-flex;align-items:center;min-height:32px;
+text-decoration:none;color:inherit}
+:where(body.pg) .lmatch .wbtn:hover{background:var(--surface);color:var(--pine)}
+@media(max-width:720px){:where(body.pg) .lmatch .wbtn{min-height:44px;padding:5px 14px}}
+:where(body.pg) .hit:hover{background:var(--surface)}
+/* The same footer app.css draws, which it was not: this one was a 476px
+   column and that one a 560px column, both centred in the window, and the
+   text is identical on every page of the site. One width, one left edge --
+   the band keeps the nav's gutter and the column starts where the nav and
+   the page start. */:where(body.pg) footer{border-top:1px solid var(--rule);background:var(--surface);
+font-size:14px;color:var(--ink-2);margin-top:auto;
+padding:22px max(0px,calc(50% - 590px))}
+:where(body.pg) footer .in{max-width:var(--measure);margin:0;padding:0 24px}
+@media(max-width:640px){:where(body.pg) .wrap{padding:20px 18px 60px}}
+@media(max-width:720px){
+:where(body.pg) footer{padding-left:0;padding-right:0}
+:where(body.pg) footer .in{padding-left:14px;padding-right:14px}
+}
+/* ---- THE FRONT PAGE AS THREE COLUMNS ----------------------------------
+   Asked for in those words: the status banner top left, what is coming up
+   below it, a town and legislator search top right, and the two chambers'
+   most recent floor sessions stacked beneath that. The middle is the site
+   itself -- its name, its search box, its numbers and the three ways in.
+
+   Only above 1180px, which is where the 1180px column can hold 300 + 290 of
+   side and still leave the middle the widest of the three. Below it the page
+   is the single column it has always been, in document order.
+
+   .hmid IS FIRST IN THE MARKUP and sits in the middle column. A reader on a
+   screen reader should meet the page's own name and its search box before a
+   fortnight of hearings, and a reader on a keyboard should not have to pass
+   the calendar to reach the search. The cost is that the second tab stop is
+   the left column rather than where the eye starts; each column is a labelled
+   region and self-contained, so that reads as three panels in an order, which
+   is what they are. Burying the h1 under the calendar to make the tab order
+   left-to-right would be the worse trade.                                 */@media (min-width:1180px){
+:where(body.pg) .hcols{display:grid;gap:0 30px;align-items:start;
+    grid-template-columns:minmax(0,300px) minmax(0,1fr) minmax(0,290px);
+    grid-template-areas:"left mid right"}
+:where(body.pg) .hmid{grid-area:mid;min-width:0}
+:where(body.pg) .hleft{grid-area:left;min-width:0}
+:where(body.pg) .hright{grid-area:right;min-width:0}
+/* A column heading is a label at this width, not a 16px heading floating
+     over a 290px panel -- the same small caps the composition block, the
+     calendar's dates and the legislator finder already use. */:where(body.pg) .hside h2{font-size:12px;font-weight:600;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--ink-2);margin:0 0 9px}
+:where(body.pg) .hside > :first-child{margin-top:0}
+:where(body.pg) .hside .cal{margin-top:0}
+/* Stacked, not side by side. .twoup's own floor is minmax(280px,1fr),
+     which in a 290px column is one column anyway -- this says so rather
+     than relying on it, because the ask was explicit. */:where(body.pg) .hright .twoup{grid-template-columns:1fr}
+/* Three numbers across a 482px column rather than two, which needs one
+     step down the type scale: 20px puts "2,303,047" at 110px, and 134px of
+     basis carries it with its padding. The middle column is the widest of
+     the three but it is not the whole page any more. */:where(body.pg) .hmid .stat{flex-basis:134px;padding:13px 12px}
+:where(body.pg) .hmid .stat b{font-size:20px}
+:where(body.pg) .hmid h1{font-size:30px}
+/* The three columns are 1130, 790 and 680 tall, because a fortnight of
+     hearings is longer than a search box. A rule under them reads as "the
+     columns end here", which is better than leaving 340px of white looking
+     like something failed to load. */:where(body.pg) #recent{border-top:1px solid var(--rule);padding-top:6px}
+}
+/* THE FINDER ON THE RIGHT IS A FORM, not a script: method="get" on
+   legislators.html produces exactly the ?town= and ?q= those two boxes read,
+   so it works with JavaScript off, the browser remembers what was typed, and
+   the Enter key needs no handler. The type-ahead with all 259 towns stays on
+   the legislators page, where the data it needs is already being fetched. */:where(body.pg) .hfind{background:var(--surface);border:1px solid var(--rule-2);
+  border-radius:var(--r-out);padding:14px 12px;margin:0 0 22px}
+:where(body.pg) .hfind h2{margin:0 0 5px;font-size:12px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--ink-2)}
+:where(body.pg) .hfnote{font-size:14px;color:var(--ink-2);margin:0 0 11px}
+:where(body.pg) .hfrow{display:flex;gap:6px;margin:0 0 8px}
+:where(body.pg) .hfrow:last-child{margin-bottom:0}
+:where(body.pg) .hfrow input{flex:1 1 auto;min-width:0}
+/* One width for both, or the two inputs beside them end up different
+   lengths and the panel reads as two unrelated boxes. */:where(body.pg) .hfrow button{flex:0 0 auto;background:var(--wash);color:var(--ink);
+  border:1px solid var(--edge);border-radius:var(--r-in);padding:0 8px;
+  font-size:14px;min-height:42px;min-width:62px}
+:where(body.pg) .hfrow button:hover{border-color:var(--pine);color:var(--pine)}
+/* ---- narrow screens ---------------------------------------------------
+   Most people arrive from a search result on a phone. Three things break at
+   380px, and each is fixed by reflowing rather than by horizontal scrolling,
+   which on a civic site reads as "not meant for you".
+     1. The facet sidebar sits beside the results; it has to stack.
+     2. Timeline rows use a fixed date column that leaves no room for text.
+     3. Vote tables and member lists are wider than the screen.
+   Nothing is hidden at any width.                                        */@media (max-width: 720px){
+:where(body.pg) .wrap, :where(body.pg) .in{padding-left:14px;padding-right:14px}
+:where(body.pg) h1{font-size:24px;line-height:1.2}
+:where(body.pg) h2{font-size:19px}
+:where(body.pg) .shell{display:block}
+:where(body.pg) .facets{position:static;max-height:none;width:auto;margin:0 0 20px;
+          border-right:none;border-bottom:1px solid var(--rule);padding-bottom:14px}
+:where(body.pg) .fbody{max-height:210px}
+:where(body.pg) .tl li{flex-direction:column;gap:2px;padding:10px 0}
+:where(body.pg) .tl .d{flex:none;font-weight:600}
+:where(body.pg) .cite{white-space:normal}
+/* Not display:block. That stops a table being a table for several screen
+     readers -- rows and columns disappear -- in exchange for a horizontal
+     scrollbar nobody finds on a phone. Wrapping the cell text keeps the
+     semantics and keeps the whole table on screen. */:where(body.pg) table{width:100%}
+:where(body.pg) th, :where(body.pg) td{overflow-wrap:anywhere}
+:where(body.pg) .votes th, :where(body.pg) .votes td{padding:6px 8px;font-size:14px}
+:where(body.pg) .roll, :where(body.pg) .chosen{columns:1}
+:where(body.pg) .grid{grid-template-columns:1fr}
+:where(body.pg) .tabs{flex-wrap:wrap;gap:4px}
+:where(body.pg) .tabs button{font-size:14px;padding:6px 10px}
+:where(body.pg) .searchrow{flex-direction:column;align-items:stretch;gap:8px}
+:where(body.pg) .searchbig{flex-direction:column}
+:where(body.pg) .searchbig input{flex:none}
+:where(body.pg) .searchbig button{padding:11px 20px}
+:where(body.pg) #year{width:100%}
+:where(body.pg) .qhint{flex-wrap:wrap;gap:8px}
+:where(body.pg) .crow{flex-wrap:wrap;gap:4px}
+:where(body.pg) .cnum{font-size:16px}
+:where(body.pg) .pbar{flex-wrap:wrap;gap:6px}
+:where(body.pg) .pbar .jump{font-size:12px}
+:where(body.pg) .twoup{grid-template-columns:1fr}
+:where(body.pg) .entry{grid-template-columns:1fr}
+:where(body.pg) .stat{flex-basis:45%}
+:where(body.pg) .note, :where(body.pg) .cite, :where(body.pg) footer, :where(body.pg) .corrections{font-size:14px}
+:where(body.pg) button, :where(body.pg) .hit, :where(body.pg) summary{min-height:44px}
+}
+@media (max-width: 420px){
+:where(body.pg) .stat{flex-basis:100%}
+:where(body.pg) .plegend{gap:8px;font-size:12px}
+}
+/* Focus must be visible. Keyboard users navigate by it, and the default
+   outline is removed by most resets without anything put back. */:where(body.pg) :focus-visible{outline:2px solid var(--pine);outline-offset:2px;border-radius:var(--r-in)}
+:where(body.pg) .skip{position:absolute;left:-9999px;top:0;background:var(--pine);color:var(--on-pine);
+padding:10px 16px;z-index:99;border-radius:0 0 var(--r-out) 0}
+:where(body.pg) .skip:focus{left:0}
+/* Reduced motion: honour the system preference rather than overriding it. */@media (prefers-reduced-motion: reduce){
+*{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+:where(body.pg) .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* THE HOME PAGE'S HEADING IS THE LOCKUP, since 13 September: the profile and
+   "Granite Record" as drawn, from assets/lockup.png, which build_brand.py cuts
+   from the black-on-white original. It is a mask over the text colour, as the
+   nav's mark is, so one file is right in both themes -- the drawn lockups
+   carry a solid black or white ground, and either would sit on the paper as a
+   box. 1039x479 is the ink's own box. The words stay in the heading, hidden,
+   for a screen reader and a search engine, and come back wherever the mask
+   cannot be drawn: a browser without mask support, and forced colours, which
+   paints backgrounds away and would leave an empty heading.
+   Centred in its column, as the person asked the same evening; the lead and
+   the search under it keep their own alignment. */@supports ((-webkit-mask-image:url(x)) or (mask-image:url(x))){
+:where(body.pg) h1.lockup{width:min(100%,280px);aspect-ratio:1039/479;margin:2px auto 18px;
+    background:var(--ink);
+    -webkit-mask:url(/lockup.png) center/contain no-repeat;
+    mask:url(/lockup.png) center/contain no-repeat}
+:where(body.pg) h1.lockup span{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;
+    clip:rect(0 0 0 0);white-space:nowrap}
+}
+@media (forced-colors: active){
+:where(body.pg) h1.lockup{background:none;-webkit-mask:none;mask:none;width:auto;aspect-ratio:auto;
+    text-align:center}
+:where(body.pg) h1.lockup span{position:static;width:auto;height:auto;margin:0;overflow:visible;
+    clip:auto;white-space:normal}
+}
+:where(body.pg) .corrections{font-size:14px;color:var(--ink-2);margin-top:10px}
+:where(body.pg) .corrections a{color:var(--pine)}
+/* The line under the home page's logo, which the person set on 14 September:
+   a sub-heading in the sans face, above the lead's serif sentence. A paragraph,
+   not a heading, so the page's outline still goes h1 to h2. */:where(body.pg) .slogan{font-size:21px;font-weight:600;letter-spacing:-.01em;line-height:1.3;
+color:var(--ink);margin:0 0 8px}
+/* PAGES:END ------------------------------------------------------- */

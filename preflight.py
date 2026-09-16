@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.184
+# GRANITE_VERSION: 2026-09-04.185
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3827,6 +3827,51 @@ def _feed_promises():
                      ("civics.py", "Every bill, member and committee has an RSS feed")):
         assert stale not in Path(f).read_text(encoding="utf-8"), f"{f} still says: {stale}"
     return "ok", "home and Learn say only bills still moving have feeds"
+
+
+@check("frontend", "there is one stylesheet, and style.css is a view of it")
+def _one_stylesheet():
+    """Two stylesheets is how a site grows two dialects.
+
+    app.css dressed the record pages and build_pages.py kept 24 KB of its own
+    for the home page, the roster, About, 404 and the town pages, so a rule was
+    fixed in one of them at a time and each file went on looking internally
+    consistent while they drifted. On 16 September that block moved into
+    app.css between PAGES:START and PAGES:END, scoped to :where(body.pg) --
+    :where so that every rule keeps the weight it had, which a plain body.pg
+    did not: it made the block's `button` reset beat `.themer` and the theme
+    control came out as bare text.
+
+    style.css is now written from app.css's palette, its SHARED region and that
+    one, so this fails if build_pages.py grows rules of its own again.
+    """
+    src = Path("build_pages.py").read_text(encoding="utf-8")
+    app = Path("app.css").read_text(encoding="utf-8")
+    i = src.find('CSS = """')
+    assert i > 0, "build_pages.py has no CSS template"
+    block = src[i:src.index('"""', i + 9)]
+    assert "__PAGES__" in block, "the page rules are not read from app.css any more"
+    bare = re.sub(r"__[A-Z]+__", "", block[block.index('"""') + 3:])
+    assert "{" not in bare, (
+        "build_pages.py is keeping CSS of its own again: "
+        + " ".join(bare.split())[:120])
+    for mark in ("/* PAGES:START", "/* PAGES:END", "/* SHARED:START", "/* SHARED:END"):
+        assert mark in app, f"app.css has lost {mark}"
+    pages = app[app.index("/* PAGES:START"):app.index("/* PAGES:END")]
+    assert "﻿" not in app, (
+        "app.css carries a zero-width mark, which silently kills the rule after "
+        "it -- it cost the pages their box-sizing on 16 September")
+    stray = [s for s in re.findall(r"(?m)^([.#a-zA-Z][^{\n]*)\{", pages)
+             if ":where(body.pg)" not in s and not s.startswith(("body:where", "html", "*", "@"))]
+    assert not stray, (
+        f"{len(stray)} rules in the PAGES region are not scoped to the pages "
+        f"that read it, so every record page takes them: {stray[:3]}")
+    built = Path("site/style.css")
+    if built.exists():
+        text = built.read_text(encoding="utf-8")
+        assert "__PAGES__" not in text and ":where(body.pg)" in text, (
+            "site/style.css was not written from app.css's regions")
+    return "ok", f"{len(re.findall(r':where\(body.pg\)', pages)):,} page rules, one file"
 
 
 @check("frontend", "the status box without JavaScript says what the scripted one says")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.72
+# GRANITE_VERSION: 2026-09-04.73
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -83,422 +83,32 @@ def shared(src="app.css"):
     return text[a:b].rstrip()
 
 
+def pages_region(src="app.css"):
+    """The rules only the pages this file writes need, read out of app.css.
+
+    THE SECOND STYLESHEET IS GONE, 16 September. These pages had 24 KB of CSS
+    of their own here, against app.css's 119 KB for the record pages, and a
+    fix landed in one of them at a time: eleven font sizes in one file and
+    more in the other, a component drawn twice, DESIGN.md's rules kept by
+    hand in two places. The block lives in app.css between PAGES:START and
+    PAGES:END now, scoped to body.pg, and this reads it -- the same trick
+    palette() and shared() already used, applied to the rest of the file.
+
+    So style.css is a view of app.css: palette, the shared region, and the
+    page region, in that order. There is one stylesheet to edit.
+    """
+    text = Path(src).read_text(encoding="utf-8")
+    a = text.index("/* PAGES:START")
+    b = text.index("/* PAGES:END")
+    return text[a:b].rstrip()
+
+
 CSS = """
 __PALETTE__
 __SHARED__
-*{box-sizing:border-box}html,body{margin:0}
-body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:16px;
-line-height:1.55;-webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1;
-/* 404 and About both run out of content well above the fold, and the
-   footer's white band was being drawn wherever the text stopped -- a
-   stripe across the middle of the page with the page's own grey below
-   it. The footer takes the slack (margin-top:auto). width:100% because
-   .wrap centres itself with an auto margin, and an auto margin in the
-   cross axis cancels a flex item's stretch. */
-min-height:100dvh;display:flex;flex-direction:column}
-body > *{flex-shrink:0;width:100%}
-:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
-a{color:var(--pine)}button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer}
-/* THE NAV IS NOT HERE ANY MORE. It is one component in app.css's SHARED
-   region, which arrives above through the slot at the top of this string --
-   five rules and two media queries that used to be kept by hand in both
-   files. The palette taught this lesson; the nav was next in line to learn
-   it. (Naming that slot in this comment is how the first draft of it shipped
-   the whole shared region twice: the substitution does not know it is inside
-   a comment, and a CSS comment does not nest.) */
-/* ONE LEFT EDGE. The nav is a 1180px column and this is an 820px one, both
-   centred, so on the home page the brand sat at 130px and the heading under
-   it at 310px -- and the footer, centred at its own width, started at a
-   third place again. 820px is right for these pages and is kept; what was
-   wrong was centring it under a wider nav. It is aligned to the nav's own
-   gutter instead: 590px is half of 1180, and max() collapses the offset once
-   the window is narrower than the nav's column. legislators.html passes
-   wide=True and is 1180px, so it already shared the nav's edge. */
-.wrap{max-width:820px;margin:0 auto 0 max(0px,calc(50% - 590px));
-padding:26px 24px 80px}
-.wide{max-width:1180px}
-h1{font-size:24px;font-weight:600;letter-spacing:-.015em;margin:0 0 6px}
-h2{font-size:16px;font-weight:600;margin:32px 0 10px}
-h3{font-size:14px;font-weight:600;margin:22px 0 8px}
-p{margin:0 0 12px}
-/* 34em is 68 characters at the body size. Without it the lead ran
-   to 148 and the footer to 182 on a 1440px screen. */
-.lead{font-family:var(--serif);font-size:19px;line-height:1.65;
-color:var(--ink);max-width:28em}
-.note,.statemeta,.corrections,.wrap>p:not(.lead),.wrap li{max-width:34em}
-b,strong{font-weight:600}
-.reading{font-family:var(--serif);font-size:16px;line-height:1.68}
-.reading li{margin-bottom:9px}
-.note{font-size:14px;color:var(--ink-2);background:var(--surface);border-left:3px solid var(--rule-2);
-padding:11px 14px;margin:0 0 14px;line-height:1.6}
-input[type=search],input[type=text]{width:100%;height:42px;padding:0 14px;font:inherit;font-size:16px;
-border:1px solid var(--rule-2);border-radius:var(--r-out);background:var(--surface)}
-input:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 3px var(--pine-soft)}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th{text-align:left;font-size:12px;font-weight:600;color:var(--ink-2);padding:0 0 7px;border-bottom:1px solid var(--rule)}
-td{padding:9px 0;border-bottom:1px solid var(--rule);vertical-align:top}
-/* THE SAME CARD app.css draws. It was a --rule border at 9px here
-   and a --rule-2 border at 6px there: one name, two objects, and
-   the edge at 1.19:1 against the page instead of 1.66:1. */
-.card{background:var(--surface);border:1px solid var(--rule-2);
-border-radius:var(--r-out);padding:15px 18px;margin-bottom:14px}
-.chip{font-size:12px;padding:3px 9px;border-radius:var(--r-pill);background:var(--wash);color:var(--ink-2);
-display:inline-block;margin:0 5px 5px 0}
-.p-R{background:var(--rep-soft);color:var(--rep)}.p-D{background:var(--dem-soft);color:var(--dem)}
-.p-I{background:var(--ind-soft);color:var(--ind)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:2px 20px}
-.mem{padding:4px 0;font-size:14px}
-/* The district beside a name in the roster. It was an inline style on all
-   406 rows. */
-.mdist{color:var(--ink-2);font-size:12px}
-.count{font-size:14px;color:var(--ink-2);margin:10px 0}
-.hit{display:block;width:100%;text-align:left;padding:12px 2px;border-bottom:1px solid var(--rule);cursor:pointer}
-/* Flex, for the reason .statgrid is: in a 482px column auto-fit makes two
-   columns and the third card took half of row two, floating beside nothing.
-   A flex item grows into the row it lands in. */
-.entry{display:flex;flex-wrap:wrap;gap:12px;margin:20px 0 30px}
-.entry > a{flex:1 1 210px;min-width:0}
-.entry a{display:block;background:var(--surface);border:1px solid var(--rule);border-radius:var(--r-out);
-padding:15px 17px;text-decoration:none;color:inherit}
-.entry a:hover{border-color:var(--pine)}
-.entry b{display:block;font-size:16px;margin-bottom:3px;color:var(--pine)}
-.entry span{font-size:14px;color:var(--ink-2)}
-/* FLEX, NOT GRID, AND THE FLOOR IS MEASURED. Two faults, one cause: the
-   row was auto-fit with a 120px floor, and "2,303,047" is 132px of 24px
-   type. In a 143px cell with 32px of padding it did not fit, and because
-   this box clips (overflow:hidden, which is what keeps the corners round)
-   the last stat on a 768px screen read "2,303,0". 164px is the number plus
-   its padding, measured in the browser.
-   The second fault is what grid does with a wrapped row: five cells in a
-   four-column grid leave one cell of content and three cells of bare
-   --rule background, which reads as a hole in the box rather than as a
-   row. Flex items grow into the space instead, so the last row is always
-   full whatever the width. */
-.statgrid{display:flex;flex-wrap:wrap;gap:1px;
-background:var(--rule);border:1px solid var(--rule);border-radius:var(--r-out);overflow:hidden;margin:12px 0 30px}
-.stat{background:var(--surface);padding:14px 16px;flex:1 1 164px;min-width:0}
-.stat b{display:block;font-size:24px;font-weight:600}
-.stat span{font-size:14px;color:var(--ink-2)}
-.searchbig{display:flex;gap:8px;margin:18px 0 4px}
-.searchbig input{flex:1}
-.searchbig button{background:var(--pine);color:var(--on-pine);border-radius:var(--r-out);padding:0 20px;font-size:14px}
-.fresh{font-size:14px;color:var(--ink-2);margin:0 0 14px;display:flex;
-align-items:center;gap:7px}
-.fresh:empty{display:none}
-.fresh .fdot{width:8px;height:8px;border-radius:50%;background:var(--pine);flex:0 0 auto}
-.fresh.stale{color:var(--st-veto)}
-.fresh.stale .fdot{background:var(--st-veto)}
-/* THE BOX IS THE MEASURE. This is the most prominent block on the home page
-   -- whether the House is sitting, and what it did last -- and it was a
-   772px tinted panel with its paragraphs capped at 476px inside it: 296px
-   of empty box to the right of every line, which is the "narrow measure in
-   a wide box" the top of app.css is about. The cap moves to the box, which
-   is the thing with an edge, and its paragraphs fill it.
-   548px, not --measure's 560px, because the text inside is 14px: 548 less
-   36px of padding leaves 512px, which is 78 characters of Public Sans at
-   that size and so still under the 80 the design brief sets as a floor.
-   At 560px it would be 85. */
-.statebox{border:1px solid var(--rule);border-left:4px solid var(--ink-2);border-radius:var(--r-out);
-padding:15px 18px;margin:0 0 24px;background:var(--surface);max-width:548px}
-.statebox.live{border-left-color:var(--pine);background:var(--pine-soft)}
-.statebox.wait{border-left-color:var(--wait);background:var(--wait-bg)}
-.statebox.off{border-left-color:var(--ink-2)}
-.stateline{display:flex;align-items:center;gap:9px;font-size:16px;flex-wrap:wrap}
-.stateline .dot{width:9px;height:9px;border-radius:50%;background:var(--ink-2);flex:0 0 auto}
-.statebox.live .dot{background:var(--pine)}
-.statebox.wait .dot{background:var(--wait)}
-.statemeta{font-size:14px;color:var(--ink-2);font-weight:400}
-.statehead{font-size:16px;margin:8px 0 0}
-/* No cap of its own any more: .statebox carries it, so the panel and the
-   sentence end in the same place. */
-.statenote{font-size:14px;color:var(--ink-2);margin:8px 0 0;line-height:1.6}
-.statebox p:last-child{margin-bottom:0}
-.twoup{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
-details.vac{margin-top:10px}
-details.vac summary{cursor:pointer;font-size:14px;color:var(--pine)}
-.comp{margin:0 0 20px}
-.compline{display:flex;align-items:baseline;gap:10px;font-size:16px;margin-bottom:7px}
-.pbar2{display:flex;height:16px;border-radius:var(--r-in);overflow:hidden;background:var(--wash)}
-.pseg{display:block;height:100%}
-/* A bar SEGMENT, not a chip. These were .p-R too -- the same class
-   name in the same file for a tinted chip and a solid block. */
-.seg-R{background:var(--rep)}.seg-D{background:var(--dem)}
-.seg-I{background:var(--ind)}.seg-L{background:var(--ind)}
-.seg-V{background:var(--rule-2)}
-.plegend{display:flex;flex-wrap:wrap;gap:14px;margin-top:8px;font-size:14px;color:var(--ink-2)}
-.pdot{display:inline-block;width:9px;height:9px;border-radius:var(--r-in);margin-right:5px}
-.compbox{margin:0 0 16px}
-.bar{display:flex;height:22px;border-radius:var(--r-in);overflow:hidden;margin:9px 0 8px;
-border:1px solid var(--rule)}
-.bar span{display:block}
-.legendrow{display:flex;gap:16px;flex-wrap:wrap;font-size:14px;color:var(--ink-2)}
-.legendrow i{display:inline-block;width:10px;height:10px;border-radius:var(--r-in);
-margin-right:5px;vertical-align:-1px}
-.legendrow i.vac{background:repeating-linear-gradient(45deg,var(--rule-2),
-var(--rule-2) 3px,var(--surface) 3px,var(--surface) 6px);border:1px solid var(--rule-2)}
-.player{margin-top:12px;border:1px solid var(--rule);border-radius:var(--r-out);overflow:hidden;background:#000}
-.player iframe{width:100%;aspect-ratio:16/9;border:0;display:block}
-.pstub{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;gap:10px;
-cursor:pointer;background:#14181A;color:#C8CFD1;font-size:14px}
-.pstub:hover{background:#1D2225}
-/* ---- ONE WAY IN, AT THE TOP ------------------------------------------
-   This page had two boxes side by side -- by town, by name -- which read as
-   two procedures to choose between before reaching a single legislator. One
-   field searches both: 406 sitting members and the 320 town-and-ward pages,
-   and every match is a link to the page that answers it.
-
-   The matches appear under the field once two letters are in, which is how
-   the prime sponsor filter on the bill search behaves and is what was asked
-   for here. Below two letters it says what it will match rather than
-   listing 726 things. */
-.lfind{margin:18px 0 26px}
-.lfind input[type=search]{font-size:18px;height:52px}
-.lfind .count{margin:8px 2px 0}
-/* A WINDOW ON THE LIST, NOT THE WHOLE LIST. Every town is in here so that
-   somebody who is not sure how their town is spelled -- or lives in one of
-   the unincorporated places with a name like "Atk. & Gil. Academy Grant" --
-   can scroll to it rather than having to type it. 260px of window, because
-   340 was a third of a phone screen spent on a list nobody reads in order. */
-.lmatch{margin:10px 0 0;max-height:260px;overflow-y:auto;overflow-x:hidden;
-border:1px solid var(--rule);border-radius:var(--r-out);
-background:var(--surface)}
-.lmatch:empty{display:none}
-.lmrow{display:flex;width:100%;align-items:baseline;gap:10px;
-padding:9px 13px;text-align:left;text-decoration:none;color:inherit;
-border-bottom:1px solid var(--rule);min-height:44px;font-size:14px}
-.lmrow:last-child{border-bottom:0}
-.lmrow:hover{background:var(--paper)}
-.lmrow.sel{background:var(--pine-soft);font-weight:600}
-.lmrow b{font-weight:600;min-width:0}
-.lmrow .lmwhat{margin-left:auto;font-size:12px;letter-spacing:.04em;
-text-transform:uppercase;color:var(--ink-2);flex:0 0 auto}
-.lmrow .lmwhere{font-size:14px;color:var(--ink-2);min-width:0}
-.lmhead{font-size:12px;font-weight:600;letter-spacing:.05em;
-text-transform:uppercase;color:var(--ink-2);padding:9px 13px 5px;
-background:var(--paper);border-bottom:1px solid var(--rule)}
-.lmnone{font-size:14px;color:var(--ink-2);padding:11px 13px}
-
-/* ---- THE ROSTER, FOLDED BY COUNTY -----------------------------------
-   406 members in ten counties is a page nobody reads in order, and the
-   counties were ten headings with everything under all of them open. Each
-   one is a disclosure now, shut until asked. A query opens the ones it
-   matched, because a search that returns a list of closed boxes has not
-   answered anything. */
-.cgrp{border-bottom:1px solid var(--rule)}
-.cgrp > summary{display:flex;align-items:center;gap:9px;padding:11px 2px;
-font-size:15px;font-weight:600;cursor:pointer;list-style:none;min-height:44px}
-.cgrp > summary::-webkit-details-marker{display:none}
-.cgrp > summary::marker{content:""}
-.cgrp > summary:hover{color:var(--pine)}
-.cgrp > summary:focus-visible{outline:2px solid var(--pine);outline-offset:-2px}
-.cgrp .ccount{font-weight:400;color:var(--ink-2);font-size:14px}
-.cgrp .caret{margin-left:auto;color:var(--ink-2);font-size:12px;
-transition:transform .12s}
-.cgrp[open] > summary .caret{transform:rotate(90deg)}
-.cgrp .grid{padding:0 0 12px}
-/* The composition charts sit after the roster now. A reader who types a name
-   should get the answer, not 359px of party bars between the box and the
-   result. */
-.comp-wrap{margin:38px 0 0;padding-top:20px;border-top:1px solid var(--rule-2)}
-.comp-wrap > h2{font-size:12px;font-weight:600;letter-spacing:.05em;
-text-transform:uppercase;color:var(--ink-2);margin:0 0 14px}
-.wct{margin-left:auto;font-size:12px;color:var(--ink-2)}
-.wards{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
-.wbtn{border:1px solid var(--edge);border-radius:var(--r-out);padding:5px 12px;font-size:14px;
-background:var(--surface);cursor:pointer}
-.wbtn:hover{border-color:var(--pine)}
-.wbtn.sel{background:var(--pine);color:var(--on-pine);border-color:var(--pine)}
-/* The same chips, inside the finder now: they sit under the city whose wards
-   they are, so they take the list's own padding and its divider, and each one
-   is an anchor. A phone gets the 44px the rest of this site gives a target --
-   declared after the base rule, because same specificity means source order
-   decides and a media query above the rule it overrides does nothing. */
-.lmatch .wards{margin:0;padding:9px 13px;background:var(--paper);
-border-bottom:1px solid var(--rule)}
-.lmatch .wbtn{display:inline-flex;align-items:center;min-height:32px;
-text-decoration:none;color:inherit}
-.lmatch .wbtn:hover{background:var(--surface);color:var(--pine)}
-@media(max-width:720px){.lmatch .wbtn{min-height:44px;padding:5px 14px}}
-.hit:hover{background:var(--surface)}
-/* The same footer app.css draws, which it was not: this one was a 476px
-   column and that one a 560px column, both centred in the window, and the
-   text is identical on every page of the site. One width, one left edge --
-   the band keeps the nav's gutter and the column starts where the nav and
-   the page start. */
-footer{border-top:1px solid var(--rule);background:var(--surface);
-font-size:14px;color:var(--ink-2);margin-top:auto;
-padding:22px max(0px,calc(50% - 590px))}
-footer .in{max-width:var(--measure);margin:0;padding:0 24px}
-@media(max-width:640px){.wrap{padding:20px 18px 60px}}
-@media(max-width:720px){
-  footer{padding-left:0;padding-right:0}
-  footer .in{padding-left:14px;padding-right:14px}
-}
-/* ---- THE FRONT PAGE AS THREE COLUMNS ----------------------------------
-   Asked for in those words: the status banner top left, what is coming up
-   below it, a town and legislator search top right, and the two chambers'
-   most recent floor sessions stacked beneath that. The middle is the site
-   itself -- its name, its search box, its numbers and the three ways in.
-
-   Only above 1180px, which is where the 1180px column can hold 300 + 290 of
-   side and still leave the middle the widest of the three. Below it the page
-   is the single column it has always been, in document order.
-
-   .hmid IS FIRST IN THE MARKUP and sits in the middle column. A reader on a
-   screen reader should meet the page's own name and its search box before a
-   fortnight of hearings, and a reader on a keyboard should not have to pass
-   the calendar to reach the search. The cost is that the second tab stop is
-   the left column rather than where the eye starts; each column is a labelled
-   region and self-contained, so that reads as three panels in an order, which
-   is what they are. Burying the h1 under the calendar to make the tab order
-   left-to-right would be the worse trade.                                 */
-@media (min-width:1180px){
-  .hcols{display:grid;gap:0 30px;align-items:start;
-    grid-template-columns:minmax(0,300px) minmax(0,1fr) minmax(0,290px);
-    grid-template-areas:"left mid right"}
-  .hmid{grid-area:mid;min-width:0}
-  .hleft{grid-area:left;min-width:0}
-  .hright{grid-area:right;min-width:0}
-  /* A column heading is a label at this width, not a 16px heading floating
-     over a 290px panel -- the same small caps the composition block, the
-     calendar's dates and the legislator finder already use. */
-  .hside h2{font-size:12px;font-weight:600;letter-spacing:.05em;
-    text-transform:uppercase;color:var(--ink-2);margin:0 0 9px}
-  .hside > :first-child{margin-top:0}
-  .hside .cal{margin-top:0}
-  /* Stacked, not side by side. .twoup's own floor is minmax(280px,1fr),
-     which in a 290px column is one column anyway -- this says so rather
-     than relying on it, because the ask was explicit. */
-  .hright .twoup{grid-template-columns:1fr}
-  /* Three numbers across a 482px column rather than two, which needs one
-     step down the type scale: 20px puts "2,303,047" at 110px, and 134px of
-     basis carries it with its padding. The middle column is the widest of
-     the three but it is not the whole page any more. */
-  .hmid .stat{flex-basis:134px;padding:13px 12px}
-  .hmid .stat b{font-size:20px}
-  .hmid h1{font-size:30px}
-  /* The three columns are 1130, 790 and 680 tall, because a fortnight of
-     hearings is longer than a search box. A rule under them reads as "the
-     columns end here", which is better than leaving 340px of white looking
-     like something failed to load. */
-  #recent{border-top:1px solid var(--rule);padding-top:6px}
-}
-/* THE FINDER ON THE RIGHT IS A FORM, not a script: method="get" on
-   legislators.html produces exactly the ?town= and ?q= those two boxes read,
-   so it works with JavaScript off, the browser remembers what was typed, and
-   the Enter key needs no handler. The type-ahead with all 259 towns stays on
-   the legislators page, where the data it needs is already being fetched. */
-.hfind{background:var(--surface);border:1px solid var(--rule-2);
-  border-radius:var(--r-out);padding:14px 12px;margin:0 0 22px}
-.hfind h2{margin:0 0 5px;font-size:12px;font-weight:600;letter-spacing:.05em;
-  text-transform:uppercase;color:var(--ink-2)}
-.hfnote{font-size:14px;color:var(--ink-2);margin:0 0 11px}
-.hfrow{display:flex;gap:6px;margin:0 0 8px}
-.hfrow:last-child{margin-bottom:0}
-.hfrow input{flex:1 1 auto;min-width:0}
-/* One width for both, or the two inputs beside them end up different
-   lengths and the panel reads as two unrelated boxes. */
-.hfrow button{flex:0 0 auto;background:var(--wash);color:var(--ink);
-  border:1px solid var(--edge);border-radius:var(--r-in);padding:0 8px;
-  font-size:14px;min-height:42px;min-width:62px}
-.hfrow button:hover{border-color:var(--pine);color:var(--pine)}
-/* ---- narrow screens ---------------------------------------------------
-   Most people arrive from a search result on a phone. Three things break at
-   380px, and each is fixed by reflowing rather than by horizontal scrolling,
-   which on a civic site reads as "not meant for you".
-     1. The facet sidebar sits beside the results; it has to stack.
-     2. Timeline rows use a fixed date column that leaves no room for text.
-     3. Vote tables and member lists are wider than the screen.
-   Nothing is hidden at any width.                                        */
-@media (max-width: 720px){
-  .wrap,.in{padding-left:14px;padding-right:14px}
-  h1{font-size:24px;line-height:1.2}
-  h2{font-size:19px}
-  .shell{display:block}
-  .facets{position:static;max-height:none;width:auto;margin:0 0 20px;
-          border-right:none;border-bottom:1px solid var(--rule);padding-bottom:14px}
-  .fbody{max-height:210px}
-  .tl li{flex-direction:column;gap:2px;padding:10px 0}
-  .tl .d{flex:none;font-weight:600}
-  .cite{white-space:normal}
-  /* Not display:block. That stops a table being a table for several screen
-     readers -- rows and columns disappear -- in exchange for a horizontal
-     scrollbar nobody finds on a phone. Wrapping the cell text keeps the
-     semantics and keeps the whole table on screen. */
-  table{width:100%}
-  th,td{overflow-wrap:anywhere}
-  .votes th,.votes td{padding:6px 8px;font-size:14px}
-  .roll,.chosen{columns:1}
-  .grid{grid-template-columns:1fr}
-  .tabs{flex-wrap:wrap;gap:4px}
-  .tabs button{font-size:14px;padding:6px 10px}
-  .searchrow{flex-direction:column;align-items:stretch;gap:8px}
-  .searchbig{flex-direction:column}
-  .searchbig input{flex:none}
-  .searchbig button{padding:11px 20px}
-  #year{width:100%}
-  .qhint{flex-wrap:wrap;gap:8px}
-  .crow{flex-wrap:wrap;gap:4px}
-  .cnum{font-size:16px}
-  .pbar{flex-wrap:wrap;gap:6px}
-  .pbar .jump{font-size:12px}
-  .twoup{grid-template-columns:1fr}
-  .entry{grid-template-columns:1fr}
-  .stat{flex-basis:45%}
-  .note,.cite,footer,.corrections{font-size:14px}
-  button,.hit,summary{min-height:44px}
-}
-@media (max-width: 420px){
-  .stat{flex-basis:100%}
-  .plegend{gap:8px;font-size:12px}
-}
-
-/* Focus must be visible. Keyboard users navigate by it, and the default
-   outline is removed by most resets without anything put back. */
-:focus-visible{outline:2px solid var(--pine);outline-offset:2px;border-radius:var(--r-in)}
-.skip{position:absolute;left:-9999px;top:0;background:var(--pine);color:var(--on-pine);
-padding:10px 16px;z-index:99;border-radius:0 0 var(--r-out) 0}
-.skip:focus{left:0}
-/* Reduced motion: honour the system preference rather than overriding it. */
-@media (prefers-reduced-motion: reduce){
-  *{animation-duration:.01ms !important;transition-duration:.01ms !important}
-}
-.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
-clip:rect(0 0 0 0);white-space:nowrap;border:0}
-/* THE HOME PAGE'S HEADING IS THE LOCKUP, since 13 September: the profile and
-   "Granite Record" as drawn, from assets/lockup.png, which build_brand.py cuts
-   from the black-on-white original. It is a mask over the text colour, as the
-   nav's mark is, so one file is right in both themes -- the drawn lockups
-   carry a solid black or white ground, and either would sit on the paper as a
-   box. 1039x479 is the ink's own box. The words stay in the heading, hidden,
-   for a screen reader and a search engine, and come back wherever the mask
-   cannot be drawn: a browser without mask support, and forced colours, which
-   paints backgrounds away and would leave an empty heading.
-   Centred in its column, as the person asked the same evening; the lead and
-   the search under it keep their own alignment. */
-@supports ((-webkit-mask-image:url(x)) or (mask-image:url(x))){
-  h1.lockup{width:min(100%,280px);aspect-ratio:1039/479;margin:2px auto 18px;
-    background:var(--ink);
-    -webkit-mask:url(/lockup.png) center/contain no-repeat;
-    mask:url(/lockup.png) center/contain no-repeat}
-  h1.lockup span{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;
-    clip:rect(0 0 0 0);white-space:nowrap}
-}
-@media (forced-colors: active){
-  h1.lockup{background:none;-webkit-mask:none;mask:none;width:auto;aspect-ratio:auto;
-    text-align:center}
-  h1.lockup span{position:static;width:auto;height:auto;margin:0;overflow:visible;
-    clip:auto;white-space:normal}
-}
-.corrections{font-size:14px;color:var(--ink-2);margin-top:10px}
-.corrections a{color:var(--pine)}
-/* The line under the home page's logo, which the person set on 14 September:
-   a sub-heading in the sans face, above the lead's serif sentence. A paragraph,
-   not a heading, so the page's outline still goes h1 to h2. */
-.slogan{font-size:21px;font-weight:600;letter-spacing:-.01em;line-height:1.3;
-color:var(--ink);margin:0 0 8px}
-
+__PAGES__
 """
+
 
 FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
          '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
@@ -822,10 +432,12 @@ def shell(title, current, body, wide=False, script="", desc="",
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{title}</title>{HEAD_SEO}{FONTS}{BRAND_HEAD}{themer("HEAD")}<link rel="stylesheet" href="style.css">
+<!-- body.pg is what the page half of app.css is scoped to: the record pages
+     load app.css and must not take these rules. -->
 <link rel="alternate" type="application/rss+xml" title="Granite Record — all activity"
  href="/feed/all.xml">
 <link rel="alternate" type="application/rss+xml" title="Granite Record — upcoming hearings"
- href="/feed/hearings.xml"></head><body>
+ href="/feed/hearings.xml"></head><body class="pg">
 <a class="skip" href="#main">Skip to the content</a>\n<nav class="top"><div class="in"><a class="brand" href="index.html"{BRAND_CUR}>Granite Record</a>
 {''.join(nav)}</div></nav>
 <main class="wrap{' wide' if wide else ''}" id="main">{body}</main>
@@ -1535,7 +1147,8 @@ def main():
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
     (out / "style.css").write_text(
-        CSS.replace("__PALETTE__", palette()).replace("__SHARED__", shared()),
+        CSS.replace("__PALETTE__", palette()).replace("__SHARED__", shared())
+           .replace("__PAGES__", pages_region()),
         encoding="utf-8")
 
     # bills.html is the one page written by hand rather than generated, and
