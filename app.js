@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.83
+// GRANITE_VERSION: 2026-09-07.84
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -283,7 +283,12 @@ function emptyResult(){
     :gs.length===1&&gs[0].word.includes(" ")?gs[0].word.split(" ").filter(w=>!STOPSET.has(w)):[];
   const parts=words.map(w=>{const g2=queryGroups(w);
     return [w,inTerm.filter(b=>g2.every(g=>groupWeight(b,g)>0)).length];}).filter(p=>p[1]);
-  return `<div class="empty">No bills match${words.length?" all of that":""} in the
+  // termPhrase() brings its own preposition ("in the 2025-2026 term",
+  // "across all terms"), so the "in the" that used to sit here made the
+  // sentence read "No bills match in the in the 2025-2026 term." -- or, with
+  // the picker on All terms, "in the across all terms". The two callers at
+  // the count line pass it bare and were always right; this one doubled it.
+  return `<div class="empty">No bills match${words.length?" all of that":""}
     ${esc(termPhrase())}.${parts.length?`<br><br>On their own: ${parts.map(([w,n])=>
       `<button class="link" data-q="${esc(w)}">${esc(w)}</button> (${n.toLocaleString()})`)
       .join(" &middot; ")}`:""}<br><br>Try removing a filter, or a different term.</div>`;
@@ -2389,6 +2394,27 @@ function cmteLink(name){
   return code?`<a href="committee/${esc(code)}.html">${esc(name)}</a>`:esc(name);
 }
 
+// THE BYLINE UNDER A CARD'S TITLE: sponsor, committees, subject. The middot
+// used to be glued to the front of each item rather than set between them, so
+// a bill with no sponsor opened with a separator and nothing before it --
+// "· House Transportation · Motor Vehicles". That is 22,913 of the 33,683
+// bills in site/index.json (counted, and 22,905 of them have a committee or a
+// topic to follow the stray mark; the other 8 have neither and were simply
+// blank). It is that many because the archive backfill has not reached the
+// older terms: every term before 2013-2014 names a sponsor on fewer than
+// twenty of its ~1,700 bills, against 14 of 2,234 missing one in 2025-2026.
+// Joining the parts that exist says the same thing and cannot open with
+// punctuation.
+//
+// "No Committee Assignment" on 296 cards is the General Court's own wording
+// for a bill it never referred, not an empty value: it is a fact about the
+// bill and stays.
+function cmeta(b){
+  return [esc(b.sponsor_label||b.sponsor||""),
+    ...(b.committees||[b.committee]).filter(Boolean).map(cmteLink),
+    b.topic?esc(b.topic):""].filter(Boolean).join(" · ");
+}
+
 // ONE card, drawn by the search list and by both record pages.
 //
 // A member's page used to draw its own flatter card with no body, so the same
@@ -2452,8 +2478,7 @@ function cardHtml(b,focus){
           ?` <span class="chip" title="Filed one year, acted on in the next — retained in committee or sent to interim study">carried over</span>`:""}</span>
         <span class="cstat ${KIND[b.kind]||""}">${esc(b.status||"")}</span></div>
         <div class="ctitle">${esc(b.title)}</div>
-        <div class="cmeta">${esc(b.sponsor_label||b.sponsor||"")}${
-          (b.committees||[b.committee]).filter(Boolean).map(c=>" · "+cmteLink(c)).join("")}${b.topic?" · "+esc(b.topic):""}</div>
+        <div class="cmeta">${cmeta(b)}</div>
         ${rail(b)}
       </button>
       <div class="cbody" ${open?"":"hidden"}>${
@@ -3719,8 +3744,25 @@ $("#q").addEventListener("keydown",e=>{
   if(e.key==="Enter"){e.preventDefault();submitSearch();}
 });
 $("#qgo").addEventListener("click",submitSearch);
+// "/" JUMPS TO THE SEARCH BOX, BUT NEVER OUT OF SOMETHING BEING TYPED IN.
+// The only exemption used to be the bill-search box itself, so anywhere else
+// the key was eaten. Checked with a real keypress rather than a synthetic
+// event, in the Report a problem box on /bill/2025/hb1.html: keydown key "/",
+// target TEXTAREA, isTrusted true -- the textarea's value did not change and
+// focus moved to #q. A reader typing "and/or", a date, or a citation into the
+// box we give them for telling us the record is wrong loses the character and
+// their place. The hint that taught this shortcut is no longer on any page, so
+// nobody is pressing "/" on purpose; what remains is a key that goes missing.
+//
+// Every field that takes typing is left alone -- the header search (#findq) is
+// an input and was eating it too, and select and contenteditable are here so
+// the next field added does not have to rediscover this. The whole report box
+// is exempt including its Send button: nothing inside the box a reader is
+// filling in should move them out of it.
+const typingIn=el=>!!el&&(/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)
+  ||el.isContentEditable||!!(el.closest&&el.closest(".report")));
 document.addEventListener("keydown",e=>{
-  if(e.key==="/"&&document.activeElement!==$("#q")){e.preventDefault();$("#q").focus();$("#q").select();}
+  if(e.key==="/"&&!typingIn(e.target)){e.preventDefault();$("#q").focus();$("#q").select();}
   // Tabs carry role="tab", and a screen reader user is told they are tabs, so
   // the arrow keys have to work. They did nothing before.
   const tab=e.target.closest&&e.target.closest(".tab");

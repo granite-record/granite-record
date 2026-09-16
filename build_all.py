@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.21
+# GRANITE_VERSION: 2026-09-05.22
 """
 Run the whole pipeline in the right order.
 
-    python3 build_all.py                    # everything except video
-    python3 build_all.py --key YOURKEY      # including the video index
+    python3 build_all.py                    # everything, the video index too
+                                            #   when secrets.json holds a key
     python3 build_all.py --local            # no network at all, rebuild from files
     python3 build_all.py --dry-run          # print the plan and stop
+
+The video index is the one step here that needs a credential, and it reads it
+out of secrets.json like everything else that needs one. `publish YOURKEY`
+still works -- that argument is what tells publish.bat to do a full rebuild
+rather than a local one -- but the key itself is no longer carried on a
+command line, and --key is accepted and ignored.
 
 The order is not obvious and getting it wrong has caused real bugs: narratives
 must exist before the site build reads them, districts before the data build
@@ -117,7 +123,6 @@ class Step:
 
 
 def plan(a):
-    key = a.key or "%YTKEY%"
     vids = sorted(str(p) for p in Path(".").glob("videos_*.csv"))
 
     def manifest_videos():
@@ -206,6 +211,28 @@ def plan(a):
              note="the sponsor line of the pages fetch_legislation.py saves, "
                   "matched to members who cast a roll call that term; no "
                   "network, and never over a sponsor the database names"),
+
+        # AFTER text_sponsors, which walks the same saved pages, and BEFORE
+        # build_site_v2, which imports this module (build_site_v2.py:36) and
+        # calls AT.merge_into to fold archive_text.json in under
+        # bill_text.json. It was written on 16 September and never added to
+        # this list, so the text of every archived bill reached the site only
+        # when somebody remembered the command by hand: legislation/ holds
+        # 8,752 saved pages tonight against the 8,422 bills in the
+        # archive_text.json written at 14:17, and the gap widens every hour
+        # the lane keeps fetching.
+        #
+        # No network -- it reads what fetch_legislation.py has already saved --
+        # so --local runs it too, which is the point of putting it here: a
+        # rebuild from files on disk should pick up the pages the last fetch
+        # brought down, not wait for the next one.
+        Step("the text of every archived bill, off the pages on disk",
+             ["archive_text.py", "--apply"],
+             needs=["data/bills.json", "legislation"],
+             produces=["archive_text.json"],
+             note="bill_text.json covers 2025-2026 and nothing else, so every "
+                  "older term drew a Bill Text tab with nothing in it; merged "
+                  "UNDER bill_text.json, never over it"),
 
         Step("plain-language bill histories",
              ["narrative.py", "--docket", "Docket.txt", "--all",
@@ -305,11 +332,19 @@ def plan(a):
                   "merges, so a chamber that fails loses nothing already "
                   "fetched"),
 
+        # NO --key HERE, and that is the whole of the fix. A key on a command
+        # line is visible to every process on the machine and lands in shell
+        # history -- keys.py sets out why -- and fetch_channel_index.py reads
+        # secrets.json whenever the flag is absent. Passing it was also what
+        # made this step vanish: main() used the presence of --key to decide
+        # whether to run the step at all, so the secrets.json path README
+        # documents could never reach the pipeline, whatever was in the file.
         Step("video index",
-             ["fetch_channel_index.py", "--key", key, "--chamber", "house",
+             ["fetch_channel_index.py", "--chamber", "house",
               "--start", f"{a.session}-01-01", "--end", f"{a.session}-12-31"],
              network=True, optional=True,
-             note="needs an API key; skipped without one"),
+             note="needs the YouTube key in secrets.json; skipped, and says "
+                  "so, without one"),
 
         Step("match docket proceedings to recordings",
              ["build_manifest.py", "--videos"] + manifest_videos(),
@@ -446,7 +481,9 @@ def plan(a):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--key", help="YouTube API key; video index skipped without it")
+    ap.add_argument("--key", help="accepted so `publish YOURKEY` keeps "
+                                  "working, and ignored: the video index "
+                                  "reads the key from secrets.json")
     ap.add_argument("--session", default=str(datetime.now().year))
     ap.add_argument("--base", default="https://graniterecord.org")
     ap.add_argument("--archive", default="nh-archive")
@@ -478,8 +515,26 @@ def main():
         steps = [s for s in steps if s not in held]
         print(f"  {'; '.join(gc_busy)}: skipping {len(held)} step(s) that "
               f"would ask the General Court -- " + ", ".join(s.name for s in held))
-    if not a.key:
-        steps = [s for s in steps if "fetch_channel_index.py" not in s.args[0]]
+    # A STEP THAT CANNOT RUN SAYS SO. This one used to disappear without a
+    # word -- `if not a.key: steps = [s for s in steps if
+    # "fetch_channel_index.py" not in s.args[0]]`, no print -- four lines
+    # under the branch above, which names every step it holds. A build on a
+    # machine with a perfectly good secrets.json therefore dropped the video
+    # index and reported nothing wrong, and the plan printed by --dry-run did
+    # not list it either, so there was nowhere to notice it from.
+    #
+    # The key is no longer a step argument, so what decides now is the file
+    # the key actually lives in.
+    if a.key:
+        print("  --key was given and is ignored: a key on a command line is "
+              "visible to every process on the machine (see keys.py), so the "
+              "video index reads secrets.json. Put the key there.")
+    vid = [s for s in steps if "fetch_channel_index.py" in s.args[0]]
+    if vid and not Path("secrets.json").exists():
+        steps = [s for s in steps if s not in vid]
+        print("  no secrets.json: skipping the video index -- the one step "
+              "here that needs the YouTube key. Copy secrets.example.json to "
+              "secrets.json and fill it in.")
     if not a.with_superseded:
         dropped = [s for s in steps if s.superseded]
         steps = [s for s in steps if not s.superseded]

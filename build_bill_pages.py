@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.50
+# GRANITE_VERSION: 2026-09-04.51
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -175,6 +175,37 @@ def shell(t, b, d, base, raw=None, data_url=None, current_term=""):
                   else f"{n}: {clean_title(title)}"))
 
 
+def lastmod(b, built):
+    """One bill's <lastmod>, which may not be later than the day of the build.
+
+    last_action is the latest date in the bill's docket, and a docket holds
+    meetings that have not happened yet. So 45 of the 33,690 entries were
+    dated after the day the file was written -- 27 of them 2026-09-30, the
+    furthest 2026-10-13. All 45 are of the current term and 44 of them were
+    referred for interim study, with the next work session already on the
+    calendar; the forty-fifth was vetoed and had its override fail, and its
+    docket carries a later date all the same. HB 561 is the plainest case:
+    last_action 2026-09-29, a fortnight out, because that is when the
+    committee next sits.
+
+    A sitemap's lastmod means the day the page was last modified. A date in
+    the future is therefore a claim about a day that has not happened, and it
+    is not a harmless one: it is the same failure as stamping every entry with
+    the build date, which this field was changed to avoid -- a crawler that
+    finds one lastmod it cannot believe has no reason to believe the rest.
+    Clamping rather than dropping the entry keeps the bill in the sitemap and
+    says only what is true, that the page is as new as this build. min() is
+    enough because an ISO date sorts in the order it runs.
+
+    The six bills carrying no date at all, and the standing pages, take the
+    build date the same way.
+    """
+    moved = str(b.get("last_action") or "")[:10]
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", moved):
+        return built
+    return min(moved, built)
+
+
 # The record as it was written into a page, for a run that happens after the
 # file it came from was removed.
 EMBEDDED = re.compile(
@@ -250,10 +281,10 @@ def main():
         # lastmod is the day the bill last moved, not the day of the build. Every
         # one of 34,000 entries carried the build date, which tells a search
         # engine every page changed every night -- and it learns to ignore the
-        # field, and to recrawl nothing sooner for it.
-        moved = str(b.get("last_action") or "")[:10]
+        # field, and to recrawl nothing sooner for it. Bounded above by the
+        # build date: see lastmod().
         urls.append((a.base + S.canon(f"/bill/{yr}/{b['id'].lower()}.html"),
-                     moved if re.fullmatch(r"\d{4}-\d{2}-\d{2}", moved) else generated))
+                     lastmod(b, generated)))
         written += 1
         if written % 1000 == 0:
             print(f"  {written:,}...", flush=True)

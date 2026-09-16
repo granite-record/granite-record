@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.1
+# GRANITE_VERSION: 2026-09-16.2
 """
 The text of every archived bill, read off the pages already on this disk.
 
@@ -71,7 +71,7 @@ BLOCK = re.compile(r"</?(?:p|div|br|tr|h[1-6]|li|table|blockquote)\b[^>]*>",
                    re.I)
 
 
-def text_of(path):
+def text_of(path, keep_front=False):
     """The text of one saved page with its lines kept, or "" if it is not a bill."""
     html = FL.decode(Path(path).read_bytes())
     t = re.sub(r"<script.*?</script>", " ", html, flags=re.S | re.I)
@@ -92,7 +92,9 @@ def text_of(path):
     t = re.sub(r"\n{3,}", "\n\n", t).strip()
     if len(t) < LEAST or (len(t) < 400 and STUB.search(t)):
         return ""
-    return front_matter_off(t)
+    # The caller strips the front matter, because the version is read off it
+    # first and this function would have thrown it away.
+    return t if keep_front else front_matter_off(t)
 
 
 # The rule the archive draws under the front matter, as a line of its own.
@@ -128,8 +130,26 @@ def front_matter_off(t):
     return rest if re.match(r"(?:[A-Z]+\s+)?ANALYSIS\b", rest) else t
 
 
+# "HB 1000 - AS INTRODUCED", "SB 12 - AS AMENDED BY THE SENATE", "HB 2-FN-A -
+# FINAL VERSION". The archive prints which version of the bill the page is in
+# its first line, and that line is part of the front matter this module strips,
+# so it is read off before the stripping. Without it every archived bill's text
+# was headed VERSION NOT STATED, which the page itself contradicts.
+VERSION = re.compile(r"^[A-Z]{2,5}\s*\d+[A-Z\-]*\s*[-–]\s*([A-Z][A-Z .,'-]{3,60})$",
+                     re.M)
+
+
+def version_of(t):
+    m = VERSION.search(t[:400])
+    if not m:
+        return ""
+    v = " ".join(m.group(1).split()).strip(" .,-")
+    # Title case, because the archive shouts and the site does not.
+    return v[:1] + v[1:].lower() if v else ""
+
+
 def build(bills, have=None):
-    """{term: {bill: {"text": ...}}} for every saved page not already covered."""
+    """{term: {bill: {"text": ..., "version": ...}}} for every page not covered."""
     pages, strays = TS.saved_pages(bills)
     out, tally = {}, {"pages": 0, "too short": 0, "already covered": 0}
     for term, bid, path in pages:
@@ -137,11 +157,15 @@ def build(bills, have=None):
         if have and (have.get(term) or {}).get(bid, {}).get("text"):
             tally["already covered"] += 1
             continue
-        body = text_of(path)
+        raw = text_of(path, keep_front=True)
+        version = version_of(raw)
+        body = front_matter_off(raw) if raw else ""
         if not body:
             tally["too short"] += 1
             continue
-        out.setdefault(term, {})[bid] = {"text": body, "source": "archive page"}
+        out.setdefault(term, {})[bid] = {
+            "text": body, "source": "archive page",
+            "version": version}
     return out, tally, strays
 
 

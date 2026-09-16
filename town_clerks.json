@@ -68,11 +68,11 @@
   "clerk_raw": "NANCY A DEMERS",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "ndemers@amherstnh.gov",
-  "local_hours": "6:00 AM - 8:00 PM End Time",
+  "local_hours": "6:00 AM - 8:00 PM",
   "phone": "603-673-6041",
   "polling_place": "Souhegan High School 412 Boston Post Rd Amherst 03031",
   "polling_raw": "SOUHEGAN HIGH SCHOOL 412 BOSTON POST RD AMHERST 03031",
-  "state_hours": "6:00 AM - 8:00 PM End Time",
+  "state_hours": "6:00 AM - 8:00 PM",
   "website": "https://www.amherstnh.gov"
  },
  "andover": {
@@ -151,11 +151,11 @@
   "clerk_raw": "KIMBERLY KEREKES",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "kkerekes@barrington.nh.gov",
-  "local_hours": "8:00 AM - 7:00 PM End Time",
+  "local_hours": "8:00 AM - 7:00 PM",
   "phone": "603-664-5476",
   "polling_place": "Barringtonmiddle School 51 Haley Dr Barrington 03825",
   "polling_raw": "BARRINGTONMIDDLE SCHOOL 51 HALEY DR BARRINGTON 03825",
-  "state_hours": "8:00 AM - 7:00 PM End Time",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://www.barrington.nh.gov"
  },
  "bartlett": {
@@ -221,9 +221,7 @@
   "clerk_address": "7 School Street 101 Bennington 03442",
   "clerk_raw": "DEBRA L BELCHER",
   "email": "townclerk@townofbennington.com",
-  "local_hours": "End Time",
   "phone": "603-588-2189",
-  "state_hours": "End Time",
   "website": "https://townofbennington.com/"
  },
  "benton": {
@@ -318,11 +316,11 @@
   "clerk_raw": "MRIDULA SUDHIR NAIK",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "mnaik@bownh.gov",
-  "local_hours": "7:00 AM - 7:00 PM End Time",
+  "local_hours": "7:00 AM - 7:00 PM",
   "phone": "603-223-3980",
   "polling_place": "Bow Memorial School 20 Bow Centerrd Bow 03304",
   "polling_raw": "BOW MEMORIAL SCHOOL 20 BOW CENTERRD BOW 03304",
-  "state_hours": "7:00 AM - 7:00 PM End Time",
+  "state_hours": "7:00 AM - 7:00 PM",
   "website": "https://www.bownh.gov"
  },
  "bradford": {
@@ -386,11 +384,11 @@
   "clerk_raw": "PATRICIA A H OWARD-BAR NETT",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "patti@brooklinenh.gov",
-  "local_hours": "7:00 AM - 7:30 PM End Time",
+  "local_hours": "7:00 AM - 7:30 PM",
   "phone": "603-673-8855",
   "polling_place": "Captain Samuel Douglas Academy 24 Townsend Hill Rd Brookline 03033",
   "polling_raw": "CAPTAIN SAMUEL DOUGLAS ACADEMY 24 TOWNSEND HILL RD BROOKLINE 03033",
-  "state_hours": "7:00 AM - 7:30 PM End Time",
+  "state_hours": "7:00 AM - 7:30 PM",
   "website": "http://www.brooklinenh.gov/"
  },
  "cambridge": {
@@ -466,11 +464,11 @@
   "clerk_raw": "AMY HORNKOHL",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@centerharbornh.gov",
-  "local_hours": "8:00 AM - 7:00 PM End Time",
+  "local_hours": "8:00 AM - 7:00 PM",
   "phone": "603-253-4561",
   "polling_place": "Center Harbor Town Office 36 Main St Center Harbor 03226",
   "polling_raw": "CENTER HARBOR TOWN OFFICE 36 MAIN ST CENTER HARBOR 03226",
-  "state_hours": "8:00 AM - 7:00 PM End Time",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://www.centerharbornh.gov"
  },
  "chandler-s-pur": {
@@ -538,11 +536,11 @@
   "clerk_raw": "BONNIE POTTER",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@chichesternh.org",
-  "local_hours": "10:00 AM - 7:00 End Time PM",
+  "local_hours": "10:00 AM - 7:00 PM",
   "phone": "603-798-5350",
   "polling_place": "Chichestercentral School 219 Main St Chichester 03258",
   "polling_raw": "CHICHESTERCENTRAL SCHOOL 219 MAIN ST CHICHESTER 03258",
-  "state_hours": "7:00 AM - 7:00 End Time PM",
+  "state_hours": "7:00 AM - 7:00 PM",
   "website": "https://www.chichesternh.org"
  },
  "claremont-ward-1": {
@@ -597,11 +595,11 @@
   "clerk_raw": "JOLENE MARIE MARTUNAS",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "jmartunas@colebrooknh.org",
-  "local_hours": "8:00 AM - 6:00 PM End Time",
+  "local_hours": "8:00 AM - 6:00 PM",
   "phone": "603-237-5200",
   "polling_place": "Colebrook Elementaryschool Gym 27 Dumont St Colebrook 03576",
   "polling_raw": "COLEBROOK ELEMENTARYSCHOOL GYM 27 DUMONT ST COLEBROOK 03576",
-  "state_hours": "8:00 AM - 7:00 PM End Time",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://colebrooknh.org"
  },
  "columbia": {
@@ -669,11 +667,11 @@
   "clerk_raw": "JANICE L BONENFANT",
   "election": "11/03/2026-STATE GENERAL ELECTION, 11/03/2026-CONCORD SCHOOL DISTRICT ELECTION",
   "email": "cityclerk@concordnh.gov",
-  "local_hours": "7:00 AM - 7:00 PM End Time",
+  "local_hours": "7:00 AM - 7:00 PM",
   "phone": "603-225-8500",
   "polling_place": "Green Street Community Center 39 Green St Concord 03301",
   "polling_raw": "GREEN STREET COMMUNITY CENTER 39 GREEN ST CONCORD 03301",
-  "state_hours": "7:00 AM - 7:00 PM End Time",
+  "state_hours": "7:00 AM - 7:00 PM",
   "website": "https://www.concordnh.gov"
  },
  "concord-ward-5": {
@@ -721,11 +719,11 @@
   "clerk_raw": "JANICE L BONENFANT",
   "election": "11/03/2026-STATE GENERAL ELECTION, 11/03/2026-CONCORD SCHOOL DISTRICT ELECTION",
   "email": "cityclerk@concordnh.gov",
-  "local_hours": "7:00 AM - 7:00 PM End Time",
+  "local_hours": "7:00 AM - 7:00 PM",
   "phone": "603-225-8500",
   "polling_place": "Bektash Temple 189 Pembroke Rd Concord 03301",
   "polling_raw": "BEKTASH TEMPLE 189 PEMBROKE RD CONCORD 03301",
-  "state_hours": "7:00 AM - 7:00 PM End Time",
+  "state_hours": "7:00 AM - 7:00 PM",
   "website": "https://www.concordnh.gov"
  },
  "concord-ward-9": {
@@ -767,9 +765,7 @@
   "clerk_address": "20 Park St Crawford'Spurchase 03581",
   "clerk_raw": "CHRISTINA ZORNIO",
   "email": "czornio@gorhamnh.org",
-  "local_hours": "End Time",
-  "phone": "603-466-2744",
-  "state_hours": "End Time"
+  "phone": "603-466-2744"
  },
  "croydon": {
   "clerk": "Paul Michael Freitas",
@@ -839,11 +835,11 @@
   "clerk_raw": "ANNETTE M POLAND",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@deeringnh.gov",
-  "local_hours": "8:00 AM - 7:00 PM End Time",
+  "local_hours": "8:00 AM - 7:00 PM",
   "phone": "603-464-3224",
   "polling_place": "Deering Town Hall 762 Deeringcenter Rd Deering 03244",
   "polling_raw": "DEERING TOWN HALL 762 DEERINGCENTER RD DEERING 03244",
-  "state_hours": "8:00 AM - 7:00 PM End Time",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://www.deering.nh.us"
  },
  "derry": {
@@ -947,11 +943,11 @@
   "clerk_raw": "DEBORAH TILLOTSON",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "debtt@tango175.com",
-  "local_hours": "12:00 PM - 01:00 PM End Time",
+  "local_hours": "12:00 PM - 01:00 PM",
   "phone": "603-571-0069",
   "polling_place": "Tillotson House 1 Tillotson Rd Rd Dixville 03576",
   "polling_raw": "TILLOTSON HOUSE 1 TILLOTSON RD RD DIXVILLE 03576",
-  "state_hours": "03:00 PM - 04:00 PM End Time"
+  "state_hours": "03:00 PM - 04:00 PM"
  },
  "dorchester": {
   "clerk": "Darlene E Oaks",
@@ -1019,11 +1015,11 @@
   "clerk_raw": "JERRICA ANN VANSYL YVONG-BIZIE R",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "j.bizier@dover.nh.gov",
-  "local_hours": "7:00 AM - 7:00 PM End Time",
+  "local_hours": "7:00 AM - 7:00 PM",
   "phone": "603-516-6018",
   "polling_place": "Dover Middle School 16 Daley Dr Dover 03820",
   "polling_raw": "DOVER MIDDLE SCHOOL 16 DALEY DR DOVER 03820",
-  "state_hours": "7:00 AM - 7:00 PM End Time",
+  "state_hours": "7:00 AM - 7:00 PM",
   "website": "https://www.dover.nh.gov"
  },
  "dover-ward-6": {
@@ -1094,11 +1090,11 @@
   "clerk_raw": "CLAIRE CATHERINE MEI",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@eastonnh.gov",
-  "local_hours": "3:00 PM - 6:00 PM End Time",
+  "local_hours": "3:00 PM - 6:00 PM",
   "phone": "603-823-8017",
   "polling_place": "Easton Town Hall 1060 Eastonvalley Rd Easton 03580",
   "polling_raw": "EASTON TOWN HALL 1060 EASTONVALLEY RD EASTON 03580",
-  "state_hours": "11:00 AM - 7:00 PM End Time",
+  "state_hours": "11:00 AM - 7:00 PM",
   "website": "https://www.eastonnh.gov/"
  },
  "eaton": {
@@ -1169,11 +1165,11 @@
   "clerk_raw": "DONNA M DEMERS",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "erroltownclerk@gmail.com",
-  "local_hours": "11:00 AM - 7:00 PM End Time",
+  "local_hours": "11:00 AM - 7:00 PM",
   "phone": "603-482-3351",
   "polling_place": "Errol Townhall 33 Mainst Errol 03579",
   "polling_raw": "ERROL TOWNHALL 33 MAINST ERROL 03579",
-  "state_hours": "8:00 AM - 7:00 PM End Time",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://www.errolnh.org"
  },
  "erving-s-location": {
@@ -1263,9 +1259,7 @@
   "clerk_address": "316 Centralstreet Franklin 03235",
   "clerk_raw": "MICHELLE STANYAN",
   "email": "mstanyan@franklinnh.gov",
-  "local_hours": "End Time",
   "phone": "603-934-3109",
-  "state_hours": "End Time",
   "website": "https://www.franklinnh.gov"
  },
  "freedom": {
@@ -1333,7 +1327,7 @@
   "polling_by_ward": [
    {
     "polling_place": "Goffstownhigh School 27 Wallace Rd Goffstown 03045",
-    "state_hours": "7:00 AM - 7:00 PM End Time",
+    "state_hours": "7:00 AM - 7:00 PM",
     "ward": "1"
    },
    {
@@ -1350,11 +1344,11 @@
   "clerk_raw": "JENNIFER E SULLIVAN",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "jsullivan@goffstownnh.gov",
-  "local_hours": "7:00 AM - 7:00 PM End Time",
+  "local_hours": "7:00 AM - 7:00 PM",
   "phone": "603-497-8990",
   "polling_place": "Goffstownhigh School 27 Wallace Rd Goffstown 03045",
   "polling_raw": "GOFFSTOWNHIGH SCHOOL 27 WALLACE RD GOFFSTOWN 03045",
-  "state_hours": "7:00 AM - 7:00 PM End Time",
+  "state_hours": "7:00 AM - 7:00 PM",
   "website": "https://www.goffstownnh.gov"
  },
  "goffstown-ward-5": {
@@ -1413,11 +1407,11 @@
   "clerk_raw": "SUSAN VALLIERE",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "svalliere@gorhamnh.gov",
-  "local_hours": "10:00 AM - End Time 06:00 PM",
+  "local_hours": "10:00 AM - 06:00 PM",
   "phone": "603-466-9434",
   "polling_place": "Gorham Town Hall 20 Park St Green'S Grant 03581",
   "polling_raw": "GORHAM TOWN HALL 20 PARK ST GREEN'S GRANT 03581",
-  "state_hours": "8:00 AM - 7:00 End Time PM",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://www.gorhamnh.gov"
  },
  "greenfield": {
@@ -1501,11 +1495,11 @@
   "clerk_raw": "CHERYL ANN HILDRETH",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@hamptonnh.gov",
-  "local_hours": "7:00 AM - 8:00 PM End Time",
+  "local_hours": "7:00 AM - 8:00 PM",
   "phone": "603-926-0406",
   "polling_place": "Winnacunnet High School Cafeteria 1 Alumni Dr Hampton 03842",
   "polling_raw": "WINNACUNNET HIGH SCHOOL CAFETERIA 1 ALUMNI DR HAMPTON 03842",
-  "state_hours": "7:00 AM - 8:00 PM End Time",
+  "state_hours": "7:00 AM - 8:00 PM",
   "website": "https://hamptonnh.gov"
  },
  "hampton-falls": {
@@ -1574,11 +1568,11 @@
   "clerk_raw": "LINDSAY M JOHNK",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@haverhill-nh.com",
-  "local_hours": "8:00 AM - 6:00 PM End Time",
+  "local_hours": "8:00 AM - 6:00 PM",
   "phone": "603-787-6200",
   "polling_place": "Town Municipal Building 2975 Dartmouth College Hwy Haverhill 03774",
   "polling_raw": "TOWN MUNICIPAL BUILDING 2975 DARTMOUTH COLLEGE HWY HAVERHILL 03774",
-  "state_hours": "8:00 AM - 7:00 PM End Time",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://www.haverhill-nh.com"
  },
  "hebron": {
@@ -1650,11 +1644,11 @@
   "clerk_raw": "DIANE T LEAVITT",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@hollisnh.org",
-  "local_hours": "07:00 AM - 07:00 PM End Time",
+  "local_hours": "07:00 AM - 07:00 PM",
   "phone": "603-465-2064",
   "polling_place": "Hollis/brookline Co-Operative High School 24 Cavalier Cthollis 03049",
   "polling_raw": "HOLLIS/BROOKLINE CO-OPERATIVE HIGH SCHOOL 24 CAVALIER CTHOLLIS 03049",
-  "state_hours": "7:00 AM - 7:00 PM End Time",
+  "state_hours": "7:00 AM - 7:00 PM",
   "website": "https://www.hollisnh.org"
  },
  "hooksett": {
@@ -1744,11 +1738,11 @@
   "clerk_raw": "KELLY ROLLINS",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "krollins@townofjaffrey.com",
-  "local_hours": "7:00AM - 7:00PM End Time",
+  "local_hours": "7:00AM - 7:00PM",
   "phone": "603-532-7861",
   "polling_place": "Pratt Auditorium 10 Conant Way Jaffrey 03452",
   "polling_raw": "PRATT AUDITORIUM 10 CONANT WAY JAFFREY 03452",
-  "state_hours": "7:00AM - 7:00PM End Time",
+  "state_hours": "7:00AM - 7:00PM",
   "website": "https://www.townofjaffrey.com"
  },
  "jefferson": {
@@ -1822,11 +1816,11 @@
   "clerk_raw": "TERRI MARTIN HOOD",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "keenevotes@keenenh.gov",
-  "local_hours": "8:00 AM - 7:00 PM End Time",
+  "local_hours": "8:00 AM - 7:00 PM",
   "phone": "603-352-0133",
   "polling_place": "Monadnockcovenant Church 90 Base Hill Rdkeene 03431",
   "polling_raw": "MONADNOCKCOVENANT CHURCH 90 BASE HILL RDKEENE 03431",
-  "state_hours": "8:00 AM - 7:00 PM End Time",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://www.keenenh.gov"
  },
  "kensington": {
@@ -1876,11 +1870,11 @@
   "clerk_raw": "KATIE GARGANO",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "cityclerk@laconianh.gov",
-  "local_hours": "08:00 AM - 6:00 PM End Time",
+  "local_hours": "08:00 AM - 6:00 PM",
   "phone": "603-527-1265",
   "polling_place": "St Andre Bessette Parish Hall 31 Gilford Ave Laconia 03246",
   "polling_raw": "ST ANDRE BESSETTE PARISH HALL 31 GILFORD AVE LACONIA 03246",
-  "state_hours": "7:00 AM - 7:00 PM End Time",
+  "state_hours": "7:00 AM - 7:00 PM",
   "website": "https://www.laconianh.gov"
  },
  "laconia-ward-3": {
@@ -1949,11 +1943,11 @@
   "clerk_raw": "CATHERINE A FERONY",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@landaffnh.org",
-  "local_hours": "11:00 AM - 7:00 End Time PM",
+  "local_hours": "11:00 AM - 7:00 PM",
   "phone": "603-838-6220",
   "polling_place": "Landaff Town Hall 12 Center Hill Rd Landaff 03585",
   "polling_raw": "LANDAFF TOWN HALL 12 CENTER HILL RD LANDAFF 03585",
-  "state_hours": "11:00 AM - 7:00 End Time PM",
+  "state_hours": "11:00 AM - 7:00 PM",
   "website": "https://www.landaffnh.org"
  },
  "langdon": {
@@ -2009,11 +2003,11 @@
   "clerk_raw": "SHANNON L J AMES-BROW N",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "sjamesbrown@leenh.org",
-  "local_hours": "7:00 AM - 7:00 PM End Time",
+  "local_hours": "7:00 AM - 7:00 PM",
   "phone": "603-659-2964",
   "polling_place": "Mast Way Elementaryschool 23 Mast Rd Lee 03861",
   "polling_raw": "MAST WAY ELEMENTARYSCHOOL 23 MAST RD LEE 03861",
-  "state_hours": "7:00 AM - 7:00 PM End Time",
+  "state_hours": "7:00 AM - 7:00 PM",
   "website": "https://www.leenh.org"
  },
  "lempster": {
@@ -2089,11 +2083,11 @@
   "clerk_raw": "SHARON ANN FARRELL",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "sfarrell@londonderrynh.org",
-  "local_hours": "6:00 AM - 8:00 PM End Time",
+  "local_hours": "6:00 AM - 8:00 PM",
   "phone": "603-432-1100",
   "polling_place": "Londonderry High School Gym 295 Mammoth Rdlondonderry 03053",
   "polling_raw": "LONDONDERRY HIGH SCHOOL GYM 295 MAMMOTH RDLONDONDERRY 03053",
-  "state_hours": "6:00 AM - 8:00 PM End Time",
+  "state_hours": "6:00 AM - 8:00 PM",
   "website": "https://www.londonderrynh.org"
  },
  "loudon": {
@@ -2163,9 +2157,7 @@
   "clerk_address": "PO Box 248 Madison 03849",
   "clerk_raw": "MICHAEL R BROOKS",
   "email": "clerk@madison-nh.org",
-  "local_hours": "End Time",
   "phone": "603-367-9931",
-  "state_hours": "End Time",
   "website": "https://www.madison-nh.org"
  },
  "manchester-ward-1": {
@@ -2213,11 +2205,11 @@
   "clerk_raw": "MATTHEW NORMAND",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "elections@manchesternh.gov",
-  "local_hours": "6:00 AM - 7:00 End Time PM",
+  "local_hours": "6:00 AM - 7:00 PM",
   "phone": "603-624-6455",
   "polling_place": "Northwestelementaryschool 300 Youville Stmanchester 03102",
   "polling_raw": "NORTHWESTELEMENTARYSCHOOL 300 YOUVILLE STMANCHESTER 03102",
-  "state_hours": "6:00 AM - 7:00 End Time PM",
+  "state_hours": "6:00 AM - 7:00 PM",
   "website": "https://www.manchesternh.gov"
  },
  "manchester-ward-2": {
@@ -2278,11 +2270,11 @@
   "clerk_raw": "MATTHEW NORMAND",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "elections@manchesternh.gov",
-  "local_hours": "6:00 AM - 7:00 PM End Time",
+  "local_hours": "6:00 AM - 7:00 PM",
   "phone": "603-624-6455",
   "polling_place": "McLaughlinmiddle School 201 Jack Lovering Drmanchester 03109",
   "polling_raw": "MCLAUGHLINMIDDLE SCHOOL 201 JACK LOVERING DRMANCHESTER 03109",
-  "state_hours": "6:00 AM - 7:00 PM End Time",
+  "state_hours": "6:00 AM - 7:00 PM",
   "website": "https://www.manchesternh.gov"
  },
  "manchester-ward-7": {
@@ -2375,11 +2367,11 @@
   "clerk_raw": "KERRI ANN PARKER",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "kparker@meredithnh.gov",
-  "local_hours": "7:00 AM - 7:00 PM End Time",
+  "local_hours": "7:00 AM - 7:00 PM",
   "phone": "603-677-4203",
   "polling_place": "Meredith Community Center 1 Circle Dr Meredith 03253",
   "polling_raw": "MEREDITH COMMUNITY CENTER 1 CIRCLE DR MEREDITH 03253",
-  "state_hours": "7:00 AM - 7:00 PM End Time",
+  "state_hours": "7:00 AM - 7:00 PM",
   "website": "https://www.meredithnh.gov"
  },
  "merrimack": {
@@ -2470,9 +2462,7 @@
   "clerk_address": "PO Box 180 Milton 03851",
   "clerk_raw": "BRIAN LECLERC",
   "email": "townclerktaxcollector@miltonnh-us.com",
-  "local_hours": "End Time",
   "phone": "603-652-4501",
-  "state_hours": "End Time",
   "website": "https://www.miltonnh-us.com"
  },
  "monroe": {
@@ -2541,11 +2531,11 @@
   "clerk_raw": "DANIEL HEALEY",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "cityclerk@nashuanh.gov",
-  "local_hours": "6:00 A.M. - 8:00 PM End Time",
+  "local_hours": "6:00 A.M. - 8:00 PM",
   "phone": "603-589-3010",
   "polling_place": "Amherst Street Elementaryschool 71 Amherst Stnashua 03064",
   "polling_raw": "AMHERST STREET ELEMENTARYSCHOOL 71 AMHERST STNASHUA 03064",
-  "state_hours": "6:00 A.M. - 8:00 PM End Time",
+  "state_hours": "6:00 A.M. - 8:00 PM",
   "website": "https://www.nashuanh.gov"
  },
  "nashua-ward-4": {
@@ -2606,11 +2596,11 @@
   "clerk_raw": "DANIEL HEALEY",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "cityclerk@nashuanh.gov",
-  "local_hours": "6:00 AM - 8:00 PM End Time",
+  "local_hours": "6:00 AM - 8:00 PM",
   "phone": "603-589-3010",
   "polling_place": "Bicentennial Elementaryschool 296 East Dunstable Rd Nashua 03062",
   "polling_raw": "BICENTENNIAL ELEMENTARYSCHOOL 296 EAST DUNSTABLE RD NASHUA 03062",
-  "state_hours": "6:00 AM - 8:00 PM End Time",
+  "state_hours": "6:00 AM - 8:00 PM",
   "website": "https://www.nashuanh.gov"
  },
  "nashua-ward-9": {
@@ -2674,11 +2664,11 @@
   "clerk_raw": "REGINA M SCHOFIELD",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "tctx@newhamptonnh.gov",
-  "local_hours": "11:00 AM - 7:00 PM End Time",
+  "local_hours": "11:00 AM - 7:00 PM",
   "phone": "603-744-8454",
   "polling_place": "New Hampton Town House 86 Town House Rd New Hampton 03256",
   "polling_raw": "NEW HAMPTON TOWN HOUSE 86 TOWN HOUSE RD NEW HAMPTON 03256",
-  "state_hours": "8:00 AM - 7:00 PM End Time",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://www.newhamptonnh.gov"
  },
  "new-ipswich": {
@@ -2750,11 +2740,11 @@
   "clerk_raw": "LISELLE G DUFORT",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "ldufort@newportnh.gov",
-  "local_hours": "08:00 AM - 07:00 PM End Time",
+  "local_hours": "08:00 AM - 07:00 PM",
   "phone": "603-863-2224",
   "polling_place": "Newport Community Center 17 Meadow Rd Newport 03773",
   "polling_raw": "NEWPORT COMMUNITY CENTER 17 MEADOW RD NEWPORT 03773",
-  "state_hours": "08:00 AM - 07:00 PM End Time",
+  "state_hours": "08:00 AM - 07:00 PM",
   "website": "https://www.newportnh.gov"
  },
  "newton": {
@@ -2817,9 +2807,7 @@
   "clerk_address": "PO Box 114 Nottingham 03290",
   "clerk_raw": "ALANA JEANE KENNEY",
   "email": "townclerk@nottingham-nh.gov",
-  "local_hours": "End Time",
   "phone": "603-679-9598",
-  "state_hours": "End Time",
   "website": "https://www.nottingham-nh.gov"
  },
  "odell": {
@@ -2889,11 +2877,11 @@
   "clerk_raw": "LINDA M GUYETTE",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@peterboroughnh.gov",
-  "local_hours": "7:00 AM - 7:00 PM End Time",
+  "local_hours": "7:00 AM - 7:00 PM",
   "phone": "603-784-5605",
   "polling_place": "Peterborough Community Center 25 Elm St Peterborough 03458",
   "polling_raw": "PETERBOROUGH COMMUNITY CENTER 25 ELM ST PETERBOROUGH 03458",
-  "state_hours": "7:00 AM - 7:00 PM End Time",
+  "state_hours": "7:00 AM - 7:00 PM",
   "website": "https://www.peterboroughnh.gov"
  },
  "piermont": {
@@ -2957,11 +2945,11 @@
   "clerk_raw": "AIMEE K LEE",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@plymouthnh.gov",
-  "local_hours": "8:00 AM - 7:00 PM End Time",
+  "local_hours": "8:00 AM - 7:00 PM",
   "phone": "603-536-1732",
   "polling_place": "Plymouth Elementaryschool 43 Old Ward Bridge Rd Plymouth 03264",
   "polling_raw": "PLYMOUTH ELEMENTARYSCHOOL 43 OLD WARD BRIDGE RD PLYMOUTH 03264",
-  "state_hours": "8:00 AM - 7:00 PM End Time",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://www.plymouthnh.gov"
  },
  "portsmouth-ward-1": {
@@ -3022,11 +3010,11 @@
   "clerk_raw": "SALLY A KELLAR",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "sakellar@portsmouthnh.gov",
-  "local_hours": "8:00 AM - 7:00 PM End Time",
+  "local_hours": "8:00 AM - 7:00 PM",
   "phone": "603-610-7208",
   "polling_place": "Little Harbour School 50 Clough Dr Portsmouth 03801",
   "polling_raw": "LITTLE HARBOUR SCHOOL 50 CLOUGH DR PORTSMOUTH 03801",
-  "state_hours": "8:00 AM - 7:00 PM End Time",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://www.cityofportsmouth.com"
  },
  "randolph": {
@@ -3085,11 +3073,11 @@
   "clerk_raw": "KELLY ANNE WALTERS",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "cityclerk@rochesternh.gov",
-  "local_hours": "8:00 AM - 7:00 PM End Time",
+  "local_hours": "8:00 AM - 7:00 PM",
   "phone": "603-332-2130",
   "polling_place": "W-2 Chamberlain Streetschool 65 Chamberlainst Rochester 03867",
   "polling_raw": "W-2 CHAMBERLAIN STREETSCHOOL 65 CHAMBERLAINST ROCHESTER 03867",
-  "state_hours": "8:00 AM - 7:00 PM End Time",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://www.rochesternh.gov"
  },
  "rochester-ward-3": {
@@ -3149,9 +3137,7 @@
   "clerk_address": "PO Box 309 Rollinsford 03869",
   "clerk_raw": "NANCY MCCAULEY",
   "email": "clerk@rollinsford.nh.us",
-  "local_hours": "End Time",
   "phone": "603-742-2510",
-  "state_hours": "End Time",
   "website": "https://www.rollinsford.nh.us"
  },
  "roxbury": {
@@ -3234,11 +3220,11 @@
   "clerk_raw": "BEVERLEY TILLEY",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "tclerksalisbury@gmail.com",
-  "local_hours": "11:00 AM - 7:00 PM End Time",
+  "local_hours": "11:00 AM - 7:00 PM",
   "phone": "603-648-6322",
   "polling_place": "Salisbury Town Hall 645 Old Turnpike Rdsalisbury 03268",
   "polling_raw": "SALISBURY TOWN HALL 645 OLD TURNPIKE RDSALISBURY 03268",
-  "state_hours": "8:00 AM - 7:00 PM End Time",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://www.salisburynh.org"
  },
  "sanbornton": {
@@ -3297,11 +3283,11 @@
   "clerk_raw": "DONNA M DEMERS",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "erroltownclerk@gmail.com",
-  "local_hours": "11:00 AM - 7:00 PM End Time",
+  "local_hours": "11:00 AM - 7:00 PM",
   "phone": "603-482-3351",
   "polling_place": "Errol Townhall 33 Mainstreet Errol - Forpolling Place Only Second College Grant 03579",
   "polling_raw": "ERROL TOWNHALL 33 MAINSTREET ERROL - FORPOLLING PLACE ONLY SECOND COLLEGE GRANT 03579",
-  "state_hours": "8:00 AM - 7:00 PM End Time"
+  "state_hours": "8:00 AM - 7:00 PM"
  },
  "sharon": {
   "clerk": "Dianne E Mitchell",
@@ -3377,11 +3363,11 @@
   "clerk_raw": "KRISTEN LAPANNE",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "klapanne@somersworthnh.gov",
-  "local_hours": "07:00 AM - End Time 07:00 PM",
+  "local_hours": "07:00 AM - 07:00 PM",
   "phone": "603-692-9511",
   "polling_place": "Charpentier Apartments- Communityroom 28 Franklin Stsomersworth 03878",
   "polling_raw": "CHARPENTIER APARTMENTS- COMMUNITYROOM 28 FRANKLIN STSOMERSWORTH 03878",
-  "state_hours": "07:00 AM - End Time 07:00 PM",
+  "state_hours": "07:00 AM - 07:00 PM",
   "website": "https://www.somersworthnh.gov"
  },
  "south-hampton": {
@@ -3436,11 +3422,11 @@
   "clerk_raw": "MCNEAL F NANCY",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "clerktax@stoddardnh.org",
-  "local_hours": "11:00 AM - 7:00 PM End Time",
+  "local_hours": "11:00 AM - 7:00 PM",
   "phone": "603-446-3326",
   "polling_place": "James Faulkner Elementaryschool 200 School St Stoddard 03464",
   "polling_raw": "JAMES FAULKNER ELEMENTARYSCHOOL 200 SCHOOL ST STODDARD 03464",
-  "state_hours": "8:00 AM - 7:00 PM End Time",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://www.stoddardnh.org"
  },
  "strafford": {
@@ -3504,11 +3490,11 @@
   "clerk_raw": "JASON E TAYLOR",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@townofsullivannh.com",
-  "local_hours": "8:00 AM - 7:00 PM End Time",
+  "local_hours": "8:00 AM - 7:00 PM",
   "phone": "603-847-3316",
   "polling_place": "Sullivan Town Hall 452 Centre St Sullivan 03445",
   "polling_raw": "SULLIVAN TOWN HALL 452 CENTRE ST SULLIVAN 03445",
-  "state_hours": "8:00 AM - 7:00 PM End Time",
+  "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://townofsullivannh.com"
  },
  "sunapee": {
@@ -3577,11 +3563,11 @@
   "clerk_raw": "STACEY C CLARK",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@templenh.gov",
-  "local_hours": "7:00 AM - 7:00 PM End Time",
+  "local_hours": "7:00 AM - 7:00 PM",
   "phone": "603-878-3873",
   "polling_place": "Temple Town Hall 19 Main St Temple 03084",
   "polling_raw": "TEMPLE TOWN HALL 19 MAIN ST TEMPLE 03084",
-  "state_hours": "7:00 AM - 7:00 PM End Time",
+  "state_hours": "7:00 AM - 7:00 PM",
   "website": "https://templenh.org"
  },
  "thompson-mes-s-purchase": {
@@ -3664,7 +3650,7 @@
   "polling_by_ward": [
    {
     "polling_place": "Walpole Town Hall 34 Elm St Walpole 03608",
-    "state_hours": "7:00 AM - 7:00 PM End Time",
+    "state_hours": "7:00 AM - 7:00 PM",
     "ward": "1"
    },
    {
@@ -3681,11 +3667,11 @@
   "clerk_raw": "MEGHAN H HANSSON",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "mhansson@walpolenh.us",
-  "local_hours": "7:00 AM - 7:00 PM End Time",
+  "local_hours": "7:00 AM - 7:00 PM",
   "phone": "603-756-3514",
   "polling_place": "Walpole Town Hall 34 Elm St Walpole 03608",
   "polling_raw": "WALPOLE TOWN HALL 34 ELM ST WALPOLE 03608",
-  "state_hours": "7:00 AM - 7:00 PM End Time",
+  "state_hours": "7:00 AM - 7:00 PM",
   "website": "https://www.walpolenh.us"
  },
  "walpole-ward-2": {
@@ -3757,11 +3743,11 @@
   "clerk_raw": "MARY L WELCH",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@webster-nh.gov",
-  "local_hours": "10:00AM - 7:00PM End Time",
+  "local_hours": "10:00AM - 7:00PM",
   "phone": "603-648-2053",
   "polling_place": "Webster Town Hall 945 Battle St Webster 03303",
   "polling_raw": "WEBSTER TOWN HALL 945 BATTLE ST WEBSTER 03303",
-  "state_hours": "8:00AM - 7:00PM End Time",
+  "state_hours": "8:00AM - 7:00PM",
   "website": "https://www.webster-nh.gov"
  },
  "wentworth": {
@@ -3845,11 +3831,11 @@
   "clerk_raw": "CANDIS JULIE JOHNSON",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@windhamnh.gov",
-  "local_hours": "7:00 AM - 8:00 PM End Time",
+  "local_hours": "7:00 AM - 8:00 PM",
   "phone": "603-434-5075",
   "polling_place": "Windham High School 64 London Bridge Rd Windham 03087",
   "polling_raw": "WINDHAM HIGH SCHOOL 64 LONDON BRIDGE RD WINDHAM 03087",
-  "state_hours": "7:00 AM - 8:00 PM End Time",
+  "state_hours": "7:00 AM - 8:00 PM",
   "website": "https://www.windhamnh.gov"
  },
  "windsor": {

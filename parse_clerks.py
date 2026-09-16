@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.3
+# GRANITE_VERSION: 2026-09-12.4
 """
 The Secretary of State's clerks and polling places, out of the PDF.
 
@@ -442,6 +442,35 @@ def surname_in_email(name, email):
 
 # ----------------------------------------------------------------- parse ----
 
+def header_bottom(words, xs, bands):
+    """The rule under the column labels, read off the page rather than assumed.
+
+    The header is a row of the table like every other row, and its first cell
+    says which row it is: "Town/City". So the band spelling that IS the
+    header, and the line the table draws under it is where the data starts.
+
+    THE CONSTANT THIS REPLACES was `t.bbox[1] + 26`, and it was a third of a
+    line short. The labels stand three text lines deep -- "State Election" at
+    top 45.57, "Start Time -" at 57.07, "End Time" at 68.57 -- and only the
+    two hours columns carry a third line. A cut at 40.0 + 26 = 66.0 clears
+    the first two and leaves the third standing; every page of this export is
+    laid out to the same tenth of a point, so it left it standing on all 53.
+    "End Time" then sat alone in the header band with no town beside it,
+    `stitch` did to it what it does to any row that names no town and folded
+    it into the row above -- the last row of the page before -- and 45 town
+    pages went out reading "8:00 AM - 7:00 PM End Time" under How to Vote.
+
+    There is nothing to tune in the replacement. The header band is 40.0 to
+    84.5 on all 53 pages and the first line of data is at 90.07, so the
+    measured answer clears the labels by 6pt and misses the data by 5.6.
+    """
+    for top, bot in bands:
+        if any(w["text"].lower().startswith("town/city") for w in words
+               if top - 0.5 <= w["top"] < bot and xs[0] - 0.5 <= w["x0"] < xs[1]):
+            return bot
+    return None
+
+
 def read_pdf(path):
     import pdfplumber
     out, notes = [], []
@@ -457,14 +486,23 @@ def read_pdf(path):
             if len(xs) != 12:
                 notes.append(f"page {pg.page_number}: {len(xs)} column edges")
                 continue
-            ws = [w for w in pg.extract_words() if w["top"] > t.bbox[1] + 26]
+            words = pg.extract_words()
             bands = sorted({(round(c[1], 1), round(c[3], 1)) for c in t.cells})
+            cut = header_bottom(words, xs, bands)
+            if cut is None:
+                # Skipped rather than read on a guess. A page whose header
+                # cannot be found is a page where a column label and a town's
+                # data are indistinguishable, and reading one as the other is
+                # the bug this function exists to stop.
+                notes.append(f"page {pg.page_number}: no Town/City header row")
+                continue
+            ws = [w for w in words if w["top"] >= cut]
             for top, bot in bands:
+                if bot <= cut:            # the header band, and the title above it
+                    continue
                 cells = [cell_lines(ws, xs[i], xs[i + 1], top, bot)
                          for i in range(11)]
                 if not any(c for c in cells):
-                    continue
-                if cells[TOWN] and cells[TOWN][0][0].lower().startswith("town/city"):
                     continue
                 out.append({"page": pg.page_number, "cells": cells, "xs": xs})
     return out, notes
