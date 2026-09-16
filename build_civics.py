@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.17
+# GRANITE_VERSION: 2026-09-08.18
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -58,6 +58,67 @@ def _follows_committee(narr):
 def _load(p, default):
     p = Path(p)
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else default
+
+
+# "shall adopt rules", "may adopt rules pursuant to RSA 541-A" -- the sentence
+# by which the legislature hands an agency the detail. Written out rather than
+# counted by hand because the administrative rules page's whole argument is
+# that this happens constantly and invisibly, and a reader is entitled to the
+# number behind it.
+_DELEGATES = re.compile(r"(?:shall|may)\s+adopt\s+rules?", re.I)
+
+
+def _rules_delegated(root, term):
+    """Bills of this term whose own text delegates rulemaking to an agency."""
+    texts = _load(Path(root) / "bill_text.json", {}).get(term) or {}
+    n = 0
+    for rec in texts.values():
+        body = rec.get("text") if isinstance(rec, dict) else rec
+        if body and _DELEGATES.search(body):
+            n += 1
+    return n
+
+
+def _notice(root, term, _seen={}):
+    """(hearings counted, median days) between a calendar's publication and the
+    hearing it announced, over this term.
+
+    The testifying page says how much warning a reader actually gets, and that
+    is a promise about the future, so it has to be measured rather than
+    guessed. A hearing is counted once however many calendars carried it.
+    Cached because two figures are taken from one pass.
+    """
+    if term in _seen:
+        return _seen[term]
+    rows = _load(Path(root) / "meetings.json", [])
+    gaps, seen = [], set()
+    years = set()
+    if "-" in term:
+        a, b = term.split("-")[0], term.split("-")[-1]
+        years = {a, b}
+    for r in rows:
+        if r.get("kind") != "public hearing":
+            continue
+        day, noticed = (r.get("date") or "")[:10], (r.get("noticed") or "")[:10]
+        if not (day and noticed) or day[:4] not in years:
+            continue
+        key = (r.get("body"), r.get("bill"), day, r.get("committee"))
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            from datetime import date
+            d1 = date(*map(int, noticed.split("-")))
+            d2 = date(*map(int, day.split("-")))
+        except (TypeError, ValueError):
+            continue
+        gap = (d2 - d1).days
+        if gap >= 0:
+            gaps.append(gap)
+    gaps.sort()
+    med = gaps[len(gaps) // 2] if gaps else 0
+    _seen[term] = (len(gaps), med)
+    return _seen[term]
 
 
 def record_figures(site, root=Path(".")):
@@ -143,6 +204,22 @@ def record_figures(site, root=Path(".")):
         # follows it", which is true and says nothing: it is 98%, and the 2%
         # is the interesting part.
         "follows_committee": _follows_committee(narr),
+        # Eight more the rewritten pages asked for, each counted from the file
+        # named beside it rather than typed. A page may state a figure only if
+        # the site can produce it, which is the rule that keeps this section
+        # worth believing.
+        "municipalities": len(_load(Path(root) / "town_officials.json", {})),
+        "members_sitting": len(_load(Path(site) / "legislators.json", [])),
+        "members_email": sum(1 for m in _load(Path(site) / "legislators.json", [])
+                             if (m.get("email") or "").strip()),
+        "floterial_seats": sum(h.get("seats") or 1 for h in house.values()
+                               if h.get("floterial")),
+        # The '1989' in 'back to 1989', from the terms themselves.
+        "first_year": min((r.get("term") or "" for r in idx if r.get("term")),
+                          default="-").split("-")[0],
+        "rules_delegated": _rules_delegated(root, term),
+        "notice_hearings": _notice(root, term)[0],
+        "notice_median": _notice(root, term)[1],
         "all_bills": len(idx), "all_rollcall": sum(1 for r in idx if (r.get("nrc") or 0) > 0),
         "all_no_rollcall": sum(1 for r in idx if not (r.get("nrc") or 0) > 0),
         "hb2_rollcalls": len(_load(Path(root) / "rollcalls.json", {}).get(term, {}).get("HB2", [])),
@@ -339,10 +416,16 @@ def main():
                   globals={"GR_STATIC": True}, noscript="",
                   skip_label="Skip to the topics",
                   sr_title="", nav_current="learn.html")
+    # NO RAIL ON THE HUB. Every topic page carries a rail of the other ten,
+    # because a reader inside the section needs a way across it. The hub IS
+    # that list: drawing the rail here printed all eleven titles twice on one
+    # page, the second time in grey at half the size, and left the whole right
+    # half of a 1440px window empty while the eleven entries queued up in a
+    # 560px column. Without it the hub is one thing at full width.
     page = page.replace('<div id="results"></div>',
-                        f'<div id="results"><div class="lcols">'
+                        f'<div id="results">'
                         f'<div class="civics hubpage">{hub(topics)}</div>'
-                        f'{rail(topics)}</div></div>', 1)
+                        f'</div>', 1)
     (site / "learn.html").write_text(page, encoding="utf-8")
 
     # ---- one page a topic ----------------------------------------------

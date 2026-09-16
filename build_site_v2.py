@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.88
+# GRANITE_VERSION: 2026-09-05.89
 """
 Generate the faceted site from real General Court data.
 
@@ -33,6 +33,7 @@ import member_links as ML
 import names
 import re
 import sys
+import archive_text as AT
 import text_sponsors as TS
 import unicodedata
 from collections import Counter, defaultdict, namedtuple
@@ -3449,6 +3450,16 @@ def main():
         n = (sum(len(v) for v in bill_texts.values())
              if P.term_keyed(bill_texts) else len(bill_texts))
         print(f"{n:,} bill texts loaded")
+    # And the archived pages, for every term before this one. bill_text.json is
+    # the current session's own text and holds 2025-2026 alone, so the Bill
+    # Text tab was empty on every older bill -- including 2023-2024, whose
+    # pages have been on this disk since the archive path was found on 10
+    # September, fetched and read for their sponsors and then not shown.
+    # merge_into never puts an archived page over a text the General Court
+    # publishes for the live session, which is the better copy.
+    _at = AT.merge_into(bill_texts)
+    if _at:
+        print(f"  {_at:,} more from their archived pages (archive_text.json)")
     # Journal and calendar URLs, so every docket line can cite its source.
     sources = {**load("calendars.json", {}), **load("journals.json", {})}
     # Every calendar the drain fetched, under its own year, where the files

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.187
+# GRANITE_VERSION: 2026-09-04.189
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1518,11 +1518,23 @@ def _civics_examples():
     if not idx:
         return "skip", "no built index to check subjects against"
 
+    # NAMED, WITH THE REASON, rather than by softening the pattern. SB 2 of
+    # 1995 is the law that let a town put its warrant articles on the official
+    # ballot, and "SB 2 town" is the ordinary name for a town that adopted it
+    # -- the phrase turns up in bills every year, which is why the local
+    # government page explains it. The word "ballot" in its title is the
+    # mechanism it created, not a subject anybody argues about; taking
+    # "ballot" out of the pattern instead would let a voter-identification
+    # bill through, and those are exactly what it is there to catch.
+    ALLOWED = {("1995", "SB2")}
+
     bad, unknown = [], []
     for slug, year, bid in linked:
         b = idx.get((year, bid))
         if not b:
             unknown.append(f"{bid} ({year}) on {slug}")
+            continue
+        if (year, bid) in ALLOWED:
             continue
         hit = CHARGED.search((b.get("title") or "") + " " + (b.get("topic") or ""))
         if hit:
@@ -1758,12 +1770,13 @@ def _record_untouched():
       bill_notes.json         written explanations of bills that recur under
                               one number every term, like the budget
       officials.json          offices filled by hand from four official sources
+      member_corrections.json a name a generator got wrong, and the evidence
 
     Naming only the first one meant the check grew stale as quietly as the
     thing it guards against: three of these four had no guard at all.
     """
     HANDMADE = ["ground_truth.csv", "review/checked.jsonl", "bill_notes.json",
-                "officials.json"]
+                "officials.json", "member_corrections.json"]
     bad = []
     for f in (sorted(Path(".").glob("build_*.py"))
               + sorted(Path(".").glob("fetch_*.py"))):

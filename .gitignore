@@ -61,6 +61,9 @@ calendars.json
 former_members.json
 rollcalls.json
 bill_text.json
+# 60 MB of bill text read back off the archived pages already on this
+# disk, rebuilt by archive_text.py in a couple of minutes.
+archive_text.json
 amendments.json
 # One per term now: build_manifest.py writes verification_manifest.csv for
 # the current term and verification_manifest_<term>.csv for each archived

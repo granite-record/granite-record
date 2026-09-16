@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.22
+# GRANITE_VERSION: 2026-09-04.23
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -875,6 +875,45 @@ def main():
         print(f"past members given a party from the roll call pages: {_gave:,}")
     if _new:
         print(f"voters named only by the solver, from those same pages: {_new:,}")
+
+    # ------------------------------------------ what a person has corrected ---
+    #
+    # LAST, OVER EVERY GENERATED SOURCE, AND OVER NOTHING ELSE. By this line
+    # `former` has been assembled from all three -- former_members.json, then
+    # past_members under it, then member_party.json filling blanks -- and no
+    # consumer has read it yet, so this is the one place a correction reaches
+    # every name the site shows for a member who has left.
+    #
+    # It exists because a generated name can be wrong and nothing downstream
+    # can tell. resolve_members.py cannot look an id up: the General Court's
+    # website and its data files number people in two spaces, so it deduces
+    # who an id is by intersecting a saved roll call page with the ids that
+    # voted. One of its 676 deductions landed on the wrong person, and put
+    # Thomas Oppel's name on 4,250 ballots cast between 2005 and 2024,
+    # including 362 in which that member presided as Speaker. member_corrections
+    # .json carries the correction and the evidence for it.
+    #
+    # A correction that matches nothing is a correction that has stopped
+    # working -- the id space changed, or the defect was fixed upstream and
+    # the entry outlived it -- so it says so rather than passing quietly.
+    cp = Path("member_corrections.json")
+    if cp.exists():
+        fixed = json.loads(cp.read_text(encoding="utf-8")).get("members") or {}
+        hit = miss = 0
+        for _mid, _fix in fixed.items():
+            _fields = {k: v for k, v in _fix.items() if not k.startswith("_")
+                       and k in ("name", "party", "county", "district")}
+            if _mid in former:
+                former[_mid].update(_fields)
+                hit += 1
+            else:
+                former[_mid] = dict(_fields)
+                miss += 1
+        if hit:
+            print(f"member_corrections.json: {hit} name(s) corrected by hand")
+        if miss:
+            print(f"  WARNING: {miss} correction(s) matched no generated member "
+                  f"and were added outright; check they are still needed")
 
     # ------------------------------------------ sponsors, district and all ---
     #

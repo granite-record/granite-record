@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.80
+// GRANITE_VERSION: 2026-09-07.81
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -508,6 +508,19 @@ need("meta.json")
      if(PAGE||window.GR_STATIC){location.href="bills.html";return;}
      term=e.target.value;
      forgetCardState();
+     // ON A BILL'S OWN PAGE THE PICKER CHOOSES THE TERM THE NEXT SEARCH RUNS
+     // IN, AND NOTHING ELSE. Re-rendering here swapped the record under the
+     // reader: a focused view is found by bill number alone, so changing the
+     // term redrew the page as the bill with the SAME NUMBER in the new term
+     // -- a different bill, about a different subject, at an address still
+     // naming the old one. A bill number is only unique within a biennium,
+     // which is the whole reason every address on this site carries the year.
+     // The term is still taken, and its bills still fetched, so the search
+     // that follows runs in it immediately.
+     if(focused){
+       const t=term===ALL_TERMS?terms:[term];
+       t.forEach(ensureTerm);
+       return;}
      // The term's bills may not be here yet. Fetch, then draw -- and say so
      // meanwhile, because a picker that does nothing for a moment reads as
      // broken.

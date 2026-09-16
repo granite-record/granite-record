@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.92 */
+/* GRANITE_VERSION: 2026-09-07.94 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -518,12 +518,6 @@ b,strong,h1,h2,h3,h4{font-weight:600}button{font:inherit;color:inherit;backgroun
    display, so the UA default would have carried it -- and this file has
    four rules that assume a display and lost to one. */
 .searchrow[hidden]{display:none}
-/* THE KEYBOARD HINT IS FOR A KEYBOARD. "press / to search" was drawn at every
-   width, including a phone, where there is no key to press and the line is
-   only noise above the results. Shown where a pointer can hover, which is the
-   nearest thing CSS has to asking whether there is a keyboard. */
-.kbdhint{display:none}
-@media (hover:hover) and (pointer:fine){.kbdhint{display:inline}}
 .searchrow .in{max-width:1180px;margin:0 auto;padding:var(--sp-5) var(--sp-8)}
 /* Capped. At 1440 the field was 962px of empty box; the placeholder ends
    long before that and the eye has nothing to land on. The hint line
@@ -1809,8 +1803,27 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4)}
 .srcs li{margin-bottom:var(--sp-2)}
 
 /* The hub's topic list. Numbered, because the order is the argument. */
+/* THE HUB IS A SET OF DOORS, NOT A QUEUE. Eleven entries in one 560px column
+   made a reader scroll past nine of them to see the last, on a page whose
+   whole job is letting them choose. Two columns above 900px, one below, and
+   the numbers stay: the section is in the order the institutions act on a
+   bill, and that order is worth reading off the page. */
+.hubpage{max-width:980px}
+/* The doors go wide; the sentences do not. Prose set to 980px is 110
+   characters a line, and the lead above it is capped at 28em, so the two
+   disagreed visibly -- a short line followed by a very long one. Everything
+   that is read stays at the measure the eleven pages themselves use, and only
+   the grid takes the width. */
+.hubpage > p,.hubpage > .shows{max-width:var(--measure)}
 .tlist{list-style:decimal;padding-left:var(--sp-8);margin:var(--sp-2) 0 var(--sp-8)}
 .tlist li{margin-bottom:var(--sp-1)}
+@media (min-width:900px){
+  .hubpage .tlist{display:grid;grid-template-columns:1fr 1fr;
+  column-gap:var(--sp-8);row-gap:var(--sp-2);align-items:start}
+  /* The marker hangs outside a grid item's box, so the list needs the room
+     on its left that a decimal list normally takes from its own padding. */
+  .hubpage .tlist li{margin-bottom:0}
+}
 .tlist a{display:block;padding:var(--sp-4) var(--sp-5);margin-left:-12px;text-decoration:none;
 border-radius:var(--r-in);color:inherit}
 .tlist a:hover{background:var(--pine-soft)}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.14
+# GRANITE_VERSION: 2026-09-08.16
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -341,100 +341,109 @@ they voted.</p>""")
 
 
 BODY_BILL = """
-<p>A bill has to clear the same course twice, once in each chamber, and can
+<p>A bill is a proposed change to New Hampshire law. It becomes law when both
+chambers have passed it in identical form and the Governor has signed it. A
+bill the Governor does not sign can still become law, either without a
+signature or over a veto.</p>
+
+<p>It has to clear the same course twice, once in each chamber, and it can
 stop at any point on it. Most do.</p>
 """ + flow_diagram() + """
-<p>Two of those stages are worth separating, because they are the two most
-often confused. A <b>public hearing</b> is where anyone may speak; the
-committee takes no decision at it. An <b>executive session</b> is where the
-committee votes on what to recommend, usually days later and usually covering
-several bills at once. See
+<p>A public hearing and an executive session are different meetings, and they
+are the two most often confused. A <b>public hearing</b> is where anyone may
+speak, and the committee takes no decision at it. An <b>executive session</b>
+is where the committee votes on what to recommend, usually days later and
+usually covering several bills at once. See
 <a href="learn/testifying.html">Testifying and attending</a> for what happens
 at each, and
 <a href="learn/governor-and-council.html">The Governor and the Executive
 Council</a> for the last stage.</p>
 
-<h2>Most bills stop somewhere</h2>
+<h2>How most bills end</h2>
 <p>Of the [[bills]] bills filed in the [[term]] term, <b>[[killed]] were
-killed</b> &mdash; the motion is <i>Inexpedient to Legislate</i> &mdash; and
-<b>[[signed]] were signed into law</b>. Another [[study]] were sent for interim
-study, [[tabled]] died on the table, and [[session_end]] died when the session
-ended without a final vote.
-Dying is the ordinary outcome, not a failure of the bill or its sponsor.</p>
+killed</b> on a motion of Inexpedient to Legislate, written <b>ITL</b>, and
+<b>[[signed]] were signed into law</b>. Among the rest, [[study]] were sent
+for interim study, [[tabled]] died on the table, and [[session_end]] died when
+the session ended without a final vote. Dying is the ordinary outcome, not a
+failure of the bill or its sponsor.</p>
 
-<h2>Most votes leave no record of who voted</h2>
-<p>Unless a member requests a roll call, a chamber votes by voice or by
-division. A voice vote records only which side sounded louder. A division
-records the count but not who voted which way. Only a roll call records each
-member by name.</p>
-<p>Across the [[all_bills]] bills on this site, <b>[[all_rollcall]] have at least one
-recorded roll call and [[all_no_rollcall]] have none</b>. For a great many bills there is simply no answer
-to "how did my representative vote" &mdash; not because it is hidden, but
-because it was never recorded.</p>
+<h2>How a chamber votes, and what is recorded</h2>
+<p>A chamber can put a question three ways. A <b>voice vote</b> records only
+which side sounded louder. A <b>division</b> records the count but not who
+voted which way. A <b>roll call</b> records every member by name. In the House
+one is taken only when a member moves for it and the required number of other
+members second the motion.</p>
+<p>Across the [[all_bills]] bills in this record, <b>[[all_rollcall]] have at
+least one recorded roll call and [[all_no_rollcall]] have none</b>. For a
+great many bills there is no answer to "how did my representative vote",
+because no record of names was ever made.</p>
 
-<h2>A majority is not always enough</h2>
-<p>Overriding a veto takes two thirds of those voting. A constitutional
-amendment takes three fifths of the entire membership &mdash; 240 of 400 in
-the House &mdash; whether or not everyone shows up. Measures regularly win a
-clear majority and fail anyway.</p>
+<h2>Votes that need more than a majority</h2>
+<p>Overriding a veto takes a two-thirds vote in each chamber, under Part
+Second, Article 44 of the state constitution, counted against the members
+voting. Amending the constitution takes three fifths of the entire membership
+of each chamber, which is 240 of the 400 House seats, and then two thirds of
+the voters, under Part Second, Article 100. That three-fifths threshold is
+counted against every seat rather than against the members present, so a
+measure can win a clear majority of those voting and fail anyway.</p>
 
 <h2>The consent calendar</h2>
-<p>A bill goes on the consent calendar when the committee vote was unanimous
-or nearly so and no dissenting member objected to it being placed there. It
-then passes without floor debate, along with everything else on the calendar,
-in a single vote. Ten members may petition to pull a bill off and have it
-taken up separately.</p>
+<p>A committee can put a bill on the consent calendar only by voting
+unanimously, in executive session, to place it there. The calendar is then
+decided in a single vote, without floor debate. What that vote adopts is the
+committee's recommendation on each bill, which for some of them is to kill it.
+Any member may ask for a bill to be taken off, and one that comes off is
+debated and voted on by itself at the end of the regular calendar.</p>
 
 <h2>Two bills, followed all the way</h2>
-<p>These two are here because the whole course is on the record for both, and
-because each divided the House without dividing it by party &mdash; which is
-the useful kind of example. In both, a majority of Republicans voted one way
-and a majority of Democrats the other, and in both a substantial minority of
-each party voted against its own side. There is a real argument on each
-side of them.</p>
+<p>Both ran the whole course, and in each the closest floor vote divided the
+House without dividing it by party. A majority of Republicans voted one way, a
+majority of Democrats the other, and a substantial minority of each party
+voted against its own side.</p>
 
 <h3>HB 1002 (2024) &mdash; what a public record may cost</h3>
 <p>The ordinary course, start to finish. A town or agency answering a
-right-to-know request may charge for the copies; the question was whether it
+right-to-know request may charge for the copies. The question was whether it
 may also charge for the staff time spent finding and reviewing the records.
 Supporters said small towns without full-time staff absorb real cost for
-requests that can run to thousands of pages. Opponents said a fee that
-tracks staff time can be set high enough to price an ordinary resident out of
+requests that can run to thousands of pages. Opponents said a fee that tracks
+staff time can be set high enough to price an ordinary resident out of
 oversight. It was signed into law.</p>
-<p>Its page carries the <b>public hearing of 17 January 2024</b> and two
-<b>executive sessions</b>, each with the recording and the moment the
-committee took the bill up &mdash; so the difference between the two kinds of
-meeting can be watched rather than taken on trust. The House divided
-<b>193 to 179</b>: 62 Republicans for and 125 against, 128 Democrats for and
-53 against.</p>
+<p>It had a public hearing on 17 January 2024 and two executive sessions, all
+three on video. The committee split, and the House divided <b>193 to 179</b>
+on the majority's motion to pass the bill with an amendment: 62 Republicans
+for and 125 against, 128 Democrats for and 53 against.</p>
 
-<h3>HB 1215 (2024) &mdash; the complicated path</h3>
-<p>The same course, but it took the longer road: a Special Committee on
-Housing, then a second chamber that changed it, then a <b>committee of
-conference</b> to settle the difference. Conference is the stage hardest to
-picture and the one least often recorded; here it is. The bill dealt with how
-long a town has to decide a development application and what may be appealed
-&mdash; local control of what gets built against the time and cost of getting
-anything built. Six of its proceedings are on video.</p>
+<h3>HB 1215 (2024) &mdash; a bill that went to a committee of conference</h3>
+<p>The same course by the longer road. It went to a Special Committee on
+Housing, then to a second chamber that changed it. On the motion to accept
+that change the House divided <b>172 to 180</b>, and the bill went to a
+<b>committee of conference</b>. It dealt with how long an approved development
+keeps the rules it was approved under, and where a building code dispute may
+be appealed: local control of what gets built against the time and cost of
+getting anything built. Six of its proceedings are on video, the conference
+among them. The House then rejected the conference report <b>102 to 261</b>,
+and the bill did not become law.</p>
 <p class="caveat">Both are offered as examples of the process and not as
-settled questions. The site takes no position on either; the arguments above
+settled questions. The site takes no position on either. The arguments above
 are summarised from what was said for and against, and the recordings are
 there so you can check whether that summary is fair.</p>
 """ + SHOWS.format("""
 <p>Follow the two worked examples through the record:
 <a href="bill/2024/hb1002.html">HB 1002 (2024)</a> and
-<a href="bill/2024/hb1215.html">HB 1215 (2024)</a> &mdash; each hearing, each
+<a href="bill/2024/hb1215.html">HB 1215 (2024)</a>, with each hearing, each
 committee vote, each floor vote, and the recording of each.</p>
 <p><b>Killed:</b>
 <a href="bill/2025/hb66.html">HB 66</a>, on what counts as material a public
-body must disclose under the right-to-know law &mdash; two roll calls before it
+body must disclose under the right-to-know law. Two roll calls before it
 died.</p>
 <p><b>Signed into law:</b>
-<a href="bill/2025/hb2.html">HB 2</a>, the budget trailer bill, with [[hb2_rollcalls]]
-recorded votes and a fiscal note running to four years.</p>
+<a href="bill/2025/hb2.html">HB 2</a>, the budget trailer bill, which carries
+the statutory changes the state budget needs, with [[hb2_rollcalls]] recorded
+votes.</p>
 <p><b>Vetoed, and the override failed:</b>
 <a href="bill/2026/hb349.html">HB 349</a>, on whether optometrists may perform
-ophthalmic laser procedures &mdash; passed both chambers, vetoed, and the
+ophthalmic laser procedures. It passed both chambers and was vetoed, and the
 override fell at 145 to 206 where two thirds of those voting was needed.</p>
 <p><b>Vetoed, and overridden anyway:</b>
 <a href="bill/2026/hb2026.html">HB 2026</a>, on the ten-year transportation
@@ -442,6 +451,9 @@ plan.</p>
 <p><b>Carried over</b> into the second year:
 <a href="bill/2026/hb649.html">HB 649</a>, on the maintenance obligations of
 motor vehicle operators, which passed in the second year and became law.</p>
+<p>Across the [[all_bills]] bills on this site, [[all_rollcall]] have at least
+one recorded vote and [[all_no_rollcall]] have none: most bills stop before
+anybody is asked to go on the record.</p>
 <p>Of the [[narrated]] bills with a narrative this term, <b>[[both_chambers]]
 reached both chambers</b> and <b>[[conference]] went to a committee of
 conference</b>. [[law]] became law: [[signed]] signed, [[unsigned]] without a
@@ -457,7 +469,9 @@ Guard.</p>
 <p>The Governor is elected for two years, at the same election as the whole
 legislature. When a bill has passed both chambers the Governor may sign it,
 veto it, or do nothing, in which case it becomes law without a signature after
-ten days.</p>
+five days, Sundays excepted &mdash; unless the legislature has adjourned in the
+meantime, and then it does not become law at all. Part Second, Article 44 of
+the state constitution sets both.</p>
 
 <h2>A veto is not always the end</h2>
 <p>The legislature can override a veto, but it takes two thirds of the members
@@ -585,28 +599,39 @@ every day a committee met and what it heard.</p>""")
 
 
 BODY_RULES = """
-<p>This is the least visible part of the process and one of the most
-consequential.</p>
-<p>A statute says what shall happen. It rarely says how. The detail &mdash;
-the form, the threshold, the deadline, the licence conditions &mdash; goes
-into <b>administrative rules</b>, and the agency writes those, not the
-legislature. A bill will often say, in as many words, that "the department
-shall adopt rules under RSA 541-A". That sentence is the legislature handing
-over the detail.</p>
+<p>An administrative rule is a requirement a state agency writes to carry out a
+statute. Rules are made under RSA 541-A, the Administrative Procedure Act.</p>
 
-<h2>The legislature keeps a say</h2>
-<p>Rules do not simply take effect. The <b>Joint Legislative Committee on
-Administrative Rules</b> &mdash; JLCAR, members of both chambers &mdash;
-reviews proposed rules and can object to one it thinks goes beyond what the
-statute allows or conflicts with legislative intent. This is where the
-legislature keeps a hold on how its own statute is carried out.</p>
+<p>A statute rarely says how. The detail &mdash; the form, the threshold, the
+deadline, the licence conditions &mdash; is left to the rule, and an
+<a href="learn/state-agencies.html">agency</a> writes it, not the legislature.
+A bill often says so in as many words: "the department shall adopt rules under
+RSA 541-A". [[rules_delegated]] of the [[bills]] bills filed in the [[term]]
+term carry a sentence of that kind.</p>
 
-<h2>Why it matters to a reader here</h2>
-<p>If you have followed a bill through this site to the point where it became
-law, the law may not be the end of the story. The rule written afterwards is
-often where the question you actually care about is answered, and it is
-written in a process with far fewer people watching than the hearing you
-listened to.</p>
+<h2>How a rule is made</h2>
+<p>The agency files the proposed rule, and notice of it appears in the
+rulemaking register. Every proposed rule then gets at least one public comment
+hearing, at which anyone may testify or comment in writing: RSA 541-A:11. The
+agency settles the final text in the light of the comment and files it for
+legislative review.</p>
+
+<h2>How the legislature reviews a rule</h2>
+<p>The <b>Joint Legislative Committee on Administrative Rules</b>, or JLCAR,
+has members from both chambers and meets at least once a month. The final
+proposal goes to it before the rule can be adopted. It may approve the rule,
+approve it on condition of a stated change, or object to it. The grounds for an
+objection are set out at RSA 541-A:13, IV, and include a rule beyond the
+agency's authority and one contrary to the intent of the legislature.</p>
+<p>An objection does not by itself stop the rule. To block it the committee
+sponsors a joint resolution, which has to pass both chambers and go to the
+Governor <a href="learn/how-a-bill-becomes-law.html">like any other
+legislation</a>.</p>
+
+<h2>After the bill becomes law</h2>
+<p>The law is often not the whole answer. What the statute left open is settled
+in the rule, and the rule's hearing is announced in the rulemaking register,
+not in a chamber calendar.</p>
 """
 
 BODY_RULES_HOLDS = """This site does not carry administrative rules
@@ -616,30 +641,38 @@ below."""
 
 
 BODY_LOCAL = """
-<p>New Hampshire does a great deal at town level, and the vocabulary turns up
-constantly in bills here without being explained.</p>
+<p>Local government in New Hampshire is the city or town, the school district
+and the county. There are [[municipalities]] cities and towns. A city has an
+elected council or board of aldermen. Most towns have no council: the
+legislative body is the town meeting, and the registered voters adopt the
+budget themselves.</p>
 
-<h2>Town meeting</h2>
-<p>The traditional form: residents gather on a single day, debate the
-<b>warrant</b> &mdash; the list of articles to be decided &mdash; amend
-articles from the floor, and vote on them there and then. The budget is
-decided by the people in the room.</p>
+<h2>How a town meeting works</h2>
+<p><b>Warrant:</b> the notice of the meeting and the list of business to be
+decided at it. Nothing done at a town meeting except electing its officers is
+valid unless the subject was stated in the warrant (RSA 39:2). A <b>petitioned
+article</b> is one the selectmen must put on the warrant on the written
+application of 25 registered voters, or of 2 percent of the town's registered
+voters, whichever is fewer (RSA 39:3). The articles are debated and amended
+from the floor, and the budget is decided in the room.</p>
 
-<h2>"SB 2 towns"</h2>
-<p>A town that has adopted the official-ballot form votes on warrant articles
-by ballot on election day instead, after a separate deliberative session where
-the articles can be amended. It is called SB 2 after the bill that created the
-option, and many towns and school districts have adopted it.</p>
-<p>The trade is participation for reach: a deliberative session is attended by
-far fewer people than a town meeting, but far more people vote on the
-result.</p>
+<h2>How SB 2 towns vote</h2>
+<p>A town, school district or village district may instead adopt the
+<b>official ballot referendum form of meeting</b> (RSA 40:13), called
+<b>SB 2</b> after <a href="bill/1995/sb2.html">the 1995 bill</a> that created
+it. The meeting is then in two parts. At the first, the <b>deliberative
+session</b>, the articles are debated and amended and nothing is decided. At
+the second, they are voted on by official ballot on election day, as the first
+session left them.</p>
 
 <h2>The default budget</h2>
-<p>If a town rejects the budget put to it, spending does not stop. It falls
-back to the <b>default budget</b> &mdash; broadly last year's, adjusted for
-obligations already contracted. Which is why the argument at a deliberative
-session is often not about the proposed budget at all but about what the
-default would be.</p>
+<p><b>Default budget:</b> what a town or district that has adopted the
+official ballot form falls back on if the operating budget on the ballot is
+defeated. It is last year's appropriations, adjusted for debt service,
+contracts and other obligations already incurred or mandated by law, and
+reduced by one-time spending (RSA 40:13, IX(b)). The voters cannot amend it
+(RSA 40:13, XI(b)). That is why the argument at a deliberative session is
+often about the default rather than the proposed budget.</p>
 """
 
 BODY_LOCAL_HOLDS = """This site covers the state legislature only. It holds no
@@ -649,84 +682,112 @@ them assume you already know all of this."""
 
 
 BODY_TESTIFYING = """
-<p>Anyone may testify on any bill. You do not need to be invited, you do not
-need to live in the district, and you do not need to speak &mdash; signing in
-for or against is itself part of the record, and it is counted.</p>
+<p>A public hearing is the meeting at which a committee hears a bill before it
+votes on what to recommend. Every bill introduced gets one, and anyone may
+speak at it.</p>
+<p>You do not need to be invited, you do not need to live in the district, and
+you do not need to speak. Signing in for or against is itself part of the
+record, and it is counted.</p>
 
-<h2>How to find out a hearing is happening</h2>
-<p>Hearings are announced in the chamber's calendar, which is published
-weekly, and on the meeting schedule the General Court keeps online. Across the
-hearings this site has parsed out of those calendars, the <b>median notice is
-five days</b> &mdash; the calendar carrying the announcement is published, on
-the middle case, five days before the hearing itself. Some give as little as
-one day.</p>
+<h2>How hearings are announced</h2>
+<p>A hearing is announced in the chamber's calendar, which is published weekly,
+and on the meeting schedule the General Court keeps online. The notice gives
+the committee, the bill, the day, the time and the room. Across the
+[[notice_hearings]] hearings those calendars announced in the [[term]] term,
+the median notice is <b>[[notice_median]] days</b>. That is the gap between the
+day the calendar is published and the day of the hearing.</p>
+<p>Notices name the room by building:</p>
+<table><tbody>
+<tr><td><b>SH</b></td><td><b>State House:</b> 107 North Main Street,
+Concord.</td></tr>
+<tr><td><b>LOB</b></td><td><b>Legislative Office Building:</b> 33 North State
+Street, Concord. No longer used for hearings, and named in older
+notices.</td></tr>
+<tr><td><b>GP</b></td><td><b>Granite Place:</b> 1 Granite Place, Concord, where
+House committee meetings are now held.</td></tr>
+</tbody></table>
+<p>Both chambers live stream their standing committee hearings, so a hearing
+can be watched as it happens.</p>
 
 <h2>Signing in</h2>
 <p>The House takes sign-ins online, before and during the hearing. You give
 your name and town, say whether you are a member of the public or representing
 an organisation, and mark yourself supporting, opposing or neutral. You may
-attach written testimony. The counts are read by the committee and they are
-published afterwards.</p>
-<p>The window is not open indefinitely. Sign-in opens once the hearing is
-scheduled and published, and closes at the end of the day of the hearing. If
-the bill passes one chamber and gets a hearing in the other, there is a second
-window on the same terms.</p>
+attach written testimony. The committee is given the counts, and the sign-ins
+are published after the hearing.</p>
+<p>The window is not open indefinitely. It opens once the hearing is scheduled
+and published, and it closes at the end of the day of the hearing. If the bill
+passes one chamber and gets a hearing in the other, there is a second window on
+the same terms.</p>
 
-<h2>All of it, in order</h2>
+<h2>The steps, in order</h2>
 """ + flow_diagram(FLOW_TESTIFY, "How to testify, in order", level=3) + """
 
-<h2>Speaking</h2>
-<p>Speaking is a separate thing from signing in, and you fill in a card to do
-it. The sponsor speaks first, then the committee generally hears anyone who
-has asked to. There is no fixed time limit but a chair will ask you to be
-brief if many people are waiting, and repeating what the last speaker said is
-the thing most likely to get you moved along.</p>
+<h2>Speaking at the hearing</h2>
+<p>Speaking is a separate act from signing in, and you fill in a card to do it.
+The sponsor speaks first, then the committee generally hears anyone who has
+asked to. There is no fixed time limit. A chair will ask you to be brief when
+many people are waiting, and repeating what the last speaker said is the thing
+most likely to get you moved along.</p>
 <p>You do not have to be an expert. The most useful testimony is usually the
-most specific: what this bill would do to you, in your town, with a number or
-a date in it.</p>
+most specific: what this bill would do to you, in your town, with a number or a
+date in it.</p>
 
-<h2>What happens to it</h2>
-<p>The committee votes on a recommendation in a later meeting called an
-executive session, which is public and which you may also attend. Sign-in
-counts and written testimony go into the record either way.</p>
+<h2>What happens after the hearing</h2>
+<p>The committee votes on what to recommend at a later meeting called an
+executive session. It is public and you may attend it, but no testimony is
+taken at it. The committee then reports its recommendation to the chamber, and
+where it was split the majority and the minority each write a report. Whether
+you spoke or only signed in, the counts and any written testimony stay in the
+record.</p>
 """ + SHOWS.format("""
-<p>This site holds <b>[[hearings]] public hearings</b> from the dockets and the
-House and Senate calendars, each with the committee and the day.
-Every bill's page shows its own hearings, and the Videos tab links the
-recording at the moment the bill was taken up.</p>
+<p>This site holds <b>[[hearings]] public hearings</b>, each with the committee
+and the day. Every bill's page shows its own hearings, and the Videos tab links
+the recording at the moment the bill was taken up.
+<a href="committees.html">A committee's page</a> lists every day it met and
+what it heard.</p>
 <p>Bills also carry the sign-in counts: how many people registered supporting,
-opposing and neutral.</p>""")
+opposing and neutral. Names and written testimony are not published here.</p>""")
 
 
 BODY_REPS = """
-<p>Every resident has one senator and at least one representative, and most
-have several representatives, because House districts are drawn to towns
-rather than to equal population.</p>
+<p>New Hampshire is divided into [[house_districts]] House districts and
+[[senate_districts]] Senate districts. Every resident lives in one Senate
+district and in at least one House district, set by the town or ward they live
+in. Most people have more than one representative, because a House district is
+built out of whole towns and wards rather than drawn to equal population.</p>
 
 <h2>What the district numbering means</h2>
-<p>A House district is written as a county and a number &mdash; Rockingham 13,
-Hillsborough 44. The number is not a rank or a size; it is just an index
-within that county, and it is redrawn every ten years after the census. A
-district may be one town, part of a town, or several small towns together, and
-a district covering several towns elects several representatives at large
-across the whole of it.</p>
-<p>Senate districts are numbered 1 to 24 statewide and cut across county
-lines.</p>
+<p>A House district is written as a county and a number: Rockingham 13,
+Hillsborough 44, or abbreviated to <b>Rock 13</b>. The number is not a rank or
+a size. It is an index within that county, and the map is redrawn every ten
+years after the federal census.</p>
+<p>A district may be a single town, one or more wards of a city, or several
+small towns together. Where it has more than one seat, its members are elected
+at large across the whole of it, not one to each town. The largest elects
+[[largest]] representatives.</p>
+<p>Senate districts are numbered 1 to [[senate_districts]] across the whole
+state rather than by county, and many cross county lines. Each elects one
+senator, and district 22 is written <b>SD22</b>.</p>
 
-<h2>Floterial districts</h2>
-<p>Some towns are in two House districts at once. A <b>floterial</b> district
-sits on top of several ordinary ones and elects an additional member or two
-across the whole of it, which is how the state gets closer to equal
-representation without splitting small towns.</p>
-<p>If you live in one, you have more representatives than you might expect:
-the members of your own district, plus the floterial members shared with
-neighbouring towns. Of New Hampshire's 203 House districts, <b>41 are
-floterial</b>, and they account for 65 of the 400 seats.</p>
+<h2>What a floterial district is</h2>
+<p>A floterial district is a House district drawn over several towns or wards
+that each already elect their own representative. It elects one or more
+additional members across all of them together.</p>
+<p>A town's population is rarely an exact multiple of what one seat is worth.
+A floterial is where those remainders are pooled, rather than a town being
+split between two districts.</p>
+<p>If you live in one of those towns, you are represented by both: the members
+of your own district, and the floterial members you share with the towns
+around you. [[floterial]] of the [[house_districts]] House districts are
+floterial, and they account for [[floterial_seats]] of the [[house_seats]]
+seats.</p>
 
-<h2>Getting in touch</h2>
-<p>Members publish an address and, for nearly all of them, an email. There is
-no staff between you and them: a message to a representative is read by that
-representative. They are also, mostly, working other jobs.</p>
+<h2>How to contact a member</h2>
+<p>[[members_email]] of the [[members_sitting]] sitting members publish an
+email address in the General Court's directory. Almost none have staff, so a
+message to a representative is read by that representative. Most have other
+jobs.</p>
 """ + SHOWS.format("""
 <p><a href="legislators.html">Every member of both chambers</a>, with their
 district, party and county, and every recorded vote they have cast.</p>
@@ -735,15 +796,32 @@ has a button that opens an email to all of them at once.</p>""")
 
 
 BODY_SITE = """
-<p>Granite Record indexes the public record: what each bill does, who
-sponsored it, when it was heard, how it was voted on, and where in the
-recording that happened.</p>
+<p>Granite Record is an index of the New Hampshire General Court's own record:
+[[all_bills]] bills across [[terms]] two-year terms, back to [[first_year]],
+with what each bill does, who sponsored it, when it was heard, how it was
+voted on, and where in the recording that happened. It is built by machine
+from the General Court's published files and rebuilt every night.</p>
+
+<p>Older terms hold less, and every bill's page says what its term carries and
+what has not been fetched.</p>
+
+<h2>How to find a bill, a member or a town</h2>
+<p>The <b>Search</b> button in the header finds legislators, committees, towns
+and this site's own pages: typing Litchfield offers both the town and the
+representative of that name. Anything else goes to
+<a href="bills.html">the bill search</a>, which takes a bill number, several
+separated by commas, or words from a title, sponsor or committee. It covers
+one term at a time and narrows by committee, topic, prime sponsor, status and
+floor vote day. <a href="legislators.html">Every sitting member</a> and
+<a href="committees.html">every committee</a> has a page of their own.</p>
 
 <h2>What a bill's page holds</h2>
 <ul>
 <li><b>Summary</b> &mdash; the General Court's own analysis, the current
 status, and a narrative of what has happened, in order, with each action
 linked to the journal or calendar that recorded it.</li>
+<li><b>Bill Text</b> &mdash; the text and its amendments, where more than one
+was published.</li>
 <li><b>Votes</b> &mdash; every recorded roll call, by member. Voice and
 division votes appear in the narrative but have no member-by-member record to
 show, because none was made.</li>
@@ -759,45 +837,54 @@ comes from.</li>
 <h2>What a timestamp claims</h2>
 <p>Not all of them claim the same thing, and the page says which.</p>
 <ul>
-<li>Where the chair can be heard opening an item, the time is that moment.</li>
+<li>Where the chair can be heard taking the bill up, that is the time.</li>
 <li>Where a roll call has a clock time in the official record, that is
 used.</li>
-<li>Otherwise the time is estimated from where the bill appears in the
-recording, and it says <b>approximate</b>. It can be several minutes out.</li>
+<li>Otherwise the time is estimated from where the bill falls in the recording
+and marked <b>approximate</b>. It can be several minutes out.</li>
+<li>Where no moment has been found, the page says so and offers the whole
+sitting.</li>
 </ul>
 <p>Captions are never quoted here. Automatic transcription renders "HB 1381"
 as "HP 1381" often enough that a quotation would be a transcription error
-wearing the clothes of a citation. The timestamp is the claim; the recording
+wearing the clothes of a citation. The timestamp is the claim. The recording
 is the evidence.</p>
 
 <h2>Reading the shorthand</h2>
 <table><tbody>
-<tr><td><b>OTP</b></td><td>Ought to Pass &mdash; a motion to pass the bill</td></tr>
-<tr><td><b>OTP/A</b></td><td>Ought to Pass with Amendment</td></tr>
-<tr><td><b>ITL</b></td><td>Inexpedient to Legislate &mdash; a motion to kill it</td></tr>
-<tr><td><b>MA / MF</b></td><td>Motion Adopted / Motion Failed</td></tr>
-<tr><td><b>VV</b></td><td>Voice vote &mdash; no record of individual votes</td></tr>
-<tr><td><b>DV</b></td><td>Division vote &mdash; counted, names not recorded</td></tr>
-<tr><td><b>RC</b></td><td>Roll call &mdash; each member recorded by name</td></tr>
-<tr><td><b>CC</b></td><td>Consent Calendar</td></tr>
-<tr><td><b>OT3rdg</b></td><td>Ordered to a third reading</td></tr>
-<tr><td><b>HJ / SJ</b></td><td>House or Senate Journal, and the page</td></tr>
-<tr><td><b>-FN</b></td><td>Carries a fiscal note</td></tr>
-<tr><td><b>-A</b></td><td>Contains an appropriation</td></tr>
-<tr><td><b>-LOCAL</b></td><td>Has a local fiscal impact, on towns or schools</td></tr>
+<tr><td><b>OTP</b></td><td><b>Ought to Pass:</b> a motion to pass the bill</td></tr>
+<tr><td><b>OTP/A</b></td><td><b>Ought to Pass with Amendment</b></td></tr>
+<tr><td><b>ITL</b></td><td><b>Inexpedient to Legislate:</b> a motion to kill it</td></tr>
+<tr><td><b>MA</b> / <b>MF</b></td><td><b>Motion Adopted / Motion Failed</b></td></tr>
+<tr><td><b>VV</b></td><td><b>Voice vote:</b> no count and no names</td></tr>
+<tr><td><b>DV</b></td><td><b>Division vote:</b> counted, names not recorded</td></tr>
+<tr><td><b>RC</b></td><td><b>Roll call:</b> each member recorded by name</td></tr>
+<tr><td><b>CC</b></td><td><b>Consent Calendar:</b> the committee's
+recommendation, to pass or to kill, adopted with the whole calendar in one
+vote, without floor debate</td></tr>
+<tr><td><b>OT3rdg</b></td><td><b>Ordered to a third reading</b></td></tr>
+<tr><td><b>HJ</b> / <b>SJ</b></td><td><b>House or Senate Journal:</b> the
+chamber's own record of the day, cited by issue and sometimes page</td></tr>
+<tr><td><b>-FN</b></td><td><b>Fiscal note:</b> an estimate of what the bill
+would cost</td></tr>
+<tr><td><b>-A</b></td><td><b>Appropriation:</b> the bill contains one</td></tr>
+<tr><td><b>-LOCAL</b></td><td><b>Local fiscal impact:</b> on towns or schools</td></tr>
 </tbody></table>
 
 <h2>Following a bill</h2>
-<p>Every bill still moving through the General Court has an RSS feed, and
-there is one for upcoming hearings. A feed reader finds a bill's feed from the
-bill's page; the feed ends once the bill is settled, since nothing more will
-happen to it. No account, no email address, nothing to leak.</p>
+<p>A bill still moving through the General Court carries an RSS feed, and so
+does every sitting member, every committee still sitting, and every topic. The
+<b>Follow</b> control on a record's page gives the address where there is one.
+There are also feeds for the record's newest actions and for hearings coming
+up. A bill's feed ends once the bill is settled. There is no email option yet.
+No account, no email address, nothing to leak.</p>
 
-<h2>Telling us we are wrong</h2>
-<p>This is assembled by machine from official sources and it will be wrong
-somewhere. If you find something wrong &mdash; particularly on these
-explanatory pages, where an error is harder to spot than a wrong date &mdash;
-write to <a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>.</p>
+<h2>How to report an error</h2>
+<p>Every record's page carries a <b>Report a problem</b> box at the foot,
+because this will be wrong somewhere. It sends nothing that identifies you,
+which also means we cannot reply. For an answer, or for an error on these
+explanatory pages, write to
+<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>.</p>
 """
 
 # The official addresses these pages send a reader to. Kept in one place

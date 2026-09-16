@@ -1,0 +1,36 @@
+{
+  "_what": "Names and seats the generators get wrong, corrected by a person. This file is edited by hand. No generator writes it, and preflight fails if any build_* or fetch_* script opens it for writing.",
+
+  "_why": "The General Court numbers people in two spaces. Its website links a member by Employeeno; its bulk data files carry both an Employeeno and a PersonID, and the roster views that put names to numbers do not reach everybody who has ever voted. resolve_members.py bridges the gap by deduction -- it intersects the members printed on a saved roll call page with the ids that voted in the data file -- and a deduction can land on the wrong person. Nothing downstream catches that, and the file it writes, former_members.json, is regenerated on every run and is not tracked by git, so a name corrected there is gone by the next build. This is the one place a correction survives a rebuild.",
+
+  "_read_by": "build_data.py, and only build_data.py, which is already the single reader of former_members.json. It is applied last, over every generated name source, and it reports what it changed so a correction that stops matching anything is loud rather than silent.",
+
+  "_how_to_add_one": "Add an entry under \"members\", keyed by the member id as it appears in data/member_votes.json. Give whichever of name, party, county and district are wrong; anything you leave out keeps what the generators produced. \"was\" and \"why\" are for the next person to read -- they change nothing, and the evidence for a correction should travel with it rather than live only in a commit message.",
+
+  "members": {
+    "376628": {
+      "name": "Shurtleff, Steve",
+      "party": "Democrat",
+      "county": "Merrimack",
+      "district": "15",
+
+      "was": "Oppel, Thomas (Democrat, Grafton 9)",
+
+      "why": [
+        "This id casts 4,250 ballots from 2005 to 2024, 362 of them recorded as Presiding in 2019 and 2020. The presiding officer of the House is the Speaker, and the Speaker in 2019-2020 was Steve Shurtleff. Thomas Oppel was first elected in 2024; his own ids in the roll call history are Employeeno 409281 and PersonID 11182, and his first ballot is in 2025.",
+
+        "The General Court's own pages say so. Seven saved roll call pages under rc_pages/ carry a link to member=376628, and all seven print 'Shurtleff, Steve -- Democrat, Merrimack 15'. That the website's member= id is the data file's Employeeno rather than its PersonID was not assumed: for six roll calls the set of member= ids on the page was compared with the set of Employeenos in the history file for the same roll call and vote, and the two sets were equal every time -- 205/205, 193/193, 195/195, 186/186, 185/185 and 152/152 -- with no overlap at all against the PersonID column.",
+
+        "The House Journal agrees, without using any id. Journal roll calls were matched to data roll calls by their yea and nay totals, and every name printed in the journals' vote lists was scored against this id's ballots. Shurtleff ranks first in every term from 2005 to 2024 -- 3,123 agreements out of 3,127, or 99.87% -- with the runner-up several points behind in each term and named controls far worse.",
+
+        "The tenure matches exactly. Shurtleff appears in the journals of 2005 through 2024 and not at all in 2025. The bill text has him sponsoring at Merrimack 10, then 11, then 15 across the two redistrictings; never Grafton.",
+
+        "And the number sits where the name belongs. past_members.json, which is keyed by Employeeno, holds ids 376595-376642 as one strictly alphabetical block of the 2005 House cohort -- Serlin 376626, Shaw 376627, [376628], Sinclair 376629, Smith 376630 -- and that file, naming 2,614 people, has no Shurtleff entry at all. The gap is exactly where Shurtleff sorts.",
+
+        "This was the only wrong name found. All 676 entries of former_members.json were audited four ways -- against the other id space, against who could have presided, against the seat the bill text prints, and against names used twice -- and five further candidates were each checked independently and cleared. 376628 is also the only one of the 676 keyed by an Employeeno rather than a PersonID, which is the shape the deduction fell through."
+      ],
+
+      "seat_caveat": "One seat is recorded because the site shows one seat per former member, and Merrimack 15 is the seat the General Court's own pages print for him. He in fact sat Merrimack 10, then 11, then 15 as the districts were redrawn, so a 2005 ballot of his carries a district he did not hold until 2023. Ballots by sitting members are dated per term from the bill text; former members are not yet."
+    }
+  }
+}
