@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.11
+# GRANITE_VERSION: 2026-09-04.12
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -37,20 +37,95 @@ FLAG_RE = re.compile(r"==\s*([A-Z][A-Z ]*?)\s*==")
 # House:  "Public Hearing: 01/13/2025 10:30 am LOB 301-303"
 #         "Executive Session: 01/23/2025 01:40 pm LOB 301-303"
 #         "Subcommittee Work Session: 01/22/2025 01:15 am LOB 302-304"
+# THE DEFECT WAS THE $ ANCHOR, NOT THE MERIDIEM. The old pattern ended
+# `...(?:venue)?(?:cite)?\s*$`, which made the venue class responsible for
+# absorbing every word the clerk appended after the room. When it could not --
+# a colon, a slash, a parenthesis, an "=" -- the WHOLE line failed and fell
+# through to LEGACY_SCHED_RE below, which is the 1989-1998 pattern: it
+# hardcodes kind="hearing" and puts everything after the bare HH:MM into the
+# venue. That is how "a.m. LOB305-307" became a room and a Zoom paragraph
+# became a room.
+#
+# 1,062 modern House lines were being read that way -- 1,029 of them in
+# 2021-2022. Measured over those real lines: allowing dots in the meridiem
+# rescues 288 of them; dropping the anchor rescues 1,061; making the colon
+# optional takes it to 1,062.
+#
+# 742 of the 1,062 are the 2020-21 remote hearings, whose line states no room
+# at all -- it states a Zoom link. Printing nothing there is the right answer,
+# and printing the link as a room was the bug.
+#
+# The meridiem, every way the six modern dockets write it. Counted, not
+# assumed: am 13,843 / AM 6,199 / pm 7,225 / PM 3,548 / a.m. 393 / p.m. 181.
+HOUSE_MER = r"[ap]\s?\.?\s?m\.?"
+
 HOUSE_SCHED_RE = re.compile(
     r"(?P<kind>Public Hearing|Executive Session|Subcommittee Work Session|"
-    r"Full Committee Work Session|Work Session|Committee of Conference)\s*:\s*"
-    r"(?P<date>\d{1,2}/\d{1,2}/\d{4})"
-    r"(?:\s+(?P<time>\d{1,2}:\d{2}\s*[ap]m))?"
-    # The venue stops before a journal citation. A House line can end
-    # "LOB 210-211 HC 19 P. 16" -- room, then House Calendar 19 page 16 -- and
-    # a venue pattern that accepts letters, digits and spaces swallows the
-    # citation whole, so the site printed a room number with a page reference
-    # stuck to it.
-    r"(?:\s+(?P<venue>[A-Za-z0-9 .\-]+?))?"
-    r"(?:\s+(?P<cite>(?:HC|SC|HJ|SJ)\s*\d+\s*(?:P\.?\s*\d+)?))?\s*$",
+    r"Full Committee Work Session|Work Session|Committee of Conference)"
+    # A colon, or a space, or both. "Continued Public Hearing:1/23/2014"
+    # writes the colon and no space; "Second Public Hearing 02/14/2024"
+    # writes the space and no colon. `\s*:\s*` read neither.
+    r"(?:\s*:\s*|\s+)"
+    # The year must not run into another digit. One 2015 row reads
+    # "Continued Executive Session: 4/30/20105", and \d{4} alone reads that as
+    # 30 April 2010 and files the sitting in the wrong term.
+    r"(?P<date>\d{1,2}/\d{1,2}/\d{4})(?!\d)"
+    # Seconds because the 2007-08 docket writes "1:30:00 PM"; the meridiem in
+    # its own group so a line that states none -- "02/15/2022 1:45 LOB302-304",
+    # one line on this disk -- still gives up its kind, date and room without
+    # anybody inventing an am or a pm.
+    r"(?:\s+(?P<time>\d{1,2}:\d{2})(?::\d{2})?"
+    r"(?:\s*(?P<mer>" + HOUSE_MER + r"))?)?"
+    # A stated END time: "6:00 PM - 8:00 PM Kennet High School Auditorium".
+    r"(?:\s*-\s*\d{1,2}:\d{2}\s*(?:" + HOUSE_MER + r")?)?"
+    # Deliberately NOT anchored. What follows is handed to house_venue below,
+    # which decides where the room ends rather than making the match depend on
+    # it.
+    r"(?P<rest>.*)$",
     re.IGNORECASE,
 )
+
+# Where the room ends and the clerk's prose begins. Every alternative was read
+# off a real line: 720 lines carry a Zoom paragraph, 14 end "=RECESSED=", 8 add
+# "(exec. session may follow)", 4 are off-site addresses, 2 cite a non-germane
+# amendment, and the rest are one-offs.
+HOUSE_TAIL_RE = re.compile(
+    r"\s*(?:"
+    r"=+\s*[A-Za-z][A-Za-z &.,'\d/()-]*?\s*=*\s*$"
+    r"|\("
+    r"|\["
+    r"|;"
+    r"|\*"
+    r"|\bMembers\s+of\s+the\s+public\b"
+    r"|\bPlease\s+click\b"
+    r"|\bTo\s+join\s+the\s+webinar\b"
+    r"|https?://"
+    r"|\bExecutive\s+session\s+on\s+pending\s+legislation\b"
+    r"|\bCONTINUED\s+FROM\b"
+    r"|\bPublic\s+Hearing\s+on\s+non-germane\b"
+    # The journal citation the old pattern had its own group for:
+    # "LOB 210-211 HC 19 P. 16" is a room, then House Calendar 19 page 16.
+    r"|(?:HC|SC|HJ|SJ)\s+\d+\b"
+    r").*$", re.I | re.S)
+
+# What is left has to look like a room before it is published as one. The
+# longest venue the old pattern produces across every docket on this disk is
+# 68 characters ("Silver Center for the Arts at Plymouth State University -
+# Plymouth NH"), so the cap is 80 and nothing already published reaches it.
+HOUSE_VENUE_OK = re.compile(r"^[A-Za-z0-9\-][A-Za-z0-9 ,.'&\-]{0,79}$")
+
+
+def house_venue(rest):
+    """The room this line states, or None if it states none."""
+    v = HOUSE_TAIL_RE.sub("", rest or "").strip()
+    return v if v and HOUSE_VENUE_OK.match(v) else None
+
+
+def house_time(m):
+    """The time to hand to _parse_time, or None where no meridiem is stated."""
+    if not m.group("time") or not m.group("mer"):
+        return None
+    return (m.group("time") + m.group("mer")).replace(" ", "").replace(".", "").upper()
 
 # Senate: "Hearing: 01/14/2025, Room 103, LOB, 09:30 am;  SC 5"
 SENATE_SCHED_RE = re.compile(
@@ -591,7 +666,10 @@ def parse_proceedings(rows, timeline):
             m = HOUSE_SCHED_RE.search(clean)
             if m:
                 kind = m.group("kind").lower()
-                venue = (m.group("venue") or "").strip() or None
+                # house_venue decides where the room ends. The pattern no
+                # longer has to, which is what stopped a Zoom paragraph from
+                # failing the whole line.
+                venue = house_venue(m.group("rest"))
             else:
                 m = LEGACY_SCHED_RE.search(clean)
                 if not m:
@@ -628,7 +706,11 @@ def parse_proceedings(rows, timeline):
         else:
             legacy_cmte = None
             d = _parse_date(m.group("date"))
-            t = _parse_time(m.group("time")) if m.group("time") else None
+            # A House line may state a time with no meridiem; house_time
+            # returns None rather than let anyone guess am or pm.
+            _ht = house_time(m) if m.re is HOUSE_SCHED_RE else (
+                m.group("time") if m.groupdict().get("time") else None)
+            t = _parse_time(_ht) if _ht else None
 
         # The legacy line names its own committee -- "FOR: EXEC DEPTS & ADM"
         # -- which is a better answer than the referral timeline, because that
