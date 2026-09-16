@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.90 */
+/* GRANITE_VERSION: 2026-09-07.91 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -20,6 +20,18 @@
    Darkening the page to #EAEBE7 makes that 1.20:1 and costs nothing else:
    every text colour was re-measured against it and the lowest is 6.34:1. */
 --measure:560px;
+/* THE RECORDING'S OWN COLOURS, which do not change with the theme.
+     A video is a rectangle of somebody else's pixels: the letterboxing
+     around it is black in a light page as much as a dark one, and the
+     placeholder that stands in for it before a reader asks for it has to
+     look like the thing it replaces. They were four bare hex values
+     written twice each, which is how a colour gets changed in one place
+     and not the other. */
+--film:#000;             /* behind the frame, and the frame's own ground */
+--film-stub:#14181A;     /* the still that stands in for the recording */
+--film-stub-ink:#C8CFD1; /* the play cue on it */
+--film-stub-hot:#1D2225; /* the same, under the pointer */
+
 /* THE SPACING SCALE, 16 September. Thirty-three pixel values were in
      use for margin, padding and gap, and 192 of the 690 declarations
      used an odd number: `padding:11px 13px` five times, `12px 15px`
@@ -452,6 +464,19 @@ text-transform:uppercase;color:var(--ink-2)}
   .findout .fkind{flex-basis:100%}
   .findout a{flex-wrap:wrap;gap:var(--sp-1) var(--sp-4)}
 }
+
+/* A RECORDING, WHEREVER IT IS SHOWN. Both kinds of page play the General
+   Court's video -- a bill's Videos tab and the home page's most recent floor
+   sessions -- and each carried its own copy of these four rules, with the
+   same four colours spelled out twice. The copies had drifted only in a
+   margin, which is the harmless-looking stage of that disease; the next
+   change to one of them would not have reached the other. The margin that
+   really did differ is a one-line override in the pages region. */
+.player{margin-top:var(--sp-4);border:1px solid var(--rule);border-radius:var(--r-out);overflow:hidden;background:var(--film)}
+.player iframe{width:100%;aspect-ratio:16/9;border:0;display:block}
+.pstub{width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;
+cursor:pointer;background:var(--film-stub);color:var(--film-stub-ink);font-size:var(--t-ui);gap:var(--sp-4);text-align:center;padding:var(--sp-6)}
+.pstub:hover{background:var(--film-stub-hot)}
 /* SHARED:END ------------------------------------------------------------ */
 
 *{box-sizing:border-box}html,body{margin:0}
@@ -864,11 +889,8 @@ border:1.5px solid var(--pine);background:var(--surface)}
 .stn .w{font-size:var(--t-sm);color:var(--ink-2)}.stn .t{font-size:var(--t-ui);font-weight:600}
 .vbox{margin-top:var(--sp-4);border:1px dashed var(--rule-2);border-radius:var(--r-out);padding:var(--sp-5) var(--sp-5);background:var(--paper)}
 .vbox p{margin:0;font-size:var(--t-ui);color:var(--ink-2)}
-.player{margin-top:var(--sp-4);border:1px solid var(--rule);border-radius:var(--r-out);overflow:hidden;background:#000}
-.player iframe{width:100%;aspect-ratio:16/9;border:0;display:block}
-.pstub{width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;
-cursor:pointer;background:#14181A;color:#C8CFD1;font-size:var(--t-ui);gap:var(--sp-4);text-align:center;padding:var(--sp-6)}
-.pstub:hover{background:#1D2225}
+/* The player itself is in the shared region: both stylesheets draw it, and
+   it was written out twice until 16 September. */
 .pbar{display:flex;gap:var(--sp-4);align-items:center;flex-wrap:wrap;padding:var(--sp-4) var(--sp-5);
 background:var(--surface);border-top:1px solid var(--rule);font-size:var(--t-ui)}
 .jump{border:1px solid var(--edge);border-radius:var(--r-in);padding:var(--sp-1) var(--sp-4);font-size:var(--t-ui);
@@ -2181,11 +2203,12 @@ border:1px solid var(--rule)}
 margin-right:var(--sp-2);vertical-align:-1px}
 :where(body.pg) .legendrow i.vac{background:repeating-linear-gradient(45deg,var(--rule-2),
 var(--rule-2) 3px,var(--surface) 3px,var(--surface) 6px);border:1px solid var(--rule-2)}
-:where(body.pg) .player{margin-top:var(--sp-5);border:1px solid var(--rule);border-radius:var(--r-out);overflow:hidden;background:#000}
-:where(body.pg) .player iframe{width:100%;aspect-ratio:16/9;border:0;display:block}
-:where(body.pg) .pstub{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;gap:var(--sp-4);
-cursor:pointer;background:#14181A;color:#C8CFD1;font-size:var(--t-ui)}
-:where(body.pg) .pstub:hover{background:#1D2225}
+/* ONE PLAYER, NOT TWO. These pages carried their own copy of .player,
+   .player iframe, .pstub and .pstub:hover -- the same four rules, the same
+   four colours written out a second time -- and the copy said nothing the
+   shared one did not except this margin. A reader cannot tell the two apart
+   and neither could the next person to change one of them. */
+:where(body.pg) .player{margin-top:var(--sp-5)}
 /* ---- ONE WAY IN, AT THE TOP ------------------------------------------
    This page had two boxes side by side -- by town, by name -- which read as
    two procedures to choose between before reaching a single legislator. One
