@@ -592,6 +592,66 @@ withholding.
 
 ---
 
+## 0g. WHERE THINGS STAND, 16 September, evening
+
+**Written so this survives a summary, a lost session or a night's gap.** The
+tree is clean and every change is committed, but several changes are CODE that
+has not yet been through the build that makes it visible. Publishing before
+that chain runs would put new code behind old data.
+
+### Changed in code, NOT yet rebuilt
+
+| change | what it needs |
+|---|---|
+| vote codes 5 and 7 -> "No vote recorded" (567 ballots) | `build_data.py` |
+| roll call headline from the counted ballots (14 roll calls) | `build_data.py` |
+| the docket parser's `$` anchor fix (1,062 -> 0 fall-throughs) | the manifest rebuild, below |
+| the new topic matcher | `topic_model.py --apply`, once installed |
+
+### The chain, in this order
+
+```
+python3 build_data.py --dir . --out data          # vote codes, headlines, member names
+python3 topic_model.py --apply                    # the new topics
+python3 build_manifest.py ... (each of the 6 modern dockets)
+python3 build_proceedings.py
+python3 probe_alignment.py --truth --candidate candidate_segments.json   # THE GATE
+python3 build_all.py --local
+python3 preflight.py
+publish.bat
+```
+
+### The gate, and the baseline it is measured against
+
+`probe_alignment` must not regress. **Baseline captured before any of this:
+candidate median 0m 01s, 44 placed, schedule alone 14m 46s.** The full capture
+-- proceedings.csv, all eleven verification_manifest*.csv,
+verification_manifest.xlsx, candidate_segments.json, floor_index.json, 21 MB
+-- is at
+
+    <scratchpad>/_baseline/
+
+and **git cannot restore any of those: they are untracked.** If the median
+regresses, restore by copying them back, do not rebuild to revert.
+
+The risk is low and measured: **all 35 hand-timed proceedings are in
+2025-2026, whose docket shows 0 rows changing.** The parser change touches
+2015-16, 2019-20, 2021-22 and one row of 2023-24. The gate can therefore prove
+the change does no harm; it cannot prove it does good.
+
+### Waiting on a person
+
+- the 13 disagreeing roll calls: detail sent, in `reports/rollcall-disagreements.md`
+- publishing: 11 commits of reader-visible work are unpublished
+
+### Next after publishing
+
+The person's ask of the 16th: **find every field a bill page shows that is
+missing on a term that should have it** -- sponsors and committees first --
+and work from a measured gap table per term rather than from impressions.
+
+---
+
 ## 1. Live
 
 Published 9 September, five times on the 10th, and at 12:44 on the 11th
