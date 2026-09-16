@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.21
+# GRANITE_VERSION: 2026-09-04.22
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -129,6 +129,85 @@ def rows_all(d, base, expect=None):
 # list comes back. The hearings for this term come from its docket instead,
 # the way 2017-2018 and 2019-2020 get theirs.
 NO_HEARING_FROM_LIST = {"2021-2022"}
+
+
+def date_ballot_seats(member_votes, legs, path="text_sponsors.json"):
+    """Put the seat a member held in that term on that term's ballots.
+
+    A LABEL STATES THE SEAT HELD WHEN THE RECORD WAS MADE. Every ballot took
+    its label from `legs`, which is the roster of the House and Senate sitting
+    today, and a roster holds one seat per member however many they have held.
+    So Rep. Kenneth Weyler read "Rock 14" on his 1999 ballots and on his 2026
+    ones alike, though the bills he sponsored print him at Rock 18 in 2001,
+    Rock 79 in 2003 and Rock 8 in 2005; and Janet Wall read Straf 11 in a term
+    the record has her at Straf 9. 396 member-terms were labelled with a seat
+    that term's bills contradict, across 174,588 ballots.
+
+    The bill's own text is the contemporaneous source -- it printed the seat as
+    it was on the day -- and text_sponsors.py has already matched those printed
+    lines to members. Where it attests exactly one seat for a member in a term,
+    that seat goes on that term's ballots. Where it attests none, or two, the
+    label is left alone: this corrects what can be shown to be wrong rather
+    than blanking everything that cannot be confirmed.
+
+    Nothing else in the label moves. The name, the party and the honorific come
+    from the same places they did, except that the honorific follows the
+    chamber the text printed -- which is the point, for a member who changed
+    chamber.
+    """
+    p = Path(path)
+    if not p.exists():
+        return 0
+    try:
+        text = json.loads(p.read_text(encoding="utf-8"))
+    except ValueError:
+        return 0
+    seats = defaultdict(set)
+    for term, bills in text.items():
+        for recs in bills.values():
+            for r in recs:
+                if r.get("member_id"):
+                    seats[(term, str(r["member_id"]))].add(
+                        (r.get("chamber") or "", r.get("county") or "",
+                         str(r.get("district") or "")))
+    one = {k: next(iter(v)) for k, v in seats.items() if len(v) == 1}
+    if not one:
+        return 0
+
+    def term_of(year):
+        y = int(year)
+        t = y if y % 2 else y - 1
+        return f"{t}-{t + 1}"
+
+    abbr = {v["county"]: v.get("county_abbr", "") for v in legs.values()
+            if v.get("county") and v.get("county_abbr")}
+    cache, n = {}, 0
+    for row in member_votes:
+        key = (term_of(row["year"]), str(row.get("member_id")))
+        seat = one.get(key)
+        if not seat:
+            continue
+        ch, county, dist = seat
+        m = legs.get(row["member_id"])
+        if not m:
+            # A member the roster does not hold is named from former_members,
+            # whose label is a different shape entirely; rebuilding it here
+            # would change how they read rather than where they sat.
+            continue
+        if (m.get("chamber") == ch and (m.get("county") or "") == county
+                and str(m.get("district") or "") == dist):
+            continue
+        ck = (row["member_id"], ch, county, dist)
+        if ck not in cache:
+            cache[ck] = names.legislator({
+                "first": m.get("first"), "last": m.get("last"),
+                "name": m.get("name"), "chamber": ch,
+                "party_code": m.get("party_code"),
+                "county_abbr": abbr.get(county, ""), "district": dist})
+        if cache[ck] and cache[ck] != row["label"]:
+            row["label"] = cache[ck]
+            n += 1
+    return n
 
 
 def hearing_in_term(raw, term):
@@ -911,6 +990,10 @@ def main():
             "date": s["datetime"].split(" ")[0], "vote": r[6],
         })
     print(f"member votes: {len(member_votes):,}")
+    _dated = date_ballot_seats(member_votes, legs)
+    if _dated:
+        print(f"  {_dated:,} ballots relabelled with the seat that term's bills "
+              f"printed, not the one the roster holds now")
     print(f"  vote values: {dict(vote_kinds)}")
     report.append(f"RollCallHistory field 2 ranges {min(vnums) if vnums else 0}"
                   f"\u2013{max(vnums) if vnums else 0}, and joins to RollCallSummary "

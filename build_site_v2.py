@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.87
+# GRANITE_VERSION: 2026-09-05.88
 """
 Generate the faceted site from real General Court data.
 
@@ -2337,7 +2337,10 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
         # McConkey, Carr. 8" read "Sen. Mark McConkey (R - SD3)" under the
         # heading Representatives, and every House bill of a member now in the
         # Senate would have done the same. The link still goes to their page.
-        if _s.get("source") == TS.SOURCE:
+        # ... or whose seat was dated from it: seat_into puts the bill's own
+        # printed chamber, county and district on a database sponsor, and the
+        # roster must not then be preferred over the thing that corrected it.
+        if _s.get("source") == TS.SOURCE or _s.get("seat_source") == TS.SOURCE:
             _lab = member_labels(
                 _s.get("name"),
                 chamber=_s.get("chamber") or _m.get("chamber"),
@@ -3341,6 +3344,14 @@ def main():
     _n = TS.merge_into(sponsors)
     if _n:
         print(f"  sponsors: {_n:,} bills named on their own text (text_sponsors.json)")
+    # And the seat on a sponsor the database DOES name, dated from the same
+    # pages: the database's rows for 2023-2024 carry no county and no
+    # district, so the site was taking both from the roster of the House and
+    # Senate sitting today. See TS.seat_into. The current term keeps the
+    # roster, which for it is the contemporaneous source.
+    _seated = TS.seat_into(sponsors, current=max(bills) if bills else None)
+    if _seated:
+        print(f"  sponsors: {_seated:,} seats dated from the bill's own printed line")
     legs = {m["id"]: m for m in load(D / "legislators.json", [])}
     # Sponsor records carry a name but not a party or a district. The roster
     # has both, so they are joined on the surname-first form of the name --

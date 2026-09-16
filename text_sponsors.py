@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.2
+# GRANITE_VERSION: 2026-09-14.3
 """
 Sponsors read off each bill's own text, for the bills the database names none for.
 
@@ -373,6 +373,87 @@ def merge_into(sponsors, path=OUT):
     return n
 
 
+def seat_into(sponsors, path=OUT, current=None):
+    """Date the seat on a database sponsor from the bill's own text.
+
+    A LABEL STATES THE SEAT HELD WHEN THE RECORD WAS MADE. The database's
+    sponsor rows for 2023-2024 carry no county and no district at all, so the
+    site filled both from `data/legislators.json` -- the roster of the House
+    and Senate sitting TODAY. 7,455 of that term's 8,890 sponsor lines were
+    labelled with a seat their member holds now, and 167 of the 6,815 that
+    can be checked against the bill's own printed line were provably a
+    different seat: Matthew Wilhelm sponsored 36 bills from Hills. 40 and the
+    site said Hills 21; Nicholas Germana 29 from Ches. 1, printed Ches 15.
+
+    Worse, the database's own `chamber` reads H for six senators across 878
+    rows, so 2023 CACR 10 printed "Rep. Donna Soucy" and "Rep. Jeb Bradley" --
+    Bradley was the Senate President. The bill prints "Sen. Soucy, Dist 18".
+
+    The bill's text is the contemporaneous source: it printed the seat as it
+    was on the day it was filed. So where a saved page names the same sponsor
+    the database does, the chamber, county and district come from the page and
+    the record keeps everything else -- its name, its party, its sequence, and
+    its `source`, because the sponsor is still the database's and only the
+    seat is being dated.
+
+    NOT THE CURRENT TERM. `current` names the term whose roster is itself
+    contemporaneous, and it is left alone: the 2025-2026 LSR file pairs a
+    HOUSE county and number with chamber "S" on 6,405 rows, so the text would
+    be overruling the roster with something worse. Mark McConkey comes through
+    it as Carr 8 -> SD08 against his real SD3.
+
+    Returns how many sponsor rows were given a dated seat.
+    """
+    p = Path(path)
+    if not p.exists():
+        return 0
+    try:
+        text = json.loads(p.read_text(encoding="utf-8"))
+    except ValueError:
+        return 0
+    n = 0
+    for term, rows in text.items():
+        if term == current:
+            continue
+        have = sponsors.get(term) or {}
+        for bid, printed in rows.items():
+            db = have.get(bid)
+            if not db or not printed:
+                continue
+            for rec in db:
+                if rec.get("source") == SOURCE:
+                    continue            # already the text's own row
+                key = _db_name(rec.get("name"))[0]
+                # One page sponsor, and only one, whose surname this name ends
+                # with. Two of a surname on one bill is a pair this cannot tell
+                # apart, and a seat put on the wrong brother is worse than a
+                # seat that is merely out of date.
+                fits = [s for s in printed
+                        if s.get("chamber") and _page_key_of(s)
+                        and key.endswith(_page_key_of(s))]
+                if len(fits) != 1:
+                    continue
+                s = fits[0]
+                if (rec.get("chamber") == s.get("chamber")
+                        and rec.get("county") == s.get("county")
+                        and rec.get("district") == s.get("district")):
+                    continue
+                rec["chamber"] = s["chamber"]
+                rec["county"] = s.get("county") or ""
+                rec["district"] = s.get("district") or ""
+                rec["seat_source"] = SOURCE
+                rec["as_printed"] = s.get("as_printed") or rec.get("as_printed")
+                n += 1
+    return n
+
+
+def _page_key_of(rec):
+    """The surname letters of a record written by record(): see _page_key."""
+    name = re.sub(r"\s*\([^)]*\)\s*$", "", rec.get("name") or "").strip()
+    words = [w for w in name.split() if letters(w) not in SUFFIXES]
+    return letters(words[-1]) if words else ""
+
+
 # ------------------------------------------------------------------ measuring it
 
 def _db_name(raw):
@@ -474,8 +555,18 @@ def main():
     sat = Sat.load()
     if a.score:
         return score(bills, sat, sponsors)
-    got, tally, strays = build(bills, sat, only_missing=sponsors)
-    print(f"{sum(len(v) for v in got.values()):,} bills gain sponsors from their own text:")
+    # EVERY BILL WITH A SAVED PAGE, not only the ones the database misses.
+    # It used to stop at those, because filling a gap was all this file did.
+    # The seat a bill PRINTS is wanted for the bills the database does cover
+    # as well -- that is the only contemporaneous record of where a sponsor
+    # sat -- and merge_into still refuses to put these names over the
+    # database's, so reading more pages adds nothing to a covered bill except
+    # the seat seat_into takes from it.
+    got, tally, strays = build(bills, sat, only_missing=None)
+    covered = sum(1 for t, rows in got.items() for b in rows
+                  if (sponsors.get(t) or {}).get(b))
+    print(f"{sum(len(v) for v in got.values()):,} bills have sponsors in their own text; "
+          f"{covered:,} of them are also in the database, for the seat alone:")
     for term in sorted(got):
         n_recs = sum(len(v) for v in got[term].values())
         placed = sum(1 for v in got[term].values() for r in v if r["member_id"])
