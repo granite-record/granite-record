@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.16
+# GRANITE_VERSION: 2026-09-07.17
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -22,6 +22,7 @@ So the template IS bills.html, read at build time, and the substitutions assert
 that what they are replacing was actually there.
 """
 
+import datetime
 import html
 import json
 import re
@@ -88,6 +89,63 @@ def template(site=Path("site")):
 
 
 BRAND = "Granite Record"
+
+# The day the site was built, as the fallback date in a citation. A file on
+# a CDN cannot know when it is read; app.js puts the reader's own date in
+# where it can, and this is what a reader without JavaScript is given.
+BUILT = datetime.date.today().strftime("%d %B %Y").lstrip("0")
+
+
+def cite_block(path, title, base, built=""):
+    """How to cite this page, in the four forms a paper or a newsroom asks for.
+
+    HERE, AND NOT IN TEN BUILDERS. Every record page on this site is built
+    through page() below -- a bill, a member, a committee, a town, a Learn
+    topic -- so one block here reaches all of them and cannot drift between
+    them.
+
+    THE NOTE COMES FIRST, AND SAYS THE AWKWARD THING. This site is an index of
+    the General Court's record and is not that record. Somebody citing a bill
+    in a paper should be citing the General Court, and every page here already
+    links to what it was drawn from. A citation tool that quietly encouraged
+    the opposite would be a disservice dressed up as a convenience.
+
+    THE DATE IS THE DAY THE PAGE WAS READ, which a file on a CDN cannot know.
+    app.js fills every .citeday with the reader's own date; the build date is
+    written in as the fallback so a reader without JavaScript gets something
+    true about the page rather than "Accessed ." -- and the note says which
+    date it is, so neither reader is misled.
+    """
+    url = f"{base}{canon(path)}"
+    # The record's name, without the browser tab's " | Granite Record".
+    name = title.split(" | ")[0].strip()
+    day = f'<span class="citeday">{E(built)}</span>'
+    # A BibTeX key a person can read: the address, minus the punctuation
+    # BibTeX treats as syntax.
+    key = canon(path).strip("/").replace("/", "-").replace(".", "") or "granite-record"
+    forms = [
+        ("MLA", f'&ldquo;{E(name)}.&rdquo; <i>{BRAND}</i>, {E(url)}. '
+                f'Accessed {day}.'),
+        ("APA", f'{BRAND}. (n.d.). <i>{E(name)}</i>. Retrieved {day}, '
+                f'from {E(url)}'),
+        ("Chicago", f'{BRAND}. &ldquo;{E(name)}.&rdquo; Accessed {day}. '
+                    f'{E(url)}.'),
+        ("BibTeX", f'<code>@misc{{{E(key)},<br>&nbsp;&nbsp;title = '
+                   f'{{{E(name)}}},<br>&nbsp;&nbsp;howpublished = {{{BRAND}}},'
+                   f'<br>&nbsp;&nbsp;url = {{{E(url)}}},'
+                   f'<br>&nbsp;&nbsp;note = {{Accessed {day}}}<br>}}</code>'),
+    ]
+    rows = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in forms)
+    return ('<section class="citewrap"><details class="cite">'
+            '<summary>Cite this page</summary>'
+            '<div class="citebody">'
+            '<p class="citenote">Granite Record indexes the General '
+            'Court&rsquo;s record; it is not that record. Where a citation '
+            'allows only one source, cite the General Court &mdash; every page '
+            'here links to what it is drawn from. The date below is the day '
+            'the page was read.</p>'
+            f'<dl class="citeforms">{rows}</dl>'
+            '</div></details></section>')
 
 
 def canon(path):
@@ -221,7 +279,7 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
          alternate="", skip_label="Skip to the content", og_title=None,
          sr_title=None, nav_current="", jsonld=None,
          data_json=None, data_url=None, og_type="article", og_image=None,
-         og_alt=None):
+         og_alt=None, cite=True):
     """One record's page: the template, told which record it is.
 
     sr_title replaces the template's own visually-hidden <h1>. bills.html
@@ -322,6 +380,13 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
                  + data_json.replace("</", "<\\/") + "</script>\n")
     elif data_url:
         block = f'<meta name="gr-data" content="{E(data_url)}">\n'
+
+    # Below the record and above the footer, outside #results so app.js
+    # rewriting the page cannot take it away.
+    if cite:
+        out = out.replace('<footer><div class="in">',
+                          cite_block(path, title, base, BUILT)
+                          + '<footer><div class="in">', 1)
 
     out = out.replace(
         NEEDS["script"],

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.81
+// GRANITE_VERSION: 2026-09-07.83
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -443,6 +443,17 @@ const DATA=(f)=>new URL(f, location.origin + "/").href;
 // The site's root, so a pushed address is absolute rather than relative to
 // whatever folder the current page happens to sit in -- /bill/2026/ is three
 // deep and a relative push from there lands in /bill/2026/bill/2026/.
+//
+// ONE ADDRESS FOR THE BILL SEARCH PAGE, reported by the person on 16 September.
+// It was reachable at three: /bills from the header, /bills?q= from the home
+// page's Search with an empty box, and /bills.html from the back button on a
+// bill. The last is the one a redirect cannot tidy -- history.pushState never
+// touches the network, so the .html the host would have redirected stayed in
+// the address bar. Three addresses for one page is three entries in a reader's
+// history, three things to paste to somebody, and three ways for a link to be
+// shared.
+//
+// The host serves /bills and redirects /bills.html to it, so that is the one.
 const BASE="/";
 const need=(f)=>fetch(DATA(f)).then(r=>{
   if(!r.ok)throw new Error(`${f} returned ${r.status} ${r.statusText}`);
@@ -505,7 +516,7 @@ need("meta.json")
    ys.addEventListener("change",e=>{
      // On a record page there is no list to re-filter, and render() would
      // write one over the record.
-     if(PAGE||window.GR_STATIC){location.href="bills.html";return;}
+     if(PAGE||window.GR_STATIC){location.href=BASE+"bills";return;}
      term=e.target.value;
      forgetCardState();
      // ON A BILL'S OWN PAGE THE PICKER CHOOSES THE TERM THE NEXT SEARCH RUNS
@@ -3096,7 +3107,7 @@ function calendarBlock(rows,heading){
 function billHref(id){
   const y=(typeof yearOf==="function"&&yearOf(id))||null;
   return y?`bill/${y}/${String(id).toLowerCase()}.html`
-          :`bills.html#${encodeURIComponent(id)}`;
+          :`${BASE}bills#${encodeURIComponent(id)}`;
 }
 
 function billTitle(id){
@@ -3422,7 +3433,7 @@ function unfocus(y){
   // reader arrived at that bill directly. Drawing two thousand cards under
   // an address that names one bill would be the wrong page at the wrong URL,
   // so leaving the bill means leaving the page.
-  if(window.GR_STANDALONE){location.href="bills.html";return;}
+  if(window.GR_STANDALONE){location.href=BASE+"bills";return;}
   // Back out to where the reader was standing when they opened the bill --
   // except when they got here by typing a new search, where the old position
   // belongs to a list that is no longer on screen.
@@ -3431,7 +3442,7 @@ function unfocus(y){
   // Leaving a bill named in the address would mean the next refresh reopened
   // it, which is not where the reader is standing.
   // Back to the list's own address rather than the bill's.
-  try{history.pushState({},"",BASE+"bills.html");}catch(_){}
+  try{history.pushState({},"",BASE+"bills");}catch(_){}
   render();
   window.scrollTo(0,y);
 }
@@ -3681,7 +3692,7 @@ function submitSearch(){
   // search -- that is where results are drawn. Running render() here wrote
   // the list over the record instead, and the only way back was a reload.
   if(PAGE||window.GR_STATIC){
-    location.href="bills.html"+(query?`?q=${encodeURIComponent(query)}`:"");
+    location.href=BASE+"bills"+(query?`?q=${encodeURIComponent(query)}`:"");
     return;
   }
   // From a bill's own view, running the search means leaving that bill. Back
@@ -3728,3 +3739,19 @@ document.addEventListener("keydown",e=>{
     const fresh=again&&document.querySelector(again);
     (fresh||next).focus();
   }});
+
+
+// THE READER'S OWN DATE IN A CITATION, not the build's. shell.py writes the
+// build date into every .citeday so a page read without JavaScript still gives
+// a true date for the page rather than "Accessed ." -- and a reader who has
+// JavaScript gets the day they actually read it, which is what every one of
+// those four formats means by "accessed".
+(function(){
+  var els=document.querySelectorAll(".citeday");
+  if(!els.length)return;
+  var s;
+  try{ s=new Date().toLocaleDateString(undefined,
+        {year:"numeric",month:"long",day:"numeric"}); }
+  catch(e){ return; }
+  for(var i=0;i<els.length;i++)els[i].textContent=s;
+})();

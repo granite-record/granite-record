@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.73
+# GRANITE_VERSION: 2026-09-04.74
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -322,7 +322,7 @@ def calendar_html(H, out):
                 if not ti:
                     missing += 1
                 href = (f'bill/{yr}/{bid.lower()}.html' if yr
-                        else f'bills.html#{esc(bid)}')
+                        else f'/bills#{esc(bid)}')
                 num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bid)
                 html.append(f'<li><a class="cbn" href="{esc(href)}">{esc(num)}</a>'
                             + (f'<span class="cbt">{esc(ti)}</span>' if ti else "")
@@ -1131,11 +1131,20 @@ document.addEventListener("click",e=>{
     src="https://www.youtube-nocookie.com/embed/${st.dataset.embed}?autoplay=1"
     title="Floor session"></iframe>`;
 });
+// ONE ADDRESS, AND NO EMPTY QUESTION. Search with nothing typed sent the
+// reader to /bills?q= -- the same page the header's Bills tab reaches at
+// /bills, with a query string saying the reader searched for nothing. The
+// person reported the three addresses this page had on 16 September; this was
+// one of them. /bills is what the host serves and what the header lands on.
+function goBills(v){
+  v=(v||"").trim();
+  location.href="/bills"+(v?"?q="+encodeURIComponent(v):"");
+}
 document.getElementById("hq").addEventListener("keydown",e=>{
-  if(e.key==="Enter")location.href="bills.html?q="+encodeURIComponent(e.target.value);
+  if(e.key==="Enter")goBills(e.target.value);
 });
 document.getElementById("hgo").addEventListener("click",()=>{
-  location.href="bills.html?q="+encodeURIComponent(document.getElementById("hq").value);
+  goBills(document.getElementById("hq").value);
 });
 </script>"""
 
@@ -1432,7 +1441,7 @@ today.</p>
   <button id="hgo">Search</button>
 </div>
 <div class="entry">
-  <a href="bills.html"><b>Browse bills</b><span>Search by committee, topic, sponsor,
+  <a href="/bills"><b>Browse bills</b><span>Search by committee, topic, sponsor,
     status or the day it was voted on</span></a>
   <!-- COMMITTEES, NOT LEGISLATORS. The finder in the right-hand column asks
        for a town and says what a town gives you, in nearly the same sentence

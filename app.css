@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.94 */
+/* GRANITE_VERSION: 2026-09-07.95 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -487,6 +487,31 @@ text-transform:uppercase;color:var(--ink-2)}
 .pstub{width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;
 cursor:pointer;background:var(--film-stub);color:var(--film-stub-ink);font-size:var(--t-ui);gap:var(--sp-4);text-align:center;padding:var(--sp-6)}
 .pstub:hover{background:var(--film-stub-hot)}
+
+/* CITE THIS PAGE. Shut by default and quiet: a reader who wants it is looking
+   for it, and a reader who does not should not have four citation formats
+   between the record and the footer. Outside #results, so app.js redrawing a
+   record cannot take it away. */
+.citewrap{max-width:1180px;margin:0 auto;padding:0 var(--sp-8) var(--sp-9)}
+.cite > summary{display:inline-block;cursor:pointer;font-size:var(--t-ui);
+color:var(--ink-2);padding:var(--sp-3) 0;list-style:none}
+.cite > summary::-webkit-details-marker{display:none}
+.cite > summary::before{content:"A ";display:inline-block;
+transition:transform .12s ease}
+.cite[open] > summary::before{transform:rotate(90deg)}
+.cite > summary:hover{color:var(--ink)}
+.citebody{border-top:1px solid var(--rule);padding-top:var(--sp-5);
+max-width:var(--measure)}
+.citenote{font-size:var(--t-ui);color:var(--ink-2);margin:0 0 var(--sp-6)}
+.citeforms{margin:0}
+.citeforms dt{font-size:var(--t-xs);letter-spacing:.06em;text-transform:uppercase;
+color:var(--ink-2);margin-top:var(--sp-5)}
+.citeforms dd{margin:var(--sp-2) 0 0;font-size:var(--t-ui);line-height:1.6;
+/* A citation is copied, so it must be selectable as one run of text and must
+   not be broken across a line in the middle of an address. */
+overflow-wrap:anywhere}
+.citeforms code{font-size:var(--t-sm);line-height:1.7;display:block;
+background:var(--wash);padding:var(--sp-4) var(--sp-5);border-radius:var(--r-in)}
 /* SHARED:END ------------------------------------------------------------ */
 
 *{box-sizing:border-box}html,body{margin:0}
