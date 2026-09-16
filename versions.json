@@ -1,7 +1,7 @@
 {
   "files": {
     "align_all.py": "2026-09-04.2",
-    "app.css": "2026-09-07.91",
+    "app.css": "2026-09-07.92",
     "app.js": "2026-09-07.80",
     "apply_markers.py": "2026-09-04.8",
     "archive_status.py": "2026-09-08.2",
@@ -93,11 +93,11 @@
     "narrative.py": "2026-09-04.32",
     "netcheck.py": "2026-09-04.3",
     "nightly.py": "2026-09-04.11",
-    "parse_clerks.py": "2026-09-12.2",
+    "parse_clerks.py": "2026-09-12.3",
     "parse_districts.py": "2026-09-04.1",
-    "parse_officials.py": "2026-09-12.1",
+    "parse_officials.py": "2026-09-12.2",
     "past_members.py": "2026-09-10.1",
-    "preflight.py": "2026-09-04.186",
+    "preflight.py": "2026-09-04.187",
     "probe_alignment.py": "2026-09-05.61",
     "probe_amendments.py": "2026-09-04.3",
     "probe_archive.py": "2026-09-04.3",

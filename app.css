@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.91 */
+/* GRANITE_VERSION: 2026-09-07.92 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -167,6 +167,11 @@ color-scheme:light}
 --ink:#E6E9E8;--ink-2:#A7B0B0;
 --rule:#3D4547;             /* 1.43:1 on a card; light ships 1.42:1 */
 --rule-2:#525C5D;           /* 2.03:1 on a card; light ships 1.99:1 */
+--film:#000;--film-stub:#14181A;--film-stub-ink:#C8CFD1;--film-stub-hot:#1D2225;
+                            /* the same in the dark, and said again
+                               rather than inherited: a recording is
+                               somebody else's pixels either way. */
+
 --edge:#7C8687;             /* 3.74:1 on a card, 4.64:1 on the page */
 --pine:#79BFB2;--pine-soft:#1E3B38;
 --st-active:#E3C46A;--st-active-bg:#3A3116;
@@ -204,6 +209,11 @@ color-scheme:dark}
 --ink:#E6E9E8;--ink-2:#A7B0B0;
 --rule:#3D4547;             /* 1.43:1 on a card; light ships 1.42:1 */
 --rule-2:#525C5D;           /* 2.03:1 on a card; light ships 1.99:1 */
+--film:#000;--film-stub:#14181A;--film-stub-ink:#C8CFD1;--film-stub-hot:#1D2225;
+                            /* the same in the dark, and said again
+                               rather than inherited: a recording is
+                               somebody else's pixels either way. */
+
 --edge:#7C8687;             /* 3.74:1 on a card, 4.64:1 on the page */
 --pine:#79BFB2;--pine-soft:#1E3B38;
 --st-active:#E3C46A;--st-active-bg:#3A3116;
