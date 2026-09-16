@@ -546,6 +546,52 @@ each is already described above or in `HANDOFF.md`.
 
 ---
 
+## 0f. Decisions taken on the 16th, and what each unblocks
+
+**The four unknown members are named, plainly.** #408966 is Littlefield (Belk.
+3), #409011 Homola (Hills. 27), #409014 Moran (Hills. 34), #409039 Belanger
+(Rock. 9). They read like any other member, with no footnote marking them as
+deduced -- the person's call, and consistent with the standing rule that a
+member who has left is shown exactly like one who has not. 463 ballots each
+currently read as a number. The evidence is in §0d.
+
+**The consent calendar: say the bill was removed, name who asked, then
+narrate the votes normally.** The person's instruction, and the record
+supports it exactly -- the docket already carries the line. Measured across
+every docket on disk: **1,486 bills have a removal line**, and **463 of those
+lines name the members**, House-style "Removed from Consent (Reps. Cornell,
+Selig, Weinstein, ...)" or Senate-style "SB 37 was Removed from the Consent
+Calendar; 01/30/2025; SJ 4", with a companion "Sen. Birdsell Moved to Remove
+SB 37". Terms before 2013 record the removal but not the members.
+
+So the fix is not a wording choice after all. A bill pulled off the consent
+calendar gets a sentence saying so -- with the members where the docket names
+them -- and then the ordinary narrative of the votes that followed, exactly
+like a regular-calendar bill. The standing note about passing without floor
+debate stops being printed over the top of a contested vote. This needs
+`narrative.py` and a rebuild of narratives.json, which is 245 MB across 19
+terms, so it is queued rather than done.
+
+**The 14 disagreeing roll calls: with the person.** Rather than choose a
+wording, the detail went to them -- `reports/rollcall-disagreements.md`, every
+one of the 14 with its stated tally, its counted ballots and the full member
+list for each Senate vote -- to see whether a corroborating source settles
+them. Two shapes emerged and are worth keeping in view: **six Senate votes
+where the totals agree and one member is recorded on opposite sides**, which
+looks like a single transcription difference, and **eight where the totals
+themselves differ**, from one ballot to twelve. One of the fourteen is a
+different defect altogether: 2017-S-104 has a ballot whose recorded value is
+the literal string `7`.
+
+**Email addresses: obfuscated on the pages, kept whole in the CSV.** 1,327 are
+published in plain text, 404 of them in a downloadable file. Scrapers reading
+pages get nothing; the bulk export stays complete for somebody who downloads
+it deliberately. These are officials' published contact details, which the
+person has said may be republished -- the change is about scraping, not about
+withholding.
+
+---
+
 ## 1. Live
 
 Published 9 September, five times on the 10th, and at 12:44 on the 11th
