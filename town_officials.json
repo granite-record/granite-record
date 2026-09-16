@@ -299,8 +299,8 @@
   "officials": [
    {
     "email": "tadmin@andover-nh.gov",
-    "name": "Donald Sieburg Town",
-    "phone": "O60ff3i-c7i3a5ls-5332",
+    "name": "Donald Sieburg",
+    "phone": "603-735-5332",
     "position": "Town Administrator"
    },
    {
@@ -479,7 +479,7 @@
    }
   ],
   "phone": "603-362-5266",
-  "website": "https://www.town- atkinsonnh.com/"
+  "website": "https://www.town-atkinsonnh.com/"
  },
  "auburn": {
   "email": "townadmin@townofauburnnh.com",
@@ -645,8 +645,8 @@
    },
    {
     "email": "",
-    "name": "Vicki Garland Town",
-    "phone": "Officials",
+    "name": "Vicki Garland",
+    "phone": "",
     "position": "Board of Selectman"
    },
    {
@@ -1000,12 +1000,6 @@
   "municipality": "Boscawen",
   "officials": [
    {
-    "email": "",
-    "name": "Town",
-    "phone": "Officials",
-    "position": "Mayor"
-   },
-   {
     "email": "kphelps@boscawennh.gov",
     "name": "Katie Phelps",
     "phone": "603-753-9188",
@@ -1031,7 +1025,7 @@
    }
   ],
   "phone": "603-753-9188",
-  "website": "httpsT:o//wwnw wIn.bfooscawennh.gov/"
+  "website": "https://www.boscawennh.gov/"
  },
  "bow": {
   "email": "tlindquist@bownh.org",
@@ -1356,12 +1350,6 @@
   "municipality": "Campton",
   "officials": [
    {
-    "email": "",
-    "name": "Town",
-    "phone": "Officials",
-    "position": "Mayor"
-   },
-   {
     "email": "townadministrator@camptonnh.gov",
     "name": "Kate O'Connor",
     "phone": "603-726-3223",
@@ -1399,7 +1387,7 @@
    }
   ],
   "phone": "603-726-3223",
-  "website": "httpsT:o//wcanm Inptfoonnh.org/nh/"
+  "website": "https://camptonnh.org/nh/"
  },
  "canaan": {
   "email": "townadmin@canaannh.org",
@@ -1673,7 +1661,7 @@
    }
   ],
   "phone": "603-694-2117",
-  "website": "no website"
+  "website": ""
  },
  "chester": {
   "email": "chesterbos@chesternh.org",
@@ -1713,8 +1701,8 @@
    },
    {
     "email": "",
-    "name": "Steven Couture Town",
-    "phone": "Officials",
+    "name": "Steven Couture",
+    "phone": "",
     "position": "Board of Selectman"
    },
    {
@@ -1909,7 +1897,7 @@
    }
   ],
   "phone": "603-246-7751",
-  "website": "no website"
+  "website": ""
  },
  "colebrook": {
   "email": "info@colebrooknh.org",
@@ -2059,8 +2047,8 @@
    },
    {
     "email": "kschultz@concordnh.gov",
-    "name": "Kris Schultz Town",
-    "phone": "Officials",
+    "name": "Kris Schultz",
+    "phone": "",
     "position": "City Councilor, Ward 9"
    },
    {
@@ -2427,8 +2415,8 @@
   "officials": [
    {
     "email": "administrator@deeringnh.gov",
-    "name": "Vacant Town",
-    "phone": "O60ff3i-c4i6a4ls-3248",
+    "name": "Vacant",
+    "phone": "603-464-3248",
     "position": "Town Administrator"
    },
    {
@@ -2561,7 +2549,7 @@
    }
   ],
   "phone": "603-786-5095",
-  "website": "https://www.townofdorchester.org"
+  "website": "https://www.townofdorchester.org/"
  },
  "dover": {
   "email": "m.joyal@dover.nh.gov",
@@ -2785,8 +2773,8 @@
    },
    {
     "email": "",
-    "name": "Emily Friedrichs Town",
-    "phone": "Officials",
+    "name": "Emily Friedrichs",
+    "phone": "",
     "position": "Town Councilor"
    },
    {
@@ -3021,7 +3009,7 @@
    }
   ],
   "phone": "603-726-3551",
-  "website": "no website"
+  "website": ""
  },
  "enfield": {
   "email": "townhall@enfield.nh.us",
@@ -3147,8 +3135,8 @@
    },
    {
     "email": "",
-    "name": "Meadow Wysocki Town",
-    "phone": "Officials",
+    "name": "Meadow Wysocki",
+    "phone": "",
     "position": "Board of Selectman"
    },
    {
@@ -3521,8 +3509,8 @@
    },
    {
     "email": "",
-    "name": "Leslie Babb Town",
-    "phone": "Officials",
+    "name": "Leslie Babb",
+    "phone": "",
     "position": "Board of Selectman, Chair"
    },
    {
@@ -3877,7 +3865,7 @@
    }
   ],
   "phone": "603-523-770",
-  "website": "https://www.townofgraftonnh.com"
+  "website": "https://www.townofgraftonnh.com/"
  },
  "grantham": {
   "email": "info@granthamnh.gov",
@@ -3885,12 +3873,6 @@
   "mailing": "300 Route 10 South Grantham, NH 03753",
   "municipality": "Grantham",
   "officials": [
-   {
-    "email": "",
-    "name": "Town",
-    "phone": "Officials",
-    "position": "Mayor"
-   },
    {
     "email": "admin@granthamnh.gov",
     "name": "Melissa White",
@@ -3923,7 +3905,7 @@
    }
   ],
   "phone": "603-863-6021",
-  "website": "httpsT:o//wgrna nInthfaomnh.gov/"
+  "website": "https://granthamnh.gov/"
  },
  "greenfield": {
   "email": "townadministrator@greenfield-nh.gov",
@@ -4267,8 +4249,8 @@
    },
    {
     "email": "jbrown@hancocknh.org",
-    "name": "Jeff Brown Town",
-    "phone": "Officials",
+    "name": "Jeff Brown",
+    "phone": "",
     "position": "Board of Selectman"
    },
    {
@@ -4623,13 +4605,13 @@
    },
    {
     "email": "",
-    "name": "Ernest Butler Town",
-    "phone": "O60ff3i-c4i6a4ls-7986",
+    "name": "Ernest Butler",
+    "phone": "603-464-7986",
     "position": "Road Agent"
    }
   ],
   "phone": "603-464-3877",
-  "website": "https://www.town.hillsborough.nh."
+  "website": "https://www.town.hillsborough.nh.us/"
  },
  "hinsdale": {
   "email": "hinsdale.nh@myfairpoint.net",
@@ -4681,7 +4663,7 @@
    }
   ],
   "phone": "603-336-5710",
-  "website": "https://www.town.hinsdale.nh.us/i"
+  "website": "https://www.town.hinsdale.nh.us/index.asp?SEC=31C24082-A0EE-"
  },
  "holderness": {
   "email": "administrator@holderness-nh.gov",
@@ -4861,7 +4843,7 @@
    }
   ],
   "phone": "603-485-8471",
-  "website": "https://www.hooksett.org/#section"
+  "website": "https://www.hooksett.org/#section1-anchor"
  },
  "hopkinton": {
   "email": "assessing@hopkinton-nh.gov",
@@ -4993,8 +4975,8 @@
    },
    {
     "email": "",
-    "name": "Frank DiFruscio Town",
-    "phone": "Officials",
+    "name": "Frank DiFruscio",
+    "phone": "",
     "position": "Board of Selectman"
    },
    {
@@ -5243,7 +5225,7 @@
    }
   ],
   "phone": "603-772-5423",
-  "website": "https://www.town.kensington.nh.u"
+  "website": "https://www.town.kensington.nh.us/"
  },
  "kingston": {
   "email": "admin@kingstonnh.org",
@@ -5381,8 +5363,8 @@
    },
    {
     "email": "",
-    "name": "Kathy-Jean Lavoie Town",
-    "phone": "Officials",
+    "name": "Kathy-Jean Lavoie",
+    "phone": "",
     "position": "Board of Selectman"
    },
    {
@@ -5755,8 +5737,8 @@
    },
    {
     "email": "kqueenan@litchfieldnh.gov",
-    "name": "Kimberley Queenan Town",
-    "phone": "Officials",
+    "name": "Kimberley Queenan",
+    "phone": "",
     "position": "Board of Selectman"
    },
    {
@@ -6019,7 +6001,7 @@
    }
   ],
   "phone": "603-654-5955",
-  "website": "https://www.town.lyndeborough.n h.us/"
+  "website": "https://www.town.lyndeborough.nh.us/"
  },
  "madbury": {
   "email": "adminmadbury@comcast.net",
@@ -6093,8 +6075,8 @@
    },
    {
     "email": "dpw@madison-nh.org",
-    "name": "Justin Chick Town",
-    "phone": "O60ff3i-c3i6a7ls-8233",
+    "name": "Justin Chick",
+    "phone": "603-367-8233",
     "position": "Public Works Dept Foreman"
    }
   ],
@@ -6475,8 +6457,8 @@
    },
    {
     "email": "",
-    "name": "Timothy Cremmen Town",
-    "phone": "Officials",
+    "name": "Timothy Cremmen",
+    "phone": "",
     "position": "Board of Selectman"
    },
    {
@@ -6763,7 +6745,7 @@
    }
   ],
   "phone": "603-476-2347",
-  "website": "https://www.moultonboroughnh.go"
+  "website": "https://www.moultonboroughnh.gov/"
  },
  "nashua": {
   "email": "",
@@ -6863,8 +6845,8 @@
    },
    {
     "email": "sennottt@nashuanh.gov",
-    "name": "Tim Sennott Town",
-    "phone": "Officials",
+    "name": "Tim Sennott",
+    "phone": "",
     "position": "Board of Alderman, Ward 7"
    },
    {
@@ -7189,8 +7171,8 @@
    },
    {
     "email": "",
-    "name": "Cal Prussman Town",
-    "phone": "O60ff3i-c9i3a8ls-5494",
+    "name": "Cal Prussman",
+    "phone": "603-938-5494",
     "position": "Highway Administrator"
    }
   ],
@@ -7397,7 +7379,7 @@
    }
   ],
   "phone": "603-863-1877",
-  "website": "https://www.newportnh.gov/town- clerk"
+  "website": "https://www.newportnh.gov/town-clerk"
  },
  "newton": {
   "email": "selectmen@newtonnh.net",
@@ -7489,7 +7471,7 @@
    }
   ],
   "phone": "603-964-8087",
-  "website": "https://www.northhampton- nh.gov/"
+  "website": "https://www.northhampton-nh.gov/"
  },
  "northfield": {
   "email": "",
@@ -7545,8 +7527,8 @@
    },
    {
     "email": "no stated email address",
-    "name": "Keith Bronson Town",
-    "phone": "O60ff3i-c6i3a6ls-1450",
+    "name": "Keith Bronson",
+    "phone": "603-636-1450",
     "position": "Board of Selectman, Chair"
    },
    {
@@ -7569,7 +7551,7 @@
    }
   ],
   "phone": "603-636-1450",
-  "website": "https://www.northumberlandnh.or"
+  "website": "https://www.northumberlandnh.org/"
  },
  "northwood": {
   "email": "wjohnson@northwoodnh.org",
@@ -7906,12 +7888,6 @@
   "municipality": "Peterborough",
   "officials": [
    {
-    "email": "",
-    "name": "Town",
-    "phone": "Officials",
-    "position": "Mayor"
-   },
-   {
     "email": "selectboard@peterboroughnh.gov",
     "name": "Nicole MacStay",
     "phone": "603-924-8000",
@@ -7943,7 +7919,7 @@
    }
   ],
   "phone": "603-924-8000",
-  "website": "httpsT:o//wwnw wIn.pfoeterboroughnh.gov"
+  "website": "https://www.peterboroughnh.gov"
  },
  "piermont": {
   "email": "info@townofpiermontnh.org",
@@ -8115,7 +8091,7 @@
    }
   ],
   "phone": "603-469-3201",
-  "website": "https://www.plainfieldnh.org/pview"
+  "website": "https://www.plainfieldnh.org/pview.aspx?id=55881&catid=0"
  },
  "plaistow": {
   "email": "gcolby@plaistow.com",
@@ -8247,8 +8223,8 @@
    },
    {
     "email": "",
-    "name": "Beth Moreau Town",
-    "phone": "Officials",
+    "name": "Beth Moreau",
+    "phone": "",
     "position": "City Councilor"
    },
    {
@@ -8289,7 +8265,7 @@
    }
   ],
   "phone": "603-431-2000",
-  "website": "https://www.cityofportsmouth.co m/"
+  "website": "https://www.cityofportsmouth.com/"
  },
  "randolph": {
   "email": "selectmen@randolph.nh.gov",
@@ -8651,8 +8627,8 @@
   "officials": [
    {
     "email": "can email through the website, no stated email address",
-    "name": "Joe Chivell Town",
-    "phone": "O60ff3i-c7i8a6ls-9511",
+    "name": "Joe Chivell",
+    "phone": "603-786-9511",
     "position": "Town Administrator"
    },
    {
@@ -9018,12 +8994,6 @@
   "municipality": "Sharon",
   "officials": [
    {
-    "email": "",
-    "name": "Town",
-    "phone": "Officials",
-    "position": "Mayor"
-   },
-   {
     "email": "can email through the website, no stated email",
     "name": "Debra Harling",
     "phone": "603-924-9250",
@@ -9055,7 +9025,7 @@
    }
   ],
   "phone": "603-924-9250",
-  "website": "httpsT:o//wshna Irnonfonh.org/"
+  "website": "https://sharonnh.org/"
  },
  "shelburne": {
   "email": "townofshelburnenh@gmail.com",
@@ -9095,7 +9065,7 @@
    }
   ],
   "phone": "603-466-2262",
-  "website": "https://www.townofshelburnenh.c"
+  "website": "https://www.townofshelburnenh.com/"
  },
  "somersworth": {
   "email": "bbelmore@somersworhtnh.gov",
@@ -9331,7 +9301,7 @@
    }
   ],
   "phone": "603-246-3329",
-  "website": "website was discontinued"
+  "website": ""
  },
  "stoddard": {
   "email": "townadministrator@stoddardnh.org",
@@ -9381,8 +9351,8 @@
   "officials": [
    {
     "email": "administrator@strafford.nh.gov",
-    "name": "Ellen White Town",
-    "phone": "O60ff3i-c6i6a4ls-2192 ext. 101",
+    "name": "Ellen White",
+    "phone": "603-664-2192 ext. 101",
     "position": "Town Administrator"
    },
    {
@@ -9746,12 +9716,6 @@
   "municipality": "Tamworth",
   "officials": [
    {
-    "email": "",
-    "name": "Town",
-    "phone": "Officials",
-    "position": "Mayor"
-   },
-   {
     "email": "admin@tamworthnh.gov",
     "name": "Emily Nolan",
     "phone": "603-323-7525",
@@ -9795,7 +9759,7 @@
    }
   ],
   "phone": "603-323-7525",
-  "website": "httpsT:o//wwnw wIn.tfaomworthnh.org/"
+  "website": "https://www.tamworthnh.org/"
  },
  "temple": {
   "email": "selectboard@templenh.org",
@@ -10127,8 +10091,8 @@
    },
    {
     "email": "sdowning@walpolenh.us",
-    "name": "Sarah Downing Town",
-    "phone": "O60ff3i-c7i5a6ls-3672",
+    "name": "Sarah Downing",
+    "phone": "603-756-3672",
     "position": "Office Manager"
    }
   ],
@@ -10293,7 +10257,7 @@
    }
   ],
   "phone": "603-236-4730",
-  "website": "https://www.watervillevalleynh.gov"
+  "website": "https://www.watervillevalleynh.gov/"
  },
  "weare": {
   "email": "office@weare.nh.gov",
@@ -10480,12 +10444,6 @@
   "municipality": "Whitefield",
   "officials": [
    {
-    "email": "",
-    "name": "Town",
-    "phone": "Officials",
-    "position": "Mayor"
-   },
-   {
     "email": "can email through the website, no stated email",
     "name": "Judy Ramsdell",
     "phone": "603-837-2551",
@@ -10517,7 +10475,7 @@
    }
   ],
   "phone": "603-837-9871",
-  "website": "httpsT:o//wwnw wIn.wfohitefieldnh.org/"
+  "website": "https://www.whitefieldnh.org/"
  },
  "wilmot": {
   "email": "admin@wilmotnh.org",

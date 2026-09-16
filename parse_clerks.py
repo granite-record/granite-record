@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.2
+# GRANITE_VERSION: 2026-09-12.3
 """
 The Secretary of State's clerks and polling places, out of the PDF.
 
@@ -56,6 +56,31 @@ whose town cell is empty. Any row whose town does not name a town is folded
 into the row before it, line by line, and the whole row is re-read. That
 handles both without knowing which it was.
 
+AND THE HALF THAT NAMES THE WRONG TOWN. Not every page break leaves a half
+that names nothing. Page 19 ends with "GREEN'S" and page 20 begins with
+"GRANT", and GRANT is a five-letter prefix of exactly one town in the state:
+Grantham. So the tail of Green's Grant was read as a row of its own, filed
+under `grantham`, and overwrote the real Grantham -- which is why Grantham's
+page offered "https://mnh.gov" as the town's website, the back half of Green's
+Grant's "www.gorhamnh.gov", while Green's Grant kept the front half,
+"www.gorha". One row, two wrong towns, both published as live links.
+
+What separates that case from every other is knowable without guessing at
+"GRANT": the row ABOVE it held only part of its own town's name. Two rows in
+the document are matched by that last, loosest rule, and only one of them is
+short of the name it matched -- "GREEN'S" against GREEN'S GRANT, where "LOW &
+BURBANKS GRANT" is all of LOW & BURBANK'S GRANT and merely spelled without the
+apostrophe. So a row that follows a truncated one is folded into it when, and
+only when, joining the two town cells spells a town in full.
+
+THE WEBSITE COLUMN IS NOT ALWAYS A WEBSITE. Five towns have their clerk's
+e-mail address typed in it, Ellsworth has "NONE AVAILABLE", and Orange has an
+address the Secretary of State's own cell labels "(UNOFFICIAL COMMUNITY RUN
+WEBSITE)". None of those is the town's website, and a page that draws no link
+is right where one that links a fragment is not -- so the value is checked
+against `parse_officials.web_address` and anything that is not a host is
+recorded as nothing.
+
 CASE. The list is typed in capitals. Capitals are how the form stores it and
 not how a name is written, so the name and the polling place are title-cased
 for display and the original is kept beside them under _raw. The rule knows
@@ -68,6 +93,12 @@ import json
 import pathlib
 import re
 import sys
+
+# The other directory decides two things here: its properly spaced names settle
+# the joins this PDF leaves ambiguous, and its `web_address` decides what counts
+# as a website. One rule for both files, so the two cannot drift into disagreeing
+# about what a town page may link.
+import parse_officials
 
 ROOT = pathlib.Path(__file__).resolve().parent
 PDF = ROOT / "sources" / "sos-clerks-and-polling-places.pdf"
@@ -214,6 +245,10 @@ def abbrev_of(short, full):
 
 
 def read_town(lines, towns):
+    """The town, the ward, the cell as it read, and whether it held the whole
+    of the name. The last of those is what `stitch` needs: a cell matched only
+    as a prefix of the town it names is the front half of a row a page break
+    cut, and the back half is the row below."""
     frags = [t for t, _ in lines]
     raw = " ".join(frags)
     ward = None
@@ -223,11 +258,11 @@ def read_town(lines, towns):
         stripped = re.sub(r"WARD\s*0*\d+\s*$", "", raw).strip()
         frags = [f for f in re.split(r"\s+", stripped) if f]
     if not frags or not frags[0].strip():
-        return None, ward, raw
+        return None, ward, raw, True
     for mask in masks(len(frags)):
         cand = joins(frags, mask)
         if cand.upper() in towns:
-            return cand.upper(), ward, raw
+            return cand.upper(), ward, raw, True
     # The abbreviated, the truncated and the differently spelled, and ONLY
     # where one town answers. "NEW" is a prefix of Newbury, Newfields,
     # Newington, Newmarket, Newport and Newton, and answering with whichever
@@ -241,13 +276,17 @@ def read_town(lines, towns):
         cand = joins(frags, mask)
         hit = [t for t in towns if abbrev_of(cand, t) or abbrev_of(t, cand)]
         if len(hit) == 1:
-            return hit[0], ward, raw
+            return hit[0], ward, raw, True
         if len(hit) > 1:
-            return None, ward, raw + f"  [{len(hit)} towns match]"
+            return None, ward, raw + f"  [{len(hit)} towns match]", True
     # A PAGE BREAK CUTS A ROW IN HALF and leaves the first half short of whole
     # tokens: page 19 ends with "GREEN'S" and page 20 begins with "GRANT". A
     # prefix of the whole name catches those, at five letters and up so that
     # "NEW" and "ON" catch nothing, and only where one town answers.
+    #
+    # A match here is reported as WHOLE only when the cell spells all of the
+    # name. "LOW & BURBANKS GRANT" does, missing an apostrophe this list does
+    # not write; "GREEN'S" does not, and the row carrying it is half a row.
     letters = lambda s: re.sub(r"[^A-Z0-9]", "", s.upper())
     for mask in masks(len(frags)):
         cand = letters(joins(frags, mask))
@@ -255,8 +294,8 @@ def read_town(lines, towns):
             continue
         hit = [t for t in towns if letters(t).startswith(cand)]
         if len(hit) == 1:
-            return hit[0], ward, raw
-    return None, ward, raw
+            return hit[0], ward, raw, len(cand) == len(letters(hit[0]))
+    return None, ward, raw, True
 
 
 # ----------------------------------------------------------------- clerk ----
@@ -432,19 +471,39 @@ def read_pdf(path):
 
 
 def stitch(rows, towns):
-    """Fold every row that does not name a town into the row before it."""
-    merged, folded = [], 0
+    """Fold every row that does not name a town into the row before it, and
+    every row that completes the half-named one above it.
+
+    The second of those is the page break at GREEN'S / GRANT, and it is decided
+    by the row above rather than by the row in hand: "GRANT" names Grantham
+    perfectly well on its own, and the only thing that says it is not Grantham
+    is that the row before it holds "GREEN'S", which is not all of any town's
+    name. Joining the two cells has to spell a town in full before this fires,
+    so a genuinely new town after a truncated one is still a new town.
+    """
+    merged, folded, rejoined = [], 0, []
+    whole = True
     for r in rows:
-        name, ward, raw = read_town(r["cells"][TOWN], towns)
-        if name is None and merged:
+        name, ward, raw, got_whole = read_town(r["cells"][TOWN], towns)
+        fold = name is None and bool(merged)
+        if merged and not whole:
+            both = merged[-1]["cells"][TOWN] + r["cells"][TOWN]
+            done, _, _, done_whole = read_town(both, towns)
+            if done is not None and done_whole:
+                fold = True
+                rejoined.append(f"{done} (its tail read as {name})"
+                                if name else done)
+        if fold:
             for i in range(11):
                 merged[-1]["cells"][i] = merged[-1]["cells"][i] + r["cells"][i]
             folded += 1
+            whole = read_town(merged[-1]["cells"][TOWN], towns)[3]
             continue
         if name is None:
             continue
         merged.append(r)
-    return merged, folded
+        whole = got_whole
+    return merged, folded, rejoined
 
 
 def fold_wards(data, towns):
@@ -491,10 +550,10 @@ def fold_wards(data, towns):
 
 
 def build(rows, towns):
-    data, odd, checked, hits = {}, [], 0, 0
+    data, odd, checked, hits, refused = {}, [], 0, 0, []
     for r in rows:
         cells, xs = r["cells"], r["xs"]
-        name, ward, raw = read_town(cells[TOWN], towns)
+        name, ward, raw, _ = read_town(cells[TOWN], towns)
         if name is None:
             continue
         clerk, clerk_raw = read_clerk(cells[CLERK], xs[CLERK + 1])
@@ -508,9 +567,17 @@ def build(rows, towns):
             return "" if s.lower() in BLANK else s
 
         email = val(EMAIL).lower()
-        site = val(SITE).lower()
+        # The Website column, checked against what a website is. The tight join
+        # is right for the wrap -- "WWW.GORHA" / "MNH.GOV" is one host -- and
+        # wrong for the five cells holding an e-mail address and the one
+        # holding a note, so what it produces is only kept if it is a host.
+        wrote = val(SITE).lower()
+        site = parse_officials.web_address(wrote)
         if site and not site.startswith("http"):
             site = "https://" + site.lstrip("/")
+        if wrote and not site:
+            refused.append(f"{name}: "
+                           f"{geom_join(cells[SITE], xs[SITE + 1]).lower()!r}")
         # THE SECRETARY OF STATE'S OWN CELL REPEATS THE DISTRICT
         # MARKER: "PINKERTON ACADEMY (DIST 1) 5 PINKERTON (DIST 1) ST
         # DERRY" -- the second is inside the street address, where a
@@ -536,7 +603,7 @@ def build(rows, towns):
             hits += 1 if got else 0
             if not got:
                 odd.append(f"{name}: {namecase(clerk)!r} vs {email}")
-    return data, odd, checked, hits
+    return data, odd, checked, hits, refused
 
 
 def main():
@@ -559,14 +626,17 @@ def main():
     print(f"  {n} name tokens from town_officials.json to settle joins with"
           if n else "  town_officials.json is not there; joins decided without it")
     raw, notes = read_pdf(pdf)
-    rows, folded = stitch(raw, towns)
-    data, odd, checked, hits = build(rows, towns)
+    rows, folded, rejoined = stitch(raw, towns)
+    data, odd, checked, hits, refused = build(rows, towns)
     added = fold_wards(data, towns)
     if added:
         print(f"  {len(added)} towns this site has unwarded, carried over from "
               f"their wards: " + ", ".join(added))
     print(f"  {len(raw)} bands read, {folded} folded into the row above, "
           f"{len(rows)} rows, {len(data)} keyed to a town page")
+    if rejoined:
+        print(f"    {len(rejoined)} rows a page break cut in half whose tail "
+              "named another town on its own: " + ", ".join(rejoined))
     for n in notes:
         print(f"    {n}")
     want = {(t.upper(), w) for t in districts for w in districts[t]}
@@ -581,7 +651,13 @@ def main():
     print(f"    {sum(1 for v in data.values() if v.get('polling_place'))}"
           f" of {len(data)} carry a polling place, "
           f"{sum(1 for v in data.values() if v.get('email'))} an e-mail, "
-          f"{sum(1 for v in data.values() if v.get('phone'))} a phone")
+          f"{sum(1 for v in data.values() if v.get('phone'))} a phone, "
+          f"{sum(1 for v in data.values() if v.get('website'))} a website")
+    if refused:
+        print(f"    {len(refused)} whose Website cell is not an address, "
+              "recorded as nothing:")
+        for line in sorted(set(refused)):
+            print(f"      {line}")
     if checked:
         print(f"    surname found in the clerk's own e-mail on {hits} of "
               f"{checked} rows ({100*hits/checked:.0f}%)")

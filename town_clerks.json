@@ -403,8 +403,7 @@
   "phone": "603-482-3351",
   "polling_place": "Errol Townhall 33 Mainst Cambridge 03579",
   "polling_raw": "ERROL TOWNHALL 33 MAINST CAMBRIDGE 03579",
-  "state_hours": "8:00 AM - 7:00 PM",
-  "website": "https://erroltownclerk@gmail.com"
+  "state_hours": "8:00 AM - 7:00 PM"
  },
  "campton": {
   "clerk": "Hannah B Joyce",
@@ -590,8 +589,7 @@
   "clerk_address": "408 NH Route 145 Clarksville 03592",
   "clerk_raw": "KIMBERLY A JOYCE",
   "email": "kim@clarksville.nh.gov",
-  "phone": "603-246-7751",
-  "website": "https://twnclark@yahoo.com"
+  "phone": "603-246-7751"
  },
  "colebrook": {
   "clerk": "Jolene Marie Martunas",
@@ -611,8 +609,7 @@
   "clerk_address": "PO Box 157 Columbia 03576",
   "clerk_raw": "MARCIA LYNN PARKHURST",
   "email": "townclerk@columbianh.org",
-  "phone": "603-237-5255",
-  "website": "https://towncolumbia@myfairpoint.net"
+  "phone": "603-237-5255"
  },
  "concord-ward-1": {
   "clerk": "Janice L Bonenfant",
@@ -1055,8 +1052,7 @@
   "clerk_address": "75 Hill Roaddummer 03588",
   "clerk_raw": "JUDY MARCOU",
   "email": "dummertownclerk@gmail.com",
-  "phone": "603-449-2006",
-  "website": "https://www.dummertownclerk@gmail.com"
+  "phone": "603-449-2006"
  },
  "dunbarton": {
   "clerk": "Jennifer P Cormier",
@@ -1136,8 +1132,7 @@
   "clerk_address": "3 Ellsworthpond Rd Ellsworth 03223",
   "clerk_raw": "DONNA MARIE O'BRIEN",
   "email": "dobellsworth@gmail.com",
-  "phone": "603-726-3551",
-  "website": "https://noneavailable"
+  "phone": "603-726-3551"
  },
  "enfield": {
   "clerk": "Marissa P Ignacio",
@@ -1405,30 +1400,25 @@
   "website": "https://www.townofgraftonnh.com"
  },
  "grantham": {
-  "clerk": "Valliere",
-  "clerk_address": "Street Green'S Grant 03581",
-  "clerk_raw": "VALLIERE",
-  "election": "ATE GENERAL ELECTION",
-  "email": "orhamnh.gov",
-  "local_hours": "06:00 PM",
-  "phone": "34",
-  "polling_place": "Town Hall 20 Park St Green'S Grant 03581",
-  "polling_raw": "TOWN HALL 20 PARK ST GREEN'S GRANT 03581",
-  "state_hours": "PM",
-  "website": "https://mnh.gov"
+  "clerk": "Kenneth Byrd Story",
+  "clerk_address": "PO Box 135 Grantham 03753",
+  "clerk_raw": "KENNETH BYRD STORY",
+  "email": "kstory@granthamnh.gov",
+  "phone": "603-863-5608",
+  "website": "https://www.granthamnh.gov"
  },
  "green-s-grant": {
-  "clerk": "Susan",
-  "clerk_address": "20 Park",
-  "clerk_raw": "SUSAN",
-  "election": "11/03/2026-ST",
-  "email": "svalliere@g",
-  "local_hours": "10:00 AM - End Time",
-  "phone": "603-466-94",
-  "polling_place": "Gorham",
-  "polling_raw": "GORHAM",
-  "state_hours": "8:00 AM - 7:00 End Time",
-  "website": "https://www.gorha"
+  "clerk": "Susan Valliere",
+  "clerk_address": "20 Park Street Green'S Grant 03581",
+  "clerk_raw": "SUSAN VALLIERE",
+  "election": "11/03/2026-STATE GENERAL ELECTION",
+  "email": "svalliere@gorhamnh.gov",
+  "local_hours": "10:00 AM - End Time 06:00 PM",
+  "phone": "603-466-9434",
+  "polling_place": "Gorham Town Hall 20 Park St Green'S Grant 03581",
+  "polling_raw": "GORHAM TOWN HALL 20 PARK ST GREEN'S GRANT 03581",
+  "state_hours": "8:00 AM - 7:00 End Time PM",
+  "website": "https://www.gorhamnh.gov"
  },
  "greenfield": {
   "clerk": "Dorene E Adams",
@@ -2849,8 +2839,7 @@
   "clerk_address": "PO Box 37 Orange 03741",
   "clerk_raw": "TAMARA LYN FAIRBANK",
   "email": "orangenhtownclerk@gmail.com",
-  "phone": "603-523-7054",
-  "website": "https://www.orangenh.us(unofficialcommunityrunwebsite)"
+  "phone": "603-523-7054"
  },
  "orford": {
   "clerk": "Deborah Mhadlock",
@@ -2912,8 +2901,7 @@
   "clerk_address": "130 Route 10 Piermont 03779",
   "clerk_raw": "BERNADETT E RATEL",
   "email": "bernadette.ratel@townofpiermontnh.org",
-  "phone": "603-272-4840",
-  "website": "https://bernadette.ratel@townofpiermontnh.org"
+  "phone": "603-272-4840"
  },
  "pinkham-s-grant": {
   "clerk": "Susan Valliere",

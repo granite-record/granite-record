@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.1
+# GRANITE_VERSION: 2026-09-12.2
 """
 Municipal officials, out of the Department of Transportation's directory.
 
@@ -35,6 +35,31 @@ no office is listed that the directory does not list.
 WHAT IT DOES NOT HAVE. Wards. The directory is per municipality, so a city's
 twelve wards share one selectboard entry, which is correct: a city council is
 elected by ward but governs the city.
+
+THE BANNER THAT LANDS ON A TOWN. Every page carries a two-word banner over the
+table -- "Town Info" over the first six columns, "Town Officials" over the last
+four -- and it is drawn in Aptos Narrow Bold at 5.64pt, 0.95pt above the first
+data line, which is Aptos Narrow at 5.16. On 23 of the 30 pages the ruling grid
+gives the banner a row to itself. On the other seven it does not, and pdfplumber
+sorts the two overlapping lines into one, left to right, a character at a time:
+Boscawen's website came out "httpsT:o//wwnw wIn.bfooscawennh.gov/", which is
+"https://www.boscawennh.gov/" with "Town Info" threaded through it, and its
+Mayor came out named "Town" with the telephone number "Officials". Both were
+published. `without_banner` takes the banner's characters off the page before
+the table is read, which is the one edit that fixes both.
+
+A WEBSITE WRAPS TWO WAYS. Inside its cell -- "https://www.cityofportsmouth.co"
+/ "m/" -- and, where the ruling grid splits the town's first row in two, onto a
+row of its own with the municipality column empty: eleven of them, "us/" for
+Hillsborough and ".aspx?id=55881&catid=0" for Plainfield. A URL cannot contain
+a space, so both are joined with nothing; the town-info columns beside it are
+NOT, because the e-mail column's continuations are second addresses and not
+second halves.
+
+AND IT IS CHECKED. Four rows are prose -- "no website", "website was
+discontinued" -- and a fragment published as a live link sends a reader
+somewhere that is not the town, which is worse than sending them nowhere. A
+value that is not a host is not recorded.
 """
 import argparse
 import collections
@@ -81,9 +106,72 @@ def clean(s):
     return "" if s.lower() in {"", "-", "n/a", "none"} else s
 
 
+def tight(s):
+    """A cell joined with nothing, which is how an address wraps.
+
+    The Website column is the only cell in this table that cannot contain a
+    space, so every break in it is the generator's and none of them is the
+    text's. Join it the way `clean` joins the others and Portsmouth's address
+    becomes "www.cityofportsmouth.co m/".
+    """
+    return re.sub(r"\s+", "", s or "")
+
+
+# The banner, with its spaces taken out, as it reads when the two halves are
+# sorted into one line. Matched as the whole of a line and nothing less, so a
+# page whose banner is somewhere else is reported rather than half-stripped.
+BANNER = "TownInfoTownOfficials"
+
+HOST = re.compile(r"(?:[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}")
+
+
+def web_address(s):
+    """A Website cell as an address a reader can be sent to, or "".
+
+    Not every cell in that column is an address. This directory writes "no
+    website" in four of them and the Secretary of State's list writes an e-mail
+    address in five; a cell can also be a host with a note after it, or the
+    front half of one where the back half was lost. The rule is the same for
+    all of them: what goes in the file is a host, and anything else is nothing,
+    because a town page that draws no link is right where one that links
+    "https://mnh.gov" sends a reader to somebody else's website.
+    """
+    s = re.sub(r"\s+", "", s or "")
+    rest = re.sub(r"^https?://", "", s, flags=re.I).lstrip("/")
+    host = re.split(r"[/?#]", rest, maxsplit=1)[0]
+    if not host or "@" in host or not HOST.fullmatch(host):
+        return ""
+    return s
+
+
+def without_banner(pg):
+    """The page with its "Town Info / Town Officials" banner taken off it.
+
+    Returns (page, how many characters went). The banner is found by what it
+    says, not by where it sits or what it is set in: the characters are grouped
+    into lines by their own baseline -- which separates the banner from the data
+    line 0.95pt below it, where pdfplumber's word grouping does not -- and a
+    line is the banner only when it is exactly the banner.
+    """
+    by_line = collections.defaultdict(list)
+    for c in pg.chars:
+        by_line[round(c["top"], 2)].append(c)
+    drop = set()
+    for y, cs in by_line.items():
+        text = "".join(c["text"] for c in sorted(cs, key=lambda c: c["x0"]))
+        if re.sub(r"\s+", "", text) == BANNER:
+            drop |= {(round(c["x0"], 2), y) for c in cs}
+    if not drop:
+        return pg, 0
+    return pg.filter(lambda o: not (
+        o.get("object_type") == "char"
+        and (round(o["x0"], 2), round(o["top"], 2)) in drop)), len(drop)
+
+
 def read(pdf_path):
     import pdfplumber
     towns, notes = collections.OrderedDict(), []
+    raw_site = {}
     with pdfplumber.open(pdf_path) as pdf:
         # `here` CARRIES ACROSS PAGES. A town's offices run past the bottom of
         # a page -- Andover's start on page 2 and finish on page 3 -- and
@@ -92,9 +180,12 @@ def read(pdf_path):
         # town" six times on page 3 alone.
         here = None
         for pg in pdf.pages:
-            tb = pg.extract_table()
+            page, stripped = without_banner(pg)
+            tb = page.extract_table()
             if not tb:
                 continue
+            if not stripped:
+                notes.append(f"page {pg.page_number}: no banner found to strip")
             for row in tb:
                 if len(row) < 10:
                     continue
@@ -108,19 +199,39 @@ def read(pdf_path):
                         or head.startswith("town info")
                         or cells[POS].lower().startswith("position")):
                     continue
+                site = tight(row[SITE])
+                if site and (cells[MUNI] or here is not None):
+                    # kept with its spaces in, so that a cell this refuses can
+                    # be printed as the directory wrote it rather than as
+                    # "nowebsite"
+                    raw_site.setdefault(cells[MUNI] or here, []).append(cells[SITE])
                 if cells[MUNI]:
                     here = cells[MUNI]
                     t = towns.setdefault(here, {
                         "municipality": here, "mailing": cells[MAIL],
                         "phone": cells[MPHONE], "fax": cells[MFAX],
-                        "website": cells[SITE], "email": cells[MEMAIL],
+                        "website": site, "email": cells[MEMAIL],
                         "officials": []})
                     # a town can start on one page and run onto the next
                     for k, v in (("mailing", cells[MAIL]), ("phone", cells[MPHONE]),
-                                 ("fax", cells[MFAX]), ("website", cells[SITE]),
+                                 ("fax", cells[MFAX]), ("website", site),
                                  ("email", cells[MEMAIL])):
                         if v and not t[k]:
                             t[k] = v
+                elif here is not None and site:
+                    # THE OTHER HALF OF AN ADDRESS. The ruling grid splits a
+                    # town's first row in two often enough that eleven websites
+                    # ended one character short of a host -- Moultonborough at
+                    # ".go", Northumberland at ".or" -- with the rest sitting on
+                    # a row whose municipality column is empty. There is one
+                    # website per municipality and it is written on its first
+                    # row, so text in that column afterwards is the rest of it.
+                    if towns[here]["website"]:
+                        towns[here]["website"] += site
+                    else:
+                        notes.append(f"page {pg.page_number}: {here} has "
+                                     f"{cells[SITE]!r} on a row of its own and "
+                                     "no website above it")
                 if here is None:
                     notes.append(f"page {pg.page_number}: a row before any town")
                     continue
@@ -128,7 +239,9 @@ def read(pdf_path):
                     towns[here]["officials"].append({
                         "position": fix_label(cells[POS]), "name": cells[NAME],
                         "phone": cells[PHONE], "email": cells[EMAIL]})
-    return towns, notes
+    for name, t in towns.items():
+        t["website"] = web_address(t["website"])
+    return towns, notes, {k: " ".join(v) for k, v in raw_site.items()}
 
 
 def tidy(towns):
@@ -158,7 +271,7 @@ def main():
     pdf = pathlib.Path(a.pdf)
     if not pdf.exists():
         sys.exit(f"{pdf} is not there; the directory lives in sources/")
-    towns, notes = read(pdf)
+    towns, notes, raw_site = read(pdf)
     towns = tidy(towns)
 
     dj = pathlib.Path(a.site) / "districts.json"
@@ -190,6 +303,20 @@ def main():
               + ", ".join(unmatched[:10]))
     have = [k for k, r in out.items() if r["officials"]]
     print(f"    {len(have)} of {len(out)} carry at least one named official")
+    # THE WEBSITE, COUNTED AND NAMED. It is the one field here a reader clicks,
+    # so what was refused is printed rather than dropped quietly: a town that
+    # has no site and a town whose cell this could not read look identical in
+    # the file and are not the same thing.
+    sites = sum(1 for r in out.values() if r["website"])
+    refused = sorted((k, raw_site.get(r["municipality"], ""))
+                     for k, r in out.items()
+                     if not r["website"] and raw_site.get(r["municipality"]))
+    print(f"    {sites} of {len(out)} carry a website the site can link")
+    if refused:
+        print(f"    {len(refused)} whose Website cell is not an address, "
+              "recorded as nothing:")
+        for k, v in refused:
+            print(f"      {k}: {v!r}")
     for n in notes[:6]:
         print(f"    {n}")
     if a.report:
