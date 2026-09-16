@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.4
+# GRANITE_VERSION: 2026-09-05.5
 """
 Build proceedings.csv: one row per (bill, date, kind, recording), whether it
 is a committee hearing or a floor debate.
@@ -198,6 +198,114 @@ def shrunk_groups(prior, rows, least=100, keep=0.8):
             if n >= least and now.get((t, s), 0) < keep * n]
 
 
+# ---------------------------------------------------------------------------
+# One row per event
+# ---------------------------------------------------------------------------
+#
+# Kinds that name ONE proceeding under more than one word. The House docket
+# writes "Public Hearing"; the Senate's and the 1989-1998 archive's write
+# "Hearing"; and a House line that the House pattern cannot read -- a time
+# written "9:00 a.m." rather than "09:00 am", a Zoom link after the room,
+# "=RECESSED=" stuck to the end -- falls through to the archive's pattern in
+# docket_parser, which calls whatever it matched a "hearing". So one sitting
+# reaches this file twice, once under each word.
+#
+# That is where the duplicate videos came from. The docket announces a
+# hearing and then restates it on the day it happens; both lines are the
+# same sitting, both matched the same recording, and build_site_v2 draws one
+# card per row -- so 26 bills of 2021-2022 showed the same recording under
+# two hearings, on seven House committee days.
+#
+# ONLY the hearings are a family. The three work-session kinds are NOT: a
+# subcommittee work session at 09:30 and the full committee's at 10:00 are
+# two meetings that happen to share a recording, and 18 bills have exactly
+# that pair. Nor are a public hearing and the executive session that follows
+# it on the same tape -- 936 bills have that, and it is two events, which is
+# why the kind is in the key at all.
+KIND_FAMILY = {"public hearing": "hearing", "hearing": "hearing"}
+
+# Within a family, the spelling that says most about the proceeding: 0 wins.
+# The House's own word beats the fallback's, so a folded row carries the
+# chamber's wording and the room as the chamber wrote it, rather than the
+# "a.m. LOB205-207" the archive pattern leaves behind when it swallows the
+# meridiem into the venue.
+KIND_RANK = {"public hearing": 0}
+
+
+def _fam(kind):
+    return KIND_FAMILY.get(kind, kind)
+
+
+def _cmte(name):
+    return " ".join((name or "").split()).lower()
+
+
+def same_committee(a, b):
+    """Do these two rows name the same committee, or does one not say?
+
+    A blank name makes no claim, so it does not contradict a row that names
+    one -- four pre-1999 hearings have that pair, and a floor row names no
+    committee at all. Two DIFFERENT names do contradict and the rows stay
+    apart: a bill referred to two committees is heard by both, sometimes on
+    the same day. Seven pre-1999 bill-days carry two names, five of them
+    plainly two committees; the other two are the legacy docket's own
+    shorthand for one ("En", "Crim Just and Ps"), and those now draw two
+    cards rather than one. Neither has a recording, so neither is a
+    duplicate video; expanding that shorthand is a separate job.
+    """
+    ca, cb = _cmte(a.get("committee")), _cmte(b.get("committee"))
+    return not ca or not cb or ca == cb
+
+
+def _specificity(r):
+    """Lower is more specific. Ties keep whichever row was read first."""
+    return (KIND_RANK.get(r["kind"], 1), 0 if _cmte(r.get("committee")) else 1)
+
+
+def fold_to_events(rows):
+    """One row per event: this bill, this committee, this day, this kind of
+    proceeding, this recording.
+
+    NOT the time and NOT the venue. The docket's announcement and its
+    restatement on the day name one sitting while spelling the room two ways
+    ("LOB 205-207" against "LOB205-207") and, on three bills, giving two
+    different times. Keying on either would make the pair two events again.
+    Keying on the video URL alone would do the opposite and eat the executive
+    session that shares the hearing's tape.
+
+    WHAT A LEGITIMATE SECOND ROW LOOKS LIKE, and what this therefore keeps:
+
+      * a different kind of proceeding on the same recording -- the hearing
+        and the executive session that follows it;
+      * a different committee on the same day -- a bill referred to two of
+        them, or heard by the House's and the Senate's;
+      * a different day -- a hearing continued or re-noticed;
+      * a different recording on the same day -- a sitting that ran into a
+        second video, which arrives here as two rows and stays two.
+
+    Only a second spelling of one sitting is folded away.
+
+    The row kept is the most specific one whole, never a blend of the two:
+    a row here is what one line of the docket said, and a time taken from one
+    line beside a room taken from another is a row the record does not
+    contain. Where the two lines give two times -- three bills of 2021-2022
+    -- the kept time is the announcement's, which is the time the rest of
+    that sitting's rows are keyed to.
+    """
+    kept, where = [], defaultdict(list)
+    for r in rows:
+        k = (r["term"], r["bill"], r["date"], _fam(r["kind"]), r["video_id"])
+        for i in where[k]:
+            if same_committee(kept[i], r):
+                if _specificity(r) < _specificity(kept[i]):
+                    kept[i] = r
+                break
+        else:
+            where[k].append(len(kept))
+            kept.append(r)
+    return kept
+
+
 def main():
     ap = argparse.ArgumentParser()
     # A GLOB, NOT A FILE. verification_manifest.csv is the current term and
@@ -231,15 +339,14 @@ def main():
         print(f"  WARNING: {a.floor} not found -- no floor debates")
 
     rows = cm + fl
-    # One row per (bill, date, kind, video). The floor index can list a bill
-    # twice on one day when it had two runs of roll calls; keep the first.
-    seen, uniq = set(), []
-    for r in rows:
-        k = (r["bill"], r["date"], r["kind"], r["video_id"])
-        if k in seen:
-            continue
-        seen.add(k)
-        uniq.append(r)
+    # One row per event, not per line of the sources. The floor index can
+    # list a bill twice on one day when it had two runs of roll calls, and
+    # the docket announces a hearing and then restates it on the day -- the
+    # second of those arriving under a second spelling of "hearing", which
+    # the old key on the kind's literal word could not see. See
+    # fold_to_events for what counts as one event and what does not.
+    uniq = fold_to_events(rows)
+    folded = len(rows) - len(uniq)
     uniq.sort(key=lambda r: (r["date"], r["time"] or "~", r["bill"]))
 
     prior = P.load(a.out)
@@ -277,6 +384,9 @@ def main():
           f"{len(fl):,} from the floor index")
     for name, n in per_file:
         print(f"      {n:>7,}  {name}")
+    # A fold that folds nothing is a fold that stopped working, and the two
+    # spellings of a hearing would be back on the Videos tab without a word.
+    print(f"  {folded:,} second mentions of an event folded into the first")
     print(f"  {with_video:,} have a recording; "
           f"{len({r['video_id'] for r in uniq if r['video_id']}):,} distinct")
     print(f"  {len(floor):,} floor rows, "

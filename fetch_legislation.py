@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.18
+# GRANITE_VERSION: 2026-09-10.19
 """
 The bill itself, from an address that can simply be constructed.
 
@@ -547,14 +547,26 @@ STOP = (r"(?:REFERRED TO|AN ACT|AN ORDER|AN ADDRESS|A RESOLUTION|JOINT RESOLUTIO
 # both read as one before this.
 BEGIN = r"(?!" + STOP + r")(?=[A-Za-z\[])"
 
-# The labels are upper-case and end in a colon on every page that has one.
-# Matching them case-blind with the colon optional let "COMMITTEE" find the
-# word inside "AN ACT establishing a committee to study..." and report the
-# bill's own study committee as the one it was referred to, and find
-# "committees of the senate" and report "s of the senate".
+# The labels are upper-case, and the field begins after the tab that follows
+# them. Matching them case-blind let "COMMITTEE" find the word inside "AN ACT
+# establishing a committee to study..." and report the bill's own study
+# committee as the one it was referred to, and find "committees of the senate"
+# and report "s of the senate". Upper case is what rules that out. The colon is
+# not, and SPONSOR_RE says why.
 SPONSOR_RE = [
     re.compile(r"INTRODUCED BY:\s*(.+?)\s*" + STOP),
-    re.compile(r"SPONSORS?:\s*(.+?)\s*" + STOP),
+    # THE COLON IS NOT THE ANCHOR. Two of the 7,761 saved pages mistype it, and
+    # both print a sponsor that was read as none. From the bytes, not inferred:
+    #
+    #   2020 SB 222   "SPONSORS\tSen. Rosenwald, Dist 13; ..."   no colon
+    #   2022 HB 52    "SPONSORSF\tRep. B. Griffin, Hills. 6"     an F for it
+    #
+    # That is what the General Court's own document says; the other 7,678 say
+    # "SPONSORS:". What all of them share is the upper-case word and the tab the
+    # field begins after, so the separator may be a colon, a single stray
+    # upper-case letter, or nothing at all, and the whitespace is what is
+    # required -- it is also what stops the word running into the name.
+    re.compile(r"SPONSORS?(?::|[A-Z])?\s+(.+?)\s*" + STOP),
 ]
 COMMITTEE_RE = [
     re.compile(r"REFERRED TO:\s*" + BEGIN + r"(.+?)\s*" + STOP),

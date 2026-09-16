@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.185
+# GRANITE_VERSION: 2026-09-04.187
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2925,6 +2925,84 @@ def _proceedings_term_shrink():
         shutil.rmtree(root, ignore_errors=True)
 
 
+CHAIN_NEEDS = ["build_site_v2.py", "build_pages.py", "build_bill_pages.py",
+               "build_legislator_pages.py", "build_committees.py",
+               "build_civics.py", "build_town_pages.py", "build_indexes.py",
+               "build_exports.py", "build_feeds.py", "check_site.py",
+               "app.css", "app.js", "bills.html"]
+
+
+def _built_site(here, root):
+    """The fixture project, then build_all's builders over it, in build_all's
+    order. Returns (the base address they were built with, how many ran).
+
+    Two checks need a whole site and neither may build the real one: _chain,
+    because importing a module never enters its main(), and _links_resolve,
+    because a link is only a link once a builder has written it. They share
+    this so that a builder added to the pipeline is added in one place.
+    """
+    _site_fixture(root)
+    (root / "site").mkdir(exist_ok=True)
+    shutil.copy2(here / "bills.html", root / "site" / "bills.html")
+    # What build_pages reads from its working directory, and the drawn
+    # assets it copies into site/: without them every page links an icon
+    # that is not there.
+    # find.js is in this list because the link check below went looking for it:
+    # build_pages writes <script src="/find.js"> on every page and copies the
+    # file from its working directory, so a fixture without it built 33 pages
+    # asking for a script that was not there.
+    for name in ("app.css", "app.js", "bills.html", "find.js", "officials.json"):
+        if (here / name).exists():
+            shutil.copy2(here / name, root / name)
+    if (here / "assets").is_dir():
+        shutil.copytree(here / "assets", root / "assets")
+    # The fixture's House committee, as data/committees.json names one, so
+    # build_committees has a page to write; and the fixture's two towns, as
+    # parse_districts writes them, so build_town_pages does.
+    (root / "data" / "committees.json").write_text(json.dumps(
+        {"H43": {"code": "H43", "name": "Commerce", "abbr": "COMMERCE"}}), encoding="utf-8")
+    seat = {"congress": 1, "council": 3, "senate": 24, "house": [
+        {"county": "Rockingham", "district": 13, "floterial": False, "seats": 2}]}
+    (root / "site" / "districts.json").write_text(json.dumps(
+        {"Raymond": {"0": seat}, "Stratham": {"0": seat}}), encoding="utf-8")
+    base = "https://graniterecord.org"
+    steps = [
+        ("build_site_v2.py", ["--data", "data", "--out", "site",
+                              "--segments", "work"], "site/index.json"),
+        ("build_pages.py", ["--out", "site"], "site/legislators.html"),
+        ("build_bill_pages.py", ["--site", "site", "--base", base],
+         "site/sitemap.xml"),
+        ("build_legislator_pages.py", ["--site", "site", "--base", base],
+         "site/legislator"),
+        # After the bill pages, as in build_all: it reads their stations.
+        ("build_committees.py", ["--site", "site", "--data", "data",
+                                 "--base", base], "site/committees.json"),
+        ("build_civics.py", ["--site", "site", "--base", base], "site/learn.html"),
+        ("build_town_pages.py", ["--site", "site", "--base", base], "site/town"),
+        ("build_indexes.py", ["--site", "site", "--base", base],
+         "site/directory.html"),
+        ("build_exports.py", ["--site", "site", "--base", base],
+         "site/data/manifest.json"),
+        ("build_feeds.py", ["--site", "site", "--base", base],
+         "site/feed/all.xml"),
+    ]
+    ran = 0
+    for script, args, produces in steps:
+        if not (here / script).exists():
+            continue
+        r = _run([sys.executable, str(here / script), *args],
+                 cwd=root, capture_output=True, text=True, timeout=180)
+        if r.returncode != 0:
+            tail = (r.stderr or r.stdout).strip().splitlines()
+            raise AssertionError(f"{script}: " + (tail[-1][:120] if tail else "?"))
+        assert (root / produces).exists(), f"{script} produced no {produces}"
+        ran += 1
+    # SILENCE IS NOT SUCCESS. A chain that ran no builder at all would have
+    # satisfied every assertion above by never reaching one.
+    assert ran == len(steps), f"only {ran} of {len(steps)} builders were there to run"
+    return base, ran
+
+
 @check("build", "every builder runs end to end on a fixture site")
 def _chain():
     """The check that would have caught the worst bug of the session.
@@ -2948,65 +3026,12 @@ def _chain():
     list, a district map, the offices file -- and all ten run.
     """
     here = Path(".").resolve()
-    need = ["build_site_v2.py", "build_pages.py", "build_bill_pages.py",
-            "build_legislator_pages.py", "build_committees.py", "build_civics.py",
-            "build_town_pages.py", "build_indexes.py", "build_exports.py",
-            "build_feeds.py", "check_site.py", "app.css", "app.js", "bills.html"]
-    absent = [x for x in need if not (here / x).exists()]
+    absent = [x for x in CHAIN_NEEDS if not (here / x).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
     root = Path(tempfile.mkdtemp())
     try:
-        _site_fixture(root)
-        (root / "site").mkdir(exist_ok=True)
-        shutil.copy2(here / "bills.html", root / "site" / "bills.html")
-        # What build_pages reads from its working directory, and the drawn
-        # assets it copies into site/: without them every page links an icon
-        # that is not there.
-        for name in ("app.css", "app.js", "bills.html", "officials.json"):
-            if (here / name).exists():
-                shutil.copy2(here / name, root / name)
-        if (here / "assets").is_dir():
-            shutil.copytree(here / "assets", root / "assets")
-        # The fixture's House committee, as data/committees.json names one, so
-        # build_committees has a page to write; and the fixture's two towns, as
-        # parse_districts writes them, so build_town_pages does.
-        (root / "data" / "committees.json").write_text(json.dumps(
-            {"H43": {"code": "H43", "name": "Commerce", "abbr": "COMMERCE"}}), encoding="utf-8")
-        seat = {"congress": 1, "council": 3, "senate": 24, "house": [
-            {"county": "Rockingham", "district": 13, "floterial": False, "seats": 2}]}
-        (root / "site" / "districts.json").write_text(json.dumps(
-            {"Raymond": {"0": seat}, "Stratham": {"0": seat}}), encoding="utf-8")
-        base = "https://graniterecord.org"
-        steps = [
-            ("build_site_v2.py", ["--data", "data", "--out", "site",
-                                  "--segments", "work"], "site/index.json"),
-            ("build_pages.py", ["--out", "site"], "site/legislators.html"),
-            ("build_bill_pages.py", ["--site", "site", "--base", base],
-             "site/sitemap.xml"),
-            ("build_legislator_pages.py", ["--site", "site", "--base", base],
-             "site/legislator"),
-            # After the bill pages, as in build_all: it reads their stations.
-            ("build_committees.py", ["--site", "site", "--data", "data",
-                                     "--base", base], "site/committees.json"),
-            ("build_civics.py", ["--site", "site", "--base", base], "site/learn.html"),
-            ("build_town_pages.py", ["--site", "site", "--base", base], "site/town"),
-            ("build_indexes.py", ["--site", "site", "--base", base],
-             "site/directory.html"),
-            ("build_exports.py", ["--site", "site", "--base", base],
-             "site/data/manifest.json"),
-            ("build_feeds.py", ["--site", "site", "--base", base],
-             "site/feed/all.xml"),
-        ]
-        for script, args, produces in steps:
-            if not (here / script).exists():
-                continue
-            r = _run([sys.executable, str(here / script), *args],
-                               cwd=root, capture_output=True, text=True, timeout=180)
-            if r.returncode != 0:
-                tail = (r.stderr or r.stdout).strip().splitlines()
-                raise AssertionError(f"{script}: " + (tail[-1][:120] if tail else "?"))
-            assert (root / produces).exists(), f"{script} produced no {produces}"
+        base, steps = _built_site(here, root)
         # Every bill page that advertises a feed has one. The records moved
         # inside the pages on 9 September and build_feeds went on reading the
         # old side files, so 5,436 pages linked a feed nobody wrote -- and this
@@ -3097,9 +3122,139 @@ def _chain():
                            cwd=root, capture_output=True, text=True, timeout=120)
         bad = [l.strip() for l in r.stdout.splitlines() if l.strip().startswith("x ")]
         assert not bad, "check_site: " + "; ".join(bad)[:140]
-        return "ok", (f"{len(steps)} builders in build_all's order, then check_site, on a "
+        return "ok", (f"{steps} builders in build_all's order, then check_site, on a "
                       f"4-bill fixture; every bill and member page names only feeds that exist "
                       f"({named} of {len(members)} members have one)")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+# An address as it is written in a page, and the page furniture that is not one.
+# Script and style BODIES go before anything is read out of a page:
+# legislators.html builds its rows in the browser, and
+# `legislator/${esc(m.slug)}.html` inside a template literal is not an address
+# anybody ever requests. The opening tag is kept, because `<script src>` is.
+LINK_ATTR = re.compile(r'(?:href|src)\s*=\s*"([^"]*)"', re.I)
+BASE_HREF = re.compile(r'<base\s+href\s*=\s*"([^"]*)"', re.I)
+OFFSITE = re.compile(r'^(?:[a-z][a-z0-9+.\-]*:|//|#)', re.I)
+INLINE_BODY = re.compile(r"(?is)(<(script|style)\b[^>]*>).*?</\2\s*>")
+
+
+def _redirect_rules(site):
+    """_redirects as patterns to match a path against.
+
+    Pages serves the left-hand side of a rule, so a link to one is not a dead
+    link even though no file sits there: /bill/2026/hb1442/votes is the bill
+    page with a tab open. `:name` is one segment, `*` is the rest.
+    """
+    p = site / "_redirects"
+    if not p.exists():
+        return []
+    out = []
+    for line in p.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            out.append([s for s in line.split()[0].strip("/").split("/") if s])
+    return out
+
+
+def _served(site, path, rules):
+    """Has the CDN anything to serve at this path?
+
+    Cloudflare Pages serves site/x.html at /x and 308s /x.html to /x, so all
+    three spellings resolve to the same file and all three are links that work.
+    """
+    from urllib.parse import unquote
+    p = unquote(path).lstrip("/")
+    if p == "" or p.endswith("/"):
+        return (site / p / "index.html").is_file()
+    f = site / p
+    if (f.is_file() or f.with_name(f.name + ".html").is_file()
+            or (f / "index.html").is_file()):
+        return True
+    segs = p.split("/")
+    for rule in rules:
+        if rule and rule[-1] == "*":
+            head = rule[:-1]
+            if len(segs) >= len(head) and all(
+                    r.startswith(":") or r == s for r, s in zip(head, segs)):
+                return True
+        elif len(rule) == len(segs) and all(
+                r.startswith(":") or r == s for r, s in zip(rule, segs)):
+            return True
+    return False
+
+
+@check("build", "every internal link the builders write resolves to a file")
+def _links_resolve():
+    """462 ward links went out dead, because a relative href is not relative.
+
+    Every page is built from bills.html and bills.html carries <base href="/">,
+    so `href="wards/derry-1"` written on /town/derry.html is a request for
+    /wards/derry-1 and not for anything beside the page. Nothing here noticed
+    for weeks, and the reason is worth naming: every check read the href as it
+    was written, and not one of them resolved it the way a browser would.
+
+    So this builds the fixture site and resolves each one the way a browser
+    does -- against <base href> where the page has one, against the page's own
+    address where it does not -- and then asks whether Cloudflare Pages has
+    anything to serve there: site/<p>, site/<p>.html, site/<p>/index.html, or a
+    rule in _redirects, which is how the tab addresses are served.
+
+    WHAT A FIXTURE CANNOT JUDGE, said out loud rather than passed over: the
+    Learn section cites real bills by number in hand-written prose -- HB 1002
+    of 2024 among them -- and this fixture holds four invented ones. A link to
+    a bill the fixture does not carry is counted and skipped, and the count is
+    in the result line so that it going up is visible.
+    """
+    from urllib.parse import urldefrag, urljoin
+    here = Path(".").resolve()
+    absent = [x for x in CHAIN_NEEDS if not (here / x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    root = Path(tempfile.mkdtemp())
+    try:
+        _built_site(here, root)
+        site = root / "site"
+        rules = _redirect_rules(site)
+        have_bill = {p.relative_to(site / "bill").with_suffix("").as_posix()
+                     for p in (site / "bill").rglob("*.html")}
+        pages = sorted(site.rglob("*.html"))
+        assert pages, "the fixture chain wrote no pages to check"
+        broken, offsite_bill, n = Counter(), 0, 0
+        where = {}
+        for page in pages:
+            rel = page.relative_to(site).as_posix()
+            text = INLINE_BODY.sub(r"\1", page.read_text(encoding="utf-8",
+                                                         errors="replace"))
+            m = BASE_HREF.search(text)
+            # the browser's base: <base href> if the page carries one, else the
+            # page's own address
+            at = urljoin("https://x/" + rel, m.group(1) if m else "")
+            for raw in LINK_ATTR.findall(text):
+                raw = raw.strip()
+                if not raw or OFFSITE.match(raw):
+                    continue
+                target = urldefrag(urljoin(at, raw))[0].split("?")[0]
+                if not target.startswith("https://x/"):
+                    continue
+                path = target[len("https://x"):]
+                bill = re.fullmatch(r"/bill/(.+?)(?:\.html)?", path)
+                if bill and bill.group(1) not in have_bill:
+                    offsite_bill += 1
+                    continue
+                n += 1
+                if not _served(site, path, rules):
+                    broken[f"{path} (as written {raw!r})"] += 1
+                    where.setdefault(path, rel)
+        assert not broken, (
+            f"{sum(broken.values())} links to {len(broken)} paths with nothing "
+            "behind them: " + "; ".join(
+                f"{k} on {where[k.split(' (')[0]]}" for k, _ in broken.most_common(6)))
+        return "ok", (f"{n} internal links on {len(pages)} fixture pages, each "
+                      f"resolved through <base href> and served by a file or a "
+                      f"_redirects rule; {offsite_bill} more name a bill this "
+                      "fixture does not carry")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -5711,6 +5866,44 @@ def _legislation_fetch(FL):
         os.chdir(saved[0])
         FL.urlopen, FL.time.sleep = saved[1], saved[2]
         shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "a sponsor label is read even where the page mistypes its colon",
+       needs=("fetch_legislation",))
+def _sponsor_label(FL):
+    """2022 HB 52's page prints "SPONSORSF", and its sponsor was read as none.
+
+    Two of the 7,761 saved pages mistype the label the sponsor line hangs off,
+    and both printed a sponsor nobody could see: 2020 SB 222 drops the colon
+    and 2022 HB 52 puts an F where it belongs -- "SPONSORSF<tab>Rep. B.
+    Griffin, Hills. 6", which is the General Court's own document and not a
+    decoding fault. The parser required the colon, so both bills showed no
+    sponsor at all. A fixture and not the real pages, so this holds wherever
+    preflight runs; the markup is copied from 2022 HB 52's bytes.
+    """
+    body = ('<p class="x"><span>AN ACT\tapportioning congressional districts.'
+            '</span></p><p class="x"><span>{lab}\tRep. B. Griffin, Hills. 6'
+            '</span></p><p class="x"><span>COMMITTEE:\tSpecial Committee on '
+            'Redistricting</span></p><p class="x"><span>ANALYSIS</span></p>'
+            '<p class="x"><span>This bill apportions the districts.</span></p>')
+    seen = []
+    for lab in ("SPONSORS:", "SPONSORS", "SPONSORSF"):
+        got = FL.parse(body.format(lab=lab))
+        assert got.get("sponsors") == "Rep. B. Griffin, Hills. 6", \
+            f"{lab!r} gave sponsors {got.get('sponsors')!r}"
+        assert got.get("committee") == "Special Committee on Redistricting", \
+            f"{lab!r} gave committee {got.get('committee')!r}"
+        seen.append(lab)
+    # AND NOT ANY WORD THAT STARTS THAT WAY. The label is the word, an optional
+    # colon or single stray letter, and then the whitespace the field begins
+    # after -- so a longer word swallowing the next sentence is what the
+    # whitespace rules out, and lower case is what keeps a title's own
+    # "sponsors" from being read as a label.
+    for hay in ('<p>AN ACT\trelative to SPONSORSHIP of legislation.</p>',
+                '<p>HOUSE RESOLUTION NO. 1</p>'
+                '<p>RESOLVED, that the House thank its sponsors and adjourn.</p>'):
+        assert not FL.parse(hay).get("sponsors"), hay
+    return "ok", ", ".join(seen) + " all read; SPONSORSHIP and lower case do not"
 
 
 @check("build", "the sponsor fetch files an answer under the member it asked for",
