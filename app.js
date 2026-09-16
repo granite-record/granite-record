@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.84
+// GRANITE_VERSION: 2026-09-07.85
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -404,8 +404,24 @@ function tabAddress(slug){
   const m=TAB_PATH.exec(location.pathname);
   const base=m&&isTabSlug(m[2].toLowerCase())?m[1]:location.pathname.replace(/\/$/,"");
   try{history.replaceState(history.state,"",base+(slug?"/"+slug:"")+location.search);}catch(_){}
+  skipHere();
+}
+
+// THE SKIP LINK MUST POINT AT THIS DOCUMENT, and after a tab is opened it did
+// not. shell.py writes it absolute -- href="/bill/2026/hb1442#results" -- and
+// it has to: bills.html carries <base href="/">, so a bare "#results" would
+// resolve to the home page. But opening the Votes tab rewrites the address to
+// /bill/2026/hb1442/votes, and the skip link then names a DIFFERENT document.
+// It is the first thing a keyboard reaches on the page, so the reader most
+// likely to use it is the one it navigates away from -- and because the
+// opening tab is read out of the path, landing back at the canonical address
+// throws the tab away rather than merely redrawing it.
+function skipHere(){
+  const s=document.querySelector("a.skip");
+  if(s)s.setAttribute("href",location.pathname+"#results");
 }
 const slugOf=(map,v)=>Object.keys(map).find(k=>map[k]===v)||"";
+try{skipHere();}catch(_){}
 
 // A BILL NUMBER IS NOT UNIQUE ACROSS TERMS, and four of those five are keyed
 // on the bare number. HB 100 exists in most terms and is a different bill in

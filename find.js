@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.1
+// GRANITE_VERSION: 2026-09-16.2
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -56,6 +56,18 @@ function findMatch(q){
   return hit.slice(0,8).map(x=>x[2]);
 }
 
+// ROOT-RELATIVE, ALWAYS. find.json's 786 rows all carry a relative path, and
+// this panel is mounted on every page -- including 404.html, which has no
+// <base href="/"> because it is served from the root and never needed one. On
+// a Pages 404 the address stays at the depth that was asked for, so
+// "legislator/x" resolved under it and every answer in the panel was a dead
+// link. Making the href root-relative here fixes it wherever the panel is
+// mounted, rather than teaching one more page about <base>.
+function _froot(h){
+  h = String(h || "");
+  return /^([a-z]+:|\/)/i.test(h) ? h : "/" + h;
+}
+
 function findDraw(q){
   const out=document.getElementById("findout");
   if(!out)return;
@@ -64,13 +76,13 @@ function findDraw(q){
     or a bill number.</p>`;return;}
   const num=findBill(s);
   const rows=findMatch(s);
-  const bills=`<a href="bills.html?q=${encodeURIComponent(num||s)}">
+  const bills=`<a href="/bills?q=${encodeURIComponent(num||s)}">
     <span class="fkind">${num?"Bill":"Bills"}</span>
     <span><span class="fname">${_fesc(num||s)}</span>
     <span class="fwhat">${num?"open this bill number in the bill search"
       :"search every bill for these words"}</span></span></a>`;
   out.innerHTML=(num?bills:"")
-    +rows.map(r=>`<a href="${_fesc(r[3])}">
+    +rows.map(r=>`<a href="${_fesc(_froot(r[3]))}">
       <span class="fkind">${_fesc(FKIND[r[0]]||r[0])}</span>
       <span><span class="fname">${_fesc(r[1])}</span>
       ${r[2]?`<span class="fwhat">${_fesc(r[2])}</span>`:""}</span></a>`).join("")

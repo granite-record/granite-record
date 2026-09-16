@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.95 */
+/* GRANITE_VERSION: 2026-09-07.97 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -684,6 +684,12 @@ box-shadow:0 0 0 3px var(--pine-soft)}
 /* A card head is a button, and the rail inside it must not look clickable. */
 .chead .rail{pointer-events:none}
 .cstat{margin-left:auto;font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-pill);white-space:nowrap}
+/* UNLESS THERE IS NO ROOM FOR IT. nowrap with no ceiling put "One chamber
+   did not concur; a committee of conference was asked for" in a 494px pill
+   inside a 272px row on a 360px screen, so the longest statuses were cut
+   off mid-word. Below the width where the card head wraps, the pill wraps
+   with it. */
+@media (max-width:720px){.cstat{white-space:normal;max-width:100%}}
 /* The status on a card head: bigger and heavier than the chips used inside a
    tab, because it is the one thing every reader looks for first. */
 .crow .cstat{font-size:var(--t-ui);font-weight:600;padding:var(--sp-2) var(--sp-5);
@@ -1482,7 +1488,13 @@ grid-template-columns:repeat(auto-fill,minmax(244px,1fr))}
    in four columns turned the roster into a colour field rather than a list of
    people, and the tint stopped reading as "this member's party" and started
    reading as a table cell. */
-.croster .mchip{margin:0;justify-self:start}
+/* align-self too, not only justify-self. The comment above caught this on the
+   horizontal axis and stopped there: the grid's default align-self is
+   stretch, so a chip in a row whose tallest member wraps to two lines was
+   pulled to that height and the party tint became a blank band twice the
+   height of the name. 84 chips on 17 committee pages, each 49px against a
+   27px base. */
+.croster .mchip{margin:0;justify-self:start;align-self:start}
 .cpurpose{margin:var(--sp-6) 0 0;max-width:var(--measure)}
 .cpurpose p{font-size:var(--t-body);line-height:1.65;margin:0}
 .cpurpose .src{margin-top:var(--sp-3)}
@@ -1502,10 +1514,25 @@ font-size:var(--t-ui);background:var(--surface);border:1px solid var(--rule-2)}
 /* The filter strip above a list of bills, and above a committee's sessions. */
 .bfilt{display:flex;gap:var(--sp-6);flex-wrap:wrap;align-items:end;margin:var(--sp-1) 0 var(--sp-5)}
 .bfilt label{font-size:var(--t-sm);letter-spacing:.04em;text-transform:uppercase;
-color:var(--ink-2);font-weight:600;display:flex;flex-direction:column;gap:var(--sp-2)}
+color:var(--ink-2);font-weight:600;display:flex;flex-direction:column;gap:var(--sp-2);
+/* min-width:0 IS THE ONE THAT MATTERS, and capping the select alone did not
+   work. A flex item's automatic minimum size is its content's min-content
+   width, and a select's min-content width is its longest option -- "One
+   chamber did not concur; a committee of conference was asked for". So this
+   label refused to shrink below 500px inside a 351px .bfilt, and the select's
+   own max-width:100% then resolved against 500px and constrained nothing.
+   Measured on /committee/H10 at 375px: the document was 512px wide and the
+   body scrolled sideways, on 27 committee pages. */
+min-width:0}
 .bfilt select{font:inherit;font-size:var(--t-ui);text-transform:none;letter-spacing:0;
 color:var(--ink);padding:var(--sp-2) var(--sp-4);border:1px solid var(--edge);border-radius:var(--r-in);
-background:var(--paper)}
+background:var(--paper);
+/* A select takes its width from its longest OPTION, and the longest status
+   runs to sixty characters -- 500px of control on a 360px screen, which made
+   the whole document 512px wide and scrolled the body sideways on 27
+   committee pages. The control is what must fit; the option text is the
+   browser's to shorten. */
+max-width:100%}
 
 /* A bill on a member's or a committee's page is .card, the same one the
    search list draws, so it expands where it stands. The flatter .bcard that
