@@ -511,6 +511,41 @@ fuller review.
 
 ---
 
+## 0e. The run to launch, agreed 16 September
+
+The person chose all four of the candidates put to them, so this is the order
+they are done in and the reason for each position. Nothing here is a new item:
+each is already described above or in `HANDOFF.md`.
+
+1. **"Cite this page"** (§0b item 16). In hand. It goes in `shell.py`, which is
+   the one frame every record page is built through, so ten builders get it
+   from one change.
+
+2. **A member who has left reads like everyone else.** Smallest of the four and
+   adjacent to the seat work just done, in the same function of the same file.
+   676 members currently read as a database row -- "Shurtleff, Steve(D)
+   Merrimack 15" -- where everybody else reads "Rep. Steve Shurtleff (D - Merr
+   15)", and each carries one seat for every year they served. It contradicts
+   the standing rule that members who have left are shown exactly like the
+   rest, and it is visible on every old roll call.
+
+3. **The About and Data pages** (§0b item 11). Cheap, and the highest leverage
+   of the four for the readers the site now has: About is where a sceptical
+   legislator or reporter decides whether to trust it, and they are reading it
+   this week.
+
+4. **The docket parser** (§0d, `HANDOFF.md` item 5). The largest remaining
+   bucket of factual error -- 1,062 lines with a wrong proceeding kind and a
+   garbled room. Fourth because it is a day's work with a full rebuild and a
+   re-run of video matching inside it, not because it matters least.
+
+5. **The history rewrite, and the public repository** (§0). Last, and
+   deliberately: it is the only item that hard-blocks the open-source release,
+   every commit hash in these documents changes when it runs, and it is
+   irreversible, so it wants the person present and a quiet tree behind it.
+
+---
+
 ## 1. Live
 
 Published 9 September, five times on the 10th, and at 12:44 on the 11th
