@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.15
+# GRANITE_VERSION: 2026-09-10.16
 """
 The bill itself, from an address that can simply be constructed.
 
@@ -740,6 +740,14 @@ def main():
                     help="every bill in the range, not a sample")
     ap.add_argument("--kinds", default="",
                     help="only these kinds, comma-separated: HB,SB")
+    ap.add_argument("--skip-year", dest="skip", action="append", type=int,
+                    default=[],
+                    help="a year to leave out of the run, repeatable. For a "
+                         "year whose address is not settled: 2016's stored ids "
+                         "already carry the year (882016) and billText answers "
+                         "56 empty bytes to them, which stopped bills-08 after "
+                         "three in a row on 15 September. Left out rather than "
+                         "asked again with a guess.")
     ap.add_argument("--from", dest="lo", type=int, default=1989)
     # Not the current term: its text is in bill_text/ already, from the
     # database's own route, and asking again would be 2,234 requests for
@@ -775,6 +783,9 @@ def main():
     kinds = {k.strip().upper() for k in a.kinds.split(",") if k.strip()}
     picked = (every_bill(bills, a.lo, a.hi, kinds) if a.all
               else sample(bills, a.sample, a.lo, a.hi, kinds))
+    for y in set(a.skip or []):
+        if picked.pop(y, None):
+            print(f"  {y} left out of this run (--skip-year)")
     # The record travels with the bill because the text address is keyed by an
     # id that only the record carries.
     by_bill = {}
