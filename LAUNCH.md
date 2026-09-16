@@ -237,8 +237,45 @@ starting it.
       Littlefield (Belk. 3), Moran (Hills. 34) and Shurtleff (Merr. 11).
       Shurtleff has no named ballot in any term. Which of them the four numbers
       are is not known;
+
+      **Answered on the 16th, and waiting on the person for the last step.**
+      #408966 is Littlefield (Belk. 3), #409011 Homola (Hills. 27), #409014
+      Moran (Hills. 34), #409039 Belanger (Rock. 9). Three lines of evidence
+      agree: the employee numbers issued to the 2021 intake run in county then
+      district order, which pins each number to a district window; how each
+      number votes and who each member co-sponsors with gives the same party;
+      and the House Journal, whose PDFs are already on this disk, prints every
+      roll call by name -- matched to the summary rows by yea/nay count, the
+      four agree 76/76, 38/38, 54/54 and 58/59, the one miss being a name
+      extracted 49 characters out of place among Sullivan county names.
+
+      **And a wrong name is on the site now: 4,250 ballots across twenty
+      session years, 2005 to 2024, are labelled "Rep. Thomas Oppel (D)".**
+      They are not his. That member presided over 362 roll calls in 2019 and
+      2020, and the presiding officer is the Speaker; Thomas Oppel was first
+      elected in 2024 and casts no ballot before 2025. The evidence says the
+      member is Steve Shurtleff, who was Speaker in 2019-2020, who the bill
+      text has sponsoring bills at Merr. 11 and Merr. 15 through exactly those
+      years, and who has no named ballot anywhere on the site.
+
+      The name comes from `former_members.json`, which `resolve_members.py`
+      writes. Note before fixing it: **the website's member ids and the data
+      files' ids are different number spaces** -- the number 376628 means
+      Shurtleff in a roll call page's `member=` link and something else in
+      `RollCallHistory.txt`, and the resolver exists precisely because an id
+      cannot be looked up directly across that gap. It deduces names by
+      intersecting who voted on a page with which ids voted in the file, and
+      this is a deduction it got wrong. `former_members.json` is generated and
+      gitignored, so a correction typed into it does not survive a rebuild:
+      the fix is either in the resolver or in a small file a person keeps that
+      no generator writes. **That choice is the person's, and so is accepting
+      the identification.** What is certain without it: the ballots are not
+      Thomas Oppel's, and the site should not say they are;
     - 2022 HB 52's page prints "SPONSORSF", so its sponsor (Rep. B. Griffin) is
-      not read;
+      not read; **fixed on the 16th** -- the General Court's own document
+      types an F where the colon belongs, and 2020 SB 222 omits the colon
+      altogether, losing fifteen sponsors including the Senate Majority
+      Leader. The pattern now anchors on the word and the whitespace;
     - roll calls from December of an even year count in the outgoing term, when
       the next House has already organised;
     - a 2023-2024 sponsor from the database, where the member has changed
