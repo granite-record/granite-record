@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.17
+# GRANITE_VERSION: 2026-09-10.18
 """
 The bill itself, from an address that can simply be constructed.
 
@@ -162,20 +162,25 @@ TEXT = ("https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
 STATIC_404 = {2016, 2022, 2023, 2024, 2025, 2026}
 ID_AS_STORED = {2022, 2023, 2024, 2025, 2026}
 ID_PLUS_YEAR = set()
-# 2016 IS THE OTHER WAY ROUND, and the table above said "used as stored,
-# confirmed in a browser" until 16 September, when bills-08 stopped itself
-# after three 56-byte answers in a row -- billText saying nothing rather than
-# 404ing. What data/bills.json stores for 2016 is the LSR with the year already
-# on it (CACR 2 is 882016), which is the same form that was wrong for 2023-2024
-# and for the same reason: the search results link a versioned id. The person
-# opened both in a browser that day:
+# 2016 HAS NO ADDRESS RULE THAT HOLDS, and the day it took to find that out is
+# worth writing down. The table above said "used as stored, confirmed in a
+# browser"; on 16 September a run stopped after three 56-byte answers in a row
+# -- billText saying nothing rather than 404ing -- for 2016 HB105, HB110 and
+# HB114, whose stored ids are 452016, 792016 and 862016.
+#
+# The person opened two addresses by hand:
 #
 #     id=882016&sy=2016   56 bytes, no bill
-#     id=88&sy=2016       serves 2016 CACR 2
+#     id=88&sy=2016       serves 2016 CACR 2, whose stored id is 882016
 #
-# So the year comes off. fetch()'s LSR check is what would catch it if a
-# stripped id ever named another bill.
-ID_MINUS_YEAR = {2016}
+# which reads as "the year comes off", the mirror of what 2023-2024 turned out
+# to need. It was tried, and the LSR check in fetch() refused the second page
+# it asked for: id=79&sy=2016 prints LSR 2015-0500, not 2016's HB 110. So the
+# stripped number is not this bill's id in a different year's clothes; it is
+# another document's id altogether, and sy does not make it unambiguous.
+# Two pages, no guessing further: the 1,072 bills of 2016 wait for the archive
+# zip the IT office is preparing, or for them to say what id billText wants.
+ID_MINUS_YEAR = set()
 
 # The terms this site already has the text of, from the database and
 # bill_text/. A run asks for the archive, not for them.
