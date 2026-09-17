@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.7
+# GRANITE_VERSION: 2026-09-10.8
 """The committee a bill was referred to, read out of the docket.
 
     python3 referrals.py            # what it finds, by year, no network
@@ -81,17 +81,53 @@ PASSED = re.compile(
     r"^\s*passed(?:\s+with\s+am)?\s+and\s+ref(?:erred)?\.?\s+to\s+(?P<c>.+)$", re.I)
 REREF = re.compile(r"^\s*re-?ref(?:erred)?\s+to\s+(?P<c>.+)$", re.I)
 
+# A VACATE UNDOES THE REFERRAL BEFORE IT. "VACATED FROM JUDICIARY TO BANKS"
+# means the House took the bill away from Judiciary and gave it to Banks, so
+# Banks is the committee of referral and Judiciary never held it. 398 lines
+# say so across 1989-2015, and none of the three patterns above matches any of
+# them -- so until now the site published the committee the chamber had
+# explicitly taken the bill away from.
+#
+# Not anchored at ^ like the others, because half of these name the mover
+# first: "Sen. Cohen moved to Vacate from Education to Judiciary".
+#
+# THE ONE FORM THAT MEANS THE OPPOSITE. "Vacate Referral to Ways & Means" is
+# a motion to vacate the referral TO Ways and Means -- that committee is the
+# one being LEFT, and a pattern that takes the committee after "to" gets
+# exactly the wrong answer. One line in the corpus is this shape (2007 HB829),
+# which is few enough to be invisible in a spot check and quite enough to put
+# a wrong committee on a bill's page. The lookahead refuses it outright:
+# a vacate whose destination cannot be read is better than a confident
+# inversion, and HB829 keeps whatever the search page said.
+VACATED = re.compile(r"\bvacat\w*\b(?!\s+referral\s+to)[^;]*?"
+                     r"\bto\s+(?P<c>[^;]+)", re.I)
+
 # What follows the committee on the same line: the journal citation, a date
 # in brackets, a parenthetical, or two spaces used as a column break.
 TAIL = re.compile(
     r"\s*[;(\[].*$|\s{2,}.*$|\s+[HS]J\b.*$|\s*,\s*P(?:G|g)?\.?\s*\d.*$"
     r"|\s*,\s*pg.*$|\s+\d{1,2}/\d{1,2}/\d{2,4}.*$", re.I)
 # The vote that carried the motion, written after the committee.
-VOTE = re.compile(r"(?:[\s,]*\b(?:VV|MA|MF|RC|DV|AA|OTPA?|ITL)\b)+[\s,.;]*$", re.I)
+# The separator allows a full stop as well as a space or a comma, because the
+# clerk writes "MA. VV" as often as "MA, VV" and "MA VV". Without the stop the
+# repetition breaks at it and only the LAST token is taken off, so 2000 HB1573
+# read "Vacate from Internal Affairs to Finance, MA. VV" and published a
+# committee called "Finance, MA".
+VOTE = re.compile(r"(?:[\s,.]*\b(?:VV|MA|MF|RC|DV|AA|OTPA?|ITL)\b)+[\s,.;]*$", re.I)
 # "Rereferred to Committee" names no committee: it is back to the same one.
+# "2nd reading" and "the table" are not committees either: a bill vacated to
+# second reading has been taken OUT of committee and put on the chamber's
+# calendar, which is the opposite of a referral. Two lines say exactly that
+# -- "MOTION TO VACATE FROM FINANCE TO 2ND READING" -- and without this they
+# would publish a committee named "2Nd Reading".
 NOT_A_NAME = re.compile(r"^(?:committee|the committee|full committee|"
                         r"interim study|committee of conference|"
-                        r"no committee assignment)$", re.I)
+                        r"no committee assignment|"
+                        r"(?:2nd|second|3rd|third)\s+reading|the table)$", re.I)
+
+# The member who moved it, written after the committee on a vacate line:
+# "VACATED TO JUDICIARY, REP POWERS MA VV". clean() says why this is here.
+MOVER = re.compile(r"\s*,\s*(?:Rep|Sen|Senator|Representative)s?\b.*$", re.I)
 # The clerks write both "Ways & Means" and "Ways and Means" for the same
 # committee in the same year. This is a spelling, not an abbreviation, so it
 # needs no evidence -- but it is the single largest source of a committee
@@ -303,6 +339,19 @@ def clean(s):
     """The committee, with what the clerk wrote after it taken off."""
     s = TAIL.sub("", s)
     s = VOTE.sub("", s)
+    # AND THE MEMBER WHO MOVED IT. "VACATED TO JUDICIARY, REP POWERS MA VV"
+    # leaves "JUDICIARY, REP POWERS" once the vote is stripped, and the site
+    # would publish a committee called "Judiciary, Rep Powers", which matches
+    # no committee page and reads as nonsense. Three such values are in
+    # data/bills.json today -- "Public Works, Rep G Chandler" among them --
+    # and the vacate lines this module now reads would have added about forty
+    # more, because naming the mover is the house style on a vacate motion.
+    #
+    # Anchored to a comma and an honorific so it cannot eat a committee whose
+    # own name has a comma in it: "Health, Human Services and Elderly Affairs"
+    # and "Resources, Recreation and Development" both survive, because what
+    # follows their comma is not Rep or Sen.
+    s = MOVER.sub("", s)
     s = re.sub(r"[\s.,;:&/+-]+$", "", s).strip()
     return "" if NOT_A_NAME.match(s) else s
 
@@ -335,12 +384,36 @@ def committee(desc):
     return ""
 
 
+def vacated(desc):
+    """The committee a vacate motion moves the bill TO, or "".
+
+    See VACATED above for the shape, and for the one form that means the
+    opposite and is refused rather than guessed at.
+    """
+    m = VACATED.search(desc or "")
+    if not m:
+        return ""
+    return AMP.sub(" and ", names.committee(expand(clean(m.group("c")))))
+
+
 def from_docket(path=SRC, lo=1989, hi=2015):
     """{(session year, bill): {body: committee}} -- the FIRST per body.
 
     The docket arrives in the order the clerk wrote it, so the first referral
     a body records is the committee of referral. setdefault is what keeps it
     first; a re-referral later in the same body does not replace it.
+
+    A VACATE IS THE EXCEPTION, and it is why this is not a pure setdefault.
+    The chamber undoing a referral and sending the bill elsewhere makes the
+    second committee the one that held it -- so a vacate REPLACES what is
+    standing, where every other later line is ignored. 398 lines across
+    1989-2015 do this, and reading them was the difference between the site
+    naming the committee that heard the bill and naming the one the chamber
+    had taken it away from.
+
+    The order in the file is the clerk's order, so a vacate always arrives
+    after the referral it undoes, and the last vacate wins over an earlier
+    one. That is the right answer for the handful of bills vacated twice.
     """
     out = collections.defaultdict(dict)
     if not Path(path).exists():
@@ -353,9 +426,14 @@ def from_docket(path=SRC, lo=1989, hi=2015):
             year = int(p[0])
             if not lo <= year <= hi:
                 continue
+            key, body = (p[0], p[4].strip()), p[5].strip()
+            v = vacated(p[6])
+            if v:
+                out[key][body] = v
+                continue
             c = committee(p[6])
             if c:
-                out[(p[0], p[4].strip())].setdefault(p[5].strip(), c)
+                out[key].setdefault(body, c)
     return out
 
 

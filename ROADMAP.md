@@ -8,7 +8,15 @@
 >
 > Two things below are now wrong and are left in place because the reasoning
 > around them is not: the file cap is 100,000 rather than 20,000 and the site
-> uses 40% of it, and the archived terms have full pages rather than cards.
+> uses far more of it than the 40% this line used to state -- `python3
+> check_site.py` prints the file count and warns at 90,000, so take the share
+> from it -- and the archived terms have full pages rather than cards.
+>
+> **Read through on 17 September**, against the code and the data on disk.
+> Where something here was measurably wrong it is corrected in place and
+> dated; the reasoning is untouched, including the reasoning behind decisions
+> since taken the other way. `LAUNCH.md` has been kept current since the 9th
+> and now runs to the 17th, so it is still the newer answer.
 
 Written 6 September 2026, from a list of everything outstanding. Ordered by
 what blocks what, not by size. `ARCHITECTURE.md` has the reasoning behind the
@@ -58,6 +66,11 @@ segmentation was being computed anyway.
 
 The rest is a page. It needs `committees.json`, which fetch_committees.py has
 never been run to produce -- see the committee pages item above.
+
+**`committees.json` has been on disk since 7 September** -- 41 committees, 27
+House and 14 Senate, each with chair, vice chair, aide, room and phone -- and
+the committee pages below were built on it. This view of a recording as a
+whole is the part still not built.
 
 
 ## Idea box: following a session live
@@ -194,6 +207,14 @@ form is empty because nothing is open. Every one of the 3,360 committee
 hearings in the record can only be "closed". The three states are buildable and
 checkable, but they cannot be *seen* until the next session schedules
 something.
+
+**Half of that changed by 17 September.** No *hearing* is in the future still,
+but 51 proceedings are -- 23 executive sessions, 17 subcommittee and 11 full
+committee work sessions, on 44 bills, running to 13 October -- so the newest
+proceeding anywhere is 2026-10-13 rather than 2026-09-02, and a page drawing a
+sitting that has not happened yet can now be seen doing it. "3,360" was one
+term's count: `proceedings.csv` holds 53,108 hearing rows across all nineteen
+terms.
 
 ---
 

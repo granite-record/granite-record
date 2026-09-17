@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.192
+# GRANITE_VERSION: 2026-09-04.193
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5237,6 +5237,75 @@ def _sponsor_rows(fetch_sponsors_by_member):
     assert r["title"].startswith("(New Title) establishing"), r
     assert "title:" not in r["title"], r
     return "ok", "one row, header skipped, LSR 1171 off the link"
+
+
+@check("narrative", "a vacated referral names the committee the bill went TO",
+       needs=("referrals",))
+def _vacated(referrals):
+    """Every string below is a real description from db/Docket.psv.
+
+    A vacate undoes the referral before it: "VACATED FROM JUDICIARY TO BANKS"
+    means the chamber took the bill away from Judiciary and gave it to Banks.
+    398 lines say so across 1989-2015 and none of the three referral patterns
+    matched any of them, so until 17 September the site published, for those
+    bills, the committee the chamber had explicitly taken the bill away from.
+
+    THE FOUR WAYS THIS GOES WRONG, each measured in the corpus and each one
+    line of the test below:
+
+    1. "Vacate Referral to Ways & Means" means Ways and Means is the committee
+       being LEFT. A pattern that takes the committee after "to" gets exactly
+       the wrong answer. One line in the corpus is this shape -- few enough to
+       pass a spot check, quite enough to put a wrong committee on a page --
+       and it is refused rather than guessed.
+    2. "VACATE FROM FINANCE TO 2ND READING" has no destination committee at
+       all: the bill left committee for the chamber's calendar. Two lines.
+    3. "VACATED TO JUDICIARY, REP POWERS MA VV" names the member who moved it,
+       which is house style on a vacate and would have published about forty
+       committees called things like "Judiciary, Rep Powers".
+    4. "to Finance, MA. VV" -- the clerk separates the vote tokens with a full
+       stop as often as with a comma, and a separator class that allowed only
+       spaces and commas stripped just the last one, leaving "Finance, MA".
+
+    And the case that must NOT be broken by any of the above: a committee
+    whose own name contains a comma. "Public Institutions, Health & Human
+    Services" survives, because what follows its comma is not an honorific.
+    """
+    ok = [
+        ("VACATED TO JUDICIARY, REP POWERS MA VV; HJ63, P1877", "Judiciary"),
+        ("VACATED FROM JUDICIARY INTRODUCED TO BANKS", "Banks"),
+        ("VACATE TO MUN & CTY GOVT; REP. SYTEK MA; HJ17, P211",
+         "Municipal and County Government"),
+        ("Vacate From Environment to Public Institutions, Health & Human "
+         "Services; SJ 7, Pg.224",
+         "Public Institutions, Health and Human Services"),
+        ("Sen. D'Allesandro Vacate from Internal Affairs to Finance, MA. VV; "
+         "SJ 10, Pg.292", "Finance"),
+        ("Sen. D'Allesandro Moved to Vacate SB63 to Energy & Economic "
+         "Development, MA, VV; SJ 4, Pg.43", "Energy and Economic Development"),
+    ]
+    for desc, want in ok:
+        got = referrals.vacated(desc)
+        assert got == want, f"vacated({desc[:46]!r}) gave {got!r}, wanted {want!r}"
+
+    refuse = [
+        ("Rep. Almy: Vacate Referral to Ways & Means, MA VV; HJ 20, pg.407",
+         "the committee named is the one being LEFT"),
+        ("MOTION TO VACATE FROM FINANCE TO 2ND READING",
+         "second reading is the chamber's calendar, not a committee"),
+        ("Vacated from Ways and Means; HJ 19, pg.390",
+         "no destination on this row"),
+    ]
+    for desc, why in refuse:
+        got = referrals.vacated(desc)
+        assert got == "", (
+            f"vacated({desc[:46]!r}) gave {got!r} and should have refused: {why}")
+
+    # An ordinary referral is not a vacate, and must not be read as one.
+    assert referrals.vacated(
+        "Introduced 1/4/2012 and Referred to Judiciary; HJ 11, PG. 183") == ""
+    return "ok", (f"{len(ok)} vacate shapes read, {len(refuse)} refused "
+                  "including the one that names the committee being left")
 
 
 @check("narrative", "the committee of referral is read out of a docket line",
