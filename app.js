@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.86
+// GRANITE_VERSION: 2026-09-07.87
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -407,7 +407,13 @@ const openCards=new Set(),openTab={},detail={},segSel={},fullOpen=new Set();
    site/_redirects (build_pages.py, the same slugs) serves the record's page
    at a tab's address. The first tab of each has no slug: its address is the
    record's. */
-const BILL_TABS={text:"6",votes:"1",videos:"2",reports:"3",sponsors:"4",documents:"5"};
+// "hearings" comes BEFORE "videos" and both map to 2. slugOf takes the first
+// key with a matching value, so a tab switched today writes /hearings, while a
+// link somebody already saved or a search engine already indexed still opens
+// on /videos. An address that has been published is a promise; renaming the
+// label is not a reason to break it.
+const BILL_TABS={text:"6",votes:"1",hearings:"2",videos:"2",
+                 reports:"3",sponsors:"4",documents:"5"};
 const MEMBER_TABS={cosponsored:1,votes:2};
 const COMMITTEE_TABS={sessions:1};
 const TAB_PATH=/^(\/(?:bill\/\d{4}\/[a-z]{2,5}\d+|legislator\/[^\/]+|committee\/[^\/]+))\/([a-z]+)\/?$/i;
@@ -2187,11 +2193,23 @@ function renderDetail(b,d){
   // tab -- somebody's link to the Votes tab would open Bill Text. So the
   // order here is the DOM order, which is what a reader and the keyboard both
   // follow, and 6 stays 6.
-  const btTab=(d.nver||0)>1||(d.namd||0)
+  // A BILL WITH ONE VERSION STILL HAS A TEXT. This asked only whether there
+  // was something to DIFF -- more than one version, or an amendment -- so a
+  // bill whose text the archive holds and which was never amended offered no
+  // tab at all. Sampled over the built pages: 291 of 291 texted bills in 2012,
+  // 292 of 292 in 2020, and 159 of 295 in the CURRENT term, which is where it
+  // stops being an archive problem.
+  //
+  // The text was never lost -- the block below the tabs renders it, and that
+  // placement is deliberate for the very long documents. What was missing is
+  // the tab a reader looks for, so the test is now "is there a text", with the
+  // version count still shown only when there is more than one to count.
+  const btHas=(d.nver||0)>1||(d.namd||0)||!!(((d.billtext||{}).body||"").trim());
+  const btTab=btHas
     ? `<button class="tab" role="tab" id="tab_${b.id}_6" aria-controls="pane_${b.id}_6"
         aria-selected="false" data-t="6">Bill Text${d.nver>1?` (${d.nver})`:""}</button>`
     : "";
-  const btPane=(d.nver||0)>1||(d.namd||0)
+  const btPane=btHas
     ? `<div class="pane" role="tabpanel" id="pane_${b.id}_6" aria-labelledby="tab_${b.id}_6"
         tabindex="0" data-t="6" hidden>${renderVersions(b,d)}</div>`
     : "";
@@ -2207,7 +2225,16 @@ function renderDetail(b,d){
         // votes were voice votes, which showed "Votes" with nothing beside
         // it and 3 sections beneath.
         (d.rollcalls||[]).length?` (${d.rollcalls.length})`:""}</button>
-    <button class="tab" role="tab" id="tab_${b.id}_2" aria-controls="pane_${b.id}_2" aria-selected="false" data-t="2">Videos${videoCount(d)?` (${videoCount(d)})`:""}</button>
+    <!-- HEARINGS, NOT VIDEOS. The tab lists a bill's sittings -- the date, the
+         time and the room -- and a recording where one exists. Recordings
+         begin on 14 May 2020, so for fifteen of the nineteen terms the tab was
+         headed "Videos" and every entry under it read "No recording exists".
+         The sittings are the content and the video is the bonus, so the label
+         now says what is always there rather than what usually is not. The
+         count stays the count of recordings, which is why it is absent on the
+         terms that have none. data-t stays "2": renumbering would repoint
+         every saved link. -->
+    <button class="tab" role="tab" id="tab_${b.id}_2" aria-controls="pane_${b.id}_2" aria-selected="false" data-t="2">Hearings${videoCount(d)?` (${videoCount(d)})`:""}</button>
     <button class="tab" role="tab" id="tab_${b.id}_3" aria-controls="pane_${b.id}_3" aria-selected="false" data-t="3">Reports${
       reportCount(d)?` (${reportCount(d)})`:""}</button>
     <button class="tab" role="tab" id="tab_${b.id}_4" aria-controls="pane_${b.id}_4" aria-selected="false" data-t="4">Sponsors${(d.sponsors||[]).length?` (${(d.sponsors||[]).length})`:""}</button>
@@ -3729,8 +3756,16 @@ document.addEventListener("click",e=>{
   if(tab){
     const cid=tab.closest(".card").dataset.id;
     openTab[cid]=tab.dataset.t;
-    // On a bill's own page, the tab's address goes in the bar.
-    if(window.GR_BILL&&focused===cid)tabAddress(slugOf(BILL_TABS,tab.dataset.t));
+    // WHEREVER A BILL IS OPEN, not only on its own page. GR_BILL is set by
+    // build_bill_pages and by nothing else, so opening a bill from the search
+    // page and switching tabs left the address on /bill/2012/hb1181 however
+    // many tabs you walked -- the reader could not link to what they were
+    // looking at, and the same click on the same card put a different address
+    // in the bar depending on how they arrived. focused===cid is the real
+    // condition: it says this card is the one open, which is what makes its
+    // tab the page's subject. openBill already pushes the bill's own address
+    // in the search view, so there is a path here for tabAddress to append to.
+    if(focused===cid)tabAddress(slugOf(BILL_TABS,tab.dataset.t));
     // The versions index is fetched when the tab is opened and not before,
     // which is the whole reason it is a separate file.
     if(tab.dataset.t==="6"){

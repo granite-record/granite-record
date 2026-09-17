@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.190
+# GRANITE_VERSION: 2026-09-04.191
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2197,11 +2197,15 @@ var fixtures = [
          // rows on a 289px card, and this was the longest of them.
          "Reports (6)",
          // Votes counts d.rollcalls, which the pane draws, not b.nrc, which
-         // omits procedural and voice votes; Videos counts stations that have
-         // a recording. The fixture has one roll call and two recorded
-         // stations. (This is JavaScript: a # here is a syntax error, and was.)
+         // omits procedural and voice votes. The Hearings tab lists a bill's
+         // sittings and counts the ones with a RECORDING, which is why its
+         // number can be absent on a term that has none -- it was headed
+         // "Videos" until 17 September, over entries that for fifteen terms
+         // all read "No recording exists". The fixture has one roll call and
+         // two recorded stations. (This is JavaScript: a # here is a syntax
+         // error, and was.)
          "Votes (1)",
-         "Videos (2)",
+         "Hearings (2)",
          // A start and an end, and nothing else. Both stations here start at a
          // boundary the chair announced, so neither carries the one word that
          // marks an inference.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.75
+# GRANITE_VERSION: 2026-09-04.76
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -158,7 +158,14 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 """
 
 # Tab addresses, served their record's page: see where this is written.
-BILL_TAB_SLUGS = ("text", "votes", "videos", "reports", "sponsors", "documents")
+# "videos" is kept alongside "hearings" deliberately. The tab was relabelled on
+# 17 September -- it lists a bill's sittings and a recording only where one
+# exists, and recordings begin in May 2020, so for fifteen terms it read
+# "Videos" over entries that all said "No recording exists". Both addresses go
+# in _redirects: the new one because that is what the page now writes, the old
+# one because it has been published and indexed.
+BILL_TAB_SLUGS = ("text", "votes", "hearings", "videos", "reports",
+                  "sponsors", "documents")
 MEMBER_TAB_SLUGS = ("cosponsored", "votes")
 COMMITTEE_TAB_SLUGS = ("sessions",)
 REDIRECTS = ("# Written by build_pages.py. Not an asset; Pages reads it.\n"
