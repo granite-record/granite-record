@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.18
+# GRANITE_VERSION: 2026-09-08.19
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -343,11 +343,29 @@ def footer_nav(i, topics):
     return "".join(bits)
 
 
+# Spelled out, because "11 short pages" in a sentence reads like a list
+# heading rather than prose. Falls back to the digits past twenty, by which
+# point the section is a different thing and the sentence needs rewriting
+# anyway.
+NUMBER_WORD = {
+    1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six",
+    7: "Seven", 8: "Eight", 9: "Nine", 10: "Ten", 11: "Eleven",
+    12: "Twelve", 13: "Thirteen", 14: "Fourteen", 15: "Fifteen",
+    16: "Sixteen", 17: "Seventeen", 18: "Eighteen", 19: "Nineteen",
+    20: "Twenty",
+}
+
+
 def hub(topics):
+    # COUNTED, NOT TYPED. This read "Eleven short pages" while civics.TOPICS
+    # held eleven, and the sentence is one edit to that list away from being
+    # false -- on a page whose whole argument is that its figures come from
+    # the record rather than from someone's memory.
+    n = len(topics)
     out = ['<h1>How New Hampshire works</h1>',
-           '<p class="lead">Eleven short pages on the parts of state '
-           'government, each one linked to where you can watch it happening '
-           'in the record.</p>',
+           f'<p class="lead">{NUMBER_WORD.get(n, n)} short pages on the parts '
+           'of state and local government, each one linked to where you can '
+           'watch it happening in the record.</p>',
            # WHAT THIS IS FOR, SAID ONCE. The hub was a numbered list and
            # nothing else: a reader arriving cold could not tell whether
            # these were explainers written from a textbook or written from
@@ -378,6 +396,21 @@ def hub(topics):
                 f'<b>{E(t["title"])}</b>'
                 f'<span>{dashes(E(t["blurb"]))}</span></a></li>')
         out.append("</ol>")
+    # NOT ONE OF THE NUMBERED PAGES. The topics above are short explanations
+    # meant to be read in order, and each ends by naming the next. This is a
+    # long table of statistics counted from the record -- a different kind of
+    # thing for a different reader, and putting it in the sequence would
+    # interrupt the sequence. It sits after them, named for what it is.
+    out.append(
+        '<h2>The record in numbers</h2>'
+        '<p class="src">Counted from the General Court\'s own record, at '
+        'build time, every time this site is built.</p>'
+        '<ol class="tlist"><li>'
+        '<a href="learn/by-the-numbers.html">'
+        '<b>The record in numbers</b>'
+        '<span>Vetoes and what happens to them, the closest votes on record, '
+        'how often a chamber overrules its own committee, and how the two '
+        'chambers differ in the way they take a vote.</span></a></li></ol>')
     out.append(
         '<p class="note">Every page here ends with its sources. If something '
         'is wrong, <a href="mailto:contact@graniterecord.org">tell us</a> '
@@ -465,9 +498,17 @@ def main():
         (out / f"{t['slug']}.html").write_text(p, encoding="utf-8")
         urls.append(a.base + S.canon(f"/learn/{t['slug']}.html"))
 
-    # ---- the record in numbers: a DRAFT, on no list ----------------------
-    # learn_numbers.py says what it is. noindex, not in the hub, not in the
-    # sitemap: the person reads it at its address before anyone else is led to it.
+    # ---- the record in numbers ------------------------------------------
+    # learn_numbers.py says what it is. It was written on 13 September as a
+    # draft: noindex, absent from the hub and from the sitemap, so the person
+    # could read it at its address before anyone else was led to it. They read
+    # it and asked on the 17th for it to be public, so the three things that
+    # were keeping it private are gone -- it is in the hub, it is in the
+    # sitemap, and it is no longer noindex.
+    #
+    # It is NOT in civics.TOPICS. The topics are short explanations that end by
+    # naming the next one, and this is a long table of counts; hub() puts it
+    # after them under its own heading rather than in the sequence.
     path = "/learn/by-the-numbers.html"
     p = S.page(tmpl, path=path, base=a.base,
                title=S.title_of("The record in numbers", "How New Hampshire works"),
@@ -475,7 +516,6 @@ def main():
                description=("Statistics counted from the New Hampshire General Court's own "
                             "record: vetoes, the closest votes, how votes are taken, and how "
                             "often a chamber overrules its committee."),
-               alternate='<meta name="robots" content="noindex">',
                og_image="og-learn.png", og_alt="Granite Record: how New Hampshire works",
                globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the page",
                sr_title="", nav_current="learn.html")
@@ -484,7 +524,8 @@ def main():
                   'How New Hampshire works</a></p><h1>The record in numbers</h1>'
                   + learn_numbers.body(site) + '</div></div>', 1)
     (out / "by-the-numbers.html").write_text(p, encoding="utf-8")
-    print("  learn/by-the-numbers.html: the draft page of statistics (noindex, unlisted)")
+    urls.append(a.base + S.canon(path))
+    print("  learn/by-the-numbers.html: the page of statistics (public since 17 Sep)")
 
     # ---- the sitemap, appended rather than rewritten -------------------
     sm = site / "sitemap.xml"

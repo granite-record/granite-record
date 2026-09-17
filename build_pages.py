@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.77
+# GRANITE_VERSION: 2026-09-04.78
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -15,6 +15,7 @@ styles and is untouched.
 """
 
 import argparse
+import about_figures
 import html as _html
 import shell as _shell
 import json
@@ -726,25 +727,41 @@ is enough not to clip the first word. Where no boundary was heard, the site eith
 shows a start marked <i>approximate</i> or links the recording with no time at
 all &#8212; it does not guess.</p>
 
-<h2>Accuracy</h2>
-<p>Automatic timing is checked against 35 proceedings that a person timed by
-watching the recording, across seven sessions. Of the 19 the site can currently
-place, the median is out by one second and the worst by 5 minutes 47 seconds;
-17 of the 19 are within a minute. The 16 it cannot place carry no time at all
-rather than a guessed one.</p>
-<p>Across the whole site there are 10,810 proceedings. 4,994 carry a boundary
-the chair or the clerk said out loud, and 209 a roll call's own clock time from
-the General Court's record, which involves no speech recognition at all. 1,427
-were worked out from where the bill is discussed rather than quoted; those are
-the ones marked <i>approximate</i>, and they can be a few minutes out. The
-remaining 4,180 are shown with no time: 2,522 passed on a consent calendar and
-were never taken up separately, 1,068 have no recording, and 590 are floor
-actions the site can date but not place in the video.</p>
-<p>Only the word <i>approximate</i> distinguishes a start that was inferred
-from one that was quoted. The site used to print the margin and the method
-beside every timestamp; that turned out to be methodology in the reader's way,
-and the useful thing is that a link lands where the bill was actually taken
-up.</p>
+<h2>How much of this is timed, and how well</h2>
+<p>The record here holds [[stations]] occasions on which a bill was taken up
+&#8212; hearings, executive sessions, work sessions and floor debates &#8212;
+across [[station_bills]] bills. What the site can say about each one depends
+almost entirely on whether a recording of it exists.</p>
+<p>For [[no_recording]] of them, none does. The General Court began streaming
+its committee rooms and its chambers in [[stream_start]]; [[prestream]] of
+these sittings happened before that, which is [[prestream_pct]] of the whole
+record; the rest are sittings since then that no recording has been matched
+to. Those carry the date, the committee and the room, and nothing to play.</p>
+<p>[[recorded]] have a recording. On [[placed]] of them &#8212;
+[[placed_pct]] &#8212; the page opens the recording at the moment the bill
+was taken up. On the other [[recording_only]] it links the recording and says
+plainly that the moment has not been established, rather than guessing one. A
+further [[consent]] passed on a consent calendar: adopted in a block, never
+read out and never debated, so there is no moment in the recording to
+find.</p>
+<p>Where the moment is claimed, it usually comes from someone saying so. Most
+of these are the chair or the clerk opening the item, matched against the
+recording's captions; some are a roll call's own clock time from the General
+Court's record, which involves no speech recognition at all; the rest are
+inferred from where the bill is discussed, and those are the ones marked
+<i>approximate</i>. Only that word separates an inferred start from a quoted
+one. The site used to print the margin and the method beside every timestamp,
+and that turned out to be methodology in the reader's way.</p>
+<p>The timing is checked against [[marked]] proceedings that a person timed by
+watching the recording, across [[marked_videos]] recordings. Of these it places
+[[marked_placed]]: the median is out by [[median]], and [[within_minute]] of
+[[marked_placed]] are within a minute. [[over_ten]] are more than ten minutes
+out &#8212; the worst by [[worst]] &#8212; and that is not imprecision but a
+proceeding placed somewhere else, which is a different fault and is being
+worked through. The remaining [[marked_unplaced]] carry no time at all rather
+than a guessed one. Opening each recording at its scheduled time
+instead &#8212; the obvious method, and the one this replaced &#8212; would be
+out by [[schedule_median]] at the median. Last measured [[measured]].</p>
 <p>Speech recognition is worst at exactly the things that matter most — names,
 numbers and organisations. Check the recording before quoting anything.</p>
 
@@ -1669,8 +1686,14 @@ today.</p>
     # because its prose was redistributed into civics.py rather than
     # rewritten, and it is the thing to diff against if a passage there
     # looks wrong.
+    # THE FIGURES ARE COUNTED, NOT TYPED. about_figures.py says why at length:
+    # the eight numbers this page used to state about its own accuracy were
+    # written when the site held one term, and seven of them were wrong by the
+    # time it held nineteen. fill() raises rather than publishing a sentence
+    # with a hole where a number was.
     (out / "about.html").write_text(
-        shell("About | Granite Record", "about.html", ABOUT,
+        shell("About | Granite Record", "about.html",
+              about_figures.fill(ABOUT, about_figures.figures(site=out)),
               desc="How Granite Record is built, where every fact on it comes "
                    "from, and how to report something that is wrong."),
         encoding="utf-8")

@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.1
+# GRANITE_VERSION: 2026-09-14.2
 """
-The record in numbers: a DRAFT Learn page of statistics computed from the site's own data.
+The record in numbers: a Learn page of statistics computed from the site's own data.
 
     import learn_numbers; html = learn_numbers.body(site=Path("site"), root=Path("."))
 
 Asked for by the person on 13 September ("interesting data for the political science nerds")
 and defined by them the same evening -- LAUNCH.md section 0a has the list and their decisions.
-build_civics.py writes it to /learn/by-the-numbers.html, marked noindex and left out of the Learn
-hub and the sitemap until the person has read it.
+build_civics.py writes it to /learn/by-the-numbers.html.
+
+It shipped as a draft: noindex, absent from the Learn hub and from the sitemap, so the person
+could read it at its own address before anyone else was led to it. They read it and asked on
+17 September for it to be public, and all three of those are now gone. It is still not one of
+civics.TOPICS -- those are short explanations meant to be read in order, and this is a long
+table of counts -- so the hub links it under a heading of its own after them.
 
 Every figure is counted at build time, never typed, and each section says what it counts, over
 what period, and how. Where a section needs something this disk does not hold -- the Secretary
@@ -106,9 +111,20 @@ def body(site=Path("site"), root=Path(".")):
     terms = sorted({r.get("term") for r in idx if r.get("term")})
     current = terms[-1] if terms else ""
     recent = terms[-10:]
-    out = ['<p class="caveat"><b>Draft.</b> This page is not linked from the rest of the site '
-           'and asks search engines not to list it until it has been read and checked. Every '
-           'number on it is counted from the record when the site is built.</p>']
+    # The page carried a "Draft" banner here saying it was unlinked and asking
+    # search engines not to list it. Both of those stopped being true on 17
+    # September, when the person read it and asked for it to be public, and a
+    # banner that describes the page's old status is worse than none.
+    #
+    # What survives is the half of it that is still the point: every number
+    # here is counted from the record at build time. That is what separates
+    # this page from a statistics page somebody typed, and it is the first
+    # thing a reader should know.
+    out = ['<p class="caveat">Every number on this page is counted from the '
+           'General Court\'s own record when the site is built, not typed in. '
+           'Each section says what it counts and over what period. Where the '
+           'record on this site cannot answer something, the section says so '
+           'rather than estimating.</p>']
 
     # 1. Committees overruled on the floor.
     narr = narr_all.get(current, {})

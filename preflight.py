@@ -2968,7 +2968,14 @@ def _built_site(here, root):
     # build_pages writes <script src="/find.js"> on every page and copies the
     # file from its working directory, so a fixture without it built 33 pages
     # asking for a script that was not there.
-    for name in ("app.css", "app.js", "bills.html", "find.js", "officials.json"):
+    # alignment_score.json is here because about.html states this site's own
+    # timing accuracy and about_figures.py refuses to publish a sentence it
+    # has no number for -- so without it build_pages exits, and the fixture
+    # build fails on a file that has nothing to do with the fixture. It is
+    # small, tracked, and written by `probe_alignment.py --truth --score-out`,
+    # which is the gate every timestamp method passes before it ships.
+    for name in ("app.css", "app.js", "bills.html", "find.js", "officials.json",
+                 "alignment_score.json"):
         if (here / name).exists():
             shutil.copy2(here / name, root / name)
     if (here / "assets").is_dir():
@@ -9484,29 +9491,38 @@ def _learn_figures():
     return "ok", f"every Learn page filled; the bill page states the index's {n:,} bills"
 
 
-@check("data", "the draft page of numbers stays unlisted until the person has read it")
-def _numbers_draft_unlisted():
-    """learn_numbers.py writes /learn/by-the-numbers.html as a DRAFT, 14 September:
-    counted from the record, but not yet read by the person. Until it has been, it
-    asks search engines not to list it, and neither the Learn hub nor the sitemap
-    leads anyone to it. Listing it is a decision, made by removing this check in
-    the same edit, not a side effect of a template change."""
+@check("data", "the page of numbers is public, and reachable from the hub and the sitemap")
+def _numbers_page_public():
+    """learn_numbers.py wrote /learn/by-the-numbers.html as a DRAFT on 14 September:
+    counted from the record, but not yet read by the person, so it asked search
+    engines not to list it and neither the Learn hub nor the sitemap led anyone to
+    it. The check here asserted all three.
+
+    The person read it and asked on 17 September for it to be public. This is the
+    same guard pointed the other way rather than a deleted one: a page reached only
+    by knowing its address is one nobody finds, and losing the hub link or the
+    sitemap entry to a template change would put it back in the drawer silently.
+
+    The build-fault half is unchanged and is the reason this is a check at all: an
+    unfilled [[figure]] or a traceback in the body is a page that publishes a hole
+    where a number should be."""
     site = Path("site")
     page = site / "learn" / "by-the-numbers.html"
     if not page.exists():
         return "skip", "learn/by-the-numbers.html not built"
     text = page.read_text(encoding="utf-8", errors="replace")
-    assert '<meta name="robots" content="noindex">' in text, "the draft page lost its noindex"
-    assert "[[" not in text and "Traceback" not in text, "the draft page carries a build fault"
+    assert '<meta name="robots" content="noindex">' not in text, (
+        "the page of numbers is public and should not ask to be delisted")
+    assert "[[" not in text and "Traceback" not in text, "the page carries a build fault"
     hub = site / "learn.html"
     if hub.exists():
-        assert "by-the-numbers" not in hub.read_text(encoding="utf-8", errors="replace"), (
-            "learn.html links the draft page")
+        assert "by-the-numbers" in hub.read_text(encoding="utf-8", errors="replace"), (
+            "learn.html does not link the page of numbers")
     sm = site / "sitemap.xml"
     if sm.exists():
-        assert "by-the-numbers" not in sm.read_text(encoding="utf-8", errors="replace"), (
-            "the sitemap lists the draft page")
-    return "ok", "noindex, off the Learn hub and out of the sitemap"
+        assert "by-the-numbers" in sm.read_text(encoding="utf-8", errors="replace"), (
+            "the sitemap does not list the page of numbers")
+    return "ok", "indexable, on the Learn hub and in the sitemap"
 
 
 @check("data", "a committee's members are the ones on it today, not every seat the table still holds")

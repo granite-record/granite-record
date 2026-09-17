@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.61
+# GRANITE_VERSION: 2026-09-05.62
 """
 Measure the signals in a transcript. Build nothing, tune nothing.
 
@@ -1213,12 +1213,20 @@ def hms(s):
 
 
 def score(marks, label, get):
-    """How far a method's guess is from what a person saw."""
+    """How far a method's guess is from what a person saw.
+
+    Returns the scoreboard as well as printing it. about.html used to state
+    this site's accuracy in figures somebody had typed out of an earlier run
+    of this function, and by 17 September they described a truth set half the
+    size of the one that now exists. The numbers a page publishes about the
+    method should come from the run that measured the method, so `--score-out`
+    writes them and about_figures.py reads that file.
+    """
     pairs = [(abs(get(m) - m["obs"]), get(m) - m["obs"], m)
              for m in marks if get(m) is not None]
     if not pairs:
         print(f"  {label}: nothing to compare")
-        return
+        return None
     pairs.sort(key=lambda x: x[0])
     errs = [a for a, _, _ in pairs]
     signed = [s for _, s, _ in pairs]
@@ -1259,9 +1267,26 @@ def score(marks, label, get):
               "site at all:")
         for m in none[:4]:
             print(f"      {m['bill']:<8} {str(m['kind'])[:17]:<18}{m['video']}")
+    return {
+        "marked": len(marks),
+        "placed": len(pairs),
+        "unplaced": len(none),
+        "median": errs[len(errs) // 2],
+        "worst": errs[-1],
+        "within": {str(b): sum(1 for e in errs if e <= b)
+                   for b in (60, 300, 600, 900)},
+        "over_ten_minutes": len(bad),
+        "videos": len({m["video"] for m in marks if m.get("video")}),
+    }
 
 
 _SITE = {}
+
+# What the last --truth run measured, for --score-out. Filled by ground_truth()
+# as each method is scored; written to disk by main() and read by
+# about_figures.py, so the accuracy the About page states is the accuracy this
+# gate last recorded rather than a figure somebody retyped.
+SCOREBOARD = {}
 
 
 def site_stations(site):
@@ -1661,14 +1686,22 @@ def ground_truth(manifest, site=None, candidate=None, bench=True):
         print(f"  a proceeding runs {hms(durs[len(durs) // 2])} at the median, "
               f"{hms(durs[0])} to {hms(durs[-1])}")
 
-    score(marks, "THE SCHEDULE ALONE  (sched_time minus stream_start)",
-          lambda m: m["sched"])
+    sched_score = score(marks, "THE SCHEDULE ALONE  (sched_time minus "
+                        "stream_start)", lambda m: m["sched"])
+    SCOREBOARD["schedule"] = sched_score
+    SCOREBOARD["truth"] = {
+        "marked": len(marks),
+        "videos": len({m["video"] for m in marks if m.get("video")}),
+        "committees": len({m.get("committee") for m in marks
+                           if m.get("committee")}),
+    }
 
     if candidate:
         got = load_candidate(candidate, marks)
         if got:
-            score(marks, f"A CANDIDATE: {Path(candidate).name}",
-                  lambda m: m.get("cand"))
+            SCOREBOARD["candidate"] = score(
+                marks, f"A CANDIDATE: {Path(candidate).name}",
+                lambda m: m.get("cand"))
             # Split by how the boundary was found. A weak marker -- "Next up",
             # "our first bill is" -- lifts coverage, and whether it does so at
             # the cost of the median is the only thing that decides if the
@@ -1822,6 +1855,13 @@ def main():
                     help="score against the truth file alone, leaving out "
                          "review/checked.jsonl. Use it to compare with a "
                          "number recorded before the bench was read here.")
+    ap.add_argument("--score-out", nargs="?", const="alignment_score.json",
+                    help="with --truth, write the scoreboard as JSON. "
+                         "about_figures.py reads it so the accuracy about.html "
+                         "states is the accuracy this run measured, rather "
+                         "than a figure retyped out of an older one. Records "
+                         "--no-bench, so a page cannot quote a bench-scored "
+                         "median as a bench-free one.")
     a = ap.parse_args()
 
     if a.missing:
@@ -1876,6 +1916,20 @@ def main():
     if a.truth:
         ground_truth(a.truth, a.site, a.candidate,
                      bench=not a.no_bench)
+        if a.score_out:
+            # The date is the run's, taken here rather than inside score(), so
+            # every method in one file carries the same one. A page that
+            # states an accuracy should be able to say when it was measured.
+            from datetime import date as _date
+            out = {"measured": _date.today().isoformat(),
+                   "bench": not a.no_bench,
+                   # Not "candidate": SCOREBOARD spreads a key of that name
+                   # and would silently replace the path with the scoreboard.
+                   "candidate_file": a.candidate or "",
+                   **SCOREBOARD}
+            Path(a.score_out).write_text(
+                json.dumps(out, indent=1), encoding="utf-8")
+            print(f"\n  scoreboard -> {a.score_out}")
         return
 
     rp = Path("committee_reports.json")

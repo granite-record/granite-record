@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.17
+# GRANITE_VERSION: 2026-09-08.18
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -684,6 +684,413 @@ town meeting warrants, no local budgets and no municipal votes. This page is
 here because bills about towns are in the record constantly and the words in
 them assume you already know all of this."""
 
+# ---------------------------------------------------------------------------
+# COUNTY AND MUNICIPAL GOVERNMENT, asked for by the person on 17 September:
+# "pages to explain the various elected officials at the county and municipal
+# level and their roles, how some towns have a mayor and city council and
+# other towns have a select board".
+#
+# They are two pages rather than one because the two levels answer different
+# questions and share almost nothing: a county is run by a body nobody is
+# elected to, and a town or city is run by whichever of five or six forms its
+# voters adopted. Both sit after "local-government", which already holds town
+# meeting, SB 2 and the default budget, and neither repeats it -- each links
+# it instead.
+#
+# Every RSA citation in both bodies was read on gc.nh.gov/rsa on 17 September
+# 2026. Where a sentence could not be tied to a section it carries no citation
+# rather than a guessed one; the county commissioners' number and the county
+# nursing homes are the two that were rewritten for exactly that reason.
+# ---------------------------------------------------------------------------
+BODY_COUNTY = """
+<p>New Hampshire has ten counties: Belknap, Carroll, Cheshire, Coos, Grafton,
+Hillsborough, Merrimack, Rockingham, Strafford and Sullivan. Each is a unit of
+government with its own budget, its own elected officers and its own line on
+your property tax bill. Title II of the Revised Statutes is the law that
+governs them.</p>
+
+<p>A county has no council and no mayor. Its legislative body is a group of
+people you already elected to something else.</p>
+
+<h2>The county convention, which is the county delegation</h2>
+<p><b>County convention:</b> the legislative body of a county. It consists of
+the state representatives of the representative districts of the county
+(RSA 24:1). Nobody is elected to it separately. A representative elected to
+the House from a district in Grafton County is, by that fact alone, a member
+of the Grafton County convention.</p>
+
+<p>You will meet it under two names. The statutes say convention; legislators,
+county staff and county budget papers usually say <b>delegation</b>. They are
+the same body, and the statute itself uses both words in one sentence:
+RSA 24:9-a gives the chair of the county delegation the job of setting the
+time and place of the first meeting of the county convention.</p>
+
+<p>A House district carries its county in its name &mdash; Rockingham 13,
+Hillsborough 44 &mdash; and that name is what places its members. In the
+present map every House district, floterial districts included, lies within a
+single county, so each representative sits in exactly one delegation.</p>
+
+<p>At its first regular meeting the convention elects a chairperson, a
+vice-chairperson, a clerk and an <b>executive committee</b>, whose party
+balance has to reflect the balance of the convention itself (RSA 24:2). The
+first meeting is held during the week of the second Wednesday of December in
+each even-numbered year, after the general election (RSA 24:9-a). Later
+meetings are called by the chairperson or by a majority of the members, and
+the chairperson has to call one when the county commissioners ask in writing
+(RSA 24:9-c). Notice of the time, place and purpose goes to every member and
+to a newspaper circulating in the county at least 7 days beforehand
+(RSA 24:9-d).</p>
+
+<h2>How the county budget is decided</h2>
+<p>The budget is the delegation's main business, and RSA 24 sets out the
+sequence. Two bodies act, in turn, and the order is what decides who can
+change what.</p>
+
+<p><b>The commissioners propose.</b> Before 1 December each year they deliver
+their recommended budget to every member of the convention, to the chair of
+the selectmen of every town and the mayor of every city in the county, and to
+the Secretary of State (RSA 24:21-a, I). A county on an optional fiscal year
+does this before 1 June instead (RSA 24:21-a, II).</p>
+
+<p><b>There is a public hearing.</b> It is held not earlier than 5 nor later
+than 20 days after that statement is mailed, and the clerk of the convention
+publishes notice of it, with a summary of the budget, in a newspaper at least
+3 days ahead (RSA 24:23).</p>
+
+<p><b>The executive committee examines it.</b> The convention may designate
+the executive committee to sit as a subcommittee on the budget and report
+recommendations back to the full convention (RSA 24:2). That is where a county
+budget is gone through line by line, but the committee recommends: it does not
+appropriate.</p>
+
+<p><b>The delegation votes.</b> Raising county taxes and making appropriations
+are the convention's powers, not the commissioners' (RSA 24:13), so the figure
+the convention adopts may be above or below the one the commissioners
+recommended. The vote cannot be taken until 28 days have passed since the
+recommendations were mailed (RSA 24:21-a, III). Appropriations are itemised in
+detail and the clerk keeps the record of them (RSA 24:14, I).</p>
+
+<p><b>Missing the deadline has a consequence.</b> A convention that has not
+adopted a budget within 90 days of the start of the fiscal year does not get
+an extension. The budget as recommended by the commissioners takes effect as
+the county budget (RSA 24:14, II).</p>
+
+<h2>What happens after the budget is adopted</h2>
+<p>The delegation is still the body that has to be asked. Commissioners and
+county officers may not pay out money that has not been appropriated, or
+exceed what was appropriated (RSA 24:15).</p>
+
+<p><b>Supplemental appropriation:</b> a further appropriation made after the
+annual budget has been adopted. The commissioners may apply to the convention
+for one, or the convention may take one up on its own initiative. It needs
+notice to the members, towns and cities, a public hearing within 30 days of
+that notice, and its own vote of the convention (RSA 24:14-a). A narrower
+emergency route runs through the executive committee, again after a public
+hearing (RSA 24:15).</p>
+
+<p>The convention also sets what the elected county officers are paid. It
+establishes their salaries, benefits and other compensation every two years,
+acting on the executive committee's recommendation, before the filing period
+for the next election (RSA 23:7).</p>
+
+<p>These are the same people this site already holds pages for. A state
+representative has a second job most residents never see: the member who voted
+on a bill in Concord in the morning may spend the evening setting a county
+budget that arrives on the same property tax bill as the town's.</p>
+
+<h2>The county commissioners</h2>
+<p><b>County commissioners:</b> the county's executive, and the body that
+runs it day to day. RSA 662:4 divides each of the ten counties into three
+county commissioner districts, and one commissioner is chosen from each, so
+every county has three. In most counties each is elected by the voters of that
+district alone; in Carroll and Sullivan, each is elected from a district but by
+the voters of the whole county (RSA 653:1, VI).</p>
+
+<p>They choose a chairman and a clerk from among themselves (RSA 28:1). They
+have the custody and care of all property belonging to the county (RSA 28:4),
+run its departments from day to day, and prepare the budget the convention
+votes on. The county treasurer pays money out only on their orders
+(RSA 29:1).</p>
+
+<h2>The officers on the county part of your ballot</h2>
+<p>Five county officers are elected by the voters of the county at the state
+general election: a <b>sheriff</b>, a <b>county attorney</b>, a <b>county
+treasurer</b>, a <b>register of deeds</b> and a <b>register of probate</b>.
+The term is two years, except in Rockingham County, which moved to four-year
+terms in 2022, and Coos County, which did so in 2024 (RSA 653:1, V).</p>
+
+<p><b>Sheriff:</b> the sheriff and the sheriff's deputies serve and execute
+writs and other process directed to the department, and the department's
+bailiffs provide security in the state courts (RSA 104:5). Sheriffs and
+deputies have the same authority throughout the state as in their own county
+to serve process, investigate crimes and apprehend, and may enforce civil
+orders issued by any court (RSA 104:6).</p>
+
+<p><b>County attorney:</b> the county's prosecutor. The office acts under the
+direction of the Attorney General, performs the Attorney General's duties for
+the county in the Attorney General's absence, and prosecutes or defends suits
+in which the county has an interest (RSA 7:34).</p>
+
+<p><b>County treasurer:</b> has custody of all money belonging to the county,
+pays it out only on the commissioners' orders, keeps the account of what comes
+in and goes out, and reports at the end of the fiscal year (RSA 29:1).</p>
+
+<p><b>Register of deeds:</b> keeps the registry of deeds, which is the
+county's record of who owns which land. Every deed, mortgage and plan is
+recorded there and kept in the office the county provides (RSA 478:1).</p>
+
+<p><b>Register of probate:</b> still elected, and almost all of the duties are
+gone. The probate court became a division of the Circuit Court, and most of
+RSA 548 was repealed with effect from 1 July 2011. What is left is a duty to
+work with the administrative judge of the Circuit Court on preserving closed
+files of historical significance (RSA 548:5). The office is named in the
+constitution, so removing it takes an amendment and not a bill:
+<a href="bill/2022/cacr21.html">CACR 21 (2022)</a> would have struck it out,
+passed both chambers, and went to the voters, where it did not reach the
+<a href="learn/the-constitution.html">two thirds of those voting</a> an
+amendment needs.</p>
+
+<p><b>Coroner:</b> New Hampshire elects none. RSA 611, the coroners chapter,
+is repealed, and sudden, unexpected or unnatural deaths are investigated by
+the state's Office of the Chief Medical Examiner under RSA 611-B rather than
+by a county officer.</p>
+
+<h2>What the county pays for, and where the money comes from</h2>
+<p>Two things dominate a county budget. A county may provide, keep and
+maintain facilities for the confinement of prisoners, administered by a county
+department of corrections (RSA 30-B:1); that is the jail. And long-term care is
+a county liability: counties reimburse the state for nursing home and other
+long-term care Medicaid spending on the residents each county is answerable
+for, to the extent of the whole non-federal share of it, subject to a limit on
+how fast that bill may rise (RSA 167:18-a). Counties also run nursing homes of
+their own, which no chapter of Title II creates and which they have run for
+long enough that the statutes treat them as a given. The registry of deeds, the
+sheriff's department and the county attorney's office are on the county payroll
+as well.</p>
+
+<p>No county collects a tax directly. The county treasurer issues a warrant to
+the selectmen of each town in the county, requiring them to assess and collect
+that town's share of the county tax and pay it over (RSA 29:11). The town
+raises it in the property tax. That is why a tax bill carries a county line
+beside the town, school and state education lines, and why a vote taken by a
+delegation in December turns up on a bill months later.</p>
+""" + SHOWS.format("""
+<p><a href="legislators.html">Every member of both chambers</a> has a page
+here, with the county and district they were elected from. The House members
+from a county are that county's convention, so the roster is the membership
+list.</p>
+<p><a href="directory/towns.html">Every town and ward</a> is listed by county,
+with the districts that cover it.</p>""")
+
+BODY_COUNTY_HOLDS = """This site is the record of the state legislature, and
+county government is not in it. There are no county budgets here, no minutes
+or warrants of a county convention, no county election results and no county
+officers' accounts. What it does hold is the roster: the representatives who
+make up each county's delegation have pages here because of the other office
+they were elected to. The county's own record is kept by the county."""
+
+
+BODY_TOWNS = """
+<p>There are [[municipalities]] cities and towns in New Hampshire, and Title
+III of the Revised Statutes governs all of them. The difference between a city
+and a town is not size, and not the word on the sign. It is who the
+legislative body is &mdash; who adopts the budget and passes the
+ordinances.</p>
+
+<p>In a town, the legislative body is the voters themselves, assembled at
+<a href="learn/local-government.html">town meeting</a>. In a city, it is an
+elected council. Nearly everything else follows from that one difference.</p>
+
+<h2>A town: the meeting decides, the selectboard carries it out</h2>
+<p><b>Selectmen:</b> the executive of a town. The statutes say selectmen
+(RSA 41:8); selectboard is the term in common use now for the same body. A
+town elects one selectman each year for a 3-year term, which makes a board of
+three (RSA 41:8). On the written application of 25 registered voters, or 2
+percent of them, whichever is less and never fewer than 10, the question of
+increasing the board to 5 goes on the ballot (RSA 41:8-b).</p>
+
+<p>The board does not set policy on its own account. It carries out what the
+meeting voted, administers the town between meetings, and puts together the
+warrant for the next one. The money it spends is the money the meeting
+appropriated.</p>
+
+<p><b>Moderator:</b> presides at the meeting, regulates its business, decides
+questions of order and declares every vote passed. The moderator may postpone
+a session for a weather warning, or for an emergency that makes the place
+unsafe (RSA 40:4).</p>
+
+<h2>A city: a council decides, a mayor or a manager carries it out</h2>
+<p>A city has no town meeting. The powers the law vests in towns, or in the
+inhabitants of them, are exercised by the city council (RSA 47:1). The council
+may be called a <b>city council</b> or a <b>board of aldermen</b>; the name is
+the city's and the function is the same. How many members there are, and
+whether they are elected by ward or at large or both, is set by the city's
+charter.</p>
+
+<p><b>Mayor:</b> under the general law the mayor is the chief executive
+officer of the city (RSA 45:7), presides in the board of aldermen, and has a
+veto the aldermen can override only by two thirds of all the aldermen elected
+(RSA 45:9).</p>
+
+<p><b>Council-manager:</b> the other common arrangement, set out for charter
+cities at RSA 49-C. The charter names either the mayor or an appointed
+<b>city manager</b> as chief administrative officer, heading the
+administrative branch, supervising the city's administrative affairs and
+carrying out the policies the elected body enacts (RSA 49-C:16). The council
+appoints the manager for an indefinite term and fixes the salary, by a vote of
+at least a majority of the council, and the charter sets out how the manager
+may be removed (RSA 49-C:17). Where a city runs this way, the mayor chairs the
+council and the manager runs the administration.</p>
+
+<h2>Town managers and town administrators</h2>
+<p>A town may adopt the town manager form under RSA 37. It takes a vote: the
+chapter does not operate in a town until a majority of the voters present and
+voting at an annual meeting adopt it, and 10 or more voters may petition to
+put the question on the warrant (RSA 37:11). Once adopted, the selectmen
+appoint the manager (RSA 37:2), who becomes the administrative head of all
+departments of the town and is responsible for administering them (RSA 37:5).
+The manager appoints and dismisses subordinate staff, examines the affairs of
+any department, and prepares the year's expenditure and revenue estimates
+(RSA 37:6). What the manager does not get are the things the meeting and the
+selectmen keep: warning town meetings, making bylaws, borrowing money, and
+assessing or collecting taxes (RSA 37:5).</p>
+
+<p>A <b>town administrator</b> is a different thing, and the difference
+matters when you are working out who decides. There is no statutory office of
+town administrator. The selectmen hire one to help them run the town's
+business, and the administrator works under their direct supervision. Adopting
+RSA 37 moves authority from the elected board to an appointed officer; hiring
+an administrator does not, and needs no vote of the meeting.</p>
+
+<h2>Village districts</h2>
+<p><b>Village district:</b> a smaller unit inside one or more towns, formed to
+provide one service or a few. On the petition of 10 or more voters domiciled
+in a village the selectmen fix the district's bounds, and the statute lists
+the purposes one may be formed for: fire protection, street lighting, water
+supply, sidewalks and drains, sewage, parks, police, roads and ambulance
+service among them (RSA 52:1). Once formed it is a body corporate and politic,
+with the same powers a town has in relation to the same objects
+(RSA 52:3).</p>
+
+<p>A district holds its own meeting and has its own moderator, clerk,
+treasurer and commissioners, who have the same powers over the district's
+business as a town's moderator, clerk, treasurer and selectmen have over the
+town's (RSA 52:8). A village district may adopt the manager form on the same
+footing as a town (RSA 37:14). If you live in one, it is a separate line on
+your tax bill.</p>
+
+<h2>The other names on a town ballot</h2>
+<p>Some offices every town elects by ballot: selectmen, the moderator, the
+supervisors of the checklist, the town clerk, the town treasurer and highway
+agents (RSA 669:15).</p>
+
+<p>Others a town elects only if it has voted to: the tax collector, town
+assessors, constables or police officers, the fire chief or firewards, and the
+elected members of a planning board, zoning board of adjustment, budget
+committee or conservation commission (RSA 669:17).</p>
+
+<table><tbody>
+<tr><td><b>Town clerk</b></td><td>Keeps the town's records, issues the
+licences and registrations, and runs the mechanics of elections. A town may
+vote to make the term 3 years (RSA 41:16-b).</td></tr>
+<tr><td><b>Tax collector</b></td><td>Collects the taxes the selectmen commit,
+remits them to the treasurer weekly, keeps the account of what was collected
+and abated, and reports at year end (RSA 41:35).</td></tr>
+<tr><td><b>Clerk/tax collector</b></td><td>Many towns have combined the two
+into one office. It takes a petitioned article and a majority at the annual
+meeting, and the combined officer is then elected for a term of one year or
+three (RSA 41:45-a).</td></tr>
+<tr><td><b>Treasurer</b></td><td>Has custody of the town's money, pays it out
+on the selectmen's orders, keeps the accounts, and invests what is not
+immediately needed under the selectmen's investment policy
+(RSA 41:29).</td></tr>
+<tr><td><b>Supervisors of the checklist</b></td><td>Three legal voters of the
+town, who keep the voter checklist. One is elected every even-numbered year
+for 6 years, unless the town has adopted 3-year terms
+(RSA 41:46-a).</td></tr>
+<tr><td><b>Trustees of trust funds</b></td><td>Three, or five if the town has
+voted for five, administering the funds held in trust for the town. One is
+elected each year for three years (RSA 31:22).</td></tr>
+<tr><td><b>Library trustees</b></td><td>Any odd number the town decides on,
+elected at town meeting for staggered 3-year terms (RSA 202-A:6).</td></tr>
+<tr><td><b>Cemetery trustees</b></td><td>Elected by ballot at the annual town
+meeting to replace those whose terms expire; in a city, chosen as the city's
+ordinance provides (RSA 289:6).</td></tr>
+</tbody></table>
+
+<h2>Planning board and zoning board of adjustment</h2>
+<p>These two decide what may be built and where, and whether a particular
+property is let off a rule. In some towns you elect them and in others you do
+not, and which it is was a choice the town made.</p>
+
+<p>A <b>planning board</b> has 5 or 7 members in most towns, 7 or 9 in a town
+with a council, and 9 in a city. Members are appointed by the selectmen unless
+the local legislative body has voted that they be elected, and a town that has
+voted for election may later vote to go back (RSA 673:2).</p>
+
+<p>A <b>zoning board of adjustment</b> has 5 members, either elected in the
+manner RSA 669 prescribes or appointed in the manner the local legislative
+body prescribes (RSA 673:3).</p>
+
+<h2>School boards and the SAU</h2>
+<p>A school district is a body separate from the town, with its own meeting,
+its own budget and its own ballot. Its <b>school board</b> has 3, 5, 7 or 9
+members as the district votes, and 3 if it has not voted, elected for three
+years with an equal number elected each year where that can be done
+(RSA 671:4). A cooperative school district covers more than one town, and its
+board is made up of members from each.</p>
+
+<p><b>School administrative unit:</b> the SAU, the administrative body serving
+one district or several together. Its board is made up of the school board
+members of the districts in it. That board arranges superintendent services,
+sets the salaries of the administrative staff and apportions the cost among
+the member districts, and it has the power to remove the superintendent
+(RSA 194-C:5). This is why the superintendent answers to a board you did not
+vote for directly: you elected your district's school board, and your
+district's school board sits on the SAU board.</p>
+
+<h2>Changing the form of government: the charter</h2>
+<p><b>Charter:</b> a municipality's own written constitution, adopted by its
+voters. Any incorporated town or city, whatever its population, may draw one
+up under RSA 49-B, the home rule chapter. A charter prepared under RSA 49-C
+establishes a city government; one prepared under RSA 49-D establishes a town
+government (RSA 49-B:2).</p>
+
+<p>It starts with a question on the ballot. On the petition of 25 registered
+voters, or 2 percent of them, whichever is less and never fewer than 10, the
+voters are asked whether a charter commission shall be established
+(RSA 49-B:3). If they say yes, the commission is elected, it reports, and the
+charter it writes goes back to the voters at a referendum. An existing charter
+is amended by the same route (RSA 49-B:5), and a municipality may vote to
+return to the form of government it had before (RSA 49-B:12).</p>
+
+<p>A town charter does not have to abolish the town meeting. RSA 49-D:3 sets
+out the forms a town charter may choose between: a town council; an official
+ballot town council; a budgetary town meeting, which keeps the meeting but
+limits it to the operating budget and bonds; an official ballot town meeting;
+and a representative town meeting, where members elected from districts vote
+in place of the whole electorate. A charter may also make a <b>town
+manager</b> the chief administrative officer, under the town council-town
+manager form (RSA 49-D:2).</p>
+
+<p>This is why two towns of the same size, ten miles apart, can be run in
+entirely different ways, and why the offices on your ballot are not the
+offices on your neighbour's.</p>
+""" + SHOWS.format("""
+<p><a href="directory/towns.html">Every town and ward</a> is listed here with
+the House and Senate districts that cover it, which is the route from where
+you live to the legislators who represent it.</p>
+<p>Bills changing what towns and cities may do arrive in the record
+constantly. They are in <a href="bills.html">the bill list</a> with everything
+else, and a bill's page names the committee that heard it.</p>""")
+
+BODY_TOWNS_HOLDS = """This site holds the state legislature's record and
+nothing municipal. There are no town or city budgets here, no warrants, no
+minutes of a selectboard or a council, no local ordinances and no municipal
+election results. Your town or city clerk keeps those. This page is here
+because bills about towns and cities arrive in the record every week, written
+as though you already knew all of this."""
+
 
 BODY_TESTIFYING = """
 <p>A public hearing is the meeting at which a committee hears a bill before it
@@ -942,6 +1349,16 @@ SRC_JLCAR = ("Joint Legislative Committee on Administrative Rules",
 SRC_AGENCIES = ("State agencies, A to Z",
                 NH + "/government/state-government-agencies")
 SRC_SOS = ("Secretary of State", "https://www.sos.nh.gov")
+# Neither of the two below is an authority, and both are labelled so, the way
+# SRC_BALLOT_LIST is. They are here because each is the place the officials
+# themselves send a resident next, and neither the state nor the counties
+# publish an equivalent in one place.
+SRC_COUNTIES = ("County government, county by county (New Hampshire "
+                "Association of Counties, a membership body)",
+                "https://www.nhcounties.org")
+SRC_NHMA = ("Guidance for towns and cities (New Hampshire Municipal "
+            "Association, a membership body)",
+            "https://www.nhmunicipal.org")
 # Not an authority, and labelled so. Every other source on these pages is
 # the body that made the thing; this is a third party's list, included
 # because it carries the vote share each amendment got at the polls and
@@ -1020,6 +1437,22 @@ TOPICS = [
           BODY_LOCAL,
           [SRC_RSA, SRC_SOS],
           BODY_LOCAL_HOLDS),
+
+    topic("county-government", "County government", HOW,
+          "Ten counties, and the body that sets each one's budget is the "
+          "state representatives you already elected, meeting under a second "
+          "name.",
+          BODY_COUNTY,
+          [SRC_RSA, SRC_COUNTIES, SRC_SOS],
+          BODY_COUNTY_HOLDS),
+
+    topic("city-and-town-government", "Cities, towns and who runs them", HOW,
+          "A town meeting and a selectboard, or a council and a mayor, or a "
+          "council and a manager -- and the other offices you elect without "
+          "being told what they do.",
+          BODY_TOWNS,
+          [SRC_RSA, SRC_NHMA, SRC_SOS],
+          BODY_TOWNS_HOLDS),
 
     topic("testifying", "Testifying and attending", PART,
           "The most open part of the process and the least known. Anyone may "

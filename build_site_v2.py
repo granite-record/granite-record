@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.93
+# GRANITE_VERSION: 2026-09-05.94
 """
 Generate the faceted site from real General Court data.
 
@@ -3290,6 +3290,22 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     current = max(bills) if bills else ""
     n_stale = 0
     n_chapter = Counter()
+    # THE ABOUT PAGE'S ARITHMETIC, COUNTED WHERE THE STATIONS ARE MADE.
+    # about.html described the site's timing coverage in eight typed figures.
+    # Seven of them were wrong by 17 September -- it said 10,810 proceedings
+    # against 101,290, and 1,068 with no recording against 78,344 -- because
+    # they were true of one term on the day somebody typed them and the site
+    # grew eighteen more terms afterwards. A figure a person retypes is a
+    # figure that goes stale silently, and this one was published as a
+    # statement about the site's accuracy.
+    #
+    # Counted here rather than re-derived: this loop already holds every
+    # station the site will draw, so the tally costs nothing and cannot
+    # disagree with the pages. about_figures.py reads the file and refuses to
+    # print a sentence it has no number for.
+    station_states = Counter()
+    station_kinds = Counter()
+    n_station_bills = 0
     for bid, b in ((k, v) for byb in bills.values() for k, v in byb.items()):
         # New Hampshire sits in two-year terms beginning in odd years. Bill
         # numbers are unique across the whole term, so the term -- not the year
@@ -3434,6 +3450,40 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         stations += [station_for_floor(f, bid, marks)
                      for f in floor.get((term, bid), [])]
         stations.sort(key=lambda x: (x["when"], x.get("time") or ""))
+        # The census, taken after the sort so it counts exactly the list the
+        # page receives -- including the floor stations, which is the half of
+        # the record five tools in one day were found to be missing.
+        if stations:
+            n_station_bills += 1
+        for _st in stations:
+            _state = str(_st.get("state") or "?")
+            station_states[_state] += 1
+            station_kinds[str(_st.get("what") or "?")] += 1
+            # THE FOUR GROUPS A READER ACTUALLY MEETS, which are not the
+            # eleven state names. Either the page puts you at the moment the
+            # bill was taken up; or it offers the recording and says it has
+            # not established the moment; or the bill went through on a
+            # consent calendar and there is no moment to find; or there is no
+            # recording to offer.
+            #
+            # Taken from the station itself rather than from a list of state
+            # names, because the states do not divide on this cleanly: a
+            # "floor_dated" station has a stated start on the few occasions
+            # the clerk's reading of the committee report was found and none
+            # on the rest, so a list would have to know that. The two
+            # exceptions are named because they are claims the station's own
+            # fields do not carry: "whole_video" needs no start, the recording
+            # being the proceeding; and "candidates" has no video_id yet draws
+            # every recording the sitting could be, which is an offer of
+            # recordings and not the absence of one.
+            if _st.get("start") is not None or _state == "whole_video":
+                station_states["_placed"] += 1
+            elif _state == "consent":
+                station_states["_consent"] += 1
+            elif _st.get("video_id") or _state == "candidates":
+                station_states["_recording_only"] += 1
+            else:
+                station_states["_no_recording"] += 1
 
         # Under the filing year, because a bill number is unique within a term
         # and not beyond it. A 2027 HB686 is a different bill from this one and
@@ -3602,6 +3652,35 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
               f" from the status page, {n_chapter['the docket']:,} from the "
               f"docket; {n_chapter['differ']} where the two differ (the "
               f"page's field shown), {n_chapter['withheld']} withheld")
+
+    # THE ABOUT PAGE'S ARITHMETIC, written here rather than in main() because
+    # this is the function that holds the counter. station_states above says
+    # why it is counted at all.
+    #
+    # The four group totals share the counter, so the sum of everything in it
+    # is twice the number of stations. Counted off the state names instead --
+    # the ones a station actually carries, which never begin with "_".
+    _n_stations = sum(v for k, v in station_states.items()
+                      if not k.startswith("_"))
+    # Written under site/ beside the other build products. Nothing fetches it;
+    # build_pages.py runs next in the pipeline and writes about.html from it.
+    (out / "station_census.json").write_text(json.dumps({
+        "total": _n_stations,
+        "bills": n_station_bills,
+        "placed": station_states["_placed"],
+        "recording_only": station_states["_recording_only"],
+        "consent": station_states["_consent"],
+        "no_recording": station_states["_no_recording"],
+        "by_state": {k: v for k, v in station_states.most_common()
+                     if not k.startswith("_")},
+        "by_kind": dict(station_kinds.most_common()),
+    }, indent=1), encoding="utf-8")
+    print(f"  station census: {_n_stations:,} stations across "
+          f"{n_station_bills:,} bills "
+          f"({station_states['_placed']:,} placed at the moment, "
+          f"{station_states['_recording_only']:,} recording only, "
+          f"{station_states['_consent']:,} consent calendar, "
+          f"{station_states['_no_recording']:,} no recording)")
     return index, years, unnamed, dict(sponsored)
 
 
