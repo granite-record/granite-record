@@ -126,7 +126,7 @@
     "testimony_from_db.py": "2026-09-11.1",
     "tests/test_markers.py": "2026-09-05.5",
     "text_sponsors.py": "2026-09-14.3",
-    "topic_model.py": "2026-09-16.1",
+    "topic_model.py": "2026-09-16.2",
     "topics.py": "2026-09-12.2",
     "transcribe_and_align.py": "2026-09-04.2",
     "verify_batch.py": "2026-09-04.4",

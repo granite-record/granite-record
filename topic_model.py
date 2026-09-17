@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.1
+# GRANITE_VERSION: 2026-09-16.2
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
     python3 topic_model.py --apply              # write topics_assigned.json
@@ -173,11 +173,25 @@ HOUSING_COMMITTEE = "housing"
 # and "foreclosure" is a lending matter that belongs with Banking. Both were
 # in the list this rule was drawn from and both were dropped after reading
 # what they caught.
+#
+# THE LEADING \b IS LOAD-BEARING, and it was missing for a day. Without it
+# "rental" matches inside "parental" and "rents" inside "grandparents", so
+# 252 bills were filed under Housing that have nothing to do with it -- almost
+# all of them school choice and parental rights: "allowing parents to send
+# their children to any school district they choose", "relative to
+# grandparents' visitation rights", "relative to parental consent". "tenant"
+# matched inside "lieutenant" and "housing" inside "warehousing" as well.
+#
+# There is deliberately NO trailing \b. "evict" has to reach "eviction" and
+# "evicted", and "rental" has to reach "rentals"; a right-hand boundary would
+# cut exactly the words this is for.
 HOUSING_RE = re.compile(
+    r"\b(?:"
     r"housing|landlord|tenant|eviction|evict"
     r"|accessory dwelling|manufactured housing|manufactured home|mobile home"
     r"|condominium|short-?term rental|residential lease"
-    r"|rental|rents", re.I)
+    r"|rental|rents"
+    r")", re.I)
 
 
 def is_housing(title):
