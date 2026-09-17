@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.52
+# GRANITE_VERSION: 2026-09-04.53
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -171,6 +171,12 @@ def shell(t, b, d, base, raw=None, data_url=None, current_term=""):
         # read "HB 1442-FN -- New Hampshire General Court": nothing about the
         # bill, and a card that looked like the General Court's own page.
         og_title=S.clip(f"{n} ({yr}): {clean_title(title)}" if yr and title else n, 110),
+        # THE SAME NAME, UNCLIPPED, FOR THE CITATION. og_title above is cut to
+        # 110 characters because a social card has a width; a citation has
+        # none, and a bill's full title is the one thing in it that must not
+        # be shortened. 11,558 of these exceed that 110 and would otherwise
+        # still be quoted with an ellipsis inside somebody's bibliography.
+        cite_title=(f"{n} ({yr}): {clean_title(title)}" if yr and title else n),
         og_image="og-bill.png", og_alt="Granite Record: bills, votes and hearings",
         description=describe(b), alternate=feed,
         globals={"GR_BILL": f"{yr}/{bid}", "GR_STANDALONE": True},

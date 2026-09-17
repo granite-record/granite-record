@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.17
+# GRANITE_VERSION: 2026-09-07.18
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -119,16 +119,22 @@ def cite_block(path, title, base, built=""):
     url = f"{base}{canon(path)}"
     # The record's name, without the browser tab's " | Granite Record".
     name = title.split(" | ")[0].strip()
+    # MLA, APA and Chicago each close the name with a full stop of their own,
+    # and 33,313 of 33,683 bill titles already end in one -- "relative to
+    # portable electronics insurance.." . BibTeX adds none, so it keeps the
+    # name as written. Only ONE trailing stop is removed: an ellipsis is left
+    # alone, because a name that really was shortened should still look it.
+    stem = name[:-1].rstrip() if name.endswith(".") and not name.endswith("…") else name
     day = f'<span class="citeday">{E(built)}</span>'
     # A BibTeX key a person can read: the address, minus the punctuation
     # BibTeX treats as syntax.
     key = canon(path).strip("/").replace("/", "-").replace(".", "") or "granite-record"
     forms = [
-        ("MLA", f'&ldquo;{E(name)}.&rdquo; <i>{BRAND}</i>, {E(url)}. '
+        ("MLA", f'&ldquo;{E(stem)}.&rdquo; <i>{BRAND}</i>, {E(url)}. '
                 f'Accessed {day}.'),
-        ("APA", f'{BRAND}. (n.d.). <i>{E(name)}</i>. Retrieved {day}, '
+        ("APA", f'{BRAND}. (n.d.). <i>{E(stem)}</i>. Retrieved {day}, '
                 f'from {E(url)}'),
-        ("Chicago", f'{BRAND}. &ldquo;{E(name)}.&rdquo; Accessed {day}. '
+        ("Chicago", f'{BRAND}. &ldquo;{E(stem)}.&rdquo; Accessed {day}. '
                     f'{E(url)}.'),
         ("BibTeX", f'<code>@misc{{{E(key)},<br>&nbsp;&nbsp;title = '
                    f'{{{E(name)}}},<br>&nbsp;&nbsp;howpublished = {{{BRAND}}},'
@@ -279,7 +285,7 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
          alternate="", skip_label="Skip to the content", og_title=None,
          sr_title=None, nav_current="", jsonld=None,
          data_json=None, data_url=None, og_type="article", og_image=None,
-         og_alt=None, cite=True):
+         og_alt=None, cite=True, cite_title=None):
     """One record's page: the template, told which record it is.
 
     sr_title replaces the template's own visually-hidden <h1>. bills.html
@@ -384,8 +390,25 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     # Below the record and above the footer, outside #results so app.js
     # rewriting the page cannot take it away.
     if cite:
+        # NOT `title`, which is the browser tab's version and has already been
+        # elided to fit: "prohibiting the use of state funds for new…". Every
+        # citation built from it quoted a name the bill does not have, on
+        # 25,596 of 33,683 bill pages.
+        #
+        # And not og_title either, on its own. That one is clipped to 110
+        # characters, which still truncates 11,558 bill titles -- better, but
+        # a citation that is right two times in three is not right. So a
+        # caller with the untruncated name passes cite_title and nothing
+        # shortens it; the others fall back through og_title to title, which
+        # is correct for pages whose names are short anyway.
+        #
+        # A citation is a claim about what a document is CALLED, and unlike
+        # everything else on the page it gets pasted into someone else's work
+        # and outlives the visit. It is the one string here worth carrying
+        # separately.
         out = out.replace('<footer><div class="in">',
-                          cite_block(path, title, base, BUILT)
+                          cite_block(path, cite_title or og_title or title,
+                                     base, BUILT)
                           + '<footer><div class="in">', 1)
 
     out = out.replace(
