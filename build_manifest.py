@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.8
+# GRANITE_VERSION: 2026-09-05.9
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
@@ -18,7 +18,7 @@ import csv
 import re
 import sys
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 try:
@@ -65,12 +65,179 @@ def family(c):
     return m.group(1) if m else c
 
 
-def load_videos(paths):
+# ---- the title's committee, said the way the docket says it ---------------
+#
+# The join below is on the committee STRING, and the two sources spell it
+# differently: "Senate Education Committee Remote Public Hearing" against the
+# docket's "Education and Workforce Development", "Commerce Committee" against
+# "Commerce", "Science, Technology, and Energy" against "Science, Technology
+# and Energy". Keyed on the raw string, 2,144 proceedings since May 2020 said
+# no recording existed on a day their own chamber had recorded one.
+#
+# ROSTER is the docket's own committee names for that chamber and term, so
+# nothing here invents a committee: a title resolves to a name the General
+# Court used in that term, or it does not resolve and the string is left
+# exactly as it was.
+WORD = re.compile(r"[A-Za-z0-9]+")
+
+# What may follow a committee's name and still be that committee. Every word
+# was read off a real title: "Commerce Committee Remote Public Hearing",
+# "Judiciary Afternoon", "Education Exec Session", "Senate Finance Committee
+# Agency Budget Presentations-April 12", "Public Works and Highways (5/5/21
+# full video downloaded from Zoom)", "Executive Departments and Administration
+# LOB 306/308", "Senate Transportation Committee Public Hearing on HB 1135 and
+# Amendment to HB 1135", "Special Committee on Redistricting - Community Input
+# Session".
+#
+# What is NOT in this list is the point. "Division" is absent, so "Finance
+# Division III" never collapses into "Finance" and AMBIGUOUS_FAMILIES keeps
+# its job. "Oversight" and "Council" are absent, so "Health and Human Services
+# Oversight Committee" (60 rows) and "New Hampshire Transportation Council"
+# stay unresolved rather than handing a joint body's recording to a standing
+# committee's hearings. Likewise "Higher": "Public Higher Education Study
+# Committee" abbreviates to "Public", which prefixes nothing else the House
+# has, and would otherwise have become Public Works and Highways.
+NOISE = set("""
+committee committees subcommittee
+public hearing hearings remote meeting meetings session sessions
+executive exec work full stream continued afternoon morning evening
+deliberations budget briefing agency presentations orientation
+community input zoom download downloaded from video entire part
+lob sh room on of the to for with w audio no amendment amendments
+hb sb cacr hr sr hcr scr hjr jr fn a l
+january february march april may june july august september october
+november december jan feb mar apr jun jul aug sept sep oct nov dec
+monday tuesday wednesday thursday friday
+""".split())
+
+
+def canon(s):
+    """Committee name as comparable words. "&" is spelled out and "and" is
+    dropped, because the clerk writes all three of "Health, Human Services and
+    Elderly Affairs", "Health and Human Services and Elderly Affairs" and
+    "Executive Departments & Administration" for committees the docket names
+    once."""
+    return " ".join(w for w in WORD.findall(s.replace("&", " and ").lower())
+                    if w != "and")
+
+
+def _all_noise(words):
+    return all(w.isdigit() or w in NOISE for w in words)
+
+
+def resolve_committee(name, roster):
+    """The docket's name for this committee, or None if it cannot be said.
+
+    Two ways a title names a committee, and a tail of meeting words after
+    either one:
+
+      "Commerce Committee Remote Public Hearing" -- the docket's whole name,
+      then noise.
+
+      "Senate Education (01/13)" in the 2019-2020 term -- an abbreviation of
+      "Education and Workforce Development", accepted only when exactly one
+      committee on that chamber's roster begins with those words.
+
+    None means leave the string alone. That is the safe answer: an unresolved
+    title matches nothing, which is what it did before.
+    """
+    words = canon(name).split()
+    if not words or not roster:
+        return None
+    for n in range(len(words), 0, -1):
+        if " ".join(words[:n]) in roster:
+            return (roster[" ".join(words[:n])]
+                    if _all_noise(words[n:]) else None)
+    for n in range(len(words), 0, -1):
+        hits = {r for c, r in roster.items() if c.split()[:n] == words[:n]}
+        if len(hits) > 1:
+            return None
+        if len(hits) == 1:
+            return hits.pop() if _all_noise(words[n:]) else None
+    return None
+
+
+def build_roster(procs):
+    """{body: {canon name: the docket's name}} from this term's proceedings."""
+    roster = {}
+    for p in procs:
+        if p.committee:
+            roster.setdefault(p.body, {}).setdefault(canon(p.committee),
+                                                     p.committee)
+    return roster
+
+
+# WHAT THE CHANNEL INDEX COULD NOT PARSE, READ AGAIN FROM ITS OWN TITLE.
+#
+# fetch_channel_index.py writes title_parsed=NO and leaves parsed_committee
+# and parsed_date empty when TITLE_RE misses, and _load_one used to drop those
+# rows. 459 of the 510 rows in videos_senate_2019-01-01_to_2022-12-31.csv are
+# such rows -- the whole Senate channel from May 2020 to the end of 2022,
+# because the Senate's clerk wrote "Senate Judiciary (01.11)" and "Senate
+# Health and Human Services Committee Public Hearing" where the House writes
+# "House Election Law (03/07/2025)". Only 11 of the 459 take one fixed shape.
+#
+# Re-reading them here rather than re-fetching: fetch_channel_index.py has no
+# --reparse, the index is on disk, and a parser is allowed to be wrong without
+# costing a request to somebody else's server.
+#
+# The leading phrase the clerk puts before the committee, from the real
+# titles: "Public Hearing of the NH Senate Executive Departments and
+# Administration Committee", "Remote Public Hearing of the Senate Education
+# Committee", "NH Senate Executive Departments & Administration Committee".
+# It is a closed list on purpose -- "Joint Legislative Education Committee
+# Hearing" and "Remote Meeting of Joint Education Committee" must NOT reduce
+# to Education, and they do not, because "Joint" is not a way to open a title.
+RECOVER_LEAD = re.compile(
+    r"^\s*(?:(?:remote\s+)?(?:public\s+hearing|hearing|meeting|work\s+session|"
+    r"executive\s+session)s?\s+(?:of|on)\s+(?:the\s+)?)?"
+    r"(?:(?:nh|n\.?h\.?|new\s+hampshire)\s+)?"
+    r"(?:(?:senate|house)\s+)?", re.I)
+
+# A date with a year, anywhere in the title. Only used where the row has no
+# livestream start time at all: "Ways and Means (5/5/21 full download from
+# Zoom)" is one of four such rows and carries its date nowhere else.
+RECOVER_DATE = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{2,4})\b")
+
+
+def recover_title(row, roster_for_body):
+    """(committee, date) for a row the channel index could not parse.
+
+    The date comes from start_eastern, not from the title: it is the moment
+    the stream actually went live, it is present on 455 of the 459, and 190 of
+    those titles carry no year -- "Senate Commerce (04/05)". Where the two are
+    both present and disagree the title is the one that is wrong: the clerk
+    typed "Administrative Rules (01/19/23)" on a stream that went out on
+    19 January 2024.
+    """
+    cmte = resolve_committee(RECOVER_LEAD.sub("", row["title"], count=1),
+                             roster_for_body)
+    if not cmte:
+        return None, None
+    if row.get("start_eastern"):
+        return cmte, row["start_eastern"][:10]
+    m = RECOVER_DATE.search(row["title"])
+    if m:
+        mo, d, y = (int(x) for x in m.groups())
+        y += 2000 if y < 100 else 0
+        try:
+            return cmte, date(y, mo, d).isoformat()
+        except ValueError:
+            return None, None
+    return None, None
+
+
+def load_videos(paths, roster=None):
     """Read one or more video index CSVs, tagging each row with its chamber.
 
     The chamber comes from the filename, since fetch_channel_index.py names
     them videos_house_... and videos_senate_..., and the CSV itself does not
     record which channel it came from.
+
+    `roster` is {body: {canon name: docket name}} from this term's docket. It
+    is what lets a title be read against the committees that actually sat;
+    without it this behaves exactly as it did before, which is what a caller
+    with no docket to hand should get.
     """
     if isinstance(paths, str):
         paths = [paths]
@@ -101,19 +268,31 @@ def load_videos(paths):
     # Counted twice it would look like a committee streamed the same sitting
     # on two channels, and the day would be treated as ambiguous.
     out, seen, dupes = [], {}, 0
+    recovered, unreadable = 0, []
     for p in files:
         body = "S" if "senate" in str(p).lower() else "H"
-        for v in _load_one(p):
+        for v in _load_one(p, (roster or {}).get(body) or {}, unreadable):
             if v["video_id"] in seen:
                 dupes += 1
                 continue
             seen[v["video_id"]] = True
             v["body"] = body
             v["source"] = str(p)
+            recovered += v["recovered"]
             out.append(v)
     print(f"  {len(out):,} videos from {len(files)} file(s)"
           + (f", {dupes:,} duplicates across overlapping ranges skipped"
              if dupes else ""))
+    # SAY WHAT WAS DROPPED. This loop discarded 554 rows across the twelve
+    # indexes without a word, and the largest block of them -- the Senate from
+    # May 2020 -- read as a chamber that had never been filmed.
+    if recovered or unreadable:
+        print(f"  {recovered:,} recovered by re-reading a title the channel "
+              f"index could not parse, {len(unreadable):,} still unreadable")
+        for t in unreadable[:5]:
+            print(f"      {t[:72]}")
+        if len(unreadable) > 5:
+            print(f"      ... and {len(unreadable) - 5:,} more")
     # What the indexes actually cover, so a gap is visible rather than
     # discovered later as a proceeding with no video.
     dates = sorted(v["date"] for v in out if v.get("date"))
@@ -129,20 +308,33 @@ def load_videos(paths):
     return out
 
 
-def _load_one(path):
+def _load_one(path, roster, unreadable):
     vids = []
     for r in csv.DictReader(open(path, encoding="utf-8")):
-        if r["title_parsed"] != "yes":
-            continue
-        raw = r["parsed_committee"]
+        if r["title_parsed"] == "yes":
+            raw = r["parsed_committee"]
+            cmte, when, got = norm_title_committee(raw), r["parsed_date"], 0
+            cmte = resolve_committee(cmte, roster) or cmte
+        else:
+            raw = r["title"]
+            cmte, when = recover_title(r, roster)
+            got = 1
+            if not (cmte and when):
+                unreadable.append(r["title"])
+                continue
         vids.append({
             "video_id": r["video_id"],
             "title": r["title"],
-            "date": r["parsed_date"],
+            "date": when,
             "committee_raw": raw,
-            "committee": norm_title_committee(raw),
-            "family": family(norm_title_committee(raw)),
+            "committee": cmte,
+            "family": family(cmte),
             "start_eastern": r["start_eastern"],
+            # How long it was on air. The only thing in the index that can
+            # separate two recordings of one committee on one day -- see
+            # on_air_at below.
+            "duration_iso": r.get("duration_iso") or "",
+            "recovered": got,
             "bills_in_title": {f"{m.group(1)}{m.group(2)}"
                                for m in BILLS_IN_TITLE.finditer(r["title"])},
         })
@@ -160,6 +352,38 @@ def predicted_offset(sched_time, start_eastern):
     h, m = (int(x) for x in sched_time.split(":"))
     sched = st.replace(hour=h, minute=m, second=0)
     return int((sched - st).total_seconds())
+
+
+DURATION = re.compile(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?")
+
+
+def on_air_at(v, sched_date, sched_time):
+    """Was this recording live when the docket says the bill was taken up?
+
+    None when the index cannot say -- no start time, no duration, or no
+    scheduled time -- which is not the same answer as False and is treated as
+    such by the caller.
+
+    This is the clock, not a guess. Two recordings of House Election Law on
+    18 March 2025: the subcommittee work session went out 08:57 to 09:40 and
+    the committee 09:58 to 12:08, and the docket puts HB 418's work session at
+    09:00 and its executive session at 10:00. One reading of the same index
+    that was already on disk separates them.
+    """
+    if not sched_time or not v.get("start_eastern"):
+        return None
+    m = DURATION.fullmatch(v.get("duration_iso") or "")
+    if not m:
+        return None
+    try:
+        st = datetime.strptime(v["start_eastern"], "%Y-%m-%d %H:%M:%S")
+        h, mi = (int(x) for x in sched_time.split(":"))
+        want = datetime.strptime(sched_date, "%Y-%m-%d").replace(hour=h,
+                                                                 minute=mi)
+    except ValueError:
+        return None
+    hrs, mins, secs = (int(x or 0) for x in m.groups())
+    return st <= want <= st + timedelta(seconds=hrs * 3600 + mins * 60 + secs)
 
 
 def hhmmss(sec):
@@ -299,7 +523,7 @@ def main():
     #
     # Which chambers are covered now follows from the video indexes given,
     # rather than being fixed in the code.
-    vids = load_videos(a.videos)
+    vids = load_videos(a.videos, build_roster(procs))
     bodies = {v.get("body") or ("S" if "senate" in (v.get("source") or "").lower()
                                 else "H") for v in vids}
     procs = [p for p in procs
@@ -370,19 +594,59 @@ def main():
             cands = candidates(p, "S" if p.body == "H" else "H")
 
         named = [v for v in cands if p.bill in v["bills_in_title"]]
+        # TWO RECORDINGS OF ONE COMMITTEE ON ONE DAY, AND WHICH ONE WAS ON AIR.
+        #
+        # 576 proceedings since May 2020 have more than one candidate, and the
+        # matcher used to decline all of them -- which the site then drew as
+        # "No recording matched to this proceeding", a stronger claim than the
+        # evidence carries in the opposite direction. On 250 of them exactly
+        # one candidate was broadcasting at the scheduled minute, and that is
+        # the recording: a 1m06s false start against a 6h32m stream of House
+        # Judiciary on 2 February 2021, "Senate Commerce (04/05)" at 08:59
+        # against a second part at 10:18.
+        #
+        # Checked against the captions, which are nobody's inference here: of
+        # the 250, 29 name the bill in the recording this picked and in no
+        # other, and the one apparent contradiction is the pair above, where
+        # the clock is right and the subcommittee simply never said "418".
+        # ground_truth.csv reaches none of these 250, so it neither confirms
+        # nor refutes them.
+        #
+        # NOT the Finance divisions. The docket does not record which division
+        # holds a bill, so a division that streamed while another did not
+        # would collect the other's hearings -- which is exactly what
+        # AMBIGUOUS_FAMILIES exists to refuse. They stay unpicked.
+        on_air = []
+        if len(cands) > 1 and not named and \
+                family(p.committee or "") not in AMBIGUOUS_FAMILIES:
+            says = [on_air_at(v, p.sched_date, p.sched_time) for v in cands]
+            if all(s is not None for s in says):
+                on_air = [v for v, s in zip(cands, says) if s]
+
+        # The row's own words and the bucket it is counted in, decided
+        # together. The summary at the end used to derive the bucket by
+        # cutting the row's words at " -" or " that", which silently made a
+        # bucket per candidate count the moment a new phrasing arrived.
         if named:
             cands, match = named, "title names this bill"
+            bucket = match
         elif not cands:
-            match = "no video found"
+            match = bucket = "no video found"
         elif len(cands) == 1:
-            match = "single video"
+            match = bucket = "single video"
+        elif len(on_air) == 1:
+            match = f"only one of {len(cands)} was on air then"
+            bucket = "only one was on air then"
         elif family(p.committee or "") in AMBIGUOUS_FAMILIES:
             match = f"{len(cands)} divisions - pick manually"
+            bucket = "divisions"
         else:
             match = f"{len(cands)} videos that day - pick manually"
-        stats[match.split(" -")[0].split(" that")[0]] += 1
+            bucket = "more than one video that day"
+        stats[bucket] += 1
 
-        v = cands[0] if len(cands) == 1 or named else None
+        v = (cands[0] if len(cands) == 1 or named
+             else on_air[0] if len(on_air) == 1 else None)
         off = predicted_offset(p.sched_time, v["start_eastern"]) if v else None
 
         out.append({
@@ -406,6 +670,22 @@ def main():
             "watch_url": (f"https://www.youtube.com/watch?v={v['video_id']}&t={max(off - 300, 0)}s"
                           if v and off is not None else ""),
             "candidates": " | ".join(c["title"] for c in cands) if len(cands) > 1 else "",
+            # A RECORDING EXISTS, AND THIS IS WHICH ONES IT COULD BE.
+            #
+            # 326 rows since May 2020 still end with more than one candidate
+            # and no pick -- 245 Finance divisions and 81 the clock could not
+            # separate. They are written with video_id empty, and empty is the
+            # only thing the site reads, so build_site_v2 files them as
+            # "novideo" and app.js draws "No recording matched to this
+            # proceeding." That is false: the committee was filmed that day
+            # and the index holds the recordings.
+            #
+            # `candidates` has carried the titles for a person to read since
+            # this file was written; titles are not addressable. The ids are,
+            # so the page can offer them once build_proceedings.py carries
+            # this column and build_site_v2 grows the state for it. Both of
+            # those are other files and are not changed here.
+            "candidate_ids": " | ".join(c["video_id"] for c in cands) if len(cands) > 1 else "",
             "observed_start": "",
             "observed_end": "",
             "notes": "",

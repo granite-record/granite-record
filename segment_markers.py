@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.33
+# GRANITE_VERSION: 2026-09-05.34
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -114,7 +114,49 @@ FILLER = r"(?:(?:um|uh|er|ah|okay|alright|all\s+right)[\s,]+)*"
 # "the house election Law Public hearing for House Bill 474" -- the committee's
 # own name sits between the article and the noun. Up to four words, so a
 # sentence that merely contains "hearing" much later does not qualify.
-QUAL = r"(?:[A-Za-z]+\s+){0,4}"
+#
+# AND IT MAY NOT EAT THE FIRST WORD OF THE PROCEEDING'S OWN NAME. Greedy and
+# unrestricted, it did. "going to open the executive session on House Bill
+# 1217" was read as QUAL="executive " plus SUBJECT="session", so `what` came
+# back as the bare word "session" -- which build_site_v2 treats as AMBIGUOUS,
+# a marker making no claim about which proceeding it opened, usable only as a
+# fallback after any marker that names one. 4,691 of the 7,391 markers OPEN_RE
+# has produced were mislabelled this way: 2,111 public hearings reported as
+# "hearing" (harmless, the last word still matches) and 2,580 executive and
+# work sessions reported as "session" (not harmless at all). CLOSE_RE has no
+# QUAL and never had the bug, so a chair's opening and their own close of the
+# SAME proceeding disagreed about what kind of proceeding it was.
+#
+# What that cost, measured against the baseline proceedings.csv of 16
+# September:
+#
+#   159 stations -- 157 of them executive or work sessions -- were stamped
+#       with the wrong moment. Two ambiguous markers on one recording make
+#       station_for_proceeding take the FIRST, and the first is the sponsor
+#       introducing the bill at the morning hearing: "introducing hb 1096
+#       today as a proactive attempt" at 6:08:47, where the chair says "now
+#       open the executive session house bill 1096" at 6:30:05. Median error
+#       85m 08s, 158 of the 159 too early, the worst 5h 52m.
+#    31 hearings were stamped with the moment the chair opened the EXECUTIVE
+#       session on the same bill, there being no other marker to fall back to,
+#       and on 21 of them the identical second is published on both
+#       proceedings of the same bill.
+#
+# Fixing the label removes both. It also costs those 31 hearings their
+# timestamp and gains only one, so the count of proceedings with a stated
+# moment goes DOWN by 30 -- which is the trade this file is for: a quotation
+# that names the wrong proceeding is not a weaker timestamp, it is a
+# different proceeding's timestamp.
+#
+# The rule is not "shortest qualifier": a lazy {0,4}? reads "open a hearing uh
+# here executive session on HP 143" as a hearing, and it is the executive
+# session -- the chair corrected themselves mid-sentence and the operative
+# noun is the last one. So QUAL stays greedy and is forbidden only the words
+# that begin a two-word SUBJECT. Nothing is lost by that: wherever the
+# lookahead stops QUAL, SUBJECT matches at that very word, and both paths end
+# at the same character -- so no marker's start moves and no marker is lost.
+QUAL = (r"(?:(?!(?:executive|exec|exact|work)\s+session\b|"
+        r"public\s+hearing\b)[A-Za-z]+\s+){0,4}")
 ART = r"(?:the\s+|a\s+|an\s+)?"
 
 # "open", in every form seen. The chair may be the subject ("the chair will

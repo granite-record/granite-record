@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.5
+# GRANITE_VERSION: 2026-09-05.6
 """
 Build proceedings.csv: one row per (bill, date, kind, recording), whether it
 is a committee hearing or a floor debate.
@@ -23,11 +23,20 @@ What it refuses: to write a smaller table than last time without being told
 it may. A rebuild that halves the proceedings is a rebuild that lost a source.
 The same goes for one term's rows from one source, because the table holds
 every term and a whole term can leave it while the total barely moves.
+
+EVERY ROW LEAVES HERE WITH A TERM, or is dropped and counted. build_site_v2
+keys every per-bill payload on (term, bill), so a row whose term is empty is
+a proceeding this table holds and no page on the site can show -- invisible
+in both directions, since nothing errors either. Ten rows of 98,965 were in
+that state on 17 September, which was the whole of the site's proceedings
+gap. See recover_terms for where a missing term is found and what happens to
+a row that has none to find.
 """
 
 import argparse
 import csv
 import json
+import re
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -76,6 +85,21 @@ def manifest_paths(patterns):
                 seen.add(k)
                 out.append(f)
     return out
+
+
+def term_in_name(path):
+    """'verification_manifest_2023-2024.csv' -> '2023-2024', else ''.
+
+    A manifest is one term's and says so in its name: build_manifest refuses
+    to write an archived term's docket to plain verification_manifest.csv
+    precisely so that this stays true. So a row in it whose sched_date is
+    empty still has a term, and it is this one -- the file it came out of.
+    Nothing needs it today (all ten of the termless rows were the floor
+    index's, and the current term's manifest has no term in its name to
+    take), which is why the count below prints only when it is not zero.
+    """
+    m = re.search(r"(\d{4}-\d{4})", Path(path).stem)
+    return m.group(1) if m else ""
 
 
 def from_manifest(path):
@@ -174,6 +198,82 @@ def from_floor_index(path):
                 "source": "floor_index",
             })
     return rows
+
+
+def video_days(paths):
+    """{video_id: (date, "stream"|"published")} out of the video indexes.
+
+    Read for ONE thing: a row that arrived here with no date at all. The
+    indexes parse the day out of the recording's title, and a title that
+    names its bill instead of its date leaves parsed_date empty --
+    "Committee of Conference, HB1, Part 2 (LOB 210-211)", "Senate Finance
+    Committee HB 2 Deliberations-May 26", "REMOTE MEETING OF HB 4
+    LEGISLATIVE COMMITTEE ON APPORTIONMENT". build_floor_index copies that
+    empty string into the entry, and ten entries of floor_index.json carry
+    it. Every one is a real recording of a real proceeding.
+
+    TWO ANSWERS OF DIFFERENT STRENGTH, and they are not used for the same
+    thing. start_eastern is the livestream's own start, so it IS the
+    sitting, to the second; eight of the ten have one and it fills the date.
+    published_at is when the recording went up, which is that day or the
+    next: enough to name the biennium, not enough to name the day. The two
+    HB1 budget conference parts are that case -- both published 2021-06-11
+    at 14:5x Eastern, part 2 five minutes BEFORE part 1, so they were
+    uploaded together after a sitting that may well have been the day
+    before. They get the term and keep an empty date rather than a guessed
+    one.
+    """
+    out = {}
+    for p in paths:
+        try:
+            fh = Path(p).open(encoding="utf-8-sig", newline="")
+        except OSError:
+            continue
+        with fh:
+            for r in csv.DictReader(fh):
+                vid = (r.get("video_id") or "").strip()
+                if not vid or vid in out:
+                    continue
+                start = (r.get("start_eastern") or "").strip()
+                pub = (r.get("published_at") or "").strip()
+                if len(start) >= 10:
+                    out[vid] = (start[:10], "stream")
+                elif len(pub) >= 10:
+                    out[vid] = (pub[:10], "published")
+    return out
+
+
+def recover_terms(rows, days):
+    """Give a row with no term the one its recording was made in.
+
+    Returns (from_stream, from_published, [rows that still have none]).
+
+    A term comes from the date and nothing else -- P.term_of reads the year
+    and rounds it down to the odd one -- so a row with no term is a row with
+    no date, and a row with no date but a video_id has its date sitting in
+    the video index under that id. The site keys on (term, bill), so this is
+    the difference between a proceeding having a page and having nowhere at
+    all to appear.
+
+    The caller drops whatever comes back in the third slot, and says how
+    many. Filtering it away in here would put the number back where it was
+    found: in a one-off measurement, a year after the fact.
+    """
+    stream = published = 0
+    for r in rows:
+        if r.get("term") or not r.get("video_id"):
+            continue
+        day, how = days.get(r["video_id"], ("", ""))
+        term = P.term_of(day)
+        if not term:
+            continue
+        r["term"] = term
+        if how == "stream":
+            r["date"] = day
+            stream += 1
+        else:
+            published += 1
+    return stream, published, [r for r in rows if not r.get("term")]
 
 
 def per_term_source(rows):
@@ -316,6 +416,11 @@ def main():
                     default=["verification_manifest*.csv"],
                     help="one or more manifests, or a pattern matching them")
     ap.add_argument("--floor", default="floor_index.json")
+    # Not a source of proceedings -- a source of DATES, for the handful of
+    # rows that reached here without one. See video_days.
+    ap.add_argument("--videos", nargs="+", default=["videos_*.csv"],
+                    help="video indexes, read only to date a row whose "
+                         "source gave it no date")
     ap.add_argument("--out", default=str(P.PATH))
     ap.add_argument("--allow-shrink", action="store_true",
                     help="write even if this table, or one term's rows from "
@@ -323,9 +428,17 @@ def main():
     a = ap.parse_args()
 
     files = manifest_paths(a.manifest)
-    cm, per_file = [], []
+    cm, per_file, by_filename = [], [], 0
     for f in files:
         got = from_manifest(f)
+        # A row with no sched_date still belongs to the term the file is
+        # named for, and that name is the only place it is written down.
+        named = term_in_name(f)
+        if named:
+            for r in got:
+                if not r["term"]:
+                    r["term"] = named
+                    by_filename += 1
         per_file.append((f.name, len(got)))
         cm.extend(got)
     fl = from_floor_index(a.floor)
@@ -339,6 +452,40 @@ def main():
         print(f"  WARNING: {a.floor} not found -- no floor debates")
 
     rows = cm + fl
+    # EVERY ROW NEEDS A TERM. build_site_v2 keys on (term, bill), so a row
+    # with an empty term reaches no page at all -- and nothing raises,
+    # because the key simply never matches. A measurement on 17 September
+    # found 10 such rows in 98,965, and those 10 were the whole of the gap
+    # between the table and the site: 98,955 already reached a page.
+    #
+    # Same globbing as the manifests above, and for the same reason: read
+    # every index there is rather than one, so this never runs on a subset
+    # of what it is correcting.
+    vfiles = manifest_paths(a.videos)
+    stream, published, termless = recover_terms(rows, video_days(vfiles))
+    if by_filename:
+        print(f"  {by_filename:,} manifest rows had no date; took the term "
+              "their manifest is named for")
+    if stream or published:
+        print(f"  {stream + published:,} rows had no date and so no term, and "
+              f"a recording that knows it: {stream:,} took the day their "
+              f"stream started, {published:,} the biennium their recording "
+              "was published in (the day itself stays blank)")
+    if termless:
+        # DROPPED OUT LOUD. A row that reaches no page is a proceeding this
+        # table holds and cannot show, and the only thing that keeps that
+        # number from going quiet again is printing it on every build.
+        rows = [r for r in rows if r.get("term")]
+        print(f"  {len(termless):,} rows DROPPED: no date, so no term, so no "
+              "page to reach"
+              + ("" if vfiles else
+                 f" (and nothing matches {' '.join(a.videos)} here, so no "
+                 "recording could date them either)"))
+        for r in termless[:10]:
+            print(f"      {r['bill']:<9} {r['kind']:<26} {r['source']:<12} "
+                  f"{(r['video_title'] or r['video_id'])[:44]}")
+        if len(termless) > 10:
+            print(f"      ... and {len(termless) - 10:,} more")
     # One row per event, not per line of the sources. The floor index can
     # list a bill twice on one day when it had two runs of roll calls, and
     # the docket announces a hearing and then restates it on the day -- the
