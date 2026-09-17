@@ -1838,5 +1838,59 @@
         "He is keyed 917 rather than by a six-digit number because that is his PersonID. db/Legislators.psv gives PersonID 917, Employeeno 377246; from 2015 the roll call history fills the PersonID column, so he lands in that id space while the six above him, whose rows leave it empty, fall back to the Employeeno."
       ]
     }
+  },
+
+  "_ballots_what": "Ballots whose member id is empty in the General Court's own record, keyed by the roll call they were cast in. This section exists because the other one cannot express these: \"members\" is keyed by member id, and the id here is the empty string -- a single bucket that more than one person's ballot falls into, so a member-keyed correction would put both ballots on whichever person it named. The key is \"year|body|vote_number\", which identifies a roll call exactly.",
+
+  "_ballots_how": "build_data.py applies one of these ONLY to a ballot whose id is already empty. That makes the correction self-limiting: if the General Court ever fills the id in, the row stops being empty, the correction stops firing, and the build says so rather than adding a second ballot for the same person in the same roll call. Never use this section to change a ballot that already names somebody -- correct the member in \"members\" instead.",
+
+  "_ballots_why_not_drop": "Neither row may be dropped, which was the alternative considered. The Clerk's published tallies reconcile only with them counted: vote 145 is 179/144/25/46 in RollCallSummary_2017.txt and the history rows sum to exactly that with the blank row inside the 144, and vote 151 is 115/164/57/57 likewise. Drop either and the site is one nay short of the official record on that bill, and a real member loses a ballot from their own page.",
+
+  "ballots": {
+    "2017|H|145": {
+      "member_id": "8807",
+      "id_note": "8807 is the PersonID, which is the id this ballot must carry. The Employeeno is 408807, and the raw row for the next roll call reads 2017|H|146|408807|8807|... -- field 3 the Employeeno, field 4 the PersonID -- and build_data keys on field 4 wherever it is filled. Naming the Employeeno here created a second person holding one vote while the real record sat beside it under 8807. The id must be the one data/member_votes.json actually uses, exactly as this file already says for the members section.",
+
+      "member": "DesMarais, Edith -- Democrat, Carroll 6",
+
+      "bill": "HB552",
+
+      "vote": "Nay",
+
+      "why": [
+        "The roll call is HB 552-FN, 'relative to investigation of voter verification letters', motion to concur, 8 June 2017, YEAS 179 - NAYS 144.",
+
+        "She is what is missing, by subtraction rather than by guess. The House Journal prints the full yea and nay name lists for this roll call -- 323 names -- and the site holds 323 yea and nay rows for it. Diffing the two leaves exactly one name with no row, DesMarais, and exactly one row with no name, the empty id. The only other difference is 'Nutting, Allison' against 'Nutting-Wong, Allison', which is one person under two name forms.",
+
+        "Why her id is missing is in the same journal. journals/2017/HJ018.txt records her being sworn in THAT MORNING: 'Carroll County District No. 6 / Edith DesMarais, d, Wolfeboro (116 Clark Rd.) 03894'. Her employee number was not yet linked to a voting station. Id 408807 appears in the id-keyed data from vote 146, the very next roll call.",
+
+        "The side of the vote was checked from the PDF's own coordinates rather than from the text extraction, which interleaves four columns: in HJ018.pdf page 4 the 'NAYS - 144' header sits at y=345 and 'DesMarais,' at y=400, below it, matching this row's Nay.",
+
+        "The General Court's database carries the tell: this row's UserName is 'VOTE SYSTEM' rather than a clerk's login, and DateModified is empty. Only two rows in that 114 MB table have a blank employee number, and these two are they."
+      ]
+    },
+
+    "2017|H|151": {
+      "member_id": "8956",
+      "id_note": "8956 is the PersonID, which is the id this ballot must carry. The Employeeno is 408811, and the raw row for the next roll call reads 2017|H|152|408811|8956|... -- field 3 the Employeeno, field 4 the PersonID -- and build_data keys on field 4 wherever it is filled. Naming the Employeeno here created a second person holding one vote while the real record sat beside it under 8956. The id must be the one data/member_votes.json actually uses, exactly as this file already says for the members section.",
+
+      "member": "St. Clair, Charlie -- Democrat, Belknap 9",
+
+      "bill": "HB86",
+
+      "vote": "Nay",
+
+      "why": [
+        "The roll call is HB 86, 'relative to voting on variances', veto override, 2 November 2017, YEAS 115 - NAYS 164.",
+
+        "Same subtraction, same result. The journal prints 279 names for this roll call and the site holds 279 rows; the diff leaves one name with no row, St. Clair, and one row with no name.",
+
+        "He was sworn in mid-term too. journals/2017/HJ020.txt carries the Secretary of State's communication of 27 September 2017: 'Belknap County District No. 9 / Charlie St. Clair, d, Laconia (PO Box 5416) 03246'. Id 408811 appears in the id-keyed data from vote 152.",
+
+        "Side of the vote checked the same way: in HJ020.pdf page 5 the 'NAYS - 164' header is at y=460 and 'St. Clair,' at y=506, below it. This one needed the coordinates -- the plain-text extraction interleaves the columns and appears to put him above the header.",
+
+        "A seat caveat that is not this section's to fix: past_members.json and member_party.json both record him at Belknap 5, taken from a 2025 roll call page. In 2017 he sat Belknap 9, and a label states the seat held when the record was made."
+      ]
+    }
   }
 }

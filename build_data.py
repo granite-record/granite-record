@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.25
+# GRANITE_VERSION: 2026-09-04.27
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -898,8 +898,26 @@ def main():
     # working -- the id space changed, or the defect was fixed upstream and
     # the entry outlived it -- so it says so rather than passing quietly.
     cp = Path("member_corrections.json")
+    ballot_fix = {}
     if cp.exists():
-        fixed = json.loads(cp.read_text(encoding="utf-8")).get("members") or {}
+        _doc = json.loads(cp.read_text(encoding="utf-8"))
+        fixed = _doc.get("members") or {}
+
+        # Corrections keyed by ROLL CALL, not by member. Two 2017 House ballots
+        # carry an empty member id in the General Court's own record, and an
+        # empty id is one bucket that both fall into -- so a member-keyed
+        # correction would put both on whichever person it named. The key is
+        # (year, body, vote_number), which names a roll call exactly.
+        for _k, _v in (_doc.get("ballots") or {}).items():
+            if _k.startswith("_") or not isinstance(_v, dict):
+                continue
+            _parts = tuple(_k.split("|"))
+            if len(_parts) != 3:
+                print(f"  WARNING: ballot correction key {_k!r} is not "
+                      f"year|body|vote_number; ignored")
+                continue
+            ballot_fix[_parts] = _v
+
         hit = named = 0
         for _mid, _fix in fixed.items():
             # The file is written by hand and carries prose for the next person
@@ -1007,6 +1025,7 @@ def main():
 
     member_votes, vote_kinds, hist_bodies = [], Counter(), Counter()
     vnums, unmatched_votes, no_person = set(), 0, Counter()
+    ballot_fixed = Counter()
     for r in rows_all(d, "RollCallHistory", 8):
         key = (r[0], r[1], r[2])
         hist_bodies[r[1]] += 1
@@ -1024,6 +1043,13 @@ def main():
         # the two spaces do not overlap: PersonIDs run 48-10904, Employeenos
         # are six digits.
         mid = r[4].strip() or r[3].strip()
+        if not mid and key in ballot_fix:
+            # ONLY when the id is already empty. That makes the correction
+            # self-limiting: if the General Court ever fills the id in, this
+            # stops firing rather than adding a second ballot for the same
+            # person in the same roll call, and the count below says so.
+            mid = str(ballot_fix[key].get("member_id") or "").strip()
+            ballot_fixed[key] += 1
         if not r[4].strip() and mid:
             no_person[mid] += 1
         m = legs.get(mid)
@@ -1062,6 +1088,36 @@ def main():
                   f"member_corrections.json match no ballot and may have "
                   f"outlived their defect: {', '.join(_dead[:8])}"
                   f"{' ...' if len(_dead) > 8 else ''}")
+
+    if ballot_fix:
+        _named = sum(ballot_fixed.values())
+        print(f"  {_named} ballot(s) with an empty member id given the member "
+              f"the journal names, from {len(ballot_fixed)} roll call(s)")
+        # An id that casts this ONE ballot and no other is the signature of a
+        # correction written in the wrong id space. The General Court numbers
+        # people twice -- PersonID in field 4, Employeeno in field 3 -- and the
+        # raw row shows both, so it is easy to copy the wrong one; doing that
+        # does not fail, it silently mints a second person holding a single
+        # vote while their real record sits beside it. That happened to both of
+        # the first two entries and was caught by eye, which is not a method.
+        _counts = Counter(v["member_id"] for v in member_votes)
+        for _k, _v in ballot_fix.items():
+            _id = str(_v.get("member_id") or "").strip()
+            if ballot_fixed.get(_k) and _counts.get(_id, 0) <= ballot_fixed[_k]:
+                print(f"  WARNING: ballot correction {'|'.join(_k)} names id "
+                      f"{_id}, which casts no other ballot. Check it is the id "
+                      f"data/member_votes.json uses (the PersonID where the "
+                      f"record fills one) and not the Employeeno beside it.")
+
+        _stale = sorted(k for k in ballot_fix if k not in ballot_fixed)
+        if _stale:
+            # Either the source filled the id in -- in which case the entry is
+            # done and should be removed -- or the roll call moved and it is now
+            # pointing at nothing. Both need a person; neither is silent.
+            print(f"  WARNING: {len(_stale)} ballot correction(s) matched no "
+                  f"empty-id ballot: {', '.join('|'.join(k) for k in _stale)}. "
+                  f"Either the record now carries the id, or the roll call key "
+                  f"has changed.")
 
     _dated = date_ballot_seats(member_votes, legs)
     if _dated:
