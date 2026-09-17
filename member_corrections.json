@@ -7,6 +7,8 @@
 
   "_how_to_add_one": "Add an entry under \"members\", keyed by the member id as it appears in data/member_votes.json. Give whichever of name, party, county and district are wrong; anything you leave out keeps what the generators produced. \"was\" and \"why\" are for the next person to read -- they change nothing, and the evidence for a correction should travel with it rather than live only in a commit message.",
 
+  "_added_16_september": "The entries below this line were added on 16 September 2026 and answer a different problem than the Shurtleff correction above: not a name deduced onto the wrong person, but ids the roster views never reached at all, which the site showed as \"Member #409060\" with no party. Each was identified by scoring the id's ballots against every name printed in the House and Senate journals for the same roll calls, then corroborated from a second source that does not depend on those ballots -- the election rolls and roster PDFs, the county headers over the journals' vote lists, the seat the bill text prints for a sponsor, or the alphabetical block the employee number falls in. The method was controlled by running it blind against four ids already named from other evidence (408966, 409011, 409014, 409039); it reproduced all four. Every identification was then given to a second reader asked to refute it rather than confirm it. \"terms\" and \"score\" are notes for the next person and are not read by anything.",
+
   "members": {
     "376628": {
       "name": "Shurtleff, Steve",
@@ -32,8 +34,6 @@
 
       "seat_caveat": "One seat is recorded because the site shows one seat per former member, and Merrimack 15 is the seat the General Court's own pages print for him. He in fact sat Merrimack 10, then 11, then 15 as the districts were redrawn, so a 2005 ballot of his carries a district he did not hold until 2023. Ballots by sitting members are dated per term from the bill text; former members are not yet."
     },
-
-    "_added_16_september": "The entries below this line were added on 16 September 2026 and answer a different problem than the Shurtleff correction above: not a name deduced onto the wrong person, but ids the roster views never reached at all, which the site showed as \"Member #409060\" with no party. Each was identified by scoring the id's ballots against every name printed in the House and Senate journals for the same roll calls, then corroborated from a second source that does not depend on those ballots -- the election rolls and roster PDFs, the county headers over the journals' vote lists, the seat the bill text prints for a sponsor, or the alphabetical block the employee number falls in. The method was controlled by running it blind against four ids already named from other evidence (408966, 409011, 409014, 409039); it reproduced all four. Every identification was then given to a second reader asked to refute it rather than confirm it. \"terms\" and \"score\" are notes for the next person and are not read by anything.",
 
     "209075": {
       "name": "Lasky, Bette",
@@ -1734,6 +1734,108 @@
         "Ballot agreement against the names printed in the journals' vote lists: 235/235 (2019), 202/202 (2020). Runner-up: Lane, Connie 190/235 (2019); Stack, Kathryn 156/202 (2020).",
 
         "The December 2018 roll: 'MERRIMACK ... Dist. No. 3 (2) | Joyce May Fulweiler, d; Gregory Hill, r'. The alignment of that roll is verified against the bill text, which independently places Hill at Merrimack 3, Horn and Testerman at Merrimack 2, Schamberg at 4, Ebel at 5, Rodd at 6 and Carson at 7 — matching the roll line for line. Journal county header over her name: MERRIMACK. She sponsored no bills under that surname, so the district comes from the roll rather than the sponsor index. No other employee number carries the surname. Caucus agreement 149/157 and 106/108. Hers is the one number in the slice with no usable band — the 80xxxx range holds only three other known members and is not ordered — so the identification rests on the ballots, the roll and the county header."
+      ]
+    },
+
+    "_the_last_seven_parties": "The seven below were the last members casting recorded votes with no party on file. Each is settled by a source that STATES the party rather than by inference from how they voted -- the House Journal's organisation-day roster, a Secretary of State swearing-in notice, or a committee roster printed in party columns. Where a vote-pattern test was possible it is given as corroboration; where it was not possible, or would have been meaningless, that is said instead of quietly omitted. Four of the seven resigned or died in office, which is why so many of their ballots are Not Voting and why the roster rather than the ballots had to carry the identification.",
+
+    "376053": {
+      "party": "Republican",
+
+      "was": "Paul St Hilaire, Coos 07, with no party on file",
+
+      "why": [
+        "The House Journal's organisation-day roster states it. journals/1999/HJ001.txt, the Coos County roster, prints \"Paul E. St. Hilaire, r\" on the District 7 line, which carries five names for its five seats.",
+
+        "His memorial resolution says it again in words. journals/1999/HJ007.txt has him \"in his third term representing District 7 of Coos County\" and a member of the Coos County Republican Committee.",
+
+        "No vote-pattern test is possible for him and none is claimed: all 13 of his 1999 ballots are recorded Not Voting/Excused. He died in office during the session."
+      ]
+    },
+
+    "376084": {
+      "party": "Democrat",
+
+      "was": "Carol Burney, Merr 14, with no party on file",
+
+      "why": [
+        "The Secretary of State's swearing-in communication states it. journals/2002/HJ005.txt: \"Merrimack 14, Carol T. Burney, d, Concord (77 Village Street, Penacook) 03303\".",
+
+        "Her ballots agree. Of 59 divided roll calls she is with the Democratic majority on 58 and the Republican majority on 1 (98%)."
+      ]
+    },
+
+    "376296": {
+      "party": "Republican",
+
+      "was": "Tom Alciere, Hills 29, with no party on file",
+
+      "why": [
+        "The House Journal's organisation-day roster states it. journals/2001/HJ001.txt prints \"Dist. No. 29 (3)  Tom Alciere, r; David E. Cote, d; Mary Gorman, d\" -- three names for three seats, so the line needs no realignment.",
+
+        "The roster is the whole of the evidence here, deliberately. He has exactly one recorded ballot -- 2001 House vote 2, Nay on House Rule 30 -- because he resigned in January 2001, and that roll call went 316-54 with 16 Republicans and 36 Democrats among the nays, so it says nothing about anyone's party. A vote-pattern test would be meaningless and is not offered."
+      ]
+    },
+
+    "376629": {
+      "party": "Democrat",
+
+      "was": "Stephanie Sinclair, Ches 03, with no party on file",
+
+      "why": [
+        "Two sources state it. journals/2005/HJ001.txt, Cheshire District 3 (seven names for seven seats), prints \"Stephanie C. Sinclair, d\"; and calendars/2005/HC004.txt lists her under the DEMOCRATS column of the Election Law committee roster, which is printed in two columns headed REPUBLICANS and DEMOCRATS.",
+
+        "Her ballots are consistent but too few to carry this on their own, and are not what it rests on: only 25 of her 80 rows are cast votes, giving 12 divided roll calls, 8 with the Democratic majority. She resigned on 6 April 2005 -- journals/2005/HJ012.txt -- and Christopher C. Coates was sworn in for the seat."
+      ]
+    },
+
+    "376953": {
+      "party": "Republican",
+
+      "was": "Robert Huxley, Hills 03, with no party on file",
+
+      "why": [
+        "The 2010 organisation-day roster states it: \"Robert Huxley, r\", in journals/2010/Daily Journal #1, 12-1-10, Organization Day Final.txt.",
+
+        "That file's district labels run one line ahead of the names it labels, so the group is Hillsborough 3 rather than the 4 printed beside it. The offset was not assumed: it holds across the whole Hillsborough block, the seat counts match on every line, and his district-mate Bruce Marcus (376978) is independently recorded at Hills 03 in member_party.json.",
+
+        "No vote-pattern test is possible and none is claimed: all 150 of his 2011 rows are Not Voting/Not Excused. He never cast a ballot, and resigned -- journals/2011/HJ015.txt names the Hillsborough 3 towns in his letter."
+      ]
+    },
+
+    "377052": {
+      "party": "Republican",
+
+      "was": "Gary Wheaton, Rock 14, with no party on file",
+
+      "why": [
+        "The 2010 organisation-day roster states it: \"Gary W. Wheaton, r\".",
+
+        "His own resignation letter states the seat outright, so the district does not depend on reading that roster's column offset: journals/2011/HJ015.txt, 5 April 2011, \"a State Representative from Rockingham County, District #14\".",
+
+        "His ballots agree. Of 79 divided roll calls he is with the Republican majority on 76 (96%)."
+      ]
+    },
+
+    "917": {
+      "party": "Republican",
+
+      "county": "Straf",
+
+      "district": "23",
+
+      "was": "Leeman, Don -- named, but with no party, county or district, so his label read \"Leeman, Don()\" with no seat at all",
+
+      "why": [
+        "The House Journal's roster states it: journals/2015/HJ004.txt, Strafford County, \"Dist. No. 23 (1)  Don Leeman, r\".",
+
+        "The bills agree on the seat. He is \"Rep. Leeman, Straf 23\" on 14 bills in text_sponsors.json, and the sponsor lines through the 2015 and 2016 journals print the same.",
+
+        "His ballots agree on the party: 85% with the Republican majority on 120 divided roll calls in 2015, 93% on 149 in 2016.",
+
+        "Why he had nothing at all, which is worth recording because it will recur: the General Court's own Legislators table carries his row with seatno, countycode, District and party all blank -- one of only four such rows in 1,081. Because that row is blank, the General Court's published roll-call-with-party page for the very roll call he voted on omits him entirely: 2015 House vote 1, where he is recorded Yea, lists 377 members and he is not among them. Any party backfill driven only by those pages will keep missing him.",
+
+        "He is keyed 917 rather than by a six-digit number because that is his PersonID. db/Legislators.psv gives PersonID 917, Employeeno 377246; from 2015 the roll call history fills the PersonID column, so he lands in that id space while the six above him, whose rows leave it empty, fall back to the Employeeno."
       ]
     }
   }

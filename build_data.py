@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.24
+# GRANITE_VERSION: 2026-09-04.25
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -900,21 +900,34 @@ def main():
     cp = Path("member_corrections.json")
     if cp.exists():
         fixed = json.loads(cp.read_text(encoding="utf-8")).get("members") or {}
-        hit = miss = 0
+        hit = named = 0
         for _mid, _fix in fixed.items():
+            # The file is written by hand and carries prose for the next person
+            # to read. A key starting with "_" is one of those notes, not a
+            # member, and a note is a string rather than an object -- which
+            # crashed this loop the first time one was added here.
+            if _mid.startswith("_") or not isinstance(_fix, dict):
+                continue
             _fields = {k: v for k, v in _fix.items() if not k.startswith("_")
                        and k in ("name", "party", "county", "district")}
             if _mid in former:
                 former[_mid].update(_fields)
                 hit += 1
             else:
+                # Not a miss. The generators name a member by deduction and
+                # cannot name everybody, so an id with no generated record is
+                # the ordinary case for a correction that supplies a name
+                # rather than replaces one. Whether it reaches a real ballot
+                # is checked below, once the votes are built, which is the
+                # only place that question can actually be answered.
                 former[_mid] = dict(_fields)
-                miss += 1
+                named += 1
         if hit:
-            print(f"member_corrections.json: {hit} name(s) corrected by hand")
-        if miss:
-            print(f"  WARNING: {miss} correction(s) matched no generated member "
-                  f"and were added outright; check they are still needed")
+            print(f"member_corrections.json: {hit} generated name(s) corrected")
+        if named:
+            print(f"member_corrections.json: {named} id(s) named that the "
+                  f"generators could not name")
+        _corrected_ids = {m for m in fixed if not m.startswith("_")}
 
     # ------------------------------------------ sponsors, district and all ---
     #
@@ -1035,6 +1048,21 @@ def main():
             "vote": RP.vote_word(r[6]),
         })
     print(f"member votes: {len(member_votes):,}")
+
+    # A correction that reaches no ballot has stopped working -- the id space
+    # changed under it, or the defect it answered was fixed upstream and the
+    # entry outlived it. That question cannot be asked where the corrections
+    # are applied, because the votes do not exist yet at that line; it can only
+    # be asked here, against the ballots themselves.
+    if _corrected_ids:
+        _voting = {v["member_id"] for v in member_votes}
+        _dead = sorted(_corrected_ids - _voting)
+        if _dead:
+            print(f"  WARNING: {len(_dead)} correction(s) in "
+                  f"member_corrections.json match no ballot and may have "
+                  f"outlived their defect: {', '.join(_dead[:8])}"
+                  f"{' ...' if len(_dead) > 8 else ''}")
+
     _dated = date_ballot_seats(member_votes, legs)
     if _dated:
         print(f"  {_dated:,} ballots relabelled with the seat that term's bills "
