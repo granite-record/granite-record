@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.6
+# GRANITE_VERSION: 2026-09-05.7
 """
 Build proceedings.csv: one row per (bill, date, kind, recording), whether it
 is a committee hearing or a floor debate.
@@ -125,6 +125,20 @@ def from_manifest(path):
                 "stream_start": (r.get("stream_start") or "").strip(),
                 "predicted_offset": as_seconds(r.get("predicted_offset")),
                 "match": (r.get("match") or "").strip(),
+                # WHICH RECORDINGS THIS SITTING COULD BE, when the matcher
+                # would not name one. build_manifest writes every candidate's
+                # id whenever more than one recording of that committee exists
+                # on the day, and 563 of the 100,556 events here carry them.
+                # On 317 video_id is empty because no pick was made -- 236
+                # Finance, whose divisions stream separately and which the
+                # docket does not tell apart, and 81 the clock could not
+                # separate -- and those 317 are the rows build_site_v2 filed
+                # as "novideo" and app.js drew as "No recording matched to
+                # this proceeding.", over a committee that was filmed.
+                #
+                # The ids and not the manifest's `candidates` titles: a title
+                # is for a person reading the manifest, an id is a link.
+                "candidate_ids": (r.get("candidate_ids") or "").strip(),
                 "debate_end": None, "window_start": None, "precise": False,
                 "motions": [], "tallies": [], "whole_video": False,
                 # A manifest row is the docket's unless build_manifest
@@ -519,6 +533,22 @@ def main():
                  "a manifest or the floor index went missing, or was rebuilt "
                  "from less. Pass --allow-shrink if that is intended.")
 
+    # THE COLUMN HAS TO BE IN proceedings.COLS OR CARRYING IT IS A NO-OP.
+    # P.write emits {c: row.get(c, "") for c in COLS}, so a field this file
+    # puts on a row and that list does not name is dropped without a word --
+    # and the 317 sittings that know which recordings they might be would go
+    # on reaching app.js as "No recording matched to this proceeding.", which
+    # is the whole reason for carrying them. One line in proceedings.py, which
+    # is not this file's to edit; saying so beats writing a second writer
+    # beside P.write, which is how a table grows two shapes.
+    unnamed = sum(1 for r in uniq if r.get("candidate_ids"))
+    if unnamed and "candidate_ids" not in P.COLS:
+        print(f"  WARNING: {unnamed:,} rows name the recordings their sitting "
+              "could be, and proceedings.py's COLS does not list "
+              "candidate_ids, so proceedings.write is about to drop every one "
+              "of them.\n           Add \"candidate_ids\" to COLS in "
+              "proceedings.py. Nothing else is needed.")
+
     P.write(uniq, a.out)
 
     with_video = sum(1 for r in uniq if r["video_id"])
@@ -536,6 +566,15 @@ def main():
     print(f"  {folded:,} second mentions of an event folded into the first")
     print(f"  {with_video:,} have a recording; "
           f"{len({r['video_id'] for r in uniq if r['video_id']}):,} distinct")
+    # A number that can quietly become zero -- a manifest rebuilt by an older
+    # build_manifest.py writes no candidate_ids column at all -- and the site
+    # says "no recording" over a filmed sitting again with nothing in any log
+    # to say when it started. 317 on 17 September, across 64 committee-days
+    # and 269 bills.
+    undecided = [r for r in uniq if r.get("candidate_ids") and not r["video_id"]]
+    print(f"  {len(undecided):,} chose no recording but name the ones it could "
+          f"be, across {len({(r['date'], r['committee']) for r in undecided}):,}"
+          " committee-days")
     print(f"  {len(floor):,} floor rows, "
           f"{sum(1 for r in floor if r['precise']):,} with a roll-call end, "
           f"{sum(1 for r in floor if r['whole_video']):,} whole-video")

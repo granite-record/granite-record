@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.91
+# GRANITE_VERSION: 2026-09-05.93
 """
 Generate the faceted site from real General Court data.
 
@@ -1291,15 +1291,34 @@ def station_for_proceeding(p, bid, segs, marks):
         if s.get("bill", "").upper() == bid and s.get("kind") == p["proceeding"]:
             seg = s
             break
-    # Three states, and the middle one is the point. A recording matched
-    # to the proceeding with only an approximate starting point is still
-    # far more useful than no link at all: the reader scrubs a few
+    # THE RECORDINGS THIS SITTING COULD BE, where the matcher declined to
+    # pick one of them. build_manifest writes the ids whenever more than one
+    # recording of the committee exists that day; build_proceedings carries
+    # them. Empty on every row where one recording was chosen, and on every
+    # row from a day that had only one.
+    cands = [v for v in str(p.get("candidate_ids") or "").split(" | ") if v]
+    # Five states, and the two in the middle are the point. A recording
+    # matched to the proceeding with only an approximate starting point is
+    # still far more useful than no link at all: the reader scrubs a few
     # minutes instead of hunting through 331 videos. Exact timestamps
     # are an upgrade to this, not a precondition for it.
+    #
+    # `candidates` is the same argument one level up -- the day and the
+    # committee are known and the tape is not. It is tested before the date,
+    # because "recordings of this committee exist that day" is a fact about
+    # the index and 2020-03-01 is a fact about the calendar; nothing reaches
+    # both, since nothing was streamed before the streams began. 317
+    # proceedings of 100,556 are in it: 236 Finance, whose divisions stream
+    # separately and which the docket does not tell apart, and 81 whose
+    # scheduled minute fell inside more than one stream. They used to fall
+    # to "novideo", which app.js draws as "No recording matched to this
+    # proceeding." -- a claim this site's own manifest contradicts.
     if seg and seg.get("located"):
         state, start = "located", seg["start"]
     elif p.get("video_id"):
         state, start = "approximate", None
+    elif cands:
+        state, start = "candidates", None
     elif p["sched_date"] < "2020-03-01":
         state, start = "prestream", None
     else:
@@ -1319,12 +1338,40 @@ def station_for_proceeding(p, bid, segs, marks):
     # favour of a clustered guess a minute and a half out.
     AMBIGUOUS = {"", "session"}
 
+    # THE LAST WORD IS NOT THE DISTINGUISHING WORD. An executive session, a
+    # work session and a subcommittee work session all end in "session", so a
+    # last-word test says a marker for one is a marker for another. That was
+    # harmless only while segment_markers mislabelled every one of them as the
+    # bare word "session", which AMBIGUOUS caught and demoted. Fixing that
+    # labelling on 2,580 markers turned the weakness live: measured against the
+    # rebuilt markers, 460 stations would take a marker of the wrong kind --
+    # 301 an executive session's moment onto a work session, 159 the reverse.
+    # On one recording those are different times, so each is a wrong moment
+    # published as a stated one.
+    #
+    # "exec" is what chairs actually say -- "going to open up the exec session
+    # for HB 251" -- and "exact" is what the captions make of it, 402 times.
+    # Both are the same sitting and both normalise here; the captions garble
+    # bill numbers the same way, which is why nothing on this site quotes them.
+    def _kind_key(s):
+        s = re.sub(r"[^a-z ]", " ", str(s or "").lower())
+        s = re.sub(r"\b(?:exec|exact)\b", "executive", s)
+        for k in ("conference", "floor", "executive", "work", "hearing"):
+            if k in s:
+                return k
+        return ""
+
     def _matches(cand):
         want = str(p.get("proceeding") or "").lower()
         what = str(cand.get("what") or "")
         if not want or not what or what in AMBIGUOUS:
             return None
-        return what.split()[-1] in want or want.split()[-1] in what
+        kw, kp = _kind_key(what), _kind_key(want)
+        # Neither recognisable: no claim to check, so it stays a fallback
+        # rather than becoming a match or a refusal.
+        if not kw or not kp:
+            return None
+        return kw == kp
 
     usable = [c for c in (marks.get(p.get("video_id") or "") or {}).get(bid, [])
               if isinstance(c, dict) and c.get("start") is not None]
@@ -1394,6 +1441,10 @@ def station_for_proceeding(p, bid, segs, marks):
     if end_from in UNPUBLISHABLE:
         end_val = None
 
+    # The state the page will actually see, computed once: the key below has
+    # to agree with it, and an inline ternary in two places is how two things
+    # that must agree stop agreeing.
+    shown = "stated" if said else state
     return {
         "when": p["sched_date"], "time": p.get("sched_time"),
         "what": p["proceeding"], "committee": p.get("committee"),
@@ -1404,7 +1455,16 @@ def station_for_proceeding(p, bid, segs, marks):
         "venue": p.get("venue"), "video_id": p.get("video_id"),
         "watch": p.get("watch_url"), "predicted": p.get("predicted_offset"),
         "start": said["start"] if said else start,
-        "state": "stated" if said else state,
+        "state": shown,
+        # ONLY WHERE NOTHING WAS CHOSEN. A row that got a pick carries these
+        # ids too -- build_manifest writes them whenever the day held more
+        # than one recording, and 246 of the 563 were resolved by the clock
+        # -- and shipping them beside a chosen recording would invite the
+        # page to offer a reader alternatives to a match this site stands
+        # behind. Absent rather than null on the other 100,239 stations, the
+        # way "archived" is absent on a current bill: every key is paid for
+        # 33,683 times.
+        **({"candidate_ids": cands} if shown == "candidates" else {}),
         # The aligner sets a tolerance per segment from how much
         # evidence it had -- 3 minutes with many bill mentions, 30 with
         # a short span and few. Dropping it here made every hearing on
@@ -3770,6 +3830,13 @@ def main():
             "stream_start": r["stream_start"],
             "predicted_offset": ("" if r["predicted_offset"] is None
                                  else r["predicted_offset"]),
+            # The recordings of this committee on this day that the matcher
+            # would not choose between, " | "-joined. Empty on all but 563
+            # rows, and it decides a state below on the 317 of those where
+            # no recording was chosen at all. .get, because a proceedings.csv
+            # written before build_proceedings.py carried the column has no
+            # such key.
+            "candidate_ids": r.get("candidate_ids") or "",
         })
     floor = defaultdict(list)
     for r in P.floor_only(prows):
@@ -3868,6 +3935,27 @@ def main():
             print(f"  {len(man_vids) - len(overlap):,} manifest videos have no "
                   "transcript; those proceedings get a recording link with no "
                   "start time.")
+        # AND THE SITTINGS WITH NO RECORDING CHOSEN AT ALL. 317 of them name
+        # the two or three recordings of their committee that day, and the
+        # page offers those instead of saying none exists. The number can go
+        # to zero silently: a proceedings.csv written before
+        # build_proceedings.py carried candidate_ids has no such column, and
+        # every one of them goes back to "No recording matched to this
+        # proceeding." with nothing in any log to say when it started. A
+        # fixture may hold no such rows legitimately, so the alarm is on the
+        # column being absent, not on the count being zero.
+        no_pick = sum(1 for rs in procs.values() for r in rs
+                      if not r.get("video_id"))
+        named = sum(1 for rs in procs.values() for r in rs
+                    if not r.get("video_id") and r.get("candidate_ids"))
+        if named:
+            print(f"  {named:,} of the {no_pick:,} proceedings with no "
+                  "recording chosen name the recordings they could be")
+        elif no_pick and not any("candidate_ids" in r for r in prows):
+            print(f"  {no_pick:,} proceedings have no recording chosen, and "
+                  f"{P.PATH.name} has no candidate_ids column, so not one of "
+                  "them can say a recording of that day exists. Rebuild it "
+                  "with build_proceedings.py.")
 
 
 

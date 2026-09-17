@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.4
+# GRANITE_VERSION: 2026-09-05.5
 """
 Read proceedings.csv. Every tool that needs to know what happened on which
 recording imports this and nothing else.
@@ -79,7 +79,18 @@ COLS = ["term", "bill", "body", "kind", "date", "time", "committee", "venue",
         "whole_video", "source",
         # Where a committee row's meeting or its committee name came from,
         # when that was a calendar's notice. Empty on every other row.
-        "calendar", "noticed", "committee_from", "notice_times"]
+        "calendar", "noticed", "committee_from", "notice_times",
+        # The recordings this sitting COULD be, where more than one exists for
+        # its committee that day and nothing in the record says which. Empty on
+        # every row that got a pick. 317 rows carry it, across 64 committee-days
+        # -- 236 of them Finance divisions, which stream separately, and 81 the
+        # clock could not separate. The page names them all and picks none.
+        #
+        # Named here or dropped: write() emits only the columns COLS lists, so
+        # a field a builder sets and this list omits vanishes without a word.
+        # build_proceedings.py warns when it has these rows and this entry is
+        # missing, because that is the failure it would otherwise be.
+        "candidate_ids"]
 
 FLOOR_KINDS = {"floor debate", "committee of conference"}
 

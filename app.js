@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.88
+// GRANITE_VERSION: 2026-09-07.89
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1224,6 +1224,27 @@ function archivedNote(d){
   // The bill's own list is asked first.
   const hasSp=c.sponsors||(d.sponsors||[]).length>0;
 
+  // WHERE THE ROLL CALL RECORD STARTS, which is not where this site's
+  // fetching has got to. RollCallHistory.txt and RollCallSummary.txt are the
+  // General Court's own files of named votes and both begin with the 1999
+  // session, so for the five terms 1989-1998 there is nothing to fetch.
+  //
+  // It said this in one place -- the !c.docket branch below -- and that branch
+  // renders on no page at all while narratives.json covers all nineteen terms,
+  // so the sentence reached zero readers. Meanwhile the has-docket branch
+  // correctly refuses to list the roll calls as a gap before 1999 and then
+  // said nothing about them, leaving 8,525 bills of 1989-1998 to read the
+  // silence as a backlog. Both branches use it now; neither owns it.
+  //
+  // The !c.docket branch is NOT dead code and must not be removed with it: it
+  // is the state every backfill term passes through, between landing in
+  // data/bills.json and having its docket narrated.
+  const before1999=(!c.votes&&y&&y<1999)?` No roll call from before 1999 is in
+    the General Court's own record of votes: RollCallHistory.txt and
+    RollCallSummary.txt, the files every named vote on this site is read from,
+    begin with the 1999 session. That is where the record starts, not where
+    this site has got to.`:"";
+
   if(!c.docket){
     // WHAT IS HERE, THEN WHAT IS NOT. This branch told every bill of
     // 1999-2016 that "the recorded votes ... have not been fetched yet" --
@@ -1244,8 +1265,7 @@ function archivedNote(d){
     if(!c.votes&&y>=1999)gaps.push("the roll calls");
     if(!c.hearings)gaps.push("its hearings");
     return P(`This term is archived. Here: ${and(have)}. Not yet on this
-      site for it: ${and(gaps)}.${!c.votes&&y&&y<1999?` No roll call from
-      before 1999 is in the General Court's own record of votes.`:""}`);
+      site for it: ${and(gaps)}.${before1999}`);
   }
 
   // Has a docket. What is missing beyond it is what the reader needs told.
@@ -1254,14 +1274,19 @@ function archivedNote(d){
   if(!c.reports)gaps.push("the written committee reports");
   if(!c.votes&&y>=1999)gaps.push("the roll calls naming individual members");
   if(!c.video&&y>=2019)gaps.push("a recording of any hearing");
+  // Both returns carry it, not just the one with gaps. A pre-1999 term whose
+  // sponsors and reports have landed reaches the first of these, and "the
+  // recorded votes are all here" is false for every term before 1999 --
+  // which is the same wrong claim in the other direction.
   if(!gaps.length)
     return P(`This term is archived, but its record is close to complete: the
-      docket, the sponsors, the committee reports and the recorded votes are
-      all here. What a current term adds is the bill's own text, which is
-      linked rather than loaded.`);
+      docket, the sponsors${c.votes?`, the committee reports and the recorded
+      votes`:` and the committee reports`} are all here. What a current term
+      adds is the bill's own text, which is linked rather than loaded.${
+      before1999}`);
   return P(`This term is archived, and its docket is here: every action the
     General Court recorded, and the committee's recommendation and the vote on
-    it. Not yet fetched for this term: ${and(gaps)}.`);
+    it. Not yet fetched for this term: ${and(gaps)}.${before1999}`);
 }
 
 // ===================================================== the bill's own facts ==
@@ -1615,6 +1640,51 @@ function renderHearings(b,d){
         <a href="https://www.youtube.com/watch?v=${esc(s.video_id)}"
            target="_blank" rel="noopener">The session is here</a> if you want
         the day as a whole.</p>`;
+    }
+    // A RECORDING OF THAT DAY EXISTS AND WHICH ONE THIS IS WAS NOT
+    // ESTABLISHED. Not the claim "approximate" makes: that one knows the tape
+    // and not the minute, this one knows the day and the committee and not
+    // the tape. 317 proceedings of 100,556, across 64 committee-days and 269
+    // bills -- 236 of them Finance, whose divisions stream separately and
+    // which the docket does not tell apart, and 81 whose scheduled minute
+    // fell inside more than one stream.
+    //
+    // Until this branch they fell to the final else and read "No recording
+    // matched to this proceeding." over a sitting that was filmed and whose
+    // recordings are in this site's own index. The wording here is the same
+    // honesty as "estimated within +-5 min" one level up: it says what is
+    // not known, names what is, and does not resolve the uncertainty by
+    // picking. The site must not choose one of these, so nothing below ranks
+    // them or calls any of them likelier -- they are offered in the order
+    // the matcher found them.
+    //
+    // Numbered rather than titled: proceedings.csv carries the ids, which are
+    // addressable; the manifest's `candidates` column carries the titles and
+    // they are for a person reading the manifest.
+    else if(s.state==="candidates"&&(s.candidate_ids||[]).length){
+      const ids=s.candidate_ids;
+      const links=ids.map((v,i)=>`<a href="https://www.youtube.com/watch?v=${
+        esc(v)}" target="_blank" rel="noopener">Recording ${i+1}</a>`
+        ).join(" · ");
+      // Spelled, because the sentence is prose and "there are 3 recordings"
+      // beside "there are two recordings" reads as two voices. Two and
+      // three are the only counts there are -- 213 and 104 of the 317 -- and
+      // the digit is there for a fourth that has never happened. There is no
+      // one-recording case at all: build_manifest writes this column only
+      // where more than one recording of the committee exists that day, and
+      // a lone recording is simply matched.
+      const n=["","one","two","three","four","five"][ids.length]||ids.length;
+      inner=`<div class="vbox"><p><b>This committee was recorded that day.
+        Which of its recordings is this sitting has not been established.</b>
+        There are ${n} recordings of it for that day, nothing in the record
+        says which one took this bill up, and this site will not pick one.
+        They are all here: ${links}</p>
+        <p style="margin-top:8px">A committee can sit in divisions that stream
+        separately, and a scheduled time can fall inside more than one
+        recording; in neither case does the record say which one the bill was
+        taken up in. The day, the committee and the recordings are all on
+        record. Which goes with which is not, and a guess here would read as
+        a fact.</p></div>`;
     }
     else if(s.state==="floor_precise"||s.state==="floor_stated"){
       // A roll call closes the item, so its timestamp is the END of the
