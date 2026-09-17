@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.89
+# GRANITE_VERSION: 2026-09-05.90
 """
 Generate the faceted site from real General Court data.
 
@@ -35,6 +35,7 @@ import re
 import sys
 import archive_text as AT
 import text_sponsors as TS
+import topic_model as TM
 import unicodedata
 from collections import Counter, defaultdict, namedtuple
 from datetime import date as _date, timedelta as _td
@@ -2893,9 +2894,62 @@ def merge_guessed_topics(bills):
             rec["subject_source"] = "granite record"
             n += 1
     if n:
-        print(f"  {n:,} bills given a topic by topics.py "
+        print(f"  {n:,} bills given a topic by the topic model "
               f"(the General Court gave none); marked subject_source")
     return n
+
+
+# Codes for the two categories the General Court does not have. Nothing reads
+# subject_code -- it is carried through and displayed -- but it must not be
+# empty where every other subject has one.
+ADDED_CODES = {"Housing": "HSG", "Study Committees and Commissions": "STU"}
+
+
+def unify_vocabulary(bills):
+    """ONE VOCABULARY ACROSS ALL NINETEEN TERMS, applied last and to everything.
+
+    The topic model predicts in the General Court's own 46 categories, which is
+    the vocabulary it was measured in -- 62.1% to 67.2% held out. The site
+    owner's vocabulary of 16 September is a different thing: five starved
+    categories folded into parents, Regular Meeting retired, and Housing and
+    Study Committees added. Applying it inside the model would have meant
+    scoring the model against a vocabulary it was not measured in.
+
+    So it is applied HERE instead, once, to every bill of every term -- the
+    General Court's own labels for 2025-2026 as much as the model's answers for
+    the archive. That is the point. Fold the archive alone and the two halves of
+    the site stop sharing a vocabulary: a reader filtering Parks and Recreation
+    would find 2025-2026's bills and none of the eighteen terms before it, and a
+    reader filtering Housing would find the archive and not the current term.
+    A facet that means different things in different terms is worse than either
+    name on its own.
+
+    The owner's rule for the folds was that a category has to carry its own
+    weight: measured from the General Court's own labels, these five run at 0.5
+    to 6 bills a year against a threshold of ten, and the seven others between 7
+    and 9.5 were deliberately left alone.
+    """
+    moved = Counter()
+    for term, by_bill in bills.items():
+        for bid, rec in by_bill.items():
+            s = (rec.get("subject") or "").strip()
+            if not s:
+                continue
+            if s in TM.RETIRED:
+                rec["subject"], rec["subject_code"] = "", ""
+                moved["retired"] += 1
+                continue
+            new_s = TM.remap_gold(s, rec)
+            if new_s != s:
+                rec["subject"] = new_s
+                rec["subject_code"] = ADDED_CODES.get(new_s) or rec.get("subject_code") or ""
+                moved[f"{s} -> {new_s}"] += 1
+    if moved:
+        total = sum(moved.values())
+        print(f"  {total:,} bills moved into the site's own topic vocabulary")
+        for k, v in moved.most_common(8):
+            print(f"      {v:>6,}  {k}")
+    return sum(moved.values())
 
 
 def vote_note_for(narr, rollcalls):
@@ -3337,6 +3391,8 @@ def main():
         sys.exit(f"{D / 'bills.json'} is keyed on bill number, not on term. "
                  "Rebuild it: python3 build_data.py --dir . --out data")
     merge_guessed_topics(bills)
+    # LAST, so it catches the General Court's labels and the model's alike.
+    unify_vocabulary(bills)
     sponsors = load(D / "sponsors.json", {})
     # The sponsors each bill's own text names, for the bills the database names
     # nobody for: every term before 2023, as the lane saves their pages.

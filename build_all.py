@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.22
+# GRANITE_VERSION: 2026-09-05.23
 """
 Run the whole pipeline in the right order.
 
@@ -191,10 +191,15 @@ def plan(a):
         # AFTER build_data, because it reads data/bills.json, and before
         # build_site_v2, which merges its answers in. Regenerated every run
         # rather than kept, so a term the General Court labels later simply
-        # stops being guessed at: topics.py never answers for a bill that
+        # stops being guessed at: topic_model.py never answers for a bill that
         # already has a topic.
+        #
+        # topic_model.py rather than topics.py since 16 September. It is the
+        # second model, it imports the first rather than replacing it, and it
+        # writes the same file key for key. topics.py stays runnable and stays
+        # what preflight tests.
         Step("a topic for the bills the General Court gave none",
-             ["topics.py", "--apply"],
+             ["topic_model.py", "--apply"],
              needs=["data/bills.json"], produces=["topics_assigned.json"],
              note="learns from the 2,221 bills of 2025-2026 that carry the "
                   "General Court's own topic and answers for the other "

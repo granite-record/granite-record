@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.14
+# GRANITE_VERSION: 2026-09-09.15
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -512,8 +512,17 @@ def show_topics(it):
             f'<h3>The topic this site would give it</h3>'
             f'<p class="prose"><strong>{E(it["topic"])}</strong></p>'
             + (f'<h3>Why</h3><p class="prose">{E(why)}</p>' if why else "")
-            + f'<p class="note">confidence margin {E(it["margin"])}; '
-              f'below 4 the answer is withheld as Miscellaneous</p>'
+            # The number changed meaning on 16 September. It was a log-margin
+            # against a threshold of 4; the topic model's decision IS a
+            # calibrated confidence between 0 and 1, against a floor that
+            # differs by regime -- 0.46 where the bill's text is on disk, 0.63
+            # where only the title and committee are. Printing "below 4" beside
+            # a number that now runs 0.06 to 1.00 told the bench the opposite
+            # of the truth.
+            + f'<p class="note">confidence {E(it["margin"])} out of 1; below '
+              f'the floor for its evidence (0.46 where the bill text is on '
+              f'disk, 0.63 without it) the answer is withheld as '
+              f'Miscellaneous</p>'
             f'<p class="ask">{verdict_hint}</p>')
 
 
