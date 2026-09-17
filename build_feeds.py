@@ -41,6 +41,17 @@ from xml.sax.saxutils import escape
 
 TODAY = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
+# The first day a reader could have been following a bill and had it end under
+# them. Before this, the site had been shared with its first users for two days
+# and the person's word on 17 September was that nobody was following anything
+# by RSS yet -- they were browsing. A bill that concluded before that date can
+# have had no subscriber, so it is owed no closing item and keeps no feed; one
+# that concludes on or after it gets both. See the _closing gate below.
+#
+# This is a date and not a flag because it has to mean the same thing on every
+# machine and in a fresh clone. Move it only if the premise changes.
+FOLLOW_FROM = "2026-09-17"
+
 # How a vote is written. Anything not listed is passed through as the record
 # has it rather than translated into a word it did not use.
 VOTE_WORD = {"Yea": "yes", "Nay": "no"}
@@ -279,7 +290,7 @@ def main():
         "adopted": "was adopted",
         "study": "was referred for interim study",
     }
-    skipped_closed = retired = 0
+    skipped_closed = retired = skipped_concluded = 0
     noyear = []
     sponsored = {}
     # Each bill's record, read from its page. It used to be opened from
@@ -346,22 +357,24 @@ def main():
         # The closing item's guid carries no date and its date is the last
         # event's, so every rebuild produces the SAME closing item rather than
         # a fresh one each night -- which is what retiring a feed means.
-        # EVERY CONCLUDED BILL OF THE SITTING TERM, not only the ones whose
-        # feed happens to be on disk. Scoping it to existing files was the
-        # first attempt and it was wrong twice over: it would have made the
-        # build depend on the state of site/, so two runs from identical data
-        # could differ, and a fresh clone would produce a different site from
-        # this one. Determinism is worth more than the file count.
+        # ONLY WHERE SOMEBODY COULD HAVE BEEN SUBSCRIBED. A closing item is
+        # owed to a reader who was following the bill when it ended; a bill
+        # that concluded before anyone could follow anything is owed nothing,
+        # and keeping its feed is 2,000 files bought for no reader.
         #
-        # The consequence, stated plainly because it is the real cost: a feed
-        # is kept for every bill of the term that ever had one, which is about
-        # 2,200 rather than 215. prune() removes what a run does not write, so
-        # a retired feed survives only by being written every run -- and it is
-        # written identically each time, same guid and same date, so it sits
-        # still. No page advertises it; a subscriber who already has it is who
-        # it is for.
+        # The person, 17 September: nobody is following bills by RSS yet, and
+        # people are browsing. So the rule starts from that day rather than
+        # reaching back over the term.
+        #
+        # The gate is the bill's OWN concluding date, not the state of site/.
+        # Scoping it to feeds already on disk was the first attempt and was
+        # wrong for a subtler reason than the file count: it would have made
+        # the build depend on what a previous run left behind, so two runs from
+        # identical data could differ and a fresh clone would produce a
+        # different site. A date in the record is the same on every machine.
         _closing = (items and (b.get("term") or "") == current
-                    and not S.still_moving(b, current))
+                    and not S.still_moving(b, current)
+                    and events[0]["date"][:10] >= FOLLOW_FROM)
         if _closing:
             _end = OUTCOME.get((b.get("kind") or "").lower(), "has concluded")
             items.insert(0, (
@@ -376,6 +389,14 @@ def main():
 
         if items and (b.get("term") or "") != current:
             skipped_closed += 1
+        elif items and not S.still_moving(b, current) and not _closing:
+            # Concluded, and concluded before anyone could have been following
+            # it: no feed at all. Only a bill still moving can be followed, and
+            # a bill that ended before FOLLOW_FROM has no subscriber to tell.
+            # Restoring this was the whole point of the gate above -- without
+            # it every bill of the term kept a feed, which is 2,000 files for
+            # no reader.
+            skipped_concluded += 1
         elif items and not str(b.get("year") or "").strip():
             # Without a year the path collapses to feed/bill/<id>.xml, where
             # the next term's bill of the same number lands on top of it.
@@ -625,6 +646,10 @@ def main():
     if skipped_closed:
         print(f"  {skipped_closed:,} bills of closed terms got no feed of "
               "their own: their history is on the page and cannot change")
+    if skipped_concluded:
+        print(f"  {skipped_concluded:,} concluded bills of the sitting term got "
+              "no feed: only a bill still moving can be followed, and one that")
+        print("    ended before anyone was following has no subscriber to tell")
     if retired:
         print(f"  {retired:,} bills concluded with a feed already published got "
               "a closing item and a retired feed:")
