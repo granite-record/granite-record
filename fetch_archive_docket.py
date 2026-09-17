@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.7
+# GRANITE_VERSION: 2026-09-07.8
 """
 The docket of every bill of an archived term, in Docket.txt's own format.
 
@@ -122,11 +122,11 @@ def main():
                          "accounted for; its lines are kept and those bills "
                          "are never asked for")
     # A cached page with the bill's title and not one docket row. SB 68 of
-    # 2017 was cached that way on 9 September, and on the 11th the same
-    # address showed a person twelve rows ending in the governor's signature
-    # and chapter 35: the page had been served whole but empty. Seventeen
-    # of 2017-2022's pages are like it, and a cached page is never asked for
-    # again -- so without this they stand for those bills' dockets for good.
+    # 2017 was cached that way, and the same address later showed twelve rows
+    # ending in the governor's signature and chapter 35: the page had been
+    # served whole but empty. Seventeen of 2017-2022's pages are like it, and
+    # a cached page is never asked for again -- so without this they stand for
+    # those bills' dockets for good.
     ap.add_argument("--refetch-empty", action="store_true",
                     help="ask again for any cached page that has no docket "
                          "row on it")
@@ -233,9 +233,9 @@ def main():
             # what being blocked looks like from here. That has happened
             # twice on this project and cost days each time.
             #
-            # This read refusals by substring of the error's text until 11
-            # September, and urllib wraps a reset at connect time as
-            # "<urlopen error [WinError 10054] ...>", which matched nothing:
+            # This once read refusals by substring of the error's text, and
+            # urllib wraps a reset at connect time as "<urlopen error
+            # [WinError 10054] ...>", which matched nothing:
             # a refused connection was an ordinary failure, with no cool-off,
             # no stop and no record. And a 200 was cached whatever it was, the
             # block page included. refusal.classify() reads both now.

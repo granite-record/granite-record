@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.8
+# GRANITE_VERSION: 2026-09-10.9
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -209,8 +209,8 @@ def proceedings_table(out, site):
     and how_placed was the manifest's match method, "single video". So 13,987
     rows told anyone who downloaded them that the schedule was when a bill
     was heard, while the pages print the boundary the chair stated for
-    12,751 of them. It is the mix-up the bench made on 9 September, in the
-    one file meant for other people to build on.
+    12,751 of them -- the same mix-up the bench caught once, here in the one
+    file meant for other people to build on.
 
     Now start_seconds and end_seconds are the bill page's own station, read
     from the page, and how_placed is the page's word for how it was placed;

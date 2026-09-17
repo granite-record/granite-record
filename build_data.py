@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.30
+# GRANITE_VERSION: 2026-09-04.31
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -239,12 +239,12 @@ def _pick_committee(stored, first, known):
 
     `stored` is the General Court search page's "Next/Last Comm" -- the LAST
     committee the bill was with. `first` is the first referral, read out of
-    the docket by referrals.py. The person settled in September 2026 that the
-    site names the FIRST: a later referral to Finance is a money pass rather
-    than a change of subject-matter ownership, and a bill that goes to Health
-    and Human Services and then to Finance belongs to Health and Human
-    Services. 527 bills of 1999-2016 stored a money committee for exactly that
-    reason, and 586 more stored something that is not a committee at all.
+    the docket by referrals.py. The site names the FIRST: a later referral to
+    Finance is a money pass rather than a change of subject-matter ownership,
+    and a bill that goes to Health and Human Services and then to Finance
+    belongs to Health and Human Services. 527 bills of 1999-2016 stored a
+    money committee for exactly that reason, and 586 more stored something
+    that is not a committee at all.
 
     So the docket wins -- with one exception, which is the reason this is a
     function rather than an `or`.
@@ -892,10 +892,10 @@ def main():
 
     # And beneath it, the General Court's own list of everybody who has served.
     #
-    # Twenty-four years of roll calls came off the database dump on 10
-    # September, and 783,919 of their ballots were cast by somebody this site
-    # could not name -- "Member #330274" -- because the roster views reach
-    # 1,081 people and former_members.json 676. past_members.json holds 2,614,
+    # Twenty-four years of roll calls came off the database dump, and 783,919
+    # of their ballots were cast by somebody this site could not name --
+    # "Member #330274" -- because the roster views reach 1,081 people and
+    # former_members.json 676. past_members.json holds 2,614,
     # keyed by the same Employeeno the roll call history uses, and names
     # 733,474 of those ballots: 93%.
     #
@@ -924,10 +924,10 @@ def main():
     # And the party, from the roll call pages.
     #
     # past_members.json names people and carries no party, so 773,506 ballots
-    # were named and partyless. A person found the page that has it: the
-    # legacy roll call detail prints every member's party, county and district
-    # beside their vote, and fetch_rollcall_parties.py took the fullest vote
-    # of each year and chamber -- 54 requests for 2,078 members.
+    # were named and partyless. The page that has it is the legacy roll call
+    # detail, which prints every member's party, county and district beside
+    # their vote; fetch_rollcall_parties.py took the fullest vote of each year
+    # and chamber -- 54 requests for 2,078 members.
     #
     # This fills a party where there is none and NEVER replaces one. A party
     # already on a record came from the roster the General Court publishes for
@@ -1146,17 +1146,15 @@ def main():
         # contract. "Shurtleff, Steve(D) Merrimack 15" never reaches a page --
         # build_site_v2.member_labels re-derives what a reader sees from the
         # bare name, so every voter on every page reads "Rep. Steve Shurtleff".
-        # It looks like dead code and on 17 September it was nearly deleted as
-        # such.
-        #
-        # It is not. build_site_v2.former_roster parses the county and district
-        # back OUT of this string (FORMER_LABEL there) to give a former member
-        # their seat, and it reads the label rather than former_members.json
-        # precisely because this is the only copy that has been through
-        # member_corrections.json -- build_data applies the person's
-        # corrections to `former` above and never writes that map out. Taking
-        # the seat from the file instead is what published Steve Shurtleff at
-        # Grafton 9, the seat of the record his correction replaced.
+        # It looks like dead code and is not: build_site_v2.former_roster
+        # parses the county and district back OUT of this string
+        # (FORMER_LABEL there) to give a former member their seat, and it
+        # reads the label rather than former_members.json precisely because
+        # this is the only copy that has been through member_corrections.json
+        # -- build_data applies those corrections to `former` above and never
+        # writes that map out. Taking the seat from the file instead is what
+        # published Steve Shurtleff at Grafton 9, the seat of the record his
+        # correction replaced.
         #
         # So: the "Name(P) County NN" shape is depended on. Change it in both
         # places or in neither.

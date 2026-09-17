@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.4
+# GRANITE_VERSION: 2026-09-09.5
 """
 One refusal stops the fetch lane, not just the run that was refused.
 
-NOT, YET, EVERY FETCHER. This line read "stops every fetch" and that is the
-claim a contributor would rely on at the moment it matters. Twelve of the
-thirty-two fetch_*.py scripts consult this module -- `grep -l refusal
-fetch_*.py` is the list -- and the rest, started by hand, would walk straight
-through a recorded refusal. build_all.py and watchers/gc_lane.py do honour it,
-which is what makes the scheduled path safe. Closing the gap is a small change
-to twenty files and has not been made.
+NOT, YET, EVERY FETCHER. Twelve of the thirty-two fetch_*.py scripts consult
+this module -- `grep -l refusal fetch_*.py` is the list -- and the rest,
+started by hand, would walk straight through a recorded refusal. build_all.py
+and watchers/gc_lane.py do honour it, which is what makes the scheduled path
+safe. Closing the gap is a small change to twenty files and has not been made.
 
     import refusal
     refusal.check("fetch_archive_docket")      # exits if the last run was refused
@@ -17,17 +15,12 @@ to twenty files and has not been made.
 
 WHY THIS EXISTS
 
-On 9 September the calendar drain ran cleanly for eight hours, fetched 1,846
-documents, was answered with two HTTP 403s and stopped itself -- correctly, and
-for the first time on this project. Fifty-four seconds later a chained run
-started asking the same address for the 2017-2018 docket, because it was
-waiting on the lock and the lock had cleared. It had no way to tell the
-difference between a run that finished and a run that was refused.
-
-That is the whole failure. Each fetcher had a stop-loss and honoured it; what
-was missing was that a refusal is a fact about the ADDRESS, and so it has to
-outlive the process that discovered it. Every fetch since has been careful and
-this one was still one minute from pushing through a 403.
+A calendar drain was answered with two HTTP 403s and stopped itself, correctly.
+Fifty-four seconds later a chained run started asking the same address for
+another docket, because it was waiting on the lock and the lock had cleared: it
+had no way to tell a run that finished from a run that was refused. Each
+fetcher had a stop-loss and honoured it; what was missing was that a refusal is
+a fact about the ADDRESS, so it has to outlive the process that discovered it.
 
 HOW IT BEHAVES
 

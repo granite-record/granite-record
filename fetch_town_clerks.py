@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.1
+# GRANITE_VERSION: 2026-09-12.2
 """
 The town clerk and the polling place for every town and ward, in one request.
 
@@ -26,7 +26,7 @@ town-ward pages this site builds. Each row carries:
     | Election Date-Name
 
 WHAT WAS MEASURED BEFORE ANY OF THIS WAS WRITTEN, by opening the page in a
-browser on 12 September:
+browser:
 
     clerk name        331 of 331
     phone             331 of 331

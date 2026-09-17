@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Who holds a leadership role in each chamber.
 
@@ -7,7 +7,7 @@ Who holds a leadership role in each chamber.
     python3 fetch_leadership.py            # save the five pages to archive/leadership/, 20 s apart
     python3 fetch_leadership.py --parse    # read what is saved, write leadership.json; no request
 
-FETCHING AND READING ARE TWO STEPS, since 13 September. The House pages have
+FETCHING AND READING ARE TWO STEPS. The House pages have
 never been read, so the parser for them cannot be right the first time -- and
 a parser that is allowed to be wrong must not cost a request each time it is
 wrong. The fetch saves the pages whole and stops; --parse reads them as often

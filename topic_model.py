@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.3
+# GRANITE_VERSION: 2026-09-16.4
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
     python3 topic_model.py --apply              # write topics_assigned.json
@@ -82,11 +82,8 @@ TWO LABEL SPACES, AND WHY --apply USES A BY DEFAULT
      comparable with topics.py.
   B  the site's own vocabulary: five starved categories folded into their
      parents, Regular Meeting retired, and Housing and Study Committees and
-     Commissions added. THE OWNER APPROVED IT ON 17 SEPTEMBER, both halves --
-     "I support adding housing and study committees as categories" and "I
-     also approve of that consolidation of the underused categories" -- so
-     build_all.py now runs `--apply --space B` and this is what the site
-     publishes.
+     Commissions added. build_all.py runs `--apply --space B`, so this is
+     what the site publishes.
 
      The objection that kept it off is answered rather than waived. It was
      that two names would enter the archive's eighteen terms which
@@ -107,9 +104,9 @@ and a wrong topic on a bill page is worse than no topic, because a reader
 filtering by Elections and not finding a bill about elections has been misled
 rather than underserved.
 
-NUMPY. This module needs numpy; topics.py does not. Measured on this machine,
-importing it costs 0.11s of wall clock per process, against a --apply run of
-several minutes. It is not a cost the pipeline can feel.
+NUMPY. This module needs numpy; topics.py does not. Importing it costs about
+0.11s per process, against a --apply run of several minutes, so the pipeline
+cannot feel it.
 """
 
 import argparse
@@ -182,7 +179,7 @@ HOUSING_COMMITTEE = "housing"
 # definition where that committee sits -- it is the General Court's opinion
 # rather than ours -- but it reaches one term of nineteen. Measured without
 # this rule, recall in the archive falls from 90% to 57% and the yield to
-# 4-14 bills a year, against the 15-24 the person asked for.
+# 4-14 bills a year rather than 15-24.
 #
 # So a bill is housing if the Housing committee heard it, OR if its title says
 # so in the vocabulary the General Court has used for thirty-seven years.
@@ -199,7 +196,7 @@ HOUSING_COMMITTEE = "housing"
 # in the list this rule was drawn from and both were dropped after reading
 # what they caught.
 #
-# THE LEADING \b IS LOAD-BEARING, and it was missing for a day. Without it
+# THE LEADING \b IS LOAD-BEARING. Without it
 # "rental" matches inside "parental" and "rents" inside "grandparents", so
 # 252 bills were filed under Housing that have nothing to do with it -- almost
 # all of them school choice and parental rights: "allowing parents to send
@@ -691,8 +688,8 @@ def apply(space="A", limit_terms=None, cfg=None):
     probability the decision is actually made on, between 0 and 1 -- where
     topics.py wrote a log-margin over the runner-up compared against 4. It is
     still a rounded float and still "how sure is this", and nothing computes
-    on it; review.py prints it and says "below 4", which is now stale text on
-    the bench page and wants a line changed there.
+    on it; review.py prints it and says "below 4", which is stale text on the
+    bench page and wants a line changed there.
 
     `why` is still a flat list of short feature tokens. There is no new
     explanation format here and none is wanted.
@@ -715,10 +712,10 @@ def apply(space="A", limit_terms=None, cfg=None):
         sys.exit("No data/subjects.json, so no subject codes; refusing to "
                  "write a file whose every code would be MSC.")
     out, tally = {}, collections.Counter()
-    # NEWEST FIRST, which is the person's standing order for a backfill and
-    # is doubly right here: the recent terms are the ones the committees still
-    # match and the ones whose bill text exists, so they are both the most
-    # useful and the most accurate.
+    # NEWEST FIRST, the standing order for a backfill, and doubly right here:
+    # the recent terms are the ones the committees still match and the ones
+    # whose bill text exists, so they are both the most useful and the most
+    # accurate.
     terms = sorted(bills, reverse=True)
     if limit_terms:
         terms = terms[:limit_terms]

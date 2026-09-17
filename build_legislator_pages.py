@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.13
+# GRANITE_VERSION: 2026-09-04.14
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -9,7 +9,7 @@ An address for every sitting legislator, and the sitemap entries for them.
 member open -- the same app.js, the same cards, the same roll call table as a
 bill's page, drawing site/legislators/<id>.json.
 
-Until 7 September it was a page rendered here in Python: its own markup, its own
+It was once a page rendered here in Python: its own markup, its own
 stylesheet, its own vote table, and no site header at all. It looked unlike
 every other page on the site because it was written by different code, which is
 the same problem the bill pages had and was fixed the same way.
@@ -61,9 +61,9 @@ def describe(m):
     """The sentence a search engine shows under the link."""
     # THE SEAT ONCE. display_full already carries it -- "Rep. Aboul Khan (R -
     # Rock 30)" -- and the seat was appended again, so all 406 of these read
-    # "(R - Rock 30) Rock 30." in a search result until 13 September. The
-    # places come straight after the name, because they are what a person
-    # searching a representative's name is usually checking.
+    # "(R - Rock 30) Rock 30." in a search result. The places come straight
+    # after the name, because they are what a person searching a
+    # representative's name is usually checking.
     who = m.get("display_full") or m.get("display") or m.get("name") or ""
     if not (m.get("display_full") or "") and m.get("district_label"):
         who = f"{who} ({m['district_label']})"
@@ -77,10 +77,9 @@ def describe(m):
     #
     # The years are the record's rather than the career's -- roll calls here
     # begin in 1999, so somebody first sworn in before that appears from the
-    # year the evidence starts. The person's call on 17 September was to list
-    # the terms the record covers and leave the wording plain: the case is rare
-    # enough that a sentence of hedging costs the reader more than the
-    # imprecision does.
+    # year the evidence starts. List the terms the record covers and leave the
+    # wording plain: the case is rare enough that a sentence of hedging costs
+    # the reader more than the imprecision does.
     if m.get("former"):
         yrs = _served_years(m)
         lead = (f"{who} served in the New Hampshire {body}"
@@ -106,12 +105,11 @@ def _served_years(m):
 
     The span of the RECORD, which is not always the span of the service: roll
     calls here begin in 1999 and bills in 1989, so somebody who took their seat
-    in 1985 and left in 2002 appears from 1999. The person settled this on 17
-    September while approving these pages -- list the terms the record covers,
-    and keep the wording plain, because the case is rare enough that a sentence
-    of hedging costs the reader more than the imprecision does. The one place
-    it is still worth avoiding is structured data, which asserts a startDate as
-    fact with no prose around it; structured.person says so.
+    in 1985 and left in 2002 appears from 1999. The wording stays plain: the
+    case is rare enough that a sentence of hedging costs the reader more than
+    the imprecision does. The one place it is still worth avoiding is
+    structured data, which asserts a startDate as fact with no prose around
+    it; structured.person says so.
 
     One year where both ends fall in it, because "2026 to 2026" reads as a
     fault rather than as a fact.
@@ -172,8 +170,8 @@ def main():
         who = m.get("display_full") or m.get("display") or m.get("name") or ""
         mid = str(m.get("id") or "")
         # THE MEMBER'S FEED, WHERE ONE IS WRITTEN: their recorded votes and the
-        # bills they sponsored. Until 13 September build_feeds wrote one for
-        # each of the 406 and no page named any, so the only way to one was
+        # bills they sponsored. build_feeds once wrote one for each of the 406
+        # and no page named any, so the only way to one was
         # already knowing its address. A feed reader given this page finds it
         # here, as it finds a bill's. build_feeds runs after this step, so
         # there is no file to look for: shell.member_followable is the test

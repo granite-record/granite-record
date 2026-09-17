@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Every standing committee, from the two pages that list them.
 
@@ -191,7 +191,7 @@ def main():
             print(f"  could not fetch: {type(e).__name__}: {e}")
             continue
         if a.raw:
-            # The House page returned 0 committees on 6 September.
+            # The House page has come back with 0 committees on it.
             # Guessing at a heading shape is the thing this project does
             # not do, so the page is kept and the patterns are written
             # against it.

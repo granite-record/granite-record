@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.3
+# GRANITE_VERSION: 2026-09-13.4
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -8,8 +8,8 @@ legislator, every town -- each a link a person or a crawler can follow.
 
 WHY
 
-On 12 September the site had 33,683 bill pages, 406 legislator pages and 320
-town pages, and almost nothing linked to them without JavaScript:
+The site has 33,683 bill pages, 406 legislator pages and 320 town pages, and
+almost nothing linked to them without JavaScript:
 
   - the bill list is drawn by app.js from idx/<term>.json, so bills.html ships
     an empty <div id="results">. A bill page was reachable from the sitemap,
@@ -169,11 +169,11 @@ def towns_page(site, base, towns, urls):
 def find_index(site, legs, towns):
     """site/find.json: everything the header search can answer instantly.
 
-    Asked for on 15 September: one box that finds a legislator, a committee, a
-    town or a page, so that "Litchfield" offers the town and Rep. Melissa
-    Litchfield together. Bills are NOT in it -- 33,683 rows is a megabyte and a
-    half, and the bill search already exists -- so the box hands anything it
-    does not recognise to that search, which is one page load away.
+    One box that finds a legislator, a committee, a town or a page, so that
+    "Litchfield" offers the town and Rep. Melissa Litchfield together. Bills
+    are NOT in it -- 33,683 rows is a megabyte and a half, and the bill search
+    already exists -- so the box hands anything it does not recognise to that
+    search, which is one page load away.
 
     Small on purpose: 406 members, the committees, every town and ward, and the
     fixed pages. The box fetches it once, the first time somebody opens it.

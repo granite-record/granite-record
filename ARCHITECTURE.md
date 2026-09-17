@@ -1,16 +1,13 @@
 # Granite Record — Architecture review
 
-Written 5 September 2026, after four days of building and one long day of
-finding out what breaks, and added to since. This is an honest account of the
-structure, what it has cost, and what the archive needs from it.
+An honest account of the structure, what it has cost, and what the archive
+needs from it.
 
-IT IS LAYERED, AND THE LAYERS ARE DATED. Sections written on the 5th were
-amended on the 10th, and several of the 10th's own plans were carried out the
-same day. A section that describes a problem as open may be describing one
-that was fixed the following morning; where that is so, a dated line at its
-head says so, and the reasoning underneath is kept because the measurement
-behind it is still the right way to think. Where a number here disagrees with
-`STATE.md`, `STATE.md` is generated and this is not.
+IT IS LAYERED. A section that describes a problem as open may be describing
+one that was fixed shortly after; where that is so, a line at its head says
+so, and the reasoning underneath is kept because the measurement behind it is
+still the right way to think. Where a number here disagrees with `STATE.md`,
+`STATE.md` is generated and this is not.
 
 Sections: what is sound and should be kept; the two plans of 10 September and
 what became of them; what is structurally wrong, ranked by cost; and what to
@@ -45,15 +42,15 @@ morning, and exactly one write-only Function that no page waits on --
 is also what forces the file-count problem below, but it is the right
 constraint.
 
-**`preflight.py` builds the whole site on a fixture.** Several of its checks
-exist because of specific failures this week; it has caught stamp mismatches
-three times and a dead-zone error once. Run it for the current count -- a
-number written here would be wrong within a day, and was.
+**`preflight.py` builds the whole site on a fixture.** Most of its checks exist
+because of a specific failure; it has caught stamp mismatches three times and a
+dead-zone error once. Run it for the current count -- a number written here
+would be wrong within a day, and was.
 
-**A person can overrule a generator, in one file the generators cannot touch.**
+**A person can overrule a generator, in files the generators cannot touch.**
 Five files are a person's: `ground_truth.csv`, `review/checked.jsonl`,
-`bill_notes.json`, `officials.json`, and since 16 September
-`member_corrections.json`. The fifth exists because a generated NAME can be
+`bill_notes.json`, `officials.json` and `member_corrections.json`. The last
+exists because a generated NAME can be
 wrong and nothing downstream can tell -- `resolve_members.py` deduces who a
 member id is by intersecting a saved roll call page with the ids that voted,
 and one of its 676 deductions put the wrong person's name on 4,250 ballots.
@@ -66,15 +63,14 @@ name source, and preflight fails if any generator opens the file for writing.
 
 ## Three things about the pipeline that are easy to get wrong
 
-Written 16 September, each after getting it wrong.
+Each learned by getting it wrong.
 
 **The record travels inside the bill's page, so `build_bill_pages.py` must run
 after `build_site_v2.py`.** All but a few hundred of the 33,683 records are
 embedded in the page rather than fetched; only those over `INLINE_CAP`
 (100 KB, `build_bill_pages.py:141`) keep a file, and the step prints the split
-when it runs. (This paragraph said "33,585 ... only the 98" for a week; the
-split moves with the data, so read it off the run rather than off this line.)
-So rebuilding the
+when it runs. The split moves with the data, so read it off the run rather
+than off this line. So rebuilding the
 site alone leaves every bill page carrying the record as it was, and the change
 you just made is in `site/bills/<year>/<id>.json` where nothing reads it. The
 symptom is a page that looks stale while the JSON beside it looks right.
@@ -96,15 +92,13 @@ new generator cannot repeat it.
 
 ## proceedings.csv across terms, measured 10 September
 
-> **Done, and finished on 17 September.** `build_manifest.py` needed no change
-> -- `--docket` names the term -- and `build_proceedings.py` now reads every
-> `verification_manifest*.csv`. The table went from 9,762 rows in one term to
-> seven terms on the 10th, eleven by the 16th, and **a manifest for all
-> nineteen terms at 09:32 on the 17th**, 1989-1990 to 2025-2026. 2017-2018 and
+> **Done.** `build_manifest.py` needed no change -- `--docket` names the term
+> -- and `build_proceedings.py` now reads every `verification_manifest*.csv`.
+> **All nineteen terms have a manifest**, 1989-1990 to 2025-2026. 2017-2018 and
 > 2019-2020 landed as hearings without video, which is correct, because the
 > House streamed nothing before May 2020, and so does every term before them.
 > Run `python3 handoff.py` for the row and recording counts; the pair quoted
-> here went stale twice in a week. "The order that follows" below is spent --
+> here went stale twice in a week. "The order that followed" below is spent --
 > its step 5 in particular, which sent the next person to the calendars for
 > work the database dump had already put on this disk.
 
@@ -152,40 +146,31 @@ evening before.
 YouTube Data API v3 key. That is the whole gate, it is against YouTube rather
 than the General Court, and it takes minutes.
 
-### The order that follows from that
+### The order that followed from that
 
-1. **2023-2024, today.** Docket here, recordings indexed. One channel-index
-   run for 2023 and 2024, extend `build_manifest.py` to take a term and its
-   docket, merge into `proceedings.csv`. Roughly doubles the record.
-2. **2021-2022, when its docket lands** -- queued in the fetch lane, so about
-   fifteen hours. 1,222 recordings. (This said `docket_chain.py`, which still
-   exists at `watchers/docket_chain.py` and is **superseded by
-   `watchers/gc_lane.py`; do not start it** -- `watchers/README.md` says why.
-   Everything asked of the General Court now goes through that one lane, which
-   works `watchers/gc_lane.queue` holding `archive/.lock`.)
-3. **2019-2020**, same, plus its 139 recordings from May 2020.
-4. **2015-2018: hearings without recordings.** The dockets arrive but no video
-   exists before May 2020. Worth having -- that a bill was heard, when, where,
-   by which committee -- and the page already renders a proceeding with no
-   recording.
-5. **1989-2014: dockets after all, not calendars.** *This said the chain
-   fetched no docket before 2015 and that the calendars were the only source.
-   That stopped being true when the SQL host's bulk dump landed*: `db/` carries
-   the Docket view, `docket_from_db.py` turns a slice of it into the shape
-   `narrative.py` already reads, and **fifteen `Docket_db_*.txt` files are on
-   disk today**, `Docket_db_1989-1990.txt` through `Docket_db_2015-2016.txt`
-   plus `Docket_db_2015.txt`. Every one of those terms has been through
-   `build_manifest.py` now. Read as written, this item sends the next person to
-   build a calendar parser for work that was one `build_manifest.py --docket`
-   run away.
+Spent, and worked through term by term. Two things in it are still live:
 
-   The calendars stay the second source and the only one for what a docket does
-   not carry: all 1,580 House calendar PDFs for 1997-2026 are on disk with text
-   extracted, 100%. `calendar_meetings.py --check` reads the (bill, day) pairs
-   out of them at no cost -- 61,767 across 2,107 committees on 10 September,
-   61,543 across 1,058 on the 17th after committee-name variants were merged,
-   so run it rather than quoting either. Senate calendars: 1,604 PDFs, 984 with
-   text, 620 still queued.
+- **`watchers/docket_chain.py` still exists and is superseded by
+  `watchers/gc_lane.py`; do not start it** -- `watchers/README.md` says why.
+  Everything asked of the General Court now goes through that one lane, which
+  works `watchers/gc_lane.queue` holding `archive/.lock`.
+- **The calendars stay the second source, and the only one for what a docket
+  does not carry.** All 1,580 House calendar PDFs for 1997-2026 are on disk
+  with text extracted, 100%. `calendar_meetings.py --check` reads the
+  (bill, day) pairs out of them at no cost -- 61,767 across 2,107 committees on
+  10 September, 61,543 across 1,058 on the 17th after committee-name variants
+  were merged, so run it rather than quoting either. Senate calendars: 1,604
+  PDFs, 984 with text, 620 still queued.
+
+The step that was wrong is worth one line. It said no docket was fetchable
+before 2015 and that the calendars were therefore the only source for
+1989-2014, which sent the next person to build a calendar parser for work that
+was one `build_manifest.py --docket` run away. The SQL host's bulk dump had
+already overtaken it: `db/` carries the Docket view, `docket_from_db.py` turns
+a slice of it into the shape `narrative.py` already reads, and **fifteen
+`Docket_db_*.txt` files are on disk**, `Docket_db_1989-1990.txt` through
+`Docket_db_2015-2016.txt` plus `Docket_db_2015.txt`. Every one of those terms
+has been through `build_manifest.py`.
 
 ### The decisions to make before writing any of it
 
@@ -206,15 +191,13 @@ than the General Court, and it takes minutes.
   growth and is fine, but a `--term` run that rebuilds one term must merge
   rather than replace, or the first partial run destroys the rest -- which is
   the failure this project has had twice.
-- **Timestamps will lag.** (Measured today: **4,296 of the 4,429 recording
-  folders in `work/` carry captions this can read**, so the "1,278 recordings,
-  almost all current-term" below is four times out of date and the conclusion
-  has inverted -- captions are no longer what lags.) 1,278 recordings have
-  captions and they are almost all current-term; 910 of the 915 recordings that
-  carry a bill today are captioned, so that path is finished for this term and
-  untouched for the others. New terms arrive with hearings, rooms, dates and a
-  recording link but no stated boundaries until captions catch up. That is
-  honest and the page already draws it.
+- **Timestamps will lag, though not for the reason this expected.** When it was
+  written, captions were the bottleneck: 1,278 recordings had them and almost
+  all were current-term. **4,296 of the 4,429 recording folders in `work/` carry
+  captions this can read** now, so that conclusion has inverted. A new term
+  still arrives with hearings, rooms, dates and a recording link but no stated
+  boundaries until transcription catches up. That is honest and the page
+  already draws it.
 
 ### What it is worth
 
@@ -231,19 +214,9 @@ Everything here is measured, and the decisions at the end are already made.
 
 ### What the modules actually weigh
 
-    build_site_v2.py   2,915     build_bills          543 lines
-    preflight.py       3,911     main                 445
-    app.js             2,658     station_for_proceeding 180
-    probe_alignment.py 2,026     committee_reports    137
-    narrative.py       1,420
-    segment_markers.py 1,021
-    review.py            831
-    build_manifest.py    434     main                 191
-    build_proceedings.py 193     from_floor_index      55
-
-Re-measured 17 September, because every figure in it moved and several more
-than doubled. The *shape* of the problem is what the pass was about, and the
-shape has not changed:
+Measured 17 September. Every figure moved in the week since the pass was
+planned and several more than doubled; the *shape* of the problem is what the
+pass was about, and the shape has not changed:
 
     build_site_v2.py   3,888     main                 533 lines
     preflight.py       9,767     build_bills          346
@@ -256,13 +229,12 @@ shape has not changed:
     build_proceedings.py 408     main                  95
                                  from_floor_index      56
 
-**The first table is from the morning of the 10th, and `build_bills` was split
-that afternoon**: 544 lines to 294, nine functions, each step verified
-byte-identical across 34,114 files. It has since grown back to 346, which is
-what a function does when it is the right size to add to. `main` is the longest
-function in the file again -- **533 lines as of 17 September**, up from the 468
-this section recorded -- the same problem, one door along, and it is CLAUDE.md's
-first item once more, with a rationale that is current.
+`build_bills` was split on 10 September, 544 lines to 294 in nine functions,
+each step verified byte-identical across 34,114 files. It has since grown back
+to 346, which is what a function does when it is the right size to add to.
+`main` is the longest function in the file again -- **533 lines**, up from the
+468 this section first recorded -- the same problem one door along, and it is
+CLAUDE.md's first item once more.
 
 ### In scope
 
@@ -271,10 +243,8 @@ first item once more, with a rationale that is current.
 > remembering it: `build_manifest.py` needed no `--term` flag and no change at
 > all, the cross-term video hazard was measured and does not exist, and the
 > shrink guard was built onto the whole-table read instead of as `--term` merge
-> semantics. The list is kept whole because a plan that quietly drops its own
-> earlier advice is worse than one that says what it got wrong -- but "the
-> decision, so it does not get relitigated" below is not the decision that
-> shipped.
+> semantics. So "the decision, so it does not get relitigated" below is not the
+> decision that shipped.
 
 **1. `build_manifest.py` becomes term-aware.** The agreed shape: one producer
 of committee proceedings, taking a term and its docket, with calendars as a
@@ -348,7 +318,7 @@ Planned by reading the code rather than by remembering it, which changed the
 answer twice. Both corrections are below, because a plan that quietly drops
 its own earlier advice is worse than one that says what it got wrong.
 
-### Two corrections to what was recommended yesterday
+### Two corrections to what the section above recommends
 
 **`build_manifest.py` needs no `--term` flag, and no change at all.** It takes
 `--docket` and `--out`, the docket carries the term, and that is the whole of
@@ -442,34 +412,30 @@ satisfied by growth and needs no flag.
 
 ### The other things to fix while in there
 
-- **`hms` was defined twice in `probe_alignment.py`** and the second shadowed
-  the first, so fourteen callers wanting sub-second caption times got `12m
-  05s` where they meant `0:12:05.3`. Fixed on 10 September; noted here because
-  it is the kind of thing a pass should look for and it was the only one.
-- **Seven stale `--manifest` defaults** point at `verification_manifest.csv`:
-  `align_all`, `apply_markers`, `fetch_testimony`, `probe_alignment`,
-  `score_alignment`, `transcribe_and_align`, `verify_batch`. Only
-  `preflight.py` opens that file and `build_proceedings.py` reads it as input,
-  so these are pointers rather than coupling -- but once there are several
-  manifests, a default naming one of them is actively wrong. Decide per tool
-  whether it is superseded or should read `proceedings.csv`.
+The two correctness items above -- the shadowed `hms`, and the seven stale
+`--manifest` defaults -- are the ones a pass like this should look for, and
+they were the only ones. Once there are several manifests, a default naming
+one of them is actively wrong: decide per tool whether it is superseded or
+should read `proceedings.csv`. One more:
+
 - **`--keep-marks` looks vestigial.** It carries `observed_start` and
   `observed_end` forward from an older manifest, and no manifest written today
   has those columns -- the marks live in `ground_truth.csv`, which no
   generator may write. Confirm, then delete it or say in the help that it is
   for a manifest from before that move.
 
-### What said the pass worked, on the evening of 10 September
+### What said the pass worked
 
-    python3 preflight.py                     green (76 checks by evening)
+    python3 preflight.py                     green (76 checks then)
     python3 probe_alignment.py --truth       47 marks, candidate median 0m 01s
     python3 probe_alignment.py --truth --no-bench   35 marks, median 0m 01s
     python3 check_site.py                    ready, 49,304 files of 100,000
 
-and `proceedings.csv` naming seven terms instead of one. Those are the numbers
-of that evening, deliberately kept: `preflight` declares 159 checks now,
-`proceedings.csv` reaches all nineteen terms, and `STATE.md` has the current
-file count -- which went *down*, because records moved inside their pages.
+Those four commands are the check on a change of this kind. The numbers beside
+them are that day's and are kept for shape rather than currency: `preflight`
+declares 159 checks now, `proceedings.csv` reaches all nineteen terms, and
+`STATE.md` has the file count -- which went *down*, because records moved
+inside their pages.
 
 ## What is structurally wrong
 
@@ -530,49 +496,47 @@ generator ever writes.
 
 ### 3. Bill numbers repeat every two years, and nothing knows it
 
-**Partly done, 6 September.** `rollcalls.json` is now `{term: {bill: [votes]}}`
-and two `preflight` checks hold it there: one builds the fixture with the same
-bill number in two terms and fails if their votes merge, the other fails the
-build outright if it is handed the old flat shape rather than reading it and
-finding nothing. The member-vote key gained its year at the same time, because
-vote sequence numbers restart each session and "H-310" named two different roll
-calls the moment 2025 arrived beside 2026.
+**Partly done, 6-7 September**, one file at a time. What is worth keeping is
+why each mattered and what the conversions turned up.
 
-`narratives.json` is done too, and it was the one that mattered most: status,
-stages, events, the dating of every committee report, the floor index and the
-amendment numbers all read through it. Its four readers were changed and run;
-the build is byte-for-byte the same site, and it now refuses the flat shape
-rather than producing 2,234 bills with no history in them.
+`rollcalls.json` is `{term: {bill: [votes]}}` and two `preflight` checks hold
+it there: one builds the fixture with the same bill number in two terms and
+fails if their votes merge, the other fails the build outright if it is handed
+the old flat shape rather than reading it and finding nothing. The member-vote
+key gained its year at the same time, because vote sequence numbers restart
+each session and "H-310" named two different roll calls the moment 2025 arrived
+beside 2026.
 
-`build_feeds.py` is done as well, and it was the largest single place a bill
-number still stood in for a bill: 2,233 of the site's 8,045 files. A bill with
-no filing year collapsed `feed/bill/<year>/<id>.xml` to `feed/bill/<id>.xml`,
-which the next term's bill of the same number would land on top of. It now gets
-no feed and is named in the output.
+`narratives.json` mattered most for reach: status, stages, events, the dating
+of every committee report, the floor index and the amendment numbers all read
+through it. It refuses the flat shape rather than producing 2,234 bills with no
+history in them.
 
-`committee_reports.json` and `senate_reports.json` are done too, and they are
-the ones that show what the constraint really is. Neither could change shape
-without being rebuilt in the same commit, and both could be: the Senate's come
-from the database, and fetch_committee_reports gained --offline, which re-reads
-the 82 calendars already on disk and makes no request. Output-neutral across
-all 2,234 bills.
+`build_feeds.py` was the largest single place a bill number still stood in for
+a bill: 2,233 of the site's 8,045 files. A bill with no filing year collapsed
+`feed/bill/<year>/<id>.xml` to `feed/bill/<id>.xml`, which the next term's bill
+of the same number would land on top of. It now gets no feed and is named in
+the output.
 
-`data/bills.json` is done as well, and it was the one that mattered most: the
-loop in `build_bills` runs over it, so a bare bill number there put two terms'
-bills under one key at the very top of the pipeline. It also turned up the bug
-the whole exercise exists to prevent -- `yearOf(id)` in `bills.html` searched
-the entire index for the first row with that number, so opening the 2023 HB1
-fetched the 2026 one's record and showed it under the 2023 heading.
+`committee_reports.json` and `senate_reports.json` show what the constraint
+really is. Neither could change shape without being rebuilt in the same commit,
+and both could be: the Senate's come from the database, and
+`fetch_committee_reports` gained `--offline`, which re-reads the 82 calendars
+already on disk and makes no request. Output-neutral across all 2,234 bills.
 
-**The 2023-2024 term is live**, which is the proof this all worked: 4,230 bills
-across two terms, and no per-bill file of one term reachable from the other.
+`data/bills.json` sits at the very top of the pipeline -- the loop in
+`build_bills` runs over it, so a bare bill number there put two terms' bills
+under one key -- and converting it turned up the bug the whole exercise exists
+to prevent: `yearOf(id)` in `bills.html` searched the entire index for the
+first row with that number, so opening the 2023 HB1 fetched the 2026 one's
+record and showed it under the 2023 heading.
 
-`bill_text.json` and `bill_status.json` are done, 7 September, and they closed
-the gate. Both were held back because their writers need the network and
-reshaping one without regenerating it leaves the site unbuildable. That turned
-out to be the wrong way round: the writers could be taught the term first and
-the files migrated in place, with the readers tolerating either shape, so no
-fetch was needed at all. The whole site rebuilt byte-identical.
+`bill_text.json` and `bill_status.json` closed the gate. Both were held back
+because their writers need the network and reshaping one without regenerating
+it leaves the site unbuildable. That turned out to be the wrong way round: the
+writers could be taught the term first and the files migrated in place, with
+the readers tolerating either shape, so no fetch was needed at all. The whole
+site rebuilt byte-identical.
 
 The general shape is now in `proceedings.py`, so the next file to convert is
 half a dozen lines rather than a judgement call each time:
@@ -591,10 +555,10 @@ status and text, and must not read the current term's. A lookup that ignores
 the term passes the first half by accident, which is why the check asserts the
 second.
 
-`data/sponsors.json` is done as well, 7 September, and with it a search for a
-prime sponsor works before 2025: 1,865 of the 1,996 bills of 2023-2024 carry
-one. An archived term's sponsors come from that term's slice of
-`bill_status.json`, which is why this had to wait for that file.
+`data/sponsors.json` is what makes a search for a prime sponsor work before
+2025: 1,865 of the 1,996 bills of 2023-2024 carry one. An archived term's
+sponsors come from that term's slice of `bill_status.json`, which is why this
+had to wait for that file.
 
 The first attempt at the split was the bug the keying exists to prevent, which
 is worth keeping written down. It built a bill -> term map from
@@ -618,14 +582,15 @@ citations were part of the same job without my recognising it.
 
 > **Resolved, 9 September.** The plan is Pro, so the cap is 100,000. And a
 > bill is one file rather than two: its record travels inside its own page,
-> except for the 98 over 100 KB which keep a file the page points at. All 19
-> terms are live, and the site is under half the cap (`STATE.md` has the
-> count; it was 39,821 when this was written and the bill-version files added
-> 9,471 the next day) — where the reasoning
-> below predicted the cap breaking partway through the third term. The
-> reasoning is kept because the measurement of what each term costs is still
-> the right way to think about it, and because the trap it names about paid
-> plans is real.
+> except for those over 100 KB which keep a file the page points at. All 19
+> terms are live and the site is under half the cap, where the reasoning below
+> predicted it breaking partway through the third term and the arithmetic
+> below predicted 83,869 files. The difference is the inlining: an archived
+> term costs roughly one file per bill rather than two. The reasoning is kept
+> because the measurement of what each term costs is still the right way to
+> think about it, and because the trap it names about paid plans is real.
+> `STATE.md` has the current count, and the nightly's gate line prints it on
+> every run.
 
 **Measured on the two-term site, 6 September:** 12,013 files of 20,000.
 
@@ -635,24 +600,14 @@ citations were part of the same job without my recognising it.
 | the 2023-2024 term | 3,992 |
 | everything shared -- legislators, towns, feeds, the shell | 3,553 |
 
-An archived term costs **3,992 files**, so there is room for **three more** and
-the cap breaks on the fifth term overall. That is further off than the earlier
-estimate of three, because an archived term is cheaper than a live one: it has
-no per-bill RSS feed, having no docket to report.
+An archived term costs **3,992 files**, so at 20,000 there was room for three
+more and the cap broke on the fifth term overall. That is further off than the
+one-term estimate this section used to carry -- 8,045 files, 6,701 a term --
+which was wrong in the direction that matters: it counted a per-bill RSS feed
+for every term, and an archived term has none, having no docket to report.
 
-It is still the constraint on the archive as a whole -- nineteen terms back to
-1989 is not reachable one file per bill by any arrangement -- so the decision
-below stands. It is just not urgent until a third archived term is wanted.
-
-The one-term estimate this section used to carry -- 8,045 files, 6,701 a term,
-the cap breaking partway through the third -- was made before a second term
-existed and is superseded by the measurement above. It was wrong in the
-direction that matters: it counted a per-bill RSS feed for every term, and an
-archived term has none.
-
-What has not changed is that the cap is real for the archive as a whole.
-Nineteen terms back to 1989, at two files a bill, is roughly 76,000 files. The
-options are the same three:
+The cap is real for the archive as a whole all the same. Nineteen terms back to
+1989, at two files a bill, is roughly 76,000 files. The options were three:
 
 1. **Fewer static pages for older terms.** Dropping `bill/<year>/<id>.html`
    for archived terms halves the cost to ~2,000 a term and buys about eight
@@ -665,12 +620,12 @@ options are the same three:
 3. **Per-bill data in R2 behind a Worker.** No cap, at the cost of the
    constraint the whole site is built on: files on a CDN, no runtime.
 
-**Settled 7 September: pay Cloudflare instead.** A paid plan raises the limit
-from 20,000 files to 100,000 -- "Paid plans (such as Pro, Business, and
-Enterprise plans) can have up to 100,000 files per site", which needs the
-environment variable `PAGES_WRANGLER_MAJOR_VERSION=4` set in the Pages project.
-It is the Pro *zone* plan, not Workers Paid; several people have reported the
-20,000 limit still enforced after upgrading the latter, which is the trap.
+**Settled 7 September: pay Cloudflare instead**, which raises the limit from
+20,000 files to 100,000. Two things to know, and the second is the trap: it
+needs the environment variable `PAGES_WRANGLER_MAJOR_VERSION=4` set in the
+Pages project, and it is the Pro *zone* plan, not Workers Paid -- several
+people have reported the 20,000 limit still enforced after upgrading the
+latter.
 
 The arithmetic, at 3,992 files per archived term and 8,021 for the shell plus
 the current term: 20,000 buys three archived terms and reaches back to
@@ -678,14 +633,6 @@ the current term: 20,000 buys three archived terms and reaches back to
 the General Court's database can supply -- 1989 to 2026, nineteen terms -- is
 **83,869 files with 16,131 to spare.** So the cap stops being the constraint,
 and options 1 to 3 above stop being forced choices.
-
-> **Then it was built, and the estimate was nearly twice the cost.** All
-> nineteen terms are live at well under half the 100,000, against the 83,869
-> predicted here -- `STATE.md` has the measured figure and the nightly's gate
-> line prints it on every run. The difference is the inlining: a bill's record
-> travels inside its own page, so an archived term costs roughly one file per
-> bill rather than two. The cap stopped being the constraint by a wider margin
-> than this section expected.
 
 What replaces it as the constraint is **data**, not files. See the section on
 what a year's page actually carries, below.
@@ -722,19 +669,17 @@ renderer drew, and reading the two files side by side is not enough -- the
 notes were invisible because nothing in `app.js` mentions the word.
 
 
-> **Both halves of this are done.** `renderDetail` was split on 6 September
-> and is 82 lines in `app.js` on 17 September, calling one function per tab --
-> `renderSummary` 42, `renderVotes` 36, `renderBillText` 94, and
-> `renderHearings` 223, which is the one that has grown back far enough to be
-> worth watching. `build_bills` was split on 10 September, 544 to 294,
-> byte-identical at each of nine steps, and is 346 today.
-> `station_for_proceeding` and `station_for_floor` exist as top-level
-> functions. Kept as written because the failure it describes is the one the
-> splits were done to stop.
+> **Both halves of this are done.** `renderDetail` is 82 lines in `app.js`,
+> calling one function per tab -- `renderSummary` 42, `renderVotes` 36,
+> `renderBillText` 94, and `renderHearings` 223, which is the one that has
+> grown back far enough to be worth watching. `build_bills` was split as
+> described above, and `station_for_proceeding` and `station_for_floor` exist
+> as top-level functions. Kept as written because the failure it describes is
+> the one the splits were done to stop.
 
 `renderDetail` in `bills.html` was 472 lines and one function, with 26 `const`
-declarations. Three times today a template literal read one of them before its
-line ran, and the page died with the data already in hand. A lint that skips
+declarations. Three times in a day a template literal read one of them before
+its line ran, and the page died with the data already in hand. A lint that skips
 template literals cannot see it; the runtime check only caught it once
 extended to the focused view, which is the branch where two of the three lived.
 
@@ -770,7 +715,7 @@ committee hearings. Five separate instances, each fixed separately.
 **Fix: one progress helper** (`Ticker` in `fetch_bill_text.py` is the good
 version), and a rule that a build step which produces a smaller output than
 last time stops rather than continues. `nightly.py` has the sanity gate;
-`build_site_v2` did not have it for the manifest until today.
+`build_site_v2` did not have it for the manifest.
 
 ### 8. The parsers have no tests
 
@@ -780,8 +725,7 @@ last time stops rather than continues. `nightly.py` has the sanity gate;
 > runs it. Kept because the reason it was needed is the reason it must be
 > maintained.
 
-Every fix that day was verified by a fixture written in a heredoc and thrown
-away.
+Every fix was verified by a fixture written in a heredoc and thrown away.
 `OPEN_RE` has been through nine revisions and the phrasings it must match are
 scattered across those heredocs and `TRANSCRIPT_MARKERS.md`. When someone
 changes it in six months, the only way to know what broke is to re-run the
@@ -803,8 +747,8 @@ file. A hash of the whole module's source is crude and correct.
 
 ### 10. Per-bill fetching does not scale and has already caused harm
 
-Bill text is 2,234 requests a term, at four seconds each. The address was
-blocked twice this week -- once for probing, once for two fetches at once.
+Bill text is 2,234 requests a term, at four seconds each. The address has been
+blocked twice -- once for probing, once for two fetches at once.
 Fifteen terms of text is nearly five days of continuous requests for a document
 that is one link away and better in its original form.
 
@@ -919,9 +863,8 @@ because the page and the history disagree by a few members on each roll call.
 This will recur through the archive, so the general fixes matter more than the
 two members: it reads an archived year's roll call files, it no longer skips a
 blank PersonID, and "already known" now includes the **676** members in
-`former_members.json` rather than the sitting roster alone. (`resolve_members.py`
-still says 675 in a comment; the file holds 676 today, so the code disagrees
-with itself as well as with this page.)
+`former_members.json` rather than the sitting roster alone. (A comment in
+`resolve_members.py` still says 675.)
 
 **A separate limitation, not yet fixed.** The site stores **one party per
 person, not per term**, and applies it to every vote they ever cast. A member
@@ -955,28 +898,27 @@ In order. Each depends on the one before it.
    link.
 5. **Then the rest**, which by that point is a long fetch and a lot of disk.
 
-### What 2023-2024 actually got, 8 September
+### What 2023-2024 actually got
 
-Steps 1 to 4 are done and the back-fill went much further than this section
-anticipated: **all nineteen terms are live**, 33,683 bills in the index, and
-every one of the nineteen now has a proceedings manifest. The table below is
-kept as the record of what the *first* archived term cost, measured after the
-fetch rather than before it, because that per-term arithmetic is still how to
-think about the next one:
+The back-fill went much further than this section anticipated: **all nineteen
+terms are live**, 33,683 bills in the index, each with a proceedings manifest.
+The table is kept as the record of what the *first* archived term cost,
+measured after the fetch rather than before it, because that per-term
+arithmetic is still how to think about the next one:
 
 | | 2023-2024 | how |
 |---|---|---|
 | titles, status, docket | 1,996 | bulk files |
 | narratives | 1,996 | built from the docket |
 | roll calls | 417 days | the database, 1999-2026 with no gaps |
-| committee reports | **1,344 bills** | 90 House calendars, fetched today |
+| committee reports | **1,344 bills** | 90 House calendars |
 | veto messages | **23 of 24** | those calendars and 204 Senate ones |
 | Senate committee reports | 0 | `CandH_Reports` holds 2025-2026 only |
 | testimony | 0 | see below |
 | bill text | **1,938 of 1,996** | `archive_text.json`, off the pages saved under `legislation/<year>/` |
 
-**Three things the database cannot give an archived term**, asked directly on
-8 September rather than inferred from the table names:
+**Three things the database cannot give an archived term**, asked of it
+directly rather than inferred from the table names:
 
 - `CandH_Reports` is 2025 and 2026 only, so the Senate's committee reports --
   which are one query for the current term -- are a per-bill web fetch for any
@@ -990,10 +932,10 @@ think about the next one:
 - `LegislationText` is current-term only too, so the **database** does not
   rescue bill text either. It turned out not to have to: the constructible
   archive path `gc.nh.gov/legislation/<year>/<HB0000>.html` does, and
-  `archive_text.json` holds **11,851 bills across eighteen terms** as of
-  17 September, 1,938 of them 2023-2024's. Item 10's decision -- that old terms
-  get a link -- was overtaken by a route this section did not know about. The
-  reasoning about the database is still right; only the conclusion moved.
+  `archive_text.json` holds **11,851 bills across eighteen terms**, 1,938 of
+  them 2023-2024's. Item 10's decision -- that old terms get a link -- was
+  overtaken by a route this section did not know about. The reasoning about the
+  database is still right; only the conclusion moved.
 
 **The two chambers print a veto message differently**, which cost four
 readings of the artefact. The House prints the full text in its calendar; the
@@ -1004,12 +946,10 @@ state no date anywhere -- so the page shows none for those rather than
 borrowing the docket's, which is the day the veto reached the chamber and not
 the day it was signed.
 
-**A note on pointing at `CLAUDE.md` by item number.** This paragraph used to
-say "CLAUDE.md's step 4 is stale -- it still lists `bill_text.json` and
-`bill_status.json` as the two files left to term-key". Both were done on
-7 September, `CLAUDE.md`'s step 4 has since been rewritten to be about the
-`gc.nh.gov/legislation/<year>/<HB0000>.html` archive path, and the note
-outlived the thing it corrected. Name the claim, not the item number.
+**Do not point at `CLAUDE.md` by item number.** A note here once corrected
+"CLAUDE.md's step 4"; step 4 was rewritten to be about something else entirely
+and the correction outlived the thing it corrected. Name the claim, not the
+item number.
 
 The things that scale already: the marker method (per recording, cached, one
 second at the median), the bulk-file pipeline, the narrative rules. The things
@@ -1019,40 +959,22 @@ that do not: per-bill text fetches, and any tool that assumes one term.
 
 ## What I would do first
 
-Not the archive. Consolidation before any of it. Three of the four are now
-done -- this section is kept so the reasoning survives, with the state marked.
-
-**~~Merge the two proceedings sources into one file~~** — done 5 September.
-`proceedings.csv`, built by `build_proceedings.py`, read through
-`proceedings.py` by all four tools that used to read the two old files.
-
-**Split `renderDetail` and `build_site_v2.main`.** `renderDetail` was split
-into one function per tab on 6 September, its output verified byte-identical
-against the pre-split page over ten renders. `build_site_v2.main` is **still
-outstanding, and now the first thing to do.** Removes the class of bug that
-cost the second
-most, and it is the one that breaks the page for a visitor arriving from a
-link.
-
-**~~Write the parser tests~~** — done. `tests/test_markers.py`, 61 cases (51
-that must match, 10 that must not), run by `preflight`.
-
-**~~Move the 35 marks into `ground_truth.csv`~~** — done. `preflight` fails if
-any generator opens it for writing.
-
-Then the archive, with the file-cap decision made **before** term-keyed
-identifiers are built: R2-behind-a-Worker and fewer-static-pages imply
-different paths, so deciding item 4 first stops item 3 being built twice.
+Not the archive. Consolidation before any of it: merge the two proceedings
+sources into one file, split `renderDetail` and `build_site_v2.main`, write the
+parser tests, and move the 35 marks into `ground_truth.csv`. Then the archive,
+with the file-cap decision made **before** term-keyed identifiers are built:
+R2-behind-a-Worker and fewer-static-pages imply different paths, so deciding
+item 4 first stops item 3 being built twice.
 
 That is what happened, and it was right. Of everything in this document, one
-item is still outstanding: **`build_site_v2.main`, now 533 lines**, which is
+item is still outstanding: **`build_site_v2.main`, 533 lines**, which is
 `CLAUDE.md`'s first item and the last of the three long functions.
 
 ---
 
 ## A note on method
 
-Most of what worked this week came from one habit: read the artefact before
+Most of what worked here came from one habit: read the artefact before
 modelling it, and measure against something you did not generate. The marker
 parser scored one second because every phrasing in it was read out of a real
 transcript and it was scored against hand-marked times before it touched the

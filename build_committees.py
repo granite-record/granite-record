@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.25
+# GRANITE_VERSION: 2026-09-07.26
 """
 A page's worth of data for every committee.
 
@@ -163,9 +163,9 @@ def narrate(name, chamber, date, items, reports):
     # which is the site speaking in its own voice and getting it wrong.
     art = "" if many else ("an " if noun[:1] in "aeiou" else "a ")
     # A day still to come is scheduled, not met. The docket carries sittings
-    # ahead of time -- on 13 September, the Judiciary committee's executive
-    # sessions of the 30th -- and the page said the committee "met" on a day
-    # seventeen days off.
+    # ahead of time -- a committee's executive session booked for the end of
+    # the month -- and the page said the committee "met" on a day seventeen
+    # days off.
     ahead = str(date)[:10] > __import__("datetime").date.today().isoformat()
     met, held = (("is scheduled to meet", "It is also scheduled to hold") if ahead
                  else ("met", "It also held"))
@@ -186,14 +186,12 @@ def narrate(name, chamber, date, items, reports):
     # meet on September 30, 2026 ... On HB 1292-FN it recommended refer for
     # interim study, 17-1" -- a tally under a meeting seventeen days off.
     #
-    # The vote itself is real and stays where it belongs. HB 1292 was heard on
-    # 11 February, voted 17-1 in executive session on the 13th (reported in
-    # House Calendar 9), debated on the floor on 5 March, and has a SECOND
-    # executive session booked for 30 September for the interim study the
-    # report itself asks for. committee_reports.json carries no date, so
-    # recommendation() cannot tell the two sittings apart and attached the
-    # February vote to both. Suppressing it on the future one leaves it on the
-    # February page, which is the meeting it was taken at.
+    # The vote itself is real and stays where it belongs. A bill voted on in
+    # one executive session can have a SECOND booked months later -- for the
+    # interim study the report itself asks for -- and committee_reports.json
+    # carries no date, so recommendation() cannot tell the two sittings apart
+    # and attached the first vote to both. Suppressing it on the future one
+    # leaves it on the page of the meeting it was taken at.
     #
     # 23 recommendations across 4 committee pages were being narrated this way.
     said = []
@@ -359,15 +357,15 @@ def main():
 
     # ---- who is on each committee TODAY ------------------------------------
     # THE SEAT TABLE IS EVERY SEAT EVER HELD, NOT TODAY'S ROSTER. The
-    # database's CommitteeMembers keeps a seat after its term: on 15 September
-    # Senate Finance listed 24 members, 9 of them still in the Senate, where the
-    # Senate's own roster names 8 on it, and Senate Judiciary 11 sitting where
-    # it names 5. Staff reading the site found wrong rosters. So a seat is
-    # current only where the member's own roster entry -- data/legislators.json,
-    # from the General Court's daily Members file -- lists this committee. The
-    # House's Finance divisions are Finance. A sitting member whose roster entry
-    # lists no committee at all (32 members that day) keeps the table's seats,
-    # and only on a committee still on the General Court's list: there is no
+    # database's CommitteeMembers keeps a seat after its term: Senate Finance
+    # listed 24 members, 9 of them still in the Senate, where the Senate's own
+    # roster names 8 on it, and Senate Judiciary 11 sitting where it names 5.
+    # Staff reading the site found wrong rosters. So a seat is current only
+    # where the member's own roster entry -- data/legislators.json, from the
+    # General Court's daily Members file -- lists this committee. The House's
+    # Finance divisions are Finance. A sitting member whose roster entry lists
+    # no committee at all (32 of them) keeps the table's seats, and only on a
+    # committee still on the General Court's list: there is no
     # better source for them, and a committee that no longer exists has nobody
     # on it today.
     assigned = {}
@@ -702,8 +700,8 @@ def main():
         # that no bill was referred and no sitting day is on record -- which
         # is a statement about this record, and true. Whether the committee
         # meets is not something these files can say.
-        # "Rules, for one" was the example here until 13 September, and by
-        # then Rules had bills on record and was not in this list.
+        # No committee is named as an example here: which ones land in this
+        # list changes as bills are referred.
         body.append('<h2>No bills or sessions on record</h2>'
                     '<p class="src">These committees have a roster, and in '
                     "some cases a chair, but no bill referred to them and no "

@@ -5,8 +5,7 @@ anything that looks exploitable.
 
 Tell us what you found, how to reproduce it, and what you think it lets someone
 do. You will get an acknowledgement. This is a small project run by one person,
-so the honest answer on timing is days rather than hours, and we would rather
-say that than promise otherwise.
+so the honest answer on timing is days rather than hours.
 
 You are welcome to look. Nothing here is a trap, and the surface is small
 enough to read in an afternoon.
@@ -24,9 +23,9 @@ bill, member and committee pages. It is write-only, it is on no page's critical
 path, and when it is down the box falls back to an email link. If you are
 looking for something to attack, it is this.
 
-It was red-teamed on 12 September 2026 and seven real defects were fixed; the
-file's header lists them, because knowing what was already wrong is more useful
-to you than a claim that nothing is.
+It has been red-teamed once, and the seven real defects that turned up are
+listed in the file's header — knowing what was already wrong is more useful
+than a claim that nothing is.
 
 ## Things that look like bugs and are not
 
@@ -56,10 +55,10 @@ Worth saying in advance, so you do not spend an evening on them:
 - A way to get the project's fetching to hammer the General Court. Their
   firewall has blocked this address twice already, and the cost of a third
   block falls on a Clerk's office as much as on us.
-- A credential, key or personal address findable in the repository or its
-  history. `preflight.py` has three checks aimed at this — one for tracked
-  files, one for key shapes, one for every author and committer address in the
-  git history — and if you get past them, that is worth knowing.
+- A credential or key findable in the repository or its history. `preflight.py`
+  has three checks aimed at this — one for key shapes in tracked files, one for
+  the contact address, and one that every commit is authored by the project
+  address — and if you get past them, that is worth knowing.
 
 ## What is out of scope
 

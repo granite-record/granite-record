@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.78
+# GRANITE_VERSION: 2026-09-04.79
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -87,13 +87,13 @@ def shared(src="app.css"):
 def pages_region(src="app.css"):
     """The rules only the pages this file writes need, read out of app.css.
 
-    THE SECOND STYLESHEET IS GONE, 16 September. These pages had 24 KB of CSS
-    of their own here, against app.css's 119 KB for the record pages, and a
-    fix landed in one of them at a time: eleven font sizes in one file and
-    more in the other, a component drawn twice, DESIGN.md's rules kept by
-    hand in two places. The block lives in app.css between PAGES:START and
-    PAGES:END now, scoped to body.pg, and this reads it -- the same trick
-    palette() and shared() already used, applied to the rest of the file.
+    THERE IS NO SECOND STYLESHEET. These pages once had 24 KB of CSS of their
+    own here, against app.css's 119 KB for the record pages, and a fix landed
+    in one of them at a time: eleven font sizes in one file and more in the
+    other, a component drawn twice, DESIGN.md's rules kept by hand in two
+    places. The block lives in app.css between PAGES:START and PAGES:END,
+    scoped to body.pg, and this reads it -- the same trick palette() and
+    shared() already used, applied to the rest of the file.
 
     So style.css is a view of app.css: palette, the shared region, and the
     page region, in that order. There is one stylesheet to edit.
@@ -149,8 +149,8 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
   Cache-Control: public, max-age=0, must-revalidate
 # The two files a page reads to say what is true today: the home page's own
 # summary, and the header search's index of members, committees and towns. A
-# cached copy of either is a page contradicting itself -- on 16 September the
-# home page's built HTML said 39 hearings and its script, reading a cached
+# cached copy of either is a page contradicting itself -- the home page's
+# built HTML once said 39 hearings while its script, reading a cached
 # home.json, said 4.
 /home.json
   Cache-Control: public, max-age=0, must-revalidate
@@ -191,11 +191,11 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
 """
 
 # Tab addresses, served their record's page: see where this is written.
-# "videos" is kept alongside "hearings" deliberately. The tab was relabelled on
-# 17 September -- it lists a bill's sittings and a recording only where one
-# exists, and recordings begin in May 2020, so for fifteen terms it read
-# "Videos" over entries that all said "No recording exists". Both addresses go
-# in _redirects: the new one because that is what the page now writes, the old
+# "videos" is kept alongside "hearings" deliberately. The tab was relabelled --
+# it lists a bill's sittings and a recording only where one exists, and
+# recordings begin in May 2020, so for fifteen terms it read "Videos" over
+# entries that all said "No recording exists". Both addresses go in
+# _redirects: the new one because that is what the page now writes, the old
 # one because it has been published and indexed.
 BILL_TAB_SLUGS = ("text", "votes", "hearings", "videos", "reports",
                   "sponsors", "documents")
@@ -208,11 +208,11 @@ REDIRECTS = ("# Written by build_pages.py. Not an asset; Pages reads it.\n"
 
 
 # WHAT A POWER USER NEEDS, IN THE FOOTER, WHERE THEY WILL LOOK FOR IT.
-# data.html and manifest.json have described every table since the 10th and
-# nothing linked them from the bottom of a page, so the only way to find the
-# bulk downloads was to already know they existed. The same line says when the
-# data was last rebuilt: a reader deciding whether to trust a status should not
-# have to go to the home page to find out how old it is.
+# data.html and manifest.json describe every table, and nothing linked them
+# from the bottom of a page, so the only way to find the bulk downloads was to
+# already know they existed. The same line says when the data was last
+# rebuilt: a reader deciding whether to trust a status should not have to go
+# to the home page to find out how old it is.
 #
 # The date is read from build.json rather than baked in, because this function
 # runs at step 15 of 22 and build.json is written after step 22 -- a baked
@@ -363,9 +363,9 @@ def calendar_html(H, out):
     for date, keys in days.items():
         label, rel = when(date)
         # THE DAY'S OWN DATE TRAVELS WITH IT. This block is written when the
-        # site is built and read for as long as the build stands: on
-        # 16 September the home page still called the 15th "today", with a
-        # meeting that had already happened at the top of Coming up. HOME_JS
+        # site is built and read for as long as the build stands, so the home
+        # page has called a past day "today", with a meeting that had already
+        # happened at the top of Coming up. HOME_JS
         # reads this attribute in the reader's own clock, drops the days that
         # have passed and writes the relative word again.
         html.append(f'<div class="calday" data-d="{esc(date)}"><h3 class="caldate">'
@@ -808,7 +808,7 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 // /legislators, and a legislators/ folder of per-member data sits beside it --
 // so /legislators can be redirected to /legislators/, and a relative
 // "legislators/377204.json" then resolves to /legislators/legislators/... and
-// 404s. The bill page had the same trap and it cost an evening.
+// 404s. The bill page had the same trap.
 window.DATA=window.DATA||((f)=>new URL(f, location.origin+"/").href);
 const SHOW=12;            // matches at once: a screen of them, not a scroll
 const MIN=2;              // letters before the list appears
@@ -992,7 +992,7 @@ const fdy=d=>{if(!d)return"";const[y,m,dd]=d.split("-");
 // /legislators, and a legislators/ folder of per-member data sits beside it --
 // so /legislators can be redirected to /legislators/, and a relative
 // "legislators/377204.json" then resolves to /legislators/legislators/... and
-// 404s. The bill page had the same trap and it cost an evening.
+// 404s. The bill page had the same trap.
 window.DATA=window.DATA||((f)=>new URL(f, location.origin+"/").href);
 fetch(DATA("build.json")).then(r=>r.json()).then(B=>{
   const el=document.getElementById("fresh"); if(!el||!B.finished)return;
@@ -1013,13 +1013,13 @@ fetch(DATA("build.json")).then(r=>r.json()).then(B=>{
 // /legislators, and a legislators/ folder of per-member data sits beside it --
 // so /legislators can be redirected to /legislators/, and a relative
 // "legislators/377204.json" then resolves to /legislators/legislators/... and
-// 404s. The bill page had the same trap and it cost an evening.
+// 404s. The bill page had the same trap.
 window.DATA=window.DATA||((f)=>new URL(f, location.origin+"/").href);
 fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   const c=H.counts||{}, k=c.by_kind||{}, S=H.status||{};
 
-  // Title case, and a colon after each label, as the person wrote the box on
-  // 14 September. The Python copy below says the same.
+  // Title case, and a colon after each label. The Python copy below says the
+  // same.
   const PHASE={"in session":["live","In Session"],
                "veto day pending":["wait","Awaiting Veto Day"],
                "between sessions":["wait","Between Sessions"],
@@ -1029,9 +1029,9 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   const stale=S.stale_days>45;
   // MEETINGS, NOT BILL ROWS, AND THE NOUN FOLLOWS WHAT THEY ARE. This line
   // printed status.hearings_next_14, which is the length of home.json's
-  // `upcoming` -- one row per bill. On 16 September that made it "39 hearings
-  // scheduled in the next two weeks" over a fortnight holding eight meetings
-  // and not one hearing: seventeen subcommittee work sessions, fifteen
+  // `upcoming` -- one row per bill. That made it "39 hearings scheduled in
+  // the next two weeks" over a fortnight holding eight meetings and not one
+  // hearing: seventeen subcommittee work sessions, fifteen
   // executive sessions and seven full committee work sessions, on three days.
   // Grouped by the key the calendar below groups by, so the box and "Coming
   // up" are one count of one thing. The Python copy does the same.
@@ -1049,9 +1049,9 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       +`meeting${n===1?"":"s"} scheduled in the next two weeks.</p>`;
   };
   // ONE RENDERER WINS, AND IT IS THE SERVER'S. The same box is written into the
-  // page at build time and again here, and on 16 September the two disagreed on
-  // screen: the HTML said 39 hearings and this said 4, because home.json came
-  // out of the browser's cache while the page itself is revalidated every time.
+  // page at build time and again here, and the two have disagreed on screen:
+  // the HTML said 39 hearings and this said 4, because home.json came out of
+  // the browser's cache while the page itself is revalidated every time.
   // The built copy is the one a crawler and a reader without JavaScript get, it
   // is never stale, and preflight checks the two say the same thing -- so this
   // draws only where the server drew nothing.
@@ -1114,11 +1114,10 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   const comp=document.getElementById("composition");
   if(comp)comp.innerHTML=exec?`<h2>Who holds office</h2>${exec}`:"";
 
-  // THE FIVE COUNTS ARE GONE, 15 September, at the person's word: they sat
-  // between the search box and the three cards that are the actual way in, and
-  // nobody arrives to be told how many bills exist. The scale of the record is
-  // said once, in the footer's link to the data. .statgrid still styles the
-  // same grid on the data page.
+  // THE FIVE COUNTS ARE GONE: they sat between the search box and the three
+  // cards that are the actual way in, and nobody arrives to be told how many
+  // bills exist. The scale of the record is said once, in the footer's link
+  // to the data. .statgrid still styles the same grid on the data page.
 
   // #upcoming IS NOT TOUCHED HERE, ON PURPOSE. The calendar is rendered into
   // the page by calendar_html() at build time, from the same home.json this
@@ -1131,11 +1130,11 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // file loads and with JavaScript off.
 
   // COMING UP, IN THE READER'S OWN CLOCK. The calendar block is written when
-  // the site is built, and a build stands for as long as it stands: on the
-  // morning of 16 September the home page still headed the 15th "today", with
-  // a Legislative Administration session that had already met at the top of
-  // the list. Each day carries its own date, so this drops the days that have
-  // gone and says how far off the rest are now. Nothing else here is touched.
+  // the site is built, and a build stands for as long as it stands, so the
+  // home page has headed a past day "today" with a committee session that had
+  // already met at the top of the list. Each day carries its own date, so
+  // this drops the days that have gone and says how far off the rest are now.
+  // Nothing else here is touched.
   (function(){
     const now=new Date(); now.setHours(0,0,0,0);
     const days=[...document.querySelectorAll(".calday[data-d]")];
@@ -1249,9 +1248,8 @@ document.addEventListener("click",e=>{
 });
 // ONE ADDRESS, AND NO EMPTY QUESTION. Search with nothing typed sent the
 // reader to /bills?q= -- the same page the header's Bills tab reaches at
-// /bills, with a query string saying the reader searched for nothing. The
-// person reported the three addresses this page had on 16 September; this was
-// one of them. /bills is what the host serves and what the header lands on.
+// /bills, with a query string saying the reader searched for nothing. /bills
+// is what the host serves and what the header lands on.
 function goBills(v){
   v=(v||"").trim();
   location.href="/bills"+(v?"?q="+encodeURIComponent(v):"");
@@ -1307,25 +1305,6 @@ def main():
            .replace("__PAGES__", pages_region()),
         encoding="utf-8")
 
-    # bills.html is the one page written by hand rather than generated, and
-    # nothing in the pipeline was copying it into the output folder. So an edit
-    # to it sat at the project root while the deploy shipped whatever was in
-    # site/ -- which looks exactly like the edit having no effect, and cost a
-    # round more than once. Copied here, next to the stylesheet it needs.
-    # bills.html and the two files it loads. They are written by hand rather
-    # than generated, and nothing in the pipeline was copying bills.html into
-    # the output folder -- so an edit sat at the project root while the deploy
-    # shipped whatever was in site/, which looks exactly like the edit having
-    # no effect and cost a round more than once.
-    #
-    # app.css and app.js used to be a <style> and a <script> inside the page.
-    # They are files of their own so a second page can load the SAME renderer
-    # rather than a copy of it, and so a reader who opens six bills downloads
-    # 110KB once instead of six times.
-    # bills.html is copied rather than built through shell.page, so the asset
-    # URLs get versioned here instead. Without it the search page holds a
-    # four-hour-old app.js after a publish, the same way every other page did
-    # until 7 September.
     # THE DRAWN FILES. brand/ holds the originals, build_brand.py derives
     # assets/, and this is the step that puts them beside the pages -- site/
     # is generated and gitignored, so anything left there by hand is gone on
@@ -1346,6 +1325,15 @@ def main():
     else:
         print("  brand: no assets/ -- run python3 build_brand.py")
 
+    # bills.html and the files it loads are written by hand rather than
+    # generated, and nothing in the pipeline copied them into the output
+    # folder -- so an edit sat at the project root while the deploy shipped
+    # whatever was in site/, which looks exactly like the edit having no
+    # effect and cost a round more than once. app.css and app.js are files of
+    # their own rather than a <style> and a <script> inside the page, so a
+    # second page loads the SAME renderer and a reader who opens six bills
+    # downloads 110 KB once instead of six times.
+    #
     # Copied as they are. Nothing is rewritten on the way through any more:
     # the version query these three used to gain is a header now, written
     # below.
@@ -1418,8 +1406,8 @@ def main():
 
     # A MEETING IS THE THING; A BILL ROW IS NOT. The status box printed
     # status.hearings_next_14, which is build_site_v2's len(upcoming), and
-    # `upcoming` is one row per bill -- so on 16 September it read "39 hearings
-    # scheduled in the next two weeks" over a fortnight whose 39 rows were 17
+    # `upcoming` is one row per bill -- so it read "39 hearings scheduled in
+    # the next two weeks" over a fortnight whose 39 rows were 17
     # subcommittee work sessions, 15 executive sessions and 7 full committee
     # work sessions: eight meetings on three days, and not one hearing among
     # them. Grouped here by meeting_key, the same key the calendar below groups
@@ -1460,12 +1448,11 @@ def main():
             meets14, (S.get("hearings_next_14") or 0) > len(up14))
         stale = (S.get("stale_days") or 0) > 45
         # THE SAME BOX THE SCRIPT DRAWS, line for line. This copy is what a
-        # reader without JavaScript and every crawler get, and until 13
-        # September it had no last floor session, no count of hearings and
-        # no date -- so it could not say it was stale, which is the one thing
-        # a hand-kept summary most needs to be able to say. The livestream
-        # links are gone from both copies: the person found them redundant on
-        # 14 September.
+        # reader without JavaScript and every crawler get. It once had no last
+        # floor session, no count of hearings and no date -- so it could not
+        # say it was stale, which is the one thing a hand-kept summary most
+        # needs to be able to say. The livestream links are in neither copy,
+        # as redundant.
         static_state = (
             f'<div class="statebox {ph[0]}"><div class="stateline">'
             f'<span class="dot"></span><b>{esc(ph[1])}</b>'
@@ -1489,10 +1476,9 @@ def main():
                      f'{fdy(S["updated"])}</p>' if S.get("updated") else ""))
             + "</div>")
 
-    # The five counts the home page drew here were taken out on 15 September at
-    # the person's word: they stood between the search box and the three cards
-    # that are the way in, and a visitor does not arrive to be told how many
-    # bills exist. The data page still counts, which is where counting belongs.
+    # The five counts the home page drew here are gone, for the reason the
+    # script's copy above gives. The data page still counts, which is where
+    # counting belongs.
 
     def static_bar(ch):
         """The party composition of one chamber, with its thresholds.

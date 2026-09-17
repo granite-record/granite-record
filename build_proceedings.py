@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.7
+# GRANITE_VERSION: 2026-09-05.8
 """
 Build proceedings.csv: one row per (bill, date, kind, recording), whether it
 is a committee hearing or a floor debate.
@@ -28,9 +28,9 @@ EVERY ROW LEAVES HERE WITH A TERM, or is dropped and counted. build_site_v2
 keys every per-bill payload on (term, bill), so a row whose term is empty is
 a proceeding this table holds and no page on the site can show -- invisible
 in both directions, since nothing errors either. Ten rows of 98,965 were in
-that state on 17 September, which was the whole of the site's proceedings
-gap. See recover_terms for where a missing term is found and what happens to
-a row that has none to find.
+that state, which was the whole of the site's proceedings gap. See
+recover_terms for where a missing term is found and what happens to a row
+that has none to find.
 """
 
 import argparse

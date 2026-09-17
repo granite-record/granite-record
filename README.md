@@ -19,11 +19,9 @@ program can use.
         and, where a chair said so aloud, the second the bill was taken up
 ```
 
-The last two lines carry no figure on purpose. They move with every build — the
-terms with proceedings went one, then seven, then eleven, then all nineteen
-inside nine days — and every version of this block that named a count was wrong
-within a week of being typed. `python3 handoff.py` rewrites them into
-`STATE.md`, which is generated and is the copy to believe.
+The last two lines carry no figure on purpose: every version of this block that
+named one was stale within a week. `python3 handoff.py` writes the current
+counts into `STATE.md`, which is generated and is the copy to believe.
 
 **Three things worth knowing before you read the code.**
 
@@ -77,15 +75,14 @@ is the expected first run, not a fault: eight of the checks read the real built
 `site/`, which a clone does not have, and they say so one by one. In a working
 tree with a built site the same command is all 122.
 
-About a minute — 63 seconds in the nightly of 17 September. **Trust its output
-over anything written in prose, including this file.** If it is not green, that
-is the thing to fix before anything else. `python3 preflight.py` with no flag
-adds the 39 data checks, which need the record described below, and takes
-longer.
+It takes about a minute. **Trust its output over anything written in prose,
+including this file.** If it is not green, that is the thing to fix before
+anything else. `python3 preflight.py` with no flag adds the 39 data checks,
+which need the record described below, and takes longer.
 
 ### A clone has the code, not the record
 
-The repository is 287 files: 132 Python scripts, the front end, the documents,
+The repository is 291 files: 132 Python scripts, the front end, the documents,
 and the five files a person made by hand. The General Court's **live** bulk
 dumps and everything derived from them are deliberately untracked — they are
 the state's, they are large, and they change daily, so tracking them would
@@ -127,9 +124,9 @@ python3 inventory.py                # what is on disk, and which scripts are sta
 python3 handoff.py                  # writes STATE.md with the counts as measured
 ```
 
-`--local` took 1,059 seconds on its last run here — about eighteen minutes,
-most of it in three steps. Every run records its own per-step timings in
-`site/build.json`. `handoff.py --print` prints instead of writing `STATE.md`.
+`--local` takes about eighteen minutes, most of it in three steps; every run
+records its own per-step timings in `site/build.json`. `handoff.py --print`
+prints instead of writing `STATE.md`.
 
 `site/` is then a complete static site:
 
@@ -230,15 +227,16 @@ addresses:
 
 Every table is also downloadable as CSV from
 **[graniterecord.org/data](https://graniterecord.org/data)** — bills, votes,
-sponsors, roll calls, legislators and proceedings, about 2.4 million rows
+sponsors, roll calls, legislators and proceedings, about 2.5 million rows
 across 19 files. `/data/manifest.json` lists each one with its rows, size and
 column names, so a program can discover what is there in one request.
 
 That manifest also carries a per-term coverage table, and it is the honest
 answer to "how far back does this go". Titles, topics, committees and passage
-run the full 19 terms. Named sponsors are substantial only from 2011-2012 on;
-before that each term names fewer than twenty. **An empty column is a record
-not yet collected, not a bill without one.**
+run the full 19 terms. Named sponsors do not: the nine terms from 1989-1990 to
+2005-2006 name fewer than twenty each, and 2007-2008 and 2015-2016 are only
+part-filled. **An empty column is a record not yet collected, not a bill
+without one.**
 
 If you are building something and the shape is awkward, say so — the point of
 this is to be used.
@@ -246,71 +244,46 @@ this is to be used.
 ### Fetching, and the one hard rule
 
 **Do not point a `fetch_*` script at the General Court without asking first**
-— <contact@graniterecord.org>. This address has been blocked by their firewall twice: once
-for probing filenames that did not exist, once for running two fetches at the
-same time. Getting blocked again costs days and an email to a Clerk's office.
+— <contact@graniterecord.org>. This address has been blocked by their firewall
+twice: once for probing filenames that did not exist, once for running two
+fetches at the same time. Getting blocked again costs days and an email to a
+Clerk's office.
 
 Fetches run one at a time, slowly, and a refusal ends the run rather than being
-retried around. A refusal also **outlives the run that met it**: `refusal.py`
-records it in `archive/refused.json`, and a full `build_all.py` then skips its
-General Court steps for 24 hours and says so. `netcheck.py` diagnoses a refusal
-without making it worse. Clearing one (`python3 refusal.py --clear`) is the
-owner's decision, not a step in a recipe.
-
-**That machinery does not yet cover every fetcher, and you should not assume it
-will catch you.** Twelve of the thirty-two `fetch_*.py` scripts consult
-`refusal.py`; the rest would walk straight through a recorded refusal if
-started by hand. Check before you run one:
-
-```bash
-grep -l refusal fetch_*.py
-```
-
-Closing that gap is a good first contribution and a small one. Until it is
-closed, the rule above — ask first, one at a time — is the thing standing
-between this project and a third block.
+retried around: `refusal.py` records it, and `build_all.py` then skips its
+General Court steps for 24 hours. **That machinery does not yet cover every
+fetcher** — twelve of the thirty-two `fetch_*.py` scripts consult it, and the
+rest would walk straight through a recorded refusal if started by hand
+(`grep -l refusal fetch_*.py`). Until that gap is closed, the rule above is the
+thing standing between this project and a third block.
 
 The `fetch_*_db.py` scripts read the SQL host the General Court publishes
-credentials for, not the web server that did the blocking. Still ask — it is
-still somebody else's server — but a refusal there is a different problem.
+credentials for, not the web server that did the blocking. Still ask — but a
+refusal there is a different problem.
 
 ---
 
 ## Contributing
 
-**Run `python3 preflight.py` before and after.** That is the test suite: 159
-checks, which build the whole site on a fixture, load the front end in node and
-call `render()` and `renderDetail()`, and run `tests/test_markers.py`. Add a
-check whenever something breaks in a way a check could have caught — that is
-how most of the current ones got there.
+`CONTRIBUTING.md` has the detail. The short version:
 
-**Bump the version stamp in the same edit.** When you change a file, increment
-the `.N` in its `# GRANITE_VERSION:` line and update `versions.json` to match.
-**Leave the date alone** — it is when the file was created, not last modified.
-`preflight` fails if the two disagree, and this is the most common way a first
-change fails.
-
-**Five files are a person's, and no generator writes them.**
-`ground_truth.csv` (35 proceedings timed with a stopwatch),
-`review/checked.jsonl` (review judgments, append-only), `bill_notes.json` (what
-a recurring bill number means — HB1 has been the budget since 1993),
-`officials.json` (offices filled by hand from four official sources) and
-`member_corrections.json` (a name a generator got wrong, and the evidence).
-`preflight` fails if any `build_*` or `fetch_*` script opens one for writing.
-
-**Nothing about timestamps ships without scoring it first:**
-
-```
-python3 probe_alignment.py --truth --candidate candidate_segments.json
-```
-
-The number to watch is the candidate median. Do not let it regress.
-
-**A writer of a derived file, run on a subset, destroys the rest.** This has
-happened twice. Writers merge; a full rebuild is an explicit flag.
-
-**Say when something is a guess.** An invented number stated plainly costs more
-than an admission of not knowing.
+- **Run `python3 preflight.py` before and after.** That is the test suite: 161
+  checks, which build the whole site on a fixture, load the front end in node
+  and call `render()` and `renderDetail()`, and run `tests/test_markers.py`.
+  Add a check whenever something breaks in a way a check could have caught —
+  that is how most of the current ones got there.
+- **Bump the `# GRANITE_VERSION:` stamp and `versions.json` in the same edit.**
+  Increment the `.N`; leave the date alone. This is the most common way a first
+  change fails.
+- **Five files are a person's, and no generator writes them.** `preflight.py`'s
+  `HANDMADE` is the list, and a check enforces it.
+- **Nothing about timestamps ships without scoring it first**, with
+  `probe_alignment.py --truth`. The number to watch is the candidate median;
+  do not let it regress.
+- **A writer of a derived file, run on a subset, destroys the rest.** This has
+  happened twice. Writers merge; a full rebuild is an explicit flag.
+- **Say when something is a guess.** An invented number stated plainly costs
+  more than an admission of not knowing.
 
 ---
 
@@ -320,15 +293,13 @@ Honest list, not a roadmap — `LAUNCH.md` is the roadmap.
 
 - **No issue templates and no CI.** `preflight` is run by hand. `CONTRIBUTING.md`
   and `SECURITY.md` exist; neither has been through a round with anyone but us.
-- **Sponsors before 2011 are nearly empty** — fewer than twenty per term across
-  eleven terms. The archive path that would fill them exists and is not yet run
-  to completion: 11,937 pages are saved under `legislation/` and the fetch is
+- **Sponsors before 2007 are nearly empty** — fewer than twenty per term across
+  nine terms. The archive path that would fill them exists and is not yet run
+  to completion: 13,980 pages are saved under `legislation/` and the fetch is
   still walking backwards through the 1990s and 2000s.
-- **`proceedings.csv` reaches all nineteen terms** as of 17 September, when the
-  last eight manifests were built from the database dump already on disk. What
-  is behind that is uneven: a term whose docket came from the database has no
-  recordings to match against, because the House streamed nothing before May
-  2020.
+- **`proceedings.csv` reaches all nineteen terms**, but what is behind it is
+  uneven: a term whose docket came from the database dump has no recordings to
+  match against, because the House streamed nothing before May 2020.
 - **Email following is designed and not built** (`FOLLOW.md`). RSS is live.
 
 ---
@@ -336,22 +307,19 @@ Honest list, not a roadmap — `LAUNCH.md` is the roadmap.
 ## Licence
 
 **MIT** — see [`LICENSE`](LICENSE). Use it, change it, sell it; keep the notice.
-[`DATA.md`](DATA.md) says what that covers and what it cannot.
 
 That covers the software and the texts this project writes: the plain-English
 bill histories, the explainers under `/learn`, and the editorial notes on
 particular bills. It does not cover the underlying record, because it cannot —
 the bills, votes, calendars and recordings are the State of New Hampshire's,
-published by them, and facts are not copyrightable. Nothing here claims
-otherwise.
+and facts are not copyrightable. [`DATA.md`](DATA.md) separates the three.
 
 ---
 
 ## Where to read next
 
 - **`LAUNCH.md`** — what is done, what is not, and what to do first. The newest
-  of these, and the one that wins where they disagree. It is a working journal;
-  the current agreed order is in §0e rather than at the top.
+  of these, and the one that wins where they disagree.
 - **`ARCHITECTURE.md`** — what is sound, what is not, and what it would take to
   fix. Written by measuring rather than remembering.
 - **`HANDOFF.md`** — how the work runs, and the habits that produced the good
@@ -360,7 +328,6 @@ otherwise.
 - **`CLAUDE.md`** — the working rules: what may not be run without asking, and
   why each rule exists.
 - **`STATE.md`** — generated by `handoff.py`. Never edit it; run it again.
-
 - **`watchers/README.md`** — the long-running loops: what each one is, which
   are superseded, and how to find out what is running before starting a second
   copy of it.

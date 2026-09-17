@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.4
+# GRANITE_VERSION: 2026-09-08.5
 """
 Every view in the General Court's public database, onto this disk.
 
@@ -52,9 +52,9 @@ step, so that a parser can be rewritten without another round trip.
 THE TWO DATABASES
 
 `NHLegislatureDB` is the public record. `PublicNHLMS` is the drafting system
-behind it, and was probed on 8 September: `NHLegislatureDB2` and `NHRSA`
-answer nothing at all, and `PublicNHLMS` answers only some names. Two of its
-views are wanted and are named below with the reason.
+behind it. Probed: `NHLegislatureDB2` and `NHRSA` answer nothing at all, and
+`PublicNHLMS` answers only some names. Two of its views are wanted and are
+named below with the reason.
 """
 
 import argparse
@@ -100,8 +100,8 @@ VIEWS = [
     ("StatStudDetails", "NHLegislatureDB", "", "statutory study committees"),
     ("StatStudMembers", "NHLegislatureDB", "", "their members"),
     ("StatStudMeetings", "NHLegislatureDB", "", "their meetings"),
-    # The 28th object, and the only one this disk did not have: asked for on
-    # 9 September by comparing INFORMATION_SCHEMA against db/_manifest.json.
+    # The 28th object, and the only one this disk did not have: found by
+    # comparing INFORMATION_SCHEMA against db/_manifest.json.
     # 1,545 rows joining a study committee to the bill that created it and the
     # RSA chapter it studies -- a bill-to-statute link that exists nowhere
     # else here. NHRSA, NHLegislatureDB2 and PublicNHLMS show publicuser

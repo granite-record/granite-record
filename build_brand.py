@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.4
+# GRANITE_VERSION: 2026-09-12.5
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -14,10 +14,10 @@ the next build and is never in the repository. The drawn originals live in
 which `build_pages.py` copies into `site/` beside the pages. One source, one
 copy step, and the originals are recoverable.
 
-The logo is TEMPORARY. It is an Old Man of the Mountain made from clipart the
-person bought the rights to (13 September), good to use and likely to change,
-and the whole point of keeping the originals and this script is that
-replacing it later is one command rather than an archaeology exercise.
+The logo is TEMPORARY. It is an Old Man of the Mountain made from licensed
+clipart, good to use and likely to change, and the whole point of keeping the
+originals and this script is that replacing it later is one command rather
+than an archaeology exercise.
 
 WHAT IS DERIVED, AND WHY EACH ONE
 
@@ -37,6 +37,10 @@ WHAT IS DERIVED, AND WHY EACH ONE
   og.png            1200x630 for a shared link's card, the black-on-white
                     lockup padded onto white so the card is seamless rather
                     than a black block inside a white border.
+  og-<kind>.png     the same card per kind of page -- bill, legislator,
+                    committee, learn, town -- with the kind named under the
+                    lockup, so a shared bill and a shared legislator do not
+                    unfurl identically. OG_SECTIONS below is the list.
   lockup.png        the profile and "Granite Record" together, as the home
                     page's heading: the black-on-white lockup turned into an
                     alpha mask (ink opaque, paper clear) and cut to the ink's
@@ -187,10 +191,10 @@ def write_og():
     return f"og.png    {W}x{H}, logo at {im.width}x{im.height}"
 
 
-# ONE CARD PER KIND OF PAGE, chosen by the person on 14 September over one card
-# for everything or one for each record. The drawing og.png carries, a little
-# smaller, with the kind of page named under it in the site's small capitals,
-# so a shared bill and a shared legislator do not unfurl identically.
+# ONE CARD PER KIND OF PAGE, rather than one card for everything or one for
+# each record. The drawing og.png carries, a little smaller, with the kind of
+# page named under it in the site's small capitals, so a shared bill and a
+# shared legislator do not unfurl identically.
 OG_SECTIONS = {
     "og-bill.png": "BILLS  \u00b7  VOTES  \u00b7  HEARINGS",
     "og-legislator.png": "LEGISLATORS  \u00b7  VOTING RECORDS",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.9
+# GRANITE_VERSION: 2026-09-05.10
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
@@ -469,9 +469,9 @@ def main():
     ap.add_argument("--docket", default=None, help="local Docket.txt (downloads if omitted)")
     ap.add_argument("--out", default="verification_manifest.csv")
     ap.add_argument("--only-recorded", action="store_true",
-                    help="drop proceedings on days with no recording. What "
-                         "this did unconditionally until 10 September, which "
-                         "cost every term before May 2020 all of its rows.")
+                    help="drop proceedings on days with no recording. This "
+                         "once happened unconditionally, which cost every "
+                         "term before May 2020 all of its rows.")
     ap.add_argument("--keep-marks", metavar="OLD",
                     help="carry observed_start/observed_end forward from an "
                          "earlier manifest (.csv or .xlsx). Without this they "
@@ -570,8 +570,7 @@ def main():
     # recording of that day -- SB 232's Senate Education hearing of
     # 11 January 2022 on "House Education (01/11/22)" -- and 79 House
     # proceedings of 2023-2024 and 19 of the current term had the other
-    # chamber's. Found on 11 September; the bill's number is spoken on 2 of
-    # the 82 captioned ones.
+    # chamber's. The bill's number is spoken on 2 of the 82 captioned ones.
     #
     # A committee of conference sits for both chambers and may be streamed
     # on either channel, so it alone may fall back to the other chamber's

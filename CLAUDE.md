@@ -14,10 +14,9 @@ generated and does not, so where a count disagrees, `STATE.md` wins.
 
 Static site: files on a CDN. That constraint is deliberate. There is exactly
 one exception: `functions/api/report.js`, the POST endpoint behind the "report
-a problem" box. Its own header says so -- "THE ONLY THING ON THIS SITE THAT
-RUNS". It is write-only, on no page's critical path, and the box falls back to
-an email link when it is down, which is why it is acceptable on a site that is
-static on purpose.
+a problem" box. It is write-only, on no page's critical path, and the box falls
+back to an email link when it is down, which is why it is acceptable on a site
+that is static on purpose.
 
 ---
 
@@ -30,7 +29,7 @@ python3 handoff.py         # writes STATE.md with current counts
 ```
 
 A couple of minutes, no network -- `preflight` is nearly all of it, and its
-`--code` half alone took 63 s in this morning's nightly. **Trust their output
+`--code` half alone is about a minute of that. **Trust their output
 over anything written in prose, including this file.** If `preflight` is not
 green, fix that before anything else.
 
@@ -38,8 +37,7 @@ green, fix that before anything else.
 `DESIGN.md` and `obsolete/README.md` are written by a person and explain why
 things are the way they are. `HANDOFF.md` and `ARCHITECTURE.md` are the
 assistant's to keep current, and `README.md` is the front door for the
-open-source release. (`TESTING_QUEUE.md` was named here for a while and has
-never existed; `LAUNCH.md` is what took its place.)
+open-source release.
 
 ---
 
@@ -66,11 +64,10 @@ happened.
 
 **A refusal outlives the run that met it.** `refusal.py` records one in
 `archive/refused.json` and holds the fetch lane for 24 hours. It exists because
-on 9 September the calendar drain was answered with two 403s, stopped itself
-correctly, and a chained run started asking the same address for a docket
-fifty-four seconds later. Clearing it is a person's decision:
-`python3 refusal.py --clear`, after `netcheck.py` has said what kind of
-refusal it was.
+a drain that met two 403s stopped itself correctly, and a chained run started
+asking the same address for a docket fifty-four seconds later. Clearing it is a
+person's decision: `python3 refusal.py --clear`, after `netcheck.py` has said
+what kind of refusal it was.
 
 It does not yet hold *every* fetch. Twelve of the twenty-four web fetchers
 consult it (`grep -l refusal fetch_*.py`); nine that ask gc.nh.gov directly do
@@ -88,10 +85,10 @@ problem with a different cause. `probe_db.py` reports what is in it;
 anything past a few thousand rows.
 
 The three `*_from_db.py` scripts -- `docket_from_db.py`, `rollcalls_from_db.py`
-and `testimony_from_db.py` -- ask nobody anything, and this file used to file
-`docket_from_db.py` under the fetchers. The database is already dumped to `db/`
-on this disk and they reshape it into the files the parsers read: standard
-library only, no network, free to run without asking.
+and `testimony_from_db.py` -- ask nobody anything, despite the name. The
+database is already dumped to `db/` on this disk and they reshape it into the
+files the parsers read: standard library only, no network, free to run without
+asking.
 
 **`publish`.** It deploys to the live site.
 
@@ -117,8 +114,8 @@ sample at a time and appends a judgment. Any timestamp method is scored with:
 python3 probe_alignment.py --truth --candidate candidate_segments.json
 ```
 
-The candidate median was **0m 01s** on 5 September, against 1m 27s for the
-clustering model and 17m 05s for the schedule alone. **Nothing about
+The candidate median is **0m 01s**, against 1m 27s for the clustering model and
+17m 05s for the schedule alone. **Nothing about
 timestamps goes on the site before that comparison has been run and the median
 has not regressed.** This matters more in an agentic loop, not less: it is the
 guard against tuning a pattern until the number looks right.
@@ -133,22 +130,21 @@ manifest lost the 35 hand-marked times twice. `segment_markers --transcript X`
 once discarded 842 recordings' results. Writers merge; a full rebuild is an
 explicit flag; anything a person made by hand lives where no generator writes.
 
-**Say when something is a guess.** The person has caught several wrong answers
-and prefers being told. An invented number stated plainly ("whisper takes about
-six hours" — it took forty minutes) costs more than an admission of not
-knowing.
+**Say when something is a guess.** An invented number stated plainly ("whisper
+takes about six hours" — it took forty minutes) costs more than an admission of
+not knowing.
 
 ---
 
 ## How the code is arranged
 
 **`proceedings.csv` is the one table.** Built by `build_proceedings.py` from
-every `verification_manifest*.csv` — one per term, nineteen of them as of this
-morning — plus the floor index, and read through `proceedings.py` by
-everything. It globs them all on every run so that no writer here ever sees a
-subset (`build_proceedings.py:311-316`). It exists because those sources used
-to be read separately and five tools in one day were found to silently exclude
-floor debates — each presenting as a different bug. **Do not add a sixth reader
+every `verification_manifest*.csv` — one per term — plus the floor index, and
+read through `proceedings.py` by everything. It globs them all on every run so
+that no writer here ever sees a subset (`build_proceedings.py:311-316`). It
+exists because those sources used to be read separately and five tools in one
+day were found to silently exclude floor debates — each presenting as a
+different bug. **Do not add a sixth reader
 of the old files, and do not give it a `--term` flag.**
 
 **Five files are a person's and no generator writes them.**
@@ -159,10 +155,10 @@ of the old files, and do not give it a `--term` flag.**
 `member_corrections.json` (a name or party a generator got wrong, with the
 evidence for the correction beside it).
 `preflight` fails if any `build_*` or `fetch_*` script opens one for writing,
-and it is named for the category rather than for `ground_truth.csv` because
-three of them had no guard at all until 10 September. The list lives in
-`preflight.py`'s `HANDMADE`; read it there rather than here, because it has
-grown twice and this paragraph said "four" for a week after it was five.
+and the check is named for the category rather than for one file, because while
+it named only `ground_truth.csv` three of the others had no guard at all. The
+list lives in `preflight.py`'s `HANDMADE`; read it there rather than here,
+because it has grown twice.
 
 **`build_all.py` is the pipeline.** 26 steps for `--local`, 39 declared; `--local` skips network ones,
 `--dry-run` shows the plan. A step marked `superseded=True` is kept for a case
@@ -183,9 +179,7 @@ floor debate at all, while 5,363 of the 5,577 House rows carry a clock); a
 boundary the chair stated, found by `segment_markers.py`; the clustering model
 where neither fires. The page says which by what it does *not* qualify: a
 stated boundary is shown plainly, and an inferred one carries one word,
-*approximate*. This paragraph quoted *"estimated within ±5 min"* for a
-fortnight after that string came out of `app.js`, where it now appears zero
-times.
+*approximate*.
 
 **Captions are not quoted on the site.** They render "HB 1381" as "HP 1381" and
 "HB 1444" as "HB1 1444". A garbled quote presented as what someone said is a
@@ -205,19 +199,17 @@ edit.** The date is when the file was *created*, not last modified:
 `preflight.py` at `2026-09-04.190` has been edited a hundred and ninety times
 since 4 September. Increment the `.N`; leave the date alone. `python3
 inventory.py` prints the current stamp of every file; take one from there and
-do not copy one into prose. This example read `.12` for a fortnight, which was
-worse than stale — `.12` is the stamp `build_legislator_pages.py`,
-`check_live.py` and `nightly.py` carry today, so anyone grepping for it landed
-on the wrong file, and `preflight` would reject `.12` on `preflight.py`.
+do not copy one into prose. A stamp quoted in a document goes stale, and then
+points at whichever other file has since grown into that number.
 
 ---
 
 ## What to work on next
 
-In order **within their category, and the category comes first.** Since
-15 September, when staff and legislators began using the site: a factual error
-— a wrong roster, a wrong count, a mislabelled vote, a sponsor on the wrong
-person — is fixed before anything else; then bugs that hide or break data; then
+In order **within their category, and the category comes first.** The site's
+readers include General Court staff and legislators, so: a factual error — a
+wrong roster, a wrong count, a mislabelled vote, a sponsor on the wrong person
+— is fixed before anything else; then bugs that hide or break data; then
 everything below, all of which is in that third group. `LAUNCH.md` holds the
 current order and is the newer answer where it and this disagree;
 `ARCHITECTURE.md` has the full reasoning.
@@ -225,15 +217,14 @@ current order and is the newer answer where it and this disagree;
 1. **Split `build_site_v2.main`, which is still the longest function in the
    file and is now 533 lines** — it was 468 when this was written, so it grows
    while it waits. Its two predecessors are done and both were verified
-   the same way. `renderDetail` went from 472 lines and 26 `const`
-   declarations to nine hoisted functions on 6 September, byte-identical.
-   `build_bills` went from **544 lines to 294** on 10 September (it has since
-   drifted back to 346, which is what a function does when it is the right
-   size to add to), in nine
-   steps, each one checked by building the site into a scratchpad tree and
-   comparing a sha256 manifest of all 34,114 files against a baseline — which
-   was itself run twice under different `PYTHONHASHSEED` values first, to
-   prove the output was deterministic rather than assume it.
+   the same way: `renderDetail`, 472 lines and 26 `const` declarations to nine
+   hoisted functions, byte-identical output; `build_bills`, **544 lines to
+   294** in nine steps (it has since drifted back to 346, which is what a
+   function does when it is the right size to add to). Each step was checked by
+   building the site into a scratchpad tree and comparing a sha256 manifest of
+   all 34,114 files against a baseline — which was itself run twice under
+   different `PYTHONHASHSEED` values first, to prove the output was
+   deterministic rather than assume it.
 
    That split paid for itself beyond the line count: `kind` meant the bill's
    status kind in the payload and a `("voice vote", False)` tuple 147 lines
@@ -252,76 +243,68 @@ current order and is the newer answer where it and this disagree;
    every recording so a shared convention appears as a number rather than a
    hunch. That loop took coverage from 40% to 71% in one evening. Add a phrase
    to `tests/test_markers.py` **only if it was actually spoken** — the floor
-   patterns were validated against sentences typed out of a document for a
-   whole day before anyone ran them on a floor caption file.
+   patterns once spent a day being validated against sentences typed out of a
+   document rather than against a floor caption file.
 
    Note what will NOT move this: more captions. 4,296 of the 4,429 recording
    folders in `work/` carry captions this can read, and the recordings
-   `proceedings.csv` names are nearly all of them — "910 of the 915" was one
-   term's denominator, written when the table held one term. The point is
-   unchanged: fetching more captions will not move the coverage.
+   `proceedings.csv` names are nearly all of them. Fetching more captions will
+   not move the coverage.
 
-3. **~~`proceedings.csv` across the remaining terms.~~ All nineteen terms have
-   a manifest as of this morning** — it held one term until 10 September,
-   eleven until this morning, and the last eight were built at 09:32 — because
-   `build_manifest.py` turned out to need no change at all: `--docket` names
-   the term, and `build_proceedings.py` reads every
-   `verification_manifest*.csv` rather than one. What made the last eight cost
-   no network is that the database dump had already put
-   `Docket_db_1999-2000.txt` through `Docket_db_2013-2014.txt` on this disk;
-   fifteen `Docket_db_*.txt` are there now. Run `python3 handoff.py` for the
-   row and recording counts — this line has carried a stale pair twice.
+3. **~~`proceedings.csv` across the remaining terms.~~ Done: all nineteen terms
+   have a manifest**, because `build_manifest.py` turned out to need no change
+   at all — `--docket` names the term, and `build_proceedings.py` reads every
+   `verification_manifest*.csv` rather than one. The last terms cost no network
+   because the database dump had already put `Docket_db_1999-2000.txt` through
+   `Docket_db_2013-2014.txt` on this disk; fifteen `Docket_db_*.txt` are there
+   now. Run `python3 handoff.py` for the row and recording counts — this line
+   has carried a stale pair twice.
 
    The calendars stay the independent check, and the only source for a hearing
    the docket never recorded: all 1,580 House calendar PDFs for 1997-2026 are
    on disk with text, and `calendar_meetings.py --check` reads the bill-days
-   out of them at no cost. (It printed 61,767 on 10 September and 61,543 on the
-   17th, after committee-name variants were merged — run it rather than
-   quoting either.) The Senate calendars are 1,604 PDFs with text for 984.
+   out of them at no cost. Run it rather than quoting a count from here; merging
+   committee-name variants moved the number by 224 in a week. The Senate
+   calendars are 1,604 PDFs with text for 984.
 
-4. **A new archive path, found on 10 September and tested the same day.**
-   `gc.nh.gov/legislation/<year>/<HB0000>.html` is constructible from a year
-   and a padded number — no search, no session — and carries the sponsor with
-   their district, the committee of referral, the title, the analysis and the
-   full text. A 380-bill sample, ten a year from 1989 to 2026 across every
-   kind, saved 297 pages, and the parser now reads sponsor, committee and
-   title across all 15 kinds and 31 years — the 29 pages naming no sponsor are
-   housekeeping resolutions and budget tables, which name none.
+4. **A constructible archive path.**
+   `gc.nh.gov/legislation/<year>/<HB0000>.html` is built from a year and a
+   padded number — no search, no session — and carries the sponsor with their
+   district, the committee of referral, the title, the analysis and the full
+   text. The parser reads sponsor, committee and title across all 15 kinds and
+   31 years; the pages naming no sponsor are housekeeping resolutions and
+   budget tables, which name none.
 
-   **That sample has been overtaken**, and two of the sentences it produced
-   were wrong. 11,937 pages across 38 year folders are saved under
-   `legislation/` and the lane is still walking backwards through them: 2022,
-   2023 and 2024 all answered (1,195, 638 and 1,300 pages), so only 1996 and
-   2016 answer 404 for every bill asked, and those stay unexplained; the
-   current term lives at bill_status. Nor do any terms lack a committee — the
-   docket fills committee of referral for all nineteen. What this path is still
-   buying is the sponsor, for the terms that carry one on fewer than twenty
-   bills; `/data/manifest.json`'s per-term coverage table says which, and it
-   moves with every build. `fetch_legislation.py` fetches and saves; `--parse` reads what
-   is saved and touches no network, because the labels change with the
+   11,937 pages across 38 year folders are saved under `legislation/` and the
+   lane is still walking backwards through them. Only 1996 and 2016 answer 404
+   for every bill asked, and that stays unexplained; the current term lives at
+   bill_status. No term lacks a committee — the docket fills committee of
+   referral for all nineteen. What this path is still buying is the sponsor,
+   for the terms that carry one on fewer than twenty bills;
+   `/data/manifest.json`'s per-term coverage table says which, and it moves
+   with every build. `fetch_legislation.py` fetches and saves; `--parse` reads
+   what is saved and touches no network, because the labels change with the
    decades and a parser must be allowed to be wrong without costing a request.
 
 5. **The bench.** `review.py` serves one sample at a time on the loopback
    address, takes a verdict and a note, and appends to `review/checked.jsonl`.
-   Nine kinds now, not the five this said: topics, bill hearing timings,
-   hour-late recordings, timings before 2025, histories of 1989-2016,
-   plain-language histories, hearings read from calendars, governors' veto
-   messages and committee report reasoning. 165 judgments are on file.
-   `probe_alignment.py --truth` reads the timed ones alongside
+   Nine kinds of sample: topics, bill hearing timings, hour-late recordings,
+   timings before 2025, histories of 1989-2016, plain-language histories,
+   hearings read from calendars, governors' veto messages and committee report
+   reasoning. `probe_alignment.py --truth` reads the timed ones alongside
    `ground_truth.csv`'s 35, and `--no-bench` gives the number comparable with
-   anything recorded before 9 September. **Take the two counts from the
-   command's own header** — the "43 marks across 15 recordings" this line
-   carried is not reproducible from any state of `checked.jsonl`.
+   anything recorded before the bench existed. **Take the counts from the
+   command's own header**, not from a document — the pair this line used to
+   carry was not reproducible from any state of `checked.jsonl`.
 
 **Settled, and no longer worth revisiting.** The file cap: records travel
 inside their own pages, so a bill is one file. Term keying: every per-bill file
 is `{term: {bill: ...}}` and `preflight` refuses the old shape.
 
-The file cap is settled; the *margin* is no longer comfortable and is worth a
-look before anything adds a file per record. The site was **45,862 of the
-100,000** Cloudflare Pages Pro allows when that was written. It is **82,574**
-on 17 September — 2.3 GB — after 1,785 former legislators got pages, and
-`check_site` warns at 90,000. `python3 check_site.py` prints the current
+The *margin* is not settled, and is worth a look before anything adds a file
+per record. The site went from 45,862 files to **82,574** — 2.3 GB — when 1,785
+former legislators got pages, against the **100,000** Cloudflare Pages Pro
+allows; `check_site` warns at 90,000. `python3 check_site.py` prints the current
 number; do not take it from here.
 
 ---

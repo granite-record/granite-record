@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.2
+# GRANITE_VERSION: 2026-09-08.3
 """
 The Senate's calendars, for the veto messages the House's do not carry.
 
@@ -170,12 +170,11 @@ def main():
     cache.mkdir(parents=True, exist_ok=True)
 
     # ONE WORKER OR NONE, and not at all while a refusal stands. This script
-    # had neither until the 12th: it took no lock, so it could run beside the
-    # lane as a second worker at this address, and it read no refusal, so it
-    # would have carried on through one. It is also the run that met a 403 on
-    # 9 September -- 664 calendars of 1998-2008 are still marked "wanted" in
-    # archive/queue.csv from that day, each with "HTTP Error 403: Forbidden"
-    # against it.
+    # once had neither: it took no lock, so it could run beside the lane as a
+    # second worker at this address, and it read no refusal, so it would have
+    # carried on through one. It is also the run that met a 403 -- 664
+    # calendars of 1998-2008 are still marked "wanted" in archive/queue.csv
+    # from that day, each with "HTTP Error 403: Forbidden" against it.
     refusal.check("The Senate calendar fetch")
     with refusal.hold("fetch_senate_calendars") as held:
         HOLD = held

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.19
+# GRANITE_VERSION: 2026-09-08.20
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -124,13 +124,13 @@ def _notice(root, term, _seen={}):
 def record_figures(site, root=Path(".")):
     """Every count the Learn pages state, from what the build has just written.
 
-    THEY WERE TYPED, AND THEY DRIFTED. Measured on 12 September against the
-    built site, the pages said "4,230 bills on this site" of a site holding
-    33,683, "68 vetoed bills" across "two terms" of nineteen, and "855 were
-    killed" of a term the record now puts at 853 -- each true on the day it
-    was written. civics.py names a figure as [[name]] and this fills it, each
-    by the definition the typed number had been counted by, checked the same
-    day: every one reproduced the typed figure wherever that was still right.
+    THEY WERE TYPED, AND THEY DRIFTED. Measured against the built site, the
+    pages said "4,230 bills on this site" of a site holding 33,683, "68 vetoed
+    bills" across "two terms" of nineteen, and "855 were killed" of a term the
+    record now puts at 853 -- each true on the day it was written. civics.py
+    names a figure as [[name]] and this fills it, each by the definition the
+    typed number had been counted by: every one reproduced the typed figure
+    wherever that was still right.
     """
     idx = _load(Path(site) / "index.json", [])
     term = max((r.get("term") or "" for r in idx), default="")
@@ -248,10 +248,10 @@ def dashes(text):
 
     The Learn prose is written in the plain-text shorthand this repository's own
     documents use, and it was published that way: "The Council -- five members,
-    elected by district -- approves contracts", 5 times on the hub and 54 across
-    the eleven pages on 15 September. Nowhere else on the site prints it. Only a
-    hyphen pair with a space on each side is touched, so "Education - General",
-    a range, and anything inside a tag are left alone.
+    elected by district -- approves contracts", 5 times on the hub and 54
+    across the eleven pages. Nowhere else on the site prints it. Only a hyphen
+    pair with a space on each side is touched, so "Education - General", a
+    range, and anything inside a tag are left alone.
     """
     return re.sub(r"(?<=\s)--(?=\s)", "—", text or "")
 
@@ -293,10 +293,10 @@ def rail(topics, here=None):
     THE SECTION READS AS A BOOK OR AS ELEVEN DEAD ENDS. Each page ended with the
     next one by name and nothing else, so a reader who wanted the third page
     from the second had to go back to the hub; and since these pages line up on
-    the site's left edge (16 September) the right two thirds of a Learn page was
-    empty, which is the shape the person has said reads as broken. The rail
-    fills it with the one thing a reader of a civics section wants: where they
-    are among the rest. It is the same list the hub draws, in the same order.
+    the site's left edge, the right two thirds of a Learn page was empty, which
+    is the shape this project treats as broken. The rail fills it with the one
+    thing a reader of a civics section wants: where they are among the rest.
+    It is the same list the hub draws, in the same order.
     """
     items = "".join(
         f'<li><a href="{E(S.canon("learn/" + t["slug"] + ".html"))}"'
@@ -322,10 +322,9 @@ def footer_nav(i, topics):
     and these pages are built from that same template. So "../learn.html"
     would resolve to /../learn.html and a sibling "courts.html" to /courts.html.
     """
-    # PREVIOUS ON THE LEFT, NEXT ON THE RIGHT, in the order a reader reads --
-    # the person's correction of 14 September, when the next topic sat on the
-    # left. The markup is in the order it is drawn, so the keyboard meets them
-    # the same way round.
+    # PREVIOUS ON THE LEFT, NEXT ON THE RIGHT, in the order a reader reads.
+    # The markup is in the order it is drawn, so the keyboard meets them the
+    # same way round.
     bits = ['<nav class="tnav">']
     if i:
         prev = topics[i - 1]
@@ -499,12 +498,9 @@ def main():
         urls.append(a.base + S.canon(f"/learn/{t['slug']}.html"))
 
     # ---- the record in numbers ------------------------------------------
-    # learn_numbers.py says what it is. It was written on 13 September as a
-    # draft: noindex, absent from the hub and from the sitemap, so the person
-    # could read it at its address before anyone else was led to it. They read
-    # it and asked on the 17th for it to be public, so the three things that
-    # were keeping it private are gone -- it is in the hub, it is in the
-    # sitemap, and it is no longer noindex.
+    # learn_numbers.py says what it is. It began as a draft -- noindex, absent
+    # from the hub and from the sitemap -- and is public now: in the hub, in
+    # the sitemap, and no longer noindex.
     #
     # It is NOT in civics.TOPICS. The topics are short explanations that end by
     # naming the next one, and this is a long table of counts; hub() puts it

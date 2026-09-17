@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.19
+# GRANITE_VERSION: 2026-09-10.20
 """
 The bill itself, from an address that can simply be constructed.
 
@@ -11,7 +11,7 @@ The bill itself, from an address that can simply be constructed.
 WHY THIS PATH AND NOT THE OTHER ONE
 
 Every archive fetcher here goes through bill_status/legacy/bs2016, which wants
-a search, a session and a POST per bill. A person found this instead:
+a search, a session and a POST per bill. This path serves the same bill:
 
     https://gc.nh.gov/legislation/1989/HB0015.html
 
@@ -27,7 +27,7 @@ have at all:
 Probed across eight years from 1989 to 2017, plus 2021: every one returned a
 page.
 
-WHAT 380 BILLS, TEN A YEAR FROM 1989 TO 2026, FOUND (10 September)
+WHAT 380 BILLS, TEN A YEAR FROM 1989 TO 2026, FOUND
 
 297 pages. The 83 that were not there are not scattered: every bill asked for
 under 1996, 2016, and 2022 through 2026 answered 404, and nothing else did
@@ -95,9 +95,9 @@ TEXT = ("https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
 
 # WHICH ADDRESS SERVES WHICH YEAR, and how each line was established.
 #
-# Every line here was opened in a browser by a person on 10 September. None
-# of it was arrived at by a run trying addresses until one answered, which is
-# what got this address blocked the first time.
+# Every line here was opened in a browser by a person. None of it was arrived
+# at by a run trying addresses until one answered, which is what got this
+# address blocked the first time.
 #
 # THE STATIC PATH serves 1989-2021, sampled ten bills a year, with two holes:
 #
@@ -162,13 +162,12 @@ TEXT = ("https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
 STATIC_404 = {2016, 2022, 2023, 2024, 2025, 2026}
 ID_AS_STORED = {2022, 2023, 2024, 2025, 2026}
 ID_PLUS_YEAR = set()
-# 2016 HAS NO ADDRESS RULE THAT HOLDS, and the day it took to find that out is
-# worth writing down. The table above said "used as stored, confirmed in a
-# browser"; on 16 September a run stopped after three 56-byte answers in a row
-# -- billText saying nothing rather than 404ing -- for 2016 HB105, HB110 and
-# HB114, whose stored ids are 452016, 792016 and 862016.
+# 2016 HAS NO ADDRESS RULE THAT HOLDS. The table above said "used as stored,
+# confirmed in a browser"; a run then stopped after three 56-byte answers in a
+# row -- billText saying nothing rather than 404ing -- for 2016 HB105, HB110
+# and HB114, whose stored ids are 452016, 792016 and 862016.
 #
-# The person opened two addresses by hand:
+# Two addresses opened by hand:
 #
 #     id=882016&sy=2016   56 bytes, no bill
 #     id=88&sy=2016       serves 2016 CACR 2, whose stored id is 882016
@@ -191,7 +190,7 @@ CURRENT_FROM = 2025
 # the 8000s or 9000s, and the General Court publishes a docket for it and no
 # text: legislation/1990/HR0055.html is a 404, and advanced search finds its
 # docket (bill_docket.aspx?lsr=9055&sy=1990) and no text either, both opened
-# by hand on 11 September. 5 of the 8 sampled were 404. So they are not asked
+# by hand. 5 of the 8 sampled were 404. So they are not asked
 # for; their one docket line is already on this disk in db/Docket.psv.
 # Bills are not in this rule: the 1989 special-session HB1 is LSR 9100 and
 # its page serves.
@@ -219,9 +218,9 @@ PAGE_LSR = re.compile(r"(?<![\d/-])(\d\d)-(\d{4})(?![\d/])")
 GONE = Path("legislation/_gone.json")
 
 # What the application says instead of 404ing. Both were met rather than
-# imagined: the first by opening a wrong id by hand on 10 September, the
-# second by the scrape that minted txtFormat=pdf links for 4,230 bills and
-# got this back from every one of them.
+# imagined: the first by opening a wrong id by hand, the second by the scrape
+# that minted txtFormat=pdf links for 4,230 bills and got this back from every
+# one of them.
 ERROR_PAGE = re.compile(
     r"is either negative or above rows count|is neither a DataColumn", re.I)
 UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
@@ -485,9 +484,9 @@ def decode(raw):
     """Text of a saved page.
 
     Bytes that are valid UTF-8 are UTF-8: every pure-ASCII page, the 48 that
-    declare it, and every page this script saved before 10 September, which
-    it decoded on the way in and wrote back out as UTF-8 whatever the page
-    said. Anything else is Windows-1252, the superset of the Latin-1 that
+    declare it, and every page this script saved in its first days, which it
+    decoded on the way in and wrote back out as UTF-8 whatever the page said.
+    Anything else is Windows-1252, the superset of the Latin-1 that
     152 of the 297 sample pages declare. The declaration itself is not
     consulted: a page declaring iso-8859-1 that was saved as UTF-8 text
     would have its replacement characters read as three Latin-1 letters
@@ -508,9 +507,10 @@ def flatten(html):
     # committee were arriving as text, and the rule was landing inside the
     # committee's name. 268 of 297 pages carry an entity of some kind.
     t = _unescape(t)
-    # Pages saved before 10 September were decoded as UTF-8 on the way in,
-    # and the archive's 0xA0 -- a non-breaking space, in the Latin-1 most of
-    # it is served as -- became U+FFFD. It was a space; it is one again.
+    # The pages saved in this script's first days were decoded as UTF-8 on
+    # the way in, and the archive's 0xA0 -- a non-breaking space, in the
+    # Latin-1 most of it is served as -- became U+FFFD. It was a space; it is
+    # one again.
     t = t.replace("\ufffd", " ")
     return re.sub(r"\s+", " ", t).strip()
 
@@ -782,9 +782,9 @@ def main():
                     help="a year to leave out of the run, repeatable. For a "
                          "year whose address is not settled: 2016's stored ids "
                          "already carry the year (882016) and billText answers "
-                         "56 empty bytes to them, which stopped bills-08 after "
-                         "three in a row on 15 September. Left out rather than "
-                         "asked again with a guess.")
+                         "56 empty bytes to them, which stopped a run after "
+                         "three in a row. Left out rather than asked again "
+                         "with a guess.")
     ap.add_argument("--from", dest="lo", type=int, default=1989)
     # Not the current term: its text is in bill_text/ already, from the
     # database's own route, and asking again would be 2,234 requests for
@@ -800,9 +800,9 @@ def main():
                     help="a label for the log, so a lane can queue a range twice")
     ap.add_argument("--plan", action="store_true",
                     help="say what would be asked for; no network, no lock")
-    # NEWEST FIRST, because the recent terms are the ones people look up:
-    # the person asked on 11 September for the text to come down from 2024
-    # backwards, all of it eventually. The order within a year is unchanged
+    # NEWEST FIRST, because the recent terms are the ones people look up: the
+    # text comes down from the latest year backwards, all of it eventually.
+    # The order within a year is unchanged
     # (bills, then constitutional amendments, then resolutions), and a run
     # still skips what is on disk, so the same line queued again carries on
     # from where the last one stopped.

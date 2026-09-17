@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.99
+# GRANITE_VERSION: 2026-09-05.100
 """
 Generate the faceted site from real General Court data.
 
@@ -315,13 +315,11 @@ def _cite(ev, sources, year=""):
     disagrees is not offered at all. The citation itself is still printed; only
     the link is withheld.
 
-    This used to take the line and search it. The line it was given had already
-    been through narrative.clean(), which removes the citation so that the
-    hearing pattern's venue group does not swallow "SC 4" -- so the search
-    found nothing, on every event of every bill, and the comment below saying
-    each action keeps its citation described something that never happened.
-    narrative.py now takes it off the raw line and carries it on the event,
-    which is where this reads it.
+    The citation is read off the event, not searched for in the line. The line
+    has already been through narrative.clean(), which removes the citation so
+    that the hearing pattern's venue group does not swallow "SC 4" -- so a
+    search of it found nothing, on every event of every bill. narrative.py
+    takes the citation off the raw line and carries it on the event.
     """
     key = (ev.get("cite") or "").strip()
     if not key:
@@ -1664,8 +1662,8 @@ def withhold_late_captions(segs, marks, work):
 
     The chair's stated boundary and the clustering estimate are both read off
     the captions, so a track that starts an hour late puts both an hour early.
-    On 10 September that was 74 published starts on nine recordings, 55 of
-    them drawn as the moment the chair opened the proceeding. caption_span.py
+    When it was measured, that was 74 published starts on nine recordings, 55
+    of them drawn as the moment the chair opened the proceeding. caption_span.py
     holds the measurement and the line.
 
     What is left is the schedule, which comes from the stream's own clock: the
@@ -1782,9 +1780,9 @@ def write_rollcall_index(out, rollcalls, votes_by_member):
 
 # The seat out of a ballot's own label: "Shurtleff, Steve(D) Merrimack 15".
 # build_data._former_label builds that string and says at length why this reads
-# it rather than former_members.json -- it is the only copy the person's
-# corrections have been applied to. The shape is a contract between the two
-# functions: change it in both places or in neither.
+# it rather than former_members.json -- it is the only copy
+# member_corrections.json has been applied to. The shape is a contract between
+# the two functions: change it in both places or in neither.
 FORMER_LABEL = re.compile(r"\(\s*[A-Za-z]?\s*\)\s*(?P<county>[A-Za-z .']+?)\s+"
                           r"(?P<district>\d+)\s*$")
 
@@ -1830,19 +1828,16 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
         mid = str(mid)
         if mid in legs or mid in folded or not mv:
             continue
-        # EVERY TERM, since 17 September. This was limited to the current one
-        # while the twenty mid-term departures were built as a pilot; the
-        # person approved the rest once the cost was measured -- about 3,600
-        # more files and 200 MB, against a deployment of 79,000 files and a
-        # warning threshold of 90,000. What it buys is 36,541 sponsor
-        # mentions, 53% of every one on the site, turning from plain text into
-        # a link to that person's record.
+        # EVERY TERM, not only the current one. The cost was measured before
+        # this was widened: about 3,600 more files and 200 MB, against a
+        # deployment of 79,000 files and a warning threshold of 90,000. What
+        # it buys is 36,541 sponsor mentions, 53% of every one on the site,
+        # turning from plain text into a link to that person's record.
         #
-        # Anyone the record holds at all, which is the person's other decision
-        # of the same day: a page is written even where the party, the seat or
-        # the dates are thin, and says what it does not know rather than
-        # guessing. A sparse page is still the only place that person's voting
-        # record exists.
+        # Anyone the record holds at all: a page is written even where the
+        # party, the seat or the dates are thin, and says what it does not
+        # know rather than guessing. A sparse page is still the only place
+        # that person's voting record exists.
         if not mv:
             continue
         dated = sorted(mv, key=lambda v: vote_date(v.get("date")))
@@ -1860,7 +1855,7 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
         #
         # Where no correction exists the two sources agree, because the label
         # is built from the same file. So this costs nothing and picks up every
-        # correction the person makes without a second copy of the logic.
+        # correction made there without a second copy of the logic.
         m = FORMER_LABEL.search(str(last.get("label") or ""))
         county = (m.group("county").strip() if m else "") or rec.get("county") or ""
         district = ((m.group("district").lstrip("0") if m else "")
@@ -1907,9 +1902,9 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
     # is the whole point: former_roster says why.
     for mid, m in [*legs.items(), *(former or {}).items()]:
         # A MEMBER WHO CHANGED CHAMBER VOTED UNDER TWO NUMBERS, one for each:
-        # Sen. Cindy Rosenwald's page carried 1,399 of her 4,218 votes. The person decided on 13 September that a
-        # page keeps every chamber the member sat in. Own votes first, so a
-        # member nobody is joined to sorts exactly as before.
+        # Sen. Cindy Rosenwald's page carried 1,399 of her 4,218 votes. A page
+        # keeps every chamber the member sat in. Own votes first, so a member
+        # nobody is joined to sorts exactly as before.
         joined = (links or {}).get(mid, [])
         mv = sorted([v for x in (mid, *joined) for v in votes_by_member.get(x, [])],
                     key=lambda v: vote_date(v.get("date")), reverse=True)
@@ -2666,11 +2661,9 @@ def check_notes(notes, bills):
 def vote_member(m, body, legs, unnamed):
     """One member's entry in a roll call.
 
-    STEP 1 OF SPLITTING build_bills, which was 544 lines. This was nested
-    inside it and captured legs and unnamed from the enclosing scope; they
-    are parameters now, so the next extraction that needs it is a move rather
-    than a rewrite. unnamed is still mutated, which is why it is passed
-    explicitly rather than quietly closed over.
+    This was nested inside build_bills and captured legs and unnamed from the
+    enclosing scope; they are parameters now. unnamed is still mutated, which
+    is why it is passed explicitly rather than quietly closed over.
 
     The name comes from the VOTE record, which build_data.py has already
     resolved against the roster and against former_members.json. The roster
@@ -2701,8 +2694,6 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
                       leg_by_sort, leg_by_name, sponsored, seats=None):
     """Who put their name to this bill, and their own bill list, both.
 
-    STEP 7 OF SPLITTING build_bills, and the last of the leaves.
-
     It mutates `sponsored`, which is the caller's accumulator of what
     each member has sponsored, the same way vote_member mutates
     `unnamed`. That is why it is passed explicitly rather than closed
@@ -2722,7 +2713,7 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
             # its name alone is the member only if they held a seat in that
             # chamber that term (member_links.seats_held); otherwise it is
             # somebody else of the same name, and stays unlinked the way a
-            # former member does. On 13 September this turned nobody away.
+            # former member does. When it was added it turned nobody away.
             ch = (_s.get("chamber") or "")[:1]
             if _m and seats is not None and not any(
                     t == term and (not ch or c == ch)
@@ -2792,10 +2783,8 @@ def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
                    narr, rcs, coverage, carried, dates, chapter=""):
     """One bill's row in the search index.
 
-    STEP 9 OF SPLITTING build_bills, and the last. It comes after
-    bill_disposition because it reads that function's result, so a
-    mistake in step 8 surfaces here -- which is the argument for
-    doing them as two commits rather than one.
+    It comes after bill_disposition because it reads that function's
+    result, so a mistake there surfaces here.
 
     years.add(year) stays in the loop. It belongs to the caller's
     bookkeeping rather than to a row, and moving it would give this
@@ -2904,12 +2893,8 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
                      override_failed="", term_over=False):
     """What became of this bill, and where that answer came from.
 
-    STEP 8 OF SPLITTING build_bills, and the first of the two that are
-    not leaves. It was the only block in the loop touching the two
-    counters the build reports at the end, and it touched them as side
-    effects on names in an enclosing 465-line scope.
-
-    They leave as data instead. The caller does
+    The two counters the build reports at the end leave as data rather than
+    as side effects on an enclosing scope. The caller does
         n_stated += d.stated
         n_stale  += d.stale
     which is the same arithmetic written where it can be seen.
@@ -2989,12 +2974,11 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
     # closed term the bill did not go on from there, so it is finished
     # rather than moving. The current term is untouched -- a bill laid on
     # the table in 2026 may yet be taken up -- UNTIL THE TERM RUNS OUT OF
-    # SESSION DAYS, which status/status.txt states as session_over and the
-    # person set on 15 September: "all bills have concluded including tabled
-    # bills as there are no more session days this term". 107 bills of
-    # 2025-2026 were still counted as moving, 50 of them laid on the table and
-    # 46 where one chamber had not concurred, and the home page called them
-    # still moving while the status box said the session was finished. The
+    # SESSION DAYS, which status/status.txt states as session_over: with no
+    # session days left, every bill has concluded, tabled ones included. 107
+    # bills of 2025-2026 were still counted as moving, 50 of them laid on the
+    # table and 46 where one chamber had not concurred, and the home page
+    # called them moving while the status box said the session was finished. The
     # docket records "Died on Table, Session ended" for these, but not until
     # the General Court closes the term -- 10 October last term -- so the site
     # would have said it for another month.
@@ -3018,9 +3002,9 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
 def bill_documents(b, bid, st, narr, sources, rep_written, rep_docket):
     """Everything a reader can open for themselves, deduped on the URL.
 
-    STEP 5 OF SPLITTING build_bills. add_doc was defined once per bill
-    inside a 465-line body; it is a nested helper of a 60-line function
-    now, which is what a closure that small should be.
+    add_doc was defined once per bill inside a 465-line body; it is a
+    nested helper of a 60-line function now, which is what a closure
+    that small should be.
 
     Its third parameter is named `sort` rather than `kind`, so that no
     binding called `kind` exists in this scope at all. `kind` means the
@@ -3093,12 +3077,10 @@ def bill_documents(b, bid, st, narr, sources, rep_written, rep_docket):
 def bill_text_url(b, st):
     """The address of the bill's own text, corrected on the way out.
 
-    STEP 4 OF SPLITTING build_bills. Small, and out on its own because
-    it feeds both the documents list and the payload, and because the
-    twenty lines of comment below are the record of two separate
-    failures that each reached every bill on the site. They travel with
-    the code they explain; a split that leaves them behind passes the
-    manifest diff and loses the expensive half.
+    Small, and out on its own because it feeds both the documents list
+    and the payload, and because the twenty lines of comment below are
+    the record of two separate failures that each reached every bill on
+    the site. They travel with the code they explain.
     """
     # billText.aspx needs the session year as well as the id. Without it
     # the page answers with an ASP.NET error and the reader gets a blank
@@ -3131,22 +3113,21 @@ def bill_text_url(b, st):
 def bill_next_step(narr, b, prefix, st, settled, told):
     """What happens to this bill next, in one line.
 
-    STEP 6 OF SPLITTING build_bills. It was a conditional expression nested
-    three deep across six lines, with `next_step(narr, b, prefix)` appearing
-    in three of its branches -- and two of those three are the same branch
-    wearing different conditions: if the bill is settled the answer is that
-    call, and if nobody has told us a status the answer is that call again.
-    Written as statements the shape is obvious and the duplication collapses
-    to one line.
+    It was a conditional expression nested three deep across six lines, with
+    `next_step(narr, b, prefix)` appearing in three of its branches -- and two
+    of those three are the same branch wearing different conditions: if the
+    bill is settled the answer is that call, and if nobody has told us a
+    status the answer is that call again. Written as statements the shape is
+    obvious and the duplication collapses to one line.
 
     Behaviour is unchanged, which the manifest diff is there to prove rather
     than to assert: the site was rebuilt into a scratchpad tree and every one
     of 34,114 files hashed identical before and after.
 
     A bill with no narrated docket has no history for next_step() to read,
-    and it answers "No recorded action yet" -- which on 11 September, once
-    the docket's signature line began settling those bills, the status box
-    of about 10,000 laws of 1989-2016 said. Such a bill says what settled
+    and it answers "No recorded action yet" -- which is what the status box
+    of about 10,000 laws of 1989-2016 said once the docket's signature line
+    began settling those bills. Such a bill says what settled
     it, the way next_step() says "Signed into law" for a narrated one; and
     one nothing settled says what its fields say, which is a recorded
     action, rather than that there is none.
@@ -3165,9 +3146,9 @@ def bill_next_step(narr, b, prefix, st, settled, told):
 def bill_stations(bid, term, procs, segs, marks):
     """Every committee proceeding on one bill, oldest first.
 
-    STEP 2 OF SPLITTING build_bills. A leaf: one output, no other reader in
-    the loop, nothing captured that is not passed. Keyed (term, bid) because
-    a bill number names a different bill in each biennium.
+    A leaf: one output, no other reader in the loop, nothing captured that is
+    not passed. Keyed (term, bid) because a bill number names a different bill
+    in each biennium.
     """
     return [station_for_proceeding(p, bid, segs, marks)
             for p in sorted(procs.get((term, bid), []),
@@ -3178,7 +3159,7 @@ def bill_stations(bid, term, procs, segs, marks):
 def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
     """Every recorded vote on one bill, in the order the docket took them.
 
-    STEP 3 OF SPLITTING build_bills. Lifted verbatim except for indentation.
+    Lifted verbatim out of build_bills except for indentation.
 
     IT ALSO KILLS A SHADOW, BY CONSTRUCTION RATHER THAN BY CARE. In the
     enclosing scope `kind` is the bill's status kind, read five times in the
@@ -3322,10 +3303,10 @@ def unify_vocabulary(bills):
     """ONE VOCABULARY ACROSS ALL NINETEEN TERMS, applied last and to everything.
 
     The topic model predicts in the General Court's own 46 categories, which is
-    the vocabulary it was measured in -- 62.1% to 67.2% held out. The site
-    owner's vocabulary of 16 September is a different thing: five starved
-    categories folded into parents, Regular Meeting retired, and Housing and
-    Study Committees added. Applying it inside the model would have meant
+    the vocabulary it was measured in -- 62.1% to 67.2% held out. The site's
+    own vocabulary is a different thing: five starved categories folded into
+    parents, Regular Meeting retired, and Housing and Study Committees added.
+    Applying it inside the model would have meant
     scoring the model against a vocabulary it was not measured in.
 
     So it is applied HERE instead, once, to every bill of every term -- the
@@ -3337,7 +3318,7 @@ def unify_vocabulary(bills):
     A facet that means different things in different terms is worse than either
     name on its own.
 
-    The owner's rule for the folds was that a category has to carry its own
+    The rule for the folds is that a category has to carry its own
     weight: measured from the General Court's own labels, these five run at 0.5
     to 6 bills a year against a threshold of ten, and the seven others between 7
     and 9.5 were deliberately left alone.
@@ -3483,7 +3464,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     n_chapter = Counter()
     # THE ABOUT PAGE'S ARITHMETIC, COUNTED WHERE THE STATIONS ARE MADE.
     # about.html described the site's timing coverage in eight typed figures.
-    # Seven of them were wrong by 17 September -- it said 10,810 proceedings
+    # Seven of them were wrong -- it said 10,810 proceedings
     # against 101,290, and 1,068 with no recording against 78,344 -- because
     # they were true of one term on the day somebody typed them and the site
     # grew eighteen more terms afterwards. A figure a person retypes is a
@@ -4040,8 +4021,8 @@ def main():
     # And the archived pages, for every term before this one. bill_text.json is
     # the current session's own text and holds 2025-2026 alone, so the Bill
     # Text tab was empty on every older bill -- including 2023-2024, whose
-    # pages have been on this disk since the archive path was found on 10
-    # September, fetched and read for their sponsors and then not shown.
+    # pages have been on this disk since the archive path was found, fetched
+    # and read for their sponsors and then not shown.
     # merge_into never puts an archived page over a text the General Court
     # publishes for the live session, which is the better copy.
     _at = AT.merge_into(bill_texts)
@@ -4399,7 +4380,7 @@ def main():
                    "by_kind": dict(by_kind)},
         "terms": sorted({b["term"] for b in index if b["term"]}, reverse=True),
         # EIGHTY ROWS, NOT TWELVE. The status box beside this calendar counts
-        # the whole fortnight -- 39 bill-sittings on 16 September -- and the
+        # the whole fortnight, which has run to 39 bill-sittings, and the
         # calendar was cut to twelve, so the page said 39 above a list of 12
         # and dropped whole days off the end without saying so. The cut is
         # still there because a fortnight in session is hundreds of rows, and

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.8
+# GRANITE_VERSION: 2026-09-10.9
 """The committee a bill was referred to, read out of the docket.
 
     python3 referrals.py            # what it finds, by year, no network
@@ -41,24 +41,22 @@ invented expansion, and the site renders a committee with no code as plain
 text rather than as a link, so nothing breaks when a 1989 committee has no
 page.
 
-A BETTER AUTHORITY THAN THE CORPUS, since 10 September. The General Court
-publishes its own key to these abbreviations at
-bill_status/legacy/bs2016/docket_abbrev.htm, kept here as docket_abbrev.json.
-Where the key speaks it wins, and it settled two that nothing in the corpus
-ever spelled out: JUD is Judiciary and Family Law (314 bills read "Judiciary
-and F L" until now) and ECON DEVEL is Economic Development (130). Where the
-key was silent on "Corr and Cj" and on "Pub Prot", and both stood as the clerk
-wrote them until the witness below was read.
+A BETTER AUTHORITY THAN THE CORPUS. The General Court publishes its own key to
+these abbreviations at bill_status/legacy/bs2016/docket_abbrev.htm, kept here
+as docket_abbrev.json. Where the key speaks it wins, and it settled two that
+nothing in the corpus ever spelled out: JUD is Judiciary and Family Law (314
+bills read "Judiciary and F L" before it) and ECON DEVEL is Economic
+Development (130). The key is silent on "Corr and Cj" and on "Pub Prot".
 
-A FOURTH WITNESS, since 11 September: the resolution each House adopts its
-rules by defines every standing committee in one sentence -- "the Committee on
-Public Protection and Veterans Affairs to consider all matters affecting
-public protection ..." -- and two of them are on this disk as bill text. That
-is the body naming its own committees, it names 22 of them, and it settled
-"Pub Prot", which the docket abbreviates nine ways across 1989-1996 and never
-once writes out. It also corroborates Judiciary and Family Law independently
-of the key, and it names "Corrections and Criminal Justice", which is the
-evidence "Corr and Cj" has been waiting for.
+A FOURTH WITNESS: the resolution each House adopts its rules by defines every
+standing committee in one sentence -- "the Committee on Public Protection and
+Veterans Affairs to consider all matters affecting public protection ..." --
+and two of them are on this disk as bill text. That is the body naming its own
+committees, it names 22 of them, and it settled "Pub Prot", which the docket
+abbreviates nine ways across 1989-1996 and never once writes out. It also
+corroborates Judiciary and Family Law independently of the key, and it names
+"Corrections and Criminal Justice", which is the evidence "Corr and Cj" had
+been waiting for.
 """
 
 import argparse
@@ -144,7 +142,7 @@ PHRASES = [
     # clerk's "EXECTIVE" as well as EXEC, a singular DEPT as well as DEPTS,
     # the "and" optional ("Exec Depts Admin"), and ADMINSTRATION -- which is
     # how the House wrote its own committee's name five times -- because each
-    # of those was on the site abbreviated or misspelt on the 11th.
+    # of those reached the site abbreviated or misspelt.
     # "Ex." as well, which one clerk of 2000 used: "Ex. Dept. and Admin". It
     # is only allowed to mean Executive here because DEPT and ADM have to
     # follow it, so there is nothing else it could be short for.
@@ -185,12 +183,12 @@ PHRASES = [
     # "Corr & Cj" came off that list on the same evidence as "Pub Prot": the
     # rules resolution names "the Committee on Corrections and Criminal
     # Justice". 159 referrals on 152 pages, which read "the House Corr and Cj
-    # committee" until the 11th.
+    # committee" before it.
     (r"\bCORR\.?\s*(?:&|\+|AND)\s*CJ\b", "Corrections and Criminal Justice"),
     #
-    # "Pub Prot" was on that list until the 11th, and came off it on
-    # evidence rather than on a hunch. The docket never writes it out: a
-    # search of all 584 referral strings for "PROTECTION" finds only
+    # "Pub Prot" came off that list on evidence rather than on a hunch. The
+    # docket never writes it out: a search of all 584 referral strings for
+    # "PROTECTION" finds only
     # Consumer Protection, which is a different committee, and one
     # "PUB PROTECTION" of 1991, which is still abbreviated. The bills' own
     # text does write it out, and writes it out as a charter:
@@ -259,9 +257,9 @@ PHRASES = [
     # rule, and a published key is the thing that lifts it.
     (r"\bJUDICIARY\s*(?:&|\+|AND)\s*F\.?\s*L\.?$", "Judiciary and Family Law"),
     (r"\bECON\.?\s*DEV(?:EL)?\.?$", "Economic Development"),
-    # THE HEARING LINE'S SHORTHAND, since 13 September. A hearing of 1989-1998
-    # names its committee after FOR:, in letters the referral line never uses
-    # -- "HEARING JAN28 08:30 RM104,LOB FOR: ED+A" -- and 9,094 rows of
+    # THE HEARING LINE'S SHORTHAND. A hearing of 1989-1998 names its committee
+    # after FOR:, in letters the referral line never uses --
+    # "HEARING JAN28 08:30 RM104,LOB FOR: ED+A" -- and 9,094 rows of
     # proceedings.csv named no committee the site has, "Ed and a" among them
     # 598 times. Each entry below is in the General Court's key, and each is
     # anchored to the whole string, because the key also holds entries that
@@ -297,9 +295,9 @@ PHRASES = [
     # TRANS is above; these are the lengths the clerks stopped typing at.
     (r"^TRANSP(?:O|OR|ORT|ORTATI)?\.?$", "Transportation"),
     (r"^CAP(?:IT[AO]L)?\.?\s*BUDGET$", "Capital Budget"),
-    # THE SAME PROOF, a second pass the same night. Each is the whole string a
-    # hearing line wrote, and each agrees with the referral line of the same
-    # bill in the same chamber: EDUC 134 of 145 House bills and 110 of 114
+    # THE SAME PROOF, a second pass. Each is the whole string a hearing line
+    # wrote, and each agrees with the referral line of the same bill in the
+    # same chamber: EDUC 134 of 145 House bills and 110 of 114
     # Senate ones; W&M 73 of 77 in the Senate; CRIM JUST 73 of 83; SCIENCE 102
     # of 106; ENV & AG 35 of 36; INSUR 133 of 137; ENVIRON 79 of 80; PUB WKS 58
     # of 60; PUB INST 187 of 207 (the rest Finance, which a bill went to next).
@@ -488,8 +486,8 @@ def _key_names():
 # called, in a sentence whose whole purpose is to say so. It is also not
 # circular. The pattern is the resolution's grammar, not a name this file
 # hopes to prove, so it finds committees nothing here asked about -- among
-# them "Corrections and Criminal Justice", whose abbreviation "Corr & Cj"
-# stands unexpanded a few lines above for want of exactly this evidence.
+# them "Corrections and Criminal Justice", whose abbreviation "Corr & Cj" the
+# docket never spells out.
 RULES_COMMITTEE = re.compile(
     r"Committee on ([A-Z][A-Za-z,'&\-. ]{4,70}?)\s+to consider all matters")
 

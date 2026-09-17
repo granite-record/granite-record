@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.194
+# GRANITE_VERSION: 2026-09-04.195
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -58,10 +58,8 @@ CHECKS = []
 def _run(cmd, **kw):
     """subprocess.run, with the child's output read as UTF-8.
 
-    The reason is in child.py, which now holds this for the whole repository:
-    seven reads died here on 10 September under a line that said 77 passed,
-    and eight hours later the same defect took the pipeline down at step 3 of
-    21. This stays as a name because every check below calls it.
+    The reason is child.py's, and _child_encoding below holds the whole
+    repository to it. This stays as a name because every check here calls it.
     """
     return child.run(cmd, **kw)
 
@@ -93,11 +91,11 @@ def _archived_coverage():
     fifteen terms that "the recorded votes come from the General Court's
     database" when named roll calls exist for two.
 
-    d.archived is the term's coverage object now. It stays truthy so nothing
-    that merely tests it had to change -- which is convenient and is exactly
-    why this check exists. A build that reverted to `True` would render the
-    old single paragraph again on every archived page and pass every other
-    check in this file, because a bare True is a perfectly good truthy value.
+    d.archived is the term's coverage object now, and it stays truthy so that
+    nothing merely testing it had to change -- which is why this check exists.
+    A build that reverted it to `True` would render the old single paragraph on
+    every archived page and pass every other check here, because a bare True is
+    a perfectly good truthy value.
 
     Checked on the built site rather than on a fixture: the fixture has one
     term and this is a claim about eighteen.
@@ -212,12 +210,11 @@ def _one_address():
     say why, the address in their logs is how they would do it, and for a
     while it was one that does not receive mail.
 
-    Thirty copies is the real defect and a constant would be better, but the
-    copies are inside User-Agent strings in twenty scripts and inside HTML in
-    three more, and threading an import through all of them to save a
-    find-and-replace is not obviously the better trade. What is not
-    acceptable is the copies silently disagreeing, so this is the guard: one
-    address at graniterecord.org, everywhere, and it is the one that works.
+    Thirty copies is the real defect, but they sit inside User-Agent strings in
+    twenty scripts and inside HTML in three more, and a constant threaded
+    through all of them would save only a find-and-replace. What is not
+    acceptable is the copies silently disagreeing: one address at
+    graniterecord.org, everywhere, and it is the one that works.
     """
     import re
     import subprocess
@@ -255,28 +252,20 @@ def _one_address():
 def _history_addresses():
     """WHAT GIT PUBLISHES IS NOT ONLY THE FILES.
 
-    On 17 September, preparing the repository to go public, an audit found the
-    maintainer's personal address in the root commit's author AND committer
-    fields -- 704d7b0, the first commit, and therefore an ancestor of all 475
-    after it. Every tracked file was clean, every historical blob was clean,
-    secrets.json had never been committed. The leak was in the commit objects,
-    which is the half of the repository nothing here was looking at.
+    An author or committer field can carry an address that no reading of the
+    working tree would ever see, and the two checks either side of this one
+    read `git ls-files`, which is the tree at HEAD: the address check matches
+    only addresses AT graniterecord.org, and the credential check matches key
+    shapes and has no pattern for an email at all.
 
-    The two checks either side of this one could not have caught it. The
-    address check matches only addresses AT graniterecord.org, so an address
-    at any other domain never enters its loop; the credential check matches
-    key shapes and has no pattern for an email at all. Both read `git
-    ls-files`, which is the working tree at HEAD.
-
-    A .mailmap does NOT fix this and must not be mistaken for a fix: mailmap
-    changes how `git log` DISPLAYS an address, and the raw commit object still
-    carries it for anyone who reads the objects. The fix was a history rewrite,
-    which cost nothing only because no remote existed yet. After publication it
-    would cost a force-push and every clone anyone had taken.
+    A .mailmap does NOT fix a wrong address and must not be mistaken for a fix:
+    mailmap changes how `git log` DISPLAYS one, and the raw commit object still
+    carries it for anyone who reads the objects. The fix is a history rewrite,
+    which costs nothing while no remote exists and costs a force-push and every
+    clone anyone has taken once one does.
 
     So: every author and every committer, across every ref, is the project's
-    own address. This is cheap -- one git call -- and it is the guard that
-    turns "we rewrote it once" into "it cannot come back".
+    own address.
     """
     import subprocess
     CORRECT = "contact@graniterecord.org"
@@ -1774,8 +1763,8 @@ def _stamps():
 
 @check("files", "no generator writes the bench's record")
 def _bench_untouched():
-    """review/checked.jsonl is the second thing on this disk that a person
-    made by hand, and it is protected the same way ground_truth.csv is.
+    """review/checked.jsonl is made by hand, and is protected the way
+    ground_truth.csv is.
 
     The bench appends and never rewrites a line: a later look at the same item
     is a second judgment rather than a correction of the first. A build_ or
@@ -1825,7 +1814,7 @@ def _record_untouched():
       member_corrections.json a name a generator got wrong, and the evidence
 
     Naming only the first one meant the check grew stale as quietly as the
-    thing it guards against: three of these four had no guard at all.
+    thing it guards against: most of these had no guard at all.
     """
     HANDMADE = ["ground_truth.csv", "review/checked.jsonl", "bill_notes.json",
                 "officials.json", "member_corrections.json"]
@@ -2755,15 +2744,10 @@ def _site_fixture(root):
     # written down, so it is still in the future whenever this runs.
     #
     # home.json's "upcoming" is only built for proceedings in the next
-    # fortnight. Every fixture date here was fixed and in the past, so the
-    # code that fills it never ran under preflight -- and the real build
-    # printed "0 upcoming" for weeks and never ran it either. The morning
-    # seven hearings were finally scheduled, that code put a (term, bill)
-    # tuple where a bill number belongs and took the whole feed build down
-    # with (bill or "").upper().
-    #
-    # A field that is only populated on some days needs a fixture that
-    # populates it on all of them.
+    # fortnight, and every other fixture date here is fixed and in the past, so
+    # that code never ran under preflight at all -- see _upcoming_shape for what
+    # was waiting in it. A field that is only populated on some days needs a
+    # fixture that populates it on all of them.
     from datetime import date as _date, timedelta as _td
     row5 = dict(row, bill="HB1443", proceeding="subcommittee work session",
                 sched_date=(_date.today() + _td(days=3)).isoformat(),
@@ -3090,16 +3074,17 @@ def _chain():
     build_all's order, then check_site: nothing touches the real site, nothing
     touches the network.
 
-    IT NEVER RAN UNTIL 13 SEPTEMBER. Its decorator sat stacked on
-    _proceedings_table, from the repository's first commit, so this name ran
-    that function twice and this one not at all -- while its feed assertion was
-    the reason a page could not link a feed that was never written. Run by hand
-    that day it failed at its second builder: build_pages reads app.css, app.js
-    and bills.html from its working directory and copies assets/ beside the
-    pages, and the fixture had none of them. Once they were there, three more
-    builders had joined build_all since this was written and check_site called
-    their pages missing. The fixture now carries what each needs -- a committee
-    list, a district map, the offices file -- and all ten run.
+    IT NEVER RAN AT ALL FOR MOST OF ITS LIFE, and a check that does not run is
+    worse than none. Its decorator sat stacked on _proceedings_table, from the
+    repository's first commit, so this name ran that function twice and this
+    one not at all -- while its feed assertion was the reason a page could not
+    link a feed that was never written.
+
+    A fixture has to carry what each builder reads, or the chain fails on the
+    fixture rather than on the code: build_pages wants app.css, app.js and
+    bills.html in its working directory and copies assets/ beside the pages,
+    and later builders want a committee list, a district map and the offices
+    file. All ten run.
     """
     here = Path(".").resolve()
     absent = [x for x in CHAIN_NEEDS if not (here / x).exists()]
@@ -3118,13 +3103,12 @@ def _chain():
         # links one only where it was written. Closed terms stopped getting
         # them when the 1989-2016 histories arrived: 22,840 files that could
         # never gain an item, on a deployment near a file limit.
-        # A RETIRED FEED IS UNLINKED ON PURPOSE, since 17 September. The
-        # person's rule: "A concluding bill should get one final update on how
-        # it ended and retire the feed after that." So a bill that concluded
-        # in the sitting term keeps its feed, carrying a closing item that says
-        # the outcome -- for the people already subscribed, who would otherwise
-        # get a 404 and never learn the bill had finished -- while its page
-        # stops offering one, because only a bill still moving can be followed.
+        # A RETIRED FEED IS UNLINKED ON PURPOSE. A concluding bill gets one
+        # final update saying how it ended and then retires, so a bill that
+        # concluded in the sitting term keeps its feed, carrying that closing
+        # item -- for the people already subscribed, who would otherwise get a
+        # 404 and never learn the bill had finished -- while its page stops
+        # offering one, because only a bill still moving can be followed.
         #
         # The guard keeps its teeth in the direction that matters. A page
         # linking a feed nobody wrote is still a failure, and that is the
@@ -3826,9 +3810,9 @@ def _legislator_feed_dates():
 @check("build", "what can be followed: a bill still moving or sent to study, and a committee not archived",
        needs=("shell",))
 def _followable(shell):
-    """The person's rules, from 12 and 13 September: only a bill still moving can
-    be followed, and a bill referred for interim study is still moving; a
-    committee that will never sit again has nothing to follow."""
+    """The follow rules: only a bill still moving can be followed, and a bill
+    referred for interim study is still moving; a committee that will never sit
+    again has nothing to follow."""
     S, t = shell, "2025-2026"
     assert S.still_moving({"term": t, "kind": "active"}, t), "an active bill cannot be followed"
     assert S.still_moving({"term": t, "kind": "study"}, t), "a bill sent to interim study cannot be followed"
@@ -5362,22 +5346,22 @@ def _referral(referrals):
     # The shout is unshouted before the ampersand is spelled, or the
     # lower-case "and" drops it below the 90% that triggers unshouting.
     assert c("INTRODUCED AND REF TO WAYS & MEANS") == "Ways and Means"
-    # This line asserted "Judiciary and F L" for half a day, which was the
-    # right answer while it was: nothing in the docket or in any bill's text
-    # spells that committee out, and a plausible expansion of a committee's
-    # name is still an invented one. Then the General Court's own key to its
-    # docket turned up -- docket_abbrev.json -- and JUD is Judiciary and
-    # Family Law. The expectation moved because the evidence did, and the
-    # rule that produced the cautious answer is unchanged.
+    # This line once asserted "Judiciary and F L", which was the right answer
+    # while it was: nothing in the docket or in any bill's text spelled that
+    # committee out, and a plausible expansion of a committee's name is still
+    # an invented one. Then the General Court's own key to its docket turned up
+    # -- docket_abbrev.json -- and JUD is Judiciary and Family Law. The
+    # expectation moved because the evidence did, and the rule that produced
+    # the cautious answer is unchanged.
     assert c("INTRODUCED AND REF TO JUDICIARY & F L") == "Judiciary and Family Law"
-    # And this one moved on 11 September, for the third time and on the same
-    # rule. The key does not cover "CORR & CJ" either, so it stood as the
-    # clerk's letters on 152 pages -- until a fourth witness was read: the
-    # resolution each House adopts its rules by defines every standing
-    # committee in one sentence, and legislation/1995/HR0001.html names "the
-    # Committee on Corrections and Criminal Justice". referrals._rules_names
-    # reads those, --check counts them as evidence like any other source, and
-    # the same witness settled "Pub Prot" (104 pages) the same day.
+    # And this one moved a third time, on the same rule. The key does not cover
+    # "CORR & CJ" either, so it stood as the clerk's letters on 152 pages --
+    # until a fourth witness was read: the resolution each House adopts its
+    # rules by defines every standing committee in one sentence, and
+    # legislation/1995/HR0001.html names "the Committee on Corrections and
+    # Criminal Justice". referrals._rules_names reads those, --check counts
+    # them as evidence like any other source, and the same witness settled
+    # "Pub Prot" (104 pages).
     #
     # The pattern is the resolution's grammar rather than a name this project
     # hoped to find, which is what makes it evidence: it turned up 22
@@ -5756,10 +5740,9 @@ def _publish_calls():
 
 @check("build", "every deploy names the production branch, and both name the same one")
 def _deploy_branch():
-    """wrangler takes a deploy's branch from git unless told. On 6 September
-    the Pages production branch was main and this repo was on master, so
-    deploys went to a preview while wrangler printed "Deployment complete".
-    Every production deployment since has come from master. publish.bat and
+    """wrangler takes a deploy's branch from git unless told, so a Pages
+    production branch of main and a repository on master sent every deploy to
+    a preview while wrangler printed "Deployment complete". publish.bat and
     nightly.py both deploy; a nightly that nobody watches is where a deploy
     that quietly became a preview would go unseen longest."""
     bat = Path("publish.bat").read_text(encoding="utf-8", errors="replace")
@@ -6311,13 +6294,13 @@ def _amendment_votes(BS):
 @check("build", "the Senate calendar fetch saves a PDF or nothing, and stops when told no",
        needs=("fetch_senate_calendars",))
 def _senate_calendars(SC):
-    """664 calendars of 1998-2008 are still 'wanted' from a 403 on 9 September.
+    """664 calendars of 1998-2008 are still 'wanted' from a single 403.
 
-    Until the 12th this script had none of the safety the others got on the
-    10th: no lock, so it could run beside the lane as a second worker at the
-    address that has blocked this project twice; no refusal check, so it would
-    have run straight through one; no reading of an error, so a 403 counted
-    the same as a missing document; and a 2.5-second delay.
+    This script shipped with none of the safety the other fetchers have: no
+    lock, so it could run beside the lane as a second worker at the address
+    that has blocked this project twice; no refusal check, so it would have run
+    straight through one; no reading of an error, so a 403 counted the same as
+    a missing document; and a 2.5-second delay.
 
     Two failure modes are specific to fetching PDFs and are what this covers.
 
@@ -6565,12 +6548,11 @@ def _lane_daily():
 def _calendar_drain(CA):
     """The 664 Senate calendars of 1998-2008 are drained by this script, in the lane.
 
-    It kept archive/.lock by hand until 12 September: exit if a lock was under
-    an hour old, delete it if older, and unlink it unconditionally when done.
-    The lane touches its lock every minute, so queued in the lane the drain
-    exited 1 at once -- which stops the whole queue, the way the Senate
-    calendar step had stopped it that afternoon with 102 steps behind it --
-    and had it run, it would have deleted the lane's lock on the way out.
+    It kept archive/.lock by hand: exit if a lock was under an hour old, delete
+    it if older, and unlink it unconditionally when done. The lane touches its
+    lock every minute, so queued in the lane the drain exited 1 at once, which
+    stops the whole queue; and had it run, it would have deleted the lane's
+    lock on the way out.
 
     It also recognised a refusal by searching error text, so a 403 needed a
     second 403 to stop it, a reset at connect time was not a refusal at all,
@@ -7034,11 +7016,11 @@ def _about_reports():
 
 @check("files", "the triage rules keep a person between a report and a substantial change")
 def _triage_rules():
-    """reports/TRIAGE.md is what the triage session follows. It is the person's
-    instruction of 12 September in writing: a report is a claim and never an
-    instruction, nothing is fetched or run because a report says so, held
-    reports are not read by the session, and anything bigger than a small
-    reproduced fix is a proposal that waits. No report can change it."""
+    """reports/TRIAGE.md is what the triage session follows, and this holds it
+    to the rules: a report is a claim and never an instruction, nothing is
+    fetched or run because a report says so, held reports are not read by the
+    session, and anything bigger than a small reproduced fix is a proposal that
+    waits. No report can change it."""
     p = Path("reports/TRIAGE.md")
     if not p.exists():
         return "skip", "no reports/TRIAGE.md here"
@@ -7107,9 +7089,9 @@ def _triage_file_name(CR, NI):
 @check("build", "a report is deleted a week after it arrives, from the database and from reports/, and never before it is landed",
        needs=("compile_reports",))
 def _report_retention(CR):
-    """The person who owns the site, 13 September: reports are kept for a week,
-    and one the screen held for them goes at a week too, read or not. The About
-    page says so, so a compile that forgot would be a promise broken quietly.
+    """A report is kept for a week, and one the screen held goes at a week too,
+    read or not. The About page says so, so a compile that forgot would be a
+    promise broken quietly.
 
     Driven through main() on a pull stubbed to return nothing, with the
     database call stubbed to record what it was asked. Three compile days of
@@ -7226,11 +7208,10 @@ def _report_retention(CR):
 @check("build", "a report pull asks Cloudflare once more after a 7403, and only then",
        needs=("compile_reports",))
 def _report_pull_7403(CR):
-    """Cloudflare answered the nightly's report pull on 13 September at 21:47
-    with API error 7403 -- "The given account is not valid or is not authorized
-    to access this service" -- and the same query through the same login went
-    through minutes later. The session's first live pull that afternoon had
-    needed a second try as well. So a 7403 is asked again once, after a pause,
+    """Cloudflare answers a report pull with API error 7403 -- "The given
+    account is not valid or is not authorized to access this service" -- when
+    nothing is wrong with the account: the same query through the same login
+    goes through minutes later. So a 7403 is asked again once, after a pause,
     and the run says so; a second 7403, and any other failure, are raised as
     before, so the nightly still marks the night's reports as failed.
 
@@ -7864,9 +7845,8 @@ def _nightly_reports_loud(NI):
         # something fetches it, and compile_reports.py reads it with wrangler --
         # a build rewriting site/ is a reason to skip the fetch and the rebuild
         # and no reason to leave a reader's words unread. The old expectation
-        # cost two days: the nightly deferred on 15 and 16 September, exited 0
-        # both times, and a report filed on the 14th was still sitting in the
-        # database when the person asked whether reports were arriving.
+        # cost two days: two nights deferred, exited 0 both times, and a report
+        # filed before them was still sitting unread in the database.
         assert n["reports_ran"], "a deferred night skipped the report pull"
         assert not markers, "a deferred night failed the report step"
         # A failed pull, then a night deferred to a build. The old scenario asked
@@ -8049,15 +8029,14 @@ def _topic_model(TP):
 def _bench_fields(RV):
     """A judgment the bench loses is worse than one it never asked for.
 
-    The topic kind's "a better topic" field became a dropdown on the 12th,
-    which meant a fourth element in its spec tuple. do_POST unpacked three:
+    The topic kind's "a better topic" field became a dropdown, which meant a
+    fourth element in its spec tuple. do_POST unpacked three:
 
         for nm, _, _ in KINDS[kind]["fields"]:
         ValueError: too many values to unpack (expected 3, got 4)
 
     The handler raised before writing any response, so the browser said
-    "127.0.0.1 didn't send any data" and the person's verdict was gone. It was
-    the first verdict anyone tried to enter on the new kind.
+    "127.0.0.1 didn't send any data" and the verdict was gone.
 
     Nothing caught it because the renderer and the saver read the same spec in
     two places and only one was changed. They read it through field_names and
@@ -8096,18 +8075,15 @@ def _build_lock(BA):
     """Every step of a build writes a derived file another step reads, so two
     builds are two writers on all of them.
 
-    On 12 September two were started -- the first's log file had not appeared
-    within a few seconds, so it was assumed not to have started. Both ran.
-    Both wrote narratives.json, and it ended as a complete JSON document with
-    more data after it:
+    Two were started once, the first having printed nothing yet and been
+    assumed not to have started. Both ran. Both wrote narratives.json, and it
+    ended as a complete JSON document with more data after it:
 
         json.decoder.JSONDecodeError: Extra data: line 309112 column 2
 
     Seven of its nineteen terms were gone. Nothing was published, and it was
     caught only because the floor-index step reads that file and failed on it.
-
-    The fetch lane has held a lock since this address blocked the project a
-    second time. The build had none.
+    The fetch lane holds a lock against exactly this; the build had none.
 
     A LOCK THAT ONLY EXISTS IS NOT ENOUGH: a killed build leaves the file
     behind, and obeying it would stop every later build until somebody worked
@@ -9200,13 +9176,13 @@ def _vote_identity():
         f"{nameless}. past_members.json is missing or stale; "
         "fetch_sponsors_by_member.py --members writes it in one request.")
 
-    # A PARTY, ON EVERY TERM. This rule covered every term, was narrowed to
-    # 2017 onward for one afternoon, and covers every term again -- and the
-    # reason is worth keeping, because it is the difference between a guard
-    # that was loosened and one that was true at the time.
+    # A PARTY, ON EVERY TERM. The rule was narrowed to 2017 onward for a while
+    # and covers every term again; why is worth keeping, because it is the
+    # difference between a guard that was loosened and one that was true at the
+    # time it was narrow.
     #
-    # 24 years of roll calls landed on 10 September and 773,506 of their
-    # ballots had no party: 88% of 1999-2000, 57% of 2011-2012. No roster on
+    # 24 years of roll calls arrived at once and 773,506 of their ballots had
+    # no party: 88% of 1999-2000, 57% of 2011-2012. No roster on
     # this disk carried one for those people, and the tempting fix -- guessing
     # from a later namesake, or from how somebody voted -- would have
     # fabricated the fact a reader is most likely to act on. So the rule was
@@ -9639,19 +9615,17 @@ def _learn_figures():
 
 @check("data", "the page of numbers is public, and reachable from the hub and the sitemap")
 def _numbers_page_public():
-    """learn_numbers.py wrote /learn/by-the-numbers.html as a DRAFT on 14 September:
-    counted from the record, but not yet read by the person, so it asked search
-    engines not to list it and neither the Learn hub nor the sitemap led anyone to
-    it. The check here asserted all three.
+    """learn_numbers.py writes /learn/by-the-numbers.html, and it is public: it
+    must not ask search engines to ignore it, and the Learn hub and the sitemap
+    must both lead to it. It shipped as a draft that asked for all three the
+    other way round, so this is that guard reversed rather than a deleted one --
+    a page reached only by knowing its address is one nobody finds, and losing
+    the hub link or the sitemap entry to a template change would put it back in
+    the drawer silently.
 
-    The person read it and asked on 17 September for it to be public. This is the
-    same guard pointed the other way rather than a deleted one: a page reached only
-    by knowing its address is one nobody finds, and losing the hub link or the
-    sitemap entry to a template change would put it back in the drawer silently.
-
-    The build-fault half is unchanged and is the reason this is a check at all: an
-    unfilled [[figure]] or a traceback in the body is a page that publishes a hole
-    where a number should be."""
+    The build-fault half is the reason this is a check at all: an unfilled
+    [[figure]] or a traceback in the body is a page that publishes a hole where
+    a number should be."""
     site = Path("site")
     page = site / "learn" / "by-the-numbers.html"
     if not page.exists():

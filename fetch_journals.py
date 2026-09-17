@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Find the journal and calendar PDFs so docket citations become links.
 
@@ -128,7 +128,7 @@ def journal_urls(chamber, letter, year, delay=2.0):
     # The House offers Calendar/Journal; the Senate offers
     # SenateCalendar/SenateJournal. Posting a value the select does not carry
     # fails ASP.NET event validation, which comes back as HTTP 500 -- exactly
-    # what the Senate returned on 6 September while the House worked.
+    # what the Senate returned once while the House worked.
     kinds = _options(page, SEL_KIND)
     kind = next((v for v, _ in kinds if "journal" in (v or "").lower()),
                 next((v for v, lbl in kinds if "journal" in (lbl or "").lower()),
@@ -233,8 +233,8 @@ def main():
 
     # A chamber that could not be read leaves this file looking finished. The
     # count above is the whole file, not the whole year, so one chamber missing
-    # is invisible in it -- the Senate 500 on 6 September left every Senate
-    # journal on its bare key while the House gained year-keyed ones, and the
+    # is invisible in it -- a Senate 500 left every Senate journal on its
+    # bare key while the House gained year-keyed ones, and the
     # closing line still said 46 links. Say so, and exit non-zero.
     if failed:
         print()

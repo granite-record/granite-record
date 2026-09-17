@@ -12,8 +12,7 @@ This is not caution for its own sake. The address this project runs from has
 been blocked by the General Court's firewall **twice**: once for probing
 filenames that did not exist, once for running two fetches at the same time.
 Getting blocked a third time costs days of work and an email to a Clerk's
-office, and the people on the other end of that email are running a legislature,
-not a web service.
+office.
 
 Three things follow, and they are not negotiable:
 
@@ -88,10 +87,9 @@ most common way a change here fails its own checks.
 most of the current ones arrived, and each one's docstring says what went wrong
 to cause it. Those docstrings are the useful part; please write them.
 
-**Measure against something you did not generate.** The strongest results in
-this project came from opening real data first and scoring against a person's
-hand-made reference. `ground_truth.csv` holds 35 proceedings someone timed with
-a stopwatch, and:
+**Measure against something you did not generate.** The strongest results here
+came from opening real data first and scoring against a hand-made reference.
+`ground_truth.csv` holds 35 proceedings someone timed with a stopwatch, and:
 
 ```bash
 python3 probe_alignment.py --truth --candidate candidate_segments.json
@@ -101,8 +99,7 @@ is the gate every timestamp method has to pass. **Nothing about timestamps
 ships before that has been run and the median has not regressed.**
 
 **Silence is not success.** A step that can produce nothing and still exit zero
-needs a guard that says so. This has bitten the project at least five times in
-one week.
+needs a guard that says so. This has bitten the project at least five times.
 
 ## Five files no generator may write
 
@@ -133,10 +130,10 @@ than here — this table has already been wrong once by being a copy.
 ## Data, and what it is not ours to license
 
 The underlying record is the New Hampshire General Court's, and this project
-claims nothing over it. The code is MIT (`LICENSE`); `DATA.md` separates the software from the
-state's record from the texts generated here. If you are redistributing the
-data, cite gc.nh.gov rather than this site — every page here links what it was
-drawn from, for exactly that reason.
+claims nothing over it. The code is MIT (`LICENSE`); `DATA.md` separates the
+software from the state's record from the texts generated here. If you are
+redistributing the data, cite gc.nh.gov rather than this site — every page here
+links what it was drawn from, for exactly that reason.
 
 ## Reporting a problem rather than fixing one
 

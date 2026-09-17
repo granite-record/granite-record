@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.16
+# GRANITE_VERSION: 2026-09-04.17
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -42,11 +42,10 @@ from xml.sax.saxutils import escape
 TODAY = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 # The first day a reader could have been following a bill and had it end under
-# them. Before this, the site had been shared with its first users for two days
-# and the person's word on 17 September was that nobody was following anything
-# by RSS yet -- they were browsing. A bill that concluded before that date can
-# have had no subscriber, so it is owed no closing item and keeps no feed; one
-# that concludes on or after it gets both. See the _closing gate below.
+# them: nobody was subscribed by RSS before it. A bill that concluded before
+# that date can have had no subscriber, so it is owed no closing item and keeps
+# no feed; one that concludes on or after it gets both. See the _closing gate
+# below.
 #
 # This is a date and not a flag because it has to mean the same thing on every
 # machine and in a fresh clone. Move it only if the premise changes.
@@ -81,9 +80,9 @@ def iso_day(d):
     A member file writes a vote's date as the roll call export does, M/D/YYYY,
     and everything a vote's date is used for below -- the term its bill is
     found in, the order items sort in, the pubDate a reader sees -- reads
-    YYYY-MM-DD. Until 13 September every vote in every legislator feed carried
-    the build time as its date, sorted 9/4 above 8/19 and 12/2 below both, and
-    linked the bills page for any bill number used in more than one term.
+    YYYY-MM-DD. Every vote in every legislator feed once carried the build
+    time as its date, sorted 9/4 above 8/19 and 12/2 below both, and linked
+    the bills page for any bill number used in more than one term.
     """
     s = str(d or "").strip()
     for fmt, n in (("%Y-%m-%d", 10), ("%m/%d/%Y", None)):
@@ -343,9 +342,8 @@ def main():
                 f"{b.get('term','')}:{b['id']}:{e['date']}:"
                 f"{slug(e.get('text',''))[:40]}"))
 
-        # A BILL THAT HAS FINISHED GETS ONE LAST ITEM, AND THEN NOTHING.
-        # The person's decision of 17 September: "A concluding bill should get
-        # one final update on how it ended and retire the feed after that."
+        # A BILL THAT HAS FINISHED GETS ONE LAST ITEM, AND THEN NOTHING: one
+        # final update on how it ended, and the feed retires after that.
         #
         # Before this, a bill concluding in the sitting term was skipped
         # outright -- so 107 feeds sat in site/ whose newest item was the last
@@ -362,9 +360,8 @@ def main():
         # that concluded before anyone could follow anything is owed nothing,
         # and keeping its feed is 2,000 files bought for no reader.
         #
-        # The person, 17 September: nobody is following bills by RSS yet, and
-        # people are browsing. So the rule starts from that day rather than
-        # reaching back over the term.
+        # Nobody was following bills by RSS before FOLLOW_FROM, so the rule
+        # starts from that day rather than reaching back over the term.
         #
         # The gate is the bill's OWN concluding date, not the state of site/.
         # Scoping it to feeds already on disk was the first attempt and was
@@ -553,8 +550,8 @@ def main():
             mid = str(m.get("id") or "")
             # THE TEST THE MEMBER'S PAGE NAMES ITS FEED ON. build_legislator_pages
             # runs before this and has no file to look for, so both ask
-            # shell.member_followable. Until 13 September this wrote a feed
-            # wherever the items below came to something, and no page named one.
+            # shell.member_followable. This once wrote a feed wherever the
+            # items below came to something, and no page named one.
             if not S.member_followable(m):
                 continue
             who = m.get("display") or m.get("name") or f"Member #{mid}"

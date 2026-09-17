@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.53
+# GRANITE_VERSION: 2026-09-04.54
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -11,8 +11,8 @@ WHAT THESE PAGES ARE
 second rendering of it -- the same one, from the same app.js, drawing the same
 site/bills/2026/HB1094.json.
 
-Until 7 September it was a second rendering: 900 lines of Python emitting a
-complete no-JavaScript page per bill. That is why a reader who arrived from a
+It was once a second rendering: 900 lines of Python emitting a complete
+no-JavaScript page per bill. That is why a reader who arrived from a
 legislator page found a bill laid out differently from the one they had been
 reading a moment before, and why a fix to one view never reached the other.
 Two renderers of the same record disagree; it is only a question of when.
@@ -152,8 +152,8 @@ def shell(t, b, d, base, raw=None, data_url=None, current_term=""):
     # bill is still moving: the sitting term, not concluded (shell.still_moving,
     # which build_feeds uses too). Closed terms stopped getting feeds when the
     # 1989-2016 histories arrived; concluded bills of the sitting term stopped
-    # on 13 September, on the person's word that only a bill still moving
-    # needs following. A page must not advertise a feed that is not there.
+    # too, because only a bill still moving needs following. A page must not
+    # advertise a feed that is not there.
     feed = (f'<link rel="alternate" type="application/rss+xml" '
             f'title="{E(n)} updates" href="/feed/bill/{yr}/{bid.lower()}.xml">'
             if d.get("events") and S.still_moving(b, current_term) else "")
@@ -308,10 +308,9 @@ def main():
           "of their own")
 
     for p in ("index.html", "bills.html", "legislators.html",
-              # data.html was added to the nav on 10 September and not
-              # here, so the downloads page was on every header and in no
-              # sitemap -- the same shape of defect as the nav tuple in
-              # build_pages.py, one level down.
+              # data.html was added to the nav and not here, so the downloads
+              # page was on every header and in no sitemap -- the same shape
+              # of defect as the nav tuple in build_pages.py, one level down.
               "committees.html", "learn.html", "data.html", "about.html"):
         if (site / p).exists():
             urls.append((a.base + S.canon("/" + p), generated))

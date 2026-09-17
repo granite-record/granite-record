@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.24
+# GRANITE_VERSION: 2026-09-05.25
 """
 Run the whole pipeline in the right order.
 
@@ -77,8 +77,8 @@ class building:
                       f"touched {age:.0f}s ago: another build is running, and "
                       f"this will not be a second one.\n\n"
                       f"Two builds at once is what emptied seven terms out of "
-                      f"narratives.json on 12 September. Wait for it, or -- if "
-                      f"nothing is really running -- delete {BUILD_LOCK}.\n",
+                      f"narratives.json once. Wait for it, or -- if nothing is "
+                      f"really running -- delete {BUILD_LOCK}.\n",
                       file=sys.stderr)
                 sys.exit(3)
             print(f"  {BUILD_LOCK} (pid {held or '?'}) has not been touched "
@@ -194,19 +194,18 @@ def plan(a):
         # stops being guessed at: topic_model.py never answers for a bill that
         # already has a topic.
         #
-        # topic_model.py rather than topics.py since 16 September. It is the
-        # second model, it imports the first rather than replacing it, and it
-        # writes the same file key for key. topics.py stays runnable and stays
-        # what preflight tests.
+        # topic_model.py rather than topics.py: it is the second model, it
+        # imports the first rather than replacing it, and it writes the same
+        # file key for key. topics.py stays runnable and stays what preflight
+        # tests.
         Step("a topic for the bills the General Court gave none",
              ["topic_model.py", "--apply", "--space", "B"],
              needs=["data/bills.json"], produces=["topics_assigned.json"],
              note="learns from the 2,221 bills of 2025-2026 that carry the "
                   "General Court's own topic and answers for the other "
                   "29,449, or says Miscellaneous where it cannot; in the "
-                  "site's own vocabulary, which the owner approved on 17 "
-                  "September -- five thin categories folded, Housing and "
-                  "Study added"),
+                  "site's own vocabulary -- five thin categories folded, "
+                  "Housing and Study added"),
 
         # AFTER build_data, for the same reason as topics: it reads
         # data/sponsors.json to leave alone every bill the database already
@@ -223,12 +222,10 @@ def plan(a):
         # AFTER text_sponsors, which walks the same saved pages, and BEFORE
         # build_site_v2, which imports this module (build_site_v2.py:36) and
         # calls AT.merge_into to fold archive_text.json in under
-        # bill_text.json. It was written on 16 September and never added to
-        # this list, so the text of every archived bill reached the site only
-        # when somebody remembered the command by hand: legislation/ holds
-        # 8,752 saved pages tonight against the 8,422 bills in the
-        # archive_text.json written at 14:17, and the gap widens every hour
-        # the lane keeps fetching.
+        # bill_text.json. While it was missing from this list, the text of
+        # every archived bill reached the site only when somebody remembered
+        # the command by hand, and the gap widened every hour the lane kept
+        # fetching.
         #
         # No network -- it reads what fetch_legislation.py has already saved --
         # so --local runs it too, which is the point of putting it here: a
@@ -283,9 +280,9 @@ def plan(a):
         # EVERY ARCHIVED TERM WHOSE DOCKET IS ON DISK, not just the one that
         # was narrated by hand. narrative.py merges, and has to: run per
         # docket, each term's bills are added to narratives.json rather than
-        # replacing the last term's. Until 11 September this step named
-        # Docket_2023-2024.txt alone, so a rebuild from a clean
-        # narratives.json produced two terms out of nineteen.
+        # replacing the last term's. This step once named Docket_2023-2024.txt
+        # alone, so a rebuild from a clean narratives.json produced two terms
+        # out of nineteen.
         Step("plain-language histories for every archived term",
              ["narrate_archive.py"],
              needs=["data/legislators.json"],

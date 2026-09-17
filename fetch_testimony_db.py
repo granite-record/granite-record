@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.2
+# GRANITE_VERSION: 2026-09-06.3
 """
 How many people signed in for and against a bill, per hearing.
 
@@ -189,9 +189,9 @@ def main():
     # a --term flag is added here, writing `out` over the file deletes them.
     #
     # That is not hypothetical: resolve_members.py took former_members.json
-    # from 675 entries to 3 on 7 September doing exactly this, and the
-    # manifest lost its hand-marked times twice before that. Keeping a term
-    # this run did not produce costs four lines.
+    # from 675 entries to 3 doing exactly this, and the manifest lost its
+    # hand-marked times twice. Keeping a term this run did not produce costs
+    # four lines.
     op = Path(a.out)
     merged = {}
     if op.exists():

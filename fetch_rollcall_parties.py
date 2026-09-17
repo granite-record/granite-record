@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.2
+# GRANITE_VERSION: 2026-09-10.3
 """The party of everyone who voted before 2017, from one roll call a chamber a year.
 
     python3 fetch_rollcall_parties.py --plan     # which votes, no network
@@ -9,14 +9,14 @@
 
 WHY
 
-24 years of roll calls came off the database dump on 10 September and
-773,506 of their ballots carry no party: 88% of 1999-2000, 57% of
-2011-2012, 6% of 2015-2016. No roster on this disk names those people's
-party, and inferring one -- from a later namesake, or from how somebody
-voted -- would fabricate the fact a reader is most likely to act on.
+24 years of roll calls came off the database dump and 773,506 of their
+ballots carry no party: 88% of 1999-2000, 57% of 2011-2012, 6% of 2015-2016.
+No roster on this disk names those people's party, and inferring one -- from
+a later namesake, or from how somebody voted -- would fabricate the fact a
+reader is most likely to act on.
 
-A person found the page that has it. The legacy roll call detail carries
-every member's PARTY, county and district beside their vote:
+The page that has it is the legacy roll call detail, which carries every
+member's PARTY, county and district beside their vote:
 
     Adams, Jarvis   Republican   Hillsborough   02   Nay
     Zolla, William  Republican   Rockingham     05   Yea
