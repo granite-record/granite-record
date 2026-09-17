@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.16
+# GRANITE_VERSION: 2026-09-04.17
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -527,8 +527,26 @@ JOURNAL_TAIL_RE = re.compile(r"\s*(?:HJ|SJ|HC|SC)\s+\d+\b.*$")
 
 # "Introduced 01/08/2025 and referred to Municipal and County Government  HJ 2  P. 5"
 # "Introduced 01/08/2025 and Referred to Commerce;  SJ 2"
+# "Ref. to", "Ref to", "Refer to" -- NOT ONLY "Referred to".
+#
+# This required the literal, and the clerk of 1999-2006 did not write it. He
+# wrote "Introduced and Ref. to Executive Departments & Administration; SJ 2",
+# and across the archive he writes `ref to` 20,998 times against `referred to`
+# 16,063. So this pattern matched ZERO rows in the 1997-1998 docket and 183 in
+# 2001-2002, against 2,955 in 2009-2010 -- which is why those terms' referral
+# timeline was empty and the hearings recovered this week land on no committee
+# page. Committee attribution runs at 87-94% for 1996-1998 (which gets it from
+# the legacy "FOR:" clause instead), collapses to 0-33% for 1999-2007, and
+# returns to 94-99% from 2008.
+#
+# referrals.py has accepted `ref(?:erred)?\.?\s+to` since it was written. The
+# two files simply disagreed about how the clerk writes the word, and only this
+# one feeds the timeline.
+#
+# "reference to" is not a referral and does not match: after "refer" the
+# pattern needs a dot or whitespace, and "ence" is neither.
 REFERRAL_RE = re.compile(
-    r"[Rr]eferred to\s+(?P<committee>.+?)\s*(?:;|$)"
+    r"[Rr]ef(?:er|erred)?\.?\s+to\s+(?P<committee>.+?)\s*(?:;|$)"
 )
 
 
@@ -561,7 +579,11 @@ INTRODUCED_RE = re.compile(r"Introduced(?:\s+\(in recess of\))?\s+(?P<date>\d{1,
 # "Introduced and Referred to Finance." -- the same line with no date, which is
 # how the 2015-2016 docket writes 1,255 of them. Anchored at the start, so a
 # line that only mentions an introduction in passing is not a referral.
-UNDATED_INTRO_RE = re.compile(r"\s*Introduced\s+and\s+[Rr]eferred\s+to\b")
+# The same widening as REFERRAL_RE above, and for the same reason: 1999-2006
+# writes "Introduced and Ref. to Judiciary; SJ 7, Pg.90" and this anchored
+# pattern is what decides whether that line reaches the timeline at all.
+UNDATED_INTRO_RE = re.compile(
+    r"\s*Introduced\s+and\s+[Rr]ef(?:er|erred)?\.?\s+to\b")
 
 # A bill's SECOND committee, written on its own line once the first has
 # reported:
