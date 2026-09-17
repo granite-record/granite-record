@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.13
+# GRANITE_VERSION: 2026-09-04.14
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -69,7 +69,11 @@ HOUSE_SCHED_RE = re.compile(
     # The year must not run into another digit. One 2015 row reads
     # "Continued Executive Session: 4/30/20105", and \d{4} alone reads that as
     # 30 April 2010 and files the sitting in the wrong term.
-    r"(?P<date>\d{1,2}/\d{1,2}/\d{4})(?!\d)"
+    # \d{2,4}, because the 2007-2008 docket writes the colon form with a
+    # two-digit year and \d{4} refused the whole of it: "Executive Session:
+    # 5/15/07 1:00 PM LOB 302" is 994 rows, "Retained Bill - Executive
+    # Session: 11/14/07 10:00 AM LOB 208" another 501.
+    r"(?P<date>\d{1,2}/\d{1,2}/\d{2,4})(?!\d)"
     # Seconds because the 2007-08 docket writes "1:30:00 PM"; the meridiem in
     # its own group so a line that states none -- "02/15/2022 1:45 LOB302-304",
     # one line on this disk -- still gives up its kind, date and room without
@@ -119,6 +123,37 @@ def house_venue(rest):
     """The room this line states, or None if it states none."""
     v = HOUSE_TAIL_RE.sub("", rest or "").strip()
     return v if v and HOUSE_VENUE_OK.match(v) else None
+
+
+def house_kind(raw):
+    """The legacy line's kind word as VIDEO_KINDS spells it.
+
+    The legacy branch used to hardcode "hearing", because the pattern could
+    only match that word. It now reads six families across seventy spellings --
+    "SUBCOM WORK SESSION", "Fin Div II Subcom Work & Exec Session", "CONF COMM
+    MEETING", "RE-REF SUBCOM WORK SESSION" -- and handing any of those through
+    unchanged would drop the row at the VIDEO_KINDS test a few lines later,
+    which looks exactly like the pattern having failed.
+
+    Order matters here: a subcommittee work session names both "subcom" and
+    "work session", and it is the former that makes it the more specific kind.
+    """
+    k = re.sub(r"\s+", " ", (raw or "")).strip().lower()
+    if "conf" in k:
+        return "committee of conference"
+    if re.search(r"\bsubcomm?", k) or "re-ref subcom" in k:
+        return "subcommittee work session"
+    if re.search(r"\bcomm(?:ittee)?\b", k) and "sess" in k:
+        return "full committee work session"
+    if "exec" in k and "sess" in k and "work" not in k:
+        return "executive session"
+    if "sess" in k:
+        return "work session"
+    if "public" in k and "hear" in k:
+        return "public hearing"
+    if "hear" in k:
+        return "hearing"
+    return k
 
 
 def house_time(m):
@@ -288,16 +323,52 @@ def senate_kind(raw):
 #
 # A DATE AND A TIME MUST FOLLOW THE WORD, which is what keeps "SEN RUSSMAN
 # SUSP RULES FOR HEARING, MA 2/3VV; SJ15,P371" from becoming a hearing.
+# HEARING WAS NEVER THE ONLY WORD. Requiring the literal made every
+# subcommittee, division and conference sitting of 1989-2006 invisible --
+# counted over the lines nothing claimed: SUBCOM WORK SESSION 4,984,
+# SUBCOMMITTEE WORK SESSION 1,066, EXECUTIVE SESSION 1,003, CONF COMM MEETING
+# 709, RE-REF SUBCOM WORK SESSION 636, CONFERENCE COMMITTEE MEETING 467.
+#
+#     SUBCOM WORK SESSION OCT04 09:00 RM211,LOB    FOR: M&CG
+#     Fin Div II  Subcom Work & Exec Session  Jan 27   1:30   RM209,LOB
+#     Conf Comm meeting  June 30  8:30  Rm301,LOB
+HOUSE_KIND = (
+    r"(?P<kind>"
+    r"(?:Subcomm?(?:ittee)?|Comm(?:ittee)?)\s*"
+    r"(?:Work|Wk)\s*(?:&|and)?\s*(?:Exec\w*\s*)?Sess\w*"
+    r"|(?:Work|Wk)\s*(?:&|and)?\s*(?:Exec\w*\s*)?Sess\w*"
+    r"|Exec(?:utive)?\.?\s*Sess\w*"
+    r"|(?:Public\s+)?Hearings?(?:\s+on\s+Prop\w*(?:\s+Am\w*)?)?"
+    r"|(?:Conf(?:erence)?\.?\s*Comm\w*|Committee\s+of\s+Conference)"
+    r"(?!\s*Report)(?:\s*Meeting)?"
+    r")")
+
+# DELIBERATELY NOT HEAD-ANCHORED. Head-anchoring was tried and loses 2,903
+# lines that parse today, because the House clerk puts whatever he likes in
+# front of the word: "CHANGED HEARING 2/15/89", "RECESSED HEARING 3/28/89",
+# "//CANCELLED**STORM//RESCHEDULED HEARING APR01", "<NOTE TIME CHANGE>
+# HEARING MAR05". The guard is the one this pattern already relied on and
+# states in its own comment: a date AND a time must follow the word.
 LEGACY_SCHED_RE = re.compile(
     # Up to ten characters of padding, because the clerk aligned these by eye
     # and "HEARING       02/07/89" carries seven spaces.
-    r"\bHEARING\b[^0-9A-Za-z]{0,10}"
+    r"\b" + HOUSE_KIND + r"[^0-9A-Za-z]{0,10}"
     # Three date forms: with a year, without one, and by month name. The
     # yearless ones take their year from the row that announced them.
-    r"(?P<date>\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{2,4}"
-    r"|\d{1,2}\s*/\s*\d{1,2}|[A-Z]{3}\s*\d{1,2})"
+    #
+    # THE YEAR IS LAZY, AND THE SPACE BEFORE THE TIME OPTIONAL, TOGETHER.
+    # 1,058 rows of 1989-1990 run the date straight into the time --
+    # "=CANCELED HEARING=3/21/8910:00 RM201,LOB" -- and a greedy \d{2,4} reads
+    # the year as 8910 and files the sitting in the year 8910. The old pattern
+    # was safe from that only because its mandatory \s+ refused the line
+    # outright. Both changes are needed, and so is the widened lookahead: a
+    # bare (?!\d) refuses a two-digit year followed by a time and the engine
+    # backtracks to 8910 anyway.
+    r"(?P<date>\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{2,4}?"
+    r"|\d{1,2}\s*/\s*\d{1,2}|[A-Za-z]{3,9}\.?\s*\d{1,2})"
+    r"(?=\D|\d{1,2}:\d{2}|$)"
     # NOON is a time. It is written 39 times and means exactly midday.
-    r"\s+(?P<time>\d{1,2}:\d{2}|NOON)"
+    r"\s{0,8}(?P<time>\d{1,2}:\d{2}|NOON)"
     r"(?P<rest>.*)$", re.I)
 # The committee is named after FOR, with or without its colon, and sometimes
 # with the room run into it: "RM105-A,SHFOR: APPROPRIATIONS".
@@ -334,7 +405,14 @@ def _legacy_date(s, written, session=None):
         # year away from it, the row's own year is taken instead -- and only
         # when that lands the hearing within a year, so a genuinely distant
         # date is kept rather than dragged closer.
-        if two_digit and written and abs((got - written.date()).days) > 400:
+        # NOT ONLY A TWO-DIGIT YEAR. A four-digit one is a keystroke from a
+        # different century: the 2013-2014 docket writes "Executive Session:
+        # 2/6/2104 2:30 PM LOB 205", which published a hearing in the year 2104
+        # and invented a term in proceedings.csv to hold it. Six rows across
+        # the archive, all of them 2104 for 2014. The correction is the same
+        # one and carries the same proof -- it is applied only when the row's
+        # own year lands the sitting back inside the ordinary window.
+        if written and abs((got - written.date()).days) > 400:
             try:
                 near = date(written.year, mo, dy)
             except ValueError:
@@ -347,10 +425,17 @@ def _legacy_date(s, written, session=None):
     if m:
         mo, dy = int(m.group(1)), int(m.group(2))
     else:
-        m = re.match(r"([A-Za-z]{3})(\d{1,2})$", s)
-        if not m or m.group(1).upper() not in MONTHS:
+        # EXACTLY THREE LETTERS WAS THE OLD PATTERN'S SHAPE, NOT THE CLERK'S.
+        # Widening LEGACY_SCHED_RE to read a month name of any length leaves
+        # 1,160 of the new matches here with no date -- "SEPT 27", "JAN. 16",
+        # "JULY9", "SEPT18" -- so this has to be widened the same way or those
+        # rows arrive dated nothing. The first three letters are the key, and
+        # MONTHS is keyed upper case, so the abbreviation and the full name
+        # both land on it.
+        m = re.match(r"([A-Za-z]{3,9})\.?\s*(\d{1,2})$", s.strip())
+        if not m or m.group(1)[:3].upper() not in MONTHS:
             return None
-        mo, dy = MONTHS[m.group(1).upper()], int(m.group(2))
+        mo, dy = MONTHS[m.group(1)[:3].upper()], int(m.group(2))
     if not written:
         return None
     # THE ROW'S OWN TIMESTAMP IS NOT ALWAYS SANE. Ten rows of these ten terms
@@ -560,12 +645,20 @@ def _parse_date(s, written=None):
                     d = None
     if d is None:
         return None
-    # Last year's year, typed in January. See _STALE_DAYS.
-    if written and (written.date() - d).days > _STALE_DAYS:
+    # A YEAR THAT IS ONE KEYSTROKE OUT, IN EITHER DIRECTION. Behind the row it
+    # is last year's year typed in January; ahead of it, it is a digit: the
+    # 2013-2014 docket carries "Executive Session: 2/6/2104 2:30 PM LOB 205",
+    # which published a hearing in the year 2104 and invented a term to hold
+    # it. Both are the same mistake and both are corrected the same way, and
+    # only when the row's own year lands the sitting back inside the ordinary
+    # window -- so a genuinely distant date is kept rather than dragged closer.
+    if written and abs((d - written.date()).days) > _STALE_DAYS:
         try:
-            d = d.replace(year=written.year)
+            near = d.replace(year=written.year)
         except ValueError:
-            pass
+            return d
+        if abs((near - written.date()).days) <= _STALE_DAYS:
+            return near
     return d
 
 
@@ -872,22 +965,41 @@ def parse_proceedings(rows, timeline):
                     "CANCEL" in str(f).upper() for f in flags):
                 flags = list(flags) + ["CANCELLED"]
         else:
-            m = HOUSE_SCHED_RE.search(clean)
+            # LEGACY FIRST, AND THE ORDER IS THE WHOLE OF A FIX.
+            #
+            # HOUSE_SCHED_RE now accepts a bare "Hearing" and a two-digit year,
+            # which means it also matches the 1989-1990 shorthand that used to
+            # fall through to the legacy branch -- 2,128 rows of it. Tried in
+            # the old order those rows would have been claimed by the modern
+            # pattern and quietly stripped: the line states no meridiem so the
+            # time is dropped, "RM211,LOB FOR: MUN & CTY GOVT" fails
+            # HOUSE_VENUE_OK on the colon so the room is dropped, and "FOR:" is
+            # read only in the legacy branch so the committee goes too.
+            # Measured: 2,126 lost times, 2,122 lost rooms, 2,100 lost
+            # committees, and two thousand hearings would have stopped
+            # appearing on committee pages -- the exact defect this work exists
+            # to close, inflicted on a different decade.
+            #
+            # The legacy pattern is the more specific of the two: it requires a
+            # date AND a time and reads the clerk's own "FOR:". Trying it first
+            # costs no coverage, because anything it declines the modern
+            # pattern still sees.
+            m = LEGACY_SCHED_RE.search(clean)
             if m:
+                kind = house_kind(m.group("kind"))
+                rest = m.group("rest") or ""
+                fm = LEGACY_FOR_RE.search(rest)
+                venue = (rest[:fm.start()] if fm else rest).strip(" .,:") or None
+                legacy_cmte = fm.group("committee").strip() if fm else None
+            else:
+                m = HOUSE_SCHED_RE.search(clean)
+                if not m:
+                    continue
                 kind = m.group("kind").lower()
                 # house_venue decides where the room ends. The pattern no
                 # longer has to, which is what stopped a Zoom paragraph from
                 # failing the whole line.
                 venue = house_venue(m.group("rest"))
-            else:
-                m = LEGACY_SCHED_RE.search(clean)
-                if not m:
-                    continue
-                kind = "hearing"
-                rest = m.group("rest") or ""
-                fm = LEGACY_FOR_RE.search(rest)
-                venue = (rest[:fm.start()] if fm else rest).strip(" .,:") or None
-                legacy_cmte = fm.group("committee").strip() if fm else None
 
         if kind not in VIDEO_KINDS:
             continue
