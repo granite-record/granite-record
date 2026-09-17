@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.3
+# GRANITE_VERSION: 2026-09-04.4
 """
 Build a per-bill index of floor debates, keyed to the session recordings.
 
@@ -70,29 +70,52 @@ def load_bill_named_videos(paths):
 
 
 def load_session_videos(paths):
-    """Floor session recordings by date. Committee videos are excluded."""
+    """Floor session recordings by (date, chamber). Committee videos excluded.
+
+    KEYED ON THE CHAMBER AS WELL AS THE DAY, and it has to be. This was keyed
+    on the date alone, with "prefer the longest recording when a day has more
+    than one" to break ties -- which reads as a sensible rule right up until
+    you notice that the two recordings on such a day are usually not two takes
+    of one sitting. They are the House and the Senate, both of which met.
+
+    So the longer chamber's video won the day and was handed to the other
+    chamber's rows as well: 1,338 rows of proceedings.csv across 24 dates and
+    993 bills, where a reader following a Senate vote was shown the House
+    sitting instead. The correct recording existed every one of those 24 times
+    and was passed over.
+
+    The tie-break is kept, because a chamber really can have two recordings of
+    one day; it now only ever compares a chamber against itself.
+    """
     out = {}
     for p in paths:
         if not Path(p).exists():
             print(f"  missing: {p}")
             continue
+        # The file names the chamber, and so does the title. Title first, since
+        # a recording is what it says it is; the path is the fallback for a
+        # title that does not say.
+        path_body = "S" if "senate" in str(p).lower() else "H"
         for r in csv.DictReader(open(p, encoding="utf-8-sig")):
             if r.get("title_parsed") != "yes":
                 continue
             if "session" not in (r.get("parsed_committee") or "").lower():
                 continue
             d = r["parsed_date"]
+            t = (r.get("title") or "").lower()
+            body = ("S" if "senate" in t else "H" if "house" in t else path_body)
             start = None
             if r.get("start_eastern"):
                 try:
                     start = datetime.strptime(r["start_eastern"], "%Y-%m-%d %H:%M:%S")
                 except ValueError:
                     pass
-            # Prefer the longest recording when a day has more than one.
-            prev = out.get(d)
+            # Prefer the longest recording when ONE CHAMBER has more than one.
+            prev = out.get((d, body))
             if prev is None or len(r.get("duration_iso", "")) > len(prev["duration"]):
-                out[d] = {"video_id": r["video_id"], "start": start,
-                          "title": r["title"], "duration": r.get("duration_iso", "")}
+                out[(d, body)] = {"video_id": r["video_id"], "start": start,
+                                  "title": r["title"],
+                                  "duration": r.get("duration_iso", "")}
     return out
 
 
@@ -105,8 +128,12 @@ def main():
     a = ap.parse_args()
 
     vids = load_session_videos(a.videos)
+    # The keys are (date, chamber) now, so the span is over the dates in them.
+    _days = sorted({d for d, _ in vids})
     print(f"{len(vids)} session recordings across "
-          f"{min(vids) if vids else '-'} to {max(vids) if vids else '-'}")
+          f"{_days[0] if _days else '-'} to {_days[-1] if _days else '-'}"
+          f" ({sum(1 for _, c in vids if c == 'H')} House, "
+          f"{sum(1 for _, c in vids if c == 'S')} Senate)")
 
     # ---- roll calls, grouped into runs per bill within a day ---------------
     calls = defaultdict(list)
@@ -127,7 +154,10 @@ def main():
     precise = dated = 0
     for (body, date), cs in sorted(calls.items()):
         cs.sort(key=lambda c: (c["when"], c["num"]))
-        vid = vids.get(date)
+        # (date, body): this loop has known the chamber all along -- it is the
+        # first half of the key it is iterating -- and looked the recording up
+        # by the day alone anyway.
+        vid = vids.get((date, body))
         if not vid:
             continue
         # A whole chamber's roll calls timestamped midnight means the file
@@ -180,10 +210,15 @@ def main():
             if e.get("vote_kind") == "RC":
                 continue
             d = e.get("date")
-            if not d or (b, d) in seen or d not in vids:
+            # The event says which chamber acted; the recording must be that
+            # chamber's. An event with no body cannot be paired at all now --
+            # better silent than confidently showing the other chamber.
+            ebody = (e.get("body") or "").strip().upper()[:1]
+            if not d or not ebody or (b, d) in seen or (d, ebody) not in vids:
                 continue
             index[b].append({
-                "date": d, "body": e.get("body"), "video_id": vids[d]["video_id"],
+                "date": d, "body": e.get("body"),
+                "video_id": vids[(d, ebody)]["video_id"],
                 "motions": [e.get("action") or "Floor action"], "tallies": [],
                 "kind": "floor debate", "precise": False,
                 "vote_kind": e.get("vote_kind")})
