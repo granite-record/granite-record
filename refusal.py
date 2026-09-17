@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.3
+# GRANITE_VERSION: 2026-09-09.4
 """
-One refusal stops every fetch, not just the one that was refused.
+One refusal stops the fetch lane, not just the run that was refused.
+
+NOT, YET, EVERY FETCHER. This line read "stops every fetch" and that is the
+claim a contributor would rely on at the moment it matters. Twelve of the
+thirty-two fetch_*.py scripts consult this module -- `grep -l refusal
+fetch_*.py` is the list -- and the rest, started by hand, would walk straight
+through a recorded refusal. build_all.py and watchers/gc_lane.py do honour it,
+which is what makes the scheduled path safe. Closing the gap is a small change
+to twenty files and has not been made.
 
     import refusal
     refusal.check("fetch_archive_docket")      # exits if the last run was refused

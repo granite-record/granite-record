@@ -1,12 +1,15 @@
-# What git tracks here: the scripts, the documents, and the one file a person
-# made by hand. Everything else is either downloaded from the General Court or
-# generated from what was, and can be rebuilt.
+# What git tracks here: the scripts, the documents, the roll-call history as
+# the General Court published it, and the five files a person made by hand --
+# preflight.py's HANDMADE is the list, and pointing at it rather than repeating
+# it here is deliberate: this header said "the one file" for a fortnight after
+# there were five. Everything else is either downloaded from the General Court
+# or generated from what was, and can be rebuilt.
 #
-# The working folder is about 8 GB. Nearly all of it is caption files. Git is
+# The working folder is about 34 GB. Nearly all of it is caption files. Git is
 # here to make code changes reversible and to satisfy the desktop app, not to
 # archive data -- a repository carrying work/ would be unusable.
 
-# ---- captions and recordings: 7.6 GB, re-fetchable -----------------------
+# ---- captions and recordings: 34 GB, re-fetchable ------------------------
 work/
 *.mp4
 *.m4a
@@ -153,6 +156,18 @@ journals_senate/
 # --refresh. review/checked.jsonl is NOT ignored: it is the record a
 # person made, and it belongs in git beside ground_truth.csv.
 review/.pool-*.json
+
+# ---- the assistant's local state -----------------------------------------
+# .claude/settings.local.json carries absolute paths with this machine's
+# Windows username in them, which is the "personal directory name" class of
+# leak. It is kept out of git today only by a MACHINE-GLOBAL ignore file and a
+# per-clone .git/info/exclude -- neither of which travels with a clone, and
+# neither of which would protect a contributor or this repository on the next
+# machine. The rule belongs here, where it is published with everything else.
+# CLAUDE.md itself IS tracked on purpose: it is a document about the project.
+.claude/settings.local.json
+.claude/worktrees/
+.claude/projects/
 
 # ---- credentials ---------------------------------------------------------
 # The only secret this repository has is a YouTube Data API key, and

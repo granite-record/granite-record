@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.7
+# GRANITE_VERSION: 2026-09-10.8
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -29,6 +29,7 @@ filenames.
 
 import argparse
 import csv
+import datetime as _dt
 import json
 from pathlib import Path
 
@@ -452,12 +453,29 @@ def main():
     tables += votes(out, a.data)
 
     over = [t for t in tables if t["over_cap"]]
+    # THE DATA HAS TO CARRY ITS OWN PROVENANCE. Somebody who downloads a few
+    # million rows and comes back to them in a year has only this file to say
+    # whose record it is, when it was true, and what they may do with it. The
+    # repository's LICENSE says all of that and does not travel with a CSV.
+    #
+    # "source" used to name THIS site, which reads as a claim of origin over
+    # the state's own record. It is "site" now, and "upstream" names where the
+    # record actually comes from.
     manifest = {
         "what": "Granite Record bulk downloads. Public record of the New "
                 "Hampshire General Court, rebuilt from the General Court's "
                 "own published sources.",
         "base": "https://graniterecord.org/data/",
-        "source": "https://graniterecord.org",
+        "site": "https://graniterecord.org",
+        "upstream": "https://gc.nh.gov",
+        "generated": _dt.datetime.now().replace(microsecond=0).isoformat(),
+        "rights": "The underlying record is the New Hampshire General Court's "
+                  "and this project claims nothing over it; cite gc.nh.gov "
+                  "rather than this site. The software that built these files, "
+                  "and the summaries and other texts generated here, are MIT "
+                  "licensed -- see LICENSE in the source repository.",
+        "caveat": "An empty column is a field not yet collected, not a field "
+                  "the record says is empty.",
         "tables": [{k: v for k, v in t.items() if k != "over_cap"}
                    for t in tables],
     }

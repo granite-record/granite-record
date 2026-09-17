@@ -64,26 +64,45 @@ pip install numpy
 Python 3.14 is what this is developed and run on. Nothing in the code checks
 the version, so an older 3.x may be fine; that is untested.
 
-**Run the checks first.** They work on a bare clone, because `preflight`
-synthesises the data it needs in a temp folder and builds the whole site on it:
+**Run the checks first.** Most of them work on a bare clone, because
+`preflight` synthesises the data it needs in a temp folder and builds a fixture
+site on it:
 
 ```
-python3 preflight.py --code     # the 120 checks that need no data on disk
+python3 preflight.py --code     # the 121 checks that need no data on disk
 ```
+
+On a fresh clone the summary reads **`113 passed, 0 failed, 8 skipped`**. That
+is the expected first run, not a fault: eight of the checks read the real built
+`site/`, which a clone does not have, and they say so one by one. In a working
+tree with a built site the same command is all 121.
 
 About a minute — 63 seconds in the nightly of 17 September. **Trust its output
 over anything written in prose, including this file.** If it is not green, that
 is the thing to fix before anything else. `python3 preflight.py` with no flag
-adds the 39 data checks, which need the record described below, and takes
+adds the 38 data checks, which need the record described below, and takes
 longer.
 
 ### A clone has the code, not the record
 
-The repository is 285 files: 131 Python scripts, the front end, the documents,
-and the five files a person made by hand. The General Court's bulk dumps and
-everything derived from them are deliberately untracked — they are the state's,
-they are large, and they change daily, so tracking them would store a new copy
-of a 4.7 MB file every day. `.gitignore` says which files and why.
+The repository is 287 files: 132 Python scripts, the front end, the documents,
+and the five files a person made by hand. The General Court's **live** bulk
+dumps and everything derived from them are deliberately untracked — they are
+the state's, they are large, and they change daily, so tracking them would
+store a new copy of a 4.7 MB file every day.
+
+What does not change is tracked. `rollcalls/` carries the roll-call history of
+1999 to 2025 as the General Court published it — 54 files, 98 MB, and most of
+the reason a clone is about 125 MB rather than a few. The two small code tables
+are there too. `.gitignore` says which files and why.
+
+Three things are absent on purpose and are not missing:
+
+- `secrets.json` — a YouTube API key, wanted by one step of the pipeline, which
+  skips and says so without it. Nothing else in the repository needs a
+  credential, and `preflight` has a check that no tracked file carries one.
+- `work/` — the caption files, about 34 GB, re-fetchable.
+- `site/` — the built output.
 
 So `build_all.py --local` on a fresh clone has almost nothing to build from,
 and it will **skip rather than fail**. If you only want the data, take it from
@@ -203,7 +222,8 @@ addresses:
 |---|---|
 | `/index.json` | every bill, every term — title, sponsor, committee, topic, status, passage |
 | `/idx/<term>.json` | one term's bills; this is what the search page loads |
-| `/legislators.json` | the roster, with districts, towns and committees |
+| `/legislators.json` | the roster — who holds a seat now, with districts, towns and committees |
+| `/former.json` | the 1,785 people in the record who hold no seat now, with the span of their record. Deliberately a separate file: everything that reads the roster reads it to mean "who serves today" |
 | `/rollcalls_index.json` | every recorded vote — tally, whether it passed, party split, and a plain-English question where one could be made (5,007 of 9,565) |
 | `/committees.json`, `/towns.json`, `/districts.json` | membership and geography |
 | `/feed/*.xml` | RSS: everything, upcoming hearings, and one feed each per committee, topic, legislator, and per bill still moving |
@@ -225,18 +245,30 @@ this is to be used.
 
 ### Fetching, and the one hard rule
 
-**Do not point a `fetch_*` script at the General Court without asking the
-project owner.** This address has been blocked by their firewall twice: once
+**Do not point a `fetch_*` script at the General Court without asking first**
+— <contact@graniterecord.org>. This address has been blocked by their firewall twice: once
 for probing filenames that did not exist, once for running two fetches at the
 same time. Getting blocked again costs days and an email to a Clerk's office.
 
 Fetches run one at a time, slowly, and a refusal ends the run rather than being
 retried around. A refusal also **outlives the run that met it**: `refusal.py`
-records it in `archive/refused.json`, and every fetch in the project then stops
-for 24 hours — including a full `build_all.py`, which skips its General Court
-steps and says so. `netcheck.py` diagnoses a refusal without making it worse.
-Clearing one (`python3 refusal.py --clear`) is the owner's decision, not a step
-in a recipe.
+records it in `archive/refused.json`, and a full `build_all.py` then skips its
+General Court steps for 24 hours and says so. `netcheck.py` diagnoses a refusal
+without making it worse. Clearing one (`python3 refusal.py --clear`) is the
+owner's decision, not a step in a recipe.
+
+**That machinery does not yet cover every fetcher, and you should not assume it
+will catch you.** Twelve of the thirty-two `fetch_*.py` scripts consult
+`refusal.py`; the rest would walk straight through a recorded refusal if
+started by hand. Check before you run one:
+
+```bash
+grep -l refusal fetch_*.py
+```
+
+Closing that gap is a good first contribution and a small one. Until it is
+closed, the rule above — ask first, one at a time — is the thing standing
+between this project and a third block.
 
 The `fetch_*_db.py` scripts read the SQL host the General Court publishes
 credentials for, not the web server that did the blocking. Still ask — it is

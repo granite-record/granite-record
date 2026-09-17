@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.191
+# GRANITE_VERSION: 2026-09-04.192
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -249,6 +249,58 @@ def _one_address():
         + "; ".join(f"{a} at {', '.join(v[:3])}" for a, v in wrong.items()))
     return "ok", (f"{found} occurrences of {CORRECT} across the tracked "
                   "files, and no other address at that domain")
+
+
+@check("files", "every commit in the history was made by the project address")
+def _history_addresses():
+    """WHAT GIT PUBLISHES IS NOT ONLY THE FILES.
+
+    On 17 September, preparing the repository to go public, an audit found the
+    maintainer's personal address in the root commit's author AND committer
+    fields -- 704d7b0, the first commit, and therefore an ancestor of all 475
+    after it. Every tracked file was clean, every historical blob was clean,
+    secrets.json had never been committed. The leak was in the commit objects,
+    which is the half of the repository nothing here was looking at.
+
+    The two checks either side of this one could not have caught it. The
+    address check matches only addresses AT graniterecord.org, so an address
+    at any other domain never enters its loop; the credential check matches
+    key shapes and has no pattern for an email at all. Both read `git
+    ls-files`, which is the working tree at HEAD.
+
+    A .mailmap does NOT fix this and must not be mistaken for a fix: mailmap
+    changes how `git log` DISPLAYS an address, and the raw commit object still
+    carries it for anyone who reads the objects. The fix was a history rewrite,
+    which cost nothing only because no remote existed yet. After publication it
+    would cost a force-push and every clone anyone had taken.
+
+    So: every author and every committer, across every ref, is the project's
+    own address. This is cheap -- one git call -- and it is the guard that
+    turns "we rewrote it once" into "it cannot come back".
+    """
+    import subprocess
+    CORRECT = "contact@graniterecord.org"
+    try:
+        out = _run(["git", "log", "--all", "--format=%ae%n%ce"],
+                   capture_output=True, text=True, timeout=120)
+    except (OSError, subprocess.SubprocessError) as e:
+        return "skip", f"git would not read the history ({e})"
+    if out.returncode != 0:
+        return "skip", "not a git repository"
+    seen = [a.strip() for a in out.stdout.splitlines() if a.strip()]
+    if not seen:
+        return "skip", "no commits"
+    from collections import Counter
+    other = Counter(a for a in seen if a != CORRECT)
+    assert not other, (
+        "the history carries an address that is not " + CORRECT + ": "
+        + ", ".join(f"{a} ({n})" for a, n in other.most_common(4))
+        + ".\n  Publishing the repository publishes it. A .mailmap will not do "
+          "it -- the raw commit object keeps the address.\n  Rewrite with "
+          "`git filter-branch --env-filter` over --all, then delete "
+          "refs/original, expire the reflog and gc --prune=now.")
+    return "ok", (f"{len(seen):,} author and committer fields across the whole "
+                  f"history, every one {CORRECT}")
 
 
 @check("files", "no tracked file carries a credential")

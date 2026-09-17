@@ -314,9 +314,15 @@ current order and is the newer answer where it and this disagree;
    carried is not reproducible from any state of `checked.jsonl`.
 
 **Settled, and no longer worth revisiting.** The file cap: records travel
-inside their own pages, so a bill is one file and the site is **45,862 of the
-100,000** Cloudflare Pages Pro allows. Term keying: every per-bill file is
-`{term: {bill: ...}}` and `preflight` refuses the old shape.
+inside their own pages, so a bill is one file. Term keying: every per-bill file
+is `{term: {bill: ...}}` and `preflight` refuses the old shape.
+
+The file cap is settled; the *margin* is no longer comfortable and is worth a
+look before anything adds a file per record. The site was **45,862 of the
+100,000** Cloudflare Pages Pro allows when that was written. It is **82,574**
+on 17 September — 2.3 GB — after 1,785 former legislators got pages, and
+`check_site` warns at 90,000. `python3 check_site.py` prints the current
+number; do not take it from here.
 
 ---
 
