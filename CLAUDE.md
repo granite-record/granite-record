@@ -124,7 +124,7 @@ presenting as a different bug. **Do not add a sixth reader of the old files.**
 and it is named for the category rather than for `ground_truth.csv` because
 three of the four had no guard at all until 10 September.
 
-**`build_all.py` is the pipeline.** 21 steps for `--local`, 34 declared; `--local` skips network ones,
+**`build_all.py` is the pipeline.** 26 steps for `--local`, 39 declared; `--local` skips network ones,
 `--dry-run` shows the plan. A step marked `superseded=True` is kept for a case
 a newer step does not cover and does not run unasked.
 
@@ -198,7 +198,7 @@ newer answer where they disagree.
    that carry a scheduled bill already have them.
 
 3. **`proceedings.csv` across the remaining terms.** It held one term until 10
-   September and holds seven now — 29,837 rows, 1,823 recordings — because
+   September and holds eleven now — 54,855 rows, 2,533 recordings — because
    `build_manifest.py` turned out to need no change at all: `--docket` names
    the term, and `build_proceedings.py` reads every
    `verification_manifest*.csv` rather than one. What is left is the terms
@@ -231,7 +231,7 @@ newer answer where they disagree.
    recorded before 9 September.
 
 **Settled, and no longer worth revisiting.** The file cap: records travel
-inside their own pages, so a bill is one file and the site is **49,304 of the
+inside their own pages, so a bill is one file and the site is **45,862 of the
 100,000** Cloudflare Pages Pro allows. Term keying: every per-bill file is
 `{term: {bill: ...}}` and `preflight` refuses the old shape.
 
@@ -243,7 +243,7 @@ Windows. The person uses `cmd`; the assistant has PowerShell and a Git Bash
 shell, and a heredoc in either eats backslash escapes -- write patch scripts
 with the editor tool and copy them in. Python 3.14 as `python3`. Node is
 installed and `preflight` uses it. The working folder is the repository root;
-`work/` holds about 26 GB of caption files across ~2,500 recordings, and
+`work/` holds about 34 GB of caption files across ~2,500 recordings, and
 `site/` is the built output.
 
 `publish` is a local command that builds, checks and deploys with wrangler.
