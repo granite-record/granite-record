@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.15
+# GRANITE_VERSION: 2026-09-04.16
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -734,6 +734,40 @@ def parse_rows(path):
     return rows
 
 
+def cancelled(desc):
+    """Whether the sitting THIS ROW DESCRIBES was called off.
+
+    FLAG_RE reads "==CANCELLED==" and the clerk has written the word a dozen
+    other ways: "//CANCELLED//HEARING JAN25" (788 rows), "==CANCELLED(Storm)=="
+    (198, the parenthesis falls outside FLAG_RE's [A-Z ] class), "==Cancelled=="
+    in lower case, and ", SESSION CANCELLED DUE TO WEATHER" with no delimiter at
+    all. 1,363 rows said the sitting was off and produced no flag, so
+    build_manifest -- which filters on that flag and nothing else -- published
+    them as real meetings. Two whole terms, 1993-1996, yielded no correctly
+    flagged cancellation at all.
+
+    THE ORDER OF THE TWO WORDS IS THE ANSWER, and it is why this is a function
+    rather than a wider regex. 45 rows name a cancellation AND a reschedule:
+
+        //CANCELLED//RESCHEDULED HEARING JAN28 01:00 RM303,LOB FOR: EN
+        Rescheduled Hearing, 3/17/99, Room 103, LOB, 8:30 a.m. Hearing Cancelled
+
+    The first says a sitting was called off and gives the date of the one that
+    replaced it -- the row describes a hearing that HAPPENED, and flagging it
+    would hide a real hearing. The second says the replacement was itself called
+    off. So the test is which word the clerk wrote last.
+    """
+    d = desc or ""
+    c = r = None
+    for m in re.finditer(r"cancel", d, re.I):
+        c = m.start()
+    if c is None:
+        return False
+    for m in re.finditer(r"re-?sched", d, re.I):
+        r = m.start()
+    return r is None or c > r
+
+
 def extract_flags(desc):
     flags = [m.group(1).strip() for m in FLAG_RE.finditer(desc)]
     clean = FLAG_RE.sub(" ", desc).strip()
@@ -978,14 +1012,6 @@ def parse_proceedings(rows, timeline):
             # Hearing, 4/14/99, Room 101, LOB, 3:30 p.m." published as a real
             # sitting, and HB238 gained two hearings that day where one was
             # called off. The prefix is captured now and read here instead.
-            # The whole line, not just the prefix: the clerk of 1999 as often
-            # writes it AFTER the time -- "Hearing, 3/17/99, Room 105-A, SH
-            # 8:30 a.m. Hearing Cancelled" -- which lands in `rest` and is just
-            # as cancelled. A docket row describes one sitting, so a
-            # cancellation word anywhere on it is about that sitting.
-            if "cancel" in (clean or "").lower() and not any(
-                    "CANCEL" in str(f).upper() for f in flags):
-                flags = list(flags) + ["CANCELLED"]
         else:
             # LEGACY FIRST, AND THE ORDER IS THE WHOLE OF A FIX.
             #
@@ -1031,6 +1057,15 @@ def parse_proceedings(rows, timeline):
                 # longer has to, which is what stopped a Zoom paragraph from
                 # failing the whole line.
                 venue = house_venue(m.group("rest"))
+
+        # EVERY BRANCH, not just the Senate's. A cancellation written in any of
+        # the clerk's dozen spellings reaches the flag here, whichever pattern
+        # claimed the line -- which is the point: the Senate branch had a rescue
+        # for this and the two House branches did not, so 1,363 called-off
+        # sittings published as real meetings.
+        if cancelled(r["desc"]) and not any("CANCEL" in str(f).upper()
+                                            for f in flags):
+            flags = list(flags) + ["CANCELLED"]
 
         if kind not in VIDEO_KINDS:
             continue
