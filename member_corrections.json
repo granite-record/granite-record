@@ -31,6 +31,1710 @@
       ],
 
       "seat_caveat": "One seat is recorded because the site shows one seat per former member, and Merrimack 15 is the seat the General Court's own pages print for him. He in fact sat Merrimack 10, then 11, then 15 as the districts were redrawn, so a 2005 ballot of his carries a district he did not hold until 2023. Ballots by sitting members are dated per term from the bill text; former members are not yet."
+    },
+
+    "_added_16_september": "The entries below this line were added on 16 September 2026 and answer a different problem than the Shurtleff correction above: not a name deduced onto the wrong person, but ids the roster views never reached at all, which the site showed as \"Member #409060\" with no party. Each was identified by scoring the id's ballots against every name printed in the House and Senate journals for the same roll calls, then corroborated from a second source that does not depend on those ballots -- the election rolls and roster PDFs, the county headers over the journals' vote lists, the seat the bill text prints for a sponsor, or the alphabetical block the employee number falls in. The method was controlled by running it blind against four ids already named from other evidence (408966, 409011, 409014, 409039); it reproduced all four. Every identification was then given to a second reader asked to refute it rather than confirm it. \"terms\" and \"score\" are notes for the next person and are not read by anything.",
+
+    "209075": {
+      "name": "Lasky, Bette",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "13",
+
+      "was": "Member #209075 -- no name, party, county or district on file",
+
+      "terms": "2009-2010, 2013-2014, 2015-2016, 2017-2018 (Senate). Separately, and already named on the site, she is House id 376241, Hills. 26, 1999-2008 -- so this id completes a career the site already half holds.",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 485/485. Runner-up: D'Allesandro, Lou -- 403/485 (0.831). No other unclaimed surname exists: Lasky is the only name printed in eight years of Senate journals belonging to no named site senator.",
+
+        "Four lines agree. (a) Journal roll calls: 485/485 across eight separate years -- 38/38, 15/15, 32/32, 48/48, 40/40, 69/69, 99/99, 134/134 -- the runner-up 17 points behind. (b) Elimination: the Senate has 24 seats and District 13 is the only one with no named site member in every one of those years; it is also the only seat whose occupant changes exactly where this id's ballots stop and restart -- Gary Lambert (id 209085) holds 13 in 2011-2012, the two years this id is silent. (c) Employee number: past_members.json runs 209074 Gilmour (Dist. 12), 209075 missing, 209076 Carson (Dist. 14). (d) The General Court's own printing of her seat: 'Lasky, Dist 13' in 2009 sponsor lines, 'District No. 13, Bette R. Lasky' in the 2013 Organization Day and 2017 convening rolls, 'Sen. Lasky (SD13)' on 166 bills in text_sponsors.json across 2009-2010 and 2013-2018. Party D from voting: agrees with the Democratic majority on 1,069 of 1,110 contested roll calls (96.3%), with the Republican majority on 38.6%. County: data/senate_towns.json gives SD13 as Nashua wards 3, 4, 6, 7, 8 and 9, Hillsborough County (current map; SD13 was Nashua-centred throughout her service)."
+      ]
+    },
+
+    "374900": {
+      "name": "Christie, Andrew, Jr.",
+
+      "party": "Republican",
+
+      "county": "Rockingham",
+
+      "district": "22",
+
+      "was": "Member #374900 -- no name, party, county or district on file",
+
+      "terms": "1999-2000 and 2015-2016 by recorded ballots; also in the 1997 and 1998 calendars, so 1997-1998 as well",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 211/214 across 1999-2000, 0 disagreements, 3 roll calls where the name was not parsed. Runner-up: Lozeau, Donnalee -- 103.",
+
+        "2015 journals 136/136 and 2016 169-style 153/153 flawless for the same number, sixteen years later; Journal bill-introduction lines give 'Christie, Rock 22' 21 times; the 1999 organisation-day roster prints 'Andrew Christie, Jr., r' on the Rockingham 22 line, whose other occupants Bridle and Francoeur are independently stated as Rock 22; 1999 calendar seating list gives his town as Hampton Falls (Rockingham); employee number sits between Burnham (374868) and Clark (374942) where Christie belongs alphabetically. Not on any saved roll-call page, so party comes from the roster letter 'r', which the caucus test confirms (76 with R / 13 with D on divided roll calls)."
+      ]
+    },
+
+    "375800": {
+      "name": "Ahern, Richard F.",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "38",
+
+      "was": "Member #375800 -- no name, party, county or district on file",
+
+      "terms": "1999-2000 (also in the 1998 calendar roster, so 1997-1998)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 255/256 across 1999-2000, 0 disagreements. Runner-up: Almy, Susan -- 121.",
+
+        "Saved 1999 page: Democrat, Hillsborough, and its recorded Nay on roll call 28 equals the site's ballot for 375800; same on the 2000 page. 1999 organisation-day roster: 'Dist. No. 38 (3) Richard F. Ahern, d; James W. Craig, d; Winston H. McCarty, r' -- Craig and McCarty are both independently stated 'Hills 38'. Employee number 375800 falls immediately before 375801 Ahlgren in an alphabetical intake block: Ahern is exactly what belongs there."
+      ]
+    },
+
+    "376010": {
+      "name": "Johnson, James M.",
+
+      "party": "Republican",
+
+      "county": "Belknap",
+
+      "district": "4",
+
+      "was": "Member #376010 -- no name, party, county or district on file",
+
+      "terms": "1999-2000 (also in the 1998 calendar roster)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 210/233 across 1999-2000, with 23 disagreements -- all explained, see corroboration. Runner-up: Alger, John -- 95 (with 18 disagreements).",
+
+        "The only id in the slice with any disagreement, so I opened the artefact. Every one of the 23 is 'site says Nay, journal split says Yea', and in each the name sits within one or two places of the yea/nay boundary. Belknap is the first county in both the yea block and the nay block, so a Belknap member voting Nay is printed exactly at the seam. I read journals/1999/HJ004.txt for roll call 7 directly: 'Johnson, James / Millham, Alida / NAYS 141 / Rice, Thomas / Wood, Jane' -- Millham, Rice and Wood are all recorded Nay in the data, and so is 376010. Separately: saved 1999 page gives Republican, Belknap, and its Yea on roll call 28 matches the site's ballot; same on the 2000 page. 1999 seating list: town Gilford (Belknap). Roster line-mate Alida Millham is independently stated 'Belk 4'. Employee number 376010 sits between 376009 Hussey and 376011 Kane -- Johnson fits exactly. Marked high rather than certain only because the raw agreement figure carries 23 explained exceptions.",
+
+        "Confidence is stated as: high"
+      ]
+    },
+
+    "376159": {
+      "name": "Nolan-Piteri, Dawn C.",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "34",
+
+      "was": "Member #376159 -- no name, party, county or district on file",
+
+      "terms": "1999-2000 (as 'Piteri, Dawn' in the 1997-1998 record)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 127/127 across 1999-2000, 0 disagreements, 0 extra. Runner-up: Herman, Keith -- 63.",
+
+        "Saved 1999 page: Republican, Hillsborough, Yea on roll call 28 matching the site's ballot; same on the 2000 page. 1999 roster line 'Dist. No. 34 (3) Frederick Andrews, r; Mary Ellen Martin, d; Dawn C. Nolan-Piteri, r' -- Andrews and Martin are both independently stated 'Hills 34'. Town: Nashua. The employee number looked wrong at first (376158 Pilliod, 376160 Pratt) until I checked 1997-1998: she is printed there as 'Piteri, Dawn', which sorts exactly between Pilliod and Pratt. The page's district 64 is a later number and is not used."
+      ]
+    },
+
+    "376168": {
+      "name": "Tholl, John E., Jr.",
+
+      "party": "Republican",
+
+      "county": "Coos",
+
+      "district": "5",
+
+      "was": "Member #376168 -- no name, party, county or district on file",
+
+      "terms": "1999-2000, 2001-2002, 2003-2004, 2005-2006, 2007-2008, 2009-2010, 2011-2012, 2015-2016 by recorded ballots; also in the 1997 and 1998 calendars",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 451/451 across 1999-2002, 0 disagreements, 0 absent, 0 extra. Runner-up: Lozeau, Donnalee -- 129.",
+
+        "Flawless in all four years separately (139/139, 112/112, 120/120, 80/80). Same number, same name again in 2015 (140/141) and 2016 (169/170). Journal bill-introduction lines give 'Tholl, Coos 5' 15 times in 1999-2000 and 8 times in 2001-2002; the surname is unique in the House. 1999 seating list town: Whitefield (Coos). 2001 roster line 'Dist. No. 5 (1) John E. Tholl, Jr., r'. Employee number sits between 376167 Stickney and 376169 Twardus -- Tholl fits exactly. Not on any saved page; party from the roster letter 'r', confirmed by caucus (95 with R / 8 with D in 1999)."
+      ]
+    },
+
+    "376192": {
+      "name": "Rowe, Robert H.",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "14",
+
+      "was": "Member #376192 -- no name, party, county or district on file",
+
+      "terms": "1999-2000 through 2015-2016 continuously by recorded ballots; also in the 1998 calendar roster",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 441/442 across 1999-2002, 0 disagreements. Runner-up: Thulander, O Alan -- 106.",
+
+        "Flawless or near-flawless each year (119/119, 102/102, 126/127, 94/94) and again in 2015 (140/140) and 2016 (140/140). Journal lines give 'Rowe, Hills 14' five times in 2001-2002; the surname is unique. 1999 roster line puts him with Belvin and Dokmo, both independently stated 'Hills 14'; 1999 seating list town Amherst (Hillsborough). Not on any saved page; party from the roster letter 'r', confirmed by caucus. His number sits in an unordered late-addition tail, so the alphabetical check does not apply to him."
+      ]
+    },
+
+    "376217": {
+      "name": "Densmore, Jessica E.",
+
+      "party": "Democrat",
+
+      "county": "Grafton",
+
+      "district": "3",
+
+      "was": "Member #376217 -- no name, party, county or district on file",
+
+      "terms": "1999-2000 (also in the 1998 calendar roster)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 209/214 across 1999-2000, 0 disagreements, 5 roll calls where the name was not parsed. Runner-up: Mitchell, McKim -- 110.",
+
+        "Saved 1999 page: Democrat, Grafton, Nay on roll call 28 matching the site's ballot; same on the 2000 page. Journal line 'Densmore, Graf 3'. 1999 seating list town: Franconia (Grafton). Employee number sits between 376216 Dalianis and 376218 DiFruscia -- Densmore fits exactly."
+      ]
+    },
+
+    "376234": {
+      "name": "Sarette, John C.",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "7",
+
+      "was": "Member #376234 -- no name, party, county or district on file",
+
+      "terms": "1999-2000; he is in the 1998 calendar roster but nowhere in the 1997 record, so he joined mid-term in 1998",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 246/247 across 1999-2000, 0 disagreements. Runner-up: Bouchard, Candace -- 105 (with 34 disagreements).",
+
+        "Saved 1999 page: Democrat, Hillsborough, Nay on roll call 28 matching the site's ballot; 2000 page: Yea, matching. 1999 seating list town: Goffstown -- and the three other Goffstown members (Emerton, Hunter, McRae) are each independently stated 'Hills 7', which is also what the page says. THE ONE THING THAT DOES NOT FIT: 376234 sits between 376233 Herman and 376235 Johnson Gary in an otherwise strictly alphabetical block with no other exception in ~90 numbers; Sarette does not belong there. The likely reason is that he joined mid-term in 1998 (absent from every 1997 source, present in the 1998 roster) and was given a number left free inside the earlier alphabetical intake -- but that is my inference, not something a document states. The ballot evidence is not in doubt: 246 of 247 with nothing wrong, against 105 for the next name.",
+
+        "Confidence is stated as: certain, with one corroboration that fails and is explained below"
+      ]
+    },
+
+    "376235": {
+      "name": "Johnson, Gary Lance",
+
+      "party": "Democrat",
+
+      "county": "Grafton",
+
+      "district": "6",
+
+      "was": "Member #376235 -- no name, party, county or district on file",
+
+      "terms": "1999-2000 (also in the 1997 and 1998 calendars)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 220/223 across 1999-2000, 1 disagreement. Runner-up: Garrish, Linda -- 100.",
+
+        "Saved 1999 page: Democrat, Grafton, Nay on roll call 28 matching the site's ballot; same on the 2000 page. 1999 roster line-mate Richard S. Brothers is independently stated 'Graf 6'. 1999 seating list town: Holderness (Grafton). Employee number sits between 376233 Herman and 376236 Johnson Nancy -- Johnson Gary fits exactly, and the site already names Johnson Nancy at the next number."
+      ]
+    },
+
+    "376251": {
+      "name": "Mendenhall, Leslie J.",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "31",
+
+      "was": "Member #376251 -- no name, party, county or district on file",
+
+      "terms": "1999-2000 (also in the 1998 calendar roster)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 192/193 across 1999-2000, 0 disagreements. Runner-up: Cote, Peter -- 84.",
+
+        "Saved 1999 page: Democrat, Hillsborough 31, Nay on roll call 28 matching the site's ballot; 2000 page Yea, matching. 1999 roster line 'Dist. No. 31 (3) Jane A. Clemons, d; elected, not sworn; Leslie Mendenhall, d' -- Clemons is independently stated 'Hills 31'. Town: Nashua. Employee number sits between 376250 McIntyre and 376252 Millham -- Mendenhall fits exactly."
+      ]
+    },
+
+    "376273": {
+      "name": "Shelton, Richard C.",
+
+      "party": "Democrat",
+
+      "county": "Rockingham",
+
+      "district": "19",
+
+      "was": "Member #376273 -- no name, party, county or district on file",
+
+      "terms": "1999-2000 (also in the 1998 calendar roster)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 244/246 across 1999-2000, 0 disagreements. Runner-up: Batchelder, Robert -- 112.",
+
+        "Saved 1999 page: Democrat, Rockingham 19, Nay on roll call 28 matching the site's ballot; 2000 page Yea, matching. 1999 roster line 'Dist. No. 19 (3) Dennis F. Abbott, d; Frank M. Schanda, d; Richard C. Shelton, d' -- Abbott is independently stated 'Rock 19'. Town: Newmarket (Rockingham). Employee number sits between 376272 Ruffner and 376274 Shultis -- Shelton fits exactly."
+      ]
+    },
+
+    "376293": {
+      "name": "Rosenfield, Jay",
+
+      "party": "Democrat",
+
+      "county": "Merrimack",
+
+      "district": "2",
+
+      "was": "Member #376293 -- no name, party, county or district on file",
+
+      "terms": "1999-2000, from December 1999",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 106/106 in 2000, 0 disagreements, 0 extra (only 2 ballots exist in 1999, both after he was sworn). Runner-up: Potter, Frances -- 89.",
+
+        "The Secretary of State's swearing-in notice printed in the Journal states it outright: 'Merrimack 2, Jay Rosenfield, d, New London (329 Route 103A) 03257', dated December 1999 -- which is exactly why the number has two ballots in 1999 and a full year in 2000. The same notice swears in John T. Gallus and William J. Kelley, who hold the two employee numbers immediately before this one (376291, 376292), in the order printed. Saved 2000 page: Democrat, Merrimack, Yea on roll call 46 matching the site's ballot."
+      ]
+    },
+
+    "376299": {
+      "name": "Andosca, Mary L.",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "30",
+
+      "was": "Member #376299 -- no name, party, county or district on file",
+
+      "terms": "2001-2002",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 215/215 across 2001-2002, 0 disagreements, 0 absent, 0 extra. Runner-up: Gorman, Mary -- 102.",
+
+        "Flawless in both years separately (117/117, 98/98). Saved 2001 page: Democrat, Hillsborough, Nay on roll call 75 matching the site's ballot; 2002 page Yea, matching. 2001 roster line 'Dist. No. 30 (3) Nelson Allen, r; Mary L. Andosca, d; Harvey Keye, d' -- Keye is independently stated 'Hills 30'. Employee number sits between 376298 Allen and 376300 Artz -- Andosca fits exactly. Note the page's district 26 is a later number; the contemporaneous district is 30."
+      ]
+    },
+
+    "376302": {
+      "name": "Balcom, John L.",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "18",
+
+      "was": "Member #376302 -- no name, party, county or district on file",
+
+      "terms": "2001-2002, 2003-2004, 2015-2016 by recorded ballots",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 173/173 across 2001-2002, 0 disagreements, 0 absent, 0 extra. Runner-up: Hall, Charles -- 93.",
+
+        "Flawless in both years (114/114, 59/59) and again in 2015 (146/146) and 2016 (171/171) for the same number. Journal lines give 'Balcom, Hills 18'; the surname is unique in the House. 2001 roster prints 'John Balcom, r'. Employee number sits between 376301 Balboni and 376303 Barker -- Balcom fits exactly. Not on any saved page; party from the roster letter, confirmed by caucus (57 with R / 22 with D)."
+      ]
+    },
+
+    "376308": {
+      "name": "Bouldin, Michael W.",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "42",
+
+      "was": "Member #376308 -- no name, party, county or district on file",
+
+      "terms": "2001-2002 (on the rolls through 2002 but cast no Yea or Nay at all that year)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 60/60 in 2001, 0 disagreements, 0 absent, 0 extra; no scorable ballots in 2002. Runner-up: Carson, Sharon -- 46 (with 3 disagreements and 28 extra).",
+
+        "Saved 2001 page: Republican, Hillsborough 42, Yea on roll call 75 matching the site's ballot. The 2001 roster's Hillsborough 42 line reads 'Benjamin C. Baroody, d; elected, not sworn; Jeffrey Duval, d' -- Baroody and Duval are both independently stated 'Hills 42', and the vacant seat is his: HJ001 records 'Reps.-elect Bouldin, DePecol, Dunlap, Lefebvre, Sokol, Solow, Stevens and Woekel' absent on organisation day, which is why his ballots start late. The name appears nowhere in the 2002 journals, matching a number that cast nothing that year. Employee number sits between 376306 Bergeron and 376309 Bowles -- Bouldin fits exactly."
+      ]
+    },
+
+    "376320": {
+      "name": "Cummings, Raymond C.",
+
+      "party": "Republican",
+
+      "county": "Merrimack",
+
+      "district": "9",
+
+      "was": "Member #376320 -- no name, party, county or district on file",
+
+      "terms": "2001-2002",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 229/232 across 2001-2002, 0 disagreements. Runner-up: Hall, Charles -- 104.",
+
+        "Saved 2001 page: Republican, Merrimack 09, Yea on roll call 75 matching the site's ballot; 2002 page Yea, matching. Journal line 'Cummings, Merr 9' agrees with the page. Employee number sits between 376319 Corbin and 376321 Dexter -- Cummings fits exactly."
+      ]
+    },
+
+    "376331": {
+      "name": "Ferland, Paul A.",
+
+      "party": "Democrat",
+
+      "county": "Strafford",
+
+      "district": "18",
+
+      "was": "Member #376331 -- no name, party, county or district on file",
+
+      "terms": "2001-2002",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 150/150 across 2001-2002, 0 disagreements, 0 absent, 0 extra. Runner-up: Greco, Vincent -- 69.",
+
+        "Flawless in both years (73/73, 77/77). Saved 2001 page: Democrat, Strafford 18, Nay on roll call 75 matching the site's ballot; 2002 page Yea, matching. In the 2001 roster his line sits between the line holding Russell A. Albert (independently stated 'Straf 17') and the line holding Larry J. Cossette (independently stated 'Straf 19'), which fixes his own line at Strafford 18. Distinct from Brenda L. Ferland, Sullivan 6, who is a separate member. Employee number sits between 376330 Fairbanks and 376332 Flanders -- Ferland fits exactly."
+      ]
+    },
+
+    "376341": {
+      "name": "Gonzalez, Carlos E.",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "48",
+
+      "was": "Member #376341 -- no name, party, county or district on file",
+
+      "terms": "2001-2002, 2003-2004, 2005-2006, 2011-2012, 2015-2016 by recorded ballots",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 174/174 across 2001-2002, 0 disagreements, 0 absent, 0 extra. Runner-up: Albert, Russell -- 83.",
+
+        "Flawless in both years (96/96, 78/78) and again in 2015 (136/136) and 2016 (84/84) for the same number. Journal lines give 'Gonzalez, Hills 48'; the 2001 roster line 'Dist. No. 48 (3) Robert Chabot, r; Carlos E. Gonzalez, r; Marc Pappas, r' has Chabot and Pappas both independently stated 'Hills 48'. Employee number sits between 376340 Giuda and 376342 Goodwin -- Gonzalez fits exactly. Not on any saved page; party from the roster letter 'r', confirmed by caucus (61 with R / 7 with D)."
+      ]
+    },
+
+    "376362": {
+      "name": "Lambert, Bernard J.",
+
+      "party": "Democrat",
+
+      "county": "Cheshire",
+
+      "district": "11",
+
+      "was": "Member #376362 -- no name, party, county or district on file",
+
+      "terms": "2001-2002, until his death in office during 2001",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 3/3 in 2001, 0 disagreements, 0 extra -- only three roll calls carry any evidence. Runner-up: Patria, Bonnie -- 3/3 but appearing in 3 further roll calls where this number cast nothing.",
+
+        "The number casts only five ballots, all early in 2001, and then stops -- which the Journal explains: it prints a memorial resolution, 'Memorializing State Representative Bernard J. Lambert of West Swanzey', who died in office. The 2001 organisation-day roster prints 'Judson K. Dexter, r; Bernard Lambert, d' on the line whose true district is Cheshire 11 (the Cheshire block is shifted by one, confirmed by Hunt=Ches 10, Richardson=Ches 12, Emerson=Ches 13, Zerba=Ches 17 against their own stated districts). West Swanzey is in Cheshire, and the county heading above his name in the roll calls reads Cheshire. Employee number 376362 sits between 376361 LaFlamme and 376363 Leach -- Lambert fits exactly, and that constraint excludes the runner-up Patria, whose own number sits in the P's. Party 'd' from the roster letter, matching the caucus test (0 with R / 3 with D).",
+
+        "Confidence is stated as: high (the ballot evidence alone is too thin; the corroboration is what carries it)"
+      ]
+    },
+
+    "376375": {
+      "name": "Patria, Bonnie L.",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "39",
+
+      "was": "Member #376375 -- no name, party, county or district on file",
+
+      "terms": "2001-2002, until her death in office during 2001",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 6/7 in 2001, 0 disagreements, 0 extra -- only seven roll calls carry any evidence. Runner-up: Lambert, Bernard -- 3/7.",
+
+        "The number casts nine ballots in 2001 and then 33 excused absences, and the Journal prints a memorial resolution, 'Memorializing State Representative Bonnie L. Patria' of Manchester, who died in office after a serious illness -- which matches the pattern exactly. The 2001 roster line 'Dist. No. 39 (3) William Clayton, d; Frank C. Guinta, r; Bonnie Patria, d' is confirmed by Clayton being independently stated 'Hills 39'; Manchester is Hillsborough. Employee number 376375 sits between 376374 Panagopoulos and 376376 Pawlek -- Patria fits exactly, which excludes the runner-up Lambert. Party 'd' from the roster letter, matching the caucus test (0 with R / 6 with D).",
+
+        "Confidence is stated as: high (the ballot evidence alone is too thin; the corroboration is what carries it)"
+      ]
+    },
+
+    "376391": {
+      "name": "Seibel, Christopher J.",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "24",
+
+      "was": "Member #376391 -- no name, party, county or district on file",
+
+      "terms": "2001-2002",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 150/151 across 2001-2002, 0 disagreements. Runner-up: Whittier, John -- 90.",
+
+        "Saved 2001 page: Republican, Hillsborough 24, Nay on roll call 75 matching the site's ballot; on the 2002 page he is Excused and the site's ballot is Not Voting/Excused, matching. 2001 roster line 'Dist. No. 24 (3) Jean-Guy J. Bergeron, r; Harold V. Lynde, d; Christopher Seibel, r' -- Bergeron and Lynde are both independently stated 'Hills 24'. Employee number sits between 376390 Scovner and 376392 Shaw -- Seibel fits exactly."
+      ]
+    },
+
+    "376401": {
+      "name": "Swindlehurst, John R.",
+
+      "party": "Republican",
+
+      "county": "Merrimack",
+
+      "district": "7",
+
+      "was": "Member #376401 -- no name, party, county or district on file",
+
+      "terms": "2001-2002",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 216/216 across 2001-2002, 0 disagreements, 0 absent, 0 extra. Runner-up: Nedeau, Stephen -- 105.",
+
+        "Flawless in both years (117/117, 99/99). Saved 2001 page: Republican, Merrimack 07, Yea on roll call 75 matching the site's ballot; 2002 page Yea, matching. His roster line's other occupants, Eric Anderson and Richard E. Kennedy, are both independently stated 'Merr 7'. Employee number sits between 376400 Sweeney and 376402 Tahir -- Swindlehurst fits exactly."
+      ]
+    },
+
+    "376409": {
+      "name": "Woekel, Ralph F.",
+
+      "party": "Republican",
+
+      "county": "Rockingham",
+
+      "district": "22",
+
+      "was": "Member #376409 -- no name, party, county or district on file",
+
+      "terms": "2001-2002 (ballots in 2001 only)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 101/101 in 2001, 0 disagreements, 0 absent, 0 extra. Runner-up: L'Heureux, Robert -- 74.",
+
+        "Saved 2001 page: Republican, Rockingham 22, Yea on roll call 75 matching the site's ballot, and the Journal's own line 'Woekel, Rock 22' agrees -- the one member in the slice where the page district and the contemporaneous district coincide. HJ001 lists him among the Reps.-elect absent on organisation day, which is why his ballots start a few roll calls in. Employee number sits between 376408 Winter and 376410 Woodill -- Woekel fits exactly."
+      ]
+    },
+
+    "376414": {
+      "name": "Dionne, David M.",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "44",
+
+      "was": "Member #376414 -- no name, party, county or district on file",
+
+      "terms": "2001-2002, sworn 24 October 2001",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 75/75 across 2001-2002, 0 disagreements, 0 absent, 0 extra (5 in 2001, 70 in 2002). Runner-up: Palangas, Eric -- 62.",
+
+        "The Secretary of State's swearing-in notice in the Journal states it outright: 'Hillsborough 44, David M. Dionne, r, Manchester (317 Charlotte Street) 03103', dated 24 October 2001 -- which is exactly why the number has five ballots in 2001 and a full 2002. The saved 2002 page independently gives Hillsborough 44 and its Yea on roll call 2 matches the site's ballot. He is a different person from Kimberley O. Dionne (Hillsborough 3). THE CONFLICT: the swearing-in notice prints the party letter 'r', while the General Court's own saved roll-call page says Democrat and his voting is Democratic (13 with the Republican majority, 41 with the Democratic, on 54 divided roll calls in 2002; 0 and 5 in 2001). Two sources against one, so I give Democrat, but the notice should be looked at before the party is published. In 2001 the ballot evidence alone (5 roll calls) is a three-way tie; 2002 settles it at 70/70 against 62 for the next name.",
+
+        "Confidence is stated as: certain as to the name, county and district; the party carries a documented conflict"
+      ]
+    },
+
+    "376417": {
+      "name": "Boynton, James R.",
+
+      "party": "Republican",
+
+      "county": "Rockingham",
+
+      "district": "4",
+
+      "was": "Member #376417 -- no name, party, county or district on file",
+
+      "terms": "2001-2002, sworn during 2002",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 72/72 in 2002, 0 disagreements, 0 absent, 0 extra. Runner-up: Reeves, Sandra -- 62.",
+
+        "The Secretary of State's swearing-in notice in journals/2002/HJ006.txt states it outright: 'Rockingham 4, James R. Boynton, r, Epping (86 Meadowbrook Drive) 03042' -- which matches a number whose 76 ballots begin part-way through 2002. Party 'r' agrees with the caucus test (47 with R / 8 with D). Not on any saved roll-call page. His number sits in the unordered late-addition tail, so the alphabetical check does not apply."
+      ]
+    },
+
+    "376445": {
+      "name": "Cernota, Albert",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "65",
+
+      "was": "Member #376445 -- no name, party, county or district on file",
+
+      "terms": "2003-2004 (one term; ballots in 2003 and 2004 only)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 191/192 over 2003-2004. Runner-up: Dorsett, Andrew 153/192 (0.797).",
+
+        "Employee number bracketed exactly: 376444 Cataldo, 376446 Crane, and Cataldo < Cernota < Crane in the 2003 alphabetical intake. HJ001 of 2003 prints 'Dist. No. 65 (6) (Nashua Wards 7, 8) Albert C. Cernota, r; Peter R. Cote, d; ...' — six names for six seats. A journal sponsor line reads 'Cernota, Hills 65'. Votes with the Republican caucus on 69 of 70 party-line roll calls. Name appears in journals and calendars in 2003-2004 and in no other year, matching the ballots exactly."
+      ]
+    },
+
+    "376462": {
+      "name": "Foley, Albert",
+
+      "party": "Republican",
+
+      "county": "Merrimack",
+
+      "district": "35",
+
+      "was": "Member #376462 -- no name, party, county or district on file",
+
+      "terms": "2003-2004 (one term)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 190/192 over 2003-2004. Runner-up: Slocum, Lee 151/192 (0.786).",
+
+        "Bracketed exactly: 376461 Fitzgerald, 376463 Gillick, and Fitzgerald < Foley < Gillick. HJ001 of 2003 prints 'Dist. No. 35 (6) (Andover, Boscawen, Canterbury, Loudon, Northfield, Salisbury) Claire D. Clarke, d; Christopher H. Dunne, r; Al Foley, r; ...' — six names for six seats, and past_members.json independently files Dunne at Merr. 35. Votes with the Republican caucus on 81 of 89 party-line roll calls. Name appears only in 2003-2004. FLAG FOR A HUMAN: the roster prints him as 'Al Foley', the roll calls as 'Foley, Albert', and both the roster letter and the voting say Republican for this term. If anyone remembers an Al Foley who sat as a Democrat, that is a later party change on this evidence rather than a different person — but it is the one entry likely to surprise a reader who knows the man, so give it a glance before it is published."
+      ]
+    },
+
+    "376544": {
+      "name": "Converse, Larry",
+
+      "party": "Democrat",
+
+      "county": "Sullivan",
+
+      "district": "4",
+
+      "was": "Member #376544 -- no name, party, county or district on file",
+
+      "terms": "2005-2006, 2007-2008 and 2015-2016 (three terms, with a six-year gap)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 543/553 over 2005-2008. Runner-up: Nord, Susi 254/278 (0.914).",
+
+        "The ten misses are the Sullivan tail of the column tangle, not evidence against: scored the same way, his Sullivan 4 colleagues do worse against their OWN ids — Cloutier 0.976, Donovan 0.972, Ferland 0.944, Rodeschin 0.889, Jillette 0.879, Phinizy 0.848 — and Converse-at-376544 at 0.982 is the best in the county. The name is never present in a roll call where the id did not vote, across all 553. HJ001 of 2005 gives Sullivan 'Dist. No. 4 (5) John R. Cloutier, d&r; Larry Converse, d&r; Thomas E. Donovan, d&r; elected, not sworn; Christopher R. Irish, r'; HJ001 of 2007 repeats Sullivan 4 with party 'd'. Journal sponsor lines read 'Converse, Sull 4' in 2005, 2007 and 2015-16. HJ009 of 2006 prints him directly under the SULLIVAN heading with Ferland, Osgood, Phinizy and Rodeschin. Democrat on 271 of 288 party-line roll calls. The decisive one is the tenure signature: the name occurs in journals and calendars in 2005, 2006, 2007, 2008, 2015 and 2016 and in no year between — the same six years, and the same gap, as the ballots. His number sits in the small chronological block 376541-376544 of members processed just before the 2005 alphabetical intake, so no alphabetical constraint applies to him."
+      ]
+    },
+
+    "376549": {
+      "name": "Baines, Stephen",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "7",
+
+      "was": "Member #376549 -- no name, party, county or district on file",
+
+      "terms": "2005 only — sworn for the 2005-2006 term, resigned 17 May 2005",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 86/86 over 2005. Runner-up: Alger, John 51/86 (0.593).",
+
+        "His own resignation letter settles name, seat and date at once. HJ015 of 25 May 2005 reads it in: dated 17 May 2005, 'I must resign my position as representative for Hillsborough County District 7 effective immediately', signed 'Stephen Baines, Hills 7'. The id's last roll call is number 117 on 11 May 2005; the next roll call of the year, 119 on 25 May, he has no row for. Bracketed exactly in the 2005 alphabetical intake: 376548 Asselin, 376550 Beaulieu, and Asselin < Baines < Beaulieu. HJ001 of 2005 puts 'Stephen A. Baines, r' first in the eight-seat Hillsborough 7 group. A journal sponsor line reads 'Baines, Hills 7'. Republican on 10 of 11 party-line roll calls — thin, but the roster letter agrees."
+      ]
+    },
+
+    "376621": {
+      "name": "Rolston, James",
+
+      "party": "Republican",
+
+      "county": "Rockingham",
+
+      "district": "17 — but see the caveat",
+
+      "was": "Member #376621 -- no name, party, county or district on file",
+
+      "terms": "2005-2006 (one term)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 275/275 over 2005-2006. Runner-up: Buxton, Donald 203/275 (0.738).",
+
+        "Bracketed exactly: 376620 Rochette, 376622 Rosenwald, and Rochette < Rolston < Rosenwald. County confirmed independently 264/264 by the county-neighbourhood read of the roll-call lists. Republican on 94 of 107 party-line roll calls, matching the roster's 'r'. Name appears in 2005-2006 and no other year. THE DISTRICT RESTS ON ONE SOURCE: HJ001 of both 2005 and 2006 shows 'James G. Rolston, r' alone between the seven-member Portsmouth group and the two-member Hughes/Langley group, and in 2005 the label column reconciles seat for seat across all of Rockingham (Rock 16 = 7 Portsmouth names, Rock 17 = 1, Rock 18 = 2, the county summing to its printed 90). No document on disk writes 'Rolston, Rock 17' in words and no town is named for him. If only one field can be left blank, leave this district blank.",
+
+        "Confidence is stated as: certain for the name, the county and the party; the district is high, not certain"
+      ]
+    },
+
+    "376653": {
+      "name": "Coates, Christopher",
+
+      "party": "Democrat",
+
+      "county": "Cheshire",
+
+      "district": "3",
+
+      "was": "Member #376653 -- no name, party, county or district on file",
+
+      "terms": "November 2005 to 2006 — sworn 16 November 2005, served the rest of the 2005-2006 term",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 164/166 over 2005-2006. Runner-up: Daniuk, Caitlin 104/166 (0.627).",
+
+        "The journal of 16 November 2005 carries the Secretary of State's notice: 'the following representative-elect was sworn into office by the Governor and Council on this day: Cheshire County District No. 3, Christopher C. Coates, d, Keene (30 Gilsum Street) 03431'. The id has exactly two rows in all of 2005 — roll calls 152 and 153, both on 16 November 2005 — and the previous roll call of the year was 29 June. His number sits in the 2005-2006 mid-term replacement block 376643-376655, which runs in order of swearing-in. Democrat on 49 of 55 party-line roll calls."
+      ]
+    },
+
+    "376658": {
+      "name": "Robinson, John",
+
+      "party": "Democrat",
+
+      "county": "Rockingham",
+
+      "district": "3",
+
+      "was": "Member #376658 -- no name, party, county or district on file",
+
+      "terms": "February 2006 to 2006 — sworn 15 February 2006, served the rest of the 2005-2006 term",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 134/134 over 2006. Runner-up: Shattuck, Gilman 111/134 (0.828).",
+
+        "HJ004 of 15 February 2006 carries the notice: 'Rockingham County District 3, John E. Robinson, d, Londonderry (13 Elmwood Rd.) 03053'. The id's first row is roll call 57, dated 15 February 2006; the previous roll call, 55 on 2 February, he has no row for. HJ001 of 2006 lists him beside Packard and Parker, whom the 2005 roster places in the nine-seat Rockingham 3 group. County confirmed 126/131 by the roll-call neighbourhood read. Democrat on 38 of 46 party-line roll calls. Distinguished from 369793 Robinson, Ellen-Ann of Hills 12, who is already named."
+      ]
+    },
+
+    "376694": {
+      "name": "Smith, Sandra",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "9",
+
+      "was": "Member #376694 -- no name, party, county or district on file",
+
+      "terms": "2007-2008 (one term)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 278/278 over 2007-2008. Runner-up: Preston, Mark and Katsiantonis, George, both 204/278 (0.734).",
+
+        "HJ001 of 2007 gives the three-seat Hillsborough 9 group as 'Catherine Hackett, d; Sandra Smith, d; Saghir A. Tahir, r', and 376694 sits immediately after 376693 Hackett in the 2007 intake, which runs county then district. Democrat on 60 of 65 party-line roll calls. Worth stating plainly: she was absent a great deal — only 88 of the 278 agreements are direction agreements, the other 190 are roll calls where she did not vote and the name is correctly absent. But the name is never present when the id did not vote, across all 278, and the nearest rival is 74 behind. No existing name source holds a Sandra Smith among its twenty-odd other Smiths."
+      ]
+    },
+
+    "376698": {
+      "name": "Sysyn, Mary",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "11",
+
+      "was": "Member #376698 -- no name, party, county or district on file",
+
+      "terms": "2007-2008 (one term)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 278/278 over 2007-2008. Runner-up: Greco, Vincent 201/278 (0.723).",
+
+        "HJ001 of 2007 gives Hillsborough 11 as 'Nickolas J. Levasseur, d; Anthony F. Simon, d; Mary A. Sysyn, d', and 376698 sits immediately after 376697 Levasseur in the county-then-district intake. County confirmed 121/123. Democrat on 123 of 129 party-line roll calls. Name appears in journals and calendars in 2007-2008 and nowhere else."
+      ]
+    },
+
+    "376699": {
+      "name": "Hebert, Roger",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "12",
+
+      "was": "Member #376699 -- no name, party, county or district on file",
+
+      "terms": "2007-2008 and 2009-2010 (two terms)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 568/569 over 2007-2010. Runner-up: Daler, Jennifer 307/403 (0.762).",
+
+        "HJ001 of 2007 gives Hillsborough 12 as 'Roger G. Hebert, d; elected, not sworn in; Hector M. Velez, d', and the unsworn seat is Francis Sullivan, whom the communication of 4 January 2007 in HJ004 names as sworn for 'Hillsborough County District No. 12'. 376699 sits between 376697 Levasseur (Hills 11) and 376700 Stephen Johnson (Hills 13). County confirmed 131/131. Democrat on 164 of 166 party-line roll calls. Distinguished from the other Hebert in the House, 376586 Hebert, Raymond of Hills 17, already named, whom the journals print as 'Hebert, Raymond'. Tenure 2007-2010 matches the ballots exactly."
+      ]
+    },
+
+    "376716": {
+      "name": "Hogan, Edith",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "25 for 2007-2012; Hillsborough 34 after the 2012 redistricting",
+
+      "was": "Member #376716 -- no name, party, county or district on file",
+
+      "terms": "2007-2008, 2009-2010, 2011-2012 and 2015-2016 (four terms, with a gap in 2013-2014)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 1090/1091 over 2007-2012. Runner-up: Villeneuve, Moe and Bates, David, both 733/813 (0.902).",
+
+        "HJ001 of 2007 gives Hillsborough 25 as 'Peter R. Cote, d; Edith Hogan, r; Claudette R. Jean, d'; 376716 sits between 376715 Fontas (Hills 24) and 376717 Edwards (Hills 26) in the county-then-district intake. Journal sponsor lines read 'Hogan, Hills 25' in 2009-10 and 2011-12 and 'Hogan, Hills 34' in 2015-16, the redistricting. County confirmed 148/148. Republican on 172 of 176 party-line roll calls. Tenure signature: the name occurs in 2007-2012 and 2015-2016 and in neither 2013 nor 2014 — the same four terms and the same gap as the ballots."
+      ]
+    },
+
+    "376719": {
+      "name": "Lisle, Carolyn",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "26",
+
+      "was": "Member #376719 -- no name, party, county or district on file",
+
+      "terms": "2007-2008 and 2009-2010 (two terms)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 567/569 over 2007-2010. Runner-up: Rice, Chip 233/291 (0.801).",
+
+        "HJ001 of 2007 gives the ten-seat Hillsborough 26 group as 'Andrew J. Edwards, d; Bea Francoeur, r; John Kelley, d; Angeline A. Kopka, d; Bette R. Lasky, d; Carolyn M. Lisle, d; Michael B. O'Brien, d; Pamela G. Price, r; Joan H. Schulze, d; Kimberly C. Shaw, d', and 376717-376720 (Edwards, Kelley, [376719], O'Brien) is that district's run in the county-then-district intake. County confirmed 114/114. Democrat on 106 of 106 party-line roll calls. Distinguished from 408548 Lisle, David of Hills 35, already named. Tenure 2007-2010 matches."
+      ]
+    },
+
+    "376728": {
+      "name": "Wheeler, Deborah",
+
+      "party": "Democrat",
+
+      "county": "Merrimack",
+
+      "district": "6 for 2007-2010; Merrimack 3 after the 2012 redistricting",
+
+      "was": "Member #376728 -- no name, party, county or district on file",
+
+      "terms": "2007-2008, 2009-2010 and 2015-2016 (three terms, with a four-year gap)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 566/569 over 2007-2010. Runner-up: Schuett, Dianne 240/291 (0.825).",
+
+        "HJ001 of 2007 gives the six-seat Merrimack 6 group as 'Maureen Baxley, d; Claire D. Clarke, d; Priscilla P. Lockwood, r; Joy K. Tilton, d; Frank A. Tupper, d&r; Deborah H. Wheeler, d', and 376728 sits immediately after 376727 Baxley in the county-then-district intake. Journal sponsor lines read 'Wheeler, Merr 6' in 2007-08 and 2009-10 and 'Wheeler, Merr 3' in 2015-16. County confirmed 129/138. Democrat on 146 of 153 party-line roll calls. Distinguished from the other Wheelers the journals print, James (Hills 6) and Robert (Hills 7), both already named. Tenure signature matches the ballots including the 2011-2014 gap."
+      ]
+    },
+
+    "376750": {
+      "name": "Devine, James",
+
+      "party": "Republican",
+
+      "county": "Rockingham",
+
+      "district": "7 for 2007-2012; Rockingham 4 after the 2012 redistricting",
+
+      "was": "Member #376750 -- no name, party, county or district on file",
+
+      "terms": "2007-2008 through 2015-2016 — five consecutive terms, 2007 to 2016",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 1090/1091 over 2007-2012. Runner-up: Pellegrino, Tony and Bates, David, both 649/813 (0.798).",
+
+        "HJ001 of 2007 gives the four-seat Rockingham 7 group as 'Gene P. Charron, r&d; James E. Devine, r; Charlotte Lister, d&r; Elisabeth N. Sanders, r', and 376750 sits between 376749 Wickson (Rock 5) and 376751 Lister (Rock 7) in the county-then-district intake. Journal sponsor lines read 'Devine, Rock 7' in 2009-10 and 2011-12 and 'Devine, Rock 4' in 2013-14 and 2015-16. County confirmed 143/144. Republican on 145 of 166 party-line roll calls. Name occurs in journals and calendars in all ten years 2007-2016, matching the ballots. Distinguished from 409087 Devine, Shelley of Hills 5, already named, who served much later."
+      ]
+    },
+
+    "376757": {
+      "name": "O'Keefe, Peter",
+
+      "party": "Democrat",
+
+      "county": "Rockingham",
+
+      "district": "14",
+
+      "was": "Member #376757 -- no name, party, county or district on file",
+
+      "terms": "2007 only — sworn for the 2007-2008 term, resigned 2 May 2007",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 99/99 over 2007. Runner-up: Johnson, Stephen 89/99 (0.899).",
+
+        "His own resignation letter, in HJ015 of 2 May 2007, signed 'Rep. Peter O'Keefe, Rockingham County District 14, 12 Ocean Blvd, Seabrook, NH 03874'. The id's last row is roll call 120, dated 2 May 2007; the next roll call, 122 on 16 May, he has no row for — and of the seventeen unnamed ids voting in 2007 he is the ONLY one whose record ends that day, every other running to 5 September. Since 'O'Keefe, Peter' is in no existing name source, the name must belong to an unnamed id, and only this one fits. HJ001 of 2007 gives the four-seat Rockingham 14 group as 'Benjamin E. Moore, r; Peter O'Keefe, d; Mark F. Preston, d; E. Albert Weare, r', and 376757 sits immediately before 376758 Preston, also Rockingham 14. Democrat on all 10 party-line roll calls he was present for. Be aware the direction evidence is thin — he was absent for most of his short service, so only 13 of the 99 agreements are direction agreements and the other 86 are correct absences; the dated letter and the number's position are what carry this one, and his runner-up at 0.899 is the closest in the slice. Note also that past_members.json already holds 375902 O'Keefe, Patricia at Rock. 14, who sat 1997-2002: a different person with a different id, not a conflict."
+      ]
+    },
+
+    "376772": {
+      "name": "Oppenheimer, Kay",
+
+      "party": "Democrat",
+
+      "county": "Strafford",
+
+      "district": "3",
+
+      "was": "Member #376772 -- no name, party, county or district on file",
+
+      "terms": "2007-2008 (one term)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 278/278 over 2007-2008. Runner-up: Oliver, James 129/150 (0.860) — the nominal runner-up at 130/150 is a parse artefact, a bill title read as a name.",
+
+        "The Assistant Secretary of State's communication of 4 January 2007, in HJ004, names her outright: 'Strafford County District No. 3, Kay Oppenheimer, d, Strafford (88 Province Road) 03884'. HJ001 of 2007 puts her in the eight-seat Strafford 3 group, which reconciles seat for seat against the county's printed total of 37. 376772 sits between 376771 Cyr and 376773 Perry, both Strafford 3, in the county-then-district intake. County confirmed by the roll-call neighbourhood read. Democrat on 31 of 36 party-line roll calls. Like Sandra Smith she was often absent — 51 direction agreements and 227 correct absences — but the name is never present when the id did not vote, and the nearest real name is 148 behind."
+      ]
+    },
+
+    "376774": {
+      "name": "Srnec, Robert",
+
+      "party": "Democrat",
+
+      "county": "Strafford",
+
+      "district": "3",
+
+      "was": "Member #376774 -- no name, party, county or district on file",
+
+      "terms": "2007-2008 (one term)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 277/278 over 2007-2008. Runner-up: Johnson, Stephen 191/278 (0.687).",
+
+        "HJ001 of 2007 gives the eight-seat Strafford 3 group as 'Lawrence D. Brown, d; Rachel Burke, d; James E. Cyr, d; Marlene M. DeChane, d; Kay Oppenheimer, d; Robert J. Perry, d; Robert S. Srnec, d; Dennis P. Vachon, d', reconciling seat for seat across Strafford's printed 37. 376774 sits between 376773 Perry (Straf 3) and 376775 Browne (Straf 4) in the county-then-district intake. County confirmed 64/66. Democrat on 58 of 61 party-line roll calls. HJ001 also records 'Pat Srnec, wife of Rep-elect Srnec' among the guests on organisation day. Name appears in 2007-2008 and nowhere else."
+      ]
+    },
+
+    "376787": {
+      "name": "Scannell, David",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "9",
+
+      "was": "Member #376787 -- no name, party, county or district on file",
+
+      "terms": "June 2007 to 2008 — sworn 6 June 2007, served the rest of the 2007-2008 term",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 162/163 over 2007-2008. Runner-up: Foose, Robert 127/163 (0.779).",
+
+        "HJ018 of 6 June 2007 carries the Secretary of State's notice: 'the following representative-elect was sworn into office by the Governor and Executive Council on this day: Hillsborough County District No. 9, David Scannell, d, Manchester (838 Maple St.) 03104'. The id's first row is roll call 140, dated 6 June 2007; the previous roll call, 138 on 31 May, he has no row for — and of the seventeen unnamed ids voting in 2007 he is the only one starting that day. 376787 sits in the late batch 376783-376790, the numbers issued to members sworn after organisation day, which is why it falls outside the county ordering. County confirmed 112/114. Democrat on 84 of 94 party-line roll calls."
+      ]
+    },
+
+    "376795": {
+      "name": "Beauchamp, Roger",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "17",
+
+      "was": "Member #376795 -- no name, party, county or district on file",
+
+      "terms": "2009-2010 (only term found in any roll call history on disk, 1999-2026)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 294/295. Runner-up: Shurtleff, Stephen 217/295.",
+
+        "Alphabetical gap exact: 376794 Bates, David | 376795 | 376796 Boisvert, Ronald. Roll-call detail page 2009-H-177 and 2010-H-162: Democrat, Hillsborough 17, page vote equals recorded ballot both years. Organization Day 3 Dec 2008 roster: 'Roger R. Beauchamp, d' in the Hillsborough section, in the 8-member block that aligns to Dist. No. 17 (8). Modal county from journal roll call headings: Hillsborough 136:18 (2009), 111:3 (2010)."
+      ]
+    },
+
+    "376798": {
+      "name": "Carlson, Nancy",
+
+      "party": "Democrat",
+
+      "county": "Cheshire",
+
+      "district": "6",
+
+      "was": "Member #376798 -- no name, party, county or district on file",
+
+      "terms": "2009-2010",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 292/295. Runner-up: Lewis, Robert 203/295.",
+
+        "Alphabetical gap exact: 376797 Bolster, Peter | 376798 | 376799 Caron, June. Roll-call detail page 2009 and 2010: Democrat, Cheshire 06, votes match. Organization Day 3 Dec 2008: 'Nancy L. Carlson, d' in the 4-member Cheshire block aligning to Dist. No. 6 (4); the county's seven blocks sum to its stated 24 seats. Modal county Cheshire 68:15."
+      ]
+    },
+
+    "376803": {
+      "name": "Chininis, Alexis",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "10",
+
+      "was": "Member #376803 -- no name, party, county or district on file",
+
+      "terms": "2009-2010",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 293/295. Runner-up: Shurtleff, Stephen 244/295.",
+
+        "Alphabetical gap exact: 376802 Chandley, Shannon | 376803 | 376804 Coffey, Jennifer. Roll-call detail page 2009 and 2010: Democrat, Hillsborough 10, votes match. Organization Day 3 Dec 2008: 'Alexis Chininis, d' with Jeudy and Long in the 3-member block aligning to Dist. No. 10 (3). Journal alphabetical list files her as 'Chininis, Alexis C.'. Modal county Hillsborough 114:18."
+      ]
+    },
+
+    "376834": {
+      "name": "Lewis, Robert",
+
+      "party": "Democrat",
+
+      "county": "Strafford",
+
+      "district": "6",
+
+      "was": "Member #376834 -- no name, party, county or district on file",
+
+      "terms": "2009-2010",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 294/295. Runner-up: Carlson, Nancy 205/295.",
+
+        "Alphabetical gap exact: 376833 Lauterborn, Elaine | 376834 | 376835 Lindsey, Steven. Roll-call detail page 2009 and 2010: Democrat, Strafford 06, votes match. Organization Day 3 Dec 2008: 'Robert D. Lewis, d' with Hofemann and Ryder, the 3-member block aligning to Dist. No. 6 (3); Strafford's seven blocks sum to its stated 37 seats. Modal county Strafford 101:6."
+      ]
+    },
+
+    "376837": {
+      "name": "Maiola, Anthony",
+
+      "party": "Republican",
+
+      "county": "Sullivan",
+
+      "district": "2",
+
+      "was": "Member #376837 -- no name, party, county or district on file",
+
+      "terms": "2009 only — part of the 2009-2010 term; rows for roll calls 2-181 of 2009, none in 2010",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 161/163. Runner-up: Tholl, John 134/163 (Boutin, David also 134/163).",
+
+        "Alphabetical gap exact: 376836 Lyons, Melissa | 376837 | 376838 McCarthy, Barbara. Roll-call detail page 2009-H-177: Republican, Sullivan 02, and the page's 'Excused' equals his recorded Not Voting/Excused. Organization Day 3 Dec 2008: 'Tony Maiola, r' with Howard and Rodeschin, the 3-member block aligning to Dist. No. 2 (3); Sullivan's five blocks sum to its stated 13 seats. His seat was then filled: journals/2010/HJ002.txt, 13 January 2010, 'Sullivan County District No. 2, Steve Cunningham, r, Croydon' sworn in. The journal's own alphabetical list files him 'Maiola, Anthony C.'. Only 29 of his 163 rows are a Yea or a Nay, which is why his score is out of 163 and not 295."
+      ]
+    },
+
+    "376859": {
+      "name": "Ryder, Mark",
+
+      "party": "Democrat",
+
+      "county": "Strafford",
+
+      "district": "6",
+
+      "was": "Member #376859 -- no name, party, county or district on file",
+
+      "terms": "2009-2010",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 293/295. Runner-up: Shurtleff, Stephen 247/295.",
+
+        "This is the one the first pass missed: the resolver had quietly credited every 'Ryder, Mark' in the journals to the known 'Ryder, Donald', leaving 376859 with no candidate above 0.84. Alphabetical gap exact: 376858 Russell, Joseph | 376859 | 376860 Scala, Dino. Roll-call detail page 2009 and 2010: Democrat, Strafford 06, votes match. Organization Day 3 Dec 2008: 'Mark Richard Ryder, d' with Hofemann and Lewis in the block aligning to Dist. No. 6. Journal alphabetical list: 'Ryder, Mark R.'. Modal county Strafford 145:7."
+      ]
+    },
+
+    "376865": {
+      "name": "Silva, Peter",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "26 in 2009-2010 and 2011-2012; unknown for 2015-2016 (that term is under a different districting plan and no source on disk gives it)",
+
+      "was": "Member #376865 -- no name, party, county or district on file",
+
+      "terms": "2009-2010, 2011-2012, 2015-2016",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 294/295 (2009-2010), 524/524 (2011-2012), 333/333 (2015-2016). Runner-up: Hogan, Edith 225/295 in 2009-2010; Hogan, Edith 470/524 in 2011-2012.",
+
+        "Alphabetical gap exact: 376864 Seidel, Carl | 376865 | 376866 Smith, Suzanne. Absent from every saved roll-call detail page, so party comes from the journals: Organization Day 3 Dec 2008 'Peter Silva, r' and 1 Dec 2010 'Peter L. Silva, r', both in the Hillsborough section, and the 2009 committee lists file 'Silva, Peter L.' under REPUBLICANS. District from the roster block alignment: he sits in block 26 of Hillsborough in the 2008 roster (10 names against Dist. No. 26 (10)) and in block 26 again in the 2010 roster (10 names), two documents two years apart, under the same districting plan, with different colleagues. Modal county Hillsborough in all four years (242:3 in 2011, 261:3 in 2012). Winning again at 333/333 in the untouched 2015-2016 term.",
+
+        "Confidence is stated as: certain (name, party, county); high (district)"
+      ]
+    },
+
+    "376876": {
+      "name": "Thompson, Robert",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "9",
+
+      "was": "Member #376876 -- no name, party, county or district on file",
+
+      "terms": "2009-2010",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 294/295. Runner-up: Shurtleff, Stephen 256/295.",
+
+        "Alphabetical gap exact: 376875 Swinford, Elaine | 376876 | 376877 Townsend, Charles. Roll-call detail page 2009 and 2010: Democrat, Hillsborough 09, votes match. Organization Day 3 Dec 2008: 'Robert B. Thompson, d' with Craig in the block aligning to Dist. No. 9 (3). Not the same person as the already-named 376403 'Thompson, Rob (Merr. 12)' — different county, different employee number, both voting. Modal county Hillsborough 160:2."
+      ]
+    },
+
+    "376923": {
+      "name": "Coughlin, Sean",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "6",
+
+      "was": "Member #376923 -- no name, party, county or district on file",
+
+      "terms": "2011-2012",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 524/524. Runner-up: Janvrin, Kevin 285/524.",
+
+        "Alphabetical gap exact: 376922 Copeland, Timothy | 376923 | 376924 Coulombe, Gary. Roll-call detail page 2011-H-228 and 2012-H-289: Republican, Hillsborough 06, votes match. Organization Day 1 Dec 2010: 'Sean E. Coughlin, r' in the Hillsborough 8-member block that is block 6 of the county, anchored to the 2008 roster's Dist. No. 6 by Belvin, Palmer, Rowe and Willette appearing in both. Modal county Hillsborough 95:12 and 127:29."
+      ]
+    },
+
+    "376934": {
+      "name": "Dwinell, Richard",
+
+      "party": "Republican",
+
+      "county": "Cheshire",
+
+      "district": "5",
+
+      "was": "Member #376934 -- no name, party, county or district on file",
+
+      "terms": "2011-2012",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 518/524. Runner-up: Silva, Peter 368/524.",
+
+        "Alphabetical gap exact and ordered: 376933 Duarte, Joe | 376934 | 376935 | 376936 Flanagan, Jack, with Dwinell before Erickson. Roll-call detail page 2011 and 2012: Republican, Cheshire 05, votes match. Organization Day 1 Dec 2010: 'Richard J. Dwinell, r', sole member of the Cheshire block that is block 5 of the county — matching Dist. No. 5 (1) in the 2008 roster, also a single-member seat. Modal county Cheshire 168:27 and 215:34."
+      ]
+    },
+
+    "376935": {
+      "name": "Erickson, Duane",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "25",
+
+      "was": "Member #376935 -- no name, party, county or district on file",
+
+      "terms": "2011-2012",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 524/524. Runner-up: Hogan, Edith 361/524.",
+
+        "Alphabetical gap exact and ordered: 376934 Dwinell | 376935 | 376936 Flanagan, Jack. Organization Day 1 Dec 2010: 'Duane H. Erickson, r' with Edith Hogan and Twombly. That block is block 25 of Hillsborough, and Edith Hogan sits in block 25 of the 2008 roster too (Dist. No. 25 (3)), which fixes it. The roll-call detail page says Hillsborough 34 — a district that did not exist under the plan in force in 2011, whose Hillsborough seats ran 1 to 27; the page is carrying a later-recorded seat and is not used. Modal county Hillsborough 167:21 and 185:25.",
+
+        "Confidence is stated as: certain (name, party, county); high (district — the page is wrong here and was overruled)"
+      ]
+    },
+
+    "376946": {
+      "name": "Harty, Martin",
+
+      "party": "Republican",
+
+      "county": "Strafford",
+
+      "district": "3",
+
+      "was": "Member #376946 -- no name, party, county or district on file",
+
+      "terms": "2011 only — part of the 2011-2012 term; rows for roll calls 3-54 of 2011 and none after",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 48/48. Runner-up: Larsen, Kirsten 30/48.",
+
+        "Alphabetical gap exact: 376945 Hardwick, Harry | 376946 | 376947 Hawkes, Samuel. Absent from the saved roll-call detail pages. Organization Day 1 Dec 2010: 'Martin C. Harty, r' in the Strafford section, in the 8-member block that is block 3 of the county, anchored to the 2008 roster's Dist. No. 3 (8) by Carol Vita appearing in both. And the departure is printed: journals/2011/HJ010.txt carries his letter, 'I hereby submit my resignation from the House of Representatives effective March 14, 2011', signed 'Representative Martin Harty' — which is exactly where the 48 ballots stop. Modal county Strafford 28:7."
+      ]
+    },
+
+    "376986": {
+      "name": "Moore, Charles",
+
+      "party": "Republican",
+
+      "county": "Cheshire",
+
+      "district": "7",
+
+      "was": "Member #376986 -- no name, party, county or district on file",
+
+      "terms": "2011-2012",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 520/524. Runner-up: Hogan, Edith 336/524.",
+
+        "Alphabetical gap exact, and by forename: 376985 Mecheski, Holly | 376986 | 376987 Moore, Robert — Charles before Robert. Roll-call detail page 2011 and 2012: Republican, Cheshire 07, votes match, and it lists Moore, Robert separately at Cheshire 01, so the two are not conflated. Organization Day 1 Dec 2010: 'Charles E. Moore, r' with Emerson, Hunt and Sterling — the same three sit in Dist. No. 7 of the 2008 roster. Modal county Cheshire 180:33 and 108:42."
+      ]
+    },
+
+    "377020": {
+      "name": "Schroadter, Adam",
+
+      "party": "Republican",
+
+      "county": "Rockingham",
+
+      "district": "12 in 2011-2012; 17 in 2013-2014 and 2015-2016 (the 2012 redistricting renumbered the seat)",
+
+      "was": "Member #377020 -- no name, party, county or district on file",
+
+      "terms": "2011-2012, 2013-2014, 2015-2016",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 524/524 (2011-2012), 446/451 (2013-2014), 332/333 (2015-2016). Runner-up: Erickson, Duane 302/524 in 2011-2012; Wright, Donald 312/451 in 2013-2014.",
+
+        "Alphabetical gap exact: 377019 Schmidt, Stephen | 377020 | 377022 Scontsas, Lisa. Absent from every saved roll-call detail page, so: Organization Day 1 Dec 2010 'Adam R. Schroadter, r' with Davenport and Moody, block 12 of Rockingham — and the county's 18 blocks are anchored at the far end by Cali-Pitts' 7-member block, Tucker alone, and a 2-member block, matching Dist. No. 16 (7), 17 (1) and 18 (2) of the 2008 roster. Independently, the 2011 House calendar LSR sponsor index prints 'Schroadter, Adam  Rockingham 12' twice (calendars/2011/HC066.txt). For 2013-2014: Organization Day 5 Dec 2012 (journals/2013/HJ006.txt) puts him with Cahill and Moody in the 3-member block matching Dist. No. 17 (3) — the Rockingham blocks there reproduce the seat counts one for one from district 1 — and bill text (text_sponsors.json) prints 'Schroadter, Rockingham 17' for 2013-2014 and again for 2015-2016. Party letter 'r' in the 2010 roster and again in the 5 Dec 2012 roster; the 2013 committee lists file 'Schroadter, Adam R.' in the Republican column."
+      ]
+    },
+
+    "377028": {
+      "name": "Simmons, Tammy",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "17 in 2011-2012; 17 again in 2015-2016 under the new plan",
+
+      "was": "Member #377028 -- no name, party, county or district on file",
+
+      "terms": "2011-2012, 2015-2016",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 523/524 (2011-2012), 333/333 (2015-2016). Runner-up: Seaworth, G. 425/524.",
+
+        "Alphabetical gap exact: 377027 Simard, Paul | 377028 | 377029 Simpson, Tyler. Absent from every saved roll-call detail page. Organization Day 1 Dec 2010: 'Tammy Simmons, r' in an 8-member Hillsborough block with Beattie, Bergevin, Gonzalez, Greazzo, Messier, Soucy and Swank; that is block 17, anchored to the 2008 roster's Dist. No. 17 (8) by Messier and Connie Soucy appearing in both, and the page independently gives Hillsborough 17 for Beattie, Greazzo, Soucy and Swank in the same block. Bill text gives 'Simmons, Hillsborough 17' for 2015-2016. Modal county Hillsborough 220:1 and 262:3. Winning again at 333/333 in 2015-2016."
+      ]
+    },
+
+    "377036": {
+      "name": "Swank, Matthew",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "17",
+
+      "was": "Member #377036 -- no name, party, county or district on file",
+
+      "terms": "2011-2012",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 524/524. Runner-up: Hogan, Edith 354/524.",
+
+        "Alphabetical gap exact: 377035 Summers, James | 377036 | 377037 Tamburello, Daniel. Roll-call detail page 2011 and 2012: Republican, Hillsborough 17, votes match. Organization Day 1 Dec 2010: 'Matthew J. Swank, r' in the same 8-member block as Simmons, which the roster alignment puts at district 17. Modal county Hillsborough 214:1 and 196:4."
+      ]
+    },
+
+    "377048": {
+      "name": "Ward, Joanne",
+
+      "party": "Republican",
+
+      "county": "Rockingham",
+
+      "district": "13 in 2011-2012; 19 in 2015-2016 (bill text, 'J. Ward, Rockingham 19' — good but single-sourced)",
+
+      "was": "Member #377048 -- no name, party, county or district on file",
+
+      "terms": "2011-2012, 2015-2016",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 524/524 (2011-2012), 332/333 (2015-2016). Runner-up: Silva, Peter 427/524.",
+
+        "Alphabetical gap exact: 377047 Waddell, James | 377048 | 377049 Warden, Mark. Absent from every saved roll-call detail page. Organization Day 1 Dec 2010: 'Joanne A. Ward, r' in an 8-member Rockingham block with Abrami, Copeland, Lovejoy, Peckham, the two Quandts and Schlachman — block 13 of the county, the count anchored at the far end by Cali-Pitts (7), Tucker (1) and a 2-member block matching Dist. No. 16, 17 and 18 of the 2008 roster. The 2011 House calendar LSR sponsor index independently prints 'Ward, Joanne  Rockingham 13' (calendars/2011/HC002.txt). Distinct from the six other Wards in past_members.json, all different forenames. Modal county Rockingham 241:3 and 271:2. Winning again at 332/333 in 2015-2016.",
+
+        "Confidence is stated as: certain (name, party, county); high (district)"
+      ]
+    },
+
+    "377056": {
+      "name": "Janvrin, Kevin",
+
+      "party": "Republican",
+
+      "county": "Rockingham",
+
+      "district": "14",
+
+      "was": "Member #377056 -- no name, party, county or district on file",
+
+      "terms": "2011-2012, entering mid-term — first row is roll call 242 of 2011, then all of 2012",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 303/303. Runner-up: Coughlin, Sean 161/303.",
+
+        "Not in the main 2011 intake run; 377055 and 377057 are Brosseau and Irwin, the other mid-term arrivals, so the number is chronological rather than alphabetical here. The journal says it outright: journals/2011/HJ023.txt, 'the following representative-elect was sworn into office by the Governor and Executive Council on this day: Rockingham County District No. 14, Kevin Janvrin, r, Seabrook' — party, county, district and town, at exactly the roll call where his ballots begin. Roll-call detail page 2012-H-289 agrees: Republican, Rockingham 14, vote matches. Modal county Rockingham 25:2 and 142:6. Not the already-named 408422 Janvrin, Jason (Rock. 40)."
+      ]
+    },
+
+    "377072": {
+      "name": "Briden, Steven",
+
+      "party": "Democrat",
+
+      "county": "Rockingham",
+
+      "district": "18",
+
+      "was": "Member #377072 -- no name, party, county or district on file",
+
+      "terms": "2013-2014",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 451/451. Runner-up: Ames, Richard 386/451.",
+
+        "Alphabetical gap exact: 377071 Booras, Efstathia | 377072 | 377073 Brown, Rebecca. Roll-call detail page 2013-H-1 and 2014-H-13: Democrat, Rockingham 18, votes match. Organization Day 5 Dec 2012 (journals/2013/HJ006.txt): 'Steven J. Briden, d' with Flockhart, Heffron and Schlachman — a 4-member block matching Dist. No. 18 (4), in a Rockingham run whose block sizes reproduce the printed seat counts one for one from district 1; and the page independently gives Heffron Rockingham 18. Modal county Rockingham 118:49."
+      ]
+    },
+
+    "377084": {
+      "name": "Connor, Evelyn",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "2",
+
+      "was": "Member #377084 -- no name, party, county or district on file",
+
+      "terms": "2013-2014",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 451/451. Runner-up: Shurtleff, Stephen 398/451.",
+
+        "Alphabetical gap: 377082 Carson, Clyde | 377083 | 377084 | 377085 Cordelli, Glenn — Connor sits between Carson and Cordelli. Roll-call detail page 2013 and 2014: Democrat, Hillsborough 02, and the page's 2014 'Excused' equals her recorded Not Voting/Excused. Organization Day 5 Dec 2012: 'Evelyn M. Connor, d' printed with Neal Kurk, whom the page independently places at Hillsborough 02. Not one of the O'Connors already named. Modal county Hillsborough 132:38."
+      ]
+    },
+
+    "377142": {
+      "name": "McCloskey, David",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "16",
+
+      "was": "Member #377142 -- no name, party, county or district on file",
+
+      "terms": "2013-2014",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 451/451. Runner-up: Connor, Evelyn 295/451.",
+
+        "Alphabetical gap exact: 377141 Massimilla, Linda | 377142 | 377143 McNamara, Richard. Roll-call detail page 2013 and 2014: Democrat, Hillsborough 16, and the 2014 'Excused' equals his recorded Not Voting/Excused. Organization Day 5 Dec 2012: 'David McCloskey, d' printed with Barbara Shaw, whom the page independently places at Hillsborough 16. Modal county Hillsborough 159:14."
+      ]
+    },
+
+    "377218": {
+      "name": "Dobson, Brian",
+
+      "party": "Republican",
+
+      "county": "Rockingham",
+
+      "district": "32",
+
+      "was": "Member #377218 -- no name, party, county or district on file",
+
+      "terms": "2015-2016",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: n/a — 0 ballots cast; on the roster for 3 roll calls, all recorded Not Voting/Not Excused. Runner-up: none — he is never printed in any roll-call list, so no name competes; the 11 names that tie on his 3 blank roll calls all belong to other employee numbers.",
+
+        "Four independent lines, none of them a ballot. (1) The roll of members-elect printed 3 December 2014 (journals/2015/HJ004.pdf) reads 'ROCKINGHAM COUNTY / Dist. No. 32 (1) | Brian Dobson, r' — name, seat and party come from there. (2) journals/2015/HJ007.txt prints his resignation letter dated 3 January 2015: 'Effective immediately I resign my seat in the New Hampshire Legislature, Rockingham District 32', accepted by the Speaker on 7 January — four days before the session's first roll call, which is exactly why the clerk still carried him on the 7 January roster and recorded him as not voting. (3) 377218's roster window is roll calls 1-3, all on 7 January 2015, and nothing after; of 404 ids on the 2015 roster only two never cast a ballot, and the other (377266, Sweeney, Dennis) is named and sat for 118 roll calls. (4) The Rockingham 32 seat then stays empty until Yvonne Dean-Bailey (377284, Rock 32) casts her first vote on 3 June 2015. Band: 377217 Darrow / [377218] / 377220 Doucette is a strictly alphabetical run and Dobson is the only 2015 member-elect without an employee number falling in that gap. He is the only member who left the 2015 House before roll call 1 — the year's other departures are Ann Howe (5 February) and Robbie Parsons, who died in the autumn (memorial resolution, journals/2015/HJ057.txt).",
+
+        "Confidence is stated as: high (name and seat documented, but no ballot evidence exists for him)"
+      ]
+    },
+
+    "377224": {
+      "name": "Ferreira, Elizabeth",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "28",
+
+      "was": "Member #377224 -- no name, party, county or district on file",
+
+      "terms": "2015-2016, 2017-2018",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 170/170 (2015), 227/227 (2016), 145/145 (2017), 235/235 (2018). Runner-up: Aldrich, Glen 154/170 (2015); Burt, John 204/227 (2016); True, Chris 134/145 (2017); Burt, John 219/235 (2018).",
+
+        "Exact agreement in four separate years, each from a separate journal parse. The 3 December 2014 roll: 'Dist. No. 28 (3) | Eric Eastman, r; Elizabeth Ferreira, r; Carl Seidel, r'; the 2017 roll repeats 'Dist. No. 28 (3) | Elizabeth Ferreira, r; ...'. Bill-text sponsor lines put Ferreira at Hillsborough 28 in both terms (11 bills, then 10). The journal's own county header over her name reads HILLSBOROUGH. No other employee number carries the surname. Caucus agreement 49/49 and 48/49 on strictly party-line roll calls."
+      ]
+    },
+
+    "377238": {
+      "name": "Howe, Ann",
+
+      "party": "Republican",
+
+      "county": "Rockingham",
+
+      "district": "13",
+
+      "was": "Member #377238 -- no name, party, county or district on file",
+
+      "terms": "2015-2016 (to 5 February 2015)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 7/7 — but 12 names tie at 7/7, so the ballots alone do not separate them. Runner-up: 11 other names also at 7/7 (Sweeney, Scontsas, Parsons, Parent, Ohm, O'Brien, Marston, Kolodziej, Knowles, Bickford, Avellani) — every one of them already holds an employee number and every one kept serving after 4 February 2015.",
+
+        "(1) The 2015 residue closes exactly: 21 printed names are unaccounted for by any employee number, 20 of them are claimed at 170/170 by 20 other unnamed ids, leaving exactly one name (Howe, Ann) and exactly one id (377238). (2) journals/2015/HJ016.txt prints her resignation: 'I will be unable to complete my term as New Hampshire State Representative for Rockingham County - District 13. I therefore resign, effective immediately. Sincerely, Rep. Ann M. Howe', dated 5 February 2015. 377238's last roster day is 4 February 2015 — the session day before. (3) The Rockingham 13 seat is then vacant until Dennis Green (377777, Rock 13) first votes on 6 May 2015. (4) The 3 December 2014 roll reads 'Dist. No. 13 (4) | Joe Guthrie, r; Ann Howe, r; David Welch, r; Kenneth L. Weyler, r' — name, seat and party. (5) Band: 377237 Howard / [377238] / 377239 Hull, alphabetical, and Howe is the only available name in the gap. (6) Journal county header: ROCKINGHAM. She voted Yea on the 7 January rules vote that split R 206-6 against D 9-141.",
+
+        "Confidence is stated as: certain, but from a closed accounting and a dated record rather than from the ballot margin — worth saying plainly"
+      ]
+    },
+
+    "377248": {
+      "name": "Martin, John",
+
+      "party": "Republican",
+
+      "county": "Merrimack",
+
+      "district": "23",
+
+      "was": "Member #377248 -- no name, party, county or district on file",
+
+      "terms": "2015-2016",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 170/170 (2015), 227/227 (2016). Runner-up: McConnell, Jim 148/170 (2015); McGuire, Dan 189/227 (2016).",
+
+        "The 3 December 2014 roll: 'Dist. No. 23 (3) | J. R. Hoell, r; Bill Kuch, r; John Martin, r'. Bill-text sponsor lines put Martin at Merrimack 23 in 2015-2016. Journal county header: MERRIMACK. The other Martins are distinguishable — the existing numbers are Mary Ellen (375371), James (376597) and Joelle (408530); no John Martin holds one. Band: 377247 Long / [377248] / 377249 Matthews, alphabetical. Caucus agreement 48/48 and 43/44."
+      ]
+    },
+
+    "377286": {
+      "name": "Cardon, G. Thomas",
+
+      "party": "Republican",
+
+      "county": "Rockingham",
+
+      "district": "6",
+
+      "was": "Member #377286 -- no name, party, county or district on file",
+
+      "terms": "2015-2016",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 170/170 (2015), 227/227 (2016). Runner-up: Pierce, David 135/170 (2015); Bickford, David 164/227 (2016).",
+
+        "The 3 December 2014 roll: 'ROCKINGHAM COUNTY / Dist. No. 6 (10) | Thomas Cardon, r; Brian K. Chirichiello, r; ...' — the roll prints 'Thomas Cardon', the roll calls print 'Cardon, G. Thomas'. Bill-text sponsor lines put Cardon at Rockingham 6. Journal county header: ROCKINGHAM. No other employee number carries the surname. One caveat worth putting on the page rather than hiding: his record is unusually independent for the period — 37/48 and 35/49 with the Republican majority on strictly party-line roll calls, where colleagues run 90-100%. The party letter 'r' is the printed roll's, not my inference. His band slot (377284-377287) is the one stretch of the 377xxx band that is out of alphabetical order, so the band supports him neither way; the ballots and the roll do."
+      ]
+    },
+
+    "377305": {
+      "name": "Lachance, Joseph",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "8",
+
+      "was": "Member #377305 -- no name, party, county or district on file",
+
+      "terms": "2015-2016",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 170/170 (2015), 227/227 (2016). Runner-up: Rideout, Leon 147/170 (2015); Aldrich, Glen 174/227 (2016).",
+
+        "The 3 December 2014 roll: 'Dist. No. 8 (2) | Jeffrey P. Goley, d; Joseph Lachance, r'. Bill-text sponsor lines put Lachance at Hillsborough 8 (23 bills). Journal county header: HILLSBOROUGH. The only Lachance with an existing number is Douglas (372896, Straf 15). Band: 377304 Kenison / [377305] / 377306 LeBreche, alphabetical. Caucus agreement 47/48 and 44/46."
+      ]
+    },
+
+    "408445": {
+      "name": "Spencer, Matthew",
+
+      "party": "Republican",
+
+      "county": "Strafford",
+
+      "district": "18",
+
+      "was": "Member #408445 -- no name, party, county or district on file",
+
+      "terms": "2017-2018",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 145/145 (2017), 235/235 (2018). Runner-up: Baldasaro, Alfred 119/145 (2017); True, Chris 193/235 (2018).",
+
+        "The 2017 organization roll (journals/2017/HJ001.pdf): 'Dist. No. 18 (3) | Roger R. Berube, d; Matthew Spencer, r; Dale R. Sprague, d' in the Strafford block. Bill-text sponsor lines put Spencer at Strafford 18. Journal county header: STRAFFORD. The only Spencer with a number is Leo (373688, Straf 04). Band: 408442 Scruton (Straf) / [408445] / 408447 Phinney (Straf), a Strafford Republican stretch of the 2017 intake. Caucus agreement 50/51 and 67/68. The 2017 residue closes 8 names to 8 ids."
+      ]
+    },
+
+    "408722": {
+      "name": "Schwaegler, Vicki",
+
+      "party": "Republican",
+
+      "county": "Grafton",
+
+      "district": "3",
+
+      "was": "Member #408722 -- no name, party, county or district on file",
+
+      "terms": "2017-2018",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 145/145 (2017), 235/235 (2018). Runner-up: McMahon, Charles 120/145 (2017); Matthews, Carolyn 178/235 (2018).",
+
+        "The 2017 organization roll: 'GRAFTON COUNTY ... Dist. No. 3 (1) | Vicki Schwaegler, r'. Bill-text sponsor lines put Schwaegler at Grafton 3. Journal county header: GRAFTON. Band: 408722 sits immediately before 408723 Rand (Graf 08). No other employee number carries the surname. Caucus agreement 37/39 and 58/64. One honest qualification: she had served in the House in earlier terms, and a number in the 2017 intake band implies first service then, so she may also hold an older number that is itself unnamed in an earlier slice. That does not affect the claim here, which is about who cast the ballots filed under 408722 in 2017-2018."
+      ]
+    },
+
+    "408863": {
+      "name": "Stack, Kathryn",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "21",
+
+      "was": "Member #408863 -- no name, party, county or district on file",
+
+      "terms": "2019-2020",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 235/235 (2019), 202/202 (2020). Runner-up: Thomas, Wendy 227/235 (2019); Walz, Mary Beth and Luneau, David 165/202 (2020).",
+
+        "The December 2018 organization roll (journals/2019/HJ001.pdf) lists Hillsborough District 21 (8 seats) as Hinch r, L'Heureux r, Murphy d, Notter r, Rung d, 'Kathryn Stack, d', Thomas d. Bill-text sponsor lines put Stack at Hillsborough 21 (23 bills), as they do Murphy, Rung, Thomas, Hinch and Notter. Journal county header: HILLSBOROUGH. Band: 408861 Murphy / 408862 Rung / [408863] / 408864 Thomas — a contiguous run of the same district. Their county/district in member_party.json reads Hills 12, which is the post-2022 district, not the 2019-2020 one; that is why the band looked wrong at first glance. Caucus agreement 177/178 and 115/116 with the Democratic majority."
+      ]
+    },
+
+    "408888": {
+      "name": "Wells, Kenneth",
+
+      "party": "Democrat",
+
+      "county": "Merrimack",
+
+      "district": "1",
+
+      "was": "Member #408888 -- no name, party, county or district on file",
+
+      "terms": "2019-2020",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 235/235 (2019), 202/202 (2020). Runner-up: Mulligan, Mary Jane 231/235 (2019); Connors, Erika 196/202 (2020).",
+
+        "This is the narrowest one-year margin in the slice (four roll calls in 2019), so it leans on exactness across two years rather than on the gap: Wells is exact in both 2019 and 2020 while Mulligan misses four in 2019, and Mary Jane Mulligan already holds employee number 408502 (Graf 12), so she cannot be 408888. The December 2018 roll reads 'MERRIMACK ... Dist. No. 1 (1) | Ken Wells, d'; bill-text sponsor lines put Wells at Merrimack 1 (7 bills); the journal county header over his name reads MERRIMACK. Band: 408887 Wilhelm (Hills) / [408888] / 408889 Pimentel (Merr 6) — exactly the Hillsborough-to-Merrimack boundary of the 2019 intake's county ordering. The four existing Wells numbers are Henry, Peter, Roger and Natalie; none is Kenneth. Caucus agreement 178/180 and 139/141."
+      ]
+    },
+
+    "408919": {
+      "name": "Fowler, William",
+
+      "party": "Republican",
+
+      "county": "Rockingham",
+
+      "district": "20",
+
+      "was": "Member #408919 -- no name, party, county or district on file",
+
+      "terms": "2019-2020",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 235/235 (2019), 202/202 (2020). Runner-up: Ober, Russell 150/235 (2019); Kolodziej, Walter 143/202 (2020).",
+
+        "The December 2018 roll: 'Dist. No. 20 (3) | Max Abramson, r; William Fowler, r; Aboul Khan, r'. Bill-text sponsor lines put Fowler at Rockingham 20 (21 bills), as they do Abramson and Khan. Journal county header: ROCKINGHAM. No other employee number carries the surname. He is a Republican sitting in the Rockingham stretch of the 2019 intake band between two Democrats, which is fine because that band is ordered by county, not by party — caucus agreement is 105/105 and 73/73 with the Republican majority, among the cleanest in the slice. His heavy absence record (170 of 263 roll calls not voting in 2019) is part of what makes the signature match unmistakable."
+      ]
+    },
+
+    "408931": {
+      "name": "Towne, Matthew",
+
+      "party": "Democrat",
+
+      "county": "Strafford",
+
+      "district": "4",
+
+      "was": "Member #408931 -- no name, party, county or district on file",
+
+      "terms": "2019-2020",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 235/235 (2019), 202/202 (2020). Runner-up: Fox, Samantha 205/235 (2019); Moffett, Howard 186/202 (2020).",
+
+        "The December 2018 roll: 'STRAFFORD ... Dist. No. 4 (2) | Cassandra Levesque, d; Matthew Towne, d'. Bill-text sponsor lines put Towne at Strafford 4 (7 bills). Journal county header: STRAFFORD. Band: 408930 Levesque (Straf 04) / [408931] / 408932 Kenney (Straf 10) — his own district-mate is the neighbouring number. No other employee number carries the surname. Caucus agreement 156/159 and 132/133."
+      ]
+    },
+
+    "408961": {
+      "name": "Martins, Kathleen",
+
+      "party": "Democrat",
+
+      "county": "Merrimack",
+
+      "district": "24",
+
+      "was": "Member #408961 -- no name, party, county or district on file",
+
+      "terms": "2019-2020 (from 12 June 2020)",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 57/57 — 31 names tie at 57/57, because she served only the tail of a party-line session. Runner-up: 30 other names also at 57/57 — but all 30 already hold employee numbers, and each was printed on between 77 and 145 of the 145 matched roll calls that 408961 was NOT on the roster for. Martins is the only tied name printed on 0 of them, and the only one with no employee number.",
+
+        "The elimination is exhaustive rather than statistical, and it is confirmed to the day: journals/2020/HJ009.txt (11 June 2020) prints the Secretary of State's communication 'Please be advised that the following representative-elect was sworn into office by the Governor and Executive Council on this day: Merrimack County District No. 24 Kathleen M. Martins, d, Hooksett' — and 408961's first roll call is 12 June 2020, the next session day. That communication is also the source for county, district and party. She sponsored no bills, which is expected for a member seated in June and is why she is absent from the sponsor index. Caucus agreement 41/41 with the Democratic majority. Her band slot sits among the 2020 mid-term arrivals (408959 Gomarlo, 408960 Bernet)."
+      ]
+    },
+
+    "408966": {
+      "name": "Littlefield, Richard",
+
+      "party": "Republican",
+
+      "county": "Belknap",
+
+      "district": "3",
+
+      "was": "Member #408966 -- no name, party, county or district on file",
+
+      "terms": "2021-2022",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 130/133 (0.977). The 16 September figure of 76/76 is reproduced in kind: on the 86 blocks where a single global split is exact this id scores 67/68 for Littlefield.. Runner-up: Elliott, Robert -- 51/56 (0.911), a named member with his own id. The best unclaimed name is 'Hobson, Deborah' at 116/133 (0.872), itself a first-name variant of the named 'Hobson, Deb'.",
+
+        "CONTROL -- reproduced. The three misses are one extraction artefact, not disagreement: in each, 'Littlefield, Richard' is lifted out of the Belknap block and lands among Sullivan and Strafford names (neighbours Callum, Stapleton, Smith Steven, Spilsbury; Wall, Groen, Kittredge, Aron, Cloutier) -- the same displacement the 16 September note called 'a name extracted 49 characters out of place among Sullivan county names'. Corroborated by the employee number falling inside the Belknap run of the 2021 intake (408963 Bordes Belk. 5, 408964 Hough Belk. 6, 408965 Johnson Belk. 5, 408966 missing, 408967 Harvey-Bolia Belk. 3), by 'Rep. Littlefield, Belk. 3' on 18 bills in text_sponsors.json, and by 'Richard Littlefield, r' in the 2021 organisation-day roll. Party R from voting: 326/362 (90.1%)."
+      ]
+    },
+
+    "409011": {
+      "name": "Homola, Susan",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "27",
+
+      "was": "Member #409011 -- no name, party, county or district on file",
+
+      "terms": "2021-2022",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 175/175 (1.000). Runner-up: Fedolfi, Jim -- 123/129 (0.954), a named member with his own id. The best unclaimed name is 'Creighton, Jim' at 159/171 (0.930), a variant of the named 'Creighton, James'.",
+
+        "CONTROL -- reproduced, perfectly. Employee number falls inside the Hillsborough run of the 2021 intake (409010 Pauer Hills 36, 409011 missing, 409012 Lanzara Hills 5). 'Homola, Hills. 27' is printed in the journals' own sponsor lines in both 2021 and 2022, and 'Rep. Homola (Hills 27)' on 15 bills in text_sponsors.json. Party R from voting: 416/458 (90.8%)."
+      ]
+    },
+
+    "409014": {
+      "name": "Moran, Melbourne",
+
+      "party": "Democrat",
+
+      "county": "Hillsborough",
+
+      "district": "34",
+
+      "was": "Member #409014 -- no name, party, county or district on file",
+
+      "terms": "2021-2022. The smaller sample is the member's own: this id records 150 Not Voting/Not Excused and 107 excused of 463 ballots, so only 206 are a Yea or a Nay.",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 81/81 (1.000). Runner-up: Richards, Beth -- 43/43, also perfect but on half the sample, and she is a named member with her own id, so the name is unavailable. The best unclaimed name is 'Ames, Richard' at 73/81 (0.901), a variant of the named 'Ames, Dick'.",
+
+        "CONTROL -- reproduced. Employee number falls inside the Hillsborough run of the 2021 intake (409013 Laughton Hills 3, 409014 missing, 409015 Smith Hills 37). The 2021 organisation-day roll prints 'Dist. No. 34 (3) Melbourne Moran, Jr., d' with the district label aligned, and text_sponsors.json has 'Rep. Moran (Hills 34)' on 18 bills. Party D from voting: 189/206 (91.7%). He is a different man from 'Rep. Moran, Edward(Hills 18)' in past_members.json."
+      ]
+    },
+
+    "409039": {
+      "name": "Belanger, Cody",
+
+      "party": "Republican",
+
+      "county": "Rockingham",
+
+      "district": "9",
+
+      "was": "Member #409039 -- no name, party, county or district on file",
+
+      "terms": "2021-2022",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 130/130 (1.000). Runner-up: Dodge, Dustin -- 127/129 (0.985), a named member with his own id. The best unclaimed name is 'Hobson, Deborah' at 121/128 (0.945), a variant of the named 'Hobson, Deb'.",
+
+        "CONTROL -- reproduced, perfectly; the single miss reported on 16 September (58/59) disappears once the local labeller replaces the single split. Employee number falls inside the Rockingham run of the 2021 intake (409038 Vandecasteele Rock. 25, 409039 missing, 409040 Litchfield Rock. 32). The 2021 organisation-day roll prints 'Dist. No. 9 (2) Cody Belanger, r; Michael Vose, r', and text_sponsors.json has 'Rep. Belanger (Rock 9)' on 21 bills. Party R from voting: 315/337 (93.5%)."
+      ]
+    },
+
+    "409060": {
+      "name": "Abare, Kimberly",
+
+      "party": "Republican",
+
+      "county": "Hillsborough",
+
+      "district": "1",
+
+      "was": "Member #409060 -- no name, party, county or district on file",
+
+      "terms": "2023-2024 only. She casts no ballot in 2025-2026 and is absent from Members.txt, the current roster.",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 188/188. Runner-up: Merner, Troy -- 69/71 (0.972), but Merner votes under his own id (8060), so the name is not available. The best genuinely unclaimed name is Creighton, Jim -- 174/185 (0.941), and that is itself only a first-name variant of the named member 'Creighton, James'.",
+
+        "Three independent lines. (a) Journal roll calls: 188/188 over 189 usable blocks, perfect. (b) Employee number: the 2023 intake is numbered alphabetically and 409060 is the missing number immediately before 409061 Aures, so it belongs to a 2023 freshman sorting before 'Aures' -- Abare does. (c) Seat and party from the General Court's own documents: 'Rep. Abare, Hills. 1' / 'Rep. Abare (Hills 1)' on four bills in text_sponsors.json and twice in the 2024 journals' sponsor lines, and 'Kimberly Abare, r' in the 7 December 2022 organisation-day membership roll, in the Hillsborough block beside Mannion, Panek and Tenczar -- the other three the journals also cite as Hills. 1. data/towns.json gives Hillsborough District 1 as Pelham, a four-seat district, matching that group of four. Party R from voting: 448 of 482 contested roll calls (92.9%) with the Republican majority, 16.8% with the Democratic."
+      ]
+    },
+
+    "800061": {
+      "name": "Fulweiler, Joyce",
+
+      "party": "Democrat",
+
+      "county": "Merrimack",
+
+      "district": "3",
+
+      "was": "Member #800061 -- no name, party, county or district on file",
+
+      "terms": "2019-2020",
+
+      "why": [
+        "Ballot agreement against the names printed in the journals' vote lists: 235/235 (2019), 202/202 (2020). Runner-up: Lane, Connie 190/235 (2019); Stack, Kathryn 156/202 (2020).",
+
+        "The December 2018 roll: 'MERRIMACK ... Dist. No. 3 (2) | Joyce May Fulweiler, d; Gregory Hill, r'. The alignment of that roll is verified against the bill text, which independently places Hill at Merrimack 3, Horn and Testerman at Merrimack 2, Schamberg at 4, Ebel at 5, Rodd at 6 and Carson at 7 — matching the roll line for line. Journal county header over her name: MERRIMACK. She sponsored no bills under that surname, so the district comes from the roll rather than the sponsor index. No other employee number carries the surname. Caucus agreement 149/157 and 106/108. Hers is the one number in the slice with no usable band — the 80xxxx range holds only three other known members and is not ordered — so the identification rests on the ballots, the roll and the county header."
+      ]
     }
   }
 }
