@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.76
+# GRANITE_VERSION: 2026-09-04.77
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -155,6 +155,38 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
   Cache-Control: public, max-age=0, must-revalidate
 /find.json
   Cache-Control: public, max-age=0, must-revalidate
+
+# THE PUBLISHED RECORD IS READABLE FROM ANYWHERE, which is what /data already
+# tells programmers it is. Without this header a browser will not let a page on
+# another origin read these files, so the promise held for curl and for a
+# script on a server and quietly failed for anyone building in a browser --
+# which is most of the people that page is addressed to.
+#
+# Nothing here is private: these are the same public files the site's own pages
+# fetch, and they are already served to anyone who asks for them directly. The
+# header does not widen who can read them, only which programs can.
+#
+# Deliberately NOT applied to the whole site. A wildcard on every path would
+# also cover /_headers, /_redirects and anything added later without anybody
+# thinking about it; these four are the tables /data documents.
+/index.json
+  Access-Control-Allow-Origin: *
+/idx/*
+  Access-Control-Allow-Origin: *
+/legislators.json
+  Access-Control-Allow-Origin: *
+/rollcalls_index.json
+  Access-Control-Allow-Origin: *
+
+# And the bulk tables, because they are the half of that promise a programmer
+# is most likely to want: 19 CSVs and the manifest that describes them. The
+# manifest is the entry point -- /data says a program can find what is here in
+# one request -- and a manifest a browser cannot read is a directory to files
+# it also cannot read.
+/data/manifest.json
+  Access-Control-Allow-Origin: *
+/data/*.csv
+  Access-Control-Allow-Origin: *
 """
 
 # Tab addresses, served their record's page: see where this is written.
