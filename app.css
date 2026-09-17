@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.97 */
+/* GRANITE_VERSION: 2026-09-07.98 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1927,6 +1927,22 @@ background:var(--paper);text-decoration:none;color:inherit}
 a.ccard:hover{border-color:var(--rule-2);background:var(--surface)}
 .cc-n{display:block;font-weight:600;font-size:var(--t-body)}
 .cc-m{display:block;font-size:var(--t-ui);color:var(--ink-2);margin-top:var(--sp-1)}
+
+/* THE OUTCOME IS NOT PART OF THE TITLE. build_indexes.py closes 34,089 rows
+   with a span of class dirstatus -- the 33,683 bills across the 19 terms'
+   listings, where it says what became of the bill, and the 406 sitting
+   members on the roster page, where it reads "R, Rock 8" -- and neither
+   stylesheet had a rule for the class, so it inherited the row it sits in.
+   Drawn at the row's own 16px --ink, a line read
+   "HB 52 relative to legal holidays. Killed": one sentence in one voice, in
+   which the word that says the bill is dead looks like the last word of its
+   title. The quiet trailing-fact treatment the rest of this file already
+   uses for exactly this job (.vamds .dim, .cmeta): --t-sm on --ink-2, with
+   the gap that tells a reader the sentence has ended.
+   No white-space:nowrap. "Passed both chambers, goes to the voters" is a
+   status too, and 39 characters held on one line push the row off a 360px
+   screen. */
+.dirstatus{font-size:var(--t-sm);color:var(--ink-2);margin-left:var(--sp-3)}
 
 /* On a committee day, a start that was inferred rather than quoted. Same word
    the bill page uses, for the same reason. */

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.2
+// GRANITE_VERSION: 2026-09-16.3
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -28,12 +28,42 @@ function findRows(){
   return FIND.loading;
 }
 
-// A bill number typed in any of the ways people write one: hb115, HB 115,
-// "hb 0115". Offered without looking anything up, and handed to the bill
-// search, which knows which term is on screen.
+/* WHAT THE GENERAL COURT NUMBERS, counted off the record rather than guessed
+   at: the 33,683 bills on this site carry seventeen distinct prefixes and no
+   others. HB 23,190; SB 8,616; HR 562; CACR 545; HCR 350; SR 147; HJR 117;
+   SCR 68; PET 28; SJR 25; HBI 14; HA 9; HCO 2; and the four special-session
+   forms SSHB, SSSB, SSHR and SSHCR, ten between them. A closed set, and the
+   thing that makes findBill able to answer at all without an index. */
+const FBILLKIND=new Set(["HB","SB","CACR","HCR","SCR","HJR","SJR","HR","SR",
+  "PET","HBI","HA","HCO","SSHB","SSSB","SSHR","SSHCR"]);
+
+/* A SEAT IS NOT A BILL. Two to five letters and a number is also the shape of
+   every district on the roster -- "Hills 29", "Rock 8", "Straf 14", "SD22" --
+   and the shape alone was the whole test, so all 223 district labels the
+   sitting members carry were offered as "open this bill number in the bill
+   search", drawn ABOVE the three representatives who actually sit for Hills
+   29. Return takes the first answer, so a reader who typed their own district
+   and pressed it landed on "No bills match in the 2025-2026 term." The same
+   went for a ward: "Ward 3" read as bill WARD 3.
+   The letters are what tell them apart, and the letters are in the data. Not
+   one of the seventeen bill prefixes is a county abbreviation -- Belk, Carr,
+   Ches, Coos, Graf, Hills, Merr, Rock, Straf, Sull -- or the Senate's SD, and
+   not one county abbreviation is a bill prefix, so the set separates them
+   cleanly with nothing left over.
+   A number whose prefix is NOT in the set is not a dead end: the panel still
+   offers "search every bill for these words" with what was typed, and the
+   bill search's own billNumbers() reads any two-to-five letters and digits as
+   a number. So a kind the General Court invents tomorrow still arrives at the
+   bill, it just is not promoted to the top of this list before it exists.
+
+   A bill number typed in any of the ways people write one: hb115, HB 115,
+   "hb 0115". Offered without looking anything up, and handed to the bill
+   search, which knows which term is on screen. */
 function findBill(q){
   const m=/^\s*([a-z]{2,5})\s*0*(\d{1,4})\s*$/i.exec(q||"");
-  return m?`${m[1].toUpperCase()} ${m[2]}`:"";
+  if(!m)return "";
+  const kind=m[1].toUpperCase();
+  return FBILLKIND.has(kind)?`${kind} ${m[2]}`:"";
 }
 
 function findMatch(q){

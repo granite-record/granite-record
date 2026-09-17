@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.14
+# GRANITE_VERSION: 2026-09-04.15
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -34,6 +34,7 @@ import proceedings as P
 import re
 import shell as S
 import site_read as SR
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -43,6 +44,10 @@ TODAY = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 # How a vote is written. Anything not listed is passed through as the record
 # has it rather than translated into a word it did not use.
 VOTE_WORD = {"Yea": "yes", "Nay": "no"}
+
+# The body letter in a roll call key, spelled out. A ballot the clerk filed
+# under no bill has nothing else to name it by.
+CHAMBER = {"H": "House", "S": "Senate"}
 
 DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -76,6 +81,42 @@ def iso_day(d):
         except ValueError:
             continue
     return ""
+
+
+def chamber_of(k):
+    """'2026-H-305' -> 'House'; '' where the key is not that shape.
+
+    A member file writes each ballot's roll call as year-body-number, so the
+    chamber that took the vote is already in hand for the roll calls the clerk
+    filed under no bill at all -- which is the only thing left to name them by.
+    """
+    p = str(k or "").split("-")
+    return CHAMBER.get(p[1].upper(), "") if len(p) == 3 else ""
+
+
+def vote_guid(mid, v, q):
+    """One member's ballot in one roll call, named so no two share an id.
+
+    THE ROLL CALL IS PART OF THE IDENTITY. This was the member, the bill, the
+    day and the first thirty characters of the question, and a chamber takes a
+    bill up twice in a day under the same words all the time. The House voted
+    on overriding the veto of HB 396 twice on 19 August 2026 -- 2026-H-305 at
+    11:07 and 2026-H-318 at 14:00, both questioned "Veto Override" -- so both
+    ballots carried one guid, and a reader's feed reader showed the first and
+    dropped the second without a word. That is one hidden ballot in every one
+    of the 382 sitting House members' feeds; in 26 of them the two ballots
+    disagree, so the feed had the member voting yes and no on the same bill on
+    the same day and showed only one of those.
+
+    The shape changes, so every subscriber is shown their member's last sixty
+    votes once more. That is the one-time price of the ballots that were never
+    shown at all. A file carrying no key keeps the old shape, where it is
+    still the best available.
+    """
+    k = str(v.get("k") or "").strip().strip("-").strip()
+    if k:
+        return f"vote:{mid}:{k}"
+    return f"vote:{mid}:{v.get('b')}:{v.get('d')}:{q[:30]}"
 
 
 def clip(s, n=88):
@@ -135,8 +176,23 @@ def prune(root, keep, allow, fall=0.25):
     return len(stale), ""
 
 
+# Feeds this run wrote that carry two items under one guid, and how many items
+# each loses to that. Filled by feed(), printed at the end of main().
+COLLIDED = Counter()
+
+
 def feed(title, desc, link, self_link, items, base):
     """items: (title, link, description, date, guid)"""
+    # A READER KEEPS ONE ITEM PER GUID, and two items sharing one is not an
+    # error anywhere: the XML is valid, the build exits zero, and the
+    # subscriber simply never sees the second. That is how every one of the
+    # 382 sitting House members' feeds hid a ballot for months. Nothing was
+    # going to notice it except a count, so this is the count.
+    seen = set()
+    for i in items:
+        if i[4] in seen:
+            COLLIDED[self_link] += 1
+        seen.add(i[4])
     body = ""
     for t, l, d, dt, g in items:
         body += (f"<item><title>{escape(t)}</title>"
@@ -289,17 +345,27 @@ def main():
             nbill += 1
 
         # Scheduled proceedings are dated in the FUTURE, deliberately, so the
-        # hearings feed reaches somebody in time to attend. This feed is the
-        # record of what has happened, and readers treat a future date as a
-        # reason to hide an item or sort it to the top -- either of which
+        # hearings feed reaches somebody in time to attend. An aggregate feed
+        # is the record of what has happened, and readers treat a future date
+        # as a reason to hide an item or sort it to the top -- either of which
         # buries the newest real activity. Future dates belong in one feed
         # only.
-        all_items += [i for i in items if i[3] <= TODAY][:4]
+        #
+        # That rule was written here and then applied to all_items alone,
+        # while the two lines under it went on reading the unfiltered list.
+        # 52 events of the sitting term are dated after today across 45 bills
+        # -- "Full Committee Work Session: 09/29/2026 10:00 am GP 228" on
+        # HB100, and forty-four like it, every one of them the newest thing
+        # its bill has done -- so all 52 reached the 23 topic feeds those
+        # bills fall under, at the top, above what has actually happened.
+        # One list, filtered once, and every reader of it gets the same rule.
+        past = [i for i in items if i[3] <= TODAY]
+        all_items += past[:4]
         # The newest three per bill, for a committee with bills and no sitting
         # day on record, whose feed is its bills' actions instead.
-        bill_items[(str(b.get("year") or ""), b["id"].upper())] = items[:3]
+        bill_items[(str(b.get("year") or ""), b["id"].upper())] = past[:3]
         if b.get("topic"):
-            by_topic.setdefault(b["topic"], []).extend(items[:3])
+            by_topic.setdefault(b["topic"], []).extend(past[:3])
 
     def newest(items):
         return sorted(items, key=lambda x: x[3], reverse=True)[:a.per_feed]
@@ -437,18 +503,46 @@ def main():
                     day = iso_day(v.get("d"))
                     undated += not day
                     bb = find(v.get("b"), day)
-                    label = bb["n"] if bb else (v.get("b") or "")
+                    # A ROLL CALL THE CLERK FILED UNDER NO BILL is still a vote
+                    # the member cast, and it needs a name of its own.
+                    # RollCallSummary leaves the bill column empty for a motion
+                    # the chamber makes about itself: 2026-H-290 "Affirm The
+                    # Report" and 2026-H-291 "Remove From Table", both on the
+                    # afternoon of 21 May 2026, and 2026-H-329 "Affirm The
+                    # Report" on 19 August. All three sit inside the sixty
+                    # items this feed carries for every one of the 382 sitting
+                    # House members, so 1,146 titles opened on the em dash with
+                    # nothing in front of it, reading "yes on Affirm The
+                    # Report" after a leading space and a dash -- and in a
+                    # reader that shows titles only, that is the whole item.
+                    # The roll call's key says which chamber took it; say that.
+                    seat = chamber_of(v.get("k"))
+                    named = bool(bb) or bool((v.get("b") or "").strip())
+                    if bb:
+                        label = bb["n"]
+                    elif named:
+                        label = v["b"]
+                    else:
+                        label = f"{seat} floor vote" if seat else "Floor vote"
                     how = VOTE_WORD.get(v.get("v"), v.get("v") or "")
                     q = v.get("q") or "the motion"
+                    # Joined from the parts there are. With no bill there is no
+                    # title either, and the description used to open on a blank
+                    # line for all 1,146 of them.
+                    note = ("The vote is on the motion, not the bill." if named
+                            else "The record files this roll call under no"
+                                 " bill: it is a motion of the"
+                                 f" {seat or 'chamber'} itself.")
                     items.append((
                         f"{label} \u2014 {how} on {q}",
                         bill_url(bb) if bb else bills_page,
-                        f"{(bb or {}).get('title', '')}\n\n{who} voted {how} on "
-                        f"{q}.\n\nThe vote is on the motion, not the bill.",
+                        "\n\n".join(x for x in (
+                            (bb or {}).get("title", ""),
+                            f"{who} voted {how} on {q}.", note) if x),
                         day,
-                        # The date as the member file writes it: a guid that
-                        # changed shape would show a subscriber every vote again.
-                        f"vote:{mid}:{v.get('b')}:{v.get('d')}:{q[:30]}"))
+                        # The roll call's own key, so two ballots cast on one
+                        # bill on one day are two items. See vote_guid.
+                        vote_guid(mid, v, q)))
             for bb, burl, prime, filed in sponsored.get(mid, []):
                 role = "prime sponsor" if prime else "co-sponsor"
                 items.append((
@@ -506,6 +600,13 @@ def main():
         print(f"  {undated:,} votes carry no date this reads (neither YYYY-MM-DD nor "
               "M/D/YYYY), so a reader is shown the build time for them")
     print(f"{pruned:,} stale feeds removed")
+    if COLLIDED:
+        print(f"  {sum(COLLIDED.values()):,} items across {len(COLLIDED):,} feeds "
+              "share a guid with another item in the same feed. A reader keeps "
+              "one item per guid, so it will show one of each pair and drop the "
+              "rest without saying so:")
+        for u, n in COLLIDED.most_common(3):
+            print(f"    {u}  ({n:,})")
     for note in notes:
         print(note)
     print(f"all.xml: {len(newest(all_items))} items")

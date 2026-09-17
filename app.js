@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.85
+// GRANITE_VERSION: 2026-09-07.86
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -213,10 +213,26 @@ function stem(w){
   if(/(xes|ches|shes|sses)$/.test(w))return w.slice(0,-2);
   return w.endsWith("s")?w.slice(0,-1):w;
 }
+/* THE MARKS A QUESTION IS ASKED WITH, taken off the ENDS of words and nowhere
+   else. Only the comma and the hyphen were being removed, so a reader who
+   typed the way people type -- "right to know?" -- got 0 bills where "right
+   to know" gets 14, and "school funding." got 0 against 33. The question mark
+   rode along on the last word: the phrase test looks for " right to know "
+   and saw " right to know? ", and the word test then asked the titles for
+   /\bknow\?/, which no bill title contains.
+   The ends only, because the middle carries meaning here. "91-a:4" is an RSA
+   citation and its colon is part of the number -- titles are searched with
+   the hyphen already read as a space, so the query must keep the rest of the
+   citation intact. "children's" keeps its apostrophe for the same reason: it
+   is inside a word, not around one. And this strips a named list of marks
+   rather than "anything that is not a-z0-9", which would have eaten the
+   final letter of an accented word. */
+const EDGEMARK=/^[.?!;:'"“”‘’()\[\]{}…]+|[.?!;:'"“”‘’()\[\]{}…]+$/g;
 // The search as groups, every one required: a concept's phrase is one group of
 // its terms, each other word a group of its synonyms.
 function queryGroups(raw){
-  let q=" "+String(raw||"").toLowerCase().replace(/[,\-]/g," ").replace(/\s+/g," ").trim()+" ";
+  let q=" "+String(raw||"").toLowerCase().replace(/[,\-]/g," ")
+    .split(/\s+/).map(w=>w.replace(EDGEMARK,"")).filter(Boolean).join(" ")+" ";
   const out=[];
   for(const [p,c] of CPHRASES){
     if(q.includes(" "+p+" ")){
@@ -597,10 +613,7 @@ need("meta.json")
      hideBillSearch();
    if(window.GR_STATIC){
      // The content is in the HTML. Take the chrome down and leave it alone.
-     const fac=$("#facets"); if(fac){fac.innerHTML="";fac.hidden=true;}
-     const sh=document.querySelector(".shell"); if(sh)sh.classList.add("nofacets");
-     const c=$("#count"); if(c)c.textContent="";
-     hideListControls();
+     staticChromeDown();
      return;
    }
    // A bill's own page is one bill, so the controls that filter and sort a
@@ -655,6 +668,25 @@ need("meta.json")
      openBill(id);
    }
  }).catch(e=>{
+   /* THE ERROR WENT WHERE THE RECORD WAS. This handler wrote into #results
+      whatever page it was on, and the GR_STATIC exit above it sits INSIDE the
+      .then chain -- so a rejected fetch never reached it and fell straight
+      through to here. One 404 or one dropped connection on idx/2025-2026.json
+      and a reader on Alton's town page, or on "Every bill of 2019-2020", had
+      the officials or all 1,983 of that term's bills replaced by "Could not
+      load the data ... run build_site_v2.py": instructions for a developer,
+      about a file that page never needed, standing where the record had been.
+      357 pages are built with GR_STATIC -- every town and ward, the directory
+      listings, the civics pages, the committees index and the exports page --
+      and every one of them carries its whole record in the HTML the reader
+      already has.
+      So a static page gets the same teardown it gets on success and keeps
+      what it was served. It says nothing about the failure because nothing on
+      it came out of the file that failed; the bill search, and the bill,
+      member and committee pages, whose content really does come from it,
+      still get the message below. GR_BILL is never set on a GR_STATIC page,
+      so the search row can go unconditionally here. */
+   if(window.GR_STATIC){hideBillSearch();staticChromeDown();return;}
    $("#results").innerHTML=`<div class="empty"><b>Could not load the data.</b><br><br>
      <code>${esc(e.message||e)}</code><br><br>
      If that mentions a status code, the file is missing from this folder — run
@@ -663,10 +695,20 @@ need("meta.json")
      <code>python3 -m http.server 8000</code>.</div>`;
  });
 
+/* HB 0115 IS HOW THE GENERAL COURT WRITES IT. Its own archive addresses a
+   bill as HB0115 -- gc.nh.gov/legislation/2017/HB0115.html -- and its PDFs
+   and calendars pad the same way, so a padded number is what a reader copying
+   from the source has in their clipboard. The header's Search box already
+   read it (find.js takes the zeros off before handing the number over); this
+   box did not, and "HB 0115" returned nothing while "HB 115" returned the
+   bill. The id in the index is unpadded: HB115, across all 33,683 of them,
+   not one of which carries a leading zero. The lookahead keeps a digit, so
+   even a nonsense "HB000" comes out as a number rather than as "HB". */
 function billNumbers(q){
   const parts=q.split(",").map(s=>s.trim()).filter(Boolean);
   if(!parts.length)return null;
-  const ids=parts.map(p=>p.replace(/\s+/g,"").toUpperCase());
+  const ids=parts.map(p=>p.replace(/\s+/g,"").toUpperCase()
+                         .replace(/^([A-Z]{2,5})0+(?=\d)/,"$1"));
   return ids.every(i=>/^[A-Z]{2,5}\d+$/.test(i))?ids:null;
 }
 function matches(b,ignore){
@@ -3268,6 +3310,20 @@ function hideListControls(){
 function hideBillSearch(){
   const row=document.querySelector(".searchrow");
   if(row)row.hidden=true;
+}
+
+/* AND ON A PAGE WHOSE RECORD IS ALREADY IN THE HTML, the whole of the search
+   goes. A town page, a directory listing, a civics page: the app's only job
+   there is to take down the rail, the counter and the two pickers that
+   belong to a list of bills it is not going to draw.
+   A function rather than six lines inside the .then, because it is needed in
+   two places now -- when the index arrives and when it does not. Nothing in
+   it reads the index, which is the reason it can be called from the catch. */
+function staticChromeDown(){
+  const fac=$("#facets"); if(fac){fac.innerHTML="";fac.hidden=true;}
+  const sh=document.querySelector(".shell"); if(sh)sh.classList.add("nofacets");
+  const c=$("#count"); if(c)c.textContent="";
+  hideListControls();
 }
 
 // Every term this record has anything in, newest first. Worked out once,
