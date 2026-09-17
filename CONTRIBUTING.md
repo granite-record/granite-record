@@ -45,8 +45,8 @@ cause.
 ## Getting set up
 
 ```bash
-git clone <this repository>
-cd nh
+git clone https://github.com/granite-record/granite-record.git
+cd granite-record
 pip install numpy
 python3 preflight.py --code
 ```
@@ -74,7 +74,7 @@ packages into four hard requirements.
 
 ## How work is done here
 
-**Run `preflight.py` before and after.** It is 159 checks, 121 of which need no
+**Run `preflight.py` before and after.** It is 161 checks, 122 of which need no
 data on disk, and it builds the whole site on a fixture. It is the test suite.
 Trust it over anything written in prose, including this file.
 

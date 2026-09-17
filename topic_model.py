@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.2
+# GRANITE_VERSION: 2026-09-16.3
 """A topic for the 29,449 bills the General Court never gave one -- second model.
 
     python3 topic_model.py --apply              # write topics_assigned.json
@@ -80,15 +80,27 @@ TWO LABEL SPACES, AND WHY --apply USES A BY DEFAULT
      from data/subjects.json and carries that list's own code. This is the
      space the table above was measured in, and the only one directly
      comparable with topics.py.
-  B  a proposed vocabulary: five starved categories folded into their parents,
-     Regular Meeting retired, and Housing and Study Committees and Commissions
-     added. It is reachable with --space B and is NOT the default, because it
-     would put two subject names into the archive's eighteen terms that
-     data/subjects.json has no code for -- while 2025-2026, which the General
-     Court labelled and which this never touches, went on using the folded
-     five. A reader filtering by Parks and Recreation would find 2025-2026's
-     bills and none of the archive's. That is a decision for the site owner,
-     not a side effect of installing a classifier.
+  B  the site's own vocabulary: five starved categories folded into their
+     parents, Regular Meeting retired, and Housing and Study Committees and
+     Commissions added. THE OWNER APPROVED IT ON 17 SEPTEMBER, both halves --
+     "I support adding housing and study committees as categories" and "I
+     also approve of that consolidation of the underused categories" -- so
+     build_all.py now runs `--apply --space B` and this is what the site
+     publishes.
+
+     The objection that kept it off is answered rather than waived. It was
+     that two names would enter the archive's eighteen terms which
+     data/subjects.json has no code for, while 2025-2026 kept the General
+     Court's own labels, so a reader filtering Parks and Recreation would find
+     the current term and none of the archive. build_site_v2.unify_vocabulary
+     closes that by folding every term including the labelled one, so one
+     vocabulary covers all nineteen; ADDED_CODES below gives the two additions
+     their codes on both sides.
+
+     Measured on the same held-out half, both models trained on the training
+     half only: space A 609/1,087 = 56.0% with 28.9% declined to
+     Miscellaneous; space B 664/1,087 = 61.1% with 25.1% declined. It reaches
+     654 Housing bills and 2,103 Study bills across the whole record.
 
 MISCELLANEOUS IS STILL THE POINT OF THE FLOOR. Below it the model is guessing,
 and a wrong topic on a bill page is worse than no topic, because a reader
@@ -146,6 +158,19 @@ RETIRED = {"Regular Meeting"}
 
 HOUSING = "Housing"
 STUDY = "Study Committees and Commissions"
+
+# The two names data/subjects.json has no code for, because they are this
+# site's additions rather than the General Court's. Defined here, beside the
+# names themselves, and imported by build_site_v2.unify_vocabulary so the two
+# cannot drift apart.
+#
+# apply() needs them for a reason that is easy to miss: it writes
+# `code_of.get(topic) or MISC_CODE`, and code_of is the General Court's own
+# list -- so in space B every Housing bill would have been filed under the
+# MISCELLANEOUS code while displaying the name Housing. unify_vocabulary would
+# not have caught it either, because it only rewrites a code when it changes
+# the NAME, and the name was already right.
+ADDED_CODES = {HOUSING: "HSG", STUDY: "STU"}
 
 # The General Court's own definition of a housing bill: the 103 bills its
 # House Housing committee heard in 2025-2026. Nothing here is hand-written --
@@ -709,7 +734,8 @@ def apply(space="A", limit_terms=None, cfg=None):
             topic, conf, regime, other = answer(model, rec, text, cfg)
             got[bid] = {
                 "subject": topic,
-                "subject_code": code_of.get(topic) or MISC_CODE,
+                "subject_code": (ADDED_CODES.get(topic)
+                                 or code_of.get(topic) or MISC_CODE),
                 "margin": round(conf, 2),
                 "source": SOURCE,
                 "why": (why_for(model, rec, text, topic, other, cfg, regime)

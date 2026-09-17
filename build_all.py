@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.23
+# GRANITE_VERSION: 2026-09-05.24
 """
 Run the whole pipeline in the right order.
 
@@ -199,11 +199,14 @@ def plan(a):
         # writes the same file key for key. topics.py stays runnable and stays
         # what preflight tests.
         Step("a topic for the bills the General Court gave none",
-             ["topic_model.py", "--apply"],
+             ["topic_model.py", "--apply", "--space", "B"],
              needs=["data/bills.json"], produces=["topics_assigned.json"],
              note="learns from the 2,221 bills of 2025-2026 that carry the "
                   "General Court's own topic and answers for the other "
-                  "29,449, or says Miscellaneous where it cannot"),
+                  "29,449, or says Miscellaneous where it cannot; in the "
+                  "site's own vocabulary, which the owner approved on 17 "
+                  "September -- five thin categories folded, Housing and "
+                  "Study added"),
 
         # AFTER build_data, for the same reason as topics: it reads
         # data/sponsors.json to leave alone every bill the database already

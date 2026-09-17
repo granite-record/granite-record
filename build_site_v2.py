@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.97
+# GRANITE_VERSION: 2026-09-05.99
 """
 Generate the faceted site from real General Court data.
 
@@ -1780,6 +1780,11 @@ def write_rollcall_index(out, rollcalls, votes_by_member):
           f"({f.stat().st_size / 1024:,.0f} KB, read once per reader)")
 
 
+# The seat out of a ballot's own label: "Shurtleff, Steve(D) Merrimack 15".
+# build_data._former_label builds that string and says at length why this reads
+# it rather than former_members.json -- it is the only copy the person's
+# corrections have been applied to. The shape is a contract between the two
+# functions: change it in both places or in neither.
 FORMER_LABEL = re.compile(r"\(\s*[A-Za-z]?\s*\)\s*(?P<county>[A-Za-z .']+?)\s+"
                           r"(?P<district>\d+)\s*$")
 
@@ -3307,7 +3312,10 @@ def merge_guessed_topics(bills):
 # Codes for the two categories the General Court does not have. Nothing reads
 # subject_code -- it is carried through and displayed -- but it must not be
 # empty where every other subject has one.
-ADDED_CODES = {"Housing": "HSG", "Study Committees and Commissions": "STU"}
+# One definition, in topic_model beside the names themselves: this file had
+# its own copy, and two tables of the same two codes are two chances to
+# disagree the day a third name is added.
+ADDED_CODES = TM.ADDED_CODES
 
 
 def unify_vocabulary(bills):

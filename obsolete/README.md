@@ -3,7 +3,8 @@
 Nothing here runs, nothing here is imported, and nothing in `build_all.py`
 names any of it. It is kept because each of these answered a question, and the
 answer is now built into something else — so the thing worth preserving is the
-reasoning, not the code.
+reasoning, not the code. A document can be superseded the same way a script
+can, and one is here for the same reason.
 
 This follows the convention `build_all.py` already uses for a superseded step:
 kept for a case a newer step does not cover, and never run unasked.
@@ -54,3 +55,20 @@ the Senate rows on their own.
 Superseded by `preflight.py`, which checks both chambers as a matter of course
 and fails rather than printing. Kept as the record of a real failure mode:
 a number that looks healthy because the broken part is a small share of it.
+
+## `LAUNCH-history-2026-09.md`
+
+`LAUNCH.md` as it stood on 17 September, before it was trimmed for the public
+release. For nine days it was a running log as well as a list — 2,144 lines of
+dated decisions, measurements, bugs with their causes, and the evenings the
+person settled things — and a stranger could not tell September's working notes
+from the state of the site.
+
+So the list stayed in `LAUNCH.md` and the log came here, the whole file rather
+than an extract, which is why a few paragraphs appear in both. Nothing was
+summarised, compressed or reworded: the reasoning is the part of it worth
+keeping, and this project keeps reasoning.
+
+**It is history, and none of it is a statement about the site today.** Every
+count in it was true on the day it was typed. `LAUNCH.md` is the live list;
+`STATE.md`, which is generated, beats them both.

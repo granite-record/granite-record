@@ -43,7 +43,7 @@ page says so and links the recording. There is a file of proceedings somebody
 timed by hand with a stopwatch, and every timing method is scored against it
 before it ships.
 
-*The checks are the design record.* `preflight.py` holds 159 of them, and most
+*The checks are the design record.* `preflight.py` holds 161 of them, and most
 exist because something broke in a way a check could have caught. Each one's
 docstring says what that was. It is the fastest way to learn where the sharp
 edges are.
@@ -56,8 +56,8 @@ You need **Python** and **NumPy**. Node is optional but wanted — the checks
 load the front end in it, and skip those checks when it is missing.
 
 ```
-git clone <REPOSITORY URL — not yet set; see "Unfinished">
-cd nh
+git clone https://github.com/granite-record/granite-record.git
+cd granite-record
 pip install numpy
 ```
 
@@ -69,18 +69,18 @@ the version, so an older 3.x may be fine; that is untested.
 site on it:
 
 ```
-python3 preflight.py --code     # the 121 checks that need no data on disk
+python3 preflight.py --code     # the 122 checks that need no data on disk
 ```
 
 On a fresh clone the summary reads **`113 passed, 0 failed, 8 skipped`**. That
 is the expected first run, not a fault: eight of the checks read the real built
 `site/`, which a clone does not have, and they say so one by one. In a working
-tree with a built site the same command is all 121.
+tree with a built site the same command is all 122.
 
 About a minute — 63 seconds in the nightly of 17 September. **Trust its output
 over anything written in prose, including this file.** If it is not green, that
 is the thing to fix before anything else. `python3 preflight.py` with no flag
-adds the 38 data checks, which need the record described below, and takes
+adds the 39 data checks, which need the record described below, and takes
 longer.
 
 ### A clone has the code, not the record
@@ -318,8 +318,6 @@ than an admission of not knowing.
 
 Honest list, not a roadmap — `LAUNCH.md` is the roadmap.
 
-- **This repository has no remote yet.** The `git clone` line above cannot be
-  filled in until the address is chosen.
 - **No issue templates and no CI.** `preflight` is run by hand. `CONTRIBUTING.md`
   and `SECURITY.md` exist; neither has been through a round with anyone but us.
 - **Sponsors before 2011 are nearly empty** — fewer than twenty per term across

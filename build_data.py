@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.29
+# GRANITE_VERSION: 2026-09-04.30
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -1141,6 +1141,25 @@ def main():
         # died in office, and a colleague reading the record should not have
         # that flagged at them. The vote is the fact; the circumstances of
         # their leaving are not this site's business.
+        #
+        # THIS STRING IS AN INTERFACE, NOT A DISPLAY LABEL, and its shape is a
+        # contract. "Shurtleff, Steve(D) Merrimack 15" never reaches a page --
+        # build_site_v2.member_labels re-derives what a reader sees from the
+        # bare name, so every voter on every page reads "Rep. Steve Shurtleff".
+        # It looks like dead code and on 17 September it was nearly deleted as
+        # such.
+        #
+        # It is not. build_site_v2.former_roster parses the county and district
+        # back OUT of this string (FORMER_LABEL there) to give a former member
+        # their seat, and it reads the label rather than former_members.json
+        # precisely because this is the only copy that has been through
+        # member_corrections.json -- build_data applies the person's
+        # corrections to `former` above and never writes that map out. Taking
+        # the seat from the file instead is what published Steve Shurtleff at
+        # Grafton 9, the seat of the record his correction replaced.
+        #
+        # So: the "Name(P) County NN" shape is depended on. Change it in both
+        # places or in neither.
         f = former.get(mid)
         if not f:
             return f"Member #{mid}"
