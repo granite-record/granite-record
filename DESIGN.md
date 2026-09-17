@@ -54,8 +54,12 @@ rather than decorative.
 number is worth adding when it tells the reader something: that these two
 things are different kinds, that this is third of five, that this claim is
 weaker than that one. The site already does this in one place worth
-protecting — *"the chair opens it at 1:08:43"* against *"estimated within ±5
-min"* are different claims and are worded differently on purpose.
+protecting — a boundary the chair stated against one the model inferred are
+different claims and are worded differently on purpose. (The example this
+paragraph used, *"estimated within ±5 min"*, is no longer what the page says:
+the ±-tolerance wording was taken out as methodology in the reader's way, and
+an inferred boundary now carries the single word *approximate*. The principle
+is unchanged; only the example moved.)
 
 **The vernacular is the source of the palette.** Dockets, roll calls,
 calendars, journals, the chamber. Granite. Not a generic civic-tech blue.

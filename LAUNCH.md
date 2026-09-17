@@ -722,11 +722,22 @@ party on nearly every ballot ever cast.
 | Feeds | per bill, committee, topic and hearing |
 | Veto messages | 175, each cited to the calendar it was printed in |
 | Roll calls | **9,565 across 1999–2026**, 2.3M ballots, every term named and partied |
-| Hearings | **50,911 proceedings across eleven terms**, 1989–2026 |
+| Hearings | proceedings for **all nineteen terms**, 1989–2026 — a `verification_manifest*.csv` each, the last eight built 09:32 on 17 September. This row read "50,911 across eleven terms" that morning and "29,837 across seven" the week before; run `python3 handoff.py` and read `STATE.md` for the count |
 | Hearings parsed from calendars | **61,429 bill-days, 1997–2026** (not yet merged) |
 | The archive on disk | 28 database views / 3.1M rows; House calendars and journals 100% |
 
 ## 2. Running
+
+> **Everything below this heading describes 11 September and is spent as a
+> statement of what is running now.** Do not start a fetch on the strength of
+> it. As at 17 September 10:20 the lane has been up since 16 September 09:44
+> and its current step is `fetch_legislation.py --note bills-06`, started
+> 08:30 — archived bill text 1989-2024, newest first, 2016 skipped, 800
+> requests 20 s apart. The live answer is `archive/.lock` (a fresh mtime means
+> a fetch is in flight right now), `logs/gc_lane.log`, `logs/gc_lane.done` and
+> the process one-liner in `watchers/README.md`. The reasoning below — why the
+> lane exists, what a refusal looked like, why the pace is what it is — is
+> what this section is for.
 
 Everything the General Court is asked now goes through **one lane**,
 `watchers/gc_lane.py`, which runs `watchers/gc_lane.queue` a step at a time
@@ -919,10 +930,12 @@ decides whether an hour's shift can put 76 stated starts back.
 12. Email routing, and the follow-by-email decision a static site cannot make
     on its own.
 13. Accessibility, continuously.
-14. `build_site_v2.main` is **468 lines** and the longest function in the
-    file, now that `build_bills` has gone from 544 to 294 in nine
-    byte-identical steps. The station code that caused the floor-marker miss
-    already came out; what is left in `main` is the loading.
+14. `build_site_v2.main` is **533 lines as of 17 September** — it was 468 when
+    this was written, so it grows while it waits — and the longest function in
+    the file, now that `build_bills` has gone from 544 to 294 in nine
+    byte-identical steps (and back to 346 since, which is what a function does
+    when it is the right size to add to). The station code that caused the
+    floor-marker miss already came out; what is left in `main` is the loading.
 
 ---
 

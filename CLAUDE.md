@@ -1,15 +1,23 @@
 # Granite Record
 
 A public record of the New Hampshire General Court, live at graniterecord.org.
-33,683 bills across 19 terms, 1989 to 2026; 406 sitting legislators and 2,192
-people who have served; hearings on record for eleven terms; and for the
-recorded ones, the moment in the recording where a chair took the bill up.
+33,683 bills across 19 terms, 1989 to 2026; 406 sitting legislators and the
+2,192 people in `careers.json`, which is everyone with a recorded roll-call
+vote since 1999 rather than everyone who has served -- roll calls start in
+1999 and the bills start in 1989; hearings on record for all nineteen terms,
+each with its own `verification_manifest*.csv`; and for the recorded ones, the
+moment in the recording where a chair took the bill up.
 
 `LAUNCH.md` is the list of what is done, what is not, and what to do first.
 Every hand-written document here drifts, this one included; `STATE.md` is
 generated and does not, so where a count disagrees, `STATE.md` wins.
 
-Static site: files on a CDN, no runtime. That constraint is deliberate.
+Static site: files on a CDN. That constraint is deliberate. There is exactly
+one exception: `functions/api/report.js`, the POST endpoint behind the "report
+a problem" box. Its own header says so -- "THE ONLY THING ON THIS SITE THAT
+RUNS". It is write-only, on no page's critical path, and the box falls back to
+an email link when it is down, which is why it is acceptable on a site that is
+static on purpose.
 
 ---
 
@@ -21,14 +29,17 @@ python3 preflight.py       # the checks; builds the whole site on a fixture
 python3 handoff.py         # writes STATE.md with current counts
 ```
 
-Under a minute, no network. **Trust their output over anything written in
-prose, including this file.** If `preflight` is not green, fix that before
-anything else.
+A couple of minutes, no network -- `preflight` is nearly all of it, and its
+`--code` half alone took 63 s in this morning's nightly. **Trust their output
+over anything written in prose, including this file.** If `preflight` is not
+green, fix that before anything else.
 
-`STATE.md` is generated. Never edit it. `HANDOFF.md`, `ARCHITECTURE.md`,
-`LAUNCH.md`, `DESIGN.md` and `obsolete/README.md` are written by a person and
-explain why things are the way they are. (`TESTING_QUEUE.md` was named here
-for a while and has never existed; `LAUNCH.md` is what took its place.)
+`STATE.md` is generated. Never edit it. `CLAUDE.md` (this file), `LAUNCH.md`,
+`DESIGN.md` and `obsolete/README.md` are written by a person and explain why
+things are the way they are. `HANDOFF.md` and `ARCHITECTURE.md` are the
+assistant's to keep current, and `README.md` is the front door for the
+open-source release. (`TESTING_QUEUE.md` was named here for a while and has
+never existed; `LAUNCH.md` is what took its place.)
 
 ---
 
@@ -43,22 +54,44 @@ If a fetch is genuinely needed, say so and let the person start it. Never run
 two at once. `python3 netcheck.py` diagnoses a refusal without making things
 worse.
 
+**Before assuming nothing is running.** `watchers/gc_lane.py` is the scheduled
+lane, it works the queue in `watchers/gc_lane.queue`, and it holds
+`archive/.lock` with its pid and touches it every minute while it does. A fresh
+`archive/.lock` means a General Court fetch is in flight right now;
+`logs/gc_lane.log` says which step and `logs/gc_*.log` how far it has got.
+`watchers/README.md` explains the lane and carries the one-liner that lists
+every fetch process on the machine. Look there before starting anything — a
+session that trusted a stale table in a document is how the second block
+happened.
+
 **A refusal outlives the run that met it.** `refusal.py` records one in
-`archive/refused.json` and every fetch stops for 24 hours — the calendar
-drain, the docket, the archived text and its discovery pass. It exists because
+`archive/refused.json` and holds the fetch lane for 24 hours. It exists because
 on 9 September the calendar drain was answered with two 403s, stopped itself
 correctly, and a chained run started asking the same address for a docket
 fifty-four seconds later. Clearing it is a person's decision:
 `python3 refusal.py --clear`, after `netcheck.py` has said what kind of
 refusal it was.
 
-The `fetch_*_db.py` scripts -- eight of them, plus `docket_from_db.py` --
-are the exception worth knowing about: they read the SQL host the General Court publishes credentials
+It does not yet hold *every* fetch. Twelve of the twenty-four web fetchers
+consult it (`grep -l refusal fetch_*.py`); nine that ask gc.nh.gov directly do
+not — `fetch_bill_status`, `fetch_bill_text`, `fetch_committee_reports`,
+`fetch_committees`, `fetch_journals`, `fetch_members`, `fetch_schedule`,
+`fetch_session`, `fetch_testimony`. Started by hand, any of those would walk
+straight through a recorded refusal. That is a gap, not a design.
+
+The eight `fetch_*_db.py` scripts are the exception worth knowing about: they
+read the SQL host the General Court publishes credentials
 for at gc.nh.gov/downloads, not the web server that did the blocking. Still
 ask -- they are somebody else's server -- but a refusal there is a different
 problem with a different cause. `probe_db.py` reports what is in it;
 `probe_db.run_to_file` streams an answer too big for the JSON bridge, which is
 anything past a few thousand rows.
+
+The three `*_from_db.py` scripts -- `docket_from_db.py`, `rollcalls_from_db.py`
+and `testimony_from_db.py` -- ask nobody anything, and this file used to file
+`docket_from_db.py` under the fetchers. The database is already dumped to `db/`
+on this disk and they reshape it into the files the parsers read: standard
+library only, no network, free to run without asking.
 
 **`publish`.** It deploys to the live site.
 
@@ -110,10 +143,13 @@ knowing.
 ## How the code is arranged
 
 **`proceedings.csv` is the one table.** Built by `build_proceedings.py` from
-the committee manifest and the floor index, read through `proceedings.py` by
-everything. It exists because those two sources used to be read separately and
-five tools in one day were found to silently exclude floor debates — each
-presenting as a different bug. **Do not add a sixth reader of the old files.**
+every `verification_manifest*.csv` — one per term, nineteen of them as of this
+morning — plus the floor index, and read through `proceedings.py` by
+everything. It globs them all on every run so that no writer here ever sees a
+subset (`build_proceedings.py:311-316`). It exists because those sources used
+to be read separately and five tools in one day were found to silently exclude
+floor debates — each presenting as a different bug. **Do not add a sixth reader
+of the old files, and do not give it a `--term` flag.**
 
 **Five files are a person's and no generator writes them.**
 `ground_truth.csv` (35 proceedings timed with a stopwatch),
@@ -124,22 +160,32 @@ presenting as a different bug. **Do not add a sixth reader of the old files.**
 evidence for the correction beside it).
 `preflight` fails if any `build_*` or `fetch_*` script opens one for writing,
 and it is named for the category rather than for `ground_truth.csv` because
-three of the four had no guard at all until 10 September.
+three of them had no guard at all until 10 September. The list lives in
+`preflight.py`'s `HANDMADE`; read it there rather than here, because it has
+grown twice and this paragraph said "four" for a week after it was five.
 
 **`build_all.py` is the pipeline.** 26 steps for `--local`, 39 declared; `--local` skips network ones,
 `--dry-run` shows the plan. A step marked `superseded=True` is kept for a case
 a newer step does not cover and does not run unasked.
 
-**`preflight.py` is the test suite.** It builds the whole site on a fixture,
-loads `bills.html` in node and calls `render()` and `renderDetail()`, and runs
+**`preflight.py` is the test suite.** 159 checks — 120 of them under `--code`,
+which needs no data on disk — and no network. It builds the whole site on a
+fixture, loads `app.js` (the script `bills.html` pulls in) in node against
+`dom_stub.js` and calls `render()` and `renderDetail()`, and runs
 `tests/test_markers.py`. Add a check whenever something breaks in a way a check
 could have caught — that is how most of the current ones got there.
 
 **Timestamps, in order of what they can claim.** A roll call's clock time from
-`RollCallSummary.txt` (no captions involved, hand-checked at 3–7 seconds); a
+`RollCallSummary.txt` (no captions involved, hand-checked at 3–7 seconds, and
+House only — all 3,988 Senate rows across the current file and the 27 archived
+years in `rollcalls/` are stamped midnight, so this method places no Senate
+floor debate at all, while 5,363 of the 5,577 House rows carry a clock); a
 boundary the chair stated, found by `segment_markers.py`; the clustering model
-where neither fires. The page says which: *"the chair opens it at 1:08:43"*
-against *"estimated within ±5 min"*.
+where neither fires. The page says which by what it does *not* qualify: a
+stated boundary is shown plainly, and an inferred one carries one word,
+*approximate*. This paragraph quoted *"estimated within ±5 min"* for a
+fortnight after that string came out of `app.js`, where it now appears zero
+times.
 
 **Captions are not quoted on the site.** They render "HB 1381" as "HP 1381" and
 "HB 1444" as "HB1 1444". A garbled quote presented as what someone said is a
@@ -156,21 +202,34 @@ caught three silently half-applied edits.
 
 **When you change a file, bump its stamp and update `versions.json` in the same
 edit.** The date is when the file was *created*, not last modified:
-`preflight.py` at `2026-09-04.12` has been edited many times since 4 September.
-Increment the `.N`; leave the date alone.
+`preflight.py` at `2026-09-04.190` has been edited a hundred and ninety times
+since 4 September. Increment the `.N`; leave the date alone. `python3
+inventory.py` prints the current stamp of every file; take one from there and
+do not copy one into prose. This example read `.12` for a fortnight, which was
+worse than stale — `.12` is the stamp `build_legislator_pages.py`,
+`check_live.py` and `nightly.py` carry today, so anyone grepping for it landed
+on the wrong file, and `preflight` would reject `.12` on `preflight.py`.
 
 ---
 
 ## What to work on next
 
-In order. `ARCHITECTURE.md` has the full reasoning, and `LAUNCH.md` is the
-newer answer where they disagree.
+In order **within their category, and the category comes first.** Since
+15 September, when staff and legislators began using the site: a factual error
+— a wrong roster, a wrong count, a mislabelled vote, a sponsor on the wrong
+person — is fixed before anything else; then bugs that hide or break data; then
+everything below, all of which is in that third group. `LAUNCH.md` holds the
+current order and is the newer answer where it and this disagree;
+`ARCHITECTURE.md` has the full reasoning.
 
-1. **Split `build_site_v2.main`, which is now the longest function in the
-   file at 468 lines.** Its two predecessors are done and both were verified
+1. **Split `build_site_v2.main`, which is still the longest function in the
+   file and is now 533 lines** — it was 468 when this was written, so it grows
+   while it waits. Its two predecessors are done and both were verified
    the same way. `renderDetail` went from 472 lines and 26 `const`
    declarations to nine hoisted functions on 6 September, byte-identical.
-   `build_bills` went from **544 lines to 294** on 10 September, in nine
+   `build_bills` went from **544 lines to 294** on 10 September (it has since
+   drifted back to 346, which is what a function does when it is the right
+   size to add to), in nine
    steps, each one checked by building the site into a scratchpad tree and
    comparing a sha256 manifest of all 34,114 files against a baseline — which
    was itself run twice under different `PYTHONHASHSEED` values first, to
@@ -196,41 +255,63 @@ newer answer where they disagree.
    patterns were validated against sentences typed out of a document for a
    whole day before anyone ran them on a floor caption file.
 
-   Note what will NOT move this: more captions. 910 of the 915 recordings
-   that carry a scheduled bill already have them.
+   Note what will NOT move this: more captions. 4,296 of the 4,429 recording
+   folders in `work/` carry captions this can read, and the recordings
+   `proceedings.csv` names are nearly all of them — "910 of the 915" was one
+   term's denominator, written when the table held one term. The point is
+   unchanged: fetching more captions will not move the coverage.
 
-3. **`proceedings.csv` across the remaining terms.** It held one term until 10
-   September and holds eleven now — 54,855 rows, 2,533 recordings — because
+3. **~~`proceedings.csv` across the remaining terms.~~ All nineteen terms have
+   a manifest as of this morning** — it held one term until 10 September,
+   eleven until this morning, and the last eight were built at 09:32 — because
    `build_manifest.py` turned out to need no change at all: `--docket` names
    the term, and `build_proceedings.py` reads every
-   `verification_manifest*.csv` rather than one. What is left is the terms
-   whose dockets have not been fetched, and the pre-2015 years, for which no
-   docket is fetched at all and the calendars are the only source: all 1,580
-   House calendar PDFs for 1997-2026 are on disk with text, yielding 61,767
-   bill-days that need no network.
+   `verification_manifest*.csv` rather than one. What made the last eight cost
+   no network is that the database dump had already put
+   `Docket_db_1999-2000.txt` through `Docket_db_2013-2014.txt` on this disk;
+   fifteen `Docket_db_*.txt` are there now. Run `python3 handoff.py` for the
+   row and recording counts — this line has carried a stale pair twice.
+
+   The calendars stay the independent check, and the only source for a hearing
+   the docket never recorded: all 1,580 House calendar PDFs for 1997-2026 are
+   on disk with text, and `calendar_meetings.py --check` reads the bill-days
+   out of them at no cost. (It printed 61,767 on 10 September and 61,543 on the
+   17th, after committee-name variants were merged — run it rather than
+   quoting either.) The Senate calendars are 1,604 PDFs with text for 984.
 
 4. **A new archive path, found on 10 September and tested the same day.**
    `gc.nh.gov/legislation/<year>/<HB0000>.html` is constructible from a year
    and a padded number — no search, no session — and carries the sponsor with
    their district, the committee of referral, the title, the analysis and the
    full text. A 380-bill sample, ten a year from 1989 to 2026 across every
-   kind, saved 297 pages: 1996, 2016 and 2022 onward answered 404 for every
-   bill asked (the current terms live at bill_status; the two archive years
-   are unexplained), and the parser now reads sponsor, committee and title
-   across all 15 kinds and 31 years — the 29 pages naming no sponsor are
-   housekeeping resolutions and budget tables, which name none. Five terms
-   currently have no sponsor and no committee at all; this is the path that
-   fills them. `fetch_legislation.py` fetches and saves; `--parse` reads what
+   kind, saved 297 pages, and the parser now reads sponsor, committee and
+   title across all 15 kinds and 31 years — the 29 pages naming no sponsor are
+   housekeeping resolutions and budget tables, which name none.
+
+   **That sample has been overtaken**, and two of the sentences it produced
+   were wrong. 11,937 pages across 38 year folders are saved under
+   `legislation/` and the lane is still walking backwards through them: 2022,
+   2023 and 2024 all answered (1,195, 638 and 1,300 pages), so only 1996 and
+   2016 answer 404 for every bill asked, and those stay unexplained; the
+   current term lives at bill_status. Nor do any terms lack a committee — the
+   docket fills committee of referral for all nineteen. What this path is still
+   buying is the sponsor, for the terms that carry one on fewer than twenty
+   bills; `/data/manifest.json`'s per-term coverage table says which, and it
+   moves with every build. `fetch_legislation.py` fetches and saves; `--parse` reads what
    is saved and touches no network, because the labels change with the
    decades and a parser must be allowed to be wrong without costing a request.
 
 5. **The bench.** `review.py` serves one sample at a time on the loopback
    address, takes a verdict and a note, and appends to `review/checked.jsonl`.
-   Five kinds: hearing timings, narratives, hearings read from calendars, veto
-   messages, committee reasoning. `probe_alignment.py --truth` reads it
-   alongside `ground_truth.csv` — 43 marks across 15 recordings against 35
-   across 7 — and `--no-bench` gives the number comparable with anything
-   recorded before 9 September.
+   Nine kinds now, not the five this said: topics, bill hearing timings,
+   hour-late recordings, timings before 2025, histories of 1989-2016,
+   plain-language histories, hearings read from calendars, governors' veto
+   messages and committee report reasoning. 165 judgments are on file.
+   `probe_alignment.py --truth` reads the timed ones alongside
+   `ground_truth.csv`'s 35, and `--no-bench` gives the number comparable with
+   anything recorded before 9 September. **Take the two counts from the
+   command's own header** — the "43 marks across 15 recordings" this line
+   carried is not reproducible from any state of `checked.jsonl`.
 
 **Settled, and no longer worth revisiting.** The file cap: records travel
 inside their own pages, so a bill is one file and the site is **45,862 of the
@@ -245,7 +326,7 @@ Windows. The person uses `cmd`; the assistant has PowerShell and a Git Bash
 shell, and a heredoc in either eats backslash escapes -- write patch scripts
 with the editor tool and copy them in. Python 3.14 as `python3`. Node is
 installed and `preflight` uses it. The working folder is the repository root;
-`work/` holds about 34 GB of caption files across ~2,500 recordings, and
-`site/` is the built output.
+`work/` holds about 34 GB of caption files across 4,429 recording folders,
+4,296 of them with captions this can read, and `site/` is the built output.
 
 `publish` is a local command that builds, checks and deploys with wrangler.

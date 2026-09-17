@@ -26,6 +26,13 @@ authoritative timestamp this project has. `CLAUDE.md` lists it first, above
 anything read from a caption. The experiment is over because its finding is
 production.
 
+**It is House-only, and the experiment could not have shown that.** Across the
+current `RollCallSummary.txt` and the 27 archived years in `rollcalls/`, 5,363
+of the 5,577 House rows carry a clock and all 3,988 Senate rows are stamped
+`12:00:00 AM`. So this method places no Senate floor debate at all, and the
+answer to "why is there no timestamp on this Senate debate" is here rather than
+in the caption code.
+
 ## `floor_debates.py`
 
 An early attempt at finding where debate on a bill starts and ends in a floor
