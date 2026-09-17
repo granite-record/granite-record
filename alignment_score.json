@@ -1,21 +1,7 @@
 {
  "measured": "2026-09-17",
  "bench": true,
- "candidate": {
-  "marked": 63,
-  "placed": 44,
-  "unplaced": 19,
-  "median": 1.2000000000000455,
-  "worst": 5288.6,
-  "within": {
-   "60": 38,
-   "300": 41,
-   "600": 42,
-   "900": 42
-  },
-  "over_ten_minutes": 2,
-  "videos": 34
- },
+ "candidate_file": "candidate_segments.json",
  "schedule": {
   "marked": 63,
   "placed": 60,
@@ -35,5 +21,20 @@
   "marked": 63,
   "videos": 34,
   "committees": 25
+ },
+ "candidate": {
+  "marked": 63,
+  "placed": 44,
+  "unplaced": 19,
+  "median": 1.2000000000000455,
+  "worst": 5288.6,
+  "within": {
+   "60": 38,
+   "300": 41,
+   "600": 42,
+   "900": 42
+  },
+  "over_ten_minutes": 2,
+  "videos": 34
  }
 }

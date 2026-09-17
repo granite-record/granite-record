@@ -288,12 +288,8 @@ Honest list, not a roadmap — `LAUNCH.md` is the roadmap.
 
 - **This repository has no remote yet.** The `git clone` line above cannot be
   filled in until the address is chosen.
-- **No `CONTRIBUTING.md`, no issue templates, no CI.** The rules above are all
-  there is, and `preflight` is run by hand.
-- **The JSON sets no CORS header.** Nothing in the tree writes
-  `Access-Control-Allow-Origin`, so a cross-origin `fetch` from another site
-  will fail. Fixing it is two lines where `build_pages.py` writes
-  `site/_headers`.
+- **No issue templates and no CI.** `preflight` is run by hand. `CONTRIBUTING.md`
+  and `SECURITY.md` exist; neither has been through a round with anyone but us.
 - **Sponsors before 2011 are nearly empty** — fewer than twenty per term across
   eleven terms. The archive path that would fill them exists and is not yet run
   to completion: 11,937 pages are saved under `legislation/` and the fetch is
