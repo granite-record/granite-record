@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.3
+# GRANITE_VERSION: 2026-09-12.4
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -143,7 +143,25 @@ def write_pngs():
         said.append(f"icon-{n}.png")
     # MASKABLE: Android crops to the launcher's shape, so the mark has to sit
     # inside the middle 80% or the chin comes off.
-    pad = Image.new("RGB", (512, 512), (17, 21, 20))
+    #
+    # THE PAD TAKES ITS COLOUR FROM THE SOURCE, and used to be the literal
+    # (17, 21, 20). brand/icon.png's ground is pure black, so the padded border
+    # was #111514 around a #000000 square and the icon carried a visible seam --
+    # on a launcher that reads as a box drawn around the logo, which is the one
+    # thing a maskable icon exists to avoid.
+    #
+    # Sampled rather than corrected to another constant, so it stays right if
+    # the brand asset is ever redrawn. The four corners are checked against each
+    # other first: if they disagree the mark reaches the edge, this is not a
+    # flat ground, and padding it with any single colour would be wrong.
+    w, h = src.size
+    corners = [src.getpixel(p) for p in
+               ((0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1))]
+    if len(set(corners)) != 1:
+        sys.exit(f"brand/icon.png's corners are not one colour ({corners}), so "
+                 "the maskable icon cannot be padded without inventing a "
+                 "background. Redraw it with a flat ground, or pad it by hand.")
+    pad = Image.new("RGB", (512, 512), corners[0])
     inner = src.resize((410, 410), Image.LANCZOS)
     pad.paste(inner, (51, 51))
     pad.save(OUT / "icon-512-pad.png", optimize=True)
