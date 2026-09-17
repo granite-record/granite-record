@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.51
+# GRANITE_VERSION: 2026-09-04.52
 """
 Write a real address for every bill, and the sitemap that points at them.
 
@@ -96,9 +96,17 @@ def noscript(b, d, data_url=None):
     if d.get("docket_url"):
         links.append(f'<a href="{E(d["docket_url"])}" rel="noopener">'
                      "the General Court's own docket for this bill</a>")
-    if d.get("text_pdf"):
-        links.append(f'<a href="{E(d["text_pdf"])}" rel="noopener">'
-                     "the bill text (PDF)</a>")
+    # text_url, NOT text_pdf. The detail record has never carried a text_pdf
+    # key -- build_site_v2.bill_documents builds the value and returns it as
+    # text_url (:2631, :2680), and text_pdf is only the name of the raw column
+    # it is derived FROM (:2712). So this test was false on every page ever
+    # built, and the noscript block offered the docket and silently nothing
+    # else on 10,841 pages that have a bill text to give. A reader with
+    # JavaScript gets the link from d.documents and never saw the hole, which
+    # is why it survived the fix recorded just below.
+    if d.get("text_url"):
+        links.append(f'<a href="{E(d["text_url"])}" rel="noopener">'
+                     "the bill text</a>")
     # ONLY WHEN THERE IS A FILE TO OFFER. This linked to the bill's JSON
     # unconditionally, and 33,585 of those files stopped existing the day
     # their contents moved inside the page -- so the one thing this block
