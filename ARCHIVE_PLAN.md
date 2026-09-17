@@ -10,6 +10,37 @@ present it rather than deciding what to ask for next.
 
 ---
 
+## What happened to this plan, 17 September
+
+Carried out. Every lettered item below was done, one of them by a method this
+page argued against; what is still outstanding is named in the table and is
+small. `python3 archive_status.py` prints where each source stands today and is
+still the authority; `LAUNCH.md` is the live list of what is left to do. This
+page is kept for its reasoning, and each section below is true as of the date
+it names.
+
+| | what happened |
+|---|---|
+| A, every bill 1989–2024 | **done** — 18 terms, 31,449 bills, rather than the roughly 36,000 this page guessed |
+| B, the database in full | **done** — 28 views of 28, 3,130,243 rows. `NH_RSA`, `VHearings`, `DocumentVersion`, `GeneralStatusCodes`, `BodyStatusCodes` and `DistrictPast` are all in `db/` |
+| C, calendars and journals | **done bar 45** — 4,347 of 4,392 held. 44 Senate calendars are withheld as zero-padded names the source lists but has never served, and one Senate journal answers HTTP 500. Text is extracted beside 3,628 of the 4,248 PDFs; every one of the 620 without is a Senate calendar |
+| D, video and captions | **done** — 4,428 indexed, captions beside 4,264. Of the 3,490 the archive drain asked for, 127 publish none and 5 are not yet broadcast |
+| E, the 2017–2024 docket | **taken, and done on 11 September** — four `Docket_*.txt` files, and `Docket_2015-2016.txt` fills the fifth-of-a-year the database left in 2016 |
+| F, bill text for older terms | **reversed**, below |
+
+**The bill-text decision was reversed because the price halved.** Two requests
+a bill was the price of reading a text id off a status page first. On 10
+September a person found `gc.nh.gov/legislation/<year>/<HB0000>.html`, which is
+constructible from a year and a padded number and carries the sponsor with
+their district, the committee of referral, the title, the analysis and the full
+text — one request, no search, no session. So `fetch_legislation.py` replaced
+`fetch_archive_text.py`, which has never run, and the backfill is walking
+backwards a term at a time and is still going as this is written. `python3
+fetch_legislation.py --plan --all --from 1989 --to 2024` asks nobody anything
+and prints what is saved and what is left.
+
+---
+
 ## Where it stands, 9 September evening
 
 `python3 archive_status.py` prints this and is the authority; the table below
@@ -40,6 +71,11 @@ nothing further on that host.
 (bill, day) pairs covering 2019-2026 to **61,429 covering 1997-2026**. Its
 agreement with the docket — which nothing in the parser wrote — held across
 that eightfold growth: kind 98%, room 100%, time 88%.
+
+`python3 calendar_meetings.py --check` prints that figure and costs no network,
+so read it there: 61,543 on 17 September, the change since being committee-name
+variants merged rather than documents arriving. All three agreement percentages
+are unchanged.
 
 **What the calendars cost.** The drain fetched 1,846 documents over eight
 hours, was answered with two HTTP 403s, and stopped itself. That was the first
@@ -109,7 +145,7 @@ buy are fetched.
 
 ## 1. Five archives, and how far each one goes
 
-| | span available | on this disk | where it comes from |
+| | span available | on this disk, 8 September | where it comes from |
 |---|---|---|---|
 | Bill lists and status | 1989–2026 | 2 terms (4,230) | Advanced Bill Status Search, **2 requests a year** |
 | Dockets | 1989–2016, 2025–2026 | 2 terms | **the database, free** — 317,811 rows |
@@ -204,7 +240,8 @@ answer is more than a few thousand rows. Row counts already measured:
 `NH_RSA` and `VHearings` were counted but never fetched. The first would let
 the RSA linker point at the statute's own words instead of at a citation; the
 second is the table behind the hearing-schedule feature already planned for
-the next term.
+the next term. **Both were fetched in the sweep** — `db/NH_RSA.psv` holds
+29,785 rows and `db/VHearings.psv` 8,739 — along with the other 26.
 
 **What the eight-database question turned up.** `NHLegislatureDB2` and `NHRSA`
 answer nothing at all — not one known view name, and `INFORMATION_SCHEMA` is
@@ -278,12 +315,25 @@ this is a real decision rather than a deferred one:
 
 Either way it goes last, after everything cheap is in.
 
+**Taken, and done on 11 September.** `Docket_2017-2018.txt`,
+`Docket_2019-2020.txt` and `Docket_2021-2022.txt` sit beside the
+`Docket_2023-2024.txt` that was already here, and `Docket_2015-2016.txt` fills
+the fifth-of-a-year the database left in 2016. All five carry the same seven
+columns as `Docket.txt`, so `narrative.py` reads them unchanged.
+
 ### F — Bill text for older terms. **Not planned.**
 
 38,000 requests for a document that is one link away, on the address that
 blocked us twice. `ARCHITECTURE.md` decided against this and the decision
 stands. `LegislationText` covers the current term with every version; older
 terms link out.
+
+**Reversed on 10 September.** The arithmetic that made it not worth planning
+was two requests a bill against a server that had blocked us; the archive path
+found that day is one request against a constructible address, which is a
+different sum. `fetch_legislation.py --plan --all --from 1989 --to 2024` prints
+what is left of it — a figure that falls with every night the lane runs, so
+read it there rather than here.
 
 ---
 
@@ -304,12 +354,18 @@ three incompatible filename forms across the thirty years being asked for.
 artefact:
 
 ```
-source, key, url, target_path, state, attempts, last_error, fetched_at, bytes
+chamber, kind, year, name, url, path, state, attempts, error, bytes, fetched
 ```
 
-`state` is one of wanted / held / failed / gone. A file already on disk is
-never requested again, so an interrupted run resumes by re-reading the queue
-and every run is idempotent.
+(Those are the columns as built. This page planned `source, key, url,
+target_path, state, attempts, last_error, fetched_at, bytes`, and the source
+turned out to be keyed by chamber and year rather than by an opaque key.)
+
+`state` is one of wanted / held / failed / gone — and, as built, `withheld`,
+which the 44 Senate calendars marked on 12 September carry: a name the source
+lists, that answered 403 twice, and that no browser has yet been shown to
+serve. A file already on disk is never requested again, so an interrupted run
+resumes by re-reading the queue and every run is idempotent.
 
 **One worker, and concurrency is structurally impossible.** The queue is
 drained by a single process holding a lock file. Two fetches at once is what
@@ -398,6 +454,12 @@ present. `DistrictPast` exists as a view and has never been read; a 1998
 member's district is not today's district, and presenting it as though it were
 would be the same class of error as the misdated recording.
 
+**All three are now dumped** — `GeneralStatusCodes` 10 rows,
+`BodyStatusCodes` 76, `DistrictPast` 235 — which answers where they are, not
+what they say. `build_site_v2.py` reads the body codes. Nothing in the
+repository reads `DistrictPast` at all, so the warning in the paragraph above
+still stands and is now a warning about a file that is sitting there.
+
 So the survey stays a step, not an afterthought: **once a source is listed,
 sample one document per era before writing a parser for it.** One from 2026,
 2015, 2005, 1997. The timestamp method scored one second because it was built
@@ -422,6 +484,12 @@ was built from an assumption. That asymmetry applies here thirty times over.
 Steps 3 and 4 are the only two that could overlap, and they must not: one
 worker, one queue, whatever the hosts.
 
+**All five are done**, and so is F, which this list does not carry because §3
+did not plan it. The table at the top of this page says how each one landed.
+Steps 3 and 4 did not overlap; the docket chain that followed them waited on
+`archive/.lock` and, on one morning, was stopped by hand because the calendar
+run before it had ended on two 403s against the same address.
+
 ---
 
 ## 7. Two things this does not solve
@@ -433,6 +501,15 @@ about 3 files a bill. Thirty-six thousand archived bills at that rate is
 **published as cards, not pages**, which is the shape already agreed for
 2023–2024. Nothing in this plan needs deciding differently, but nothing in it
 should be read as a promise of a page per bill either.
+
+**That promise was made anyway, by changing the rate rather than the shape.**
+Three files a bill was what made 36,000 bills not fit. A record now travels
+inside its own page, so a bill costs one file: `site/bill/` holds one for each
+of the 33,683 bills, in a folder per year from 1989 to 2026, and they are
+pages rather than cards. The cap is still 100,000 — Pages Pro, not the 20,000
+in Cloudflare's general docs — and `python3 check_site.py` prints the site's
+file count and warns above 90,000, so that is the number to read rather than
+any written here.
 
 **Disk.** About 1.9 GB of PDFs and about 20 GB of captions. Deleting the 34
 transcribed `audio.wav` files covers most of it.

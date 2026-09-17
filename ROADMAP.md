@@ -278,9 +278,25 @@ those have not been through the marker pass yet, so the next gain is free.
 `--gaps` still has room, floor ends are only partly precise, and committees of
 conference are not properly modelled.
 
+**Re-measured 17 September.** "10,810 proceedings" was one term's denominator;
+`proceedings.csv` is 104,769 rows across all nineteen terms now, and
+committees of conference are modelled -- 1,836 of those rows, in every term,
+223 against a recording. The gate, run today, reads candidate median **0m 01s,
+44 of 63 hand-timed proceedings placed, the schedule alone 14m 46s**. Take
+those from `python3 probe_alignment.py --truth --candidate
+candidate_segments.json` rather than from this paragraph, which has been the
+wrong number twice.
+
 ---
 
 ## Next: the committees page
+
+**Built.** 53 pages under `site/committee/`, drawn by `build_committees.py`:
+composition from `committees.json`, the bills referred, the sessions that
+term, and per-committee counts. What follows is why it was worth doing, which
+has not changed -- and it was: the first thing General Court staff reported
+back, on the 15th, was a wrong roster on some of these pages, which is a
+reader using the page for its purpose. `LAUNCH.md` §0c has that.
 
 The single best return on the list, and it needs no new data.
 
@@ -378,7 +394,9 @@ everywhere. This is now the gate on everything archival and does not depend on
 the file-cap decision the way the earlier plan assumed: the database hands
 back `SessionYear` on every docket row, so the key exists in the source and
 only has to be carried. `build_feeds.py` still has no notion of a term and is
-2,233 of the site's files.
+2,233 of the site's files. **Both halves of that sentence are spent:**
+`build_feeds.py` keys on `(term, bill)` and says why at `:225-228`, and since
+a feed is written only for a bill still moving it emits 811 files, not 2,233.
 
 **3. The file cap.** Unchanged and unaffected by any of this -- it is about
 how many files the site emits, not where the data comes from. Cloudflare Pages
@@ -442,6 +460,13 @@ card and page changes above, or it gets done twice.
 ---
 
 ## Bill versions, and what each amendment changed
+
+**Shipped**, as the tab the strip labels "Bill Text" -- 9,473 files under
+`site/versions/`. It was built the way this section designed it and from route
+1 below: `build_bill_versions.py` reads `db/LegislationText.psv`, so no
+request was made for any of it. Route 2 was never probed and route 3 never
+written. Kept in full because the build was made out of this research, and
+because "What it will not be able to say" still holds.
 
 Researched 8 September. The ask: the detail page opens on the bill as it
 stands now, and the reader can step back through the versions to see what each
@@ -518,6 +543,13 @@ already on disk** and were missed. Reading both would take amendment-text
 coverage from 446 to about 1,736 of 2,478, **with no network at all**. 744
 appear in no cached calendar.
 
+**Taken on 11 September, and it paid more than this predicted.**
+`amendments.json` holds **4,577 amendment texts, 2011-2024**, against the 663
+here; `LAUNCH.md` §6a records the run. `extract_amendments.py` still defaults
+to `--calendars calendars` and is pointed at `calendars_senate` for the Senate
+side -- which is 1,604 PDFs on disk now, not the 204 fetched for the veto
+messages.
+
 ### The design
 
 **Versions, not diffs, are the unit.** Store each version's text once, in
@@ -569,15 +601,18 @@ else, and each is worth doing when the structure around it is settled.
 | Public hearing testimony | 565 of 1,237 fetched |
 | Permanent journal speeches | **The largest content addition available.** The House journal records what members actually said. Nothing else on the site carries a member's own words |
 | Fiscal notes | Already inside the bill text, at the bottom, not parsed |
-| Amendment text | 446 of 2,478 adopted amendments have text; 902 more are in the cached Senate calendars and 388 in the House ones, both readable with no network. See **Bill versions** above |
-| Committees of conference | 133 recordings exist and are linked, but the proceeding is not modelled |
-| Executive Council, Governor | `status/officials.txt` is unedited, so neither appears |
+| Amendment text | **Done, 11 September.** 4,577 texts, 2011-2024, out of the House and Senate calendars already on disk, no network. Was 446 of 2,478. See **Bill versions** above |
+| Committees of conference | **Modelled**, since the archive landed: 1,836 proceedings across all nineteen terms, 223 of them against a recording |
+| Executive Council, Governor | `officials.json` replaced `status/officials.txt` and is filled by hand; the Governor and the Council print on all 320 town pages. Pages of their own are still not built |
 | Rules and executive departments | Not started |
 
 **Amendment text is the one I would do first** of these, and most of it
 needs no fetch at all -- the calendars holding it are already on this
 disk. Versions of the bill itself are a different artefact and come from
 `LegislationText`; **Bill versions** above sets both out.
+
+*Both were done, on the 11th, and neither cost a request -- which is the part
+worth remembering when the next item of this shape comes up.*
 
 ---
 
@@ -589,6 +624,16 @@ Sponsored bills are missing, roll call votes are hard to read or compare, the
 layout is not parsable, and the legislators index page is poorly formatted.
 That is one redesign, not four fixes, and it wants doing in a single pass
 after the `build_site_v2` split — the same reason as the committees page.
+
+**Done, and not in one pass, and not after the split.** Sponsored bills landed
+on the 14th, every member's list now equalling the records that resolve to
+them; the roll call rows name the bill, the question in plain English, the
+tally and whether the member took their own party's side. On **17 September
+the 1,785 members who have left got pages of their own**, from
+`site/former.json`, which turned 34,303 sponsor mentions from plain text into
+links; the sitting roster, `site/legislators.json`, was deliberately left
+alone and still holds exactly 406. The split this was said to wait on has
+still not happened, so it was never the blocker it is written up as here.
 
 ---
 
@@ -602,6 +647,13 @@ search engines index URLs that are about to change.
 function is still 472 lines, and a blank page for an arriving visitor is worse
 than no visitor. After the split.
 
+**Both were overtaken, 14-15 September, and the caution was right about what
+had to come first.** The URL and sharing scheme was retooled on the 14th --
+every tab has an address and the sitemap's lastmod is the day a bill last
+moved -- and `renderDetail` is **102 lines** now, not 472. The site went, as
+it stands, to General Court staff and legislators as its first power users on
+the 15th; wide publicity is a separate decision and is still the person's.
+
 ---
 
 # 9 September: a read-through of the live site
@@ -613,7 +665,8 @@ done twice.
 
 ## Already done
 
-**Archived bills reading as in progress.** Fixed in `fe147fa`: 1,954 bills
+**Archived bills reading as in progress.** Fixed in `434dc76` -- it was
+`fe147fa` until the history rewrite of 17 September changed every hash: 1,954 bills
 across eighteen terms said "In committee" or "Laid on the table" because the
 General Court stops updating the status field when a term closes. The word the
 record gave them is unchanged; the kind that drives the colour and the rail is
@@ -628,6 +681,12 @@ taken back up.
 
 Asked for as a way to spot-check timestamps quickly. It is worth more than
 that and should go first among the feature work.
+
+**Built, as `review.py`, and it did unblock them.** Nine kinds rather than the
+three below, **165 judgments** on file in `review/checked.jsonl`, and
+`probe_alignment.py --truth` scores against them beside `ground_truth.csv`'s
+35 -- 63 hand-timed proceedings between them today, against the 35 this
+paragraph called thin.
 
 `ground_truth.csv` holds 35 proceedings somebody timed by watching. It is the
 only independent measure this project has, `CLAUDE.md` requires every
@@ -696,7 +755,9 @@ who have left. Note the standing rule: former members are shown exactly like
 sitting ones, never flagged or segregated.
 
 **Committee pages do not name the ranking and deputy ranking members**, which
-are conventionally the first two names in the minority.
+are conventionally the first two names in the minority. *Answered, and the
+answer was no* -- `LAUNCH.md` §5: no source on this disk records the role, and
+naming one from list order infers a real person's leadership from an ordering.
 
 ## Data the archive does not yet carry
 
@@ -705,6 +766,12 @@ them by machine is possible and is the kind of thing that invents facts
 quietly, so: it must be visibly derived, the method stated on the page, and
 scored against a sample somebody checked — the review tool again.
 
+**Done, and on that condition.** `topic_model.py --apply` placed 20,521 bills
+and took Miscellaneous from 13,191 to 10,928 (`LAUNCH.md` §0g records the
+run); 1989-1990 gives 950 of its 1,632 bills a topic today. It was scored on
+the unseen half of the General Court's own labels before it was applied, and
+topics are the bench's largest kind, 44 of the 165 judgments.
+
 **One legislator across terms.** A member who served in 2004 and serves now is
 two records today. Merging them gives a sponsorship and voting history across
 a career, and it is what makes "find the sponsors of a 2004 bill" work.
@@ -712,10 +779,22 @@ a career, and it is what makes "find the sponsors of a 2004 bill" work.
 district is not today's, and presenting it as though it were is the error to
 avoid.
 
+**Done on the 13th** (`member_links.py`, `LAUNCH.md` §6c): twenty members'
+earlier chamber joined to their page, on six conditions holding together, with
+nothing doubtful left joined. And the error this paragraph warned about was
+made and then caught -- on the 16th, 174,119 ballots and 8,610 sponsor rows
+were moved onto the seat held when the record was made rather than the seat
+held today.
+
 **Special bills need a note.** HB1 and HB2 are the budget and the budget
 trailer bill; HB2026 is the ten-year transportation plan. A reader has no way
 to know that a bill numbered 2 is the whole state budget. A short standing
 note per bill, hand-written, not derived.
+
+**HB1 and HB2 shipped on the 10th**, from `bill_notes.json`, which is one of
+the files no generator writes, applied from 1993-1994 onward because the 1989
+and 1991 HB1s are not budgets. The transportation plan is a different number
+every term and its `by_term` section is still empty.
 
 ## Related bills
 
@@ -757,3 +836,10 @@ No fetching needed for the current term.
 
 Email routing. Accessibility, continuously. Google indexing, which needs the
 URLs and titles cleaned up first.
+
+**Since carried:** amendment diffing shipped, from exactly that source --
+9,473 files under `site/versions/`. contact@ routing is active. Accessibility
+had a first pass on the 11th at 360, 768 and 1440, read from the DOM rather
+than by eye, and stays continuous. The URLs and titles were cleaned up on the
+14th, so Google indexing now waits only on the person submitting
+`sitemap.xml`, which is built.

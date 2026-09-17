@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.28
+# GRANITE_VERSION: 2026-09-04.29
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -209,6 +209,71 @@ def date_ballot_seats(member_votes, legs, path="text_sponsors.json"):
             row["label"] = cache[ck]
             n += 1
     return n
+
+
+# WHAT THE SEARCH PAGE PUT IN A COMMITTEE FIELD THAT IS NOT A COMMITTEE.
+# fetch_archive_bills.py reads the row labelled "Next/Last Comm", which is a
+# status field rather than a referral, and for 586 bills of 1999-2016 it holds
+# one of these. "Committee of Conference" is the last thing that happened to a
+# bill, not a committee it was referred to; "Special Committee" and "No
+# Committee Assignment" are the General Court's own words for having no
+# ordinary referral to report. referrals.NOT_A_NAME already refuses all three
+# on the docket side, and this gives the stored side the same filter.
+#
+# The one thing lost by blanking "Committee of Conference" is that it was the
+# only place an archived bill's page said the bill went to conference. That is
+# a fact worth keeping and it belongs on the timeline, where the docket
+# already records it, rather than in a field labelled committee.
+_PLACEHOLDERS = {"committeeofconference", "nocommitteeassignment",
+                 "specialcommittee", "committee", "thecommittee"}
+
+
+def _placeholder(name):
+    import re as _re
+    return "".join(w for w in _re.findall(r"[a-z]+", (name or "").lower())
+                   if w != "and") in _PLACEHOLDERS
+
+
+def _pick_committee(stored, first, known):
+    """The committee of referral, choosing between two sources that disagree.
+
+    `stored` is the General Court search page's "Next/Last Comm" -- the LAST
+    committee the bill was with. `first` is the first referral, read out of
+    the docket by referrals.py. The person settled in September 2026 that the
+    site names the FIRST: a later referral to Finance is a money pass rather
+    than a change of subject-matter ownership, and a bill that goes to Health
+    and Human Services and then to Finance belongs to Health and Human
+    Services. 527 bills of 1999-2016 stored a money committee for exactly that
+    reason, and 586 more stored something that is not a committee at all.
+
+    So the docket wins -- with one exception, which is the reason this is a
+    function rather than an `or`.
+
+    THE EXCEPTION: the same committee under an older name. The clerk of 1999
+    wrote "Public Works" for what the committee tables call "Public Works and
+    Highways", and about 170 bills differ only in that way. Preferring the
+    docket there would trade a right committee for an unlinkable one: the site
+    renders a committee the tables do not know as plain text rather than as a
+    link, so the reader would lose the route to the committee's page and gain
+    nothing. Where the docket's name is one no table knows and the stored name
+    is, the two are taken to be the same committee and the linkable spelling
+    wins.
+
+    That test is deliberately about LINKABILITY and not about similarity. Two
+    genuinely different committees -- Finance against Education -- are both
+    known, so the exception does not fire and the docket wins, which is the
+    whole point of the change.
+    """
+    if not first:
+        return stored
+    if not stored:
+        return first
+    import referrals as _r
+    if _r._key(stored) == _r._key(first):
+        return stored
+    if known and _r._key(first) not in known and _r._key(stored) in known:
+        return stored
+    return first
 
 
 def hearing_in_term(raw, term):
@@ -1244,6 +1309,14 @@ def main():
     except Exception as e:                       # a missing dump is not a failure
         print(f"  archive: no docket referrals ({e})")
         refs = {}
+    # The committee names the tables know, reduced the way referrals._key
+    # reduces them so that "Ways & Means" and "Ways and Means" are one name.
+    # _pick_committee says what this is for.
+    try:
+        known = {referrals._key(c["name"]) for c in committees.values()
+                 if c.get("name")}
+    except Exception:
+        known = set()
     by_term = defaultdict(dict)
     for bid, rec in bills.items():
         by_term[P.term_of(str(rec.get("lsr_year") or ""))][bid] = rec
@@ -1272,6 +1345,11 @@ def main():
             for bid, r in byb.items():
                 num = re.match(r"([A-Z]+)(\d+)", bid)
                 cm, ch = r.get("committee") or "", r.get("committee_chamber")
+                if _placeholder(cm):
+                    # NOT A COMMITTEE OF REFERRAL, and treated as absent so
+                    # the docket's own answer below is used instead. See
+                    # _placeholder for what these are and why they are here.
+                    cm = ""
                 # The search page gave a committee for 1999 onward and none at
                 # all before it, so five terms and 8,525 bills had no committee
                 # of any kind. The docket has it: the clerk writes the referral
@@ -1289,10 +1367,10 @@ def main():
                     "title": r.get("title", ""),
                     "chamber": r.get("body", ""),
                     "subject_code": "", "subject": "",
-                    "house_committee": (cm if ch == "House" else "")
-                                       or ref.get("H", ""),
-                    "senate_committee": (cm if ch == "Senate" else "")
-                                        or ref.get("S", ""),
+                    "house_committee": _pick_committee(
+                        cm if ch == "House" else "", ref.get("H", ""), known),
+                    "senate_committee": _pick_committee(
+                        cm if ch == "Senate" else "", ref.get("S", ""), known),
                     "hearing": hearing_in_term(r.get("last_hearing", ""),
                                                term),
                     "hearing_room": "",

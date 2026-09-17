@@ -61,12 +61,23 @@ the ±-tolerance wording was taken out as methodology in the reader's way, and
 an inferred boundary now carries the single word *approximate*. The principle
 is unchanged; only the example moved.)
 
+**A third claim of that kind, added 17 September: not knowing which
+recording.** Where a committee was filmed on the day of a sitting and more
+than one of its recordings could be the one, the page says so in those words
+and offers all of them — "nothing in the record says which one took this bill
+up, and this site will not pick one". 317 of the site's 104,756 stations are
+in that state, mostly Finance, whose divisions stream separately. Nothing
+ranks them and nothing calls one likelier; they are listed in the order the
+matcher found them and numbered rather than titled. It is the same rule one
+level up from the boundary: *approximate* claims the tape is known and the
+minute is not, and this claims the opposite, so it cannot borrow that word.
+
 **The vernacular is the source of the palette.** Dockets, roll calls,
 calendars, journals, the chamber. Granite. Not a generic civic-tech blue.
 
 ---
 
-## The logo and the favicon — not settled, and nothing shipped
+## The logo and the favicon — shipped 12 and 13 September
 
 Still open as of 11 September, and **deliberately not built**. Permission is
 being sought from the artist, so no asset is in the repository and no
@@ -95,6 +106,25 @@ needs a build step to write it and a `<link>` in three places — the `shell()`
 head in `build_pages.py`, `bills.html`, and `shell.py`. A `/favicon.ico` at
 the site root is the exception that needs no markup, because browsers ask for
 that address on their own.
+
+**What shipped, 12 and 13 September.** Not the ink drawing: the person bought
+the rights to an Old Man of the Mountain clipart, and `build_brand.py`'s own
+header says the logo is temporary and that replacing it is meant to be one
+command rather than an archaeology exercise. The three things above were
+answered in order. The favicon is drawn separately from the header mark —
+`icon.svg`, `icon-32.png`, `favicon.ico`, `icon-180.png` and a manifest, all
+derived from the checked-in originals in `brand/` into `assets/` by
+`build_brand.py`, which is the build step this section said would be needed;
+`build_pages.py` copies `assets/` into `site/` beside the pages, so nothing
+has to survive in the gitignored tree. Both grounds are handled without a
+light variant, because the profile ships as `mark.svg` and the home page's
+heading as `lockup.png`, each used as a CSS mask over `currentColor` so one
+file is right in either scheme. The wordmark question went the other way
+round: the home page's `h1` *is* the drawn lockup, with the slogan under it,
+and the nav brand stayed Public Sans 600 at 16px with the 15×24 profile
+beside it. And the `<link>` block was needed in two places rather than three
+— `shell()` in `build_pages.py` and `bills.html` — because `shell.py`
+substitutes into `bills.html`, so every record page inherits it.
 
 ---
 
@@ -134,6 +164,17 @@ schemes from the same definition that the record pages get. Before the marker
 existed that reader stopped at the first `}`, which with a second block under
 it would have shipped half a scheme: white cards that never went dark, on
 four of the pages a reader is most likely to arrive on.
+
+**A reader can choose, since 12 September, so the palette is written three
+times.** The control in the nav sets `data-theme`, and CSS cannot put one
+declaration block behind both a media query and a selector: light in `:root`,
+the system's dark in `@media (prefers-color-scheme: dark)` scoped
+`:root:not([data-theme="light"])` so an explicit choice of light beats a dark
+phone, and the chosen dark again in `:root[data-theme="dark"]`. The two dark
+blocks are the same tokens twice — `app.css` sets out at `/* DARK:CHOSEN */`
+why every alternative was worse — and `preflight` fails if they ever stop
+being identical, so drift is a failed build rather than a page that is subtly
+the wrong colour by one of the two routes to it.
 
 **Every token is redefined in the dark block. None is inherited.** A
 half-defined scheme is how a white chip ends up with white text on it.
@@ -206,8 +247,15 @@ The trade, stated plainly: two conditional requests per page view, answered
 `304` from the edge in a couple of hundred bytes, on a page that already
 makes several. What it buys is that **a page's bytes change when the page
 changes and at no other time** — a stylesheet tweak uploads three files
-instead of a gigabyte, and the record pages, which is 34,000 of the 55,353,
-move only when their own record moves.
+instead of a gigabyte, and the record pages, which are most of the site,
+move only when their own record moves. (`python3 check_site.py` prints the
+size and the file count at the end of a build, and warns above 90,000 against
+Cloudflare Pages Pro's 100,000; the site has grown well past the 55,353 of 12
+September — the 1,785 former members got pages of their own on 17 September,
+which is 2,191 legislator pages now. The freshness rule covers `find.js`,
+`home.json` and `find.json` too, added on 16 September when the home page's
+built HTML said 39 hearings and its script, reading a cached `home.json`,
+said 4.)
 
 Two things to know if this ever looks wrong. It cannot be checked locally:
 the header comes from Pages, so the check is `curl -sI
@@ -243,14 +291,20 @@ half the pages were being served a cached copy of the old stylesheet. A pass
 measured against the wrong bytes is the "silence is not success" rule wearing
 a green tick.
 
-Two checks belong in `preflight` and are not there yet, because that file was
+Two checks belonged in `preflight` and were not there, because that file was
 out of scope for this pass:
 
 1. The dark palette's pairs. The light ones are checked; the dark ones are
-   measured only by hand.
+   measured only by hand. **Done, 12 September**: the palette check measures
+   both schemes — `preflight --code --verbose` prints "42 pairs across both
+   schemes" — and fails as well if the dark block leaves out a token the
+   light one defines, which is the failure that matters. A missing token is
+   not a slightly wrong colour, it is the light value surviving into the dark
+   page.
 2. `documentElement.scrollWidth` against `clientWidth` at 360, 768 and 1440.
    Every legislator page carrying a two-thirds vote scrolled sideways at
-   every width above 720px and nothing caught it — see below.
+   every width above 720px and nothing caught it — see below. **Still not
+   there.**
 
 ---
 
@@ -271,15 +325,29 @@ takes — *a narrow column of text inside a much wider painted box*.
   already says a table fills its pane. It is built from `<ul>`/`<li>` rather
   than `<table>`, which is the only reason it was caught by the default.
 
-**Still open, and it is a layout question rather than a CSS one.** On a bill
-page at 1440 the card is 1132px and the pane 1094px, and the prose inside it
-is 560px because 560px is 76 characters and the floor above is 80. Those two
-facts cannot both be satisfied by a width: the prose cannot fill 1094px, so
-**the box should not be 1094px of single column**. The answer is either a
-narrower column on the Summary tab or a second column carrying the
+**Open when this was written, and a layout question rather than a CSS one.**
+On a bill page at 1440 the card is 1132px and the pane 1094px, and the prose
+inside it is 560px because 560px is 76 characters and the floor above is 80.
+Those two facts cannot both be satisfied by a width: the prose cannot fill
+1094px, so **the box should not be 1094px of single column**. The answer is
+either a narrower column on the Summary tab or a second column carrying the
 structured material — the status panel, the documents, the citations — beside
 the prose. Both change markup that `build_site_v2.py` owns, so neither was
 done here.
+
+**Answered on 12 September, and it was the second column.** Above 1100px the
+"On the record" panel floats right at 488px with 46px of gutter and the prose
+keeps `--measure`: 560 + 46 + 488 is the 1094px pane exactly. Grid was the
+obvious tool and was measured out of it — a grid row is as tall as its
+tallest item, so the row holding the panel left a short analysis beside it a
+274px dead tail, and no arrangement of spans fixed every bill. A float is out
+of flow and therefore cannot push in-flow content down, which is the property
+actually wanted. One thing was settled against the mechanism rather than by
+it: a floated box has to come first in the DOM to sit at the top of the pane,
+and a bill opens with the writing instead — the note, then the General
+Court's own analysis — so the panel starts below the prose and sits beside
+the story. Below 1100px the pane is one flex column and the panel goes back
+under the analysis, which is where a reader on a phone wants it.
 
 ---
 
@@ -293,11 +361,21 @@ site and it was a different width in each stylesheet (476px in one, 560px in
 the other).
 
 The measure was never the problem; the alignment was. The band keeps the
-page's gutter (`padding: 22px max(0px, calc(50% - 590px))`, 590px being half
-the 1180px the nav and `.shell` share) and the column inside it starts where
-the page starts. `display:grid` was the first attempt and is worth recording
-as a trap: it promotes every *child* to a grid item, so "How this is made"
-and the full stop after it each took a row of their own.
+page's gutter (`padding: var(--sp-7) max(0px, calc(50% - 590px))`, 590px
+being half the 1180px the nav and `.shell` share) and the column inside it
+starts where the page starts. `display:grid` was the first attempt and is
+worth recording as a trap: it promotes every *child* to a grid item, so "How
+this is made" and the full stop after it each took a row of their own.
+
+**And aligning it was half the job.** Left-aligning a 560px column in an
+1180px band put its first word under the page's first word and left 620px of
+empty footer beside it — the same narrow-measure-in-a-wide-box this file
+keeps answering, one band lower. On 14 September it became two columns,
+because the footer is three short things and not one: what this is, how to
+report an error, and where the bulk data is. Multi-column, not grid or flex,
+for exactly the trap above — those promote every child to an item, and "How
+this is made" is a direct child. One column again below 860px, the width the
+facet rail collapses at.
 
 One thing stayed deliberately out of line. `/learn/`, the town pages and
 `/data` are centred reading columns, and DESIGN.md calls the civics section
@@ -389,6 +467,19 @@ is the site itself — its name, its search box, its five numbers and the three
 ways in; **right** is finding your own legislators and the two chambers' last
 floor sessions. Latest activity, the composition charts and the feeds sit
 below all three at full width.
+
+**Two of those have since moved, and the middle column is shorter for it.**
+The five counts came off on 15 September at the person's word: they sat
+between the search box and the three cards that are the actual way in, and
+nobody arrives to be told how many bills exist. The scale of the record is
+said once now, in the footer's link to the data. `.statgrid` and its measured
+164px floor are still in `app.css` and no page draws them any more, so the
+measurement below is the record of why that floor is what it is rather than a
+rule in force. The chambers and the vacant seats went with them, to the
+legislators page, where somebody looking for who holds a seat already is;
+what sits below the columns is Latest activity and the executive branch, and
+the feeds are two `<link rel="alternate">` in the head rather than a block on
+the page.
 
 Only above **1180px**, which is where the 1180px column can give 300 and 290
 to the sides and still leave the middle the widest of the three. Below that
@@ -536,7 +627,8 @@ on their ground and the marked ward 5.7:1.
 except a dozen is `bills.html` with one record substituted into it, so every
 page inherited bills.html's search row — a town page opened with "Search all
 bills" printed above the name of the town, and so did a member's page, a
-committee's, and all eleven civics pages. It is the same fault as the order
+committee's, and all eleven civics pages — thirteen topics now, and a
+by-the-numbers page beside them. It is the same fault as the order
 of the sections, one line higher up: the first thing on the page was about
 the site rather than about the page.
 
@@ -559,6 +651,26 @@ two page types, because the browser served the pages out of its own cache:
 the addresses were the same, and the `?v=` hash that would have told it
 otherwise is inside the HTML it had already stored. Every visual check of a
 rebuilt page now loads it with a throwaway query on the end.
+
+---
+
+## A former member's page says so once
+
+Added 17 September, when every person in the record got a page of their own
+and 1,785 of them turned out to hold no seat now. The page says so in one
+quiet line under the heading — `.pformer`, the secondary ink at UI size with
+a rule down its left edge — and it is the only place on the site that says
+it. In a roll call or a sponsor list a former member is drawn exactly like a
+sitting one, same honorific, party and seat, because that is the seat they
+held when the record was made.
+
+**Not a coloured badge, and silent about why.** The site does not distinguish
+a member who resigned from one who lost, retired or died, and must not start
+here: people who served alongside them read these pages. The line is a
+statement of tenure for a reader who arrived cold, which is a different thing
+from a flag on a person. Two rows do come off — the towns they represent and
+the contact address — because neither is true any more, and a directory entry
+for somebody who holds no seat is the one thing the page must not look like.
 
 ---
 
@@ -619,8 +731,16 @@ phases are the two chambers and the two ends; the steps are in the order they
 happen; and every stage a bill can die at says so and is marked, as is every
 stage a member of the public may speak at. That last part is the whole point.
 A reader arrives thinking a bill moves along a pipeline, and what they should
-leave with is a course with exits almost everywhere — seven of the twelve
+leave with is a course with exits almost everywhere — seven of the thirteen
 stages can end it.
+
+**It is three diagrams now, from one function.** `civics.flow_diagram` also
+draws how the constitution is amended, where the per-step label is the
+threshold rather than a generic mark, and how to testify. The heading level
+is an argument to it rather than a property of the diagram, for the reason
+*A level is not a size* gives: on *How a bill becomes law* the four phases
+are that page's own sections and are `h2`, and on the two pages where the
+diagram sits under a section heading they are `h3`.
 
 It stacks below 1100px and only goes four-across above, because four
 readable columns need about 230px each and the civics measure is 560px: the
