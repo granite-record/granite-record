@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.27
+# GRANITE_VERSION: 2026-09-04.28
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -660,6 +660,23 @@ def main():
                           "(former members)")
 
     lo_bills = set(sponsors)
+    # LsrsOnly.txt can list a bill's sponsors and mark NONE of them prime --
+    # which happens when the prime has left office. The fallback below was then
+    # skipped wholesale for that bill ("already covered, and better"), so the
+    # prime LsrSponsors.txt does flag never got read, and build_site_v2 fell
+    # back to sp_list[0]. Because these rows all carry sequence 1 and are sorted
+    # on (sequence, name), position 0 is then the ALPHABETICALLY first surviving
+    # sponsor: HB 1036 of 2026 is printed "Rep. Vose, Rock. 5; Rep. DeSimone...;
+    # Rep. Kofalt...; Rep. Kuttab...; Rep. Lynn..." and the site credited
+    # Rep. Debra DeSimone.
+    #
+    # LsrsOnly is still better where it speaks. It is only where it says nothing
+    # about the prime that the other file is asked, and then only for WHICH of
+    # the sponsors already read is the prime -- never to add a row, which would
+    # duplicate what LsrsOnly supplied.
+    lo_noprime = {b for b, v in sponsors.items()
+                  if not any(x.get("prime") for x in v)}
+    lo_flagged_prime = {}
     flags, cross, missing_member, missing_lsr = Counter(), Counter(), 0, 0
     # LsrsOnly.txt does not cover every bill -- HB197 and HB104 came back with
     # no sponsors at all. So fall back to LsrSponsors.txt per bill rather than
@@ -670,10 +687,20 @@ def main():
             missing_lsr += 1
             continue
         if bill in lo_bills:
-            continue                      # already covered, and better, by LsrsOnly
+            # Already covered, and better, by LsrsOnly -- except for the one
+            # thing LsrsOnly did not say. See lo_noprime above.
+            if bill in lo_noprime and r[4] == "1":
+                lo_flagged_prime[bill] = r[3]
+            continue
         m = legs.get(r[3])
         if not m:
             missing_member += 1
+            # A PRIME dropped here is not just a missing name, it is a wrong
+            # byline: with no flagged row left, the block below falls back to
+            # sequence order and the next sponsor inherits the authorship. Keep
+            # the id so it can be restored once `former` can name it.
+            if r[4] == "1":
+                lo_flagged_prime.setdefault(bill, r[3])
             continue
         flags[r[4]] += 1
         # Hypothesis: the flag marks a sponsor from the OTHER chamber.
@@ -989,6 +1016,54 @@ def main():
             _s["county"] = _f.get("county", "")
             _s["district"] = _f.get("district", "")
             placed += 1
+
+    # ------------------------- the prime sponsor who is not on the roster ---
+    #
+    # HERE, AND NOT WHERE THE SPONSORS ARE READ, because up there nothing can
+    # put a name to the id. 27 bills of the current term show the wrong author,
+    # and the cause is not a missing flag -- it is a missing ROW. LsrSponsors
+    # .txt flags the prime, legislators.txt does not hold them (they have left
+    # office), so `legs.get(r[3])` comes back empty and the row is dropped
+    # before the flag is ever read. LsrsOnly.txt lists the others and marks none
+    # of them prime, so build_site_v2 falls back to sp_list[0] -- and since
+    # those rows all carry sequence 1 and sort on (sequence, name), that is the
+    # ALPHABETICALLY FIRST surviving sponsor.
+    #
+    # HB 1036 of 2026 is printed "Rep. Vose, Rock. 5; Rep. DeSimone, Rock. 18;
+    # Rep. Kofalt...; Rep. Kuttab...; Rep. Lynn..." and the site credited
+    # Rep. Debra DeSimone, who is simply first in the alphabet among those left.
+    #
+    # By this line `former` has been assembled, so the missing member can be
+    # named. Where even that fails the row is still added, under the id alone:
+    # naming nobody is a smaller error than naming the wrong person, and it is
+    # visible rather than silent.
+    lo_added = 0
+    for _b, _mid in lo_flagged_prime.items():
+        _rows = sponsors.get(_b)
+        if not _rows or any(str(x.get("member_id")) == str(_mid) for x in _rows):
+            continue
+        _f = former.get(str(_mid)) or {}
+        _name = _f.get("name") or f"Former member #{_mid}"
+        for _x in _rows:
+            _x["prime"] = False
+            _x["sequence"] = 1
+        _rows.append({
+            "member_id": str(_mid), "name": _name,
+            "party": (_f.get("party") or "")[:1].upper(),
+            "chamber": _f.get("chamber", ""),
+            "label": _name,
+            "county": _f.get("county", ""), "district": _f.get("district", ""),
+            "sequence": 0, "prime": True, "role": "Prime", "flag": "1",
+        })
+        _rows.sort(key=lambda x: (x["sequence"], x["name"]))
+        lo_added += 1
+    if lo_added:
+        _named = sum(1 for b in lo_flagged_prime
+                     for x in sponsors.get(b, [])
+                     if x.get("prime") and not x["name"].startswith("Former member #"))
+        print(f"  {lo_added} bill(s) had their prime sponsor restored from "
+              f"LsrSponsors.txt, whom the roster does not hold; {_named} of "
+              f"them could be named")
     if placed:
         print(f"sponsors given a district from former_members.json: {placed:,}")
         report.append(
