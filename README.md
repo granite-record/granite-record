@@ -72,7 +72,7 @@ site on it:
 python3 preflight.py --code     # the 122 checks that need no data on disk
 ```
 
-On a fresh clone the summary reads **`113 passed, 0 failed, 8 skipped`**. That
+On a fresh clone the summary reads **`114 passed, 0 failed, 8 skipped`**. That
 is the expected first run, not a fault: eight of the checks read the real built
 `site/`, which a clone does not have, and they say so one by one. In a working
 tree with a built site the same command is all 122.

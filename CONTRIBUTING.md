@@ -51,7 +51,7 @@ pip install numpy
 python3 preflight.py --code
 ```
 
-On a fresh clone that prints `113 passed, 0 failed, 8 skipped`. The eight read
+On a fresh clone that prints `114 passed, 0 failed, 8 skipped`. The eight read
 the real built `site/`, which a clone does not have. That is the expected first
 run.
 
