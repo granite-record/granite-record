@@ -2,7 +2,7 @@
 
 A public record of the New Hampshire General Court, live at graniterecord.org.
 33,683 bills across 19 terms, 1989 to 2026; 406 sitting legislators and 2,192
-people who have served; hearings on record for seven terms; and for the
+people who have served; hearings on record for eleven terms; and for the
 recorded ones, the moment in the recording where a chair took the bill up.
 
 `LAUNCH.md` is the list of what is done, what is not, and what to do first.
@@ -115,11 +115,13 @@ everything. It exists because those two sources used to be read separately and
 five tools in one day were found to silently exclude floor debates — each
 presenting as a different bug. **Do not add a sixth reader of the old files.**
 
-**Four files are a person's and no generator writes them.**
+**Five files are a person's and no generator writes them.**
 `ground_truth.csv` (35 proceedings timed with a stopwatch),
 `review/checked.jsonl` (the bench's judgments, append-only), `bill_notes.json`
-(what a recurring bill number means — HB1 has been the budget since 1993) and
-`officials.json` (offices filled by hand from four official sources).
+(what a recurring bill number means — HB1 has been the budget since 1993),
+`officials.json` (offices filled by hand from four official sources) and
+`member_corrections.json` (a name or party a generator got wrong, with the
+evidence for the correction beside it).
 `preflight` fails if any `build_*` or `fetch_*` script opens one for writing,
 and it is named for the category rather than for `ground_truth.csv` because
 three of the four had no guard at all until 10 September.
