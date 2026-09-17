@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.9
+# GRANITE_VERSION: 2026-09-04.10
 """
 Fetch the bill STATUS page for bills the current-session files no longer cover.
 
@@ -55,7 +55,26 @@ CMTE_CODE = re.compile(r"committeedetails\.aspx\?code=([A-Z]\d+)", re.I)
 # of the link did not.
 TEXT_ID = re.compile(r"billText\.aspx\?(?P<q>[^\"'\s>]+)", re.I)
 TEXT_PARAM = re.compile(r"(?:^|&|&amp;)(id|sy|txtFormat)=([^&\s\"']+)", re.I)
-NAME_PARTY = re.compile(r"^(?P<name>.+?)\s*\((?P<party>[A-Z])\)\s*$")
+# [A-Za-z], NOT [A-Z], AND THE CASE IS NOT A TYPO IN THE SOURCE -- IT IS DATA.
+# The General Court's roster writes a departed member's party letter in lower
+# case: 287 of the 1,081 rows in db/Legislators.psv carry one, and 286 of those
+# are Active=False. Requiring upper case therefore failed on exactly the people
+# hardest to recover, and the plain-cell pass below `continue`s on a failure, so
+# the name was never captured at all.
+#
+# The cost was three separate defects with one cause. 205 bills named the wrong
+# person as prime sponsor, because the real one's row was dropped and the next
+# name inherited the byline -- HB 159 of 2024 credits Sen. David Watters with a
+# House bill whose own text names Rep. McWilliams first, and she appears
+# nowhere on the page. 1,290 sponsor rows across 762 bills of 2023-2024 never
+# appeared on the site at all. And "Howard Pearl (r)" was rendered as a sponsor
+# NAME on 294 bills, party and all, because the linked-cell pass at :180 keeps
+# the label when the match fails -- Pearl being the one sitting member whose
+# roster row carries a lower-case letter.
+#
+# The letter is upper-cased where it is read, so nothing downstream has to know
+# the source is inconsistent.
+NAME_PARTY = re.compile(r"^(?P<name>.+?)\s*\((?P<party>[A-Za-z])\)\s*$")
 
 # Field labels on the page. When a field is blank the pattern runs on into the
 # next one, so these must never be accepted as values.
@@ -184,7 +203,7 @@ def parse(html):
         seen.add(name.lower())
         sponsors.append({
             "name": name,
-            "party": nm.group("party") if nm else "",
+            "party": (nm.group("party").upper() if nm else ""),
             "web_member_id": mid.group(1) if mid else "",
             "senate_district": sd.group(1) if sd else "",
             "chamber": "S" if sd else "H",
@@ -199,11 +218,35 @@ def parse(html):
             continue
         seen.add(name.lower())
         sponsors.append({
-            "name": name, "party": nm.group("party"),
+            "name": name, "party": nm.group("party").upper(),
             "web_member_id": "", "senate_district": "",
             "chamber": "", "url": "", "no_member_page": True})
 
+    # THE PAGE'S OWN ORDER, NOT "EVERY LINK, THEN EVERYTHING ELSE".
+    #
+    # The two passes above read the links first and the plain cells second, and
+    # concatenating them puts every sponsor who has LEFT OFFICE after every
+    # sitting one -- a departed member has no member page, so they are never a
+    # link. build_data then reads `prime` off position 0, so on 810 bills of
+    # 2023-2024 that carried such a row, the real prime sponsor sorted last and
+    # the second name on the bill took the byline. CACR 17 of 2024 is printed
+    # "Rep. Cordelli, Carr. 7; Rep. Packard...; Rep. Osborne...; Rep. Lynn...;
+    # Rep. Roy..." and the site credited Rep. Terry Roy, the fifth name.
+    #
+    # p.sponsor_cells is the sponsor table as the page lays it out, linked and
+    # plain together, so it already holds the answer; the two passes were just
+    # throwing it away. Sorting on it restores filing order, which is what the
+    # General Court means by the first sponsor. A name the table does not
+    # contain keeps its position at the end rather than being dropped.
     if sponsors:
+        order = {}
+        for i, cell in enumerate(p.sponsor_cells):
+            cm2 = NAME_PARTY.match(cell)
+            key = (cm2.group("name") if cm2 else cell).strip().lower()
+            if key and key not in order:
+                order[key] = i
+        sponsors.sort(key=lambda s: order.get(s["name"].strip().lower(),
+                                              len(p.sponsor_cells)))
         rec["sponsors"] = sponsors
 
     cm = CMTE_CODE.search(html)

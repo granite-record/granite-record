@@ -51,7 +51,7 @@
     "fetch_archive_docket.py": "2026-09-07.7",
     "fetch_archive_text.py": "2026-09-09.5",
     "fetch_archive_years.py": "2026-09-08.1",
-    "fetch_bill_status.py": "2026-09-04.9",
+    "fetch_bill_status.py": "2026-09-04.10",
     "fetch_bill_text.py": "2026-09-04.21",
     "fetch_calendar_archive.py": "2026-09-08.6",
     "fetch_captions.py": "2026-09-05.11",
