@@ -70,9 +70,13 @@ ADOPTED = {"AA": True, "ADOPTED": True, "AF": False, "AL": False}
 # by section 1 of the bill by replacing it with the following". So the targets
 # can be read off the instruction, and two amendments touching the same target
 # is the case where the later one governs.
+# The same widening as RSA_CITE below, and for the same reason: a two-letter
+# chapter (126-AA) and a hyphenated or dotted section (6-602, 10.01) are real
+# addresses, and this pattern dropped an amendment's target entirely when it met
+# one -- so the Changes row silently lost the statute the bill actually amends.
 RSA_CITE_T = re.compile(
-    r"\bRSA\s+(\d{1,3}(?:-[A-Z])?:\d+(?:-[a-z])?"
-    r"(?:,\s*[IVXLC]+(?:-[a-z])?)?(?:\([a-z]\))?)", re.I)
+    r"\bRSA\s+(\d{1,3}(?:-[A-Z]{1,2})?:\d{1,4}(?:-[a-z0-9]{1,3})?(?:\.\d{1,2})?"
+    r"(?:,\s*[IVXLC]+(?:-[a-z])?)?(?:\([a-z]\))?)(?!\d)", re.I)
 # Where the instruction stops and the new text begins. Everything after this is
 # what the amendment INSERTS, and the statutes quoted in there are not the ones
 # it changes -- an amendment replacing one paragraph may quote a dozen others
@@ -549,8 +553,27 @@ RSA_TITLES = [
 # "RSA 91-A:4" / "RSA 638:26-a" / "RSA 91-A" / "RSA 91-A:2, III" -- the roman
 # numeral after a comma is a paragraph within the section, not part of the
 # address, so it is left out of the link and left in the sentence.
-RSA_CITE = re.compile(r"\bRSA\s+(\d{1,3}(?:-[A-Z])?)(?::(\d{1,3}(?:-[a-z])?))?",
-                      re.I)
+# FIVE WAYS THIS SENT A READER TO THE WRONG STATUTE, all of them from a class
+# that was one character too narrow. These are LINKS, so a mis-parse does not
+# lose a citation -- it publishes a different law under the right words.
+#
+#   RSA 2025, 141:389  ->  chapter 202   a SESSION LAW, not an RSA chapter at
+#                                        all; \d{1,3} took "202" out of "2025"
+#                                        and linked RSA 202, Public Libraries
+#   RSA 126-AA:2       ->  126-A         -[A-Z] is one letter; 126-AA and
+#                                        126-A are different chapters
+#   RSA 21-I:19-ff     ->  21-I:19-f     likewise for the section suffix
+#   RSA 383-A:6-602    ->  383-A:6       a hyphenated section number, truncated
+#   RSA 293-A:10.01    ->  293-A:10      a dotted section number, truncated
+#
+# The trailing lookaheads are what make the first case give NOTHING rather than
+# something wrong: "2025" cannot end after three digits, so the whole match
+# fails and the session-law citation is left as plain words. Refusing to link
+# is the right answer where the target is not an RSA chapter.
+RSA_CITE = re.compile(
+    r"\bRSA\s+(\d{1,3}(?:-[A-Z]{1,2})?)(?![\d-])"
+    r"(?::(\d{1,4}(?:-[a-z0-9]{1,3})?(?:\.\d{1,2})?)(?!\d))?",
+    re.I)
 
 
 def _chapter_key(ch):
