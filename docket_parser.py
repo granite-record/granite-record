@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.12
+# GRANITE_VERSION: 2026-09-04.13
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -128,17 +128,151 @@ def house_time(m):
     return (m.group("time") + m.group("mer")).replace(" ", "").replace(".", "").upper()
 
 # Senate: "Hearing: 01/14/2025, Room 103, LOB, 09:30 am;  SC 5"
+#
+# THIS WAS A PATTERN FOR ONE DECADE'S WORDING, AND THE SENATE HAS USED FOUR.
+# It matched zero lines in every docket from 1999 to 2014 -- 9,732 Senate
+# scheduling lines, none of them read -- so hearings for seven terms were
+# absent from the site, and with them the committee pages: across all 53 files
+# in site/committee/ there was not one session dated 1999 through 2014.
+#
+# The failures are not near-misses. Every one of those lines breaks at least
+# two clauses at once, which is why no single relaxation ever rescued
+# anything: fixing the separator and the date and leaving [ap]m alone still
+# yields zero. Measured, as a cumulative ladder over the real lines:
+#
+#     today                           0      + month-name date         1
+#     + separator ; , or none         0      + dotted a.m./p.m.    5,802
+#     + two-digit year                0      + loose venue         7,122
+#
+# The dots are the universal one. Of 9,732 real lines, 9,704 write "a.m." or
+# "p.m."; only 28 write the bare "am" this pattern required.
+#
+#     1999-2000   Hearing, 3/18/99, Room 104, LOB, 2:10 p.m.
+#                 Hearing March 21, Room 104, LOB, 3:30 p.m.   <- no year
+#     2001-2010   Hearing; May 23, 2001, Room 103, SH, 10:45 a.m.; SC24
+#     2011-2015   Hearing: 3/29/11, Room 102, LOB, 10:00 a.m.; SC17
+#     2016-       Hearing: 01/14/2025, Room 103, LOB, 09:30 am;  SC 5
+#     remote      Remote Hearing: 04/12/2021, 09:50 am; Links to join the
+#                 hearing can be found in the Senate Calendar; SC 19
+#
+# HEAD-ANCHORED, which the House pattern deliberately is not. 16,560 of the
+# matched lines open with the kind word and the rest carry one of five known
+# prefixes, so the anchor declines outright -- rather than by luck -- the two
+# families that name a sitting mid-sentence and are not one: "Sen. Gray
+# Accedes to House Request for Committee of Conference" (442 rows) and "Rules
+# Suspension 2/3 nec.; For Intro., Referring, Hearing, and Committee Report".
+#
+# `mid` MAY NOT CONTAIN A DIGIT, which is what guarantees the date read is the
+# first one after the kind word, so no run of noise can step over one date on
+# to another. All 47 distinct values it takes were printed and read; every one
+# is punctuation or a flag residue, none is a fact.
+SENATE_MER = r"[ap]\s?\.?\s?m\.?"
+MONTH_WORD = (r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+              r"[a-z]*\.?")
+
 SENATE_SCHED_RE = re.compile(
-    r"(?P<kind>Hearing|Executive Session|Work Session)\s*:\s*"
-    r"(?P<date>\d{1,2}/\d{1,2}/\d{4}),\s*"
-    # The room is not always a number: "Room Map Room, SL, 09:30 am". A row
-    # that does not parse here never becomes a Proceeding at all, so it is
-    # absent from verification_manifest.csv and can never be matched to a
-    # recording. Losing a hearing is quieter and worse than misparsing one.
-    r"Room\s+(?P<room>[\w][\w .\-]*?),\s*(?P<bldg>[A-Za-z]+),\s*"
-    r"(?P<time>\d{1,2}:\d{2}\s*[ap]m)",
+    r"^[\s,=]*"
+    r"(?:[A-Za-z][A-Za-z ]*=+\s*)?"
+    r"(?P<pre>(?:(?:Re-?scheduled|Cancell?ed|Continued|Joint|Postponed)\s+)*)"
+    r"(?P<kind>Remote\s+Hearing|Public\s+Hearing|Hearn?ings?"
+    r"|Executive\s+Session|Exec\.?\s*Session|Work\s*Session"
+    r"|(?:Committee\s+of\s+Conf\w*|Conf(?:erence)?\.?\s*Comm\w*|C\s+of\s+C)"
+    r"(?!\s*Report))"
+    r"(?:\s+on\s+Re-?referred\s+Bill)?"
+    r"(?:\s*[;:,]?\s*Meet\w{0,3}ing)?"
+    r"(?P<mid>(?:=+[^=]{0,30}=+|\{\d+\}|[^\d]){0,48})"
+    r"(?P<date>\d{1,2}\s*/\s*\d{1,2}\s*/\s*\d{2,4}"
+    rf"|{MONTH_WORD}\s*\d{{1,2}}\s*,?\s*\d{{4}}"
+    rf"|{MONTH_WORD}\s*\d{{1,2}})(?!\d)"
+    r"(?P<between>.{0,110}?)"
+    # THE FIRST TIME OF A RANGE, NOT THE LAST. The meridiem sits after the
+    # whole range -- "6:00 - 9:00 p.m." -- so without somewhere for the second
+    # half to go the engine backtracks and reads 9:00 as the start. It is only
+    # five rows, and all five are the HB1 and HB2 budget hearings, which are
+    # among the most-read pages on the site. A wrong time is worse than none.
+    r"(?P<time>\d{1,2}:\d{2})(?::\d{2})?\s*"
+    r"(?:[-–]\s*\d{1,2}:\d{2}(?::\d{2})?\s*)?"
+    r"(?P<mer>" + SENATE_MER + r")"
+    r"(?P<rest>.*)$",
     re.IGNORECASE,
 )
+
+# THE BUILDING IS THE ANCHOR, NOT THE ROOM, and the venue is a helper rather
+# than a group for the reason HOUSE_SCHED_RE's own comment gives: a venue class
+# that has to match before the line can match is a venue class that loses whole
+# hearings. The building is a closed set the Senate has used since 1999; the
+# room is whatever precedes it, spelt Room, Rooms, Roon, Rom or Rm, or absent
+# entirely on the 41 rows reading "Map Room, SL" and the 44 reading
+# "Representatives' Hall, SH". The comma is optional -- 57 rows turn on that.
+SENATE_VENUE_RE = re.compile(
+    r"(?:Rooms?|Roon|Rom|Rm)?\.?\s*"
+    r"(?P<room>[A-Za-z0-9][\w .'’/&\-]{0,38}?)\s*(?:[,.;]\s*|\s+)"
+    r"(?P<bldg>LOB|SH|SL|GP|State\s+House|Legislative\s+Office\s+Building)\b",
+    re.I)
+SENATE_VENUE_REV_RE = re.compile(      # "1:30 PM LOB 101", "Room, LOB 102"
+    r"(?:Rooms?|Rm)?\s*[,.]?\s*"
+    r"(?P<bldg>LOB|SH|SL|GP|State\s+House)\s*[,.]?\s*(?P<room>\d[\w\-]{0,10})",
+    re.I)
+SENATE_HALL_RE = re.compile(
+    r"(Representatives?'?s?\s+Hall|Rep'?s\s+Hall|Reps'?\s*Hall)", re.I)
+
+
+def senate_venue(between, rest):
+    """Where the clerk actually puts the room, or None where there is none.
+
+    A hearing states the room between the date and the time; a committee of
+    conference states it after. None is a real answer and is given for all 457
+    remote hearings of 2019-2022: not one of those lines contains Room, LOB, SH
+    or Hall, because the sitting had no room -- the line says the links are in
+    the Senate Calendar. Writing "Remote" or "Zoom" there would be inventing a
+    venue the record does not state.
+    """
+    for span in (between or "", rest or ""):
+        if not span:
+            continue
+        h = SENATE_HALL_RE.search(span)
+        if h:
+            return re.sub(r"\s+", " ", h.group(1)).strip()
+        v = SENATE_VENUE_RE.search(span) or SENATE_VENUE_REV_RE.search(span)
+        if v:
+            room = re.sub(r"\s+", " ", v.group("room")).strip(" .,;")
+            # The room word again, because the group is lazy and the engine
+            # would rather leave the optional prefix unmatched than consume it.
+            # Without this the venue reads "SH Room 103" where every other
+            # venue on the site reads "LOB 302", and a venue string that is
+            # spelt two ways is two venues to anything comparing them.
+            room = re.sub(r"^(?:Rooms?|Roon|Rom|Rm)\b\.?\s*", "", room, flags=re.I)
+            bldg = re.sub(r"\s+", " ", v.group("bldg")).strip().upper()
+            # The clerk writes the same two buildings four ways -- "SH" and
+            # "State House" are one building, 310 rows against 809 in
+            # 1999-2010 alone. Left alone they are two venues to anything
+            # grouping or comparing them, which is what a committee page does.
+            bldg = {"STATE HOUSE": "SH",
+                    "LEGISLATIVE OFFICE BUILDING": "LOB"}.get(bldg, bldg)
+            return f"{bldg} {room}".strip() if room else bldg
+    return None
+
+
+def senate_kind(raw):
+    """The kind word as VIDEO_KINDS spells it.
+
+    Handing it through unchanged is a silent cliff: "remote hearing" is not in
+    VIDEO_KINDS, so all 457 remote rows would match the pattern and then be
+    dropped at the kind test a few lines later, which looks exactly like the
+    pattern having failed. Same for "c of c" (100 rows) and the clerk's three
+    one-off misspellings -- Hearning, Worksession, Committe.
+    """
+    k = re.sub(r"\s+", " ", (raw or "")).strip().lower()
+    k = re.sub(r"^(?:remote|public|joint)\s+", "", k)
+    if k.startswith(("c of c", "conf")) or "conference" in k or "committe" in k:
+        return "committee of conference"
+    if k.startswith("hear"):
+        return "hearing"
+    if "work" in k:
+        return "work session"
+    if k.startswith("exec"):
+        return "executive session"
+    return k
 
 # THE ARCHIVE'S OWN SHORTHAND, 1989-1998.
 #
@@ -367,15 +501,72 @@ def _parse_time(s):
     It is left as None rather than read as noon. Noon is very likely what was
     meant, and "very likely" is not something this project publishes as a
     time. The proceeding keeps its date and loses only the hour."""
-    s = s.strip().replace(" ", "").upper()
+    # THE DOTS TOO. The Senate writes "9:00 a.m." and has since 1999 -- 9,704
+    # of its 9,732 scheduling lines dot the meridiem -- and stripping only
+    # spaces left every one of them returning None. A rescued hearing would
+    # then publish a date and no time, which is the D-no-time confidence band
+    # and cannot be aligned against a recording at all.
+    s = s.strip().replace(" ", "").replace(".", "").upper()
     try:
         return datetime.strptime(s, "%I:%M%p").time()
     except ValueError:
         return None
 
 
-def _parse_date(s):
-    return datetime.strptime(s.strip(), "%m/%d/%Y").date()
+# How far a stated sitting may fall BEFORE the row that announces it before the
+# year is read as a typo. 16,548 of 16,775 announcements sit 0 to 57 days ahead
+# of their row and 60% of those within a week; 22 sit 328 to 716 days behind,
+# and every one of the 22 is the year -- a clerk typing January writing last
+# year's. Put each on its row's own year and all 22 land 0 to 23 days ahead,
+# inside the ordinary window, which is corroboration rather than a guess. The
+# threshold is 180 because the nearest genuinely late entry is 95 days behind
+# and must stay where it is.
+_STALE_DAYS = 180
+
+
+def _parse_date(s, written=None):
+    """The stated date, or None. NEVER RAISES.
+
+    It used to, on '%m/%d/%Y' alone, and the Senate branch called it with no
+    try -- so a single "Hearing: 3/29/11" would not have lost a row, it would
+    have ended build_manifest for every docket. That is the failure _parse_time
+    was already written about, in the same file, for the same reason.
+
+    Three shapes, because the Senate has used three: 3/29/11 and 01/14/2025,
+    "May 23, 2001", and "March 21" with no year at all -- 478 rows of 1999-2000
+    where the year is the one on the row that announced it.
+    """
+    s = re.sub(r"\s+", " ", (s or "").strip())
+    if not s:
+        return None
+    for fmt in ("%m/%d/%Y", "%m/%d/%y", "%B %d, %Y", "%b %d, %Y",
+                "%B %d %Y", "%b %d %Y"):
+        try:
+            d = datetime.strptime(s, fmt).date()
+            break
+        except ValueError:
+            d = None
+    else:
+        d = None
+    if d is None:
+        # No year stated. Take the one from the row, as _legacy_date does.
+        if written:
+            for fmt in ("%B %d", "%b %d"):
+                try:
+                    d = datetime.strptime(s.rstrip(","), fmt).date().replace(
+                        year=written.year)
+                    break
+                except ValueError:
+                    d = None
+    if d is None:
+        return None
+    # Last year's year, typed in January. See _STALE_DAYS.
+    if written and (written.date() - d).days > _STALE_DAYS:
+        try:
+            d = d.replace(year=written.year)
+        except ValueError:
+            pass
+    return d
 
 
 @dataclass
@@ -658,10 +849,28 @@ def parse_proceedings(rows, timeline):
     referred = None      # {(bill, chamber): [its referral committees]}, read at the first legacy hearing
     for r in rows:
         flags, clean = extract_flags(r["desc"])
-        m = SENATE_SCHED_RE.search(clean) if r["body"] == "S" else None
+        # .upper(), because the body code is not always upper case. 65 rows of
+        # 1999-2002 carry a lower-case 's' or 'h', and an exact == "S" meant
+        # SENATE_SCHED_RE was never even tried on them.
+        m = (SENATE_SCHED_RE.search(clean)
+             if (r["body"] or "").strip().upper() == "S" else None)
         if m:
-            kind = m.group("kind").lower()
-            venue = f"{m.group('bldg').upper()} {m.group('room')}"
+            kind = senate_kind(m.group("kind"))
+            venue = senate_venue(m.group("between"), m.group("rest"))
+            # A BARE "CANCELLED" PREFIX IS STILL A CANCELLATION. The pattern
+            # has to consume the word to reach the kind behind it, and doing so
+            # took it out of the reach of extract_flags -- so "CANCELLED
+            # Hearing, 4/14/99, Room 101, LOB, 3:30 p.m." published as a real
+            # sitting, and HB238 gained two hearings that day where one was
+            # called off. The prefix is captured now and read here instead.
+            # The whole line, not just the prefix: the clerk of 1999 as often
+            # writes it AFTER the time -- "Hearing, 3/17/99, Room 105-A, SH
+            # 8:30 a.m. Hearing Cancelled" -- which lands in `rest` and is just
+            # as cancelled. A docket row describes one sitting, so a
+            # cancellation word anywhere on it is about that sitting.
+            if "cancel" in (clean or "").lower() and not any(
+                    "CANCEL" in str(f).upper() for f in flags):
+                flags = list(flags) + ["CANCELLED"]
         else:
             m = HOUSE_SCHED_RE.search(clean)
             if m:
@@ -705,11 +914,30 @@ def parse_proceedings(rows, timeline):
             t = _legacy_time(m.group("time"))
         else:
             legacy_cmte = None
-            d = _parse_date(m.group("date"))
+            # `written` is the row's own date, which is what a yearless
+            # "Hearing March 21" and a mistyped year are resolved against.
+            _created = (r.get("created") or "").strip()
+            written = None
+            for _text, _f in ((_created, "%m/%d/%Y %I:%M:%S %p"),
+                              (_created[:10], "%m/%d/%Y")):
+                try:
+                    written = datetime.strptime(_text, _f)
+                    break
+                except ValueError:
+                    written = None
+            d = _parse_date(m.group("date"), written)
+            if d is None:
+                continue
             # A House line may state a time with no meridiem; house_time
             # returns None rather than let anyone guess am or pm.
-            _ht = house_time(m) if m.re is HOUSE_SCHED_RE else (
-                m.group("time") if m.groupdict().get("time") else None)
+            if m.re is HOUSE_SCHED_RE:
+                _ht = house_time(m)
+            elif m.groupdict().get("mer"):
+                # The Senate states its meridiem and dots it. Keep both;
+                # _parse_time strips the dots.
+                _ht = f"{m.group('time')}{m.group('mer')}"
+            else:
+                _ht = m.group("time") if m.groupdict().get("time") else None
             t = _parse_time(_ht) if _ht else None
 
         # The legacy line names its own committee -- "FOR: EXEC DEPTS & ADM"
