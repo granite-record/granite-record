@@ -133,8 +133,8 @@ than here — this table has already been wrong once by being a copy.
 ## Data, and what it is not ours to license
 
 The underlying record is the New Hampshire General Court's, and this project
-claims nothing over it. The code is MIT; `LICENSE` separates the software from
-the state's record from the texts generated here. If you are redistributing the
+claims nothing over it. The code is MIT (`LICENSE`); `DATA.md` separates the software from the
+state's record from the texts generated here. If you are redistributing the
 data, cite gc.nh.gov rather than this site — every page here links what it was
 drawn from, for exactly that reason.
 

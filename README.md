@@ -336,6 +336,7 @@ Honest list, not a roadmap — `LAUNCH.md` is the roadmap.
 ## Licence
 
 **MIT** — see [`LICENSE`](LICENSE). Use it, change it, sell it; keep the notice.
+[`DATA.md`](DATA.md) says what that covers and what it cannot.
 
 That covers the software and the texts this project writes: the plain-English
 bill histories, the explainers under `/learn`, and the editorial notes on
