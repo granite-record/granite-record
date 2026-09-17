@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.1
+# GRANITE_VERSION: 2026-09-13.2
 """
 What a search engine is told a page is about, in schema.org's vocabulary.
 
@@ -80,7 +80,7 @@ def bill(b, d, base, canon_path):
 
 
 def person(m, base, canon_path):
-    """A sitting legislator's page. No email, no telephone -- see the docstring."""
+    """A legislator's page. No email, no telephone -- see the docstring."""
     chamber = (m.get("chamber") or "H")[:1]
     url = base + canon_path
     office = "State Senator" if chamber == "S" else "State Representative"
@@ -90,6 +90,25 @@ def person(m, base, canon_path):
            "name": m.get("display_plain") or m.get("name") or "",
            "jobTitle": office,
            "memberOf": {**CHAMBER[chamber], "roleName": district} if district else CHAMBER[chamber]}
+    # A MEMBER WHO HAS LEFT IS NOT A SITTING ONE, and jobTitle asserts a post
+    # held now. Said in the two places schema.org has for it: the role carries
+    # the years the record covers, and jobTitle takes the past tense, so a
+    # search engine showing this does not put somebody back in a seat they no
+    # longer hold. Nothing here says why they left; the record does not know
+    # and the site does not ask.
+    if m.get("former"):
+        obj["jobTitle"] = f"Former {office}"
+        # AND NO DATES. The obvious thing here is a startDate and an endDate
+        # from the first and last roll call on file, and it would be wrong:
+        # this site's roll calls begin in 1999, so a member who took their seat
+        # in 1985 would be published as having started in 1999. A search engine
+        # repeats a startDate as fact, and the hedge the page puts around the
+        # same figure in prose does not travel with it. An endDate alone is no
+        # better -- it invites the reader to infer the missing half.
+        #
+        # The record's span is stated on the page, worded as a fact about the
+        # record. Structured data has no way to say "this is when our evidence
+        # starts", so it says nothing rather than something false.
     if m.get("party"):
         obj["affiliation"] = {"@type": "Organization", "name": f"{m['party']} Party"
                               if not str(m["party"]).lower().endswith("party") else m["party"]}

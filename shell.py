@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.18
+# GRANITE_VERSION: 2026-09-07.19
 """
 The page every record's own address is: bills.html, with one record open.
 
@@ -261,6 +261,15 @@ def member_followable(m):
     n_sponsored, the bills naming the member a sponsor. On 13 September every
     one of the 406 sitting members had one or both.
     """
+    # A FORMER MEMBER'S FEED COULD NEVER GAIN AN ITEM. They hold no seat, so
+    # they will cast no vote and file no bill, and a feed reader subscribing to
+    # one would wait forever on a promise the record cannot keep. build_feeds
+    # makes exactly this argument for a bill whose term is over. Both sides
+    # read this function, so returning False here keeps the page and the feeds
+    # agreeing -- which is what preflight's "a member's page names a feed
+    # exactly where build_feeds writes one" asserts.
+    if m.get("former"):
+        return False
     return bool(str(m.get("id") or "")) and bool(m.get("n_votes") or m.get("n_sponsored"))
 
 

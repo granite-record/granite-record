@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.94
+# GRANITE_VERSION: 2026-09-05.95
 """
 Generate the faceted site from real General Court data.
 
@@ -1745,8 +1745,99 @@ def write_rollcall_index(out, rollcalls, votes_by_member):
           f"({f.stat().st_size / 1024:,.0f} KB, read once per reader)")
 
 
+FORMER_LABEL = re.compile(r"\(\s*[A-Za-z]?\s*\)\s*(?P<county>[A-Za-z .']+?)\s+"
+                          r"(?P<district>\d+)\s*$")
+
+
+def former_roster(legs, votes_by_member, links, former_file, current_term):
+    """People who voted in the current term and hold no seat in it now.
+
+    THE MID-TERM DEPARTURES. Twenty members of the 2025-2026 House cast
+    between 250 and 591 votes each and then left -- resignations, and a seat
+    filled at a special election. The roster is a snapshot of who serves
+    today, correctly, so it does not carry them; the vote record does. Until
+    now that meant the site held their whole voting history and gave them no
+    page, so every one of those votes and every bill they sponsored was plain
+    text. They are the former members a reader is most likely to look up,
+    because they were here this term.
+
+    Deliberately NOT merged into the sitting roster. site/legislators.json is
+    read by about a dozen builders -- the legislators page, the town pages,
+    committee rosters, the feeds, the exports, the directory, and the Learn
+    section's count of sitting members -- and a former member reaching any of
+    them would be the site saying they still serve. This returns a separate
+    map, and build_legislators writes it to its own file.
+
+    The seat comes from the vote rows themselves ("St. Clair, Charlie(D)
+    Belknap 05"), because that is the seat they held when the vote was cast,
+    which is the only seat the record can honestly give them --
+    former_members.json fills any gap. No email and no telephone: a published
+    official address belongs to the office, and they no longer hold it.
+    """
+    folded = {str(x) for v in (links or {}).values() for x in v}
+    former_file = former_file or {}
+    # THE ADDRESS HAS TO READ LIKE EVERYONE ELSE'S. member_slug puts the county
+    # in a House member's address because district numbers repeat between
+    # counties, and it uses the abbreviation the roster carries -- rock-13, not
+    # rockingham-13. A former member has no roster row and so no abbreviation,
+    # which gave the first build /legislator/michael-vose-rockingham-5 beside
+    # /legislator/jodi-nelson-rock-13. Same map build_data.py builds for the
+    # same reason: the sitting roster is where the abbreviations live.
+    abbr = {m["county"]: m["county_abbr"] for m in legs.values()
+            if m.get("county") and m.get("county_abbr")}
+    out = {}
+    for mid, mv in votes_by_member.items():
+        mid = str(mid)
+        if mid in legs or mid in folded or not mv:
+            continue
+        # EVERY TERM, since 17 September. This was limited to the current one
+        # while the twenty mid-term departures were built as a pilot; the
+        # person approved the rest once the cost was measured -- about 3,600
+        # more files and 200 MB, against a deployment of 79,000 files and a
+        # warning threshold of 90,000. What it buys is 36,541 sponsor
+        # mentions, 53% of every one on the site, turning from plain text into
+        # a link to that person's record.
+        #
+        # Anyone the record holds at all, which is the person's other decision
+        # of the same day: a page is written even where the party, the seat or
+        # the dates are thin, and says what it does not know rather than
+        # guessing. A sparse page is still the only place that person's voting
+        # record exists.
+        if not mv:
+            continue
+        dated = sorted(mv, key=lambda v: vote_date(v.get("date")))
+        last = dated[-1]
+        rec = dict(former_file.get(mid) or {})
+        county = rec.get("county") or ""
+        district = str(rec.get("district") or "").lstrip("0")
+        m = FORMER_LABEL.search(str(last.get("label") or ""))
+        if m and not county:
+            county = m.group("county").strip()
+        if m and not district:
+            district = m.group("district").lstrip("0")
+        out[mid] = {
+            "id": mid,
+            "name": last.get("name") or rec.get("name") or "",
+            "chamber": last.get("body") or "",
+            "party": last.get("party") or rec.get("party") or "",
+            "party_code": last.get("party") or "",
+            "county": county, "district": district,
+            "county_abbr": abbr.get(county, ""),
+            "former": True,
+            # What the record can say about their service, and nothing beyond
+            # it. Not why they left: the site does not distinguish a member
+            # who resigned from one who died, and must not start here.
+            "served": {"first": dated[0].get("date") or "",
+                       "last": last.get("date") or "",
+                       "terms": sorted({P.term_of(v.get("year", ""))
+                                        for v in mv if v.get("year")})},
+        }
+    return out
+
+
 def build_legislators(out, legs, votes_by_member, towns, unnamed,
-                      sponsored=None, bill_year=None, links=None):
+                      sponsored=None, bill_year=None, links=None,
+                      former=None):
     """One JSON per member, plus the index and the town map.
 
     Split out of main(). main() was 808 lines even after the station
@@ -1756,8 +1847,15 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
     `links` is member_links.links(): the numbers a sitting member also voted
     under in the other chamber.
     """
-    lg = []
-    for mid, m in legs.items():
+    lg, fm = [], []
+    # ONE CODE PATH FOR BOTH POPULATIONS. The former members go through the
+    # same member_labels, the same member_slug and the same per-member JSON as
+    # the sitting roster, so every check that guards how a member is named --
+    # preflight's "nobody is named surname-first", "a member is named the same
+    # way by both namers", "an unnamed member is not dressed up as a person" --
+    # applies to them unchanged. Only the list they land in differs, and that
+    # is the whole point: former_roster says why.
+    for mid, m in [*legs.items(), *(former or {}).items()]:
         # A MEMBER WHO CHANGED CHAMBER VOTED UNDER TWO NUMBERS, one for each:
         # Sen. Cindy Rosenwald's page carried 1,399 of her 4,218 votes. The person decided on 13 September that a
         # page keeps every chamber the member sat in. Own votes first, so a
@@ -1772,13 +1870,23 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
                             party=m.get("party_code") or m.get("party"),
                             district=m.get("district"), county=m.get("county"),
                             county_abbr=m.get("county_abbr"))
-        lg.append({**{k: m.get(k) for k in ("id", "name", "chamber", "party", "county",
-                                            "county_abbr", "district", "label", "email",
-                                            "url", "url_past", "towns",
-                                            "committees", "title", "phone")},
-                   **lab, "n_votes": len(mv), "counts": dict(counts),
-                   "n_sponsored": len((sponsored or {}).get(mid, [])),
-                   "slug": member_slug(m, lab)})
+        row = {**{k: m.get(k) for k in ("id", "name", "chamber", "party", "county",
+                                        "county_abbr", "district", "label", "email",
+                                        "url", "url_past", "towns",
+                                        "committees", "title", "phone")},
+               **lab, "n_votes": len(mv), "counts": dict(counts),
+               "n_sponsored": len((sponsored or {}).get(mid, [])),
+               "slug": member_slug(m, lab)}
+        if m.get("former"):
+            # No email and no telephone, whatever the roster once held: the
+            # address belonged to the office. The towns go too -- the town map
+            # is today's, and the district they sat for may not exist in it.
+            row.update({"former": True, "served": m.get("served") or {},
+                        "email": "", "phone": "", "towns": [],
+                        "committees": []})
+            fm.append(row)
+        else:
+            lg.append(row)
         # What they put their name to. The page's own meta description has
         # promised "sponsored bills" since it was written and the file did not
         # carry them, so the page could not show them and a search engine was
@@ -1845,8 +1953,14 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
                   "writes")
             print("  former_members.json, then build_data.py, which reads it.")
     (out / "legislators.json").write_text(json.dumps(lg), encoding="utf-8")
+    # Its own file, never merged into the one above. See former_roster.
+    (out / "former.json").write_text(json.dumps(fm), encoding="utf-8")
     (out / "towns.json").write_text(json.dumps(towns), encoding="utf-8")
     print(f"{len(lg):,} legislator pages, {len(towns):,} towns")
+    if fm:
+        print(f"{len(fm):,} former member(s) -> former.json "
+              f"({sum(x['n_votes'] for x in fm):,} votes, "
+              f"{sum(x['n_sponsored'] for x in fm):,} sponsorships now linkable)")
     return lg
 
 
@@ -3248,7 +3362,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
                 votes_by_bill, vetoes=None, notes=None, coverage=None,
-                chapters=None, seats=None, session_over=""):
+                chapters=None, seats=None, session_over="", former=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -3276,6 +3390,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                  else "one term, not keyed")
         print(f"stated status available for {n:,} bills ({terms})")
     n_stated = 0
+    # For the sponsor lookup only. Built once rather than per bill: 33,683
+    # bills against one dict merge.
+    _people = {**legs, **(former or {})}
 
     # Every bill of every term the file holds. The term is still taken from the
     # bill's own filing year rather than from the key, so the two can be
@@ -3353,8 +3470,12 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # build_data.py, and for the LsrSponsors path that id IS the roster's.
         # The bill-status fallback path carries a web member id from a
         # different space, so that one falls back to matching on the name.
+        # The sitting roster AND the members who left mid-term, because this
+        # is the one lookup whose answer decides whether a sponsor's name is a
+        # link. Everything else in this function stays on `legs`: a former
+        # member belongs in a sponsor list, not in a roster.
         sp_list = bill_sponsor_list(bid, b, year, term, current,
-                                    sponsors, legs, leg_by_sort,
+                                    sponsors, _people, leg_by_sort,
                                     leg_by_name, sponsored, seats)
         prime = next((s for s in sp_list if s.get("prime")), sp_list[0] if sp_list else None)
         years.add(year)
@@ -3955,8 +4076,23 @@ def main():
           "chamber, and their pages carry both"
           + (f"; {len(not_joined)} candidate(s) not joined, listed by "
              "python3 member_links.py" if not_joined else ""))
-    seats = ML.seats_held(legs.values(), votes_by_member, links,
-                          max(bills) if bills else "")
+    # The mid-term departures: they voted this term and the roster, which is a
+    # snapshot of who serves today, does not carry them. former_roster says at
+    # length why this is a separate map and not an addition to `legs`.
+    former = former_roster(legs, votes_by_member, links,
+                           load("former_members.json", {}),
+                           max(bills) if bills else "")
+    if former:
+        print(f"{len(former):,} member(s) in the record hold no seat now; "
+              "they get a page of their own and the sitting roster is "
+              "unchanged")
+    # BEFORE seats_held, and over both populations. A sponsor matched on their
+    # name alone is only that member if this says they held a seat in that
+    # chamber that term -- so a former member absent from it would be matched
+    # and then thrown away again, and their sponsorships would stay unlinked
+    # for the one reason the guard was never meant to cover.
+    seats = ML.seats_held([*legs.values(), *former.values()], votes_by_member,
+                          links, max(bills) if bills else "")
 
     # The aligner writes work/<videoid>/segments.json; an earlier layout used
     # segments/<videoid>.json. Accept either so the site picks them up wherever
@@ -4046,6 +4182,7 @@ def main():
                                legs, leg_by_sort, leg_by_name,
                                votes_by_bill, vetoes=vetoes, notes=notes,
                                chapters=chapters, seats=seats,
+                               former=former,
                                session_over=session_over(a.status),
                                coverage=archive_coverage(
                                    bills, narratives, sponsors, reports,
@@ -4087,7 +4224,7 @@ def main():
     bill_year = {(t, b): str(r.get("lsr_year") or "")
                  for t, byb in bills.items() for b, r in byb.items()}
     lg = build_legislators(out, legs, votes_by_member, towns, unnamed,
-                           sponsored, bill_year, links)
+                           sponsored, bill_year, links, former)
 
     # ---- home page data ----------------------------------------------------
     # Everything the landing page needs, precomputed here where the full records

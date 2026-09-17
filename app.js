@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.89
+// GRANITE_VERSION: 2026-09-07.90
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2836,21 +2836,50 @@ function serviceLine(m){
     .join(" &middot; ")}</p>`;
 }
 
+/* "2013 to 2026", from the first and last roll call the member appears in.
+   The record's own answer to when somebody served, and the only one it can
+   give: the roster carries no dates. One year where both ends fall in it,
+   because "2026 to 2026" reads as a fault rather than as a fact. */
+function servedYears(m){
+  const s=m.served||{};
+  const a=String(s.first||"").slice(-4), b=String(s.last||"").slice(-4);
+  if(!/^\d{4}$/.test(a)||!/^\d{4}$/.test(b))return "";
+  return a===b?a:`${a} to ${b}`;
+}
+
 function renderMemberHead(m){
   const towns = m.towns||[];
+  /* FORMER MEMBERS, ON THEIR OWN PAGE AND NOWHERE ELSE. A reader arriving
+     cold at a page with a full voting record should not be left thinking the
+     person still holds the seat, so the page says plainly that they do not.
+     That is a statement of tenure, and it is different in kind from a badge
+     in a list: in a roll call or a sponsor list a former member is drawn
+     exactly like a sitting one, same honorific, party and seat.
+     It says nothing about WHY they left. The site does not distinguish a
+     member who resigned from one who lost, retired or died, and must not
+     start here -- people who served alongside them read this. */
+  const former = !!(m.former || window.GR_FORMER);
+  const yrs = former ? servedYears(m) : "";
   return `<div class="phead">
     <h1>${esc(m.display_full||m.display||m.name||"")}</h1>
     <p class="pmeta">${esc(m.chamber==="S"?"State Senate":"House of Representatives")}${
       m.district?` &middot; District ${esc(m.district)}`:""}${
       m.county?` &middot; ${esc(m.county)} County`:""}</p>
+    ${former?`<p class="pformer">Former member${
+      /* The years are the span of the RECORD -- roll calls here begin in 1999,
+         so a member sworn in before that appears from the year the evidence
+         starts. "On record" carries that; the person's call was to leave it at
+         one phrase rather than explain it, the case being rare. */
+      yrs?` &middot; on record ${esc(yrs)}`:""}. This page is their record in
+      the General Court; it is not a current directory entry.</p>`:""}
     ${serviceLine(m)}
-    ${towns.length?`<p class="ptowns"><b>Represents</b> ${
+    ${former?"":(towns.length?`<p class="ptowns"><b>Represents</b> ${
       towns.map(t=>esc(t)).join(" &middot; ")}</p>`:
-      `<p class="ptowns note">The towns in this district are not on file.</p>`}
+      `<p class="ptowns note">The towns in this district are not on file.</p>`)}
     ${(m.committees||[]).length?`<p class="pcmte"><b>Committees</b> ${
       m.committees.map(c=>cmteLink(
         (m.chamber==="S"?"Senate ":"House ")+c)).join(" &middot; ")}</p>`:""}
-    ${m.email?`<p class="pmeta"><a href="mailto:${esc(m.email)}">${esc(m.email)}</a></p>`:""}
+    ${(!former&&m.email)?`<p class="pmeta"><a href="mailto:${esc(m.email)}">${esc(m.email)}</a></p>`:""}
   </div>`;
 }
 

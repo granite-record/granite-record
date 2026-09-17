@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.12
+# GRANITE_VERSION: 2026-09-04.13
 """
 An address for every sitting legislator, and the sitemap entries for them.
 
@@ -71,7 +71,21 @@ def describe(m):
     # Ward 2 before Ward 10, which the roster's own order does not give.
     towns = sorted(m.get("towns") or [],
                    key=lambda t: [int(x) if x.isdigit() else x for x in re.split(r"(\d+)", t)])
-    if towns:
+    # PAST TENSE FOR SOMEBODY WHO NO LONGER SERVES, and no towns: the roster
+    # carries none for them, and the town map is today's, so "represents" would
+    # be wrong twice over.
+    #
+    # The years are the record's rather than the career's -- roll calls here
+    # begin in 1999, so somebody first sworn in before that appears from the
+    # year the evidence starts. The person's call on 17 September was to list
+    # the terms the record covers and leave the wording plain: the case is rare
+    # enough that a sentence of hedging costs the reader more than the
+    # imprecision does.
+    if m.get("former"):
+        yrs = _served_years(m)
+        lead = (f"{who} served in the New Hampshire {body}"
+                + (f", {yrs}." if yrs else "."))
+    elif towns:
         # "and 1 more" hides a name in the space it takes to say so.
         shown = towns if len(towns) <= 7 else towns[:6]
         more = len(towns) - len(shown)
@@ -87,13 +101,39 @@ def describe(m):
     return S.clip(text, 300)
 
 
+def _served_years(m):
+    """"2013 to 2026", the span of the RECORD this site holds for a member.
+
+    The span of the RECORD, which is not always the span of the service: roll
+    calls here begin in 1999 and bills in 1989, so somebody who took their seat
+    in 1985 and left in 2002 appears from 1999. The person settled this on 17
+    September while approving these pages -- list the terms the record covers,
+    and keep the wording plain, because the case is rare enough that a sentence
+    of hedging costs the reader more than the imprecision does. The one place
+    it is still worth avoiding is structured data, which asserts a startDate as
+    fact with no prose around it; structured.person says so.
+
+    One year where both ends fall in it, because "2026 to 2026" reads as a
+    fault rather than as a fact.
+    """
+    s = m.get("served") or {}
+    a, b = str(s.get("first") or "")[-4:], str(s.get("last") or "")[-4:]
+    if not (a.isdigit() and b.isdigit()):
+        return ""
+    return a if a == b else f"{a} to {b}"
+
+
 def noscript(m):
     """What a reader without JavaScript is told, and where to go instead."""
     who = E(m.get("display_full") or m.get("name") or "")
     towns = m.get("towns") or []
+    yrs = _served_years(m) if m.get("former") else ""
     return (
         '<noscript><div class="wrap" style="max-width:70ch;padding:26px 20px">'
         f"<h1>{who}</h1>"
+        + (f"<p>Former member of the New Hampshire General Court"
+           f"{E(', ' + yrs) if yrs else ''}. This page is their record; it is "
+           "not a current directory entry.</p>" if m.get("former") else "")
         + (f"<p>Represents {E(', '.join(towns))}.</p>" if towns else "")
         + "<p>This page draws the record — bills sponsored and every recorded "
           "roll call vote — in the browser, so it needs JavaScript. Everything "
@@ -113,12 +153,20 @@ def main():
     a = ap.parse_args()
     site = Path(a.site)
     legs = json.loads((site / "legislators.json").read_text(encoding="utf-8"))
+    # AND THE MEMBERS WHO LEFT MID-TERM. build_site_v2.former_roster writes
+    # them to their own file rather than into the roster, because a dozen
+    # builders read the roster to mean "who serves now". They get a page by
+    # the same code as everyone else -- same shell, same slug, same JSON --
+    # so a reader who follows a sponsor's name from a bill they filed this
+    # term arrives at their voting record instead of at plain text.
+    former = json.loads((site / "former.json").read_text(encoding="utf-8")) \
+        if (site / "former.json").exists() else []
     out = site / "legislator"
     out.mkdir(parents=True, exist_ok=True)
     t = S.template(site)
 
-    urls, written = [], 0
-    for m in legs:
+    urls, written, n_former = [], 0, 0
+    for m in [*legs, *former]:
         slug = m.get("slug") or person_slug(m)
         path = f"/legislator/{slug}.html"
         who = m.get("display_full") or m.get("display") or m.get("name") or ""
@@ -146,7 +194,14 @@ def main():
             # Name, office, chamber, party, district. Not email or telephone:
             # structured.py says why.
             jsonld=LD.person(m, a.base, S.canon(path)),
-            globals={"GR_MEMBER": str(m.get("id", "")), "GR_STANDALONE": True},
+            # GR_FORMER tells app.js to say, on this page and nowhere else,
+            # that the member no longer serves -- and to leave out the contact
+            # details, which belonged to the office. It says nothing about why
+            # they left, and nothing anywhere else on the site marks them:
+            # in a roll call or a sponsor list they are named exactly as a
+            # sitting member is.
+            globals={"GR_MEMBER": str(m.get("id", "")), "GR_STANDALONE": True,
+                     **({"GR_FORMER": True} if m.get("former") else {})},
             noscript=noscript(m), skip_label="Skip to this member",
             # Without this the template's marker stays on Bills, and all 406
             # member pages told a screen reader they were Bills.
@@ -159,6 +214,7 @@ def main():
             encoding="utf-8")
         urls.append(a.base + S.canon(path))
         written += 1
+        n_former += bool(m.get("former"))
 
     assert written or not legs, (
         "no legislator page was written, and legislators.json holds "
@@ -179,7 +235,9 @@ def main():
             print("sitemap already lists legislator pages; left alone")
 
     total = sum(p.stat().st_size for p in out.glob("*.html"))
-    print(f"{written} legislator pages -> {out}/  ({total/1e6:.1f} MB)")
+    print(f"{written} legislator pages -> {out}/  ({total/1e6:.1f} MB)"
+          + (f"; {n_former} of them members who left mid-term, whose votes and "
+             "sponsorships were plain text before" if n_former else ""))
     print("\nEach page is bills.html with one member open, drawn by app.js "
           "from the\nsame JSON the search page reads. Somebody searching a "
           "member's name finds\ntheir voting record, and it is the same record "

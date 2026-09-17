@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.5
+# GRANITE_VERSION: 2026-09-04.6
 """
 Check the site is fit to publish before uploading it.
 
@@ -26,6 +26,18 @@ import sys
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+
+# A JSON file here whose emptiness is a fact about the record rather than a
+# build that produced nothing. Every other empty one is a failure: silence is
+# not success, and a builder that writes [] and exits zero is the failure mode
+# this whole check exists for.
+#
+# former.json holds the legislators who appear in the record and hold no seat
+# now. On the live site that is 1,785 people; on preflight's fixture, whose
+# roster and vote file are a handful of rows, nobody has left and the correct
+# answer is []. Flagging that made preflight fail on a site that was built
+# perfectly.
+MAY_BE_EMPTY = {"former.json"}
 
 REQUIRED = ["index.html", "bills.html", "legislators.html", "learn.html",
             "about.html", "style.css", "index.json", "meta.json",
@@ -84,7 +96,7 @@ def main():
             continue
         n = len(d) if isinstance(d, (list, dict)) else 1
         counts[f.name] = n
-        if n == 0:
+        if n == 0 and f.name not in MAY_BE_EMPTY:
             errors.append(f"{f.name} is empty")
     for k, v in sorted(counts.items()):
         print(f"  {k:<22} {v:,} entries")
