@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.16
+# GRANITE_VERSION: 2026-09-08.17
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -388,8 +388,12 @@ counted against every seat rather than against the members present, so a
 measure can win a clear majority of those voting and fail anyway.</p>
 
 <h2>The consent calendar</h2>
-<p>A committee can put a bill on the consent calendar only by voting
-unanimously, in executive session, to place it there. The calendar is then
+<p>A committee decides in executive session whether to send a bill to the
+consent calendar, and the ones that go there are the bills it broadly agrees
+about. Usually that agreement is unanimous, but not always: this
+site&rsquo;s own record holds thousands of committee reports marked for the
+consent calendar on a divided vote, among them reports carried 15&ndash;3 and
+4&ndash;2. The calendar is then
 decided in a single vote, without floor debate. What that vote adopts is the
 committee's recommendation on each bill, which for some of them is to kill it.
 Any member may ask for a bill to be taken off, and one that comes off is
