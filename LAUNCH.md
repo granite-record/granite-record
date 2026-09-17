@@ -844,8 +844,9 @@ with that day's 24 commits. **92 preflight checks then, `check_site` ready,
 55,318 files — 55% of the 100,000 Cloudflare Pages allows.** MIT-licensed,
 with a README, since the 10th; `CONTRIBUTING.md` and `SECURITY.md` since the
 17th. Those file and check counts are of the 11th and have moved: run
-`python3 check_site.py` for the size before a deploy (49,457 files, 1,790 MB on
-17 September; it warns at 90,000) and `python3 preflight.py` for the checks.
+`python3 check_site.py` for the size before a deploy (about 49,500 files and
+1.8 GB on 17 September; it warns at 90,000) and `python3 preflight.py` for the
+checks.
 
 The 10th was the day the archive stopped being a list of bills and became a
 record: votes for twenty-four years, committees for ten terms that had none,
@@ -856,11 +857,11 @@ party on nearly every ballot ever cast.
 |---|---|
 | Bills | **33,683 across 19 terms**, 1989 to 2026, each with its own page |
 | Legislators | 406 sitting, **2,192 with a recorded roll-call vote, 1999–2026** (not "who have served": the site's bills go back to 1989 and the ballots do not). **2,191 pages since the 17th** — the 406 and 1,785 who have left |
-| Committees | 53 |
-| Data | **nineteen CSV tables at `/data`**, 2,522,207 rows, a manifest, rebuilt every run |
+| Committees | 53 when this was written; `site/committees.json` said 52 after the referral work of 17 September, so count the file rather than quoting a number while that is moving |
+| Data | **nineteen CSV tables at `/data`**, about 2.52M rows, a manifest, rebuilt every run — `site/data/manifest.json` carries the per-table count |
 | Towns | **320 town-and-ward pages** — everyone who represents you, with contact |
 | Civics | 13 topics at `/learn/`, and `/learn/by-the-numbers.html`, public since the 17th |
-| Feeds | per bill, committee, topic and hearing |
+| Feeds | per bill, committee, topic and hearing — and per legislator, 406 of them, which this row did not say |
 | Veto messages | 261 across fifteen terms, 1997 onward, each cited to the calendar it was printed in |
 | Roll calls | **9,565 across 1999–2026**, 2.3M ballots, every term named and partied |
 | Hearings | proceedings for **all nineteen terms**, 1989–2026 — a `verification_manifest*.csv` each, the last eight built 09:32 on 17 September. **104,769 rows, 2,931 recordings.** This row read "50,911 across eleven terms" that morning and "29,837 across seven" the week before; run `python3 handoff.py` and read `STATE.md` for the count |
@@ -875,8 +876,9 @@ party on nearly every ballot ever cast.
 > and is on step 10, `fetch_legislation.py --note bills-06`, started 13:01 —
 > archived bill text 1989-2024, newest first, 2016 skipped, 800 requests **15 s
 > apart** (it dropped from 20 s on the 17th, 9bd89ae). It has walked back to
-> 2009 and 13,047 pages across 38 year folders are saved. No refusal is on file
-> (`archive/refused.json` does not exist). The live answer is `archive/.lock` (a fresh mtime means
+> 2009, and `legislation/` holds over 13,000 pages across 38 year folders and
+> grows by 800 a step. No refusal is on file (`archive/refused.json` does not
+> exist). The live answer is `archive/.lock` (a fresh mtime means
 > a fetch is in flight right now), `logs/gc_lane.log`, `logs/gc_lane.done` and
 > the process one-liner in `watchers/README.md`. The reasoning below — why the
 > lane exists, what a refusal looked like, why the pace is what it is — is

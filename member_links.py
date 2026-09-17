@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.2
+# GRANITE_VERSION: 2026-09-13.3
 """
 Which sitting members voted under an earlier number in the other chamber.
 
@@ -15,9 +15,25 @@ keeps the history of every chamber they sat in.
 
 THE JOIN IS NOT ON NAME ALONE, because that rule has already been wrong here.
 careers.json joined numbers on first and last name where service did not
-overlap, and merged two different Rep. Patrick Longs -- Hillsborough 23 from
-2007 to 2024 and Hillsborough 26 from 2025 -- while missing Sen. Pat Long,
-whom the roster spells "Pat". A stranger's votes on somebody's page is worse
+overlap, and merged two different people who file as Patrick Long --
+Hillsborough 23 from 2007 to 2024 and Hillsborough 26 from 2025.
+
+WHO THOSE TWO ACTUALLY ARE, established by the person on 17 September, because
+this paragraph used to imply something else and cost an hour. Hillsborough 23,
+2007-2024, is **Sen. Pat Long's own House service**: he was a representative
+before he was a senator, and the General Court issued him a new employee
+number when he changed chambers, which is why past_members.json holds both
+"Sen. Long, Pat(Dist. 20)" at 218767 and "Rep. Long, Patrick(Hills 23)" at
+376696. Hillsborough 26 from 2025 is a different person, a first-term
+representative. So the join this module makes -- 540 onto the sitting senator
+-- is correct, and careers.json's error was to attach the senator's House
+record to the freshman instead.
+
+TWO EMPLOYEE NUMBERS ARE NOT TWO PEOPLE. That is the trap in reading
+past_members.json as a census: a chamber change mints a second number for the
+same person, which is precisely the case this module exists to rejoin. The
+roster spelling him "Pat" and the bill text spelling him "Patrick" is what
+makes him look like two. A stranger's votes on somebody's page is worse
 than a partial career, so an earlier number is joined to a sitting member only
 when every one of these holds:
 

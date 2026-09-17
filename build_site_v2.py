@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.95
+# GRANITE_VERSION: 2026-09-05.96
 """
 Generate the faceted site from real General Court data.
 
@@ -732,6 +732,41 @@ def bill_amends(body):
         lo = body.rfind(". ", max(0, m.start() - 300), m.start())
         take(body[(lo + 2 if lo != -1 else max(0, m.start() - 300)):m.start()])
     return out
+
+
+_OWN_SLUG = {}
+
+
+def own_slug(m):
+    """The address of this member's OWN page, built the way that page is.
+
+    NOT member_slug(m, whatever_label_is_to_hand). member_slug takes the name
+    out of the label it is given, and a sponsor's label is deliberately the
+    seat and the name AS THE RECORD PRINTED THEM AT THE TIME -- so a 2009 bill
+    naming "Patrick Long, Hills 10" produced patrick-long-sd-20 for a senator
+    whose page is pat-long-sd-20, because the roster spells him Pat. A link to
+    a file that does not exist.
+
+    It has been right for everyone else by coincidence: Cindy Rosenwald and
+    Mark McConkey are spelled the same way in a 2009 bill's text as in today's
+    roster, so the name the label carried happened to be the name the page was
+    built from. Pat Long is the first case where the two differ, and the
+    mechanism was wrong for all of them.
+
+    So the slug comes from the member's own roster row, through the same
+    member_labels call build_legislators makes, which is what guarantees the
+    two agree. Cached because a sponsor list asks for it 68,930 times.
+    """
+    mid = str(m.get("id") or "")
+    if not mid:
+        return ""
+    if mid not in _OWN_SLUG:
+        lab = member_labels(m.get("name"), chamber=m.get("chamber"),
+                            party=m.get("party_code") or m.get("party"),
+                            district=m.get("district"), county=m.get("county"),
+                            county_abbr=m.get("county_abbr"))
+        _OWN_SLUG[mid] = m.get("slug") or member_slug(m, lab)
+    return _OWN_SLUG[mid]
 
 
 def member_slug(m, lab):
@@ -2714,7 +2749,9 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
         # matched to the roster. Where they were not -- a former member,
         # or a name the join missed -- there is no page and no link, which
         # is the honest outcome rather than a link that goes nowhere.
-        _slug = member_slug(_m, _lab) if _m.get("id") else ""
+        # The member's OWN address, not one derived from the label above --
+        # own_slug says why that distinction is not cosmetic.
+        _slug = own_slug(_m) if _m.get("id") else ""
         sp_list.append({**_s, **_lab, "slug": _slug})
         # FILED UNDER THE MEMBER THE PAGE LINKS. This used the record's own id,
         # and every 2023-2024 record, with 4,569 of 2025-2026's, carries an
@@ -3362,7 +3399,8 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 bill_texts, amend_texts, testimony, testimony_db, procs, floor, segs,
                 marks, sources, legs, leg_by_sort, leg_by_name,
                 votes_by_bill, vetoes=None, notes=None, coverage=None,
-                chapters=None, seats=None, session_over="", former=None):
+                chapters=None, seats=None, session_over="", former=None,
+                links=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -3392,7 +3430,25 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     n_stated = 0
     # For the sponsor lookup only. Built once rather than per bill: 33,683
     # bills against one dict merge.
+    #
+    # AND THE NUMBERS A SITTING MEMBER VOTED UNDER IN THE OTHER CHAMBER.
+    # member_links joins those to the member for their VOTES, and their page
+    # carries both chambers; the sponsor lookup never learned about them, so a
+    # bill filed under the earlier number found nobody. It mostly did not show,
+    # because the fallback that matches on a name caught them anyway -- and it
+    # caught them only where the bill's text spells the member the way today's
+    # roster does. Sen. Pat Long's House record is filed under "Patrick", which
+    # is how 100 of his own sponsorships rendered as plain text while every
+    # other chamber-changer's linked.
+    #
+    # Keyed on the earlier number and pointing at the sitting member, so the
+    # join is the one member_links already made rather than a second guess at
+    # it. The label is untouched: a 2009 bill still reads "Rep. Patrick Long
+    # (D - Hills 10)", the seat he held when he filed it.
     _people = {**legs, **(former or {})}
+    for _sit, _earlier in (links or {}).items():
+        for _old in _earlier:
+            _people.setdefault(str(_old), legs.get(_sit) or {})
 
     # Every bill of every term the file holds. The term is still taken from the
     # bill's own filing year rather than from the key, so the two can be
@@ -4182,7 +4238,7 @@ def main():
                                legs, leg_by_sort, leg_by_name,
                                votes_by_bill, vetoes=vetoes, notes=notes,
                                chapters=chapters, seats=seats,
-                               former=former,
+                               former=former, links=links,
                                session_over=session_over(a.status),
                                coverage=archive_coverage(
                                    bills, narratives, sponsors, reports,
