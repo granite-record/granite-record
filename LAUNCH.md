@@ -592,23 +592,14 @@ withholding.
 
 ---
 
-## 0g. WHERE THINGS STAND, 16 September, evening
+## 0g. WHERE THINGS STAND, 16 September, night
 
-**Written so this survives a summary, a lost session or a night's gap.** The
-tree is clean and every change is committed, but several changes are CODE that
-has not yet been through the build that makes it visible. Publishing before
-that chain runs would put new code behind old data.
+**Written so this survives a summary, a lost session or a night's gap.**
 
-### Changed in code, NOT yet rebuilt
+### The chain HAS RUN, and the gate held
 
-| change | what it needs |
-|---|---|
-| vote codes 5 and 7 -> "No vote recorded" (567 ballots) | `build_data.py` |
-| roll call headline from the counted ballots (14 roll calls) | `build_data.py` |
-| the docket parser's `$` anchor fix (1,062 -> 0 fall-throughs) | the manifest rebuild, below |
-| the new topic matcher | `topic_model.py --apply`, once installed |
-
-### The chain, in this order
+Every step below ran on the evening of the 16th, in this order, and each is
+recorded here because the next person will need to run it again:
 
 ```
 python3 build_data.py --dir . --out data          # vote codes, headlines, member names
@@ -621,34 +612,90 @@ python3 preflight.py
 publish.bat
 ```
 
-### The gate, and the baseline it is measured against
+| step | what came out |
+|---|---|
+| `build_data.py` | 84 nameless ids named; 1 unnamed row left, and it is a defect, not a gap |
+| `topic_model.py --apply` | 20,521 placed, Miscellaneous 13,191 -> 10,928 |
+| 6 x `build_manifest.py` | **all 35 hand-marked times carried forward** |
+| `build_proceedings.py` | 54,842 rows, was 53,823 |
+| **the gate** | **0m 01s, 44 of 63 placed, schedule alone 14m 46s -- equal to baseline** |
+| `build_all.py --local` | 26 ran, 0 skipped, 0 failed, 907s |
+| `preflight.py` | 159 passed, 0 failed |
 
-`probe_alignment` must not regress. **Baseline captured before any of this:
-candidate median 0m 01s, 44 placed, schedule alone 14m 46s.** The full capture
--- proceedings.csv, all eleven verification_manifest*.csv,
+The gate came out EQUAL to the baseline rather than merely close, which is
+what was predicted and why: all 35 hand-timed proceedings are in 2025-2026,
+whose docket showed 0 rows changing, and the parser change touches 2015-16,
+2019-20, 2021-22 and one row of 2023-24. **The gate proved the change does no
+harm; it could not prove it does good, and still has not.**
+
+### The baseline, still worth keeping
+
+`probe_alignment` must not regress from **0m 01s**. The full capture --
+proceedings.csv, all eleven verification_manifest*.csv,
 verification_manifest.xlsx, candidate_segments.json, floor_index.json, 21 MB
 -- is at
 
     <scratchpad>/_baseline/
 
 and **git cannot restore any of those: they are untracked.** If the median
-regresses, restore by copying them back, do not rebuild to revert.
+regresses, restore by copying them back, do not rebuild to revert. That
+baseline is from before the 16th's chain and so is now one rebuild stale, but
+it is still a known-good set and still the only restorable one.
 
-The risk is low and measured: **all 35 hand-timed proceedings are in
-2025-2026, whose docket shows 0 rows changing.** The parser change touches
-2015-16, 2019-20, 2021-22 and one row of 2023-24. The gate can therefore prove
-the change does no harm; it cannot prove it does good.
+### Every ballot now carries a name and a party, with two exceptions
+
+This closed on the 16th. 2,212 members cast recorded votes; all but one are
+named, and all but one carry a party.
+
+- **84 ids** that rendered as "Member #409060" were identified by scoring each
+  id's ballots against every name printed in the House and Senate journals for
+  the same roll calls, then corroborating from a source independent of those
+  ballots. The method was controlled blind against four already-known ids and
+  reproduced all four. In `member_corrections.json`.
+- **7 more** had a name but no party, each settled by a source that STATES the
+  party -- an organisation-day roster, a swearing-in notice, a committee roster
+  printed in party columns -- because four of the seven resigned or died in
+  office and their ballots are largely Not Voting.
+
+**The one remaining defect is worth understanding before touching it.** Two
+2017 House ballots carry an EMPTY member_id and render as "Member #". They are
+not unidentifiable: they are Edith DesMarais (Carroll 6) on vote 145 and
+Charlie St. Clair (Belknap 9) on vote 151, both recovered by diffing the
+journal's printed name list against the site's rows for the same roll call,
+1-to-1 in each case. Both were sworn in that same morning, so their employee
+number was not yet linked to a station -- each one's id appears normally at the
+very next roll call. In the General Court's own database both rows carry
+UserName `VOTE SYSTEM` rather than a clerk's login.
+
+**They must be repaired, not dropped:** the Clerk's published tallies
+reconcile only if these two rows are counted, so removing them would put the
+site one nay short of the official record on both bills. But
+`member_corrections.json` cannot express the fix -- it is keyed by member id,
+and here the id is the empty string, one bucket shared by two different people.
+The fix has to key on (year, body, vote_number), which means the roll-call
+parse rather than the member map. **That is a change across files, so it is a
+proposal awaiting the person, not something to apply.**
 
 ### Waiting on a person
 
 - the 13 disagreeing roll calls: detail sent, in `reports/rollcall-disagreements.md`
-- publishing: 11 commits of reader-visible work are unpublished
+- the two empty-id ballots above: needs approval for a roll-call-keyed override
+- the consent-calendar narrative: 1,486 bills carry a removal line, 463 name
+  the members who removed them; the agreed wording is to say the bill was
+  removed from the consent calendar, name who did it, then narrate the votes
+  as for any regular-calendar bill
 
-### Next after publishing
+### Next
 
-The person's ask of the 16th: **find every field a bill page shows that is
-missing on a term that should have it** -- sponsors and committees first --
-and work from a measured gap table per term rather than from impressions.
+1. The person's ask of the 16th: **find every field a bill page shows that is
+   missing on a term that should have it** -- committee is the tractable one at
+   615 bills (2%); sponsors self-heal through the lane; topics are addressed.
+2. **The journals are the uniform party source.** `member_party.json` is built
+   from 27 saved roll-call pages, one per year, so anyone absent from that
+   single roll call comes through with no party -- which is exactly how all
+   seven above slipped out. The organisation-day rosters cover 1997-2026 on
+   disk, name every member with a party letter, and need no network. That would
+   close this class of gap in one sweep instead of one member at a time.
 
 ---
 
