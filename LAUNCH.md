@@ -19,7 +19,7 @@ is renumbered here in one pass.
   a reinstall of the app, so tab navigation, the theme control, branding and
   the homepage come here.
 - **A member who changed chamber keeps both bodies' history** on their page.
-  Done the same night for twenty sitting members (b9b7079, §6c): joined on
+  Done the same night for twenty sitting members (72849e2, §6c): joined on
   name, party, ground and time together, never the name alone, and a pair
   short of any of them is listed for a person rather than joined.
 - **The public repository carries no personal email, no home IP address and no
@@ -29,6 +29,19 @@ is renumbered here in one pass.
   appears anywhere in history. So history is rewritten before anything is
   pushed, and every commit hash changes -- the ones quoted in this file get
   remapped in the same pass.
+
+  **Done on the 17th at 15:29** (97f1498), and the scope was wider than the
+  scoping run of the 13th found: the personal address was in the ROOT COMMIT's
+  author and committer fields, an ancestor of all 475 commits after it, and no
+  tracked file or historical blob carried it -- which is why a scan of objects
+  came back clean. `filter-branch` over `--all`, `refs/original` deleted, the
+  reflog expired, `gc --prune=now`; a bundle of the old history is outside the
+  repository. Every commit hash in this file has been remapped onto the new
+  history, and each pair was proved twice -- the old hash resolving in
+  `D:\nh-git-backup-2026-09-16\nh-all-refs.bundle` and the new one here, on the
+  same author timestamp and the same subject line. `preflight` gains the check
+  that would have caught it: every author and every committer, across every
+  ref, is the project address.
 - **The logo is the Old Man of the Mountain mark in `brand/`**, from clipart
   the person bought the rights to. Temporary, and good to use.
 - **The theme control:** automatic from the reader's system by default; the
@@ -40,8 +53,8 @@ is renumbered here in one pass.
 **The order**, each phase unblocking the next:
 
 0. *Today.* Lane restarted 20:47. Morning triage scheduled for 8:07, first run
-   waiting on its tool approvals. `_chain` registered and green (0fd0611). The
-   day's files as a daily lane step (e820318), queued once the lane restarts
+   waiting on its tool approvals. `_chain` registered and green (bcd1e77). The
+   day's files as a daily lane step (eadd5f0), queued once the lane restarts
    on that code.
 1. *The data, before pages show it and search engines index it.* Done on the
    13th: the second-referral install (1,946 rows take the second committee
@@ -49,7 +62,7 @@ is renumbered here in one pass.
    name variants into one committee (1,119 rows of 1989-1998; distinct names
    House 202 to 148, Senate 117 to 85); chamber changers' two histories (20
    members). Done on the 14th: a member's Sponsored tabs list what the bill
-   pages credit them with (0b1b47b, §6c), and the Learn pages' counts are
+   pages credit them with (ae8a52a, §6c), and the Learn pages' counts are
    filled from the data at build time (§6d). Phase 1 is complete.
 2. *Features.* Topics for the archived terms, where 37-64% of each term's bills
    are "Miscellaneous", scored at the bench -- *improved on the 14th without
@@ -76,7 +89,7 @@ is renumbered here in one pass.
    searching, and a search that finds nothing offers its parts with counts;
    48 searches read, the page's order checked against the review's -- and on
    the person's word the same afternoon, the term picker opens on the current
-   term with **All terms** above it (ca15094); sponsors for the terms before
+   term with **All terms** above it (c11cd55); sponsors for the terms before
    2023 -- *started on the 14th, and filling in as the lane goes*:
    `text_sponsors.py` reads the sponsor line of each bill's saved text and
    matches a surname to a member only among those who cast a roll call in
@@ -96,9 +109,9 @@ is renumbered here in one pass.
    on its pages; the schedule service and new calendars daily, once
    `fetch_schedule.py` meets the fetch standard.
 3. *The interface.* The theme control as above -- *done on the 14th*
-   (24acc19); tabs and mobile; the homepage and status banner. The Votes
+   (2f8c9ea); tabs and mobile; the homepage and status banner. The Votes
    table's date column at 768px, seen in the screenshots of the 14th, is
-   fixed (beec463).
+   fixed (f9b330a).
 4. *Launch prep.* The Learn read-through with the person; the About and Data
    pages; the history rewrite and the public repository; the SEO last mile and
    the sitemap -- *done on the 14th*: each kind of page unfurls its own wide
@@ -137,7 +150,7 @@ last twenty years (2007-2026, ten terms) unless it says otherwise:
   many amendments a bill takes before it passes;
 - each committee's passage rate for the last completed term (2025-2026 now).
 
-**A draft is built, 14 September** (ca15094): `learn_numbers.py`, written by
+**A draft is built, 14 September** (c11cd55): `learn_numbers.py`, written by
 `build_civics.py` to `/learn/by-the-numbers.html`, noindex, on no list and out
 of the sitemap until the person has read it (preflight holds it there). It
 covers committees overruled on the floor, vetoes of bills that reached the
@@ -150,6 +163,14 @@ bills (2.9%) in either chamber. Still to come: the CACRs with the Secretary of
 State's results, the sign-ins check, amended against as-introduced, and each
 committee's passage rate. The Learn pages' footer reads previous, all topics,
 next since the same commit.
+
+**Public since the 17th.** The person read it and asked for it to be listed:
+the `noindex` is gone, the Learn hub links it and it is in the sitemap.
+`preflight`'s check is the same guard pointed the other way -- it now asserts
+that the page is indexable and reachable from both, because a page reached only
+by knowing its address is one nobody finds. The page prints its own "Still to
+come" list and it names the same work as the sentence above, so none of that
+has been done.
 
 **Where it fits:** after the Learn counts come from the data (phase 1), which
 builds the same machinery -- numbers computed at build time from the record,
@@ -224,7 +245,14 @@ starting it.
     **Done on the 16th**: it was printing all eleven titles twice, once in the
     body and once in a rail beside it, in a 560px column on a 1440px screen.
 11. **Update the About and Data pages** (`about.html` from `build_pages.py`,
-    `data.html` from `build_exports.py`).
+    `data.html` from `build_exports.py`). **About done on the 17th** (283ae4c):
+    eight figures had been typed into the prose and seven were wrong -- it said
+    10,810 proceedings against 104,756, and 1,068 with no recording against
+    82,176. `build_bills` now writes `site/station_census.json` as it builds the
+    stations, `probe_alignment.py --truth --score-out` writes
+    `alignment_score.json`, and `about_figures.py` fills `[[name]]` from both,
+    so the page's account of its own accuracy is counted rather than typed. The
+    Data page is not touched by that commit and is still as it was.
 12. **Fix the ward selection bug on town pages, whose links break**:
     https://graniterecord.org/dover-ward-3.html (`build_town_pages.py`).
     **Done on the 16th** -- all 462 ward links on all 73 ward pages were
@@ -256,6 +284,11 @@ starting it.
       four agree 76/76, 38/38, 54/54 and 58/59, the one miss being a name
       extracted 49 characters out of place among Sullivan county names.
 
+      **Shown since the 16th.** All four are in `member_corrections.json`, and
+      each has a page: `richard-littlefield-belk-3`, `susan-homola-hills-27`,
+      `melbourne-moran-hills-34`, `cody-belanger-rock-9`. Nothing on this site
+      now reads "Member #" -- 0 files across the whole of `site/`;
+
       **And a wrong name is on the site now: 4,250 ballots across twenty
       session years, 2005 to 2024, are labelled "Rep. Thomas Oppel (D)".**
       They are not his. That member presided over 362 roll calls in 2019 and
@@ -277,7 +310,11 @@ starting it.
       the fix is either in the resolver or in a small file a person keeps that
       no generator writes. **That choice is the person's, and so is accepting
       the identification.** What is certain without it: the ballots are not
-      Thomas Oppel's, and the site should not say they are;
+      Thomas Oppel's, and the site should not say they are.
+
+      **Fixed on the 16th** by the second route -- `member_corrections.json`,
+      the fifth hand-made file, described in §0d. The name landed; the seat did
+      not, and that is still open (§0d, Open);
     - 2022 HB 52's page prints "SPONSORSF", so its sponsor (Rep. B. Griffin) is
       not read; **fixed on the 16th** -- the General Court's own document
       types an F where the colon belongs, and 2020 SB 222 omits the colon
@@ -289,7 +326,11 @@ starting it.
       chamber since, is labelled with their seat now, while one read from the
       bill text shows the seat printed on the bill.
 16. **"Cite this page"** on bills and other pages that may be cited in papers,
-    by news organisations and the like.
+    by news organisations and the like. **Done on the 16th** (437d5ab): a
+    `<details>` block in `shell.py`, the one frame every record page is built
+    through, offering MLA, APA, Chicago and BibTeX with the day the page was
+    read, and saying first that Granite Record indexes the General Court's
+    record and is not that record.
 17. **A list at the foot of the homepage of what is coming**, such as email
     follows.
 18. **Review the codebase so the open-source GitHub release is usable by other
@@ -297,6 +338,12 @@ starting it.
     `obsolete/`, and the documentation updated and reconciled. Nothing public
     carries the personal email, home IP address or keys, and the history
     rewrite in §0 comes before any push.
+
+    **Most of the release scaffolding landed on the 17th.** `README.md`
+    rewritten for somebody who wants to build on this (4644d4f);
+    `CONTRIBUTING.md` and `SECURITY.md` now exist; `LICENSE` is MIT; the
+    history rewrite has run (§0). Still open: the optimisation and streamlining
+    pass, `obsolete/`, and the push itself, which has no remote yet.
 
 ## 0c. First users, and the order work is done in (15 September)
 
@@ -328,6 +375,16 @@ What came back first:
   October, and until the General Court enters that line this term the site is
   repeating the record's own status. Whether to call them finished before the
   line arrives, and from what date, is the person's call.
+
+  **Answered the same day.** The person set `session_over` in
+  `status/status.txt` -- "all bills have concluded including tabled bills as
+  there are no more session days this term" -- and `build_site_v2` turns an
+  `active` bill of a term that has run out of session days into a finished one.
+  The word the record gives is left exactly as it is; what changes is the kind,
+  which drives the colour, the rail and the count. `site/home.json` now has no
+  `active` bills at all. A bill sent to interim study is still followable, so
+  215 of the current term's bills keep a feed -- and the 107 feeds written for
+  the others before the 15th are still sitting in `site/`, unpruned (§9).
 - **Attendance records** -- a feature, so third in the order. What is on disk: each
   ballot is recorded as Yea, Nay, Not Voting/Excused, Not Voting/Not Excused or
   Presiding (2025-2026: 17,156 excused and 10,259 not excused), and each session's
@@ -489,25 +546,52 @@ fuller review.
 
 ### Open, and what each needs
 
-- **1,062 modern House docket lines take the 1989-98 parser path** and carry a
-  wrong proceeding kind and a garbled room -- 1,029 of them in 2021-2022. This
-  is the largest remaining bucket of factual error on bill pages. Fixing it
-  means changing `HOUSE_SCHED_RE`, rebuilding all eleven manifests and
-  **re-running video matching**, because `build_sittings` keys on (committee,
-  date, venue). The person's call on the 16th: not yet, circle back.
+- ~~**1,062 modern House docket lines take the 1989-98 parser path**~~ and
+  carry a wrong proceeding kind and a garbled room -- 1,029 of them in
+  2021-2022. This is the largest remaining bucket of factual error on bill
+  pages. Fixing it means changing `HOUSE_SCHED_RE`, rebuilding all eleven
+  manifests and **re-running video matching**, because `build_sittings` keys on
+  (committee, date, venue). The person's call on the 16th: not yet, circle back.
+
+  **Done on the 16th and the 17th** (f9e69f6, then 53885b7, 4bbe30d, 67dde83,
+  f8dd671, dad05f1). *The defect was the `$` anchor, not the meridiem*: the old
+  pattern made the venue class absorb every word the clerk appended after the
+  room, and any word it could not -- a colon, a slash, a parenthesis, an "=" --
+  failed the whole line into `LEGACY_SCHED_RE`, which hardcodes kind="hearing"
+  and puts everything after the bare HH:MM in the venue. Measured over those
+  real lines: dots in the meridiem rescue 288, dropping the anchor 1,061, an
+  optional colon all 1,062. 742 of them are the 2020-21 remote hearings, whose
+  line states a Zoom link and no room at all, so printing nothing there is the
+  right answer. No modern House row now carries the generic `hearing` kind.
 - **Wendy Chase's seat** in `former_members.json` is wrong (the name is right).
   A correction can go in `member_corrections.json` whenever the right seat is
-  established.
-- **The four 2021-2022 unknown members are identified** -- Littlefield, Homola,
-  Moran, Belanger -- and are not yet shown, because they need ids the record
-  can join and the person's word on putting a deduced name on a ballot.
-- **A former member's label is a database row.** `_former_label` builds
+  established. Still open: `site/former.json` has her at Belknap 5.
+- **Steve Shurtleff's seat did not travel with his name. New on the 17th, and a
+  factual error on the live site.** `member_corrections.json` gives 376628
+  "Merrimack 15"; `site/former.json` and his page read Grafton 9, which was the
+  seat of the Thomas Oppel the correction replaced. Checked across all 93
+  corrections against `site/former.json` and `site/legislators.json`: this is
+  the only one where the published seat disagrees with the correction, so it is
+  one entry rather than a broken mechanism.
+- ~~**The four 2021-2022 unknown members are identified**~~ -- Littlefield,
+  Homola, Moran, Belanger -- and are not yet shown, because they need ids the
+  record can join and the person's word on putting a deduced name on a ballot.
+  *Shown since the 16th* (§0f); all four have pages and nothing on the site
+  reads "Member #".
+- ~~**A former member's label is a database row.**~~ `_former_label` builds
   "Shurtleff, Steve(D) Merrimack 15" where everyone else reads "Rep. Steve
   Shurtleff (D - Merr 15)". 676 members read that way, which is the opposite
-  of treating members who have left exactly like the rest.
+  of treating members who have left exactly like the rest. *Closed on the 17th*
+  (304f860): `site/former.json` carries `display`, `display_plain` and
+  `display_full` built the same way as a sitting member's, and 2,491 built
+  pages were scanned for the database-row shape with none found.
 - **Former members' seats are not dated per term**, only sitting members'.
-- **`parse_clerks.read_pdf` leaks "End Time"** into the polling hours of 53
-  towns.
+  `site/former.json` gives each of them `served` -- first date, last date and
+  the list of terms -- but one seat.
+- ~~**`parse_clerks.read_pdf` leaks "End Time"**~~ into the polling hours of 53
+  towns. *Closed*: the header band is measured rather than guessed at
+  `bbox[1] + 26`, which was a third of a line short on every page of the
+  export, and "End Time" no longer appears anywhere in `towns.json`.
 
 ---
 
@@ -517,32 +601,47 @@ The person chose all four of the candidates put to them, so this is the order
 they are done in and the reason for each position. Nothing here is a new item:
 each is already described above or in `HANDOFF.md`.
 
-1. **"Cite this page"** (§0b item 16). In hand. It goes in `shell.py`, which is
-   the one frame every record page is built through, so ten builders get it
-   from one change.
+**All five are done, on the 16th and the 17th.** The note under each says what
+landed; the reasoning is kept because it is why they were done in this order.
 
-2. **A member who has left reads like everyone else.** Smallest of the four and
+1. ~~**"Cite this page"**~~ (§0b item 16). In hand. It goes in `shell.py`, which is
+   the one frame every record page is built through, so ten builders get it
+   from one change. *Done on the 16th (437d5ab).*
+
+2. ~~**A member who has left reads like everyone else.**~~ Smallest of the four and
    adjacent to the seat work just done, in the same function of the same file.
    676 members currently read as a database row -- "Shurtleff, Steve(D)
    Merrimack 15" -- where everybody else reads "Rep. Steve Shurtleff (D - Merr
    15)", and each carries one seat for every year they served. It contradicts
    the standing rule that members who have left are shown exactly like the
-   rest, and it is visible on every old roll call.
+   rest, and it is visible on every old roll call. *Done on the 17th
+   (304f860), and it went further than the label:* **1,785 former legislators
+   now have a page**, built by the same code as the 406 sitting ones -- same
+   shell, same slug, same labels, same per-member JSON, so every check that
+   guards how a member is named applies to them unchanged. 34,303 sponsor
+   names that were plain text are links. `site/legislators.json` is
+   deliberately NOT merged: a dozen builders read it to mean "who serves now",
+   so the roster is still exactly 406 and `former_roster()` writes a separate
+   map.
 
-3. **The About and Data pages** (§0b item 11). Cheap, and the highest leverage
+3. ~~**The About and Data pages**~~ (§0b item 11). Cheap, and the highest leverage
    of the four for the readers the site now has: About is where a sceptical
    legislator or reporter decides whether to trust it, and they are reading it
-   this week.
+   this week. *About done on the 17th (283ae4c); the Data page is not, and is
+   still as §0b item 11 leaves it.*
 
-4. **The docket parser** (§0d, `HANDOFF.md` item 5). The largest remaining
+4. ~~**The docket parser**~~ (§0d, `HANDOFF.md` item 5). The largest remaining
    bucket of factual error -- 1,062 lines with a wrong proceeding kind and a
    garbled room. Fourth because it is a day's work with a full rebuild and a
-   re-run of video matching inside it, not because it matters least.
+   re-run of video matching inside it, not because it matters least. *Done on
+   the 16th and 17th; the detail is in §0d.*
 
-5. **The history rewrite, and the public repository** (§0). Last, and
+5. ~~**The history rewrite, and the public repository**~~ (§0). Last, and
    deliberately: it is the only item that hard-blocks the open-source release,
    every commit hash in these documents changes when it runs, and it is
    irreversible, so it wants the person present and a quiet tree behind it.
+   *Run on the 17th at 15:29 (97f1498). The hashes in this file are remapped;
+   see §0. There is still no remote, so nothing is pushed.*
 
 ---
 
@@ -554,6 +653,10 @@ each is already described above or in `HANDOFF.md`.
 deduced -- the person's call, and consistent with the standing rule that a
 member who has left is shown exactly like one who has not. 463 ballots each
 currently read as a number. The evidence is in §0d.
+
+**Done.** All four are in `member_corrections.json` with their full first names
+-- Richard Littlefield, Susan Homola, Melbourne Moran, Cody Belanger -- and each
+has a page. Nothing on the site reads "Member #" any more.
 
 **The consent calendar: say the bill was removed, name who asked, then
 narrate the votes normally.** The person's instruction, and the record
@@ -571,6 +674,15 @@ like a regular-calendar bill. The standing note about passing without floor
 debate stops being printed over the top of a contested vote. This needs
 `narrative.py` and a rebuild of narratives.json, which is 245 MB across 19
 terms, so it is queued rather than done.
+
+**Two of the three halves are in, and one is not.** `narrative.py` has a
+`consent_off` event with its own sentence and its own note, narratives.json is
+rebuilt (246 MB), and **1,651 bill pages now say the bill was pulled off the
+consent calendar**. What is NOT done: the sentence names nobody -- the 463
+docket lines that name the members are not read -- and `CALENDAR["CC"]`'s
+standing note still fires beside it, so 2025 HB 107 prints both "It then passes
+without floor debate" and "pulled off the consent calendar" on the same page.
+That is the half of the agreed wording that is still open.
 
 **The 14 disagreeing roll calls: with the person.** Rather than choose a
 wording, the detail went to them -- `reports/rollcall-disagreements.md`, every
@@ -628,6 +740,16 @@ whose docket showed 0 rows changing, and the parser change touches 2015-16,
 2019-20, 2021-22 and one row of 2023-24. **The gate proved the change does no
 harm; it could not prove it does good, and still has not.**
 
+**Run again on the 17th, and the figures in that table have moved.** The last
+eight manifests were built at 09:32, so `build_manifest.py` now runs over all
+nineteen dockets rather than six; `proceedings.csv` is **104,769 rows across
+all nineteen terms**, referencing 2,931 recordings; `build_all.py` declares 39
+steps and runs 26 under `--local`; `preflight.py` is **160 passed, 0 failed, 1
+skipped** out of 161 checks, 121 of which need no data (`--code`). The gate is
+unchanged, and `probe_alignment.py --truth --score-out` now writes
+`alignment_score.json` so the number does not have to be copied by hand: 0m 01s
+at the median, 44 of 63 placed, schedule alone 14m 46s, measured 17 September.
+
 ### The baseline, still worth keeping
 
 `probe_alignment` must not regress from **0m 01s**. The full capture --
@@ -645,7 +767,8 @@ it is still a known-good set and still the only restorable one.
 ### Every ballot now carries a name and a party, with two exceptions
 
 This closed on the 16th. 2,212 members cast recorded votes; all but one are
-named, and all but one carry a party.
+named, and all but one carry a party. (The two exceptions went the same night
+-- see the end of this section. 2,211 members, none nameless, none partyless.)
 
 - **84 ids** that rendered as "Member #409060" were identified by scoring each
   id's ballots against every name printed in the House and Senate journals for
@@ -676,20 +799,35 @@ The fix has to key on (year, body, vote_number), which means the roll-call
 parse rather than the member map. **That is a change across files, so it is a
 proposal awaiting the person, not something to apply.**
 
+**Approved and applied at 21:35 the same night** (123ca73). `member_corrections.json`
+gained a second section, `ballots`, keyed `"year|body|vote_number"` --
+`2017|H|145` and `2017|H|151` -- which names a roll call exactly where a member
+id could not. `build_data.py` reads it. Every member with a recorded vote is now
+identified: **no page anywhere on this site reads "Member #"**, and none is
+without a party.
+
 ### Waiting on a person
 
-- the 13 disagreeing roll calls: detail sent, in `reports/rollcall-disagreements.md`
-- the two empty-id ballots above: needs approval for a roll-call-keyed override
+- the 14 disagreeing roll calls: detail sent, in `reports/rollcall-disagreements.md`
+  (the report's own heading says 14; this line said 13)
+- ~~the two empty-id ballots above~~: *done the same night, above*
 - the consent-calendar narrative: 1,486 bills carry a removal line, 463 name
   the members who removed them; the agreed wording is to say the bill was
   removed from the consent calendar, name who did it, then narrate the votes
-  as for any regular-calendar bill
+  as for any regular-calendar bill. *The sentence ships on 1,651 pages; naming
+  the members does not, and the old consent note still prints beside it -- §0f*
 
 ### Next
 
 1. The person's ask of the 16th: **find every field a bill page shows that is
    missing on a term that should have it** -- committee is the tractable one at
    615 bills (2%); sponsors self-heal through the lane; topics are addressed.
+   *On the 17th `site/index.json` has 929 bills (2.8%) with no committee at
+   all, 274 of them in 2019-2020.* A second and larger question opened beside
+   it the same day and is **in progress, not done**: on the bills that DO name
+   a committee, the one named for 1999-2016 is often not the committee of
+   referral. `build_data.py` and `referrals.py` are being worked on for it --
+   leave them alone while that is running.
 2. **The journals are the uniform party source.** `member_party.json` is built
    from 27 saved roll-call pages, one per year, so anyone absent from that
    single roll call comes through with no party -- which is exactly how all
@@ -704,7 +842,10 @@ proposal awaiting the person, not something to apply.**
 Published 9 September, five times on the 10th, and at 12:44 on the 11th
 with that day's 24 commits. **92 preflight checks then, `check_site` ready,
 55,318 files — 55% of the 100,000 Cloudflare Pages allows.** MIT-licensed,
-with a README, since the 10th.
+with a README, since the 10th; `CONTRIBUTING.md` and `SECURITY.md` since the
+17th. Those file and check counts are of the 11th and have moved: run
+`python3 check_site.py` for the size before a deploy (49,457 files, 1,790 MB on
+17 September; it warns at 90,000) and `python3 preflight.py` for the checks.
 
 The 10th was the day the archive stopped being a list of bills and became a
 record: votes for twenty-four years, committees for ten terms that had none,
@@ -714,26 +855,28 @@ party on nearly every ballot ever cast.
 | | |
 |---|---|
 | Bills | **33,683 across 19 terms**, 1989 to 2026, each with its own page |
-| Legislators | 406 sitting, **2,192 with a recorded roll-call vote, 1999–2026** (not "who have served": the site's bills go back to 1989 and the ballots do not) |
+| Legislators | 406 sitting, **2,192 with a recorded roll-call vote, 1999–2026** (not "who have served": the site's bills go back to 1989 and the ballots do not). **2,191 pages since the 17th** — the 406 and 1,785 who have left |
 | Committees | 53 |
-| Data | **nineteen CSV tables at `/data`**, 2,419,330 rows, a manifest, rebuilt every run |
+| Data | **nineteen CSV tables at `/data`**, 2,522,207 rows, a manifest, rebuilt every run |
 | Towns | **320 town-and-ward pages** — everyone who represents you, with contact |
-| Civics | 11 topics at `/learn/` |
+| Civics | 13 topics at `/learn/`, and `/learn/by-the-numbers.html`, public since the 17th |
 | Feeds | per bill, committee, topic and hearing |
-| Veto messages | 175, each cited to the calendar it was printed in |
+| Veto messages | 261 across fifteen terms, 1997 onward, each cited to the calendar it was printed in |
 | Roll calls | **9,565 across 1999–2026**, 2.3M ballots, every term named and partied |
-| Hearings | proceedings for **all nineteen terms**, 1989–2026 — a `verification_manifest*.csv` each, the last eight built 09:32 on 17 September. This row read "50,911 across eleven terms" that morning and "29,837 across seven" the week before; run `python3 handoff.py` and read `STATE.md` for the count |
-| Hearings parsed from calendars | **61,429 bill-days, 1997–2026** (not yet merged) |
+| Hearings | proceedings for **all nineteen terms**, 1989–2026 — a `verification_manifest*.csv` each, the last eight built 09:32 on 17 September. **104,769 rows, 2,931 recordings.** This row read "50,911 across eleven terms" that morning and "29,837 across seven" the week before; run `python3 handoff.py` and read `STATE.md` for the count |
+| Hearings parsed from calendars | **61,543 bill-days, 1997–2026** (not yet merged). `python3 calendar_meetings.py --check` prints it; this row has carried three different numbers |
 | The archive on disk | 28 database views / 3.1M rows; House calendars and journals 100% |
 
 ## 2. Running
 
 > **Everything below this heading describes 11 September and is spent as a
 > statement of what is running now.** Do not start a fetch on the strength of
-> it. As at 17 September 10:20 the lane has been up since 16 September 09:44
-> and its current step is `fetch_legislation.py --note bills-06`, started
-> 08:30 — archived bill text 1989-2024, newest first, 2016 skipped, 800
-> requests 20 s apart. The live answer is `archive/.lock` (a fresh mtime means
+> it. As at 17 September 15:40 the lane has been up since 16 September 09:44
+> and is on step 10, `fetch_legislation.py --note bills-06`, started 13:01 —
+> archived bill text 1989-2024, newest first, 2016 skipped, 800 requests **15 s
+> apart** (it dropped from 20 s on the 17th, 9bd89ae). It has walked back to
+> 2009 and 13,047 pages across 38 year folders are saved. No refusal is on file
+> (`archive/refused.json` does not exist). The live answer is `archive/.lock` (a fresh mtime means
 > a fetch is in flight right now), `logs/gc_lane.log`, `logs/gc_lane.done` and
 > the process one-liner in `watchers/README.md`. The reasoning below — why the
 > lane exists, what a refusal looked like, why the pace is what it is — is
@@ -762,7 +905,9 @@ its own General Court steps while a refusal or the lane's lock is on file.
   the database's "2016" rows turned out to be the 2015 history of 190
   carried-over bills, so all 1,072 bills filed under 2016 are asked from
   their own pages, seeded by `Docket_db_2015.txt` (the 716 bills filed under
-  2015, with their own LSR).
+  2015, with their own LSR). **Finished**: fifteen `Docket_db_*.txt` cover
+  1989-2016 on this disk, every one of the nineteen terms has a manifest, and
+  the docket is no longer what any fetch is for.
 - **Bill text**, queued behind it: `fetch_legislation.py`, one request a
   bill, 31,003 for 1989-2024 by `--plan`. Every address was settled by hand
   in a browser: the static path for 1989-2021 (1996 at `.htm`, even-year
@@ -846,13 +991,22 @@ sample at a time: a verdict, a correction, a note, appended to
 `review/checked.jsonl`, which is hand-made evidence and is protected the way
 `ground_truth.csv` is.
 
+**Nine kinds now, not the five this table held.** `review.py` prints each pool's
+size as it warms them at startup, which is the number to trust; the column below
+is what the cached pools in `review/.pool-<kind>.json` hold, and they are served
+until it is restarted with `--refresh`.
+
 | kind | pool |
 |---|---|
-| Bill hearing timings | 6,279 published boundaries |
-| Plain-language histories | 4,198 |
-| Hearings read from calendars | 97,158 |
-| Governors' veto messages | 175 |
-| Committee report reasoning | 4,274 |
+| Topics for bills that never had one | 31,449 |
+| Bill hearing timings | 12,545 published boundaries |
+| Hour-late recordings (time withheld) | 107 |
+| Timings before 2025 | 5,734 |
+| Histories of 1989-2016 | 23,558 |
+| Plain-language histories | 33,232 |
+| Hearings read from calendars | 96,871 |
+| Governors' veto messages | 261 |
+| Committee report reasoning | 29,825 |
 
 A timings item embeds the recording, shows both printed times, and captures
 the player's current position straight into the field — so a judgment is play,
@@ -861,6 +1015,11 @@ pause, press, rather than read-off-and-retype.
 **It is being used.** Dozens of judgments across all five kinds by the 10th,
 and `probe_alignment.py --truth` reads them beside `ground_truth.csv`. Related
 bills and auto-assigned topics still wait on a checked sample of their own.
+**165 judgments on file by the 17th**, across eight of the nine kinds -- topics
+44, bill hearings 29, timings 28, vetoes 23, archived histories 16, committee
+reports 14, timings before 2025 six, plain-language histories five. Topics have
+their checked sample now; related bills still have none. Take the counts from
+`review.py --report` rather than from this paragraph.
 
 Its samples are built when it starts and **cached on disk** in
 `review/.pool-<kind>.json`, so after a parser changes or the site is rebuilt
@@ -872,6 +1031,10 @@ the nine recordings whose YouTube caption track runs an hour behind its own
 video (seen in YouTube's own player). The page prints no time for them, so
 the bench shows none either and asks for the time. One timing per recording
 decides whether an hour's shift can put 76 stated starts back.
+
+Three more since: **Topics for bills that never had one**, **Timings before
+2025** and **Histories of 1989-2016**. `KINDS` in `review.py` is the list;
+adding one is a dict there and nothing else changes.
 
 ---
 
@@ -907,13 +1070,21 @@ decides whether an hour's shift can put 76 stated starts back.
 7. **A member's whole career on their page.** `careers.json` exists: 2,211
    employee numbers resolved to **2,192 people**, 17 who served in both
    chambers and 289 who left and came back. Nothing on the site reads it yet,
-   and it needs the archived roll calls built before it says much.
+   and it needs the archived roll calls built before it says much. *Half of
+   this arrived from the other direction on the 17th*: every one of the 2,191
+   members with a page now gets `served` -- a first date, a last date and the
+   list of terms -- from the ballots themselves. `careers.json` still has no
+   reader (`build_site_v2.py` names it only in a comment), so what it adds --
+   the joins across a change of employee number -- is still unbuilt.
 8. **Narrative prose into the HTML.** A bill page gives a crawler about 137
    words;
    everything else arrives by JavaScript. The narrative already exists — a
    median of 192 words of specific prose — and putting it in the `<noscript>`
    block is a text dump, not a second renderer. Worth doing when the 2017–2022
-   dockets land, because only 12% of bills have a narrative today.
+   dockets land, because only 12% of bills have a narrative today. **The
+   dockets have landed: narratives.json is 33,722 bills across all nineteen
+   terms**, so the reason to wait is gone. The `<noscript>` block on 2025
+   HB 107 is 65 words and carries no narrative.
 
 ### New surface
 
@@ -923,19 +1094,29 @@ decides whether an hour's shift can put 76 stated starts back.
     already named: two bills can touch the same RSA for unrelated purposes,
     and two bills can do the same thing through different RSAs.
 11. **Topics for the eighteen terms without them.** Visibly derived, method
-    stated on the page, scored against a checked sample.
+    stated on the page, scored against a checked sample. **Assigned, and
+    scored; not yet visibly derived.** Every bill in every term carries a topic
+    (14 of 33,683 do not), 31,449 of them this site's and 2,221 the General
+    Court's own, and the 44 topic judgments on the bench are the checked
+    sample. Miscellaneous per archived term is now 21-41%, against the 37-64%
+    of §0 phase 2. What is missing is the last clause: `index.json` carries
+    `topic_by` for every bill and `app.js` reads it only to suppress a
+    Granite-Record "Miscellaneous", so a reader is never told which topics the
+    site assigned and which the General Court filed.
 
 ### Not blocking
 
 12. Email routing, and the follow-by-email decision a static site cannot make
     on its own.
 13. Accessibility, continuously.
-14. `build_site_v2.main` is **533 lines as of 17 September** — it was 468 when
-    this was written, so it grows while it waits — and the longest function in
-    the file, now that `build_bills` has gone from 544 to 294 in nine
-    byte-identical steps (and back to 346 since, which is what a function does
-    when it is the right size to add to). The station code that caused the
-    floor-marker miss already came out; what is left in `main` is the loading.
+14. `build_site_v2.main` is **593 lines as of 17 September, evening** — it was
+    468 when this was written and 533 this morning, so it grows while it waits
+    — and the longest function in the file, now that `build_bills` has gone
+    from 544 to 294 in nine byte-identical steps (and back to 445 since, which
+    is what a function does when it is the right size to add to). The station
+    code that caused the floor-marker miss already came out; what is left in
+    `main` is the loading. Both numbers have grown every time this line was
+    checked; walk the file's AST for the current ones rather than quoting these.
 
 ---
 
@@ -969,7 +1150,10 @@ readings, which are good; `review.py --report` quarantines their verdicts.
 `probe_alignment.py --truth` now scores against `ground_truth.csv` AND
 `review/checked.jsonl` together -- and the bench keeps growing, so the count
 in this sentence is the one number here most certain to be stale: 49 marks
-across 21 recordings by the afternoon of the 10th, against 35 across 7. `--no-bench` reproduces the old set exactly. Every score is split by
+across 21 recordings by the afternoon of the 10th, against 35 across 7.
+(**63 marks across 34 recordings and 25 committees on 17 September**, from
+`alignment_score.json`'s own header, which is where to read it -- not from
+here.) `--no-bench` reproduces the old set exactly. Every score is split by
 which hand-made file it came from, because the ruler grows every time somebody
 sits at the bench and a median that moved because the set got harder is not a
 median that moved because the method got worse.
@@ -1077,12 +1261,12 @@ example on this site of a number outliving its premise.
   hand afterwards, the gate said the deploy landed. `preflight` now fails a
   bare `npx` in `publish.bat`.
 - ~~**Eleven vetoed bills read "Veto overridden, became law".**~~ *Closed on
-  the 11th* (d376ab6). One chamber overrode, the other sustained, and the
+  the 11th* (8124266). One chamber overrode, the other sustained, and the
   status-field table tested "overridden" first; the docket reader already
   had it right. 1989-2012, each confirmed from its docket; found because
   none had a chapter.
 - ~~**Archived statuses this site made up.**~~ *Closed on the 11th*
-  (5e8bd26, 5a12efd). 495 bills of closed terms read "In committee" or "In
+  (2b49c92, 3be3377). 495 bills of closed terms read "In committee" or "In
   progress" -- `classify()`'s last resort -- over fields saying REPORT
   FILED, CONFERENCE COMMITTEE or CONFERENCE REPORT ADOPTED, which they now
   read; HB 1075 of 1998, signed, read "In committee"; fifteen closed-term
@@ -1097,7 +1281,7 @@ example on this site of a number outliving its premise.
   signature line that settles an unnarrated bill also sent its status box
   to `next_step()`, which reads a narrated history and, finding none, says
   that. The before/after diff behind the change compared kind, status and
-  rail and not that line; preflight now reads it (d35ce77). The lesson for
+  rail and not that line; preflight now reads it (60ea14d). The lesson for
   any status change: diff every field the page prints, not the ones the
   change was meant to move.
 - **`fetch_senate_calendars.py` finds nothing for 2007 and earlier. Open, and
@@ -1178,6 +1362,11 @@ example on this site of a number outliving its premise.
   been taken out: this file is in a repository headed for public release, and
   a person's home IP address does not belong in it. It remains in git history
   until that history is rewritten or the public repository starts fresh.)
+  **It is out of the history now.** The nine revisions of this file that
+  carried it are in the 16 September backup bundle and in no object of the
+  current repository: every blob reachable from every ref was searched for that
+  address and none holds it. The email rewrite of the 17th (§0) was a separate
+  pass over a separate problem.
 
   **Settled by the person on the 13th: fetches go through the VPN.** The home
   address was blocked early in the project by a faulty fetch command that ran
@@ -1190,6 +1379,13 @@ example on this site of a number outliving its premise.
   A 403 while the VPN is disconnected is the old home-address block, not news --
   but it still stops the run. Check the VPN is up (https://1.1.1.1/cdn-cgi/trace
   shows the outgoing address) before netcheck and a restart.
+
+  **Overtaken on the 14th: the block is released** (§0c, from the IT office
+  through the person), so the VPN is no longer the condition the paragraph
+  above makes it. What survives it is everything else -- one fetch at a time,
+  the proven pace, the refusal procedure, and asking before starting one -- and
+  the IT office's one request, to go lightly on `bill_status/legacy/bs2016/`
+  pages on session days.
 
   **For a person, in a browser on this machine:** https://gc.nh.gov/ -- if it
   loads there while the table above says refused, the block is on this
@@ -1235,7 +1431,7 @@ Manchester Democrat like 376696), was missed because the roster spells him
 join on continuity of party and county as well as name, and send the doubtful
 ones to the bench.
 
-**Joined on the 13th (b9b7079).** The person decided that a member's page
+**Joined on the 13th (72849e2).** The person decided that a member's page
 keeps every chamber they sat in. `member_links.py` joins an earlier number to
 a sitting member only when all of these hold: it voted in the other chamber
 only; the same surname, and the same first name or a short form of it; the
@@ -1271,7 +1467,7 @@ shape). That last is measured, not guarded. The fix is to file each bill under
 the member its page links, with that condition built in, and the joined
 numbers counting as the member's.
 
-**Fixed on the 14th (0b1b47b), that way.** A name-matched record counts as the
+**Fixed on the 14th (ae8a52a), that way.** A name-matched record counts as the
 member only where they sat in that chamber that term, by their own votes, the
 joined numbers' and the roster's current chamber; build_feeds files feed
 sponsorships by the same link. Built from HEAD and from the fix: bill records
@@ -1340,10 +1536,19 @@ carry the measurements.
   terms of hearings landed, most without recordings. Of 29,827 published
   stations, 8,388 carry a start. On the recorded ones the phrases are the
   lever, and on 2021-2024 so are captions, which are still arriving.
-- ~~**`proceedings.csv` is one term.**~~ *Seven, since the 10th.* What is
+  **The denominator tripled again on the 17th**, and the site now counts
+  itself: `site/station_census.json` says 104,756 stations across 33,036
+  bills -- 14,700 placed at the moment, 5,809 with a recording and no moment,
+  2,071 consent calendar, 82,176 with no recording, of which 79,474 predate
+  streaming, which began in March 2020. That last figure is 76% of the whole
+  record and is the real ceiling on marker coverage, not the phrases.
+- ~~**`proceedings.csv` is one term.**~~ *Seven, since the 10th; **all
+  nineteen since the morning of the 17th**, when the last eight manifests were
+  built at 09:32.* What is
   left is the terms whose dockets have not been fetched, and 1989-2014, for
-  which the calendars are the only source: 61,767 bill-days parsed from PDFs
-  already on disk, never merged. Still an architecture decision.
+  which the calendars are the only source: 61,543 bill-days parsed from PDFs
+  already on disk, never merged (`calendar_meetings.py --check` prints it).
+  Still an architecture decision.
 - ~~**`data/bills.json` had 1,485 hearing dates from the wrong term.**~~
   *Diagnosed and closed on the 10th, and re-fetching was NOT the fix.* Asked
   for session year 2021 or 2022, the legacy search returns the right bills and
@@ -1362,7 +1567,12 @@ carry the measurements.
   recorded against it before then counted a next-boundary guess as a chair's
   spoken close.
 - **`check_civics_links.py` has never been run.** The civics section's
-  outbound source URLs are unverified.
+  outbound source URLs are unverified. *No log of a run exists, but the links
+  are no longer unverified*: five were opened in a browser on the 11th
+  and three repointed (§7 item 1), and four that answered 404 were found and
+  replaced on the 16th (§0d). The script's own value now is the eleven
+  gc.nh.gov links, which stay unchecked while the lane is fetching from that
+  address.
 
 ## 6b. The archived histories, scanned twice on the 11th
 
@@ -1424,7 +1634,7 @@ that are different committees.
    off the General Court's server were opened in a browser (a script's HEAD
    gets 403 from every state host): the Governor's, the Council's and the
    agency list were nh.gov "Page Not Found" and now point where nh.gov's own
-   pages do (8c9cb5c). The eleven on gc.nh.gov are unchecked, because that
+   pages do (0baec46). The eleven on gc.nh.gov are unchecked, because that
    is the address the lane is fetching from; `python3 check_civics_links.py
    --list` prints them, for a browser or for the lane once it is idle.
 2. The proposal's own instruction that somebody who knows the building reads
@@ -1433,7 +1643,7 @@ that are different committees.
    11th*, read from the DOM in the browser at each width rather than by
    eye: nothing scrolls sideways; 460 pages opened with the wrong hidden
    heading, the home search box was 21px tall on a phone, and the sponsor
-   filter had no label -- all fixed (9f4e80e). Not done: a pass with a
+   filter had no label -- all fixed (fb932ee). Not done: a pass with a
    screen reader, and colour contrast beyond the Nay/Failed fix. Left as
    found: bill pages jump from the hidden `<h1>` to `<h3>`, and the civics
    pages' "All topics" link is 22px tall.
@@ -1441,7 +1651,11 @@ that are different committees.
    rule in `CLAUDE.md`. Last run on the 10th: candidate median 0m 01s to
    0m 02s depending on how many bench marks had landed, worst published end
    12m 05s (was 93m 48s). `--no-bench` for a number comparable with anything
-   recorded before 9 September.
+   recorded before 9 September. **Since the 17th, `--score-out` writes
+   `alignment_score.json`**, so the gate's own scoreboard is a file rather than
+   a number somebody read off the terminal, and `about_figures.py` fills the
+   About page from it. Last written 17 September: candidate median 0m 01s, 44
+   of 63 hand-timed proceedings placed, schedule alone 14m 46s.
 
 ---
 
@@ -1559,6 +1773,13 @@ hand)*
   `proceedings.csv`**, so `segment_markers.py` never opens them. Only 2,413
   recordings are referenced. Nearly half the captions on this disk are read by
   nothing.
+
+  **Measured again on 17 September: 1,432 of the 4,296, and 2,931 recordings
+  referenced.** The gap has closed by about a quarter as the dockets and the
+  second-referral work landed, and it is still the biggest recoverable one.
+  The count is `work/` folders holding any of `captions.en.json3`,
+  `captions.en-orig.json3` or `transcript.json` -- the same test `handoff.py`
+  uses -- minus the `video_id` column of `proceedings.csv`.
 - **554 of the 4,427 indexed videos fail `title_parsed`, and
   `build_manifest.py:135` drops every one of them** (`if r["title_parsed"] !=
   "yes": continue`). **536 of those 554 carry an exact livestream start time**,
@@ -1599,9 +1820,13 @@ hand)*
 
 Other findings, not yet verified by hand:
 
-- **664 Senate calendars (1998-2007)** have sat as "wanted" in
-  `archive/queue.csv` since a 403 stopped the drain on 9 September. Not in the
+- ~~**664 Senate calendars (1998-2007)** have sat as "wanted" in
+  `archive/queue.csv` since a 403 stopped the drain on 9 September.~~ Not in the
   lane. They are the only source for Senate committee reports 2008-2024.
+  *Drained after the refusal was cleared on the 13th (§9 item 1).*
+  `archive/queue.csv` now holds 4,392 rows: 4,347 held, 44 withheld, 1 wanted.
+  Of the 770 Senate rows for 1998-2007, 740 are held and 30 are the
+  zero-padded names deliberately withheld.
 - **86,718 rows / 187 MB of dumped database views have no reader at all**:
   `NH_RSA`, `VHearings`, `Sponsors`, `StatStud*`, `DistrictPast`,
   `CandH_Reports`. `VHearings` is worth looking at first — hearings 1999-2014
@@ -1615,9 +1840,12 @@ Other findings, not yet verified by hand:
   that point.
 - The calendar/journal citation index covers 12 of 30 years, though every PDF
   is on disk and needs no network.
-- **Every one of the 34,481 built pages asks the reader's browser for Google
+- **Every one of the 36,291 built pages asks the reader's browser for Google
   Fonts**, and no document records a decision about it. Worth one, given this
-  project's care about not leaking its readers to third parties.
+  project's care about not leaking its readers to third parties. (34,481 on
+  the 11th; counted again on the 17th, and it is still every page --
+  `build_pages.FONTS` preconnects to fonts.googleapis.com and
+  fonts.gstatic.com. Nothing has changed here but the denominator.)
 - Neither YouTube channel has anything before **2020-05-14**, so 2017-2018 and
   all of 1989-2016 have no recordings and never will. That gap is
   UNRECOVERABLE and can be stated as such on the site.
@@ -1700,7 +1928,7 @@ committed on `master` except where it says otherwise, and is on the built
    the address was blocked, what now keeps its requests safe, and a request
    to lift the block -- scheduled to send on the morning of Monday 14
    September. Their answer decides whether fetches can leave the VPN.
-2. **Published on the 13th, in the afternoon** (merge 6222d12, deployment
+2. **Published on the 13th, in the afternoon** (merge 044c1ff, deployment
    27c1e2a2): the report box is live -- `/api/report` answers 405 to a GET, a
    well-formed report sent to the deployment's own pages.dev address was
    refused and stored nothing (production database: 0 rows before and after),
@@ -1746,7 +1974,7 @@ committed on `master` except where it says otherwise, and is on the built
    scheduled work should run in the cloud, so where it runs is being
    redesigned rather than put into Task Scheduler.
 4. **`fetch_leadership.py` is ready to run -- five requests, once the refusal
-   is cleared** (d2606dc). It now saves the Senate's leadership and About
+   is cleared** (3a0f1b7). It now saves the Senate's leadership and About
    pages and the House Speaker's, Majority and Minority office pages, each an
    address the General Court's own navigation links, 20 s apart, and stops on
    the first refusal. `--parse` then reads them with no request. The House
@@ -1774,6 +2002,15 @@ committed on `master` except where it says otherwise, and is on the built
 - **Feeds only for bills still moving**, per the person's rule: a concluded
   bill's page links no feed and none is written. 107 bill feeds, committee
   feeds keyed by code, stale ones pruned.
+
+  **The pruning missed a case, found on the 17th.** `shell.still_moving` now
+  passes only the current term's 215 interim-study bills, and no bill page
+  links any other feed, but `site/feed/bill/` holds **322** -- the extra 107
+  are exactly the 107 bills that stopped being "active" when the person set
+  `session_over` on the 15th (§0c). Their files are dated 15 September 07:58,
+  they are in no page and in no sitemap, and they would still be deployed: a
+  reader who subscribed before the 15th keeps a feed that will never change
+  again. Small, and the kind of thing the person asked to be told about.
 - **`publish.bat` refuses to deploy from any branch but `master`**, and names
   the branch on the deploy line, so a deploy can no longer land on a preview
   because of which branch git was on.
@@ -1786,7 +2023,7 @@ committed on `master` except where it says otherwise, and is on the built
   first tab; the version picker is a group of pressed buttons rather than a
   tablist with no tabs; and focus survives the bill text arriving
   asynchronously.
-- **The 1989-1998 hearing line's shorthand is read** (`referrals.py`, 13abc9f).
+- **The 1989-1998 hearing line's shorthand is read** (`referrals.py`, 1e96d38).
   A hearing of those years names its committee after FOR: in letters the
   referral line never uses -- "FOR: ED+A". Nine anchored expansions, each in
   the General Court's key and each proven on the same bill: the referral line
@@ -1826,13 +2063,13 @@ committed on `master` except where it says otherwise, and is on the built
   session loses a House Judiciary match that was probably right by accident
   -- its room is Judiciary's, and its House referral was Criminal Justice.
   None of the eight is hand-timed or on the bench.
-- **An archived committee's own page says so** (29e6383): "Not on the
+- **An archived committee's own page says so** (a58495b): "Not on the
   General Court's list of committees today. Its bills and sitting days on
   this record run 1989 to 2024 ..." -- a reader from a search never sees the
   listing.
 - **Legislator search descriptions** named the seat twice on all 406 pages
   ("(R - Rock 30) Rock 30."). Now the name, the places, then what the page
-  holds (9911dfb).
+  holds (fb60709).
 - `README.md`'s counts from `STATE.md`, and "2,192 people who have served"
   corrected to what the number is. `CLAUDE.md` still says "who have served"
   in its first paragraph; it is the person's file.
@@ -1889,7 +2126,7 @@ committed on `master` except where it says otherwise, and is on the built
   match, run `probe_alignment --truth` before and after, and let a person
   look at the list first.
 
-  **Done on the 13th, in the evening (00eafb8), on the person's choice of
+  **Done on the 13th, in the evening (5ee4a35), on the person's choice of
   "probe, install if it holds".** Every term's manifest was built in scratch
   twice, with the code before and after; the before copies equalled the
   installed manifests (the 35 hand-marked times carried as H:MM:SS where a

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.90
+// GRANITE_VERSION: 2026-09-07.91
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1799,8 +1799,17 @@ function renderHearings(b,d){
 // Stations with a recording, counted the way the tab draws them. A station
 // with no video_id draws "No recording matched" and is not a video; on the
 // terms before the House streamed every station is one, so those pages
-// carry no count rather than "Videos (0)".
-const videoCount=d=>(d.stations||[]).filter(s=>s.video_id).length;
+// carry no count rather than "Hearings (0)".
+//
+// A "candidates" station HAS a recording -- several, in fact. It is the case
+// where the committee was recorded that day and which of its recordings this
+// sitting is has not been established, so the page names them all and picks
+// none. It carries no video_id precisely because nothing was picked, so a
+// filter on video_id alone read it as no recording at all and left it out of
+// the count: 263 sittings across 239 bill pages, every one of them a tab
+// reading one fewer than the tab lists.
+const videoCount=d=>(d.stations||[])
+  .filter(s=>s.video_id||s.state==="candidates").length;
 const reportCount=d=>(d.reports||[]).reduce((n,r)=>n+((r.reports||[]).length),0)
                      +(d.docket_reports||[]).length;
 
@@ -3186,7 +3195,20 @@ function sessionHtml(s,si){
           ?"the times below move this player"
           :"no moment in this recording has been identified yet"}</span>
       </div></div>`
-    :`<p class="note">No recording of this day is on file.</p>`;
+    // THE COMMITTEE WAS RECORDED; WHICH RECORDING THIS IS, IS NOT SETTLED.
+    // A day whose sittings are all in the "candidates" state has no video_id
+    // for the same reason a bill's station does: more than one recording of
+    // this committee exists for that day and nothing in the record says which
+    // took the bill up, so the site picks none. Reading that as "no recording
+    // of this day is on file" said the opposite of what the manifest holds,
+    // on 46 days and 261 bill items -- the same contradiction the candidates
+    // state was created to remove from bill pages, still standing here.
+    : (items.some(i=>i.state==="candidates")
+      ? `<p class="note">This committee was recorded on this day, and which of
+         its recordings each sitting belongs to has not been established &mdash;
+         a committee can sit in divisions that stream separately. Each bill
+         below links the recordings it could be.</p>`
+      : `<p class="note">No recording of this day is on file.</p>`);
   return `<section class="cday">
     <h3>${esc(fdate(s.date))}</h3>
     <p class="cnarr">${esc(s.narrative||"")}</p>

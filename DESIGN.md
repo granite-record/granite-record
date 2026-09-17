@@ -151,6 +151,15 @@ brief and a default for none, and none of them was chosen for this one.
 If a proposal contains one of these, either justify it against this brief in a
 sentence or replace it.
 
+**Two things this list would otherwise take out are wanted, on the person's
+own instruction, and are not defects.** The tracked-out ALL-CAPS label is
+deliberate — about three dozen rules in `app.css` set
+`text-transform:uppercase`, on the home page's side-column headings, the
+calendar's dates, the composition block and the small labels on a member's
+page — and the home page keeps its large centred logo and the line under it.
+This brief informs what gets built; it does not overrule a decision the
+person has taken.
+
 ---
 
 ## Dark mode
@@ -339,7 +348,7 @@ done here.
 "On the record" panel floats right at 488px with 46px of gutter and the prose
 keeps `--measure`: 560 + 46 + 488 is the 1094px pane exactly. Grid was the
 obvious tool and was measured out of it — a grid row is as tall as its
-tallest item, so the row holding the panel left a short analysis beside it a
+tallest item, so the row holding the panel gave a short analysis beside it a
 274px dead tail, and no arrangement of spans fixed every bill. A float is out
 of flow and therefore cannot push in-flow content down, which is the property
 actually wanted. One thing was settled against the mechanism rather than by
@@ -657,12 +666,12 @@ rebuilt page now loads it with a throwaway query on the end.
 ## A former member's page says so once
 
 Added 17 September, when every person in the record got a page of their own
-and 1,785 of them turned out to hold no seat now. The page says so in one
-quiet line under the heading — `.pformer`, the secondary ink at UI size with
-a rule down its left edge — and it is the only place on the site that says
-it. In a roll call or a sponsor list a former member is drawn exactly like a
-sitting one, same honorific, party and seat, because that is the seat they
-held when the record was made.
+and 1,785 of those pages belonged to somebody who holds no seat now. Such a
+page says so in one quiet line under the heading — `.pformer`, the secondary
+ink at UI size with a rule down its left edge — and it is the only place on
+the site that says it. In a roll call or a sponsor list a former member is
+drawn exactly like a sitting one, same honorific, party and seat, because
+that is the seat they held when the record was made.
 
 **Not a coloured badge, and silent about why.** The site does not distinguish
 a member who resigned from one who lost, retired or died, and must not start
