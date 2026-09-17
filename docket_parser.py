@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.14
+# GRANITE_VERSION: 2026-09-04.15
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -109,7 +109,11 @@ HOUSE_TAIL_RE = re.compile(
     r"|\bPublic\s+Hearing\s+on\s+non-germane\b"
     # The journal citation the old pattern had its own group for:
     # "LOB 210-211 HC 19 P. 16" is a room, then House Calendar 19 page 16.
-    r"|(?:HC|SC|HJ|SJ)\s+\d+\b"
+    # A letter may follow the number -- "HC 45A" is House Calendar 45A -- and
+    # \d+\b refuses it, because there is no word boundary between "5" and "A".
+    # Six 2023-2024 rows carried "LOB 202-204 HC 45A" as their room because of
+    # it; the defect predates the legacy reorder that made it visible.
+    r"|(?:HC|SC|HJ|SJ)\s+\d+[A-Za-z]?\b"
     r").*$", re.I | re.S)
 
 # What is left has to look like a room before it is published as one. The
@@ -122,6 +126,11 @@ HOUSE_VENUE_OK = re.compile(r"^[A-Za-z0-9\-][A-Za-z0-9 ,.'&\-]{0,79}$")
 def house_venue(rest):
     """The room this line states, or None if it states none."""
     v = HOUSE_TAIL_RE.sub("", rest or "").strip()
+    # A MERIDIEM IS NOT A ROOM. One row states the half of the day and no
+    # clock time at all -- "Subcommittee Work Session: 3/21/2007 PM LOB 208
+    # During House Session Lunch Break" -- so the time group matches nothing
+    # and the "PM" falls through to here. The room is what follows it.
+    v = re.sub(r"(?i)^\s*[ap]\s?\.?\s?m\.?\b[\s,.]*", "", v)
     return v if v and HOUSE_VENUE_OK.match(v) else None
 
 
@@ -369,6 +378,19 @@ LEGACY_SCHED_RE = re.compile(
     r"(?=\D|\d{1,2}:\d{2}|$)"
     # NOON is a time. It is written 39 times and means exactly midday.
     r"\s{0,8}(?P<time>\d{1,2}:\d{2}|NOON)"
+    # AND NOT A MERIDIEM AFTER IT, which is what keeps this pattern to the era
+    # it is for. Tried first -- and it has to be tried first, or it loses
+    # 1989-1990 its times, rooms and committees -- a widened kind list makes
+    # this match modern lines too, and the legacy branch does not consume a
+    # meridiem: every "Public Hearing: 01/13/2025 10:30 am LOB 301-303" came
+    # back with the venue "am LOB 301-303". 51,766 of them, which preflight saw
+    # only the sharpest edge of, as one venue carrying a journal citation.
+    #
+    # The meridiem is the era. The clerk of 1989-1998 writes a bare "10:00";
+    # from 2007 he writes "1:00 PM". So a line that states one is not this
+    # pattern's, and falls through to HOUSE_SCHED_RE, which reads it properly
+    # and hands the remainder to house_venue.
+    r"(?!\s*" + HOUSE_MER + r")"
     r"(?P<rest>.*)$", re.I)
 # The committee is named after FOR, with or without its colon, and sometimes
 # with the room run into it: "RM105-A,SHFOR: APPROPRIATIONS".
@@ -990,6 +1012,15 @@ def parse_proceedings(rows, timeline):
                 rest = m.group("rest") or ""
                 fm = LEGACY_FOR_RE.search(rest)
                 venue = (rest[:fm.start()] if fm else rest).strip(" .,:") or None
+                # A JOURNAL CITATION IS NOT A ROOM. "LOB 210-211 HC 19 P. 16"
+                # is a room, then House Calendar 19 page 16. The modern branch
+                # has known this since HOUSE_TAIL_RE was written; the legacy
+                # branch strips at "FOR:" and never learnt it, which was
+                # invisible while this pattern only read 1989-1998 and became
+                # 14 rooms carrying a citation once it read the rest.
+                if venue:
+                    venue = re.sub(r"\s*\b(?:HC|SC|HJ|SJ)\s+\d+\b.*$", "",
+                                   venue, flags=re.I).strip(" .,:") or None
                 legacy_cmte = fm.group("committee").strip() if fm else None
             else:
                 m = HOUSE_SCHED_RE.search(clean)
