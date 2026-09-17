@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.96
+# GRANITE_VERSION: 2026-09-05.97
 """
 Generate the faceted site from real General Court data.
 
@@ -1843,13 +1843,23 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
         dated = sorted(mv, key=lambda v: vote_date(v.get("date")))
         last = dated[-1]
         rec = dict(former_file.get(mid) or {})
-        county = rec.get("county") or ""
-        district = str(rec.get("district") or "").lstrip("0")
+        # THE BALLOT'S OWN LABEL FIRST, because it is the only thing here that
+        # has been through member_corrections.json. That file is the person's,
+        # no generator writes it, and build_data applies it to the map it
+        # builds the labels from -- but it never writes that corrected map out,
+        # so former_members.json on disk still holds whatever the generators
+        # deduced. Reading the file first published the uncorrected seat while
+        # taking the corrected NAME from the same ballot two lines above:
+        # 376628 went out as "Rep. Steve Shurtleff (D - Graf 9)", the name from
+        # the correction and the seat from the Thomas Oppel record it replaced.
+        #
+        # Where no correction exists the two sources agree, because the label
+        # is built from the same file. So this costs nothing and picks up every
+        # correction the person makes without a second copy of the logic.
         m = FORMER_LABEL.search(str(last.get("label") or ""))
-        if m and not county:
-            county = m.group("county").strip()
-        if m and not district:
-            district = m.group("district").lstrip("0")
+        county = (m.group("county").strip() if m else "") or rec.get("county") or ""
+        district = ((m.group("district").lstrip("0") if m else "")
+                    or str(rec.get("district") or "").lstrip("0"))
         out[mid] = {
             "id": mid,
             "name": last.get("name") or rec.get("name") or "",

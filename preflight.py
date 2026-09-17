@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.193
+# GRANITE_VERSION: 2026-09-04.194
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3118,15 +3118,40 @@ def _chain():
         # links one only where it was written. Closed terms stopped getting
         # them when the 1989-2016 histories arrived: 22,840 files that could
         # never gain an item, on a deployment near a file limit.
+        # A RETIRED FEED IS UNLINKED ON PURPOSE, since 17 September. The
+        # person's rule: "A concluding bill should get one final update on how
+        # it ended and retire the feed after that." So a bill that concluded
+        # in the sitting term keeps its feed, carrying a closing item that says
+        # the outcome -- for the people already subscribed, who would otherwise
+        # get a 404 and never learn the bill had finished -- while its page
+        # stops offering one, because only a bill still moving can be followed.
+        #
+        # The guard keeps its teeth in the direction that matters. A page
+        # linking a feed nobody wrote is still a failure, and that is the
+        # defect this check was written for: 5,436 pages once advertised a feed
+        # build_feeds had stopped producing. What is now allowed is exactly the
+        # other direction, and only where the bill's own record says it has
+        # concluded in the term still sitting.
+        idx = json.loads((root / "site" / "index.json").read_text(encoding="utf-8"))
+        current = max((b.get("term") or "" for b in idx), default="")
+        kind_of = {(str(b.get("year")), str(b.get("id")).upper()):
+                   (b.get("term") or "", b.get("kind") or "") for b in idx}
+        retired = 0
         for year, bid, rec in SR.records(root / "site"):
             page = (root / "site" / "bill" / year / f"{bid.lower()}.html").read_text(
                 encoding="utf-8", errors="replace")
             fx = root / "site" / "feed" / "bill" / year / f"{bid.lower()}.xml"
             links = f'/feed/bill/{year}/{bid.lower()}.xml"' in page
-            assert links == fx.exists(), (
-                f"{bid} of {year}: the page "
-                + ("links a feed that was not written"
-                   if links else "has a feed it does not link"))
+            assert not (links and not fx.exists()), (
+                f"{bid} of {year}: the page links a feed that was not written")
+            if fx.exists() and not links:
+                term, kind = kind_of.get((year, bid.upper()), ("", ""))
+                assert term == current and kind not in ("active", "study"), (
+                    f"{bid} of {year}: the page has a feed it does not link, "
+                    f"and the bill is not a concluded one of {current} "
+                    f"(term {term!r}, kind {kind!r}) -- so the feed is an "
+                    "orphan rather than a retired one")
+                retired += 1
         # And a member's page, in the pipeline's own order: the pages are
         # written before the feeds, so this is where naming a feed the feed
         # builder then skips would show.

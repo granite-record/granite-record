@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.15
+# GRANITE_VERSION: 2026-09-04.16
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -269,7 +269,17 @@ def main():
 
     all_items, by_topic, nbill = [], {}, 0
     bill_items = {}
-    skipped_closed = skipped_concluded = 0
+    # How a concluded bill's closing feed item names its ending. The index's
+    # own `kind`, put into a sentence -- the record's word for what happened is
+    # already on the page, and this is the feed saying the same thing once.
+    OUTCOME = {
+        "law": "was signed into law",
+        "done": "has finished its course",
+        "veto": "was vetoed",
+        "adopted": "was adopted",
+        "study": "was referred for interim study",
+    }
+    skipped_closed = retired = 0
     noyear = []
     sponsored = {}
     # Each bill's record, read from its page. It used to be opened from
@@ -322,13 +332,50 @@ def main():
                 f"{b.get('term','')}:{b['id']}:{e['date']}:"
                 f"{slug(e.get('text',''))[:40]}"))
 
+        # A BILL THAT HAS FINISHED GETS ONE LAST ITEM, AND THEN NOTHING.
+        # The person's decision of 17 September: "A concluding bill should get
+        # one final update on how it ended and retire the feed after that."
+        #
+        # Before this, a bill concluding in the sitting term was skipped
+        # outright -- so 107 feeds sat in site/ whose newest item was the last
+        # procedural step. 2025 HB156's was "House Non-Concurs with Senate
+        # Amendment", and somebody following it was never told the bill had
+        # finished, or how. Deleting the file instead would answer their reader
+        # with a 404, which tells them less still.
+        #
+        # The closing item's guid carries no date and its date is the last
+        # event's, so every rebuild produces the SAME closing item rather than
+        # a fresh one each night -- which is what retiring a feed means.
+        # EVERY CONCLUDED BILL OF THE SITTING TERM, not only the ones whose
+        # feed happens to be on disk. Scoping it to existing files was the
+        # first attempt and it was wrong twice over: it would have made the
+        # build depend on the state of site/, so two runs from identical data
+        # could differ, and a fresh clone would produce a different site from
+        # this one. Determinism is worth more than the file count.
+        #
+        # The consequence, stated plainly because it is the real cost: a feed
+        # is kept for every bill of the term that ever had one, which is about
+        # 2,200 rather than 215. prune() removes what a run does not write, so
+        # a retired feed survives only by being written every run -- and it is
+        # written identically each time, same guid and same date, so it sits
+        # still. No page advertises it; a subscriber who already has it is who
+        # it is for.
+        _closing = (items and (b.get("term") or "") == current
+                    and not S.still_moving(b, current))
+        if _closing:
+            _end = OUTCOME.get((b.get("kind") or "").lower(), "has concluded")
+            items.insert(0, (
+                f"{b['n']} — {_end}. This feed is now closed.",
+                url,
+                f"{b.get('title','')}\n\n{b['n']} {_end}. No further updates "
+                "will be posted here: a bill that has finished its course has "
+                "nothing more to report. Its full history stays on its page.",
+                events[0]["date"],
+                f"{b.get('term','')}:{b['id']}:closed:{(b.get('kind') or '')}"))
+            retired += 1
+
         if items and (b.get("term") or "") != current:
             skipped_closed += 1
-        elif items and not S.still_moving(b, current):
-            # Concluded in the sitting term: signed, killed, studied, died.
-            # Nothing more will happen to it, and the person who owns the site
-            # asked that only bills still moving be followable.
-            skipped_concluded += 1
         elif items and not str(b.get("year") or "").strip():
             # Without a year the path collapses to feed/bill/<id>.xml, where
             # the next term's bill of the same number lands on top of it.
@@ -578,9 +625,11 @@ def main():
     if skipped_closed:
         print(f"  {skipped_closed:,} bills of closed terms got no feed of "
               "their own: their history is on the page and cannot change")
-    if skipped_concluded:
-        print(f"  {skipped_concluded:,} concluded bills of the sitting term got none either: "
-              "only a bill still moving can be followed")
+    if retired:
+        print(f"  {retired:,} bills concluded with a feed already published got "
+              "a closing item and a retired feed:")
+        print("    the outcome, and that nothing further will be posted there")
+
     if noyear:
         print(f"  {len(noyear):,} bills have no filing year and got no feed, "
               f"rather than one at feed/bill/ where the next term's bill of "

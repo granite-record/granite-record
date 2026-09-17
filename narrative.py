@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.32
+# GRANITE_VERSION: 2026-09-04.33
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -1363,6 +1363,11 @@ def build(bill, rows):
     unrecorded_votes = 0
 
     seen_intro = False
+    # Whether this bill ever came OFF the consent calendar, known before the
+    # loop because the note that goes on beside the placing has to know what
+    # happened after it. See the CALENDAR["CC"] note below.
+    consent_off = any(e["_type"] == "consent_off" and not e["cancelled"]
+                      for e in evs)
     for ev in evs:
         if ev["cancelled"]:
             continue
@@ -1418,6 +1423,21 @@ def build(bill, rows):
         cm = CALENDAR_RE.search(ev["_raw"])
         if cm:
             _, cnote = CALENDAR[cm.group("cal").upper()]
+            # THE TWO NOTES CONTRADICTED EACH OTHER ON 1,651 PAGES. The
+            # standing note ends "It then passes without floor debate", which
+            # is what the consent calendar is FOR -- and where the docket
+            # records the bill actually coming off it, the note beside it says
+            # ten members petitioned to have it "debated and voted on
+            # separately, which is what happened here". 2025 HB107 printed
+            # both, one after the other.
+            #
+            # Neither is wrong on its own; the first is a rule and the second
+            # is this bill's history. So the rule keeps its first half, which
+            # is the part a reader needs to understand what they are looking
+            # at, and drops the clause the bill went on to disprove.
+            if cnote and cm.group("cal").upper() == "CC" and consent_off:
+                cnote = cnote.replace(
+                    " It then passes without floor debate.", "")
             _note(cnote)
         if ev["_type"] == "consent_off":
             _note(CONSENT_OFF_NOTE)
