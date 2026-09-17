@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.90
+# GRANITE_VERSION: 2026-09-05.91
 """
 Generate the faceted site from real General Court data.
 
@@ -404,6 +404,45 @@ def calendar_keys_from_queue(path="archive/queue.csv"):
 SINGLE_CHAMBER = {"HR": "House", "SR": "Senate"}
 NO_GOVERNOR = {"HCR", "SCR", "CACR"}
 
+# "(New Title)" AT THE FRONT OF A TITLE IS NOT PART OF THE TITLE. It is the
+# General Court's mark that an amendment changed a bill's subject, and 5,718 of
+# the site's 33,683 bills carry one. In the search index it is searchable text,
+# and it is the word "new": 7,472 bills match that word today and only 2,260 of
+# them because their own title says anything about anything new. It is also the
+# first thing read on the card, in front of what the bill is about.
+#
+# 24 spellings, counted rather than assumed -- "(New Title)" 4,571, "(2nd New
+# Title)" 649, "(Second New Title)" 239, "(3rd New Title)" 133, down through
+# "(Ninth New Title)", "( New Title )", "(NEW TITLE)" and "(New TItle)". The
+# ordinal is one optional word rather than a list, because the drafters write
+# it both as a numeral and as a word and got as far as the ninth; that catches
+# all 5,718 and nothing else in the 33,683.
+#
+# Anchored at the front. 1989's SB 177 carries a second mark in the middle --
+# its title is two titles concatenated, "(New Title) establishing a grant
+# program ... (Second New Title) establishing an interest-free revolving loan
+# fund ..." -- and cutting there would join two sentences into one.
+NEW_TITLE = re.compile(
+    r"^\s*\(\s*(?:[A-Za-z0-9]{1,9}\s+)?New\s+Title\s*\)\s*", re.I)
+
+
+def clean_title(s):
+    """The title without the amendment mark, or the mark where that is all
+    there is. Four bills of 1989-1990 are titled "(New Title)" and nothing
+    else: the General Court's record of their subject is the mark, and a card
+    with an empty heading reads as a broken page rather than as a gap."""
+    s = (s or "").strip()
+    return NEW_TITLE.sub("", s).strip() or s
+
+
+# A code in Committees.txt that names no committee. H29 is "No Committee
+# Assignment" -- what the General Court files a bill under when it referred it
+# nowhere -- and build_committees.py refuses to write a page for it. The two
+# files have to agree about what a committee is, so the same words are refused
+# here; the name itself still prints on the bill, as plain text rather than as
+# a link to a page that was never written.
+NOT_A_COMMITTEE = {"no committee assignment"}
+
 
 def bill_prefix(bid):
     """HB1442 -> HB, CACR9 -> CACR. The letters, which say what kind it is."""
@@ -613,6 +652,88 @@ def rsa_links(*texts):
     return out
 
 
+# WHAT A BILL AMENDS IS NOT WHAT IT MENTIONS. rsa_links finds every citation
+# anywhere in a document, which is right for turning words into links and wrong
+# for a row headed "Amends RSA chapters". 628 bills on this site cite RSA 91-A
+# and 150 of them amend it; the other 478 say things like "exempt from
+# disclosure under RSA 91-A:5, IV" inside the text of some other statute, and
+# the row told a reader the bill changes the Right-to-Know law. Counted over
+# the 14,085 bills whose text is on disk: 15,788 of 36,303 chapter claims --
+# 43.5% -- were mentions of this kind.
+#
+# A New Hampshire bill states what it changes in ONE CLAUSE ENDING IN A COLON,
+# and everything after that colon is the new text:
+#
+#   Amend RSA 126-A:5 by inserting after paragraph II the following new
+#     paragraph:                                          -> RSA 126-A:5
+#   Amend RSA 91-A:4, IV(a) to read as follows:           -> RSA 91-A:4
+#   Repeal. RSA 91-A:5, VI, relative to X, is repealed.   -> RSA 91-A:5
+#   The following are repealed: I. RSA 77:3 ... II. RSA 76:8 ...
+#
+# Of those bills' 24,700 `Amend` instructions, 24,267 close with a colon within
+# 400 characters. The 433 that do not are lower-case "amend" inside statutory
+# prose -- "may amend the petition only if the defendant is provided..." -- and
+# are not instructions at all, so a clause with no colon yields NOTHING rather
+# than 400 characters of somebody else's text. `Amend` is matched case
+# sensitively for the same reason: an instruction opens a sentence.
+AMEND_WORD = re.compile(r"\bAmend\b")
+# The two forms the drafters use, and no third.
+REPEALED = re.compile(r"\b(?:is|are)\s+repealed\b", re.I)
+REPEAL_LIST = re.compile(r"\bfollowing\s+(?:is|are)\s+repealed\s*:", re.I)
+# The colon that ends a clause -- NOT the one inside "RSA 91-A:4", which is
+# part of the citation and is always followed by a digit.
+CLAUSE_END = re.compile(r":(?!\d)")
+# Where a repeal list stops: the bill's next numbered section. "213:1" as well
+# as "1", because an enacted bill is renumbered into the session laws and its
+# sections then read "213:1 New Chapter; ...".
+NEXT_SECTION = re.compile(r"^\s*(?:\d{1,3}:)?\d{1,3}\s+[A-Z(]", re.M)
+# A WINDOW CUT MID-CITATION INVENTS ONE. The 2,000 character stop landed inside
+# "XXIII. RSA 175:1" in 2011's HB 1500 and the tail read as RSA 17 -- a real
+# chapter, and the wrong one. Trimming the part-word is what makes this reader
+# a strict subset of rsa_links rather than nearly one.
+PART_WORD = re.compile(r"\S+$")
+
+
+def bill_amends(body):
+    """{citation as written: url} for the statutes a bill's text says it changes.
+
+    The same shape rsa_links returns, so the page reads it the same way, and
+    measured to be a strict subset of it: across all 14,085 texted bills this
+    names no chapter rsa_links did not.
+
+    A bill that CREATES a chapter -- "Amend RSA by inserting after chapter
+    359-S the following new chapter:" -- names no existing chapter here and
+    gets no row. That is the largest part of the 784 bills that had a row and
+    now have none; the rest are findings, appropriations and effective-date
+    clauses that cite a statute without touching it.
+    """
+    out = {}
+    body = body or ""
+
+    def take(s):
+        for m in RSA_CITE.finditer(s or ""):
+            url = rsa_url(m.group(1), m.group(2))
+            if url:
+                out.setdefault(m.group(0), url)
+
+    for m in AMEND_WORD.finditer(body):
+        stop = CLAUSE_END.search(body, m.end(), m.end() + 400)
+        if stop:
+            take(body[m.start():stop.start()])
+    # "The following are repealed:" puts its targets AFTER the colon, one
+    # roman numeral to a line, and the list runs to the next section.
+    for m in REPEAL_LIST.finditer(body):
+        nxt = NEXT_SECTION.search(body, m.end())
+        end = min(nxt.start() if nxt else len(body), m.end() + 2000)
+        take(PART_WORD.sub("", body[m.end():end]))
+    # "RSA 21-I:19-a, relative to X, is repealed." -- the target is behind the
+    # verb, so the window runs back to the start of that sentence.
+    for m in REPEALED.finditer(body):
+        lo = body.rfind(". ", max(0, m.start() - 300), m.start())
+        take(body[(lo + 2 if lo != -1 else max(0, m.start() - 300)):m.start()])
+    return out
+
+
 def member_slug(m, lab):
     """jodi-nelson-rock-13, debra-altschiller-sd-24.
 
@@ -667,6 +788,24 @@ COUNTY_ABBR = {
     "hillsborough": "Hills", "merrimack": "Merr", "rockingham": "Rock",
     "strafford": "Straf", "sullivan": "Sull",
 }
+# EITHER SPELLING RESOLVES, because the sources do not agree on which they
+# store. member_party.json writes a seat already abbreviated -- 622 rows say
+# "Hills", 440 "Rock", 212 "Merr", and so on through all nine that shorten --
+# and this map is keyed on the full name, so .get() missed and the seat was
+# dropped out of the label altogether: 228 sponsor rows read "Rep. Jane Smith
+# (R)" where every other row on the same bill reads "(R - Hills 12)".
+#
+# 62 of those 228 are filled from former_members.json by way of build_data's
+# roll-call pass, and the seat it carries is the one that member held LAST,
+# not the one they held when the bill was filed. That is a fact about where
+# the seat comes from and cannot be told apart here -- district_tag is handed
+# a county and a number and no provenance -- so it is fixed upstream or not at
+# all, and is written down rather than guessed at.
+#
+# A trailing point is allowed on the way in because Counties.txt writes
+# "Hills." and the roster writes "Hills"; what comes out is always the
+# roster's spelling, so the punctuation stops tracking who has left office.
+COUNTY_OF = {**COUNTY_ABBR, **{v.lower(): v for v in COUNTY_ABBR.values()}}
 HONORIFIC = {"H": "Rep.", "S": "Sen."}
 
 _TITLE_RE = re.compile(r"^(?:rep|sen|representative|senator)\.?\s+", re.I)
@@ -743,8 +882,8 @@ def district_tag(chamber, district, county=None, county_abbr=None):
         return ""
     if chamber == "S":
         return f"SD{d}"
-    ab = (county_abbr or "").strip() or COUNTY_ABBR.get(
-        (county or "").strip().lower(), "")
+    ab = (county_abbr or "").strip() or COUNTY_OF.get(
+        (county or "").strip().rstrip(".").lower(), "")
     return f"{ab} {d}" if ab else ""
 
 
@@ -1343,10 +1482,26 @@ def station_for_floor(f, bid, marks):
             "window_start": None, "motions": [], "tallies": [],
             "title": f.get("title", ""),
             "state": "whole_video", "candidate": None}
+    # THE INDEX'S OWN WORD FOR WHAT THIS IS, not "floor debate" for everything
+    # that is not a whole recording. build_floor_index.py writes three kinds --
+    # "floor debate", "committee of conference" and "recording naming this
+    # bill" -- and only the whole_video branch above read it, so a conference
+    # was labelled a floor debate whenever its recording named more than one
+    # bill. 63 of the 114 recordings that carry a kind name several, and the
+    # page called 191 committee-of-conference proceedings "House Floor Debate"
+    # and 12 more the same.
+    #
+    # And no chamber on those, the way the whole_video branch already does it:
+    # a committee of conference is both chambers sitting together, so
+    # "House Committee Of Conference" would be a second wrong claim under the
+    # first. f["body"] is the chamber whose channel carried the recording, not
+    # the body that met.
+    kind = f.get("kind") or "floor debate"
     st = {
         "when": f["date"], "time": None,
-        "what": "floor debate",
-        "committee": "House" if f.get("body") == "H" else "Senate",
+        "what": kind,
+        "committee": ("House" if f.get("body") == "H" else "Senate"
+                      ) if kind == "floor debate" else None,
         "venue": None, "video_id": f["video_id"],
         "watch": (f"https://www.youtube.com/watch?v={f['video_id']}"
                   f"&t={max(int(f.get('window_start') or 0) - 60, 0)}s"),
@@ -2423,7 +2578,13 @@ def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
     return {
         "id": bid,
         "n": b.get("designation") or re.sub(r"^([A-Z]+)(\d+)$", r"\1 \2", bid),
-        "year": year, "title": b.get("title", ""),
+        # WITHOUT THE "(New Title)" MARK. This string is the card's heading and
+        # app.js builds the search haystack out of it, so the mark was both the
+        # first thing read on 5,718 cards and a word every one of them matched.
+        # build_bill_pages.py has taken it off the page's own title, its
+        # citation and its description since it was written; the index never
+        # got the same treatment, which is why the two disagreed.
+        "year": year, "title": clean_title(b.get("title", "")),
         # The sponsor FACET groups on this string, so it has to be one
         # spelling per person. The two sources spell a name differently --
         # the LSR files write "Germana, Nicholas" and the status page
@@ -3354,6 +3515,19 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                              # by weight -- it is the document the linker was
                              # built for.
                              (btext or {}).get("body", "")),
+            # WHICH STATUTES THIS BILL CHANGES, as against which it cites.
+            # "rsa" above is the linker's map and stays as it is: a citation
+            # anywhere -- a committee report, an amendment, the analysis --
+            # should become a link. This is the CLAIM, and the page prints it
+            # as "Amends RSA chapters".
+            #
+            # The bill's own text and nothing else. A committee report's
+            # citations are commentary and an amendment's are a proposal --
+            # 546 of them were being read as amendments -- and the text on
+            # file is the version that carries the amendments that were
+            # adopted. A bill with no text on disk gets no row rather than a
+            # row inferred from either.
+            "amends": bill_amends((btext or {}).get("body", "")),
         }), encoding="utf-8")
 
     if status_pages:
@@ -3876,6 +4050,22 @@ def main():
     for _code, _rec in (load(D / "committees.json", {}) or {}).items():
         _nm = (_rec.get("name") or "").strip()
         _ch = _code[:1].upper()
+        # A CODE IS NOT A PAGE. build_committees.py refuses to write one for
+        # H29, whose name in Committees.txt is "No Committee Assignment" --
+        # the code the General Court files a bill under when it referred it
+        # nowhere. Written into this map anyway, it made cmteLink draw
+        # committee/H29.html on 138 bill cards, and those 138 were the only
+        # dead internal target among the site's 624,515 links.
+        #
+        # The LABEL stays: "No Committee Assignment" is the General Court's own
+        # wording for a bill it never referred, so it is a fact about the bill
+        # and belongs on the card. Left out of this map, cmteLink prints it as
+        # text, which is what it is.
+        #
+        # Kept as the same set of words build_committees.py refuses on, because
+        # the two have to agree about what a committee is.
+        if _nm.lower() in NOT_A_COMMITTEE:
+            continue
         if _nm and _ch in ("H", "S"):
             committee_codes[f"{'House' if _ch == 'H' else 'Senate'} {_nm}"] = _code
     meta = {"years": sorted(years, reverse=True),

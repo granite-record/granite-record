@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.87
+// GRANITE_VERSION: 2026-09-07.88
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1283,9 +1283,20 @@ function archivedNote(d){
 // linked -- every URL there is one already used elsewhere on this page, where
 // gc.nh.gov's address for a chaptered law has never been checked and guessing
 // it would put a broken link on 305 bills of this term alone.
+//
+// d.amends, NOT d.rsa. d.rsa is every citation anywhere in the bill, its
+// reports and its amendments, which is what makeRsa needs to turn words into
+// links and is not a list of what the bill changes: 628 bills cite RSA 91-A
+// and 150 amend it, so this row was claiming a bill changed the Right-to-Know
+// law where the bill only said "exempt from disclosure under RSA 91-A:5, IV".
+// build_site_v2.bill_amends reads the bill's own amending instructions --
+// "Amend RSA 91-A:4, IV(a) to read as follows:" -- and 43.5% of the chapter
+// claims on this site turned out to be mentions. A bill whose text is not on
+// disk carries no `amends` and gets no row, which is the honest answer:
+// nothing on file says what it amends.
 function rsaChapters(d){
   const seen=new Map();
-  for (const [k,u] of Object.entries(d.rsa||{})){
+  for (const [k,u] of Object.entries(d.amends||{})){
     const m=/^RSA\s+([0-9]+(?:-[A-Za-z]+)?)/.exec(k);
     // The link is to the first SECTION of that chapter the bill cites,
     // because that is the address this site has and can stand behind. It
@@ -1342,7 +1353,22 @@ function factsTable(b,d){
       +`</details>`);
   if(d.house_committee) add("House Committee", cmteLink("House "+d.house_committee));
   if(d.senate_committee) add("Senate Committee", cmteLink("Senate "+d.senate_committee));
-  add("Subject", esc(d.subject||""));
+  // THE TOPIC MODEL'S REFUSAL IS NOT A SUBJECT. "Miscellaneous" is what
+  // topic_model.py returns below its confidence floor -- its own way of
+  // declining to answer -- and the General Court's 46 subject codes do not
+  // contain it. In this row it reads as the record's word for what the bill is
+  // about. 69 of the archive's organisation-day housekeeping resolutions carry
+  // it under titles that are word for word the 14 this term correctly leaves
+  // blank ("Adopting the rules of the 2024 session for the 2025-2026
+  // biennium", "RESOLVED, that the biennium salary of the members of the
+  // Senate be paid in one undivided sum"), and 10,894 bills carry it in all.
+  //
+  // OMITTED, NOT BLANKED. A row that is not there says nothing, which is what
+  // is known. The guard is on where the word came from and not on the word: a
+  // subject the General Court itself filed a bill under is printed whatever it
+  // says.
+  if(!(d.subject==="Miscellaneous"&&d.subject_source==="granite record"))
+    add("Subject", esc(d.subject||""));
   add("Introduced", esc(f.date_introduced||""));
   add("LSR", esc(f.lsr||""));
   if(!rows.length) return "";
