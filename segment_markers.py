@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.35
+# GRANITE_VERSION: 2026-09-05.36
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -180,6 +180,40 @@ CLOSE_RE = re.compile(
     r"close\s+out|close\s+up|close\s+down|that'?ll\s+end|end\s+the)\s+(?:up\s+|down\s+)?"
     r"(?:the\s+|a\s+|this\s+)?" + FILLER + SUBJECT + r"(?:\s+(?:for|on|of))?", re.I)
 
+# A COMMITTEE OF CONFERENCE IS NOT OPENED WITH THE WORD "OPEN".
+#
+# It is a proceeding kind the rest of this project already knows --
+# build_floor_index writes it, build_committees lists it, build_manifest gives
+# it its own matching rule -- and no pattern here could find one, because
+# neither its verb nor its noun is in the lists above. SUBJECT has no
+# "committee of conference", and OPEN_RE's verbs have no "welcome", "convene"
+# or "call to order". The chairs say:
+#
+#   "Good morning and welcome to the Committee of Conference on HB 1374"
+#   "Quorum being present, the chair will call to order the committee of
+#    conference on House Bill 1184 FN relative to the issuance of"
+#   "good morning everyone I'm going to call to order a committee of
+#    conference for House Bill 458"
+#   "So I'm going to convene and call to order the Committee of Conference on
+#    House Bill 1775"
+#
+# Measured across every recording in work/ before it was written here: 76
+# occurrences that introduce a bill the docket scheduled on that recording,
+# against 2 that do not, on 50 different recordings. That is the highest
+# precision of any candidate the gaps pass turned up, and the reason is that
+# the phrase is a name rather than a turn of phrase -- a chair says it to
+# convene the thing, and almost never in passing.
+#
+# "of" is required, though the spoken form sometimes drops it, so that `what`
+# is the same string every other builder spells: a bare "committee
+# conference" would be a new proceeding kind on the site rather than a
+# familiar one, for the sake of a handful of extra matches.
+CONF_OPEN_RE = re.compile(
+    r"(?:welcome(?:\s+back)?\s+(?:to\s+)?(?:this\s+|the\s+)?|"
+    r"(?:convene|call|bring|start|begin)\w*\s+"
+    r"(?:(?!that\b|it\b)\w+\s+){0,4}?(?:the\s+|this\s+|a\s+)?)"
+    r"(?P<what>committee\s+of\s+conference)\s+(?:on|for|into)", re.I)
+
 # Looser openings that name no proceeding. Real, and weaker: "Next up" also
 # introduces a speaker, a document, or a recess.
 # Openings whose verb takes the BILL directly, with no proceeding noun after
@@ -306,6 +340,29 @@ NEXT_RE = re.compile(
     r"we\s+have\s+(?:uh\s+)?scheduled|ready\s+for\s+our\s+next\s+bill|"
     r"sponsors?\s+to\s+(?:um\s+)?introduce)", re.I)
 
+# EVERY COMMITTEE PATTERN, IN ONE PLACE. (regex, open or close, weak)
+#
+# find_markers reads this, and so does tests/test_markers.py. They used to
+# keep separate lists of the same patterns, and the copies drifted the first
+# time one was added: CONF_OPEN_RE went into find_markers, the three quotes
+# that prove it went into the test, and the test failed them -- because its
+# own hard-coded list had never heard of the pattern the quotes were for. A
+# test that does not test what runs is worse than no test, so there is now one
+# list and both read it.
+#
+# "weak" means the phrase names no proceeding, so it also introduces speakers,
+# documents and recesses. Those are used only where nothing stronger fired.
+# The floor patterns are not here: find_markers adds them only for a floor
+# recording, and they are wrong for a committee room.
+COMMITTEE_PATS = (
+    (OPEN_RE, "open", False),
+    (CLOSE_RE, "close", False),
+    (OPEN_DIRECT_RE, "open", False),
+    (CONF_OPEN_RE, "open", False),
+    (NEXT_RE, "open", True),
+    (NEXT2_RE, "open", True),
+)
+
 BILL_SPOKEN = re.compile(
     r"\b(?:(House|Senate)\s*Bill|(HB|HP|SB|SP|CACR|CAC|HR|SR|HCR|SCR|HJR))\s*#?\s*"
     r"(\d[\d\s:]{0,6}\d|\d)", re.I)
@@ -352,8 +409,8 @@ def pattern_signature():
             parts.append(tok.string)
         blob = "".join(parts)
     except (OSError, ValueError, tokenize.TokenError, SyntaxError):
-        pats = [OPEN_RE, CLOSE_RE, OPEN_DIRECT_RE, NEXT_RE, NEXT2_RE,
-                FLOOR_OPEN_RE, FLOOR_CLOSE_RE, BILL_SPOKEN, BARE_NUM]
+        pats = [OPEN_RE, CLOSE_RE, OPEN_DIRECT_RE, CONF_OPEN_RE, NEXT_RE,
+                NEXT2_RE, FLOOR_OPEN_RE, FLOOR_CLOSE_RE, BILL_SPOKEN, BARE_NUM]
         blob = "|".join(r.pattern for r in pats) + "|".join(sorted(STOP))
     return hashlib.sha1(blob.encode()).hexdigest()[:12]
 
@@ -491,11 +548,7 @@ def find_markers(words, candidates, titles, span=28, floor=False):
     out, seen = [], set()
     pats = ([(FLOOR_OPEN_RE, "open", False),
              (FLOOR_CLOSE_RE, "close", False)] if floor else [])
-    for rx, kind, weak in pats + [(OPEN_RE, "open", False),
-                           (CLOSE_RE, "close", False),
-                           (OPEN_DIRECT_RE, "open", False),
-                           (NEXT_RE, "open", True),
-                           (NEXT2_RE, "open", True)]:
+    for rx, kind, weak in pats + list(COMMITTEE_PATS):
         for m in rx.finditer(text):
             # The words after the phrase only: "close the hearing on X. Open
             # the hearing on Y" names two bills and the second belongs to the

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.5
+# GRANITE_VERSION: 2026-09-05.6
 """
 The phrasings the marker patterns must match, and the ones they must not.
 
@@ -148,6 +148,20 @@ MUST_MATCH = [
     ("The committee on Commerce to which was referred House Bill 1030", "Senate"),
     ("committee on transportation to which was referred to House Bill 1078FN",
      "'referred to', as captioned"),
+
+    # -- committee of conference, read out of work/ on 18 September ----------
+    # A proceeding kind the rest of the project already knows and no pattern
+    # here could find: its verbs are not in OPEN_RE and its noun is not in
+    # SUBJECT. Each of these three was read back out of the caption file named
+    # beside it, not copied from a summary of them.
+    ("Good morning and welcome to the Committee of Conference on HB 1374",
+     "welcome to -- work/7Gu9nfs5-vk"),
+    ("good morning everyone I'm going to call to order a committee of "
+     "conference for House Bill 458",
+     "call to order, indefinite article, 'for' -- work/7sSEP3Vjn9w"),
+    ("It is now 931 according to my phone so I am going to convene and call "
+     "to order the committee of conference on House bill 1738",
+     "two verbs before the noun -- work/DxY8IqDXajc"),
 ]
 
 # Look like openings. Are not.
@@ -181,10 +195,13 @@ MUST_NOT_MATCH = [
 def run():
     fails = []
 
+    # The patterns find_markers actually runs, read from it rather than listed
+    # again here. This list used to be a second copy, and the copies drifted
+    # the first time a pattern was added: the quotes proving CONF_OPEN_RE were
+    # reported as MISSED by a test whose own list did not contain it.
     for text, why in MUST_MATCH:
-        hit = (S.OPEN_RE.search(text) or S.OPEN_DIRECT_RE.search(text)
-               or S.CLOSE_RE.search(text) or S.NEXT_RE.search(text)
-               or S.NEXT2_RE.search(text) or S.FLOOR_OPEN_RE.search(text))
+        hit = (any(rx.search(text) for rx, _, _ in S.COMMITTEE_PATS)
+               or S.FLOOR_OPEN_RE.search(text))
         if not hit:
             fails.append(f"MISSED  ({why}): {text[:70]}")
 
