@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.108 */
+/* GRANITE_VERSION: 2026-09-07.110 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2771,6 +2771,27 @@ clip:rect(0 0 0 0);white-space:nowrap;border:0}
    not a heading, so the page's outline still goes h1 to h2. */:where(body.pg) .slogan{font-size:var(--t-lead);font-weight:600;letter-spacing:-.01em;line-height:1.3;
 color:var(--ink);margin:0 0 var(--sp-4)}
 
+/* THREE WAYS TO ARRANGE THE CHAMBER. Tabs rather than a dropdown, because
+   the choice is the point of the section and a reader should see all three
+   without opening anything. Underlined rather than boxed: they sit directly
+   above the list they reorder, and a row of filled boxes there competed with
+   the roster beneath it. */
+:where(body.pg) .rtabs{display:flex;justify-content:center;
+border-bottom:1px solid var(--rule);margin:var(--sp-7) 0 var(--sp-6)}
+/* Even thirds, centred on the page: asked for in those words, and it suits
+   three choices of equal standing better than a left-aligned row where the
+   first reads as the important one. Capped so they do not stretch into three
+   enormous targets on a wide screen. */
+:where(body.pg) .rtabs [role=tab]{flex:1 1 0;max-width:230px;text-align:center;
+background:none;border:0;cursor:pointer;
+font:inherit;font-size:var(--t-ui);font-weight:600;color:var(--ink-2);
+padding:var(--sp-3) var(--sp-4);margin-bottom:-1px;
+border-bottom:2px solid transparent;min-height:44px}
+:where(body.pg) .rtabs [role=tab]:hover{color:var(--ink)}
+:where(body.pg) .rtabs [role=tab][aria-selected=true]{color:var(--ink);
+border-bottom-color:var(--pine)}
+:where(body.pg) .rpane[hidden]{display:none}
+
 /* WHERE THEY SIT. The House floor as 400 circles, and the roster under it as
    a list that reorders. Asked for on 18 September, with the reason people
    look it up: a representative's licence plate carries their seat number.
@@ -2780,7 +2801,7 @@ color:var(--ink);margin:0 0 var(--sp-4)}
    division a seat is in and what its number is, not the shape of the hall. */
 :where(body.pg) .roster{margin-top:var(--sp-9)}
 :where(body.pg) .seatwrap{margin:var(--sp-6) 0;overflow-x:auto}
-:where(body.pg) .seatmap{width:100%;min-width:560px;height:auto;display:block}
+:where(body.pg) .seatmap{width:100%;min-width:680px;height:auto;display:block}
 :where(body.pg) .seatmap .seat{fill:var(--rule-2);stroke:var(--edge);stroke-width:1;
 cursor:pointer;transition:fill .12s}
 :where(body.pg) .seatmap .seat:hover,:where(body.pg) .seatmap .seat:focus-visible{
@@ -2795,9 +2816,14 @@ fill:var(--pine);stroke:var(--pine)}
 :where(body.pg) .seatmap .seat.vacant{fill:none;stroke:var(--rule-2);
 stroke-dasharray:2 2;cursor:default}
 :where(body.pg) .seatmap .seat.on{fill:var(--pine);stroke:var(--ink);stroke-width:2}
-:where(body.pg) .seatmap .rostrum{fill:var(--rule-2)}
-:where(body.pg) .seatmap .rostrumtext{fill:var(--ink-2);font:600 12px var(--sans);
-letter-spacing:.04em}
+:where(body.pg) .seatmap .rostrumtext{fill:var(--ink-2);
+font:600 12px var(--sans);letter-spacing:.04em}
+/* The Speaker's chair is a seat like the other 400 and takes the party
+   colours with them; a heavier ring is what marks it out, because it is one
+   chair on its own and would otherwise read as a stray. */
+:where(body.pg) .seatmap .rostrum{stroke-width:2}
+:where(body.pg) .seatmap .divlabel{fill:var(--ink-2);font:600 12px var(--sans);
+letter-spacing:.03em}
 
 :where(body.pg) .seatctl{display:flex;flex-wrap:wrap;align-items:center;
 gap:var(--sp-3) var(--sp-5)}

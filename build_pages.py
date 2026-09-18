@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.85
+# GRANITE_VERSION: 2026-09-04.88
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -853,8 +853,7 @@ SEATING_JS = """
   if(!list)return;
   var svg=document.querySelector(".seatmap");
   var note=document.getElementById("seatnote");
-  var q=document.getElementById("sq"), order=document.getElementById("sorder"),
-      go=document.getElementById("sgo");
+  var q=document.getElementById("sq"), go=document.getElementById("sgo");
   var rows=[].slice.call(list.querySelectorAll(".seatrow"));
 
   function say(n,total){
@@ -871,7 +870,6 @@ SEATING_JS = """
   }
   function draw(){
     var s=(q&&q.value||"").trim().toLowerCase();
-    var key=order?order.value:"seat";
     var shown=0;
     rows.forEach(function(r){
       var hay=(r.dataset.seat+" "+r.dataset.county+" "+r.textContent)
@@ -880,15 +878,6 @@ SEATING_JS = """
       r.hidden=!hit;
       if(hit)shown++;
     });
-    var by={seat:function(a,b){return (+a.dataset.seat)-(+b.dataset.seat);},
-            last:function(a,b){return a.dataset.last.localeCompare(b.dataset.last);},
-            // Within a county, by seat: a reader ordering by county wants the
-            // county's members together, and their own order inside it is the
-            // one the chart is drawn in.
-            county:function(a,b){return a.dataset.county.localeCompare(b.dataset.county)
-              ||(+a.dataset.seat)-(+b.dataset.seat);}};
-    rows.slice().sort(by[key]||by.seat).forEach(function(r){list.appendChild(r);});
-    list.classList.toggle("bycounty",key==="county");
     say(shown,rows.length);
     // Searching for one person should light their seat without a second
     // gesture; searching for a county should not light an arbitrary one of
@@ -897,7 +886,6 @@ SEATING_JS = """
     mark(only.length===1?only[0].dataset.seat:"");
   }
   if(q)q.addEventListener("input",draw);
-  if(order)order.addEventListener("change",draw);
   if(go)go.addEventListener("change",function(){
     var seat=go.value; if(!seat)return;
     mark(seat);
@@ -936,6 +924,48 @@ SEATING_JS = """
     svg.addEventListener("mouseout",function(){draw();});
   }
   draw();
+})();
+
+/* THREE TABS, WHICH ARE THE ORDERING. The person asked for "three tabs for
+   ways to sort the legislators, sorted alphabetically by last name, sorting
+   by county as they are now, and sorting by seat number", so the ordering is
+   a choice a reader makes once rather than a control they have to find. It
+   replaced an Order dropdown inside the seat view, which did the same job in
+   a place nobody would look for it.
+
+   All three panes are in the HTML and all three are visible until this runs,
+   so a reader with no JavaScript gets the whole roster rather than one pane
+   and two empty boxes. The first thing this does is hide two of them. */
+(function(){
+  var bar=document.querySelector(".rtabs");
+  if(!bar)return;
+  var tabs=[].slice.call(bar.querySelectorAll("[role=tab]"));
+  if(!tabs.length)return;
+  function show(id){
+    tabs.forEach(function(t){
+      var on=t.dataset.pane===id;
+      t.setAttribute("aria-selected",String(on));
+      t.tabIndex=on?0:-1;
+      var pane=document.getElementById(t.dataset.pane);
+      if(pane)pane.hidden=!on;
+    });
+  }
+  tabs.forEach(function(t){
+    t.addEventListener("click",function(){show(t.dataset.pane);});
+  });
+  // Left and right move between tabs, which is what a tablist promises the
+  // moment it says role="tab".
+  bar.addEventListener("keydown",function(e){
+    var i=tabs.indexOf(document.activeElement);
+    if(i<0)return;
+    var j;
+    if(e.key==="ArrowRight")j=(i+1)%tabs.length;
+    else if(e.key==="ArrowLeft")j=(i-1+tabs.length)%tabs.length;
+    else return;
+    e.preventDefault();
+    tabs[j].focus(); show(tabs[j].dataset.pane);
+  });
+  show(tabs[0].dataset.pane);
 })();
 </script>
 """
@@ -1675,28 +1705,30 @@ def main():
                 for x in v) + "</div></details>")
 
     def roster_section(legs):
-        """The House, as a chart of its 400 seats, and the Senate beneath it.
+        """The roster, three ways, and the House floor as a chart.
 
-        Asked for on 18 September: "I'd like the legislators page to be able
-        to sort by county, alphabetically by last name, and by seat number
-        with some form of interactive chart where you can either click the
-        seat or you can click the dropdown sorted by number or search. One
-        note is that only reps have a seating chart, the senate does not so
-        they'd have to be listed separately."
+        Asked for on 18 September: "on the legislators page, there would be
+        three tabs for ways to sort the legislators, sorted alphabetically by
+        last name, sorting by county as they are now, and sorting by seat
+        number." So the three orderings are TABS, not a dropdown -- a reader
+        picks how they want the chamber arranged and the page rearranges.
 
-        The page had no browsable roster at all before this -- it was a search
-        box that showed nothing until somebody typed -- so the three orderings
-        needed a list to order. It is written into the HTML rather than drawn
-        by script: a crawler and a reader with JavaScript off get the whole
-        roster, and the ordering is then a DOM sort rather than a fetch.
+        By county is the listing this page already had, drawn into #out by the
+        script from legislators.json, collapsible per county. It is unchanged:
+        "as they are now" was the instruction.
 
-        WHY A REPRESENTATIVE HAS A SEAT AND A SENATOR DOES NOT. All 382
-        sitting representatives carry a seat number and not one of the 24
-        senators does, in the General Court's own roster. That is not missing
-        data: the House assigns numbered seats in Representatives Hall and the
-        Senate does not. So the Senate is a list, and says why.
+        By last name and By seat are written into the HTML. That costs 406
+        rows twice, about 15 KB over the wire, and buys a roster a crawler and
+        a reader with no JavaScript can both walk -- which this page, being a
+        search box that showed nothing until somebody typed, did not have.
 
-        The seat number is also the reason people look this up at all: a
+        WHY ONLY REPRESENTATIVES HAVE A CHART. All 382 sitting
+        representatives carry a seat number and not one of the 24 senators
+        does, in the General Court's own roster. That is not missing data: the
+        House assigns numbered seats in Representatives Hall and the Senate
+        does not. So the Senate is listed under the chart, and says why.
+
+        The seat number is the reason people look this up at all: a
         representative's licence plate carries it.
         """
         H = sorted((m for m in legs if m.get("chamber") == "H"),
@@ -1720,15 +1752,15 @@ def main():
             n = (m.get("name") or "")
             return (n.split(",")[0] if "," in n else n).strip().lower()
 
-        def li(m):
-            seat = str(m.get("seat") or "")
-            d, n = (seat[0], seat[1:].lstrip("0") or "0") if len(seat) == 4 else ("", "")
-            return (f'<li class="seatrow" data-seat="{esc(seat)}" '
+        def li(m, lead):
+            """One row. `lead` is the column that leads it -- a seat number in
+            the seat view, the district everywhere else."""
+            return (f'<li class="seatrow" data-seat="{esc(str(m.get("seat") or ""))}" '
                     f'data-last="{esc(surname(m))}" '
                     f'data-county="{esc(m.get("county") or "")}" '
                     f'data-slug="{esc(m.get("slug") or "")}">'
                     f'<a href="legislator/{esc(m.get("slug") or "")}.html">'
-                    f'<span class="sseat">{esc(seat)}</span>'
+                    f'<span class="sseat">{esc(lead)}</span>'
                     f'<span class="sname">{esc(m.get("display_plain") or m.get("name"))}</span>'
                     f'<span class="swhere">{esc(m.get("district_label") or "")}'
                     f'{" &middot; " + esc(m.get("party")) if m.get("party") else ""}'
@@ -1740,41 +1772,77 @@ def main():
             f'<option value="{esc(str(m["seat"]))}">{esc(str(m["seat"]))} '
             f'&mdash; {esc(m.get("display_plain") or m.get("name"))}</option>'
             for m in H if m.get("seat"))
-        vacant = 400 - len(by_seat)
+
+        # TWO NUMBERS THAT LOOK LIKE ONE. 382 of the House's 400 members hold
+        # a seat, so 18 seats are vacant -- but the Speaker's chair is on the
+        # rostrum and not on the floor, so only 381 of the 400 places DRAWN
+        # below are taken and 19 of them are empty. The page said "18 vacant"
+        # over a picture with 19 dashed circles in it, which is the kind of
+        # mismatch a reader counts and then distrusts the rest for. Both
+        # numbers are said, and why they differ.
+        seated = len(by_seat)
+        vacant = 400 - seated
+        on_floor = seated - (1 if seating.SPEAKER_SEAT in by_seat else 0)
+        empty_places = 400 - on_floor
+
+        # SENATORS AND REPRESENTATIVES APART, "like the county page does" --
+        # asked for on 18 September. One alphabet across both chambers put a
+        # senator between two representatives with nothing to say which was
+        # which except the honorific, and the two chambers are not one body.
+        def alpha_block(ms, heading):
+            ms = sorted(ms, key=surname)
+            return (f'<h2>{heading} &mdash; {len(ms)}</h2><ol class="seatlist">'
+                    + "".join(li(m, "Sen." if m.get("chamber") == "S" else "Rep.")
+                              for m in ms) + "</ol>")
+        by_last = alpha_block(S, "Senate") + alpha_block(H, "House")
+        by_seat_rows = "".join(li(m, str(m.get("seat") or "")) for m in H)
+        senate_rows = "".join(li(m, f'District {m.get("district")}') for m in S)
+
         return f"""<section class="roster" id="roster">
+<div class="rtabs" role="tablist" aria-label="How to arrange the roster">
+  <button type="button" role="tab" id="tab-last" data-pane="pane-last"
+    aria-controls="pane-last" aria-selected="true">By last name</button>
+  <button type="button" role="tab" id="tab-county" data-pane="pane-county"
+    aria-controls="pane-county" aria-selected="false">By county</button>
+  <button type="button" role="tab" id="tab-seat" data-pane="pane-seat"
+    aria-controls="pane-seat" aria-selected="false">By seat</button>
+</div>
+
+<div class="rpane" id="pane-last" role="tabpanel" aria-labelledby="tab-last">
+<p class="src">All {len(legs)} sitting members, by surname, each chamber on
+its own.</p>
+{by_last}
+</div>
+
+<div class="rpane" id="pane-county" role="tabpanel" aria-labelledby="tab-county">
+<div id="out"></div>
+</div>
+
+<div class="rpane" id="pane-seat" role="tabpanel" aria-labelledby="tab-seat">
 <h2>Where they sit</h2>
 <p class="src">Every representative has a numbered seat in Representatives
 Hall, and it is the number on their licence plate. This is a diagram of the
 five divisions, not a drawing of the room: it is faithful to which division a
 seat is in and to the seat&rsquo;s number, and not to the true distances.
-{len(by_seat)} of the 400 seats are filled{f", {vacant} vacant" if vacant else ""}.</p>
+{seated} of the 400 seats are filled{f" and {vacant} are vacant" if vacant else ""}.
+The Speaker&rsquo;s chair is on the rostrum rather than on the floor, so
+{empty_places} of the places drawn below are empty.</p>
 <div class="seatctl">
   <label for="sgo">Go to a seat</label>
   <select id="sgo"><option value="">Seat number&hellip;</option>{opts}</select>
   <label for="sq">Find</label>
   <input id="sq" type="search" autocomplete="off"
     placeholder="A name, a county or a seat number">
-  <label for="sorder">Order</label>
-  <select id="sorder">
-    <option value="seat">By seat number</option>
-    <option value="last">By last name</option>
-    <option value="county">By county</option>
-  </select>
 </div>
 <div class="seatwrap">{seating.svg(by_seat)}</div>
 <p class="seatnote" id="seatnote" role="status" aria-live="polite"></p>
-<ol class="seatlist" id="seatlist">{"".join(li(m) for m in H)}</ol>
+<ol class="seatlist" id="seatlist">{by_seat_rows}</ol>
 <h2>The Senate</h2>
 <p class="src">The Senate has no seating chart: its 24 members are elected
 from numbered districts and the chamber does not assign numbered seats the way
 the House does.</p>
-<ol class="seatlist senate">{"".join(
-    f'<li class="seatrow"><a href="legislator/{esc(m.get("slug") or "")}.html">'
-    f'<span class="sseat">{esc(str(m.get("district") or ""))}</span>'
-    f'<span class="sname">{esc(m.get("display_plain") or m.get("name"))}</span>'
-    f'<span class="swhere">{esc(m.get("district_label") or "")}'
-    f'{" &middot; " + esc(m.get("party")) if m.get("party") else ""}</span></a></li>'
-    for m in S)}</ol>
+<ol class="seatlist senate">{senate_rows}</ol>
+</div>
 </section>"""
 
     # Built here, after home.json has been read: the legislators page now

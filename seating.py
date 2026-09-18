@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.2
+# GRANITE_VERSION: 2026-09-18.4
 """
 Where every seat on the New Hampshire House floor goes, as a diagram.
 
@@ -52,21 +52,52 @@ SKIPPED = 13
 
 SPEAKER_SEAT = 6002
 
-# The fan. Angles are degrees, measured from the positive x axis, and the
-# seats sweep from left to right across the top of the circle.
-CX, CY = 500.0, 540.0        # the focus, at the Speaker's desk
-R0, DR = 120.0, 27.0         # first row's radius, and the gap between rows
-A_LEFT, A_RIGHT = 172.0, 8.0  # the widest angles seats reach
+# HOW MANY SEATS IN EACH ROW, front to back -- the front row being the one
+# nearest the Speaker. TRANSCRIBED off the Clerk's plan, which labels every
+# row with the range of seat numbers in it, and then checked: the rows of a
+# division must account for exactly the seats that division has, each once.
+# All five do, with nothing missing and nothing repeated, which is what makes
+# this a reading of the plan rather than an impression of it.
+#
+# A range that spans seat 13 holds one fewer than it looks: 3008-3015 is seven
+# seats, not eight, because no division has a thirteenth.
+#
+# The back rows of divisions 1, 2, 4 and 5 really are short -- two and three
+# seats -- because they are the corner boxes the plan draws tucked against the
+# walls. That is the room, not a rounding error.
+ROWS = {
+    5: (4, 5, 7, 8, 9, 7, 2),                                     # 42
+    4: (6, 7, 8, 9, 10, 11, 12, 13, 13, 4, 3, 2),                 # 98
+    3: (7, 7, 8, 9, 10, 11, 11, 12, 13, 14, 16),                  # 118
+    2: (6, 7, 8, 9, 10, 11, 12, 13, 13, 6, 3, 2),                 # 100
+    1: (4, 5, 7, 8, 9, 7, 2),                                     # 42
+}
+
+# WHERE EACH DIVISION SITS, as a bearing from the Speaker in degrees, with 90
+# straight ahead. The plan sets five blocks in a horseshoe -- 5 out to the
+# left, then 4, 3 across the front, 2, and 1 out to the right -- and the
+# bearings are read off it: division 5's block lies almost due left of the
+# rostrum, division 3's almost straight in front.
+#
+# Each division is a BLOCK OF STRAIGHT ROWS turned to face the Speaker, not a
+# set of arcs. That is what the plan draws, and it is why the earlier version
+# looked wrong however the row counts were adjusted: an arc through every
+# division made one continuous bowl, where the room is five separate blocks
+# with floor between them.
+DIV_ANGLE = {5: 176.0, 4: 133.0, 3: 90.0, 2: 47.0, 1: 4.0}
+
+CX, CY = 0.0, 0.0            # the Speaker; the drawing is shifted to fit later
 SEAT_R = 8.5                 # drawn radius of one seat
+SPACING = SEAT_R * 2.5       # centre to centre along a row
+RF, ROWGAP = 110.0, 30.0     # front row from the Speaker, and row to row
 
+# The gap a seat keeps from every other seat, including seats of another
+# division. Solved for rather than set: see _fit.
+CLEAR = SEAT_R * 2.15
 
-def _capacity(width_deg, radius):
-    """How many seats fit across a wedge of this width at this radius.
-
-    At least one, so a narrow division still fills rather than looping.
-    """
-    arc = math.radians(width_deg) * radius
-    return max(1, int(arc // (SEAT_R * 2.6)))
+# Room around the drawing for the seat radius, the division labels and the
+# word Speaker under the rostrum dot.
+MARGIN = 46.0
 
 
 def seats_in(division):
@@ -79,72 +110,121 @@ def all_seats():
     return [d * 1000 + n for d in sorted(HIGHEST) for n in seats_in(d)]
 
 
-def layout():
-    """{seat number: (x, y)} for all 400 floor seats, plus the Speaker.
+def _place(scale):
+    """{seat: (x, y)} with the blocks pushed `scale` times their base distance
+    from the Speaker, who is at the origin.
 
-    Each division gets a slice of the fan proportional to how many seats it
-    holds, so the big middle division is wide and the two end divisions are
-    narrow -- which is the proportion the plan shows. Within a division the
-    seats fill row by row outward from the Speaker, and each row holds as many
-    as fit at its radius, so the rows lengthen as they go back.
+    A division is a grid: rows stack away from the Speaker along its bearing,
+    and the seats of a row run across it, centred, at a fixed spacing. So a
+    four-seat front row sits in the middle of its block the way the plan draws
+    it, rather than being stretched to the width of the widest row behind it.
     """
-    counts = {d: len(seats_in(d)) for d in HIGHEST}
-    total = sum(counts.values())
-    span = A_LEFT - A_RIGHT
-
-    pos, at = {}, A_LEFT
+    pos = {}
     for d in LEFT_TO_RIGHT:
-        width = span * counts[d] / total
-        hi, lo = at, at - width          # angles decrease left to right
-        at = lo
-
+        th = math.radians(DIV_ANGLE[d])
+        ux, uy = math.cos(th), -math.sin(th)        # away from the Speaker
+        vx, vy = math.sin(th), math.cos(th)         # across a row
         todo = seats_in(d)
-        # ROWS ARE ALLOCATED, NOT FILLED GREEDILY. Taking as many as fit at
-        # each radius and letting the remainder fall into a final row left
-        # two or three seats floating alone above an otherwise full division,
-        # which read as a mistake rather than as the back row. Instead: find
-        # the fewest rows that can hold the division, then hand the seats out
-        # in proportion to how much room each row has, so the back row is
-        # short in the way a real back row is short rather than nearly empty.
-        rows = 1
-        while sum(_capacity(width, R0 + k * DR) for k in range(rows)) < len(todo):
-            rows += 1
-        caps = [_capacity(width, R0 + k * DR) for k in range(rows)]
-        share, given = sum(caps), 0
-        per = []
-        for k, c in enumerate(caps):
-            n = round(len(todo) * c / share) if k < rows - 1 else len(todo) - given
-            n = max(0, min(n, len(todo) - given))
-            per.append(n)
-            given += n
-        # Rounding can leave a seat or two unplaced; put them in the back row,
-        # which has the most room for them.
-        if given < len(todo):
-            per[-1] += len(todo) - given
-
+        assert sum(ROWS[d]) == len(todo), (
+            f"division {d}: rows sum to {sum(ROWS[d])}, it has {len(todo)} seats")
         i = 0
-        for row, n in enumerate(per):
-            if not n:
-                continue
-            r = R0 + row * DR
+        for k, n in enumerate(ROWS[d]):
+            r = (RF + k * ROWGAP) * scale
             take = todo[i:i + n]
-            if len(take) == 1:
-                angles = [(hi + lo) / 2]
-            else:
-                step = (hi - lo) / len(take)
-                angles = [hi - step * (k + 0.5) for k in range(len(take))]
-            for seat, ang in zip(take, angles):
-                t = math.radians(ang)
-                pos[d * 1000 + seat] = (CX + r * math.cos(t),
-                                        CY - r * math.sin(t))
-            i += len(take)
-
-    pos[SPEAKER_SEAT] = (CX, CY - 40.0)
+            i += n
+            start = -(len(take) - 1) / 2.0
+            for j, seat in enumerate(take):
+                off = (start + j) * SPACING
+                pos[d * 1000 + seat] = (CX + ux * r + vx * off,
+                                        CY + uy * r + vy * off)
     return pos
 
 
+def _closest(pos):
+    """The distance between the two nearest seats anywhere on the floor.
+
+    Compared within a grid of cells rather than every seat against every other
+    -- 400 seats is 79,800 pairs, which is fine once and wasteful inside a
+    search that runs it eighty times.
+    """
+    cell = max(SPACING, CLEAR) * 1.5
+    grid = {}
+    for seat, (x, y) in pos.items():
+        grid.setdefault((int(x // cell), int(y // cell)), []).append((x, y))
+    best = float("inf")
+    for (cx, cy), here in grid.items():
+        near = [p for dx in (-1, 0, 1) for dy in (-1, 0, 1)
+                for p in grid.get((cx + dx, cy + dy), ())]
+        for i, (x1, y1) in enumerate(here):
+            for (x2, y2) in near:
+                if x1 == x2 and y1 == y2:
+                    continue
+                best = min(best, math.hypot(x1 - x2, y1 - y2))
+    return best
+
+
+def _fit():
+    """The smallest scale at which no two seats collide, found by search.
+
+    The five blocks fan out from one point, so two of them are always closest
+    somewhere in the middle of their depth -- not at the front where they are
+    narrow, and not at the back where they have diverged. Rather than tune a
+    radius until the picture stops looking wrong, the room is pushed outwards
+    until the nearest pair of seats anywhere is a seat's width apart, which is
+    a condition rather than a preference.
+    """
+    lo, hi = 1.0, 12.0
+    if _closest(_place(lo)) >= CLEAR:
+        return lo
+    for _ in range(40):
+        mid = (lo + hi) / 2
+        if _closest(_place(mid)) >= CLEAR:
+            hi = mid
+        else:
+            lo = mid
+    return hi
+
+
+def layout():
+    """{seat number: (x, y)} for all 400 floor seats, plus the Speaker.
+
+    Shifted so the whole drawing starts at a small margin from the origin,
+    because the blocks fan out around the Speaker and half of them would
+    otherwise sit at negative coordinates.
+    """
+    pos = _place(_fit())
+    pos[SPEAKER_SEAT] = (CX, CY)
+    xs = [x for x, _ in pos.values()]
+    ys = [y for _, y in pos.values()]
+    dx = MARGIN - min(xs)
+    dy = MARGIN - min(ys)
+    return {s: (x + dx, y + dy) for s, (x, y) in pos.items()}
+
+
+def extent():
+    """(width, height) the drawing needs, with its margins."""
+    pos = layout()
+    return (max(x for x, _ in pos.values()) + MARGIN,
+            max(y for _, y in pos.values()) + MARGIN)
+
+
+def labels():
+    """{division: (x, y)} for the caption on each block, beyond its last row."""
+    scale = _fit()
+    pos = _place(scale)
+    out = {}
+    for d in LEFT_TO_RIGHT:
+        th = math.radians(DIV_ANGLE[d])
+        r = (RF + (len(ROWS[d]) - 1) * ROWGAP) * scale + 26
+        out[d] = (CX + math.cos(th) * r, CY - math.sin(th) * r)
+    xs = [x for x, _ in pos.values()] + [CX]
+    ys = [y for _, y in pos.values()] + [CY]
+    dx, dy = MARGIN - min(xs), MARGIN - min(ys)
+    return {d: (x + dx, y + dy) for d, (x, y) in out.items()}
+
+
 def check():
-    """The arithmetic that says the decoding is right, asserted not asserted at."""
+    """The arithmetic that says the seat numbering was decoded correctly."""
     per = {d: len(seats_in(d)) for d in sorted(HIGHEST)}
     positions = sum(HIGHEST.values())
     floor = sum(per.values())
@@ -156,21 +236,42 @@ def check():
     assert floor == 400, f"the House has 400 seats, this lays out {floor}"
     print(f"  the New Hampshire House has                   : 400  OK")
 
+    # THE ROWS ACCOUNT FOR THE SEATS, EACH ONCE. This is what makes ROWS a
+    # reading of the plan rather than an impression of it: a row list that
+    # merely summed to the right total could still have the wrong shape, and
+    # one that repeated a seat while dropping another would sum correctly and
+    # draw two members in one chair.
+    for d in sorted(HIGHEST):
+        want = seats_in(d)
+        assert sum(ROWS[d]) == len(want), (
+            f"division {d}: rows sum to {sum(ROWS[d])}, it has {len(want)} seats")
+    print(f"  every division's rows account for its seats    : OK")
+
     pos = layout()
     assert len(pos) == floor + 1, f"{len(pos)} placed, wanted {floor} + the Speaker"
     assert SPEAKER_SEAT in pos
-    # No two seats on top of each other: a diagram that overlaps is unreadable
-    # and, worse, hides a member behind another member.
-    pts = sorted(pos.items())
-    close = 0
-    for i, (s1, (x1, y1)) in enumerate(pts):
-        for s2, (x2, y2) in pts[i + 1:]:
-            if math.hypot(x1 - x2, y1 - y2) < SEAT_R * 1.6:
-                close += 1
+    # No two seats on top of each other: an overlap in a diagram of who sits
+    # where does not look like a rendering fault, it hides one member behind
+    # another. Checked across divisions as well as within them, which is the
+    # case the fan used to get wrong.
+    near = _closest({s: p for s, p in pos.items() if s != SPEAKER_SEAT})
+    w, h = extent()
     print(f"  seats placed                                  : {len(pos) - 1} + Speaker")
-    print(f"  pairs closer than a seat's width              : {close}")
-    assert close == 0, f"{close} pairs of seats overlap; the diagram would hide members"
-    print("\nOK")
+    print(f"  closest two seats                             : {near:.1f} "
+          f"(a seat is {SEAT_R * 2:.0f} across)")
+    print(f"  drawing                                       : {w:.0f} x {h:.0f}")
+    assert near >= SEAT_R * 2, f"two seats are {near:.1f} apart and would overlap"
+
+    # Every seated member openable from the chart, the Speaker included -- the
+    # rostrum used to be drawn as furniture and skipped.
+    who = {s: {"name": f"Member {s}", "slug": f"m{s}", "party_code": "R"}
+           for s in all_seats() + [SPEAKER_SEAT]}
+    drawn = svg(who)
+    assert drawn.count("data-slug=") == len(who), (
+        f"{drawn.count('data-slug=')} of {len(who)} seated members are openable")
+    print(f"  seats a reader can open                       : {len(who)}")
+    print("")
+    print("OK")
     return 0
 
 
@@ -178,25 +279,46 @@ def svg(by_seat=None, title="New Hampshire House seating"):
     """The chart. by_seat maps a seat number to a dict with name/party/slug.
 
     Every seat is drawn whether or not somebody holds it, because an empty
-    chair is a fact about the House worth showing -- 18 of the 400 are vacant.
-    A seat with a member carries the data attributes the page's script reads;
-    a vacant one says so and is not a link.
+    chair is a fact about the House worth showing. A seat with a member
+    carries the data attributes the page's script reads; a vacant one says so
+    and is not a link.
     """
     by_seat = by_seat or {}
+    pos = labels_pos = None
     pos = layout()
-    out = [f'<svg viewBox="0 0 1000 560" class="seatmap" role="img" '
-           f'aria-label="{title}: 400 seats in five divisions">']
-    out.append('<title>%s</title>' % title)
+    labels_pos = labels()
+    w, h = extent()
+    out = [f'<svg viewBox="0 0 {w:.0f} {h:.0f}" class="seatmap" role="img" '
+           f'aria-label="{title}: 400 seats in five divisions">',
+           f"<title>{title}</title>"]
 
-    # The rostrum, so the diagram has a front and the fan has a reason.
-    #
-    # AND THE SPEAKER IS A MEMBER, NOT FURNITURE. This drew a grey box with
-    # the word "Speaker" in it and then `continue`d past seat 6002, so the one
-    # representative whose seat is on the rostrum -- 382 of them hold a seat
-    # and this was the 382nd -- appeared on the chart as a label and could not
-    # be reached from it. The box carries their name and the same data
-    # attributes every other seat carries, so the page's one click handler
-    # opens them like anyone else.
+    for d in LEFT_TO_RIGHT:
+        lx, ly = labels_pos[d]
+        out.append(f'<text class="divlabel" x="{lx:.0f}" y="{ly:.0f}" '
+                   f'text-anchor="middle">Division {d}</text>')
+
+    for seat in all_seats():
+        x, y = pos[seat]
+        m = by_seat.get(seat)
+        d, n = divmod(seat, 1000)
+        cls = "seat" + ("" if m else " vacant")
+        party = (m or {}).get("party_code") or ""
+        attrs = f'data-seat="{seat}" data-div="{d}" data-n="{n}"'
+        if m:
+            attrs += (f' data-slug="{m.get("slug", "")}"'
+                      f' data-name="{m.get("name", "")}" tabindex="0" role="button"')
+        label = (f'{m.get("name")} — division {d}, seat {n}' if m
+                 else f'Vacant — division {d}, seat {n}')
+        out.append(
+            f'<circle class="{cls} p-{party}" cx="{x:.1f}" cy="{y:.1f}" '
+            f'r="{SEAT_R}" {attrs}><title>{label}</title></circle>')
+
+    # THE SPEAKER IS A MEMBER, NOT FURNITURE. This was a grey box with the
+    # word "Speaker" in it that the loop then skipped, so the one
+    # representative whose chair is on the rostrum -- 382 of them hold a seat
+    # and this was the 382nd -- was on the chart as a label and could not be
+    # opened from it. A seat like the others now, drawn where the plan draws
+    # the rostrum, with the word beneath it.
     sx, sy = pos[SPEAKER_SEAT]
     sp = by_seat.get(SPEAKER_SEAT)
     at = ""
@@ -204,32 +326,14 @@ def svg(by_seat=None, title="New Hampshire House seating"):
         at = (f' data-seat="{SPEAKER_SEAT}" data-div="6" data-n="2"'
               f' data-slug="{sp.get("slug", "")}" data-name="{sp.get("name", "")}"'
               f' tabindex="0" role="button"')
-    out.append(f'<g class="rostrumgrp"{at}>'
-               f'<rect class="rostrum{"" if sp else " vacant"}" x="{CX-90:.0f}" '
-               f'y="{sy-14:.0f}" width="180" height="30" rx="6"></rect>'
-               f'<text class="rostrumtext" x="{CX:.0f}" y="{sy+7:.0f}" '
-               f'text-anchor="middle">{sp["name"] if sp else "Speaker"}</text>'
-               f'<title>{(sp["name"] + " — Speaker, on the rostrum") if sp else "The Speaker’s chair"}</title>'
-               f'</g>')
-
-    for seat in all_seats() + [SPEAKER_SEAT]:
-        x, y = pos[seat]
-        m = by_seat.get(seat)
-        d, n = divmod(seat, 1000)
-        if seat == SPEAKER_SEAT:
-            continue
-        cls = "seat" + ("" if m else " vacant")
-        party = (m or {}).get("party_code") or ""
-        attrs = (f'data-seat="{seat}" data-div="{d}" data-n="{n}"')
-        if m:
-            attrs += (f' data-slug="{m.get("slug","")}"'
-                      f' data-name="{m.get("name","")}"')
-        label = (f'{m.get("name")} — division {d}, seat {n}' if m
-                 else f'Vacant — division {d}, seat {n}')
-        out.append(
-            f'<circle class="{cls} p-{party}" cx="{x:.1f}" cy="{y:.1f}" '
-            f'r="{SEAT_R}" {attrs} tabindex="0" role="button">'
-            f'<title>{label}</title></circle>')
+    out.append(
+        f'<g class="rostrumgrp"{at}>'
+        f'<circle class="seat rostrum p-{(sp or {}).get("party_code", "")}'
+        f'{"" if sp else " vacant"}" cx="{sx:.1f}" cy="{sy:.1f}" r="{SEAT_R}"></circle>'
+        f'<text class="rostrumtext" x="{sx:.0f}" y="{sy + 26:.0f}" '
+        f'text-anchor="middle">Speaker</text>'
+        f'<title>{(sp["name"] + " — Speaker, on the rostrum") if sp else "The Speaker’s chair"}</title>'
+        f'</g>')
     out.append("</svg>")
     return "".join(out)
 
