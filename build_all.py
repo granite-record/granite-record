@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.26
+# GRANITE_VERSION: 2026-09-05.27
 """
 Run the whole pipeline in the right order.
 
@@ -428,6 +428,23 @@ def plan(a):
              ["build_site_v2.py", "--data", "data", "--out", "site",
               "--segments", "work"],
              needs=["data/bills.json"], produces=["site/index.json"]),
+
+        # AFTER "site data" AND BEFORE build_indexes: it reads the meta.json
+        # build_site_v2 writes and merges one key into it, so running it first
+        # would have its key overwritten and the option would silently not be
+        # there. build_lsrs asserts meta.json exists rather than trusting this
+        # ordering to stay put.
+        Step("the 2027 bill requests",
+             ["build_lsrs.py", "--site", "site"],
+             # index.json rather than meta.json: the same step writes both,
+             # so this orders it the same way, and it is the one that step
+             # declares. build_lsrs.py asserts on meta.json itself, which is
+             # the guard that matters -- a missing key would otherwise show
+             # only as the picker quietly lacking an option.
+             needs=["site/index.json"], produces=["site/idx/2027-requests.json"],
+             note="what the next session will be about, months before a bill "
+                  "of it exists: title and prime sponsor and nothing else, "
+                  "which is all an LSR has"),
 
         Step("home, legislators, towns, explainer, about",
              ["build_pages.py", "--out", "site"],

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.104 */
+/* GRANITE_VERSION: 2026-09-07.105 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1265,6 +1265,26 @@ color:var(--ink-2);background:var(--wash);border-radius:var(--r-in);padding:1px 
 .shell.focused .facets{display:none}
 .card.focus{border-color:var(--rule-2)}
 .card.focus .chead{cursor:default}
+
+/* A BILL REQUEST'S CARD. "Cards should be shorter", and the shortness is not
+   a smaller type size: it is that there is less on it. No rail, no expand
+   arrow, no standalone-page link, so the right-hand 46px the arrow reserves
+   comes back and the padding is the one a card with three lines wants rather
+   than the one a card with a rail under it wants. Nothing here is clickable
+   except the sponsor, so the head does not take a pointer. */
+.card.lsr .chead{cursor:default;padding:var(--sp-5) var(--sp-6)}
+.card.lsr .ctitle{margin-top:var(--sp-2)}
+.card.lsr .cmeta{margin-top:var(--sp-2)}
+
+/* THE EXPLAINER ABOVE THE REQUESTS. A note, not a heading: it is read once
+   and then skipped past every time after, so it is set quieter than the
+   cards and marked off by the accent rather than by a box that competes with
+   them. */
+.lsrnote{border-left:3px solid var(--pine);background:var(--pine-soft);
+padding:var(--sp-5) var(--sp-6);border-radius:0 var(--r-in) var(--r-in) 0;
+margin:0 0 var(--sp-6);color:var(--ink);font-size:var(--t-ui);
+max-width:none;line-height:1.55}
+.lsrnote b{font-weight:600}
 /* The corner link is absolutely positioned, and .chead's 46px of right
    padding was cut to fit a 36px arrow. Named, it is four times that wide and
    sat straight over the status chip -- "Referred for i..." with the rest

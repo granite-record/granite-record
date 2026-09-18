@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.93
+// GRANITE_VERSION: 2026-09-07.94
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -327,7 +327,15 @@ let IDX=[],META={},term=null,query="",sortBy="num",sortChosen=false;
 // two HB 1s would share one card's state -- and goes to its own page instead.
 const ALL_TERMS="all";
 const inTermOf=b=>term===ALL_TERMS||!term||!b.term||b.term===term;
-const termPhrase=()=>term===ALL_TERMS?"across all terms":`in the ${term} term`;
+// "in the 2027-requests term" is not English and not what that list is, so
+// the picker's own label speaks for it: "among the 2027 bill requests". The
+// word "bills" the count puts before this is wrong for them too, which is why
+// the count asks noun() rather than hard-coding it.
+const termPhrase=()=>term===ALL_TERMS?"across all terms"
+  :(META.requests&&term===META.requests.term)?"for 2027"
+  :`in the ${term} term`;
+const termNoun=()=>(META.requests&&term===META.requests.term)
+  ?"bill requests":"bills";
 // A bill number is unique within a two-year term and not beyond it, so
 // every address for one carries its filing year: the static page has done
 // so from the start, and the detail file and this view do now.
@@ -553,7 +561,15 @@ need("meta.json")
    const ys=$("#year");
    // ALL TERMS, above the current one: the person asked on 14 September for
    // the picker to open on the current term with a way to search every term.
+   // BETWEEN ALL TERMS AND THE CURRENT ONE, which is where the person asked
+   // for it on 18 September: the 2027 bill requests are not a term the
+   // General Court has sat for, so they are not in META.terms and nothing
+   // that walks the terms -- the directory, the sitemap, the archive pages --
+   // sees them. The picker is the one place they belong, and the current term
+   // stays the default "until the bills for next term are fully available".
    ys.innerHTML=`<option value="${ALL_TERMS}">All terms</option>`
+     +(META.requests?`<option value="${esc(META.requests.term)}">${
+       esc(META.requests.label)}</option>`:"")
      +terms.map(t=>`<option value="${t}">${t} Term</option>`).join("");
    ys.value=term;
    ys.addEventListener("change",e=>{
@@ -2616,6 +2632,32 @@ function cmeta(b){
     b.topic?esc(b.topic):""].filter(Boolean).join(" · ");
 }
 
+/* A BILL REQUEST'S CARD, which is shorter because a request is smaller.
+
+   "Cards should be shorter", asked for on 18 September, and the reason they
+   can be is that an LSR has four facts and a bill has forty: a number, a
+   title, a prime sponsor, and which body it will be filed in. No committee,
+   no hearing, no votes, no text -- so there is nothing to expand into, no
+   standalone page to link to, and no four-stop rail to draw. Forcing this
+   through cardHtml would have meant five conditionals inside it and a card
+   that opened onto an empty drawer.
+
+   The sponsor is a link wherever the name matched a sitting member, which on
+   the 241 requests filed so far is all of them. */
+function lsrCardHtml(b){
+  const who=b.sponsor_label||b.sponsor||"";
+  return `<article class="card lsr" data-id="${esc(b.id)}">
+      <div class="chead">
+        <div class="crow"><span class="cnum">${esc(b.n)}</span>
+        <span class="cstat ${b.withdrawn?"veto":""}">${esc(b.status||"")}</span></div>
+        <div class="ctitle">${esc(b.title)}</div>
+        <div class="cmeta">${b.sponsor_slug
+          ?`<a href="legislator/${esc(b.sponsor_slug)}.html">${esc(who)}</a>`
+          :esc(who)}${b.body_label?` &middot; ${esc(b.body_label)}`:""}</div>
+      </div>
+    </article>`;
+}
+
 // ONE card, drawn by the search list and by both record pages.
 //
 // A member's page used to draw its own flatter card with no body, so the same
@@ -2769,7 +2811,7 @@ function billPane(rows,note){
       ${statuses.map(x=>`<option value="${esc(x)}"${x===PAGE.status?" selected":""}>${
         esc(x)}</option>`).join("")}</select></label></div>
     <p class="src">${note(shown.length)}</p>
-    <div class="cards">${shown.map(b=>cardHtml(b,false)).join("")}</div>`;
+    <div class="cards">${shown.map(b=>b.lsr?lsrCardHtml(b):cardHtml(b,false)).join("")}</div>`;
 }
 
 // The term, above the tabs, because it governs all of them.
@@ -3632,7 +3674,7 @@ function render(more){
     :ids0
     ?`${rows.length} matching ${termPhrase()}`
     :narrowed
-    ?`${rows.length.toLocaleString()} of ${inTerm.toLocaleString()} bills ${termPhrase()}`
+    ?`${rows.length.toLocaleString()} of ${inTerm.toLocaleString()} ${termNoun()} ${termPhrase()}`
     :"";
   // Same number, different term: say so instead of an empty page.
   const elsewhere=ids0&&!rows.length
@@ -3650,8 +3692,27 @@ function render(more){
   const fb=focused?(rows.find(b=>b.id===focused)||IDX.find(b=>b.id===focused)):null;
   document.querySelector(".shell").classList.toggle("focused",!!fb);
   const shown=fb?[fb]:rows.slice(0,SHOWN);
-  $("#summary").textContent=fb?"":(ids&&ids.length>1
-    ?`Showing ${rows.length} of the ${ids.length} bills you listed.`:"");
+  // WHAT AN LSR IS, in front of the list rather than behind a link, because
+  // nobody who has not worked in the building knows the word. Asked for on 18
+  // September: "A brief explainer of what LSRs are should appear at the top of
+  // the page", and confirmed that it is right to say some are withdrawn.
+  // innerHTML rather than textContent here because the explainer carries a
+  // link; every value in it is the site's own, none is a reader's.
+  const req=META.requests&&term===META.requests.term;
+  $("#summary").className=req?"count lsrnote":"count";
+  if(req){
+    $("#summary").innerHTML=`<b>These are requests, not bills yet.</b> Before a
+      bill exists, a member asks the Office of Legislative Services to draft
+      one, and it is given a request number. A request has a title and a prime
+      sponsor and nothing else &mdash; no text, no committee, no hearing &mdash;
+      until it is drafted and filed, when it becomes a numbered bill and picks
+      up the rest of its record. Some are withdrawn first and never become
+      anything. These will be replaced by the 2027 bills themselves as they are
+      filed.`;
+  }else{
+    $("#summary").textContent=fb?"":(ids&&ids.length>1
+      ?`Showing ${rows.length} of the ${ids.length} bills you listed.`:"");
+  }
   // Counted over what is on screen, not over the whole result set, so the
   // number beside a heading always matches the cards under it.
   const grpN={};
@@ -3661,7 +3722,7 @@ function render(more){
     ${!fb&&sortBy==="status"&&(gi===0||arr[gi-1].status!==b.status)
       ?`<h2 class="grp">${esc(b.status||"No status recorded")}
          <span>${grpN[b.status||""]}</span></h2>`:""}
-    ${cardHtml(b,!!fb)}`).join("")+((!fb&&rows.length>SHOWN)?`<p class="more" id="more">Showing ${
+    ${b.lsr?lsrCardHtml(b):cardHtml(b,!!fb)}`).join("")+((!fb&&rows.length>SHOWN)?`<p class="more" id="more">Showing ${
       shown.length.toLocaleString()} of ${rows.length.toLocaleString()} — <button
       class="link" data-more="1">show ${Math.min(PAGE_SIZE,rows.length-SHOWN)} more</button></p>`:"")
     :(elsewhere.length
