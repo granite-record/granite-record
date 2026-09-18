@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.89
+# GRANITE_VERSION: 2026-09-04.90
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -270,6 +270,14 @@ REPO = "https://github.com/granite-record/granite-record"
 # not on disk yet the bill still gets its number and its link and the build
 # says how many titles it could not resolve, because a calendar that silently
 # prints bare bill numbers looks like a calendar that is working.
+# How much of Latest activity the home page shows, and where the rest is.
+# Five is a glance; the twelve it showed before was most of a phone screen for
+# a list nobody reads to the end. The overflow goes to the bill search, which
+# sorts by most recent action and does it better than a table can.
+RECENT_SHOWN = 5
+RECENT_MORE = ('<p class="actmore"><a class="morebtn" href="/bills?sort=recent">'
+               'See all recent activity &rarr;</a></p>')
+
 MEET_KIND = {"public hearing": ("Public hearing", "k-hearing"),
              "hearing": ("Public hearing", "k-hearing"),
              "executive session": ("Executive session", "k-exec"),
@@ -377,6 +385,20 @@ def calendar_html(H, out):
         days.setdefault(key[0], []).append(key)
 
     html = ['<section class="cal"><h2>Coming up</h2>']
+    body, missing = cal_days(days, meets, titles, years, code, when, esc)
+    html.append(body)
+    return "".join(html) + cal_notes(H, up, missing, esc)
+
+
+def cal_days(days, meets, titles, years, code, when, esc):
+    """The day blocks and their meeting cards, for any set of days.
+
+    Split out of calendar_html on 18 September so the calendar PAGE draws the
+    same cards from the same grouping. meeting_key already exists because two
+    places counted meetings and disagreed; a second renderer drawing something
+    that merely looked like these would be the same mistake in markup.
+    """
+    html, missing = [], 0
     for date, keys in days.items():
         label, rel = when(date)
         # THE DAY'S OWN DATE TRAVELS WITH IT. This block is written when the
@@ -424,6 +446,12 @@ def calendar_html(H, out):
                             f'The {esc(cmte)} committee</a></p>')
             html.append("</div></details>")
         html.append("</div>")
+    return "".join(html), missing
+
+
+def cal_notes(H, up, missing, esc):
+    """The two notes under the calendar: what was cut, and what a hearing is."""
+    html = []
     # What did not fit. build_site_v2 writes upcoming[:80] and its
     # hearings_next_14 counts the fortnight's bill rows uncapped, so the
     # difference is what the cap dropped. The status box beside this counts the
@@ -1431,13 +1459,21 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     }
   })();
 
+  // FIVE, AND THEN THE DOOR. Twelve rows was most of a phone screen for a
+  // list nobody reads to the end, and the bill search can do the rest of the
+  // job better: it sorts by most recent action, and now takes that sort in
+  // its address. Kept in step with build_pages' static copy of this block --
+  // there are two renderers for it and the footer has already shown what
+  // happens when only one of them is changed.
   document.getElementById("recent").innerHTML=`<h2>Latest activity</h2>
-    <table><tbody>${(H.recent||[]).map(r=>
+    <table><tbody>${(H.recent||[]).slice(0,5).map(r=>
       `<tr><td style="width:80px">${fd(r.date)}</td>
        <td><a href="bills.html#${esc(r.bill)}">${esc(r.n)}</a>
        <span style="color:var(--ink-2)">${esc(r.title)}</span><br>
        <span style="font-size:12px">${esc(r.what)}</span></td></tr>`).join("")}
-    </tbody></table>`;
+    </tbody></table>
+    <p class="actmore"><a class="morebtn" href="/bills?sort=recent">See all
+    recent activity &rarr;</a></p>`;
 
   // Closest votes and most contested are computed and stored, but not shown.
   // Both invite a reading the site does not want to make, and the page is
@@ -1978,12 +2014,13 @@ it, or a name, county, party or committee to find a member.</p>
 
     static_recent = ""
     if H.get("recent"):
-        static_recent = "<h2>Latest activity</h2><table><tbody>" + "".join(
+        static_recent = ("<h2>Latest activity</h2><table><tbody>" + "".join(
             f'<tr><td>{fd(r.get("date"))}</td><td>'
             f'<a href="bills.html#{esc(r.get("bill"))}">{esc(r.get("n"))}</a> '
             f'{esc(r.get("title"))}<br><span style="font-size:12px">'
             f'{esc(r.get("what"))}</span></td></tr>'
-            for r in H["recent"][:12]) + "</tbody></table>"
+            for r in H["recent"][:RECENT_SHOWN]) + "</tbody></table>"
+                         + RECENT_MORE)
 
     # THREE COLUMNS, AND THE MIDDLE ONE IS WRITTEN FIRST. The order here is
     # the order a screen reader hears and the order the Tab key takes; the

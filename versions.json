@@ -2,7 +2,7 @@
   "files": {
     "about_figures.py": "2026-09-17.1",
     "align_all.py": "2026-09-04.2",
-    "app.css": "2026-09-07.112",
+    "app.css": "2026-09-07.113",
     "app.js": "2026-09-07.95",
     "apply_markers.py": "2026-09-04.8",
     "archive_text.py": "2026-09-16.2",
@@ -22,7 +22,7 @@
     "build_indexes.py": "2026-09-13.5",
     "build_legislator_pages.py": "2026-09-04.14",
     "build_manifest.py": "2026-09-05.10",
-    "build_pages.py": "2026-09-04.89",
+    "build_pages.py": "2026-09-04.90",
     "build_proceedings.py": "2026-09-05.8",
     "build_site_v2.py": "2026-09-05.103",
     "build_town_pages.py": "2026-09-09.12",

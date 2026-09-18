@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.112 */
+/* GRANITE_VERSION: 2026-09-07.113 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2791,6 +2791,13 @@ border-bottom:2px solid transparent;min-height:44px}
 :where(body.pg) .rtabs [role=tab][aria-selected=true]{color:var(--ink);
 border-bottom-color:var(--pine)}
 :where(body.pg) .rpane[hidden]{display:none}
+
+/* The way out of Latest activity. Five rows and then the bill search, which
+   sorts by most recent action and can carry the rest. */
+:where(body.pg) .actmore{margin:var(--sp-5) 0 0}
+:where(body.pg) .morebtn{display:inline-block;font-size:var(--t-ui);
+font-weight:600;color:var(--pine);text-decoration:none}
+:where(body.pg) .morebtn:hover{text-decoration:underline}
 
 /* WHERE THEY SIT. The House floor as 400 circles, and the roster under it as
    a list that reorders. Asked for on 18 September, with the reason people
