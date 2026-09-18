@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.34
+# GRANITE_VERSION: 2026-09-05.35
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 
@@ -902,6 +902,16 @@ def main():
                     help="ignore the cache and read every recording again")
     ap.add_argument("--quiet", action="store_true")
     a = ap.parse_args()
+
+    # WHAT A CHAIR SAYS IS NOT ASCII, AND THIS CONSOLE IS CP1252. --gaps and
+    # --phrases print caption text back, and a caption carries curly quotes and
+    # dashes whatever the speaker did. Redirected to a file, print() encodes
+    # with the locale's codec, so a run that had read 18,976 lines of captions
+    # died on the first one cp1252 has no character for. The same one line is
+    # in archive_text, member_links, text_sponsors, compile_reports and
+    # gc_changes for the same reason; this file was the one that lacked it.
+    if a.gaps or a.phrases:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
     import csv
     bills = json.loads((Path(a.data) / "bills.json").read_text(encoding="utf-8"))
