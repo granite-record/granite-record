@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.101 */
+/* GRANITE_VERSION: 2026-09-07.102 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -310,7 +310,38 @@ nav.top .brand::before{content:"";flex:0 0 auto;width:15px;height:24px;
 background:currentColor;
 -webkit-mask:url(/mark.svg) center/contain no-repeat;
 mask:url(/mark.svg) center/contain no-repeat}
-.navtabs{display:flex;flex-wrap:wrap;gap:var(--sp-2);min-width:0}
+/* CENTRED, AND CENTRED BY MARGIN RATHER THAN BY GRID. The bar holds a
+   variable number of controls -- find.js mounts its search button at runtime
+   and the menu button only exists below 720px -- so a three-column grid
+   would need its column count to change with them. auto margins centre the
+   strip between whatever sits either side of it and do not care how many
+   that is. */
+.navtabs{display:flex;flex-wrap:wrap;gap:var(--sp-2);min-width:0;margin:0 auto}
+/* CENTRED ON THE BAR, NOT BETWEEN ITS NEIGHBOURS. auto margins centre a flex
+   item in the space LEFT OVER, so with a 163px wordmark on one side and a
+   120px pair of controls on the other the strip sat 39px left of the middle
+   -- measured, not guessed. Taking it out of the flow centres it on the bar
+   itself whatever sits either side.
+   Only where there is room: at 980px the strip spans about 330px around the
+   centre, the wordmark ends near 190 and the controls begin near 810, so
+   nothing meets. Below that the auto margins above do the job, because a
+   strip that is 39px off centre is better than one sitting on top of the
+   site's own name. */
+@media (min-width:980px){
+  nav.top .in{position:relative}
+  .navtabs{position:absolute;left:50%;transform:translateX(-50%);margin:0}
+  /* AND THE CONTROLS HAVE TO BE PUSHED. Taking the strip out of the flow left
+     nothing between the wordmark and the controls, so they packed against it
+     -- the search button measured at x=244 on a 1280px window, beside the
+     name rather than opposite it. The wordmark takes the free space instead;
+     its text stays where it was and everything after it goes right. */
+  nav.top .brand{flex:1 1 auto}
+}
+/* display:contents, so the grouping exists for the phone and is invisible to
+   the desktop layout: .navtabs and the theme control remain flex items of the
+   bar itself. */
+.navdrop{display:contents}
+.navmenu{display:none}
 nav.top a{font-size:var(--t-ui);text-decoration:none;color:var(--ink-2);
 display:flex;align-items:center;min-height:36px;padding:0 var(--sp-5);
 border:1px solid transparent;border-radius:var(--r-in);white-space:nowrap}
@@ -336,10 +367,31 @@ box-shadow:inset 0 -2px 0 var(--pine)}
    instead of two, which is worth more than the twelve pixels a tighter
    number would save. Below it the row splits on purpose: identity and
    control first, the four sections beneath. */
+/* THE PHONE BAR IS TWO CONTROLS, WHATEVER THE SITE GROWS.
+   The sections used to take a second full-width row, which cost a row of
+   chrome on every page and would cost another the day a fifth section was
+   added. They fold behind one button instead, so the bar is brand, search,
+   menu and stays that height however many sections there are.
+   The theme control goes in with them: it is worth a tap and not worth a
+   third control in a 360px bar, and inside the panel it can carry a word
+   rather than being a bare circle. */
 @media (max-width:720px){
-  /* order:3, because the strip is the second of three children and a
-     full-width flex item only starts a new line where it sits. */
-  .navtabs{flex:1 0 100%;order:3}
+  nav.top{position:relative}
+  .navdrop{display:none;position:absolute;top:100%;right:var(--sp-5);z-index:40;
+  min-width:210px;flex-direction:column;align-items:stretch;
+  background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-in);
+  box-shadow:0 10px 26px var(--shadow);overflow:hidden}
+  nav.top.open .navdrop{display:flex}
+  .navtabs{flex-direction:column;margin:0;gap:0}
+  .navdrop .navtabs a{border-radius:0;border-bottom:1px solid var(--rule);
+  justify-content:flex-start}
+  .navdrop .navtabs a[aria-current]{box-shadow:inset 3px 0 0 var(--pine);
+  background:var(--pine-soft)}
+  .navmenu{display:inline-flex;align-items:center;justify-content:center;
+  min-height:44px;min-width:44px;padding:0 var(--sp-3);background:none;
+  border:1px solid var(--edge);border-radius:var(--r-in);color:var(--ink-2)}
+  .navmenu svg{width:20px;height:20px}
+  .navmenu[aria-expanded="true"]{color:var(--pine);border-color:var(--pine)}
 }
 @media (max-width:720px){
   nav.top .in{gap:var(--sp-3) var(--sp-5);padding:var(--sp-4) var(--sp-5)}
@@ -353,10 +405,14 @@ box-shadow:inset 0 -2px 0 var(--pine)}
      at 360px only without it, and the icon is the one control on this site
      whose meaning survives losing its label. The button keeps its name for a
      screen reader. */
-  .findbtn{order:1;min-height:44px;margin-left:auto;padding:var(--sp-3) var(--sp-4)}
+  .findbtn{min-height:44px;margin-left:auto;padding:var(--sp-3) var(--sp-4)}
   .findbtn span{position:absolute;width:1px;height:1px;margin:-1px;
   overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-  .themer{order:2;margin-left:0}
+  /* Full width inside the panel, and it keeps its word there: the reason the
+     magnifier could lose its label is that a magnifier means search, and
+     nothing about a half-filled circle means theme. */
+  .themer{min-height:44px;margin:0;border:0;border-radius:0;width:100%;
+  justify-content:flex-start;text-align:left}
 }
 .themer{margin-left:auto;font-size:var(--t-ui);color:var(--ink-2);
 border:1px solid var(--edge);border-radius:var(--r-in);

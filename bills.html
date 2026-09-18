@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.50 -->
+<!-- GRANITE_VERSION: 2026-09-05.51 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -50,13 +50,14 @@ if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
 <a class="skip" href="/bills.html#results">Skip to the bills</a>
 <nav class="top"><div class="in">
 <a class="brand" href="index.html">Granite Record</a>
-<div class="navtabs"><a href="bills.html" aria-current="page">Bills</a>
+<div class="navdrop" id="navdrop"><div class="navtabs"><a href="bills.html" aria-current="page">Bills</a>
 <a href="legislators.html">Legislators</a>
 <a href="committees.html">Committees</a>
 <a href="learn.html">Learn</a></div>
 <!-- THEMER:BTN -->
 <button class="themer" id="themer" type="button" hidden>Light</button>
-<!-- /THEMER:BTN -->
+<!-- /THEMER:BTN --></div>
+<button class="navmenu" id="navmenu" type="button" aria-expanded="false" aria-controls="navdrop" aria-label="Sections"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3.2 6h13.6M3.2 10h13.6M3.2 14h13.6"/></svg></button>
 </div></nav>
 <div class="searchrow"><div class="in">
 <div class="qline">

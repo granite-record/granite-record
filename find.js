@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.3
+// GRANITE_VERSION: 2026-09-16.4
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -130,8 +130,15 @@ function findMount(){
   btn.setAttribute("aria-controls","findpanel");
   btn.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" '
     +'cy="11" r="7"/><path d="M16.5 16.5 21 21"/></svg><span>Search</span>';
-  const themer=document.getElementById("themer");
-  bar.insertBefore(btn,themer||null);
+  // BEFORE THE MENU BUTTON, NOT BEFORE THE THEMER. The theme control moved
+  // inside .navdrop so that a phone can fold it behind the menu with the
+  // sections; insertBefore requires its reference to be a CHILD of the node
+  // it is called on, so reaching for #themer here threw and the search
+  // button never mounted. The menu button is a direct child, and appending
+  // is the right answer when it is absent.
+  const after=document.getElementById("navmenu");
+  if(after&&after.parentNode===bar)bar.insertBefore(btn,after);
+  else bar.appendChild(btn);
   const panel=document.createElement("div");
   panel.id="findpanel";panel.className="findpanel";panel.hidden=true;
   panel.innerHTML=`<div class="findin">
@@ -160,4 +167,39 @@ function findMount(){
     if(!panel.hidden&&!panel.contains(e.target)&&e.target!==btn&&!btn.contains(e.target))shut();
   });
 }
+/* THE SECTIONS, FOLDED BEHIND ONE BUTTON ON A PHONE.
+
+   It lives here because this file already mounts into nav.top on every page,
+   and a second script for one toggle would be a second thing to load and to
+   keep in step with the markup.
+
+   The panel is the SAME .navdrop the desktop lays out inline -- there is one
+   copy of the sections in the document, not two -- so a reader on a phone and
+   a reader on a desktop are looking at the same links, and a section added to
+   one is added to both. */
+function menuMount(){
+  const nav=document.querySelector("nav.top");
+  const btn=document.getElementById("navmenu");
+  const drop=document.getElementById("navdrop");
+  if(!nav||!btn||!drop)return;
+  const shut=()=>{nav.classList.remove("open");btn.setAttribute("aria-expanded","false");};
+  const open=()=>{nav.classList.add("open");btn.setAttribute("aria-expanded","true");};
+  btn.addEventListener("click",()=>{
+    nav.classList.contains("open")?shut():open();
+  });
+  // Escape closes and returns the focus to the control that opened it, which
+  // is where a keyboard reader expects to be left.
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape"&&nav.classList.contains("open")){shut();btn.focus();}
+  });
+  document.addEventListener("click",e=>{
+    if(nav.classList.contains("open")&&!drop.contains(e.target)&&!btn.contains(e.target))shut();
+  });
+  // Following a link inside the panel navigates away; closing first means the
+  // panel is not left open behind a page that has already changed, which is
+  // what a browser's back button would otherwise show.
+  drop.addEventListener("click",e=>{if(e.target.closest("a"))shut();});
+}
+
 findMount();
+menuMount();

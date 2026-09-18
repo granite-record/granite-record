@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.80
+# GRANITE_VERSION: 2026-09-04.81
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -116,6 +116,14 @@ FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
          '<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600'
          '&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700'
          '&display=swap" rel="stylesheet">')
+
+
+# The menu button a phone header carries. Written here and in bills.html,
+# which is the same duplication the nav itself has always had and for the
+# same reason: one of them is the template every record page inherits.
+# The SEARCH button is not here -- find.js mounts its own, and a second one
+# would be two controls doing one job.
+MENU_BTN = ('<button class="navmenu" id="navmenu" type="button" aria-expanded="false" aria-controls="navdrop" aria-label="Sections"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3.2 6h13.6M3.2 10h13.6M3.2 14h13.6"/></svg></button>')
 
 
 # THE HEADER THAT REPLACED THE VERSION QUERY.
@@ -457,10 +465,17 @@ def shell(title, current, body, wide=False, script="", desc="",
     # same <div class="navtabs"> around the same seven links and app.css
     # styles it once; without it the links wrap through the middle of the row
     # and the theme control is stranded on a line of its own.
-    nav = [f'<div class="navtabs">{"".join(tabs)}</div>',
+    # ONE DROPPABLE GROUP. .navdrop wraps the sections and the theme control
+    # so that a phone can fold both behind one button without the markup
+    # being written twice. On a desktop it is display:contents and the grid
+    # sees straight through it, so the layout is brand / sections / control
+    # exactly as before.
+    nav = [f'<div class="navdrop" id="navdrop"><div class="navtabs">{"".join(tabs)}</div>',
            # The same control bills.html carries, read from there rather than
            # written again here.
-           themer("BTN")]
+           themer("BTN"),
+           "</div>",
+           MENU_BTN]
     # The home page has no tab any more, so the brand is what carries the
     # "you are here" for it -- said to a screen reader, not drawn, because the
     # chip that marks a tab is scoped to .navtabs and the brand is not one.
