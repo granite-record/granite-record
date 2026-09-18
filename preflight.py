@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.201
+# GRANITE_VERSION: 2026-09-04.202
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5889,6 +5889,43 @@ def _publish_calls():
     assert not bad, ("publish.bat runs a batch script without CALL, so "
                      "nothing after it runs: " + "; ".join(bad))
     return "ok", "every batch script publish.bat runs is CALLed"
+
+
+@check("frontend", "the two calendar renderers agree on what a meeting is called")
+def _meet_kind_agrees():
+    """MEET_KIND is written twice, and nothing held the copies together.
+
+    The calendar card exists in two renderers: build_pages.calendar_html
+    draws the home page's, and app.js's calendarBlock draws the one on every
+    committee page. app.js already carries a comment saying its markup must
+    match the other, which is a hand-kept invariant with no check under it --
+    and the nav, which is also written twice, has already drifted once: Data
+    was added to bills.html and not to build_pages, so three pages lacked a
+    link the other 34,000 had.
+
+    Drift here is quiet in the same way. The two tables turn a schedule's
+    word into what a reader sees and which colour the chip takes, so a copy
+    left behind shows "Executive session" on one page and "executive
+    session", uncoloured, on another -- for the same meeting.
+    """
+    py = Path("build_pages.py").read_text(encoding="utf-8", errors="replace")
+    js = Path("app.js").read_text(encoding="utf-8", errors="replace")
+    m = re.search(r"^MEET_KIND = (\{[^}]*\})", py, re.M)
+    assert m, "build_pages.py has no MEET_KIND"
+    table = {k: list(v) for k, v in ast.literal_eval(m.group(1)).items()}
+    m2 = re.search(r"^const MEET_KIND=(\{.*?\});", js, re.S | re.M)
+    assert m2, "app.js has no MEET_KIND"
+    other = {}
+    for k, word, cls in re.findall(r'"([^"]+)"\s*:\s*\["([^"]*)"\s*,\s*"([^"]*)"\]',
+                                   m2.group(1)):
+        other[k] = [word, cls]
+    assert other, "app.js's MEET_KIND did not parse"
+    assert table == other, (
+        "the two calendar renderers disagree about meeting kinds: "
+        f"only in build_pages {sorted(set(table) - set(other))}, "
+        f"only in app.js {sorted(set(other) - set(table))}, "
+        f"different {sorted(k for k in set(table) & set(other) if table[k] != other[k])}")
+    return "ok", f"{len(table)} meeting kinds, the same in both renderers"
 
 
 @check("build", "every deploy names the production branch, and both name the same one")

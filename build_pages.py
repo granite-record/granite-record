@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.90
+# GRANITE_VERSION: 2026-09-04.91
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -498,7 +498,7 @@ def shell(title, current, body, wide=False, script="", desc="",
         cur = ' aria-current="page"' if href == current else ""
         tabs.append(f'<a href="{href}"{cur}>{label}</a>')
     # ONE WRAPPER, WRITTEN TWICE BECAUSE THE NAV IS. bills.html carries the
-    # same <div class="navtabs"> around the same seven links and app.css
+    # same <div class="navtabs"> around the same four links and app.css
     # styles it once; without it the links wrap through the middle of the row
     # and the theme control is stranded on a line of its own.
     # ONE DROPPABLE GROUP. .navdrop wraps the sections and the theme control
