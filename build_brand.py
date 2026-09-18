@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.5
+# GRANITE_VERSION: 2026-09-12.6
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
@@ -24,10 +24,14 @@ WHAT IS DERIVED, AND WHY EACH ONE
   mark.svg          the profile alone, tight to its own bounding box, used as
                     a CSS mask so the nav's mark takes the colour of the text
                     beside it and is right in both themes without two files.
-  icon.svg          the icon as drawn -- white profile on the black tile --
-                    at any size a tab, a bookmark or a pinned shortcut asks
-                    for. The framing is measured off the drawn PNG rather
-                    than guessed, so it is the same composition.
+  icon.svg          the profile on a dark tile, at any size a tab, a bookmark
+                    or a pinned shortcut asks for. The framing is measured off
+                    the drawn PNG rather than guessed, so the composition is
+                    the same; the colours are not. This is #F4F5F3 on #111514,
+                    the site's own ink and ground, while the drawing and every
+                    PNG below it are pure white on pure black -- so a browser
+                    that takes the SVG and one that falls back to a PNG show
+                    slightly different grounds.
   icon-32/180/512   PNG fallbacks. Safari wants a PNG for apple-touch-icon
                     and a manifest wants real bitmaps.
   icon-512-pad      the maskable one: Android crops an icon to whatever shape
@@ -51,9 +55,11 @@ WHAT IS DERIVED, AND WHY EACH ONE
 
 A NOTE ON THE ORIGINALS' NAMES. They arrived as "Logo Black.png" and "Logo
 White.png", named for their BACKGROUND: the first is the white wordmark on
-black. Checked in here as logo-on-black.png and logo-on-white.png, named for
+black. brand/ holds them as logo-on-black.png and logo-on-white.png, named for
 what they are, because the first draft of this script read the wrong one and
-put a black tile in a white frame on every shared link.
+put a black tile in a white frame on every shared link. The arrival names are
+still in the repository root as byte-identical copies; this script reads
+brand/ only.
 """
 import argparse
 import pathlib
@@ -118,7 +124,7 @@ def icon_framing():
 
 
 def write_icon_svg(d, frame):
-    """The icon as drawn, as an SVG, at the PNG's own framing."""
+    """The icon as an SVG: the drawn PNG's framing, the site's own colours."""
     fx, fy, fw, fh = frame
     S = 1000
     bx, by, bw, bh = BBOX
