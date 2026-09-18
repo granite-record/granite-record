@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.6
+# GRANITE_VERSION: 2026-09-18.7
 """
 Where every seat on the New Hampshire House floor goes, as a diagram.
 
@@ -99,21 +99,24 @@ ROWS = {
 # left of the drawing, which is the higher bearing.
 #
 # Divisions 2 and 4 carry their last pair INWARD, toward division 3, which is
-# where the plan puts 4098-4099 and 2100-2101. Divisions 1 and 5 carry theirs
-# OUTWARD, against the side wall, which is where it puts 5042-5043 and
-# 1042-1043. The two pairs are mirror images, so the signs are too.
+# where the plan puts 4098-4099 and 2100-2101. They mirror each other, so the
+# signs do. Divisions 1 and 5 lean as a whole instead -- see SHEAR below.
 ROW_ALIGN = {
     (4, 10): -0.65, (2, 10): +0.65,
-    (5, 6): +0.85, (1, 6): -0.85,
 }
 
-# THE CROSS AISLE. Divisions 2 and 4 are not one continuous stack: the plan
-# draws their last rows as a small block tucked into the corner of the hall,
-# with floor between it and the rest of the division. Without that gap those
-# rows read as the back of the block, and the shape is wrong in the one place
-# the eye is drawn to. The number is the index of the first row beyond it.
-CROSS_AISLE = {4: 9, 2: 9}
-CROSS_ROWS = 1.2             # how many rows' worth of floor the gap is
+# DIVISIONS 1 AND 5 ARE SHEARED, NOT WEDGES. Their rows run 4, 5, 7, 8, 9, 7,
+# 2 -- growing to nine and then falling back -- so no pair of straight edges
+# can bound them, and stretching every row to a wedge pulls the four-seat
+# front row twice as far apart as the nine-seat middle. On the plan they are a
+# leaning block: 5001-5004 sits against the inner edge nearest division 4,
+# 5042-5043 against the outer wall, and the rows in between walk across. So
+# they keep the hall's spacing and lean, and divisions 1 and 5 mirror each
+# other, which is why the signs do.
+#
+# (first row, last row) as fractions off centre, positive being toward the
+# left of the drawing.
+SHEAR = {5: (-0.95, +0.85), 1: (+0.95, -0.85)}
 
 # CONCENTRIC ARCS AROUND THE SPEAKER, which is what the plan draws and what a
 # hemicycle is. An earlier version made each division a block of straight rows
@@ -125,8 +128,20 @@ CROSS_ROWS = 1.2             # how many rows' worth of floor the gap is
 CX, CY = 0.0, 0.0            # the Speaker; the drawing is shifted to fit later
 A_LEFT, A_RIGHT = 178.0, 2.0  # the widest bearings the floor reaches
 SEAT_R = 8.5                 # drawn radius of one seat
-SPACING = SEAT_R * 2.45      # centre to centre along a row
-DEPTH = 330.0                # front row to back row, the same for every division
+SPACING = SEAT_R * 2.45      # the closest two seats in a row are allowed to be
+
+# ONE ROW SPACING FOR THE WHOLE HALL. Row k of every division is the same
+# distance from the Speaker as row k of every other, so the front rows of
+# divisions 2, 3 and 4 line up and so do their backs -- they have eleven rows
+# each and the plan shows them level.
+#
+# This used to be a fixed DEPTH divided by each division's row count, which
+# meant the two seven-row divisions spread their rows nearly twice as far
+# apart as the eleven-row ones. On the plan they are much the same, and
+# divisions 1 and 5 are simply shallower blocks: seven rows deep instead of
+# eleven, ending before the others do rather than reaching the same wall with
+# gaps between them.
+STEP = SPACING * 1.36        # row to row, measured outward from the Speaker
 
 # THE AISLES, AND WHY THEY ARE MEASURED AT THE FRONT. Floor between one
 # division and the next, held as an angle so the blocks stay apart at every
@@ -158,24 +173,40 @@ def _run(first, last):
     return [n for n in range(first, last + step, step) if n != SKIPPED]
 
 
-def places(division, k):
+def _parts(division, k):
+    row = ROWS[division][k]
+    return row if isinstance(row[0], (tuple, list)) else (row,)
+
+
+def places(division, k, gap_units=None):
     """Row k as [(offset in seat widths, seat number)], left to right.
 
     The offset is what lets a row carry floor inside it: seats advance one
     unit each, a gap advances by however many seat widths it is worth, and
     nothing is drawn there.
+
+    gap_units replaces the nominal floor with that much in total, shared out
+    in the proportions written down. It is how a gapped row is widened to
+    reach both edges of its division WITHOUT pulling its seats apart: the
+    chairs stay at the hall's spacing and the aisle between them takes up the
+    slack, which is what an aisle is.
     """
-    row = ROWS[division][k]
-    parts = row if isinstance(row[0], (tuple, list)) else (row,)
+    parts = _parts(division, k)
+    nominal = sum(float(x) for x in parts if isinstance(x, (int, float)))
+    scale = (gap_units / nominal) if (gap_units is not None and nominal) else 1.0
     out, at = [], 0.0
     for part in parts:
         if isinstance(part, (int, float)):
-            at += float(part)
+            at += float(part) * scale
             continue
         for n in _run(*part):
             out.append((at, n))
             at += 1.0
     return out
+
+
+def _has_gap(division, k):
+    return any(isinstance(x, (int, float)) for x in _parts(division, k))
 
 
 def rows_of(division):
@@ -193,22 +224,11 @@ def _span(division, k):
 def _radii(division, r0):
     """Each row's distance from the Speaker, front to back.
 
-    Every division reaches the same depth, so one with seven rows has them
-    further apart than one with twelve -- which is what the plan shows: all
-    five blocks run from the rostrum to the back of the hall. The cross aisle
-    of divisions 2 and 4 spends part of that depth on floor instead of seats.
+    One ladder for the whole hall: row k is at the same radius in every
+    division, so blocks with the same number of rows line up at the front and
+    at the back, and a block with fewer rows is simply shallower.
     """
-    rows = ROWS[division]
-    cut = CROSS_AISLE.get(division)
-    units = (len(rows) - 1) + (CROSS_ROWS if cut is not None else 0.0)
-    step = DEPTH / units if units else 0.0
-    out, at = [], 0.0
-    for k in range(len(rows)):
-        if cut is not None and k == cut:
-            at += CROSS_ROWS
-        out.append(r0 + at * step)
-        at += 1.0
-    return out
+    return [r0 + k * STEP for k in range(len(ROWS[division]))]
 
 
 def _wedge(division, r0):
@@ -219,8 +239,13 @@ def _wedge(division, r0):
     seats far behind it.
     """
     rad = _radii(division, r0)
-    return max((_span(division, k) + 1.0) * SPACING / rad[k]
-               for k in range(len(ROWS[division])))
+    # Only the rows that reach both edges decide it. The short pair at the
+    # back of each division does not: it is placed against a wall rather than
+    # spanning the block, so letting it vote would make the wedge narrow
+    # enough to crush every row in front of it.
+    return max(_span(division, k) * SPACING / rad[k]
+               for k in range(len(ROWS[division]))
+               if (division, k) not in ROW_ALIGN)
 
 
 def _aisle(r0):
@@ -275,15 +300,48 @@ def _unshifted():
         rad = _radii(d, r0)
         for k in range(len(ROWS[d])):
             r = rad[k]
-            step = SPACING / r          # radians per seat width, at this row
             span = _span(d, k)
-            # Centred in the wedge by default, so a four-seat front row sits in
-            # the middle of its block instead of being pushed out to the
-            # aisles -- and then moved off centre where the plan puts it
-            # somewhere else, which is what the back rows needed.
-            slack = max(0.0, wedge / step - span)
-            shift = ROW_ALIGN.get((d, k), 0.0) * slack / 2
-            first = mid + step * (span / 2 + shift)
+            align = ROW_ALIGN.get((d, k))
+            if align is None and d in SHEAR:
+                a0, a1 = SHEAR[d]
+                last = len(ROWS[d]) - 1
+                align = a0 + (a1 - a0) * (k / last if last else 0)
+            if align is None:
+                # THE SEATS ON EACH EDGE MAKE A STRAIGHT LINE. A row reaches
+                # both edges of its division, so every row's first seat sits
+                # on one bounding line and its last on the other -- and those
+                # lines are radial, which is to say straight.
+                #
+                # That is what decides the spacing, rather than the other way
+                # round: the seats of a short row stand a little further apart
+                # than those of a long one. Centring every row at one fixed
+                # spacing inset the short rows by different amounts and made
+                # both edges wander.
+                if _has_gap(d, k):
+                    # The chairs keep the hall's spacing and the floor between
+                    # them widens to reach the edges. Stretching this row like
+                    # any other pulled its seats 40% further apart than every
+                    # other row in the division, which is not what an aisle
+                    # does to the chairs beside it.
+                    step = SPACING / r
+                    nseat = len(places(d, k))
+                    want = wedge / step - (nseat - 1)
+                    row_places = places(d, k, gap_units=max(0.0, want))
+                    first = mid + wedge / 2
+                    for off, seat in row_places:
+                        ang = first - step * off
+                        pos[d * 1000 + seat] = (CX + r * math.cos(ang),
+                                                CY - r * math.sin(ang))
+                    continue
+                step = wedge / span if span else 0.0
+                first = mid + wedge / 2
+            else:
+                # Except rows placed against something rather than spanning
+                # the block: the short pair at the back of divisions 2 and 4,
+                # and every row of the two sheared divisions.
+                step = SPACING / r
+                slack = max(0.0, wedge / step - span)
+                first = mid + step * (span / 2 + align * slack / 2)
             for off, seat in places(d, k):
                 ang = first - step * off
                 pos[d * 1000 + seat] = (CX + r * math.cos(ang),
