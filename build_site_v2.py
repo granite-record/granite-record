@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.102
+# GRANITE_VERSION: 2026-09-05.103
 """
 Generate the faceted site from real General Court data.
 
@@ -1917,10 +1917,14 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
                             party=m.get("party_code") or m.get("party"),
                             district=m.get("district"), county=m.get("county"),
                             county_abbr=m.get("county_abbr"))
+        # "seat" is the House floor seat, division * 1000 + number, and it is
+        # empty for all 24 senators because only the House has a seating
+        # chart. build_data says how the number decodes and why it is worth
+        # carrying.
         row = {**{k: m.get(k) for k in ("id", "name", "chamber", "party", "county",
                                         "county_abbr", "district", "label", "email",
                                         "url", "url_past", "towns",
-                                        "committees", "title", "phone")},
+                                        "committees", "title", "phone", "seat")},
                **lab, "n_votes": len(mv), "counts": dict(counts),
                "n_sponsored": len((sponsored or {}).get(mid, [])),
                "slug": member_slug(m, lab)}
@@ -1928,9 +1932,13 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
             # No email and no telephone, whatever the roster once held: the
             # address belonged to the office. The towns go too -- the town map
             # is today's, and the district they sat for may not exist in it.
+            # The seat goes for the same reason as the towns: a House seat is
+            # occupied by whoever sits there now, so printing a former
+            # member's would name a chair that is somebody else's, and the
+            # only seat this disk holds is the current one anyway.
             row.update({"former": True, "served": m.get("served") or {},
                         "email": "", "phone": "", "towns": [],
-                        "committees": []})
+                        "committees": [], "seat": ""})
             fm.append(row)
         else:
             lg.append(row)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.31
+# GRANITE_VERSION: 2026-09-04.32
 """
 Turn the General Court's bulk files into the data the site runs on.
 
@@ -345,6 +345,25 @@ def main():
             "name": name, "chamber": r[4],
             "county_code": r[6].zfill(2), "county": c.get("name", ""),
             "county_abbr": c.get("abbr", ""), "district": r[7],
+            # THE SEAT ON THE HOUSE FLOOR, which this file has carried all
+            # along in field 5 and nothing kept. It agrees with the database's
+            # Legislators.seatno on all 406 rows.
+            #
+            # It reads as division * 1000 + seat: 3084 is division 3, seat 84.
+            # The Clerk's plan has five divisions whose highest seats are 43,
+            # 101, 119, 99 and 43 -- 405 positions -- and no division has a
+            # seat 13, which takes it to exactly the 400 seats the House has.
+            # A sixth "division" holds one seat, 6002, and it is the Speaker's
+            # chair on the rostrum rather than a place on the floor.
+            #
+            # Senators have none and never will: only the House has a seating
+            # chart. All 382 sitting members have one; the 18 gaps are the
+            # vacant seats.
+            #
+            # Worth carrying because a New Hampshire representative's licence
+            # plate is their seat number, so this is the field that answers
+            # "who is that?" as well as "where do they sit?".
+            "seat": (r[5] or "").strip(),
             "party": PARTY.get(pcode, pcode or "Unknown"), "party_code": pcode,
             "email": r[14],
             "address": ", ".join(x for x in [r[10], r[11], r[12], r[13]] if x),
