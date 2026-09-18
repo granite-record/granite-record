@@ -65,6 +65,7 @@
     "fetch_journals.py": "2026-09-04.8",
     "fetch_leadership.py": "2026-09-04.5",
     "fetch_legislation.py": "2026-09-10.20",
+    "fetch_lsrs.py": "2026-09-18.1",
     "fetch_members.py": "2026-09-04.7",
     "fetch_members_db.py": "2026-09-07.1",
     "fetch_reports_db.py": "2026-09-06.3",
