@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.2
+# GRANITE_VERSION: 2026-09-04.3
 """
 Fetch a whole past session from the legacy docket pages.
 
@@ -28,6 +28,7 @@ Writes archive/<session>/pages/*.html and archive/<session>/parsed/bills.json.
 import argparse
 import json
 import re
+import refusal
 import sys
 import time
 import urllib.error
@@ -196,6 +197,7 @@ def main():
     ap.add_argument("--reparse", action="store_true",
                     help="re-run the parser over cached pages, no network")
     a = ap.parse_args()
+    refusal.check("The session fetch")
 
     if a.probe:
         probe(a.year, a.probe_lsr, a.timeout)

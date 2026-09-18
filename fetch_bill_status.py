@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.10
+# GRANITE_VERSION: 2026-09-04.11
 """
 Fetch the bill STATUS page for bills the current-session files no longer cover.
 
@@ -31,6 +31,7 @@ import argparse
 import json
 import proceedings as P
 import re
+import refusal
 import sys
 import time
 import urllib.error
@@ -363,6 +364,7 @@ def main():
     ap.add_argument("--missing", action="store_true",
                     help="only bills lacking a title or sponsors, the old default")
     a = ap.parse_args()
+    refusal.check("The bill status fetch")
 
     # bills.json is {term: {bill: record}}. The newest term by default, which
     # is what a run during a session wants; --term names an archived one. The

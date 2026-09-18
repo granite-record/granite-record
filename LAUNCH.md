@@ -247,16 +247,36 @@ repository; `preflight` gained the check that would have caught it.
   (`build_pages.FONTS` preconnects to fonts.googleapis.com and fonts.gstatic.com)
   and no document records a decision about it. This project is careful about not
   leaking its readers to third parties; it deserves a decision either way.
-- **`db/document_versions.json` is a declared `build_all` dependency with no
-  generator anywhere in the repo.** It is on this disk and cannot be rebuilt from
-  a fresh clone, which matters now the repository is going public. Four
-  `build_all` steps also still re-query the SQL host for views already dumped.
+- **~~`db/document_versions.json` is a declared `build_all` dependency with no
+  generator anywhere in the repo.~~ Done.** `document_versions_from_db.py`
+  reshapes it out of `db/DocumentVersion.psv`, which was on this disk all
+  along, and reproduces the hand-made file exactly: 36 labels, identical
+  values. `preflight` now refuses any declared `needs=` that no step produces,
+  git does not track, and `ic_SOURCES` does not name.
+
+  The sentence that stood here — "four `build_all` steps also still re-query
+  the SQL host for views already dumped" — was wrong and is withdrawn. The four
+  are `fetch_status_db`, `fetch_testimony_db`, `fetch_committee_members_db` and
+  `fetch_reports_db`. The first two scope their SQL to the session; the third
+  reads who sits on a committee *now*, which is not an archive question; and
+  the fourth is unscoped only because `CandH_Reports` holds nothing but the
+  current term — 5,597 rows, all of them 2025 or 2026. A dumped view is a
+  snapshot of live data, so re-reading it is freshness rather than waste.
 - **`fetch_members`, `fetch_leadership`, `fetch_session` and `fetch_archive_text`
   have never run.** The last is superseded by `fetch_legislation` and should be
   marked so.
-- **Nine of the twenty-four web fetchers do not consult `refusal.py`**
-  (`grep -L refusal fetch_*.py`). Started by hand, any of them would walk through
-  a recorded refusal. That is a gap, not a design.
+- **~~Nine of the twenty-four web fetchers do not consult `refusal.py`.~~
+  Done, and it was ten.** Every script holding a literal `gc.nh.gov` URL — 18
+  of them — now calls `refusal.check()` straight after parsing its arguments,
+  and a `preflight` check fails if one stops. The tenth was
+  `fetch_archive_bills`, which asks `bill_status/legacy/bs2016/`: the exact
+  path the General Court's IT office asked this project to go lightly on.
+  `fetch_town_clerks` stays outside the set because it asks the Secretary of
+  State, not the General Court.
+
+  Still open, and the larger half: those ten consult a standing refusal but do
+  not `refusal.note()` one they meet themselves. A refusal they run into stops
+  that run and nothing else.
 - **The eleven gc.nh.gov links in the Learn pages are unchecked**, because that
   is the address the lane is fetching from. `check_civics_links.py --list` prints
   them for a browser, or for the lane once it is idle.

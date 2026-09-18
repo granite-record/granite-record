@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.26
+# GRANITE_VERSION: 2026-09-04.27
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -26,6 +26,7 @@ import argparse
 import json
 import proceedings as P
 import re
+import refusal
 import shutil
 import subprocess
 import sys
@@ -493,6 +494,7 @@ def main():
     ap.add_argument("--out", default="committee_reports.json")
     ap.add_argument("--limit", type=int, default=0)
     a = ap.parse_args()
+    refusal.check("The committee reports fetch")
 
     cache = Path(a.cache) / a.year
     cache.mkdir(parents=True, exist_ok=True)

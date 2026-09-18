@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.4
+# GRANITE_VERSION: 2026-09-04.5
 """
 Every standing committee, from the two pages that list them.
 
@@ -44,6 +44,7 @@ import argparse
 import html as _html
 import json
 import re
+import refusal
 import sys
 import time
 import urllib.parse
@@ -181,6 +182,7 @@ def main():
                          "the real thing")
     ap.add_argument("--delay", type=float, default=2.0)
     a = ap.parse_args()
+    refusal.check("The committee membership fetch")
 
     found = {}
     for chamber, url in PAGES:

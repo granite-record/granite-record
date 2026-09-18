@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.7
+# GRANITE_VERSION: 2026-09-08.8
 """
 What each committee is meeting about next, and which bills at what time.
 
@@ -67,6 +67,7 @@ ends the run.
 import argparse
 import json
 import re
+import refusal
 import sys
 import time
 import urllib.error
@@ -207,6 +208,7 @@ def main():
                     help="seconds between event pages (default 8)")
     ap.add_argument("--out", default="schedule.json")
     a = ap.parse_args()
+    refusal.check("The schedule fetch")
 
     CACHE.mkdir(exist_ok=True)
     listing = CACHE / "_events.json"

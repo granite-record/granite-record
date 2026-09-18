@@ -69,12 +69,17 @@ asking the same address for a docket fifty-four seconds later. Clearing it is a
 person's decision: `python3 refusal.py --clear`, after `netcheck.py` has said
 what kind of refusal it was.
 
-It does not yet hold *every* fetch. Twelve of the twenty-four web fetchers
-consult it (`grep -l refusal fetch_*.py`); nine that ask gc.nh.gov directly do
-not — `fetch_bill_status`, `fetch_bill_text`, `fetch_committee_reports`,
-`fetch_committees`, `fetch_journals`, `fetch_members`, `fetch_schedule`,
-`fetch_session`, `fetch_testimony`. Started by hand, any of those would walk
-straight through a recorded refusal. That is a gap, not a design.
+It holds every fetch that asks the General Court. All 18 scripts carrying a
+literal `gc.nh.gov` URL call `refusal.check()` straight after parsing their
+arguments, and `preflight` fails if one stops. Ten of them did not until
+18 September — the nine this paragraph used to list, plus
+`fetch_archive_bills`, which asks `bill_status/legacy/bs2016/`, the one path
+their IT office asked this project to go lightly on. Started by hand, any of
+the ten walked straight through a standing refusal.
+
+`fetch_town_clerks` is deliberately outside that set: it asks app.sos.nh.gov,
+the Secretary of State, and names gc.nh.gov only to say so. The check tests for
+a URL rather than for the words, so that distinction survives.
 
 The eight `fetch_*_db.py` scripts are the exception worth knowing about: they
 read the SQL host the General Court publishes credentials

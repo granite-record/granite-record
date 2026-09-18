@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.15
+# GRANITE_VERSION: 2026-09-04.16
 """
 Collect House online testimony sign-ins: who registered support or opposition
 on each bill, and who filed written testimony.
@@ -41,6 +41,7 @@ import argparse
 import csv
 import json
 import re
+import refusal
 import time
 import urllib.error
 import urllib.parse
@@ -413,6 +414,7 @@ def main():
                          "to this many pages; beyond it the stated totals are "
                          "used on their own")
     a = ap.parse_args()
+    refusal.check("The testimony fetch")
 
     if a.probe:
         probe()

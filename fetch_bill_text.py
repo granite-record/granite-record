@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.21
+# GRANITE_VERSION: 2026-09-04.22
 """
 The text of each bill, as text rather than as a link to a PDF.
 
@@ -60,6 +60,7 @@ import proceedings as P
 import random
 import re
 from collections import Counter
+import refusal
 import sys
 import time
 import urllib.request
@@ -739,6 +740,7 @@ def main():
     ap.add_argument("--max-minutes", type=float, default=0,
                     help="stop after this long, whatever else happens")
     a = ap.parse_args()
+    refusal.check("The bill text fetch")
 
     # Both files are {term: {bill: record}}. A bill number is unique within a
     # term and not across them, so the term has to be settled before anything

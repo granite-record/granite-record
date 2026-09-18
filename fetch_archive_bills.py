@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.2
+# GRANITE_VERSION: 2026-09-06.3
 """
 Every bill of an archived session year, from the General Court's own search.
 
@@ -48,6 +48,7 @@ import argparse
 import html as _html
 import json
 import re
+import refusal
 import sys
 import urllib.error
 import urllib.parse
@@ -172,6 +173,7 @@ def main():
     ap.add_argument("--save", action="store_true",
                     help="keep the results page beside the output")
     a = ap.parse_args()
+    refusal.check("The bs2016 archive fetch")
     if not (a.year or a.file):
         sys.exit("give --year (two requests) or --file (none).")
 

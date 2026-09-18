@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Find the journal and calendar PDFs so docket citations become links.
 
@@ -31,6 +31,7 @@ Writes journals.json: {"HJ 7": "https://...", "SC 11": "https://...", ...}
 import argparse
 import json
 import re
+import refusal
 import time
 import urllib.error
 import urllib.parse
@@ -198,6 +199,7 @@ def main():
     ap.add_argument("--out", default="journals.json")
     ap.add_argument("--delay", type=float, default=0.7)
     a = ap.parse_args()
+    refusal.check("The journals fetch")
 
     found = {}
     if Path(a.out).exists():

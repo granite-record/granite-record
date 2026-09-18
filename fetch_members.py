@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Pull each member's own page on gencourt: photo, district, towns, contact,
 committees and the position they hold on each.
@@ -61,6 +61,7 @@ import argparse
 import json
 import random
 import re
+import refusal
 import sys
 import time
 import urllib.error
@@ -378,6 +379,7 @@ def main():
     ap.add_argument("--reparse", action="store_true",
                     help="re-run the parser over cached pages, no network")
     a = ap.parse_args()
+    refusal.check("The members fetch")
 
     cache = Path(a.cache)
     cache.mkdir(parents=True, exist_ok=True)

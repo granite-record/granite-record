@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.196
+# GRANITE_VERSION: 2026-09-04.197
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5960,6 +5960,48 @@ def _docket_fetch_stops():
         finally:
             shutil.rmtree(root, ignore_errors=True)
     return "ok", "; ".join(results) + " -- each behaves"
+
+
+@check("build", "every fetcher that asks gc.nh.gov consults refusal.py first")
+def _every_fetcher_checks_refusal():
+    """A refusal is a fact about the address, not about the run that found it.
+
+    `refusal.py` records one in `archive/refused.json` and holds the fetch
+    lane for 24 hours. It exists because a calendar drain met two 403s,
+    stopped itself correctly, and a chained run asked the same address for a
+    docket fifty-four seconds later. But the holding only works if the next
+    fetcher asks, and ten that name a gc.nh.gov URL did not: started by hand,
+    any of them walked straight through a standing refusal.
+
+    `fetch_archive_bills.py` was the sharpest of the ten. It asks
+    `bill_status/legacy/bs2016/`, which is the exact path the General Court's
+    IT office asked this project to go lightly on, on session days.
+
+    The test is a literal URL rather than the words "gc.nh.gov", because
+    `fetch_town_clerks.py` names the host only to say it asks somebody else --
+    app.sos.nh.gov, the Secretary of State -- and must not be caught by this.
+    The eight `fetch_*_db.py` scripts read the SQL host the General Court
+    publishes credentials for, which is not the server that did the blocking,
+    and they hold no literal URL either.
+    """
+    import re as _re
+    URL = _re.compile(r"""["']https?://gc\.nh\.gov""")
+    asks, missing = [], []
+    for p in sorted(Path(".").glob("fetch_*.py")):
+        src = p.read_text(encoding="utf-8", errors="replace")
+        if not URL.search(src):
+            continue
+        asks.append(p.name)
+        if "import refusal" not in src:
+            missing.append(p.name)
+
+    assert asks, "no fetcher holds a gc.nh.gov URL, which cannot be right"
+    assert not missing, (
+        "these ask gc.nh.gov and never consult refusal.py, so a standing "
+        "refusal would not stop them:\n    " + "\n    ".join(missing)
+        + "\n  Add `import refusal` and `refusal.check(\"...\")` straight "
+          "after the arguments are parsed.")
+    return "ok", f"{len(asks)} fetchers ask gc.nh.gov; all consult refusal.py"
 
 
 @check("build", "the bill-text fetch saves only the bill it asked for, and stops when told no",
