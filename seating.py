@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.1
+# GRANITE_VERSION: 2026-09-18.2
 """
 Where every seat on the New Hampshire House floor goes, as a diagram.
 
@@ -189,12 +189,28 @@ def svg(by_seat=None, title="New Hampshire House seating"):
     out.append('<title>%s</title>' % title)
 
     # The rostrum, so the diagram has a front and the fan has a reason.
+    #
+    # AND THE SPEAKER IS A MEMBER, NOT FURNITURE. This drew a grey box with
+    # the word "Speaker" in it and then `continue`d past seat 6002, so the one
+    # representative whose seat is on the rostrum -- 382 of them hold a seat
+    # and this was the 382nd -- appeared on the chart as a label and could not
+    # be reached from it. The box carries their name and the same data
+    # attributes every other seat carries, so the page's one click handler
+    # opens them like anyone else.
     sx, sy = pos[SPEAKER_SEAT]
     sp = by_seat.get(SPEAKER_SEAT)
-    out.append(f'<rect class="rostrum" x="{CX-90:.0f}" y="{sy-14:.0f}" '
-               f'width="180" height="30" rx="6"></rect>')
-    out.append(f'<text class="rostrumtext" x="{CX:.0f}" y="{sy+7:.0f}" '
-               f'text-anchor="middle">Speaker</text>')
+    at = ""
+    if sp:
+        at = (f' data-seat="{SPEAKER_SEAT}" data-div="6" data-n="2"'
+              f' data-slug="{sp.get("slug", "")}" data-name="{sp.get("name", "")}"'
+              f' tabindex="0" role="button"')
+    out.append(f'<g class="rostrumgrp"{at}>'
+               f'<rect class="rostrum{"" if sp else " vacant"}" x="{CX-90:.0f}" '
+               f'y="{sy-14:.0f}" width="180" height="30" rx="6"></rect>'
+               f'<text class="rostrumtext" x="{CX:.0f}" y="{sy+7:.0f}" '
+               f'text-anchor="middle">{sp["name"] if sp else "Speaker"}</text>'
+               f'<title>{(sp["name"] + " — Speaker, on the rostrum") if sp else "The Speaker’s chair"}</title>'
+               f'</g>')
 
     for seat in all_seats() + [SPEAKER_SEAT]:
         x, y = pos[seat]

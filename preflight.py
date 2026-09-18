@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.199
+# GRANITE_VERSION: 2026-09-04.200
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -848,7 +848,24 @@ def _seating(seating):
         for s2, (x2, y2) in pts[i + 1:]:
             assert _m.hypot(x1 - x2, y1 - y2) >= seating.SEAT_R * 1.6, (
                 f"seats {s1} and {s2} overlap, which would hide a member")
-    return "ok", f"{floor} seats in {len(seating.HIGHEST)} divisions, none overlapping"
+    # EVERY MEMBER GIVEN A SEAT IS REACHABLE FROM THE CHART. The Speaker's
+    # chair is on the rostrum rather than on the floor, and the drawing used
+    # to `continue` past it after painting a grey box labelled "Speaker": so
+    # the one representative whose seat is 6002 -- Sherman Packard, the 382nd
+    # of 382 members holding a seat -- was on the chart as a word and could
+    # not be opened from it. A count is what catches that; looking at the
+    # picture does not, because the box was there.
+    who = {s: {"name": f"Member {s}", "slug": f"m{s}", "party_code": "R"}
+           for s in seating.all_seats() + [seating.SPEAKER_SEAT]}
+    drawn = seating.svg(who)
+    for s in (seating.SPEAKER_SEAT, seating.all_seats()[0], seating.all_seats()[-1]):
+        assert f'data-slug="m{s}"' in drawn, (
+            f"seat {s} has a member but the chart gives no way to open them")
+    assert drawn.count("data-slug=") == len(who), (
+        f"{drawn.count('data-slug=')} of {len(who)} seated members are "
+        "reachable from the chart")
+    return "ok", (f"{floor} seats in {len(seating.HIGHEST)} divisions, none "
+                  f"overlapping, all {len(who)} openable")
 
 
 @check("markers", "a whisper transcript is read, not counted as silence",

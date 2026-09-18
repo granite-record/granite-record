@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.105 */
+/* GRANITE_VERSION: 2026-09-07.108 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2770,4 +2770,68 @@ clip:rect(0 0 0 0);white-space:nowrap;border:0}
    a sub-heading in the sans face, above the lead's serif sentence. A paragraph,
    not a heading, so the page's outline still goes h1 to h2. */:where(body.pg) .slogan{font-size:var(--t-lead);font-weight:600;letter-spacing:-.01em;line-height:1.3;
 color:var(--ink);margin:0 0 var(--sp-4)}
+
+/* WHERE THEY SIT. The House floor as 400 circles, and the roster under it as
+   a list that reorders. Asked for on 18 September, with the reason people
+   look it up: a representative's licence plate carries their seat number.
+
+   The chart is a DIAGRAM and the page says so -- the Clerk's floor plan is a
+   scanned drawing, not coordinates, so what is faithful here is which
+   division a seat is in and what its number is, not the shape of the hall. */
+:where(body.pg) .roster{margin-top:var(--sp-9)}
+:where(body.pg) .seatwrap{margin:var(--sp-6) 0;overflow-x:auto}
+:where(body.pg) .seatmap{width:100%;min-width:560px;height:auto;display:block}
+:where(body.pg) .seatmap .seat{fill:var(--rule-2);stroke:var(--edge);stroke-width:1;
+cursor:pointer;transition:fill .12s}
+:where(body.pg) .seatmap .seat:hover,:where(body.pg) .seatmap .seat:focus-visible{
+fill:var(--pine);stroke:var(--pine)}
+/* The party colours the rest of the site uses, so a chamber reads the same
+   way here as it does on a roll call. */
+:where(body.pg) .seatmap .seat.p-R{fill:var(--rep-soft);stroke:var(--rep)}
+:where(body.pg) .seatmap .seat.p-D{fill:var(--dem-soft);stroke:var(--dem)}
+:where(body.pg) .seatmap .seat.p-I{fill:var(--ind-soft);stroke:var(--ind)}
+/* An empty chair is a fact about the House worth showing: 18 of the 400 are
+   vacant, and a dashed outline says vacant without needing a key. */
+:where(body.pg) .seatmap .seat.vacant{fill:none;stroke:var(--rule-2);
+stroke-dasharray:2 2;cursor:default}
+:where(body.pg) .seatmap .seat.on{fill:var(--pine);stroke:var(--ink);stroke-width:2}
+:where(body.pg) .seatmap .rostrum{fill:var(--rule-2)}
+:where(body.pg) .seatmap .rostrumtext{fill:var(--ink-2);font:600 12px var(--sans);
+letter-spacing:.04em}
+
+:where(body.pg) .seatctl{display:flex;flex-wrap:wrap;align-items:center;
+gap:var(--sp-3) var(--sp-5)}
+:where(body.pg) .seatctl label{font-size:var(--t-sm);letter-spacing:.04em;
+text-transform:uppercase;color:var(--ink-2)}
+:where(body.pg) .seatctl select,:where(body.pg) .seatctl input{font:inherit;
+font-size:var(--t-ui);padding:var(--sp-3) var(--sp-4);color:var(--ink);
+background:var(--surface);border:1px solid var(--edge);
+border-radius:var(--r-in);max-width:100%}
+:where(body.pg) .seatctl input{flex:1 1 200px;min-width:0}
+:where(body.pg) .seatnote{min-height:1.4em;margin:0 0 var(--sp-4);
+color:var(--ink-2);font-size:var(--t-ui)}
+
+/* THE ROSTER. Columns, because 382 names in one column is a very long page
+   and the content should fill the width it has. */
+:where(body.pg) .seatlist{list-style:none;margin:0;padding:0;
+display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));
+gap:0 var(--sp-6)}
+:where(body.pg) .seatrow[hidden]{display:none}
+:where(body.pg) .seatrow a{display:flex;align-items:baseline;gap:var(--sp-4);
+padding:var(--sp-3) var(--sp-3);border-bottom:1px solid var(--rule);
+color:var(--ink);text-decoration:none}
+:where(body.pg) .seatrow a:hover{background:var(--wash)}
+:where(body.pg) .seatrow.on a{background:var(--pine-soft);
+box-shadow:inset 3px 0 0 var(--pine)}
+/* Tabular figures so a column of seat numbers lines up on its digits. */
+:where(body.pg) .seatrow .sseat{flex:0 0 3.6em;font-variant-numeric:tabular-nums;
+font-size:var(--t-sm);color:var(--ink-2)}
+:where(body.pg) .seatrow .sname{font-weight:600;font-size:var(--t-ui)}
+:where(body.pg) .seatrow .swhere{margin-left:auto;font-size:var(--t-xs);
+color:var(--ink-2);white-space:nowrap}
+@media (max-width:560px){
+  :where(body.pg) .seatrow .swhere{margin-left:0;flex-basis:100%}
+  :where(body.pg) .seatrow a{flex-wrap:wrap;gap:var(--sp-1) var(--sp-4)}
+}
+
 /* PAGES:END ------------------------------------------------------- */
