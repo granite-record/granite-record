@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.1
+# GRANITE_VERSION: 2026-09-18.2
 """
 Next session's bill requests, before any of them is a bill.
 
@@ -61,10 +61,24 @@ RAW_CSV = Path("archive/lsrs.csv")
 OUT = Path("lsrs.json")
 PAUSE = 5.0
 
-# The link that offers the file, by the words on it rather than by its href --
-# the words are what the page promises a reader, and the href is what this
-# must not assume.
-CSV_LINK = re.compile(r'<a[^>]+href="([^"]+)"[^>]*>\s*(?:[^<]*\bCSV\b[^<]*)</a>', re.I)
+# THE CSV IS NOT A LINK. It is an ASP.NET postback:
+#
+#   <a href="javascript:__doPostBack('ctl00$pageBody$lnkCVS','')">Download CSV File</a>
+#
+# so getting the file means POSTing the form the way the browser does, with
+# the control's name in __EVENTTARGET and the page's own hidden state sent
+# back with it. That is what a click does; it is not a second address, and it
+# is still not a guess -- the target is read out of the page.
+CSV_LINK = re.compile(
+    r"<a[^>]+__doPostBack\(&#39;([^&]+)&#39;[^>]*>\s*[^<]*\bCSV\b", re.I)
+RESULTS = "https://gc.nh.gov/lsr_search/LSR_Results.aspx"
+HIDDEN = ("__VIEWSTATE", "__VIEWSTATEGENERATOR", "__EVENTVALIDATION")
+
+# One row of the results page, for the fallback: the number and body on one
+# line, the sponsors on the next.
+ROW = re.compile(
+    r"(\d{4}-\d{3,4})\s*\t?\s*(HB|SB|CACR|HR|SR|HCR|SCR)\s*\t?\s*Title:\s*(.+?)\s*"
+    r"Sponsors:\s*\(Prime\)\s*(.+?)\s*(?=\d{4}-\d{3,4}\s|\Z)", re.S)
 
 # "2027-0001", the shape of a request number, and the session it belongs to.
 LSR_NO = re.compile(r"^\s*(\d{4})-(\d{3,4})\s*$")
@@ -92,9 +106,70 @@ def get(url, timeout=60):
 
 
 def find_csv(html):
-    """The CSV link's absolute address, or None with nothing assumed."""
+    """The postback target that offers the CSV, or None with nothing assumed."""
     m = CSV_LINK.search(html)
-    return urllib.parse.urljoin(SEARCH, m.group(1)) if m else None
+    return m.group(1) if m else None
+
+
+def hidden_fields(html):
+    """The form state ASP.NET requires back with any postback."""
+    out = {}
+    for f in HIDDEN:
+        m = re.search(r'id="' + f + r'"[^>]*value="([^"]*)"', html)
+        if m:
+            out[f] = html_unescape(m.group(1))
+    return out
+
+
+def html_unescape(s):
+    import html as _h
+    return _h.unescape(s)
+
+
+def post(url, fields, timeout=90):
+    """The form, submitted the way the page's own button submits it."""
+    data = urllib.parse.urlencode(fields).encode("ascii")
+    req = urllib.request.Request(url, data=data, headers={
+        **UA, "Content-Type": "application/x-www-form-urlencoded",
+        "Referer": url})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return (r.read(), r.headers.get_content_charset() or "utf-8",
+                    r.headers.get("Content-Type", ""),
+                    r.headers.get("Content-Disposition", ""))
+    except urllib.error.HTTPError as e:
+        if refusal.classify(e) == "refused":
+            refusal.note("fetch_lsrs", f"HTTP {e.code} posting to {url}")
+            sys.exit(f"  HTTP {e.code}. refusal.py now holds the lane.")
+        sys.exit(f"  HTTP {e.code} posting to {url}")
+    except urllib.error.URLError as e:
+        if refusal.classify(e) == "refused":
+            refusal.note("fetch_lsrs", f"{e.reason} posting to {url}")
+            sys.exit(f"  {e.reason}. refusal.py now holds the lane.")
+        sys.exit(f"  {e.reason} posting to {url}")
+
+
+def parse_results_html(html):
+    """The results page, for when the CSV cannot be had.
+
+    Its rows carry exactly what an LSR has -- number, body, title, prime
+    sponsor -- so nothing is lost by reading them; it is only more fragile
+    than a file with headers, which is why it is the fallback and not the
+    first choice.
+    """
+    text = re.sub(r"<[^>]+>", "\n", html)
+    text = html_unescape(text)
+    text = re.sub(r"[ \t\r\f\v]+", " ", text)
+    text = re.sub(r"\n\s*\n+", "\n", text)
+    out = []
+    for num, body, title, sponsor in ROW.findall(text):
+        m = LSR_NO.match(num)
+        if not m:
+            continue
+        out.append({"lsr": num, "session": int(m.group(1)), "body": body.upper(),
+                    "title": " ".join(title.split()),
+                    "sponsor": " ".join(sponsor.split()), "withdrawn": False})
+    return out
 
 
 def parse_csv(text):
@@ -135,16 +210,54 @@ def parse_csv(text):
         m = LSR_NO.match(num)
         if not m:
             continue
+        prime, co = split_sponsors(g("sponsor"))
         out.append({"lsr": num, "session": int(m.group(1)),
-                    "body": g("body").upper()[:2] or "",
+                    # NOT truncated. The column carries CACR and HCR as well as
+                    # HB and HR, and a two-character slice turned those into
+                    # "CA" and "HC", which are not kinds of anything.
+                    "body": g("body").strip().upper(),
                     "title": " ".join(g("title").split()),
-                    "sponsor": " ".join(g("sponsor").split()),
+                    "sponsor": prime, "cosponsors": co,
                     "withdrawn": False})
     if not out:
         raise SystemExit(
             f"  {len(rows)-1} rows and not one carried a request number of the "
             "shape 2027-0001. That is a format change, not an empty session.")
     return out
+
+
+ROLE = re.compile(r"\s*\(([^)]*)\)\s*$")
+
+
+def split_sponsors(field):
+    """"Ellen Read (Prime)" -> ("Ellen Read", []).
+
+    Every request carries exactly one name today, because a request is made by
+    one member. The column is named "Sponsors" all the same, so this reads a
+    list and separates the one marked Prime from any others rather than
+    assuming the singular it currently always is -- co-sponsors appear once a
+    bill is drafted, and that is the same column.
+
+    The role marker is dropped from the name: "(Prime)" describes the row, and
+    printing it beside every name would put the word on the page 241 times to
+    say what the field already means.
+    """
+    prime, co = "", []
+    for part in re.split(r"\s*;\s*", (field or "").strip()):
+        if not part:
+            continue
+        m = ROLE.search(part)
+        role = (m.group(1) if m else "").strip().lower()
+        name = " ".join(ROLE.sub("", part).split())
+        if not name:
+            continue
+        if "prime" in role and not prime:
+            prime = name
+        else:
+            co.append(name)
+    if not prime and co:
+        prime, co = co[0], co[1:]
+    return prime, co
 
 
 def merge(new):
@@ -195,23 +308,47 @@ def main():
     html = body.decode(enc, "replace")
     RAW_PAGE.parent.mkdir(parents=True, exist_ok=True)
     RAW_PAGE.write_text(html, encoding="utf-8")
-    url = find_csv(html)
-    if not url:
+    target = find_csv(html)
+    if not target:
         raise SystemExit(
-            "  no link on that page offers a CSV.\n"
+            "  nothing on that page offers a CSV.\n"
             f"  The page is saved at {RAW_PAGE}; read it and fix CSV_LINK.\n"
             "  Nothing else is asked for -- a guessed address is how this "
             "address was blocked the first time.")
-    print(f"  the file is at {url}")
+    print(f"  the CSV is a postback to {target}")
     if a.probe:
         print("  --probe: stopping here, nothing downloaded")
         return 0
 
+    fields = hidden_fields(html)
+    missing = [f for f in HIDDEN if f not in fields]
+    if missing:
+        print(f"  WARNING: the form is missing {', '.join(missing)}; "
+              "the postback may be refused")
     time.sleep(PAUSE)
-    raw, enc2 = get(url)
-    RAW_CSV.write_bytes(raw)
-    print(f"  {len(raw):,} bytes -> {RAW_CSV}")
-    rows = parse_csv(raw.decode(enc2, "replace"))
+    raw, enc2, ctype, disp = post(SEARCH, {**fields, "__EVENTTARGET": target,
+                                           "__EVENTARGUMENT": ""})
+    body_text = raw.decode(enc2, "replace")
+    looks_csv = ("csv" in ctype.lower() or "csv" in disp.lower()
+                 or ("," in body_text[:400] and "<html" not in body_text[:400].lower()))
+    if looks_csv:
+        RAW_CSV.write_bytes(raw)
+        print(f"  {len(raw):,} bytes of CSV -> {RAW_CSV}")
+        rows = parse_csv(body_text)
+    else:
+        # The postback answered with a page rather than a file. The results
+        # page carries the same four fields, so read those instead of asking
+        # again in a different way.
+        print("  the postback did not return a file; reading the results page")
+        time.sleep(PAUSE)
+        raw2, enc3 = get(RESULTS)
+        RAW_PAGE.with_name("lsr_results.html").write_bytes(raw2)
+        rows = parse_results_html(raw2.decode(enc3, "replace"))
+        if not rows:
+            raise SystemExit(
+                "  the results page yielded no requests either. Both are saved "
+                "under archive/; read them before asking again.")
+        print(f"  {len(rows)} requests read from the results page")
     merged, gone = merge(rows)
     OUT.write_text(json.dumps(merged, indent=1), encoding="utf-8")
     sessions = sorted({r["session"] for r in rows})
