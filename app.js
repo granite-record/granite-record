@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.92
+// GRANITE_VERSION: 2026-09-07.93
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -598,8 +598,19 @@ need("meta.json")
    // for the same data.
    $("#qgo").disabled=false;
    // Arriving from the home page search box, with the query in the URL.
-   const pre=new URLSearchParams(location.search).get("q");
+   const params=new URLSearchParams(location.search);
+   const pre=params.get("q");
    if(pre){ $("#q").value=pre; query=pre; }
+   // ...or from the header search, having clicked a subject. Asked for on 18
+   // September: "when you click the topic it brings you to bill search and
+   // shows all bills from the current term which match the topic." The term
+   // needs no saying -- the current one is what this page opens on -- so the
+   // subject is ticked in the Topic facet and the list narrows to it, with
+   // the tick showing so a reader can see what narrowed it and untick it.
+   // A subject that is not one of the 43 is ignored rather than left
+   // selected: a facet nothing matches shows an empty list and no reason.
+   const ptopic=params.get("topic");
+   if(ptopic&&(META.topics||[]).includes(ptopic)) sel.topic.add(ptopic);
    // WHAT THIS PAGE IS, decided before anything is drawn.
    //
    // These three used to sit after render(), which meant a member's page

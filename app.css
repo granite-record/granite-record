@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.103 */
+/* GRANITE_VERSION: 2026-09-07.104 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -523,16 +523,81 @@ border-radius:var(--r-in);color:var(--ink);text-decoration:none;
 border-bottom:1px solid var(--rule)}
 .findout a:last-child{border-bottom:0}
 .findout a:hover,.findout a:focus-visible{background:var(--wash)}
-.findout .fkind{flex:0 0 84px;font-size:var(--t-sm);letter-spacing:.04em;
+/* 104, not 84: the widest label is now "Former member", and at 84 it wrapped
+   to two lines on every one of 1,785 rows while the names beside it stayed
+   on one, so the rows were of two different heights down the list. */
+.findout .fkind{flex:0 0 104px;font-size:var(--t-sm);letter-spacing:.04em;
 text-transform:uppercase;color:var(--ink-2)}
 .findout .fname{font-weight:600}
 .findout .fwhat{color:var(--ink-2);font-size:var(--t-ui)}
 .findout .fnote{padding:var(--sp-4) var(--sp-4);color:var(--ink-2);font-size:var(--t-ui)}
+
+/* THE PART THEY TYPED. Reported as "a bit too bright", and it was: nothing
+   here styled <mark> at all, so every browser's own highlight applied --
+   #FF0, at maximum chroma, next to a palette whose loudest colour is a
+   forest green. The site's own soft pine instead, at the weight a found word
+   needs and no more, and the ink left alone so the contrast is the row's. */
+.findout mark{background:var(--pine-soft);color:inherit;
+border-radius:2px;padding:0 1px}
+
+/* THE WAY OUT OF THE PANEL, and the row that answers when nothing here
+   matched. Marked off from the entries above it by its rule rather than by a
+   colour: it is a different KIND of answer, not a more important one. */
+.findout .fall{border-top:1px solid var(--rule);border-bottom:0;
+margin-top:var(--sp-2)}
+.findout a.fall:first-child{border-top:0;margin-top:0;
+border-bottom:1px solid var(--rule);margin-bottom:var(--sp-2)}
+/* "Did you mean firearms?" -- a button, because it searches again here
+   rather than going anywhere, and it should look like the offer it is. */
+.fdym{background:none;border:0;padding:0;font:inherit;color:var(--pine);
+text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.fdym:hover{color:var(--ink)}
+
+/* THE CLEAR. Faint until it is wanted, which is the whole brief for it: "an
+   x icon that's faint but allows you to clear the field". The browser's own
+   is suppressed -- Chrome draws one that cannot be made faint, Firefox draws
+   none, and two of them side by side is worse than either. */
+.findbox{position:relative}
+.findbox input::-webkit-search-cancel-button,
+.findbox input::-webkit-search-decoration{-webkit-appearance:none;appearance:none}
+.findin .findbox input{padding-right:calc(var(--sp-5) + 30px)}
+.findclear{position:absolute;top:50%;right:var(--sp-4);transform:translateY(-50%);
+display:flex;align-items:center;justify-content:center;width:30px;height:30px;
+background:none;border:0;border-radius:var(--r-in);cursor:pointer;
+color:var(--ink-2);opacity:.45;font-size:var(--t-ui);line-height:1}
+.findclear:hover,.findclear:focus-visible{opacity:1;color:var(--ink);
+background:var(--wash)}
+.findclear[hidden]{display:none}
+
 @media (max-width:720px){
   .findin{padding:var(--sp-4) var(--sp-5) var(--sp-5)}
   .findout .fkind{flex-basis:100%}
   .findout a{flex-wrap:wrap;gap:var(--sp-1) var(--sp-4)}
+  /* A SHEET, NOT A SCREEN. Asked for in these words: "rather than taking up
+     the full screen, I was imagining something more like it taking up a
+     decent amount of the screen with the outer edge still showing the page
+     you were on and if you tap on it, it'll take you out of the search
+     menu." So the panel takes what it needs and stops at 70% of the height,
+     the page stays visible under a scrim that only dims it, and the scrim is
+     the tap that closes.
+
+     The panel stays in the flow, directly under the header where it already
+     sits, and is lifted ABOVE the scrim rather than positioned against the
+     viewport. That way it needs no measurement of a header whose height
+     changes with the text size, and the header stays visible above it --
+     which is the top edge of the page the reader was on. */
+  .findpanel{position:relative;z-index:60;border-bottom:0;
+  box-shadow:0 14px 34px rgb(0 0 0 / .22)}
+  .findout{max-height:calc(70vh - 96px)}
+  .findscrim{position:fixed;inset:0;z-index:50;background:rgb(0 0 0 / .32);
+  -webkit-tap-highlight-color:transparent}
+  .findscrim[hidden]{display:none}
+  /* The page behind must not scroll under the sheet: a reader who swipes to
+     dismiss would otherwise move the page instead and be left with both. */
+  html.findopen,html.findopen body{overflow:hidden}
 }
+/* The scrim exists in the document on every width; only a phone shows it. */
+@media (min-width:721px){.findscrim{display:none}}
 
 /* A RECORDING, WHEREVER IT IS SHOWN. Both kinds of page play the General
    Court's video -- a bill's Videos tab and the home page's most recent floor

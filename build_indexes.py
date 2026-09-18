@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.4
+# GRANITE_VERSION: 2026-09-13.5
 """
 The whole record as plain lists: every bill of every term, every sitting
 legislator, every town -- each a link a person or a crawler can follow.
@@ -39,6 +39,7 @@ import json
 import re
 from collections import defaultdict
 from pathlib import Path
+from urllib.parse import quote_plus
 
 import shell as S
 import structured as LD
@@ -180,7 +181,17 @@ def find_index(site, legs, towns):
 
     Each row is [kind, name, detail, address, extra search words]. A list rather
     than an object per row because this file is fetched by a phone: the keys
-    would be a third of it.
+    would be a third of it. A former member's row carries a sixth: the year
+    they last sat, which is how the box orders them among themselves.
+
+    FORMER MEMBERS AND SUBJECTS ARE IN IT, asked for on 18 September in these
+    words: "Search bar should also list former legislators in the results, but
+    prioritize to the most recent bills and current legislators before listing
+    former ones", and "typing things like education should list both education
+    policy and education funding as well as the committees". Measured before
+    it was done, because 1,785 more rows is not free: the file goes from 91 KB
+    to 331 KB, and from 17 KB to 58 KB over the wire, which is what a reader
+    pays. Once, when they first open the box, and never on a page load.
     """
     rows = []
     for m in legs:
@@ -214,6 +225,35 @@ def find_index(site, legs, towns):
             rows.append(["town", town if w in ("", "0") else f"{town}, Ward {w}",
                          (county + " County" if county else "") or "New Hampshire",
                          S.canon(f"town/{slug}.html"), county])
+    # The people who appear in the record and hold no seat now. Named the way
+    # the person asked for on 18 September -- "Former Rep. David Smith" rather
+    # than "Rep. David Smith" with "former" in a box beside it -- and never
+    # flagged beyond that word: a member who has left is listed like any
+    # other, just later.
+    fm = site / "former.json"
+    for m in (json.loads(fm.read_text(encoding="utf-8")) if fm.exists() else []):
+        if not m.get("slug"):
+            continue
+        terms = (m.get("served") or {}).get("terms") or []
+        span = f"{terms[0].split('-')[0]}–{terms[-1].split('-')[1]}" if terms else ""
+        last = re.search(r"(\d{4})", (m.get("served") or {}).get("last") or "")
+        rows.append(["former",
+                     "Former " + (m.get("display_plain") or m.get("name") or ""),
+                     " · ".join(x for x in (
+                         "Senate" if m.get("chamber") == "S" else "House",
+                         m.get("district_label") or "", span) if x),
+                     S.canon(f"legislator/{m['slug']}.html"),
+                     " ".join(str(x) for x in (m.get("county_abbr"), m.get("party"))
+                              if x),
+                     int(last.group(1)) if last else 0])
+    # The subjects the bill search facets by, so that typing one arrives at
+    # the bills rather than at nothing. meta.json is where the bill search
+    # reads them from, so there is one list and it cannot drift.
+    mj = site / "meta.json"
+    for t in (json.loads(mj.read_text(encoding="utf-8")).get("topics") or []
+              if mj.exists() else []):
+        rows.append(["topic", t, "Bills on this subject",
+                     S.canon("bills.html") + "?topic=" + quote_plus(t), ""])
     for name, path, what in (
             ("Bill search", "bills.html", "Every bill since 1989"),
             ("Legislators", "legislators.html", "The sitting roster, by town or name"),
