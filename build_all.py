@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.25
+# GRANITE_VERSION: 2026-09-05.26
 """
 Run the whole pipeline in the right order.
 
@@ -404,6 +404,16 @@ def plan(a):
              note="the older clustering path; segment_markers.py above does "
                   "this better and build_site_v2 reads it directly. Pass "
                   "--with-apply-markers to run it anyway"),
+
+        Step("the bill-version vocabulary, out of the dump already on disk",
+             ["document_versions_from_db.py"],
+             needs=["db/DocumentVersion.psv"],
+             produces=["db/document_versions.json"],
+             note="asks nobody anything -- it reshapes the dumped view. Here "
+                  "because the file it writes was a declared need of the next "
+                  "step with no generator anywhere, which a fresh clone could "
+                  "not satisfy: db/ is gitignored and this was the one file in "
+                  "it that no run could rebuild"),
 
         Step("every version of a bill, and what each amendment changed",
              ["build_bill_versions.py", "--site", "site"],

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.195
+# GRANITE_VERSION: 2026-09-04.196
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1706,6 +1706,96 @@ def _plan(build_all):
     assert not missing, "steps reference scripts that are not here: " + \
                         ", ".join(missing)
     return "ok", f"{len(steps)} steps, order correct, every script present"
+
+
+ic_SOURCES = {
+    # Every build_all `needs=` path that no step declares and git does not
+    # track, with the thing that creates it. A fresh clone has none of these,
+    # so each one is a question a contributor will ask, and this is the answer.
+    "RollCallSummary.txt": "the General Court's bulk file, archived by snapshot_gencourt.py",
+    "Docket.txt": "the General Court's bulk file, archived by snapshot_gencourt.py",
+    "legislators.txt": "the General Court's bulk file, archived by snapshot_gencourt.py",
+    "bill_status.json": "fetch_bill_status.py",
+    "data/legislators.json": "build_data.py, which does not declare it",
+    "data/member_votes.json": "build_data.py, which does not declare it",
+    "verification_manifest.csv": "build_manifest.py",
+    "site/legislators.json": "build_site_v2.py, which does not declare it",
+    "site/towns.json": "build_town_pages.py, which does not declare it",
+    "site/idx": "build_indexes.py, which does not declare it",
+    "work": "fetch_captions.py -- a directory of caption folders",
+    "calendars": "fetch_calendar_archive.py -- a directory of PDFs",
+    "legislation": "fetch_legislation.py -- a directory of saved bill pages",
+    "db/DocumentVersion.psv": "fetch_archive_db.py, which dumps the SQL views",
+    "db/LegislationText.psv": "fetch_archive_db.py, which dumps the SQL views",
+}
+
+
+@check("pipeline", "every input a step declares can be made by something",
+       needs=("build_all",))
+def _needs_have_a_maker(build_all):
+    """A declared input that nothing in the repository writes is a hole a
+    fresh clone cannot fill.
+
+    `db/document_versions.json` was one. build_all declared it as a need of
+    the bill-version step; build_bill_versions.py read it; and no script
+    anywhere wrote it. It had been made once by hand from a query asked by
+    column name, and `db/` is gitignored -- 400 MB, re-fetchable in one run --
+    so it was in no clone and no run could rebuild it. The step it gates
+    writes the manifest saying how many versions each bill has, without which
+    every current-term bill draws a Versions tab and 1,085 of them put a 404
+    behind it.
+
+    It was found by reading the open list rather than by anything failing,
+    because on the machine that made it the file is simply there. That is the
+    shape of bug this check exists for: invisible where the work happens,
+    fatal where somebody else starts.
+
+    The allowlist is the point. An input that no step produces and git does
+    not track has to be named here with what creates it, so that adding one
+    means answering the question nobody asked about document_versions.json.
+    """
+    class A:
+        key = None
+        session = "2026"
+        base = "https://graniterecord.org"
+        archive = "nh-archive"
+
+    import subprocess
+
+    steps = build_all.plan(A())
+    produced = {str(p).replace("\\", "/") for s in steps for p in s.produces}
+    try:
+        out = _run(["git", "ls-files"], capture_output=True, text=True,
+                   timeout=60)
+    except (OSError, subprocess.SubprocessError) as e:
+        return "skip", f"git would not list the tracked files ({e})"
+    if out.returncode != 0:
+        return "skip", "not a git repository"
+    tracked = set(out.stdout.split())
+
+    unexplained = []
+    for s in steps:
+        for n in s.needs:
+            k = str(n).replace("\\", "/")
+            if k in produced or k in tracked or k in ic_SOURCES:
+                continue
+            unexplained.append(f"{k} (needed by {s.name!r})")
+
+    assert not unexplained, (
+        "these inputs are declared by a step, produced by no step, untracked "
+        "by git, and not named in ic_SOURCES -- so nothing in a fresh clone "
+        "can make them:\n    " + "\n    ".join(sorted(set(unexplained)))
+        + "\n  Name what writes each one in preflight.ic_SOURCES, or give the "
+          "step that makes it a produces= entry.")
+
+    stale = sorted(set(ic_SOURCES) - {str(n).replace("\\", "/")
+                                      for s in steps for n in s.needs})
+    assert not stale, ("ic_SOURCES names inputs no step needs any more: "
+                       + ", ".join(stale))
+
+    return "ok", (f"{sum(len(s.needs) for s in steps)} declared inputs; "
+                  f"{len(ic_SOURCES)} come from outside the repo and each "
+                  "names what writes it")
 
 
 @check("pipeline", "inventory no longer offers a live file for deletion",
