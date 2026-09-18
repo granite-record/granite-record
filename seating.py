@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.7
+# GRANITE_VERSION: 2026-09-18.8
 """
 Where every seat on the New Hampshire House floor goes, as a diagram.
 
@@ -98,25 +98,34 @@ ROWS = {
 # row sits, as a fraction of the room it has spare. Positive is toward the
 # left of the drawing, which is the higher bearing.
 #
-# Divisions 2 and 4 carry their last pair INWARD, toward division 3, which is
-# where the plan puts 4098-4099 and 2100-2101. They mirror each other, so the
-# signs do. Divisions 1 and 5 lean as a whole instead -- see SHEAR below.
+# THE BACK ROWS HUG THE INNER EDGE -- the side facing the middle of the hall,
+# which is the corner the walls cut off. Every one of these was named:
+# 5043-5042 and 5041-5035 against the edge nearest division 4; 4099-4098
+# against the edge nearest division 3; 2101-2100 likewise; 1041-1035 and
+# 1043-1042 against the edge nearest division 2.
+#
+# They are flush against it, not merely biased toward it, which is what 1.0
+# means here. Divisions on the left of the hall take the negative sign and
+# those on the right the positive, because the two halves mirror.
 ROW_ALIGN = {
-    (4, 10): -0.65, (2, 10): +0.65,
+    (5, 5): -1.0, (5, 6): -1.0,
+    (4, 10): -1.0,
+    (2, 10): +1.0,
+    (1, 5): +1.0, (1, 6): +1.0,
 }
 
-# DIVISIONS 1 AND 5 ARE SHEARED, NOT WEDGES. Their rows run 4, 5, 7, 8, 9, 7,
-# 2 -- growing to nine and then falling back -- so no pair of straight edges
-# can bound them, and stretching every row to a wedge pulls the four-seat
-# front row twice as far apart as the nine-seat middle. On the plan they are a
-# leaning block: 5001-5004 sits against the inner edge nearest division 4,
-# 5042-5043 against the outer wall, and the rows in between walk across. So
-# they keep the hall's spacing and lean, and divisions 1 and 5 mirror each
-# other, which is why the signs do.
+# DIVISIONS 1 AND 5 STAND AGAINST THEIR INNER EDGE, every row of them. Their
+# rows run 4, 5, 7, 8, 9, 7, 2 -- growing to nine and then falling back -- so
+# no pair of straight edges can bound them and stretching each row to the
+# wedge would pull the four-seat front row twice as far apart as the nine-seat
+# middle. Lining every row up on the inner side instead gives the block one
+# straight edge, the one facing the rest of the hall, and lets the outer side
+# step with the row lengths, which is what the wall does.
 #
-# (first row, last row) as fractions off centre, positive being toward the
-# left of the drawing.
-SHEAR = {5: (-0.95, +0.85), 1: (+0.95, -0.85)}
+# A lean across the block was tried first and was nearly right, but left the
+# inner edge wandering by a degree or so a row, and it fought the back rows,
+# which are pinned to that same edge.
+INNER = {5: -1.0, 1: +1.0}
 
 # CONCENTRIC ARCS AROUND THE SPEAKER, which is what the plan draws and what a
 # hemicycle is. An earlier version made each division a block of straight rows
@@ -302,10 +311,8 @@ def _unshifted():
             r = rad[k]
             span = _span(d, k)
             align = ROW_ALIGN.get((d, k))
-            if align is None and d in SHEAR:
-                a0, a1 = SHEAR[d]
-                last = len(ROWS[d]) - 1
-                align = a0 + (a1 - a0) * (k / last if last else 0)
+            if align is None and d in INNER:
+                align = INNER[d]
             if align is None:
                 # THE SEATS ON EACH EDGE MAKE A STRAIGHT LINE. A row reaches
                 # both edges of its division, so every row's first seat sits
