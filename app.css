@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.110 */
+/* GRANITE_VERSION: 2026-09-07.111 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2839,9 +2839,18 @@ color:var(--ink-2);font-size:var(--t-ui)}
 
 /* THE ROSTER. Columns, because 382 names in one column is a very long page
    and the content should fill the width it has. */
+/* COLUMNS THAT READ DOWNWARD, NOT ACROSS. A grid fills left to right and
+   then wraps, so an alphabetical list came out with Abbas beside Aldrich and
+   the next name a row below -- the eye has to zig-zag to follow the alphabet
+   and cannot tell at a glance that it is sorted at all. Multicolumn fills the
+   first column to its end and then starts the next, so the left column runs A
+   to the middle of the roster and the one beside it carries on from there.
+   The browser balances the columns, which is the halfway split. */
 :where(body.pg) .seatlist{list-style:none;margin:0;padding:0;
-display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));
-gap:0 var(--sp-6)}
+columns:270px;column-gap:var(--sp-7)}
+/* A row split across a column break would put a member's name at the foot of
+   one column and their district at the head of the next. */
+:where(body.pg) .seatrow{break-inside:avoid}
 :where(body.pg) .seatrow[hidden]{display:none}
 :where(body.pg) .seatrow a{display:flex;align-items:baseline;gap:var(--sp-4);
 padding:var(--sp-3) var(--sp-3);border-bottom:1px solid var(--rule);
