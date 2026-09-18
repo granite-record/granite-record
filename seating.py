@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.5
+# GRANITE_VERSION: 2026-09-18.6
 """
 Where every seat on the New Hampshire House floor goes, as a diagram.
 
@@ -67,15 +67,44 @@ SPEAKER_SEAT = 6002
 # alternation; the plan is followed rather than the pattern.
 #
 # HOW DEEP THE ROW IS: front to back, the front row being nearest the Speaker.
+#
+# AND WHERE THE FLOOR IS INSIDE A ROW. A row can be a single run of seats,
+# ((97, 94),) and so on, or SEVERAL runs with floor between them, written as
+# ((97, 94), 3.5, (93, 91)) -- the number being that much floor, measured in
+# seat widths.
+#
+# Divisions 2 and 4 each have one. Their plan labels put 4097-4094 at the far
+# outer edge and 4093-4091 well inside it, with clear floor between: one row
+# in two pieces, not two rows. Read as two rows it gave those divisions twelve
+# where the others have eleven, and stacked the pieces radially -- which is
+# what you see when the back of the hall looks wrong. Read as one gapped row
+# the seats still come to 98 and 100 exactly, which is the check that settles
+# it either way.
 ROWS = {
     5: ((1, 4), (9, 5), (10, 17), (25, 18), (26, 34), (41, 35), (42, 43)),
     4: ((1, 6), (14, 7), (15, 22), (31, 23), (32, 41), (52, 42), (53, 64),
-        (77, 65), (78, 90), (97, 94), (93, 91), (98, 99)),
+        (77, 65), (78, 90), ((97, 94), 3.5, (93, 91)), (98, 99)),
     3: ((1, 7), (15, 8), (16, 23), (32, 24), (33, 42), (53, 43), (54, 64),
         (76, 65), (77, 89), (103, 90), (104, 119)),
     2: ((1, 6), (14, 7), (15, 22), (31, 23), (32, 41), (52, 42), (53, 64),
-        (77, 65), (78, 90), (96, 91), (99, 97), (100, 101)),
+        (77, 65), (78, 90), ((99, 97), 3.5, (96, 91)), (100, 101)),
     1: ((1, 4), (9, 5), (10, 17), (25, 18), (26, 34), (41, 35), (42, 43)),
+}
+
+# A ROW IS NOT ALWAYS CENTRED IN ITS DIVISION. A short row at the back of the
+# hall sits where the walls put it, not in the middle of the wedge, and
+# centring every one of them was the thing that made the outer rows look
+# wrong. Keyed by (division, row index); the value is how far off centre the
+# row sits, as a fraction of the room it has spare. Positive is toward the
+# left of the drawing, which is the higher bearing.
+#
+# Divisions 2 and 4 carry their last pair INWARD, toward division 3, which is
+# where the plan puts 4098-4099 and 2100-2101. Divisions 1 and 5 carry theirs
+# OUTWARD, against the side wall, which is where it puts 5042-5043 and
+# 1042-1043. The two pairs are mirror images, so the signs are too.
+ROW_ALIGN = {
+    (4, 10): -0.65, (2, 10): +0.65,
+    (5, 6): +0.85, (1, 6): -0.85,
 }
 
 # THE CROSS AISLE. Divisions 2 and 4 are not one continuous stack: the plan
@@ -120,17 +149,45 @@ def all_seats():
     return [d * 1000 + n for d in sorted(HIGHEST) for n in seats_in(d)]
 
 
-def rows_of(division):
-    """The rows of a division, each a list of seat numbers left to right.
+def _run(first, last):
+    """One unbroken stretch of seats, in the direction the plan gives it.
 
-    In the direction the plan gives the row, and closed up over seat 13, which
-    does not exist rather than standing empty.
+    Closed up over seat 13, which does not exist rather than standing empty.
     """
-    out = []
-    for first, last in ROWS[division]:
-        step = 1 if last >= first else -1
-        out.append([n for n in range(first, last + step, step) if n != SKIPPED])
+    step = 1 if last >= first else -1
+    return [n for n in range(first, last + step, step) if n != SKIPPED]
+
+
+def places(division, k):
+    """Row k as [(offset in seat widths, seat number)], left to right.
+
+    The offset is what lets a row carry floor inside it: seats advance one
+    unit each, a gap advances by however many seat widths it is worth, and
+    nothing is drawn there.
+    """
+    row = ROWS[division][k]
+    parts = row if isinstance(row[0], (tuple, list)) else (row,)
+    out, at = [], 0.0
+    for part in parts:
+        if isinstance(part, (int, float)):
+            at += float(part)
+            continue
+        for n in _run(*part):
+            out.append((at, n))
+            at += 1.0
     return out
+
+
+def rows_of(division):
+    """The rows of a division, each a list of seat numbers left to right."""
+    return [[n for _, n in places(division, k)]
+            for k in range(len(ROWS[division]))]
+
+
+def _span(division, k):
+    """How wide row k is, first seat centre to last, in seat widths."""
+    p = places(division, k)
+    return (p[-1][0] - p[0][0]) if p else 0.0
 
 
 def _radii(division, r0):
@@ -161,8 +218,9 @@ def _wedge(division, r0):
     six seats sitting close to the rostrum can want more angle than thirteen
     seats far behind it.
     """
-    return max(len(r) * SPACING / rad
-               for r, rad in zip(rows_of(division), _radii(division, r0)))
+    rad = _radii(division, r0)
+    return max((_span(division, k) + 1.0) * SPACING / rad[k]
+               for k in range(len(ROWS[division])))
 
 
 def _aisle(r0):
@@ -213,15 +271,21 @@ def _unshifted():
     mids = _wedges(r0)
     pos = {}
     for d in LEFT_TO_RIGHT:
-        mid = mids[d][0]
-        for row, r in zip(rows_of(d), _radii(d, r0)):
-            step = SPACING / r
-            # Centred in the wedge rather than stretched across it, so a
-            # four-seat front row sits in the middle of its block the way the
-            # plan draws it instead of being pushed out to the aisles.
-            first = mid + step * (len(row) - 1) / 2
-            for k, seat in enumerate(row):
-                ang = first - step * k
+        mid, wedge = mids[d]
+        rad = _radii(d, r0)
+        for k in range(len(ROWS[d])):
+            r = rad[k]
+            step = SPACING / r          # radians per seat width, at this row
+            span = _span(d, k)
+            # Centred in the wedge by default, so a four-seat front row sits in
+            # the middle of its block instead of being pushed out to the
+            # aisles -- and then moved off centre where the plan puts it
+            # somewhere else, which is what the back rows needed.
+            slack = max(0.0, wedge / step - span)
+            shift = ROW_ALIGN.get((d, k), 0.0) * slack / 2
+            first = mid + step * (span / 2 + shift)
+            for off, seat in places(d, k):
+                ang = first - step * off
                 pos[d * 1000 + seat] = (CX + r * math.cos(ang),
                                         CY - r * math.sin(ang))
     pos[SPEAKER_SEAT] = (CX, CY)
@@ -293,15 +357,11 @@ def _front_aisles():
     """
     r0 = _fit()
     mids = _wedges(r0)
+    pos = _unshifted()
     ends = {}
     for d in LEFT_TO_RIGHT:
         row = rows_of(d)[0]
-        rad = _radii(d, r0)[0]
-        mid = mids[d][0]
-        step = SPACING / rad
-        half = step * (len(row) - 1) / 2
-        ends[d] = [(CX + rad * math.cos(mid + half), CY - rad * math.sin(mid + half)),
-                   (CX + rad * math.cos(mid - half), CY - rad * math.sin(mid - half))]
+        ends[d] = [pos[d * 1000 + row[0]], pos[d * 1000 + row[-1]]]
     return [math.hypot(ends[a][1][0] - ends[b][0][0], ends[a][1][1] - ends[b][0][1])
             for a, b in zip(LEFT_TO_RIGHT, LEFT_TO_RIGHT[1:])]
 
