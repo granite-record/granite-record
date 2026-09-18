@@ -207,8 +207,30 @@ repository; `preflight` gained the check that would have caught it.
 ### Data on disk the site does not show
 
 - **1,432 of the 4,296 captioned recordings have no row in `proceedings.csv`**,
-  so `segment_markers.py` never opens them. This is the biggest recoverable gap
-  on the disk and it is a matching problem, not a fetch.
+  so `segment_markers.py` never opens them. The count is exact and was checked
+  again on 18 September. **It is not "the biggest recoverable gap on the disk",
+  which is what this line said for a week, and it is barely a gap at all.**
+
+  Measured rather than assumed. Of the 1,432: 139 are study commissions and
+  task forces, 27 the Senate's redistricting roadshow, 28 budget hearings and
+  21 caucuses and organisational days — none of them a bill proceeding the
+  docket would record. Of the rest, the committee resolves for 468 once a
+  leading "House"/"Senate" is stripped before `resolve_committee` (the roster
+  keys are unprefixed, so "Senate Judiciary" matches nothing while "Judiciary"
+  matches), and that is a real defect worth fixing on its own. But **420 of
+  those 468 have no bill docketed for that committee within seven days**, so
+  the dates are not merely offset: the meetings are real and the bill
+  proceedings do not exist. The biggest single groups are the Fiscal
+  Committee, Senate Sessions, JLCAR/Administrative Rules and the oversight
+  committees, which sit outside the bill docket by nature.
+
+  What is actually recoverable is **17 recordings covering 73 proceeding
+  rows**, and two of those seventeen are ambiguous pairs — House Ways and
+  Means twice on 05/03/23, House Finance morning and afternoon on 03/29/23 --
+  where a naive join would put two videos on one proceeding. Worth doing, and
+  worth doing carefully, but it is a day's tidying rather than a phase of
+  work. Anything planned on the strength of the old sentence should be
+  replanned.
 - **554 of the indexed videos fail `title_parsed` and `build_manifest.py` drops
   every one**; 536 carry an exact livestream start time, so the date is certain
   and is being thrown away, and 532 are 2020-2022, which is why those years look
