@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.4
+# GRANITE_VERSION: 2026-09-12.5
 """
 What readers reported, compiled for a person and for the session that triages.
 
@@ -497,13 +497,37 @@ def d1_execute(npx, db, sql):
         if r.returncode == 0:
             body = r.stdout[r.stdout.find("["):]
             return json.loads(body)[0]
-        said = r.stderr or r.stdout or ""
+        # BOTH streams, not the first non-empty one. This was `r.stderr or
+        # r.stdout`, and npx prints its version nag to stderr on every run, so
+        # stderr was never empty and stdout was never read -- and wrangler
+        # puts the reason it failed on stdout. The night of 18 September
+        # reported "npm notice New major version of npm available" as the
+        # cause of a failed report pull, which is the nag, in place of
+        # whatever wrangler actually said.
+        said = "\n".join(s for s in (r.stdout, r.stderr) if s)
         if attempt == 1 and "7403" in said:
             print(f"  Cloudflare answered 7403 (account not authorized); asking once more "
                   f"in {D1_RETRY_PAUSE}s", flush=True)
             time.sleep(D1_RETRY_PAUSE)
             continue
-        raise RuntimeError(f"wrangler d1 execute failed: {said[-400:]}")
+        raise RuntimeError(f"wrangler d1 execute failed: {_said(said)}")
+
+
+# npm prints its "New major version available" nag LAST, after whatever the
+# command said, so a tail of 400 characters is the nag and nothing else. The
+# night of 18 September failed and reported `npm notice New major version of
+# npm available! 11.19.0 -> 12.0.2` as the reason, which is not a reason. The
+# nag lines go, and what is left is shown from BOTH ends, because the useful
+# sentence is sometimes the first line and sometimes the last.
+NAG = re.compile(r"^\s*npm (?:notice|warn).*$", re.M)
+
+
+def _said(text):
+    t = NAG.sub("", text).strip()
+    if not t:
+        return ("nothing but npm's version notice -- the command failed "
+                "without saying why")
+    return t if len(t) <= 700 else f"{t[:350]} [...] {t[-350:]}"
 
 
 def pull(db, after):

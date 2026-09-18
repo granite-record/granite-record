@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.6
+# GRANITE_VERSION: 2026-09-04.7
 """
 Check the site is fit to publish before uploading it.
 
@@ -221,6 +221,39 @@ def main():
     if nfiles > 90000:
         warnings.append(f"{nfiles:,} files against Cloudflare Pages' 100,000 "
                         "on the Pro plan")
+
+    # ---- files the last build did not write ---------------------------------
+    # site/ is written, never emptied, so a page the build has stopped
+    # emitting stays on disk and ships. Four were found this way on 18
+    # September: a "Committee of Conference" page for a code the committee
+    # build now skips, and two legislators under districts a correction had
+    # already moved them out of -- Steve Shurtleff under Grafton 9 and Wendy
+    # Chase under Belknap 5, each sitting beside the corrected page. Nothing
+    # linked to them and they were not in the sitemap, but a direct address
+    # still answered, with the wrong district in the title.
+    #
+    # The five directories below are written whole by the build, so a file in
+    # one of them older than the build that just ran is one the build no
+    # longer writes. The site root is deliberately NOT checked: icons, the og
+    # images, _headers and _redirects are copied once and keep their date.
+    # Only checked after a build that finished every step -- a build stopped
+    # halfway legitimately leaves the rest of the site where it was.
+    if bj.exists():
+        b = json.loads(bj.read_text(encoding="utf-8"))
+        if b.get("ok") and b.get("finished") and b.get("seconds"):
+            began = (datetime.fromisoformat(b["finished"]).timestamp()
+                     - float(b["seconds"]))
+            stale = []
+            for d in ("bill", "legislator", "committee", "town", "feed"):
+                for f in (site / d).rglob("*"):
+                    if f.is_file() and f.stat().st_mtime < began:
+                        stale.append(f.relative_to(site).as_posix())
+            if stale:
+                stale.sort()
+                errors.append(
+                    f"{len(stale)} file(s) the last build did not write, which "
+                    f"would still deploy: {', '.join(stale[:6])}"
+                    + (" ..." if len(stale) > 6 else ""))
 
     # ---- verdict ------------------------------------------------------------
     print("\n" + "=" * 62)
