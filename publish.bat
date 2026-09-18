@@ -23,6 +23,21 @@ REM (wrangler pages deployment list, 12 September). Named here, a deploy lands
 REM on production whichever branch the working tree happens to be on.
 set PRODUCTION_BRANCH=master
 
+REM THE BRANCH THIS FOLDER MUST BE ON, which since 17 September is NOT the same
+REM name as the one above. The repository was renamed master -> main for the
+REM open-source release; the Pages project's production branch was not, and
+REM still answers to master -- every Production deployment in
+REM `wrangler pages deployment list` comes from it, including today's.
+REM
+REM So the two names below mean two different things and must not be merged
+REM again. PRODUCTION_BRANCH is what --branch sends Cloudflare, and renaming it
+REM to main would publish to a PREVIEW while wrangler printed "Deployment
+REM complete" -- the exact failure of 6 September, in mirror image. REPO_BRANCH
+REM is only the guard that stops a deploy from an experiment or a triage
+REM branch. Until the rename the two happened to coincide, which is why one
+REM variable did both jobs.
+set REPO_BRANCH=main
+
 if "%1"=="--check" goto :build_local
 if "%1"=="" goto :build_local
 
@@ -69,10 +84,10 @@ REM
 REM THE BRANCH THIS FOLDER IS ON, before anything is uploaded. --branch below
 REM sends the deploy to production whatever git says, so a branch checked out
 REM here -- a report-triage branch, an experiment -- would be published as the
-REM site. The deploy happens only from the production branch.
+REM site. The deploy happens only from REPO_BRANCH.
 set BRANCH=
 for /f "delims=" %%b in ('git rev-parse --abbrev-ref HEAD 2^>nul') do set BRANCH=%%b
-if not "%BRANCH%"=="%PRODUCTION_BRANCH%" goto :wrongbranch
+if not "%BRANCH%"=="%REPO_BRANCH%" goto :wrongbranch
 set ATTEMPT=0
 
 :upload
@@ -112,9 +127,9 @@ exit /b 1
 
 :wrongbranch
 echo.
-echo *** Not published: this folder is on branch "%BRANCH%", not %PRODUCTION_BRANCH%. ***
+echo *** Not published: this folder is on branch "%BRANCH%", not %REPO_BRANCH%. ***
 echo A deploy publishes whatever this folder holds. Switch back with
-echo   git checkout %PRODUCTION_BRANCH%
+echo   git checkout %REPO_BRANCH%
 echo and work on other branches in a separate worktree.
 exit /b 1
 

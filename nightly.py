@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.12
+# GRANITE_VERSION: 2026-09-04.13
 """
 The nightly run. Fetch the day's bulk files, rebuild, check, compile what
 readers reported and what changed -- and publish only if told to.
@@ -91,9 +91,23 @@ import refusal
 
 LOG = []
 
-# The Pages project's production branch. The same value as publish.bat's
-# PRODUCTION_BRANCH, and preflight holds the two together.
+# The Pages project's production branch -- what --branch tells Cloudflare a
+# deploy is. The same value as publish.bat's PRODUCTION_BRANCH, and preflight
+# holds the two together.
 PRODUCTION_BRANCH = "master"
+
+# The branch this FOLDER must be on for a deploy to happen, which since
+# 17 September is a different name. The repository was renamed master -> main
+# for the open-source release; the Pages project was not, and its production
+# branch still answers to master.
+#
+# These were one constant, and the rename therefore stopped the nightly
+# deploying at all: it compared the folder's branch, now main, against the
+# Cloudflare name, still master, and would have said NOT DEPLOYED every night
+# it ran with --deploy. Renaming the Cloudflare value instead would have been
+# worse -- deploys would have gone to a PREVIEW while wrangler reported
+# success, which is what happened on 6 September in mirror image.
+REPO_BRANCH = "main"
 
 # What a fall in each of these means: something upstream failed, not that the
 # legislature deleted its own record.
@@ -430,9 +444,9 @@ def deploy(a):
     # checked out in this folder would be published as the site. publish.bat
     # refuses the same way.
     branch = current_branch()
-    if branch != PRODUCTION_BRANCH:
+    if branch != REPO_BRANCH:
         say(f"\nNOT DEPLOYED: this folder is on branch {branch or '(unknown)'}, not "
-            f"{PRODUCTION_BRANCH}. A deploy publishes whatever the folder holds.")
+            f"{REPO_BRANCH}. A deploy publishes whatever the folder holds.")
         return False
     for attempt in range(1, 5):
         # --branch names the production branch rather than letting wrangler

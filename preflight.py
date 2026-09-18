@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.200
+# GRANITE_VERSION: 2026-09-04.201
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5905,10 +5905,24 @@ def _deploy_branch():
                if "wrangler pages deploy" in ln and not ln.strip().upper().startswith("REM")]
     assert deploys and all("--branch=%PRODUCTION_BRANCH%" in ln for ln in deploys), \
         "a publish.bat deploy does not pass --branch=%PRODUCTION_BRANCH%"
-    # And the folder must BE on that branch: --branch publishes whatever the
+    # AND THE FOLDER MUST BE ON THE RIGHT BRANCH, which is a DIFFERENT name
+    # from the one above and must stay one. --branch publishes whatever the
     # folder holds as production, so a branch checked out here is a branch
-    # published. The guard has to come before the first upload.
-    guard = bat.find('if not "%BRANCH%"=="%PRODUCTION_BRANCH%" goto :wrongbranch')
+    # published; the guard has to come before the first upload.
+    #
+    # The two were one constant until the repository was renamed master ->
+    # main on 17 September. The Pages project was not renamed and its
+    # production branch still answers to master, so afterwards the guard
+    # compared main against master and would have refused every deploy --
+    # silently, in the nightly's case. Merging them again breaks it one way or
+    # the other: point --branch at the repository's name and deploys go to a
+    # PREVIEW while wrangler reports success, which is the 6 September
+    # failure; point the guard at Cloudflare's name and nothing deploys at
+    # all. So this asserts they are read from separate settings.
+    rb = re.search(r"^set REPO_BRANCH=(\S+)", bat, re.M)
+    assert rb, ("publish.bat does not set REPO_BRANCH -- the branch the folder "
+                "must be on is not the branch Cloudflare calls production")
+    guard = bat.find('if not "%BRANCH%"=="%REPO_BRANCH%" goto :wrongbranch')
     assert guard != -1 and "git rev-parse --abbrev-ref HEAD" in bat, \
         "publish.bat deploys without checking which branch the folder is on"
     assert guard < bat.find("call npx wrangler pages deploy"), \
@@ -5918,9 +5932,29 @@ def _deploy_branch():
     assert n, "nightly.py does not set PRODUCTION_BRANCH"
     assert n.group(1) == m.group(1), (
         f"publish.bat deploys to {m.group(1)} and nightly.py to {n.group(1)}")
+    nr = re.search(r'^REPO_BRANCH = "([^"]+)"', night, re.M)
+    assert nr, "nightly.py does not set REPO_BRANCH"
+    assert nr.group(1) == rb.group(1), (
+        f"publish.bat publishes from {rb.group(1)} and nightly.py from {nr.group(1)}")
+    assert "if branch != REPO_BRANCH:" in night, \
+        "nightly.py gates its deploy on something other than REPO_BRANCH"
     assert '"--branch={PRODUCTION_BRANCH}"' in night.replace("f\"", "\""), \
         "nightly.py's deploy does not pass --branch"
-    return "ok", f"publish.bat and nightly.py both deploy to {m.group(1)}"
+    # The last line of defence: whichever names are written down, this folder
+    # has to be on the one they publish from, or nothing will deploy.
+    here = ""
+    try:
+        here = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                              capture_output=True, timeout=20).stdout.decode(
+                                  "utf-8", "replace").strip()
+    except Exception:
+        pass
+    note = ""
+    if here and here != rb.group(1):
+        note = (f"; this folder is on {here}, so neither publish.bat nor the "
+                f"nightly would deploy from it")
+    return "ok", (f"deploys to {m.group(1)}, published from {rb.group(1)}"
+                  f"{note}")
 
 
 @check("build", "the docket fetch stops at a block page or a dropped connection, and caches no error")
