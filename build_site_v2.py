@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.101
+# GRANITE_VERSION: 2026-09-05.102
 """
 Generate the faceted site from real General Court data.
 
@@ -3862,7 +3862,16 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     return index, years, unnamed, dict(sponsored)
 
 
-def main():
+def parse_args():
+    """Everything this script can be pointed at, and what it defaults to.
+
+    Lifted out of main so that what is left there is the work rather than
+    thirty lines of defaults. The defaults are the interesting part and
+    they carry their own warnings: --segments is "work" and not
+    "segments", because the aligner writes work/<videoid>/segments.json
+    and a bare run once built a site with no video timestamps on it at
+    all, then reported the cause as a session-year mismatch.
+    """
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default="data")
     ap.add_argument("--narratives", default="narratives.json")
@@ -3892,7 +3901,104 @@ def main():
     ap.add_argument("--districts", default="site/districts.json")
     ap.add_argument("--officials", default="status/officials.txt")
     ap.add_argument("--out", default="site")
-    a = ap.parse_args()
+    return ap.parse_args()
+
+
+def load_transcripts(a, procs, prows):
+    """The aligner's segments and the chair's stated boundaries.
+
+    Returns (segs, marks). `prows` is the raw proceedings rows, passed in
+    rather than reloaded, because P.load() is not free and two readings of
+    it could disagree. Both are read off captions, and a caption
+    track can be an hour out of step with its recording, so the
+    withholding and the checks below belong with the loading rather
+    than apart from it: a silent mismatch here looks exactly like poor
+    alignment accuracy, with every hearing reading "start time not
+    identified" because the transcripts are for a different set of
+    videos than the manifest points at.
+    """
+    # The aligner writes work/<videoid>/segments.json; an earlier layout used
+    # segments/<videoid>.json. Accept either so the site picks them up wherever
+    # they are.
+    segs = {}
+    sp = Path(a.segments)
+    if sp.exists():
+        for f in sp.glob("*.json"):
+            segs[f.stem] = json.loads(f.read_text(encoding="utf-8"))
+        for d_ in sp.iterdir():
+            f = d_ / "segments.json"
+            if d_.is_dir() and f.exists():
+                segs[d_.name] = json.loads(f.read_text(encoding="utf-8"))
+    print(f"segments loaded for {len(segs):,} videos")
+
+    # Boundaries a chair stated aloud, from segment_markers.py. Measured
+    # against the 35 hand-marked proceedings at a median of ONE SECOND, with
+    # ends at four -- against 1m 27s for the clustering estimate and 17m 05s
+    # for the schedule. Where one of these exists it is not an improvement on
+    # the estimate, it is a different kind of claim: a quotation rather than an
+    # inference, and the page says so.
+    mp2 = Path(a.markers)
+    marks = {}
+    if mp2.exists():
+        try:
+            marks = json.loads(mp2.read_text(encoding="utf-8"))
+        except (ValueError, OSError):
+            marks = {}
+    if marks:
+        # _absent and _sequence are siblings of the recordings, not recordings,
+        # and counting them made the total two higher than the truth.
+        vids = {k: v for k, v in marks.items() if not k.startswith("_")}
+        nb = sum(len(v) for v in vids.values())
+        print(f"{nb:,} stated boundaries across {len(vids):,} recordings "
+              f"from {mp2.name}")
+    # Both of the above are read off captions, and a caption track can be an
+    # hour out of step with its recording.
+    withhold_late_captions(segs, marks, a.segments)
+    # A silent mismatch here looks exactly like poor alignment accuracy: every
+    # hearing reads "start time not identified" because the transcripts are for
+    # a different set of videos than the manifest now points at.
+    if procs:
+        man_vids = {r["video_id"] for rs in procs.values() for r in rs
+                    if r.get("video_id")}
+        overlap = man_vids & set(segs)
+        print(f"  manifest references {len(man_vids):,} videos; "
+              f"{len(overlap):,} of them have transcripts")
+        if man_vids and not overlap:
+            print(f"  NONE overlap. Either --segments is pointing somewhere "
+                  f"with no transcripts\n  in it (it is {a.segments!r}; the "
+                  "aligner writes work/<videoid>/segments.json),\n  or the "
+                  "transcripts cover a different set of videos than the "
+                  "manifest --\n  most likely a different session year.")
+        elif len(overlap) < len(man_vids) * 0.5:
+            print(f"  {len(man_vids) - len(overlap):,} manifest videos have no "
+                  "transcript; those proceedings get a recording link with no "
+                  "start time.")
+        # AND THE SITTINGS WITH NO RECORDING CHOSEN AT ALL. 317 of them name
+        # the two or three recordings of their committee that day, and the
+        # page offers those instead of saying none exists. The number can go
+        # to zero silently: a proceedings.csv written before
+        # build_proceedings.py carried candidate_ids has no such column, and
+        # every one of them goes back to "No recording matched to this
+        # proceeding." with nothing in any log to say when it started. A
+        # fixture may hold no such rows legitimately, so the alarm is on the
+        # column being absent, not on the count being zero.
+        no_pick = sum(1 for rs in procs.values() for r in rs
+                      if not r.get("video_id"))
+        named = sum(1 for rs in procs.values() for r in rs
+                    if not r.get("video_id") and r.get("candidate_ids"))
+        if named:
+            print(f"  {named:,} of the {no_pick:,} proceedings with no "
+                  "recording chosen name the recordings they could be")
+        elif no_pick and not any("candidate_ids" in r for r in prows):
+            print(f"  {no_pick:,} proceedings have no recording chosen, and "
+                  f"{P.PATH.name} has no candidate_ids column, so not one of "
+                  "them can say a recording of that day exists. Rebuild it "
+                  "with build_proceedings.py.")
+    return segs, marks
+
+
+def main():
+    a = parse_args()
 
     D, out = Path(a.data), Path(a.out)
     (out / "bills").mkdir(parents=True, exist_ok=True)
@@ -4151,86 +4257,7 @@ def main():
     seats = ML.seats_held([*legs.values(), *former.values()], votes_by_member,
                           links, max(bills) if bills else "")
 
-    # The aligner writes work/<videoid>/segments.json; an earlier layout used
-    # segments/<videoid>.json. Accept either so the site picks them up wherever
-    # they are.
-    segs = {}
-    sp = Path(a.segments)
-    if sp.exists():
-        for f in sp.glob("*.json"):
-            segs[f.stem] = json.loads(f.read_text(encoding="utf-8"))
-        for d_ in sp.iterdir():
-            f = d_ / "segments.json"
-            if d_.is_dir() and f.exists():
-                segs[d_.name] = json.loads(f.read_text(encoding="utf-8"))
-    print(f"segments loaded for {len(segs):,} videos")
-
-    # Boundaries a chair stated aloud, from segment_markers.py. Measured
-    # against the 35 hand-marked proceedings at a median of ONE SECOND, with
-    # ends at four -- against 1m 27s for the clustering estimate and 17m 05s
-    # for the schedule. Where one of these exists it is not an improvement on
-    # the estimate, it is a different kind of claim: a quotation rather than an
-    # inference, and the page says so.
-    mp2 = Path(a.markers)
-    marks = {}
-    if mp2.exists():
-        try:
-            marks = json.loads(mp2.read_text(encoding="utf-8"))
-        except (ValueError, OSError):
-            marks = {}
-    if marks:
-        # _absent and _sequence are siblings of the recordings, not recordings,
-        # and counting them made the total two higher than the truth.
-        vids = {k: v for k, v in marks.items() if not k.startswith("_")}
-        nb = sum(len(v) for v in vids.values())
-        print(f"{nb:,} stated boundaries across {len(vids):,} recordings "
-              f"from {mp2.name}")
-    # Both of the above are read off captions, and a caption track can be an
-    # hour out of step with its recording.
-    withhold_late_captions(segs, marks, a.segments)
-    # A silent mismatch here looks exactly like poor alignment accuracy: every
-    # hearing reads "start time not identified" because the transcripts are for
-    # a different set of videos than the manifest now points at.
-    if procs:
-        man_vids = {r["video_id"] for rs in procs.values() for r in rs
-                    if r.get("video_id")}
-        overlap = man_vids & set(segs)
-        print(f"  manifest references {len(man_vids):,} videos; "
-              f"{len(overlap):,} of them have transcripts")
-        if man_vids and not overlap:
-            print(f"  NONE overlap. Either --segments is pointing somewhere "
-                  f"with no transcripts\n  in it (it is {a.segments!r}; the "
-                  "aligner writes work/<videoid>/segments.json),\n  or the "
-                  "transcripts cover a different set of videos than the "
-                  "manifest --\n  most likely a different session year.")
-        elif len(overlap) < len(man_vids) * 0.5:
-            print(f"  {len(man_vids) - len(overlap):,} manifest videos have no "
-                  "transcript; those proceedings get a recording link with no "
-                  "start time.")
-        # AND THE SITTINGS WITH NO RECORDING CHOSEN AT ALL. 317 of them name
-        # the two or three recordings of their committee that day, and the
-        # page offers those instead of saying none exists. The number can go
-        # to zero silently: a proceedings.csv written before
-        # build_proceedings.py carried candidate_ids has no such column, and
-        # every one of them goes back to "No recording matched to this
-        # proceeding." with nothing in any log to say when it started. A
-        # fixture may hold no such rows legitimately, so the alarm is on the
-        # column being absent, not on the count being zero.
-        no_pick = sum(1 for rs in procs.values() for r in rs
-                      if not r.get("video_id"))
-        named = sum(1 for rs in procs.values() for r in rs
-                    if not r.get("video_id") and r.get("candidate_ids"))
-        if named:
-            print(f"  {named:,} of the {no_pick:,} proceedings with no "
-                  "recording chosen name the recordings they could be")
-        elif no_pick and not any("candidate_ids" in r for r in prows):
-            print(f"  {no_pick:,} proceedings have no recording chosen, and "
-                  f"{P.PATH.name} has no candidate_ids column, so not one of "
-                  "them can say a recording of that day exists. Rebuild it "
-                  "with build_proceedings.py.")
-
-
-
+    segs, marks = load_transcripts(a, procs, prows)
     # -------------------------------------------------------------- index --
     index, years, unnamed, sponsored = build_bills(out, bills, narratives, rollcalls, reports,
                                sponsors, bill_texts, amend_texts, testimony,
