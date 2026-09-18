@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.197
+# GRANITE_VERSION: 2026-09-04.198
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -818,6 +818,37 @@ def _run_markers(root, *flags):
         [sys.executable, "apply_markers.py", "--workdir", str(root / "work"),
          "--manifest", str(root / "manifest.csv"), *flags],
         capture_output=True, text=True, timeout=180)
+
+
+@check("build", "the House seating diagram lays out exactly 400 seats",
+       needs=("seating",))
+def _seating(seating):
+    """The arithmetic that says the seat numbering was decoded correctly.
+
+    A member's seat number is division * 1000 + seat, and the Clerk's plan
+    gives five divisions whose highest seats are 43, 101, 119, 99 and 43. That
+    is 405 positions, and no division has a seat 13 -- which brings it to
+    exactly the 400 the New Hampshire House has. The agreement with a number
+    nobody chose is the evidence the decoding is right, so it is asserted here
+    rather than left in a comment to rot.
+
+    Also that no two seats are drawn on top of each other: an overlap in a
+    diagram of who sits where does not look like a rendering fault, it hides
+    one member behind another.
+    """
+    floor = sum(len(seating.seats_in(d)) for d in seating.HIGHEST)
+    assert floor == 400, f"the diagram lays out {floor} seats; the House has 400"
+    pos = seating.layout()
+    assert len(pos) == floor + 1, (
+        f"{len(pos)} placed, wanted {floor} floor seats plus the Speaker")
+    assert seating.SPEAKER_SEAT in pos, "the Speaker's chair is not placed"
+    import math as _m
+    pts = sorted(pos.items())
+    for i, (s1, (x1, y1)) in enumerate(pts):
+        for s2, (x2, y2) in pts[i + 1:]:
+            assert _m.hypot(x1 - x2, y1 - y2) >= seating.SEAT_R * 1.6, (
+                f"seats {s1} and {s2} overlap, which would hide a member")
+    return "ok", f"{floor} seats in {len(seating.HIGHEST)} divisions, none overlapping"
 
 
 @check("markers", "a whisper transcript is read, not counted as silence",
