@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.17
+# GRANITE_VERSION: 2026-09-04.18
 """
 Write RSS feeds so people can follow bills without a login.
 
@@ -301,8 +301,10 @@ def main():
     # A FEED IS FOR A BILL THAT CAN STILL DO SOMETHING. One per bill of a
     # closed term is a file that will never gain an item: nobody subscribes
     # to 1993. Writing them for every archived bill once the 1989-2016
-    # histories arrived would have put 22,840 more files on a deployment
-    # already at 55,318 of the 100,000 Cloudflare Pages allows -- and it is
+    # histories arrived would have put 22,840 more files on the deployment,
+    # against the 100,000 Cloudflare Pages allows -- run check_site.py for
+    # what is actually on it, because this comment carried a count that no
+    # command produced. What decides this is the 22,840, not the total -- and it is
     # the per-bill feed only. The all-bills, committee and topic feeds are
     # unchanged, and every archived bill's history is on its page.
     current = max((b.get("term") or "" for b in idx), default="")

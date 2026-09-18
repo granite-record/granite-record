@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.100
+# GRANITE_VERSION: 2026-09-05.101
 """
 Generate the faceted site from real General Court data.
 
@@ -1830,7 +1830,9 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
             continue
         # EVERY TERM, not only the current one. The cost was measured before
         # this was widened: about 3,600 more files and 200 MB, against a
-        # deployment of 79,000 files and a warning threshold of 90,000. What
+        # 100,000 cap and a warning threshold of 90,000. Run check_site.py for
+        # where the deployment actually sits; the figure this comment used to
+        # name here was not one any command produced. What
         # it buys is 36,541 sponsor mentions, 53% of every one on the site,
         # turning from plain text into a link to that person's record.
         #

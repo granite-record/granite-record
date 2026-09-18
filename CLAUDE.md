@@ -301,11 +301,14 @@ current order and is the newer answer where it and this disagree;
 inside their own pages, so a bill is one file. Term keying: every per-bill file
 is `{term: {bill: ...}}` and `preflight` refuses the old shape.
 
-The *margin* is not settled, and is worth a look before anything adds a file
-per record. The site went from 45,862 files to **82,574** — 2.3 GB — when 1,785
-former legislators got pages, against the **100,000** Cloudflare Pages Pro
-allows; `check_site` warns at 90,000. `python3 check_site.py` prints the current
-number; do not take it from here.
+The *margin* is comfortable and still worth watching before anything adds a
+file per record. The deploy is **49,361 files, 1.8 GB — 49% of the 100,000**
+Cloudflare Pages Pro allows, and `check_site` warns at 90,000. **Run `python3
+check_site.py` rather than quoting that pair**, which is the rule the rest of
+this file states and which this paragraph itself broke: it read "45,862 files
+to 82,574 — 2.3 GB" for one day, a figure no command produces and whose own
+arithmetic refuted it, since the 1,785 former-member pages it credited could
+not add 36,712 files.
 
 ---
 
