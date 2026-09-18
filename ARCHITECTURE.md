@@ -299,7 +299,7 @@ Saying so is what keeps a cleanup pass from becoming a rewrite.
   denominator); that path is fed by transcription, not by more fetching.
 - **The site's rendering.** `app.js` is about 3,900 lines and not the
   bottleneck.
-- **`preflight.py` at 9,767 lines.** It is long because it is 159 checks, which
+- **`preflight.py` at 9,767 lines.** It is long because it is 161 checks, which
   is the good kind of long.
 
 ### Decided in advance, so the pass does not stop to argue
@@ -433,7 +433,7 @@ should read `proceedings.csv`. One more:
 
 Those four commands are the check on a change of this kind. The numbers beside
 them are that day's and are kept for shape rather than currency: `preflight`
-declares 159 checks now, `proceedings.csv` reaches all nineteen terms, and
+declares 161 checks now, `proceedings.csv` reaches all nineteen terms, and
 `STATE.md` has the file count -- which went *down*, because records moved
 inside their pages.
 

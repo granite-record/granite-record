@@ -164,7 +164,7 @@ because it has grown twice.
 `--dry-run` shows the plan. A step marked `superseded=True` is kept for a case
 a newer step does not cover and does not run unasked.
 
-**`preflight.py` is the test suite.** 159 checks — 120 of them under `--code`,
+**`preflight.py` is the test suite.** 161 checks — 122 of them under `--code`,
 which needs no data on disk — and no network. It builds the whole site on a
 fixture, loads `app.js` (the script `bills.html` pulls in) in node against
 `dom_stub.js` and calls `render()` and `renderDetail()`, and runs
