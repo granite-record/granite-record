@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.100 */
+/* GRANITE_VERSION: 2026-09-07.101 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -58,7 +58,7 @@
 --t-title:24px;   /* the page's name */
 --t-hero:30px;    /* a record's own title, and the home page */
 
---paper:#EAEBE7;--surface:#fff;--wash:#E1E2DD;
+--paper:#E9EAEC;--surface:#FBFBFC;--wash:#DFE1E4;
 /* The ink that goes ON pine, for the four places something is drawn as a
    solid pine block: the filter badge, the skip link, the home page's Search
    button and a selected ward. It was #fff in all four, which is correct on
@@ -73,17 +73,17 @@
    in relative luminance and were used interchangeably for metadata, which is
    one colour with two names. --ink is no longer #191C1D: at 17.7:1 that is
    black with a tint on it, and this site is about granite. */
---ink:#23282A;--ink-2:#4C5457;
+--ink:#1C2126;--ink-2:#4A5259;
 /* LINES, BY JOB, which is the distinction that was missing. A hairline
    inside a surface carries no contrast requirement. The edge of a card is
    not a control either. Anything a person clicks or types into is, and needs
    3:1 -- and no colour light enough to read as a hairline gets there:
    #999E93 manages 2.29:1 on this ground. So the control boundary is a mid
    grey and says so. */
---rule:#D7D9D3;      /* a divider inside a card: 1.42:1 on white */
---rule-2:#B5B9B1;    /* the edge of a card or panel: 1.99:1 on white */
---edge:#7E827C;      /* input, select, button: 3.91:1 on white, 3.26:1 on the page */
---pine:#1B4340;--pine-soft:#E7EFED;
+--rule:#D3D6DA;      /* a divider inside a card: 1.42:1 on the card */
+--rule-2:#B2B7BD;    /* the edge of a card or panel: 1.99:1 on the card */
+--edge:#767E86;      /* input, select, button: 3.98:1 on the card, 3.34:1 on the page */
+--pine:#14514C;--pine-soft:#DFEBEA;
 /* Status colours, by what happened to the bill. Yellow while it is moving,
    green if it became law, red if it was voted down, orange for interim study
    -- which is parked rather than dead. A veto keeps its own deeper red: the
@@ -122,12 +122,15 @@
 --r-out:6px;         /* something that holds content: card, panel, player */
 --r-pill:999px;      /* a chip, which is a word in a shape */
 --sans:"Public Sans",system-ui,-apple-system,sans-serif;
-/* Newsreader sets the long-form text a person actually reads: a bill's
-   narrative, its analysis, its own words and its amendments. The audit said
-   to retire it on the strength of five elements on the home page, having
-   measured no expanded card -- where the other four rules are. Two faces,
-   clearly distinct, each with a job. */
---serif:"Newsreader",Georgia,serif;
+/* Source Serif 4 sets the long-form text a person actually reads: a bill's
+   narrative, its analysis, its own words and its amendments. A serif at
+   reading size suits an archive of 33,683 bill histories better than a sans
+   does, which is the reason this face was chosen over the alternatives in
+   September 2026; it replaced Newsreader, which did the same job.
+   An audit once said to retire the serif altogether, on the strength of five
+   elements on the home page, having measured no expanded card -- where the
+   other four rules are. Two faces, clearly distinct, each with a job. */
+--serif:"Source Serif 4",Georgia,serif;
 /* Tells the browser which way round this is, so the scrollbars, the select
    menus and the search field's own furniture follow the page instead of
    staying light against it. Overridden in the dark block below. */
@@ -161,7 +164,7 @@ color-scheme:light}
    would still be served dark. */
 @media (prefers-color-scheme: dark){
 :root:not([data-theme="light"]){
---paper:#171B1C;--surface:#272D2E;--wash:#31383A;
+--paper:#171B1C;--surface:#21282A;--wash:#2C3436;
 --on-pine:#0F1414;          /* 8.76:1 on pine */
 --shadow:rgba(0,0,0,.5);
 --ink:#E6E9E8;--ink-2:#A7B0B0;
@@ -173,7 +176,7 @@ color-scheme:light}
                                somebody else's pixels either way. */
 
 --edge:#7C8687;             /* 3.74:1 on a card, 4.64:1 on the page */
---pine:#79BFB2;--pine-soft:#1E3B38;
+--pine:#7FB9B1;--pine-soft:#1B302E;
 --st-active:#E3C46A;--st-active-bg:#3A3116;
 --st-law:#7FCB9C;--st-law-bg:#1C3A28;
 --st-done:#F0938C;--st-done-bg:#43211F;
@@ -203,7 +206,7 @@ color-scheme:dark}
    rather than a page that is subtly the wrong colour by one of the two routes
    to it. */
 :root[data-theme="dark"]{
---paper:#171B1C;--surface:#272D2E;--wash:#31383A;
+--paper:#171B1C;--surface:#21282A;--wash:#2C3436;
 --on-pine:#0F1414;          /* 8.76:1 on pine */
 --shadow:rgba(0,0,0,.5);
 --ink:#E6E9E8;--ink-2:#A7B0B0;
@@ -215,7 +218,7 @@ color-scheme:dark}
                                somebody else's pixels either way. */
 
 --edge:#7C8687;             /* 3.74:1 on a card, 4.64:1 on the page */
---pine:#79BFB2;--pine-soft:#1E3B38;
+--pine:#7FB9B1;--pine-soft:#1B302E;
 --st-active:#E3C46A;--st-active-bg:#3A3116;
 --st-law:#7FCB9C;--st-law-bg:#1C3A28;
 --st-done:#F0938C;--st-done-bg:#43211F;

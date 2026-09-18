@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.79
+# GRANITE_VERSION: 2026-09-04.80
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -113,8 +113,9 @@ __PAGES__
 
 FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com">'
          '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-         '<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600'
-         '&family=Newsreader:opsz,wght@6..72,400;6..72,600&display=swap" rel="stylesheet">')
+         '<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600'
+         '&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700'
+         '&display=swap" rel="stylesheet">')
 
 
 # THE HEADER THAT REPLACED THE VERSION QUERY.
