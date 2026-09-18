@@ -22,18 +22,29 @@ Three things follow, and they are not negotiable:
    one-liner that lists every fetch process on the machine. Look before you
    start anything.
 2. **A refusal ends the run.** `refusal.py` records one in
-   `archive/refused.json` and `build_all.py` then skips its General Court steps
-   for 24 hours. Clearing it (`python3 refusal.py --clear`) is the maintainer's
-   decision, after `netcheck.py` has said what kind of refusal it was.
-3. **The machinery does not yet cover every fetcher.** Twelve of the
-   thirty-two `fetch_*.py` scripts consult `refusal.py`. The rest would walk
-   through a recorded refusal if started by hand:
+   `archive/refused.json`. A fetcher that consults it stops for 24 hours and
+   then resumes on its own; `build_all.py` tests only whether the file exists,
+   so its General Court steps stay skipped for as long as it is on disk.
+   Clearing it (`python3 refusal.py --clear`) is the maintainer's decision,
+   after `netcheck.py` has said what kind of refusal it was.
+3. **Every fetcher that asks the General Court consults it.** All 18
+   `fetch_*.py` scripts carrying a literal `gc.nh.gov` URL call
+   `refusal.check()` straight after parsing their arguments, and `preflight`
+   fails if one stops:
 
    ```bash
-   grep -l refusal fetch_*.py
+   python3 preflight.py --code
    ```
 
-   Closing that gap is a genuinely useful first contribution.
+   Ten of them did not until 18 September, and any of the ten, started by
+   hand, would have walked straight through a standing refusal.
+   `fetch_town_clerks.py` is deliberately outside the set: it asks
+   app.sos.nh.gov, the Secretary of State, and names gc.nh.gov only to say so.
+
+   What is still open is the other half: those ten consult a refusal but do
+   not `refusal.note()` one they meet themselves, so a refusal they run into
+   stops that run and nothing else. That is a genuinely useful first
+   contribution.
 
 The eight `fetch_*_db.py` scripts are the exception worth knowing: they read
 the SQL host the General Court publishes credentials for at gc.nh.gov/downloads,
@@ -67,9 +78,11 @@ project:
 | `openpyxl` | `build_manifest.py`, `ground_truth.py`, `probe_alignment.py` |
 | `pdfplumber` | calendar and PDF text extraction |
 | `pypdf` | PDF page handling |
+| `PIL` (Pillow) | `build_brand.py` (icons, logos and link-card images) |
+| `faster_whisper` | `transcribe_and_align.py` (transcribing a recording that has no captions) |
 
-Please keep them lazy. Tidying them to the top of the file turns four optional
-packages into four hard requirements.
+Please keep them lazy. Tidying them to the top of the file turns six optional
+packages into six hard requirements.
 
 ## How work is done here
 
@@ -115,7 +128,8 @@ script opens one for writing:
 | `member_corrections.json` | a name or party a generator got wrong, with the evidence |
 
 `preflight.py`'s `HANDMADE` is the authoritative list. Read it there rather
-than here — this table has already been wrong once by being a copy.
+than here — the same list in `CLAUDE.md` spent a day saying four after the
+fifth file was added, because it was a copy.
 
 ## What not to do
 

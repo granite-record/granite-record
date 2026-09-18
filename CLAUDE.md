@@ -65,7 +65,7 @@ happened.
 **A refusal outlives the run that met it.** `refusal.py` records one in
 `archive/refused.json` and holds the fetch lane for 24 hours. It exists because
 a drain that met two 403s stopped itself correctly, and a chained run started
-asking the same address for a docket fifty-four seconds later. Clearing it is a
+asking the same address for a docket twelve seconds later. Clearing it is a
 person's decision: `python3 refusal.py --clear`, after `netcheck.py` has said
 what kind of refusal it was.
 
@@ -107,8 +107,9 @@ freely.
 **Read the artefact before modelling it.** Every good result here came from
 opening real data first. The timestamp method that scores one second was built
 by reading actual transcripts and collecting the phrases chairs really use. Its
-predecessor was built from an assumption about how meetings run and was twelve
-times worse. When tempted to write a parser from a description, open the file.
+predecessor was built from an assumption about how meetings run and scores 1m
+27s against the same hand-marked times. When tempted to write a parser from a
+description, open the file.
 
 **Measure against something you did not generate.** `ground_truth.csv` holds 35
 proceedings a person timed by watching the video, and `review/checked.jsonl`

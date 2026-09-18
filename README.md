@@ -187,8 +187,11 @@ not sound.
 
 ## Where to change things
 
-`python3 build_all.py --dry-run` prints all 39 steps with the command each
-runs. The ones people most often want:
+`python3 build_all.py --dry-run` prints the plan, with the command each step
+runs. It lists fewer than the number declared above: the superseded step needs
+`--with-superseded`, and the General Court steps are held back while
+`archive/.lock` or `archive/refused.json` exists. The ones people most often
+want:
 
 | I want to change… | The file |
 |---|---|
@@ -223,7 +226,7 @@ addresses:
 | `/former.json` | the 1,785 people in the record who hold no seat now, with the span of their record. Deliberately a separate file: everything that reads the roster reads it to mean "who serves today" |
 | `/rollcalls_index.json` | every recorded vote — tally, whether it passed, party split, and a plain-English question where one could be made (5,007 of 9,565) |
 | `/committees.json`, `/towns.json`, `/districts.json` | membership and geography |
-| `/feed/*.xml` | RSS: everything, upcoming hearings, and one feed each per committee, topic, legislator, and per bill still moving |
+| `/feed/*.xml` | RSS: everything, upcoming hearings, and one feed each per topic, per legislator, per bill still moving, and per committee that is not archived and has a sitting day or a bill on record — so `/feed/committee/` holds fewer feeds than `/committees.json` has rows. An archived committee's would never change again |
 
 Every table is also downloadable as CSV from
 **[graniterecord.org/data](https://graniterecord.org/data)** — bills, votes,
@@ -281,7 +284,8 @@ refusal there is a different problem.
   `probe_alignment.py --truth`. The number to watch is the candidate median;
   do not let it regress.
 - **A writer of a derived file, run on a subset, destroys the rest.** This has
-  happened twice. Writers merge; a full rebuild is an explicit flag.
+  happened four times, across three tools — `ARCHITECTURE.md` has the list.
+  Writers merge; a full rebuild is an explicit flag.
 - **Say when something is a guess.** An invented number stated plainly costs
   more than an admission of not knowing.
 

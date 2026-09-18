@@ -81,9 +81,12 @@ calendars, journals, the chamber. Granite. Not a generic civic-tech blue.
 Three things about this that are worth knowing before touching it.
 
 **The header mark and the favicon are two different problems.** An intricate
-mark resolves to a dark blob at 16px in a tab strip, so the favicon is a
-simplified silhouette drawn at 16px and checked at 16px, separately from the
-header mark.
+mark resolves to a dark blob at 16px in a tab strip. The favicon does not yet
+answer that: `icon.svg`, the first `<link rel="icon">` on every page, is the
+header mark's own path out of `brand/old-man.svg` on a `#111514` tile, and the
+PNG and `.ico` fallbacks are downscales of the 1000×1000 `brand/icon.png`.
+Nothing is drawn at 16px and nothing checks it at 16px. A simplified
+silhouette, drawn at that size and checked at it, is still the thing to do.
 
 **A mark has to work on both grounds** — the page is `#171B1C` in dark mode.
 Both are handled without a light variant: the profile ships as `mark.svg` and
@@ -134,11 +137,14 @@ brief and a default for none, and none of them was chosen for this one.
 If a proposal contains one of these, either justify it against this brief in a
 sentence or replace it.
 
-**Two things this list would otherwise take out are wanted, on instruction, and
-are not defects.** The tracked-out ALL-CAPS label is deliberate — about three
-dozen rules in `app.css` set `text-transform:uppercase` — and the home page
-keeps its large centred logo and the line under it. This brief informs what
-gets built; it does not overrule a decision already taken.
+**Two entries on this list are wanted, on instruction, and are not defects.**
+The tracked-out ALL-CAPS label is deliberate — about three dozen rules in
+`app.css` set `text-transform:uppercase` — and the arrow appended to link text
+stays, as `&#8599;`, where the link leaves the site. The home page's large
+centred logo and the line under it are wanted too, but nothing on this list
+would have taken them out: the rule they overrule is `design/BRIEF.md`'s
+"never centred, never duplicated in a hero". This brief informs what gets
+built; it does not overrule a decision already taken.
 
 ---
 
@@ -197,8 +203,12 @@ Three tokens exist because of dark mode and are worth knowing about:
 - `--shadow` — the lift under an opened card. A dark shadow says nothing on a
   dark ground.
 - `--wait` / `--wait-bg` — the home page's session box between sittings.
-  These were literals in `build_pages.py`, the last pair of colours outside
-  the palette and so the last pair nothing could measure or re-theme.
+  These were literals in `build_pages.py`, the last pair outside the palette
+  that the theme had to change and so the last pair nothing could re-theme.
+  Four bare colours outlived them — the player's `#000` letterboxing and the
+  three that make its placeholder look like a still, named on 16 September.
+  Those are the same in both schemes on purpose: a video is somebody else's
+  pixels, and the black around it is black on a light page too.
 
 `color-scheme` is set in both blocks, so scrollbars, select menus and the
 search field's own furniture follow the page instead of staying light
@@ -220,9 +230,12 @@ record pages, and every one of them becomes a file Cloudflare has never seen.
 The publish of 12 September had **35,347 of 55,353 files missing** for that
 reason and no other — the data had not changed since the build before it —
 and wrangler sorts missing files largest-first into three concurrent 40 MB
-buckets, so the first three requests of the deploy were the fat ones, they
-timed out at ~200s, and five upload errors anywhere abort a deploy. Two
-publishes died that way, both after uploading 468 real files.
+buckets, so the first three requests of the deploy were the fat ones. Those
+three went up fine — 55, 236 and 177 files, in 12s, 12s and 23s. It was every
+request after them that hung, each until undici's 300-second default headers
+timeout fired at ~301s, and five upload errors anywhere abort a deploy. Two
+publishes died that way, both after uploading exactly those 468 real files and
+nothing more.
 
 The same `curl` that found the four hours found the fix: Pages already serves
 HTML and JSON as `public, max-age=0, must-revalidate` — kept, but revalidated
@@ -332,12 +345,13 @@ under the analysis, which is where a reader on a phone wants it.
 
 ## One left edge
 
-The nav, the page and the footer were three different columns: at 1440 on the
-home page the brand began at 130px, the heading under it at 310px, and the
-footer — a measure-width column centred in the *window* — at 432px. The
-footer was the worst of it, because its text is identical on every page of the
-site and it was a different width in each stylesheet (476px in one, 560px in
-the other).
+The nav, the page and the footer were three different columns: at 1440 the
+brand began at 130px and the heading under it at 310px on the home page, and
+the footer — a column centred in the *window* rather than aligned to the
+page — began at 432px on a record page, where it takes the 560px `--measure`.
+The footer was the worst of it, because its text is identical on every page of
+the site and it was a different width in each stylesheet (476px in one, 560px
+in the other).
 
 The measure was never the problem; the alignment was. The band keeps the
 page's gutter (`padding: var(--sp-7) max(0px, calc(50% - 590px))`, 590px
@@ -428,9 +442,10 @@ and a line of garbage. Grepping the built file for one distinctive rule is
 what found it.
 
 The second is the same lesson the rest of this file keeps learning. The 783px
-figure started life as 872px, added up from label widths in the stylesheet,
-which put the breakpoint 96px too early and would have stacked the nav on
-every 800px laptop for no reason. Measuring it took one function call.
+figure started life as 872px, added up from label widths in the stylesheet —
+89px too high, which would have pushed the split from 860 up to somewhere near
+950 and stacked the nav on every 900px window for no reason. Measuring it took
+one function call.
 
 ---
 
@@ -463,11 +478,13 @@ the page is the single column it has always been, in document order.
 second. A reader on a screen reader should meet the page's own name and its
 search box before a fortnight of hearings, and a reader on a keyboard should
 not have to tab past the calendar to reach the search field. The cost is that
-the second tab stop is the left column rather than where the eye starts. Each
-column is a labelled region and self-contained, so that reads as three panels
-in an order — which is what they are. Burying the h1 under the calendar to
-make the tab order left-to-right would be the worse trade, and it is worth
-saying out loud that this is a trade rather than a solution.
+the second tab stop is the left column rather than where the eye starts. The
+two side columns are labelled regions — an `aria-label` on a `<section>` each
+— and the middle is the opening content of `<main>` rather than a region of
+its own, so a landmark list reads main and then the two named panels, in the
+order the markup sets. Each column is self-contained. Burying the h1 under the
+calendar to make the tab order left-to-right would be the worse trade, and it
+is worth saying out loud that this is a trade rather than a solution.
 
 The columns are 1130, 790 and 680 tall, because a fortnight of hearings is
 longer than a search box. They end ragged, which is what columns do; the rule
@@ -484,8 +501,9 @@ and the Enter key needs no handler. The type-ahead over all 259 towns stays
 on the legislators page, where the data it needs is already being fetched.
 
 An exact town name opens that town; anything else is left in the box as a
-filter and the ranked list does the rest, because "Hampton" is three real
-towns and choosing one for the reader would be a guess. The town has to be
+filter and the ranked list does the rest, because "Hampton" is five real
+towns — Hampton, Hampton Falls, New Hampton, North Hampton and South
+Hampton — and choosing one for the reader would be a guess. The town has to be
 set *before* the list is drawn — `list()` is what marks the chosen row — and
 getting that order wrong the first time left Dover's seats on the page with
 nothing in the list looking chosen.
@@ -496,10 +514,12 @@ nothing in the list looking chosen.
 floor and `overflow: hidden`, and the number is 132px of 24px type: in a
 143px cell with 32px of padding it did not fit, so on a 768px screen the last
 stat read "2,303,0". It is now flex-wrap with a **164px** floor, measured,
-which also fixes what grid does with a wrapped row — five cells in a
-four-column grid leave one cell of content and three of bare `--rule`
-background, a hole. Flex items grow into the space, so the last row is always
-full at every width. The entry cards had the same fault and the same fix.
+which also fixes what grid does with a wrapped row — five cells in the two
+columns the 720px breakpoint forced, or in the three `auto-fit` gave the 482px
+middle column, leave a last row of one cell of content beside one of bare
+`--rule` background, a hole. Flex items grow into the space, so the last row
+is always full at every width. The entry cards had the same fault and the same
+fix.
 
 **Placeholder text was 3.04:1 in dark.** Nothing in either stylesheet had
 ever set a `::placeholder` colour, so every search box on the site rendered
@@ -548,7 +568,7 @@ answer on the line, the rest on request.**
 **The finder is a way in, not a destination.** Picking a town used to draw
 that town's seats inside the legislators page — which is what a town page
 does, better, and has done since it was written. A click now goes to the
-town's own page instead, and two thirds of that script went away with the
+town's own page instead, and about half of that script went away with the
 in-place rendering: `wardsOf`, `houseOf`, `reps`, `senators`, `people` and
 `show` all existed to draw something a page already draws.
 
@@ -587,20 +607,22 @@ marked and not a link. A control that offers you where you already are is a
 control that does nothing once.
 
 A disclosure, not a `<select>`: a select needs script to navigate, and hands
-a screen reader a list of options with no addresses. These are six links that
-work with the keyboard, survive with JavaScript off, and are the fourth place
+a screen reader a list of options with no addresses. These are five links that
+work with the keyboard, survive with JavaScript off, and are the fifth place
 on this site with the same shape — the chapter list on a bill, the filter
-panel on a phone, the ward chips in the finder, and now this. Measured: the
-summary is 44px on a phone and 39 on a desktop, the six chips wrap to two
-rows at 360px and sit on one at 1440, and in dark mode the links are 11.45:1
-on their ground and the marked ward 5.7:1.
+panel on a phone, the polling places on a town page, the ward chips in the
+finder, and now this. Measured: the summary is 44px on a phone and 39 on a
+desktop, the six chips wrap to two rows at 360px and sit on one at 1440, and
+in dark mode the links are 11.45:1 on their ground and the marked ward 5.7:1.
 
-**And the box at the top was somebody else's.** Every page on this site
-except a dozen is `bills.html` with one record substituted into it, so every
-page inherited bills.html's search row — a town page opened with "Search all
-bills" printed above the name of the town, and so did a member's page, a
-committee's, and all eleven civics pages — thirteen topics now, and a
-by-the-numbers page beside them. It is the same fault as the order
+**And the box at the top was somebody else's.** Only four pages on this site
+are built by hand — the home page, About, the legislator index and 404. Every
+other one is `bills.html` with a record substituted into it, or a list built
+on the same shell, so every one of them inherited bills.html's search row — a
+town page opened with "Search all bills" printed above the name of the town,
+and so did a member's page, a committee's, and all eleven civics pages —
+thirteen topics now, and a by-the-numbers page beside them. It is the same
+fault as the order
 of the sections, one line higher up: the first thing on the page was about
 the site rather than about the page.
 
@@ -663,9 +685,9 @@ The fix is to separate the two. Those selectors are now `:is(h2,h3)`, which
 has the same specificity as the bare type selector, so a heading can move up
 a level without moving a pixel; `flow_diagram` takes the level it is written
 at, because that depends on where the diagram sits and not on the diagram.
-Where a component is used at two depths — the `.shows` box is the first thing
-after the hub's `h1` and sits under a section on a topic page — the rule
-matches both and the level follows the page.
+Where a component is used at two depths — the `.shows` box carries the first
+heading after the hub's `h1`, above every section, and sits under a section on
+a topic page — the rule matches both and the level follows the page.
 
 Measured rather than looked at: every heading on two bill pages and a
 committee page was captured before and after with its tag, class, text,

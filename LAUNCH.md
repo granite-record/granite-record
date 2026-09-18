@@ -33,17 +33,17 @@ the order everything is done in.
 | | |
 |---|---|
 | Bills | **33,683 across 19 terms**, 1989 to 2026, each with its own page |
-| Legislators | **406 sitting and 1,785 who have left**, 2,192 pages, built by the same code; 2,192 people have cast a recorded roll-call vote since 1999, which is not the same set as everyone who has served |
+| Legislators | **406 sitting and 1,785 who have left**, 2,191 pages, built by the same code; 2,192 people have cast a recorded roll-call vote since 1999, which is not the same set as everyone who has served |
 | Committees | 52 in `site/committees.json` — count the file rather than quoting a number, it moves with the referral work |
 | Roll calls | **9,565 across 1999–2026**, 2.3M ballots, every ballot named and given a party |
 | Hearings | proceedings for **all nineteen terms**, a `verification_manifest*.csv` each — **104,769 rows referencing 2,931 recordings** |
-| Timestamps | 104,756 published stations; 14,700 carry a moment in a recording; 82,176 have no recording at all, 79,474 of those from before streaming began in March 2020 |
+| Timestamps | 104,756 published stations; 14,700 carry a moment in a recording; 82,176 have no recording at all, 79,474 of those from before streaming began in May 2020 |
 | Towns | **320 town-and-ward pages** — everyone who represents you, with contact |
 | Civics | 13 Learn pages and `/learn/by-the-numbers.html`, public since the 17th |
 | Data | **19 CSV tables at `/data`**, 2.52M rows, with a manifest, rebuilt every run |
 | Feeds | 406 legislator, 43 topic, 38 committee, and one per bill still moving |
 | Veto messages | 261 across fifteen terms, 1997 onward, each cited to the calendar it was printed in |
-| The build | `build_all.py --local` runs 26 of 39 declared steps in about 17 minutes; `preflight.py` is 161 checks, 121 of which need no data on disk |
+| The build | `build_all.py --local` runs 26 of 39 declared steps in about 17 minutes; `preflight.py` is 161 checks, 122 of which need no data on disk |
 | The deploy | 49,361 files, 1.8 GB — **49% of the 100,000** Cloudflare Pages Pro allows |
 
 ---
@@ -108,13 +108,18 @@ per-bill file is `{term: {bill: ...}}`, and `preflight` refuses the old shape.
 
 ## Done
 
-**The record itself.** Bills, sponsors, statuses, committees, roll calls,
-committee reports, veto messages, chapter numbers and plain-language histories
-for all nineteen terms; hearings and floor debates for all nineteen, one manifest
-per term; the current term's bill text and 13,725 archived bills' besides, which
-grows every time the lane runs; amendment diffing as a Bill Text tab. Every
-ballot carries a name and a party -- no page anywhere on this site reads
-"Member #".
+**The record itself.** Bills, statuses, committees, chapter numbers and
+plain-language histories for all nineteen terms; committee reports and veto
+messages from 1997 on, roll calls from 1999 on, and sponsors thinning the further
+back you go -- near-complete in the recent terms, fewer than twenty a term before
+2005, and moving with every lane run, so read `/data/manifest.json`'s coverage
+table rather than a figure written here. Hearings for all nineteen, one manifest
+per term; floor debates only where there is a recording, so only since streaming
+began in May 2020 -- the fifteen terms before 2019-2020 have none and cannot,
+and the current term carries all but a handful of the rest. The current term's
+bill text and 13,725 archived bills' besides, which grows every time the lane
+runs; amendment diffing as a Bill Text tab. Every ballot carries a name and a
+party -- no page anywhere on this site reads "Member #".
 
 **Pages.** One per bill, per legislator sitting or former, per committee, per
 town and ward, per Learn topic. Tabs have their own addresses; every record page
@@ -180,11 +185,16 @@ repository; `preflight` gained the check that would have caught it.
 - **The consent-calendar sentence names nobody.** 1,651 bill pages now say the
   bill was pulled off the consent calendar, and the old "passes without floor
   debate" note no longer prints over the top of a contested vote. What is not
-  done is the agreed second half: several hundred of those removal lines name
+  done is the agreed second half: nearly every one of those removal lines names
   the members who asked -- House-style "Removed from Consent (Reps. Cornell,
-  Selig, …)", Senate-style with a companion "Sen. Birdsell Moved to Remove
-  SB 37" -- and none of those names is read. Terms before 2013 record the
-  removal but not the members.
+  Selig, …)", the older "REMOVED FROM CONS CAL, REQ REP BUCKLEY", Senate-style
+  with a companion "Sen. Birdsell Moved to Remove SB 37" -- and none of those
+  names is read, because the `consent_off` pattern in each of the three era
+  parsers matches the removal and captures nobody. The old terms are the easy
+  half of this, not the hard one: nearly every pre-2013 removal line in
+  `db/Docket.psv` names the member who asked, while in the current term only 61
+  of 200 do -- the Senate's read "SB 613 was Removed from the Consent Calendar"
+  and stop there.
 - **Committee-name spelling, mostly 1989-1998.** 128 of the 692 distinct
   committee names in `proceedings.csv` are under twelve characters, some the same
   committee cut at different lengths, so a committee page, a facet count and any
@@ -356,7 +366,7 @@ colour contrast beyond the Nay/Failed fix, and the heading jump on bill pages.
    difference between a crawler seeing 65 words and seeing what the page
    actually says.
 5. **Split `build_site_v2.main`.** 593 lines, the longest function in the file,
-   and it grows while it waits -- it was 468 on 9 September. What is left in it
+   and it grows while it waits -- it was 469 on 10 September. What is left in it
    is the loading: two dozen files read and shape-checked in one scope, with the
    per-term `procs` and `floor` maps built beside the roster and the roll calls.
    The seams are the `load(...)` calls. Verify it the way its two predecessors

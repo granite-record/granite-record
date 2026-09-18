@@ -12,16 +12,26 @@ enough to read in an afternoon.
 
 ## What the surface actually is
 
-**graniterecord.org is files on a CDN.** Every byte a reader receives is a file
-built ahead of time by the scripts in this repository. There is no application
+**graniterecord.org is files on a CDN.** Every page a reader asks for was built
+ahead of time by the scripts in this repository. There is no application
 server, no database behind the pages, no login, no session, no cookie set by
 this site, and no user-supplied string that reaches a query.
 
-**There is exactly one exception**, and its own header says so:
-`functions/api/report.js`, the endpoint behind the "report a problem" box on
-bill, member and committee pages. It is write-only, it is on no page's critical
-path, and when it is down the box falls back to an email link. If you are
-looking for something to attack, it is this.
+What arrives is not quite byte-for-byte what the build produced, which is worth
+knowing before you go looking for the difference. The pages link Public Sans
+and Newsreader from Google's font CDN, so every view fetches a stylesheet and
+the faces from there; nothing is self-hosted. And Cloudflare rewrites the HTML
+on the way out — the analytics beacon `/about` describes, and an email
+obfuscation pass that replaces every `mailto` with a hex string salted per
+request, which is why a contact address on the page only resolves once a
+Cloudflare script has run. Those two are dashboard switches rather than
+anything this repository emits, and `check_live.py` reports both.
+
+**In this project's own code there is exactly one exception**, and its own
+header says so: `functions/api/report.js`, the endpoint behind the "report a
+problem" box on bill, member and committee pages. It is write-only, it is on no
+page's critical path, and when it is down the box falls back to an email link.
+If you are looking for something to attack, it is this.
 
 It has been red-teamed once, and the seven real defects that turned up are
 listed in the file's header — knowing what was already wrong is more useful

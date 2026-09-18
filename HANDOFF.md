@@ -4,11 +4,12 @@ For whoever picks this up next, human or model. Read this once; it changes
 slowly. For the current numbers, run `python3 handoff.py` and read `STATE.md`,
 which is generated and always right.
 
-**Three things are only here**: how the working relationship runs, how to find
-out what is running on this machine, and how publishing works. Everything else
-has a newer home -- `CLAUDE.md` for the rules and the shape of the code,
-`STATE.md` for every count, `LAUNCH.md` for the plan, `README.md` for the front
-door -- and where this page disagrees with one of them, they win.
+**What is only here**: how the working relationship runs, and how publishing
+works. A handful of smaller details are only here too, each flagged where it
+appears. Everything else has a newer home -- `CLAUDE.md` for the rules and the
+shape of the code, `STATE.md` for every count, `LAUNCH.md` for the plan,
+`README.md` for the front door, `watchers/README.md` for what is running on
+this machine -- and where this page disagrees with one of them, they win.
 
 A second copy of a fact is a second thing to keep true. Prefer deleting a
 paragraph here and leaving a pointer to keeping two copies in step.
@@ -141,7 +142,9 @@ as any other.
 
 `CLAUDE.md` carries this: one table for proceedings, the five hand-made files
 no generator writes, `build_all.py` as the pipeline, `preflight.py` as the test
-suite. Two details are only here.
+suite. Two details are repeated here, `README.md` carrying the first and
+`CLAUDE.md` the second, because the ranking below them is not written anywhere
+else.
 
 `site/build.json` records what the last build actually ran, step by step with
 its seconds. Read that rather than any prose about step counts, including
@@ -179,7 +182,7 @@ who have left exactly like the rest. Count the ballots before quoting a figure:
 merging it with `past_members.json` (2,614 more), so the population carrying
 the database-row label is larger than 676.
 
-**One trap kept from the docket parser**, fixed in `2dd7fec`: `HOUSE_SCHED_RE`'s
+**One trap kept from the docket parser**, fixed in `f9e69f6`: `HOUSE_SCHED_RE`'s
 trailing `$` anchor made the venue class responsible for absorbing every word
 the clerk appended after the room, so one colon or one Zoom paragraph failed the
 whole line and dropped it through to the 1989-98 legacy pattern, which hardcodes
@@ -271,12 +274,15 @@ each finished line to `logs/gc_lane.done`.
 docket mixes database lines the narrator fails on with web lines; narrate it
 by hand. See `watchers/README.md`.
 
-A refusal stops the lane, and stops every fetcher that consults `refusal.py` --
-which is twelve of the twenty-four web fetchers, not all of them; `CLAUDE.md`
-lists the nine that ask gc.nh.gov directly and never look. Started by hand, any
-of those would walk straight through a recorded refusal. That is a gap, not a
-design. `python3 netcheck.py` then `python3 refusal.py --clear` is a person's
-decision.
+A refusal stops the lane, and since 18 September it stops every fetcher holding
+a literal `gc.nh.gov` URL as well: each calls `refusal.check()` once its
+arguments are parsed, and `preflight` fails if one of them stops. Ten did not
+check until that morning, so anything written before it -- a note, a session
+summary, this paragraph in an older revision -- describes a wider gap than the
+one that is left. What is left is `fetch_committee_details.py`, which reads its
+addresses out of `committees.json` instead of carrying one, so it asks
+gc.nh.gov without the check seeing it. `python3 netcheck.py` then
+`python3 refusal.py --clear` is a person's decision.
 
 `review.py` caches its sample pools on disk in `review/.pool-*.json`, so it
 needs `--refresh` after any parser change or rebuild, across restarts too.
