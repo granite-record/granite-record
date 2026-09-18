@@ -3,7 +3,7 @@
     "about_figures.py": "2026-09-17.1",
     "align_all.py": "2026-09-04.2",
     "app.css": "2026-09-07.112",
-    "app.js": "2026-09-07.94",
+    "app.js": "2026-09-07.95",
     "apply_markers.py": "2026-09-04.8",
     "archive_text.py": "2026-09-16.2",
     "archive_status.py": "2026-09-08.2",
@@ -136,7 +136,8 @@
     "verify_batch.py": "2026-09-04.4",
     "wrangler.toml": "2026-09-12.2",
     "tests/test_cmte_match.js": "2026-09-12.2",
-    "build_lsrs.py": "2026-09-18.1"
+    "build_lsrs.py": "2026-09-18.1",
+    "build_calendar.py": "2026-09-18.1"
   },
   "generated": "2026-09-04"
 }

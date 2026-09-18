@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.94
+// GRANITE_VERSION: 2026-09-07.95
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -627,6 +627,17 @@ need("meta.json")
    // selected: a facet nothing matches shows an empty list and no reason.
    const ptopic=params.get("topic");
    if(ptopic&&(META.topics||[]).includes(ptopic)) sel.topic.add(ptopic);
+   // ...or from the home page's Latest activity, which shows five rows and
+   // hands the rest over here. The sort has to survive the arrival, so
+   // sortChosen is set: without it the first render would helpfully put the
+   // list back on bill number and the reader would land on the opposite of
+   // what they clicked. An unknown value is ignored rather than accepted,
+   // because the picker only offers four.
+   const psort=params.get("sort");
+   if(psort&&["best","num","recent","status"].includes(psort)){
+     sortBy=psort; sortChosen=true;
+     const so=$("#sort"); if(so)so.value=psort;
+   }
    // WHAT THIS PAGE IS, decided before anything is drawn.
    //
    // These three used to sit after render(), which meant a member's page
