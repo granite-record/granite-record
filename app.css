@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.102 */
+/* GRANITE_VERSION: 2026-09-07.103 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1410,11 +1410,38 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
    boundary; the opening sentence is allowed to, and is the only thing that
    can. One column again below 860px, the width the facet rail collapses at,
    where there is no spare room to put a second one. */
-footer .in{max-width:1180px;margin:0;padding:0 var(--sp-8);
-columns:2;column-gap:var(--sp-11)}
-footer .corrections,footer .footdata{break-inside:avoid}
-footer .footdata{margin:0}
-@media (max-width:860px){footer .in{columns:1;max-width:var(--measure)}}
+/* A THIRD PASS, and this one can use a grid. The note above records that
+   grid was tried and rejected, and it was right at the time: the footer's
+   children were loose inline flow -- a sentence, a link, a full stop -- so
+   every one of them became a row. They are three deliberate blocks now, so
+   the objection is spent and the mechanism that fits the content is the one
+   that describes it.
+   Three groups, because the footer says three things: what this is, where to
+   get the record, and how to reach a person. The first is widest because it
+   holds the sentence that matters most -- not affiliated, not a substitute,
+   tell us when we are wrong -- which a site indexing somebody else's record
+   owes its readers room for. */
+footer .in{max-width:1180px;margin:0;padding:0 var(--sp-8)}
+.fcols{display:grid;grid-template-columns:2fr 1.1fr 1.4fr;gap:var(--sp-9)}
+.fcol{min-width:0}
+.fhead{font-size:var(--t-xs);letter-spacing:.12em;text-transform:uppercase;
+font-weight:600;color:var(--ink-2);margin:0 0 var(--sp-4)}
+footer .attrib{margin:0;max-width:62ch;font-family:var(--serif);
+font-size:var(--t-ui);line-height:1.6}
+footer .attrib b{color:var(--ink);font-weight:600}
+.flinks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;
+gap:var(--sp-3)}
+footer .footdata{margin:var(--sp-7) 0 0;padding-top:var(--sp-5);
+border-top:1px solid var(--rule);display:flex;gap:var(--sp-6);flex-wrap:wrap;
+justify-content:space-between;font-size:var(--t-sm)}
+.lic{color:var(--ink-2)}
+/* One column below 860px, the width the facet rail collapses at, where there
+   is no spare room for a second let alone a third. */
+@media (max-width:860px){
+  .fcols{grid-template-columns:1fr;gap:var(--sp-7)}
+  footer .in{max-width:var(--measure)}
+  footer .footdata{flex-direction:column;gap:var(--sp-3)}
+}
 /* Here rather than in the narrow-screens block 90 lines above, because these
    two rules are declared after it and would outrank it on source order --
    which is exactly what happened on the first attempt: the nav and the

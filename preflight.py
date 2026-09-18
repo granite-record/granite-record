@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.198
+# GRANITE_VERSION: 2026-09-04.199
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -4097,8 +4097,23 @@ def _directory_pages():
         assert "directory/bills-1989-1990" in hub and "directory/towns" in hub
         sm = (site / "sitemap.xml").read_text(encoding="utf-8")
         assert sm.count("<loc>") == 5, sm
+        # THE ROUTE IS TWO HOPS NOW, AND THE POINT IS THE ROUTE. The footer
+        # linked the directory directly until 18 September, when the owner
+        # moved that link to the Data page -- in a grey band it was one of
+        # four and could not say what it was for. What this check is actually
+        # for is that a crawler with no JavaScript can still reach every
+        # record, so it follows the chain instead of naming one page: the
+        # footer must link the Data page, and the Data page must link the
+        # directory. Asserting the old shape would have made a deliberate
+        # change look like a regression.
         foot = (here / "bills.html").read_text(encoding="utf-8")
-        assert 'href="directory.html"' in foot, "the footer does not link the directory"
+        assert 'href="data.html"' in foot, (
+            "the footer does not link the Data page, which is now the route "
+            "to the directory and so to every record")
+        exports = (here / "build_exports.py").read_text(encoding="utf-8")
+        assert 'href="directory.html"' in exports, (
+            "the Data page does not link the directory, so nothing static "
+            "reaches the per-record lists and a crawler sees no bills")
         return "ok", "bills by term, legislators and towns linked statically, sitemapped, footer links them"
     finally:
         shutil.rmtree(root, ignore_errors=True)

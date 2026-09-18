@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.51 -->
+<!-- GRANITE_VERSION: 2026-09-05.52 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -100,24 +100,36 @@ if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
 <p class="count" id="summary"></p><div id="results"></div></main></div>
 
 <footer><div class="in">
-<p class="fbkwrap"><a class="fbk" href="https://forms.gle/PYw9c3xgpDDwvX7E9" target="_blank"
- rel="noopener">Tell us what you think</a>
-<span class="fbknote">This site is new and being tested. Two minutes of your feedback is worth more than a week of our guessing.</span></p>
-Built from public records published by the New Hampshire
-General Court. Not affiliated with the General Court.
-<a href="about.html">How this is made</a>.
-<span class="corrections">Found an error?
-<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>
-</span>
 <!-- This file is the TEMPLATE every bill page is built from (shell.template
      reads it out of site/), so this footer is the footer on 33,683 pages as
-     well as on the search page. It must stay in step with build_pages.py's
-     FOOT_DATA and FOOT_JS, which say the same thing for the dozen pages that
-     function writes. -->
-<p class="footdata"><a href="directory.html">The whole record, as lists</a> &mdash;
-every bill, legislator and town as plain links.
-<a href="data.html">Bulk data</a> &mdash; every table on
-this site as CSV, with a manifest naming each column.<span id="built"></span></p>
+     well as on the search page. It must stay in step with build_pages.py's,
+     which says the same thing for the dozen pages that function writes. -->
+<div class="fcols">
+<div class="fcol">
+<p class="fhead">Granite Record</p>
+<p class="attrib">Built from public records published by the <b>New Hampshire
+General Court</b>. Not affiliated with the General Court, and not a substitute
+for it &mdash; where this site and the Court&rsquo;s own record disagree, the
+Court is right and we want to know.</p>
+</div>
+<div class="fcol">
+<p class="fhead">The record</p>
+<ul class="flinks">
+<li><a href="data.html">Bulk data</a></li>
+<li><a href="about.html">How this is made</a></li>
+<li><a class="out" href="https://github.com/granite-record/granite-record"
+ target="_blank" rel="noopener">Source on GitHub</a></li>
+</ul>
+</div>
+<div class="fcol">
+<p class="fhead">Tell us</p>
+<a class="fbk out" href="https://forms.gle/PYw9c3xgpDDwvX7E9" target="_blank"
+ rel="noopener">What do you think?</a>
+<p class="fbknote">The site is new and being tested. Found an error?
+<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a></p>
+</div>
+</div>
+<p class="footdata"><span id="built"></span><span class="lic">MIT Open Source Licensed</span></p>
 </div></footer>
 <script>fetch(new URL("build.json",location.origin+"/").href).then(r=>r.json()).then(B=>{
   var e=document.getElementById("built");

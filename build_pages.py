@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.81
+# GRANITE_VERSION: 2026-09-04.82
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -240,10 +240,17 @@ FOOT_JS = (
 # The one sentence that explains the bulk data, used in both footers so they
 # cannot drift. "Every table" is literal: data.html builds from the same
 # manifest the tables are written from.
-FOOT_DATA = ('<a href="directory.html">The whole record, as lists</a> — every bill, '
-             'legislator and town as plain links. '
-             '<a href="data.html">Bulk data</a> — every table on this '
-             'site as CSV, with a manifest naming each column.')
+# THE REPOSITORY, NAMED ONCE. The footer links it, and so do the Data page
+# and "How this is made" -- three places for three different readers, and one
+# constant so a move cannot leave two of them pointing at nothing.
+REPO = "https://github.com/granite-record/granite-record"
+
+# The directory link that used to sit in the footer has moved to the Data
+# page: in a grey band it was one link among four and could not say what it
+# was for, and on that page it gets a heading and the sentence that matters --
+# every record as a plain link, no JavaScript, which is also what a crawler
+# follows. The footer's own links are written inline in the two footers now,
+# so there is no constant here to drift out of step with bills.html.
 
 
 # ===================================================== the hearing calendar ==
@@ -533,16 +540,31 @@ def shell(title, current, body, wide=False, script="", desc="",
 {''.join(nav)}</div></nav>
 <main class="wrap{' wide' if wide else ''}" id="main">{body}</main>
 <footer><div class="in">
-<p class="fbkwrap"><a class="fbk" href="https://forms.gle/PYw9c3xgpDDwvX7E9" target="_blank"
- rel="noopener">Tell us what you think</a>
-<span class="fbknote">This site is new and being tested. Two minutes of your feedback is worth more than a week of our guessing.</span></p>
-Built from public records published by the New Hampshire
-General Court. Not affiliated with the General Court.
-<a href="about.html">How this is made</a>.
-<span class="corrections">Found an error?
-<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a>
-</span>
-<p class="footdata">{FOOT_DATA}<span id="built"></span></p>
+<div class="fcols">
+<div class="fcol">
+<p class="fhead">Granite Record</p>
+<p class="attrib">Built from public records published by the <b>New Hampshire
+General Court</b>. Not affiliated with the General Court, and not a substitute
+for it &mdash; where this site and the Court&rsquo;s own record disagree, the
+Court is right and we want to know.</p>
+</div>
+<div class="fcol">
+<p class="fhead">The record</p>
+<ul class="flinks">
+<li><a href="data.html">Bulk data</a></li>
+<li><a href="about.html">How this is made</a></li>
+<li><a class="out" href="{REPO}" target="_blank" rel="noopener">Source on GitHub</a></li>
+</ul>
+</div>
+<div class="fcol">
+<p class="fhead">Tell us</p>
+<a class="fbk out" href="https://forms.gle/PYw9c3xgpDDwvX7E9" target="_blank"
+ rel="noopener">What do you think?</a>
+<p class="fbknote">The site is new and being tested. Found an error?
+<a href="mailto:contact@graniterecord.org">contact@graniterecord.org</a></p>
+</div>
+</div>
+<p class="footdata"><span id="built"></span><span class="lic">MIT Open Source Licensed</span></p>
 </div></footer>{FOOT_JS}
 {themer("JS")}
 <!-- The header's search, on every page this file writes. Its own file rather

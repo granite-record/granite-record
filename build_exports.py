@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.9
+# GRANITE_VERSION: 2026-09-10.10
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -416,6 +416,19 @@ def data_page(site, out, tables, base, cov=()):
     <p class="note">Found something that looks wrong? It probably is, and the
       page for that bill links the General Court&#39;s own record so the two
       can be compared.</p>
+
+    <h2>Read the code</h2>
+    <p>Every script that fetches, parses and builds this site is public, so a
+      figure here can be traced to the line that produced it.</p>
+    <p><a class="out" href="https://github.com/granite-record/granite-record"
+      target="_blank" rel="noopener">granite-record on GitHub</a> &mdash; MIT
+      licensed.</p>
+
+    <h2>The whole record, as lists</h2>
+    <p>Every bill, legislator, committee and town as a plain link: no
+      JavaScript, no search box, nothing to load. It is the version of this
+      site that works anywhere, and it is what a crawler follows.</p>
+    <p><a href="directory.html">Open the directory</a></p>
   </div>'''
 
     page = S.page(tmpl, path="/data.html", base=base,
