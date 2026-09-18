@@ -10,6 +10,20 @@
   "_added_16_september": "The entries below this line were added on 16 September 2026 and answer a different problem than the Shurtleff correction above: not a name deduced onto the wrong person, but ids the roster views never reached at all, which the site showed as \"Member #409060\" with no party. Each was identified by scoring the id's ballots against every name printed in the House and Senate journals for the same roll calls, then corroborated from a second source that does not depend on those ballots -- the election rolls and roster PDFs, the county headers over the journals' vote lists, the seat the bill text prints for a sponsor, or the alphabetical block the employee number falls in. The method was controlled by running it blind against four ids already named from other evidence (408966, 409011, 409014, 409039); it reproduced all four. Every identification was then given to a second reader asked to refute it rather than confirm it. \"terms\" and \"score\" are notes for the next person and are not read by anything.",
 
   "members": {
+    "9237": {
+      "name": "Chase, Wendy",
+      "party": "Democrat",
+      "county": "Strafford",
+      "district": "18",
+      "was": "Chase, Wendy (Democrat, Belknap 5)",
+      "why": [
+        "The seat this id carried is one she never held. Ballotpedia: Wendy Chase (Democratic Party) was a member of the New Hampshire House of Representatives representing STRAFFORD 18, assumed office 5 December 2018, left office 7 December 2022, and did not run for re-election there in 2022. She then ran for BELKNAP 5 and lost the general election on 5 November 2024. Belknap 5 is the seat she stood for and did not win.",
+        "This is not a parsing error, and nothing on this disk could have caught it. db/Legislators.psv row 9237 reads 9237|Chase|Wendy|408936||H|False||01|05|d|...|Laconia|03246-3483 -- county code 01 is Belknap, district 05, and the address is in Laconia, which is in Belknap county. That is her record NOW: the General Court's Legislators view is current-state, not historical.",
+        "Nor do the ballots carry a seat. rollcalls/RollCallHistory_2019.txt holds 263 rows for her and every one is ids only -- 2019|H|5|408936|9237||Nay| -- so build_data._former_label joins to the Legislators row to build a label, and the label it produced for her 2019 votes read 'Chase, Wendy(D) Belknap 05'. Her service is right, and was never in question: 1/2/2019 to 9/15/2022, terms 2019-2020 and 2021-2022, which matches the Ballotpedia dates.",
+        "The id is the PersonID 9237, which is what data/member_votes.json keys her 941 ballots on, and not the Employeeno 408936.",
+        "THIS IS A CLASS, NOT AN INSTANCE. Any former member whose record the General Court has since updated -- a move, or a later candidacy in another county -- is labelled here with the newer seat, because the only seat on this disk is the current one. They cannot be enumerated from these files; it takes an outside source per member, as it did for this one."
+      ]
+    },
     "376628": {
       "name": "Shurtleff, Steve",
       "party": "Democrat",
