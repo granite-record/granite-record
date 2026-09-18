@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.88
+# GRANITE_VERSION: 2026-09-04.89
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -847,18 +847,26 @@ SEATING_JS = """
 
    The roster under the chart is already in the HTML, in seat order, so a
    reader with no JavaScript has the whole House and every link in it. All
-   this does is reorder, filter and join the two halves together. */
+   this does is filter it and join the two halves together.
+
+   A SEAT IS ASKED, NOT FOLLOWED. Tapping one used to navigate straight to the
+   member's page, which on a phone meant that finding out who sits somewhere
+   cost a page load and a journey back -- and on a chart where seats are a
+   thumb's width apart, an accidental one. A tap now names the member, lights
+   the seat and lights their row below; the name it gives you is a link, so
+   going through is a second, deliberate tap. */
 (function(){
   var list=document.getElementById("seatlist");
   if(!list)return;
   var svg=document.querySelector(".seatmap");
+  var wrap=document.querySelector(".seatwrap");
   var note=document.getElementById("seatnote");
   var q=document.getElementById("sq"), go=document.getElementById("sgo");
   var rows=[].slice.call(list.querySelectorAll(".seatrow"));
+  var picked=null;          // the chosen seat's circle, or null
 
-  function say(n,total){
-    if(!note)return;
-    note.textContent=n===total?"":n+" of "+total+" representatives";
+  function rowFor(seat){
+    return rows.filter(function(r){return r.dataset.seat===seat;})[0];
   }
   // A seat and its row light together, whichever one the reader reached for,
   // so the answer to "where does my rep sit" and "who sits there" is one
@@ -868,34 +876,91 @@ SEATING_JS = """
     if(svg)[].forEach.call(svg.querySelectorAll(".seat"),function(c){
       c.classList.toggle("on",!!seat&&c.getAttribute("data-seat")===seat);});
   }
+  // Built as nodes rather than markup: a member's name is theirs, and it is
+  // not going through innerHTML on my say-so.
+  function say(preview){
+    if(!note)return;
+    note.textContent="";
+    var c=preview||picked;
+    if(c){
+      var a=document.createElement("a");
+      a.href=DATA("legislator/"+c.getAttribute("data-slug")+".html");
+      a.textContent=c.getAttribute("data-name");
+      note.appendChild(a);
+      note.appendChild(document.createTextNode(
+        " — seat "+c.getAttribute("data-seat")));
+      return;
+    }
+    var shown=rows.filter(function(r){return !r.hidden;}).length;
+    note.textContent=shown===rows.length?"":shown+" of "+rows.length+" representatives";
+  }
+  function centre(c){
+    if(!wrap||!c.getBoundingClientRect)return;
+    var b=c.getBoundingClientRect(), w=wrap.getBoundingClientRect();
+    wrap.scrollLeft+=(b.left+b.width/2)-(w.left+w.width/2);
+    wrap.scrollTop +=(b.top+b.height/2)-(w.top+w.height/2);
+  }
+  function pick(c){
+    picked=c||null;
+    mark(picked?picked.getAttribute("data-seat"):"");
+    say();
+    if(!picked)return;
+    var row=rowFor(picked.getAttribute("data-seat"));
+    if(row){row.hidden=false;row.scrollIntoView({block:"nearest"});}
+    centre(picked);
+  }
+  function seatByNumber(seat){
+    return svg?svg.querySelector('[data-seat="'+seat+'"][data-slug]'):null;
+  }
+
   function draw(){
     var s=(q&&q.value||"").trim().toLowerCase();
-    var shown=0;
     rows.forEach(function(r){
-      var hay=(r.dataset.seat+" "+r.dataset.county+" "+r.textContent)
-        .toLowerCase();
-      var hit=!s||hay.indexOf(s)>-1;
-      r.hidden=!hit;
-      if(hit)shown++;
+      var hay=(r.dataset.seat+" "+r.dataset.county+" "+r.textContent).toLowerCase();
+      r.hidden=!(!s||hay.indexOf(s)>-1);
     });
-    say(shown,rows.length);
     // Searching for one person should light their seat without a second
     // gesture; searching for a county should not light an arbitrary one of
     // its twelve.
     var only=rows.filter(function(r){return !r.hidden;});
-    mark(only.length===1?only[0].dataset.seat:"");
+    if(s&&only.length===1)pick(seatByNumber(only[0].dataset.seat));
+    else {picked=null;mark("");say();}
   }
   if(q)q.addEventListener("input",draw);
   if(go)go.addEventListener("change",function(){
-    var seat=go.value; if(!seat)return;
-    mark(seat);
-    var row=rows.filter(function(r){return r.dataset.seat===seat;})[0];
-    if(row){row.hidden=false;row.scrollIntoView({block:"center",behavior:"smooth"});}
+    if(go.value)pick(seatByNumber(go.value));
   });
+
+  /* ZOOM, BECAUSE 400 SEATS DO NOT FIT A PHONE. The chart used to be pinned
+     to a 680px minimum inside a sideways-scrolling box: on a 390px screen
+     that is a seat about five pixels across, which is under half the
+     smallest thing a thumb can reliably hit. It is sized by zoom now, and a
+     narrow screen opens already zoomed in far enough for a seat to be a real
+     target -- the whole floor at once is no use if nothing on it can be
+     tapped. Fit puts it back. */
+  var zoom=1;
+  function apply(){ if(svg)svg.style.width=(zoom*100)+"%"; }
+  function fit(){
+    var w=wrap?wrap.clientWidth:0;
+    zoom=w?Math.max(1,Math.min(3.5,1100/w)):1;
+    apply();
+  }
+  function step(by){
+    zoom=Math.max(1,Math.min(4,zoom*by));
+    apply();
+    if(picked)centre(picked);
+  }
+  var zi=document.getElementById("szin"), zo=document.getElementById("szout"),
+      zf=document.getElementById("szfit");
+  if(zi)zi.addEventListener("click",function(){step(1.35);});
+  if(zo)zo.addEventListener("click",function(){step(1/1.35);});
+  if(zf)zf.addEventListener("click",function(){zoom=1;apply();});
+  fit();
+
   // A seat is a circle with a slug on it, not a link -- an <a> inside the SVG
   // would need its own focus and hit area. One handler on the map covers all
-  // 400, and Enter or Space does what a click does, which is what tabindex
-  // and role="button" on each circle promise.
+  // 400, and Enter or Space does what a tap does, which is what tabindex and
+  // role="button" on each circle promise.
   // The Speaker's seat is a <g> with a rect and a label inside it, so a click
   // lands on a child. closest() walks up to whichever node carries the slug,
   // which makes the rostrum behave like the other 399 circles.
@@ -904,24 +969,22 @@ SEATING_JS = """
     var n=t.closest("[data-slug]");
     return n&&n.getAttribute("data-slug")?n:null;
   }
-  function open(c){
-    var slug=c.getAttribute("data-slug");
-    if(slug)location.href=DATA("legislator/"+slug+".html");
-  }
   if(svg){
-    svg.addEventListener("click",function(e){var c=seatHit(e.target);if(c)open(c);});
+    svg.addEventListener("click",function(e){
+      var c=seatHit(e.target);
+      if(c){e.preventDefault();pick(c===picked?null:c);}
+    });
     svg.addEventListener("keydown",function(e){
       if(e.key!=="Enter"&&e.key!==" ")return;
       var c=seatHit(e.target); if(!c)return;
-      e.preventDefault(); open(c);
+      e.preventDefault(); pick(c===picked?null:c);
     });
-    // Hovering a seat names who is in it, above the chart, so the answer does
-    // not depend on a native tooltip appearing.
+    // Hovering names who is in a seat without choosing it, so a mouse can
+    // read the floor quickly; leaving restores whatever was chosen.
     svg.addEventListener("mouseover",function(e){
-      var c=seatHit(e.target); if(!c||!note)return;
-      note.textContent=c.getAttribute("data-name")+" — seat "+c.getAttribute("data-seat");
+      var c=seatHit(e.target); if(c)say(c);
     });
-    svg.addEventListener("mouseout",function(){draw();});
+    svg.addEventListener("mouseout",function(){say();});
   }
   draw();
 })();
@@ -935,7 +998,9 @@ SEATING_JS = """
 
    All three panes are in the HTML and all three are visible until this runs,
    so a reader with no JavaScript gets the whole roster rather than one pane
-   and two empty boxes. The first thing this does is hide two of them. */
+   and two empty boxes. The first thing this does is hide two of them -- and
+   that is also why losing this block is quiet: every pane simply stays open,
+   the tabs still look like tabs, and clicking one changes nothing. */
 (function(){
   var bar=document.querySelector(".rtabs");
   if(!bar)return;
@@ -1821,7 +1886,8 @@ its own.</p>
 <div class="rpane" id="pane-seat" role="tabpanel" aria-labelledby="tab-seat">
 <h2>Where they sit</h2>
 <p class="src">Every representative has a numbered seat in Representatives
-Hall, and it is the number on their licence plate. This is a diagram of the
+Hall, and it is the number on their licence plate. Tap a seat to see who is in
+it; tapping does not leave the page, and the name it gives you is the link. This is a diagram of the
 five divisions, not a drawing of the room: it is faithful to which division a
 seat is in and to the seat&rsquo;s number, and not to the true distances.
 {seated} of the 400 seats are filled{f" and {vacant} are vacant" if vacant else ""}.
@@ -1834,8 +1900,15 @@ The Speaker&rsquo;s chair is on the rostrum rather than on the floor, so
   <input id="sq" type="search" autocomplete="off"
     placeholder="A name, a county or a seat number">
 </div>
+<div class="seatbar">
+  <p class="seatnote" id="seatnote" role="status" aria-live="polite"></p>
+  <div class="seatzoom">
+    <button type="button" id="szout" aria-label="Show more of the floor">&minus;</button>
+    <button type="button" id="szin" aria-label="Show the seats larger">+</button>
+    <button type="button" id="szfit">Fit</button>
+  </div>
+</div>
 <div class="seatwrap">{seating.svg(by_seat)}</div>
-<p class="seatnote" id="seatnote" role="status" aria-live="polite"></p>
 <ol class="seatlist" id="seatlist">{by_seat_rows}</ol>
 <h2>The Senate</h2>
 <p class="src">The Senate has no seating chart: its 24 members are elected
@@ -1871,7 +1944,13 @@ it, or a name, county, party or committee to find a member.</p>
   <p class="count" id="lcount">Loading&hellip;</p>
   <div class="lmatch" id="lmatch"></div>
 </div>
-<div id="out"></div>
+<!-- The roster's #out lives inside the By county pane, and there must be only
+     ONE of it. This line used to hold a second, left from when the roster was
+     drawn straight into the page: getElementById returns the first in document
+     order, so the county listing rendered HERE, above the tab bar, and the
+     pane a reader opened by clicking By county stayed empty. Two elements with
+     one id is valid HTML that no validator complains about and no test caught,
+     because both halves of it looked like they worked. -->
 {roster_section(legs)}
 {('<div class="comp-wrap"><h2>Who holds the seats</h2>' + static_bar("S")
   + static_bar("H") + vacancies + "</div>") if C else ""}"""

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.111 */
+/* GRANITE_VERSION: 2026-09-07.112 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2800,8 +2800,15 @@ border-bottom-color:var(--pine)}
    scanned drawing, not coordinates, so what is faithful here is which
    division a seat is in and what its number is, not the shape of the hall. */
 :where(body.pg) .roster{margin-top:var(--sp-9)}
-:where(body.pg) .seatwrap{margin:var(--sp-6) 0;overflow-x:auto}
-:where(body.pg) .seatmap{width:100%;min-width:680px;height:auto;display:block}
+:where(body.pg) .seatwrap{margin:var(--sp-4) 0 var(--sp-6);overflow:auto;
+-webkit-overflow-scrolling:touch;max-height:78vh;
+border:1px solid var(--rule);border-radius:var(--r-in);background:var(--surface)}
+/* NO MINIMUM WIDTH. It was 680px inside a sideways-scrolling box, which on a
+   390px screen drew a seat about five pixels across -- under half the
+   smallest thing a thumb reliably hits, and the whole floor visible is no use
+   if nothing on it can be tapped. The width is the zoom's to set now, and the
+   script opens a narrow screen already zoomed in. */
+:where(body.pg) .seatmap{width:100%;height:auto;display:block}
 :where(body.pg) .seatmap .seat{fill:var(--rule-2);stroke:var(--edge);stroke-width:1;
 cursor:pointer;transition:fill .12s}
 :where(body.pg) .seatmap .seat:hover,:where(body.pg) .seatmap .seat:focus-visible{
@@ -2815,7 +2822,8 @@ fill:var(--pine);stroke:var(--pine)}
    vacant, and a dashed outline says vacant without needing a key. */
 :where(body.pg) .seatmap .seat.vacant{fill:none;stroke:var(--rule-2);
 stroke-dasharray:2 2;cursor:default}
-:where(body.pg) .seatmap .seat.on{fill:var(--pine);stroke:var(--ink);stroke-width:2}
+:where(body.pg) .seatmap .seat.on{fill:var(--pine);stroke:var(--ink);
+stroke-width:3;r:11}
 :where(body.pg) .seatmap .rostrumtext{fill:var(--ink-2);
 font:600 12px var(--sans);letter-spacing:.04em}
 /* The Speaker's chair is a seat like the other 400 and takes the party
@@ -2834,8 +2842,19 @@ font-size:var(--t-ui);padding:var(--sp-3) var(--sp-4);color:var(--ink);
 background:var(--surface);border:1px solid var(--edge);
 border-radius:var(--r-in);max-width:100%}
 :where(body.pg) .seatctl input{flex:1 1 200px;min-width:0}
-:where(body.pg) .seatnote{min-height:1.4em;margin:0 0 var(--sp-4);
+/* The readout and the zoom sit together above the chart: one says what you
+   have chosen, the other changes what you can see of it. */
+:where(body.pg) .seatbar{display:flex;flex-wrap:wrap;align-items:center;
+justify-content:space-between;gap:var(--sp-3) var(--sp-5);margin-top:var(--sp-5)}
+:where(body.pg) .seatnote{min-height:1.5em;margin:0;
 color:var(--ink-2);font-size:var(--t-ui)}
+:where(body.pg) .seatnote a{font-weight:600;color:var(--ink)}
+:where(body.pg) .seatzoom{display:flex;gap:var(--sp-2);flex:0 0 auto}
+:where(body.pg) .seatzoom button{font:inherit;font-size:var(--t-ui);
+min-width:40px;min-height:40px;padding:0 var(--sp-4);cursor:pointer;
+color:var(--ink-2);background:var(--surface);border:1px solid var(--edge);
+border-radius:var(--r-in)}
+:where(body.pg) .seatzoom button:hover{color:var(--ink);background:var(--wash)}
 
 /* THE ROSTER. Columns, because 382 names in one column is a very long page
    and the content should fill the width it has. */
