@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.91
+// GRANITE_VERSION: 2026-09-07.92
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2819,10 +2819,15 @@ function pagePane(html){
 const pchip=m=>{
   const code=String(m.party_code||m.party||"").toUpperCase().slice(0,1)||"X";
   const who=esc(m.display_full||m.label||m.name||"");
-  const inner=m.prime?`<b>${who}</b>`:who;
+  // A LABEL, NOT BOLD. A committee roster has always labelled its Chair, Vice
+  // Chair and Clerk through the <i> below, and the prime sponsor was marked
+  // with bold alone -- which is not a label, cannot be told from emphasis, and
+  // is nothing at all to a screen reader. It reuses the mechanism that was
+  // already there rather than adding a second one.
+  const role=(m.role&&m.role!=="Member")?m.role:(m.prime?"Prime":"");
   return `<span class="mchip p-${esc(code)}">${
-    m.slug?`<a href="legislator/${esc(m.slug)}.html">${inner}</a>`:inner}${
-    m.role&&m.role!=="Member"?` <i>${esc(m.role)}</i>`:""}</span>`;};
+    m.slug?`<a href="legislator/${esc(m.slug)}.html">${who}</a>`:who}${
+    role?` <i>${esc(role)}</i>`:""}</span>`;};
 const mchip=pchip;
 
 // ---------------------------------------------------------------- member ---

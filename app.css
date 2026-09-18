@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.99 */
+/* GRANITE_VERSION: 2026-09-07.100 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1484,8 +1484,20 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4)}
 .croster h2 span{font-weight:400}
 /* Every member on the committee, in a grid rather than folded into a
    dropdown: who sits on a committee is the first thing the page is asked. */
-.croster .mlist{display:grid;gap:var(--sp-2) var(--sp-5);margin:0;
-grid-template-columns:repeat(auto-fill,minmax(244px,1fr))}
+/* A ROW OF CHIPS, NOT A GRID OF CELLS.
+
+   This was repeat(auto-fill,minmax(244px,1fr)), and 244px is narrower than
+   the chips it had to hold: across every roster on the site the MEDIAN chip
+   measures about 253px and the longest -- "Rep. Vanessa Sheehan (R - Hills
+   43)" with its Vice Chair label -- about 360px. So more than half of them
+   broke across two lines, which is what the ragged Finance roster was.
+
+   Widening the track would only move the number. A chip is the shape of its
+   name, so the container is now flex and each one takes the width it needs;
+   they wrap as whole chips between names rather than inside one. It also
+   retires the justify-self and align-self below, which existed only to stop
+   the grid stretching a chip to its cell. */
+.croster .mlist{display:flex;flex-wrap:wrap;gap:var(--sp-3) var(--sp-4);margin:0}
 /* A CHIP IS THE SHAPE OF ITS NAME. .mchip is display:inline-block, which
    shrinks to its text everywhere else on the site; made a grid item here it
    is stretched by the default justify-self:stretch, so "Rep. Oliver Ford (R)"
@@ -1499,21 +1511,69 @@ grid-template-columns:repeat(auto-fill,minmax(244px,1fr))}
    pulled to that height and the party tint became a blank band twice the
    height of the name. 84 chips on 17 committee pages, each 49px against a
    27px base. */
-.croster .mchip{margin:0;justify-self:start;align-self:start}
+.croster .mchip{margin:0}
 .cpurpose{margin:var(--sp-6) 0 0;max-width:var(--measure)}
 .cpurpose p{font-size:var(--t-body);line-height:1.65;margin:0}
 .cpurpose .src{margin-top:var(--sp-3)}
 /* The term governs every tab, so it sits above them rather than inside one. */
 .pterm{margin:var(--sp-6) 0 0}
-.mchip{display:inline-block;margin:0 var(--sp-3) var(--sp-3) 0;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-pill);
-font-size:var(--t-ui);background:var(--surface);border:1px solid var(--rule-2)}
-.mchip i{font-style:normal;color:var(--ink-2);font-size:var(--t-sm)}
-/* The same chip the legislators page draws, rather than an outlined
-   pill with a colour bar down its left edge. One fact, one shape. */
-.mchip.p-R{background:var(--rep-soft);border-color:var(--rep-soft);color:var(--rep)}
-.mchip.p-D{background:var(--dem-soft);border-color:var(--dem-soft);color:var(--dem)}
-.mchip.p-I,.mchip.p-L{background:var(--ind-soft);border-color:var(--ind-soft);color:var(--ind)}
-.mchip a{color:inherit}
+/* THE NAME GETS THE CONTRAST, NOT THE PARTY.
+
+   This was a pill filled with the member's party tint, and the fault it hid
+   was not the one it looked like. The TEXT cleared AA everywhere -- 5.00:1 to
+   6.55:1. What failed was the chip's own ground: --rep-soft against the page
+   measures 1.00:1 in light and 1.21:1 in dark, and the border was set to the
+   same colour as the fill, so the shape was invisible and all that survived
+   was coloured, underlined text. On a bill with four Republican sponsors that
+   read as four error links rather than four names.
+
+   It also spent colour saying what the text already said. Every label carries
+   its party -- "Rep. Kenneth Weyler (R - Rock 14)" -- so the tint repeated it
+   at full strength on every name.
+
+   Now: the surface for the ground, --ink for the name, and the party as a
+   3px rule down the left edge. The rule reads at a distance a dot does not,
+   and a wrapped roster of twenty-five shows its split as a pattern down the
+   left of the block. --edge rather than --rule-2 for the outline because a
+   panel edge at 1.99:1 is what made the shape vanish; --edge is 3.91:1 in
+   light and 3.74:1 in dark, and clears the 3:1 the brief sets for a boundary.
+   The name reaches 14.91:1 and 11.45:1.
+
+   This reverses a note that used to sit here preferring the tint to "an
+   outlined pill with a colour bar down its left edge", on the grounds of one
+   fact, one shape. The shape is still one shape -- .mchip is what the
+   legislators page, the committee roster and the sponsor list all draw, so
+   they all change together. */
+.mchip{display:inline-flex;align-items:center;gap:var(--sp-3);
+margin:0 var(--sp-3) var(--sp-3) 0;
+padding:var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-3);
+border-radius:var(--r-in);font-size:var(--t-ui);background:var(--surface);
+border:1px solid var(--edge);border-left:3px solid var(--edge);
+/* ONE NAME, ONE LINE. A person's name broken across two lines reads as two
+   people at a glance, and the roster is scanned rather than read. The names
+   are as long as they are -- "Rep. Katherine Prudhomme-O'Brien (R - Rock 13)"
+   is a real member -- so the container gives a chip the width it asks for. */
+white-space:nowrap;max-width:100%}
+/* Except where there is genuinely not room. The longest chip is about 360px
+   and a 360px phone has 328px of content, so below that the name is allowed
+   to wrap rather than run off the side of the page: a wrapped name is worse
+   than an unwrapped one and better than one the reader cannot see. */
+@media (max-width:480px){.mchip{white-space:normal}}
+/* THE ROLE IS A LABEL. Chair, Vice Chair and Clerk have always been written
+   here; the prime sponsor was marked with bold alone, which is not a label,
+   does not survive being read aloud, and cannot be told from emphasis. */
+.mchip i{font-style:normal;font-size:var(--t-xs);font-weight:700;
+letter-spacing:.09em;text-transform:uppercase;color:var(--pine);
+border:1px solid var(--pine);border-radius:2px;padding:2px 5px;white-space:nowrap}
+.mchip.p-R{border-left-color:var(--rep)}
+.mchip.p-D{border-left-color:var(--dem)}
+.mchip.p-I,.mchip.p-L{border-left-color:var(--ind)}
+.mchip a{color:var(--ink);text-decoration:none;font-weight:500}
+.mchip a:hover{text-decoration:underline}
+.mchip:hover{border-color:var(--pine)}
+.mchip:hover.p-R{border-left-color:var(--rep)}
+.mchip:hover.p-D{border-left-color:var(--dem)}
+.mchip:hover.p-I,.mchip:hover.p-L{border-left-color:var(--ind)}
 .mlist{margin:var(--sp-4) 0 0}
 
 /* The filter strip above a list of bills, and above a committee's sessions. */
