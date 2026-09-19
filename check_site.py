@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.7
+# GRANITE_VERSION: 2026-09-04.8
 """
 Check the site is fit to publish before uploading it.
 
@@ -39,9 +39,13 @@ from pathlib import Path
 # perfectly.
 MAY_BE_EMPTY = {"former.json"}
 
+# Every page the navigation links to, plus the files every page loads. A tab
+# that is in the nav and not in here is a tab that can go missing without the
+# checker noticing -- which calendar.html did, between being added to both nav
+# emitters and being added to this list.
 REQUIRED = ["index.html", "bills.html", "legislators.html", "learn.html",
-            "about.html", "style.css", "index.json", "meta.json",
-            "legislators.json", "home.json"]
+            "about.html", "calendar.html", "style.css", "index.json",
+            "meta.json", "legislators.json", "home.json"]
 
 
 def served(target):
