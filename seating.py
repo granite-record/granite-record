@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.8
+# GRANITE_VERSION: 2026-09-18.9
 """
 Where every seat on the New Hampshire House floor goes, as a diagram.
 
@@ -161,6 +161,8 @@ STEP = SPACING * 1.36        # row to row, measured outward from the Speaker
 AISLE_SEATS = 2.4            # aisle width at the front row, in seat widths
 
 MARGIN = 48.0                # room for the seat radius and the division labels
+LABEL_OUT = 26.0             # how far beyond the last row a caption's arc sits
+LABEL_UP = 14.0              # how far the letters reach above that arc
 
 
 def seats_in(division):
@@ -357,12 +359,50 @@ def _unshifted():
     return pos
 
 
+def label_arcs():
+    """{division: (radius, high bearing, low bearing)} for its caption's path.
+
+    A CAPTION FOLLOWS ITS BLOCK. They were flat text on a point, which had two
+    faults. The small one is that a straight word over a curved block looks
+    stuck on. The large one is that divisions 1 and 5 lie at bearings of 4 and
+    176 degrees -- very nearly flat -- so their captions sat further out
+    sideways than any seat, and "Division 5" was centred at x=16 in a box
+    starting at 0: cut in half, at both ends of the hall, in every render
+    since the captions were added.
+
+    On an arc just beyond the last row they hug the block instead, and the
+    ones at the flat ends run vertically, which is how the Clerk's plan prints
+    them.
+    """
+    r0 = _fit()
+    mids = _wedges(r0)
+    out = {}
+    for d in LEFT_TO_RIGHT:
+        mid, w = mids[d]
+        out[d] = (_radii(d, r0)[-1] + LABEL_OUT, mid + w / 2, mid - w / 2)
+    return out
+
+
+def _corners():
+    """Every point the drawing has to enclose: the seats, and the label arcs.
+
+    The arcs are sampled rather than reasoned about, because the outermost
+    point of an arc is not always an endpoint -- a wedge straddling due north
+    reaches highest in its middle.
+    """
+    pts = list(_unshifted().values())
+    for r, hi, lo in label_arcs().values():
+        for k in range(9):
+            a = lo + (hi - lo) * k / 8
+            out = r + LABEL_UP
+            pts.append((CX + out * math.cos(a), CY - out * math.sin(a)))
+    return pts
+
+
 def _shift():
     """(dx, dy) that puts the drawing's top-left corner at the margin."""
-    pos = _unshifted()
-    xs = [x for x, _ in pos.values()]
-    ys = [y for _, y in pos.values()]
-    return MARGIN - min(xs), MARGIN - min(ys)
+    pts = _corners()
+    return (MARGIN - min(x for x, _ in pts), MARGIN - min(y for _, y in pts))
 
 
 def layout():
@@ -373,21 +413,24 @@ def layout():
 
 def extent():
     """(width, height) the drawing needs, with its margins."""
-    pos = layout()
-    return (max(x for x, _ in pos.values()) + MARGIN,
-            max(y for _, y in pos.values()) + MARGIN)
+    dx, dy = _shift()
+    pts = _corners()
+    return (max(x for x, _ in pts) + dx + MARGIN,
+            max(y for _, y in pts) + dy + MARGIN)
 
 
-def labels():
-    """{division: (x, y)} for the caption on each block, beyond its last row."""
-    r0 = _fit()
-    mids = _wedges(r0)
+def label_paths():
+    """{division: "M x y A r r 0 0 1 x2 y2"} -- the shifted arc each caption runs on.
+
+    High bearing to low, which is left to right across the drawing, so the
+    letters sit the right way up on the outside of the curve.
+    """
     dx, dy = _shift()
     out = {}
-    for d in LEFT_TO_RIGHT:
-        mid = mids[d][0]
-        r = _radii(d, r0)[-1] + 30
-        out[d] = (CX + r * math.cos(mid) + dx, CY - r * math.sin(mid) + dy)
+    for d, (r, hi, lo) in label_arcs().items():
+        x1, y1 = CX + r * math.cos(hi) + dx, CY - r * math.sin(hi) + dy
+        x2, y2 = CX + r * math.cos(lo) + dx, CY - r * math.sin(lo) + dy
+        out[d] = f"M {x1:.1f} {y1:.1f} A {r:.1f} {r:.1f} 0 0 1 {x2:.1f} {y2:.1f}"
     return out
 
 
@@ -479,6 +522,22 @@ def check():
         f"two divisions come within {min(aisles):.1f} at the front, which reads "
         "as the blocks touching")
 
+    # NOTHING IS DRAWN OUTSIDE THE BOX. The division captions were sized out
+    # of the picture for several days: the viewBox was measured from the seats
+    # alone, and the two captions at the flat ends of the hall sit further out
+    # sideways than any seat does, so "Division 5" was centred at x=16 in a
+    # box starting at 0. It looked like a rendering quirk and was arithmetic.
+    for d, (r, hi, lo) in label_arcs().items():
+        for k in range(9):
+            a = lo + (hi - lo) * k / 8
+            out = r + LABEL_UP
+            x = CX + out * math.cos(a) + _shift()[0]
+            y = CY - out * math.sin(a) + _shift()[1]
+            assert 0 <= x <= w and 0 <= y <= h, (
+                f"division {d}'s caption leaves the drawing at ({x:.0f}, {y:.0f}) "
+                f"in a {w:.0f} by {h:.0f} box")
+    print(f"  captions inside the drawing                   : {len(label_arcs())}")
+
     # Every seated member openable from the chart, the Speaker included -- the
     # rostrum was once drawn as furniture and skipped over.
     who = {s: {"name": f"Member {s}", "slug": f"m{s}", "party_code": "R"}
@@ -502,16 +561,23 @@ def svg(by_seat=None, title="New Hampshire House seating"):
     """
     by_seat = by_seat or {}
     pos = layout()
-    caption = labels()
+    paths = label_paths()
     w, h = extent()
     out = [f'<svg viewBox="0 0 {w:.0f} {h:.0f}" class="seatmap" role="img" '
            f'aria-label="{title}: 400 seats in five divisions">',
            f"<title>{title}</title>"]
 
+    # The captions ride an arc just outside each block, so they curve with it
+    # and the two at the flat ends of the hall run vertically rather than off
+    # the edge of the drawing.
+    out.append("<defs>")
     for d in LEFT_TO_RIGHT:
-        lx, ly = caption[d]
-        out.append(f'<text class="divlabel" x="{lx:.0f}" y="{ly:.0f}" '
-                   f'text-anchor="middle">Division {d}</text>')
+        out.append(f'<path id="divarc{d}" d="{paths[d]}" fill="none"/>')
+    out.append("</defs>")
+    for d in LEFT_TO_RIGHT:
+        out.append(f'<text class="divlabel"><textPath href="#divarc{d}" '
+                   f'startOffset="50%" text-anchor="middle">Division {d}'
+                   f"</textPath></text>")
 
     for seat in all_seats():
         x, y = pos[seat]

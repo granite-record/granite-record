@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.113 */
+/* GRANITE_VERSION: 2026-09-07.114 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2807,7 +2807,8 @@ font-weight:600;color:var(--pine);text-decoration:none}
    scanned drawing, not coordinates, so what is faithful here is which
    division a seat is in and what its number is, not the shape of the hall. */
 :where(body.pg) .roster{margin-top:var(--sp-9)}
-:where(body.pg) .seatwrap{margin:var(--sp-4) 0 var(--sp-6);overflow:auto;
+:where(body.pg) .seatwrap{margin:var(--sp-4) 0 0;overflow:auto;
+touch-action:pan-x pan-y;cursor:grab;
 -webkit-overflow-scrolling:touch;max-height:78vh;
 border:1px solid var(--rule);border-radius:var(--r-in);background:var(--surface)}
 /* NO MINIMUM WIDTH. It was 680px inside a sideways-scrolling box, which on a
@@ -2837,8 +2838,13 @@ font:600 12px var(--sans);letter-spacing:.04em}
    colours with them; a heavier ring is what marks it out, because it is one
    chair on its own and would otherwise read as a stray. */
 :where(body.pg) .seatmap .rostrum{stroke-width:2}
+:where(body.pg) .seatwrap.dragging{cursor:grabbing}
+:where(body.pg) .seatstage{margin-bottom:var(--sp-6)}
+/* The captions ride an arc outside each block, so they are set on a path
+   rather than at a point; dominant-baseline lifts the letters off the curve
+   instead of sitting them astride it. */
 :where(body.pg) .seatmap .divlabel{fill:var(--ink-2);font:600 12px var(--sans);
-letter-spacing:.03em}
+letter-spacing:.08em;text-transform:uppercase;dominant-baseline:auto}
 
 :where(body.pg) .seatctl{display:flex;flex-wrap:wrap;align-items:center;
 gap:var(--sp-3) var(--sp-5)}
@@ -2853,9 +2859,22 @@ border-radius:var(--r-in);max-width:100%}
    have chosen, the other changes what you can see of it. */
 :where(body.pg) .seatbar{display:flex;flex-wrap:wrap;align-items:center;
 justify-content:space-between;gap:var(--sp-3) var(--sp-5);margin-top:var(--sp-5)}
-:where(body.pg) .seatnote{min-height:1.5em;margin:0;
-color:var(--ink-2);font-size:var(--t-ui)}
-:where(body.pg) .seatnote a{font-weight:600;color:var(--ink)}
+:where(body.pg) .seathint{margin:0;color:var(--ink-2);font-size:var(--t-xs)}
+
+/* THE NAME SITS UNDER THE FLOOR, IN THE MIDDLE. It was above the chart,
+   which on a phone put it off the top of the screen the moment a reader
+   zoomed in and started moving about -- so the one thing a tap is for was
+   the one thing they could not see. The stage holds the scrolling floor and
+   pins the readout across the bottom of it, out of the scroll. */
+:where(body.pg) .seatstage{position:relative}
+:where(body.pg) .seatnote{position:absolute;left:0;right:0;bottom:0;
+margin:0;padding:var(--sp-3) var(--sp-5);min-height:1.5em;text-align:center;
+color:var(--ink-2);font-size:var(--t-ui);pointer-events:none;
+background:color-mix(in srgb, var(--surface) 88%, transparent);
+border-top:1px solid var(--rule);
+border-radius:0 0 var(--r-in) var(--r-in)}
+:where(body.pg) .seatnote:empty{display:none}
+:where(body.pg) .seatnote a{font-weight:600;color:var(--ink);pointer-events:auto}
 :where(body.pg) .seatzoom{display:flex;gap:var(--sp-2);flex:0 0 auto}
 :where(body.pg) .seatzoom button{font:inherit;font-size:var(--t-ui);
 min-width:40px;min-height:40px;padding:0 var(--sp-4);cursor:pointer;

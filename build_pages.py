@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.92
+# GRANITE_VERSION: 2026-09-04.93
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -997,21 +997,87 @@ SEATING_JS = """
      tapped. Fit puts it back. */
   var zoom=1;
   function apply(){ if(svg)svg.style.width=(zoom*100)+"%"; }
+  // ZOOM ABOUT A POINT, not about the top-left corner. Zooming toward the
+  // middle of the box moves whatever the reader was looking at out from under
+  // them, which on a chart of 400 near-identical circles means losing your
+  // place entirely. The content coordinate under the pointer is worked out
+  // first and put back under the pointer afterwards.
+  function zoomAt(next, cx, cy){
+    if(!wrap)return;
+    next=Math.max(1,Math.min(6,next));
+    if(next===zoom)return;
+    var r=wrap.getBoundingClientRect();
+    var ox=(cx===undefined?r.width/2:cx-r.left), oy=(cy===undefined?r.height/2:cy-r.top);
+    var k=next/zoom;
+    var sx=(wrap.scrollLeft+ox)*k-ox, sy=(wrap.scrollTop+oy)*k-oy;
+    zoom=next; apply();
+    wrap.scrollLeft=sx; wrap.scrollTop=sy;
+  }
   function fit(){
     var w=wrap?wrap.clientWidth:0;
     zoom=w?Math.max(1,Math.min(3.5,1100/w)):1;
     apply();
   }
-  function step(by){
-    zoom=Math.max(1,Math.min(4,zoom*by));
-    apply();
-    if(picked)centre(picked);
+  function step(by){ zoomAt(zoom*by); if(picked)centre(picked); }
+
+  if(wrap){
+    // THE WHEEL ZOOMS over the chart rather than scrolling past it, which is
+    // what a reader expects of something they can drag around, and is what
+    // was asked for. preventDefault stops the page moving underneath.
+    wrap.addEventListener("wheel",function(e){
+      e.preventDefault();
+      zoomAt(zoom*(e.deltaY<0?1.12:1/1.12), e.clientX, e.clientY);
+    },{passive:false});
+
+    // DRAGGING MOVES THE FLOOR. Only from the background: a drag that starts
+    // on a seat would otherwise swallow the tap that chooses it.
+    var from=null;
+    wrap.addEventListener("pointerdown",function(e){
+      if(e.pointerType==="touch")return;      // one finger already pans natively
+      if(e.target.closest&&e.target.closest("[data-seat]"))return;
+      from={x:e.clientX,y:e.clientY,l:wrap.scrollLeft,t:wrap.scrollTop};
+      wrap.setPointerCapture(e.pointerId);
+      wrap.classList.add("dragging");
+    });
+    wrap.addEventListener("pointermove",function(e){
+      if(!from)return;
+      wrap.scrollLeft=from.l-(e.clientX-from.x);
+      wrap.scrollTop =from.t-(e.clientY-from.y);
+    });
+    ["pointerup","pointercancel"].forEach(function(n){
+      wrap.addEventListener(n,function(){from=null;wrap.classList.remove("dragging");});
+    });
+
+    // TWO FINGERS PINCH. One finger is left alone so the box still scrolls
+    // the way every other scrollable thing on a phone does, and so a reader
+    // can still get past the chart to the rest of the page.
+    var gap=0, mid=null;
+    function spread(t){
+      var dx=t[0].clientX-t[1].clientX, dy=t[0].clientY-t[1].clientY;
+      return Math.sqrt(dx*dx+dy*dy);
+    }
+    wrap.addEventListener("touchstart",function(e){
+      if(e.touches.length!==2)return;
+      gap=spread(e.touches);
+      mid={x:(e.touches[0].clientX+e.touches[1].clientX)/2,
+           y:(e.touches[0].clientY+e.touches[1].clientY)/2};
+    },{passive:true});
+    wrap.addEventListener("touchmove",function(e){
+      if(e.touches.length!==2||!gap)return;
+      e.preventDefault();
+      var now=spread(e.touches);
+      zoomAt(zoom*(now/gap), mid.x, mid.y);
+      gap=now;
+    },{passive:false});
+    wrap.addEventListener("touchend",function(e){
+      if(e.touches.length<2){gap=0;mid=null;}
+    },{passive:true});
   }
   var zi=document.getElementById("szin"), zo=document.getElementById("szout"),
       zf=document.getElementById("szfit");
   if(zi)zi.addEventListener("click",function(){step(1.35);});
   if(zo)zo.addEventListener("click",function(){step(1/1.35);});
-  if(zf)zf.addEventListener("click",function(){zoom=1;apply();});
+  if(zf)zf.addEventListener("click",function(){zoomAt(1);});
   fit();
 
   // A seat is a circle with a slug on it, not a link -- an <a> inside the SVG
@@ -1966,14 +2032,17 @@ The Speaker&rsquo;s chair is on the rostrum rather than on the floor, so
     placeholder="A name, a county or a seat number">
 </div>
 <div class="seatbar">
-  <p class="seatnote" id="seatnote" role="status" aria-live="polite"></p>
+  <p class="seathint">Scroll or pinch to zoom, drag to move about the floor.</p>
   <div class="seatzoom">
     <button type="button" id="szout" aria-label="Show more of the floor">&minus;</button>
     <button type="button" id="szin" aria-label="Show the seats larger">+</button>
     <button type="button" id="szfit">Fit</button>
   </div>
 </div>
-<div class="seatwrap">{seating.svg(by_seat)}</div>
+<div class="seatstage">
+  <div class="seatwrap">{seating.svg(by_seat)}</div>
+  <p class="seatnote" id="seatnote" role="status" aria-live="polite"></p>
+</div>
 <ol class="seatlist" id="seatlist">{by_seat_rows}</ol>
 <h2>The Senate</h2>
 <p class="src">The Senate has no seating chart: its 24 members are elected
