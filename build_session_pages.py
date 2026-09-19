@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.1
+# GRANITE_VERSION: 2026-09-19.2
 """
 A page for every day the House sat.
 
@@ -154,7 +154,7 @@ def base_bill(bid):
     so it is dropped for matching and the record's own id is what the page
     shows.
     """
-    return re.split(r"-", (bid or "").upper(), 1)[0].strip()
+    return re.split(r"-", (bid or "").upper(), maxsplit=1)[0].strip()
 
 
 def member_html(body, name, members, esc):
@@ -176,10 +176,13 @@ def vote_payload(item):
     """
     if not item.counted:
         return None
-    tot = (item.yeas or 0) + (item.nays or 0)
     return {"yeas": item.yeas, "nays": item.nays,
             "passed": bool(item.carried),
-            "threshold_needed": (tot // 2) + 1 if tot else 0,
+            # Not always half plus one. The Senate writes "3/5 nec." into the
+            # motion for a supermajority, and drawn as a simple majority the
+            # ring's threshold mark says a motion cleared a bar it never
+            # faced, or missed one it did.
+            "threshold_needed": item.threshold_needed,
             "kind": item.kind}
 
 
@@ -250,7 +253,20 @@ def render(day, narrative, titles, years, members, esc):
                for d in (narrative.get("debates") or []) if d.get("bill")}
     payloads = []
 
-    H.append('<section class="sday"><h2>The day in order</h2>')
+    # ONLY CLAIM AN ORDER WHERE THE RECORD HOLDS ONE. The journal page is the
+    # chamber's own sequence and it is cited on 24% of House actions and 0.3%
+    # of Senate ones -- in practice from 2016 for the House and almost never
+    # for the Senate. Where it is absent the actions are listed by bill, which
+    # is predictable and is NOT the order they happened in, and the heading
+    # says so rather than letting an alphabetical list read as a narrative.
+    if day.ordered:
+        H.append('<section class="sday"><h2>The day in order</h2>')
+    else:
+        H.append('<section class="sday"><h2>What the '
+                 f'{CHAMBER[body]} did that day</h2>'
+                 '<p class="note">The record does not say what order these '
+                 "came in: the journal page is cited on only a few of them, "
+                 "so they are listed by bill.</p>")
     for bill, items in runs(day.items):
         ti = titles.get(bill) or ""
         num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bill)
@@ -384,9 +400,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
     ap.add_argument("--base", default="https://graniterecord.org")
-    ap.add_argument("--body", default="H", help="H; the Senate journal records "
-                                                "no speakers, so it is a "
-                                                "separate job")
+    ap.add_argument("--body", default="H",
+                    help="H or S. A Senate page carries the record only: its "
+                         "journal records no speakers")
     ap.add_argument("--limit", type=int, default=0)
     a = ap.parse_args()
     site, base = Path(a.site), a.base.rstrip("/")
@@ -408,8 +424,15 @@ def main():
     for n, key in enumerate(order):
         day = days[key]
         date = day.date
-        narrative = ({"attributions": [], "debates": [], "unanimous_consent": []}
-                     if date < JOURNAL_FROM else journal_days.read_day(date))
+        # THE SENATE JOURNAL IS NOT READ, and that is not an oversight. Across
+        # all 491 Senate files there are no UNANIMOUS CONSENT sections, no
+        # REMARKS, no PERSONAL PRIVILEGE, and "spoke in favor" appears in three
+        # files as ordinary English inside a speech. The Senate journal does
+        # not record who spoke on which side, so there is nothing here to
+        # parse and the page says so instead of showing an empty section.
+        blank = {"attributions": [], "debates": [], "unanimous_consent": []}
+        narrative = (blank if (body != "H" or date < JOURNAL_FROM)
+                     else journal_days.read_day(date))
         if narrative.get("attributions") or narrative.get("debates"):
             with_narr += 1
 
@@ -421,7 +444,7 @@ def main():
                     unlinked += 1
         block, payloads = render(day, narrative, titles, years, members, S.E)
         label = f"The {CHAMBER[body]}, {words(date)}"
-        lead = _lead(day, narrative, date)
+        lead = _lead(day, narrative, date, body)
         prev_ = order[n - 1][1] if n > 0 else ""
         next_ = order[n + 1][1] if n + 1 < len(order) else ""
         nav = []
@@ -483,7 +506,7 @@ def main():
     return 0
 
 
-def _lead(day, narrative, date):
+def _lead(day, narrative, date, body="H"):
     n = len(day.items)
     b = len(day.bills)
     k = day.counts()
@@ -495,7 +518,11 @@ def _lead(day, narrative, date):
     if d:
         bits.append(f"{d} debate{'' if d == 1 else 's'} printed in the "
                     "permanent journal")
-    if date < JOURNAL_FROM:
+    if body == "S":
+        bits.append("The Senate journal does not record who spoke for or "
+                    "against a motion, so this is the vote record without "
+                    "the debate")
+    elif date < JOURNAL_FROM:
         bits.append("The journal is on record from 1997, so this day carries "
                     "the vote record without the debate")
     return ". ".join(bits) + "."

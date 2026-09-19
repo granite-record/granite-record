@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.7
+# GRANITE_VERSION: 2026-09-18.8
 """
 The General Court's week, one page per week.
 
@@ -323,7 +323,24 @@ def collect(site):
     return weeks, titles, years, code
 
 
-def week_page(site, base, key, weeks, order, at, titles, years, code, urls, today):
+def sitting_pages(site):
+    """{(body, date)} -- the sitting pages build_session_pages actually wrote.
+
+    Read off the disk rather than recomputed, so a calendar card can never
+    link to a day that was not built.
+    """
+    out = set()
+    root = Path(site) / "session"
+    if root.exists():
+        for d in root.iterdir():
+            if d.is_dir():
+                for f in d.glob("*.html"):
+                    out.add((d.name.upper(), f.stem))
+    return out
+
+
+def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
+              today, sessions=frozenset()):
     days_raw = weeks[key]
     dated = [d for d in days_raw if days_raw[d]]
     first = monday(datetime.date.fromisoformat(min(dated) if dated
@@ -350,7 +367,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls, toda
     # section under it. On the home page the days sit under "Coming up"
     # and stay h3.
     body, _missing = BP.cal_days(days, meets, titles, years, code, when, S.E,
-                                 level=2)
+                                 level=2, sessions=sessions)
 
     n = sum(len(v) for v in days.values())
     bills = len({(r["date"], r["bill"]) for rows in meets.values()
@@ -445,10 +462,12 @@ def main():
         weeks[here][today.isoformat()] = OrderedDict()
     order = sorted(weeks)
 
+    sits = sitting_pages(site)
+    print(f"  {len(sits):,} sitting pages on disk to link to")
     urls, total = [], 0
     for i, key in enumerate(order):
         total += week_page(site, base, key, weeks, order, i,
-                           titles, years, code, urls, today)
+                           titles, years, code, urls, today, sits)
 
     sm = site / "sitemap.xml"
     if sm.exists():

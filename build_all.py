@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.29
+# GRANITE_VERSION: 2026-09-05.30
 """
 Run the whole pipeline in the right order.
 
@@ -498,10 +498,19 @@ def plan(a):
         # only if site/legislators.json and site/former.json are on disk to
         # resolve it against, and BEFORE the calendar, whose floor cards link
         # to these pages.
+        Step("a page for every day the Senate sat",
+             ["build_session_pages.py", "--site", "site", "--base", a.base,
+              "--body", "S"],
+             needs=["narratives.json", "site/legislators.json"],
+             produces=["site/session/S"],
+             note="the record only. The Senate journal carries no unanimous "
+                  "consent, no remarks and no speaker attributions at all, so "
+                  "a Senate page says so rather than showing an empty section"),
+
         Step("a page for every day the House sat",
              ["build_session_pages.py", "--site", "site", "--base", a.base],
              needs=["narratives.json", "site/legislators.json"],
-             produces=["site/session"],
+             produces=["site/session/H"],
              note="the day in the order the journal prints it: every bill, "
                   "the motions put to it, who spoke on which side, how it was "
                   "voted and what that did to the bill. House only -- the "

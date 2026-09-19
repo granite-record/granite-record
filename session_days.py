@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.1
+# GRANITE_VERSION: 2026-09-19.2
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -102,11 +102,25 @@ def _consequence(action, carried):
     return None
 
 
+# THE SENATE WRITES ITS VOTE INSIDE THE MOTION. "Ought to Pass RC 19Y-5N,
+# 3/5 nec., MA; OT3rdg" is one Senate action: the kind, the tally and the
+# threshold are all in the prose, and the vote_kind, yeas and nays fields are
+# empty. 1,445 Senate actions are like this and no House action is.
+INLINE_VOTE = re.compile(r"\b(?P<kind>RC|DV|VV)\s*(?P<y>\d+)\s*Y\s*-\s*"
+                         r"(?P<n>\d+)\s*N", re.I)
+
+# "3/5 nec." and "2/3 nec." -- the motion needed a supermajority. Drawn as a
+# simple majority the threshold mark on the ring sits in the wrong place and
+# the chart says a motion cleared a bar it did not have to clear, or missed one
+# it never faced.
+THRESHOLD = re.compile(r"\b(?P<a>\d)\s*/\s*(?P<b>\d)\s*nec", re.I)
+
+
 class Item:
     """One thing the chamber did to one bill, at one point in the day."""
 
     __slots__ = ("bill", "term", "action", "mover", "carried", "kind",
-                 "yeas", "nays", "cite", "page", "raw", "seq")
+                 "yeas", "nays", "cite", "page", "raw", "seq", "need")
 
     def __init__(self, bill, term, e, seq):
         self.bill = bill
@@ -121,6 +135,35 @@ class Item:
         self.page = _int(e.get("cite_page"))
         self.raw = (e.get("raw") or "").strip()
         self.seq = seq
+        self.need = None
+
+        # What the fields did not carry, the prose sometimes does. Read from
+        # `raw` rather than `action` because the clerk puts the outcome after
+        # the tally -- "RC 19Y-5N, 3/5 nec., MA" -- and `action` is cut before
+        # it on some rows and not others.
+        src = self.raw or self.action
+        if not self.kind or self.yeas is None:
+            m = INLINE_VOTE.search(src)
+            if m:
+                self.kind = self.kind or m.group("kind").upper()
+                if self.yeas is None:
+                    self.yeas, self.nays = int(m.group("y")), int(m.group("n"))
+        th = THRESHOLD.search(src)
+        if th:
+            a, b = int(th.group("a")), int(th.group("b"))
+            if 0 < a < b:
+                tot = (self.yeas or 0) + (self.nays or 0)
+                if tot:
+                    # Ceiling: three fifths of 24 is 14.4, and 15 votes carry it.
+                    self.need = -(-tot * a // b)
+
+    @property
+    def threshold_needed(self):
+        """Votes needed to carry, which is not always half plus one."""
+        if self.need:
+            return self.need
+        tot = (self.yeas or 0) + (self.nays or 0)
+        return (tot // 2) + 1 if tot else 0
 
     @property
     def kind_words(self):
@@ -150,12 +193,18 @@ class Item:
 class Day:
     """One chamber, one date, and everything it did to bills that day."""
 
-    __slots__ = ("body", "date", "items", "journal")
+    __slots__ = ("body", "date", "items", "journal", "ordered")
 
     def __init__(self, body, date, items):
         self.body = body
         self.date = date
         self.items = items
+        # IS THIS THE ORDER IT HAPPENED IN? Only where the journal page says
+        # so. 24% of House actions cite one and 0.3% of Senate actions do, so
+        # a Senate day is a LIST of what the chamber did and not a sequence,
+        # and the page must say that rather than implying an order the record
+        # does not hold.
+        self.ordered = sum(1 for i in items if i.page is not None) > len(items) / 2
         # "HJ 4" -- the journal number this day is printed in. Taken from the
         # items rather than asserted, and only when they agree: a day whose
         # rows cite two different journals is telling us something and should

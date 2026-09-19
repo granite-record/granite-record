@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.99
+# GRANITE_VERSION: 2026-09-04.100
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -430,7 +430,8 @@ def calendar_html(H, out):
     return "".join(html) + cal_notes(H, up, missing, esc)
 
 
-def cal_days(days, meets, titles, years, code, when, esc, level=3):
+def cal_days(days, meets, titles, years, code, when, esc, level=3,
+             sessions=None):
     """The day blocks and their meeting cards, for any set of days.
 
     Split out of calendar_html on 18 September so the calendar PAGE draws the
@@ -564,12 +565,18 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3):
             # until the calendar gave them one -- so "House floor" and "Senate
             # floor" lead to the day's own page instead, where the whole
             # sitting is set out in the order the journal records it.
-            # HOUSE ONLY, BECAUSE ONLY THE HOUSE HAS THESE PAGES. The Senate
-            # journal records no speakers -- "spoke in favor" appears four
-            # times in 491 files and every one is ordinary English inside a
-            # speech -- so Senate sitting days are a separate job. Linking
-            # them here before they exist would put a 404 on the calendar.
-            floor = {"house floor": "H"}.get(cmte.strip().lower())
+            # A FLOOR CARD LINKS ONLY WHERE THE SITTING PAGE EXISTS. Both
+            # chambers have pages now, but proceedings.csv and narratives.json
+            # do not agree on every sitting: the Senate sat on 19 August 2026
+            # by one and not by the other, and the link was a 404. `sessions`
+            # is the set of pages actually on disk, so the caller that built
+            # them decides, rather than this guessing from the name.
+            floor = {"house floor": "H",
+                     "senate floor": "S"}.get(cmte.strip().lower())
+            if floor and sessions is not None and (floor, _d) not in sessions:
+                floor = None
+            elif floor and sessions is None:
+                floor = None
             cc = code.get(cmte.strip().lower())
             if floor:
                 html.append('<p class="calmore">'
