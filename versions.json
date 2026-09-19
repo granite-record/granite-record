@@ -82,6 +82,7 @@
     "fetch_town_clerks.py": "2026-09-12.2",
     "find.js": "2026-09-16.5",
     "fiscal.py": "2026-09-08.1",
+    "fix_meridiem_manifests.py": "2026-09-18.1",
     "floor_markers.py": "2026-09-04.5",
     "functions/api/report.js": "2026-09-12.3",
     "gc_changes.py": "2026-09-12.1",
