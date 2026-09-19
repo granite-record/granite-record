@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.213
+# GRANITE_VERSION: 2026-09-04.214
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3307,6 +3307,44 @@ def _chain():
         # build_feeds had stopped producing. What is now allowed is exactly the
         # other direction, and only where the bill's own record says it has
         # concluded in the term still sitting.
+        # AN IN-PAGE LINK THAT NAMES ITS OWN PAGE, AND LANDS ON A REAL ID.
+        #
+        # These pages are built from bills.html, which sets <base href="/">, so
+        # href="#s-vetoes" resolves against the BASE and sends the reader to
+        # the home page. _links_resolve will not catch that: it urldefrags
+        # every href before resolving, so a bare fragment reads as the site
+        # root and passes while every entry in a contents rail is wrong.
+        # footer_nav's docstring records the same trap springing once already,
+        # with "../learn.html".
+        #
+        # The second half is the slower version of the same failure. The ids
+        # are DERIVED from the headings, so a heading reworded in civics.py
+        # changes its slug; if the pass that collects them and the pass that
+        # writes the hrefs ever come apart, the link dies silently on a page
+        # nobody is watching. Checking that the id exists is what makes
+        # deriving them safe enough to prefer over sixty-two hand-written ones.
+        learn = sorted((root / "site" / "learn").glob("*.html"))
+        assert learn, "the chain built no learn pages for the contents check"
+        n_toc = 0
+        for f in learn + [root / "site" / "learn.html"]:
+            page = f.read_text(encoding="utf-8", errors="replace")
+            ids = set(re.findall(r'id="([^"]+)"', page))
+            want = f"learn/{f.stem}" if f.parent.name == "learn" else "learn"
+            for nav in re.findall(r'<nav class="ctoc".*?</nav>', page, re.S):
+                for href in re.findall(r'href="([^"]*)"', nav):
+                    path, _, frag = href.partition("#")
+                    assert path == want, (
+                        f"{f.name}: a contents link says href={href!r}. It must "
+                        f"name its own page ({want!r}) -- these pages carry "
+                        "<base href=\"/\">, so a bare fragment goes to the "
+                        "home page and every link check still passes")
+                    assert frag and frag in ids, (
+                        f"{f.name}: the contents link {href!r} points at an id "
+                        "that is not on the page")
+                    n_toc += 1
+        assert n_toc, ("no learn page carries a contents rail, so nothing here "
+                       "was actually checked")
+
         idx = json.loads((root / "site" / "index.json").read_text(encoding="utf-8"))
         current = max((b.get("term") or "" for b in idx), default="")
         kind_of = {(str(b.get("year")), str(b.get("id")).upper()):

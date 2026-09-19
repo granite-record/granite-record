@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.132 */
+/* GRANITE_VERSION: 2026-09-07.134 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2140,32 +2140,125 @@ color:var(--ink-2);font-variant-numeric:tabular-nums}
    at a measure -- and it starts where everything else does. What that leaves
    empty on the right of a Learn page is the next thing to answer, with the
    contents rail the mockups show. */
-.civics{max-width:var(--measure);margin:0;padding:var(--sp-3) 0 var(--sp-10)}
-/* The reading column and the section's own contents, side by side. The rail
-   follows the page down, because its job is "where am I among the eleven" and
-   that question is asked halfway through a page as often as at the top. */
+.civics{max-width:var(--measure);margin:0;padding:0 0 var(--sp-10)}
+/* THE HEADING BLOCK, A SIBLING OF THE PROSE. It holds the crumb, the h1 and
+   the lead, and it is separate only so that a narrow screen can put the
+   contents list BETWEEN it and the prose: inside .civics the only orders
+   available were the list above the title, or the list under 1,900 words of
+   the page it describes. Both are wrong, and 768px is where that showed.
+   At 861px and up the two simply stack in the first column, which is what one
+   element did before. */
+.chead{max-width:var(--measure);margin:0;padding:var(--sp-3) 0 0;
+grid-column:1}
+.civics{grid-column:1}
+/* THE READING COLUMN, AND THE TWO QUESTIONS BESIDE IT. The note on .civics
+   just above names what was left open when these pages were pulled to the
+   site's left edge: "what that leaves empty on the right of a Learn page is
+   the next thing to answer, with the contents rail the mockups show". This is
+   that answer.
+
+   A reader who arrives from a search result landed on ONE section of ONE page
+   and does not know the other eight, or the other thirteen pages, exist. So
+   the column beside the prose answers what is on THIS page first and what is
+   in this section second -- the page they are on above the section they did
+   not know about, which is the order this site puts an answer in.
+
+   ONE WRAPPER, NOT TWO GRID ITEMS. position:sticky is clipped to its own grid
+   area, and two stacked areas would split the column's height between them:
+   only the lower list would have had any travel, and it would have been the
+   wrong one. .lside is a single item in a single full-height area, so both
+   lists follow the page down together -- and it is the WRAPPER that scrolls
+   when nine sections above fourteen pages come to more than the window.
+
+   THE GAP BETWEEN THE TWO COLUMNS IS NOT DEAD SPACE, AND MUST NOT BE CLOSED.
+   It looks like 280px of nothing at 1440, and it was closed here once --
+   justify-self:start and a 300px rail -- before looking at the page showed
+   what it is for. `.civics .flow` breaks out of the reading column by 230px a
+   side at 1100px and up, so the diagram on how-a-bill-becomes-law runs from
+   x=-84 to x=936 while the article is 146 to 706. A rail pinned to the right
+   edge at 1042 clears it by 106px. A rail moved in to 762 sits underneath it,
+   and the four phase columns read through the contents list. The arithmetic
+   is written out at `.flow`'s own media query, which says the diagram "never
+   reaches the page's own edge" -- that sentence is only true while the rail
+   is at the edge.
+
+   So the geometry is exactly what it was, and what fills the column is the
+   second list rather than a wider first one. Widening the TRACK instead was
+   also tried and is also wrong: two non-flexible tracks share free space
+   equally, so just above 860px the rail would take its full 300 while the
+   article fell to about 214, the reverse of today, where 1fr yields and the
+   article keeps its measure. */
 .lcols{display:grid;grid-template-columns:minmax(0,var(--measure)) 1fr;
-gap:var(--sp-11);align-items:start}
-.lrail{position:sticky;top:20px;font-size:var(--t-ui);padding-top:var(--sp-5);
-justify-self:end;width:236px}
-.lrail h2{font-size:var(--t-sm);letter-spacing:.04em;text-transform:uppercase;
-color:var(--ink-2);margin:0 0 var(--sp-4);padding-bottom:var(--sp-4);
-border-bottom:1px solid var(--rule)}
-.lrail ol{list-style:none;margin:0;padding:0;counter-reset:lr}
-.lrail li{counter-increment:lr}
-.lrail a{display:block;padding:var(--sp-3) 0 var(--sp-3) var(--sp-5);color:var(--ink-2);
+grid-template-rows:auto 1fr;column-gap:var(--sp-11);align-items:start}
+/* The rail is beside BOTH rows of the first column, not beside the prose with
+   the heading above it: sticky needs one tall area to travel in. */
+.lside{grid-column:2;grid-row:1/span 2;
+position:sticky;top:20px;justify-self:end;width:236px;
+max-height:calc(100vh - 40px);overflow-y:auto;overflow-x:hidden;
+font-size:var(--t-ui);padding-top:var(--sp-5)}
+/* The sections of one page and the pages of one section are the same kind of
+   list, so they are drawn the same way and told apart by a rule between them
+   rather than by a second visual language. */
+:is(.ctoc,.lrail) h2{font-size:var(--t-sm);letter-spacing:.04em;
+text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4);
+padding-bottom:var(--sp-4);border-bottom:1px solid var(--rule)}
+:is(.ctoc,.lrail) ol{list-style:none;margin:0;padding:0}
+:is(.ctoc,.lrail) a{display:block;
+padding:var(--sp-3) 0 var(--sp-3) var(--sp-5);color:var(--ink-2);
 text-decoration:none;line-height:1.4;border-left:2px solid transparent}
-.lrail a:hover{color:var(--ink);background:var(--wash)}
+:is(.ctoc,.lrail) a:hover{color:var(--ink);background:var(--wash)}
+/* The site's focus ring stands 2px off the element, and .lside's own overflow
+   would clip it on the left edge. Drawn inside instead. */
+:is(.ctoc,.lrail) a:focus-visible{outline-offset:-2px}
 .lrail a[aria-current]{color:var(--ink);font-weight:600;
 border-left-color:var(--pine)}
+/* The sections of one page read as one spine. There is no mark for the
+   section you are IN, and there should not be: nothing in a stylesheet knows
+   which heading is on screen, scroll-spy would be new JavaScript for a
+   decoration, and this site does not draw a state it cannot keep true. */
+.ctoc a{border-left-color:var(--rule)}
+.ctoc a:hover{border-left-color:var(--pine)}
+.ctoc + .lrail{margin-top:var(--sp-8);border-top:1px solid var(--rule);
+padding-top:var(--sp-6)}
 @media (max-width:860px){
-  /* The rail goes under the page on a narrow screen, where a second column is
-     a third of the width and the reading column is the page. */
-  .lcols{grid-template-columns:1fr;gap:var(--sp-8)}
-  .lrail{position:static;border-top:1px solid var(--rule);padding-top:var(--sp-6)}
+  /* ONE COLUMN, IN THE ORDER THE READER NEEDS rather than the order the
+     markup has. The contents go ABOVE the prose, because that is the reader
+     this was built for and a list of a page's sections printed under 1,900
+     words of it is a list nobody reaches; the section's other pages stay
+     BELOW, where they have always been. display:contents makes .lside's two
+     children flex items of .lcols so the two can be ordered apart, and an
+     element with display:contents still exists for inheritance, so they keep
+     the wrapper's font size.
+
+     align-items and gap are restated rather than left to the grid above: in a
+     column flex container align-items:start shrink-wraps every block instead
+     of letting it fill the page, which is the same correction .shell already
+     carries at 720. */
+  .lcols{display:flex;flex-direction:column;align-items:stretch;gap:0}
+  .lside{display:contents}
+  .chead{order:1}
+  .ctoc{order:2;max-width:var(--measure);margin:0 0 var(--sp-7);
+  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  padding:var(--sp-5) 0}
+  .civics{order:3}
+  .lrail{order:4;max-width:var(--measure);border-top:1px solid var(--rule);
+  padding-top:var(--sp-6)}
+  /* Nine destinations down the side of a phone is 250px of list before the
+     first sentence, so they go in columns wherever 14rem of them fit. At 360
+     the gutters leave 336px and it resolves to one, which is right. */
+  .ctoc ol{columns:2 14rem;column-gap:var(--sp-9)}
+  .ctoc li{break-inside:avoid}
+  .ctoc a{padding:var(--sp-2) 0 var(--sp-2) var(--sp-4)}
 }
-.civics h1{font-size:var(--t-hero);line-height:1.2;margin:var(--sp-3) 0 var(--sp-4)}
+:is(.civics,.chead) h1{font-size:var(--t-hero);line-height:1.2;margin:var(--sp-3) 0 var(--sp-4)}
 .civics h2{font-size:var(--t-lead);margin:var(--sp-9) 0 var(--sp-4)}
+/* ARRIVING HALFWAY DOWN A PAGE. Every section has an address now, so a search
+   engine can send somebody straight to one. Mark what they were sent to, and
+   do not put it flush against the top of the window. The wash is a spread
+   shadow rather than padding, so the heading does not jump when it is hit and
+   nothing hangs into a 12px gutter and scrolls a 360px page sideways. */
+.civics :is(h2,h3):target{scroll-margin-top:var(--sp-7);
+background:var(--pine-soft);box-shadow:0 0 0 var(--sp-3) var(--pine-soft)}
 /* The record in numbers (learn_numbers.py): tables that scroll inside their
    own box on a phone rather than pushing the page sideways. */
 .civics .tablewrap{overflow-x:auto;margin:var(--sp-4) 0 var(--sp-3)}
@@ -2180,12 +2273,12 @@ border-left-color:var(--pine)}
 text-transform:uppercase;color:var(--ink-2);margin:var(--sp-7) 0 var(--sp-3)}
 .civics p{font-family:var(--serif);font-size:var(--t-body);line-height:1.68;
 margin:0 0 var(--sp-5)}
-.civics .lead{font-size:var(--t-lead);line-height:1.6;color:var(--ink);margin:0 0 var(--sp-6)}
+:is(.civics,.chead) .lead{font-size:var(--t-lead);line-height:1.6;color:var(--ink);margin:0 0 var(--sp-6)}
 .civics ul,.civics ol{font-family:var(--serif);font-size:var(--t-body);line-height:1.68;
 padding-left:var(--sp-7);margin:0 0 var(--sp-5)}
 .civics li{margin-bottom:var(--sp-4)}
-.civics .crumb{font-family:var(--sans);font-size:var(--t-sm);margin:0 0 var(--sp-2)}
-.civics .crumb a{color:var(--ink-2)}
+:is(.civics,.chead) .crumb{font-family:var(--sans);font-size:var(--t-sm);margin:0 0 var(--sp-2)}
+:is(.civics,.chead) .crumb a{color:var(--ink-2)}
 
 /* ---- THE COURSE OF A BILL, AS A DIAGRAM -------------------------------
    A diagram and not a picture. It is an ordered list of ordered lists --

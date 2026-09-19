@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.20
+# GRANITE_VERSION: 2026-09-08.22
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -28,6 +28,7 @@ import argparse
 import html
 import json
 import re
+import unicodedata
 from collections import Counter
 from pathlib import Path
 
@@ -287,6 +288,93 @@ def sources_block(sources):
             f'<ul class="reading">{items}</ul></section>')
 
 
+# Three destinations beside a three-section page is the page printed twice,
+# which is the mistake already recorded above rail() for the hub. Seven of the
+# fourteen pages clear this; the other seven still get ids, because an address
+# costs nothing and a deep link into a 267-word page still lands somewhere.
+CONTENTS_MIN = 4
+
+
+def _slug(inner):
+    """A heading's own words, as an address."""
+    bare = html.unescape(re.sub(r"<[^>]+>", "", inner))
+    flat = unicodedata.normalize("NFKD", bare).encode("ascii", "ignore").decode()
+    s = re.sub(r"[^a-z0-9]+", "-", flat.lower()).strip("-")
+    if not s:
+        raise SystemExit("a learn heading has no words to make an address "
+                         "from: " + inner[:60])
+    return s
+
+
+def anchored(article, prefix="s-"):
+    """Give every h2 an address; return the article and the list of them.
+
+    DERIVED, NOT AUTHORED. Nothing links to a learn heading today because
+    there has never been anything to link to -- all fifteen built pages carry
+    zero ids on any h1-h6 -- so there is no contract to break, and sixty-two
+    hand-written ids would put the machinery into civics.py, which is the
+    writing. A heading that already has an id keeps it: that is how an author
+    pins an address whose wording is going to change.
+
+    h2 ONLY, and not every h2. SHOWS puts an h3 "In the record" callout label
+    on eight pages, so a list off both levels would be a transcript of the
+    page rather than a map of it -- and flow_diagram writes its phase names as
+    <hN class="phname">, at level 2 on how-a-bill-becomes-law. Those four are
+    the COLUMNS of one diagram, sitting side by side in a single horizontal
+    row: listing them gave that page nine entries of which the first four all
+    scrolled to the same place. A contents list that offers four destinations
+    and delivers one is worse than none, so a phase name gets an address --
+    a deep link to a column of the diagram is still a real place -- and stays
+    out of the list.
+
+    html.unescape is not optional -- these headings carry &mdash; and &ndash;,
+    and without it "2025&ndash;2026" slugs as "2025-ndash-2026".
+    """
+    out, seen, items, pos = [], set(), [], 0
+    for m in re.finditer(r"<h2([^>]*)>(.*?)</h2>", article, re.S):
+        attrs, inner = m.group(1), m.group(2)
+        out.append(article[pos:m.start()])
+        pos = m.end()
+        listed = "phname" not in attrs
+        got = re.search(r'id="([^"]+)"', attrs)
+        if got:
+            hid = got.group(1)
+            out.append(m.group(0))
+        else:
+            base = prefix + _slug(inner)
+            hid, n = base, 2
+            while hid in seen:
+                hid, n = f"{base}-{n}", n + 1
+            out.append(f'<h2 id="{hid}"{attrs}>{inner}</h2>')
+        seen.add(hid)
+        # The label is the heading's own text with the tags out and the
+        # entities LEFT ALONE. E() here would publish "2025&amp;ndash;2026".
+        if listed:
+            items.append((hid, re.sub(r"<[^>]+>", "", inner).strip()))
+    out.append(article[pos:])
+    return "".join(out), items
+
+
+def contents(items, slug):
+    """The page's own sections, for a reader who arrived on one of them.
+
+    EVERY HREF CARRIES ITS PATH. These pages are built from bills.html, which
+    sets <base href="/">, so href="#s-vetoes" would resolve against the base
+    and send the reader to the home page. preflight would not catch it on its
+    own: _links_resolve urldefrags every href before resolving it, so a bare
+    fragment reads as the site root and passes. footer_nav's docstring records
+    the same trap being sprung once already, with "../learn.html".
+    """
+    if len(items) < CONTENTS_MIN:
+        return ""
+    here = S.canon("learn/" + slug + ".html")
+    li = "".join(f'<li><a href="{E(here)}#{E(hid)}">{text}</a></li>'
+                 for hid, text in items)
+    return ('<nav class="ctoc" aria-labelledby="ctoc-head">'
+            '<h2 id="ctoc-head">On this page</h2>'
+            f'<ol>{li}</ol></nav>')
+
+
 def rail(topics, here=None):
     """The eleven pages, beside whichever one is open.
 
@@ -462,16 +550,23 @@ def main():
 
     # ---- one page a topic ----------------------------------------------
     for i, t in enumerate(topics):
-        body = [f'<p class="crumb"><a href="learn.html">How New Hampshire '
-                f'works</a></p>',
-                f'<h1>{E(t["title"])}</h1>']
-        if t["blurb"]:
-            body.append(f'<p class="lead">{dashes(E(t["blurb"]))}</p>')
-        body.append(fill(t["body"], figures))
+        # THE HEADING BLOCK IS ITS OWN ELEMENT, so that a narrow screen can
+        # put the contents list between it and the prose. Inside .civics, the
+        # only orders available were "contents above the title" and "contents
+        # under 1,900 words", and both are wrong.
+        head = (f'<p class="crumb"><a href="learn.html">How New Hampshire '
+                f'works</a></p><h1>{E(t["title"])}</h1>'
+                + (f'<p class="lead">{dashes(E(t["blurb"]))}</p>'
+                   if t["blurb"] else ""))
+        body = [fill(t["body"], figures)]
         if t.get("holds"):
             body.append(f'<p class="caveat">{fill(t["holds"], figures)}</p>')
-        body.append(sources_block(t["sources"]))
-        body.append(footer_nav(i, topics))
+        # The ids and the contents come off the ARTICLE, before the
+        # sources block and the pager are appended: "Where this comes from" is
+        # an h2 too, and a contents list that names the list of sources under
+        # it is describing the furniture rather than the page.
+        article, sections = anchored("".join(body))
+        body = [article, sources_block(t["sources"]), footer_nav(i, topics)]
 
         p = S.page(tmpl, path=f"/learn/{t['slug']}.html", base=a.base,
                    # THE SITE'S NAME LAST, on every page. These eleven ended
@@ -489,8 +584,11 @@ def main():
                    nav_current="learn.html")
         p = p.replace('<div id="results"></div>',
                       f'<div id="results"><div class="lcols">'
+                      f'<header class="chead">{head}</header>'
                       f'<div class="civics">{"".join(body)}</div>'
-                      f'{rail(topics, t["slug"])}</div></div>', 1)
+                      f'<div class="lside">{contents(sections, t["slug"])}'
+                      f'{rail(topics, t["slug"])}</div>'
+                      f'</div></div>', 1)
         if "[[" in p:
             raise SystemExit(f"learn/{t['slug']}.html would publish an unfilled figure: "
                              + p[p.index("[["):p.index("[[") + 40])
@@ -515,10 +613,22 @@ def main():
                og_image="og-learn.png", og_alt="Granite Record: how New Hampshire works",
                globals={"GR_STATIC": True}, noscript="", skip_label="Skip to the page",
                sr_title="", nav_current="learn.html")
+    # THE PAGE A SEARCH ENGINE SENDS PEOPLE TO, and until now the one page
+    # of the fourteen with no way off it but the crumb: no contents, no pager,
+    # no rail, and the whole right of the window empty. "The closest votes of
+    # 2025-2026" is the kind of thing somebody types into Google. It gets the
+    # same two lists the topic pages get. rail() with no `here` marks nothing
+    # as current, which is right: this page is not one of the thirteen.
+    nbody, nsections = anchored(learn_numbers.body(site))
     p = p.replace('<div id="results"></div>',
-                  '<div id="results"><div class="civics"><p class="crumb"><a href="learn.html">'
-                  'How New Hampshire works</a></p><h1>The record in numbers</h1>'
-                  + learn_numbers.body(site) + '</div></div>', 1)
+                  '<div id="results"><div class="lcols">'
+                  '<header class="chead"><p class="crumb"><a href="learn.html">'
+                  'How New Hampshire works</a></p>'
+                  '<h1>The record in numbers</h1></header>'
+                  '<div class="civics">' + nbody + '</div>'
+                  f'<div class="lside">{contents(nsections, "by-the-numbers")}'
+                  f'{rail(topics)}</div>'
+                  '</div></div>', 1)
     (out / "by-the-numbers.html").write_text(p, encoding="utf-8")
     urls.append(a.base + S.canon(path))
     print("  learn/by-the-numbers.html: the page of statistics (public since 17 Sep)")
