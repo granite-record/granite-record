@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.17
+# GRANITE_VERSION: 2026-09-04.18
 """
 Parse the NH General Court Docket.txt bulk dump into normalized "scheduled
 proceedings" -- the input to video alignment.
@@ -637,9 +637,55 @@ def _parse_time(s):
     # and cannot be aligned against a recording at all.
     s = s.strip().replace(" ", "").replace(".", "").upper()
     try:
-        return datetime.strptime(s, "%I:%M%p").time()
+        got = datetime.strptime(s, "%I:%M%p").time()
     except ValueError:
         return None
+    return _unslip(got)
+
+
+# A meridiem the clerk typed the wrong way round. The General Court does not
+# open a hearing between ten at night and three in the morning, and 92 rows
+# say it did -- "Public Hearing: 03/09/2026 12:15 am GP 159" for a hearing at
+# quarter past noon, "11:00 pm" for one at eleven in the morning.
+#
+# CORRECTED, NOT REPRODUCED. That is a narrowing of this project's usual
+# instinct and it was a decision, taken on 18 September 2026: reproducing an
+# evident typo is not fidelity to the record, it is fidelity to a stray
+# keystroke, and a reader who sees a committee's day begin at quarter past
+# midnight concludes the site is broken rather than that a clerk slipped.
+#
+# THE THRESHOLD IS WHAT MAKES IT SAFE, so keep it where it is. Only the
+# meridiem is corrected -- the digits are taken exactly as written -- and only
+# in a window nothing legitimate occupies. Measured over all 99,234 stated
+# times in proceedings.csv:
+#
+#   * every one of the 92 in this window flips into 10:00-14:59, which is the
+#     heart of the committee day (10:00 alone is 32,358 rows)
+#   * 85 of the 92 land inside or beside the same committee's own working day
+#     that same day, several at the very minute a sibling row was set for --
+#     that is the same meeting, written twice, once wrongly
+#
+# THE EVENING IS NOT IN THE WINDOW and must not be added to it. 46 rows sit
+# between 17:00 and 21:59 and they are real: the House holds evening hearings
+# off-site on contested bills, and the docket carries "6:00 PM - 8:00 PM
+# Kennet High School Auditorium" to prove it. 07:00 stays for the same reason.
+# Widen this and the corrections stop being corrections.
+_SLIP_HOURS = frozenset((22, 23, 0, 1, 2))
+
+# Every correction made, as (what the record said, what it was read as), so a
+# run can say how many it made. SILENCE IS NOT SUCCESS: a parser that quietly
+# rewrites a time is exactly the kind of step that can start rewriting the
+# wrong ones and never say so.
+MERIDIEM_SLIPS = []
+
+
+def _unslip(t):
+    """A stated time, with an obviously reversed meridiem put back."""
+    if t.hour not in _SLIP_HOURS:
+        return t
+    fixed = t.replace(hour=(t.hour + 12) % 24)
+    MERIDIEM_SLIPS.append((t.strftime("%H:%M"), fixed.strftime("%H:%M")))
+    return fixed
 
 
 # How far a stated sitting may fall BEFORE the row that announces it before the
@@ -1178,10 +1224,18 @@ def parse_proceedings(rows, timeline):
             raw=r["desc"].strip(), row_created=r["created"], row_updated=r["updated"],
         )
 
+        # WHAT IS LEFT AFTER _unslip, which is not the same set this note was
+        # written for. The reversed meridiems -- midnight to two -- are now
+        # corrected there, so what reaches here is three to seven in the
+        # morning: early, stated plainly, and NOT corrected, because a hearing
+        # at seven is merely unusual and there is no second reading of it to
+        # prefer. The note says the time is early and stops short of calling
+        # it wrong.
         if t and t.hour < 8:
             p.notes.append(
-                f"time {t.strftime('%I:%M %p').lower()} is outside normal hearing "
-                "hours - likely am/pm data entry error"
+                f"time {t.strftime('%I:%M %p').lower()} is earlier than the "
+                "General Court ordinarily sits; the record states it and it "
+                "is left as stated"
             )
         if not p.committee:
             p.notes.append("no referral row found in input; committee unresolved")

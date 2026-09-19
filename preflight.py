@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.204
+# GRANITE_VERSION: 2026-09-04.205
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10123,6 +10123,95 @@ def _one_naming():
     assert not bad, (f"{len(bad)} of {len(recs)} members are named two ways: "
                      + "; ".join(bad[:3]))
     return "ok", f"{len(recs):,} members, one name each"
+
+
+@check("calendar", "a reversed meridiem is corrected, and the evening is left alone")
+def _meridiem_window():
+    """The one place this project rewrites what the record says.
+
+    docket_parser._unslip turns "12:15 am" into 12:15 for a hearing that ran
+    at quarter past noon. That is a deliberate narrowing of the usual rule,
+    taken on 18 September 2026, and it is safe only because the window is
+    narrow: 22:00 to 02:59, which nothing legitimate occupies, and only the
+    meridiem, never a digit.
+
+    What this check is really guarding is the EDGE. The evening is the thing
+    that must not be swept in -- the House holds hearings off-site at six and
+    eight in the evening on contested bills, and the docket carries "6:00 PM
+    - 8:00 PM Kennet High School Auditorium" to prove it. Widen the window by
+    two hours in either direction and real sittings start being moved by
+    twelve hours, which would be the worst kind of error this site can make:
+    a confident one, in the record's own voice.
+    """
+    import docket_parser as DP
+
+    fixed = {
+        "12:15AM": "12:15", "12:00AM": "12:00", "1:15AM": "13:15",
+        "2:00AM": "14:00", "11:00PM": "11:00", "10:45PM": "10:45",
+    }
+    left = {
+        # The evening, which is real and must never move.
+        "6:00PM": "18:00", "8:00PM": "20:00", "5:30PM": "17:30",
+        "9:00PM": "21:00",
+        # Early, unusual, stated, and not corrected -- there is no second
+        # reading of seven in the morning to prefer.
+        "7:00AM": "07:00", "3:00AM": "03:00",
+        # The ordinary committee day.
+        "10:00AM": "10:00", "12:00PM": "12:00", "1:30PM": "13:30",
+    }
+    bad = []
+    for s, want in list(fixed.items()) + list(left.items()):
+        got = DP._parse_time(s)
+        if got is None or got.strftime("%H:%M") != want:
+            bad.append(f"{s} -> {got}, wanted {want}")
+    assert not bad, ("_parse_time reads a time the window does not intend: "
+                     + "; ".join(bad))
+    assert DP._SLIP_HOURS == frozenset((22, 23, 0, 1, 2)), (
+        f"the correction window is now {sorted(DP._SLIP_HOURS)}. It was "
+        "22,23,0,1,2 -- the hours nothing legitimate occupies. Widening it "
+        "moves real evening hearings by twelve hours; if the widening is "
+        "wanted, change this check in the same edit and say what evidence "
+        "moved it.")
+    return "ok", (f"{len(fixed)} reversed meridiems corrected, "
+                  f"{len(left)} real times left where the record put them")
+
+
+@check("data", "no committee sits between ten at night and three in the morning")
+def _no_night_sittings():
+    """The correction above, measured on what actually shipped.
+
+    Before it, 92 of the 99,234 stated times in proceedings.csv fell in that
+    window, every one of them a clerk's reversed meridiem: each flipped into
+    10:00-14:59, and 85 landed inside the same committee's own working day,
+    several at the very minute a sibling row was set for.
+
+    This reads the built table rather than the parser, so it fails if the
+    manifests are stale -- which is the point. The parser can be right and the
+    site still be showing the old times.
+    """
+    if not Path("proceedings.csv").exists():
+        return "skip", "no proceedings.csv here; run build_proceedings.py first"
+    import proceedings
+
+    night, stated = [], 0
+    for r in proceedings.load():
+        tm = (r.get("time") or "").strip()
+        if not tm or not (r.get("committee") or "").strip():
+            continue
+        stated += 1
+        try:
+            h = int(tm[:2])
+        except ValueError:
+            continue
+        if h in (22, 23, 0, 1, 2):
+            night.append(f'{r.get("date")} {tm} {r.get("committee")}')
+    assert not night, (
+        f"{len(night)} committee sittings are timed between 22:00 and 02:59, "
+        "which is a reversed meridiem docket_parser should have corrected. "
+        "The manifests are probably older than the parser -- rebuild them "
+        f"with build_manifest.py. First few: {'; '.join(night[:3])}")
+    return "ok", (f"{stated:,} stated committee times, none at night; "
+                  "92 reversed meridiems were corrected at parse")
 
 
 @check("data", "what is on disk for the markers to read")

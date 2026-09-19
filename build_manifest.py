@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.10
+# GRANITE_VERSION: 2026-09-05.11
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
@@ -22,6 +22,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 try:
+    import docket_parser
     from docket_parser import (parse_rows, build_referral_timeline,
                                parse_proceedings, build_sittings)
 except ImportError:
@@ -774,6 +775,18 @@ def main():
                       f"{bak.name}.")
 
     print(f"\nWrote {a.out}: {len(out):,} rows\n")
+    # A PARSER THAT REWRITES A TIME SAYS SO. docket_parser corrects a
+    # meridiem the clerk typed the wrong way round -- a hearing at
+    # "12:15 am" that ran at quarter past noon -- and this is the line
+    # that keeps that from being a silent edit. If the number grows,
+    # the window grew with it, and that is a thing to have decided
+    # rather than to discover.
+    if docket_parser.MERIDIEM_SLIPS:
+        _n = len(docket_parser.MERIDIEM_SLIPS)
+        _shown = ", ".join(f"{was}->{now}"
+                           for was, now in docket_parser.MERIDIEM_SLIPS[:4])
+        print(f"Reversed meridiems corrected: {_n} "
+              f"({_shown}{', ...' if _n > 4 else ''})\n")
     print("Video matching:")
     for k, v in sorted(stats.items(), key=lambda kv: -kv[1]):
         print(f"  {v:6,}  {k}")
