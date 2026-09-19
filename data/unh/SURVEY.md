@@ -23,11 +23,15 @@ vote a name was on.
 bounding box per word. Rebuilding the printed reading order from those boxes
 — group into lines by y, sort each line by x, and nothing cleverer — takes the
 yea/nay split from 11% correct to 87%, and name agreement from 85.27% to
-95.80%. Section 4 has both columns side by side.
+95.74%. A repair pass then takes them to **96% and 96.31%**. Sections 4 and 6.
 
 **And the roster comes out of the same book.** Each volume opens with the CALL
 OF THE ROLL, and reading it yields 400 seats against 400 the journal declares,
 with no district disagreeing. Section 5.
+
+**Two volumes, not one.** 1991 scored 0% on the split until four patterns
+quietly fitted to 1997 were found and generalised; it now scores 98%. Nothing
+here should be trusted for a third volume until a third volume is tried.
 
 ---
 
@@ -261,17 +265,33 @@ them, rows running across. So the reading order is: group words into lines by
 y, sort each line by x, take pages in order. That is the whole of it — no
 column detection and no heuristics, because the geometry already says it.
 
-Scored by the **same extractor**, so the only difference is reading order:
+Scored by the **same extractor**, so the only difference is reading order --
+and then again after `unh_repair.py`, for which see section 6:
 
-| | flat `_djvu.txt` | reflowed `_djvu.xml` |
-|---|---|---|
-| names carried exactly | 85.27% | **95.80%** |
-| including damaged-but-close | 87.73% | **98.53%** |
-| not carried at all | 12.27% | **1.47%** |
-| **each side within 3 of its heading** | **11%** | **87%** |
+| 1997 House | flat `_djvu.txt` | reflowed | repaired |
+|---|---|---|---|
+| names carried exactly | 85.27% | 95.74% | **96.31%** |
+| **each side within 3 of its heading** | **11%** | **87%** | **96%** |
 
-What remains at 87% is a steady undercount of a few names per list, not a
-scramble — an extractor to sharpen, not a source to distrust.
+### A second volume, which found four patterns fitted to the first
+
+Everything above is one book. The 1991 House volume -- in the decade this is
+actually for -- scored **0%** on the split when the 1997-shaped patterns were
+pointed at it, and now scores **98%**, better than 1997. What was wrong:
+
+* 1991 sets **three** columns where 1997 sets four, and the rule bounding a
+  vote list allowed two leftover words per line. Three names with middle
+  initials leave three initials behind, so the line read as prose and the
+  list ended 623 characters into a 3,372-character block. It is a fraction of
+  the line now, which does not care how many names share one.
+* 1991 prints the comma as a **full stop** about half the time:
+  `Hunt. John B.  Kingsbury, H. Thayer  Met/ger. Kathcrine H.`
+* Middle initials became people. `Campbell, Richard H., Jr` yielded a second
+  member called `H., Jr`, and `Dodge, A. Gibb, Jr.` yielded `Gibb, Jr.`
+* The running head lands inside vote lists in both volumes, and 1991's reads
+  `76 HorsK JoruNAi, Fiohruaky 5, 19})1`. It is dropped by geometry now --
+  first line, top 7%, set off by 1.5x that page's own line spacing, carrying
+  a bare number -- not by matching words that do not survive a decade.
 
 ---
 
@@ -315,30 +335,75 @@ roster exists.
 
 ---
 
-## 6. What is not yet known
+## 6. The repair pass
+
+    python3 unh_repair.py journalofhouseof1997newh --vocab
+    python3 unh_measure.py --ocr data/unh/repaired/journalofhouseof1997newh.txt
+
+Two things survive the reflow, and neither is a lost name:
+
+* **a spelling the scan damaged** — `Adier` for Adler, `goiding` for Golding,
+  `feriand` for Ferland in 1997, which is l/i; and `bartlctt`, `paquettc`,
+  `grecnglass` in 1991, which is e/c. Different print runs fail differently.
+* **a comma the scan dropped** — page 452 prints `Kibbey David`, and the name
+  pattern requires the comma for a reason measured earlier.
+
+Both are fixable because the candidate set is **closed**: four hundred members
+sat in that House and the journal prints all four hundred in its own roll.
+
+The roll is damaged too, by the same machine on the same day. What saves it is
+that the two halves are damaged *independently*, so the canonical spelling is
+the one the whole volume prefers, and the roster's job is to say which
+surnames are real people rather than how they are spelt.
+
+**The rule and its refusal.** A rare spelling is replaced by a common one when
+they are close, the rare one is at most a third as frequent, and **the rare
+one is not on the roll**. That last clause was learned the hard way: the first
+version refused only when *both* spellings were on the roll, and it rewrote
+**Clemons to Clemens**. Jane A. Clemons and Kevin Clemons, Sr. sat in that
+House; the scan reads their name as Clemens twenty-six times and Clemons
+three, so frequency pointed the wrong way and the pass turned three correct
+spellings into none. Putting a real legislator's name wrong is the worst thing
+in this project's triage order, so the roll now protects a name absolutely.
+
+It costs repairs: Clemens stays misread in those twenty-six places, because
+nothing available here can prove which spelling is right. The per-word
+`x-confidence` in the DjVu XML is an independent signal that could settle it
+and is not yet used.
+
+Every substitution is printed by `--vocab`. 89 in 1997, 80 in 1991, and none
+of them touches a name on the roll.
+
+---
+
+## 7. What is not yet known
 
 Stated as unknown rather than estimated.
 
-- ~~**Whether the geometry solves it.**~~ Tested: it does. 11% to 87% on the
-  split, 85.27% to 95.80% on names. Section 4.
-- **What the remaining 13% of splits is.** The reflow's worst cases are now
-  steady small undercounts -- 323-29 read as 308-28 -- rather than scrambles.
-  That looks like the extractor missing names, not the scan losing them, and
-  it has not been chased down.
-- **Whether 1989-1996 reads as well as 1997.** Different print runs, and the
-  older volumes are older paper. The 1997 number does not transfer to them by
-  assumption.
+- ~~**Whether the geometry solves it.**~~ Tested: it does, and the repair pass
+  on top of it. 11% to 96% on the split, 85.27% to 96.31% on names.
+- ~~**Whether 1989-1996 reads as well as 1997.**~~ 1991 does, once the
+  patterns stopped being fitted to one volume: 98% on the split, better than
+  1997. Its name accuracy is NOT measured and cannot be -- there is no digital
+  copy of 1991 to check against, which is the whole reason the era needs this.
+- **Which spelling is right when the roll and the votes disagree.** Clemons
+  and Clemens is the worked example in section 6. The per-word `x-confidence`
+  the DjVu XML carries is an unused independent signal and is the obvious
+  next thing to try.
 - **Whether the Senate volumes behave the same way.** Not examined at all. The
   Senate is 24 members rather than 400 and may not use columns.
 - **What a roster-backed repair actually recovers.** 87.73% is a floor from
   generic string distance. The real figure needs the roster, and the roster
   for those Houses can come from the journals themselves — each volume opens
   with a CALL OF THE ROLL listing every member by county and district.
+- **A third volume, and a Senate volume.** Two House volumes agree; the Senate
+  is 24 members, is scanned at 300 ppi rather than 400, and may not use
+  columns at all. Nothing here has been tried on one.
 - **File sizes at UNH.** The one `HEAD` asked returned 403.
 
 ---
 
-## 7. A thing worth doing that is not code
+## 8. A thing worth doing that is not code
 
 UNH's library digitised this collection and put it in a repository, and the
 Internet Archive scanned it for them. Libraries in that position often prefer
@@ -354,7 +419,7 @@ that has already produced derivative files may simply send them.
 
 ## How everything here was retrieved
 
-**20 requests in total**, every one cached and logged. Read the log rather
+**26 requests in total**, every one cached and logged. Read the log rather
 than this paragraph:
 
     python3 unh_survey.py --log
@@ -376,6 +441,11 @@ as allowing everything, then the 4.7 MB flattened text layer and the 51 MB
 DjVu XML. Each redirect was followed by making a second, deliberate, logged,
 paced request rather than by letting the opener follow it silently.
 
-The count is 10 + 6 + 4. Take it from the log, not from here.
+Since then, three more metadata lookups and the 1991 volume's 51 MB XML, with
+the 302 and the datanode robots.txt each of those costs.
+
+**10 to scholars.unh.edu, 10 to archive.org, 6 to its datanodes.** Take it
+from the log, not from here -- this paragraph has been wrong twice, by 9 and
+then by 2, and the log has been right every time.
 
 Nothing was fetched in bulk. Nothing will be without a person saying so.
