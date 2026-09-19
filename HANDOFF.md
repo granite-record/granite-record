@@ -284,6 +284,28 @@ addresses out of `committees.json` instead of carrying one, so it asks
 gc.nh.gov without the check seeing it. `python3 netcheck.py` then
 `python3 refusal.py --clear` is a person's decision.
 
+**The lane is stopped, and restarting it alone will not get far.** It stopped
+at 21:10 on 18 September with three 404s in a row -- 1998 CACR 30, 31 and 32 --
+which is the guard working exactly as intended: three refusals or gaps in a row
+and it stops rather than asking on, because asking on regardless is how the
+first block was earned. No refusal was recorded, because a 404 is not one.
+
+What the 404s mean is now known, and it is not a bug. The docket says 1998 had
+25 CACRs: 8, 9, 21 and then 30 through 51. `legislation/1998/` holds CACR 8, 9
+and 21, and the General Court answers 404 for every one of 30-51. So the bills
+are real and their pages are simply not on that path, the same unexplained
+shape as 1996 and 2016.
+
+The consequence for a restart: the three that failed are on `legislation/
+_gone.json` and will be skipped, so the lane resumes at CACR 33, meets three
+more 404s, and stops again -- three requests spent to advance three numbers,
+about seven restarts to clear 33-51. It works, but it limps, and every restart
+spends requests on addresses now known to be absent. Worth deciding before the
+next start: whether the lane should treat three in a row within one year and
+one kind as "this kind is not on this path for this year" and skip the rest of
+that kind, rather than stopping the whole queue. That is a change to fetching
+behaviour, so it is the person's call.
+
 `review.py` caches its sample pools on disk in `review/.pool-*.json`, so it
 needs `--refresh` after any parser change or rebuild, across restarts too.
 
