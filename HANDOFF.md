@@ -315,11 +315,29 @@ addresses out of `committees.json` instead of carrying one, so it asks
 gc.nh.gov without the check seeing it. `python3 netcheck.py` then
 `python3 refusal.py --clear` is a person's decision.
 
-**The lane is stopped, and restarting it alone will not get far.** It stopped
-at 21:10 on 18 September with three 404s in a row -- 1998 CACR 30, 31 and 32 --
-which is the guard working exactly as intended: three refusals or gaps in a row
-and it stops rather than asking on, because asking on regardless is how the
-first block was earned. No refusal was recorded, because a 404 is not one.
+**The lane is running again, oldest-first.** Restarted on 19 September at the
+person's word with `fetch_legislation.py --all --from 1989 --to 2024
+--skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800`, queued as
+repeating steps of 800 requests so that each one ends cleanly and the next
+picks up where it stopped. About 69 minutes a step. Read `logs/gc_lane.log`
+for the step it is on, never this paragraph.
+
+**1996 answers.** `CLAUDE.md` says "Only 1996 and 2016 answer 404 for every
+bill asked, and that stays unexplained", and on the evening of 19 September the
+lane walked into 1996 and began saving real pages -- `legislation/1996/`
+HB0061, HB0148, HB0151 and on, 5 to 9 KB each, carrying the sponsor line, the
+committee of referral, the title and the analysis, which is everything that
+path is fetched for. Whether 1996 always answered and the earlier finding was
+a probe of the wrong addresses, or whether something changed at their end, is
+not established here; what is established is that pages are on disk now. 2016
+is still skipped by the running command and has not been retested. The person
+should be told before that line in `CLAUDE.md` is trusted again.
+
+**Why it stopped before.** It stopped at 21:10 on 18 September with three 404s
+in a row -- 1998 CACR 30, 31 and 32 -- which is the guard working exactly as
+intended: three refusals or gaps in a row and it stops rather than asking on,
+because asking on regardless is how the first block was earned. No refusal was
+recorded, because a 404 is not one.
 
 What the 404s mean is now known, and it is not a bug. The docket says 1998 had
 25 CACRs: 8, 9, 21 and then 30 through 51. `legislation/1998/` holds CACR 8, 9

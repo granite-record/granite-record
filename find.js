@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.6
+// GRANITE_VERSION: 2026-09-16.7
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -99,7 +99,10 @@ function findBill(q){
 // and would stop "vail" from being a name that STARTS with what was typed.
 const _fbare=s=>String(s||"").replace(/^Former /,"");
 
-function findMatch(q){
+// `limit` is the panel's eight by default. /search passes Infinity: it is a
+// page and not a dropdown, so it shows everything that matched -- which is the
+// whole reason it exists.
+function findMatch(q,limit){
   const s=(q||"").trim().toLowerCase();
   if(!s||!FIND.rows)return [];
   const words=s.split(/\s+/);
@@ -125,7 +128,7 @@ function findMatch(q){
     hit.push([rank,gone,gone?-(r[5]||0):0,name.length,r]);
   }
   hit.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]||a[3]-b[3]);
-  return hit.slice(0,8).map(x=>x[4]);
+  return hit.slice(0,limit||8).map(x=>x[4]);
 }
 
 /* DID YOU MEAN. Only when nothing at all was found, because that is the only
@@ -220,13 +223,19 @@ function findDraw(q){
     town, a subject or a bill number.</p>`;return;}
   const num=findBill(s);
   const rows=findMatch(s);
-  // The one line that leaves the panel for the bill search. It is the answer
-  // when a bill number was typed, and the way out when nothing here matched.
-  const all=`<a class="fall" href="/bills?q=${encodeURIComponent(num||s)}">
+  // THE ONE LINE THAT LEAVES THE PANEL, and it leads to two different places.
+  // A bill number is a bill, so it goes to the bill search, which is the page
+  // that answers it. Anything else goes to /search, which reads this same
+  // index with the eight-row cap off -- it used to go to the bill search too,
+  // so a reader who typed Concord was shown eight of its wards and then sent
+  // to a search with no towns in it at all.
+  const all=`<a class="fall" href="${num?`/bills?q=${encodeURIComponent(num)}`
+    :`/search?q=${encodeURIComponent(s)}`}">
     <span class="fl1"><span class="fname">${num?_fesc(num):"See all search results for "
       +_fesc(s)}</span></span>
     <span class="fwhat">${num?"open this bill number in the bill search"
-      :"every bill whose number, title or text matches"}</span></a>`;
+      :"every member, committee, town and subject that matches, and the bills"
+      }</span></a>`;
   const list=rows.map(r=>`<a href="${_fesc(_froot(r[3]))}">
       <span class="fl1"><span class="fname">${_fmark(r[1],s)}</span>
       <span class="fkind">${_fesc(FKIND[r[0]]||r[0])}</span></span>

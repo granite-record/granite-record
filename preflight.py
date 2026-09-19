@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.211
+# GRANITE_VERSION: 2026-09-04.213
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1089,6 +1089,48 @@ def _bills_html():
         assert r.returncode == 0, "node --check: " + r.stderr.strip()[:150]
         extra = ", node --check clean"
     return "ok", f"7 markers present, tags balanced{extra}"
+
+
+@check("frontend", "the search panel's way out leads to a page the build writes")
+def _find_all_results():
+    """find.js's last row is on all 49,000 pages, and it points at one page.
+
+    It used to point at the bill search, which indexes bills and nothing else,
+    so "See all search results for Concord" opened a page with no towns in it.
+    It points at /search now -- one page, written by build_pages.py, reached
+    from everywhere. If either half of that moves without the other, the one
+    row every page carries becomes a 404 on every page at once, and no test of
+    any individual page would see it: the panel is mounted by script and the
+    link check reads HTML.
+
+    Both halves are read from source rather than from a build, so this runs
+    under --code with nothing on disk.
+    """
+    js, bp = Path("find.js"), Path("build_pages.py")
+    if not js.exists() or not bp.exists():
+        return "skip", "find.js or build_pages.py not in this directory"
+    t = js.read_text(encoding="utf-8")
+    assert "/search?q=" in t, (
+        "find.js sends its last row somewhere other than /search -- if that "
+        "is deliberate, this check names the page it should point at")
+    b = bp.read_text(encoding="utf-8")
+    assert '"search.html"' in b, (
+        "build_pages.py no longer writes search.html, and find.js still sends "
+        "every page's search panel to /search")
+    # The page reads this index with the cap off, so it needs the argument
+    # that turns the cap off. A findMatch that ignores it would show eight
+    # results on a page whose whole purpose is to show all of them, and would
+    # look right.
+    assert "findMatch(q,limit)" in t and "limit||8" in t, (
+        "findMatch no longer takes a limit, so /search cannot ask for more "
+        "than the panel's eight rows")
+    # And the rows it draws are the panel's own. .resout only unpicks the
+    # dropdown geometry; without .findout beside it the page has no row rules
+    # at all, because they live in the shared region under .findout.
+    assert 'class="findout resout"' in b, (
+        "/search draws its rows without .findout, so it no longer shares the "
+        "panel's one definition of a result row")
+    return "ok", "find.js -> /search -> search.html, rows shared with the panel"
 
 
 @check("frontend", "the assets are revalidated, and no page names a version")
@@ -4296,9 +4338,17 @@ def _status_box_parity():
     assert '_state.querySelector(".statebox")' in src, (
         "HOME_JS no longer defers to the box build_pages.py rendered, so a "
         "cached home.json can overwrite a fresh page")
+    # THE FORTNIGHT'S MEETING COUNT IS NOT IN THIS LIST ANY MORE. It was, and
+    # this check is what noticed it going: on 19 September the person asked for
+    # it off the status box, because it is a fact about the calendar rather
+    # than about the state of the General Court, and the calendar is on the
+    # same page saying it better. All three renderers of it went in the same
+    # edit -- the built copy, HOME_JS's _meetline and the clock block that
+    # counted the days off the total -- so there is nothing left for the two
+    # copies to disagree about. What this check is for is the pair drifting
+    # apart, and a line removed from both is not drift.
     for what, needle_py, needle_js in (
             ("the last floor session", 'S["last_session"]', "S.last_session"),
-            ("the hearings in the next two weeks", "hearings_next_14", "S.hearings_next_14"),
             ("the summary's date", 'S["updated"]', "S.updated"),
             ("the stale warning", "stale_days", "S.stale_days")):
         assert needle_js in js, f"HOME_JS no longer draws {what}"

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.129 */
+/* GRANITE_VERSION: 2026-09-07.132 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -3358,5 +3358,31 @@ font-size:var(--t-sm);color:var(--ink-2)}
 @media (max-width:560px){
   :where(body.pg) .seatrow{flex-wrap:wrap;gap:var(--sp-1) var(--sp-4)}
 }
+
+/* THE ALL-RESULTS PAGE (/search). The header panel is a dropdown and stops
+   at eight rows; this is the same index with the cap off, grouped by what
+   each thing is.
+
+   THE ROWS ARE THE PANEL'S OWN. .findout and .findout a are defined once, in
+   the shared region, and this only unpicks the geometry that made them a
+   dropdown: the height cap and the scroll. A second set of result-row rules
+   is exactly the duplication that let the footer drift. */
+:where(body.pg) .resout{max-height:none;overflow:visible;margin-top:0;
+border:1px solid var(--rule);border-radius:var(--r-out);background:var(--surface)}
+/* The heading above the list already names the kind, so the chip would say it
+   a second time on every row under it. */
+:where(body.pg) .resout .fkind{display:none}
+:where(body.pg) .resout a{border-radius:0;padding:var(--sp-4) var(--sp-5)}
+:where(body.pg) .resfind{margin:var(--sp-6) 0 var(--sp-8)}
+:where(body.pg) .resfind input[type=search]{font-size:var(--t-lead);height:52px}
+:where(body.pg) .resgrp{margin:0 0 var(--sp-8)}
+:where(body.pg) .resgrp h2{display:flex;align-items:baseline;gap:var(--sp-4);
+margin:0 0 var(--sp-4)}
+/* The count sits on the heading's baseline rather than under it: it is a
+   property of the group, not a sentence about it. No tracking and no case,
+   because it is a number -- the uppercase label treatment this started as
+   spaced "45" into "4 5". */
+:where(body.pg) .resn{font-family:var(--sans);font-size:var(--t-sm);
+font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink-2)}
 
 /* PAGES:END ------------------------------------------------------- */

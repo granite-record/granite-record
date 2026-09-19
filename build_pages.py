@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.107
+# GRANITE_VERSION: 2026-09-04.109
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -1357,6 +1357,134 @@ SEATING_JS = """
 </script>
 """
 
+# THE ALL-RESULTS PAGE. find.js's panel is a dropdown: it shows eight rows and
+# hands the rest on. Until 19 September it handed them to the BILL search,
+# which indexes bills and nothing else -- so "See all search results for
+# Concord" led to a page with no towns in it. This page reads the same
+# find.json with the cap off and groups what it finds.
+#
+# It reuses find.js wholesale -- findRows, findMatch, findSuggest, _fmark,
+# _froot, FKIND -- because a second matcher would be a second thing to keep in
+# step with the first, and the panel and the page disagreeing about what
+# matches is the bug a reader would notice fastest. find.js is deferred, so
+# this waits for DOMContentLoaded rather than running as it is parsed.
+SEARCH_JS = """
+<script>
+document.addEventListener("DOMContentLoaded",function(){
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const box=document.getElementById("resq");
+const out=document.getElementById("resout");
+const head=document.getElementById("reshead");
+const lead=document.getElementById("reslead");
+if(!box||!out)return;
+
+// THE CHAMBERS ARE NOT INTERLEAVED. Every listing of legislators on this site
+// puts the Senate and the House under their own headings, and a list of search
+// results is a listing. r[2] is "Senate — SD22 — Republican" or "House — ...",
+// which is where the chamber is; a row that says neither falls to the last
+// bucket rather than being dropped.
+const GROUPS=[
+  {t:"Senators",            k:r=>r[0]==="legislator"&&/^Senate/.test(r[2])},
+  {t:"Representatives",     k:r=>r[0]==="legislator"},
+  {t:"Committees",          k:r=>r[0]==="committee"},
+  {t:"Towns and wards",     k:r=>r[0]==="town"},
+  {t:"Subjects",            k:r=>r[0]==="topic"},
+  {t:"Former senators",     k:r=>r[0]==="former"&&/^Senate/.test(r[2])},
+  {t:"Former representatives",k:r=>r[0]==="former"&&/^House/.test(r[2])},
+  {t:"Former members",      k:r=>r[0]==="former"},
+  {t:"Pages on this site",  k:r=>r[0]==="page"}
+];
+
+const row=(r,q)=>`<a href="${esc(_froot(r[3]))}">
+  <span class="fl1"><span class="fname">${_fmark(r[1],q)}</span>
+  <span class="fkind">${esc(FKIND[r[0]]||r[0])}</span></span>
+  ${r[2]?`<span class="fwhat">${esc(r[2])}</span>`:""}</a>`;
+
+// The bill search, named as what it is rather than as a fallback. It is last
+// because the groups above are the answers this page holds; bills are one page
+// away and have filters this list could not offer.
+const bills=q=>`<section class="resgrp"><h2>Bills</h2>
+  <div class="findout resout"><a href="/bills?q=${encodeURIComponent(q)}">
+  <span class="fl1"><span class="fname">Search every bill for
+    &ldquo;${esc(q)}&rdquo;</span></span>
+  <span class="fwhat">Every bill since 1989, by number, by title and by the
+    words in its text &mdash; with filters for term, committee, sponsor and
+    what became of it.</span></a></div></section>`;
+
+function draw(q){
+  const s=(q||"").trim();
+  if(!s){
+    head.textContent="Search the record";
+    lead.textContent="Every sitting legislator and every member who has left, "
+      +"every committee, every town and ward, and every subject bills are "
+      +"filed under. Bills have their own search, with filters.";
+    out.innerHTML="";
+    return;
+  }
+  const rows=findMatch(s,Infinity);
+  head.innerHTML=`Results for &ldquo;${esc(s)}&rdquo;`;
+  // "0 matches on this site, and the bills" is a sentence nobody would write.
+  // Where there are none, the line says so and the bill card below is the
+  // whole of the answer.
+  lead.textContent=!rows.length
+    ?"No legislator, committee, town or subject on this site matches that."
+    :rows.length===1?"One match on this site, and the bills."
+    :`${rows.length} matches on this site, and the bills.`;
+  const left=rows.slice();
+  let html="";
+  for(const g of GROUPS){
+    const mine=[];
+    for(let i=left.length-1;i>=0;i--)
+      if(g.k(left[i]))mine.unshift(left.splice(i,1)[0]);
+    if(!mine.length)continue;
+    html+=`<section class="resgrp"><h2>${esc(g.t)}
+      <span class="resn">${mine.length}</span></h2>
+      <div class="findout resout">${mine.map(r=>row(r,s)).join("")}</div></section>`;
+  }
+  // Only when something close exists. findSuggest measures against every
+  // distinct word in the index and returns nothing rather than reaching: there
+  // is no Firearms subject in the General Court's own list, so a search for
+  // "firarms" offers nothing and says nothing.
+  if(!rows.length){
+    const did=findSuggest(s);
+    html=did?`<p class="note">Did you mean
+      <a href="/search?q=${encodeURIComponent(did)}">${esc(did)}</a>?</p>`:"";
+  }
+  out.innerHTML=html+bills(s);
+}
+
+const q0=new URLSearchParams(location.search).get("q")||"";
+box.value=q0;
+box.disabled=true;
+findRows().then(()=>{
+  box.disabled=false;
+  draw(q0);
+  // Typed into rather than submitted: the results are already here, so a
+  // round trip would only redraw the same page. The address still follows,
+  // because a reader who found something wants to be able to send the link.
+  let tm=0;
+  box.addEventListener("input",()=>{
+    clearTimeout(tm);
+    tm=setTimeout(()=>{
+      const v=box.value.trim();
+      draw(v);
+      const u=v?`/search?q=${encodeURIComponent(v)}`:"/search";
+      history.replaceState(null,"",u);
+    },120);
+  });
+  if(q0)box.focus();
+});
+// The back button, when a "Did you mean" link or the panel put a new query in
+// the address without reloading.
+window.addEventListener("popstate",()=>{
+  const v=new URLSearchParams(location.search).get("q")||"";
+  box.value=v;draw(v);
+});
+});
+</script>
+"""
+
+
 LEGFIND_JS = """
 <script>
 (function(){
@@ -2363,6 +2491,33 @@ today.</p>
                    "from, and how to report something that is wrong."),
         encoding="utf-8")
 
+    # THE ALL-RESULTS PAGE. Served at /search -- Pages strips the extension --
+    # and reached from the header panel's last row on every page of the site.
+    # noindex, because what it holds depends entirely on a query string: there
+    # is no page here for a crawler to keep, and every variant of it would be
+    # a near-copy of the bill search and the roster, which ARE indexed.
+    search_body = """<h1 id="reshead">Search the record</h1>
+<p class="lead" id="reslead">Every sitting legislator and every member who has
+left, every committee, every town and ward, and every subject bills are filed
+under. Bills have their own search, with filters.</p>
+<form class="resfind" action="/search" method="get" role="search">
+  <label for="resq" class="sr">A legislator, a committee, a town or a subject</label>
+  <input id="resq" name="q" type="search" autocomplete="off"
+    placeholder="A legislator, a committee, a town, or a subject" disabled>
+</form>
+<div id="resout"></div>
+<noscript><p class="note">This page needs JavaScript to search. Without it,
+the <a href="/bills">bill search</a>, the <a href="/legislators">roster</a> and
+the <a href="/committees">committee list</a> are all plain pages.</p></noscript>"""
+    search_page = shell("Search | Granite Record", "", search_body,
+                        desc="Search Granite Record for a legislator, a "
+                             "committee, a town or a subject.",
+                        script=SEARCH_JS)
+    search_page = search_page.replace(
+        '<link rel="canonical" href="https://graniterecord.org/">',
+        '<meta name="robots" content="noindex,follow">')
+    (out / "search.html").write_text(search_page, encoding="utf-8")
+
     # THERE WAS NO 404 PAGE. Cloudflare Pages treats a project with no
     # top-level 404.html as a single-page app: every address it cannot find
     # is answered with the home page and a 200. A mistyped bill -- or a bill
@@ -2382,7 +2537,7 @@ today.</p>
     (out / "404.html").write_text(page404, encoding="utf-8")
 
     print(f"wrote legislators.html ({len(legs)} members), "
-          f"about.html, 404.html, style.css -> {out}/  (learn.html: build_civics.py)")
+          f"about.html, search.html, 404.html, style.css -> {out}/  (learn.html: build_civics.py)")
     if not legs:
         print("  legislators.json missing — run build_site_v2.py first")
 
