@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.3
+# GRANITE_VERSION: 2026-09-19.4
 """
 Put the words back in the order the page prints them. No network.
 
@@ -60,7 +60,12 @@ RAW = Path("archive/unh/raw")
 OUT = Path("data/unh/reflow")
 
 PAGE = re.compile(r'usemap="[^"]*_(\d{4})\.djvu"')
-WORD = re.compile(r'<WORD coords="(\d+),(\d+),(\d+),(\d+)"'
+# A fifth coordinate, and no confidence, are both allowed. The UNH volumes
+# write coords="x0,y1,x1,y0" with an x-confidence; the 1993 House journal the
+# NH courts' law library uploaded in 2019 writes coords="x0,y1,x1,y0,baseline"
+# with none. Requiring exactly four numbers parsed that volume to zero words,
+# which the guard in reflow() caught rather than writing an empty file.
+WORD = re.compile(r'<WORD coords="(\d+),(\d+),(\d+),(\d+)(?:,\d+)?"'
                   r'(?:\s+x-confidence="(\d+)")?>([^<]*)</WORD>')
 
 
@@ -72,7 +77,12 @@ def xml_for(identifier):
             url = json.loads(meta.read_text(encoding="utf-8")).get("url", "")
         except Exception:
             continue
-        if url.endswith(f"{identifier}_djvu.xml"):
+        # Not endswith("<identifier>_djvu.xml"). The volumes UNH had scanned
+        # in 2009 name their files after the item, and the 1993 House journal
+        # -- uploaded separately in 2019 by the NH courts' law library -- does
+        # not: its XML is "Vol 1993 Journal of the House ... _djvu.xml", with
+        # spaces, under the same item. The identifier is still in the path.
+        if identifier in url and url.endswith("_djvu.xml"):
             body = meta.with_name(meta.name[: -len(".meta.json")])
             if body.exists():
                 return body

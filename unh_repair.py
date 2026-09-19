@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.3
+# GRANITE_VERSION: 2026-09-19.4
 """
 Let the book correct itself. No network.
 
@@ -44,7 +44,72 @@ elsewhere. So the canonical spelling is not "whatever the roster says" but
 the one the whole volume prefers, and the roster's job is to say which
 surnames are real people rather than how they are spelt.
 
-THREE SIGNALS, NONE OF WHICH IS TRUSTED ALONE
+THE GENERAL COURT SPELLS THE NAME; THE SCAN ONLY APPROXIMATES IT
+
+Rule zero, which outranks everything below it. past_members.json is the
+General Court's own list of people who have served, and it reaches back well
+past 1997 -- Maviglio and Joscelyn of the 1991 Belknap delegation are both in
+it. So there IS an outside authority for the era this project needs, where no
+digital journal exists and every signal internal to the scan is corrupted by
+the same misreading.
+
+A scanned spelling the authority does not carry is matched to the one it
+belongs to, in three tiers, each refusing where it cannot tell:
+
+  1. THE KNOWN CONFUSIONS, folded. rn read as m, and l/i/1 read as one
+     another, in every volume so far. O'Heam against O'Hearn scores 0.73 by
+     string distance -- on five letters one substitution is most of the word
+     -- and folds to an exact match. C/G, F/E and e/c are just as real and
+     are NOT folded, because collapsing those would merge names that differ
+     only there. Only used where exactly one authority name folds that way:
+     Bell and Beil fold together and neither is guessed at.
+
+  2. STRING DISTANCE, at MIN_RATIO, taking the closest -- and refusing where
+     a second authority name sits within AMBIGUOUS of the first.
+
+  3. ONE CHARACTER WRONG, for the short names a ratio cannot see: Goes
+     against Coes is 0.75 and Eraser against Fraser 0.83, both one
+     substituted letter. Only where exactly one authority name is inside the
+     budget.
+
+It is deliberately NOT exclusive. Two damaged readings of one person are
+common -- 1997 has McCarttiy and McCartfiy, both McCarty -- so an authority
+name already claimed is no reason to refuse. What is refused is ambiguity:
+two authority names equally close decide nothing, and guessing would put a
+vote on the wrong member.
+
+This is what finally fixed Maclntyre. The volume's own roll says Maclntyre,
+frequency says Maclntyre 66 to 3, and the OCR confidence says Maclntyre 68 to
+64 -- all three agree and all three are wrong, because one systematic
+misreading corrupts every internal signal at once. Only an outside authority
+can see past it.
+
+WHAT IS LEFT AFTER RULE ZERO, AND IT IS NOT SPELLING
+
+Measured on 1997 against journals/1997: 97.99%. The residue is three things
+and none of them is a surname this pass could have matched:
+
+  * A GIVEN NAME damaged where the surname is not. Jacobson, Alf reads Alf 54
+    times and Alt 27. Rule zero matches surnames only; the authority carries
+    given names too and applying the same three tiers to them is the next
+    thing to do.
+  * A NAME DROPPED ENTIRELY. "Thulander, O. Alan" is read "Thulander, 0.
+    Alan" with a zero, the name pattern requires a letter after the comma,
+    and the whole name goes missing rather than misspelt. Thirty-nine votes,
+    and no spelling repair can reach them because there is nothing to repair.
+  * The join. Where a tally is not unique the comparison cannot pair two roll
+    calls, and some of the shortfall is that rather than the scan.
+
+A CAUTION ABOUT WHAT THE NUMBER NOW MEANS
+
+past_members.json is a roster, not the journal text, so correcting with it
+and scoring against journals/1997 is not circular the way using the 1997
+journal itself would be. But both are the General Court's own spelling, so
+97.99% measures agreement with the General Court GIVEN a General Court
+roster, and is no longer a blind test. The checks that stay blind are
+--split and the vote-list counts, which never consult any of this.
+
+THREE SIGNALS, NONE OF WHICH IS TRUSTED ALONE -- AND ALL BELOW RULE ZERO
 
   FREQUENCY -- the spelling the volume uses most. Wrong wherever the scan
   misreads a name CONSISTENTLY: Gushing 66 times against Cushing's 15.
@@ -76,13 +141,10 @@ already got something wrong:
   version refused only when both spellings were on the roll, and it turned
   three correct Clemons into Clemens.
 
-WHAT IS STILL WRONG, NAMED
-
-MacIntyre is read Maclntyre 66 times against 3 correct. The roll says
-Maclntyre, frequency says Maclntyre, and the confidence says Maclntyre by 68
-to 64 -- all three agree and all three are wrong, because one systematic
-misreading corrupts every signal at once. Nothing available here can see it.
-It is three votes, and it is written down rather than hidden.
+These three still run, for any spelling rule zero leaves alone -- a name the
+General Court's list does not carry at all, which for the pre-1997 House will
+not be rare. Where rule zero does fire it wins, and the MacIntyre case it
+fixes is exactly the one these three got wrong together.
 
 Every substitution is printed by --vocab, because a repair pass that silently
 rewrites names is the exact thing this project should not have.
@@ -91,6 +153,7 @@ rewrites names is the exact thing this project should not have.
 import argparse
 import csv
 import difflib
+import json
 import re
 import sys
 from collections import Counter
@@ -107,6 +170,7 @@ RARE_SHARE = 0.34       # the rare one, as a share of the common one
 MIN_LEN = 4             # short surnames are too easy to confuse
 MIN_COMMON = 3          # the common spelling must be established
 CONF_MARGIN = 3         # how much lower a confidence must be to veto
+AMBIGUOUS = 0.02        # two authority names this close apart decide nothing
 
 # Two capitalised words with no comma between them, in the position a name
 # would be. Only ever applied to the residue of a line after every properly
@@ -171,6 +235,155 @@ def vote_surnames(text):
     return counts
 
 
+PAST_MEMBERS = Path("past_members.json")
+# "Rep. MacIntyre, Doris(Hills 18)" -- the General Court's own list of people
+# who have served, one line per member, with the seat in brackets.
+AUTHORITY_LINE = re.compile(r"^(Rep|Sen)\.\s*([^,]+),\s*([^(]*)\((.*)\)\s*$")
+
+
+def authority():
+    """How the General Court spells the names of its own past members.
+
+    past_members.json is the General Court's list of people who have served,
+    fetched from its own site, and it reaches back well past 1997: Maviglio
+    and Joscelyn of the 1991 Belknap delegation are both in it, as are
+    MacIntyre, Clemons, Colburn, Cushing, Thulander and Adler. That matters
+    more than anything else here, because it is an authority for the spelling
+    of a name in 1991, where no digital journal exists to check against and
+    every signal internal to the scan is corrupted by the same misreading.
+
+    It is NOT the journal text. It is a roster, so using it to correct a scan
+    and then scoring that scan against journals/1997 is not circular in the
+    way using the 1997 journal itself would be -- but both are the General
+    Court's own spelling, so the resulting figure measures agreement with the
+    General Court given a General Court roster, and is no longer blind. The
+    checks that stay blind are --split and the vote-list counts, which never
+    consult this file.
+    """
+    if not PAST_MEMBERS.exists():
+        return {}
+    try:
+        rows = json.loads(PAST_MEMBERS.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    out = {}
+    for text in (rows.values() if isinstance(rows, dict) else rows):
+        m = AUTHORITY_LINE.match(str(text).strip())
+        if not m:
+            continue
+        surname = m.group(2).strip()
+        k = key(surname)
+        if len(k) >= MIN_LEN:
+            out.setdefault(k, surname)
+    return out
+
+
+# THE CONFUSIONS THIS SCANNER ACTUALLY MAKES, seen in all four volumes read
+# so far: rn read as m, and l, i and the digit 1 read as one another. Folding
+# them lets a short name match where string distance cannot -- O'Heam against
+# O'Hearn scores 0.73, well under the 0.85 threshold, because on five letters
+# one substitution is a large fraction of the word. Folding makes it exact.
+#
+# Only these two classes. C/G, F/E and e/c are equally real -- Coes read Goes,
+# Fraser read Eraser, Bartlett read Bartlctt -- and are NOT folded, because
+# collapsing those vowels and initials would merge names that differ only
+# there. rn/m and l/i are safe in a way c/e is not.
+def folded(s):
+    return re.sub(r"[li1]", "i", s.replace("rn", "m"))
+
+
+def within(a, b, limit):
+    """Is the edit distance from a to b at most limit? Cheap and bounded."""
+    if abs(len(a) - len(b)) > limit:
+        return False
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1,
+                           prev[j - 1] + (ca != cb)))
+        if min(cur) > limit:
+            return False
+        prev = cur
+    return prev[-1] <= limit
+
+
+def edit_budget(s):
+    """How many characters may be wrong before this stops being the same name.
+
+    A ratio is the wrong unit for a short surname. Goes against Coes scores
+    0.75 and Eraser against Fraser 0.83, both under the 0.85 threshold, and
+    both are one substituted letter -- C read as G and F read as E, which
+    this scanner does constantly. The unit that matches the failure is the
+    character, so short names get one and longer ones two.
+    """
+    return 1 if len(s) <= 6 else 2
+
+
+def assign(counts, auth):
+    """Pair each scanned spelling with a General Court name, one to one.
+
+    The user's rule, and the reason it works: a damaged spelling is derivable
+    because the person it belongs to is ALSO still unmatched -- everyone else
+    has been claimed by an exact match. So exact matches pair off first and
+    are removed from both pools, and what is left is assigned closest-first,
+    each name used once.
+
+    Independent nearest-neighbour lookups, which is what this did before, let
+    two damaged spellings collapse onto one person and leave the real one
+    stranded. One-to-one is the whole point.
+
+    Greedy best-first rather than a full optimal assignment: every candidate
+    pair above the threshold is sorted by how alike it is and taken if both
+    sides are still free. For this data the two agree -- the pairs that matter
+    are 0.9 and above and nothing competes for them -- and greedy is
+    inspectable, which a Hungarian solve here would not be.
+    """
+    names = list(auth)
+    # An authority name is reachable by folding only if it is the ONLY one
+    # that folds that way. Bell and Beil fold together and neither may be
+    # guessed at; Colburn and O'Hearn fold alone and both may.
+    by_fold = {}
+    for a in names:
+        by_fold.setdefault(folded(a), []).append(a)
+    unique_fold = {f: v[0] for f, v in by_fold.items() if len(v) == 1}
+
+    fixes = {}
+    for s, n in counts.items():
+        if len(s) < MIN_LEN or s in auth:
+            continue        # the scan already spells this one the way the GC does
+        hit = unique_fold.get(folded(s))
+        if hit:
+            fixes[s] = (hit, n, 1.0)
+            continue
+        close = difflib.get_close_matches(s, names, n=3, cutoff=MIN_RATIO)
+        if not close:
+            # Nothing close by ratio. Try the character budget instead, and
+            # only where exactly one authority name is inside it -- the same
+            # refusal as everywhere else in this function.
+            budget = edit_budget(s)
+            near = [a for a in names
+                    if abs(len(a) - len(s)) <= budget and within(s, a, budget)]
+            if len(near) == 1:
+                fixes[s] = (near[0], n, 0.0)
+            continue
+        scored = sorted(
+            ((difflib.SequenceMatcher(None, s, a).ratio(), a) for a in close),
+            reverse=True)
+        # "the closest name that doesn't match any other unmatched names":
+        # the assignment has to be UNAMBIGUOUS, not exclusive. Two damaged
+        # readings of one person are common and both should land on them --
+        # 1997 has McCarttiy and McCartfiy, which are both McCarty -- so a
+        # name already claimed by another damaged spelling is not a reason to
+        # refuse. A SECOND authority name just as close is: if Clark and
+        # Clarke both sit at the same distance from a damaged spelling, this
+        # cannot say which, and guessing would put a vote on the wrong member.
+        if len(scored) > 1 and scored[0][0] - scored[1][0] < AMBIGUOUS:
+            continue
+        fixes[s] = (scored[0][1], n, scored[0][0])
+    return fixes
+
+
 def confidences(identifier):
     """{normalised word: median of what ABBYY thought of each reading}.
 
@@ -202,7 +415,7 @@ def confidences(identifier):
     return {k: statistics.median(v) for k, v in seen.items()}
 
 
-def corrections(counts, roster, conf=None):
+def corrections(counts, roster, conf=None, auth=None):
     """{damaged: canonical}, with the evidence for each.
 
     The candidate pool is every surname the volume uses often enough to be
@@ -211,9 +424,21 @@ def corrections(counts, roster, conf=None):
     """
     common = [s for s, n in counts.items()
               if n >= MIN_COMMON and len(s) >= MIN_LEN]
+
+    # RULE ZERO, AND IT OUTRANKS THE OTHER TWO: the General Court's spelling,
+    # assigned one to one. Everything below this decides between two readings
+    # of the scan using evidence that is inside the scan, and a name misread
+    # the same way on every page defeats all of it at once -- MacIntyre is
+    # read Maclntyre 66 times against 3, the volume's own roll says Maclntyre,
+    # and even the OCR confidence says Maclntyre. An outside authority is the
+    # only thing that can see past that, and the General Court is the one that
+    # gets to say how its members' names are spelt.
     fixes = {}
+    if auth:
+        for s, (a, n, _ratio) in assign(counts, auth).items():
+            fixes[s] = (a, n, counts.get(a, 0))
     for rare, n in sorted(counts.items(), key=lambda kv: kv[1]):
-        if len(rare) < MIN_LEN:
+        if len(rare) < MIN_LEN or rare in fixes:
             continue
         # THE REFUSAL: a surname the House's own roll carries is never
         # rewritten, however rare it is in the votes and however common
@@ -336,7 +561,7 @@ def repair(identifier, verbose=False):
     counts = vote_surnames(text)
     if not counts:
         sys.exit("no vote list in this volume yielded a name; nothing to repair")
-    fixes = corrections(counts, roster, confidences(identifier))
+    fixes = corrections(counts, roster, confidences(identifier), authority())
 
     OUT.mkdir(parents=True, exist_ok=True)
     dest = OUT / f"{identifier}.txt"

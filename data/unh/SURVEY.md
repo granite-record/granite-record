@@ -274,16 +274,23 @@ and then again after `unh_repair.py`, for which see section 6:
 
 | 1997 House | flat `_djvu.txt` | reflowed | repaired |
 |---|---|---|---|
-| names carried exactly | 85.26% | 95.74% | **96.74%** |
+| names carried exactly | 85.26% | 95.74% | **97.99%** |
 | **each side within 3 of its heading** | **7%** | **87%** | **96%** |
 
-Three volumes now, and both chambers:
+Four volumes now, and both chambers:
 
 | volume | names | split | checked against |
 |---|---|---|---|
-| 1997 House | **96.74%** | 96% | `journals/1997` |
+| 1997 House | **97.99%** | 96% | `journals/1997` |
 | 1991 House | not measurable | **98%** | nothing — no digital copy exists |
-| 2003 Senate v.1 | **96.86%** | **100%** | `journals_senate/2003` |
+| 1993 House | not measurable | **94%** | nothing — no digital copy exists |
+| 2003 Senate v.1 | **98.61%** | **100%** | `journals_senate/2003` |
+
+The name figures are **no longer blind**. They use `past_members.json`, the
+General Court's own list of past members, as the authority for spelling, and
+are then scored against the General Court's journals — different products,
+same institution, so they agree. What stays blind is the split and the
+vote-list counts, which never consult a roster.
 
 ### A second volume, which found four patterns fitted to the first
 
