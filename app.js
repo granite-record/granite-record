@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.96
+// GRANITE_VERSION: 2026-09-07.97
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2957,7 +2957,9 @@ function renderMemberHead(m){
     ${(m.committees||[]).length?`<p class="pcmte"><b>Committees</b> ${
       m.committees.map(c=>cmteLink(
         (m.chamber==="S"?"Senate ":"House ")+c)).join(" &middot; ")}</p>`:""}
-    ${(!former&&m.email)?`<p class="pmeta"><a href="mailto:${esc(m.email)}">${esc(m.email)}</a></p>`:""}
+    ${m.seat?`<p class="pseat"><b>Seat</b> ${esc(plate(m.seat))}</p>`:""}
+    ${(!former&&m.email)?`<p class="pmeta"><b>Email</b> <a href="mailto:${
+      esc(m.email)}">${esc(m.email)}</a></p>`:""}
   </div>`;
 }
 
@@ -3351,6 +3353,16 @@ function cmteUpcoming(c){
 // The kinds the General Court's schedule actually uses, in the words a reader
 // needs: a public hearing is the one they may speak at, an executive session
 // is the one where the committee votes.
+// A SEAT AS IT IS WRITTEN ON A PLATE. The roster stores 4017, which is
+// division 4 seat 17 and reads as four thousand and seventeen; the plate a
+// representative drives around with says 4-017, and that is the form somebody
+// looking one up has in their head. The same function is in seating.py and in
+// build_pages' chart script; preflight holds the three together.
+function plate(s){
+  s=String(s==null?"":s);
+  return s.length>3 ? s.slice(0,s.length-3)+"-"+s.slice(-3) : s;
+}
+
 const MEET_KIND={"public hearing":["Public hearing","k-hearing"],
                  "hearing":["Public hearing","k-hearing"],
                  "executive session":["Executive session","k-exec"],

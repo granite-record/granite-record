@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.93
+# GRANITE_VERSION: 2026-09-04.94
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -922,6 +922,13 @@ SEATING_JS = """
   var rows=[].slice.call(list.querySelectorAll(".seatrow"));
   var picked=null;          // the chosen seat's circle, or null
 
+  // 4017 is division 4, seat 17, and the plate reads 4-017. The same
+  // function lives in seating.py and in app.js; preflight holds all three
+  // together.
+  function plate(s){
+    s=String(s||"");
+    return s.length>3 ? s.slice(0,s.length-3)+"-"+s.slice(-3) : s;
+  }
   function rowFor(seat){
     return rows.filter(function(r){return r.dataset.seat===seat;})[0];
   }
@@ -945,7 +952,7 @@ SEATING_JS = """
       a.textContent=c.getAttribute("data-name");
       note.appendChild(a);
       note.appendChild(document.createTextNode(
-        " — seat "+c.getAttribute("data-seat")));
+        " — seat "+plate(c.getAttribute("data-seat"))));
       return;
     }
     var shown=rows.filter(function(r){return !r.hidden;}).length;
@@ -1965,7 +1972,7 @@ def main():
         # Sorted by number, which is the order the person asked the dropdown
         # to be in. A vacant seat is not offered: there is nobody to go to.
         opts = "".join(
-            f'<option value="{esc(str(m["seat"]))}">{esc(str(m["seat"]))} '
+            f'<option value="{esc(str(m["seat"]))}">{esc(seating.plate(m["seat"]))} '
             f'&mdash; {esc(m.get("display_plain") or m.get("name"))}</option>'
             for m in H if m.get("seat"))
 
@@ -1991,7 +1998,8 @@ def main():
                     + "".join(li(m, "Sen." if m.get("chamber") == "S" else "Rep.")
                               for m in ms) + "</ol>")
         by_last = alpha_block(S, "Senate") + alpha_block(H, "House")
-        by_seat_rows = "".join(li(m, str(m.get("seat") or "")) for m in H)
+        by_seat_rows = "".join(
+            li(m, seating.plate(m["seat"]) if m.get("seat") else "") for m in H)
         senate_rows = "".join(li(m, f'District {m.get("district")}') for m in S)
 
         return f"""<section class="roster" id="roster">

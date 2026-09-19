@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.9
+# GRANITE_VERSION: 2026-09-18.10
 """
 Where every seat on the New Hampshire House floor goes, as a diagram.
 
@@ -163,6 +163,30 @@ AISLE_SEATS = 2.4            # aisle width at the front row, in seat widths
 MARGIN = 48.0                # room for the seat radius and the division labels
 LABEL_OUT = 26.0             # how far beyond the last row a caption's arc sits
 LABEL_UP = 14.0              # how far the letters reach above that arc
+
+
+def plate(seat):
+    """A seat number the way it is written on a licence plate: 4-017.
+
+    The roster stores it as one integer, 4017, which is division * 1000 +
+    seat and reads as four thousand and seventeen. It is not a number in that
+    sense: it is division 4, seat 17, and the plate a representative drives
+    around with says 4-017. A reader holding one in their head, or looking at
+    one in a car park, should not have to do the arithmetic.
+
+    app.js carries the same function for the pages it draws, and preflight
+    holds the three together -- it runs all of them on the same seats and
+    compares the answers rather than the spelling, which is how the
+    disagreement below was found.
+
+    A value with no division in it -- anything under four digits -- is handed
+    back as it came. There is no seat 17 without a division, and inventing
+    "0-017" for one would be asserting something the roster does not say.
+    """
+    s = str(seat).strip()
+    if not s.isdigit() or len(s) <= 3:
+        return s
+    return f"{s[:-3]}-{s[-3:]}"
 
 
 def seats_in(division):
@@ -589,8 +613,8 @@ def svg(by_seat=None, title="New Hampshire House seating"):
         if m:
             attrs += (f' data-slug="{m.get("slug", "")}"'
                       f' data-name="{m.get("name", "")}" tabindex="0" role="button"')
-        label = (f'{m.get("name")} — division {d}, seat {n}' if m
-                 else f'Vacant — division {d}, seat {n}')
+        label = (f'{m.get("name")} — seat {plate(seat)}' if m
+                 else f'Vacant — seat {plate(seat)}')
         out.append(
             f'<circle class="{cls} p-{party}" cx="{x:.1f}" cy="{y:.1f}" '
             f'r="{SEAT_R}" {attrs}><title>{label}</title></circle>')

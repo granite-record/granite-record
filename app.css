@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.114 */
+/* GRANITE_VERSION: 2026-09-07.115 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1603,9 +1603,15 @@ cursor:pointer;list-style:none;padding:var(--sp-1) 0}
 .phead h1{font-size:var(--t-hero);line-height:1.2;margin:0 0 var(--sp-3);
 letter-spacing:-.015em}
 .pmeta{color:var(--ink-2);font-size:var(--t-ui);margin:var(--sp-1) 0}
-.ptowns,.pcmte,.pserv{font-size:var(--t-ui);color:var(--ink);margin:var(--sp-4) 0 0;line-height:1.6}
-.ptowns b,.pcmte b,.pserv b{font-size:var(--t-sm);letter-spacing:.05em;text-transform:uppercase;
+.ptowns,.pcmte,.pserv,.pseat{font-size:var(--t-ui);color:var(--ink);margin:var(--sp-4) 0 0;line-height:1.6}
+/* .pmeta joins them so the address carries a label too: a bare
+   name.surname@gc.nh.gov under a district read as a stray line rather than as
+   the way to write to somebody. */
+.ptowns b,.pcmte b,.pserv b,.pseat b,.pmeta b{font-size:var(--t-sm);
+letter-spacing:.05em;text-transform:uppercase;
 color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
+/* Tabular figures: a seat is a number a reader is matching against a plate. */
+.pseat{font-variant-numeric:tabular-nums}
 .ptowns.note{color:var(--ink-2)}
 /* A former member's page says so once, quietly, near the top. Deliberately
    not a coloured badge: it is a statement of tenure for a reader who arrived

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.202
+# GRANITE_VERSION: 2026-09-04.203
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -5889,6 +5889,56 @@ def _publish_calls():
     assert not bad, ("publish.bat runs a batch script without CALL, so "
                      "nothing after it runs: " + "; ".join(bad))
     return "ok", "every batch script publish.bat runs is CALLed"
+
+
+@check("frontend", "a seat reads the same on the chart, the roster and a member's page")
+def _plate_agrees():
+    """plate() is written three times and nothing held the copies together.
+
+    A seat is stored as one integer, 4017, and shown as 4-017 -- division 4,
+    seat 17, which is what a representative's licence plate says and what
+    somebody looking one up has in their head. Three places turn one into the
+    other: seating.py for the chart's own titles, app.js for a member's page,
+    and build_pages' chart script for the readout under the floor.
+
+    Drift would be quiet and confusing in the worst way: the same seat would
+    read 4-017 on the member's page and 4017 under the chart, and a reader
+    matching a plate would not know which of the two was the number they
+    wanted. The three are run against the same inputs here rather than
+    compared as text, because two of them are JavaScript and the thing that
+    matters is the answer, not the spelling.
+    """
+    import seating as _seating
+    cases = [4017, 3119, 1001, 6002, 5043, 2080, 1, 999, 12345]
+    want = [_seating.plate(c) for c in cases]
+
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not on PATH, so the JavaScript copies cannot be run"
+    js = Path("app.js").read_text(encoding="utf-8", errors="replace")
+    bp = Path("build_pages.py").read_text(encoding="utf-8", errors="replace")
+    grab = lambda src, name: re.search(
+        r"function plate\(\w+\)\{.*?\n(?:\s*)\}", src, re.S)
+    got = {}
+    for label, src in (("app.js", js), ("build_pages.py", bp)):
+        m = grab(src, label)
+        assert m, f"{label} has no plate() function"
+        prog = (m.group(0) + "\n"
+                + "const out=" + repr(cases).replace("'", '"')
+                + ".map(c=>plate(c));\n"
+                + "process.stdout.write(JSON.stringify(out));")
+        r = subprocess.run([node, "-e", prog], capture_output=True, timeout=30)
+        assert r.returncode == 0, (
+            f"{label}'s plate() would not run: "
+            + r.stderr.decode("utf-8", "replace")[-200:])
+        got[label] = json.loads(r.stdout.decode("utf-8", "replace"))
+
+    for label, answers in got.items():
+        assert answers == want, (
+            f"{label}'s plate() disagrees with seating.py: "
+            + ", ".join(f"{c}: {label}={a!r} seating={w!r}"
+                        for c, a, w in zip(cases, answers, want) if a != w))
+    return "ok", f"three plate() copies agree on {len(cases)} seats, 4017 -> {want[0]}"
 
 
 @check("frontend", "the two calendar renderers agree on what a meeting is called")
