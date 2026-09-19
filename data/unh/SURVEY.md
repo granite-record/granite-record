@@ -24,20 +24,23 @@ bounding box per word. Rebuilding the printed reading order from those boxes
 — group into lines by y, sort each line by x, and nothing cleverer — takes the
 yea/nay split from 7% correct to 87%, and name agreement from 85.26% to
 95.74%. A repair pass against the General Court's own list of past members
-then takes them to **96% and 97.99%**. Sections 4 and 6.
+then takes them further. Sections 4 and 6.
 
-**And the roster comes out of the same book.** Each volume opens with the CALL
-OF THE ROLL, and reading it yields 400 seats against 400 the journal declares,
-with no district disagreeing. Section 5.
+**The number to quote is 96.81%, and 99% on the split** — the 1998 House
+volume, fetched after the work was finished and measured once, on the largest
+sample of the five. Everything else was developed against, and reads 1.7
+points higher.
 
-**Four volumes, and both chambers.** 1991 scored 0% on the split until four
+**And the roster comes out of the same book.** A volume that organises a new
+House opens with the CALL OF THE ROLL, and reading 1997's yields 400 seats
+against 400 the journal declares, no district disagreeing. Section 5.
+
+**Five volumes, and both chambers.** 1991 scored 0% on the split until four
 patterns quietly fitted to 1997 were found and generalised; it now scores 98%.
 The Senate does none of what the House does — it writes a sentence rather than
 four columns, and contains the word YEAS zero times — so it needed its own
-reader, and then scored **100%** on the split and **98.61%** on names. 1993,
-the volume UNH lacks, is on the Internet Archive from a different depositor
-and needed two more parser changes; it scores 94% first time. Nothing here
-should be trusted for a fifth volume until a fifth volume is tried.
+reader, and scores 100% on the split. 1993, the volume UNH lacks, came from a
+different depositor and needed two more parser changes; 94% first time.
 
 ---
 
