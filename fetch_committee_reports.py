@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.27
+# GRANITE_VERSION: 2026-09-04.28
 """
 Pull committee majority and minority reports out of the House Calendars.
 
@@ -55,8 +55,31 @@ UA = {"User-Agent": "granite-record/1.0 (civic transparency project; "
 #
 # So the sections are cut from the RAW text, before clean_pdf_text collapses
 # every newline to a space, and each section is cleaned afterwards.
+# A PAGE BREAK IS THE START OF A LINE. pdftotext writes one as a form feed,
+# and where an entry begins at the top of a page the heading is preceded by
+# that form feed rather than by a newline -- so this pattern, which allowed
+# only spaces and tabs after the line break, did not see it, and the
+# PREVIOUS committee's report swallowed the whole entry. House Calendar 70
+# of 2011 reads
+#
+#     ...it, not the federal government. Vote 12-0.
+#                                                    6
+#     <form feed>HB 633, preventing prescribing practitioners from owning
+#
+# and HB 619's report on this site carried HB 633's number, title and
+# recommendation on the end of it. 405 headings across 1,579 calendars are
+# hidden this way, all but two of them in 2003-2012, which is why the oldest
+# reports were the worst affected.
+#
+# THE LINE ANCHOR ITSELF STAYS, and the comment above says why. The price of
+# admitting the form feed is one known false positive in 405: a meetings
+# notice reading "work session on HB 111, ... and HB 1601, ..." where the
+# page happens to break before the second bill. That one falls inside
+# COMMITTEE MEETINGS, which SECTION_END has already terminated, so it
+# reaches no report -- but it is the same shape as the SB 2 sentence above,
+# so if a heading ever appears from nowhere, look here first.
 BILL_START = re.compile(
-    r"(?:\A|[\r\n])[ \t]*"
+    r"(?:\A|[\r\n\f])[ \t\f]*"
     r"(?P<bill>(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR)\s?\d+(?:-[A-Z]+)*)\s*,\s*",
     re.I)
 

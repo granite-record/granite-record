@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.205
+# GRANITE_VERSION: 2026-09-04.206
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10123,6 +10123,51 @@ def _one_naming():
     assert not bad, (f"{len(bad)} of {len(recs)} members are named two ways: "
                      + "; ".join(bad[:3]))
     return "ok", f"{len(recs):,} members, one name each"
+
+
+@check("calendar", "a bill heading at the top of a page still starts a report")
+def _formfeed_heading():
+    """The page break that made old reports carry the next bill's header.
+
+    pdftotext writes a page break as a form feed, so an entry beginning at the
+    top of a page is preceded by that rather than by a newline. BILL_START
+    wanted a newline and then spaces or tabs, so it did not see those headings
+    and the PREVIOUS committee's report ran on through the whole next entry --
+    its number, its title and its recommendation. House Calendar 70 of 2011
+    put HB 633's header inside HB 619's report, and 19 bills of that year had
+    no report at all because theirs had been swallowed whole.
+
+    405 headings across 1,579 calendars were hidden this way, all but two of
+    them in 2003-2012, which is exactly the span a reader described as "old
+    committee reports".
+
+    The other half of the check matters as much: the LINE ANCHOR must stay. It
+    is there because House Calendar 10 of 2026 contains the phrase "adopting
+    SB 2, concentrating budgetary and governance decisions", and without the
+    anchor that split a real minority report in half and filed the second half
+    under a bill that does not exist -- SB 2 being the name New Hampshire gives
+    the ballot-vote form of town meeting.
+    """
+    import fetch_committee_reports as FCR
+
+    page_break = "\f" "HB 633, preventing prescribing practitioners"
+    assert FCR.BILL_START.search("Vote 12-0.\n     6\n" + page_break), (
+        "a bill heading preceded by a page break is not read as a heading. "
+        "That is the form feed pdftotext writes at every page break, and "
+        "without it the previous report swallows the whole entry.")
+
+    mid = ("the committee heard that many towns have trouble adopting "
+           "SB 2, concentrating budgetary decisions among a few attendees")
+    assert not FCR.BILL_START.search(mid), (
+        "a bill number INSIDE a sentence is being read as a heading. The line "
+        "anchor is what prevents that; it split a real minority report in "
+        "half the last time it was missing.")
+
+    # The ordinary case, and the one that must keep working.
+    assert FCR.BILL_START.search("\nHB 1234, relative to something"), (
+        "a heading at the start of an ordinary line is no longer read as one")
+    return "ok", ("a page break starts a heading, a mid-sentence bill number "
+                  "does not")
 
 
 @check("calendar", "a reversed meridiem is corrected, and the evening is left alone")
