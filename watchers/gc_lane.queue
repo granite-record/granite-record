@@ -210,56 +210,75 @@ fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,
 # watchers/rest.py 3600 after-bills-15   # removed 17 Sep: the rest adds no request rate, only idle time
 fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-16
 # watchers/rest.py 3600 after-bills-16   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-17
+
+# 19 September: THE PENDING STEPS BELOW WERE REPOINTED, and the ones already
+# run were left exactly as they ran.
+#
+# --plan, which asks nobody anything, reports 0 left to ask for every year from
+# 1999 to 2024. The newest-first pass finished. What remains is 7,007 pages in
+# 1989-1997 and 19 in 1998, so --newest-first came off these lines: walking
+# forward from 1989 puts every request where the coverage actually is.
+#
+# It also postpones a known stopping point. 1998 CACR 30-51 answer 404 -- the
+# bills are real and the docket lists them, the pages are simply not on that
+# path, the same unexplained shape as 1996 and 2016 -- and three of those in a
+# row is what stopped the lane on 18 September.
+#
+# The delay is halved to 5 seconds and the rest to 30 minutes, asked for on
+# 19 September. The General Court's IT team has approved this project's
+# fetching, which is what makes it defensible; it is still twice the rate on a
+# server that has blocked this address twice, so the bounded-run-then-rest
+# discipline stays rather than becoming one long crawl.
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-17
 # watchers/rest.py 3600 after-bills-17   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-18
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-18
 # watchers/rest.py 3600 after-bills-18   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-19
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-19
 # watchers/rest.py 3600 after-bills-19   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-20
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-20
 # watchers/rest.py 3600 after-bills-20   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-21
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-21
 # watchers/rest.py 3600 after-bills-21   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-22
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-22
 # watchers/rest.py 3600 after-bills-22   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-23
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-23
 # watchers/rest.py 3600 after-bills-23   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-24
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-24
 # watchers/rest.py 3600 after-bills-24   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-25
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-25
 # watchers/rest.py 3600 after-bills-25   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-26
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-26
 # watchers/rest.py 3600 after-bills-26   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-27
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-27
 # watchers/rest.py 3600 after-bills-27   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-28
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-28
 # watchers/rest.py 3600 after-bills-28   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-29
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-29
 # watchers/rest.py 3600 after-bills-29   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-30
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-30
 # watchers/rest.py 3600 after-bills-30   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-31
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-31
 # watchers/rest.py 3600 after-bills-31   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-32
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-32
 # watchers/rest.py 3600 after-bills-32   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-33
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-33
 # watchers/rest.py 3600 after-bills-33   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-34
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-34
 # watchers/rest.py 3600 after-bills-34   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-35
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-35
 # watchers/rest.py 3600 after-bills-35   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-36
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-36
 # watchers/rest.py 3600 after-bills-36   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-37
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-37
 # watchers/rest.py 3600 after-bills-37   # removed 17 Sep: the rest adds no request rate, only idle time
-fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --newest-first --delay 10 --budget 800 --note bills-38
+fetch_legislation.py --all --from 1989 --to 2024 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800 --note bills-38
 # watchers/rest.py 3600 after-bills-38   # removed 17 Sep: the rest adds no request rate, only idle time
 # Then everything else a year holds -- resolutions, addresses, petitions --
 # newest first. Floor resolutions (LSR 8000 and up) have no text and are
 # never asked; 404s go on the gone-list and a run stops at ten.
-fetch_legislation.py --all --from 1989 --to 2024 --newest-first --delay 10 --budget 400 --note everything-else-01
-watchers/rest.py 3600 after-everything-else-01
-fetch_legislation.py --all --from 1989 --to 2024 --newest-first --delay 10 --budget 400 --note everything-else-02
-watchers/rest.py 3600 after-everything-else-02
-fetch_legislation.py --all --from 1989 --to 2024 --newest-first --delay 10 --budget 400 --note everything-else-03
-watchers/rest.py 3600 after-everything-else-03
+fetch_legislation.py --all --from 1989 --to 2024 --delay 5 --budget 400 --note everything-else-01
+watchers/rest.py 1800 after-everything-else-01
+fetch_legislation.py --all --from 1989 --to 2024 --delay 5 --budget 400 --note everything-else-02
+watchers/rest.py 1800 after-everything-else-02
+fetch_legislation.py --all --from 1989 --to 2024 --delay 5 --budget 400 --note everything-else-03
+watchers/rest.py 1800 after-everything-else-03
