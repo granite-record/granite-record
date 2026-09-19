@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.95
+# GRANITE_VERSION: 2026-09-04.97
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -430,7 +430,7 @@ def calendar_html(H, out):
     return "".join(html) + cal_notes(H, up, missing, esc)
 
 
-def cal_days(days, meets, titles, years, code, when, esc):
+def cal_days(days, meets, titles, years, code, when, esc, level=3):
     """The day blocks and their meeting cards, for any set of days.
 
     Split out of calendar_html on 18 September so the calendar PAGE draws the
@@ -438,6 +438,11 @@ def cal_days(days, meets, titles, years, code, when, esc):
     places counted meetings and disagreed; a second renderer drawing something
     that merely looked like these would be the same mistake in markup.
     """
+    # THE DAY'S HEADING LEVEL IS THE CALLER'S TO SAY. On the home page these
+    # sit under "Coming up", an h2, so they are h3. On a week's own page the
+    # h1 IS the week, and an h3 under it skips a level -- which is a depth,
+    # not a size, and a screen reader reads it as a missing section.
+    h = f"h{level}"
     html, missing = [], 0
     for date, keys in days.items():
         label, rel = when(date)
@@ -447,10 +452,10 @@ def cal_days(days, meets, titles, years, code, when, esc):
         # happened at the top of Coming up. HOME_JS
         # reads this attribute in the reader's own clock, drops the days that
         # have passed and writes the relative word again.
-        html.append(f'<div class="calday" data-d="{esc(date)}"><h3 class="caldate">'
+        html.append(f'<div class="calday" data-d="{esc(date)}"><{h} class="caldate">'
                     f'<span>{esc(label)}</span>'
                     f'<span class="cdrel">{esc(rel)}</span>'
-                    + "</h3>")
+                    + f"</{h}>")
         for key in keys:
             _d, cmte = key
             rows = meets[key]
@@ -591,7 +596,10 @@ def shell(title, current, body, wide=False, script="", desc="",
                         # when Data was added to the first it was not added
                         # here, so three pages lacked the link the other
                         # 34,000 had.
-                        ("learn.html", "Learn")):
+                        ("learn.html", "Learn"),
+                        # Added to BOTH emitters in the same edit. The comment
+                        # above records what happened the time it was not.
+                        ("calendar.html", "Calendar")):
         cur = ' aria-current="page"' if href == current else ""
         tabs.append(f'<a href="{href}"{cur}>{label}</a>')
     # ONE WRAPPER, WRITTEN TWICE BECAUSE THE NAV IS. bills.html carries the

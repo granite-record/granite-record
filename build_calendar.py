@@ -1,50 +1,48 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.3
+# GRANITE_VERSION: 2026-09-18.5
 """
-The General Court's week, as one small file per week.
+The General Court's week, one page per week.
 
-    python3 build_calendar.py --site site
+    python3 build_calendar.py --site site --base https://graniterecord.org
 
-WHY A FILE PER WEEK
+WHY PAGES AND NOT A FETCH
 
-The home page used to show a fixed fortnight, cut from home.json, and there
-was no way to look at any other. Asked for on 18 September: "the calendar can
-be more of a week to week thing where you can tap back and forth to view all
-the hearings and sessions this week, next week, the previous week, etc."
+The home page showed a fixed fortnight and there was no way to look at any
+other week. Asked for on 18 September: "the calendar can be more of a week to
+week thing where you can tap back and forth to view all the hearings and
+sessions this week, next week, the previous week, etc."
 
-Paging needs the weeks to be reachable, and there are 11,020 proceedings from
-2025 onward across 67 weeks -- a median of 112 a week and 609 in the busiest.
-That is about a megabyte if it travels as one file, on a page whose whole data
-budget today is 20 KB. So each week is its own file and a reader fetches the
-one they turned to, which is a dozen kilobytes. The site is files on a CDN;
-this is what that constraint is for.
+The first attempt shipped a JSON file per week and a script to page through
+them. That was the wrong shape twice over. The card a reader sees is drawn by
+build_pages.cal_days, in Python, from the grouping meeting_key defines -- so a
+script paging through JSON would have needed a SECOND renderer drawing
+something that merely looked like the first, which is the mistake this
+repository keeps a check under. And a site of files on a CDN can simply have
+the weeks as files: the arrows become links, every week is an address a reader
+can send to somebody, and the whole thing works with no script at all.
 
-  site/cal/2026-W40.json    one week, its days, and what sat on each
-  site/cal/index.json       which weeks exist, so the arrows know where to stop
+  site/calendar.html            the current week, which is what the tab opens
+  site/calendar/2026-W38.html   every other week, one file each
 
-WHAT COUNTS AS A WEEK'S BUSINESS
+WHAT IS ON A WEEK
 
-Every proceedings.csv row with a date: committee hearings, executive and work
-sessions, and floor debates. proceedings.csv is the one table and this reads
-it through proceedings.py like everything else -- it is not a sixth reader of
-the files behind it.
+Every proceedings.csv row with a date, read through proceedings.py like
+everything else: committee hearings, executive and work sessions, and the
+floor. Floor rows carry no committee -- which is exactly why sitting days were
+nowhere on this site, since every listing is keyed on one -- so they are given
+"House floor" or "Senate floor" and take an entry of their own beside the
+committees that sat around them.
 
-A row names a BILL, so a committee that took up nine bills in one sitting is
-nine rows. They are grouped back into meetings here, by day and committee and
-kind and room -- NOT by time, because the docket gives every bill its own slot
-inside the meeting. Executive Departments on 21 January runs 09:00, 09:10,
-09:20 and on down its fifteen bills; keyed on the time that is fifteen
-committees meeting for ten minutes each. Keyed without it, it is one morning,
-and the card states the span the way the General Court's own schedule does.
-
-That is the difference between 4,494 meetings and 1,452, and between a busiest
-week of 356 and one of 69.
+ONE ENTRY PER COMMITTEE PER DAY, which is meeting_key's rule and not this
+file's: a committee that holds a hearing in the morning and an executive
+session after it has had one working day. The card carries a chip per kind and
+a divided colour bar, and its body lists the day's items in order with the time
+and room each was set for.
 
 WHAT IS NOT HERE. proceedings.csv is keyed on bills, so this shows bill
 business only. The General Court's own schedule also lists study committees,
-boards and commissions that sit without a bill in front of them -- the
-Assessing Standards Board, the Mount Washington Commission -- and none of
-those appear.
+boards and commissions sitting with no bill before them -- the Assessing
+Standards Board, the Mount Washington Commission -- and none of those appear.
 """
 
 import argparse
@@ -53,158 +51,216 @@ import json
 from collections import OrderedDict, defaultdict
 from pathlib import Path
 
+import build_pages as BP
 import proceedings
+import shell as S
+import structured as LD
 
-# From 2025: the current term and the one before it. Earlier terms are in the
-# record and reachable through a bill, but nobody pages a calendar back to
-# 1998, and 67 weeks of files is enough to carry the arrows.
+# From 2025: the current term and the one before it. Everything earlier is in
+# the record and reachable through a bill or a committee, but nobody pages a
+# calendar back to 1998 and sixty-odd files is enough to carry the arrows.
 FROM = "2025-01-01"
 
+DAYNAME = "Monday Tuesday Wednesday Thursday Friday Saturday Sunday".split()
+MONTH = ("January February March April May June July August September "
+         "October November December").split()
 
-def week_of(iso_date):
-    """('2026-W40', the Monday) for a date, or None if it will not parse."""
-    try:
-        d = datetime.date.fromisoformat(iso_date[:10])
-    except (ValueError, TypeError):
-        return None
+FLOOR = {"H": "House floor", "S": "Senate floor"}
+
+
+def week_key(d):
     y, w, _ = d.isocalendar()
-    return f"{y}-W{w:02d}", d - datetime.timedelta(days=d.isoweekday() - 1)
+    return f"{y}-W{w:02d}"
 
 
-def titles_for(site):
-    """{term: {bill id: (number as printed, title)}} from the built indexes."""
-    out = {}
+def monday(d):
+    return d - datetime.timedelta(days=d.isoweekday() - 1)
+
+
+def span_words(a, b):
+    """21-27 September 2026, or 29 September - 5 October 2026."""
+    if a.month == b.month:
+        return f"{a.day}–{b.day} {MONTH[b.month - 1]} {b.year}"
+    if a.year == b.year:
+        return (f"{a.day} {MONTH[a.month - 1]} – "
+                f"{b.day} {MONTH[b.month - 1]} {b.year}")
+    return (f"{a.day} {MONTH[a.month - 1]} {a.year} – "
+            f"{b.day} {MONTH[b.month - 1]} {b.year}")
+
+
+def href_for(key, today):
+    """Where a week lives. The current one is the tab's own page."""
+    return "calendar.html" if key == week_key(today) else f"calendar/{key}.html"
+
+
+def collect(site):
+    """{week: {date: {meeting_key: [rows]}}}, plus the lookups a card needs."""
+    titles, years = {}, {}
     idx = site / "idx"
-    if not idx.exists():
-        return out
-    for f in idx.glob("*.json"):
+    if idx.exists():
+        for f in idx.glob("*.json"):
+            try:
+                rows = json.loads(f.read_text(encoding="utf-8"))
+            except (ValueError, OSError):
+                continue
+            for b in rows:
+                if b.get("id"):
+                    titles[b["id"]] = b.get("title") or ""
+                    years[b["id"]] = b.get("year")
+
+    code = {}
+    cf = site / "committees.json"
+    if cf.exists():
         try:
-            rows = json.loads(f.read_text(encoding="utf-8"))
+            for c in json.loads(cf.read_text(encoding="utf-8")):
+                if c.get("name") and c.get("code"):
+                    code[c["name"].strip().lower()] = c["code"]
         except (ValueError, OSError):
-            continue
-        out[f.stem] = {r.get("id"): (r.get("n") or r.get("id"), r.get("title") or "")
-                       for r in rows if r.get("id")}
-    return out
+            pass
 
-
-def committee_codes(site):
-    """{committee name folded: code} so a sitting links to its own page."""
-    f = site / "committees.json"
-    if not f.exists():
-        return {}
-    try:
-        return {c["name"].strip().lower(): c["code"]
-                for c in json.loads(f.read_text(encoding="utf-8"))
-                if c.get("name") and c.get("code")}
-    except (ValueError, OSError):
-        return {}
-
-
-def span(sit):
-    """The meeting with its time as first-bill-to-last, the way the General
-    Court prints it: 10:00-15:30, or one time when every bill shares a slot."""
-    s = sorted(sit.pop("slots", []))
-    sit["time"] = "" if not s else (s[0] if s[0] == s[-1] else f"{s[0]}–{s[-1]}")
-    # The endpoints as well as the printed span, because a reader of this file
-    # may want to lay the meeting out itself rather than take the string.
-    sit["starts"] = s[0] if s else ""
-    sit["ends"] = s[-1] if s else ""
-    return sit
-
-
-def _in_order(day):
-    """A day's meetings by when each one starts."""
-    return sorted(day.values(),
-                  key=lambda s: (min(s["slots"]) if s.get("slots") else "", s["where"]))
-
-
-def build(site):
-    rows = [r for r in proceedings.load()
-            if (r.get("date") or "") >= FROM]
-    titles = titles_for(site)
-    codes = committee_codes(site)
-
-    # (week, day, committee, kind, room) -> the meeting, with its bills
     weeks = defaultdict(lambda: defaultdict(OrderedDict))
-    for r in rows:
-        w = week_of(r.get("date") or "")
-        if not w:
+    for r in proceedings.load():
+        date = (r.get("date") or "")[:10]
+        if date < FROM:
             continue
-        key = w[0]
-        day = r["date"][:10]
-        floor = (r.get("kind") or "").strip().lower() == "floor debate"
-        cm = (r.get("committee") or "").strip()
-        where = ("Floor" if floor else cm) or "Not named"
-        # NOT THE TIME -- the same rule as build_pages.meeting_key. The docket
-        # gives every BILL its own slot inside a meeting, so a key holding the
-        # time made one committee morning into one meeting per bill: the
-        # busiest week of 2026 counted 356 where it holds 68.
-        slot = (where, (r.get("kind") or "").strip(), (r.get("venue") or "").strip())
-        sit = weeks[key][day].get(slot)
-        if sit is None:
-            sit = weeks[key][day][slot] = {
-                "what": r.get("kind") or "",
-                "body": r.get("body") or "",
-                "slots": [],
-                "where": where,
-                "venue": (r.get("venue") or "").strip(),
-                "code": "" if floor else codes.get(cm.lower(), ""),
-                "bills": [],
-            }
-        when = (r.get("time") or "").strip()
-        if when and when not in sit["slots"]:
-            sit["slots"].append(when)
-        term = r.get("term") or ""
-        bid = r.get("bill") or ""
-        n, title = titles.get(term, {}).get(bid, (bid, ""))
-        if bid and not any(b["id"] == bid for b in sit["bills"]):
-            sit["bills"].append({"id": bid, "n": n, "term": term,
-                                 "title": title[:120],
-                                 "video": r.get("video_id") or ""})
+        try:
+            d = datetime.date.fromisoformat(date)
+        except ValueError:
+            continue
+        cmte = (r.get("committee") or "").strip()
+        if not cmte:
+            cmte = FLOOR.get((r.get("body") or "").strip().upper(), "")
+            if not cmte:
+                continue
+        row = {"date": date, "time": (r.get("time") or "").strip(),
+               "bill": r.get("bill") or "", "committee": cmte,
+               "what": (r.get("kind") or "").strip(),
+               "venue": (r.get("venue") or "").strip()}
+        weeks[week_key(d)][date].setdefault(BP.meeting_key(row), []).append(row)
+    return weeks, titles, years, code
 
-    out = site / "cal"
-    out.mkdir(parents=True, exist_ok=True)
-    # SILENCE IS NOT SUCCESS: a calendar that writes nothing and exits zero is
-    # a home page with dead arrows and no way to tell from the build log.
-    assert weeks, f"no proceedings dated {FROM} or later; nothing to page through"
 
-    index, written = [], 0
-    for key in sorted(weeks):
-        days = weeks[key]
-        monday = week_of(min(days))[1]
-        payload = {
-            "week": key,
-            "starts": monday.isoformat(),
-            "ends": (monday + datetime.timedelta(days=6)).isoformat(),
-            "days": [{"date": d, "sittings": [span(s) for s in _in_order(days[d])]}
-                     for d in sorted(days)],
-        }
-        n = sum(len(s["sittings"]) for s in payload["days"])
-        (out / f"{key}.json").write_text(json.dumps(payload, separators=(",", ":")),
-                                         encoding="utf-8")
-        index.append({"week": key, "starts": payload["starts"],
-                      "sittings": n,
-                      "bills": sum(len(x["bills"]) for d in payload["days"]
-                                   for x in d["sittings"])})
-        written += 1
+def week_page(site, base, key, weeks, order, at, titles, years, code, urls, today):
+    days_raw = weeks[key]
+    dated = [d for d in days_raw if days_raw[d]]
+    first = monday(datetime.date.fromisoformat(min(dated) if dated
+                                               else min(days_raw)))
+    last = first + datetime.timedelta(days=6)
+    label = span_words(first, last)
 
-    (out / "index.json").write_text(json.dumps(index, separators=(",", ":")),
-                                    encoding="utf-8")
-    size = sum(f.stat().st_size for f in out.glob("*.json"))
-    big = max(index, key=lambda x: x["sittings"])
-    print(f"  {written} weeks -> {out}/ ({size/1024:.0f} KB in all, "
-          f"{size/written/1024:.1f} KB a week)")
-    print(f"  {sum(x['sittings'] for x in index):,} sittings, "
-          f"{sum(x['bills'] for x in index):,} bill-sittings; "
-          f"busiest {big['week']} with {big['sittings']}")
-    return 0
+    def when(d):
+        x = datetime.date.fromisoformat(d)
+        off = (x - today).days
+        rel = ("today" if off == 0 else "tomorrow" if off == 1
+               else f"in {off} days" if 0 < off < 14 else "")
+        return f"{DAYNAME[x.weekday()]} {x.day} {MONTH[x.month - 1]}", rel
+
+    meets, days = {}, OrderedDict()
+    for date in sorted(dated):
+        for k, rows in days_raw[date].items():
+            meets[k] = rows
+        days[date] = sorted(
+            days_raw[date],
+            key=lambda k: (min((r["time"] or "~") for r in days_raw[date][k]), k[1]))
+
+    # level=2: the h1 of this page is the week itself, so a day is the
+    # section under it. On the home page the days sit under "Coming up"
+    # and stay h3.
+    body, _missing = BP.cal_days(days, meets, titles, years, code, when, S.E,
+                                 level=2)
+
+    n = sum(len(v) for v in days.values())
+    bills = len({(r["date"], r["bill"]) for rows in meets.values()
+                 for r in rows if r["bill"]})
+
+    nav = []
+    if at > 0:
+        nav.append(f'<a class="wkprev" href="{S.canon(href_for(order[at - 1], today))}">'
+                   f'&lsaquo; The week before</a>')
+    here = week_key(today)
+    if key != here and here in order:
+        nav.append(f'<a class="wkhere" href="{S.canon("calendar.html")}">This week</a>')
+    if at < len(order) - 1:
+        nav.append(f'<a class="wknext" href="{S.canon(href_for(order[at + 1], today))}">'
+                   f'The week after &rsaquo;</a>')
+
+    if n:
+        lead = (f"{n} sitting{'' if n == 1 else 's'} on {len(days)} "
+                f"day{'' if len(days) == 1 else 's'}, covering {bills:,} "
+                f"bill{'' if bills == 1 else 's'}. A committee appears once a day, "
+                "however many times it sat; open one for its items in order.")
+    else:
+        lead = ("Nothing sat this week. The General Court sits from January to "
+                "June, and committees meet on bills from the autumn filing "
+                "period onwards.")
+
+    path = href_for(key, today)
+    html = S.page(S.template(site), path=path, base=base,
+                  title=f"The week of {label} | Granite Record",
+                  description=("Every hearing, work session, executive session and "
+                               f"floor sitting of the New Hampshire General Court, "
+                               f"{label}."),
+                  og_title=f"The week of {label}",
+                  globals={"GR_STATIC": True}, noscript="",
+                  skip_label="Skip to the week", sr_title="", og_type="website",
+                  nav_current="calendar.html",
+                  jsonld=LD.listing(f"The week of {label}",
+                                    f"The General Court's business, {label}.",
+                                    base, S.canon(path)))
+    block = ('<div id="results"><div class="wkpage">'
+             f'<h1>The week of {S.E(label)}</h1>'
+             f'<p class="src">{lead}</p>'
+             f'<nav class="wknav" aria-label="Other weeks">{"".join(nav)}</nav>'
+             f'{body}'
+             f'<nav class="wknav wkfoot" aria-label="Other weeks">{"".join(nav)}</nav>'
+             "</div></div>")
+    html = html.replace('<div id="results"></div>', block, 1)
+    assert '<div class="wkpage">' in html, f"{path}: the template has no results slot"
+    out = site / path.lstrip("/")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(html, encoding="utf-8")
+    urls.append(base + S.canon(path))
+    return n
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--site", default="site")
+    ap.add_argument("--base", default="https://graniterecord.org")
     a = ap.parse_args()
-    return build(Path(a.site))
+    site, base = Path(a.site), a.base.rstrip("/")
+
+    weeks, titles, years, code = collect(site)
+    # SILENCE IS NOT SUCCESS: no weeks is a Calendar tab pointing at nothing,
+    # and a build that said so only by printing a zero.
+    assert weeks, f"no proceedings dated {FROM} or later; the calendar would be empty"
+
+    today = datetime.date.today()
+    here = week_key(today)
+    if here not in weeks:
+        # Out of session the current week holds nothing, and the tab still has
+        # to open on it rather than on whenever the House last sat.
+        weeks[here][today.isoformat()] = OrderedDict()
+    order = sorted(weeks)
+
+    urls, total = [], 0
+    for i, key in enumerate(order):
+        total += week_page(site, base, key, weeks, order, i,
+                           titles, years, code, urls, today)
+
+    sm = site / "sitemap.xml"
+    if sm.exists():
+        text = sm.read_text(encoding="utf-8")
+        add = "".join(f"<url><loc>{S.E(u)}</loc></url>\n" for u in urls
+                      if S.E(u) not in text)
+        if add:
+            sm.write_text(text.replace("</urlset>", add + "</urlset>"),
+                          encoding="utf-8")
+            print(f"  {len(add.splitlines())} added to sitemap.xml")
+
+    print(f"  {len(order)} weeks -> calendar.html and calendar/ "
+          f"({total:,} sittings; {here} is this week)")
+    return 0
 
 
 if __name__ == "__main__":

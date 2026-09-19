@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.117 */
+/* GRANITE_VERSION: 2026-09-07.118 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2216,6 +2216,30 @@ a.ccard:hover{border-color:var(--rule-2);background:var(--surface)}
 /* On a committee day, a start that was inferred rather than quoted. Same word
    the bill page uses, for the same reason. */
 .cday .approx{display:block;font-style:normal;font-size:var(--t-sm);color:var(--ink-2)}
+
+/* A WEEK OF THE GENERAL COURT. Its own page, one per week, so the arrows are
+   links rather than a script and every week is an address somebody can send
+   on. The nav repeats under the days because a busy January week is a long
+   scroll and asking a reader to climb back to the top to turn the page is
+   asking them not to. */
+/* No max-width: a week fills the page it is given, the way the
+   roster and the bill list do. */
+.wkpage{min-width:0}
+.wknav{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4);
+margin:var(--sp-6) 0;padding:var(--sp-4) 0;
+border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.wknav a{font-size:var(--t-ui);font-weight:600;color:var(--pine);
+text-decoration:none;padding:var(--sp-3) 0;min-height:44px;
+display:inline-flex;align-items:center}
+.wknav a:hover{text-decoration:underline}
+/* Previous on the left and next on the right, which is the order this site
+   uses everywhere it moves a reader through a sequence. */
+.wknav .wknext{margin-left:auto}
+.wknav .wkhere{color:var(--ink-2)}
+.wkfoot{margin-bottom:var(--sp-9)}
+@media (max-width:560px){
+  .wknav{gap:var(--sp-3)}
+}
 
 /* ONE SITTING, AND THE WAY BACK TO IT. A calendar entry names a committee
    and a day, so the day needs an address and the reader needs to see they

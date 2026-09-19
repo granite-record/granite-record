@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.203
+# GRANITE_VERSION: 2026-09-04.204
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3179,6 +3179,12 @@ def _built_site(here, root):
         ("build_town_pages.py", ["--site", "site", "--base", base], "site/town"),
         ("build_indexes.py", ["--site", "site", "--base", base],
          "site/directory.html"),
+        # After the committees, whose codes it needs to link a card, and in
+        # build_all's own order. Its output is what the Calendar tab points
+        # at, so a fixture without it builds a nav link to nothing -- which
+        # is how the link check found this step was missing here at all.
+        ("build_calendar.py", ["--site", "site", "--base", base],
+         "site/calendar.html"),
         ("build_exports.py", ["--site", "site", "--base", base],
          "site/data/manifest.json"),
         ("build_feeds.py", ["--site", "site", "--base", base],

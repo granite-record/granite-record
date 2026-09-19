@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.27
+# GRANITE_VERSION: 2026-09-05.28
 """
 Run the whole pipeline in the right order.
 
@@ -493,6 +493,19 @@ def plan(a):
                   "links: the bill list and the legislator search are drawn by "
                   "script, so without these a page was reachable from the sitemap "
                   "and almost nothing else"),
+
+        # AFTER the committees, whose codes turn a committee name on a card
+        # into a link to its page, and after the sitemap exists so the weeks
+        # can be appended to it the way every other builder appends.
+        Step("a page for every week of the General Court",
+             ["build_calendar.py", "--site", "site", "--base", a.base],
+             needs=["site/committees.json", "proceedings.csv"],
+             produces=["site/calendar.html"],
+             note="the hearings, work and executive sessions and floor "
+                  "sittings of one week, on one page, with the weeks either "
+                  "side a link away -- and sitting days listed at all, which "
+                  "nothing else on the site does because every listing is "
+                  "keyed on a committee and the floor has none"),
 
         Step("bulk downloads",
              ["build_exports.py", "--site", "site", "--base", a.base],
