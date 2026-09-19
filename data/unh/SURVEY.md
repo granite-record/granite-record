@@ -285,17 +285,25 @@ and then again after `unh_repair.py`, for which see section 6:
 
 | 1997 House | flat `_djvu.txt` | reflowed | repaired |
 |---|---|---|---|
-| names carried exactly | 85.26% | 95.74% | **97.99%** |
+| names carried exactly | 85.26% | 95.74% | **98.54%** |
 | **each side within 3 of its heading** | **7%** | **87%** | **96%** |
 
-Four volumes now, and both chambers:
+Five volumes now, and both chambers:
 
-| volume | names | split | checked against |
-|---|---|---|---|
-| 1997 House | **97.99%** | 96% | `journals/1997` |
-| 1991 House | not measurable | **98%** | nothing — no digital copy exists |
-| 1993 House | not measurable | **94%** | nothing — no digital copy exists |
-| 2003 Senate v.1 | **98.61%** | **100%** | `journals_senate/2003` |
+| volume | names | split | roll calls compared | against |
+|---|---|---|---|---|
+| **1998 House — held out** | **96.81%** | **99%** | 76 | `journals/1998` |
+| 1997 House | 98.54% | 96% | 39 | `journals/1997` |
+| 1991 House | not measurable | 98% | — | nothing exists |
+| 1993 House | not measurable | 94% | — | nothing exists |
+| 2003 Senate v.1 | 98.95% | 100% | 13 | `journals_senate/2003` |
+
+**Read the 1998 row first.** Every other figure comes from a volume the
+patterns were developed against; 1998 was fetched after the work was finished
+and measured once, on the largest sample of the five. It scores 1.7 points
+below 1997, which is a fair estimate of how much of the 1997 figure is
+fitting rather than method. Its repair gained +2.6 points over the reflow
+alone, so the repair generalises.
 
 The name figures are **no longer blind**. They use `past_members.json`, the
 General Court's own list of past members, as the authority for spelling, and
