@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.7
+# GRANITE_VERSION: 2026-09-18.8
 """
 Score what can be read out of a scanned journal. Touches no network.
 
@@ -253,10 +253,26 @@ FURNITURE = re.compile(
 # every respect, and the General Court's own digital Senate journals print it
 # identically, so it can be scored the same way.
 SENATE_MARK = re.compile(r"following\s+Senators\s+voted", re.I)
+#
+# THE SPANS ARE BOUNDED, and that is not cosmetic. With re.S and an unbounded
+# .*? the pattern will happily run from a "voted Yes" on one page to a
+# "Yeas ... Nays" many pages later when the parts between are missing or
+# misread, and swallow everything in between as names. The 1989 Senate
+# volume, which records no roll calls by name at all, produced ONE match
+# holding 8,303 member votes; 1991 averaged 510 a roll call in a chamber of
+# twenty-four. Nothing was silent about it -- the count was absurd on its
+# face -- but nothing would have caught it either, so the bound is here.
+#
+# Twenty-four senators at about twenty characters each is five hundred, and
+# 1,500 leaves room for wrapping and for the odd stray line.
+SENATE_SPAN = 1500
 SENATE_RC = re.compile(
-    r"following\s+Senators\s+voted\s+Yes\s*:\s*(.*?)"
-    r"following\s+Senators\s+voted\s+No\s*:\s*(.*?)"
-    r"Yeas\s*:\s*(\d+)\s*[-–]\s*Nays\s*:\s*(\d+)", re.S | re.I)
+    rf"following\s+Senators\s+voted\s+Yes\s*:\s*(.{{0,{SENATE_SPAN}}}?)"
+    rf"following\s+Senators\s+voted\s+No\s*:\s*(.{{0,{SENATE_SPAN}}}?)"
+    # The colon and the dash are optional. 2003 prints "Yeas: 6 - Nays: 18"
+    # and 1992 prints "Yeas 19 Nays 3", and requiring the punctuation found
+    # no roll call at all in the 1992 volumes -- which have 32 of them.
+    rf"Yeas\s*:?\s*(\d+)\s*[-–]?\s*Nays\s*:?\s*(\d+)", re.S | re.I)
 # A senator, as the Senate writes one: a surname on its own.
 SENATE_NAME = re.compile(r"\b([A-Z][A-Za-z'’—\-]{1,24})\b")
 # Words that appear in these lists and are not senators.

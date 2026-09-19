@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.1
+# GRANITE_VERSION: 2026-09-19.2
 """
 Turn repaired journal text into rows: one per member, per vote. No network.
 
@@ -75,6 +75,7 @@ DAY = re.compile(r"^\s*(HOUSE|SENATE)\s+JOURNAL\s+(?:No\.\s*)?(\d+)", re.I)
 # "Wednesday, January 29, 1997" -- the line under a House day heading.
 DATE = re.compile(r"^\s*(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day,?\s+"
                   r"([A-Z][a-z]+)\s+(\d{1,2}),?\s+(\d{4})\s*$")
+HEAD_DATE = re.compile(r"\b(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})\b")
 BILL = re.compile(r"\b((?:HB|SB|CACR|HR|SR|HCR|SCR|HJR|SJR)\s*\d+)\b")
 MONTHS = {m: i for i, m in enumerate(
     ["January", "February", "March", "April", "May", "June", "July",
@@ -140,7 +141,46 @@ def lines_with_offsets(text):
     return out
 
 
-def context(text):
+def head_dates(identifier, rows):
+    """Dates read off the running heads the reflow set aside.
+
+    The House prints its sitting date in the body, under a day heading. The
+    Senate does not: its only statement of the date is the running head --
+    "SENATE JOURNAL 7 DECEMBER 1994" -- which unh_rollcalls.py drops from the
+    text because in the House the same furniture lands inside vote lists and
+    a name can be read out of it. Dropped and forgotten, every Senate roll
+    call came out undated, all 13,545 of them. The reflow now writes the
+    heads to a sidecar keyed by line, and this reads them back.
+    """
+    side = REPAIRED.parent / "reflow" / f"{identifier}.heads.tsv"
+    if not side.exists():
+        return []
+    out = []
+    with side.open(encoding="utf-8", errors="replace") as f:
+        next(f, None)
+        for row in f:
+            parts = row.rstrip("\n").split("\t")
+            if len(parts) < 3:
+                continue
+            try:
+                line = int(parts[0])
+            except ValueError:
+                continue
+            m = HEAD_DATE.search(parts[2])
+            if not m or line >= len(rows):
+                continue
+            month = MONTHS.get(m.group(2).title())
+            if not month:
+                continue
+            try:
+                out.append((rows[line][0],
+                            datetime(int(m.group(3)), month, int(m.group(1)))))
+            except ValueError:
+                continue
+    return out
+
+
+def context(text, identifier=None):
     """(offset -> journal, date, bill) as three sorted lists of checkpoints."""
     days, dates, bills = [], [], []
     rows = lines_with_offsets(text)
@@ -160,7 +200,35 @@ def context(text):
                     break
         for b in BILL.finditer(line):
             bills.append((pos, i, re.sub(r"\s+", "", b.group(1)).upper()))
-    return rows, days, dates, bills
+    # Where the body carries no dates at all, the running heads do.
+    if identifier and not dates:
+        dates = sorted(head_dates(identifier, rows))
+    return rows, days, plausible(dates), bills
+
+
+def plausible(dates):
+    """Drop sitting dates that cannot belong to this volume.
+
+    A bound volume covers at most two calendar years -- December of one
+    session year through the summer of the next. So a date more than a year
+    from the volume's own commonest year is a misread number, not a sitting.
+
+    This exists because the 1989-1990 House volume prints one day heading the
+    scan reads as 12 April 1999, and 666 member votes were filed under a term
+    nine years after the book closed. The volume dates itself, so nothing
+    outside it has to be consulted.
+    """
+    if not dates:
+        return dates
+    years = Counter(d.year for _pos, d in dates)
+    middle = years.most_common(1)[0][0]
+    keep = [(pos, d) for pos, d in dates if abs(d.year - middle) <= 1]
+    dropped = len(dates) - len(keep)
+    if dropped:
+        bad = sorted({d.year for _p, d in dates if abs(d.year - middle) > 1})
+        print(f"      {dropped} date(s) dropped as impossible for a volume "
+              f"centred on {middle}: {bad}")
+    return keep
 
 
 def latest(checkpoints, pos):
@@ -174,7 +242,7 @@ def extract(identifier, numbers, seen):
     if not path.exists():
         return [], f"{path} is not there"
     text = path.read_text(encoding="utf-8", errors="replace")
-    rows, days, dates, bills = context(text)
+    rows, days, dates, bills = context(text, identifier)
     # Line starts, for turning a character offset back into a line number.
     # Bisected rather than scanned: this runs once per roll call and there
     # are sixty thousand lines in a volume.

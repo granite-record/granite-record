@@ -417,7 +417,85 @@ of them touches a name on the roll.
 
 ---
 
-## 7. What is not yet known
+## 7. What the extraction actually produced
+
+    python3 unh_fetch.py --gap          # the volumes, one at a time
+    python3 unh_rollcalls.py --reflow <id>
+    python3 unh_roster.py <id>
+    python3 unh_repair.py <id>
+    python3 unh_extract.py --all        # -> data/unh/rollcalls.csv, members.csv
+
+26 volumes fetched and read. **305,214 member votes across 1,397 roll calls**,
+every one carrying a sitting date, 64.5% carrying a bill number.
+
+| term | House | Senate |
+|---|---:|---:|
+| 1989-1990 | 45,082 | — |
+| 1991-1992 | 54,306 | 2,404 |
+| 1993-1994 | 69,273 | 2,392 |
+| 1995-1996 | 55,693 | 2,457 |
+| 1997-1998 | 67,315 | 4,658 |
+| 2003-2004 (the test volume) | — | 1,634 |
+
+**291,669 House votes and 11,911 Senate votes for 1989-1998** — a decade for
+which this site currently holds no roll call at all.
+
+### The Senate did not record who voted until 1991
+
+The 1989 and 1990 Senate volumes produce nothing, and that is the record
+rather than a failure. Those journals are verbatim transcripts of debate, and
+a vote in them is printed as `Division vote: 5 Yeas 15 Nays` — a count, with
+no names. From 1991 the Senate begins printing `The following Senators voted
+Yes:` and naming them, and the practice is universal by 1994.
+
+So the Senate half of the gap yields **tallies only for 1989-1990** and named
+votes from 1991. The House names them throughout.
+
+### Who a member is, when the General Court has no number for them
+
+1,833 people appear. **819 carry a General Court employee number**, taken from
+`past_members.json` and used unchanged. The other **1,014 are given an
+identifier minted here** — `NHA-H-CLEMONS-JANE` — in a namespace that cannot
+be mistaken for a six-digit employee number, because a collision would
+quietly attribute an archived vote to a modern legislator.
+
+`unh_extract.py --suspect` ranks the minted people by votes and separates two
+causes, because they need different work:
+
+* **the General Court lists the name a member goes by**, not the one the
+  journal prints — `Emerton, Larry` against the journal's Lawrence, `Lovett,
+  Sid` against Sidney. These are one person and are *not* joined here, because
+  joining on an initial would also join a 1991 member to a namesake elected
+  thirty years later.
+* **the list does not reach them at all** — `Barry, William` sat for
+  Hillsborough in the 1990s and is absent.
+
+That second risk is not hypothetical. The 1997 House had a **Tholl, John** and
+no Toll; the scan reads him Toll; and the only Toll the General Court lists is
+**Amanda Toll of Cheshire, who sat in the 2020s**. The surname-and-given key
+kept his 80 votes off her record.
+
+### Guards that earned their place during this run
+
+* **A volume's dates must belong to it.** The 1989-1990 House volume prints
+  one day heading the scan reads as 12 April 1999, and 666 member votes were
+  filed under a term nine years after the book closed. A date more than a year
+  from the volume's own commonest year is now dropped.
+* **The Senate pattern is bounded.** With an unbounded match it ran from a
+  `voted Yes` on one page to a tally many pages later: the 1989 volume, which
+  records no roll calls by name at all, produced one match holding 8,303
+  member votes, and 1991 averaged 510 a roll call in a chamber of 24. Nothing
+  was silent about it — the number was absurd — but nothing would have caught
+  it either.
+* **Running heads are kept beside the text, not in it.** The House dates its
+  sittings in the body; the Senate's only statement of the date is the running
+  head, which is dropped as furniture because in the House the same furniture
+  lands inside vote lists. Dropped and forgotten, every Senate roll call came
+  out undated. The reflow now writes heads to a `.heads.tsv` sidecar.
+
+---
+
+## 8. What is not yet known
 
 Stated as unknown rather than estimated.
 
@@ -444,7 +522,7 @@ Stated as unknown rather than estimated.
 
 ---
 
-## 8. A thing worth doing that is not code
+## 9. A thing worth doing that is not code
 
 UNH's library digitised this collection and put it in a repository, and the
 Internet Archive scanned it for them. Libraries in that position often prefer

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.4
+# GRANITE_VERSION: 2026-09-19.5
 """
 Put the words back in the order the page prints them. No network.
 
@@ -216,6 +216,24 @@ def reflow(identifier, out_dir=OUT, keep_heads=False):
     path = xml_for(identifier)
     OUT.mkdir(parents=True, exist_ok=True)
     dest = Path(out_dir) / f"{identifier}.txt"
+    # THE HEADS ARE DROPPED FROM THE TEXT AND KEPT BESIDE IT.
+    #
+    # A House volume prints its sitting date in the body, under a "HOUSE
+    # JOURNAL No. 11" heading. A Senate volume does not -- its only statement
+    # of the date is the running head, "SENATE JOURNAL 27 MARCH 2003", which
+    # is exactly what gets dropped here for being furniture. Dropped and
+    # forgotten, every Senate roll call comes out undated: 13,545 of them.
+    #
+    # Putting the heads back in the text is not the answer, because in the
+    # House they land inside vote lists and a name can be read out of them.
+    # So they go to a sidecar, keyed by the line they would have preceded,
+    # and the text stays exactly as it was measured.
+    heads = []
+    # written counts every line that reaches the file, blank page
+    # separators included; n_lines counts only the ones with words
+    # on them. The sidecar is keyed on the first, because that is
+    # how anything reading the file back will number it.
+    written = 0
     n_pages = n_lines = n_words = n_heads = 0
     with dest.open("w", encoding="utf-8") as fh:
         for page, words in pages(path):
@@ -229,15 +247,23 @@ def reflow(identifier, out_dir=OUT, keep_heads=False):
                         line, page_lines[1] if len(page_lines) > 1 else None,
                         height, gap)):
                     n_heads += 1
+                    heads.append((written, page, render(line)))
                     continue
                 n_lines += 1
+                written += 1
                 fh.write(render(line) + "\n")
             fh.write("\n")
+            written += 1
     # Silence is not success.
     if n_words == 0:
         sys.exit(f"{path} parsed to zero words; nothing was written that is worth keeping")
+    side = dest.with_suffix(".heads.tsv")
+    with side.open("w", encoding="utf-8") as fh:
+        fh.write("line\tpage\ttext\n")
+        for ln, page, txt in heads:
+            fh.write(f"{ln}\t{page}\t{txt}\n")
     print(f"{identifier}: {n_pages:,} pages, {n_lines:,} lines, {n_words:,} words, "
-          f"{n_heads:,} running heads dropped")
+          f"{n_heads:,} running heads dropped to {side.name}")
     print(f"  -> {dest}  ({dest.stat().st_size:,} bytes)")
     return dest
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.5
+# GRANITE_VERSION: 2026-09-19.6
 """
 Let the book correct itself. No network.
 
@@ -221,13 +221,23 @@ def derived_roster(text, min_lists=5):
 def roster_surnames(identifier, text=None):
     path = ROSTER / f"{identifier}.csv"
     if not path.exists():
-        if text is not None:
-            derived = derived_roster(text)
-            if derived:
-                print(f"  no roll for {identifier}; using the {len(derived)} "
-                      f"surnames its own vote lists repeat")
-                return derived
-        sys.exit(f"{path} is not there; unh_roster.py {identifier} writes it")
+        derived = derived_roster(text) if text is not None else set()
+        if derived:
+            print(f"  no roll for {identifier}; using the {len(derived)} "
+                  f"surnames its own vote lists repeat")
+        else:
+            # An empty roster is a worse position, not an impossible one, so
+            # this says so and carries on rather than exiting. The roster's
+            # jobs are the refusal -- never rewrite a name the roll carries --
+            # and the comma repair; rule zero works without either, against
+            # the General Court's list. The Senate volumes of 1991 and 1992
+            # are why: the chamber had only just begun naming who voted, so
+            # one volume has a single roll call in it and no surname recurs
+            # often enough to be inferred. Exiting there left six volumes
+            # unrepaired for no good reason.
+            print(f"  no roll for {identifier} and too few vote lists to infer "
+                  f"one; the General Court's list is doing this alone")
+        return derived
     out = set()
     with path.open(newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
