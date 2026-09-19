@@ -137,7 +137,7 @@
     "wrangler.toml": "2026-09-12.2",
     "tests/test_cmte_match.js": "2026-09-12.2",
     "build_lsrs.py": "2026-09-18.1",
-    "build_calendar.py": "2026-09-18.2"
+    "build_calendar.py": "2026-09-18.3"
   },
   "generated": "2026-09-04"
 }

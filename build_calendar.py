@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.2
+# GRANITE_VERSION: 2026-09-18.3
 """
 The General Court's week, as one small file per week.
 
@@ -105,7 +105,10 @@ def span(sit):
     Court prints it: 10:00-15:30, or one time when every bill shares a slot."""
     s = sorted(sit.pop("slots", []))
     sit["time"] = "" if not s else (s[0] if s[0] == s[-1] else f"{s[0]}–{s[-1]}")
+    # The endpoints as well as the printed span, because a reader of this file
+    # may want to lay the meeting out itself rather than take the string.
     sit["starts"] = s[0] if s else ""
+    sit["ends"] = s[-1] if s else ""
     return sit
 
 
