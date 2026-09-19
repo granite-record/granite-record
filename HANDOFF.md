@@ -194,6 +194,37 @@ afterwards, as anything touching the docket parser will.
 
 ---
 
+## Data defects waiting on one diagnosis
+
+Reported and confirmed, deliberately NOT chased one at a time. Asked for on
+19 September: "we should wait until after the bill fetch is done so we can look
+into those issues more broadly rather than a couple at a time." These look like
+they may share a cause, and a defect fixed alone gets a narrow patch while the
+cause survives to make the next one. Open one investigation across all of them.
+
+**A member on a committee he had left.** `site/committee/H12.json` lists Joseph
+Barton as a member of House Legislative Administration. He has not been on it
+for over a year, and -- this is the part that matters -- the General Court's own
+page did not say he was when the roster was fetched either. So this is not
+stale data. Something in the fetch, the parse or the merge put him there, which
+makes it the same class of bug as a parser error and not a refresh problem. The
+roster lives in `data/committee_members.json`, written 7 September, and reaches
+the page through `build_committees.py`. **Start by asking how many other
+members are on a committee their own record does not put them on**, rather than
+by fixing this one row.
+
+**Actions dated where they did not happen.** The docket carries floor actions
+whose date disagrees with the journal number they cite. HB 1491's reconsider is
+recorded as 09/19/2026 on a row that was WRITTEN at 8/19/2026 2:27 PM and cites
+HJ 16, the 19 August sitting -- a clerk cannot record something a month before
+it happens, so that one is provable. But across the whole record 436 events sit
+on a date their journal number disagrees with, and most of those have a
+legitimate alternative explanation: a journal issue can print business carried
+over from an earlier day. The safe test is the narrow one -- an action dated
+AFTER the row that recorded it is impossible -- and it needs the docket row's
+creation timestamp carried into `narratives.json`, which it currently is not.
+Do not bulk-correct on the journal number alone.
+
 ## Keeping the documents true
 
 `STATE.md` is generated -- run `python3 handoff.py`. Never edit it.
