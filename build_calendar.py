@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.5
+# GRANITE_VERSION: 2026-09-18.6
 """
 The General Court's week, one page per week.
 
@@ -66,6 +66,154 @@ MONTH = ("January February March April May June July August September "
          "October November December").split()
 
 FLOOR = {"H": "House floor", "S": "Senate floor"}
+
+
+# THE FILTER RUNS IN THE READER'S BROWSER, AND THE PAGE IS WHOLE WITHOUT IT.
+# Every card is already in the HTML with its chamber, committee and bills on
+# it, so this hides and shows what is there rather than fetching or rebuilding
+# anything. The controls are emitted `hidden` and this is what unhides them:
+# a reader with no script never sees a dead control, and what they get -- the
+# entire week, unfiltered -- is the correct answer to no filter at all.
+WEEK_JS = r"""
+(function(){
+  var form=document.getElementById("wkfilter");
+  if(!form)return;
+  form.hidden=false;
+  var meets=[].slice.call(document.querySelectorAll(".calmeet"));
+  var days=[].slice.call(document.querySelectorAll(".calday"));
+  var count=document.getElementById("wkcount");
+  var find=document.getElementById("wkfind");
+  var chips=[].slice.call(form.querySelectorAll("[data-body]"));
+  var body="";
+
+  // "HB 1234", "hb1234" and "1234" all mean the same bill to a person typing
+  // it, and none of them is what the attribute holds.
+  function norm(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,""); }
+
+  function matches(m,q){
+    if(body && (m.getAttribute("data-body")||"").indexOf(body)<0) return false;
+    if(!q) return true;
+    var c=(m.getAttribute("data-cmte")||"");
+    if(c.indexOf(q.toLowerCase())>=0) return true;
+    var n=norm(q);
+    if(!n) return false;
+    var bills=(m.getAttribute("data-bills")||"").split(" ");
+    for(var i=0;i<bills.length;i++){ if(norm(bills[i]).indexOf(n)===0) return true; }
+    return false;
+  }
+
+  function apply(){
+    var q=(find.value||"").trim(), shown=0;
+    meets.forEach(function(m){
+      var ok=matches(m,q);
+      m.hidden=!ok;
+      if(ok)shown++;
+    });
+    // A day with nothing left in it is not an empty day, it is a day the
+    // filter excluded -- so it goes too, rather than standing as a heading
+    // over nothing.
+    days.forEach(function(d){
+      var any=d.querySelector(".calmeet:not([hidden])");
+      d.hidden=!any;
+    });
+    if(shown===meets.length){
+      count.textContent=meets.length+" sitting"+(meets.length===1?"":"s")+" this week.";
+    }else if(shown===0){
+      count.textContent="Nothing this week matches. "+
+        "The General Court sits from January to June.";
+    }else{
+      count.textContent=shown+" of "+meets.length+" sittings shown.";
+    }
+  }
+
+  chips.forEach(function(b){
+    b.addEventListener("click",function(){
+      body=(b.getAttribute("data-body")||"");
+      chips.forEach(function(x){
+        x.setAttribute("aria-pressed", x===b ? "true":"false"); });
+      apply();
+    });
+  });
+  find.addEventListener("input",apply);
+  form.addEventListener("submit",function(e){e.preventDefault();apply();});
+
+  // ---- putting a sitting in the reader's own calendar ----------------------
+  //
+  // THE END TIME IS NOT IN THE RECORD. The docket says when a bill is taken
+  // up and never when the committee rises, so every event here is an hour
+  // long and says so in its own description. Inventing a plausible end and
+  // staying quiet about it would put a number in somebody's calendar that no
+  // document supports.
+  function two(n){ return (n<10?"0":"")+n; }
+  function stamp(date,time,addHours){
+    var p=date.split("-"), t=(time||"09:00").split(":");
+    var d=new Date(+p[0], +p[1]-1, +p[2], +t[0], +t[1]);
+    if(addHours) d.setHours(d.getHours()+addHours);
+    return d.getFullYear()+two(d.getMonth()+1)+two(d.getDate())+"T"+
+           two(d.getHours())+two(d.getMinutes())+"00";
+  }
+  function details(m){
+    var date=m.getAttribute("data-date"), time=m.getAttribute("data-time");
+    if(!date) return null;
+    var cmte=(m.querySelector(".calcmte")||{}).textContent||"A sitting";
+    var kinds=[].slice.call(m.querySelectorAll("summary .calkind"))
+                 .map(function(k){return k.textContent;}).join(", ");
+    var venue=m.getAttribute("data-venue")||"";
+    var bills=(m.getAttribute("data-bills")||"").split(" ").filter(Boolean);
+    var last=m.getAttribute("data-last");
+    var note="New Hampshire General Court. "+(kinds||"Meeting")+
+      (bills.length? ". Bills: "+bills.join(", ") : "")+
+      (last && last!==time ? ". Items are scheduled from "+time+" to "+last : "")+
+      ". The General Court does not publish an end time, so this entry is "+
+      "one hour long. Source: graniterecord.org";
+    return {title:cmte+(kinds?" \u2014 "+kinds:""), venue:venue, note:note,
+            start:stamp(date,time,0), end:stamp(date,time,1)};
+  }
+  function ics(d){
+    return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Granite Record//EN",
+            "BEGIN:VEVENT","DTSTART:"+d.start,"DTEND:"+d.end,
+            "SUMMARY:"+d.title.replace(/[,;]/g,"\\$&"),
+            "LOCATION:"+d.venue.replace(/[,;]/g,"\\$&"),
+            "DESCRIPTION:"+d.note.replace(/[,;]/g,"\\$&"),
+            "END:VEVENT","END:VCALENDAR"].join("\r\n");
+  }
+  meets.forEach(function(m){
+    var d=details(m);
+    if(!d) return;
+    var box=m.querySelector(".calbody");
+    if(!box) return;
+    var p=document.createElement("p");
+    p.className="caladd";
+    var g="https://calendar.google.com/calendar/render?action=TEMPLATE"+
+      "&text="+encodeURIComponent(d.title)+
+      "&dates="+d.start+"/"+d.end+
+      "&details="+encodeURIComponent(d.note)+
+      "&location="+encodeURIComponent(d.venue);
+    var o="https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose"+
+      "&subject="+encodeURIComponent(d.title)+
+      "&startdt="+d.start.replace(/(\d{4})(\d\d)(\d\d)T(\d\d)(\d\d)(\d\d)/,"$1-$2-$3T$4:$5:$6")+
+      "&enddt="+d.end.replace(/(\d{4})(\d\d)(\d\d)T(\d\d)(\d\d)(\d\d)/,"$1-$2-$3T$4:$5:$6")+
+      "&body="+encodeURIComponent(d.note)+
+      "&location="+encodeURIComponent(d.venue);
+    p.innerHTML='<span>Add to calendar</span>'+
+      '<a rel="nofollow noopener" target="_blank" href="'+g+'">Google</a>'+
+      '<a rel="nofollow noopener" target="_blank" href="'+o+'">Outlook</a>'+
+      '<a class="calics" href="#">Download</a>';
+    p.querySelector(".calics").addEventListener("click",function(e){
+      e.preventDefault();
+      var blob=new Blob([ics(d)],{type:"text/calendar"});
+      var a=document.createElement("a");
+      a.href=URL.createObjectURL(blob);
+      a.download=(m.getAttribute("data-date")||"sitting")+".ics";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+    });
+    box.appendChild(p);
+  });
+
+  apply();
+})();
+"""
 
 
 def week_key(d):
@@ -135,7 +283,12 @@ def collect(site):
         row = {"date": date, "time": (r.get("time") or "").strip(),
                "bill": r.get("bill") or "", "committee": cmte,
                "what": (r.get("kind") or "").strip(),
-               "venue": (r.get("venue") or "").strip()}
+               "venue": (r.get("venue") or "").strip(),
+               # THE CHAMBER, so the week can be filtered to one of them. It
+               # is on the proceedings row already; nothing here derived it
+               # from the committee's name, which would have been a second
+               # answer to a question the record answers itself.
+               "body": (r.get("body") or "").strip().upper()}
         weeks[week_key(d)][date].setdefault(BP.meeting_key(row), []).append(row)
     return weeks, titles, years, code
 
@@ -207,13 +360,32 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls, toda
                   jsonld=LD.listing(f"The week of {label}",
                                     f"The General Court's business, {label}.",
                                     base, S.canon(path)))
+    # HIDDEN UNTIL THE SCRIPT UNHIDES IT. A control that does nothing is worse
+    # than no control, and this page is whole without one: every card is in the
+    # HTML already.
+    filt = ('<form class="wkfilter" id="wkfilter" role="search" hidden>'
+            '<div class="wkchips" role="group" aria-label="Which chamber">'
+            '<button type="button" data-body="" aria-pressed="true">Both chambers</button>'
+            '<button type="button" data-body="H" aria-pressed="false">House</button>'
+            '<button type="button" data-body="S" aria-pressed="false">Senate</button>'
+            '</div>'
+            '<label class="wkfind" for="wkfind">Committee or bill'
+            '<input type="search" id="wkfind" autocomplete="off" '
+            'placeholder="Judiciary, or HB 1234"></label>'
+            '<p class="wkcount" id="wkcount" role="status" aria-live="polite"></p>'
+            '</form>')
     block = ('<div id="results"><div class="wkpage">'
              f'<h1>The week of {S.E(label)}</h1>'
              f'<p class="src">{lead}</p>'
              f'<nav class="wknav" aria-label="Other weeks">{"".join(nav)}</nav>'
+             f'{filt}'
              f'{body}'
              f'<nav class="wknav wkfoot" aria-label="Other weeks">{"".join(nav)}</nav>'
-             "</div></div>")
+             "</div></div>"
+             # Inline in the body, which is where every other page-specific
+             # script on this site lives -- shell.page takes no script, and a
+             # separate file for forty lines would be a request per week page.
+             f"<script>{WEEK_JS}</script>")
     html = html.replace('<div id="results"></div>', block, 1)
     assert '<div class="wkpage">' in html, f"{path}: the template has no results slot"
     out = site / path.lstrip("/")

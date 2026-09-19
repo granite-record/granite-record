@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.97
+# GRANITE_VERSION: 2026-09-04.98
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -485,7 +485,25 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3):
             time = (slots[0] if len(set(slots)) == 1 else
                     f"{slots[0]}–{slots[-1]}") if slots else ""
             n = len(rows)
-            html.append('<details class="calmeet"><summary>')
+            # WHAT A FILTER NEEDS, ON THE CARD ITSELF. The week page is static
+            # HTML on a CDN and the filtering happens in the reader's browser,
+            # so each card states its own chamber, committee and bills rather
+            # than the page shipping a second copy of the week as JSON. A
+            # reader with no script still gets every card, which is the whole
+            # week and the correct answer to no filter at all.
+            bodies = sorted({(r.get("body") or "").strip().upper()
+                             for r in rows if (r.get("body") or "").strip()})
+            bills_attr = " ".join(sorted({(r.get("bill") or "").strip().upper()
+                                          for r in rows if r.get("bill")}))
+            html.append('<details class="calmeet"'
+                        f' data-body="{esc(" ".join(bodies))}"'
+                        f' data-cmte="{esc(cmte.lower())}"'
+                        f' data-bills="{esc(bills_attr)}"'
+                        f' data-date="{esc(_d)}"'
+                        + (f' data-time="{esc(slots[0])}"' if slots else "")
+                        + (f' data-last="{esc(slots[-1])}"' if slots else "")
+                        + (f' data-venue="{esc(venue)}"' if venue else "")
+                        + "><summary>")
             # THE MIXED COLOUR. One segment per kind the day holds, stacked
             # down the edge of the card, so a committee doing two things reads
             # at a glance as one committee doing two things rather than as two

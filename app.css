@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.118 */
+/* GRANITE_VERSION: 2026-09-07.119 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2240,6 +2240,48 @@ display:inline-flex;align-items:center}
 @media (max-width:560px){
   .wknav{gap:var(--sp-3)}
 }
+
+/* NARROWING A WEEK. The controls sit between the week's arrows and its days,
+   because that is the order a reader uses them in: which week, then which of
+   it. They are emitted hidden and the page's own script unhides them, so a
+   reader without one never meets a control that does nothing. */
+.wkfilter{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--sp-4);
+margin:0 0 var(--sp-6);padding:var(--sp-4) 0}
+.wkfilter[hidden]{display:none}
+.wkchips{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
+.wkchips button{font:inherit;font-size:var(--t-ui);font-weight:600;
+padding:var(--sp-2) var(--sp-4);min-height:40px;cursor:pointer;
+color:var(--ink-2);background:var(--surface);
+border:1px solid var(--rule-2);border-radius:999px}
+.wkchips button:hover{border-color:var(--edge);color:var(--ink)}
+/* PRESSED IS A STATE, NOT A HOVER. aria-pressed is what a screen reader
+   announces, so the styling hangs off the same attribute rather than off a
+   class kept in step with it by hand. */
+.wkchips button[aria-pressed="true"]{color:var(--surface);background:var(--pine);
+border-color:var(--pine)}
+.wkfind{display:flex;flex-direction:column;gap:var(--sp-2);
+font-size:var(--t-sm);font-weight:600;letter-spacing:.04em;
+text-transform:uppercase;color:var(--ink-2);flex:1 1 16rem;min-width:0}
+.wkfind input{font:inherit;font-size:var(--t-ui);font-weight:400;
+letter-spacing:0;text-transform:none;color:var(--ink);
+padding:var(--sp-3) var(--sp-4);min-height:40px;width:100%;
+background:var(--surface);border:1px solid var(--rule-2);border-radius:4px}
+.wkfind input:focus-visible{outline:2px solid var(--pine);outline-offset:1px}
+.wkcount{flex:1 0 100%;margin:0;font-size:var(--t-sm);color:var(--ink-2)}
+.calday[hidden],.calmeet[hidden]{display:none}
+
+/* PUTTING A SITTING IN SOMEBODY'S OWN CALENDAR. Quiet, at the foot of the
+   card's body, under the bills rather than over them -- a reader opens a card
+   to see what is before the committee, and the export is what they do after
+   reading it. */
+.caladd{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-3);
+margin:var(--sp-4) 0 0;padding-top:var(--sp-3);
+border-top:1px solid var(--rule);font-size:var(--t-sm)}
+.caladd span{font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+color:var(--ink-2)}
+.caladd a{color:var(--pine);text-decoration:none;font-weight:600;
+padding:var(--sp-2) 0;min-height:32px;display:inline-flex;align-items:center}
+.caladd a:hover{text-decoration:underline}
 
 /* ONE SITTING, AND THE WAY BACK TO IT. A calendar entry names a committee
    and a day, so the day needs an address and the reader needs to see they
