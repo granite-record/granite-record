@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.1
+# GRANITE_VERSION: 2026-09-18.2
 """
 Score what can be read out of a scanned journal. Touches no network.
 
@@ -54,12 +54,29 @@ because the NAYS heading is itself a thing on the page with a position, and
 column-major reading order puts it somewhere that is not between the two
 lists.
 
-That is the finding this whole exercise exists to produce, and it is a stop
-sign, not a warning. The flattened text can say what a roll call's result was
--- --tallies gets that exactly right, 53 times out of 53. It cannot say how a
-named member voted. Publishing the second from this file would put the wrong
-members on the wrong side of votes that are already the hardest thing on this
-site to check, which is worse than publishing nothing.
+That is the finding this whole exercise exists to produce, and it was a stop
+sign. The flattened text can say what a roll call's result was -- --tallies
+gets that exactly right, 53 times out of 53. It cannot say how a named member
+voted. Publishing the second from this file would put the wrong members on the
+wrong side of votes that are already the hardest thing on this site to check,
+which is worse than publishing nothing.
+
+AND THE GEOMETRY CLEARS IT
+
+The item's _djvu.xml carries a bounding box per word, so the printed order can
+be rebuilt: unh_rollcalls.py --reflow groups words into lines by y and sorts
+each line by x, which is the whole of the fix. Point --ocr at the result and
+this same code scores it:
+
+                                   flat _djvu.txt    reflowed _djvu.xml
+    names carried exactly              85.27%             95.80%
+    + present but damaged              87.73%             98.53%
+    not carried at all                 12.27%              1.47%
+    each side within 3 of its heading     11%                87%
+
+Same extractor, same roll calls, one difference. Reading order was worth all
+of that. What is left at 87% is a steady undercount of a few names per list,
+which is an extractor to sharpen rather than a source to distrust.
 """
 
 import argparse
@@ -68,6 +85,11 @@ import re
 import sys
 from collections import Counter
 
+# The Internet Archive's own flattened text layer, which is the thing being
+# judged. --ocr points this at another rendering of the same volume -- in
+# practice the one unh_rollcalls.py reflows out of the _djvu.xml -- so that
+# both reading orders are scored by this identical code and the difference
+# between the two numbers is reading order and nothing else.
 OCR = ("archive/unh/raw/0_items_journalofhouseof1997newh_"
        "journalofhouseof1997newh_djvu.txt.a27f4e64")
 DIGITAL = "journals/1997/*.txt"
@@ -325,13 +347,21 @@ def split_check():
           f"{tot_ok:>3}  ({100*tot_ok/n:.0f}%)")
     print(f"  and each SIDE is within 3 of its own heading:        "
           f"{split_ok:>3}  ({100*split_ok/n:.0f}%)")
-    print(f"\n  The scan carries the names. What the flattened text loses is "
-          f"which side\n  they are on -- a roll call that reads 186-185 comes "
-          f"out of this file as\n  232 names under YEAS and 137 under NAYS. A "
-          f"parser built on it would\n  publish confident, wrong votes, which "
-          f"is worse than publishing none.\n\n  The column geometry that "
-          f"settles it is in the item's _djvu.xml and its\n  hOCR, both of "
-          f"which carry a bounding box per word. Neither is fetched yet.")
+    # Reported from the numbers, not narrated. The first version of this
+    # printed a fixed paragraph saying the split was lost -- true of the
+    # flattened text it was written against, and false the moment --ocr was
+    # pointed at the reflow, where the same measurement reads 87%.
+    if split_ok < n * 0.5:
+        print(f"\n  The names are here and the SPLIT IS NOT. A parser on this "
+              f"text would\n  publish confident, wrong votes against named "
+              f"members, which is worse\n  than publishing none. The column "
+              f"geometry that settles it is in the\n  item's _djvu.xml; "
+              f"unh_rollcalls.py --reflow reads it.")
+    else:
+        print(f"\n  Both sides survive this reading order. What is left is a "
+              f"steady small\n  undercount rather than a scramble -- names the "
+              f"extractor does not pick\n  up, not names on the wrong side of "
+              f"the vote.")
     worst = sorted(rows, key=lambda r: -abs(r[3] - r[2]))[:5]
     print(f"\n  the five worst splits:")
     for t, g, y, gy, nn, gn in worst:
@@ -385,10 +415,13 @@ def headroom(show=0):
           f"starts from\n  {100*(hit+near)/tot:.2f}% and would do better than "
           f"that, because it matches against\n  four hundred known members "
           f"rather than against whatever the scan produced.")
+    # What the unreachable share actually is, counted rather than asserted.
+    # This line used to claim it was "mostly commas the scan dropped"; the
+    # count below was written to back that up and refuted it -- on the
+    # flattened text the figure was 3.2%, not most of it.
     print(f"  The {100*(tot-hit-near)/tot:.2f}% it cannot reach is not damaged "
-          f"spelling -- it is names this\n  flattened text does not carry at "
-          f"all, mostly commas the scan dropped. Those\n  need the column "
-          f"geometry, which is in the DjVu XML and not in this file.")
+          f"spelling. It is names this\n  rendering does not carry in a form "
+          f"the extractor recognises at all.")
     if show and pairs:
         print(f"\nWhat the damage is:")
         for (d, o), c in pairs.most_common(show):
@@ -407,7 +440,14 @@ def main():
                     help="are the names on the right side of the vote")
     ap.add_argument("--show", type=int, default=0,
                     help="print this many of the names that did not match")
+    ap.add_argument("--ocr", metavar="PATH",
+                    help="score this rendering of the volume instead of the "
+                         "Internet Archive's flattened text layer")
     a = ap.parse_args()
+    if a.ocr:
+        global OCR
+        OCR = a.ocr
+        print(f"scoring {OCR}\n")
     if not (a.tallies or a.names or a.headroom or a.split):
         a.tallies = a.names = a.headroom = a.split = True
 
