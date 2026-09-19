@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.210
+# GRANITE_VERSION: 2026-09-04.211
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10237,10 +10237,20 @@ def _no_c1():
     rendered, and the damage was one character wide on a control most readers
     never open.
 
-    The range is U+0080 to U+009F, which is exactly the block that has no
-    business in source: real text uses the printable characters above it, and
-    the project's own em dashes, arrows and quotation marks all sit well clear.
+    C0 AS WELL AS C1, and C0 is the one that has actually cost time twice.
+    A patch script wrote a replacement containing a backslash-one, meaning "the
+    first capture group"; the escape was eaten in transit, Python read the
+    remaining \\1 in a non-raw string as the character U+0001, and design_home.py
+    ended up substituting a SOH over the <head> tag it was meant to keep. The
+    generated pages then had no head element at all and every relative URL
+    resolved against the wrong directory. Nothing errored, and the file looked
+    correct in any editor that draws control characters as nothing.
+
+    So the range is U+0000 to U+001F and U+007F to U+009F, less the three
+    whitespace characters source legitimately contains -- tab, newline and
+    carriage return. Nothing else in that span belongs in a text file here.
     """
+    ok = {0x09, 0x0A, 0x0D}
     bad = []
     for pat in ("*.py", "*.js", "*.css", "*.html", "*.json", "*.md"):
         for f in sorted(Path(".").glob(pat)):
@@ -10249,14 +10259,17 @@ def _no_c1():
             except (OSError, UnicodeDecodeError):
                 continue
             for i, line in enumerate(text.splitlines(), 1):
-                hit = [c for c in line if 0x80 <= ord(c) <= 0x9F]
+                hit = [c for c in line
+                       if (ord(c) < 0x20 or 0x7F <= ord(c) <= 0x9F)
+                       and ord(c) not in ok]
                 if hit:
                     bad.append(f"{f.name}:{i} carries "
                                + ", ".join(f"U+{ord(c):04X}" for c in hit))
-    assert not bad, ("a control character from a cp1252 round trip is in the "
-                     "source, which renders as a box or a stray letter:\n  "
-                     + "\n  ".join(bad[:10]))
-    return "ok", "no C1 control characters in the source"
+    assert not bad, ("a control character is in the source. These come from a "
+                     "cp1252 round trip or from an escape eaten by a shell, "
+                     "and they render as a box, a stray letter, or nothing at "
+                     "all:\n  " + "\n  ".join(bad[:10]))
+    return "ok", "no control characters in the source"
 
 
 @check("frontend", "the person chip is drawn the same in both copies")
