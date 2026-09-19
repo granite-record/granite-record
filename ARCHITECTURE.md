@@ -456,6 +456,64 @@ declares 161 checks now, `proceedings.csv` reaches all nineteen terms, and
 `STATE.md` has the file count -- which went *down*, because records moved
 inside their pages.
 
+## Sitting days, built 19 September
+
+A page for every day the House sat, 806 of them, at `/session/H/<date>`.
+
+**The record and the colour come from different places, and that is the whole
+design.** `narratives.json` already holds 79,096 floor events across all
+nineteen terms, each carrying the bill, the motion, who moved it, whether it
+carried, how it was voted and the journal page it is printed on.
+`session_days.py` reads them and contains no parser. Only what the record
+cannot hold -- who spoke, and the text of a printed debate -- is parsed out of
+the journal, by `journal_days.py`. A page that loses the journal entirely is
+still true, and 333 of the 806 do lose it, because the journal starts in 1997.
+
+**Why not parse the journal for the record too.** It was measured before it was
+attempted. Forty candidate patterns were put to adversarial verification
+against the 1,064 journal files and **thirty-six were refuted** -- the
+constructs are real, but they wrap across lines, their eras are wrong, and the
+regexes over-match. One proposed day-boundary pattern matched 1,076 lines of
+which 561 were day starts. The lesson that survived is that every pattern must
+be matched on JOINED text, never on lines.
+
+**The ordering is the journal page.** A floor action carries no clock, so there
+is no time to sort by. The `HJ 6 P. 31` citation is the chamber's own sequence
+and it orders a day exactly: 247 actions on 5 March 2026 across pages 2 to 140.
+
+**The motion is the heading.** Of 2,934 anchored attributions, 655 -- 22% --
+read in plain English as the opposite of the truth, because 320 members "spoke
+in favor" of an Inexpedient to Legislate motion, which is an argument to kill
+the bill. So a speaker is never listed under a bill, only under a motion, and
+987 attributions that cannot be tied to one motion are named without a side.
+
+**Which side prevailed is the clerk's MA or MF, never the larger number.** On
+9 April 2026 the House recorded 186 yeas to 169 nays and the veto was
+sustained, an override needing two thirds. Inferring the winner from the tally
+gets every override and every constitutional amendment backwards.
+
+**What is not built, and why.** Senate sitting days. Across all 491 Senate
+journal files "spoke in favor" occurs four times and "spoke against" twice, and
+every one is ordinary English inside a speech rather than a marker -- the
+Senate journal does not record who spoke on which side. The Senate's RECORD is
+in `session_days` already (774 days), so a Senate page carrying bills, motions
+and votes without a debate section is a small job; it is separate from this one
+rather than half of it.
+
+**Numbers, measured on the build of 19 September.** 806 pages; 473 carry a
+journal narrative; 15,378 attributions found corpus-wide of which 9,222 are
+tied to a specific vote; 298 printed debates holding 5,507 speeches; 580
+remarks under unanimous consent; 13,523 of 18,096 speaker mentions (75%)
+resolved to a member page, the rest being surnames shared inside one chamber
+and deliberately left as text.
+
+**A defect this uncovered.** The calendar was calling committee meetings the
+floor. A row with no committee was labelled "House floor" or "Senate floor",
+and only 3,969 of the 8,339 committee-less rows in `proceedings.csv` are floor
+debate; the other 4,370 are hearings, work sessions and committees of
+conference whose committee the docket did not record. Fixed in
+`build_calendar.floor_name`.
+
 ## What is structurally wrong
 
 Ranked by what it has actually cost, not by how it looks on paper.
