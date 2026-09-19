@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.120 */
+/* GRANITE_VERSION: 2026-09-07.121 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -663,6 +663,74 @@ color:var(--ink-2);margin-top:var(--sp-5)}
 overflow-wrap:anywhere}
 .citeforms code{font-size:var(--t-sm);line-height:1.7;display:block;
 background:var(--wash);padding:var(--sp-4) var(--sp-5);border-radius:var(--r-in)}
+/* THE NAME GETS THE CONTRAST, NOT THE PARTY.
+
+   This was a pill filled with the member's party tint, and the fault it hid
+   was not the one it looked like. The TEXT cleared AA everywhere -- 5.00:1 to
+   6.55:1. What failed was the chip's own ground: --rep-soft against the page
+   measures 1.00:1 in light and 1.21:1 in dark, and the border was set to the
+   same colour as the fill, so the shape was invisible and all that survived
+   was coloured, underlined text. On a bill with four Republican sponsors that
+   read as four error links rather than four names.
+
+   It also spent colour saying what the text already said. Every label carries
+   its party -- "Rep. Kenneth Weyler (R - Rock 14)" -- so the tint repeated it
+   at full strength on every name.
+
+   Now: the surface for the ground, --ink for the name, and the party as a
+   3px rule down the left edge. The rule reads at a distance a dot does not,
+   and a wrapped roster of twenty-five shows its split as a pattern down the
+   left of the block. --edge rather than --rule-2 for the outline because a
+   panel edge at 1.99:1 is what made the shape vanish; --edge is 3.91:1 in
+   light and 3.74:1 in dark, and clears the 3:1 the brief sets for a boundary.
+   The name reaches 14.91:1 and 11.45:1.
+
+   This reverses a note that used to sit here preferring the tint to "an
+   outlined pill with a colour bar down its left edge", on the grounds of one
+   fact, one shape. The shape is still one shape -- .mchip is what the
+   legislators page, the committee roster and the sponsor list all draw, so
+   they all change together. */
+.mchip{display:inline-flex;align-items:center;gap:var(--sp-3);
+margin:0 var(--sp-3) var(--sp-3) 0;
+padding:var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-3);
+border-radius:var(--r-in);font-size:var(--t-ui);background:var(--surface);
+border:1px solid var(--edge);border-left:3px solid var(--edge);
+/* ONE NAME, ONE LINE. A person's name broken across two lines reads as two
+   people at a glance, and the roster is scanned rather than read. The names
+   are as long as they are -- "Rep. Katherine Prudhomme-O'Brien (R - Rock 13)"
+   is a real member -- so the container gives a chip the width it asks for. */
+white-space:nowrap;max-width:100%}
+/* Except where there is genuinely not room. The longest chip is about 360px
+   and a 360px phone has 328px of content, so below that the name is allowed
+   to wrap rather than run off the side of the page: a wrapped name is worse
+   than an unwrapped one and better than one the reader cannot see. */
+@media (max-width:480px){.mchip{white-space:normal}}
+/* THE ROLE IS A LABEL. Chair, Vice Chair and Clerk have always been written
+   here; the prime sponsor was marked with bold alone, which is not a label,
+   does not survive being read aloud, and cannot be told from emphasis. */
+.mchip i{font-style:normal;font-size:var(--t-xs);font-weight:700;
+letter-spacing:.09em;text-transform:uppercase;color:var(--pine);
+border:1px solid var(--pine);border-radius:2px;padding:2px 5px;white-space:nowrap}
+.mchip.p-R{border-left-color:var(--rep)}
+.mchip.p-D{border-left-color:var(--dem)}
+.mchip.p-I,.mchip.p-L{border-left-color:var(--ind)}
+.mchip a{color:var(--ink);text-decoration:none;font-weight:500}
+.mchip a:hover{text-decoration:underline}
+.mchip:hover{border-color:var(--pine)}
+.mchip:hover.p-R{border-left-color:var(--rep)}
+.mchip:hover.p-D{border-left-color:var(--dem)}
+.mchip:hover.p-I,.mchip:hover.p-L{border-left-color:var(--ind)}
+/* AND THE PARTY COLOUR STAYS ON THE EDGE, not behind the text. `.p-R` is two
+   components in this file -- this chip's left edge, and a small tinted pill
+   the page region draws -- which app.css already records as the third time
+   one class name has meant two things here. style.css concatenates the page
+   region AFTER this one and both selectors carry a single class, so the pill's
+   background won and a roster chip arrived tinted, with no padding, because it
+   was never getting these rules at all. Two classes beats one; the real fix is
+   a prefix for the pill, which is a rename across several files. */
+.mchip.p-R,.mchip.p-D,.mchip.p-I,.mchip.p-L{background:var(--surface)}
+.mchip.p-R a,.mchip.p-D a,.mchip.p-I a,.mchip.p-L a{color:var(--ink)}
+
 /* SHARED:END ------------------------------------------------------------ */
 
 *{box-sizing:border-box}html,body{margin:0}
@@ -1721,63 +1789,7 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4)}
 .cpurpose .src{margin-top:var(--sp-3)}
 /* The term governs every tab, so it sits above them rather than inside one. */
 .pterm{margin:var(--sp-6) 0 0}
-/* THE NAME GETS THE CONTRAST, NOT THE PARTY.
 
-   This was a pill filled with the member's party tint, and the fault it hid
-   was not the one it looked like. The TEXT cleared AA everywhere -- 5.00:1 to
-   6.55:1. What failed was the chip's own ground: --rep-soft against the page
-   measures 1.00:1 in light and 1.21:1 in dark, and the border was set to the
-   same colour as the fill, so the shape was invisible and all that survived
-   was coloured, underlined text. On a bill with four Republican sponsors that
-   read as four error links rather than four names.
-
-   It also spent colour saying what the text already said. Every label carries
-   its party -- "Rep. Kenneth Weyler (R - Rock 14)" -- so the tint repeated it
-   at full strength on every name.
-
-   Now: the surface for the ground, --ink for the name, and the party as a
-   3px rule down the left edge. The rule reads at a distance a dot does not,
-   and a wrapped roster of twenty-five shows its split as a pattern down the
-   left of the block. --edge rather than --rule-2 for the outline because a
-   panel edge at 1.99:1 is what made the shape vanish; --edge is 3.91:1 in
-   light and 3.74:1 in dark, and clears the 3:1 the brief sets for a boundary.
-   The name reaches 14.91:1 and 11.45:1.
-
-   This reverses a note that used to sit here preferring the tint to "an
-   outlined pill with a colour bar down its left edge", on the grounds of one
-   fact, one shape. The shape is still one shape -- .mchip is what the
-   legislators page, the committee roster and the sponsor list all draw, so
-   they all change together. */
-.mchip{display:inline-flex;align-items:center;gap:var(--sp-3);
-margin:0 var(--sp-3) var(--sp-3) 0;
-padding:var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-3);
-border-radius:var(--r-in);font-size:var(--t-ui);background:var(--surface);
-border:1px solid var(--edge);border-left:3px solid var(--edge);
-/* ONE NAME, ONE LINE. A person's name broken across two lines reads as two
-   people at a glance, and the roster is scanned rather than read. The names
-   are as long as they are -- "Rep. Katherine Prudhomme-O'Brien (R - Rock 13)"
-   is a real member -- so the container gives a chip the width it asks for. */
-white-space:nowrap;max-width:100%}
-/* Except where there is genuinely not room. The longest chip is about 360px
-   and a 360px phone has 328px of content, so below that the name is allowed
-   to wrap rather than run off the side of the page: a wrapped name is worse
-   than an unwrapped one and better than one the reader cannot see. */
-@media (max-width:480px){.mchip{white-space:normal}}
-/* THE ROLE IS A LABEL. Chair, Vice Chair and Clerk have always been written
-   here; the prime sponsor was marked with bold alone, which is not a label,
-   does not survive being read aloud, and cannot be told from emphasis. */
-.mchip i{font-style:normal;font-size:var(--t-xs);font-weight:700;
-letter-spacing:.09em;text-transform:uppercase;color:var(--pine);
-border:1px solid var(--pine);border-radius:2px;padding:2px 5px;white-space:nowrap}
-.mchip.p-R{border-left-color:var(--rep)}
-.mchip.p-D{border-left-color:var(--dem)}
-.mchip.p-I,.mchip.p-L{border-left-color:var(--ind)}
-.mchip a{color:var(--ink);text-decoration:none;font-weight:500}
-.mchip a:hover{text-decoration:underline}
-.mchip:hover{border-color:var(--pine)}
-.mchip:hover.p-R{border-left-color:var(--rep)}
-.mchip:hover.p-D{border-left-color:var(--dem)}
-.mchip:hover.p-I,.mchip:hover.p-L{border-left-color:var(--ind)}
 .mlist{margin:var(--sp-4) 0 0}
 
 /* The filter strip above a list of bills, and above a committee's sessions. */
@@ -2382,7 +2394,6 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
 @media (prefers-reduced-motion:no-preference){.cday{scroll-margin-top:var(--sp-7)}}
 .cday{scroll-margin-top:var(--sp-7)}
 
-
 /* ---------------------------------------------------------- versions ---
    What each amendment changed. Insertions and deletions are marked by shape
    as well as by colour -- an underline and a strikethrough -- because a
@@ -2412,7 +2423,6 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
 .vamds{list-style:none;padding:0;margin:var(--sp-4) 0 0}
 .vamds li{margin:0 0 var(--sp-4)}
 .vamds .dim{color:var(--ink-2);font-size:var(--t-sm);margin-left:var(--sp-3)}
-
 
 /* A MEMBER'S VOTES, WITH WHAT EACH ONE DECIDED. The middle column carries the
    bill, its title and the question in plain English stacked on top of each
@@ -2513,7 +2523,6 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
     margin:var(--sp-4) 0 0}
 }
 
-
 /* THE DOWNLOADS PAGE IS NOT AN ESSAY. .civics caps at --measure, 560px, which
    is right for the explainers it was written for and wrong here: this page is
    mostly a list of tables whose column names run to a hundred characters, and
@@ -2538,7 +2547,6 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
   .dl{padding:var(--sp-5) var(--sp-5)}
 }
 
-
 /* Nineteen terms by five columns, on a phone as well. It scrolls sideways
    inside its own box rather than pushing the page wide, which is the one
    place this file allows that. */
@@ -2556,7 +2564,6 @@ table.cov{border-collapse:collapse;font-size:var(--t-sm);width:100%;min-width:42
 .cov .c1{color:var(--yes);font-weight:600}
 .cov .c0{color:var(--ink-2)}
 .cov .cp{font-weight:600}
-
 
 /* The standing note sits above the official analysis and must not be mistaken
    for it. Same box, different edge: this site's words get the pine rule, the
@@ -3096,21 +3103,25 @@ columns:270px;column-gap:var(--sp-7)}
    one column and their district at the head of the next. */
 :where(body.pg) .seatrow{break-inside:avoid}
 :where(body.pg) .seatrow[hidden]{display:none}
-:where(body.pg) .seatrow a{display:flex;align-items:baseline;gap:var(--sp-4);
+:where(body.pg) .seatrow{display:flex;align-items:baseline;gap:var(--sp-4);
 padding:var(--sp-3) var(--sp-3);border-bottom:1px solid var(--rule);
 color:var(--ink);text-decoration:none}
-:where(body.pg) .seatrow a:hover{background:var(--wash)}
-:where(body.pg) .seatrow.on a{background:var(--pine-soft);
+:where(body.pg) .seatrow:hover{background:var(--wash)}
+/* THE CHIP CARRIES ITS OWN LINK, so the row is no longer an anchor and the
+   highlight moved from the anchor to the row. Without this the "on" state --
+   which is what ties a seat on the chart to its line in the list -- lit
+   nothing at all, because there was no longer an <a> to light. */
+:where(body.pg) .seatrow .mchip{min-width:0}
+:where(body.pg) .seatrow .mchip a{text-decoration:none}
+:where(body.pg) .seatrow.on{background:var(--pine-soft);
 box-shadow:inset 3px 0 0 var(--pine)}
 /* Tabular figures so a column of seat numbers lines up on its digits. */
 :where(body.pg) .seatrow .sseat{flex:0 0 3.6em;font-variant-numeric:tabular-nums;
 font-size:var(--t-sm);color:var(--ink-2)}
-:where(body.pg) .seatrow .sname{font-weight:600;font-size:var(--t-ui)}
-:where(body.pg) .seatrow .swhere{margin-left:auto;font-size:var(--t-xs);
-color:var(--ink-2);white-space:nowrap}
+/* .sname and .swhere are gone with the hand-written row: the chip carries the
+   name, the party and the district, which is the whole point of it. */
 @media (max-width:560px){
-  :where(body.pg) .seatrow .swhere{margin-left:0;flex-basis:100%}
-  :where(body.pg) .seatrow a{flex-wrap:wrap;gap:var(--sp-1) var(--sp-4)}
+  :where(body.pg) .seatrow{flex-wrap:wrap;gap:var(--sp-1) var(--sp-4)}
 }
 
 /* PAGES:END ------------------------------------------------------- */

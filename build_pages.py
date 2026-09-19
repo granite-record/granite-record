@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.100
+# GRANITE_VERSION: 2026-09-04.101
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -428,6 +428,51 @@ def calendar_html(H, out):
     body, missing = cal_days(days, meets, titles, years, code, when, esc)
     html.append(body)
     return "".join(html) + cal_notes(H, up, missing, esc)
+
+
+# ONE CHIP FOR A PERSON, AND THIS IS THE SECOND COPY OF IT.
+#
+# app.js's `pchip` draws a legislator wherever the page is built in the
+# browser -- a bill's sponsors, a committee's members. The legislators page
+# builds two of its three rosters in PYTHON, on purpose: they are the only
+# listing a crawler and a reader without JavaScript can walk, and this page
+# used to be a search box that showed nothing until somebody typed.
+#
+# So the chip exists twice, which this repository otherwise refuses. It is
+# allowed here for the same reason plate() is allowed to: the two copies are
+# held together by a check that runs BOTH and compares their output, rather
+# than by a comment asking the next person to remember. preflight's
+# "the person chip is drawn the same in both" is that check. Change one and
+# it fails until you change the other.
+#
+# The party code reads party_code first and the first letter of party second,
+# because sponsor records carry "Republican" and the roster carries "R", and
+# a member must not read as one party on a bill and another on the roster --
+# which is the bug that made this one component in the first place.
+def _cesc(s):
+    """app.js's esc, exactly: ampersand, the angles and the double quote.
+
+    NOT shell.E, which is html.escape and also turns an apostrophe into
+    &#x27;. The two render identically, so the difference is invisible on the
+    page and would be invisible in a diff of the two chips as well -- which is
+    how a check that was meant to hold them together would come to be relaxed
+    until it held nothing. The chip escapes for itself so the comparison can
+    stay byte for byte.
+    """
+    return (str("" if s is None else s).replace("&", "&amp;")
+            .replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;"))
+
+
+def pchip(m, esc=_cesc):
+    """One legislator, as the site draws them everywhere else."""
+    code = str(m.get("party_code") or m.get("party") or "").upper()[:1] or "X"
+    who = esc(m.get("display_full") or m.get("label") or m.get("name") or "")
+    role = m.get("role") if (m.get("role") and m.get("role") != "Member") else (
+        "Prime" if m.get("prime") else "")
+    slug = m.get("slug") or ""
+    inner = (f'<a href="legislator/{esc(slug)}.html">{who}</a>' if slug else who)
+    return (f'<span class="mchip p-{esc(code)}">{inner}'
+            + (f" <i>{esc(role)}</i>" if role else "") + "</span>")
 
 
 def cal_days(days, meets, titles, years, code, when, esc, level=3,
@@ -2073,18 +2118,32 @@ def main():
             return (n.split(",")[0] if "," in n else n).strip().lower()
 
         def li(m, lead):
-            """One row. `lead` is the column that leads it -- a seat number in
-            the seat view, the district everywhere else."""
+            """One row: the column that leads it, then the person as a chip.
+
+            THE PERSON IS DRAWN BY THE SHARED COMPONENT, not by this function.
+            It used to write its own name, district and party into three
+            spans, so the same member read one way here and another on a
+            committee page or a bill -- which is the exact bug pchip was made
+            to end. display_full already carries the title, the party letter
+            and the district ("Rep. Suzanne Vail (D - Hills 6)"), so the three
+            spans were also saying twice what the chip says once.
+
+            The LIST stays a list. Asked for on 18 September: the alphabetical
+            view is split halfway down so a reader follows A to Z down one
+            column and on down the next, rather than left-to-right across a
+            flowing row. A committee's roster flows because it is a dozen
+            people; a chamber's is four hundred.
+
+            `lead` is the seat number in the seat view and the district in the
+            Senate's. It is empty in the alphabetical view, where the chip's
+            own "Rep." says it already.
+            """
             return (f'<li class="seatrow" data-seat="{esc(str(m.get("seat") or ""))}" '
                     f'data-last="{esc(surname(m))}" '
                     f'data-county="{esc(m.get("county") or "")}" '
                     f'data-slug="{esc(m.get("slug") or "")}">'
-                    f'<a href="legislator/{esc(m.get("slug") or "")}.html">'
-                    f'<span class="sseat">{esc(lead)}</span>'
-                    f'<span class="sname">{esc(m.get("display_plain") or m.get("name"))}</span>'
-                    f'<span class="swhere">{esc(m.get("district_label") or "")}'
-                    f'{" &middot; " + esc(m.get("party")) if m.get("party") else ""}'
-                    f'</span></a></li>')
+                    + (f'<span class="sseat">{esc(lead)}</span>' if lead else "")
+                    + pchip(m) + "</li>")
 
         # Sorted by number, which is the order the person asked the dropdown
         # to be in. A vacant seat is not offered: there is nobody to go to.
@@ -2111,9 +2170,9 @@ def main():
         # which except the honorific, and the two chambers are not one body.
         def alpha_block(ms, heading):
             ms = sorted(ms, key=surname)
-            return (f'<h2>{heading} &mdash; {len(ms)}</h2><ol class="seatlist">'
-                    + "".join(li(m, "Sen." if m.get("chamber") == "S" else "Rep.")
-                              for m in ms) + "</ol>")
+            return (f'<h2>{heading} &mdash; {len(ms)}</h2>'
+                    '<ol class="seatlist rlist">'
+                    + "".join(li(m, "") for m in ms) + "</ol>")
         by_last = alpha_block(S, "Senate") + alpha_block(H, "House")
         by_seat_rows = "".join(
             li(m, seating.plate(m["seat"]) if m.get("seat") else "") for m in H)

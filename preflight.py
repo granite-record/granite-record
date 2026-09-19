@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.207
+# GRANITE_VERSION: 2026-09-04.208
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10173,6 +10173,75 @@ def _formfeed_heading():
         "a heading at the start of an ordinary line is no longer read as one")
     return "ok", ("a page break starts a heading, a mid-sentence bill number "
                   "does not")
+
+
+@check("frontend", "the person chip is drawn the same in both copies")
+def _pchip_agrees():
+    """A legislator must look the same on a bill, a committee and the roster.
+
+    app.js draws one wherever a page is built in the browser; build_pages
+    draws one for the two rosters written as static HTML, because those are
+    the only listing a crawler and a reader without JavaScript can walk. Two
+    copies of a renderer is what this repository otherwise refuses, and it is
+    allowed here only because this check runs BOTH and compares the answer --
+    the same arrangement plate() is held together by.
+
+    THE BUG THE COMPONENT EXISTS FOR is what the party line below guards: a
+    committee's members were drawn in party colour and a bill's sponsors were
+    not, so the same member read as one party on a committee page and as no
+    party on a bill. The two records spell the party differently -- sponsors
+    carry "Republican", the roster carries "R" -- so the first-letter fallback
+    is load-bearing and both spellings are tested.
+
+    The function is lifted out of app.js and run on its own rather than by
+    loading the whole file, which is how the plate() check does it: what
+    matters is the answer, not whether the module will boot.
+    """
+    import build_pages as BP
+
+    cases = [
+        {"name": "Vail, Suzanne", "display_full": "Rep. Suzanne Vail (D - Hills 6)",
+         "party": "Democrat", "slug": "suzanne-vail-hills-6"},
+        {"name": "Abbas, Daryl", "display_full": "Sen. Daryl Abbas (R - SD22)",
+         "party_code": "R", "slug": "daryl-abbas-sd22"},
+        {"name": "A", "display_full": "Rep. A", "party": "R", "slug": "a"},
+        {"name": "A", "display_full": "Rep. A", "party": "Republican", "slug": "a"},
+        {"name": "B", "display_full": "Rep. B", "party": "D", "slug": "b",
+         "role": "Chair"},
+        {"name": "C", "display_full": "Rep. C", "party": "D", "slug": "c",
+         "prime": True},
+        {"name": "D", "display_full": "Rep. D", "party": "D", "slug": "d",
+         "role": "Member"},
+        {"name": "E", "display_full": "Rep. E"},
+        # the escape, which is the one thing two hand-written copies drift on
+        {"name": "F", "display_full": 'Rep. "F" & <G>', "party": "I", "slug": "f"},
+    ]
+    want = [BP.pchip(m) for m in cases]
+
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "skip", "node is not on PATH, so the JavaScript copy cannot be run"
+
+    js = Path("app.js").read_text(encoding="utf-8", errors="replace")
+    e = re.search(r"^const esc=.*?;$", js, re.M)
+    c = re.search(r"^const pchip=m=>\{.*?\n(?:\s*)m\.slug\?.*?\};$", js,
+                  re.M | re.S)
+    assert e, "app.js has no esc()"
+    assert c, "app.js has no pchip()"
+    prog = (e.group(0) + "\n" + c.group(0) + "\n"
+            + "const cases=" + json.dumps(cases) + ";\n"
+            + "process.stdout.write(JSON.stringify(cases.map(pchip)));")
+    r = subprocess.run([node, "-e", prog], capture_output=True, timeout=60)
+    assert r.returncode == 0, ("app.js's pchip would not run: "
+                               + r.stderr.decode("utf-8", "replace")[-300:])
+    got = json.loads(r.stdout.decode("utf-8", "replace"))
+
+    bad = [f"case {i}: app.js={a!r} build_pages={b!r}"
+           for i, (a, b) in enumerate(zip(got, want)) if a != b]
+    assert not bad, ("the two person chips disagree, so a legislator is drawn "
+                     "differently on the roster than on a bill:\n  "
+                     + "\n  ".join(bad))
+    return "ok", f"both copies agree on {len(cases)} people, party, role and escaping"
 
 
 @check("calendar", "a reversed meridiem is corrected, and the evening is left alone")
