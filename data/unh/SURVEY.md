@@ -23,15 +23,19 @@ vote a name was on.
 bounding box per word. Rebuilding the printed reading order from those boxes
 — group into lines by y, sort each line by x, and nothing cleverer — takes the
 yea/nay split from 7% correct to 87%, and name agreement from 85.26% to
-95.74%. A repair pass then takes them to **96% and 96.31%**. Sections 4 and 6.
+95.74%. A repair pass then takes them to **96% and 96.74%**. Sections 4 and 6.
 
 **And the roster comes out of the same book.** Each volume opens with the CALL
 OF THE ROLL, and reading it yields 400 seats against 400 the journal declares,
 with no district disagreeing. Section 5.
 
-**Two volumes, not one.** 1991 scored 0% on the split until four patterns
-quietly fitted to 1997 were found and generalised; it now scores 98%. Nothing
-here should be trusted for a third volume until a third volume is tried.
+**Three volumes, and both chambers.** 1991 scored 0% on the split until four
+patterns quietly fitted to 1997 were found and generalised; it now scores 98%.
+The Senate does none of what the House does — it writes a sentence rather than
+four columns, and contains the word YEAS zero times — so it needed its own
+reader, and then scored **100%** on the split and **96.86%** on names against
+the General Court's own 2003 journals. Nothing here should be trusted for a
+fourth volume until a fourth volume is tried.
 
 ---
 
@@ -270,8 +274,16 @@ and then again after `unh_repair.py`, for which see section 6:
 
 | 1997 House | flat `_djvu.txt` | reflowed | repaired |
 |---|---|---|---|
-| names carried exactly | 85.26% | 95.74% | **96.31%** |
+| names carried exactly | 85.26% | 95.74% | **96.74%** |
 | **each side within 3 of its heading** | **7%** | **87%** | **96%** |
+
+Three volumes now, and both chambers:
+
+| volume | names | split | checked against |
+|---|---|---|---|
+| 1997 House | **96.74%** | 96% | `journals/1997` |
+| 1991 House | not measurable | **98%** | nothing — no digital copy exists |
+| 2003 Senate v.1 | **96.86%** | **100%** | `journals_senate/2003` |
 
 ### A second volume, which found four patterns fitted to the first
 
