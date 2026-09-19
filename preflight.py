@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.209
+# GRANITE_VERSION: 2026-09-04.210
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10173,6 +10173,53 @@ def _formfeed_heading():
         "a heading at the start of an ordinary line is no longer read as one")
     return "ok", ("a page break starts a heading, a mid-sentence bill number "
                   "does not")
+
+
+@check("frontend", "no component is stranded in the region style.css skips")
+def _nothing_stranded():
+    """A class styled where half the site cannot see it.
+
+    app.css is one file in three marked regions and style.css is a VIEW of it:
+    palette, SHARED and PAGES, in that order. Every page built from bills.html
+    through shell.page loads app.css and sees the whole thing; the four pages
+    build_pages.py writes -- the home page, the roster, About and 404 -- load
+    style.css and see only those three regions. Anything styled between
+    SHARED:END and PAGES:START is invisible to them.
+
+    It has happened twice, and neither time did anything error.
+
+    `.mchip` carried a comment reading "the legislators page, the committee
+    roster and the sponsor list all draw" it while sitting in the region the
+    legislators page does not load, so the roster drew a hand-written row
+    instead and the same member read one way there and another on a bill.
+
+    The whole footer -- .fcols, .fcol, .flinks, .footdata, .lic, .attrib --
+    was there too. Measured on the live site before the fix: .fcols computed
+    display:block on the home page and display:grid with three columns on a
+    bill page, from identical markup. Four pages had been shipping a stacked,
+    unstyled footer.
+
+    audit_css.py is the tool; this runs it against the built site so the
+    answer is what a reader's browser would actually resolve.
+    """
+    site = Path("site")
+    if not (site / "style.css").exists():
+        return "skip", "no built site here; run build_all.py --local first"
+    node = str(Path("audit_css.py"))
+    r = subprocess.run([sys.executable, node, "--site", str(site)],
+                       capture_output=True, timeout=300)
+    out = r.stdout.decode("utf-8", "replace")
+    assert "built pages" in out, ("audit_css.py did not run: "
+                                  + r.stderr.decode("utf-8", "replace")[-300:])
+    if "STRANDED" in out:
+        tail = out[out.index("STRANDED"):][:600]
+        raise AssertionError(
+            "a component is styled only in the region style.css does not "
+            "take, so the home page, the roster, About and 404 do not get "
+            "it:\n  " + tail.replace("\n", "\n  "))
+    m = re.search(r"(\d+) page shapes load style.css, using (\d+) classes", out)
+    where = f"{m.group(1)} pages, {m.group(2)} classes" if m else "checked"
+    return "ok", f"nothing stranded ({where})"
 
 
 @check("files", "no source file carries a mangled control character")

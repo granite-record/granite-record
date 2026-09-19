@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.102
+# GRANITE_VERSION: 2026-09-04.103
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -776,14 +776,14 @@ def shell(title, current, body, wide=False, script="", desc="",
 <footer><div class="in">
 <div class="fcols">
 <div class="fcol">
-<p class="fhead">Granite Record</p>
+<p class="fcolhead">Granite Record</p>
 <p class="attrib">Built from public records published by the <b>New Hampshire
 General Court</b>. Not affiliated with the General Court, and not a substitute
 for it &mdash; where this site and the Court&rsquo;s own record disagree, the
 Court is right and we want to know.</p>
 </div>
 <div class="fcol">
-<p class="fhead">The record</p>
+<p class="fcolhead">The record</p>
 <ul class="flinks">
 <li><a href="data.html">Bulk data</a></li>
 <li><a href="about.html">How this is made</a></li>
@@ -791,7 +791,7 @@ Court is right and we want to know.</p>
 </ul>
 </div>
 <div class="fcol">
-<p class="fhead">Tell us</p>
+<p class="fcolhead">Tell us</p>
 <a class="fbk out" href="https://forms.gle/PYw9c3xgpDDwvX7E9" target="_blank"
  rel="noopener">What do you think?</a>
 <p class="fbknote">The site is new and being tested. Found an error?

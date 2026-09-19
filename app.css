@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.124 */
+/* GRANITE_VERSION: 2026-09-07.125 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -12,7 +12,6 @@
    video, a vote grid, a table, a list of documents -- fills its pane.
    560px measures 76 characters of the 16px serif, counted in a browser
    rather than derived from an average character width. */
-.src,.lead{max-width:var(--measure)}
 :root{
 /* GROUND AND SURFACE. The page was #F6F6F4 and a card is white, which put
    1.08:1 between a bill and the paper behind it -- below the level at which
@@ -735,6 +734,87 @@ border:1px solid var(--pine);border-radius:2px;padding:2px 5px;white-space:nowra
 /* The party colour stays on the edge, never behind the text. The pill
    that used to fight this component for the `p-` prefix is `pt-` now,
    so nothing else claims a chip's background. */
+
+/* MOVED INTO THE SHARED REGION, 19 September. These rules were below
+   SHARED:END, which is the half of app.css that style.css does not take -- so
+   the home page, the roster, About and 404 had a footer with no layout at all.
+   Measured on the live site: .fcols computed `display:block` on the home page
+   and `display:grid` with three columns on a bill page, from the same markup.
+   The same accident had already happened to .mchip. */
+/* ONE LEFT EDGE. The nav and the page both start 24px inside a 1180px
+   column; the footer was a 560px column centred in the WINDOW, so its first
+   word sat 300px to the right of every other first word on the page -- at
+   1440 the brand began at 130px, the heading at 130px and the footer at
+   432px. The measure is still 560px, because the sentence needs it; it was
+   the ALIGNMENT that was wrong, not the width.
+   Not display:grid, which was the first attempt and is worth recording as a
+   trap: making this a grid promotes every CHILD to a grid item, so the
+   "How this is made" link and the full stop after it each took a row of
+   their own and the footer read as four stray lines. The gutter belongs to
+   the band; the measure belongs to this box; the inline flow is left
+   alone. */
+/* ANOTHER PASS, because aligning it was only half the job. Left-aligning the
+   column put its first word under the page's first word, which was the fix,
+   and left a 560px strip of text in an 1180px band with 620px of empty
+   footer beside it -- the same "narrow measure in a wide box" this file keeps
+   answering, now in the footer. It reads as offset rather than as placed.
+   Two columns, because the footer is three short things and not one: what
+   this is, how to report an error, and where the bulk data is. The mechanism
+   is multi-column and not grid or flex for the reason recorded above -- both
+   of those promote every child to an item, and the "How this is made" link
+   is a direct child, so it would take a row of its own. Columns leave inline
+   flow alone. The two element blocks are told not to split across the
+   boundary; the opening sentence is allowed to, and is the only thing that
+   can. One column again below 860px, the width the facet rail collapses at,
+   where there is no spare room to put a second one. */
+/* A THIRD PASS, and this one can use a grid. The note above records that
+   grid was tried and rejected, and it was right at the time: the footer's
+   children were loose inline flow -- a sentence, a link, a full stop -- so
+   every one of them became a row. They are three deliberate blocks now, so
+   the objection is spent and the mechanism that fits the content is the one
+   that describes it.
+   Three groups, because the footer says three things: what this is, where to
+   get the record, and how to reach a person. The first is widest because it
+   holds the sentence that matters most -- not affiliated, not a substitute,
+   tell us when we are wrong -- which a site indexing somebody else's record
+   owes its readers room for. */
+footer .in{max-width:1180px;margin:0;padding:0 var(--sp-8)}
+.fcols{display:grid;grid-template-columns:2fr 1.1fr 1.4fr;gap:var(--sp-9)}
+.fcol{min-width:0}
+/* .fcolhead, NOT .fhead. `.fhead` is also the search facet's disclosure
+   button in app.js, which sets display:flex and hangs a chevron and a badge
+   off it -- so on every page that loads app.css the footer's column headings
+   were being laid out as flex containers by a rule written for a different
+   control. Two components, one class name, which is the fourth time this file
+   has recorded that: .ctitle, .p-R, .cite and now this. A new component gets
+   its own prefix, and this one takes the prefix of the column it heads. */
+.fcolhead{font-size:var(--t-xs);letter-spacing:.12em;text-transform:uppercase;
+font-weight:600;color:var(--ink-2);margin:0 0 var(--sp-4)}
+footer .attrib{margin:0;max-width:62ch;font-family:var(--serif);
+font-size:var(--t-ui);line-height:1.6}
+footer .attrib b{color:var(--ink);font-weight:600}
+.flinks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;
+gap:var(--sp-3)}
+footer .footdata{margin:var(--sp-7) 0 0;padding-top:var(--sp-5);
+border-top:1px solid var(--rule);display:flex;gap:var(--sp-6);flex-wrap:wrap;
+justify-content:space-between;font-size:var(--t-sm)}
+.lic{color:var(--ink-2)}
+/* One column below 860px, the width the facet rail collapses at, where there
+   is no spare room for a second let alone a third. */
+@media (max-width:860px){
+  .fcols{grid-template-columns:1fr;gap:var(--sp-7)}
+  footer .in{max-width:var(--measure)}
+  footer .footdata{flex-direction:column;gap:var(--sp-3)}
+}
+
+/* A SOURCE NOTE AND A LEAD READ AT THE MEASURE, on every page. This sat
+   above SHARED:START, which style.css does not take, so the home page and the
+   roster gave their source notes the full width of the page while every
+   record page held them to the measure -- the same class, two behaviours.
+   This is about PROSE, and is not the narrow-measure-in-a-wide-box the rest
+   of this file keeps undoing: a card or a table fills its box, a sentence
+   does not. */
+.src,.lead{max-width:var(--measure)}
 
 /* SHARED:END ------------------------------------------------------------ */
 
@@ -1569,64 +1649,6 @@ font-size:var(--t-ui);color:var(--ink-2);margin-top:auto;
    narrower than that, and the background still bleeds to both edges
    because padding sits inside the border box. */
 padding:var(--sp-7) max(0px,calc(50% - 590px))}
-/* ONE LEFT EDGE. The nav and the page both start 24px inside a 1180px
-   column; the footer was a 560px column centred in the WINDOW, so its first
-   word sat 300px to the right of every other first word on the page -- at
-   1440 the brand began at 130px, the heading at 130px and the footer at
-   432px. The measure is still 560px, because the sentence needs it; it was
-   the ALIGNMENT that was wrong, not the width.
-   Not display:grid, which was the first attempt and is worth recording as a
-   trap: making this a grid promotes every CHILD to a grid item, so the
-   "How this is made" link and the full stop after it each took a row of
-   their own and the footer read as four stray lines. The gutter belongs to
-   the band; the measure belongs to this box; the inline flow is left
-   alone. */
-/* ANOTHER PASS, because aligning it was only half the job. Left-aligning the
-   column put its first word under the page's first word, which was the fix,
-   and left a 560px strip of text in an 1180px band with 620px of empty
-   footer beside it -- the same "narrow measure in a wide box" this file keeps
-   answering, now in the footer. It reads as offset rather than as placed.
-   Two columns, because the footer is three short things and not one: what
-   this is, how to report an error, and where the bulk data is. The mechanism
-   is multi-column and not grid or flex for the reason recorded above -- both
-   of those promote every child to an item, and the "How this is made" link
-   is a direct child, so it would take a row of its own. Columns leave inline
-   flow alone. The two element blocks are told not to split across the
-   boundary; the opening sentence is allowed to, and is the only thing that
-   can. One column again below 860px, the width the facet rail collapses at,
-   where there is no spare room to put a second one. */
-/* A THIRD PASS, and this one can use a grid. The note above records that
-   grid was tried and rejected, and it was right at the time: the footer's
-   children were loose inline flow -- a sentence, a link, a full stop -- so
-   every one of them became a row. They are three deliberate blocks now, so
-   the objection is spent and the mechanism that fits the content is the one
-   that describes it.
-   Three groups, because the footer says three things: what this is, where to
-   get the record, and how to reach a person. The first is widest because it
-   holds the sentence that matters most -- not affiliated, not a substitute,
-   tell us when we are wrong -- which a site indexing somebody else's record
-   owes its readers room for. */
-footer .in{max-width:1180px;margin:0;padding:0 var(--sp-8)}
-.fcols{display:grid;grid-template-columns:2fr 1.1fr 1.4fr;gap:var(--sp-9)}
-.fcol{min-width:0}
-.fhead{font-size:var(--t-xs);letter-spacing:.12em;text-transform:uppercase;
-font-weight:600;color:var(--ink-2);margin:0 0 var(--sp-4)}
-footer .attrib{margin:0;max-width:62ch;font-family:var(--serif);
-font-size:var(--t-ui);line-height:1.6}
-footer .attrib b{color:var(--ink);font-weight:600}
-.flinks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;
-gap:var(--sp-3)}
-footer .footdata{margin:var(--sp-7) 0 0;padding-top:var(--sp-5);
-border-top:1px solid var(--rule);display:flex;gap:var(--sp-6);flex-wrap:wrap;
-justify-content:space-between;font-size:var(--t-sm)}
-.lic{color:var(--ink-2)}
-/* One column below 860px, the width the facet rail collapses at, where there
-   is no spare room for a second let alone a third. */
-@media (max-width:860px){
-  .fcols{grid-template-columns:1fr;gap:var(--sp-7)}
-  footer .in{max-width:var(--measure)}
-  footer .footdata{flex-direction:column;gap:var(--sp-3)}
-}
 /* Here rather than in the narrow-screens block 90 lines above, because these
    two rules are declared after it and would outrank it on source order --
    which is exactly what happened on the first attempt: the nav and the
