@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.6
+# GRANITE_VERSION: 2026-09-18.7
 """
 The General Court's week, one page per week.
 
@@ -65,7 +65,36 @@ DAYNAME = "Monday Tuesday Wednesday Thursday Friday Saturday Sunday".split()
 MONTH = ("January February March April May June July August September "
          "October November December").split()
 
+# A ROW WITH NO COMMITTEE IS NOT AUTOMATICALLY THE FLOOR, and treating it as
+# one put 4,370 committee meetings on this site under the heading "House
+# floor" or "Senate floor". Of the 8,339 committee-less rows in
+# proceedings.csv only 3,969 are floor debate; the rest are 1,512 hearings,
+# 1,010 subcommittee work sessions, 805 committees of conference, 632 public
+# hearings, 182 executive sessions, 139 full committee work sessions and 90
+# work sessions whose committee the docket did not record.
+#
+# They are real sittings and they are not the floor. A committee of conference
+# is named for what it is, because that is a thing a reader recognises; the
+# rest say plainly that the committee is not on the record, which is true and
+# is better than a confident wrong name.
 FLOOR = {"H": "House floor", "S": "Senate floor"}
+FLOOR_KINDS = ("floor debate",)
+CONFERENCE = "Committee of conference"
+
+
+def floor_name(kind, body):
+    """What to call a sitting the docket gives no committee.
+
+    None where it should not be shown at all.
+    """
+    k = (kind or "").strip().lower()
+    if k in FLOOR_KINDS:
+        return FLOOR.get(body)
+    if k == "committee of conference":
+        return CONFERENCE
+    if not body:
+        return None
+    return f"{'House' if body == 'H' else 'Senate'} \u2014 committee not recorded"
 
 
 # THE FILTER RUNS IN THE READER'S BROWSER, AND THE PAGE IS WHOLE WITHOUT IT.
@@ -277,7 +306,8 @@ def collect(site):
             continue
         cmte = (r.get("committee") or "").strip()
         if not cmte:
-            cmte = FLOOR.get((r.get("body") or "").strip().upper(), "")
+            cmte = floor_name(r.get("kind"),
+                              (r.get("body") or "").strip().upper()) or ""
             if not cmte:
                 continue
         row = {"date": date, "time": (r.get("time") or "").strip(),
