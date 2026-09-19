@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.123 */
+/* GRANITE_VERSION: 2026-09-07.124 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2305,11 +2305,12 @@ padding:var(--sp-2) 0;min-height:32px;display:inline-flex;align-items:center}
 .sopen p{margin:0;font-size:var(--t-ui)}
 .sopen a{color:var(--pine)}
 
-/* WHO WAS NOT THERE. The same row the speakers use, because it is the same
-   thing -- a label and then a list of members -- and a reader should not have
-   to learn two shapes for it. */
+/* WHO WAS NOT THERE -- and only who. The journal records a ground for each
+   leave and this does not repeat it: that a member was excused is the
+   parliamentary fact, why is health information about a named person, and
+   making it findable is not the same act as its sitting in a PDF. So the row
+   carries no label, just the names. */
 .sabs{align-items:baseline}
-.sabs .slab{flex:0 0 auto}
 
 /* THE CONSENT CALENDAR. Dozens of bills disposed of in one motion, so they
    are a list by outcome rather than entries in the day's sequence: printed as

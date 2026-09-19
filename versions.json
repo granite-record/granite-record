@@ -2,7 +2,7 @@
   "files": {
     "about_figures.py": "2026-09-17.1",
     "align_all.py": "2026-09-04.2",
-    "app.css": "2026-09-07.123",
+    "app.css": "2026-09-07.124",
     "app.js": "2026-09-07.100",
     "apply_markers.py": "2026-09-04.8",
     "archive_status.py": "2026-09-08.2",
@@ -26,7 +26,7 @@
     "build_manifest.py": "2026-09-05.11",
     "build_pages.py": "2026-09-04.102",
     "build_proceedings.py": "2026-09-05.8",
-    "build_session_pages.py": "2026-09-19.4",
+    "build_session_pages.py": "2026-09-19.5",
     "build_site_v2.py": "2026-09-05.103",
     "build_town_pages.py": "2026-09-09.12",
     "calendar_meetings.py": "2026-09-08.12",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.4
+# GRANITE_VERSION: 2026-09-19.5
 """
 A page for every day the House sat.
 
@@ -279,27 +279,38 @@ def opening_html(narrative, body, members, esc):
 
 
 def absences_html(narrative, body, members, esc):
-    """Who the chamber excused, and on the ground it recorded.
+    """Who the chamber excused. WHO, and not why.
 
-    The ground is the chamber's own formal category -- illness, important
-    business, illness in the family -- rather than anything closer, and it is
-    here because a reader asking why a member missed a vote is asking a
-    question the journal answers on its own front page.
+    The journal records a ground for each leave -- illness, important
+    business, illness in the family -- and this published it until
+    19 September, when the person asked for names only. The reason is health
+    information about a named person, and while the journal prints it, this
+    site's business is making the record findable, which is what makes
+    repeating it here different in kind from its sitting in a PDF. That a
+    member was excused is the parliamentary fact; why is not.
+
+    The groups are still read from the journal, because that is how the lines
+    parse, and then flattened into one list.
     """
     rows = narrative.get("absences") or []
     if not rows:
         return ""
-    n = sum(len(r["names"]) for r in rows)
-    H = ['<section class="sday"><h2>Excused for the day</h2>'
-         f'<p class="note">{n} member{"" if n == 1 else "s"} had leave of the '
-         f'{CHAMBER[body]} and were not in the chamber.</p>']
+    names, seen = [], set()
     for r in rows:
-        H.append('<p class="sspoke sabs"><span class="slab">'
-                 + esc(r["why"].capitalize()) + "</span>"
-                 + ", ".join(member_html(body, nm, members, esc)
-                             for nm in r["names"]) + "</p>")
-    H.append("</section>")
-    return "".join(H)
+        for nm in r["names"]:
+            k = nm.lower()
+            if k not in seen:
+                seen.add(k)
+                names.append(nm)
+    if not names:
+        return ""
+    n = len(names)
+    return ('<section class="sday"><h2>Excused for the day</h2>'
+            f'<p class="note">{n} member{"" if n == 1 else "s"} had leave of '
+            f'the {CHAMBER[body]} and were not in the chamber.</p>'
+            '<p class="sspoke sabs">'
+            + ", ".join(member_html(body, nm, members, esc) for nm in names)
+            + "</p></section>")
 
 
 # What a motion carrying did to a bill, in one word, for a list of seventy.
