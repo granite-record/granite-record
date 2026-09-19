@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.134 */
+/* GRANITE_VERSION: 2026-09-07.135 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2823,6 +2823,28 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
 .dl .cols{font-size:var(--t-sm);color:var(--ink-2);line-height:1.55;
   font-family:var(--sans,inherit);max-width:none}
 .dl .note{max-width:none}
+/* THE FEEDS, AND WHAT A CLONE GETS. Two lists rather than two more cards:
+   .dl is a card per table because a table has five things to say about
+   itself, and a feed has one line. The address leads, because that is what
+   a reader is here to copy. */
+.feeds{list-style:none;margin:var(--sp-5) 0 0;padding:0;max-width:none}
+.feeds li{margin:0;padding:var(--sp-4) 0;border-bottom:1px solid var(--rule);
+  font-size:var(--t-ui);line-height:1.6;color:var(--ink-2)}
+.feeds li:last-child{border-bottom:0}
+.feeds code{font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);
+  font-size:var(--t-ui);color:var(--ink)}
+/* The count of a family, on the address's own line rather than under it --
+   .dlmeta is a block where it labels a table, and here it is a tag. */
+.feeds .dlmeta{display:inline-block;margin:0 0 0 var(--sp-3);
+  font-variant-numeric:tabular-nums}
+.repo{margin:var(--sp-6) 0 0;max-width:none}
+.repo dt{font-family:var(--sans,inherit);font-size:var(--t-sm);font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);
+  margin:var(--sp-5) 0 var(--sp-2)}
+.repo dd{margin:0;font-size:var(--t-ui);line-height:1.6}
+.repo code{font-family:var(--mono,ui-monospace,SFMono-Regular,Menlo,monospace);
+  font-size:var(--t-ui);background:var(--wash);padding:1px 5px;
+  border-radius:var(--r-in)}
 @media(max-width:720px){
   .datapage{max-width:none}
   .dl{padding:var(--sp-5) var(--sp-5)}

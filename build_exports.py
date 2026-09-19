@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.10
+# GRANITE_VERSION: 2026-09-10.12
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -321,6 +321,88 @@ def _pct(n, of):
     return f'<span class="cp">{100 * n / of:.0f}%</span>'
 
 
+# The five families build_feeds writes, in the order a reader would want
+# them: the two whole-site feeds, then the three that follow one thing.
+FEEDS = (
+    ("feed/all.xml", "", "Every action on every bill, newest first."),
+    ("feed/hearings.xml", "",
+     "Hearings, work sessions and executive sessions as they are scheduled."),
+    ("feed/bill/&lt;year&gt;/&lt;number&gt;.xml", "feed/bill",
+     "One bill. Written for a bill still moving; a bill that concludes gets a "
+     "last item saying how it ended, and then the feed retires."),
+    ("feed/legislator/&lt;name&gt;.xml", "feed/legislator",
+     "One member: what they sponsored and how they voted."),
+    ("feed/committee/&lt;code&gt;.xml", "feed/committee",
+     "One committee: what it met on and what it reported."),
+    ("feed/topic/&lt;subject&gt;.xml", "feed/topic",
+     "One subject, across every bill filed under it."),
+)
+
+
+def feeds(site):
+    """What is actually on disk, counted rather than described.
+
+    COUNTED, BECAUSE THIS PAGE HAS NO OTHER KIND OF NUMBER ON IT. Everything
+    else here is counted from the tables it describes, and a hand-typed feed
+    count would be the one figure that could drift -- which is the failure
+    about_figures.py exists to prevent on the About page.
+
+    Nothing raises on an empty family. The fixture preflight builds is four
+    bills, so feed/topic and feed/committee can legitimately be empty there,
+    and a builder that refuses to finish over that is a check failing on the
+    fixture rather than on the code. all.xml is the guard instead: it is
+    build_feeds' declared product, so its absence is a real failure and the
+    caller sees an empty section rather than a wrong one.
+    """
+    if not (site / "feed" / "all.xml").exists():
+        return ""
+    rows = []
+    for addr, folder, what in FEEDS:
+        n = len(list((site / folder).rglob("*.xml"))) if folder else 1
+        if not n:
+            continue
+        rows.append(
+            f'<li><code>{addr}</code>'
+            + (f' <span class="dlmeta">{n:,}</span>' if folder else "")
+            + f'<br>{what}</li>')
+    if not rows:
+        return ""
+    total = len(list((site / "feed").rglob("*.xml")))
+    return f"""<h2>Feeds</h2>
+    <p class="src">Following a bill takes no account and no email address:
+      every feed below is a fixed address, rebuilt whenever the site is.
+      {total:,} of them are published.</p>
+    <ul class="feeds">{"".join(rows)}</ul>"""
+
+
+def repo_facts():
+    """What a clone of this repository gets, read from this one.
+
+    OFF __file__, NOT OFF THE WORKING DIRECTORY. preflight runs every builder
+    with its cwd set to a temporary fixture tree, so Path(".") here would
+    count that tree's files and find none of these -- a figure of zero, stated
+    with the confidence of something counted. __file__ is this script, and its
+    parent is the repository whichever directory the build was started from.
+
+    Every value is counted or absent. Where a file cannot be read the fact is
+    left out rather than guessed at, because a wrong number that looks
+    defended is worse than no number.
+    """
+    root = Path(__file__).resolve().parent
+    out = {}
+    try:
+        out["stamped"] = len(json.loads(
+            (root / "versions.json").read_text(encoding="utf-8"))["files"])
+    except Exception:
+        pass
+    try:
+        pf = (root / "preflight.py").read_text(encoding="utf-8")
+        out["checks"] = pf.count("@check(")
+    except Exception:
+        pass
+    return out
+
+
 def data_page(site, out, tables, base, cov=()):
     """The downloads, described for somebody who has not read the code."""
     try:
@@ -351,6 +433,15 @@ def data_page(site, out, tables, base, cov=()):
         <td>{_pct(c["topic"], c["bills"])}</td>
         <td>{_pct(c["passage"], c["bills"])}</td></tr>''' for c in cov)
 
+    _f = repo_facts()
+    _rf = ""
+    if _f.get("stamped") and _f.get("checks"):
+        # "against them" read as though the checks only covered the stamped
+        # files. They cover the whole repository, and the stamps are one of
+        # the things they check.
+        _rf = (f'{_f["stamped"]} files carry a version stamp the build '
+               f'refuses to let drift, and {_f["checks"]} checks run over the '
+               'whole of it with no network and nothing fetched. ')
     body = f'''<div class="civics hubpage datapage">
     <div class="phead">
       <h1>The data</h1>
@@ -405,7 +496,11 @@ def data_page(site, out, tables, base, cov=()):
       open to cross-origin requests:
       <a href="index.json">index.json</a> (every bill),
       <a href="legislators.json">legislators.json</a>,
-      <a href="rollcalls_index.json">rollcalls_index.json</a>.</p>
+      <a href="rollcalls_index.json">rollcalls_index.json</a>, and
+      <code>idx/&lt;term&gt;.json</code>, which is index.json split by
+      biennium for anybody who wants one term rather than all nineteen.</p>
+
+    {feeds(site)}
 
     <h2>Using it</h2>
     <p class="src">The record itself is the State of New Hampshire&#39;s and is
@@ -423,6 +518,22 @@ def data_page(site, out, tables, base, cov=()):
     <p><a class="out" href="https://github.com/granite-record/granite-record"
       target="_blank" rel="noopener">granite-record on GitHub</a> &mdash; MIT
       licensed.</p>
+    <dl class="repo">
+      <dt>What a clone gets</dt>
+      <dd>{_rf}The roll-call history as the General Court published it, and
+        the handful of files a person made by hand &mdash; the timings taken
+        with a stopwatch, the corrections, the offices filled in from official
+        sources.</dd>
+      <dt>What it does not</dt>
+      <dd>The built site and the caption files: about 34 GB of recordings this
+        site reads timestamps out of, and a folder that is regenerated from
+        them in a single run. Both are re-fetchable, and a repository carrying
+        either would be unusable.</dd>
+      <dt>Rebuilding it</dt>
+      <dd><code>python3 build_all.py --local</code> builds the whole site from
+        the files already on disk and asks the General Court for nothing.
+        <code>python3 preflight.py</code> runs the checks.</dd>
+    </dl>
 
     <h2>The whole record, as lists</h2>
     <p>Every bill, legislator, committee and town as a plain link: no

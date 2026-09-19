@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.30
+# GRANITE_VERSION: 2026-09-05.31
 """
 Run the whole pipeline in the right order.
 
@@ -529,20 +529,30 @@ def plan(a):
                   "nothing else on the site does because every listing is "
                   "keyed on a committee and the floor has none"),
 
-        Step("bulk downloads",
-             ["build_exports.py", "--site", "site", "--base", a.base],
-             needs=["site/index.json"],
-             produces=["site/data/manifest.json", "site/data.html"],
-             note="the same record as CSV, for anybody who would rather work "
-                  "with it than read it. It runs in the pipeline rather than "
-                  "by hand because an export nobody rebuilds is worse than "
-                  "no export: it looks current and is not"),
-
+        # THE FEEDS ARE WRITTEN BEFORE THE PAGE THAT DOCUMENTS THEM.
+        # This pair used to run the other way round, and the consequence was
+        # not a crash: site/data.html simply contained the word "feed" zero
+        # times, because at the moment it was written there were no feed files
+        # on disk to count. 704 of them, across five families, published and
+        # undocumented. The two steps share nothing -- build_feeds names
+        # data.html, the manifest and exports zero times; build_exports names
+        # feed zero times; neither mentions the sitemap -- so the order is
+        # free, and this is the order that lets the page tell the truth.
         Step("RSS feeds",
              ["build_feeds.py", "--site", "site", "--base", a.base],
              needs=["site/index.json"], produces=["site/feed/all.xml"],
              note="following a bill without an account, an email address or a "
                   "list that could leak"),
+
+        Step("bulk downloads",
+             ["build_exports.py", "--site", "site", "--base", a.base],
+             needs=["site/index.json", "site/feed/all.xml"],
+             produces=["site/data/manifest.json", "site/data.html"],
+             note="the same record as CSV, for anybody who would rather work "
+                  "with it than read it, and the page that describes both the "
+                  "tables and the feeds. It runs in the pipeline rather than "
+                  "by hand because an export nobody rebuilds is worse than "
+                  "no export: it looks current and is not"),
     ]
 
 

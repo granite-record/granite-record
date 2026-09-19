@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.214
+# GRANITE_VERSION: 2026-09-04.215
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3232,10 +3232,15 @@ def _built_site(here, root):
         # is how the link check found this step was missing here at all.
         ("build_calendar.py", ["--site", "site", "--base", base],
          "site/calendar.html"),
-        ("build_exports.py", ["--site", "site", "--base", base],
-         "site/data/manifest.json"),
+        # IN BUILD_ALL'S ORDER, and the order matters here now. data.html
+        # describes the feeds, counted off the files on disk, so a chain that
+        # ran the exports first would build a page with no Feeds section and
+        # test nothing -- which is exactly the shape of the bug this pair was
+        # swapped to fix.
         ("build_feeds.py", ["--site", "site", "--base", base],
          "site/feed/all.xml"),
+        ("build_exports.py", ["--site", "site", "--base", base],
+         "site/data/manifest.json"),
     ]
     ran = 0
     for script, args, produces in steps:
