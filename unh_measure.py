@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.6
+# GRANITE_VERSION: 2026-09-18.7
 """
 Score what can be read out of a scanned journal. Touches no network.
 
@@ -191,8 +191,20 @@ SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "2nd", "3rd"}
 # Narrow on purpose. One digit, and the full stop required, because the same
 # shape without it is ordinary text. The 1993 volume prints "Nays, 3." and
 # "Nays, 8.", which pass even this -- so "nays" and "yeas" join TITLES below.
+#
+# A SURNAME MAY OPEN WITH A PARTICLE. New Hampshire has had a Rep. St. Cyr, a
+# Rep. St. Hilaire, a St. Clair, a St. Jean, a St. John and a De Blois, and
+# without this the pattern reads "St. Cyr, Paul" as a surname "St" and a
+# given name "Cyr" -- which in 1997 alone put 82 votes on a person who does
+# not exist. The particle is optional and the list is closed, so it cannot
+# swallow an ordinary word before a name.
+#
+# It does not cover the doubled surnames in the same list -- Fuller Clark,
+# Larsen Schultz, Perkins Kwoka -- which have no particle to key on and are
+# all modern members, outside the era this reads.
 NAME = re.compile(
-    r"\b([A-Z][A-Za-z'’\-][A-Za-z'’()\[\]\-.]{0,23})\s*[,.]\s+"
+    r"\b((?:(?:St|Ste|Saint|Van|Von|De|Du|Del|La|Le|Di)\.?\s+)?"
+    r"[A-Z][A-Za-z'’\-][A-Za-z'’()\[\]\-.]{0,23})\s*[,.]\s+"
     r"([A-Z][A-Za-z'’()\[\]\-.]{0,20}\.?|[0-9]\.)"
     r"(?:\s*,\s*(Jr|Sr|II|III|IV|2nd|3rd)\.?)?")
 
