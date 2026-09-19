@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.125 */
+/* GRANITE_VERSION: 2026-09-07.126 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2915,6 +2915,49 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
      over a 290px panel -- the same small caps the composition block, the
      calendar's dates and the legislator finder already use. */:where(body.pg) .hside h2{font-size:var(--t-sm);font-weight:600;letter-spacing:.05em;
     text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4)}
+/* THE RAIL'S CARD IS THE SAME CARD, SHORTER. In a 300px column every part of
+   a meeting summary takes its own line -- the time, the committee over two
+   lines, the kind, the bill count, the room -- so one meeting stood 181px and
+   a fortnight of them ran the left rail to 1,750px against a 1,233px middle.
+   Asked on 19 September to consolidate it.
+
+   What goes is the kind chip and the room, and neither is lost: the colour bar
+   down the edge of the card already says which kinds the day holds, opening
+   the card lists every item with its own time, kind and room, and the full
+   calendar is one link below. What stays is what a reader scans a rail for --
+   when, who, and how much. The time and the count share a line because a
+   reader reads them as one phrase.
+
+   THE CALENDAR PAGE IS NOT TOUCHED. It has the width for all of it, and this
+   is scoped to .hside so the same component keeps its full form where there
+   is room.
+
+   AND THESE SIT INSIDE THE min-width:1180px BLOCK ON PURPOSE. That is the
+   only width at which .hside is a 300px rail at all -- below it the home page
+   is one column and the calendar has the whole of it, where the kind and the
+   room fit on a line and are worth having. So the card consolidates exactly
+   when it is squeezed and not otherwise. This landed here by accident on the
+   first pass and is recorded because it is right: moving these rules out of
+   the block would strip a phone of detail it has room for. */
+:where(body.pg) .hside .calmeet > summary{row-gap:var(--sp-1)}
+:where(body.pg) .hside .calmeet > summary .calkind,
+:where(body.pg) .hside .calmeet > summary .calwhere{display:none}
+:where(body.pg) .hside .calmeet > summary .calcmte{flex:1 0 100%}
+:where(body.pg) .hside .calmeet > summary .calcount{margin-left:0}
+/* The link out, under the days. */
+:where(body.pg) .hside .calall{margin:var(--sp-5) 0 0;font-size:var(--t-ui)}
+:where(body.pg) .hside .calall a{color:var(--pine);font-weight:600}
+
+/* LATEST ACTIVITY, NOW IN THE MIDDLE COLUMN under the rebuild line rather
+   than in a band below all three. It is the thing that changes most often on
+   the site and it was the last thing on the page. */
+:where(body.pg) .hrecent{margin-top:var(--sp-7)}
+:where(body.pg) .hrecent table{width:100%;border-collapse:collapse}
+:where(body.pg) .hrecent td{padding:var(--sp-3) 0;border-bottom:1px solid var(--rule);
+vertical-align:top;font-size:var(--t-ui)}
+:where(body.pg) .hrecent td:first-child{white-space:nowrap;color:var(--ink-2);
+padding-right:var(--sp-5);width:1%}
+
 :where(body.pg) .hside > :first-child{margin-top:0}
 :where(body.pg) .hside .cal{margin-top:0}
 /* Stacked, not side by side. .twoup's own floor is minmax(280px,1fr),

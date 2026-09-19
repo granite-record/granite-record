@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.103
+# GRANITE_VERSION: 2026-09-04.104
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -274,6 +274,9 @@ REPO = "https://github.com/granite-record/granite-record"
 # Five is a glance; the twelve it showed before was most of a phone screen for
 # a list nobody reads to the end. The overflow goes to the bill search, which
 # sorts by most recent action and does it better than a table can.
+# Seven days of the rail, which is the Calendar tab's own unit too.
+HOME_DAYS = 7
+
 RECENT_SHOWN = 5
 RECENT_MORE = ('<p class="actmore"><a class="morebtn" href="/bills?sort=recent">'
                'See all recent activity &rarr;</a></p>')
@@ -424,9 +427,34 @@ def calendar_html(H, out):
     for key in sorted(meets, key=starts):
         days.setdefault(key[0], []).append(key)
 
+    # A WEEK IN THE RAIL, NOT A FORTNIGHT. This drew every day it had, and in
+    # session that is fourteen days of committee cards down a 300px column --
+    # long enough that the middle of the home page ends well above the end of
+    # its own left rail. Asked on 19 September for it to be "a bit more
+    # consolidated ... so it isn't as long".
+    #
+    # SEVEN DAYS rather than a count of meetings, because a day is the unit a
+    # reader is looking for: cutting at "the next twelve meetings" would end
+    # the rail halfway through a Thursday. The week is also the Calendar tab's
+    # own unit, so the rail and the page it links to agree about what a week
+    # is.
+    shown = OrderedDict()
+    cut = 0
+    for i, (d, keys) in enumerate(days.items()):
+        if i < HOME_DAYS:
+            shown[d] = keys
+        else:
+            cut += len(keys)
+
     html = ['<section class="cal"><h2>Coming up</h2>']
-    body, missing = cal_days(days, meets, titles, years, code, when, esc)
+    body, missing = cal_days(shown, meets, titles, years, code, when, esc)
     html.append(body)
+    # WHAT WAS CUT, AND WHERE THE REST IS. A rail that quietly stops after a
+    # week looks like a fortnight with nothing in its second half.
+    more = (f"{cut} more sitting{'' if cut == 1 else 's'} in the fortnight "
+            "beyond these. " if cut else "")
+    html.append('<p class="calmore calall">' + esc(more)
+                + '<a href="calendar.html">See the full calendar</a></p>')
     return "".join(html) + cal_notes(H, up, missing, esc)
 
 
@@ -2348,6 +2376,13 @@ today.</p>
     means, and how to testify</span></a>
 </div>
 <div id="fresh" class="fresh"></div>
+<!-- UNDER THE REBUILD LINE, IN THE MIDDLE. This was a full-width band below
+     all three columns, so the thing that changes most often on the site was
+     the last thing on the page and was never beside the search box a reader
+     had just used. Asked for on 19 September. The left rail keeps the week
+     ahead and this keeps the days just gone, which is the same column a
+     reader is already reading down. -->
+<div id="recent" class="hrecent">{static_recent}</div>
 </div>
 <section class="hside hleft" aria-label="Where the General Court is, and what is coming up">
 <div id="state">{static_state}</div>
@@ -2372,7 +2407,6 @@ today.</p>
 <div id="session"></div>
 </section>
 </div>
-<div id="recent">{static_recent}</div>
 <div id="composition"></div>
 <div id="notable" hidden></div>"""
     (out / "index.html").write_text(
