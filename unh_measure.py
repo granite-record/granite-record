@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.5
+# GRANITE_VERSION: 2026-09-18.6
 """
 Score what can be read out of a scanned journal. Touches no network.
 
@@ -180,15 +180,33 @@ SIDE = re.compile(r"^\s*(YEAS|NAYS)\s+(\d+)\s*$", re.M)
 # is not a person because nobody's given name is Jr. The apostrophe stays
 # admissible in the second position so that O'Hearn survives.
 SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "2nd", "3rd"}
+#
+# A GIVEN NAME MAY BE A DIGIT, if it is a single one with a full stop after
+# it. O. Alan Thulander is printed "Thulander, O. Alan" and read "Thulander,
+# 0. Alan" -- a zero -- in 79 of the 82 times his name appears in the 1997
+# volume. A pattern wanting a letter there does not misspell him, it drops
+# him: the whole name fails to match and 39 of his votes simply are not in
+# the data, where no spelling repair can reach them.
+#
+# Narrow on purpose. One digit, and the full stop required, because the same
+# shape without it is ordinary text. The 1993 volume prints "Nays, 3." and
+# "Nays, 8.", which pass even this -- so "nays" and "yeas" join TITLES below.
 NAME = re.compile(
     r"\b([A-Z][A-Za-z'’\-][A-Za-z'’()\[\]\-.]{0,23})\s*[,.]\s+"
-    r"([A-Z][A-Za-z'’()\[\]\-.]{0,20}\.?)"
+    r"([A-Z][A-Za-z'’()\[\]\-.]{0,20}\.?|[0-9]\.)"
     r"(?:\s*,\s*(Jr|Sr|II|III|IV|2nd|3rd)\.?)?")
+
+# The capitals this scanner reads as digits. Applied when a name is
+# normalised, so that "Thulander, 0." and "Thulander, O." are one person.
+DIGIT_AS_LETTER = str.maketrans({"0": "o", "1": "i", "5": "s", "8": "b"})
 
 # Not surnames, whatever follows them. "Rep." and "Reps." open most sentences
 # in a journal; "Dist. No." opens every line of the roll of members.
 TITLES = {"rep", "reps", "sen", "sens", "mr", "mrs", "ms", "dr", "hon",
-          "dist", "no", "nos", "vol", "ch", "sec", "art", "gov", "messrs"}
+          "dist", "no", "nos", "vol", "ch", "sec", "art", "gov", "messrs",
+          # Admitted only once a digit could stand as a given name: the 1993
+          # volume prints "Nays, 3." and "Nays, 8." in its tally lines.
+          "yeas", "nays"}
 
 # The scan drops these into the middle of a vote list. A running head matches
 # NAME's shape ("Journal March" does not, but a stray "House Journal" line
@@ -331,7 +349,8 @@ def norm(surname, given, suffix):
     A normaliser that quietly fixed it would be measuring itself.
     """
     def clean(s):
-        return re.sub(r"[^a-z]", "", (s or "").lower())
+        return re.sub(r"[^a-z]", "",
+                      (s or "").lower().translate(DIGIT_AS_LETTER))
     out = f"{clean(surname)},{clean(given)}"
     if suffix:
         out += f",{clean(suffix)}"

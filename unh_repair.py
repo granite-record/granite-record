@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.4
+# GRANITE_VERSION: 2026-09-19.5
 """
 Let the book correct itself. No network.
 
@@ -84,28 +84,40 @@ frequency says Maclntyre 66 to 3, and the OCR confidence says Maclntyre 68 to
 misreading corrupts every internal signal at once. Only an outside authority
 can see past it.
 
-WHAT IS LEFT AFTER RULE ZERO, AND IT IS NOT SPELLING
+AND THEN THE GIVEN NAME, AGAINST THE SAME AUTHORITY
 
-Measured on 1997 against journals/1997: 97.99%. The residue is three things
-and none of them is a surname this pass could have matched:
+Rule zero on surnames left 1997 at 97.99%, and what remained was not a
+surname at all. Jacobson's is read correctly every time; his given name reads
+Alf 54 times and Alt 27. So the same three tiers run again on the given name,
+against the given names the General Court lists FOR THAT SURNAME -- which is
+a far smaller and safer set than the surnames were. Jacobson has one given
+name in the whole list and Clemons has two, so a wrong guess is close to
+impossible to make.
 
-  * A GIVEN NAME damaged where the surname is not. Jacobson, Alf reads Alf 54
-    times and Alt 27. Rule zero matches surnames only; the authority carries
-    given names too and applying the same three tiers to them is the next
-    thing to do.
-  * A NAME DROPPED ENTIRELY. "Thulander, O. Alan" is read "Thulander, 0.
-    Alan" with a zero, the name pattern requires a letter after the comma,
-    and the whole name goes missing rather than misspelt. Thirty-nine votes,
-    and no spelling repair can reach them because there is nothing to repair.
-  * The join. Where a tally is not unique the comparison cannot pair two roll
-    calls, and some of the shortfall is that rather than the scan.
+Two other things were costing more than the spelling:
+
+  A NAME DROPPED WHOLE. "Thulander, O. Alan" is read with a zero for the O in
+  79 of the 82 times it appears, and a pattern wanting a letter there did not
+  misspell him -- it dropped him. unh_measure.NAME now admits one digit with
+  a full stop after it, and norm() folds 0 to o, 1 to i, 5 to s and 8 to b.
+  The 1993 volume prints "Nays, 3." and "Nays, 8.", which pass even that, so
+  "yeas" and "nays" joined TITLES.
+
+  THE SENATE NEEDED ITS OWN REWRITE. A Senate vote list is "D'Allesandro,
+  Estabrook, Cohen." -- three senators, commas between them -- and the House
+  Surname-comma-Given pattern reads the first two as one person. Running the
+  House repair over Senate text rewrote pairs of senators into each other and
+  cost a third of a point before apply_fixes_senate existed.
+
+    1997 House        97.99% -> 98.26% (the digit) -> 98.54% (given names)
+    2003 Senate v.1   98.61% -> 98.95%
 
 A CAUTION ABOUT WHAT THE NUMBER NOW MEANS
 
 past_members.json is a roster, not the journal text, so correcting with it
 and scoring against journals/1997 is not circular the way using the 1997
 journal itself would be. But both are the General Court's own spelling, so
-97.99% measures agreement with the General Court GIVEN a General Court
+98.54% measures agreement with the General Court GIVEN a General Court
 roster, and is no longer a blind test. The checks that stay blind are
 --split and the vote-list counts, which never consult any of this.
 
@@ -180,7 +192,9 @@ BARE_PAIR = re.compile(r"\b([A-Z][A-Za-z'’\-]{2,24})\s+"
 
 
 def key(s):
-    return re.sub(r"[^a-z]", "", s.lower())
+    # The same folding unh_measure.norm uses, digits included, so that
+    # "Thulander, 0." and "Thulander, O." are one person on both sides.
+    return re.sub(r"[^a-z]", "", s.lower().translate(M.DIGIT_AS_LETTER))
 
 
 def derived_roster(text, min_lists=5):
@@ -318,6 +332,68 @@ def edit_budget(s):
     character, so short names get one and longer ones two.
     """
     return 1 if len(s) <= 6 else 2
+
+
+def authority_givens():
+    """{surname: {given: as the General Court spells it}}.
+
+    The same list read one field deeper. "Rep. Thulander, O Alan(Hills 06)"
+    gives thulander -> {o: "O"}, taking the FIRST token of the given name
+    because that is what a vote list prints and what norm() compares.
+
+    This is where the rest of the shortfall is. After the surnames are put
+    right, 1997 still disagrees on Jacobson, whose given name reads Alf 54
+    times and Alt 27 -- the surname was never wrong. The candidate set here
+    is tiny in a way the surname's is not: Jacobson has one given name in the
+    whole list and Clemons has two, so "Alt" has one plausible reading and
+    a wrong guess is nearly impossible to make.
+    """
+    if not PAST_MEMBERS.exists():
+        return {}
+    try:
+        rows = json.loads(PAST_MEMBERS.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    out = {}
+    for text in (rows.values() if isinstance(rows, dict) else rows):
+        m = AUTHORITY_LINE.match(str(text).strip())
+        if not m:
+            continue
+        sur, given = key(m.group(2)), m.group(3).strip().split()
+        if not sur or not given:
+            continue
+        out.setdefault(sur, {}).setdefault(key(given[0]), given[0])
+    return out
+
+
+def nearest(s, pool):
+    """The one member of pool that s is, or None. The three tiers again.
+
+    Same refusals as assign(): a fold is only used where it is unique, string
+    distance only where nothing else is equally close, and the character
+    budget only where exactly one candidate is inside it.
+    """
+    if not s or not pool:
+        return None
+    names = list(pool)
+    folds = {}
+    for a in names:
+        folds.setdefault(folded(a), []).append(a)
+    hit = folds.get(folded(s))
+    if hit and len(hit) == 1:
+        return hit[0]
+    close = difflib.get_close_matches(s, names, n=3, cutoff=MIN_RATIO)
+    if close:
+        scored = sorted(
+            ((difflib.SequenceMatcher(None, s, a).ratio(), a) for a in close),
+            reverse=True)
+        if len(scored) == 1 or scored[0][0] - scored[1][0] >= AMBIGUOUS:
+            return scored[0][1]
+        return None
+    budget = edit_budget(s)
+    near = [a for a in names
+            if abs(len(a) - len(s)) <= budget and within(s, a, budget)]
+    return near[0] if len(near) == 1 else None
 
 
 def assign(counts, auth):
@@ -541,14 +617,57 @@ def comma_repairs(line, roster, known):
     return "".join(out)
 
 
-def apply_fixes(line, fixes):
-    """Rewrite damaged surnames on this line, keeping the printed casing."""
+SENATE_WORD = re.compile(r"\b([A-Z][A-Za-z'’\-]{2,24})\b")
+
+
+def apply_fixes_senate(line, fixes):
+    """Rewrite damaged surnames in a Senate vote list.
+
+    A separate path because the House pattern is actively wrong here. The
+    Senate writes "D'Allesandro, Estabrook, Cohen." -- three senators with
+    commas between them -- and Surname-comma-Given reads the first two as one
+    person, so running the House repair over Senate text rewrote pairs of
+    senators into each other and cost a third of a point. The Senate has no
+    given names in its vote lists at all, so a bare word is the whole name.
+    """
     def sub(m):
         k = key(m.group(1))
         if k not in fixes:
             return m.group(0)
-        canon = fixes[k][0]
-        return m.group(0).replace(m.group(1), canon.capitalize(), 1)
+        return fixes[k][0].capitalize()
+    return SENATE_WORD.sub(sub, line)
+
+
+def apply_fixes(line, fixes, givens=None):
+    """Rewrite damaged surnames, and then given names, on this line.
+
+    Both are edited by span within the match rather than by replacing text,
+    because a surname and a given name can be the same string -- the 1997
+    House had a Rep. Gordon and several members given-named Gordon -- and a
+    plain replace would rewrite whichever came first.
+    """
+    def sub(m):
+        whole, base = m.group(0), m.start()
+        edits = []
+        sk = key(m.group(1))
+        if sk in fixes:
+            edits.append((m.start(1) - base, m.end(1) - base,
+                          fixes[sk][0].capitalize()))
+        if givens:
+            surname = fixes[sk][0] if sk in fixes else sk
+            pool = givens.get(surname)
+            gk = key(m.group(2))
+            if pool and gk and gk not in pool:
+                t = nearest(gk, pool)
+                if t:
+                    # Keep whatever punctuation the page printed after it, so
+                    # an initial stays an initial: "Alt." becomes "Alf.".
+                    tail = "." if m.group(2).endswith(".") else ""
+                    edits.append((m.start(2) - base, m.end(2) - base,
+                                  pool[t] + tail))
+        for a, b, rep in sorted(edits, reverse=True):
+            whole = whole[:a] + rep + whole[b:]
+        return whole
     return M.NAME.sub(sub, line)
 
 
@@ -562,6 +681,8 @@ def repair(identifier, verbose=False):
     if not counts:
         sys.exit("no vote list in this volume yielded a name; nothing to repair")
     fixes = corrections(counts, roster, confidences(identifier), authority())
+    givens = authority_givens()
+    chamber = M.chamber_of(text)
 
     OUT.mkdir(parents=True, exist_ok=True)
     dest = OUT / f"{identifier}.txt"
@@ -570,11 +691,17 @@ def repair(identifier, verbose=False):
         for line in text.splitlines():
             if M.is_list_line(line) and line.strip():
                 before = line
-                line = comma_repairs(line, roster, counts)
-                if line != before:
-                    n_commas += 1
-                before = line
-                line = apply_fixes(line, fixes)
+                if chamber == "senate":
+                    # No commas to put back and no given names to repair: a
+                    # Senate vote list is bare surnames, and the House rules
+                    # do damage there rather than good.
+                    line = apply_fixes_senate(line, fixes)
+                else:
+                    line = comma_repairs(line, roster, counts)
+                    if line != before:
+                        n_commas += 1
+                    before = line
+                    line = apply_fixes(line, fixes, givens)
                 if line != before:
                     n_names += 1
             n_lines += 1
