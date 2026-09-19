@@ -23,19 +23,21 @@ vote a name was on.
 bounding box per word. Rebuilding the printed reading order from those boxes
 — group into lines by y, sort each line by x, and nothing cleverer — takes the
 yea/nay split from 7% correct to 87%, and name agreement from 85.26% to
-95.74%. A repair pass then takes them to **96% and 96.74%**. Sections 4 and 6.
+95.74%. A repair pass against the General Court's own list of past members
+then takes them to **96% and 97.99%**. Sections 4 and 6.
 
 **And the roster comes out of the same book.** Each volume opens with the CALL
 OF THE ROLL, and reading it yields 400 seats against 400 the journal declares,
 with no district disagreeing. Section 5.
 
-**Three volumes, and both chambers.** 1991 scored 0% on the split until four
+**Four volumes, and both chambers.** 1991 scored 0% on the split until four
 patterns quietly fitted to 1997 were found and generalised; it now scores 98%.
 The Senate does none of what the House does — it writes a sentence rather than
 four columns, and contains the word YEAS zero times — so it needed its own
-reader, and then scored **100%** on the split and **96.86%** on names against
-the General Court's own 2003 journals. Nothing here should be trusted for a
-fourth volume until a fourth volume is tried.
+reader, and then scored **100%** on the split and **98.61%** on names. 1993,
+the volume UNH lacks, is on the Internet Archive from a different depositor
+and needed two more parser changes; it scores 94% first time. Nothing here
+should be trusted for a fifth volume until a fifth volume is tried.
 
 ---
 
@@ -82,7 +84,16 @@ Senate has 1993 in two volumes; the House jumps from the 1992 session to the
 
 It is, however, on the Internet Archive under a different upload
 (`vol1993journalofthehouseofrepresentativesofthestateofnewhampshireattheirsession`),
-so the gap is in this repository rather than in the world.
+deposited in 2019 by `lawlibrary@courts.state.nh.us` rather than scanned for
+UNH in 2009 — so the gap is in that repository rather than in the world. It is
+fetched, reflowed and measured: 1,106 pages, 96 roll calls, 94% on the split.
+
+Two parser changes were needed and both are worth knowing for any other
+volume from that depositor: its files are named after the book rather than
+the item (`Vol 1993 Journal of the House ... _djvu.xml`, with spaces), and its
+word coordinates carry a fifth number and no confidence attribute. Requiring
+exactly four parsed the whole volume to zero words, which the guard in
+`reflow()` caught rather than writing out an empty file.
 
 ---
 
