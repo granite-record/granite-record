@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.2
+# GRANITE_VERSION: 2026-09-19.3
 """
 A page for every day the House sat.
 
@@ -259,6 +259,8 @@ def render(day, narrative, titles, years, members, esc):
     # for the Senate. Where it is absent the actions are listed by bill, which
     # is predictable and is NOT the order they happened in, and the heading
     # says so rather than letting an alphabetical list read as a narrative.
+    # A printed debate is drawn once even where its bill holds the floor twice.
+    drawn = set()
     if day.ordered:
         H.append('<section class="sday"><h2>The day in order</h2>')
     else:
@@ -331,9 +333,14 @@ def render(day, narrative, titles, years, members, esc):
                          + '<span class="snote">the record does not say which '
                            "of the day's motions</span></p>")
 
-        # The debate the House voted to keep, under the bill it belongs to.
+        # The debate the House voted to keep, under the bill it belongs to --
+        # ONCE. A bill can hold the floor twice in a day with other business
+        # between: HB 396 was vetoed at page 12, reconsidered at 38 and voted
+        # again at 42, which is two runs, and the debate printed for it was
+        # drawn under both. There is one debate; it goes under the first run.
         d = debates.get(base_bill(bill))
-        if d and d["speeches"]:
+        if d and d["speeches"] and id(d) not in drawn:
+            drawn.add(id(d))
             H.append(_debate_html(d, body, members, esc))
         H.append("</article>")
     H.append("</section>")
@@ -372,9 +379,21 @@ def _debate_html(d, body, members, esc, head=False):
     enough to know what it is and opens on request.
     """
     sp = d["speeches"]
-    first = sp[0][1]
+    # THE CHAIR IS NOT A SPEAKER IN THE DEBATE. "Speaker Chandler: The question
+    # before the House is the adoption of the majority committee report. The
+    # Chair recognizes the member from Hampton" is the chair running the
+    # debate, not taking part in it, and counting those turns reported a
+    # thirteen-speech debate where five members spoke. The lines are still
+    # shown -- they are what ties one speech to the next -- but the count is
+    # of the people who argued.
+    CHAIR = ("speaker", "deputy speaker", "madam speaker", "mister speaker",
+             "president", "madam president", "mister president")
+    # NOT `members`: that name is the index of people-to-pages this function
+    # is handed, and shadowing it made every speaker link raise.
+    spoke = [x for x in sp if not x[0].lower().startswith(CHAIR)]
+    first = (spoke or sp)[0][1]
     opener = " ".join(re.split(r"(?<=[.!?])\s+", first)[:2])[:420]
-    n = len(sp)
+    n = len(spoke)
     title = ""
     if head and d.get("bill"):
         title = f'<b>{esc(re.sub(r"^([A-Z]+)(\\d)", r"\\1 \\2", d["bill"]))}</b> '

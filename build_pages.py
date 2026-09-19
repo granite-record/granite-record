@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.101
+# GRANITE_VERSION: 2026-09-04.102
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -463,6 +463,20 @@ def _cesc(s):
             .replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;"))
 
 
+# THE PARTY PILL HAS ITS OWN PREFIX NOW: pt-R, not p-R.
+#
+# `.p-R` was three components in this codebase -- the left edge of a member
+# chip, the fill of a seat on the floor chart, and this small tinted pill --
+# and app.css already recorded that as the third time one class name had meant
+# two things here, with the standing instruction that a new component gets its
+# own prefix.
+#
+# It was not academic. style.css concatenates the page region after the shared
+# one, and both `.mchip{background:var(--surface)}` and
+# `:where(body.pg) .p-R{background:var(--rep-soft)}` carried a single class, so
+# the pill's tint won wherever a member chip appeared on a page built here: the
+# roster's chips arrived tinted and unpadded. That was patched by specificity
+# first; this is the real fix.
 def pchip(m, esc=_cesc):
     """One legislator, as the site draws them everywhere else."""
     code = str(m.get("party_code") or m.get("party") or "").upper()[:1] or "X"
@@ -1398,7 +1412,7 @@ function render(){
     parts.push(mem.slice(0,SHOW).map(([,m])=>
       `<a class="lmrow" href="legislator/${esc(m.slug)}.html">`
       +`<b>${esc(m.display)}</b>`
-      +`<span class="chip p-${esc(m.p)}">${esc(m.p)}</span>`
+      +`<span class="chip pt-${esc(m.p)}">${esc(m.p)}</span>`
       +`<span class="lmwhere">${esc(m.where)}</span>`
       +`<span class="lmwhat">${m.chamber==="S"?"Senate":"House"}</span></a>`)
       .join(""));
@@ -1445,7 +1459,7 @@ function roster(){
         +`<span class="caret">&#9656;</span></summary><div class="grid">`
         +ms.map(m=>`<div class="mem">`
           +`<a href="legislator/${esc(m.slug)}.html">${esc(m.display)}</a>`
-          +` <span class="chip p-${esc(m.p)}">${esc(m.p)}</span>`
+          +` <span class="chip pt-${esc(m.p)}">${esc(m.p)}</span>`
           +` <span class="mdist">${esc(m.dlabel)}</span></div>`).join("")
         +`</div></details>`;
     }).join("");
@@ -1609,7 +1623,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     const c=C.council; if(!c)return "";
     const rows=(c.members||[]).map(m=>
       `<tr><td style="width:96px">District ${esc(m.district)}</td>
-       <td>${m.name?`${esc(m.name)} <span class="chip p-${esc(m.party||"V")}">${
+       <td>${m.name?`${esc(m.name)} <span class="chip pt-${esc(m.party||"V")}">${
          esc(m.party||"?")}</span>`
         :`<span style="color:var(--ink-2)">vacant</span>`}</td></tr>`).join("");
     return `<div class="comp">
@@ -1625,7 +1639,7 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     const g=C.governor; if(!g)return "";
     return `<div class="comp"><div class="compline"><b>Governor</b>
       <span class="statemeta">${esc(g.name)}
-      <span class="chip p-${esc(g.party||"V")}">${esc(g.party||"?")}</span></span>
+      <span class="chip pt-${esc(g.party||"V")}">${esc(g.party||"?")}</span></span>
       </div>
       <p class="statemeta" style="margin:4px 0 0">Signs or vetoes every bill that
       passes both chambers. A veto stands unless two thirds of those voting in

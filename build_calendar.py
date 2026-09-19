@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.8
+# GRANITE_VERSION: 2026-09-18.9
 """
 The General Court's week, one page per week.
 
@@ -195,7 +195,15 @@ WEEK_JS = r"""
       (last && last!==time ? ". Items are scheduled from "+time+" to "+last : "")+
       ". The General Court does not publish an end time, so this entry is "+
       "one hour long. Source: graniterecord.org";
-    return {title:cmte+(kinds?" \u2014 "+kinds:""), venue:venue, note:note,
+    // "Legislative Administration (Executive Session)". This goes into
+    // somebody else's calendar, where it sits among entries from their
+    // work and their family with no context at all, so it has to read as
+    // a title: the committee, then what kind of sitting, in brackets and
+    // capitalised. The chips on the page keep sentence case, because
+    // there they sit under a heading that supplies the context.
+    var titled=kinds.replace(/\w\S*/g,function(w){
+      return w.charAt(0).toUpperCase()+w.slice(1);});
+    return {title:cmte+(titled?" ("+titled+")":""), venue:venue, note:note,
             start:stamp(date,time,0), end:stamp(date,time,1)};
   }
   function ics(d){

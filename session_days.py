@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.2
+# GRANITE_VERSION: 2026-09-19.3
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -85,6 +85,10 @@ def _consequence(action, carried):
     a = (action or "").strip().lower()
     if not a or carried is None:
         return None
+    if a.startswith("override the governor"):
+        return ("the veto was overridden and the bill became law without the "
+                "Governor" if carried else
+                "the veto was sustained, so the bill did not become law")
     if a.startswith(KILLS):
         return "the bill was killed" if carried else "the bill stayed alive"
     if a.startswith("reconsider"):
@@ -115,12 +119,61 @@ INLINE_VOTE = re.compile(r"\b(?P<kind>RC|DV|VV)\s*(?P<y>\d+)\s*Y\s*-\s*"
 # it never faced.
 THRESHOLD = re.compile(r"\b(?P<a>\d)\s*/\s*(?P<b>\d)\s*nec", re.I)
 
+# A VETO VOTE IS A FLOOR VOTE, AND IT IS THE BIGGEST ONE OF THE YEAR.
+#
+# narratives.json types these `veto_override` rather than `floor`, so taking
+# only `floor` left every one of them off every sitting page -- 387 of them,
+# 1989 to 2026. 19 August 2026 was veto day: the House took twenty-six
+# override roll calls and the Senate fourteen, and the page for it read "1
+# action on 1 bill".
+#
+# They carry no action, motion, vote_kind, yeas or nays at all. Everything is
+# in the prose, in six spellings across the decades:
+#
+#   Veto Sustained 08/19/2026: RC 204-116 Lacking Necessary Two-Thirds Vote
+#   Veto Overridden 08/19/2026: RC 231-88 by Required Two-Thirds Vote
+#   GOVERNOR'S VETO SUSTAINED RC(215-157); HJ63,P1761-1764
+#   GOVERNOR'S VETO OVERRIDDEN, RC(249-87); HJ97,P2806-2809
+#   Governor's Veto Sustained RC(19-261); HJ77, p2084-2086
+#   Notwithstanding the Governor's Veto, Shall SB 213 Become Law: RC 0Y-24N,
+#     Veto Sustained, lacking the necessary two-thirds
+#
+# THE OUTCOME IS ALWAYS STATED IN WORDS, so it is read from the words and
+# never from the tally. It has to be: an override needs two thirds, so the
+# larger number loses constantly here. HB 396 was 204 to 116 and the veto was
+# SUSTAINED; HB 1072 was 160 to 159 and sustained; HB 1102 was 231 to 88 and
+# overridden. A parser taking the bigger number as the winner would report the
+# opposite of the truth on most of a veto day.
+VETO_TALLY = re.compile(r"\bRC\s*\(?\s*(?P<y>\d+)\s*Y?\s*-\s*"
+                        r"(?P<n>\d+)\s*N?\s*\)?", re.I)
+OVERRIDDEN = re.compile(r"\boverrid", re.I)
+SUSTAINED = re.compile(r"\bsustain", re.I)
+
+
+def _veto(e, item):
+    """Fill an Item from a veto row, which states everything in prose."""
+    raw = (e.get("raw") or "").strip()
+    item.action = "Override the Governor's veto"
+    if OVERRIDDEN.search(raw):
+        item.carried = True
+    elif SUSTAINED.search(raw):
+        item.carried = False
+    m = VETO_TALLY.search(raw)
+    if m:
+        item.kind = item.kind or "RC"
+        item.yeas, item.nays = int(m.group("y")), int(m.group("n"))
+        tot = item.yeas + item.nays
+        # Two thirds of those voting, rounded up: 2/3 of 319 is 212.67 and it
+        # takes 213. Part II, Article 44.
+        item.need = -(-tot * 2 // 3)
+    item.veto = True
+
 
 class Item:
     """One thing the chamber did to one bill, at one point in the day."""
 
     __slots__ = ("bill", "term", "action", "mover", "carried", "kind",
-                 "yeas", "nays", "cite", "page", "raw", "seq", "need")
+                 "yeas", "nays", "cite", "page", "raw", "seq", "need", "veto")
 
     def __init__(self, bill, term, e, seq):
         self.bill = bill
@@ -136,6 +189,10 @@ class Item:
         self.raw = (e.get("raw") or "").strip()
         self.seq = seq
         self.need = None
+        self.veto = False
+        if e.get("type") == "veto_override":
+            _veto(e, self)
+            return
 
         # What the fields did not carry, the prose sometimes does. Read from
         # `raw` rather than `action` because the clerk puts the outcome after
@@ -255,7 +312,8 @@ def load(path=NARRATIVES):
     for term, bills in sorted(data.items()):
         for bill, rec in sorted(bills.items()):
             for e in (rec.get("events") or []):
-                if e.get("type") != "floor" or e.get("cancelled"):
+                if e.get("type") not in ("floor", "veto_override") \
+                        or e.get("cancelled"):
                     continue
                 body = (e.get("body") or "").strip().upper()
                 date = (e.get("date") or "")[:10]

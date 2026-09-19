@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.121 */
+/* GRANITE_VERSION: 2026-09-07.122 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -647,7 +647,19 @@ cursor:pointer;background:var(--film-stub);color:var(--film-stub-ink);font-size:
 .cite > summary{display:inline-block;cursor:pointer;font-size:var(--t-ui);
 color:var(--ink-2);padding:var(--sp-3) 0;list-style:none}
 .cite > summary::-webkit-details-marker{display:none}
-.cite > summary::before{content:"A ";display:inline-block;
+/* A CARET DRAWN, NOT TYPED. This was content:"<U+0083>A " -- a C1
+   control character and a literal letter A, which every page on the site
+   rendered as a little box followed by an A in front of "Cite this
+   page". It is what is left of a glyph that went through a cp1252 round
+   trip; the A is not a fallback, it is debris.
+
+   The rest of the site has never had this problem because .caret is a
+   pair of CSS borders rather than a character: there is nothing in it to
+   mis-encode. This now matches it, down to the rotation on open. */
+.cite > summary::before{content:"";display:inline-block;
+width:0;height:0;margin-right:var(--sp-3);
+border-left:6px solid currentColor;
+border-top:4.5px solid transparent;border-bottom:4.5px solid transparent;
 transition:transform .12s ease}
 .cite[open] > summary::before{transform:rotate(90deg)}
 .cite > summary:hover{color:var(--ink)}
@@ -720,16 +732,9 @@ border:1px solid var(--pine);border-radius:2px;padding:2px 5px;white-space:nowra
 .mchip:hover.p-R{border-left-color:var(--rep)}
 .mchip:hover.p-D{border-left-color:var(--dem)}
 .mchip:hover.p-I,.mchip:hover.p-L{border-left-color:var(--ind)}
-/* AND THE PARTY COLOUR STAYS ON THE EDGE, not behind the text. `.p-R` is two
-   components in this file -- this chip's left edge, and a small tinted pill
-   the page region draws -- which app.css already records as the third time
-   one class name has meant two things here. style.css concatenates the page
-   region AFTER this one and both selectors carry a single class, so the pill's
-   background won and a roster chip arrived tinted, with no padding, because it
-   was never getting these rules at all. Two classes beats one; the real fix is
-   a prefix for the pill, which is a rename across several files. */
-.mchip.p-R,.mchip.p-D,.mchip.p-I,.mchip.p-L{background:var(--surface)}
-.mchip.p-R a,.mchip.p-D a,.mchip.p-I a,.mchip.p-L a{color:var(--ink)}
+/* The party colour stays on the edge, never behind the text. The pill
+   that used to fight this component for the `p-` prefix is `pt-` now,
+   so nothing else claims a chip's background. */
 
 /* SHARED:END ------------------------------------------------------------ */
 
@@ -2650,8 +2655,12 @@ border:1px solid var(--rule-2);border-radius:var(--r-out);background:var(--surfa
 border-radius:var(--r-out);padding:var(--sp-6) var(--sp-6);margin-bottom:var(--sp-5)}
 :where(body.pg) .chip{font-size:var(--t-sm);padding:var(--sp-1) var(--sp-4);border-radius:var(--r-pill);background:var(--wash);color:var(--ink-2);
 display:inline-block;margin:0 var(--sp-2) var(--sp-2) 0}
-:where(body.pg) .p-R{background:var(--rep-soft);color:var(--rep)}:where(body.pg) .p-D{background:var(--dem-soft);color:var(--dem)}
-:where(body.pg) .p-I{background:var(--ind-soft);color:var(--ind)}
+/* The party pill, on its own prefix. See build_pages.pchip for why it
+   could not go on sharing `p-` with the member chip and the floor
+   chart's seats. */
+:where(body.pg) .pt-R{background:var(--rep-soft);color:var(--rep)}
+:where(body.pg) .pt-D{background:var(--dem-soft);color:var(--dem)}
+:where(body.pg) .pt-I{background:var(--ind-soft);color:var(--ind)}
 :where(body.pg) .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:var(--sp-1) var(--sp-7)}
 :where(body.pg) .mem{padding:var(--sp-2) 0;font-size:var(--t-ui)}
 /* The district beside a name in the roster. It was an inline style on all

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.208
+# GRANITE_VERSION: 2026-09-04.209
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10173,6 +10173,43 @@ def _formfeed_heading():
         "a heading at the start of an ordinary line is no longer read as one")
     return "ok", ("a page break starts a heading, a mid-sentence bill number "
                   "does not")
+
+
+@check("files", "no source file carries a mangled control character")
+def _no_c1():
+    """A C1 control character in a source file is always damage.
+
+    app.css carried `content:"\u0083A "` on the citation control, which every
+    page on the site drew as a small empty box followed by a stray letter A in
+    front of "Cite this page". U+0083 is NO BREAK HERE, a C1 control that no
+    editor puts there on purpose; it is what is left of a glyph that went
+    through a cp1252 round trip, and the A beside it is debris from the same
+    accident rather than a fallback.
+
+    It survived because nothing errored. The stylesheet parsed, the page
+    rendered, and the damage was one character wide on a control most readers
+    never open.
+
+    The range is U+0080 to U+009F, which is exactly the block that has no
+    business in source: real text uses the printable characters above it, and
+    the project's own em dashes, arrows and quotation marks all sit well clear.
+    """
+    bad = []
+    for pat in ("*.py", "*.js", "*.css", "*.html", "*.json", "*.md"):
+        for f in sorted(Path(".").glob(pat)):
+            try:
+                text = f.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
+            for i, line in enumerate(text.splitlines(), 1):
+                hit = [c for c in line if 0x80 <= ord(c) <= 0x9F]
+                if hit:
+                    bad.append(f"{f.name}:{i} carries "
+                               + ", ".join(f"U+{ord(c):04X}" for c in hit))
+    assert not bad, ("a control character from a cp1252 round trip is in the "
+                     "source, which renders as a box or a stray letter:\n  "
+                     + "\n  ".join(bad[:10]))
+    return "ok", "no C1 control characters in the source"
 
 
 @check("frontend", "the person chip is drawn the same in both copies")
