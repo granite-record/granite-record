@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.3
+# GRANITE_VERSION: 2026-09-18.4
 """
 Score what can be read out of a scanned journal. Touches no network.
 
@@ -68,10 +68,14 @@ be rebuilt: unh_rollcalls.py --reflow groups words into lines by y and sorts
 each line by x, which is the whole of the fix. Point --ocr at the result and
 this same code scores it:
 
-                                   flat _djvu.txt    reflowed _djvu.xml
-    names carried exactly              85.27%             95.74%
-    + present but damaged              87.73%             98.5%
-    each side within 3 of its heading     11%                87%
+                          flat _djvu.txt   reflowed   repaired
+    names carried exactly         85.26%      95.74%     96.31%
+    each side within 3              7%         87%        96%
+
+(The flat text scored 11% on the split when it was first measured, against an
+extractor that has since been generalised to a second volume. All three
+numbers above come from the code as it stands, which is the only way they can
+be compared.)
 
 Same extractor, same roll calls, one difference. Reading order was worth all
 of that.
@@ -94,10 +98,12 @@ been fitted to one volume without anyone noticing:
     1991's reads "76 HorsK JoruNAi, Fiohruaky 5, 19})1", out of which a name
     can be read. unh_rollcalls.py drops it by geometry now, not by wording.
 
-What is left at 87% on 1997 is a steady undercount of a few names per list,
-and it is dropped commas: page 452 prints "Kibbey David" with no comma at
-all. That is what a roster-backed repair is for -- unh_repair.py -- not
-something to loosen this pattern for.
+What was left at 87% on 1997 was a steady undercount of a few names per list,
+and it was dropped commas: page 452 prints "Kibbey David" with no comma at
+all. unh_repair.py puts those back against the roster -- which is what the
+closed set of four hundred members is for -- and takes the split to 96%.
+Loosening this pattern to do the same job was tried and cost thirty-four
+points; the comment on NAME records it so it is not tried again.
 """
 
 import argparse

@@ -22,7 +22,7 @@ vote a name was on.
 **The geometry beside it can.** Every item also publishes a `_djvu.xml` with a
 bounding box per word. Rebuilding the printed reading order from those boxes
 — group into lines by y, sort each line by x, and nothing cleverer — takes the
-yea/nay split from 11% correct to 87%, and name agreement from 85.27% to
+yea/nay split from 7% correct to 87%, and name agreement from 85.26% to
 95.74%. A repair pass then takes them to **96% and 96.31%**. Sections 4 and 6.
 
 **And the roster comes out of the same book.** Each volume opens with the CALL
@@ -270,8 +270,8 @@ and then again after `unh_repair.py`, for which see section 6:
 
 | 1997 House | flat `_djvu.txt` | reflowed | repaired |
 |---|---|---|---|
-| names carried exactly | 85.27% | 95.74% | **96.31%** |
-| **each side within 3 of its heading** | **11%** | **87%** | **96%** |
+| names carried exactly | 85.26% | 95.74% | **96.31%** |
+| **each side within 3 of its heading** | **7%** | **87%** | **96%** |
 
 ### A second volume, which found four patterns fitted to the first
 
@@ -381,7 +381,7 @@ of them touches a name on the roll.
 Stated as unknown rather than estimated.
 
 - ~~**Whether the geometry solves it.**~~ Tested: it does, and the repair pass
-  on top of it. 11% to 96% on the split, 85.27% to 96.31% on names.
+  on top of it. 7% to 96% on the split, 85.26% to 96.31% on names.
 - ~~**Whether 1989-1996 reads as well as 1997.**~~ 1991 does, once the
   patterns stopped being fitted to one volume: 98% on the split, better than
   1997. Its name accuracy is NOT measured and cannot be -- there is no digital
