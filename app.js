@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.99
+// GRANITE_VERSION: 2026-09-07.100
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -4238,6 +4238,45 @@ document.addEventListener("keydown",e=>{
     const fresh=again&&document.querySelector(again);
     (fresh||next).focus();
   }});
+
+
+// THE SITTING DAY'S VOTE RINGS, DRAWN BY THE FUNCTION THE BILL PAGES USE.
+//
+// build_session_pages.py writes the day's narrative as static HTML and leaves
+// each counted vote as an empty .svote with the tally beside it in words. This
+// fills them, calling simpleDonut -- the same renderer, not a copy of it.
+// Drawing a second ring in Python that merely looked like this one is the
+// mistake this repository keeps a check under, and a session page holds up to
+// twenty votes, which is twenty chances for the two to drift apart.
+//
+// A ROLL CALL IS DRAWN AS A DIVISION IS. simpleDonut is the anonymous ring;
+// the named ballots are on the bill's own page, which the markup already links
+// to, because a day with eleven roll calls would otherwise carry four thousand
+// names. The ring says the same thing either way -- the difference between a
+// roll call and a division is who is named, not how the count should look.
+//
+// Nothing here is required for the page to be true: the count, which side
+// prevailed and what it did to the bill are all in the HTML already.
+(function(){
+  var tag=document.getElementById("sessvotes");
+  if(!tag||typeof simpleDonut!=="function")return;
+  var votes;
+  try{ votes=JSON.parse(tag.textContent||"[]"); }catch(e){ return; }
+  if(!votes.length)return;
+  var slots=document.querySelectorAll(".svote[data-vote]");
+  for(var i=0;i<slots.length;i++){
+    var n=parseInt(slots[i].getAttribute("data-vote"),10);
+    var v=votes[n];
+    if(!v)continue;
+    try{
+      var box=document.createElement("div");
+      // bid and i only build a selection key inside simpleDonut; the day has
+      // no bill of its own at this point, so they are a label, not a lookup.
+      box.innerHTML=simpleDonut(v,"session",n);
+      slots[i].appendChild(box.firstChild||box);
+    }catch(e){ /* the tally in the markup stands on its own */ }
+  }
+})();
 
 
 // THE READER'S OWN DATE IN A CITATION, not the build's. shell.py writes the

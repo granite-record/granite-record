@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.119 */
+/* GRANITE_VERSION: 2026-09-07.120 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2282,6 +2282,88 @@ color:var(--ink-2)}
 .caladd a{color:var(--pine);text-decoration:none;font-weight:600;
 padding:var(--sp-2) 0;min-height:32px;display:inline-flex;align-items:center}
 .caladd a:hover{text-decoration:underline}
+
+/* A SITTING DAY, TOLD IN ORDER. The page is a sequence, so it reads down a
+   single column: the bill, then each motion put to it, then what the vote did.
+   The motion is the heading of its own block and never a caption under a list
+   of names, because "spoke in favor" means the opposite of its plain reading
+   22% of the time and only the motion disambiguates it. */
+.sesspage .sday{margin:var(--sp-8) 0 0}
+.sesspage .sday > h2{font-size:var(--t-h3);margin:0 0 var(--sp-5)}
+
+.sitem{border:1px solid var(--rule);border-radius:6px;background:var(--surface);
+padding:var(--sp-5);margin:0 0 var(--sp-5)}
+.sitem > h3{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--sp-3);
+margin:0 0 var(--sp-4);font-size:var(--t-ui)}
+.sitem .sbill{font-weight:700;color:var(--pine);text-decoration:none;
+white-space:nowrap}
+.sitem .sbill:hover{text-decoration:underline}
+.sitem .sbt{font-family:var(--serif);font-weight:400;font-size:var(--t-body);
+color:var(--ink);flex:1 1 18rem;min-width:0}
+
+/* One motion. The left rule ties its lines together without boxing them,
+   which would read as a card inside a card. */
+.smotion{border-left:3px solid var(--rule-2);padding:0 0 0 var(--sp-4);
+margin:0 0 var(--sp-5)}
+.smotion:last-child{margin-bottom:0}
+.smq{margin:0 0 var(--sp-3);font-size:var(--t-ui)}
+.smq b{font-weight:600}
+.smover{color:var(--ink-2)}
+.smover a{color:var(--pine)}
+
+.sspoke{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--sp-2);
+margin:0 0 var(--sp-3);font-size:var(--t-ui)}
+.sspoke .slab{font-size:var(--t-sm);font-weight:600;letter-spacing:.04em;
+text-transform:uppercase;color:var(--ink-2);flex:0 0 auto;
+margin-right:var(--sp-2)}
+.sspoke a{color:var(--pine);text-decoration:none}
+.sspoke a:hover{text-decoration:underline}
+/* Named, but no side claimed. Quieter than the two that are, so the eye does
+   not read it as a third position. */
+.sother{color:var(--ink-2)}
+.sother .snote{flex:1 0 100%;font-size:var(--t-sm);color:var(--ink-2);
+font-style:italic}
+
+.stally{margin:0 0 var(--sp-2);font-size:var(--t-ui);color:var(--ink-2)}
+.stally b{color:var(--ink);font-variant-numeric:tabular-nums}
+.swho{margin:0 0 var(--sp-2);font-size:var(--t-sm)}
+.swho a{color:var(--pine)}
+.soutcome{margin:0;font-size:var(--t-ui);font-weight:600}
+
+/* The ring is drawn into here by app.js, from the payload at the foot of the
+   page, using the same function the bill pages use. Until it is -- and for a
+   reader with no script at all -- the tally above stands on its own. */
+.svote{margin:0 0 var(--sp-3)}
+.svote .votewrap{margin-top:var(--sp-3)}
+
+/* A debate the House voted to keep. They run long -- 5,507 speeches across 298
+   of them -- so the opening sentences stand and the rest opens on request. */
+.sdebate{margin:var(--sp-4) 0 0;border-top:1px solid var(--rule);
+padding-top:var(--sp-4)}
+.sdebate > summary{display:flex;flex-wrap:wrap;align-items:center;
+gap:var(--sp-3);cursor:pointer;list-style:none;min-height:44px}
+.sdebate > summary::-webkit-details-marker{display:none}
+.sdlab{font-size:var(--t-sm);font-weight:600;letter-spacing:.04em;
+text-transform:uppercase;color:var(--pine)}
+.sdn{font-size:var(--t-sm);color:var(--ink-2)}
+.sdopen{margin:var(--sp-3) 0 0;font-family:var(--serif);color:var(--ink-2)}
+.sdebate[open] .sdopen{display:none}
+.sdbody{margin-top:var(--sp-4)}
+.sdsp{margin:0 0 var(--sp-4);font-family:var(--serif)}
+.sdsp a,.sdsp > span:first-child{font-family:var(--sans);font-weight:600;
+font-size:var(--t-ui);color:var(--pine);text-decoration:none;
+display:block;margin-bottom:var(--sp-2)}
+.sdsp a:hover{text-decoration:underline}
+.sdtx{display:block}
+
+.suc{margin:0;padding-left:var(--sp-5)}
+.suc li{margin:0 0 var(--sp-2)}
+.suc a{color:var(--pine)}
+
+@media (max-width:560px){
+  .sitem{padding:var(--sp-4)}
+  .sspoke .slab{flex:1 0 100%;margin-bottom:var(--sp-1)}
+}
 
 /* ONE SITTING, AND THE WAY BACK TO IT. A calendar entry names a committee
    and a day, so the day needs an address and the reader needs to see they

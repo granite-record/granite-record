@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.28
+# GRANITE_VERSION: 2026-09-05.29
 """
 Run the whole pipeline in the right order.
 
@@ -493,6 +493,19 @@ def plan(a):
                   "links: the bill list and the legislator search are drawn by "
                   "script, so without these a page was reachable from the sitemap "
                   "and almost nothing else"),
+
+        # AFTER the legislator pages, because a speaker's name becomes a link
+        # only if site/legislators.json and site/former.json are on disk to
+        # resolve it against, and BEFORE the calendar, whose floor cards link
+        # to these pages.
+        Step("a page for every day the House sat",
+             ["build_session_pages.py", "--site", "site", "--base", a.base],
+             needs=["narratives.json", "site/legislators.json"],
+             produces=["site/session"],
+             note="the day in the order the journal prints it: every bill, "
+                  "the motions put to it, who spoke on which side, how it was "
+                  "voted and what that did to the bill. House only -- the "
+                  "Senate journal records no speakers"),
 
         # AFTER the committees, whose codes turn a committee name on a card
         # into a link to its page, and after the sitemap exists so the weeks

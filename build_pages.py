@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.98
+# GRANITE_VERSION: 2026-09-04.99
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -559,8 +559,24 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3):
             # now -- committee/H05#day-2024-04-30 -- so the way out of a
             # calendar entry lands on the sitting it names rather than at the
             # top of a page holding eighty-six of them.
+            # THE FLOOR HAS NO COMMITTEE PAGE TO GO TO. Floor rows carry no
+            # committee -- which is why sitting days were nowhere on this site
+            # until the calendar gave them one -- so "House floor" and "Senate
+            # floor" lead to the day's own page instead, where the whole
+            # sitting is set out in the order the journal records it.
+            # HOUSE ONLY, BECAUSE ONLY THE HOUSE HAS THESE PAGES. The Senate
+            # journal records no speakers -- "spoke in favor" appears four
+            # times in 491 files and every one is ordinary English inside a
+            # speech -- so Senate sitting days are a separate job. Linking
+            # them here before they exist would put a 404 on the calendar.
+            floor = {"house floor": "H"}.get(cmte.strip().lower())
             cc = code.get(cmte.strip().lower())
-            if cc:
+            if floor:
+                html.append('<p class="calmore">'
+                            f'<a href="session/{floor}/{esc(_d)}.html">'
+                            f'What the {esc(cmte[:-6].strip())} did that day'
+                            "</a></p>")
+            elif cc:
                 html.append('<p class="calmore">'
                             f'<a href="committee/{esc(cc)}.html#day-{esc(_d)}">'
                             f'This sitting on the {esc(cmte)} page</a></p>')

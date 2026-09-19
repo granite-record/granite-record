@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.206
+# GRANITE_VERSION: 2026-09-04.207
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3117,6 +3117,7 @@ def _proceedings_term_shrink():
 
 
 CHAIN_NEEDS = ["build_site_v2.py", "build_pages.py", "build_bill_pages.py",
+               "build_session_pages.py", "session_days.py", "journal_days.py",
                "build_legislator_pages.py", "build_committees.py",
                "build_civics.py", "build_town_pages.py", "build_indexes.py",
                "build_exports.py", "build_feeds.py", "check_site.py",
@@ -3179,6 +3180,10 @@ def _built_site(here, root):
         ("build_town_pages.py", ["--site", "site", "--base", base], "site/town"),
         ("build_indexes.py", ["--site", "site", "--base", base],
          "site/directory.html"),
+        # Before the calendar, whose floor cards link to these, and after the
+        # legislator pages it resolves speaker names against.
+        ("build_session_pages.py", ["--site", "site", "--base", base],
+         "site/session"),
         # After the committees, whose codes it needs to link a card, and in
         # build_all's own order. Its output is what the Calendar tab points
         # at, so a fixture without it builds a nav link to nothing -- which
