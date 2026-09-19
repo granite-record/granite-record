@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.115 */
+/* GRANITE_VERSION: 2026-09-07.116 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2804,6 +2804,23 @@ border-bottom-color:var(--pine)}
 :where(body.pg) .morebtn{display:inline-block;font-size:var(--t-ui);
 font-weight:600;color:var(--pine);text-decoration:none}
 :where(body.pg) .morebtn:hover{text-decoration:underline}
+
+/* ONE SITTING, AND THE WAY BACK TO IT. A calendar entry names a committee
+   and a day, so the day needs an address and the reader needs to see they
+   landed on the right one -- a committee page can hold sixty of these and
+   they look alike. The mark is the accent down the edge rather than a fill,
+   because the day is being pointed at rather than changed. */
+.cday.at{box-shadow:inset 3px 0 0 var(--pine);
+background:var(--pine-soft);border-radius:0 var(--r-in) var(--r-in) 0}
+.cday.at > h3{padding-left:var(--sp-5)}
+.cday.at > .cnarr,.cday.at > .note,.cday.at > .tl{padding-left:var(--sp-5)}
+/* The date is its own link, so a reader can take the address of a sitting
+   away with them. Quiet until wanted: it is a handle, not a destination. */
+.cday h3 .daylink{color:inherit;text-decoration:none}
+.cday h3 .daylink:hover{text-decoration:underline;
+text-decoration-color:var(--rule-2);text-underline-offset:3px}
+@media (prefers-reduced-motion:no-preference){.cday{scroll-margin-top:var(--sp-7)}}
+.cday{scroll-margin-top:var(--sp-7)}
 
 /* WHERE THEY SIT. The House floor as 400 circles, and the roster under it as
    a list that reorders. Asked for on 18 September, with the reason people

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.97
+// GRANITE_VERSION: 2026-09-07.98
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3280,8 +3280,14 @@ function sessionHtml(s,si){
          a committee can sit in divisions that stream separately. Each bill
          below links the recordings it could be.</p>`
       : `<p class="note">No recording of this day is on file.</p>`);
-  return `<section class="cday">
-    <h3>${esc(fdate(s.date))}</h3>
+  // A DAY IS SOMETHING YOU CAN LINK TO. It had no id at all, so a calendar
+  // entry could name the committee and not the sitting, and the only per-day
+  // string in the DOM was the player id -- which is absent on days with no
+  // recording and carries the day's index inside the TERM-FILTERED list, so
+  // it changes when the term picker moves. The date does neither.
+  return `<section class="cday" id="${esc(dayId(s.date))}">
+    <h3><a class="daylink" href="#${esc(dayId(s.date))}"
+      title="A link to this sitting">${esc(fdate(s.date))}</a></h3>
     <p class="cnarr">${esc(s.narrative||"")}</p>
     ${player}
     <ul class="tl">${items.map(i=>{
@@ -3501,6 +3507,7 @@ function renderPage(){
   el.innerHTML = PAGE.kind==="member" ? renderMember(PAGE.data)
                                       : renderCommittee(PAGE.data);
   syncCards([...openCards]);
+  showDay();
   showSelectedTab(el);
 }
 
@@ -3609,6 +3616,49 @@ function recordTerms(kind,d){
   }
   return [...t].sort().reverse();
 }
+
+// The address of one sitting on a committee's page. Built from the date
+// alone, because that is the only thing about a sitting that a calendar
+// entry elsewhere on the site already knows.
+function dayId(date){ return "day-" + String(date || ""); }
+
+/* LANDING ON A DAY. A committee page renders more than once -- the record
+   arrives, then the term index, then home.json -- and each render replaces
+   #results wholesale, so anything scrolled to is thrown away and rebuilt.
+   This runs after every render: it re-marks the day named in the address,
+   and scrolls to it ONCE per address, so a later render does not yank a
+   reader back to where they arrived after they have started reading.
+
+   It is needed at all because openPage returns before the hash reader that
+   serves bills, and nothing else on a committee page has ever read the
+   address. */
+let dayLanded = "", dayTried = "";
+function showDay(){
+  const want = decodeURIComponent(location.hash.slice(1) || "");
+  if(!/^day-\d{4}-\d{2}-\d{2}$/.test(want)){ dayLanded=""; dayTried=""; return; }
+  document.querySelectorAll(".cday.at").forEach(e=>e.classList.remove("at"));
+  let el = document.getElementById(want);
+  // THE SITTINGS ARE ON THE OTHER TAB. A committee page opens on Bills, and
+  // the days live under Sessions -- so a calendar entry linking to a sitting
+  // would have landed on a tab that does not contain it and found nothing at
+  // all. Being asked for a day IS asking for that tab. Guarded so it is tried
+  // once: a date the page genuinely does not hold must not bounce the reader
+  // between tabs.
+  if(!el && PAGE && PAGE.kind === "committee"
+     && PAGE_TAB !== COMMITTEE_TABS.sessions && dayTried !== want){
+    dayTried = want;
+    PAGE_TAB = COMMITTEE_TABS.sessions;
+    renderPage();                      // which calls this again, tab in hand
+    return;
+  }
+  if(!el) return;                      // no sitting of that date on this page
+  el.classList.add("at");
+  if(dayLanded === want) return;
+  dayLanded = want;
+  el.scrollIntoView({block:"start"});
+}
+
+window.addEventListener("hashchange", function(){ if(PAGE) showDay(); });
 
 function openPage(kind,ref){
   PAGE={kind,data:null,terms:[],term:"",status:"",vfilter:"",
