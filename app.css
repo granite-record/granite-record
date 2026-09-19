@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.116 */
+/* GRANITE_VERSION: 2026-09-07.117 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -468,6 +468,33 @@ border-radius:var(--r-pill);white-space:nowrap;flex:0 0 auto;
 background:var(--wash);color:var(--ink-2)}
 .calkind.k-hearing{background:var(--st-active-bg);color:var(--st-active)}
 .calkind.k-exec{background:var(--pine-soft);color:var(--pine)}
+/* THE DAY'S KINDS, DOWN THE EDGE. One entry is one committee on one day, so
+   a day holding a hearing and then an executive session is one card -- and
+   the bar says at a glance that it is doing more than one thing, divided into
+   a segment per kind. It is an addition to the words above, never a
+   replacement: the chips still name every kind, for the reason the note on
+   .calkind gives.
+
+   Segments rather than a gradient, so the colours live in the stylesheet and
+   both themes keep working. */
+.calmeet{position:relative}
+.calmix{position:absolute;left:0;top:0;bottom:0;width:4px;
+display:flex;flex-direction:column;overflow:hidden;
+border-radius:var(--r-out) 0 0 var(--r-out)}
+.calmix i{flex:1 1 0;display:block;background:var(--edge)}
+.calmix .k-hearing{background:var(--st-active)}
+.calmix .k-exec{background:var(--pine)}
+.calmix .k-other{background:var(--st-study)}
+.calmeet > summary{padding-left:calc(var(--sp-6) + 5px)}
+
+/* One line of the day's schedule, above the bills it took. Only drawn when
+   the day holds more than one, because a single-slot meeting has already said
+   its time and kind in the summary. */
+.calslot{display:flex;flex-wrap:wrap;align-items:baseline;
+gap:var(--sp-2) var(--sp-4);margin:var(--sp-5) 0 var(--sp-3);
+padding-top:var(--sp-4);border-top:1px solid var(--rule)}
+.calslot:first-child{margin-top:var(--sp-4);padding-top:0;border-top:0}
+
 .calcount{font-size:var(--t-ui);color:var(--ink-2);font-variant-numeric:tabular-nums;
 flex:0 0 auto}
 .calwhere{font-size:var(--t-ui);color:var(--ink-2);min-width:0}
@@ -2190,6 +2217,24 @@ a.ccard:hover{border-color:var(--rule-2);background:var(--surface)}
    the bill page uses, for the same reason. */
 .cday .approx{display:block;font-style:normal;font-size:var(--t-sm);color:var(--ink-2)}
 
+/* ONE SITTING, AND THE WAY BACK TO IT. A calendar entry names a committee
+   and a day, so the day needs an address and the reader needs to see they
+   landed on the right one -- a committee page can hold sixty of these and
+   they look alike. The mark is the accent down the edge rather than a fill,
+   because the day is being pointed at rather than changed. */
+.cday.at{box-shadow:inset 3px 0 0 var(--pine);
+background:var(--pine-soft);border-radius:0 var(--r-in) var(--r-in) 0}
+.cday.at > h3{padding-left:var(--sp-5)}
+.cday.at > .cnarr,.cday.at > .note,.cday.at > .tl{padding-left:var(--sp-5)}
+/* The date is its own link, so a reader can take the address of a sitting
+   away with them. Quiet until wanted: it is a handle, not a destination. */
+.cday h3 .daylink{color:inherit;text-decoration:none}
+.cday h3 .daylink:hover{text-decoration:underline;
+text-decoration-color:var(--rule-2);text-underline-offset:3px}
+@media (prefers-reduced-motion:no-preference){.cday{scroll-margin-top:var(--sp-7)}}
+.cday{scroll-margin-top:var(--sp-7)}
+
+
 /* ---------------------------------------------------------- versions ---
    What each amendment changed. Insertions and deletions are marked by shape
    as well as by colour -- an underline and a strikethrough -- because a
@@ -2804,23 +2849,6 @@ border-bottom-color:var(--pine)}
 :where(body.pg) .morebtn{display:inline-block;font-size:var(--t-ui);
 font-weight:600;color:var(--pine);text-decoration:none}
 :where(body.pg) .morebtn:hover{text-decoration:underline}
-
-/* ONE SITTING, AND THE WAY BACK TO IT. A calendar entry names a committee
-   and a day, so the day needs an address and the reader needs to see they
-   landed on the right one -- a committee page can hold sixty of these and
-   they look alike. The mark is the accent down the edge rather than a fill,
-   because the day is being pointed at rather than changed. */
-.cday.at{box-shadow:inset 3px 0 0 var(--pine);
-background:var(--pine-soft);border-radius:0 var(--r-in) var(--r-in) 0}
-.cday.at > h3{padding-left:var(--sp-5)}
-.cday.at > .cnarr,.cday.at > .note,.cday.at > .tl{padding-left:var(--sp-5)}
-/* The date is its own link, so a reader can take the address of a sitting
-   away with them. Quiet until wanted: it is a handle, not a destination. */
-.cday h3 .daylink{color:inherit;text-decoration:none}
-.cday h3 .daylink:hover{text-decoration:underline;
-text-decoration-color:var(--rule-2);text-underline-offset:3px}
-@media (prefers-reduced-motion:no-preference){.cday{scroll-margin-top:var(--sp-7)}}
-.cday{scroll-margin-top:var(--sp-7)}
 
 /* WHERE THEY SIT. The House floor as 400 circles, and the roster under it as
    a list that reorders. Asked for on 18 September, with the reason people

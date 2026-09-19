@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.94
+# GRANITE_VERSION: 2026-09-04.95
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -22,7 +22,7 @@ import seating
 import json
 import re
 import shutil
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from pathlib import Path
 
 # The palette is app.css's, read at build time rather than copied. The copy
@@ -308,11 +308,29 @@ def meeting_key(u):
     most of them. The card states the span instead, 09:00-13:50, which is
     what the General Court's own schedule prints.
 
-    The venue stays: two rooms is two meetings, and it only separates two
-    groups in that whole week, both of them real.
+    NOR THE KIND. A committee that holds a public hearing in the morning and
+    an executive session after it has had one day, not two, and a reader
+    scanning a week wants to see the committee once: "they should only take
+    up one entry and just list all of the scheduled items in order." Keyed on
+    the kind it appeared twice, which across the record since 2025 is 1,452
+    entries where the room holds 1,007 -- 34% of committee-days do more than
+    one thing.
+
+    The kinds are not lost, they are shown differently: the card carries a
+    divided colour bar, one segment per kind, and its body lists the day's
+    items in order with the time each was set for.
+
+    NOR THE ROOM. Two rooms looked like two meetings until a real day said
+    otherwise: Ways and Means on 30 September is a subcommittee at 09:30 in
+    GP 228, then the full committee at 10:00 and 10:30 in GP 234. That is one
+    committee having one working day, and a reader scanning the week wants it
+    once. The room is a property of each item, not of the entry, and is shown
+    on the line it belongs to -- with the entry naming it once when every item
+    shares it.
+
+    So the key is the day and the committee, and nothing else.
     """
-    return (u.get("date") or "", u.get("committee") or "",
-            u.get("what") or "", u.get("venue") or "")
+    return (u.get("date") or "", u.get("committee") or "")
 
 
 def meeting_line(n, floor=False):
@@ -434,8 +452,26 @@ def cal_days(days, meets, titles, years, code, when, esc):
                     f'<span class="cdrel">{esc(rel)}</span>'
                     + "</h3>")
         for key in keys:
-            _d, cmte, what, venue = key
+            _d, cmte = key
             rows = meets[key]
+            # THE DAY'S ITEMS, IN ORDER. One entry can hold a hearing, a work
+            # session and an executive session, so the body is a little
+            # schedule rather than a flat list of bills: each slot keeps the
+            # time it was set for and says what kind of sitting it is.
+            slotted = OrderedDict()
+            for r in sorted(rows, key=lambda x: ((x.get("time") or "~"),
+                                                 (x.get("what") or ""),
+                                                 (x.get("venue") or ""))):
+                slotted.setdefault(((r.get("time") or ""),
+                                    (r.get("what") or ""),
+                                    (r.get("venue") or "")), []).append(r)
+            kinds, rooms = [], []
+            for _tm, wk, vn in slotted:
+                if wk not in kinds:
+                    kinds.append(wk)
+                if vn and vn not in rooms:
+                    rooms.append(vn)
+            venue = rooms[0] if len(rooms) == 1 else ""
             # THE SPAN, NOT A SLOT. Each row is one bill with its own place in
             # the meeting, so the meeting runs from the first to the last --
             # which is how the General Court prints it, 10:00am - 3:30pm. A
@@ -443,36 +479,68 @@ def cal_days(days, meets, titles, years, code, when, esc):
             slots = sorted(x for x in (r.get("time") or "" for r in rows) if x)
             time = (slots[0] if len(set(slots)) == 1 else
                     f"{slots[0]}–{slots[-1]}") if slots else ""
-            word, kcls = MEET_KIND.get(what.strip().lower(),
-                                       (what.capitalize() if what else "Meeting", ""))
             n = len(rows)
             html.append('<details class="calmeet"><summary>')
+            # THE MIXED COLOUR. One segment per kind the day holds, stacked
+            # down the edge of the card, so a committee doing two things reads
+            # at a glance as one committee doing two things rather than as two
+            # committees. Segments rather than a gradient, so the colours stay
+            # in the stylesheet and both themes keep working.
+            # DEDUPED ON THE COLOUR, not on the kind's name. A full committee
+            # work session and a subcommittee work session are two kinds and
+            # one colour, and drawn per kind the bar showed two identical
+            # segments, which reads as two things rather than one.
+            bars = []
+            for k in kinds:
+                cls = MEET_KIND.get(k.strip().lower(), ("", ""))[1] or "k-other"
+                if cls not in bars:
+                    bars.append(cls)
+            html.append('<span class="calmix" aria-hidden="true">'
+                        + "".join(f'<i class="{c}"></i>' for c in bars) + "</span>")
             if time:
                 html.append(f'<span class="caltime">{esc(time)}</span>')
             html.append(f'<span class="calcmte">{esc(cmte)}</span>')
-            html.append(f'<span class="calkind {kcls}">{esc(word)}</span>')
+            for k in kinds:
+                word, kcls = MEET_KIND.get(k.strip().lower(),
+                                           (k.capitalize() if k else "Meeting", ""))
+                html.append(f'<span class="calkind {kcls}">{esc(word)}</span>')
             html.append(f'<span class="calcount">{n} bill{"" if n == 1 else "s"}</span>')
             if venue:
                 html.append(f'<span class="calwhere">{esc(venue)}</span>')
             html.append('<span class="caret"></span></summary>'
-                        '<div class="calbody"><ul class="calbills">')
-            for r in rows:
-                bid = (r.get("bill") or "").strip()
-                yr, ti = years.get(bid), titles.get(bid)
-                if not ti:
-                    missing += 1
-                href = (f'bill/{yr}/{bid.lower()}.html' if yr
-                        else f'/bills#{esc(bid)}')
-                num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bid)
-                html.append(f'<li><a class="cbn" href="{esc(href)}">{esc(num)}</a>'
-                            + (f'<span class="cbt">{esc(ti)}</span>' if ti else "")
-                            + "</li>")
-            html.append("</ul>")
+                        '<div class="calbody">')
+            one = len(slotted) == 1
+            for (tm, wk, vn), items in slotted.items():
+                word, kcls = MEET_KIND.get(wk.strip().lower(),
+                                           (wk.capitalize() if wk else "Meeting", ""))
+                if not one:
+                    html.append('<p class="calslot">'
+                                + (f'<span class="caltime">{esc(tm)}</span>' if tm else "")
+                                + f'<span class="calkind {kcls}">{esc(word)}</span>'
+                                + (f'<span class="calwhere">{esc(vn)}</span>'
+                                   if vn and not venue else "") + "</p>")
+                html.append('<ul class="calbills">')
+                for r in items:
+                    bid = (r.get("bill") or "").strip()
+                    yr, ti = years.get(bid), titles.get(bid)
+                    if not ti:
+                        missing += 1
+                    href = (f'bill/{yr}/{bid.lower()}.html' if yr
+                            else f'/bills#{esc(bid)}')
+                    num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bid)
+                    html.append(f'<li><a class="cbn" href="{esc(href)}">{esc(num)}</a>'
+                                + (f'<span class="cbt">{esc(ti)}</span>' if ti else "")
+                                + "</li>")
+                html.append("</ul>")
+            # INTO THE SITTING, NOT JUST THE COMMITTEE. A day has an address
+            # now -- committee/H05#day-2024-04-30 -- so the way out of a
+            # calendar entry lands on the sitting it names rather than at the
+            # top of a page holding eighty-six of them.
             cc = code.get(cmte.strip().lower())
             if cc:
                 html.append('<p class="calmore">'
-                            f'<a href="committee/{esc(cc)}.html">'
-                            f'The {esc(cmte)} committee</a></p>')
+                            f'<a href="committee/{esc(cc)}.html#day-{esc(_d)}">'
+                            f'This sitting on the {esc(cmte)} page</a></p>')
             html.append("</div></details>")
         html.append("</div>")
     return "".join(html), missing

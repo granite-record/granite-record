@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.98
+// GRANITE_VERSION: 2026-09-07.99
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3388,7 +3388,13 @@ function calendarBlock(rows,heading){
     // key holding the time made one committee morning into one card per
     // bill: the busiest week of 2026 came out as 356 meetings where it
     // holds 68. The card states the span instead.
-    const k=[u.date||"",u.committee||"",u.what||"",u.venue||""].join("\u0000");
+    // ONE ENTRY PER COMMITTEE PER DAY -- the same rule as
+    // build_pages.meeting_key, which this has to agree with. A
+    // committee that holds a hearing and then an executive session
+    // has had one day, not two, and the room belongs to the item
+    // rather than to the entry: Ways and Means on 30 September is a
+    // subcommittee in GP 228 and the full committee in GP 234.
+    const k=[u.date||"",u.committee||""].join("\u0000");
     if(!meets.has(k))meets.set(k,[]);
     meets.get(k).push(u);
   });
@@ -3419,38 +3425,70 @@ function calendarBlock(rows,heading){
     out.push(`<div class="calday"><h3 class="caldate"><span>${esc(label)}</span>`
       +(rel?`<span class="cdrel">${esc(rel)}</span>`:"")+`</h3>`);
     ks.forEach(k=>{
-      const [,cmte,what,venue]=k.split("\u0000");
+      const [,cmte]=k.split("\u0000");
       const bills=meets.get(k);
       // First bill to last, which is how the General Court prints a meeting.
       const slots=bills.map(b=>b.time||"").filter(Boolean).sort();
       const time=!slots.length?""
         :(slots[0]===slots[slots.length-1]?slots[0]
           :slots[0]+"\u2013"+slots[slots.length-1]);
-      const [word,kcls]=MEET_KIND[String(what||"").trim().toLowerCase()]
-        ||[what?what.charAt(0).toUpperCase()+what.slice(1):"Meeting",""];
+      // The day's items in order, each keeping the time, kind and room
+      // it was set for.
+      const byslot=new Map();
+      bills.slice().sort((a,b)=>((a.time||"~")+(a.what||"")+(a.venue||""))
+        .localeCompare((b.time||"~")+(b.what||"")+(b.venue||"")))
+        .forEach(b=>{const sk=[b.time||"",b.what||"",b.venue||""].join("\u0000");
+          if(!byslot.has(sk))byslot.set(sk,[]);byslot.get(sk).push(b);});
+      const kinds=[],rooms=[];
+      byslot.forEach((_v,sk)=>{const q=sk.split("\u0000");
+        if(kinds.indexOf(q[1])<0)kinds.push(q[1]);
+        if(q[2]&&rooms.indexOf(q[2])<0)rooms.push(q[2]);});
+      const venue=rooms.length===1?rooms[0]:"";
+      const bars=[];
+      kinds.forEach(k2=>{const c=(MEET_KIND[String(k2||"").trim().toLowerCase()]||["",""])[1]||"k-other";
+        if(bars.indexOf(c)<0)bars.push(c);});
+      const kindWord=k2=>MEET_KIND[String(k2||"").trim().toLowerCase()]
+        ||[k2?k2.charAt(0).toUpperCase()+k2.slice(1):"Meeting",""];
       out.push(`<details class="calmeet"><summary>`
+        +`<span class="calmix" aria-hidden="true">`
+        +bars.map(c=>`<i class="${c}"></i>`).join("")+`</span>`
         +(time?`<span class="caltime">${esc(time)}</span>`:"")
         +`<span class="calcmte">${esc(cmte)}</span>`
-        +`<span class="calkind ${kcls}">${esc(word)}</span>`
+        +kinds.map(k2=>{const [w,c]=kindWord(k2);
+          return `<span class="calkind ${c}">${esc(w)}</span>`;}).join("")
         +`<span class="calcount">${bills.length} bill${bills.length===1?"":"s"}</span>`
         +(venue?`<span class="calwhere">${esc(venue)}</span>`:"")
         +`<span class="caret"></span></summary>`
-        +`<div class="calbody"><ul class="calbills">`);
-      bills.forEach(b=>{
-        const id=String(b.bill||"");
-        const num=id.replace(/^([A-Za-z]+)(\d)/,"$1 $2");
-        // billHref resolves the year the same way every other link on this
-        // page does, so a calendar row and a card row cannot disagree.
-        // The title from the row if the builder put one there, otherwise out
-        // of the term index this page has already loaded. `upcoming` carries
-        // no title, so without this the committee page would print a column
-        // of bare bill numbers while the home page prints the same four with
-        // their titles -- one component, two answers.
-        const ti=b.title||billTitle(id);
-        out.push(`<li><a class="cbn" href="${esc(billHref(id))}">${esc(num)}</a>`
-          +(ti?`<span class="cbt">${esc(ti)}</span>`:"")+`</li>`);
+        +`<div class="calbody">`);
+      const oneSlot=byslot.size===1;
+      byslot.forEach((items,sk)=>{
+        const q=sk.split("\u0000");
+        if(!oneSlot){
+          const [w,c]=kindWord(q[1]);
+          out.push(`<p class="calslot">`
+            +(q[0]?`<span class="caltime">${esc(q[0])}</span>`:"")
+            +`<span class="calkind ${c}">${esc(w)}</span>`
+            +(q[2]&&!venue?`<span class="calwhere">${esc(q[2])}</span>`:"")
+            +`</p>`);
+        }
+        out.push(`<ul class="calbills">`);
+        items.forEach(b=>{
+          const id=String(b.bill||"");
+          const num=id.replace(/^([A-Za-z]+)(\d)/,"$1 $2");
+          // billHref resolves the year the same way every other link on this
+          // page does, so a calendar row and a card row cannot disagree.
+          // The title from the row if the builder put one there, otherwise out
+          // of the term index this page has already loaded. `upcoming` carries
+          // no title, so without this the committee page would print a column
+          // of bare bill numbers while the home page prints the same four with
+          // their titles -- one component, two answers.
+          const ti=b.title||billTitle(id);
+          out.push(`<li><a class="cbn" href="${esc(billHref(id))}">${esc(num)}</a>`
+            +(ti?`<span class="cbt">${esc(ti)}</span>`:"")+`</li>`);
+        });
+        out.push(`</ul>`);
       });
-      out.push(`</ul></div></details>`);
+      out.push(`</div></details>`);
     });
     out.push(`</div>`);
   });
