@@ -431,33 +431,16 @@ that has already produced derivative files may simply send them.
 
 ## How everything here was retrieved
 
-**26 requests in total**, every one cached and logged. Read the log rather
-than this paragraph:
+This paragraph used to state a total. It was wrong three times -- by 9, then
+by 2, then by 5 -- because it is written by hand and the fetching went on
+after it. So it no longer states one. The log does, and the log has been
+right every time:
 
     python3 unh_survey.py --log
 
-Ten to scholars.unh.edu: robots.txt, the site index, the series sitemap, the
-listing page and its second page, the item page for volume 78 (a 301, then the
-canonical address), and the two `HEAD`s that met the 403. The series listing
-was asked for twice, because the first version of `unh_survey.py` classified
-it as a block page on a word in its markup and exited before caching the body
-— the bug is fixed and the fetcher now caches before it judges, so a page paid
-for is never thrown away again.
-
-Six to archive.org: robots.txt, two searches, one item's metadata, and the
-two download addresses, which both answered 302.
-
-Four to the two datanodes those 302s named, `dn790009.ca.archive.org` and
-`dn760109.eu.archive.org` -- a robots.txt each, both 404 and therefore read
-as allowing everything, then the 4.7 MB flattened text layer and the 51 MB
-DjVu XML. Each redirect was followed by making a second, deliberate, logged,
-paced request rather than by letting the opener follow it silently.
-
-Since then, three more metadata lookups and the 1991 volume's 51 MB XML, with
-the 302 and the datanode robots.txt each of those costs.
-
-**10 to scholars.unh.edu, 10 to archive.org, 6 to its datanodes.** Take it
-from the log, not from here -- this paragraph has been wrong twice, by 9 and
-then by 2, and the log has been right every time.
+Everything asked of scholars.unh.edu was asked on 18 September, before the
+403; nothing has been asked of it since. Everything after that is the
+Internet Archive and the datanodes it redirects to -- searches, item
+metadata, and one _djvu.xml per volume examined.
 
 Nothing was fetched in bulk. Nothing will be without a person saying so.
