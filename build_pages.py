@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.91
+# GRANITE_VERSION: 2026-09-04.92
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -294,8 +294,24 @@ def meeting_key(u):
     and said "39 hearings scheduled in the next two weeks" over a fortnight
     holding eight meetings -- and no hearing at all. Nothing can drift now
     without moving both.
+
+    NOT THE TIME. The docket gives every BILL its own slot inside a meeting --
+    Executive Departments on 21 January runs 09:00, 09:10, 09:20 and on down
+    its fifteen bills -- so a key holding the time made one meeting into one
+    card per bill. The busiest week of 2026 came out as 356 meetings where it
+    holds 68, and a committee that had set aside a morning read as fifteen
+    committees that each met for ten minutes.
+
+    It has not shown yet because the fortnight this draws is out of session
+    and its meetings carry a bill or two each. January is when it would have
+    shown, on the page that gets the most readers, in the month that gets the
+    most of them. The card states the span instead, 09:00-13:50, which is
+    what the General Court's own schedule prints.
+
+    The venue stays: two rooms is two meetings, and it only separates two
+    groups in that whole week, both of them real.
     """
-    return (u.get("date") or "", u.get("time") or "", u.get("committee") or "",
+    return (u.get("date") or "", u.get("committee") or "",
             u.get("what") or "", u.get("venue") or "")
 
 
@@ -380,8 +396,14 @@ def calendar_html(H, out):
                else f"in {off} days" if 0 < off < 14 else "")
         return dd.strftime("%a %d %b").replace(" 0", " "), rel
 
+    # Ordered by when each meeting STARTS, which is no longer in the key --
+    # so it is read back off the meeting's earliest bill.
+    def starts(k):
+        slots = sorted(x for x in (r.get("time") or "" for r in meets[k]) if x)
+        return (k[0], slots[0] if slots else "", k[1])
+
     days = OrderedDict()
-    for key in sorted(meets, key=lambda k: (k[0], k[1])):
+    for key in sorted(meets, key=starts):
         days.setdefault(key[0], []).append(key)
 
     html = ['<section class="cal"><h2>Coming up</h2>']
@@ -412,8 +434,15 @@ def cal_days(days, meets, titles, years, code, when, esc):
                     f'<span class="cdrel">{esc(rel)}</span>'
                     + "</h3>")
         for key in keys:
-            _d, time, cmte, what, venue = key
+            _d, cmte, what, venue = key
             rows = meets[key]
+            # THE SPAN, NOT A SLOT. Each row is one bill with its own place in
+            # the meeting, so the meeting runs from the first to the last --
+            # which is how the General Court prints it, 10:00am - 3:30pm. A
+            # meeting whose bills all share one slot states it once.
+            slots = sorted(x for x in (r.get("time") or "" for r in rows) if x)
+            time = (slots[0] if len(set(slots)) == 1 else
+                    f"{slots[0]}–{slots[-1]}") if slots else ""
             word, kcls = MEET_KIND.get(what.strip().lower(),
                                        (what.capitalize() if what else "Meeting", ""))
             n = len(rows)

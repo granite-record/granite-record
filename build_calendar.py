@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.1
+# GRANITE_VERSION: 2026-09-18.2
 """
 The General Court's week, as one small file per week.
 
@@ -30,9 +30,21 @@ it through proceedings.py like everything else -- it is not a sixth reader of
 the files behind it.
 
 A row names a BILL, so a committee that took up nine bills in one sitting is
-nine rows. They are grouped back into sittings here -- by day, committee and
-time -- because that is what a reader is looking at: a meeting with a list of
-bills, not nine meetings.
+nine rows. They are grouped back into meetings here, by day and committee and
+kind and room -- NOT by time, because the docket gives every bill its own slot
+inside the meeting. Executive Departments on 21 January runs 09:00, 09:10,
+09:20 and on down its fifteen bills; keyed on the time that is fifteen
+committees meeting for ten minutes each. Keyed without it, it is one morning,
+and the card states the span the way the General Court's own schedule does.
+
+That is the difference between 4,494 meetings and 1,452, and between a busiest
+week of 356 and one of 69.
+
+WHAT IS NOT HERE. proceedings.csv is keyed on bills, so this shows bill
+business only. The General Court's own schedule also lists study committees,
+boards and commissions that sit without a bill in front of them -- the
+Assessing Standards Board, the Mount Washington Commission -- and none of
+those appear.
 """
 
 import argparse
@@ -88,13 +100,28 @@ def committee_codes(site):
         return {}
 
 
+def span(sit):
+    """The meeting with its time as first-bill-to-last, the way the General
+    Court prints it: 10:00-15:30, or one time when every bill shares a slot."""
+    s = sorted(sit.pop("slots", []))
+    sit["time"] = "" if not s else (s[0] if s[0] == s[-1] else f"{s[0]}–{s[-1]}")
+    sit["starts"] = s[0] if s else ""
+    return sit
+
+
+def _in_order(day):
+    """A day's meetings by when each one starts."""
+    return sorted(day.values(),
+                  key=lambda s: (min(s["slots"]) if s.get("slots") else "", s["where"]))
+
+
 def build(site):
     rows = [r for r in proceedings.load()
             if (r.get("date") or "") >= FROM]
     titles = titles_for(site)
     codes = committee_codes(site)
 
-    # (week, day, committee, time) -> the sitting, with its bills
+    # (week, day, committee, kind, room) -> the meeting, with its bills
     weeks = defaultdict(lambda: defaultdict(OrderedDict))
     for r in rows:
         w = week_of(r.get("date") or "")
@@ -105,18 +132,25 @@ def build(site):
         floor = (r.get("kind") or "").strip().lower() == "floor debate"
         cm = (r.get("committee") or "").strip()
         where = ("Floor" if floor else cm) or "Not named"
-        slot = (where, (r.get("time") or "").strip(), (r.get("kind") or "").strip())
+        # NOT THE TIME -- the same rule as build_pages.meeting_key. The docket
+        # gives every BILL its own slot inside a meeting, so a key holding the
+        # time made one committee morning into one meeting per bill: the
+        # busiest week of 2026 counted 356 where it holds 68.
+        slot = (where, (r.get("kind") or "").strip(), (r.get("venue") or "").strip())
         sit = weeks[key][day].get(slot)
         if sit is None:
             sit = weeks[key][day][slot] = {
                 "what": r.get("kind") or "",
                 "body": r.get("body") or "",
-                "time": (r.get("time") or "").strip(),
+                "slots": [],
                 "where": where,
                 "venue": (r.get("venue") or "").strip(),
                 "code": "" if floor else codes.get(cm.lower(), ""),
                 "bills": [],
             }
+        when = (r.get("time") or "").strip()
+        if when and when not in sit["slots"]:
+            sit["slots"].append(when)
         term = r.get("term") or ""
         bid = r.get("bill") or ""
         n, title = titles.get(term, {}).get(bid, (bid, ""))
@@ -139,8 +173,7 @@ def build(site):
             "week": key,
             "starts": monday.isoformat(),
             "ends": (monday + datetime.timedelta(days=6)).isoformat(),
-            "days": [{"date": d,
-                      "sittings": list(days[d].values())}
+            "days": [{"date": d, "sittings": [span(s) for s in _in_order(days[d])]}
                      for d in sorted(days)],
         }
         n = sum(len(s["sittings"]) for s in payload["days"])

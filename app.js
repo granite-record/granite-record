@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.95
+// GRANITE_VERSION: 2026-09-07.96
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -3365,11 +3365,21 @@ function calendarBlock(rows,heading){
   if(!rows.length)return "";
   const meets=new Map();
   rows.forEach(u=>{
-    const k=[u.date||"",u.time||"",u.committee||"",u.what||"",u.venue||""].join("\u0000");
+    // NOT THE TIME -- see build_pages.meeting_key, which this has to agree
+    // with. The docket gives every BILL its own slot inside a meeting, so a
+    // key holding the time made one committee morning into one card per
+    // bill: the busiest week of 2026 came out as 356 meetings where it
+    // holds 68. The card states the span instead.
+    const k=[u.date||"",u.committee||"",u.what||"",u.venue||""].join("\u0000");
     if(!meets.has(k))meets.set(k,[]);
     meets.get(k).push(u);
   });
-  const keys=[...meets.keys()].sort();
+  // Ordered by when each meeting STARTS, which has left the key.
+  const startOf=k=>{
+    const s=meets.get(k).map(b=>b.time||"").filter(Boolean).sort();
+    return k.split("\u0000")[0]+"\u0000"+(s[0]||"")+"\u0000"+k;
+  };
+  const keys=[...meets.keys()].sort((a,b)=>startOf(a).localeCompare(startOf(b)));
   const days=new Map();
   keys.forEach(k=>{
     const d=k.split("\u0000")[0];
@@ -3391,8 +3401,13 @@ function calendarBlock(rows,heading){
     out.push(`<div class="calday"><h3 class="caldate"><span>${esc(label)}</span>`
       +(rel?`<span class="cdrel">${esc(rel)}</span>`:"")+`</h3>`);
     ks.forEach(k=>{
-      const [,time,cmte,what,venue]=k.split("\u0000");
+      const [,cmte,what,venue]=k.split("\u0000");
       const bills=meets.get(k);
+      // First bill to last, which is how the General Court prints a meeting.
+      const slots=bills.map(b=>b.time||"").filter(Boolean).sort();
+      const time=!slots.length?""
+        :(slots[0]===slots[slots.length-1]?slots[0]
+          :slots[0]+"\u2013"+slots[slots.length-1]);
       const [word,kcls]=MEET_KIND[String(what||"").trim().toLowerCase()]
         ||[what?what.charAt(0).toUpperCase()+what.slice(1):"Meeting",""];
       out.push(`<details class="calmeet"><summary>`
