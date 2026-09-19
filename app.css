@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.126 */
+/* GRANITE_VERSION: 2026-09-07.127 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -53,6 +53,12 @@
 --t-sm:12px;      /* meta beside something else */
 --t-ui:14px;      /* the interface's own voice, and most of it */
 --t-body:16px;    /* reading: prose, a bill's text, a narrative */
+/* THE SERIF READS A STEP UP. Statute sets reading at 17px and the
+   interface at 14px, and the reason is optical rather than arbitrary:
+   Source Serif 4 at 16px looks smaller than Public Sans at 16px. A
+   comment in this file claimed this step existed for days while every
+   serif rule used --t-body, so the whole site read a step small. */
+--t-read:17px;    /* the same prose, set in the serif */
 --t-lead:19px;    /* a lead sentence, a section heading */
 --t-title:24px;   /* the page's name */
 --t-hero:30px;    /* a record's own title, and the home page */
@@ -130,6 +136,11 @@
    elements on the home page, having measured no expanded card -- where the
    other four rules are. Two faces, clearly distinct, each with a job. */
 --serif:"Source Serif 4",Georgia,serif;
+/* The meta lines at the foot of the page -- "Updated 18 September 2026"
+   and "MIT Open Source Licensed" -- are IBM Plex Mono in the settled
+   footer. It is the only place the face is used, which is why it is
+   loaded at one weight. */
+--mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 /* Tells the browser which way round this is, so the scrollbars, the select
    menus and the search field's own furniture follow the page instead of
    staying light against it. Overridden in the dark block below. */
@@ -793,8 +804,18 @@ font-weight:600;color:var(--ink-2);margin:0 0 var(--sp-4)}
 footer .attrib{margin:0;max-width:62ch;font-family:var(--serif);
 font-size:var(--t-ui);line-height:1.6}
 footer .attrib b{color:var(--ink);font-weight:600}
+/* AN EXTERNAL LINK SAYS SO. Settled in the footer artifact and wanted
+   generally; it was never implemented, so "Source on GitHub" and the feedback
+   button looked like internal links. The arrow is lighter than the label it
+   follows so it reads as a mark rather than as part of the word. */
+a.out::after{content:"\2197";font-weight:400;margin-left:3px;font-size:.92em}
+.flinks a{font-weight:600}
 .flinks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;
 gap:var(--sp-3)}
+/* IBM Plex Mono, per the settled footer: these two are a build stamp and a
+   licence, which are data about the page rather than prose on it. */
+footer .footdata,footer .footdata .lic{font-family:var(--mono);
+font-size:var(--t-xs);font-weight:500;letter-spacing:0}
 footer .footdata{margin:var(--sp-7) 0 0;padding-top:var(--sp-5);
 border-top:1px solid var(--rule);display:flex;gap:var(--sp-6);flex-wrap:wrap;
 justify-content:space-between;font-size:var(--t-sm)}
@@ -815,6 +836,37 @@ justify-content:space-between;font-size:var(--t-sm)}
    of this file keeps undoing: a card or a table fills its box, a sentence
    does not. */
 .src,.lead{max-width:var(--measure)}
+
+/* STATUTE'S TYPE, WHERE IT HAD ONLY HALF LANDED.
+   Direction 2 sets brand, hero, title, lead and reading in Source Serif 4 and
+   keeps Public Sans for the interface and for figures. The serif had reached
+   the prose and stopped, so every heading and the masthead were still sans --
+   which is most of what makes a page read as an app rather than as a printed
+   record.
+
+       brand   600 26px/1.1     hero  700 31px/1.2
+       title   600 24px/1.25    lead  400 19px/1.5
+       body    400 17px/1.6     ui    500 13px/1.4 Public Sans
+
+   h1 and h2 take hero and title. h3 stays where the page put it: it is a
+   label far more often than a heading here -- a committee's column head, a
+   day's date, a section marker -- and those are interface. */
+h1,h2,.brand,.lockup{font-family:var(--serif)}
+h1{font-weight:700;line-height:1.2}
+h2{font-weight:600;line-height:1.25}
+.brand{font-family:var(--serif);font-weight:600;font-size:var(--t-lead);
+line-height:1.1}
+/* Reading text is the serif, a step up from the interface's size because a
+   serif needs it to hold the same apparent size.
+
+   .ctitle, NOT .billtitle. The artifact's specimen calls the bill title
+   `.billtitle` and this rule was written from the specimen's markup -- but
+   nothing on this site emits that class. app.js emits `.ctitle`, from
+   cardHtml and lsrCardHtml, and it is the most repeated line of text on the
+   site: every row of the bill list, every card on a member's or committee's
+   page, and the focus card on a bill's own page. The rule as first written
+   was a dead selector and the titles stayed in the interface sans. */
+.prose,.attrib,.lead,.ctitle,.sdtx,.cbt,.billbody{font-family:var(--serif)}
 
 /* SHARED:END ------------------------------------------------------------ */
 
@@ -1013,7 +1065,7 @@ letter-spacing:.01em}
    line at 1440px. Primary ink, body size, and a column it can be
    read down. */
 /* A headline in a padded head box, not a reading column. */
-.ctitle{font-size:var(--t-body);color:var(--ink);margin:var(--sp-3) 0 0;
+.ctitle{font-size:var(--t-read);color:var(--ink);margin:var(--sp-3) 0 0;
 line-height:1.5}
 .cmeta{font-size:var(--t-ui);color:var(--ink-2);margin-top:var(--sp-3)}
 .cbody{border-top:1px solid var(--rule);padding:0 var(--sp-6) var(--sp-7)}
