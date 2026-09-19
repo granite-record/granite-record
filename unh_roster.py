@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.1
+# GRANITE_VERSION: 2026-09-19.2
 """
 Who was in the House, out of the House's own roll. No network.
 
@@ -92,8 +92,49 @@ START = re.compile(r"^\s*CALL\s+OF\s+THE\s+ROLL\s*$", re.I)
 STOP = re.compile(r"^\s*(RESOLUTION|INTRODUCTION OF GUESTS|OATH OF OFFICE|"
                   r"ELECTION OF|PRAYER|LEAVES OF ABSENCE)", re.I)
 COUNTY = re.compile(r"^\s*([A-Z][A-Za-z]+)\s+COUNTY\s*$")
-# "Dist. No. 7(6)" and "Dist. No. 10 (1)" -- the space comes and goes.
-DIST = re.compile(r"^\s*Dist\.\s*No\.\s*(\d+)\s*\((\d+)\)\s*(.*)$")
+# "Dist. No. 7(6)", "Dist. No. 10 (1)" -- the space comes and goes -- and, in
+# 1991, "Dist. No. 1" with no seat count at all. The count is what --check
+# scores against, so where the volume does not print one there is nothing to
+# score and QUORUM below is the guard instead.
+DIST = re.compile(r"^\s*Dist\.\s*No\.\s*(\d+)\s*(?:\((\d+)\))?\s*(.*)$")
+
+# "With 392 members having answered the call of the roll, a quorum was
+# declared present." The journal counting itself, a few hundred lines after
+# the roll it is counting. It is the only check available on a volume that
+# prints no seat counts, and it is a good one: it comes from the Clerk.
+QUORUM = re.compile(r"With\s+(\d+)\s+members\s+having\s+answered\s+the\s+call",
+                    re.I)
+
+# A member and the party that nominated them, found by locating the PARTY and
+# taking what precedes it as the name.
+#
+# Splitting on the semicolon works for 1997 and fails for 1991, which prints
+#
+#     Dist. No. 6  Arnold P. Shibley. r. Alice S. Ziegra, r&d
+#     Dist. No. 8  Thomas E.P. Rice, Jr.. r
+#
+# where the separator between one member and the next is a full stop, the
+# separator between a name and its party is a full stop, and a name may end
+# in a full stop of its own. The party code is the one fixed landmark: one to
+# four of the letters r, d, l, i and n joined by ampersands, standing alone.
+# So the parties are found and the names are whatever lies between them.
+#
+# Two details in the pattern, each of which cost a member before it was there:
+#
+#   The lookahead bars an apostrophe as well as a letter. "Robert J.
+#   L'Heureux, r&l" otherwise yields a party "l" at the L of L'Heureux --
+#   the character after it is an apostrophe, which is not a letter -- and
+#   splits one member into "Robert J" and "'Heureux".
+#
+#   It is CASE-SENSITIVE. The journal prints the party in lower case, and a
+#   capital in that position is a middle initial: matched case-insensitively,
+#   "Suzan L. R. Franks, r" reads the ". R." as a party and splits her into
+#   "Suzan L" and "Franks". 1991 prints a middle initial for nearly everyone
+#   and was full of it.
+MEMBER = re.compile(r"[,.]\s*([rdlin](?:\s*&\s*[rdlin])*)(?![A-Za-z&'’])")
+# A note set into the roll in brackets, sometimes opened with an asterisk.
+FOOTNOTE = re.compile(r"^\s*[*•]?\s*\(")
+
 # A running head dropped into the middle of the roll by the page break.
 FURNITURE = re.compile(r"^\s*(?:\d{1,4}\s+)?House\s+Journal\b.*$|^\s*\d{1,4}\s*$",
                        re.I)
@@ -145,8 +186,27 @@ def roll_lines(text):
         sys.exit("no CALL OF THE ROLL in this volume; nothing to read")
     out = []
     barren = 0
+    in_footnote = False
     for line in lines[start:]:
+        # A parenthetical note set inside the roll. 1991's Rockingham 20
+        # carries one about a member-elect who took a federal job and would
+        # not be sworn; it has commas in it, so it reads as a continuation
+        # line and became a member 170 characters long. It runs until its
+        # bracket closes or the roll resumes with a district.
+        if in_footnote:
+            if ")" in line:
+                in_footnote = False
+            if not DIST.match(line) and not COUNTY.match(line):
+                continue
+            in_footnote = False
+        if FOOTNOTE.match(line):
+            in_footnote = ")" not in line
+            continue
         if STOP.match(line):
+            break
+        # The Clerk counting the roll is the end of the roll, and it is the
+        # only terminator that means what it says in every volume.
+        if QUORUM.search(line):
             break
         if FURNITURE.match(line):
             continue
@@ -158,8 +218,15 @@ def roll_lines(text):
             # A continuation line carries names, so it has a semicolon or a
             # comma in it. A run of lines with neither is the roll being over
             # under a heading this parser has not met.
+            #
+            # Eight, not three. The 1991 roll carries a footnote in the middle
+            # of Rockingham -- a member-elect who took a federal job and would
+            # not be sworn -- whose three comma-free lines ended the roll at
+            # district 20 and cost two whole counties. The quorum sentence
+            # above is the real terminator; this is only a backstop for a
+            # volume that does not print one.
             barren = 0 if ("," in line or ";" in line) else barren + 1
-            if barren >= 3:
+            if barren >= 8:
                 break
         out.append(line)
     return out
@@ -168,13 +235,36 @@ def roll_lines(text):
 def split_members(blob):
     """The members named in one district's text.
 
-    Split on the semicolon, because the comma is inside a name: the journal
-    prints "Thomas E. P. Rice, Jr., r", where the first comma opens a suffix
-    and the second opens the party.
+    Anchored on the party code rather than on a separator -- see MEMBER for
+    why the separator cannot be trusted across volumes. Each party found ends
+    a member; what lies between it and the one before is that member's name.
+    Anything after the last party is a fragment and is put through the old
+    semicolon split, which is where a seat with no party -- "Elected, not
+    sworn" -- comes from.
     """
+    blob = " ".join(blob.split())
+    out = []
+    last = 0
+    for m in MEMBER.finditer(blob):
+        chunk = _plain(blob[last:m.start()])
+        last = m.end()
+        party = m.group(1).lower().replace(" ", "")
+        # The party sits directly after ONE name. Where a chunk yielded more
+        # than one -- which happens when a member before it carried no party
+        # at all -- it belongs to the last.
+        for i, (name, _p, note) in enumerate(chunk):
+            out.append((name, party if i == len(chunk) - 1 and name else "",
+                        note))
+    tail = blob[last:]
+    out.extend(_plain(tail))
+    return [(n, p, note) for n, p, note in out if n or note]
+
+
+def _plain(blob):
+    """The fallback split, on the semicolon, for text carrying no party."""
     out = []
     for part in blob.split(";"):
-        part = " ".join(part.split()).strip(" ,")
+        part = " ".join(part.split()).strip(" ,.")
         if not part:
             continue
         # "Dist. No. 11 (2) Elected, not sworn; Phil A. Weber, r&d"
@@ -187,7 +277,13 @@ def split_members(blob):
         # 399 declared seats and the shortfall looked like OCR damage. It is
         # the record saying something, so it gets a row of its own with no
         # name in it.
-        if re.match(r"^(Elected|Sworn|Deceased|Resigned|Vacan)", part, re.I):
+        # "Dist. No. 2  None" -- 1991's way of printing a seat with nobody in
+        # it, where 1997 writes "Elected, not sworn". Both are the record
+        # saying something and neither is a person, so both get a row with no
+        # name. Three of these, plus the footnote FOOTNOTE drops, are exactly
+        # the four by which the 1991 roll exceeded the Clerk's count of 388.
+        if re.match(r"^(Elected|Sworn|Deceased|Resigned|Vacan|None$)",
+                    part, re.I):
             out.append(("", "", part))
             continue
         bits = [b.strip() for b in part.split(",")]
@@ -201,7 +297,11 @@ def split_members(blob):
             # for a person with the page in front of them, not for this file.
             party = bits.pop().lower().replace(" ", "")
         name = ", ".join(b for b in bits if b)
-        if not name:
+        # A person's name has letters in it. What this throws out is the
+        # wreckage the scan leaves behind a damaged party code: "Charles D.
+        # Stritch, r?&d" is one member, and the "?&d" left over after "r" was
+        # taken became a second one reading "<<&d".
+        if len(re.sub(r"[^A-Za-z]", "", name)) < 2:
             continue
         out.append((name, party, ""))
     return out
@@ -232,7 +332,9 @@ def parse(identifier):
         m = DIST.match(line)
         if m:
             flush()
-            pending = (int(m.group(1)), int(m.group(2)), [m.group(3)])
+            pending = (int(m.group(1)),
+                       int(m.group(2)) if m.group(2) else 0,
+                       [m.group(3)])
             continue
         if pending:
             pending[2].append(line.strip())
@@ -284,25 +386,41 @@ def write(identifier, rows):
     return dest
 
 
-def check(rows):
-    """Seats declared against members found, per district and in total."""
+def check(rows, quorum=None):
+    """Seats declared against members found, per district and in total.
+
+    Where the volume prints no seat counts -- 1991 does not -- there is
+    nothing to compare per district, and the Clerk's own count of who
+    answered the roll is the check instead.
+    """
     by_dist = {}
     for r in rows:
         key = (r["county"], r["district"])
-        by_dist.setdefault(key, [r["seats"], 0])[1] += 1
+        by_dist.setdefault(key, [int(r["seats"] or 0), 0])[1] += 1
     seats = sum(v[0] for v in by_dist.values())
     found = sum(v[1] for v in by_dist.values())
-    wrong = {k: v for k, v in by_dist.items() if v[0] != v[1]}
+    named = sum(1 for r in rows if r["name"])
     print(f"{len(by_dist)} districts across "
           f"{len({r['county'] for r in rows})} counties")
-    print(f"  seats the journal declares: {seats}")
-    print(f"  members the roll yields:    {found}")
-    print(f"  districts that disagree:    {len(wrong)} of {len(by_dist)}"
-          f"  ({100*(len(by_dist)-len(wrong))/len(by_dist):.1f}% exact)")
-    if wrong:
-        print("\n  where they differ:")
-        for (c, d), (s, n) in sorted(wrong.items())[:20]:
-            print(f"    {c} {d}: declares {s}, yields {n}")
+    if seats:
+        wrong = {k: v for k, v in by_dist.items() if v[0] != v[1]}
+        print(f"  seats the journal declares: {seats}")
+        print(f"  members the roll yields:    {found}")
+        print(f"  districts that disagree:    {len(wrong)} of {len(by_dist)}"
+              f"  ({100*(len(by_dist)-len(wrong))/len(by_dist):.1f}% exact)")
+        if wrong:
+            print("\n  where they differ:")
+            for (c, d), (s, n) in sorted(wrong.items())[:20]:
+                print(f"    {c} {d}: declares {s}, yields {n}")
+    else:
+        print("  this volume prints no seat counts, so there is nothing to "
+              "check per district")
+        print(f"  seats the roll yields:      {found}")
+        wrong = {}
+    if quorum:
+        print(f"\n  the Clerk counted:          {quorum} answering the roll")
+        print(f"  this reads:                 {named} named"
+              f"  ({named - quorum:+d})")
     return seats, found, wrong
 
 
@@ -375,7 +493,10 @@ def main():
     print(f"{len(rows)} members -> {dest}\n")
 
     if a.check or a.against:
-        check(rows)
+        text = reflow_path(a.identifier).read_text(encoding="utf-8",
+                                                   errors="replace")
+        m = QUORUM.search(text)
+        check(rows, int(m.group(1)) if m else None)
     if a.against:
         against(rows, a.against)
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.2
+# GRANITE_VERSION: 2026-09-18.3
 """
 Score what can be read out of a scanned journal. Touches no network.
 
@@ -69,14 +69,35 @@ each line by x, which is the whole of the fix. Point --ocr at the result and
 this same code scores it:
 
                                    flat _djvu.txt    reflowed _djvu.xml
-    names carried exactly              85.27%             95.80%
-    + present but damaged              87.73%             98.53%
-    not carried at all                 12.27%              1.47%
+    names carried exactly              85.27%             95.74%
+    + present but damaged              87.73%             98.5%
     each side within 3 of its heading     11%                87%
 
 Same extractor, same roll calls, one difference. Reading order was worth all
-of that. What is left at 87% is a steady undercount of a few names per list,
-which is an extractor to sharpen rather than a source to distrust.
+of that.
+
+AND A SECOND VOLUME, WHICH IS WHERE THE PATTERNS WERE FOUND OUT
+
+Everything above is one book. The 1991 House volume, which is in the decade
+this is actually for, scored 0% on the split when the 1997-shaped patterns
+were pointed at it, and now scores 98% -- better than 1997. Four things had
+been fitted to one volume without anyone noticing:
+
+  * 1991 sets THREE columns where 1997 sets four, and is_list_line allowed
+    two leftover words per line. Three names with middle initials leave three
+    initials behind, the line read as prose, and the vote list ended 623
+    characters into a 3,372-character block. It is a fraction now.
+  * 1991 prints the comma as a full stop about half the time.
+  * 1991 prints middle initials, and "Campbell, Richard H., Jr" gave a second
+    person called "H., Jr".
+  * both volumes carry a running head into the middle of a vote list, and
+    1991's reads "76 HorsK JoruNAi, Fiohruaky 5, 19})1", out of which a name
+    can be read. unh_rollcalls.py drops it by geometry now, not by wording.
+
+What is left at 87% on 1997 is a steady undercount of a few names per list,
+and it is dropped commas: page 452 prints "Kibbey David" with no comma at
+all. That is what a roster-backed repair is for -- unh_repair.py -- not
+something to loosen this pattern for.
 """
 
 import argparse
@@ -122,10 +143,46 @@ SIDE = re.compile(r"^\s*(YEAS|NAYS)\s+(\d+)\s*$", re.M)
 # So the comma stays required, the dropped-comma votes stay lost, and the
 # number below is honest about it. Recovering them needs the column geometry,
 # which the DjVu XML has and this flattened text does not.
+#
+# THE SEPARATOR IS A COMMA OR A FULL STOP. 1997 prints "Hunt, John" and the
+# 1991 volume of the same series prints
+#
+#     Hunt. John B.   Kingsbury, H. Thayer   Met/ger. Kathcrine H.
+#     Pearson. Cicrtiudc B.   Perry. David M.   Riley. William A.
+#
+# on one line -- the comma read as a full stop about as often as not. A
+# comma-only pattern finds three names there and misses three, and 1991 is
+# the era this is actually for. Allowing the stop is narrow: it is one
+# character in the separator position, not the two-or-more-spaces rule tried
+# earlier, which matched across the boundary between two names and cost
+# thirty-four points.
+#
+# What it does admit is "Rep. Benton" and "Dist. No", so TITLES below throws
+# those out after the match rather than contorting the pattern to exclude
+# them.
+#
+# A SURNAME'S FIRST TWO CHARACTERS ARE BOTH LETTERS, and the given name is
+# never a suffix. Both rules exist because 1991 prints the middle initial and
+# the pattern read the leftovers as further people:
+#
+#     Campbell, Richard H., Jr      gave  Campbell, Richard  AND  H., Jr
+#     Rice, Thomas E. P., Jr.       gave  Rice, Thomas       AND  P., Jr.
+#     Dodge, A. Gibb, Jr.           gave  Dodge, A.          AND  Gibb, Jr.
+#
+# which is how 1991 came to read 210 yeas where the House recorded 195. "H."
+# is not a surname because its second character is a full stop; "Gibb, Jr."
+# is not a person because nobody's given name is Jr. The apostrophe stays
+# admissible in the second position so that O'Hearn survives.
+SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "2nd", "3rd"}
 NAME = re.compile(
-    r"\b([A-Z][A-Za-z'’()\[\]\-.]{1,24})\s*,\s+"
+    r"\b([A-Z][A-Za-z'’\-][A-Za-z'’()\[\]\-.]{0,23})\s*[,.]\s+"
     r"([A-Z][A-Za-z'’()\[\]\-.]{0,20}\.?)"
     r"(?:\s*,\s*(Jr|Sr|II|III|IV|2nd|3rd)\.?)?")
+
+# Not surnames, whatever follows them. "Rep." and "Reps." open most sentences
+# in a journal; "Dist. No." opens every line of the roll of members.
+TITLES = {"rep", "reps", "sen", "sens", "mr", "mrs", "ms", "dr", "hon",
+          "dist", "no", "nos", "vol", "ch", "sec", "art", "gov", "messrs"}
 
 # The scan drops these into the middle of a vote list. A running head matches
 # NAME's shape ("Journal March" does not, but a stray "House Journal" line
@@ -154,11 +211,23 @@ def is_list_line(line):
     bare = line.strip()
     if not bare or bare in COUNTIES or FURNITURE.match(line):
         return True
-    rest = NAME.sub(" ", bare)
-    rest = re.sub(r"[^A-Za-z]+", " ", rest).strip()
-    # "Jr" and a stray initial survive a name match often enough to allow a
-    # couple of leftover words before a line counts as prose.
-    return len(rest.split()) <= 2
+    letters = len(re.sub(r"[^A-Za-z]", "", bare))
+    if letters == 0:
+        return True
+    rest = re.sub(r"[^A-Za-z]", "", NAME.sub(" ", bare))
+    # HOW MUCH OF THE LINE THE NAMES ACCOUNT FOR, not how many words are left
+    # over. The first version allowed two leftover words, which is fine for
+    # 1997, where a vote list reads "Bartlett, Gordon Boyce, Robert" and
+    # nothing is left. 1991 prints the middle initial --
+    #
+    #     Maviglio, Steven R.  Rice, Thomas E. P., Jr.  Salatiello, Thomas B.
+    #
+    # -- so every name leaves an initial behind, three names leave three, the
+    # line was ruled prose, and three such lines in a row ended the vote list
+    # 623 characters into a 3,372-character block. A fraction does not care
+    # how many names share a line, which is the thing that varies: 1997 sets
+    # four columns and 1991 sets three.
+    return (letters - len(rest)) / letters >= 0.6
 
 
 def vote_list(block):
@@ -203,7 +272,14 @@ def norm(surname, given, suffix):
 def names_in(block):
     """Every Surname, Given in the vote-list part of this block, normalised."""
     block = FURNITURE.sub(" ", vote_list(block))
-    return [norm(*m.groups()) for m in NAME.finditer(block)]
+    out = []
+    for m in NAME.finditer(block):
+        if re.sub(r"[^a-z]", "", m.group(1).lower()) in TITLES:
+            continue
+        if re.sub(r"[^a-z0-9]", "", m.group(2).lower()) in SUFFIXES:
+            continue
+        out.append(norm(*m.groups()))
+    return out
 
 
 def rollcalls(text):

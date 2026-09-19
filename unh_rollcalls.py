@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.2
+# GRANITE_VERSION: 2026-09-19.3
 """
 Put the words back in the order the page prints them. No network.
 
@@ -152,23 +152,82 @@ def render(line):
     return "".join(parts)
 
 
-def reflow(identifier, out_dir=OUT):
+RUNNING_HEAD_BAND = 0.07      # of the page height
+HEAD_GAP = 1.5                # times the page's own median line spacing
+PAGE_NUMBER = re.compile(r"(?:^|\s)\d{1,4}(?:\s|$)")
+
+
+def is_running_head(line, next_line, page_height, median_gap):
+    """The printed header, identified by where it sits rather than what it says.
+
+    Every page carries one -- "House Journal January 29, 1997   79" -- and it
+    lands in the middle of a vote list that runs over a page break. Matching
+    the words does not survive the decade: the 1997 volume prints it cleanly
+    and the 1991 volume reads
+
+        76  HorsK JoruNAi, Fiohruaky 5, 19})1
+
+    which no pattern written against the first would catch, and out of which
+    the name extractor is happy to read "JoruNAi, Fiohruaky". Position is the
+    one thing that does not degrade, so three conditions, all positional bar
+    one, and all three required:
+
+      * it is the first line on the page;
+      * it sits in the top 7% of it. 1997 puts its head at 2.1% and 1991 at
+        5.6%, so a tighter band fitted to the first volume found 1,129 heads
+        in 1997 and 103 in 1991;
+      * it is set off from the body. 1991's head is 128 units above the next
+        line where that page's own lines are 63 apart, and 1997's is 124
+        against 56 -- about twice the spacing in both. This is what keeps the
+        wider band safe: 1997's first body line is at 5.7%, inside the band,
+        and is neither the first line nor set off from what follows;
+      * and it carries a bare number, which is the page number.
+    """
+    if not line or not page_height:
+        return False
+    top = min(w[1] for w in line)
+    if top > page_height * RUNNING_HEAD_BAND:
+        return False
+    if next_line and median_gap:
+        gap = min(w[1] for w in next_line) - top
+        if gap < median_gap * HEAD_GAP:
+            return False
+    return bool(PAGE_NUMBER.search(" ".join(w[5] for w in line)))
+
+
+def median_line_gap(lines):
+    """How far apart this page sets its lines, from the page itself."""
+    tops = [min(w[1] for w in ln) for ln in lines if ln]
+    gaps = [b - a for a, b in zip(tops, tops[1:]) if b > a]
+    return statistics.median(gaps) if gaps else 0
+
+
+def reflow(identifier, out_dir=OUT, keep_heads=False):
     path = xml_for(identifier)
     OUT.mkdir(parents=True, exist_ok=True)
     dest = Path(out_dir) / f"{identifier}.txt"
-    n_pages = n_lines = n_words = 0
+    n_pages = n_lines = n_words = n_heads = 0
     with dest.open("w", encoding="utf-8") as fh:
         for page, words in pages(path):
             n_pages += 1
             n_words += len(words)
-            for line in lines_of(words):
+            height = max((w[3] for w in words), default=0)
+            page_lines = lines_of(words)
+            gap = median_line_gap(page_lines)
+            for i, line in enumerate(page_lines):
+                if (i == 0 and not keep_heads and is_running_head(
+                        line, page_lines[1] if len(page_lines) > 1 else None,
+                        height, gap)):
+                    n_heads += 1
+                    continue
                 n_lines += 1
                 fh.write(render(line) + "\n")
             fh.write("\n")
     # Silence is not success.
     if n_words == 0:
         sys.exit(f"{path} parsed to zero words; nothing was written that is worth keeping")
-    print(f"{identifier}: {n_pages:,} pages, {n_lines:,} lines, {n_words:,} words")
+    print(f"{identifier}: {n_pages:,} pages, {n_lines:,} lines, {n_words:,} words, "
+          f"{n_heads:,} running heads dropped")
     print(f"  -> {dest}  ({dest.stat().st_size:,} bytes)")
     return dest
 
@@ -217,6 +276,8 @@ def main():
     ap.add_argument("--reflow", action="store_true", help="write the reordered text")
     ap.add_argument("--page", type=int, help="print one page, to read by eye")
     ap.add_argument("--confidence", action="store_true", help="ABBYY's own confidence")
+    ap.add_argument("--keep-heads", action="store_true",
+                    help="leave the printed running heads in")
     a = ap.parse_args()
 
     if a.page:
@@ -224,7 +285,7 @@ def main():
     elif a.confidence:
         confidence(a.identifier)
     else:
-        reflow(a.identifier)
+        reflow(a.identifier, keep_heads=a.keep_heads)
 
 
 if __name__ == "__main__":
