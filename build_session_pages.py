@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.3
+# GRANITE_VERSION: 2026-09-19.4
 """
 A page for every day the House sat.
 
@@ -244,6 +244,127 @@ def bill_href(bid, years, esc):
             else f"/bills#{esc(bid)}")
 
 
+def opening_html(narrative, body, members, esc):
+    """How the day began, in one sentence.
+
+    THE PRAYER IS NOT QUOTED AND THE CHAPLAIN IS NOT NAMED. The journal prints
+    the prayer in full and it is pastoral rather than parliamentary: the one on
+    6 March 2025 asks the House to pray for "Rep. Grossman's son, Oscar" and
+    for a named widow mourning her named husband. None of those people is a
+    public official or party to any business before the House, and this site
+    exists to make the record findable, which is exactly what would make
+    republishing them different in kind from their sitting in a PDF.
+
+    So the page records THAT a prayer was offered. The member who led the
+    Pledge is named, because a legislator acting in the chamber is the record.
+    """
+    o = narrative.get("opening") or {}
+    if not o:
+        return ""
+    bits = []
+    if o.get("assembled"):
+        bits.append(f"The {CHAMBER[body]} assembled at {esc(o['assembled'])}")
+    say = []
+    if o.get("prayer"):
+        say.append("a prayer was offered")
+    if o.get("pledge"):
+        say.append(member_html(body, o["pledge"], members, esc)
+                   + " led the Pledge of Allegiance")
+    line = ". ".join(bits)
+    if say:
+        line = (line + ". " if line else "") + ", and ".join(say).capitalize() \
+            if not line else line + ", " + " and ".join(say)
+    return ('<section class="sday sopen"><h2>How the day began</h2>'
+            f"<p>{line}.</p></section>")
+
+
+def absences_html(narrative, body, members, esc):
+    """Who the chamber excused, and on the ground it recorded.
+
+    The ground is the chamber's own formal category -- illness, important
+    business, illness in the family -- rather than anything closer, and it is
+    here because a reader asking why a member missed a vote is asking a
+    question the journal answers on its own front page.
+    """
+    rows = narrative.get("absences") or []
+    if not rows:
+        return ""
+    n = sum(len(r["names"]) for r in rows)
+    H = ['<section class="sday"><h2>Excused for the day</h2>'
+         f'<p class="note">{n} member{"" if n == 1 else "s"} had leave of the '
+         f'{CHAMBER[body]} and were not in the chamber.</p>']
+    for r in rows:
+        H.append('<p class="sspoke sabs"><span class="slab">'
+                 + esc(r["why"].capitalize()) + "</span>"
+                 + ", ".join(member_html(body, nm, members, esc)
+                             for nm in r["names"]) + "</p>")
+    H.append("</section>")
+    return "".join(H)
+
+
+# What a motion carrying did to a bill, in one word, for a list of seventy.
+SHORT = (
+    (("inexpedient to legislate", "indefinitely postpone"), "Killed", "Kept alive"),
+    (("ought to pass",), "Passed", "Not passed"),
+    (("refer for interim study", "re-refer", "rerefer"), "Sent to interim study",
+     "Not sent to interim study"),
+    (("adopt",), "Adopted", "Not adopted"),
+)
+
+
+def short_outcome(item):
+    a = (item.action or "").strip().lower()
+    for starts, yes, no in SHORT:
+        if a.startswith(starts):
+            if item.carried is None:
+                return yes.rstrip("ed") + "ed?" if False else "Considered"
+            return yes if item.carried else no
+    return (item.action or "Considered").strip()
+
+
+def consent_html(cons, removed, titles, years, esc):
+    """The bills the chamber disposed of together, grouped by what happened.
+
+    A consent calendar is one motion covering dozens of bills that nobody
+    asked to debate -- 75 of the 121 things the House did on 6 March 2025 --
+    so they belong in a list, by outcome. Printed as 75 entries in the day's
+    sequence they bury the 46 bills it actually argued about.
+
+    Any member may pull a bill off the list, and the journal names the bill
+    and the members who did. A bill that came off was debated like any other
+    and is not here; it is in the sequence below.
+    """
+    if not cons:
+        return ""
+    groups = {}
+    for i in cons:
+        groups.setdefault(short_outcome(i), []).append(i)
+    n = len({i.bill for i in cons})
+    note = (f'{n} bill{"" if n == 1 else "s"} the chamber disposed of '
+            "together, in one motion and without debate.")
+    if removed:
+        pretty = ", ".join(re.sub(r"^([A-Z]+)(\d)", r"\1 \2", b)
+                           for b in sorted(removed))
+        note += (f" {pretty} {'was' if len(removed) == 1 else 'were'} taken off "
+                 "the list at a member's request and debated separately.")
+    H = ['<section class="sday"><h2>On the consent calendar</h2>'
+         f'<p class="note">{esc(note)}</p>']
+    for label in sorted(groups):
+        items = sorted(groups[label], key=lambda x: x.bill)
+        H.append(f'<div class="scons"><h3 class="slab">{esc(label)} '
+                 f'&mdash; {len(items)}</h3><ul class="sconslist">')
+        for i in items:
+            num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", i.bill)
+            ti = titles.get(i.bill) or ""
+            H.append(f'<li><a class="cbn" href="{esc(bill_href(i.bill, years, esc))}">'
+                     f"{esc(num)}</a>"
+                     + (f'<span class="cbt">{esc(ti)}</span>' if ti else "")
+                     + "</li>")
+        H.append("</ul></div>")
+    H.append("</section>")
+    return "".join(H)
+
+
 def render(day, narrative, titles, years, members, esc):
     """The day, as HTML."""
     H = []
@@ -260,6 +381,13 @@ def render(day, narrative, titles, years, members, esc):
     # is predictable and is NOT the order they happened in, and the heading
     # says so rather than letting an alphabetical list read as a narrative.
     # A printed debate is drawn once even where its bill holds the floor twice.
+    removed = (narrative.get("consent") or {}).get("removed") or []
+    seq_items, cons = day.split(removed)
+
+    H.append(opening_html(narrative, body, members, esc))
+    H.append(absences_html(narrative, body, members, esc))
+    H.append(consent_html(cons, removed, titles, years, esc))
+
     drawn = set()
     if day.ordered:
         H.append('<section class="sday"><h2>The day in order</h2>')
@@ -269,7 +397,7 @@ def render(day, narrative, titles, years, members, esc):
                  '<p class="note">The record does not say what order these '
                  "came in: the journal page is cited on only a few of them, "
                  "so they are listed by bill.</p>")
-    for bill, items in runs(day.items):
+    for bill, items in runs(seq_items):
         ti = titles.get(bill) or ""
         num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bill)
         leftover = set()
@@ -347,7 +475,7 @@ def render(day, narrative, titles, years, members, esc):
 
     # Debates whose bill is not among the day's actions -- a motion to print
     # can name a bill the House took no recorded vote on that day.
-    seen = {base_bill(b) for b, _ in runs(day.items)}
+    seen = {base_bill(b) for b, _ in runs(seq_items)}
     loose = [d for k, d in debates.items() if k and k not in seen and d["speeches"]]
     if loose:
         H.append('<section class="sday"><h2>Also printed in the permanent '

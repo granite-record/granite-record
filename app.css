@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.122 */
+/* GRANITE_VERSION: 2026-09-07.123 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2299,6 +2299,34 @@ color:var(--ink-2)}
 .caladd a{color:var(--pine);text-decoration:none;font-weight:600;
 padding:var(--sp-2) 0;min-height:32px;display:inline-flex;align-items:center}
 .caladd a:hover{text-decoration:underline}
+
+/* HOW THE DAY BEGAN. One sentence, so it reads as an opening rather than as
+   a data field: the hour, the prayer, the Pledge. */
+.sopen p{margin:0;font-size:var(--t-ui)}
+.sopen a{color:var(--pine)}
+
+/* WHO WAS NOT THERE. The same row the speakers use, because it is the same
+   thing -- a label and then a list of members -- and a reader should not have
+   to learn two shapes for it. */
+.sabs{align-items:baseline}
+.sabs .slab{flex:0 0 auto}
+
+/* THE CONSENT CALENDAR. Dozens of bills disposed of in one motion, so they
+   are a list by outcome rather than entries in the day's sequence: printed as
+   seventy-five cards they would bury the forty-odd the chamber argued about.
+   Two columns where there is room, because these are scanned for a bill
+   number rather than read. */
+.scons{margin:0 0 var(--sp-6)}
+.scons h3.slab{display:block;margin:0 0 var(--sp-3);font-size:var(--t-sm);
+font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2)}
+.sconslist{list-style:none;margin:0;padding:0;columns:2;column-gap:var(--sp-8)}
+.sconslist li{break-inside:avoid;padding:var(--sp-2) 0;font-size:var(--t-ui);
+display:flex;gap:var(--sp-3);align-items:baseline}
+.sconslist .cbn{color:var(--pine);text-decoration:none;font-weight:600;
+white-space:nowrap}
+.sconslist .cbn:hover{text-decoration:underline}
+.sconslist .cbt{font-family:var(--serif);color:var(--ink-2);min-width:0}
+@media (max-width:760px){.sconslist{columns:1}}
 
 /* A SITTING DAY, TOLD IN ORDER. The page is a sequence, so it reads down a
    single column: the bill, then each motion put to it, then what the vote did.

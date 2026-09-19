@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.1
+# GRANITE_VERSION: 2026-09-19.2
 """
 What the House journal adds that the record does not: who spoke, and what.
 
@@ -359,6 +359,132 @@ def unanimous_consent(block):
 _YEARS = {}
 
 
+# ------------------------------------------------------------- the opening --
+#
+# "The House assembled at 10:00 a.m., the hour to which it stood adjourned,
+# and was called to order by the Speaker."  541 of 573 files carry it.
+ASSEMBLED = re.compile(
+    r"The\s+(?P<ch>House|Senate)\s+(?:assembled|met|convened)\s+at\s+"
+    r"(?P<t>\d{1,2}(?::\d{2})?)\s*(?P<mer>[ap])\.?\s?m\.?", re.I)
+
+# "Representative James Creighton, member from Antrim, led the Pledge of
+# Allegiance."  560 of 573 files. The member is a legislator and is named.
+PLEDGE = re.compile(
+    r"\b(?:Rep(?:resentative)?\.?|Sen(?:ator)?\.?)\s+(?P<who>" + _NAME + r")"
+    r"[^.]{0,60}?\bled\s+the\s+Pledge", re.I)
+
+# THE PRAYER IS NOT PUBLISHED, AND THIS IS NOT AN OVERSIGHT.
+#
+# The journal prints the chaplain's prayer in full, and a prayer is a pastoral
+# act rather than a proceeding: the one on 6 March 2025 asks the House to "pray
+# for Rep. Grossman's son, Oscar, and to pray for Shannon Girard and their
+# family as they mourn the death of her husband, Christopher." That is a child,
+# a bereaved widow and a dead man, named, none of them a public official and
+# none of them party to any business before the House.
+#
+# This site's whole purpose is to make the record findable, which is exactly
+# what makes republishing that different in kind from its sitting in a PDF. So
+# the page records THAT a prayer was offered and never what was said, and it
+# does not name the chaplain, who may be a guest rather than an officer of the
+# House. The anthem singer -- "Addyson Cutter of Antrim", frequently a child --
+# is not named either.
+PRAYER = re.compile(r"\bPrayer\s+was\s+offered\b", re.I)
+
+
+def opening(block):
+    """How the day began: the hour, and the member who led the Pledge."""
+    out = {}
+    head = block[:6000]
+    m = ASSEMBLED.search(head)
+    if m:
+        hh = m.group("t")
+        if ":" not in hh:
+            hh += ":00"
+        out["assembled"] = f"{hh} {m.group('mer').lower()}.m."
+    if PRAYER.search(head):
+        out["prayer"] = True
+    m = PLEDGE.search(head)
+    if m:
+        out["pledge"] = re.sub(r"\s+", " ", m.group("who")).strip()
+    return out
+
+
+# ------------------------------------------------------------- the absences --
+#
+# "Reps. Fracht, Franz, Selig and Tripp, the day, illness."
+# "Rep. Grossman, the day, illness in the family."
+#
+# 563 of 573 files carry a LEAVES OF ABSENCE heading, and the shape has not
+# moved between 1999 and 2026. The list wraps freely, so this is matched on
+# joined text like everything else here.
+LEAVE_HEAD = re.compile(r"^[ \t]*LEAVES?\s+OF\s+ABSENCE[ \t]*$", re.M | re.I)
+# CASE-SENSITIVE, DELIBERATELY. _NAME begins with [A-Z], and under re.I that
+# matches any word at all -- so the names group ran straight through the
+# lower-case "the day" that is supposed to end it and swallowed the next two
+# sentences with it. Three groups of absences came back as one, filed under the
+# last group's reason. "Reps." and "the day" are the only spellings the journal
+# uses, so the literals can carry their own case.
+LEAVE_LINE = re.compile(
+    r"\bReps?\.\s+(?P<names>" + _NAME + r"(?:\s*,\s*" + _NAME + r")*"
+    r"(?:\s*,?\s+and\s+" + _NAME + r")?)\s*,\s*"
+    r"(?P<when>the\s+day|the\s+week|the\s+session)\s*,\s*"
+    r"(?P<why>[^.]{3,60})\.")
+
+
+def absences(block):
+    """[{names, when, why}] -- who the House excused, and on what ground.
+
+    The ground is the chamber's own formal category -- illness, important
+    business, illness in the family -- and not a diagnosis. It is printed here
+    because the journal prints it and because a reader asking why a member
+    missed a vote is asking a question the record answers.
+    """
+    out = []
+    m = LEAVE_HEAD.search(block)
+    if not m:
+        return out
+    end = len(block)
+    nh = NEXT_HEAD.search(block, m.end() + 10)
+    if nh:
+        end = nh.start()
+    for g in LEAVE_LINE.finditer(joined(block[m.end():end])):
+        out.append({"names": _names(g.group("names")),
+                    "when": re.sub(r"\s+", " ", g.group("when")).lower(),
+                    "why": re.sub(r"\s+", " ", g.group("why")).strip().lower()})
+    return out
+
+
+# ------------------------------------------------- the consent calendar ------
+#
+# "HB 691-FN, prohibiting the addition of fluoridation chemicals to public
+# water systems, removed by Reps. Judy Aron, Drew, ..."
+#
+# A bill on the consent calendar is disposed of without debate as part of one
+# motion. Any member may pull one off it, and the journal names the bill and
+# the members who did -- which is the only place that is recorded, and the one
+# thing needed to keep a removed bill out of the consent list on the page.
+CONSENT_HEAD = re.compile(r"^[ \t]*CONSENT\s+CALENDAR[ \t]*$", re.M | re.I)
+REMOVED = re.compile(
+    r"\b(?P<bill>(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR)\s?\d+(?:-[A-Z]+)*)\s*,"
+    r"[^.]{0,300}?\bremoved\s+by\b", re.I | re.S)
+ADOPTED = re.compile(r"Consent\s+Calendar\s+was\s+adopted", re.I)
+
+
+def consent(block):
+    """{adopted, removed:[bill]} -- what the House did with its consent list."""
+    m = CONSENT_HEAD.search(block)
+    if not m:
+        return {}
+    end = len(block)
+    nh = NEXT_HEAD.search(block, m.end() + 10)
+    if nh:
+        end = nh.start()
+    seg = joined(block[m.end():end])
+    return {"adopted": bool(ADOPTED.search(seg)),
+            "removed": sorted({g.group("bill").replace(" ", "").upper()
+                               for g in REMOVED.finditer(seg)})}
+
+
 def read_year(year, root=HOUSE):
     """{date: found} for one calendar year, parsed once and kept.
 
@@ -383,11 +509,21 @@ def read_year(year, root=HOUSE):
                 got = out.setdefault(iso, {"date": iso, "attributions": [],
                                            "debates": [],
                                            "unanimous_consent": [],
-                                           "files": []})
+                                           "opening": {}, "absences": [],
+                                           "consent": {}, "files": []})
                 got["files"].append(f.name)
                 got["attributions"] += attributions(block)
                 got["debates"] += debates(block)
                 got["unanimous_consent"] += unanimous_consent(block)
+                got["absences"] += absences(block)
+                for k, v in opening(block).items():
+                    got["opening"].setdefault(k, v)
+                for k, v in consent(block).items():
+                    if k == "removed":
+                        got["consent"].setdefault("removed", [])
+                        got["consent"]["removed"] += v
+                    else:
+                        got["consent"].setdefault(k, v)
     _YEARS[key] = out
     return out
 
@@ -396,7 +532,8 @@ def read_day(date, root=HOUSE):
     """Everything this module can find for one House sitting date."""
     return read_year(date[:4], root).get(
         date, {"date": date, "attributions": [], "debates": [],
-               "unanimous_consent": [], "files": []})
+               "unanimous_consent": [], "opening": {}, "absences": [],
+               "consent": {}, "files": []})
 
 
 def main():

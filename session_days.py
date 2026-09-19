@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.3
+# GRANITE_VERSION: 2026-09-19.4
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -144,6 +144,18 @@ THRESHOLD = re.compile(r"\b(?P<a>\d)\s*/\s*(?P<b>\d)\s*nec", re.I)
 # SUSTAINED; HB 1072 was 160 to 159 and sustained; HB 1102 was 231 to 88 and
 # overridden. A parser taking the bigger number as the winner would report the
 # opposite of the truth on most of a veto day.
+# WHICH CALENDAR THE BILL WAS ON, which is the committee's own choice and is
+# recorded in its report: "(Vote 18-0; RC)" is the Regular Calendar and
+# "(Vote 5-0; CC)" the Consent. NOT a roll call -- RC here is a calendar, and
+# reading it as a vote kind would label most of a sitting wrongly.
+#
+# A bill on the consent calendar is disposed of without debate, as part of one
+# motion covering dozens at a time, so it belongs in a list rather than in the
+# sequence: 76 of the 117 bills the House dealt with on 6 March 2025 went that
+# way, and printing them as 76 separate entries buries the 41 it actually
+# debated.
+ON_CONSENT = re.compile(r"[;(]\s*CC\b")
+
 VETO_TALLY = re.compile(r"\bRC\s*\(?\s*(?P<y>\d+)\s*Y?\s*-\s*"
                         r"(?P<n>\d+)\s*N?\s*\)?", re.I)
 OVERRIDDEN = re.compile(r"\boverrid", re.I)
@@ -173,7 +185,8 @@ class Item:
     """One thing the chamber did to one bill, at one point in the day."""
 
     __slots__ = ("bill", "term", "action", "mover", "carried", "kind",
-                 "yeas", "nays", "cite", "page", "raw", "seq", "need", "veto")
+                 "yeas", "nays", "cite", "page", "raw", "seq", "need", "veto",
+                 "consent")
 
     def __init__(self, bill, term, e, seq):
         self.bill = bill
@@ -190,6 +203,7 @@ class Item:
         self.seq = seq
         self.need = None
         self.veto = False
+        self.consent = False
         if e.get("type") == "veto_override":
             _veto(e, self)
             return
@@ -273,6 +287,22 @@ class Day:
     def bills(self):
         return sorted({i.bill for i in self.items})
 
+    def split(self, removed=()):
+        """(debated, consent) -- the day's sequence, and its consent list.
+
+        `removed` is the bills the journal says members pulled off the consent
+        calendar; any member may, and a bill that came off was debated like
+        any other, so it goes back into the sequence.
+        """
+        off = {str(b).split("-")[0].upper() for b in removed}
+        keep, cons = [], []
+        for i in self.items:
+            if i.consent and i.bill.upper() not in off:
+                cons.append(i)
+            else:
+                keep.append(i)
+        return keep, cons
+
     def counts(self):
         c = collections.Counter(i.kind for i in self.items if i.kind)
         return {VOTE_KIND.get(k, k): v for k, v in c.items()}
@@ -311,7 +341,12 @@ def load(path=NARRATIVES):
     seq = 0
     for term, bills in sorted(data.items()):
         for bill, rec in sorted(bills.items()):
+            # A bill's events are in order, so the consent flag is simply
+            # whichever committee report was seen most recently.
+            on_consent = False
             for e in (rec.get("events") or []):
+                if e.get("type") == "report":
+                    on_consent = bool(ON_CONSENT.search(e.get("raw") or ""))
                 if e.get("type") not in ("floor", "veto_override") \
                         or e.get("cancelled"):
                     continue
@@ -320,7 +355,11 @@ def load(path=NARRATIVES):
                 if body not in ("H", "S") or not re.match(r"\d{4}-\d\d-\d\d$", date):
                     continue
                 seq += 1
-                grouped[(body, date)].append(Item(bill, term, e, seq))
+                it = Item(bill, term, e, seq)
+                # A veto vote is never a consent item, whatever the bill's
+                # last committee report said months earlier.
+                it.consent = on_consent and not it.veto
+                grouped[(body, date)].append(it)
 
     assert grouped, ("no floor events in narratives.json -- every sitting day "
                      "page would be empty, and the build would not say so")
