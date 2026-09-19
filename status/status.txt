@@ -25,7 +25,7 @@ session_over: 2026-08-19
 
 headline: The House and Senate have finished the 2026 session.
 
-note: Both chambers adjourned in August after Veto Day. The remaining bills referred to interim study may continue to have executive or work sessions. General Election Day is Tuesday, November 3rd.
+note: Both chambers adjourned in August after Veto Day. The remaining bills referred to interim study may continue to have executive or work sessions.
 
 # Off the page since 14 September, at the person's word: the box says no "Next:" line.
 # Remove the "# " to show one again.

@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.5
+// GRANITE_VERSION: 2026-09-16.6
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
@@ -223,15 +223,14 @@ function findDraw(q){
   // The one line that leaves the panel for the bill search. It is the answer
   // when a bill number was typed, and the way out when nothing here matched.
   const all=`<a class="fall" href="/bills?q=${encodeURIComponent(num||s)}">
-    <span class="fkind">${num?"Bill":"Search"}</span>
-    <span><span class="fname">${num?_fesc(num):"See all search results for "
-      +_fesc(s)}</span>
+    <span class="fl1"><span class="fname">${num?_fesc(num):"See all search results for "
+      +_fesc(s)}</span></span>
     <span class="fwhat">${num?"open this bill number in the bill search"
-      :"every bill whose number, title or text matches"}</span></span></a>`;
+      :"every bill whose number, title or text matches"}</span></a>`;
   const list=rows.map(r=>`<a href="${_fesc(_froot(r[3]))}">
-      <span class="fkind">${_fesc(FKIND[r[0]]||r[0])}</span>
-      <span><span class="fname">${_fmark(r[1],s)}</span>
-      ${r[2]?`<span class="fwhat">${_fesc(r[2])}</span>`:""}</span></a>`).join("");
+      <span class="fl1"><span class="fname">${_fmark(r[1],s)}</span>
+      <span class="fkind">${_fesc(FKIND[r[0]]||r[0])}</span></span>
+      ${r[2]?`<span class="fwhat">${_fesc(r[2])}</span>`:""}</a>`).join("");
   let tail="";
   if(!rows.length&&!num){
     const did=findSuggest(s);
@@ -272,10 +271,14 @@ function findMount(){
   const panel=document.createElement("div");
   panel.id="findpanel";panel.className="findpanel";panel.hidden=true;
   panel.innerHTML=`<div class="findin">
+    <div class="findgrab" aria-hidden="true"></div>
+    <div class="findtop">
     <div class="findbox">
       <label class="sr" for="findq">Search for a legislator, committee, town, subject or bill</label>
       <input id="findq" type="search" autocomplete="off" placeholder="A legislator, a committee, a town, or a bill number">
       <button type="button" class="findclear" id="findclear" hidden aria-label="Clear the search box">&#10005;</button>
+    </div>
+    <button type="button" class="findcancel" id="findcancel">Cancel</button>
     </div>
     <div class="findout" id="findout"></div></div>`;
   const nav=document.querySelector("nav.top");
@@ -313,6 +316,12 @@ function findMount(){
     // and looked at the list is about to click.
     if(e.key==="Enter"){const a=panel.querySelector(".findout a");if(a){e.preventDefault();location.href=a.href;}}
   });
+  // A WAY OUT THAT IS NOT THE SCRIM. On a phone the sheet covers the page and
+  // the only way back was to tap the dimmed strip above it or press Escape --
+  // neither of which a thumb goes looking for. Shown only at sheet widths; on
+  // a desktop the panel is a dropdown and the scrim is right beside it.
+  const cancel=panel.querySelector("#findcancel");
+  if(cancel)cancel.addEventListener("click",shut);
   scrim.addEventListener("click",shut);
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!panel.hidden)shut();});
   document.addEventListener("click",e=>{

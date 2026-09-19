@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.128 */
+/* GRANITE_VERSION: 2026-09-07.129 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -576,23 +576,45 @@ min-height:44px;min-width:44px;justify-content:center}
 stroke-width:1.9;stroke-linecap:round}
 .findpanel{background:var(--surface);border-bottom:1px solid var(--rule)}
 .findpanel[hidden]{display:none}
+/* The handle and the way out belong to the phone sheet. On a desktop the
+   panel is a dropdown under the header with the scrim beside it, and neither
+   is wanted. */
+.findgrab,.findcancel{display:none}
+.findtop{display:flex;align-items:center;gap:var(--sp-4);min-width:0}
+.findtop .findbox{flex:1 1 auto;min-width:0}
 .findin{max-width:1180px;margin:0 auto;padding:var(--sp-5) var(--sp-8) var(--sp-6)}
 .findin input{width:100%;font:inherit;font-size:var(--t-body);padding:var(--sp-5) var(--sp-5);
 color:var(--ink);background:var(--paper);border:1px solid var(--edge);
 border-radius:var(--r-in)}
 .findout{margin-top:var(--sp-4);max-height:min(62vh,420px);overflow-y:auto}
-.findout a{display:flex;gap:var(--sp-4);align-items:baseline;padding:var(--sp-4) var(--sp-4);
+/* A RESULT IS A TITLE, THEN WHAT KIND OF THING IT IS. The row was a 104px
+   label column on the LEFT and the name to its right, so a reader scanning
+   for a name read down a column of the word "Legislator" repeated, and on a
+   phone the label took a line of its own ABOVE the name. The name leads now
+   and the kind follows it as an outlined chip on the same baseline, which is
+   what the artifact draws and what a reader is actually scanning for. */
+.findout a{display:flex;flex-direction:column;gap:var(--sp-1);
+padding:var(--sp-4) var(--sp-4);
 border-radius:var(--r-in);color:var(--ink);text-decoration:none;
 border-bottom:1px solid var(--rule)}
 .findout a:last-child{border-bottom:0}
 .findout a:hover,.findout a:focus-visible{background:var(--wash)}
-/* 104, not 84: the widest label is now "Former member", and at 84 it wrapped
-   to two lines on every one of 1,785 rows while the names beside it stayed
-   on one, so the rows were of two different heights down the list. */
-.findout .fkind{flex:0 0 104px;font-size:var(--t-sm);letter-spacing:.04em;
+.findout .fl1{display:flex;align-items:baseline;gap:var(--sp-3);
+flex-wrap:wrap;min-width:0}
+/* An outlined chip, not a column: 10px, uppercase, tracked, on the baseline
+   of the name it labels. */
+.findout .fkind{flex:0 0 auto;font-size:10px;font-weight:600;letter-spacing:.11em;
+text-transform:uppercase;border:1px solid var(--rule-2);border-radius:2px;
+padding:3px 5px;color:var(--ink-2);line-height:1;
 text-transform:uppercase;color:var(--ink-2)}
-.findout .fname{font-weight:600}
-.findout .fwhat{color:var(--ink-2);font-size:var(--t-ui)}
+/* The name is the answer, so it takes the accent -- the one thing on the row
+   a reader is looking for. */
+.findout .fname{font-weight:600;font-size:var(--t-body);color:var(--pine);
+min-width:0}
+/* And the line under it is reading type: it is a sentence about the thing,
+   not a label. The only place the panel uses the serif. */
+.findout .fwhat{color:var(--ink-2);font-size:var(--t-ui);
+font-family:var(--serif);min-width:0}
 .findout .fnote{padding:var(--sp-4) var(--sp-4);color:var(--ink-2);font-size:var(--t-ui)}
 
 /* THE PART THEY TYPED. Reported as "a bit too bright", and it was: nothing
@@ -600,8 +622,11 @@ text-transform:uppercase;color:var(--ink-2)}
    #FF0, at maximum chroma, next to a palette whose loudest colour is a
    forest green. The site's own soft pine instead, at the weight a found word
    needs and no more, and the ink left alone so the contrast is the row's. */
-.findout mark{background:var(--pine-soft);color:inherit;
-border-radius:2px;padding:0 1px}
+/* THE MATCH IS SHOWN BY WEIGHT, NOT BY A HIGHLIGHTER. A band of colour
+   behind two letters of every row turns a list of answers into a list of
+   stripes, and the row already carries the accent on its name. Settled in
+   the search artifact: transparent, inherit the colour, take the weight. */
+.findout mark{background:transparent;color:inherit;font-weight:700;padding:0}
 
 /* THE WAY OUT OF THE PANEL, and the row that answers when nothing here
    matched. Marked off from the entries above it by its rule rather than by a
@@ -634,7 +659,9 @@ background:var(--wash)}
 
 @media (max-width:720px){
   .findin{padding:var(--sp-4) var(--sp-5) var(--sp-5)}
-  .findout .fkind{flex-basis:100%}
+  /* The chip stays beside the name on a phone now; it used to be given a
+     line of its own above it, which is what made the label read as a
+     heading over the answer rather than a tag on it. */
   .findout a{flex-wrap:wrap;gap:var(--sp-1) var(--sp-4)}
   /* A SHEET, NOT A SCREEN. Asked for in these words: "rather than taking up
      the full screen, I was imagining something more like it taking up a
@@ -649,8 +676,35 @@ background:var(--wash)}
      viewport. That way it needs no measurement of a header whose height
      changes with the text size, and the header stays visible above it --
      which is the top edge of the page the reader was on. */
+  /* A SHEET, NOT A BAND -- but still in flow, and the comment above says why.
+     The artifact draws it inset 10px either side with a rounded top, its own
+     border and a shadow thrown upward, anchored at top:74px. The inset card
+     is the part worth having: full bleed, it read as more page rather than as
+     a thing over the page. The 74px is not, because it is a measurement of a
+     header whose height moves with the reader's text size, which is the exact
+     thing the arrangement above was chosen to avoid. So: the sheet's shape,
+     none of its arithmetic. */
+  /* The width is stated because the margin alone did not buy it. The panel
+     is a flex item of the page body, and a stretched item's cross size is
+     meant to be the line minus its margins -- measured, it stayed the full
+     375 and hung 10px off the right edge, where html.findopen's overflow
+     clipped its border rather than scrolling to it. min-width:0 and an
+     explicit align-self:stretch both left it at 375; the width does not. */
   .findpanel{position:relative;z-index:60;border-bottom:0;
+  margin:0 10px;width:calc(100% - 20px);
+  border:1px solid var(--edge);border-top:0;
+  border-radius:0 0 6px 6px;
   box-shadow:0 14px 34px rgb(0 0 0 / .22)}
+  /* The handle sits under the field rather than over it, because this sheet
+     hangs from the header instead of rising from the bottom edge -- it says
+     the same thing, which is that this can be pushed away. */
+  .findgrab{display:block;width:38px;height:4px;border-radius:2px;
+  background:var(--rule-2);margin:var(--sp-2) auto 0}
+  /* A WAY OUT THAT IS NOT THE SCRIM. The only ways back were the dimmed strip
+     above the sheet and the Escape key, and a thumb finds neither. */
+  .findcancel{display:inline-block;flex:0 0 auto;background:none;border:0;
+  padding:var(--sp-3) 0 var(--sp-3) var(--sp-4);font:inherit;font-weight:600;
+  font-size:var(--t-ui);color:var(--pine);cursor:pointer;min-height:44px}
   .findout{max-height:calc(70vh - 96px)}
   .findscrim{position:fixed;inset:0;z-index:50;background:rgb(0 0 0 / .32);
   -webkit-tap-highlight-color:transparent}

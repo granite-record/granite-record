@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.106
+# GRANITE_VERSION: 2026-09-04.107
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -336,25 +336,13 @@ def meeting_key(u):
     return (u.get("date") or "", u.get("committee") or "")
 
 
-def meeting_line(n, floor=False):
-    """The status box's one sentence about the fortnight ahead.
-
-    Its own function because the same sentence is written in three places and
-    they have disagreed before: here for the built page, in HOME_JS's
-    _meetline for a page that reached the reader with no box in it, and again
-    in the clock block that counts the days that have passed off the total.
-    `floor` is true when home.json's 80-row cap hid meetings from the count and
-    the page must not claim the number is all of them; it travels on the
-    element as data-partial so the rewrite keeps the word it earned.
-    """
-    if not n:
-        return ""
-    return (f'<p class="statenote hearcount" data-total="{n}"'
-            + (' data-partial="1"' if floor else "")
-            + f'>{"At least " if floor else ""}{n} committee '
-            f'meeting{"" if n == 1 else "s"} scheduled in the next two '
-            "weeks.</p>")
-
+# THE FORTNIGHT'S MEETING COUNT IS OFF THE STATUS BOX, at the person's
+# word on 19 September. It is not a fact about the state of the General
+# Court, which is what the box is for; it is a fact about the calendar,
+# which is on the same page saying it better -- by day, by committee and
+# by bill. Three renderers wrote it and all three are gone with it: this
+# one, HOME_JS's _meetline, and the clock block that counted the days off
+# the total. meeting_key() stays: the calendar groups by it.
 
 def calendar_html(H, out):
     """The next fortnight of committee business, by day and then by meeting."""
@@ -1596,27 +1584,6 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   const ph=PHASE[(S.phase||"").toLowerCase()]||["off",S.phase||"Status unknown"];
   const ms=(S.milestones||[])[0];
   const stale=S.stale_days>45;
-  // MEETINGS, NOT BILL ROWS, AND THE NOUN FOLLOWS WHAT THEY ARE. This line
-  // printed status.hearings_next_14, which is the length of home.json's
-  // `upcoming` -- one row per bill. That made it "39 hearings scheduled in
-  // the next two weeks" over a fortnight holding eight meetings and not one
-  // hearing: seventeen subcommittee work sessions, fifteen
-  // executive sessions and seven full committee work sessions, on three days.
-  // Grouped by the key the calendar below groups by, so the box and "Coming
-  // up" are one count of one thing. The Python copy does the same.
-  const _meetline=(rows14)=>{
-    const u=H.upcoming||[];
-    const n=new Set(u.map(m=>JSON.stringify(
-      [m.date||"",m.time||"",m.committee||"",m.what||"",m.venue||""]))).size;
-    if(!n)return "";
-    // home.json carries at most 80 of the fortnight's bill rows. Where the cap
-    // bit, meetings are hidden with them and this number is a floor, so it is
-    // said as one -- the calendar's own note says how many bills went missing.
-    const part=rows14>u.length;
-    return `<p class="statenote hearcount" data-total="${n}"${
-      part?' data-partial="1"':""}>${part?"At least ":""}${n} committee `
-      +`meeting${n===1?"":"s"} scheduled in the next two weeks.</p>`;
-  };
   // ONE RENDERER WINS, AND IT IS THE SERVER'S. The same box is written into the
   // page at build time and again here, and the two have disagreed on screen:
   // the HTML said 39 hearings and this said 4, because home.json came out of
@@ -1635,7 +1602,6 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
       ${S.note?`<p class="statenote">${esc(S.note)}</p>`:""}
       ${ms?`<p class="statenote"><b>Next: ${esc(ms.label)}</b>, ${fd(ms.date)}.
         ${esc(ms.note||"")}</p>`:""}
-      ${_meetline(S.hearings_next_14||0)}
       ${stale?`<p class="statenote stalewarn" style="color:var(--st-veto)"
         data-updated="${esc(S.updated||"")}">This summary was
         last updated ${S.stale_days} days ago and may be out of date.</p>`
@@ -1707,15 +1673,11 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   (function(){
     const now=new Date(); now.setHours(0,0,0,0);
     const days=[...document.querySelectorAll(".calday[data-d]")];
-    let left=0,gone=0;
+    let left=0;
     days.forEach(d=>{
       const p=d.dataset.d.split("-").map(Number);
       const off=Math.round((new Date(p[0],p[1]-1,p[2])-now)/86400000);
-      // MEETINGS, because that is the unit the box above counts. It counted
-      // the bill rows of a day that had passed and subtracted them from a
-      // count of bill rows; both are meetings now and the arithmetic has to
-      // follow, or a day going by takes seven off a count of eight.
-      if(off<0){gone+=d.querySelectorAll(".calmeet").length;d.remove();return;}
+      if(off<0){d.remove();return;}
       left++;
       const rel=d.querySelector(".cdrel");
       // Fourteen days out is still inside the fortnight this block covers, so
@@ -1730,19 +1692,6 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
         scheduled in the next two weeks. The General Court sits from January to
         June, and committees meet on bills from the autumn filing period
         onwards.</p>`;
-    }
-    // The status box counts the same meetings, so it is counted again here
-    // rather than left saying what was true when the site was built: the
-    // build's total less the meetings whose day has passed, not a count of
-    // what is on screen, because the calendar can be shorter than the
-    // fortnight. data-partial says the build already knew its number was a
-    // floor, and the word it earned travels with it.
-    const hc=document.querySelector(".statebox .hearcount");
-    if(hc){
-      const n=Math.max(0,(+hc.dataset.total||0)-gone);
-      if(!n)hc.remove();
-      else hc.textContent=`${hc.dataset.partial?"At least ":""}${n} committee `
-        +`meeting${n===1?"":"s"} scheduled in the next two weeks.`;
     }
     // "Last updated N days ago" is the one line whose whole job is to say the
     // summary may be stale; it cannot be a number frozen at build time.
@@ -1981,28 +1930,6 @@ def main():
         except (ValueError, IndexError):
             return esc(d)
 
-    # A MEETING IS THE THING; A BILL ROW IS NOT. The status box printed
-    # status.hearings_next_14, which is build_site_v2's len(upcoming), and
-    # `upcoming` is one row per bill -- so it read "39 hearings scheduled in
-    # the next two weeks" over a fortnight whose 39 rows were 17
-    # subcommittee work sessions, 15 executive sessions and 7 full committee
-    # work sessions: eight meetings on three days, and not one hearing among
-    # them. Grouped here by meeting_key, the same key the calendar below groups
-    # by, so the count and the blocks under it are one count of one thing. The
-    # noun is the calendar's own: its empty state has said "committee meetings"
-    # all along.
-    #
-    # The cap is the caveat. home.json holds upcoming[:80] while
-    # hearings_next_14 counts the fortnight whole, so where the cap bit these
-    # meetings are a floor -- meeting_line() says "at least" then, and the
-    # calendar's own note names the bills that went with them.
-    up14 = H.get("upcoming") or []
-    meets14 = len({meeting_key(u) for u in up14})
-    if (S.get("hearings_next_14") or 0) > len(up14):
-        print(f"  status box: home.json carries {len(up14)} of the "
-              f"fortnight's {S['hearings_next_14']} bill rows, so its "
-              f'{meets14} meetings are a floor and the page says "at least"')
-
     static_state = ""
     if S.get("headline") or S.get("phase"):
         ph = {"in session": ("live", "In Session"),
@@ -2018,11 +1945,6 @@ def main():
                 return f"{fd(d)}, {int(d[:4])}"
             except (TypeError, ValueError):
                 return esc(d or "")
-        # Meetings, not bill rows -- counted above. hearings_next_14 counts
-        # the fortnight whole where home.json carries upcoming[:80], so when
-        # it is the larger the cap hid meetings and the line says "at least".
-        hearline = meeting_line(
-            meets14, (S.get("hearings_next_14") or 0) > len(up14))
         stale = (S.get("stale_days") or 0) > 45
         # THE SAME BOX THE SCRIPT DRAWS, line for line. This copy is what a
         # reader without JavaScript and every crawler get. It once had no last
@@ -2041,10 +1963,9 @@ def main():
             + (f'<p class="statenote">{esc(S["note"])}</p>' if S.get("note") else "")
             + (f'<p class="statenote"><b>Next: {esc(ms.get("label"))}</b>, '
                f'{fd(ms.get("date"))}. {esc(ms.get("note"))}</p>' if ms.get("label") else "")
-            # THE COUNT AND THE STALE WARNING CARRY THEIR OWN DATES, so the page
-            # can work them out again in the reader's clock. Both were written
-            # when the site was built and read for as long as the build stood.
-            + hearline
+            # THE STALE WARNING CARRIES ITS OWN DATE, so the page can work it
+            # out again in the reader's clock: it was written when the site was
+            # built and read for as long as the build stood.
             + (f'<p class="statenote stalewarn" style="color:var(--st-veto)" '
                f'data-updated="{esc(S.get("updated") or "")}">This summary was last '
                f'updated {S["stale_days"]} days ago and may be out of date.</p>' if stale
