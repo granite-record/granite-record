@@ -1,6 +1,6 @@
 # The scanned journals: what is there, what is legible, what is reachable
 
-Written 18 September 2026, from the collection rather than about it. Every
+Written 18-19 September 2026, from the collection rather than about it. Every
 number here came from a command named beside it, and every command reads
 either this repository or a file cached under `archive/unh/raw/`. Re-run them
 rather than quoting this file; it will drift and they will not.
@@ -15,10 +15,19 @@ volume. The books were scanned by the Internet Archive, which publishes them
 with an OCR text layer and a documented API, so nothing needs to be crawled
 out of the university's repository.
 
-**And the OCR text layer cannot be used for roll calls.** It carries the
-names, and it carries the results exactly, but it loses which side of the vote
-a name was on. That is measured below, and it is the finding that decides what
-to do next.
+**The OCR text layer as published cannot be used for roll calls.** It carries
+the names, and it carries the results exactly, but it loses which side of the
+vote a name was on.
+
+**The geometry beside it can.** Every item also publishes a `_djvu.xml` with a
+bounding box per word. Rebuilding the printed reading order from those boxes
+— group into lines by y, sort each line by x, and nothing cleverer — takes the
+yea/nay split from 11% correct to 87%, and name agreement from 85.27% to
+95.80%. Section 4 has both columns side by side.
+
+**And the roster comes out of the same book.** Each volume opens with the CALL
+OF THE ROLL, and reading it yields 400 seats against 400 the journal declares,
+with no district disagreeing. Section 5.
 
 ---
 
@@ -232,20 +241,90 @@ factual error of the first kind on a site whose readers include those
 legislators.
 
 **The flattened text can say what a roll call decided. It cannot say how a
-member voted.** Anything that needs the second has to read the geometry — the
-`_djvu.xml` or the hOCR, both of which carry a bounding box per word, and
-neither of which has been fetched.
+member voted.**
+
+### The geometry fixes it, and the fix is small
+
+    python3 unh_rollcalls.py --reflow journalofhouseof1997newh
+    python3 unh_measure.py --ocr data/unh/reflow/journalofhouseof1997newh.txt
+
+The `_djvu.xml` carries a bounding box per word. Page 85 of the 1997 volume
+states the layout with no inference required:
+
+    y 1131   [823]YEAS [986]186 [1082]NAYS [1243]185
+    y 1210   [949]YEAS [1114]186
+    y 1305   [939]BELKNAP
+    y 1384   [61]Laflam, [197]Robert   [560]Veazey, [701]John
+
+Four columns at x of roughly 60, 561, 1062 and 1566, headings centred over
+them, rows running across. So the reading order is: group words into lines by
+y, sort each line by x, take pages in order. That is the whole of it — no
+column detection and no heuristics, because the geometry already says it.
+
+Scored by the **same extractor**, so the only difference is reading order:
+
+| | flat `_djvu.txt` | reflowed `_djvu.xml` |
+|---|---|---|
+| names carried exactly | 85.27% | **95.80%** |
+| including damaged-but-close | 87.73% | **98.53%** |
+| not carried at all | 12.27% | **1.47%** |
+| **each side within 3 of its heading** | **11%** | **87%** |
+
+What remains at 87% is a steady undercount of a few names per list, not a
+scramble — an extractor to sharpen, not a source to distrust.
 
 ---
 
-## 5. What is not yet known
+## 5. The roster, out of the same book
+
+    python3 unh_roster.py journalofhouseof1997newh --against journals/1997
+
+Every volume opens with the CALL OF THE ROLL: every member by county and
+district, with a full name and the party or parties that nominated them.
+
+| | |
+|---|---|
+| seats the journal declares | 400 |
+| seats this reads out of it | **400**, 0 of 195 districts disagreeing |
+| named on organisation day | 392 |
+| seats held open, "Elected, not sworn" | 8 |
+
+The journal confirms it in its own words: *"With 392 members having answered
+the call of the roll, a quorum was declared present."* The eight open seats
+are filled later in the volume by a COMMUNICATION from the Secretary of State
+— `Grafton 11, Philip Cobbin, r&d, Canaan` — which is why Cobbin cast 77 votes
+in 1997 and is not in the December roll. Street addresses printed there are
+deliberately not read; the town is.
+
+Against the members who actually cast votes in the General Court's own digital
+journals, **347 of 368 surnames — 95.92% of member votes**. The 21 misses are
+one name spelled two ways, and the roll is the wrong one:
+
+    Colburn  read as  Colbum        Coes       read as  Goes
+    Burnham           Bumham        Fraser              Eraser
+    O'Hearn           O'Heam        MacIntyre           Maclntyre
+    Letourneau        Letoumeau
+
+which is **rn→m**, C→G, F→E, I→l — the same confusions the vote lists show.
+
+**The useful part: the roll and the roll calls are damaged independently.**
+`Colbum` appears once in the roll; `Colburn` appears 58 times in that year's
+votes. So the two halves of one book correct each other and no outside roster
+is needed — which is exactly what makes 1989–1996 tractable, where no outside
+roster exists.
+
+---
+
+## 6. What is not yet known
 
 Stated as unknown rather than estimated.
 
-- **Whether the geometry solves it.** The hypothesis is that column-aware
-  reconstruction from `_djvu.xml` recovers the yea/nay split. It is a good
-  hypothesis and it is untested. One volume's XML is 51 MB, so testing it is
-  one request and an afternoon, not a project.
+- ~~**Whether the geometry solves it.**~~ Tested: it does. 11% to 87% on the
+  split, 85.27% to 95.80% on names. Section 4.
+- **What the remaining 13% of splits is.** The reflow's worst cases are now
+  steady small undercounts -- 323-29 read as 308-28 -- rather than scrambles.
+  That looks like the extractor missing names, not the scan losing them, and
+  it has not been chased down.
 - **Whether 1989-1996 reads as well as 1997.** Different print runs, and the
   older volumes are older paper. The 1997 number does not transfer to them by
   assumption.
@@ -259,7 +338,7 @@ Stated as unknown rather than estimated.
 
 ---
 
-## 6. A thing worth doing that is not code
+## 7. A thing worth doing that is not code
 
 UNH's library digitised this collection and put it in a repository, and the
 Internet Archive scanned it for them. Libraries in that position often prefer
@@ -275,7 +354,7 @@ that has already produced derivative files may simply send them.
 
 ## How everything here was retrieved
 
-**17 requests in total**, every one cached and logged. Read the log rather
+**20 requests in total**, every one cached and logged. Read the log rather
 than this paragraph:
 
     python3 unh_survey.py --log
@@ -288,12 +367,15 @@ it as a block page on a word in its markup and exited before caching the body
 — the bug is fixed and the fetcher now caches before it judges, so a page paid
 for is never thrown away again.
 
-Five to archive.org: robots.txt, two searches, one item's metadata, and the
-download address, which answered 302.
+Six to archive.org: robots.txt, two searches, one item's metadata, and the
+two download addresses, which both answered 302.
 
-Two to `dn790009.ca.archive.org`, the datanode that 302 named: its robots.txt,
-which 404s and is therefore read as allowing everything, and the 4.7 MB text
-layer itself. The redirect was followed by making a second, deliberate,
-logged, paced request rather than by letting the opener follow it silently.
+Four to the two datanodes those 302s named, `dn790009.ca.archive.org` and
+`dn760109.eu.archive.org` -- a robots.txt each, both 404 and therefore read
+as allowing everything, then the 4.7 MB flattened text layer and the 51 MB
+DjVu XML. Each redirect was followed by making a second, deliberate, logged,
+paced request rather than by letting the opener follow it silently.
+
+The count is 10 + 6 + 4. Take it from the log, not from here.
 
 Nothing was fetched in bulk. Nothing will be without a person saying so.

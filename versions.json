@@ -143,7 +143,8 @@
     "unh_parse.py": "2026-09-18.1",
     "unh_ia.py": "2026-09-18.1",
     "unh_measure.py": "2026-09-18.2",
-    "unh_rollcalls.py": "2026-09-19.1"
+    "unh_rollcalls.py": "2026-09-19.2",
+    "unh_roster.py": "2026-09-19.1"
   },
   "generated": "2026-09-04"
 }

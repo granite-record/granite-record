@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.1
+# GRANITE_VERSION: 2026-09-19.2
 """
 Put the words back in the order the page prints them. No network.
 
@@ -50,6 +50,7 @@ edge. x0 is the left edge and x1 the right.
 """
 
 import argparse
+import html
 import re
 import statistics
 import sys
@@ -94,9 +95,14 @@ def pages(path):
                 page, buf = int(m.group(1)), []
             for w in WORD.finditer(line):
                 x0, ybot, x1, ytop, conf, text = w.groups()
-                if text.strip():
+                # This is XML, so an ampersand arrives as &amp; -- and the
+                # House's own roll of members is full of them, because a
+                # candidate nominated by both parties is printed "r&d".
+                # Left escaped, every fusion member's party read as "r&amp;d".
+                text = html.unescape(text).strip()
+                if text:
                     buf.append((int(x0), int(ytop), int(x1), int(ybot),
-                                int(conf) if conf else None, text.strip()))
+                                int(conf) if conf else None, text))
     if page is not None:
         yield page, buf
 
