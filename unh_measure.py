@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.4
+# GRANITE_VERSION: 2026-09-18.5
 """
 Score what can be read out of a scanned journal. Touches no network.
 
@@ -193,9 +193,72 @@ TITLES = {"rep", "reps", "sen", "sens", "mr", "mrs", "ms", "dr", "hon",
 # The scan drops these into the middle of a vote list. A running head matches
 # NAME's shape ("Journal March" does not, but a stray "House Journal" line
 # next to a county can), so they are removed before names are looked for.
+# SENATE JOURNAL is here too: the reflow drops running heads by geometry, but
+# the General Court's own digital Senate journals keep theirs, and one lands
+# in the middle of the vote on 27 March 2003.
 FURNITURE = re.compile(
-    r"^\s*(?:\d{1,4}|House\s+Journal.*|Journal\s+of\s+the.*|"
-    r"\d{1,4}\s+House\s+Journal.*|House\s+Journal\s+\d{1,4})\s*$", re.M | re.I)
+    r"^\s*(?:\d{1,4}|(?:House|Senate)\s+Journal.*|Journal\s+of\s+the.*|"
+    r"\d{1,4}\s+(?:House|Senate)\s+Journal.*|"
+    r"(?:House|Senate)\s+Journal\s+\d{1,4})\s*$", re.M | re.I)
+
+#
+# THE SENATE DOES NOT DO ANY OF THIS
+#
+# Every pattern above was built for the House and none of it fires on a Senate
+# volume: the 2003 Senate journal contains the word YEAS exactly zero times.
+# Twenty-four members do not need four columns under county headings, so the
+# Senate simply writes a sentence:
+#
+#     A roll call was requested by Senator Cohen.
+#     Seconded by Senator Larsen.
+#     The following Senators voted Yes: Below, Foster, Larsen,
+#     D'Allesandro, Estabrook, Cohen.
+#     The following Senators voted No: Gallus, Johnson, Kenney, Boyce,
+#     Green, Flanders, Odell, Roberge, Eaton, Peterson, O'Heam, Clegg,
+#     Gatsas, Barnes, Martel, Sapareto, Morse, Prescott.
+#     Yeas: 6 - Nays: 18
+#
+# Surnames only, comma separated, wrapped as prose, and the tally printed
+# AFTER the lists rather than before them. It is easier than the House in
+# every respect, and the General Court's own digital Senate journals print it
+# identically, so it can be scored the same way.
+SENATE_MARK = re.compile(r"following\s+Senators\s+voted", re.I)
+SENATE_RC = re.compile(
+    r"following\s+Senators\s+voted\s+Yes\s*:\s*(.*?)"
+    r"following\s+Senators\s+voted\s+No\s*:\s*(.*?)"
+    r"Yeas\s*:\s*(\d+)\s*[-–]\s*Nays\s*:\s*(\d+)", re.S | re.I)
+# A senator, as the Senate writes one: a surname on its own.
+SENATE_NAME = re.compile(r"\b([A-Z][A-Za-z'’—\-]{1,24})\b")
+# Words that appear in these lists and are not senators.
+# "None." is what the Senate prints where a side has nobody on it, and it
+# was being counted as a senator -- which is the whole of the +1 that both
+# the scan and the General Court's own copy showed on 7 vote lists each.
+SENATE_STOP = {"senate", "journal", "january", "february", "march", "april",
+               "may", "june", "july", "august", "september", "october",
+               "november", "december", "yeas", "nays", "the", "and",
+               "following", "senators", "voted", "yes", "no", "none"}
+
+
+def chamber_of(text):
+    """Which chamber wrote this, from how it records a roll call."""
+    return "senate" if SENATE_MARK.search(text) else "house"
+
+
+def names_senate(block):
+    """The senators named in one side of a Senate roll call."""
+    block = FURNITURE.sub(" ", block)
+    out = []
+    for m in SENATE_NAME.finditer(block):
+        w = re.sub(r"[^a-z]", "", m.group(1).lower())
+        if w and w not in SENATE_STOP and len(w) > 1:
+            out.append(w)
+    return out
+
+
+def rollcalls_senate(text):
+    """Each Senate roll call as (yeas, nays, yea_block, nay_block)."""
+    return [(int(m.group(3)), int(m.group(4)), m.group(1), m.group(2))
+            for m in SENATE_RC.finditer(text)]
 
 COUNTIES = {"BELKNAP", "CARROLL", "CHESHIRE", "COOS", "GRAFTON", "HILLSBOROUGH",
             "MERRIMACK", "ROCKINGHAM", "STRAFFORD", "SULLIVAN"}
@@ -275,8 +338,16 @@ def norm(surname, given, suffix):
     return out
 
 
-def names_in(block):
-    """Every Surname, Given in the vote-list part of this block, normalised."""
+def names_in(block, chamber="house"):
+    """Every name in the vote-list part of this block, normalised.
+
+    The chamber is passed rather than sniffed, because a single side of a
+    Senate roll call -- six surnames and a comma between each -- carries
+    nothing that says which chamber it came from. rollcalls() knows, because
+    it read the whole volume, so it says.
+    """
+    if chamber == "senate":
+        return names_senate(block)
     block = FURNITURE.sub(" ", vote_list(block))
     out = []
     for m in NAME.finditer(block):
@@ -289,12 +360,20 @@ def names_in(block):
 
 
 def rollcalls(text):
-    """Each roll call as (yeas, nays, yea_block, nay_block).
+    """Each roll call as (yeas, nays, yea_block, nay_block, chamber).
 
-    A roll call is a 'YEAS n NAYS m' line, then a 'YEAS n' heading opening the
+    In the House: a 'YEAS n NAYS m' line, then a 'YEAS n' heading opening the
     yea list, then a 'NAYS m' heading opening the nay list. The nay list ends
     where the next heading of any kind begins.
+
+    In the Senate: a sentence. See SENATE_RC.
+
+    The chamber travels with each row so that callers holding one side of one
+    roll call still know how to read the names in it.
     """
+    if chamber_of(text) == "senate":
+        return [(y, n, yb, nb, "senate") for y, n, yb, nb
+                in rollcalls_senate(text)]
     out = []
     heads = [(m.start(), m.end(), m.group(1), int(m.group(2)))
              for m in SIDE.finditer(text)]
@@ -306,7 +385,7 @@ def rollcalls(text):
             continue
         n_start, n_end, _n_side, nays = heads[i + 1]
         stop = heads[i + 2][0] if i + 2 < len(heads) else len(text)
-        out.append((count, nays, text[end:n_start], text[n_end:stop]))
+        out.append((count, nays, text[end:n_start], text[n_end:stop], "house"))
     return out
 
 
@@ -327,16 +406,20 @@ def load_ocr():
 
 
 def tallies():
-    o = Counter(TALLY.findall(load_ocr()))
-    d = Counter(TALLY.findall(load_digital()))
+    # Taken from rollcalls() rather than from a TALLY pattern of its own, so
+    # that it works on a Senate volume without a second regex: the Senate
+    # prints "Yeas: 6 - Nays: 18" after its lists where the House prints
+    # "YEAS 232 NAYS 114" before them, and rollcalls() already knows both.
+    o = Counter((str(y), str(n)) for y, n, _a, _b, _c in rollcalls(load_ocr()))
+    d = Counter((str(y), str(n)) for y, n, _a, _b, _c
+                in rollcalls(load_digital()))
     print(f"the scan:        {sum(o.values()):>4} roll calls, {len(o)} distinct tallies")
-    print(f"journals/1997/:  {sum(d.values()):>4} roll calls, {len(d)} distinct tallies"
-          f"   (16 of the volume's 25 sitting days)")
+    print(f"{DIGITAL:<16} {sum(d.values()):>4} roll calls, {len(d)} distinct tallies")
     missing = sorted(set(d) - set(o))
-    print(f"\nin journals/1997/ but not in the scan: {len(missing)}"
+    print(f"\nin the digital copy but not in the scan: {len(missing)}"
           + (f"  {missing}" if missing else ""))
-    print(f"in the scan but not in journals/1997/: {len(set(o) - set(d))}"
-          f"  -- expected, the scan has nine more sitting days")
+    print(f"in the scan but not in the digital copy: {len(set(o) - set(d))}"
+          f"  -- expected where the scan covers more sitting days")
     if missing:
         print("\nA tally the digital copy has and the scan does not means the scan "
               "misread a number. Each one is a roll call that cannot be trusted.")
@@ -349,9 +432,9 @@ def side_counts(text, label):
     """Does the extractor find as many names as the heading says there are?"""
     exact = off = 0
     drift = Counter()
-    for yeas, nays, yb, nb in rollcalls(text):
+    for yeas, nays, yb, nb, ch in rollcalls(text):
         for stated, block in ((yeas, yb), (nays, nb)):
-            got = len(names_in(block))
+            got = len(names_in(block, ch))
             if got == stated:
                 exact += 1
             else:
@@ -367,21 +450,43 @@ def side_counts(text, label):
     return exact, total
 
 
+def unique_by_tally(rows):
+    """{(yeas, nays): row} for tallies that occur exactly once in this source.
+
+    THE TALLY IS ONLY SOMETIMES AN IDENTIFIER. In the 1997 House it nearly
+    always is -- 81 distinct tallies across 82 roll calls, because 400
+    members divide 400 ways. In the 2003 Senate it is not: 72 roll calls
+    share 31 tallies, since twenty-four senators produce 24-0 and 13-11 over
+    and over.
+
+    Keeping the first roll call for each tally and comparing every other
+    against it, which is what this did at first, silently compared unrelated
+    votes and reported 89.41% agreement for the Senate -- a number about
+    nothing. Dropping the ambiguous ones costs sample size and measures the
+    right thing. What it does NOT do is pretend the smaller sample is the
+    whole: matched counts are printed beside the percentage.
+    """
+    seen = Counter((y, n) for y, n, *_ in rows)
+    return {(y, n): (yb, nb, ch) for y, n, yb, nb, ch in rows
+            if seen[(y, n)] == 1}
+
+
 def compare_names(show=0):
     ocr, dig = load_ocr(), load_digital()
-    o_by = {}
-    for yeas, nays, yb, nb in rollcalls(ocr):
-        o_by.setdefault((yeas, nays), (names_in(yb), names_in(nb)))
+    o_uni = unique_by_tally(rollcalls(ocr))
+    o_by = {k: (names_in(yb, ch), names_in(nb, ch))
+            for k, (yb, nb, ch) in o_uni.items()}
+    d_uni = unique_by_tally(rollcalls(dig))
     matched = 0
     tot_d = tot_hit = 0
     misses = Counter()
-    for yeas, nays, yb, nb in rollcalls(dig):
-        key = (yeas, nays)
+    for key, (yb, nb, ch) in d_uni.items():
         if key not in o_by:
             continue
         matched += 1
         o_yea, o_nay = o_by[key]
-        for d_names, o_names in ((names_in(yb), o_yea), (names_in(nb), o_nay)):
+        for d_names, o_names in ((names_in(yb, ch), o_yea),
+                                 (names_in(nb, ch), o_nay)):
             oset = set(o_names)
             for n in d_names:
                 tot_d += 1
@@ -392,7 +497,12 @@ def compare_names(show=0):
     if not matched:
         sys.exit("no roll call matched between the two sources; nothing measured")
     pct = 100 * tot_hit / tot_d if tot_d else 0
-    print(f"\n{matched} roll calls appear in both sources.")
+    print(f"\n{matched} roll calls appear in both sources under a tally that is "
+          f"unique in each,\nout of {len(rollcalls(ocr))} in the scan and "
+          f"{len(rollcalls(dig))} in the digital copy. Where two roll calls "
+          f"share\na tally nothing here can say which is which, so they are "
+          f"left out -- see\nunique_by_tally. In the Senate that is most of "
+          f"them, and the sample is small.")
     print(f"Of {tot_d:,} member votes the General Court's copy records, the scan "
           f"carries {tot_hit:,} under the same name -- {pct:.2f}%.")
     print(f"{tot_d - tot_hit:,} do not match, over {len(misses)} distinct names.")
@@ -415,8 +525,8 @@ def split_check():
     means.
     """
     rows = []
-    for yeas, nays, yb, nb in rollcalls(load_ocr()):
-        got_y, got_n = len(names_in(yb)), len(names_in(nb))
+    for yeas, nays, yb, nb, ch in rollcalls(load_ocr()):
+        got_y, got_n = len(names_in(yb, ch)), len(names_in(nb, ch))
         rows.append((yeas + nays, got_y + got_n, yeas, got_y, nays, got_n))
     if not rows:
         sys.exit("no roll call parsed from the scan; nothing measured")
@@ -466,16 +576,16 @@ def headroom(show=0):
     """
     import difflib
     ocr, dig = load_ocr(), load_digital()
-    o_by = {}
-    for y, n, yb, nb in rollcalls(ocr):
-        o_by.setdefault((y, n), (names_in(yb), names_in(nb)))
+    o_by = {k: (names_in(yb, ch), names_in(nb, ch))
+            for k, (yb, nb, ch) in unique_by_tally(rollcalls(ocr)).items()}
     tot = hit = near = 0
     pairs = Counter()
-    for y, n, yb, nb in rollcalls(dig):
-        if (y, n) not in o_by:
+    for k, (yb, nb, ch) in unique_by_tally(rollcalls(dig)).items():
+        if k not in o_by:
             continue
-        o_yea, o_nay = o_by[(y, n)]
-        for d_names, o_names in ((names_in(yb), o_yea), (names_in(nb), o_nay)):
+        o_yea, o_nay = o_by[k]
+        for d_names, o_names in ((names_in(yb, ch), o_yea),
+                                 (names_in(nb, ch), o_nay)):
             oset = set(o_names)
             for name in d_names:
                 tot += 1
@@ -525,7 +635,14 @@ def main():
     ap.add_argument("--ocr", metavar="PATH",
                     help="score this rendering of the volume instead of the "
                          "Internet Archive's flattened text layer")
+    ap.add_argument("--digital", metavar="GLOB",
+                    help="check against this directory of the General Court's "
+                         "own journal text instead of journals/1997")
     a = ap.parse_args()
+    if a.digital:
+        global DIGITAL
+        DIGITAL = a.digital.rstrip("/") + "/*.txt" if "*" not in a.digital else a.digital
+        print(f"checking against {DIGITAL}")
     if a.ocr:
         global OCR
         OCR = a.ocr
@@ -542,7 +659,7 @@ def main():
         print("=== THE NAMES UNDER IT ===")
         print("First, without any second source: a vote list must hold as many")
         print("names as its own heading says.\n")
-        side_counts(load_digital(), "journals/1997/")
+        side_counts(load_digital(), "the digital copy")
         side_counts(load_ocr(), "the scan")
         print("\nThen, against the copy this project did not generate:")
         compare_names(show=a.show)

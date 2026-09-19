@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.1
+# GRANITE_VERSION: 2026-09-19.2
 """
 Let the book correct itself. No network.
 
@@ -90,9 +90,36 @@ def key(s):
     return re.sub(r"[^a-z]", "", s.lower())
 
 
-def roster_surnames(identifier):
+def derived_roster(text, min_lists=5):
+    """The closed set of members, read off the volume's own vote lists.
+
+    For the Senate, where there is no roll to read. A Senate journal has no
+    CALL OF THE ROLL -- the chamber is twenty-four people and does not need
+    one -- so unh_roster.py has nothing to parse. It does not need to: twenty
+    four senators across seventy roll calls each appear dozens of times, and a
+    surname turning up in five or more separate vote lists is a senator. A
+    misreading does not repeat itself into five different lists.
+
+    This is weaker than the House's roll and is used only where no roll
+    exists. The roll is the House's own statement of who its members are;
+    this is an inference from frequency, and it is labelled as one.
+    """
+    seen = Counter()
+    for _y, _n, yb, nb, ch in M.rollcalls(text):
+        for name in set(M.names_in(yb, ch) + M.names_in(nb, ch)):
+            seen[name.split(",")[0]] += 1
+    return {s for s, n in seen.items() if n >= min_lists and len(s) >= MIN_LEN}
+
+
+def roster_surnames(identifier, text=None):
     path = ROSTER / f"{identifier}.csv"
     if not path.exists():
+        if text is not None:
+            derived = derived_roster(text)
+            if derived:
+                print(f"  no roll for {identifier}; using the {len(derived)} "
+                      f"surnames its own vote lists repeat")
+                return derived
         sys.exit(f"{path} is not there; unh_roster.py {identifier} writes it")
     out = set()
     with path.open(newline="", encoding="utf-8") as f:
@@ -109,8 +136,8 @@ def roster_surnames(identifier):
 def vote_surnames(text):
     """Every surname cast in a vote list in this volume, with its count."""
     counts = Counter()
-    for _y, _n, yb, nb in M.rollcalls(text):
-        for name in M.names_in(yb) + M.names_in(nb):
+    for _y, _n, yb, nb, ch in M.rollcalls(text):
+        for name in M.names_in(yb, ch) + M.names_in(nb, ch):
             counts[name.split(",")[0]] += 1
     return counts
 
@@ -200,7 +227,7 @@ def repair(identifier, verbose=False):
     if not src.exists():
         sys.exit(f"{src} is not there; unh_rollcalls.py --reflow {identifier} writes it")
     text = src.read_text(encoding="utf-8", errors="replace")
-    roster = roster_surnames(identifier)
+    roster = roster_surnames(identifier, text)
     counts = vote_surnames(text)
     if not counts:
         sys.exit("no vote list in this volume yielded a name; nothing to repair")
