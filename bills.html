@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.55 -->
+<!-- GRANITE_VERSION: 2026-09-05.56 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -163,7 +163,12 @@ Court is right and we want to know.</p>
   function shown(){ return chosen()||(mq&&mq.matches?"dark":"light"); }
   function draw(){
     var v=shown();
-    b.textContent=v==="dark"?"Dark":"Light";
+    // NAME THE DESTINATION, NOT THE STATE. It read "Light" while the page was
+    // light, which is a label describing what you are already looking at --
+    // so the one thing a reader wants from it, what happens if I press this,
+    // was the one thing it did not say. The aria-label has always named the
+    // destination; the visible word now agrees with it.
+    b.textContent=v==="dark"?"Light":"Dark";
     b.setAttribute("aria-label","Colour theme: "+v+". Activate to switch to "
       +(v==="dark"?"light":"dark")+".");
   }

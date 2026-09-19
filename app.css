@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.127 */
+/* GRANITE_VERSION: 2026-09-07.128 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -299,7 +299,11 @@ line-height:22px}
    of the row and leaving the theme control alone on a line. Both emitters
    write it: bills.html, which every one of the 33,683 record pages is built
    from, and build_pages.py's shell() for the other five pages. */
-nav.top{background:var(--surface);border-bottom:1px solid var(--rule)}
+/* THE BAR SITS ON THE GROUND. --surface is reserved for things that sit
+   ON the page -- a card, a search field -- and the header is the page's own
+   edge. It was --surface, which made the bar a card the width of the window
+   with the content floating on the same tone beneath it. */
+nav.top{background:var(--paper);border-bottom:1px solid var(--rule)}
 nav.top .in{max-width:1180px;margin:0 auto;padding:var(--sp-4) var(--sp-8);display:flex;
 align-items:center;gap:var(--sp-3) var(--sp-6);flex-wrap:wrap}
 /* THE MARK, AS A MASK. An <img> cannot take the colour of the text beside
@@ -311,7 +315,15 @@ align-items:center;gap:var(--sp-3) var(--sp-6);flex-wrap:wrap}
    The whole lockup as an image was the other option and is worse: 16px of
    serif drawn at 22px would be soft, it would not invert, and a reader could
    not select the site's name. */
-nav.top .brand{font-size:var(--t-body);font-weight:600;flex:0 0 auto;
+/* 22px, not 16px. All five header arrangements set the wordmark at
+   600 22px/1.1 Source Serif 4 and differ in nothing else about it, so the
+   size is settled even where the arrangement is not. At body size it read as
+   another nav item rather than as the masthead. */
+/* AND THE BRAND IS NOT A TAB. It is an <a> inside nav.top, so the section
+   label rule above caught it and set the site's own name in uppercase with
+   .09em of tracking. The wordmark is a name, in the serif, in its own case. */
+nav.top .brand{font-size:22px;line-height:1.1;font-weight:600;flex:0 0 auto;
+text-transform:none;letter-spacing:normal;
 display:inline-flex;align-items:center;gap:var(--sp-4);
 color:var(--ink);text-decoration:none}
 nav.top .brand:hover{color:var(--pine)}
@@ -352,10 +364,18 @@ mask:url(/mark.svg) center/contain no-repeat}
    bar itself. */
 .navdrop{display:contents}
 .navmenu{display:none}
-nav.top a{font-size:var(--t-ui);text-decoration:none;color:var(--ink-2);
+/* A SECTION LABEL, NOT A LINK IN A SENTENCE. Held constant across all five
+   arrangements and in the phone panel: 600 13px, uppercase, .09em tracking.
+   It was 14px sentence case at weight 400, which reads as body text that
+   happens to be clickable. */
+nav.top a{font-size:13px;font-weight:600;letter-spacing:.09em;
+text-transform:uppercase;text-decoration:none;color:var(--ink-2);
 display:flex;align-items:center;min-height:36px;padding:0 var(--sp-5);
 border:1px solid transparent;border-radius:var(--r-in);white-space:nowrap}
-nav.top a:hover{background:var(--wash);color:var(--ink)}
+/* COLOUR ONLY. Both header artifacts agree the tab is a bare label, and
+   the filled grey chip made a hovered section look selected beside the one
+   that actually is. */
+nav.top a:hover{color:var(--ink)}
 /* .navtabs a, not nav.top a: the brand is an anchor now and carries
    aria-current on the home page, and it should read as the site's name
    rather than as a filled tab. */
@@ -543,9 +563,15 @@ display:inline-block;padding:var(--sp-1) 0}
    dresses and the home, Learn, town and data pages style.css does. One
    definition, as the calendar above it. */
 .findbtn{display:inline-flex;align-items:center;gap:var(--sp-3);background:none;
-border:1px solid transparent;border-radius:var(--r-in);color:var(--ink-2);
-font:inherit;font-size:var(--t-ui);padding:var(--sp-3) var(--sp-4);cursor:pointer;min-height:36px}
-.findbtn:hover{color:var(--ink);background:var(--wash)}
+/* A MATCHED PAIR WITH .navmenu. The menu button is bordered at 44x44 and
+   this was borderless at 35x36, so two controls doing the same kind of job
+   sat beside each other as different objects. Same border, same radius, same
+   44px minimum -- which is a finger, and is why the artifact's 37px is not
+   taken literally here. */
+border:1px solid var(--edge);border-radius:var(--r-in);color:var(--ink-2);
+font:inherit;font-size:var(--t-ui);padding:var(--sp-3) var(--sp-4);cursor:pointer;
+min-height:44px;min-width:44px;justify-content:center}
+.findbtn:hover{color:var(--pine);border-color:var(--pine)}
 .findbtn svg{width:17px;height:17px;stroke:currentColor;fill:none;
 stroke-width:1.9;stroke-linecap:round}
 .findpanel{background:var(--surface);border-bottom:1px solid var(--rule)}
