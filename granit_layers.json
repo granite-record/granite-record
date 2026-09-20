@@ -1,0 +1,268 @@
+{
+ "_epsg": 3437,
+ "_licence": "Access Constraints: None; Use Constraints: Not for legal use. Permissive enough to publish a map. The site must not present these boundaries as authoritative for any legal purpose -- the Secretary of State's published definitions are the legal text.",
+ "_read_on": "2026-09-20",
+ "_source": "https://ftp.granit.unh.edu/GRANIT_Data/Vector_Data/Administrative_and_Political_Boundaries",
+ "_what": "NH GRANIT's 2022 district geometry and 2012-2017 ward layer.",
+ "house_codes_agree": true,
+ "layers": {
+  "CongDistricts2022.zip": {
+   "bbox_ftus": [
+    745473.8751627393,
+    72029.90625,
+    1267014.4998462333,
+    1023284.0
+   ],
+   "blank_codes": 0,
+   "code_field": "Cong2022",
+   "epsg": 3437,
+   "fields": [
+    "Cong2022",
+    "Shape_Leng",
+    "Shape_Area"
+   ],
+   "licence": "Access Constraints: None; Use Constraints: Not for legal use. Permissive enough to publish a map. The site must not present these boundaries as authoritative for any legal purpose -- the Secretary of State's published definitions are the legal text.",
+   "method": "curl; dBase read with struct",
+   "polygons": 2,
+   "present": true,
+   "read_on": "2026-09-20",
+   "source_url": "https://ftp.granit.unh.edu/GRANIT_Data/Vector_Data/Administrative_and_Political_Boundaries/d-congressional/CongDistricts2022.zip",
+   "status": "published"
+  },
+  "NHExecDistricts2022.zip": {
+   "bbox_ftus": [
+    745473.8751627402,
+    72029.90624999999,
+    1267014.499846235,
+    1023283.9999999999
+   ],
+   "blank_codes": 0,
+   "code_field": "ExecCo2022",
+   "epsg": 3437,
+   "fields": [
+    "OBJECTID",
+    "ExecCo2022",
+    "Shape_Leng",
+    "Shape_Area"
+   ],
+   "licence": "Access Constraints: None; Use Constraints: Not for legal use. Permissive enough to publish a map. The site must not present these boundaries as authoritative for any legal purpose -- the Secretary of State's published definitions are the legal text.",
+   "method": "curl; dBase read with struct",
+   "polygons": 5,
+   "present": true,
+   "read_on": "2026-09-20",
+   "source_url": "https://ftp.granit.unh.edu/GRANIT_Data/Vector_Data/Administrative_and_Political_Boundaries/d-executivecouncil/NHExecDistricts2022.zip",
+   "status": "published"
+  },
+  "NHHouseDistricts2022_Base.zip": {
+   "bbox_ftus": [
+    745473.8751627402,
+    72029.90624999999,
+    1267014.499846235,
+    1023283.9999999999
+   ],
+   "blank_codes": 0,
+   "code_field": "BaseHse22",
+   "epsg": 3437,
+   "fields": [
+    "OBJECTID",
+    "Shape_Leng",
+    "Shape_Area",
+    "BaseHse22"
+   ],
+   "licence": "Access Constraints: None; Use Constraints: Not for legal use. Permissive enough to publish a map. The site must not present these boundaries as authoritative for any legal purpose -- the Secretary of State's published definitions are the legal text.",
+   "method": "curl; dBase read with struct",
+   "polygons": 164,
+   "present": true,
+   "read_on": "2026-09-20",
+   "source_url": "https://ftp.granit.unh.edu/GRANIT_Data/Vector_Data/Administrative_and_Political_Boundaries/d-nhhousedists/NHHouseDistricts2022_Base.zip",
+   "status": "published"
+  },
+  "NHHouseDistricts2022_Float.zip": {
+   "bbox_ftus": [
+    745473.8751627402,
+    72029.90624999999,
+    1267014.499846235,
+    1023283.9999999999
+   ],
+   "blank_codes": 1,
+   "code_field": "FloatHse22",
+   "epsg": 3437,
+   "fields": [
+    "OBJECTID",
+    "Shape_Leng",
+    "Shape_Area",
+    "FloatHse22"
+   ],
+   "licence": "Access Constraints: None; Use Constraints: Not for legal use. Permissive enough to publish a map. The site must not present these boundaries as authoritative for any legal purpose -- the Secretary of State's published definitions are the legal text.",
+   "method": "curl; dBase read with struct",
+   "polygons": 40,
+   "present": true,
+   "read_on": "2026-09-20",
+   "source_url": "https://ftp.granit.unh.edu/GRANIT_Data/Vector_Data/Administrative_and_Political_Boundaries/d-nhhousedists/NHHouseDistricts2022_Float.zip",
+   "status": "published"
+  },
+  "NHPolitDists.zip": {
+   "bbox_ftus": [
+    745473.8751627402,
+    72029.90624999999,
+    1242053.0000937697,
+    1023283.9999999999
+   ],
+   "blank_codes": 0,
+   "code_field": "WARD",
+   "epsg": 3437,
+   "fields": [
+    "FIPS",
+    "NAME",
+    "COUNTY",
+    "Shape_Leng",
+    "Shape_Area",
+    "COUSUB",
+    "WARD"
+   ],
+   "licence": "Access Constraints: None; Use Constraints: Not for legal use. Permissive enough to publish a map. The site must not present these boundaries as authoritative for any legal purpose -- the Secretary of State's published definitions are the legal text.",
+   "method": "curl; dBase read with struct",
+   "polygons": 324,
+   "present": true,
+   "read_on": "2026-09-20",
+   "source_url": "https://ftp.granit.unh.edu/GRANIT_Data/Vector_Data/Administrative_and_Political_Boundaries/d-nhpolitdists/NHPolitDists.zip",
+   "status": "published"
+  },
+  "NHSenateDistricts2022.zip": {
+   "bbox_ftus": [
+    745473.8751627402,
+    72029.90624999999,
+    1267014.499846235,
+    1023283.9999999999
+   ],
+   "blank_codes": 0,
+   "code_field": "Senate2022",
+   "epsg": 3437,
+   "fields": [
+    "OBJECTID",
+    "Senate2022",
+    "Shape_Leng",
+    "Shape_Area"
+   ],
+   "licence": "Access Constraints: None; Use Constraints: Not for legal use. Permissive enough to publish a map. The site must not present these boundaries as authoritative for any legal purpose -- the Secretary of State's published definitions are the legal text.",
+   "method": "curl; dBase read with struct",
+   "polygons": 24,
+   "present": true,
+   "read_on": "2026-09-20",
+   "source_url": "https://ftp.granit.unh.edu/GRANIT_Data/Vector_Data/Administrative_and_Political_Boundaries/d-nhsenatedists/NHSenateDistricts2022.zip",
+   "status": "published"
+  }
+ },
+ "ward_layer": {
+  "duplicate_ward_values": [
+   "Somersworth - Ward 3"
+  ],
+  "places": 259,
+  "polygons": 324,
+  "split": {
+   "Claremont": [
+    "Ward 1",
+    "Ward 2",
+    "Ward 3"
+   ],
+   "Concord": [
+    "Ward 1",
+    "Ward 10",
+    "Ward 2",
+    "Ward 3",
+    "Ward 4",
+    "Ward 5",
+    "Ward 6",
+    "Ward 7",
+    "Ward 8",
+    "Ward 9"
+   ],
+   "Derry": [
+    "Ward 1",
+    "Ward 2",
+    "Ward 3",
+    "Ward 4"
+   ],
+   "Dover": [
+    "Ward 1",
+    "Ward 2",
+    "Ward 3",
+    "Ward 4",
+    "Ward 5",
+    "Ward 6"
+   ],
+   "Franklin": [
+    "Ward 1",
+    "Ward 2",
+    "Ward 3"
+   ],
+   "Keene": [
+    "Ward 1",
+    "Ward 2",
+    "Ward 3",
+    "Ward 4",
+    "Ward 5"
+   ],
+   "Laconia": [
+    "Ward 1",
+    "Ward 2",
+    "Ward 3",
+    "Ward 4",
+    "Ward 5",
+    "Ward 6"
+   ],
+   "Lebanon": [
+    "Ward 1",
+    "Ward 2",
+    "Ward 3"
+   ],
+   "Manchester": [
+    "Ward 1",
+    "Ward 10",
+    "Ward 11",
+    "Ward 12",
+    "Ward 2",
+    "Ward 3",
+    "Ward 4",
+    "Ward 5",
+    "Ward 6",
+    "Ward 7",
+    "Ward 8",
+    "Ward 9"
+   ],
+   "Nashua": [
+    "Ward 1",
+    "Ward 2",
+    "Ward 3",
+    "Ward 4",
+    "Ward 5",
+    "Ward 6",
+    "Ward 7",
+    "Ward 8",
+    "Ward 9"
+   ],
+   "Portsmouth": [
+    "Ward 1",
+    "Ward 2",
+    "Ward 3",
+    "Ward 4",
+    "Ward 5"
+   ],
+   "Rochester": [
+    "Ward 1",
+    "Ward 2",
+    "Ward 3",
+    "Ward 4",
+    "Ward 5",
+    "Ward 6"
+   ],
+   "Somersworth": [
+    "Ward 1",
+    "Ward 2",
+    "Ward 3",
+    "Ward 4",
+    "Ward 5"
+   ]
+  }
+ }
+}

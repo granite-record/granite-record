@@ -210,5 +210,6 @@ reports/*
 .dev.vars
 
 # GRANIT shapefiles: 4.2 MB of zips, re-fetchable from ftp.granit.unh.edu.
-# sources/gis/README records what each one is and when it was read.
+# parse_granit.py records what each one is, where it came from and
+# when it was read, and skips cleanly when they are absent.
 sources/gis/*.zip

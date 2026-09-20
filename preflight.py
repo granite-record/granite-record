@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.222
+# GRANITE_VERSION: 2026-09-04.223
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10633,6 +10633,51 @@ def _floterials_overlay():
     flot = sum(1 for d in districts if d["floterial"])
     return "ok", (f"{len(districts) - flot} base and {flot} floterial "
                   f"districts, every overlay over districts that exist")
+
+
+@check("files", "GRANIT's geometry carries the districts we publish")
+def _granit_carries_our_districts():
+    """A map cannot be better than the boundaries under it.
+
+    NH GRANIT's 2022 layers are a fourth witness to `districts/house.txt`, and
+    an independent one: a GIS office digitising boundaries rather than anybody
+    transcribing a list. 164 base polygons and 39 coded floterial ones, whose
+    codes agree with ours exactly.
+
+    The floterial layer is the part worth guarding. Both House shapefiles are
+    required to depict all districts, they genuinely overlap, and a map built
+    on the base layer alone silently drops 39 districts and the members
+    elected from them. If that count ever stops matching, the geometry and the
+    record have parted company.
+
+    Skips when the zips are absent: they are 4.2 MB, not in git, and
+    re-fetchable from ftp.granit.unh.edu.
+    """
+    if not Path("sources/gis/NHHouseDistricts2022_Base.zip").exists():
+        return "skip", "sources/gis/ has no GRANIT zips"
+    g = imp("parse_granit")
+    if g is None:
+        return "skip", "parse_granit.py does not import"
+
+    layers, problems = g.survey()
+    hc = g.house_codes()
+    bad = list(problems)
+    if hc:
+        if hc["granit_base"] != hc["ours_base"]:
+            bad.append(f"base districts differ: only GRANIT "
+                       f"{sorted(hc['granit_base'] - hc['ours_base'])}, only "
+                       f"ours {sorted(hc['ours_base'] - hc['granit_base'])}")
+        if hc["granit_floterial"] != hc["ours_floterial"]:
+            bad.append(f"floterial districts differ: only GRANIT "
+                       f"{sorted(hc['granit_floterial'] - hc['ours_floterial'])}, "
+                       f"only ours "
+                       f"{sorted(hc['ours_floterial'] - hc['granit_floterial'])}")
+    assert not bad, "\n  ".join(bad)
+    n = sum(v["polygons"] for v in layers.values() if v.get("present"))
+    return "ok", (f"{n} polygons across {sum(1 for v in layers.values() if v.get('present'))} "
+                  f"layers; {len(hc['granit_base'])} base and "
+                  f"{len(hc['granit_floterial'])} floterial House districts "
+                  f"agreeing with districts/house.txt")
 
 
 @check("files", "our district files still say what the Secretary of State's do")
