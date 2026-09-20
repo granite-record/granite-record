@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.216
+# GRANITE_VERSION: 2026-09-04.217
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1089,6 +1089,65 @@ def _bills_html():
         assert r.returncode == 0, "node --check: " + r.stderr.strip()[:150]
         extra = ", node --check clean"
     return "ok", f"7 markers present, tags balanced{extra}"
+
+
+@check("frontend", "an archived bill's analysis is the analysis, not the page's letterhead")
+def _front_matter_off():
+    """21,914 bill pages published their printing header as the analysis.
+
+    The archive opens a bill with its number, the session, the LSR, the title,
+    the sponsor line and the committee, and only then ANALYSIS.
+    archive_text.front_matter_off cuts that off -- but it looked for a rule of
+    dashes above the label, and the archive draws no such rule before about
+    2015. So it found nothing, returned the page unchanged, and
+    build_site_v2.bill_text_block cut the analysis at the enacting clause
+    instead: everything above it, letterhead included, was published as the
+    drafters' summary. 1994 HB 1234's analysis began "HB 1234 1994 SESSION
+    3833B 94-2328 01/02 HOUSE BILL AN ACT allowing...".
+
+    Measured when it was fixed: 0 of the 8,853 pages of 1989-1999 had their
+    header removed, and 21,914 of the 29,346 on disk overall.
+
+    The sample below is the shape of a real 1994 page -- no rule above the
+    label, a spaced rule below it -- so this needs no data on disk and runs
+    under --code. The second sample is a resolution, which carries no analysis
+    and must be left exactly as it was read rather than cut at a guess.
+    """
+    at = imp("archive_text")
+    if at is None:
+        return "skip", "archive_text will not import"
+    page = (
+        "HB 1234\n\n1994 SESSION 3833B\n\n94-2328\n\n01/02\n\nHOUSE BILL\n\n"
+        "AN ACT allowing condominium unit owners to post signs.\n\n"
+        "SPONSORS: Rep. Lundborn, Straf 18\n\n"
+        "COMMITTEE: Commerce, Small Business and Consumer Affairs\n\n"
+        "ANALYSIS\n\nThis bill allows condominium unit owners to post signs.\n\n"
+        "- - - - - - - - - - - - - - - - - - - -\n\n"
+        "EXPLANATION: Matter added to current law appears in bold italics.\n")
+    got = at.front_matter_off(page)
+    assert got.startswith("ANALYSIS"), (
+        "front_matter_off left the printing header on a 1990s-shaped page, so "
+        "every archived bill before about 2015 would publish its letterhead "
+        "as its analysis. It begins: " + repr(got[:60]))
+    for gone in ("SPONSORS:", "COMMITTEE:", "1994 SESSION", "94-2328"):
+        assert gone not in got, (
+            f"{gone!r} survived into the analysis of a 1990s-shaped page")
+
+    # A page with no analysis at all is not cut. The label is the boundary and
+    # there is no label here, so guessing one would take the resolution's
+    # first words off instead.
+    res = ("HR 5\n\n1993 SESSION\n\nHOUSE RESOLUTION\n\n"
+           "RESOLVED, that the House adopt the rules of the 1992 session.\n")
+    assert at.front_matter_off(res) == res, (
+        "a page carrying no ANALYSIS label was cut anyway")
+
+    # And the modern shape, which has the rule, still works the old way.
+    modern = ("HB 99 - AS INTRODUCED\n\n2021 SESSION\n\n"
+              "SPONSORS: Rep. Smith\n\n" + "-" * 40 + "\n\n"
+              "ANALYSIS\n\nThis bill does a thing.\n")
+    assert at.front_matter_off(modern).startswith("ANALYSIS"), (
+        "the rule-above-the-label path stopped working")
+    return "ok", "the header comes off with or without a rule above the label"
 
 
 @check("frontend", "no component quietly takes a class another one already uses")

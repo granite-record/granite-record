@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-16.2
+# GRANITE_VERSION: 2026-09-16.3
 """
 The text of every archived bill, read off the pages already on this disk.
 
@@ -100,6 +100,15 @@ def text_of(path, keep_front=False):
 # The rule the archive draws under the front matter, as a line of its own.
 RULE = re.compile(r"^[-─-╿_=]{5,}$", re.M)
 
+# The analysis's own label. ANALYSIS, AMENDED ANALYSIS, or the STATEMENT OF
+# INTENT a bill of intent carries instead -- the same pair fetch_legislation's
+# ANALYSIS_RE reads. _LINE wants it alone on its line, which is how the label
+# is printed and is what makes it a boundary; _LABEL only wants the text to
+# begin with it, which is what the rule branch above asks.
+ANALYSIS_LINE = re.compile(
+    r"^(?:[A-Z]+[ \t]+)?(?:ANALYSIS|STATEMENT OF INTENT)[ \t]*$", re.M)
+ANALYSIS_LABEL = re.compile(r"(?:[A-Z]+\s+)?(?:ANALYSIS|STATEMENT OF INTENT)\b")
+
 
 def front_matter_off(t):
     """Start the text where the current session's own text starts.
@@ -121,13 +130,35 @@ def front_matter_off(t):
     printed line.
     """
     m = RULE.search(t)
-    if not m:
-        return t
-    rest = t[m.end():].lstrip("\n")
-    # Only when what follows really is the analysis. A resolution has no
-    # analysis and no rule in this position, and a page whose first rule is
-    # somewhere else entirely should be left exactly as it was read.
-    return rest if re.match(r"(?:[A-Z]+\s+)?ANALYSIS\b", rest) else t
+    if m:
+        rest = t[m.end():].lstrip("\n")
+        # Only when what follows really is the analysis. A resolution has no
+        # analysis and no rule in this position.
+        if ANALYSIS_LABEL.match(rest):
+            return rest
+    # NO RULE IS DRAWN ABOVE THE ANALYSIS BEFORE ABOUT 2015, and that is the
+    # whole of the defect this branch exists for. The archive of the older
+    # terms separates its sections with blank lines and nothing else, so
+    # RULE.search found nothing, this function returned the text unchanged,
+    # and every page kept its printing header -- 0 of 8,853 pages of 1989-1999
+    # were stripped, and 21,914 of the 29,346 on disk overall. build_site_v2
+    # then cut the analysis at the enacting clause, so the header, the title,
+    # the sponsor line and the committee were all published as though the
+    # drafters had written them as the bill's summary. Reported by the person
+    # on 19 September, against 1990s bills.
+    #
+    # So when there is no rule, the label itself is the boundary. It is a line
+    # of its own -- "ANALYSIS", "AMENDED ANALYSIS", or "STATEMENT OF INTENT"
+    # on a bill of intent -- and the first one on the page is the header's,
+    # because the header is what comes before it. The label is KEPT at the
+    # start: build_site_v2.bill_text_block strips it, and a page that arrived
+    # without it would have its first sentence eaten instead.
+    #
+    # Still nothing when there is no label. A resolution carries no analysis,
+    # and a page this cannot find one on is left exactly as it was read
+    # rather than cut at a guess.
+    m = ANALYSIS_LINE.search(t)
+    return t[m.start():] if m else t
 
 
 # "HB 1000 - AS INTRODUCED", "SB 12 - AS AMENDED BY THE SENATE", "HB 2-FN-A -
