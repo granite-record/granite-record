@@ -166,11 +166,11 @@ it named only `ground_truth.csv` three of the others had no guard at all. The
 list lives in `preflight.py`'s `HANDMADE`; read it there rather than here,
 because it has grown twice.
 
-**`build_all.py` is the pipeline.** 26 steps for `--local`, 39 declared; `--local` skips network ones,
+**`build_all.py` is the pipeline.** 31 steps for `--local`, 43 declared; `--local` skips network ones,
 `--dry-run` shows the plan. A step marked `superseded=True` is kept for a case
 a newer step does not cover and does not run unasked.
 
-**`preflight.py` is the test suite.** 161 checks — 122 of them under `--code`,
+**`preflight.py` is the test suite.** 174 checks — 134 of them under `--code`,
 which needs no data on disk — and no network. It builds the whole site on a
 fixture, loads `app.js` (the script `bills.html` pulls in) in node against
 `dom_stub.js` and calls `render()` and `renderDetail()`, and runs
@@ -278,19 +278,51 @@ current order and is the newer answer where it and this disagree;
    padded number — no search, no session — and carries the sponsor with their
    district, the committee of referral, the title, the analysis and the full
    text. The parser reads sponsor, committee and title across all 15 kinds and
-   31 years; the pages naming no sponsor are housekeeping resolutions and
-   budget tables, which name none.
+   35 years; of 29,324 saved pages only 50 yield no sponsor, and those are the
+   rules resolutions, the budget bill of nine different years, and nineteen
+   1993 pages that are the enacted chapter text rather than the introduced
+   bill — documents that name none. `--parse` prints all fifty.
 
-   11,937 pages across 38 year folders are saved under `legislation/` and the
-   lane is still walking backwards through them. Only 1996 and 2016 answer 404
-   for every bill asked, and that stays unexplained; the current term lives at
-   bill_status. No term lacks a committee — the docket fills committee of
-   referral for all nineteen. What this path is still buying is the sponsor,
-   for the terms that carry one on fewer than twenty bills;
-   `/data/manifest.json`'s per-term coverage table says which, and it moves
-   with every build. `fetch_legislation.py` fetches and saves; `--parse` reads
-   what is saved and touches no network, because the labels change with the
-   decades and a parser must be allowed to be wrong without costing a request.
+   **The sweep is done.** HB, SB and CACR for 1989-2024 were fetched on
+   19 September and the lane reported `the range is done`: **29,324 pages
+   across 38 year folders**. Run `find legislation -name '*.html' | wc -l`
+   rather than quoting that. The current term lives at bill_status.
+
+   It bought 750 sponsors, and nearly all of them in one term: 1997-1998 went
+   from 1,104 of 1,849 to 1,780 — 60% to 96% — with 1991-1992 and 1989-1990
+   taking the other 74. `/data/manifest.json`'s per-term coverage table is
+   where that shows, and it moves with every build. No term lacks a committee;
+   the docket fills committee of referral for all nineteen.
+
+   **1996 answers.** This paragraph said for a fortnight that 1996 and 2016
+   both returned 404 for every bill and that it stayed unexplained. 1996 has
+   **849 pages** on disk carrying sponsor, committee, title and analysis; the
+   earlier finding was wrong about it.
+
+   **2016 does 404, and it is no longer unexplained.** Ten real 2016 bill
+   numbers are on `legislation/_gone.json` at HTTP 404 — CACR0002, HB0105,
+   HB0110 and the rest — so the static path genuinely has nothing. The
+   application path cannot be guessed either: `billText.aspx?id=882016&sy=2016`
+   answers 56 empty bytes, stripping the year looks right because `id=88` does
+   serve 2016 CACR 2, and then `id=79&sy=2016` prints LSR 2015-0500 instead of
+   2016 HB 110 — so the stripped number is another document's id. The whole
+   argument is written out above `ID_MINUS_YEAR` in `fetch_legislation.py`,
+   which is the place to read it. **2016 is waiting on the General Court, not
+   on a fetch**: the archive zip their IT office is preparing, or a reply
+   saying what id billText wants. Asking further is guessing at addresses,
+   which is how the first firewall block was earned — and a wrong id there
+   returns an application error inside an HTTP 200, so it would not announce
+   itself.
+
+   The remaining thirteen kinds are mostly not on this path at all: 1,259 in
+   the record for 1989-2024 and 232 on disk. `HANDOFF.md` has the counts and
+   the open decision about the three-in-a-row guard.
+
+   `fetch_legislation.py` fetches and saves; `--parse` reads what is saved and
+   touches no network, because the labels change with the decades and a parser
+   must be allowed to be wrong without costing a request. It is also how the
+   labels get caught changing: the 1993 pages say `INTRODUCED BY:` and
+   `REFERRED TO:` where later ones say `SPONSORS:` and `COMMITTEE:`.
 
 5. **The bench.** `review.py` serves one sample at a time on the loopback
    address, takes a verdict and a note, and appends to `review/checked.jsonl`.
@@ -308,7 +340,7 @@ inside their own pages, so a bill is one file. Term keying: every per-bill file
 is `{term: {bill: ...}}` and `preflight` refuses the old shape.
 
 The *margin* is comfortable and still worth watching before anything adds a
-file per record. The deploy is **49,361 files, 1.8 GB — 49% of the 100,000**
+file per record. The deploy is **51,110 files, 2.0 GB — 51% of the 100,000**
 Cloudflare Pages Pro allows, and `check_site` warns at 90,000. **Run `python3
 check_site.py` rather than quoting that pair**, which is the rule the rest of
 this file states and which this paragraph itself broke: it read "45,862 files
