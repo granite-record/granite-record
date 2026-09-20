@@ -229,6 +229,7 @@ def reflow(identifier, out_dir=OUT, keep_heads=False):
     # So they go to a sidecar, keyed by the line they would have preceded,
     # and the text stays exactly as it was measured.
     heads = []
+    first_page = None
     # written counts every line that reaches the file, blank page
     # separators included; n_lines counts only the ones with words
     # on them. The sidecar is keyed on the first, because that is
@@ -238,6 +239,8 @@ def reflow(identifier, out_dir=OUT, keep_heads=False):
     with dest.open("w", encoding="utf-8") as fh:
         for page, words in pages(path):
             n_pages += 1
+            if first_page is None:
+                first_page = page
             n_words += len(words)
             height = max((w[3] for w in words), default=0)
             page_lines = lines_of(words)
@@ -259,6 +262,13 @@ def reflow(identifier, out_dir=OUT, keep_heads=False):
         sys.exit(f"{path} parsed to zero words; nothing was written that is worth keeping")
     side = dest.with_suffix(".heads.tsv")
     with side.open("w", encoding="utf-8") as fh:
+        # The volume's first page, because a reader that turns a page
+        # number into an Internet Archive leaf has to know where the count
+        # starts: the UNH volumes begin at _0001.djvu and the 1993 one the
+        # courts deposited begins at _0000.djvu. Taking the lowest page that
+        # happens to carry a running head instead puts every link seven
+        # leaves out, because the front matter has no heads.
+        fh.write(f"# first_page {first_page if first_page is not None else 0}\n")
         fh.write("line\tpage\ttext\n")
         for ln, page, txt in heads:
             fh.write(f"{ln}\t{page}\t{txt}\n")

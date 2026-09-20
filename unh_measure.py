@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.8
+# GRANITE_VERSION: 2026-09-18.9
 """
 Score what can be read out of a scanned journal. Touches no network.
 
@@ -273,8 +273,17 @@ SENATE_RC = re.compile(
     # and 1992 prints "Yeas 19 Nays 3", and requiring the punctuation found
     # no roll call at all in the 1992 volumes -- which have 32 of them.
     rf"Yeas\s*:?\s*(\d+)\s*[-–]?\s*Nays\s*:?\s*(\d+)", re.S | re.I)
-# A senator, as the Senate writes one: a surname on its own.
-SENATE_NAME = re.compile(r"\b([A-Z][A-Za-z'’—\-]{1,24})\b")
+# A senator, as the Senate writes one: a surname, with an initial in
+# front of it where the chamber has two of the same name.
+#
+# THE INITIAL IS PART OF THE NAME AND DROPPING IT MERGES TWO PEOPLE.
+# The 1995 Senate prints "J. King" 217 times and "F. King" 115; the 1992
+# Senate prints "W. King" 140 and "J. King" 74, and a "C. Brown" too. A
+# pattern that takes the surname alone records all of them as one senator
+# called King -- 1,007 votes on someone who is really two or three
+# people, which is the worst kind of error this project can make.
+SENATE_NAME = re.compile(
+    r"\b(?:([A-Z])\.\s*)?([A-Z][A-Za-z'’—\-]{1,24})\b")
 # Words that appear in these lists and are not senators.
 # "None." is what the Senate prints where a side has nobody on it, and it
 # was being counted as a senator -- which is the whole of the +1 that both
@@ -282,7 +291,10 @@ SENATE_NAME = re.compile(r"\b([A-Z][A-Za-z'’—\-]{1,24})\b")
 SENATE_STOP = {"senate", "journal", "january", "february", "march", "april",
                "may", "june", "july", "august", "september", "october",
                "november", "december", "yeas", "nays", "the", "and",
-               "following", "senators", "voted", "yes", "no", "none"}
+               "following", "senators", "voted", "yes", "no", "none",
+               # Roman numerals and headings out of amendment text, which the
+               # initial-prefixed pattern would otherwise read as names.
+               "section", "sections", "paragraph", "subparagraph", "amend"}
 
 
 def chamber_of(text):
@@ -295,9 +307,14 @@ def names_senate(block):
     block = FURNITURE.sub(" ", block)
     out = []
     for m in SENATE_NAME.finditer(block):
-        w = re.sub(r"[^a-z]", "", m.group(1).lower())
-        if w and w not in SENATE_STOP and len(w) > 1:
-            out.append(w)
+        initial, surname = m.group(1), m.group(2)
+        w = re.sub(r"[^a-z]", "", surname.lower())
+        if not w or w in SENATE_STOP or len(w) <= 1:
+            continue
+        # Shaped like the House's "surname,given" so that one comparison
+        # serves both chambers; the given is an initial where that is all the
+        # Senate prints.
+        out.append(f"{w},{initial.lower()}" if initial else w)
     return out
 
 

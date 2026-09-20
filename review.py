@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.15
+# GRANITE_VERSION: 2026-09-09.16
 """
 The bench: one sample at a time, judged by a person, written down for good.
 
@@ -660,7 +660,124 @@ def show_reports(it):
 
 # Each kind: where the samples come from, how to show one, and what to ask.
 # A field is (name, label, placeholder).
+# ------------------------------------------------- the archived roll calls
+
+ARCHIVE_ROLLCALLS = Path("data/unh/rollcalls.csv")
+ARCHIVE_REFLOW = Path("data/unh/reflow")
+
+
+def _leaf_base(volume):
+    """What leaf the volume's first scanned page is, so a link lands right.
+
+    The page numbers in rollcalls.csv are whatever the DjVu XML calls them --
+    "_0001.djvu" in the volumes UNH had scanned, "_0000.djvu" in the 1993 one
+    the courts' law library deposited. The Internet Archive's reader counts
+    leaves from zero. So the offset is the volume's own lowest page number,
+    read off its sidecar rather than assumed.
+    """
+    side = ARCHIVE_REFLOW / f"{volume}.heads.tsv"
+    if not side.exists():
+        return 0
+    with side.open(encoding="utf-8", errors="replace") as fh:
+        for row in fh:
+            if row.startswith("# first_page"):
+                bits = row.split()
+                if len(bits) > 2 and bits[2].isdigit():
+                    return int(bits[2])
+            break
+    return 0
+
+
+def sample_archive_rollcall():
+    """One roll call read out of a scanned journal, with its page to check.
+
+    This is the only kind whose subject has no digital original at all. The
+    House and Senate journals of 1989-1996 exist as scans and nothing else,
+    so unlike every other measurement on this site, there is nothing to score
+    the extraction against except a person opening the page.
+
+    An item is one roll call -- both sides of it -- because that is the unit
+    a person can actually check against a page: the tally, and whether the
+    names under each heading are the names printed there.
+    """
+    if not ARCHIVE_ROLLCALLS.exists():
+        return []
+    calls = {}
+    with ARCHIVE_ROLLCALLS.open(newline="", encoding="utf-8") as fh:
+        for r in csv.DictReader(fh):
+            key = (r["volume"], r["date"], r["yeas"], r["nays"], r["bill"],
+                   r["page"])
+            c = calls.setdefault(key, {"yea": [], "nay": []})
+            c["yea" if r["vote"] == "Yea" else "nay"].append(r["name"])
+    out = []
+    bases = {}
+    for (volume, date, yeas, nays, bill, page), sides in calls.items():
+        if volume not in bases:
+            bases[volume] = _leaf_base(volume)
+        leaf = ""
+        if str(page).isdigit():
+            leaf = max(0, int(page) - bases[volume])
+        out.append({
+            "key": f"{volume}|{date}|{yeas}-{nays}|{bill}|{page}",
+            "volume": volume, "date": date, "bill": bill or "",
+            "yeas": yeas, "nays": nays, "page": page, "leaf": leaf,
+            "yea": sorted(sides["yea"]), "nay": sorted(sides["nay"]),
+        })
+    # Oldest first: 1989 is the part of this nobody has ever been able to
+    # check, and the part with no digital copy behind it.
+    out.sort(key=lambda r: (r["date"], r["key"]))
+    return out
+
+
+def show_archive_rollcall(it):
+    stated = f'{it["yeas"]}-{it["nays"]}'
+    found = f'{len(it["yea"])}-{len(it["nay"])}'
+    agree = ("" if stated == found else
+             f' <b class="warn">the names found are {found}</b>')
+    link = (f'https://archive.org/details/{it["volume"]}/page/n{it["leaf"]}'
+            if it["leaf"] != "" else
+            f'https://archive.org/details/{it["volume"]}')
+    rows = [("Date", it["date"]),
+            ("Bill", it["bill"] or "none printed near this vote"),
+            ("Result", f'YEAS {it["yeas"]} NAYS {it["nays"]}{agree}'),
+            ("Volume", it["volume"]),
+            ("Page", f'<a href="{E(link)}" target="_blank" rel="noopener">'
+                     f'open the scan at leaf {E(it["leaf"])}</a>')]
+    body = "".join(f"<tr><th>{E(k)}</th><td>{v if k == 'Page' else E(v)}</td></tr>"
+                   for k, v in rows)
+
+    def names(side):
+        return ", ".join(E(n) for n in side) or "<i>none</i>"
+
+    return (f'<table class="facts">{body}</table>'
+            f'<p><b>Yea ({len(it["yea"])})</b><br>{names(it["yea"])}</p>'
+            f'<p><b>Nay ({len(it["nay"])})</b><br>{names(it["nay"])}</p>'
+            '<p class="ask">This was read by machine off a scanned page, and '
+            'there is no digital original to check it against. Open the scan '
+            'and compare. Is the tally right, and are these the names printed '
+            'under each heading?</p>')
+
+
 KINDS = {
+    "archive_rollcall": {
+        "label": "Roll calls read off the scanned journals",
+        "blurb": "The House and Senate journals of 1989 to 1996 exist as "
+                 "scans and nothing else, so this is the only kind on the "
+                 "bench with no digital original behind it. 305,214 member "
+                 "votes were read out of 26 volumes; on 1998, the one year "
+                 "with a General Court copy to check against and the one the "
+                 "patterns were never fitted to, the names agree 96.81% of "
+                 "the time. What that cannot say is which of the other years "
+                 "are as good. Oldest first.",
+        "sample": sample_archive_rollcall, "show": show_archive_rollcall,
+        "fields": [("wrong_names", "Names that are wrong, and what the page "
+                    "says instead", "Toll, John -> Tholl, John"),
+                   ("note", "Anything else worth recording", "")],
+        "verdicts": [("correct", "Matches the page"),
+                     ("wrong", "Does not match"),
+                     ("unsure", "Cannot tell")],
+    },
+
     "topic": {
         "label": "Topics for bills that never had one",
         "blurb": "The General Court assigned topics to one term out of "

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.2
+# GRANITE_VERSION: 2026-09-19.3
 """
 Turn repaired journal text into rows: one per member, per vote. No network.
 
@@ -82,7 +82,7 @@ MONTHS = {m: i for i, m in enumerate(
      "August", "September", "October", "November", "December"], 1)}
 
 COLS = ["term", "year", "body", "journal", "date", "bill", "yeas", "nays",
-        "member_id", "name", "vote", "volume"]
+        "member_id", "name", "vote", "volume", "page"]
 MEMBER_COLS = ["member_id", "source", "body", "name", "surname", "given",
                "votes", "first_year", "last_year"]
 
@@ -101,7 +101,19 @@ def term_of(year, month):
 
 
 def gencourt_numbers():
-    """{(surname, given): employee number}, from the General Court's own list."""
+    """{(body, surname, given): (number, name)}, from the General Court's list.
+
+    KEYED ON THE CHAMBER, because the list says which one and throwing that
+    away merges people. Every entry begins "Rep." or "Sen.", and without it a
+    Senate "J. King" resolved to the House's John King: one record, 634 votes,
+    both chambers, two men. The Senate prints surnames alone and leans on an
+    initial only where it has two of the same name, so its names are exactly
+    the ones with least to distinguish them and most need of this.
+
+    A member who served in both chambers appears in the list twice and keeps
+    both records, which is the right shape -- joining them is a judgment about
+    a person, not a lookup.
+    """
     if not PAST_MEMBERS.exists():
         return {}
     try:
@@ -116,9 +128,29 @@ def gencourt_numbers():
         given = m.group(3).strip().split()
         if not given:
             continue
-        out.setdefault((R.key(m.group(2)), R.key(given[0])),
+        body = "S" if m.group(1).lower().startswith("sen") else "H"
+        out.setdefault((body, R.key(m.group(2)), R.key(given[0])),
                        (str(number), f"{m.group(2).strip()}, {m.group(3).strip()}"))
     return out
+
+
+#
+# THE SEAT LOOKS LIKE A BETTER KEY THAN THE NAME, AND IS NOT. Tried and
+# measured before being believed: past_members.json prints the seat --
+# "Rep. Emerton, Larry(Hills 07)" -- and the rosters read out of the journals
+# carry county and district too, so a surname plus a seat should pin a person
+# where a nickname defeats the given name.
+#
+# Across the rosters, 1,289 people resolve by BOTH the name and the seat. The
+# two agree on 1,198 and DISAGREE ON 91 -- the seat points at a different
+# employee number seven times in a hundred -- while resolving only 28 people
+# the name cannot. Kenneth J. MacDonald of Carroll 6 is two different men,
+# decades apart, because districts are renumbered at every redistricting and
+# a seat is not the same place twice.
+#
+# So it is not used. It would buy 28 joins at the price of 91 wrong ones, and
+# a vote on the wrong member is the worst thing this project can publish.
+# --unresolved writes the evidence out for a person to weigh instead.
 
 
 def mint(body, surname, given):
@@ -141,6 +173,33 @@ def lines_with_offsets(text):
     return out
 
 
+def head_pages(identifier, rows):
+    """(offset, leaf) checkpoints, so a row can name the page it came from.
+
+    Without this a person checking a roll call has the text and no way to see
+    the page it was read off, which is most of what checking one means. The
+    reflow's sidecar already records which leaf each running head sat on.
+    """
+    side = REPAIRED.parent / "reflow" / f"{identifier}.heads.tsv"
+    if not side.exists():
+        return []
+    out = []
+    with side.open(encoding="utf-8", errors="replace") as f:
+        for row in f:
+            if row.startswith("#") or row.startswith("line\t"):
+                continue
+            parts = row.rstrip("\n").split("\t")
+            if len(parts) < 3:
+                continue
+            try:
+                line, leaf = int(parts[0]), int(parts[1])
+            except ValueError:
+                continue
+            if line < len(rows):
+                out.append((rows[line][0], leaf))
+    return sorted(out)
+
+
 def head_dates(identifier, rows):
     """Dates read off the running heads the reflow set aside.
 
@@ -157,8 +216,9 @@ def head_dates(identifier, rows):
         return []
     out = []
     with side.open(encoding="utf-8", errors="replace") as f:
-        next(f, None)
         for row in f:
+            if row.startswith("#") or row.startswith("line\t"):
+                continue
             parts = row.rstrip("\n").split("\t")
             if len(parts) < 3:
                 continue
@@ -203,7 +263,8 @@ def context(text, identifier=None):
     # Where the body carries no dates at all, the running heads do.
     if identifier and not dates:
         dates = sorted(head_dates(identifier, rows))
-    return rows, days, plausible(dates), bills
+    pages = head_pages(identifier, rows) if identifier else []
+    return rows, days, plausible(dates), bills, pages
 
 
 def plausible(dates):
@@ -242,7 +303,7 @@ def extract(identifier, numbers, seen):
     if not path.exists():
         return [], f"{path} is not there"
     text = path.read_text(encoding="utf-8", errors="replace")
-    rows, days, dates, bills = context(text, identifier)
+    rows, days, dates, bills, pages = context(text, identifier)
     # Line starts, for turning a character offset back into a line number.
     # Bisected rather than scanned: this runs once per roll call and there
     # are sixty thousand lines in a volume.
@@ -261,6 +322,7 @@ def extract(identifier, numbers, seen):
 
         day = latest(days, at)
         when = latest(dates, at)
+        leaf = latest(pages, at)
         # The bill must be ABOVE the roll call and close to it. A bill number
         # forty lines up is the previous item of business, not this vote's.
         bill = ""
@@ -276,7 +338,24 @@ def extract(identifier, numbers, seen):
             for name in M.names_in(block, chamber):
                 parts = name.split(",")
                 surname, given = parts[0], (parts[1] if len(parts) > 1 else "")
-                hit = numbers.get((surname, given))
+                hit = numbers.get((body, surname, given))
+                # AN INITIAL RESOLVES WHERE ONLY ONE LISTED NAME STARTS WITH
+                # IT. The Senate prints surnames alone, and an initial only
+                # where it has two of the same name -- "J. King" and "F.
+                # King". The General Court lists King, Bill; King, Frank;
+                # King, Frederick; King, John, and only one of those begins
+                # with J, so J. King is John King and nothing is guessed.
+                # F. King is Frank or Frederick and stays unresolved, which
+                # is the same refusal used everywhere else here.
+                if not hit and len(given) == 1:
+                    # NOT "starts": that name is already the list of line
+                    # offsets this function bisects, and shadowing it made
+                    # every volume die on the next roll call.
+                    same_initial = [v for (bod, sur, giv), v in numbers.items()
+                                    if bod == body and sur == surname
+                                    and giv.startswith(given)]
+                    if len(same_initial) == 1:
+                        hit = same_initial[0]
                 source = "gencourt"
                 if hit:
                     mid, shown = hit
@@ -293,6 +372,7 @@ def extract(identifier, numbers, seen):
                     "journal": day[1] if day else "",
                     "date": when[1].date().isoformat() if when else "",
                     "bill": bill, "yeas": yeas, "nays": nays,
+                    "page": leaf[1] if leaf else "",
                     "member_id": mid, "name": shown, "vote": side,
                     "volume": identifier,
                 })
@@ -332,7 +412,7 @@ def suspects(seen, numbers, limit):
     """
     import difflib
     by_surname = {}
-    for (sur, giv), (_num, shown) in numbers.items():
+    for (_bod, sur, _giv), (_num, shown) in numbers.items():
         by_surname.setdefault(sur, []).append(shown.split(",")[1].strip())
     rows = [r for r in seen.values() if r["source"] == "archive"]
     rows.sort(key=lambda r: -r["votes"])
@@ -367,12 +447,58 @@ def suspects(seen, numbers, limit):
   time, and this list is what that person would work from.""")
 
 
+def unresolved_csv(seen, numbers):
+    """Everyone with a minted identifier, and the evidence about them.
+
+    A worklist, not a decision. Each row carries what the General Court lists
+    under that surname, so a person can see at a glance whether this is the
+    nickname case -- Emerton, Lawrence against the list's Larry -- or somebody
+    the list does not reach. Ranked by votes, because a name that is wrong on
+    eighty votes matters more than one wrong on a single vote.
+    """
+    import difflib
+    by_surname = {}
+    for (_bod, sur, _giv), (num, shown) in numbers.items():
+        by_surname.setdefault(sur, []).append(shown)
+    rows = []
+    for r in sorted((r for r in seen.values() if r["source"] == "archive"),
+                    key=lambda r: -r["votes"]):
+        listed = sorted(by_surname.get(r["surname"], []))
+        near = "" if listed else ", ".join(
+            difflib.get_close_matches(r["surname"], list(by_surname), n=2,
+                                      cutoff=0.8))
+        rows.append({
+            "member_id": r["member_id"], "name": r["name"], "body": r["body"],
+            "votes": r["votes"], "first_year": r["first_year"],
+            "last_year": r["last_year"],
+            "cause": "same surname listed, given name differs" if listed
+                     else "surname not listed",
+            "general_court_lists": "; ".join(listed[:4]),
+            "nearest_surnames": near,
+        })
+    dest = OUT / "unresolved.csv"
+    with dest.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0]) if rows else
+                           ["member_id"])
+        w.writeheader()
+        w.writerows(rows)
+    nick = sum(1 for r in rows if r["cause"].startswith("same"))
+    print(f"\n  -> {dest}")
+    print(f"     {len(rows):,} people to work through: {nick:,} where the "
+          f"General Court lists the\n     surname under another given name, "
+          f"{len(rows)-nick:,} it does not list at all")
+    return dest
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("identifiers", nargs="*")
     ap.add_argument("--all", action="store_true", help="every repaired volume")
     ap.add_argument("--summary", action="store_true", help="counts only, write nothing")
+    ap.add_argument("--unresolved", action="store_true",
+                    help="write data/unh/unresolved.csv, a worklist of the "
+                         "people who carry a minted identifier")
     ap.add_argument("--suspect", type=int, default=0, metavar="N",
                     help="list the N minted people most worth a person's eye")
     a = ap.parse_args()
@@ -407,6 +533,8 @@ def main():
     # rewriting the data files.
     if a.suspect:
         suspects(seen, numbers, a.suspect)
+    if a.unresolved and not a.summary:
+        unresolved_csv(seen, numbers)
     if a.summary:
         return
 
