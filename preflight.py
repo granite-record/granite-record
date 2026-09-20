@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.220
+# GRANITE_VERSION: 2026-09-04.221
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10633,6 +10633,86 @@ def _floterials_overlay():
     flot = sum(1 for d in districts if d["floterial"])
     return "ok", (f"{len(districts) - flot} base and {flot} floterial "
                   f"districts, every overlay over districts that exist")
+
+
+@check("files", "the five lists of New Hampshire places still reconcile")
+def _places_reconcile():
+    """Five lists count the same state and get five different answers.
+
+    districts/*.txt has 320 rows, town_clerks.json 339, town_officials.json
+    234, db/Towns.psv 273, and the Secretary of State's own page 331. None is
+    wrong -- they count different things -- but every tool that joins two of
+    them has to decide what a place is, and before places.json that decision
+    was made separately, and differently, in each of them.
+
+    The arithmetic that makes them one list is the check, because it is what
+    breaks silently. A town that gains a ward, a district file edited for a
+    new plan, a re-export of the clerk list with more rows: each moves one
+    number and leaves the rest alone, and a join that used to be one-to-one
+    quietly stops being.
+
+    This recomputes from the sources rather than trusting places.json, so a
+    stale places.json fails rather than agreeing with itself.
+    """
+    if not Path("places.json").exists():
+        return "skip", "no places.json here; run build_places.py"
+    bp = imp("build_places")
+    if bp is None:
+        return "skip", "build_places.py does not import"
+
+    places, disagree, synthetic, _ = bp.build()
+    saved = json.loads(Path("places.json").read_text(encoding="utf-8"))["places"]
+
+    assert not disagree, (
+        "the four district files no longer name the same places: "
+        + "; ".join(f"{k} differs on {len(v)} rows" for k, v in disagree.items()))
+
+    assert places.keys() == saved.keys(), (
+        f"places.json is stale: {len(places)} places rebuild from the sources, "
+        f"{len(saved)} are saved. Re-run build_places.py.")
+
+    n = len(places)
+    gc_rows = sum(len(p["named_by"]["districts"]["wards"]) or 1 for p in places.values())
+    sos_rows = sum(len(p["named_by"]["sos_clerks"]["wards"]) or 1
+                   for p in places.values()
+                   if p["named_by"]["sos_clerks"]["present"])
+    in_off = sum(1 for p in places.values()
+                 if p["named_by"]["nhdot_officials"]["present"])
+
+    clerks = json.loads(Path("town_clerks.json").read_text(encoding="utf-8")) \
+        if Path("town_clerks.json").exists() else None
+
+    bad = []
+    if gc_rows != 320:
+        bad.append(f"districts/*.txt should come to 320 rows, not {gc_rows}")
+    if sos_rows != 331:
+        bad.append(f"the clerk list should come to 331 rows, not {sos_rows}")
+    if clerks is not None and len(clerks) != sos_rows + len(synthetic):
+        bad.append(f"town_clerks.json has {len(clerks)} keys; the clerk list's "
+                   f"{sos_rows} rows plus {len(synthetic)} synthesised "
+                   f"town-level rows come to {sos_rows + len(synthetic)}")
+    if in_off != 234:
+        bad.append(f"NHDOT's directory should name 234 of them, not {in_off}")
+    if n - in_off != 25:
+        bad.append(f"{n - in_off} places are absent from NHDOT's directory, not "
+                   f"the 25 unincorporated places")
+
+    # A ward is a property of a place AS A PARTICULAR LIST WARDS IT. Where both
+    # lists ward a place they must ward it the same way, or a polling place
+    # will be filed under a ward that district does not have.
+    for key, p in places.items():
+        a = p["named_by"]["districts"]["wards"]
+        b = p["named_by"]["sos_clerks"]["wards"]
+        if a and b and a != b:
+            bad.append(f"{key} is warded {a} by the district files and {b} by "
+                       f"the clerk list")
+        if p["county"] is None:
+            bad.append(f"{key} is not in exactly one county")
+
+    assert not bad, "\n  ".join(bad)
+    return "ok", (f"{n} places = {in_off} in NHDOT's directory + {n - in_off} "
+                  f"unincorporated; {gc_rows} district rows, {sos_rows} clerk "
+                  f"rows + {len(synthetic)} synthesised")
 
 
 @check("frontend", "the person chip is drawn the same in both copies")

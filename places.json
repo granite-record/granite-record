@@ -1,0 +1,6695 @@
+{
+ "_generated": "2026-09-20",
+ "_sources": {
+  "districts": {
+   "document_date": null,
+   "provenance": "unknown -- these files carry no source URL, no retrieval date and no statement of which redistricting plan they encode. Checking them against the Secretary of State's published district definitions at https://www.sos.nh.gov/elections/voting-districts is outstanding.",
+   "what": "districts/congress.txt, council.txt, senate.txt, house.txt"
+  },
+  "nhdot_officials": {
+   "document_date": "2025-09-02",
+   "provenance": "the PDF's embedded CreationDate is D:20250902153549-04'00', which is a day later than the date in the filename.",
+   "what": "sources/nh-municipal-officials-2025-09-01.pdf, NHDOT's City and Town Officials of the State of New Hampshire"
+  },
+  "sos_clerks": {
+   "document_date": "2026-09-12",
+   "provenance": "the PDF's embedded CreationDate is D:20260912173019-04'00'.",
+   "what": "sources/sos-clerks-and-polling-places.pdf, exported by hand from app.sos.nh.gov/statelistclerkandpolling"
+  }
+ },
+ "_what": "One row per city, town, unincorporated place and ward of one, as districts/*.txt names them. See build_places.py for the rule and for how the 320 / 331 / 339 / 234 / 273 counts reconcile to it.",
+ "places": {
+  "acworth": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Acworth",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "acworth",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "albany": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Albany",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "albany",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "alexandria": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Alexandria",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "alexandria",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "allenstown": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Allenstown",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "allenstown",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "alstead": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Alstead",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "alstead",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "alton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Belknap",
+   "name": "Alton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "alton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "amherst": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Amherst",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "amherst",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "andover": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Andover",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "andover",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "antrim": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Antrim",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "antrim",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "ashland": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Ashland",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "ashland",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "atk-gil-academy-grant": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Atk. & Gil. Academy Grant",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "atkinson": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Atkinson",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "atkinson",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "auburn": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Auburn",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "auburn",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "barnstead": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Belknap",
+   "name": "Barnstead",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "barnstead",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "barrington": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Strafford",
+   "name": "Barrington",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "barrington",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "bartlett": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Bartlett",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "bartlett",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "bath": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Bath",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "bath",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "bean-s-grant": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Bean's Grant",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "bean-s-purchase": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Bean's Purchase",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "bedford": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Bedford",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "bedford",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "belmont": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Belknap",
+   "name": "Belmont",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "belmont",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "bennington": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Bennington",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "bennington",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "benton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Benton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "benton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "berlin": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Berlin",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "berlin",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "3"
+     ]
+    }
+   }
+  },
+  "bethlehem": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Bethlehem",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "bethlehem",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "boscawen": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Boscawen",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "boscawen",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "bow": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Bow",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "bow",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "bradford": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Bradford",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "bradford",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "brentwood": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Brentwood",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "brentwood",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "bridgewater": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Bridgewater",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "bridgewater",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "bristol": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Bristol",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "bristol",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "brookfield": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Brookfield",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "brookfield",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "brookline": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Brookline",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "brookline",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "cambridge": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Cambridge",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "campton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Campton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "campton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "canaan": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Canaan",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "canaan",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "candia": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Candia",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "candia",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "canterbury": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Canterbury",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "canterbury",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "carroll": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Carroll",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "carroll",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "center-harbor": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Belknap",
+   "name": "Center Harbor",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "center-harbor",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "chandler-s-pur": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Chandler's Pur.",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "charlestown": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Charlestown",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "charlestown",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "chatham": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Chatham",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "chatham",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "chester": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Chester",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "chester",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "chesterfield": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Chesterfield",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "chesterfield",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "chichester": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Chichester",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "chichester",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "claremont": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Claremont",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": [
+      "1",
+      "2",
+      "3"
+     ]
+    },
+    "nhdot_officials": {
+     "key": "claremont",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2",
+      "3"
+     ]
+    }
+   }
+  },
+  "clarksville": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Clarksville",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "clarksville",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "colebrook": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Colebrook",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "colebrook",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "columbia": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Columbia",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "columbia",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "concord": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Concord",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10"
+     ]
+    },
+    "nhdot_officials": {
+     "key": "concord",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10"
+     ]
+    }
+   }
+  },
+  "conway": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Conway",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "conway",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "cornish": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Cornish",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "cornish",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "crawford-s-pur": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Crawford's Pur.",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "croydon": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Croydon",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "croydon",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "cutt-s-grant": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Cutt's Grant",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "dalton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Dalton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "dalton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "danbury": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Danbury",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "danbury",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "danville": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Danville",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "danville",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "deerfield": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Deerfield",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "deerfield",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "deering": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Deering",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "deering",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "derry": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Derry",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "derry",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4"
+     ]
+    }
+   }
+  },
+  "dix-s-grant": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Dix's Grant",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "dixville": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Dixville",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "dorchester": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Dorchester",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "dorchester",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "dover": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Strafford",
+   "name": "Dover",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"
+     ]
+    },
+    "nhdot_officials": {
+     "key": "dover",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"
+     ]
+    }
+   }
+  },
+  "dublin": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Dublin",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "dublin",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "dummer": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Dummer",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "dummer",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "dunbarton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Dunbarton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "dunbarton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "durham": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Strafford",
+   "name": "Durham",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "durham",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "east-kingston": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "East Kingston",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "east-kingston",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "easton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Easton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "easton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "eaton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Eaton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "eaton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "effingham": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Effingham",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "effingham",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "ellsworth": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Ellsworth",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "ellsworth",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "enfield": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Enfield",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "enfield",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "epping": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Epping",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "epping",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "epsom": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Epsom",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "epsom",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "errol": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Errol",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "errol",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "erving-s-location": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Erving's Location",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "exeter": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Exeter",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "exeter",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "farmington": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Strafford",
+   "name": "Farmington",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "farmington",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1"
+     ]
+    }
+   }
+  },
+  "fitzwilliam": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Fitzwilliam",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "fitzwilliam",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "francestown": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Francestown",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "francestown",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "franconia": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Franconia",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "franconia",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "franklin": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Franklin",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": [
+      "1",
+      "2",
+      "3"
+     ]
+    },
+    "nhdot_officials": {
+     "key": "franklin",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2",
+      "3"
+     ]
+    }
+   }
+  },
+  "freedom": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Freedom",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "freedom",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "fremont": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Fremont",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "fremont",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "gilford": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Belknap",
+   "name": "Gilford",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "gilford",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "gilmanton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Belknap",
+   "name": "Gilmanton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "gilmanton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "gilsum": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Gilsum",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "gilsum",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "goffstown": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Goffstown",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "goffstown",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "5"
+     ]
+    }
+   }
+  },
+  "gorham": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Gorham",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "gorham",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "goshen": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Goshen",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "goshen",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "grafton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Grafton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "grafton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "grantham": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Grantham",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "grantham",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "green-s-grant": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Green's Grant",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "greenfield": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Greenfield",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "greenfield",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "greenland": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Greenland",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "greenland",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "greenville": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Greenville",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "greenville",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "groton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Groton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "groton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hadley-s-purchase": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Hadley's Purchase",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hale-s-location": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Hale's Location",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hampstead": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Hampstead",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "hampstead",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hampton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Hampton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "hampton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hampton-falls": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Hampton Falls",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "hampton-falls",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hancock": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Hancock",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "hancock",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hanover": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Hanover",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "hanover",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "harrisville": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Harrisville",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "harrisville",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hart-s-location": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Hart's Location",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "hart-s-location",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "haverhill": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Haverhill",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "haverhill",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hebron": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Hebron",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "hebron",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "henniker": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Henniker",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "henniker",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hill": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Hill",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "hill",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hillsborough": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Hillsborough",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "hillsborough",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hinsdale": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Hinsdale",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "hinsdale",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "holderness": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Holderness",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "holderness",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hollis": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Hollis",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "hollis",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hooksett": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Hooksett",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "hooksett",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hopkinton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Hopkinton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "hopkinton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "hudson": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Hudson",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "hudson",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2"
+     ]
+    }
+   }
+  },
+  "jackson": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Jackson",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "jackson",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "jaffrey": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Jaffrey",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "jaffrey",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "jefferson": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Jefferson",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "jefferson",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "keene": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Keene",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+     ]
+    },
+    "nhdot_officials": {
+     "key": "keene",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+     ]
+    }
+   }
+  },
+  "kensington": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Kensington",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "kensington",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "kilkenny": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Kilkenny",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "kingston": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Kingston",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "kingston",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "laconia": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Belknap",
+   "name": "Laconia",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"
+     ]
+    },
+    "nhdot_officials": {
+     "key": "laconia",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"
+     ]
+    }
+   }
+  },
+  "lancaster": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Lancaster",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "lancaster",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "landaff": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Landaff",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "landaff",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "langdon": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Langdon",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "langdon",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "lebanon": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Lebanon",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": [
+      "1",
+      "2",
+      "3"
+     ]
+    },
+    "nhdot_officials": {
+     "key": "lebanon",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2",
+      "3"
+     ]
+    }
+   }
+  },
+  "lee": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Strafford",
+   "name": "Lee",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "lee",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "lempster": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Lempster",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "lempster",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "lincoln": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Lincoln",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "lincoln",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "lisbon": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Lisbon",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "lisbon",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "litchfield": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Litchfield",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "litchfield",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "littleton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Littleton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "littleton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "livermore": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Livermore",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "londonderry": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Londonderry",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "londonderry",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "loudon": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Loudon",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "loudon",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "low-burbank-s-grant": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Low & Burbank's Grant",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "lyman": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Lyman",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "lyman",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "lyme": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Lyme",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "lyme",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "lyndeborough": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Lyndeborough",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "lyndeborough",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "madbury": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Strafford",
+   "name": "Madbury",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "madbury",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "madison": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Madison",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "madison",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "manchester": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Manchester",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12"
+     ]
+    },
+    "nhdot_officials": {
+     "key": "manchester",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12"
+     ]
+    }
+   }
+  },
+  "marlborough": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Marlborough",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "marlborough",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "marlow": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Marlow",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "marlow",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "martin-s-location": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Martin's Location",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "mason": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Mason",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "mason",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "meredith": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Belknap",
+   "name": "Meredith",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "meredith",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "merrimack": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Merrimack",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "merrimack",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2"
+     ]
+    }
+   }
+  },
+  "middleton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Strafford",
+   "name": "Middleton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "middleton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "milan": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Milan",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "milan",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "milford": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Milford",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "milford",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "millsfield": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Millsfield",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "milton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Strafford",
+   "name": "Milton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "milton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "monroe": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Monroe",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "monroe",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "mont-vernon": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Mont Vernon",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "mont-vernon",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "moultonborough": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Moultonborough",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "moultonborough",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "nashua": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Nashua",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9"
+     ]
+    },
+    "nhdot_officials": {
+     "key": "nashua",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9"
+     ]
+    }
+   }
+  },
+  "nelson": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Nelson",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "nelson",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "new-boston": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "New Boston",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "new-boston",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "new-castle": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "New Castle",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "new-castle",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "new-durham": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Strafford",
+   "name": "New Durham",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "new-durham",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "new-hampton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Belknap",
+   "name": "New Hampton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "new-hampton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "new-ipswich": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "New Ipswich",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "new-ipswich",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "new-london": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "New London",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "new-london",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "newbury": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Newbury",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "newbury",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "newfields": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Newfields",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "newfields",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "newington": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Newington",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "newington",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "newmarket": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Newmarket",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "newmarket",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "newport": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Newport",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "newport",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "newton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Newton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "newton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "north-hampton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "North Hampton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "north-hampton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "northfield": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Northfield",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "northfield",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "northumberland": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Northumberland",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "northumberland",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "northwood": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Northwood",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "northwood",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "nottingham": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Nottingham",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "nottingham",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "odell": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Odell",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "orange": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Orange",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "orange",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "orford": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Orford",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "orford",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "ossipee": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Ossipee",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "ossipee",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "pelham": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Pelham",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "pelham",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "pembroke": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Pembroke",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "pembroke",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "peterborough": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Peterborough",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "peterborough",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "piermont": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Piermont",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "piermont",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "pinkham-s-grant": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Pinkham's Grant",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "pittsburg": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Pittsburg",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "pittsburg",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "pittsfield": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Pittsfield",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "pittsfield",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "plainfield": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Plainfield",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "plainfield",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "plaistow": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Plaistow",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "plaistow",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "plymouth": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Plymouth",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "plymouth",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "portsmouth": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Portsmouth",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+     ]
+    },
+    "nhdot_officials": {
+     "key": "portsmouth",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+     ]
+    }
+   }
+  },
+  "randolph": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Randolph",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "randolph",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "raymond": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Raymond",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "raymond",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "richmond": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Richmond",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "richmond",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "rindge": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Rindge",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "rindge",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "rochester": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Strafford",
+   "name": "Rochester",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"
+     ]
+    },
+    "nhdot_officials": {
+     "key": "rochester",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"
+     ]
+    }
+   }
+  },
+  "rollinsford": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Strafford",
+   "name": "Rollinsford",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "rollinsford",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "roxbury": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Roxbury",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "roxbury",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "rumney": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Rumney",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "rumney",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "rye": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Rye",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "rye",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "salem": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Salem",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "salem",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4"
+     ]
+    }
+   }
+  },
+  "salisbury": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Salisbury",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "salisbury",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "sanbornton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Belknap",
+   "name": "Sanbornton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "sanbornton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "sandown": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Sandown",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "sandown",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "sandwich": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Sandwich",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "sandwich",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "sargent-s-purchase": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Sargent's Purchase",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "seabrook": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Seabrook",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "seabrook",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "second-college-gt": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Second College Gt",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "sharon": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Sharon",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "sharon",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "shelburne": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Shelburne",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "shelburne",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "somersworth": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Strafford",
+   "name": "Somersworth",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+     ]
+    },
+    "nhdot_officials": {
+     "key": "somersworth",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+     ]
+    }
+   }
+  },
+  "south-hampton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "South Hampton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "south-hampton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "springfield": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Springfield",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "springfield",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "stark": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Stark",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "stark",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "stewartstown": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Stewartstown",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "stewartstown",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "stoddard": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Stoddard",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "stoddard",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "strafford": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Strafford",
+   "name": "Strafford",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "strafford",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "stratford": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Stratford",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "stratford",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "stratham": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Stratham",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "stratham",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "success": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Success",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "sugar-hill": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Sugar Hill",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "sugar-hill",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "sullivan": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Sullivan",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "sullivan",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "sunapee": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Sunapee",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "sunapee",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "surry": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Surry",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "surry",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "sutton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Sutton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "sutton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "swanzey": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Swanzey",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "swanzey",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "tamworth": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Tamworth",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "tamworth",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "temple": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Temple",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "temple",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "thompson-mes-s-purchase": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Thompson & Mes's Purchase",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "thornton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Thornton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "thornton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "tilton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Belknap",
+   "name": "Tilton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "tilton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "troy": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Troy",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "troy",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "tuftonboro": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Tuftonboro",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "tuftonboro",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "unity": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Unity",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "unity",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "wakefield": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Wakefield",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "wakefield",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "walpole": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Walpole",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "walpole",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": [
+      "1",
+      "2"
+     ]
+    }
+   }
+  },
+  "warner": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Warner",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "warner",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "warren": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Warren",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "warren",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "washington": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Sullivan",
+   "name": "Washington",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "washington",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "waterville-valley": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Waterville Valley",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "waterville-valley",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "weare": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Weare",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "weare",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "webster": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Webster",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "webster",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "wentworth": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Wentworth",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "wentworth",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "wentworth-s-loc": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Wentworth's Loc.",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": null,
+     "present": false,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "westmoreland": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Westmoreland",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "westmoreland",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "whitefield": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Coos",
+   "name": "Whitefield",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "whitefield",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "wilmot": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Merrimack",
+   "name": "Wilmot",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "wilmot",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "wilton": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Wilton",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "wilton",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "winchester": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Cheshire",
+   "name": "Winchester",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "winchester",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "windham": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Rockingham",
+   "name": "Windham",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "windham",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "windsor": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Hillsborough",
+   "name": "Windsor",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "windsor",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "wolfeboro": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Carroll",
+   "name": "Wolfeboro",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "wolfeboro",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  },
+  "woodstock": {
+   "classification": {
+    "note": "city, town or unincorporated place. The Secretary of State's 'Towns and Wards Redistricted for Election Purposes Beginning 2022' carries this and has not been read.",
+    "state": "not_looked"
+   },
+   "county": "Grafton",
+   "name": "Woodstock",
+   "named_by": {
+    "districts": {
+     "present": true,
+     "read": "2026-09-20",
+     "wards": []
+    },
+    "nhdot_officials": {
+     "key": "woodstock",
+     "present": true,
+     "read": "2026-09-16"
+    },
+    "sos_clerks": {
+     "present": true,
+     "read": "2026-09-16",
+     "wards": []
+    }
+   }
+  }
+ }
+}
