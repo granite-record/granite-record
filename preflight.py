@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.218
+# GRANITE_VERSION: 2026-09-04.219
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10539,6 +10539,90 @@ def _no_c1():
                      "and they render as a box, a stray letter, or nothing at "
                      "all:\n  " + "\n  ".join(bad[:10]))
     return "ok", "no control characters in the source"
+
+
+@check("files", "every floterial district overlays districts that exist")
+def _floterials_overlay():
+    """Hillsborough 42 and 43 were labelled floterial and were not.
+
+    A FLOTERIAL DISTRICT IS AN OVERLAY. It covers several towns or wards that
+    each already elect their own representative, and elects further members
+    across their combined population -- so a resident of one is genuinely in
+    two House districts at once. The definition is the check: every place in a
+    floterial district must also appear in some district that is not
+    floterial.
+
+    districts/house.txt had Hillsborough 43 as a floterial covering Milford
+    and nothing else, and Hillsborough 42 as a floterial covering
+    Lyndeborough, Mont Vernon and New Boston, which appeared nowhere else
+    either. Taken literally that said four towns had no base district at all,
+    which cannot happen: every town in New Hampshire sits in exactly one.
+    Both were base districts wearing the wrong label.
+
+    It survived because every other number stayed right. The file still held
+    203 districts and still totalled 400 seats, the town lists still lined up,
+    and parse_districts.py rebuilt site/districts.json without complaint --
+    the flag is carried through to the reader untested. What it changed was
+    what the site told residents of those four towns about their own
+    representation, which is the kind of error this project fixes first.
+
+    Corrected, the count reconciles with the geometry the state publishes:
+    164 base and 39 floterial districts, which is exactly what NH GRANIT's
+    NHHouseDistricts2022_Base and _Float shapefiles contain.
+
+    A SINGLE-PLACE FLOTERIAL is called out separately because it is the same
+    error in its most obvious form and a reader of the failure deserves to be
+    told which kind they have.
+    """
+    src = Path("districts/house.txt")
+    if not src.exists():
+        return "skip", "no districts/house.txt here"
+
+    head = re.compile(r"^([A-Za-z]+) County District (\d+)(.*)$")
+    districts, cur = [], None
+    for raw in src.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        m = head.match(line)
+        if m:
+            cur = {"name": f"{m.group(1)} County District {m.group(2)}",
+                   "floterial": "(Floterial)" in m.group(3), "places": []}
+            districts.append(cur)
+        elif cur is not None:
+            cur["places"].extend(x.strip() for x in line.split(",") if x.strip())
+
+    assert districts, "districts/house.txt parsed to nothing"
+
+    based = set()
+    for d in districts:
+        if not d["floterial"]:
+            based.update(d["places"])
+
+    bad = []
+    for d in districts:
+        if not d["floterial"]:
+            continue
+        if len(d["places"]) == 1:
+            bad.append(f'{d["name"]} is floterial but covers only '
+                       f'{d["places"][0]}')
+            continue
+        orphan = [x for x in d["places"] if x not in based]
+        if orphan:
+            bad.append(f'{d["name"]} is floterial, but '
+                       + ", ".join(orphan)
+                       + " belong to no district of their own")
+
+    assert not bad, (
+        "a floterial district overlays towns that already have a district, so "
+        "every place in one must appear in a non-floterial district too. "
+        "These do not, which means they are base districts carrying the wrong "
+        "label -- and the site would tell those towns' residents the wrong "
+        "thing about their own representation:\n  " + "\n  ".join(bad))
+
+    flot = sum(1 for d in districts if d["floterial"])
+    return "ok", (f"{len(districts) - flot} base and {flot} floterial "
+                  f"districts, every overlay over districts that exist")
 
 
 @check("frontend", "the person chip is drawn the same in both copies")
