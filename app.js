@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.103
+// GRANITE_VERSION: 2026-09-07.104
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1478,14 +1478,22 @@ function endNote(d){
 
 function renderSummary(b,d,rsa){
   const _an=billNote(d)+analysis(d,rsa);
-  // WHAT A BILL OPENS WITH IS THE WRITING, NOT THE TABLE. Asked for in those
-  // terms: the note that says what this bill number is for, then the General
-  // Court's own analysis, then On the record. Below 1100px the stylesheet was
-  // already doing this with order:1 and order:2; above it the table floated
-  // right at the top of the pane, level with the note, and a floated box has
-  // to come first in the DOM to sit at the top -- so the order the reader
-  // gets is the order the markup is in, and the float now starts below the
-  // prose and sits beside the story instead.
+  // ON THE RECORD SITS AT THE TOP ON A WIDE SCREEN, AND UNDER THE ANALYSIS ON
+  // A NARROW ONE. Asked for in those terms on 20 September.
+  //
+  // THIS REVERSED AN EARLIER DECISION, which is worth keeping rather than
+  // quietly overwriting. The comment here used to read "WHAT A BILL OPENS
+  // WITH IS THE WRITING, NOT THE TABLE. Asked for in those terms", and it
+  // moved the panel after the analysis in the markup so the float started
+  // below the prose and sat beside the story. Both arrangements were asked
+  // for, a fortnight apart; this is the newer one.
+  //
+  // A FLOATED BOX HAS TO COME FIRST IN THE DOM TO SIT AT THE TOP, so the
+  // panel is emitted before the writing and the narrow layout orders it back
+  // -- .anbox is order:1 and .facts order:2 below 1100px, which is what puts
+  // the analysis above it on a phone and has done all along. app.css's .facts
+  // float has described exactly this arrangement the whole time; the markup
+  // is what had drifted away from it.
   //
   // What that cost, and why it is still a float: a grid row is as tall as its
   // tallest item, so the row holding the 488px panel gave the analysis beside
@@ -1493,7 +1501,7 @@ function renderSummary(b,d,rsa){
   // on HB 1, three left an empty row on HB 751. A float cannot push in-flow
   // content down at all, which is the property actually wanted. See .facts in
   // app.css.
-  return _an + factsTable(b,d) + `
+  return factsTable(b,d) + _an + `
 ${d._error?`<div class="loaderr"><b>This bill's detail did not
     load.</b><span>${esc(d._error)}</span></div>`:""}
     ${(d.notes||[]).map(x=>`<p class="note">${esc(x)}</p>`).join("")}

@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.145 */
+/* GRANITE_VERSION: 2026-09-07.146 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1099,6 +1099,20 @@ letter-spacing:-.005em;line-height:1.25}
    carries the state and the colour agrees with it, so a reader who cannot
    separate the two hues still reads the rail. */
 .rail{display:flex;margin:var(--sp-5) 0 var(--sp-1);max-width:310px}
+/* ON A BILL'S OWN PAGE THE RAIL IS THE WIDTH OF THE HEAD IT SITS IN. Capped
+   at 310px it ended at x=474 under a title running to x=1232 -- an island of
+   four dots in a 1,132px card, the same component at the same size whatever
+   it sits in. The stops already share the space (flex:1 1 0), so lifting the
+   cap is the whole change: they spread to the head's own width and the rail
+   reads as this bill's progress across the page rather than as a widget
+   dropped on it.
+
+   THE LIST IS NOT TOUCHED, and that is deliberate rather than an oversight.
+   On a card in a list of bills the rail is a glyph you scan past, one of
+   many down the page, and 310px is what keeps it that; on a bill's own page
+   it is a primary fact about the one thing you came for. Same component,
+   two jobs, and only the second one wants the width. */
+.card.focus .rail{max-width:none}
 .stop{flex:1 1 0;position:relative;display:flex;justify-content:center;
 padding-top:var(--sp-7);min-width:0}
 /* The line between stops, behind them, stopping at the last one. */
