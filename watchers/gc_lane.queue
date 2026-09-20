@@ -328,3 +328,11 @@ watchers/rest.py 600 after-proving-2016
 fetch_legislation.py --all --from 2016 --to 2016 --delay 5 --budget 400 --note 2016-a
 fetch_legislation.py --all --from 2016 --to 2016 --delay 5 --budget 400 --note 2016-b
 fetch_legislation.py --all --from 2016 --to 2016 --delay 5 --budget 400 --note 2016-c
+
+# THE LAST THREE OF 2016. --plan reports 3 left to ask after 1,069 of 1,072
+# came down: the ones whose current version answers an empty body rather than
+# a document, which is the same 56-byte answer that sent the original
+# investigation after the wrong thing. Asked once more with the settled
+# address; if they answer empty again they are empty, and the guard records
+# them rather than this being asked a third time.
+fetch_legislation.py --all --from 2016 --to 2016 --delay 5 --budget 10 --note 2016-tail
