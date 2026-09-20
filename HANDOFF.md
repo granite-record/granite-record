@@ -315,12 +315,40 @@ addresses out of `committees.json` instead of carrying one, so it asks
 gc.nh.gov without the check seeing it. `python3 netcheck.py` then
 `python3 refusal.py --clear` is a person's decision.
 
-**The lane is running again, oldest-first.** Restarted on 19 September at the
-person's word with `fetch_legislation.py --all --from 1989 --to 2024
+**The HB/SB/CACR sweep of 1989-2024 is finished.** It ran on 19 September at
+the person's word -- `fetch_legislation.py --all --from 1989 --to 2024
 --skip-year 2016 --kinds HB,SB,CACR --delay 5 --budget 800`, queued as
-repeating steps of 800 requests so that each one ends cleanly and the next
-picks up where it stopped. About 69 minutes a step. Read `logs/gc_lane.log`
-for the step it is on, never this paragraph.
+repeating steps of 800 -- and step 17 at 20:38 reported `0 to ask ... the
+range is done`. **29,324 pages across 38 year folders**, up from 11,937 when
+`CLAUDE.md` described this path and 27,258 at the start of that session:
+20,883 HB, 7,718 SB, 491 CACR. Run `find legislation -name '*.html' | wc -l`
+rather than quoting that figure. 2016 was skipped throughout and has not been
+retested.
+
+**Then the lane stopped, and the stop is the guard working.** The queue's next
+command dropped both filters -- `--all --from 1989 --to 2024 --delay 5
+--budget 400 --note everything-else-01` -- to go after the other thirteen
+kinds. It asked 82, saved 74, met three 404s in a row on 1992 SR bills and
+stopped itself at 20:45. No refusal was recorded, because a 404 is not one,
+and `archive/refused.json` is absent: nothing is held, and the next fetch is
+free to start whenever a person wants one.
+
+**Do not simply restart it.** Counted against `site/index.json`, the thirteen
+minor kinds hold **1,259 bills in 1989-2024 and 232 of them are on this path**
+-- 461 of 514 HR missing, 278 of 334 HCR, 104 of 139 SR. Most years carry one
+SR and one HR and no more. So the remaining 1,027 addresses are mostly not
+there, every one costs a request, and three misses in a row stops the queue:
+the run would stall about every third miss and need restarting each time.
+That is the same shape already recorded below for the 1998 CACRs, and the same
+decision is still open -- whether three in a row within one year AND one kind
+should mean "this kind is not on this path for this year" and skip the rest of
+that kind, rather than stopping everything. It is a change to fetching
+behaviour, so it stays the person's call.
+
+What those 1,027 would buy is also the least of what this path offers. The
+page is fetched for the sponsor, and `CLAUDE.md` already records that the
+pages naming no sponsor are the housekeeping resolutions and budget tables --
+which is most of what is left.
 
 **1996 answers.** `CLAUDE.md` says "Only 1996 and 2016 answer 404 for every
 bill asked, and that stays unexplained", and on the evening of 19 September the
