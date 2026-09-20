@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.109
+# GRANITE_VERSION: 2026-09-04.111
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -528,9 +528,28 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
         # happened at the top of Coming up. HOME_JS
         # reads this attribute in the reader's own clock, drops the days that
         # have passed and writes the relative word again.
-        html.append(f'<div class="calday" data-d="{esc(date)}"><{h} class="caldate">'
+        # THE DAY'S SPAN, BESIDE THE DAY. The same "span, not a slot" rule
+        # the meeting below uses, applied across every meeting of the day:
+        # first start to last, or one time where the day holds only one. It
+        # is here so the rail's cards need not each spend a line on a time --
+        # asked for on 20 September, to save the vertical space. The full
+        # calendar keeps its per-card times; only .hside drops them, which is
+        # the same trade it already makes for the kind and the room.
+        day_slots = sorted(x for k in keys
+                           for x in ((r.get("time") or "") for r in meets[k])
+                           if x)
+        day_span = ((day_slots[0] if len(set(day_slots)) == 1
+                     else f"{day_slots[0]}\u2013{day_slots[-1]}")
+                    if day_slots else "")
+        # HOW MANY MEETINGS THE DAY HOLDS, so the stylesheet can tell a
+        # card whose time the heading already gives from one whose it does
+        # not. One meeting and the day's span IS that meeting's time.
+        html.append(f'<div class="calday" data-d="{esc(date)}"'
+                    f' data-meets="{len(keys)}"><{h} class="caldate">'
                     f'<span>{esc(label)}</span>'
-                    f'<span class="cdrel">{esc(rel)}</span>'
+                    + (f'<span class="cdtime">({esc(day_span)})</span>'
+                       if day_span else "")
+                    + f'<span class="cdrel">{esc(rel)}</span>'
                     + f"</{h}>")
         for key in keys:
             _d, cmte = key
@@ -2442,15 +2461,18 @@ today.</p>
   <h2>Find your legislators</h2>
   <p class="hfnote">A town gives you its House and Senate districts, its
   Executive Councillor and its member of Congress.</p>
+  <!-- ONE BOX. There were two forms here, one asking for a town and one for a
+       name, and they were two doors into the same room: legislators.html
+       reads `(pr.get("town") || pr.get("q") || "")` into the single #lq box,
+       which has always matched a town OR a name OR a county, party or
+       committee. So the split asked the reader to classify what they were
+       typing before they typed it, to no end. Asked for on 20 September.
+       The parameter is q, which is what that page's own box submits. -->
   <form class="hfrow" action="legislators.html" method="get">
-    <label for="ht" class="sr">Your town</label>
-    <input id="ht" name="town" type="search" placeholder="Your town or city">
+    <label for="hq2" class="sr">Your town, or a legislator's name</label>
+    <input id="hq2" name="q" type="search"
+      placeholder="Your town, or a legislator&rsquo;s name">
     <button type="submit">Find</button>
-  </form>
-  <form class="hfrow" action="legislators.html" method="get">
-    <label for="hn" class="sr">Search the roster by name, county, party or committee</label>
-    <input id="hn" name="q" type="search" placeholder="Name or committee">
-    <button type="submit">Search</button>
   </form>
 </div>
 <div id="session"></div>

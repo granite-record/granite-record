@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.136 */
+/* GRANITE_VERSION: 2026-09-07.139 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -475,6 +475,21 @@ font-variant-numeric:tabular-nums;flex:0 0 auto}
 text-transform:uppercase;color:var(--ink-2);margin:var(--sp-6) 0 var(--sp-3);
 padding-bottom:var(--sp-3);border-bottom:1px solid var(--rule);
 display:flex;align-items:baseline;gap:var(--sp-4)}
+/* NOT TWICE ON ONE DAY. From 20 September the day's heading carries its
+   span, so on a day holding ONE meeting the card beneath it repeated the
+   same string -- the line the person asked to save. It goes there, and only
+   there: a day with several meetings keeps a time on every card, because the
+   heading's span is then the whole day rather than that committee's sitting,
+   and without it a reader could not tell which of three is at 09:30.
+
+   The home rail only. The calendar page has the width for both and is not
+   touched, which is the same line drawn for the kind and the room above. */
+:where(body.pg) .hside .calday[data-meets="1"] .calmeet > summary .caltime{
+display:none}
+/* The span sits with the date, in the date's own small caps but lighter,
+   because it is a property of the day rather than a second label. */
+.caldate .cdtime{font-weight:400;letter-spacing:0;color:var(--ink-2);
+font-variant-numeric:tabular-nums}
 .caldate .cdrel{font-weight:400;letter-spacing:0;text-transform:none;
 font-size:var(--t-ui);color:var(--ink-2);margin-left:auto}
 .calmeet{background:var(--surface);border:1px solid var(--rule-2);
@@ -3213,6 +3228,7 @@ vertical-align:top;font-size:var(--t-ui)}
 padding-right:var(--sp-5);width:1%}
 
 :where(body.pg) .hside > :first-child{margin-top:0}
+
 :where(body.pg) .hside .cal{margin-top:0}
 /* Stacked, not side by side. .twoup's own floor is minmax(280px,1fr),
      which in a 290px column is one column anyway -- this says so rather
@@ -3227,6 +3243,60 @@ padding-right:var(--sp-5);width:1%}
      hearings is longer than a search box. A rule under them reads as "the
      columns end here", which is better than leaving 340px of white looking
      like something failed to load. */:where(body.pg) #recent{border-top:1px solid var(--rule);padding-top:var(--sp-3)}
+}
+/* THE ORDER ON ONE COLUMN, which is the person's, from 20 September:
+   the hero, the bill search and its cards, then find your legislators, the
+   status, what is coming up, the most recent floor sessions, and last the
+   latest activity.
+
+   WHY THE WRAPPERS DISSOLVE. Above 1180px this page is three grid areas and
+   each column is one wrapper that stacks internally -- which is why the
+   wrappers exist, and why the grid needs them. The order wanted here runs
+   mid, mid, right, left, left, right, mid, so it interleaves all three: no
+   amount of ordering the wrappers produces it. display:contents takes their
+   boxes away and leaves their children as siblings of .hcols, which can then
+   be ordered freely. The same move the learn pages' .lside makes at 860.
+
+   WHAT THAT COSTS, stated rather than discovered later. The two .hside
+   sections carry aria-labels -- "Where the General Court is, and what is
+   coming up", "Find your legislators, and what has just happened" -- and a
+   box-less element may drop its landmark. That is the right trade here and
+   not merely an acceptable one: at this width the groupings those labels
+   describe no longer exist, because the reorder splits both sections apart.
+   A landmark naming a grouping the reader cannot perceive is worse than
+   none, and every block keeps its own heading.
+
+   DESKTOP IS NOT IN THIS BLOCK. It is max-width:1179.98px, the complement of
+   the min-width:1180px the grid lives in, so the two never both apply. */
+@media (max-width:1179.98px){
+  :where(body.pg) .hcols{display:flex;flex-direction:column;align-items:stretch}
+  :where(body.pg) .hmid,
+  :where(body.pg) .hside{display:contents}
+  /* The hero, in the order it is written. */
+  :where(body.pg) .hcols h1.lockup{order:1}
+  :where(body.pg) .hcols .slogan{order:2}
+  :where(body.pg) .hcols .lead{order:3}
+  /* The bill search and the three cards, which the person asked to keep
+     exactly where they are. */
+  :where(body.pg) .hcols .searchbig{order:4}
+  :where(body.pg) .hcols .entry{order:5}
+  /* Then the finder, which is a search and belongs with the other one. */
+  :where(body.pg) .hcols .hfind{order:6}
+  /* Then where the General Court is, and what it is about to do. */
+  :where(body.pg) .hcols #state{order:7}
+  :where(body.pg) .hcols #upcoming{order:8}
+  /* Then what it has just done. */
+  :where(body.pg) .hcols #session{order:9}
+  /* And last, the rebuild line with the latest activity under it, which is
+     the pair settled on 19 September and is kept together here. */
+  :where(body.pg) .hcols .fresh{order:10}
+  :where(body.pg) .hcols .hrecent{order:11}
+  /* display:contents leaves the children without the wrapper's own spacing,
+     so the blocks that used to lean on .hside set their own. */
+  :where(body.pg) .hcols #state,
+  :where(body.pg) .hcols #upcoming,
+  :where(body.pg) .hcols #session,
+  :where(body.pg) .hcols .hfind{margin-top:var(--sp-7)}
 }
 /* THE FINDER ON THE RIGHT IS A FORM, not a script: method="get" on
    legislators.html produces exactly the ?town= and ?q= those two boxes read,
@@ -3331,8 +3401,13 @@ clip:rect(0 0 0 0);white-space:nowrap;border:0}
 :where(body.pg) .corrections a{color:var(--pine)}
 /* The line under the home page's logo, which the person set on 14 September:
    a sub-heading in the sans face, above the lead's serif sentence. A paragraph,
-   not a heading, so the page's outline still goes h1 to h2. */:where(body.pg) .slogan{font-size:var(--t-lead);font-weight:600;letter-spacing:-.01em;line-height:1.3;
-color:var(--ink);margin:0 0 var(--sp-4)}
+   not a heading, so the page's outline still goes h1 to h2. *//* CENTRED UNDER THE LOGO, at every width, asked for on 20 September. The
+   lockup above it is already centred (margin:auto on a 280px block), so the
+   line hanging left under a centred mark read as two different alignments
+   rather than one masthead. The lead sentence below stays ranged left: it is
+   prose and is read, not looked at. */
+:where(body.pg) .slogan{font-size:var(--t-lead);font-weight:600;letter-spacing:-.01em;line-height:1.3;
+color:var(--ink);margin:0 0 var(--sp-4);text-align:center}
 
 /* THREE WAYS TO ARRANGE THE CHAMBER. Tabs rather than a dropdown, because
    the choice is the point of the section and a reader should see all three
