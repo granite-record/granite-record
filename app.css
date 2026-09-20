@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.144 */
+/* GRANITE_VERSION: 2026-09-07.145 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1573,6 +1573,14 @@ transition:transform .12s;flex:none}
 .doc{display:flex;gap:var(--sp-4);align-items:baseline;flex-wrap:wrap;padding:var(--sp-4) 0;
 border-bottom:1px solid var(--rule);font-size:var(--t-ui)}
 .doc span{font-size:var(--t-ui);color:var(--ink-2)}
+/* WHICH BOOK, AND WHEN -- beside the citation, because it is what the
+   citation MEANS rather than a second fact about the document. */
+.doc .docof{flex:0 0 auto;font-size:var(--t-sm);color:var(--ink-2)}
+/* AND WHAT IT IS THE RECORD OF, on its own line under both. The General
+   Court's own docket line, not a paraphrase: the note at the top of this tab
+   says these are the record itself, so the words are theirs. A citation
+   covering several actions lists them all. */
+.doc .docacts{flex:1 0 100%;color:var(--ink);line-height:1.55}
 .ramd{font-weight:400;font-size:var(--t-ui);color:var(--ink-2);background:var(--wash);
 border-radius:var(--r-in);padding:1px var(--sp-3);font-variant-numeric:tabular-nums}
 .cvote{font-size:var(--t-ui);font-weight:600;font-variant-numeric:tabular-nums;

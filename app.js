@@ -1,10 +1,20 @@
-// GRANITE_VERSION: 2026-09-07.102
+// GRANITE_VERSION: 2026-09-07.103
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
   docket:"every recorded action, in the General Court's own words",
   record:"the official record of one action",
   report:"the calendar a committee report was printed in"};
+// WHAT THE SHORTHAND STANDS FOR. A citation is printed the way the General
+// Court prints it -- "HJ 1, page 32" is what a reader would quote -- but HJ
+// and SC are insider shorthand, and this site exists to make the record
+// findable. The Learn section explains the same four at
+// civics.py's "Reading the shorthand" table; this is the one place a reader
+// meets them without having gone looking.
+const CITE_OF={HJ:"House Journal",SJ:"Senate Journal",
+  HC:"House Calendar",SC:"Senate Calendar"};
+const citeSource=lab=>CITE_OF[(String(lab).match(/^([A-Z]{2})\b/)||[])[1]]||"";
+
 const PARTY_NAME={R:"Republican",D:"Democrat",I:"Independent",L:"Libertarian",
   X:"Party not on file"};
 const PARTY_COLOR={R:"var(--rep)",D:"var(--dem)",I:"var(--ind)",L:"var(--ind)",
@@ -2175,9 +2185,23 @@ function renderDocuments(b,d){
   return ((d.documents||[]).length
       ? `<p class="note">Everything below is published by the General Court. This
          site quotes and summarises these; they are the record itself.</p>
-         <ul class="docs">${d.documents.map(x=>`<li class="doc doc-${esc(x.kind)}">
+         <ul class="docs">${d.documents.map(x=>{
+           // THE ACTIONS THIS CITATION IS THE RECORD OF. The docket carries
+           // the same citation on the event it belongs to, so the two are
+           // joined on it -- and a citation covering several actions names
+           // all of them, because it is the record of all of them. Where
+           // nothing matches, DOCWHAT's sentence stands as it always did.
+           const acts=(d.events||[]).filter(e=>e.cite&&e.cite===x.label);
+           const src=x.kind==="record"?citeSource(x.label):"";
+           const when=acts.length?fdate(acts[0].date):"";
+           const of=[src,when].filter(Boolean).join(" \u00b7 ");
+           return `<li class="doc doc-${esc(x.kind)}">
            <a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)}</a>
-           <span>${DOCWHAT[x.kind]||""}</span></li>`).join("")}</ul>`
+           ${of?`<span class="docof">${esc(of)}</span>`:""}
+           ${acts.length
+             ? `<span class="docacts">${acts.map(e=>esc(e.text)).join("<br>")}</span>`
+             : `<span>${DOCWHAT[x.kind]||""}</span>`}</li>`;
+         }).join("")}</ul>`
       : `<p class="note">No official documents on file for this bill yet. The
          bill text and docket links come from the General Court's status page,
          which is fetched separately.</p>`);
