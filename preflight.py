@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.217
+# GRANITE_VERSION: 2026-09-04.218
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1148,6 +1148,47 @@ def _front_matter_off():
     assert at.front_matter_off(modern).startswith("ANALYSIS"), (
         "the rule-above-the-label path stopped working")
     return "ok", "the header comes off with or without a rule above the label"
+
+
+@check("frontend", "the Bill Text tab asks for a version index only where one exists")
+def _version_index_gate():
+    """29,841 bill pages printed an error about a file that was never written.
+
+    build_bill_versions writes /versions/<year>/<ID>.json for a bill with more
+    than one version or with amendments, and for no other: 1,087 of the 33,030
+    records that draw a Bill Text tab. The tab is drawn far more widely,
+    because a bill with one version and no amendments still has text and that
+    text is in the record. So the pane asked for the index on all of them and
+    printed "The versions of this bill could not be loaded. HTTP 404" on the
+    29,841 that were never going to have one -- in a warning box, directly
+    above the bill text that had loaded perfectly well.
+
+    The record knows: (nver > 1 || namd) was true for exactly the 1,087 with a
+    file, 0 false either way across the whole built site. hasVersionIndex is
+    that predicate, and both the render and the fetch consult it.
+    """
+    p = Path("app.js")
+    if not p.exists():
+        return "skip", "app.js not in this directory"
+    t = p.read_text(encoding="utf-8")
+    assert "function hasVersionIndex(" in t, (
+        "app.js has no hasVersionIndex: the Bill Text pane would ask for a "
+        "version index on every bill that draws the tab, and report a 404 on "
+        "the nine tenths that never had one")
+    i = t.find("function renderVersions(")
+    assert i > 0, "renderVersions is gone"
+    head = t[i:i + 700]
+    err = "The versions of this bill could not be"
+    assert "hasVersionIndex" in head, (
+        "renderVersions no longer consults hasVersionIndex")
+    assert head.index("hasVersionIndex") < head.index(err), (
+        "renderVersions reports the index missing before it asks whether one "
+        "was ever meant to exist")
+    j = t.find("function needVersions(")
+    assert j > 0 and "hasVersionIndex" in t[j:j + 700], (
+        "needVersions fetches without consulting hasVersionIndex, so the 404 "
+        "is requested even where the pane no longer shows it")
+    return "ok", "the record decides, and it is right 33,030 times out of 33,030"
 
 
 @check("frontend", "no component quietly takes a class another one already uses")

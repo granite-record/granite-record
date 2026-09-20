@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.100
+// GRANITE_VERSION: 2026-09-07.101
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2204,8 +2204,29 @@ const VMODE = {};                      // bill -> "text" or "changes"
 
 function verKey(b){ return `${b.year||yearOf(b.id)}/${b.id}`; }
 
+// IS THERE AN INDEX TO ASK FOR. build_bill_versions writes
+// /versions/<year>/<ID>.json for a bill with more than one version or with
+// amendments, and for no other -- 1,087 of the 33,030 records that draw a
+// Bill Text tab. The tab itself is drawn far more often than that, because a
+// bill with one version and no amendments still has TEXT, and that text is in
+// the record already.
+//
+// Without this the pane asked for the index on all 33,030 and printed "The
+// versions of this bill could not be loaded. HTTP 404" on the 29,841 where
+// there was never going to be one -- in a warning box, above the bill text
+// that had loaded fine. Checked against the built site: this predicate is
+// true for exactly the bills that have the file, 0 either way.
+function hasVersionIndex(d){
+  return !!d && (((d.nver || 0) > 1) || !!(d.namd || 0));
+}
+
 function renderVersions(b,d){
   const key=verKey(b), ix=VERS[key];
+  // Nothing to load, so nothing to say about loading it. The bill's own text
+  // is rendered below this pane from the record, which is where it has always
+  // come from for these bills; an empty pane leaves that as the whole answer
+  // rather than putting a failure notice on top of it.
+  if(!hasVersionIndex(d))return "";
   if(!ix)return `<p class="spin">Loading the versions…</p>`;
   if(ix._error)return `<p class="note">The versions of this bill could not be
     loaded. ${esc(ix._error)}</p>`;
@@ -2269,6 +2290,13 @@ function renderVersions(b,d){
 // already here is used from the cache; nothing is asked for twice.
 function needVersions(b){
   const key=verKey(b);
+  // The record is the authority, when it has arrived. On a bill's own page it
+  // is inline and this is answered before the first paint; reached from the
+  // search list it arrives with openBill, and the repaint that follows calls
+  // through here again. Either way no request is made for a file that the
+  // record says does not exist.
+  const rec=detail[dkey(b.id)];
+  if(rec && !hasVersionIndex(rec))return;
   if(VERS[key]===undefined){
     VERS[key]=null;
     fetch(DATA(`versions/${key}.json`))
