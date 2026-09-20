@@ -299,20 +299,44 @@ current order and is the newer answer where it and this disagree;
    **849 pages** on disk carrying sponsor, committee, title and analysis; the
    earlier finding was wrong about it.
 
-   **2016 does 404, and it is no longer unexplained.** Ten real 2016 bill
-   numbers are on `legislation/_gone.json` at HTTP 404 — CACR0002, HB0105,
-   HB0110 and the rest — so the static path genuinely has nothing. The
-   application path cannot be guessed either: `billText.aspx?id=882016&sy=2016`
-   answers 56 empty bytes, stripping the year looks right because `id=88` does
-   serve 2016 CACR 2, and then `id=79&sy=2016` prints LSR 2015-0500 instead of
-   2016 HB 110 — so the stripped number is another document's id. The whole
-   argument is written out above `ID_MINUS_YEAR` in `fetch_legislation.py`,
-   which is the place to read it. **2016 is waiting on the General Court, not
-   on a fetch**: the archive zip their IT office is preparing, or a reply
-   saying what id billText wants. Asking further is guessing at addresses,
-   which is how the first firewall block was earned — and a wrong id there
-   returns an application error inside an HTTP 200, so it would not announce
-   itself.
+   **2016 is reachable, and the missing piece was one parameter.** The static
+   path really does 404 — ten real 2016 numbers sit on `legislation/_gone.json`
+   at HTTP 404 — but billText serves the term perfectly well:
+
+       ?sy=2016&id=5352016&txtFormat=pdf              200, 2 bytes
+       ?sy=2016&id=5352016&txtFormat=pdf&v=current    200, 78,508, %PDF-1.4
+
+   **`v=current`.** Without it the application answers 200 with an empty body,
+   which is the "56 empty bytes" the note above `ID_MINUS_YEAR` in
+   `fetch_legislation.py` describes and reads as "no bill". Everything else was
+   already right: the id is the stored year-suffixed form (LSR 535 of 2016 is
+   `5352016`, which is `lsr` and `sy` run together), the session year is
+   wanted, and the format is pdf because 2016 has no html. The year should
+   never have come off.
+
+   **The addresses have been on this disk all along.** `data/bills.json` holds
+   `text_pdf` for **1,072 of the 1,788 records** of 2015-2016 — the other 716
+   are the 2015 session, which is on the static path — and each is that URL
+   without `v=current`. Appending it is the whole of the change.
+
+   The PDF carries what this path is fetched for. `pdfminer` on 2016 HB 197
+   gives `SPONSORS: Rep. Hansen, Hills 22; Rep. Sad, Ches 1`, `COMMITTEE:
+   Commerce and Consumer Affairs`, the title and an `AMENDED ANALYSIS` — the
+   same labels the parser already reads off the static pages.
+
+   So 2015-2016 is the largest coverage gain left on the site: 685 of 1,788
+   bills carry a sponsor today, 38%, the worst term by a wide margin, and the
+   1,072 missing are the ones this address serves. It is 1,072 requests, so it
+   is a person's decision to start — and `bill_status/legacy/bs2016/` is the
+   one path the IT office asked be requested lightly on session days.
+
+   **One thing to check before trusting the LSR guard on this term.** 2016
+   HB 197's record says `2016-535` and its own document prints `15-0535`: a
+   bill carried into its second year prints its first year's LSR, which
+   `fetch_legislation.py` already documents. The two "WRONG BILL" entries on
+   the gone-list were read as another document's id and may be that same
+   effect instead. Worth re-reading before those two addresses are trusted as
+   dead.
 
    The remaining thirteen kinds are mostly not on this path at all: 1,259 in
    the record for 1989-2024 and 232 on disk. `HANDOFF.md` has the counts and
