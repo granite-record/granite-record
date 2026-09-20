@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.219
+# GRANITE_VERSION: 2026-09-04.220
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10265,10 +10265,20 @@ def _committee_rosters_current():
             if not lg:
                 bad.append(f"{c.get('code')}: {m.get('name')} does not sit")
                 continue
+            # AN EMPTY LIST IS AN ANSWER. `if mine and ...` skipped exactly
+            # the members this check exists to catch: the build published
+            # every stale seat for a member whose roster named no committee,
+            # and this passed all fourteen of them because their `mine` was
+            # empty and the guard short-circuited. A check that excuses the
+            # cases the build gets wrong is how one reached a reader.
+            names_ = lg.get("committees")
+            if names_ is None:
+                continue
             mine = {re.sub(r"\s+-\s+Division\s+[IVX]+$", "", x).strip().lower()
-                    for x in lg.get("committees") or []}
-            if mine and (c.get("name") or "").strip().lower() not in mine:
-                bad.append(f"{c.get('code')} {c.get('name')}: {lg.get('name')} lists {sorted(mine)}")
+                    for x in names_}
+            if (c.get("name") or "").strip().lower() not in mine:
+                bad.append(f"{c.get('code')} {c.get('name')}: {lg.get('name')} lists "
+                           + (f"{sorted(mine)}" if mine else "no committee at all"))
     assert not bad, f"{len(bad)} seats on a roster that is not today's: " + "; ".join(bad[:4])
     return "ok", f"{n:,} seats across {len(files)} committees, every one on the member's own roster"
 

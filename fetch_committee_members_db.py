@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.1
+# GRANITE_VERSION: 2026-09-07.2
 """
 Who sits on each committee, from the General Court's own database.
 
@@ -23,13 +23,28 @@ to be matched back by spelling.
 So: the roster comes from here, the leadership and the room come from
 fetch_committees.py, and build_committees.py puts them together.
 
-WHAT ActiveMember MEANS, WHICH IS NOT WHAT IT SOUNDS LIKE
+WHAT ActiveMember MEANS, AND THE THING THIS FILE USED TO SAY ABOUT IT
 
-Every row in the table has ActiveMember = 0. Filtering on 1 returns nothing at
-all, which is how this script first came back empty. Whether a seat is current
-is answered instead by Legislators.Active on the member holding it -- 625 of
-the 810 -- and both are kept, because a committee's past membership is part of
-the record and an archived term needs it.
+This paragraph read "Every row in the table has ActiveMember = 0. Filtering on
+1 returns nothing at all, which is how this script first came back empty."
+That is false, and it was load-bearing: believing it, the SELECT below never
+asked for the column, and the one signal that retires a seat was thrown away
+before anything downstream could use it. Counted on the dump in db/ --
+`awk -F'|' '{print $4}' db/CommitteeMembers.psv | sort | uniq -c` -- 509 rows
+carry 1 and 305 carry 0. Why the first attempt came back empty is not known
+and is not worth guessing at; the claim about the data is simply wrong.
+
+It cost a wrong roster on a live page. House Legislative Administration
+published 13 members where the committee has 12: Joe Barton's row is
+`H12|72|409206|0`, the only 0 among that committee's thirteen and his only row
+in the whole 814-row table.
+
+So ActiveMember is selected now, and travels as seat_active. Both flags are
+kept, and they answer different questions: Legislators.Active says the PERSON
+is still in the building, ActiveMember says the SEAT is still theirs. A
+committee's past membership is part of the record and an archived term needs
+it, which is why nothing is filtered out here -- the decision belongs to
+build_committees, which has the roster to weigh it against.
 
 THIS IS NOT THE WEB SERVER. It is the SQL host the General Court publishes
 credentials for at gc.nh.gov/downloads, and every statement is a SELECT.
@@ -46,6 +61,7 @@ import probe_db
 SQL = """
 SELECT cm.CommitteeCode AS code,
        CAST(cm.SequenceNumber AS varchar(6)) AS seq,
+       CAST(cm.ActiveMember AS varchar(4)) AS seat,
        CAST(l.PersonID AS varchar(12)) AS pid,
        ISNULL(l.LastName,'') AS last,
        ISNULL(l.FirstName,'') AS first,
@@ -106,9 +122,13 @@ def main():
             "county_code": str(r.get("cc") or "").strip(),
             "chamber": str(r.get("body") or "").strip(),
             "sequence": seq,
-            # Whether the PERSON still sits, which is the only "current" signal
-            # here -- ActiveMember on the seat itself is 0 for every row.
+            # Whether the PERSON still sits. Not the same question as the
+            # next line, and the difference is a published wrong roster: a
+            # member can be sitting and off the committee.
             "sitting": str(r.get("act") or "") == "1",
+            # Whether the SEAT is still theirs -- CommitteeMembers.ActiveMember,
+            # 509 rows at 1 and 305 at 0 in the dump on disk.
+            "seat_active": str(r.get("seat") or "") == "1",
         })
     for code in out:
         out[code].sort(key=lambda m: (m["sequence"], m["name"]))

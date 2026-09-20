@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.26
+# GRANITE_VERSION: 2026-09-07.27
 """
 A page's worth of data for every committee.
 
@@ -363,25 +363,48 @@ def main():
     # Staff reading the site found wrong rosters. So a seat is current only
     # where the member's own roster entry -- data/legislators.json, from the
     # General Court's daily Members file -- lists this committee. The House's
-    # Finance divisions are Finance. A sitting member whose roster entry lists
-    # no committee at all (32 of them) keeps the table's seats, and only on a
-    # committee still on the General Court's list: there is no
-    # better source for them, and a committee that no longer exists has nobody
-    # on it today.
+    # Finance divisions are Finance.
+    #
+    # AN EMPTY LIST IS AN ANSWER, NOT A SILENCE, and reading it as a silence is
+    # what put Joe Barton on Legislative Administration after he had left it.
+    # A sitting member whose roster named no committee used to keep every seat
+    # the table still held for them, on the reasoning that there was no better
+    # source. There is: the empty list itself. build_data sets committees only
+    # after matching the member in the General Court's daily Members file, so
+    # [] means "matched, and the file names none" -- 32 of the 406 sitting
+    # members are in that state and every one of them is a positive statement.
+    # A MISSING key would be a silence and still falls back; a present and
+    # empty one no longer does.
+    #
+    # It published 14 seats across 12 committees for 13 people. All 14 carry
+    # ActiveMember = 0 in the database's own dump and none appears on the
+    # committee's own web roster, so both other sources independently condemn
+    # every one; the cell "the roster names this committee AND ActiveMember=0"
+    # is empty across all 473 published seats, so the two signals never
+    # disagree.
     assigned = {}
     for mid, lg in legs.items():
-        names_ = lg.get("committees") or []
-        if not names_:
+        names_ = lg.get("committees")
+        if names_ is None:
             continue
         ch = (lg.get("chamber") or "")[:1].upper()
         assigned[mid] = {code_of(re.sub(r"\s+-\s+Division\s+[IVX]+$", "", nm), ch)
                          for nm in names_} - {None}
 
     def on_it_today(seat, code):
-        # "sitting" is the seat table's Active flag as of its last fetch; the
-        # roster is refreshed daily, so a member who has left since is caught
-        # by not being on it.
+        # "sitting" is Legislators.Active on the PERSON, not on the seat: it
+        # says they are still in the building, not that they are still on this
+        # committee. The roster, refreshed daily, is what says the second.
         if not seat.get("sitting") or code not in lead or str(seat.get("id")) not in legs:
+            return False
+        # AND THE SEAT'S OWN FLAG, where the data carries it. seat_active is
+        # CommitteeMembers.ActiveMember, which the fetcher did not ask for
+        # until 20 September, so it is absent from every record written before
+        # then and this line does nothing until the next pull. It is here
+        # because it is the source's own answer to exactly this question, and
+        # because a seat the database has retired should not need a second
+        # source to be dropped.
+        if seat.get("seat_active") is False:
             return False
         mine = assigned.get(str(seat.get("id")))
         return True if mine is None else code in mine
