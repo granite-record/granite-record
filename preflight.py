@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.215
+# GRANITE_VERSION: 2026-09-04.216
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1089,6 +1089,82 @@ def _bills_html():
         assert r.returncode == 0, "node --check: " + r.stderr.strip()[:150]
         extra = ", node --check clean"
     return "ok", f"7 markers present, tags balanced{extra}"
+
+
+@check("frontend", "no component quietly takes a class another one already uses")
+def _class_collisions():
+    """The bug that has happened five times: .ctitle, .p-R, .cite, .fhead, .chead.
+
+    Two renderers draw this site. app.js draws the record pages from bills.html,
+    and the build_*.py scripts write the static ones. app.css dresses both. When
+    a new component takes a name an old one already has, the later rule wins on
+    source order and the older component changes shape somewhere nobody is
+    looking -- .chead, on 19 September, gave every bill card's head button
+    max-width:560px and took 24px off its left padding, on all 33,683 of them,
+    while this suite passed 133 of 133.
+
+    So the set of names both sides emit is frozen. Sharing is not the fault and
+    is not forbidden: the nav, the footer, the player and the search panel are
+    each drawn twice on purpose, and they are most of the list. Sharing by
+    ACCIDENT is the fault, and a name arriving in this set without a person
+    deciding it should be there is exactly that.
+
+    To add one deliberately, put it in SHARED below with the component it
+    belongs to. To find where a name is drawn, grep class=" in app.js, find.js,
+    bills.html and build_*.py.
+    """
+    import glob as _glob
+    SHARED = {
+        # the header and the footer, written once in bills.html for the record
+        # pages and again in build_pages.shell() for the static ones
+        "brand", "navdrop", "navmenu", "navtabs", "top", "in", "skip", "sr",
+        "attrib", "fcol", "fcolhead", "fcols", "footdata", "lic", "flinks",
+        "out", "note", "src", "count", "caret", "chev",
+        # the header search panel: find.js mounts it everywhere, and
+        # build_pages draws the same row on /search
+        "findout", "fkind", "fl1", "fname", "fwhat",
+        # the calendar, drawn on the home page and on its own pages
+        "cal", "calbills", "calbody", "calcmte", "calcount", "caldate",
+        "calday", "calmeet", "calmix", "calslot", "caltime", "calwhere",
+        "cdrel",
+        # the recording player, on a bill's Videos tab and the home page
+        "player", "pstub",
+        # a page heading block, and the bill-number/title pair
+        "phead", "pmeta", "cbn", "cbt",
+        # the feedback box
+        "fbk", "fbknote",
+    }
+    here = Path(".")
+    app_side = ["app.js", "find.js", "bills.html"]
+    bld_side = sorted(_glob.glob("build_*.py"))
+    if not all((here / f).exists() for f in app_side) or not bld_side:
+        return "skip", "not all renderers are in this directory"
+
+    def drawn(paths):
+        found = {}
+        for f in paths:
+            txt = (here / f).read_text(encoding="utf-8", errors="replace")
+            for m in re.finditer(r'class="([^"${}]+)"', txt):
+                for c in m.group(1).split():
+                    if re.fullmatch(r"[a-z][a-z0-9-]*", c):
+                        found.setdefault(c, set()).add(f)
+        return found
+
+    a, b = drawn(app_side), drawn(bld_side)
+    both = set(a) & set(b)
+    new = sorted(both - SHARED)
+    assert not new, (
+        "these class names are drawn by BOTH renderers and are not in this "
+        "check's SHARED list, so one component has probably taken a name "
+        "another already uses:\n"
+        + "\n".join(f"    .{c}: {', '.join(sorted(a[c]))} "
+                     f"and {', '.join(sorted(b[c]))}" for c in new)
+        + "\n  If the sharing is deliberate, add the name to SHARED with the "
+          "component it belongs to. If it is not, give the new component its "
+          "own prefix -- that is what .chead cost 33,683 bill cards.")
+    gone = sorted(SHARED - both)
+    return "ok", (f"{len(both)} names shared on purpose"
+                  + (f"; {len(gone)} in SHARED no longer shared" if gone else ""))
 
 
 @check("frontend", "the search panel's way out leads to a page the build writes")

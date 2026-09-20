@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.22
+# GRANITE_VERSION: 2026-09-08.23
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -554,6 +554,13 @@ def main():
         # put the contents list between it and the prose. Inside .civics, the
         # only orders available were "contents above the title" and "contents
         # under 1,900 words", and both are wrong.
+        #
+        # NOT chead. app.js has drawn every bill card's head button with
+        # that class since long before this, and app.css styles it from
+        # line 1056. A second rule of the same name lower in the stylesheet
+        # won on source order and took 24px of left padding off all 33,683
+        # bill cards. preflight freezes the set of names both renderers use,
+        # so the next one of these fails a check instead of shipping.
         head = (f'<p class="crumb"><a href="learn.html">How New Hampshire '
                 f'works</a></p><h1>{E(t["title"])}</h1>'
                 + (f'<p class="lead">{dashes(E(t["blurb"]))}</p>'
@@ -584,7 +591,7 @@ def main():
                    nav_current="learn.html")
         p = p.replace('<div id="results"></div>',
                       f'<div id="results"><div class="lcols">'
-                      f'<header class="chead">{head}</header>'
+                      f'<header class="civhead">{head}</header>'
                       f'<div class="civics">{"".join(body)}</div>'
                       f'<div class="lside">{contents(sections, t["slug"])}'
                       f'{rail(topics, t["slug"])}</div>'
@@ -622,7 +629,7 @@ def main():
     nbody, nsections = anchored(learn_numbers.body(site))
     p = p.replace('<div id="results"></div>',
                   '<div id="results"><div class="lcols">'
-                  '<header class="chead"><p class="crumb"><a href="learn.html">'
+                  '<header class="civhead"><p class="crumb"><a href="learn.html">'
                   'How New Hampshire works</a></p>'
                   '<h1>The record in numbers</h1></header>'
                   '<div class="civics">' + nbody + '</div>'
