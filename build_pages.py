@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.111
+# GRANITE_VERSION: 2026-09-04.113
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -528,28 +528,14 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
         # happened at the top of Coming up. HOME_JS
         # reads this attribute in the reader's own clock, drops the days that
         # have passed and writes the relative word again.
-        # THE DAY'S SPAN, BESIDE THE DAY. The same "span, not a slot" rule
-        # the meeting below uses, applied across every meeting of the day:
-        # first start to last, or one time where the day holds only one. It
-        # is here so the rail's cards need not each spend a line on a time --
-        # asked for on 20 September, to save the vertical space. The full
-        # calendar keeps its per-card times; only .hside drops them, which is
-        # the same trade it already makes for the kind and the room.
-        day_slots = sorted(x for k in keys
-                           for x in ((r.get("time") or "") for r in meets[k])
-                           if x)
-        day_span = ((day_slots[0] if len(set(day_slots)) == 1
-                     else f"{day_slots[0]}\u2013{day_slots[-1]}")
-                    if day_slots else "")
-        # HOW MANY MEETINGS THE DAY HOLDS, so the stylesheet can tell a
-        # card whose time the heading already gives from one whose it does
-        # not. One meeting and the day's span IS that meeting's time.
-        html.append(f'<div class="calday" data-d="{esc(date)}"'
-                    f' data-meets="{len(keys)}"><{h} class="caldate">'
+        # THE DATE AND HOW FAR OFF IT IS, and nothing else. The day's span
+        # was briefly here, on 20 September, to spare the cards a line; the
+        # card carries its own time again now -- beside its bill count, which
+        # is the more compact place for it -- so a span here would be the
+        # same string twice.
+        html.append(f'<div class="calday" data-d="{esc(date)}"><{h} class="caldate">'
                     f'<span>{esc(label)}</span>'
-                    + (f'<span class="cdtime">({esc(day_span)})</span>'
-                       if day_span else "")
-                    + f'<span class="cdrel">{esc(rel)}</span>'
+                    f'<span class="cdrel">{esc(rel)}</span>'
                     + f"</{h}>")
         for key in keys:
             _d, cmte = key
@@ -615,14 +601,27 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                     bars.append(cls)
             html.append('<span class="calmix" aria-hidden="true">'
                         + "".join(f'<i class="{c}"></i>' for c in bars) + "</span>")
+            # THE COMMITTEE FIRST. It is what a reader scans a rail for, and
+            # putting the time ahead of it meant the rail's card spent its
+            # first line on four digits. The time follows, beside the bill
+            # count, so the two read as one phrase about that sitting:
+            # "Ways and Means / 09:30-10:30 (11 bills)".
+            html.append(f'<span class="calcmte">{esc(cmte)}</span>')
             if time:
                 html.append(f'<span class="caltime">{esc(time)}</span>')
-            html.append(f'<span class="calcmte">{esc(cmte)}</span>')
+            # THE COUNT DIRECTLY AFTER THE TIME, not after the kind. The
+            # parentheses only work while the two are adjacent -- with the
+            # kind chip between them the rail read "09:30-11:30 Subcommittee
+            # work session (5 bills)", a bracket around nothing in
+            # particular. On its own where there is no time, for the same
+            # reason.
+            _bills = f'{n} bill{"" if n == 1 else "s"}'
+            html.append(f'<span class="calcount">'
+                        + (f"({_bills})" if time else _bills) + "</span>")
             for k in kinds:
                 word, kcls = MEET_KIND.get(k.strip().lower(),
                                            (k.capitalize() if k else "Meeting", ""))
                 html.append(f'<span class="calkind {kcls}">{esc(word)}</span>')
-            html.append(f'<span class="calcount">{n} bill{"" if n == 1 else "s"}</span>')
             if venue:
                 html.append(f'<span class="calwhere">{esc(venue)}</span>')
             html.append('<span class="caret"></span></summary>'

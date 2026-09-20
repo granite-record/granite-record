@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.139 */
+/* GRANITE_VERSION: 2026-09-07.142 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -475,21 +475,6 @@ font-variant-numeric:tabular-nums;flex:0 0 auto}
 text-transform:uppercase;color:var(--ink-2);margin:var(--sp-6) 0 var(--sp-3);
 padding-bottom:var(--sp-3);border-bottom:1px solid var(--rule);
 display:flex;align-items:baseline;gap:var(--sp-4)}
-/* NOT TWICE ON ONE DAY. From 20 September the day's heading carries its
-   span, so on a day holding ONE meeting the card beneath it repeated the
-   same string -- the line the person asked to save. It goes there, and only
-   there: a day with several meetings keeps a time on every card, because the
-   heading's span is then the whole day rather than that committee's sitting,
-   and without it a reader could not tell which of three is at 09:30.
-
-   The home rail only. The calendar page has the width for both and is not
-   touched, which is the same line drawn for the kind and the room above. */
-:where(body.pg) .hside .calday[data-meets="1"] .calmeet > summary .caltime{
-display:none}
-/* The span sits with the date, in the date's own small caps but lighter,
-   because it is a property of the day rather than a second label. */
-.caldate .cdtime{font-weight:400;letter-spacing:0;color:var(--ink-2);
-font-variant-numeric:tabular-nums}
 .caldate .cdrel{font-weight:400;letter-spacing:0;text-transform:none;
 font-size:var(--t-ui);color:var(--ink-2);margin-left:auto}
 .calmeet{background:var(--surface);border:1px solid var(--rule-2);
@@ -563,12 +548,23 @@ display:inline-block;padding:var(--sp-1) 0}
 .cal > .note{margin-top:var(--sp-5)}
 @media (max-width:720px){
   /* The summary is five facts and 360px holds about two of them on a line.
-     Stacked, with the time and the committee on the first row, because those
-     are the two a reader scans for. */
+     Stacked: the committee on the first row with the caret, then the time
+     and its bill count together on the second, then the kind and the room.
+     The time led this block until 20 September, which spent the card's first
+     line on four digits and split the time from the count it reads as one
+     phrase with.
+
+     THE BASIS IS THE ROW LESS THE CARET, not auto and not 100%. With auto a
+     short committee left room beside it and the time came up onto its line,
+     splitting "10:00" from "(3 bills)" -- Public Works and Highways did
+     exactly that. With a flat 100% the caret is pushed onto a row of its
+     own. Leaving the caret's width keeps the pair together under every
+     committee name, long or short. */
   .calmeet > summary{gap:var(--sp-2) var(--sp-4);padding:var(--sp-5) var(--sp-5)}
-  .calcmte{flex:1 1 100%;order:2}
-  .calkind,.calcount,.calwhere{order:3}
+  .calcmte{flex:1 1 calc(100% - 3rem);order:1;min-width:0}
   .calmeet .caret{order:1;margin-left:auto}
+  .caltime,.calcount{order:2}
+  .calkind,.calwhere{order:3}
   .calbills li{flex-direction:column;gap:var(--sp-1)}
   .calbills .cbn{flex:none}
 }
@@ -3212,7 +3208,12 @@ padding:var(--sp-7) max(0px,calc(50% - 590px))}
 :where(body.pg) .hside .calmeet > summary .calkind,
 :where(body.pg) .hside .calmeet > summary .calwhere{display:none}
 :where(body.pg) .hside .calmeet > summary .calcmte{flex:1 0 100%}
+/* THE TIME AND THE COUNT, ON THE LINE UNDER THE COMMITTEE. .calcmte takes
+   the full line above (flex:1 0 100%), so these two fall together onto the
+   next one and are read as one phrase: "09:30-10:30 (11 bills)". The count
+   loses the margin that pushed it to the right of a wider card. */
 :where(body.pg) .hside .calmeet > summary .calcount{margin-left:0}
+:where(body.pg) .hside .calmeet > summary .caltime{margin-right:var(--sp-2)}
 /* The link out, under the days. */
 :where(body.pg) .hside .calall{margin:var(--sp-5) 0 0;font-size:var(--t-ui)}
 :where(body.pg) .hside .calall a{color:var(--pine);font-weight:600}
