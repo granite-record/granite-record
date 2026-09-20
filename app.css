@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.143 */
+/* GRANITE_VERSION: 2026-09-07.144 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1717,6 +1717,31 @@ text-align:center;color:var(--ink-2);font-size:var(--t-ui)}
   .tabs{flex-wrap:nowrap;gap:0 var(--sp-6);margin-bottom:var(--sp-5);overflow-x:auto;
   scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .tabs::-webkit-scrollbar{display:none}
+  /* AND AN EDGE THAT SAYS SO. The half-visible next tab above was meant to be
+     the cue and is not: at 360px this strip is 302px of a 654px row, so five
+     of a bill's seven tabs are off screen and Reports, Sponsors and Documents
+     are unreachable by anyone who does not already know to drag. The
+     scrollbar cannot do the job either -- it would sit on the rule under the
+     tabs, which is why it is hidden.
+
+     FOUR LAYERS, AND NO SCRIPT. The outer pair is a solid block of the card's
+     own colour that scrolls WITH the content (background-attachment:local);
+     the inner pair is a shadow fixed to the box. At the left end the local
+     block sits over the left shadow and hides it; scroll right and it travels
+     away, uncovering it. So a shadow appears exactly when there is something
+     in that direction to reach, on both edges, and none shows at all when the
+     strip already fits -- which is what makes this safe to leave on at every
+     width in this block and impossible to leave stale.
+
+     Solid blocks rather than fading ones on purpose: a gradient running to
+     `transparent` interpolates through transparent BLACK, which greys the
+     card in light mode. The blocks are hard-edged and sit under the shadows,
+     so nothing of them is ever seen. */
+  .tabs{background:
+    linear-gradient(var(--surface),var(--surface)) 0 0/24px 100% local no-repeat,
+    linear-gradient(var(--surface),var(--surface)) 100% 0/24px 100% local no-repeat,
+    linear-gradient(to right,var(--shadow),transparent) 0 0/16px 100% no-repeat,
+    linear-gradient(to left,var(--shadow),transparent) 100% 0/16px 100% no-repeat}
   .tabs button{font-size:var(--t-ui);padding:var(--sp-3) 0;white-space:nowrap;flex:0 0 auto}
   .searchrow{flex-direction:column;align-items:stretch;gap:var(--sp-4)}
   .searchbig{flex-direction:column}
