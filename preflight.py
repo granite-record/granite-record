@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.223
+# GRANITE_VERSION: 2026-09-04.224
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10281,6 +10281,72 @@ def _committee_rosters_current():
                            + (f"{sorted(mine)}" if mine else "no committee at all"))
     assert not bad, f"{len(bad)} seats on a roster that is not today's: " + "; ".join(bad[:4])
     return "ok", f"{n:,} seats across {len(files)} committees, every one on the member's own roster"
+
+
+@check("data", "every motion the docket puts on an amendment has an outcome")
+def _amend_motions_mapped():
+    """FAILED was missing from the outcome map, and a missing key is silent.
+
+    build_site_v2.ADOPTED turns the docket's abbreviation into adopted /
+    not adopted, and it is read with .get -- so an abbreviation it does not
+    know returns None, the page reads that as "the record does not say", and
+    no chip is drawn. That is indistinguishable on screen from an amendment
+    that really was only filed and never voted on, which is why 153 events
+    saying "Failed, RC 131-221" sat on the site for months claiming the
+    outcome was unknown.
+
+    The map had AA, ADOPTED, AF and AL: three quarters of a pair. The docket
+    writes the outcome either abbreviated or spelled out, and it had the
+    abbreviated form of both and the spelled-out form of only one.
+
+    SO THE CHECK IS AGAINST THE DATA, NOT A LIST. Every distinct motion that
+    occurs on an amendment event has to be a key in the map, or be blank --
+    blank is the honest unknown and there are 1,075 of those, every one a
+    docket line the parser could not read a motion out of. A new abbreviation
+    appearing in a later term fails here rather than publishing silence.
+
+    Counted when this was written: AA 12,249, ADOPTED 4,583, AF 997, AL 48,
+    FAILED 153, blank 1,075, over 19,105 amendment events. LOST and WITHDRAWN
+    occur in docket PROSE and never in this field, so they are deliberately
+    not in the map -- putting them there would be guessing at data rather than
+    reading it, and this check would not have asked for them.
+    """
+    src = Path("narratives.json")
+    if not src.exists():
+        return "skip", "no narratives.json here"
+    bsv = imp("build_site_v2")
+    if bsv is None:
+        return "skip", "build_site_v2 will not import"
+
+    n = json.loads(src.read_text(encoding="utf-8"))
+    seen, example = {}, {}
+    for term, bills in n.items():
+        if not isinstance(bills, dict):
+            continue
+        for bid, rec in bills.items():
+            for e in (rec or {}).get("events") or []:
+                if e.get("type") != "amendment" or e.get("cancelled"):
+                    continue
+                m = (e.get("motion") or "").upper()
+                seen[m] = seen.get(m, 0) + 1
+                if m:
+                    example.setdefault(m, f"{term} {bid}: {(e.get('raw') or '')[:90]}")
+
+    if not seen:
+        return "skip", "no amendment events in narratives.json"
+
+    unknown = sorted(m for m in seen if m and m not in bsv.ADOPTED)
+    assert not unknown, (
+        "the docket puts a motion on an amendment that build_site_v2.ADOPTED "
+        "does not map, so every one of these is published with NO OUTCOME -- "
+        "which a reader cannot tell apart from an amendment that was never "
+        "voted on:\n  "
+        + "\n  ".join(f"{m} on {seen[m]:,} events -- {example[m]}"
+                       for m in unknown))
+
+    named = sum(c for m, c in seen.items() if m)
+    return "ok", (f"{named:,} of {sum(seen.values()):,} amendment events name a "
+                  f"motion and every one is mapped; {seen.get('', 0):,} name none")
 
 
 @check("data", "an archived bill's page names the sponsors its own text names, and a covered bill keeps the database's")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.104
+# GRANITE_VERSION: 2026-09-05.105
 """
 Generate the faceted site from real General Court data.
 
@@ -62,7 +62,27 @@ PUBLIC_HEARING = re.compile(r"public hearing", re.I)
 AMEND_NUM = re.compile(r"#\s*(\d{4}-\d+[a-z]?)", re.I)
 AMEND_ANY = re.compile(r"\b(\d{4}-\d{3,4}[a-z]?)\b")
 # AA is adopted, AF and AL are not. The docket's own abbreviations.
-ADOPTED = {"AA": True, "ADOPTED": True, "AF": False, "AL": False}
+#
+# AND "FAILED" SPELLED OUT, which was the missing half of a pair. The docket
+# writes the outcome either way -- "AA" or "Adopted", "AF" or "Failed" -- and
+# this map took three of the four. So 153 amendment events whose docket line
+# says plainly that they failed were published with no outcome at all:
+# 2007-2008 SB27 reads "Floor Amendment #2071h (Rep P. Preston, et al) Failed,
+# RC 131-221" and the page declined to say it failed.
+#
+# A missing key here is silent. ADOPTED.get returns None, which the page reads
+# as "the record does not say" and draws no chip -- indistinguishable from the
+# 598 amendments that really were only filed and never voted on. That is the
+# failure mode worth naming: an absent mapping does not error, it publishes a
+# claim of ignorance the record contradicts.
+#
+# Only FAILED is added, because only FAILED occurs. Counted over all 19,105
+# amendment events in narratives.json, the motion field holds exactly AA
+# (12,249), ADOPTED (4,583), AF (997), AL (48), FAILED (153) and blank (1,075).
+# LOST and WITHDRAWN appear in docket PROSE but never in this field, so adding
+# them would be guessing at data rather than reading it.
+ADOPTED = {"AA": True, "ADOPTED": True,
+           "AF": False, "AL": False, "FAILED": False}
 
 
 # What an amendment says it changes. New Hampshire amendments are written as
