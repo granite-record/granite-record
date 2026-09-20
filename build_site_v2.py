@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.103
+# GRANITE_VERSION: 2026-09-05.104
 """
 Generate the faceted site from real General Court data.
 
@@ -3117,6 +3117,13 @@ def bill_text_url(b, st):
         sy = st.get("text_year") or b.get("lsr_year") or ""
         if sy:
             text_url += f"&sy={sy}"
+    # AND 2016 NEEDS &v=current, or the link we publish is dead. Without it
+    # billText answers 200 with a two-byte body, so this was sending readers
+    # of up to 1,072 bills to a blank page that looked like a working address.
+    # Measured 19 September; fetch_legislation.NEEDS_VERSION is the same fact
+    # on the fetching side.
+    if text_url and "sy=2016" in text_url and "v=" not in text_url:
+        text_url += "&v=current"
     return text_url
 
 

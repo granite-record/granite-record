@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.20
+# GRANITE_VERSION: 2026-09-10.21
 """
 The bill itself, from an address that can simply be constructed.
 
@@ -91,7 +91,17 @@ HTM_YEARS = {1996}
 # from here, and today's parser reads sponsors, committee, title and analysis
 # out of them exactly as it does out of a legislation/<year>/ page.
 TEXT = ("https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
-        "?id={id}&txtFormat=html&sy={year}")
+        "?id={id}&txtFormat=html&sy={year}{ver}")
+
+# WHICH YEARS NEED &v=current, and it is not cosmetic: without it billText
+# answers HTTP 200 with an empty body rather than 404ing, so a run reads
+# "served, and no bill in it". 2016 needs it; the years already on disk were
+# fetched without it and are left alone rather than re-tested at their own
+# server's expense. Measured 19 September, the same id both ways:
+#
+#     ?id=20582016&txtFormat=html&sy=2016              200, 2 bytes
+#     ?id=20582016&txtFormat=html&sy=2016&v=current    200, 11,895, the bill
+NEEDS_VERSION = {2016}
 
 # WHICH ADDRESS SERVES WHICH YEAR, and how each line was established.
 #
@@ -160,25 +170,34 @@ TEXT = ("https://gc.nh.gov/bill_status/legacy/bs2016/billText.aspx"
 # WHICH LEAVES NOTHING. Every bill of every term from 1989 to 2026 now has an
 # address: 27,171 by the static path and 6,512 by the application.
 STATIC_404 = {2016, 2022, 2023, 2024, 2025, 2026}
-ID_AS_STORED = {2022, 2023, 2024, 2025, 2026}
+ID_AS_STORED = {2016, 2022, 2023, 2024, 2025, 2026}
 ID_PLUS_YEAR = set()
-# 2016 HAS NO ADDRESS RULE THAT HOLDS. The table above said "used as stored,
-# confirmed in a browser"; a run then stopped after three 56-byte answers in a
-# row -- billText saying nothing rather than 404ing -- for 2016 HB105, HB110
-# and HB114, whose stored ids are 452016, 792016 and 862016.
+# 2016 IS ABOVE, IN ID_AS_STORED, AND THE ID WAS NEVER THE PROBLEM.
 #
-# Two addresses opened by hand:
+# What this block used to say: a run stopped after three empty answers for
+# HB105, HB110 and HB114, whose stored ids are 452016, 792016 and 862016;
+# id=882016 gave an empty body while id=88 served 2016 CACR 2; so "the year
+# comes off"; and the LSR check then refused id=79, which prints LSR 2015-0500
+# against a wanted 2016-79. The conclusion drawn was that no rule held and the
+# term had to wait for the General Court.
 #
-#     id=882016&sy=2016   56 bytes, no bill
-#     id=88&sy=2016       serves 2016 CACR 2, whose stored id is 882016
+# The empty answer was the missing parameter, not a wrong id. Measured on
+# 19 September against addresses data/bills.json already held:
 #
-# which reads as "the year comes off", the mirror of what 2023-2024 turned out
-# to need. It was tried, and the LSR check in fetch() refused the second page
-# it asked for: id=79&sy=2016 prints LSR 2015-0500, not 2016's HB 110. So the
-# stripped number is not this bill's id in a different year's clothes; it is
-# another document's id altogether, and sy does not make it unambiguous.
-# Two pages, no guessing further: the 1,072 bills of 2016 wait for the archive
-# zip the IT office is preparing, or for them to say what id billText wants.
+#     ?id=20582016&txtFormat=html&sy=2016              200, 2 bytes
+#     ?id=20582016&txtFormat=html&sy=2016&v=current    200, 11,895, the bill
+#     ?id=5352016&txtFormat=pdf&sy=2016&v=current      200, 78,508, a PDF
+#
+# So the stored year-suffixed id is exactly what the address wants, the same
+# as 2022-2026, and NEEDS_VERSION carries the rest. The html form is taken
+# rather than the pdf because the parser already reads it and it is a sixth
+# of the bytes.
+#
+# The LSR refusal was right and stays right: id=79 with the year stripped is
+# another document, printing LSR number 255 against a wanted 79. same_bill()
+# already allows a bill to print its FIRST year's LSR -- 2016 HB 197's record
+# says 2016-535 and its page says 15-0535 -- so that guard passes 2016 without
+# any change.
 ID_MINUS_YEAR = set()
 
 # The terms this site already has the text of, from the database and
@@ -281,7 +300,8 @@ def address(year, bid, rec):
                 "static")
     tid = text_id(rec or {}, year)
     if tid:
-        return TEXT.format(id=tid, year=year), "billText"
+        ver = "&v=current" if year in NEEDS_VERSION else ""
+        return TEXT.format(id=tid, year=year, ver=ver), "billText"
     return None, f"no id known for {year}; see the table in this file"
 
 
@@ -779,12 +799,10 @@ def main():
                     help="only these kinds, comma-separated: HB,SB")
     ap.add_argument("--skip-year", dest="skip", action="append", type=int,
                     default=[],
-                    help="a year to leave out of the run, repeatable. For a "
-                         "year whose address is not settled: 2016's stored ids "
-                         "already carry the year (882016) and billText answers "
-                         "56 empty bytes to them, which stopped a run after "
-                         "three in a row. Left out rather than asked again "
-                         "with a guess.")
+                    help="a year to leave out of the run, repeatable. 2016 "
+                         "was in here while its address was thought unknown; "
+                         "it is settled now (NEEDS_VERSION) and does not need "
+                         "skipping.")
     ap.add_argument("--from", dest="lo", type=int, default=1989)
     # Not the current term: its text is in bill_text/ already, from the
     # database's own route, and asking again would be 2,234 requests for
