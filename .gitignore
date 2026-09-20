@@ -208,3 +208,7 @@ reports/*
 !reports/TRIAGE.md
 !reports/handled.jsonl
 .dev.vars
+
+# GRANIT shapefiles: 4.2 MB of zips, re-fetchable from ftp.granit.unh.edu.
+# sources/gis/README records what each one is and when it was read.
+sources/gis/*.zip

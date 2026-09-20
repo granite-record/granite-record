@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.221
+# GRANITE_VERSION: 2026-09-04.222
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10633,6 +10633,56 @@ def _floterials_overlay():
     flot = sum(1 for d in districts if d["floterial"])
     return "ok", (f"{len(districts) - flot} base and {flot} floterial "
                   f"districts, every overlay over districts that exist")
+
+
+@check("files", "our district files still say what the Secretary of State's do")
+def _districts_match_sos():
+    """districts/*.txt had no provenance at all until this check.
+
+    No source URL, no retrieval date, no statement of which redistricting plan
+    they encode -- and everything the site says about who represents a town
+    rests on them. They are now checked against "Towns and Wards as Districted
+    for Election Purposes 2022", the Secretary of State's own table, whose
+    embedded CreationDate is 26 April 2023.
+
+    The comparison is worth having precisely because the two run in opposite
+    directions: that table is one row per place naming its districts, ours is
+    one district naming its places. An error would have to be made twice, by
+    two people, from two directions, to survive both.
+
+    This fails if either side moves. A redistricting, a hand edit, a re-export
+    of the table: any of them should be a decision somebody makes, not a
+    difference that appears.
+    """
+    if not Path("sources/sos-towns-and-wards-districted-2023-04-26.pdf").exists():
+        return "skip", "the Secretary of State's table is not in sources/"
+    m = imp("parse_sos_districts")
+    if m is None:
+        return "skip", "parse_sos_districts.py does not import"
+    try:
+        import pdfplumber                                    # noqa: F401
+    except Exception:
+        return "skip", "pdfplumber is not installed"
+
+    rows, notes, theirs, mine, only_theirs, only_mine, diffs = m.compare()
+    bad = []
+    if only_theirs:
+        bad.append(f"{len(only_theirs)} places are in the Secretary of State's "
+                   f"table and not in ours: {only_theirs[:6]}")
+    if only_mine:
+        bad.append(f"{len(only_mine)} places are in ours and not in the "
+                   f"Secretary of State's table: {only_mine[:6]}")
+    for field, items in diffs.items():
+        bad.append(f"{len(items)} disagree on {field}: "
+                   + "; ".join(f"{k} ours {a} theirs {b}" for k, a, b in items[:5]))
+    assert not bad, (
+        "the Secretary of State's published district table and districts/*.txt "
+        "no longer agree. Theirs is the legal definition and ours is what the "
+        "site publishes, so a difference here is a difference between what a "
+        "reader is told and what the law says:\n  " + "\n  ".join(bad))
+    return "ok", (f"{len(theirs)} places and wards, every congressional, "
+                  f"Executive Council, senatorial and representative district "
+                  f"agreeing")
 
 
 @check("files", "the five lists of New Hampshire places still reconcile")

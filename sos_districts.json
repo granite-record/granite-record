@@ -1,0 +1,6265 @@
+{
+ "_method": "pdfplumber over the saved PDF; no network",
+ "_notes": [
+  "page 2: 'Ward 2 2 2 15 16. 28' separates two representative districts with a full stop; read as a comma"
+ ],
+ "_read_on": "2023-04-26",
+ "_source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+ "_what": "The Secretary of State's 'Towns and Wards as Districted for Election Purposes 2022', one record per place and ward.",
+ "places": {
+  "acworth|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 4",
+    "Sullivan 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "albany|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "alexandria|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 11",
+    "Grafton 18"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "allenstown|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    4
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 11",
+    "Merrimack 27"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    17
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "alstead|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 16",
+    "Cheshire 9"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "alton|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    6
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "amherst|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 34",
+    "Hillsborough 37"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    11
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "andover|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 26",
+    "Merrimack 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "antrim|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 30"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "ashland|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "atkgilacademygrant|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "atkinson|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 18"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    22
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "auburn|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 2",
+    "Rockingham 31"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    14
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "barnstead|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    17
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "barrington|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 18",
+    "Strafford 4"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    4
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "bartlett|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "bath|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "beansgrant|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "beanspurchase|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "bedford|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    9
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "belmont|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 4",
+    "Belknap 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "bennington|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 30"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "benton|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "berlin|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 5",
+    "Coos 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "bethlehem|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "boscawen|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 1",
+    "Merrimack 26"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "bow|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 9"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    15
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "bradford|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "brentwood|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 32",
+    "Rockingham 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    23
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "bridgewater|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 10",
+    "Grafton 18"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "bristol|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 10",
+    "Grafton 18"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "brookfield|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 4",
+    "Carroll 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "brookline|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 36",
+    "Hillsborough 45"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    12
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "cambridge|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "campton|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "canaan|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 18",
+    "Grafton 9"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "candia|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 2",
+    "Rockingham 31"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    16
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "canterbury|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 26",
+    "Merrimack 4"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    17
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "carroll|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 4",
+    "Coos 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "centerharbor|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "chandlerspur|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "charlestown|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 3",
+    "Sullivan 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "chatham|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "chesterfield|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 15",
+    "Cheshire 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "chester|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 3",
+    "Rockingham 31"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    23
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "chichester|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    4
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 13"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    17
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "claremont|1": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 6",
+    "Sullivan 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "claremont|2": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 6",
+    "Sullivan 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "claremont|3": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 6",
+    "Sullivan 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "clarksville|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "colebrook|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "columbia|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "concord|1": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 15",
+    "Merrimack 28"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    15
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "concord|10": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 24",
+    "Merrimack 29"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    15
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "concord|2": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 16",
+    "Merrimack 28"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    15
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "concord|3": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 17",
+    "Merrimack 28"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    15
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "concord|4": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 18",
+    "Merrimack 29"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    15
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "concord|5": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 19",
+    "Merrimack 30"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    15
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "concord|6": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 20",
+    "Merrimack 30"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    15
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "concord|7": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 21",
+    "Merrimack 30"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    15
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "concord|8": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 22",
+    "Merrimack 30"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    15
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "concord|9": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 23",
+    "Merrimack 29"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    15
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "conway|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "cornish|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 2",
+    "Sullivan 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "crawfordspur|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "croydon|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 6",
+    "Sullivan 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "cuttsgrant|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "dalton|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "danbury|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 26",
+    "Merrimack 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "danville|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 32",
+    "Rockingham 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    23
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "deerfield|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    4
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 2",
+    "Rockingham 31"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    17
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "deering|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 27"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "derry|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 13"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    19
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "dixsgrant|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "dixville|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "dorchester|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 18",
+    "Grafton 9"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "dover|1": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 14",
+    "Strafford 21"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    4
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "dover|2": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 15",
+    "Strafford 21"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    4
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "dover|3": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 16",
+    "Strafford 21"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    4
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "dover|4": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 11",
+    "Strafford 20"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    4
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "dover|5": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 17",
+    "Strafford 21"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    4
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "dover|6": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 13",
+    "Strafford 21"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    4
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "dublin|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 13",
+    "Cheshire 18"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "dummer|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "dunbarton|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 10",
+    "Merrimack 27"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "durham|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 10",
+    "Strafford 20"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    21
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "eastkingston|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 14",
+    "Rockingham 34"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    23
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "easton|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "eaton|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 4",
+    "Carroll 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "effingham|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 4",
+    "Carroll 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "ellsworth|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 4"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "enfield|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 16",
+    "Grafton 18"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "epping|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    23
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "epsom|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    4
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 14",
+    "Merrimack 27"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    17
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "errol|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "ervingslocation|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "exeter|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 11",
+    "Rockingham 33"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    24
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "farmington|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    6
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "fitzwilliam|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 12",
+    "Cheshire 17"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    9
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "francestown|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 27"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "franconia|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "franklin|1": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 25",
+    "Merrimack 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "franklin|2": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 25",
+    "Merrimack 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "franklin|3": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 25",
+    "Merrimack 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "freedom|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 4",
+    "Carroll 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "fremont|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 32",
+    "Rockingham 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    23
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "gilford|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "gilmanton|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    6
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "gilsum|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 16",
+    "Cheshire 9"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "goffstown|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 29",
+    "Hillsborough 44"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    16
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "gorham|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "goshen|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 4",
+    "Sullivan 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "grafton|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 11",
+    "Grafton 18"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "grantham|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "greenfield|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 31"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    9
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "greenland|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 24",
+    "Rockingham 38"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    24
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "greensgrant|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "greenville|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 36",
+    "Hillsborough 45"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    12
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "groton|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 11",
+    "Grafton 18"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hadleyspurchase|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "haleslocation|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hampstead|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 15",
+    "Rockingham 34"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    19
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hamptonfalls|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 19",
+    "Rockingham 36"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    24
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hampton|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 29",
+    "Rockingham 40"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    24
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hancock|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 31"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hanover|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 12"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "harrisville|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 16",
+    "Cheshire 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hartslocation|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "haverhill|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hebron|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 11",
+    "Grafton 18"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "henniker|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hillsborough|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 30"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hill|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 26",
+    "Merrimack 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hinsdale|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 15",
+    "Cheshire 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    9
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "holderness|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hollis|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 35",
+    "Hillsborough 45"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    12
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hooksett|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 10",
+    "Merrimack 27"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    16
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hopkinton|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 9"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    15
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "hudson|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 13",
+    "Hillsborough 38"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    14
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "jackson|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "jaffrey|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 13",
+    "Cheshire 18"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    9
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "jefferson|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 4",
+    "Coos 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "keene|1": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 1",
+    "Cheshire 15"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "keene|2": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 16",
+    "Cheshire 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "keene|3": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 15",
+    "Cheshire 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "keene|4": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 15",
+    "Cheshire 4"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "keene|5": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 15",
+    "Cheshire 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "kensington|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 19",
+    "Rockingham 36"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    23
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "kilkenny|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 4",
+    "Coos 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "kingston|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 14",
+    "Rockingham 34"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    23
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "laconia|1": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "laconia|2": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "laconia|3": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "laconia|4": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "laconia|5": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "laconia|6": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "lancaster|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "landaff|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "langdon|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 4",
+    "Sullivan 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "lebanon|1": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 13",
+    "Grafton 17"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "lebanon|2": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 14",
+    "Grafton 17"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "lebanon|3": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 15",
+    "Grafton 17"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "lee|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 11",
+    "Strafford 20"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    21
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "lempster|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 4",
+    "Sullivan 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "lincoln|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "lisbon|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "litchfield|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 14",
+    "Hillsborough 38"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    18
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "littleton|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "livermore|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "londonderry|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 16",
+    "Rockingham 35"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    14
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "loudon|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    4
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 26",
+    "Merrimack 4"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    17
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "lowburbanksgrant|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "lyman|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "lyme|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 12"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "lyndeborough|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 42"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    9
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "madbury|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 11",
+    "Strafford 20"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    21
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "madison|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 3",
+    "Carroll 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "manchester|1": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 21",
+    "Hillsborough 40"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    16
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "manchester|10": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 19",
+    "Hillsborough 40"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    20
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "manchester|11": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 22",
+    "Hillsborough 40"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    20
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "manchester|12": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 18",
+    "Hillsborough 40"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    20
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "manchester|2": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 17",
+    "Hillsborough 41"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    20
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "manchester|3": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 23",
+    "Hillsborough 40"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    20
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "manchester|4": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 24",
+    "Hillsborough 41"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    20
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "manchester|5": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 25",
+    "Hillsborough 41"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    18
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "manchester|6": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 16",
+    "Hillsborough 39"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    18
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "manchester|7": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 26",
+    "Hillsborough 41"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    18
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "manchester|8": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 15",
+    "Hillsborough 39"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    18
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "manchester|9": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 20",
+    "Hillsborough 39"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    18
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "marlborough|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 16",
+    "Cheshire 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "marlow|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 16",
+    "Cheshire 9"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "martinslocation|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "mason|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 36",
+    "Hillsborough 45"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    12
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "meredith|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "merrimack|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 12"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    11
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "middleton|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 18",
+    "Strafford 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "milan|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "milford|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 37",
+    "Hillsborough 43"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    11
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "millsfield|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "milton|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "monroe|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "montvernon|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 42"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    9
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "moultonborough|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 3",
+    "Carroll 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "nashua|1": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    12
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "nashua|2": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 4"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    12
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "nashua|3": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    13
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "nashua|4": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    13
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "nashua|5": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 9"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    12
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "nashua|6": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    13
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "nashua|7": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    13
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "nashua|8": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 11"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    13
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "nashua|9": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 10"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    13
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "nelson|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 16",
+    "Cheshire 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "newboston|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 42"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    9
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "newbury|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "newcastle|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 22",
+    "Rockingham 37"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    21
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "newdurham|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 18",
+    "Strafford 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    6
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "newfields|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 10",
+    "Rockingham 33"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    21
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "newhampton|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "newington|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 21",
+    "Rockingham 37"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    21
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "newipswich|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 32"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    12
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "newlondon|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "newmarket|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 10",
+    "Rockingham 33"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    21
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "newport|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 3",
+    "Sullivan 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "newton|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 20",
+    "Rockingham 36"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    23
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "northfield|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 2",
+    "Merrimack 25"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    17
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "northhampton|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 23",
+    "Rockingham 38"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    24
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "northumberland|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "northwood|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    4
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    17
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "nottingham|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    17
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "odell|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "orange|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 18",
+    "Grafton 9"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "orford|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "ossipee|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 5",
+    "Carroll 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "pelham|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    3
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    22
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "pembroke|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    4
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 12"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    17
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "peterborough|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 33"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "piermont|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "pinkhamsgrant|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "pittsburg|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "pittsfield|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    4
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 13"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    17
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "plainfield|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 2",
+    "Sullivan 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "plaistow|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 20",
+    "Rockingham 36"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    22
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "plymouth|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "portsmouth|1": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 21",
+    "Rockingham 37"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    21
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "portsmouth|2": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 28",
+    "Rockingham 39"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    21
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "portsmouth|3": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 26",
+    "Rockingham 39"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    21
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "portsmouth|4": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 27",
+    "Rockingham 39"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    21
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "portsmouth|5": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 22",
+    "Rockingham 37"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    21
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "randolph|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "raymond|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 4"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    16
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "richmond|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 10",
+    "Cheshire 17"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    9
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "rindge|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 14",
+    "Cheshire 18"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    12
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "rochester|1": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 19",
+    "Strafford 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    6
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "rochester|2": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 19",
+    "Strafford 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    6
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "rochester|3": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 19",
+    "Strafford 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    6
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "rochester|4": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 19",
+    "Strafford 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    6
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "rochester|5": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    6
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "rochester|6": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 19",
+    "Strafford 9"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    6
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "rollinsford|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 12"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    4
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "roxbury|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 16",
+    "Cheshire 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "rumney|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "rye|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 24",
+    "Rockingham 38"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    24
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "salem|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 25"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    22
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "salisbury|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 26",
+    "Merrimack 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "sanbornton|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 3",
+    "Belknap 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "sandown|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 9"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    23
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "sandwich|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "sargentspurchase|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "seabrook|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 30",
+    "Rockingham 40"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    23
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "secondcollegegt|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "sharon|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 33"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    9
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "shelburne|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "somersworth|1": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 12"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    4
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "somersworth|2": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 12"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    4
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "somersworth|3": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 12"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    4
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "somersworth|4": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 12"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    4
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "somersworth|5": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 12"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    4
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "southhampton|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 20",
+    "Rockingham 36"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    23
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "springfield|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 5",
+    "Sullivan 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "stark|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "stewartstown|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "stoddard|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 16",
+    "Cheshire 9"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "strafford|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    4
+   ],
+   "county": "Strafford",
+   "house": [
+    "Strafford 18",
+    "Strafford 4"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    6
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "stratford|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "stratham|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 12",
+    "Rockingham 33"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    24
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "success|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "sugarhill|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 1"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "sullivan|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 16",
+    "Cheshire 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "sunapee|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 5",
+    "Sullivan 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "surry|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 15",
+    "Cheshire 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "sutton|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "swanzey|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 10",
+    "Cheshire 17"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "tamworth|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 3",
+    "Carroll 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "temple|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 32"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    9
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "thompsonmesspurchase|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "thornton|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 4"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    2
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "tilton|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Belknap",
+   "house": [
+    "Belknap 3",
+    "Belknap 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "troy|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 12",
+    "Cheshire 17"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    9
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "tuftonboro|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 6",
+    "Carroll 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "unity|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 3",
+    "Sullivan 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "wakefield|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 4",
+    "Carroll 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "walpole|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 15",
+    "Cheshire 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "warner|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "warren|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "washington|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Sullivan",
+   "house": [
+    "Sullivan 4",
+    "Sullivan 8"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "watervillevalley|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 4"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "weare|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 28",
+    "Hillsborough 44"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "webster|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 26",
+    "Merrimack 5"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "wentworthsloc|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 2"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "wentworth|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    5
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "westmoreland|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 15",
+    "Cheshire 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    10
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "whitefield|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    1
+   ],
+   "county": "Coos",
+   "house": [
+    "Coos 4",
+    "Coos 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "wilmot|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Merrimack",
+   "house": [
+    "Merrimack 6"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    7
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "wilton|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 32"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    11
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "winchester|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Cheshire",
+   "house": [
+    "Cheshire 11",
+    "Cheshire 17"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    9
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "windham|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    3
+   ],
+   "county": "Rockingham",
+   "house": [
+    "Rockingham 17",
+    "Rockingham 35"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    19
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "windsor|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    5
+   ],
+   "county": "Hillsborough",
+   "house": [
+    "Hillsborough 30"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    8
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "wolfeboro|0": {
+   "cong": [
+    1
+   ],
+   "council": [
+    1
+   ],
+   "county": "Carroll",
+   "house": [
+    "Carroll 6",
+    "Carroll 7"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    3
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  },
+  "woodstock|0": {
+   "cong": [
+    2
+   ],
+   "council": [
+    2
+   ],
+   "county": "Grafton",
+   "house": [
+    "Grafton 3"
+   ],
+   "method": "pdfplumber",
+   "read_on": "2023-04-26",
+   "senate": [
+    1
+   ],
+   "source_url": "https://www.sos.nh.gov/sites/g/files/ehbemt561/files/inline-documents/sonh/towns-and-wards-as-districted-for-election-purposes-2022-remediated.pdf",
+   "status": "published"
+  }
+ }
+}
