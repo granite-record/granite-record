@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.104
+// GRANITE_VERSION: 2026-09-07.105
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1886,7 +1886,7 @@ function renderReports(b,d,rsa){
   // day the calendar carrying it was published, where it does not. Saying
   // which is the difference between a fact and a stand-in for one.
   const when=r=>!r.date?"":`<span class="secsub">${esc(fdate(r.date))}</span>`
-      +(r.dated==="printed"?` <span class="note" style="font-size:11.5px">as printed</span>`:"");
+      +(r.dated==="printed"?` <span class="repas">as printed</span>`:"");
   const cited=r=>{
     if(!r.cite)return "";
     // The House's source string IS the citation -- "House Calendar 51, 2025".
@@ -1894,8 +1894,11 @@ function renderReports(b,d,rsa){
     // source names that, which is not what a reader wants beside a committee's
     // name; the docket's own citation for the same report is.
     const t=esc(r.body==="S"?r.cite:(r.source||r.cite));
-    return r.cite_url?` · <a href="${esc(r.cite_url)}" rel="noopener">${t}</a>`
-                     :` · ${t}`;
+    // NO LEADING SEPARATOR. It divided the citation from the date when the two
+    // shared a line; in the wide layout the date is above it in a column and
+    // the dot divides it from nothing.
+    return `<span class="repcite">${r.cite_url
+      ? `<a href="${esc(r.cite_url)}" rel="noopener">${t}</a>` : t}</span>`;
   };
   // "SENATE JUDICIARY COMMITTEE" -- whose report this is, as the heading
   // rather than as small print beside the date. A bill can be reported by
@@ -1904,8 +1907,18 @@ function renderReports(b,d,rsa){
   const head=(r,cmte,body)=>`<div class="rephead">
       ${[body,cmte].filter(Boolean).length
         ? `<h2>${esc([body,cmte].filter(Boolean).join(" "))} committee</h2>`:""}
-      <div class="repmeta">${when(r)}<span class="note"
-        style="font-size:12px">${cited(r)}</span></div></div>`;
+      <div class="repmeta">${when(r)}${cited(r)}</div></div>`;
+
+  // ONE REPORT IS ONE ELEMENT, so that it can be laid out as one. The head
+  // and its blocks were siblings of the pane, which left the vertical
+  // arrangement as the only one available: `.card .pane > *` caps every child
+  // at the measure, so on a 1,094px pane the whole tab ran in a 560px column
+  // with 534px of nothing beside it, while the Summary tab next to it used
+  // the full width. Wrapped, the two halves can sit side by side above
+  // 1100px -- what the report IS on the left, what the committee SAID on the
+  // right -- and stack back to exactly today's order below it.
+  const rep=(h,body)=>`<article class="rep">
+    <div class="repside">${h}</div><div class="repbody">${body}</div></article>`;
 
   const written=(d.reports||[]).map(r=>{
     const divided=!!r.minority_recommendation;
@@ -1929,12 +1942,12 @@ function renderReports(b,d,rsa){
     const cmte=((r.reports||[])[0]||{}).committee||"";
     const blocks=(r.reports||[]).map(e=>{
       const rec=recFor(r,e.side);
-      return `<div style="margin-bottom:20px">
-        <div style="display:flex;gap:9px;align-items:baseline;flex-wrap:wrap">
+      return `<div class="repblock">
+        <div class="repline">
           <span class="secsub">${esc(e.side)}</span>
           ${committeeTally(e)}
           ${rec?`<span class="cstat ${recColour(rec)}">${esc(rec)}</span>`:""}</div>
-        <p style="font-size:12.5px;color:var(--ink-2);margin:3px 0 8px">${esc(e.author)}</p>
+        <p class="repby">${esc(e.author)}</p>
         ${e.amendment?`<p class="note" style="margin:0 0 7px">Amendment ${
           esc(e.amendment)}.</p>`:""}
         ${(e.text||"").trim()
@@ -1945,9 +1958,9 @@ function renderReports(b,d,rsa){
           : `<p class="note" style="margin:0">This report records the
              recommendation and the vote, and gives no reasoning.</p>`}
         </div>`;}).join("");
-    return between(r.date)+head(r,cmte,r.body==="S"?"Senate":"House")
-      +(divided?`<p class="note">The committee split. Both reports are printed
-        below in the committee's own words.</p>`:"")+blocks;}).join("");
+    return between(r.date)+rep(head(r,cmte,r.body==="S"?"Senate":"House"),
+      (divided?`<p class="note">The committee split. Both reports are printed
+        below in the committee's own words.</p>`:"")+blocks);}).join("");
 
   // Reports the docket records and this site has no written text for. Once the
   // Senate's own reports came out of the General Court's database, 964 of
@@ -1964,14 +1977,14 @@ function renderReports(b,d,rsa){
     // it reads "MAJORITY 10" or "COMMITTEE 17-0".
     const amd=r.amendment?`<p class="note" style="margin:0 0 7px">Amendment ${
       esc(r.amendment)}${r.new_title?", which also changes the bill’s title":""}.</p>`:"";
-    return between(r.date)+head(r,r.committee,r.body==="S"?"Senate":"House")
-      +`<div style="display:flex;gap:9px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px">
+    return between(r.date)+rep(head(r,r.committee,r.body==="S"?"Senate":"House"),
+      `<div class="repline">
         <span class="secsub">${esc(r.side||"Committee")}</span>${vote}
         <span class="cstat ${recColour(r.recommendation)}">${esc(r.recommendation)}</span></div>
       ${amd}
-      <p class="note" style="margin:0 0 20px">${r.body==="S"
+      <p class="note" style="margin:var(--sp-5) 0 0">${r.body==="S"
         ? "The written report for this one is not on the site; this is what the docket records of it."
-        : "The calendar carrying this report has not been read into the site yet, so only what the docket states is shown."}</p>`;}).join("");
+        : "The calendar carrying this report has not been read into the site yet, so only what the docket states is shown."}</p>`);}).join("");
 
   return veto(d)+((written||docket)?written+docket
     :`<p class="note">No committee report on file. A report is recorded in the docket

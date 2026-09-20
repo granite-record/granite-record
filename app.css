@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.147 */
+/* GRANITE_VERSION: 2026-09-07.149 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1561,6 +1561,58 @@ color:var(--ink-2);margin:0 0 var(--sp-4)}
 .rephead :is(h2,h3){font-size:var(--t-sm);font-weight:600;letter-spacing:.05em;
 text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-2)}
 .repmeta{display:flex;gap:var(--sp-4);align-items:baseline;flex-wrap:wrap}
+/* ONE REPORT IS ONE OBJECT, which is what makes the two-column arrangement
+   below possible at all: the head and its blocks used to be siblings of the
+   pane, and `.card .pane > *` caps every child at the measure, so the whole
+   tab ran in a 560px column of a 1,094px pane -- 534px of nothing beside it,
+   while the Summary tab next door used the full width.
+
+   The rule between reports belongs to the report, not to its head, or the
+   two draw one line each and the reader gets a double rule.
+
+   .rep takes the pane's measure cap like every other child until the two
+   columns open at 1100px. That is deliberate: a full-width rule over a 560px
+   report would run 442px past the last thing under it, which is the empty-box
+   complaint the cap above exists to answer. */
+.rep{border-top:1px solid var(--rule);padding-top:var(--sp-5)}
+.rep .rephead{border-top:0;padding-top:0}
+.repbody{max-width:var(--measure)}
+.repblock{margin-bottom:var(--sp-7)}
+.repblock:last-child{margin-bottom:0}
+/* The side, the vote and the recommendation on one line. .cstat already
+   carries margin-left:auto, so the recommendation goes to the right edge of
+   whatever this row is given -- which is the point of widening it. */
+.repline{display:flex;gap:9px;align-items:baseline;flex-wrap:wrap}
+.repby{font-size:var(--t-sm);color:var(--ink-2);margin:var(--sp-3) 0 var(--sp-4)}
+/* SMALL PRINT, NOT NOTES. Both of these were class="note" used as an inline
+   span, and .note is a BLOCK style -- a grey panel with a rule down its left
+   edge. Drawn inline it made a chip, so a citation arrived in a grey box with
+   a bar on it and read as an aside ABOUT the report rather than as the source
+   OF it. The same happened to "as printed", which is a qualifier on the date
+   beside it. */
+.repcite{font-size:var(--t-sm)}
+.repcite,.repas{color:var(--ink-2)}
+.repas{font-size:var(--t-xs)}
+/* WIDE: WHAT THE REPORT IS, THEN WHAT THE COMMITTEE SAID. Two columns at the
+   same 1100px the Summary tab splits at, because it is the same card and a
+   reader dragging a window narrower should cross one threshold, not two.
+
+   The left column holds the committee, the day and the citation stacked; the
+   right holds the recommendation, the vote and the reasoning. The reasoning
+   keeps the measure -- 560px is where prose stays readable and that does not
+   change with the pane -- but the ROW above it takes the full track, so the
+   recommendation lands on the pane's right edge and a reader can run an eye
+   down four of them without reading a word. */
+@media (min-width:1100px){
+  .card.focus .pane > .rep{max-width:none;display:grid;
+    grid-template-columns:288px minmax(0,1fr);gap:0 46px;
+    padding-top:var(--sp-7)}
+  .card.focus .rep .rephead{margin:0}
+  .card.focus .rep .repmeta{flex-direction:column;align-items:flex-start;
+    gap:var(--sp-3)}
+  .card.focus .rep .repbody{max-width:none}
+  .card.focus .rep .repbody :is(p,.amdtext,.testimony){max-width:var(--measure)}
+}
 .antext{font-family:var(--serif);font-size:var(--t-body);line-height:1.65;max-width:var(--measure)}
 .anbox.clamped .antext{display:-webkit-box;-webkit-line-clamp:6;
 -webkit-box-orient:vertical;overflow:hidden}
