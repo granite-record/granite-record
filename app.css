@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.142 */
+/* GRANITE_VERSION: 2026-09-07.143 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2696,6 +2696,38 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
   padding:var(--sp-3) var(--sp-5);font-size:var(--t-sm);text-align:left;cursor:pointer;line-height:1.3}
 .vbtn i{display:block;font-style:normal;font-size:var(--t-xs);color:var(--ink-2);margin-top:var(--sp-1)}
 .vbtn.sel{border-color:var(--pine);background:var(--pine-soft);color:var(--pine);font-weight:600}
+
+/* THE VERSION SEQUENCE. The picker above is a row of buttons and says nothing
+   about the distance between any two of them; this is the same buttons down a
+   column with that distance drawn between each pair. .vpick is still emitted
+   where a version has no word count to draw against, so both live here.
+
+   EVERY BAR AGAINST THE SAME NUMBER -- the bill at its longest, named in the
+   line under the list. Sized to its own step instead, each bar would mean a
+   different thing and the column would stop being a comparison. */
+.vseq{list-style:none;margin:0 0 var(--sp-4);padding:0}
+.vstop{margin:0}
+.vstop .vbtn{display:block;width:100%;text-align:left}
+/* The change that produced the version below it, so it reads downward: this
+   much came out and this much went in, and then what you get. */
+.vgap{padding:var(--sp-5) 0 var(--sp-4)}
+.vbar{display:flex;height:6px;border-radius:3px;overflow:hidden;
+background:var(--wash)}
+/* A segment narrower than two pixels is still a change and still has to be
+   visible; four words out of two thousand is otherwise nothing at all. */
+.vbar i{display:block;min-width:2px}
+/* --st-done and --st-law, NOT the party colours. Struck-out legislative text
+   in the Republican red would read as a claim about who removed it, on a site
+   that draws every person with a party-coloured chip. These two are the
+   palette's own removed and added, and both are defined again under the dark
+   and high-contrast blocks. */
+.vcut{background:var(--st-done)}
+.vadd{background:var(--st-law)}
+.vrest{background:transparent;min-width:0}
+.vsay{margin:var(--sp-2) 0 0;font-size:var(--t-sm);color:var(--ink-2);
+font-variant-numeric:tabular-nums}
+.vscale{margin:0 0 var(--sp-5)}
+
 .vmode{display:flex;gap:var(--sp-4);align-items:center;flex-wrap:wrap;margin:0 0 var(--sp-5)}
 .vtog{border:1px solid var(--rule);background:var(--surface);border-radius:var(--r-pill);
   padding:var(--sp-2) var(--sp-5);font-size:var(--t-sm);cursor:pointer}

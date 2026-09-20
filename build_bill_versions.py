@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.5
+# GRANITE_VERSION: 2026-09-09.6
 """
 Every version of a bill, in order, and what each amendment changed.
 
@@ -238,9 +238,15 @@ def main():
         # unchanged stretches cut to context. Split, its index is 4 KB and no
         # single fetch is more than the one comparison being read.
         rec = {"bill": bill, "year": year,
+               # words AS WELL AS chars, because the steps below are counted
+               # in words -- added and removed are len(t.split()) -- and a
+               # bar drawn against a character count would be a proportion of
+               # one thing shown against a total of another. About forty
+               # bytes a bill, into a file that already exists.
                "versions": [{"title": v["title"], "label": v["label"],
                              "sort": v["sort"], "date": v["date"],
                              "chars": len(v["text"]),
+                             "words": len(v["text"].split()),
                              "text_url": f"/versions/{year}/{bill}.{i}.txt"}
                             for i, v in enumerate(vs)],
                "amendments": [{"date": v["date"], "chars": len(v["text"]),
