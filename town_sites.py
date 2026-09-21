@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.2
+# GRANITE_VERSION: 2026-09-20.3
 """
 Fetch what New Hampshire's towns publish about their own officials.
 
@@ -8,6 +8,7 @@ Fetch what New Hampshire's towns publish about their own officials.
     python3 town_sites.py --links               # candidates found, no network
     python3 town_sites.py --officials           # fetch those candidates
     python3 town_sites.py --home --only lyme hancock --limit 5
+    python3 town_sites.py --home --retry-refused --agent browser
 
 WHY THIS EXISTS. `town_officials.json` is NHDOT's administrative contact
 directory, and on elected officials it is close to empty: about twelve town
@@ -34,9 +35,12 @@ disallows for `*` or for this agent is not fetched -- it is recorded as
 refused-by-robots, which is a different fact from a 404 and is stored as one.
 A `Crawl-delay` longer than the pace is honoured.
 
-PACE AND REFUSAL. Five seconds between requests, and a refusal is final: a
-host that answers 403, 429 or 503 is recorded and not asked again in that run,
-and nothing is ever retried. Two sources for the address, because they
+PACE AND REFUSAL. Five seconds between requests. A host that answers 403, 429
+or 503 is recorded and not asked again in that run, and a run never retries
+anything on its own. The one way a refused town is asked again is
+`--retry-refused`, which a person starts, which fetches nothing else, and
+which is the whole of what the two agents above are for. Two sources for the
+address, because they
 disagree about 38 towns and one of them is sometimes the dead one -- Conway's
 clerk-list host does not resolve at all, and `deerfieldnh.gog` is a typo for
 `.gov`. Both are tried, in order, and the record says which answered.
@@ -63,11 +67,50 @@ import urllib.request
 ROOT = pathlib.Path(__file__).resolve().parent
 STORE = ROOT / "town_sites"
 
-AGENT = ("granite-record/1.0 (civic transparency project; "
-         "contact@graniterecord.org)")
-HEADERS = {"User-Agent": AGENT,
-           "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
-           "Accept-Language": "en-US,en;q=0.9"}
+# WHO THIS SAYS IT IS, AND WHY THERE ARE TWO ANSWERS.
+#
+# The first pass identifies itself. A quarter of the towns -- 9 of the first
+# 36 -- answered 403 to it: Antrim, Barnstead, Barrington, Berlin, Bethlehem,
+# Brentwood, Brookfield, Canaan, Candia and the rest, all behind the same kind
+# of blanket filter, and none of them disallowing this project in robots.txt.
+# At that rate about 58 of 234 towns are unreachable under a name, and they
+# skew large.
+#
+# The person decided to use the browser string `fetch_town_clerks.py` already
+# uses for the Secretary of State, on the reasoning that robots.txt is a
+# town's considered statement of who may read its pages -- and it permits this
+# -- while a filter that rejects every client it does not recognise is a
+# default nobody chose. It is their project and their standing with these
+# towns, so it was their call and not this script's.
+#
+# AND IT MADE NO DIFFERENCE, WHICH IS WHY THIS PARAGRAPH IS STILL HERE.
+# Antrim, Barnstead, Brentwood and Canaan were asked again under the browser
+# string and answered 403 to that too. So the filter is not reading the name:
+# it is Cloudflare's bot management, and the same four serve the "Performing
+# security verification" interstitial to the browser pane as well, which does
+# not clear. These towns are not reachable by this project by any means it is
+# willing to use, and `refused_by_host` is the honest record of that rather
+# than a gap that looks like nobody looked.
+#
+# The two agents stay because the decision was made and the machinery is what
+# proved the answer. Every fetch stores the agent it used, `--agent browser`
+# is never the default, and `--retry-refused` is started by a person and
+# fetches nothing else.
+AGENTS = {
+    "project": ("granite-record/1.0 (civic transparency project; "
+                "contact@graniterecord.org)"),
+    "browser": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"),
+}
+AGENT = AGENTS["project"]
+
+
+def headers(agent):
+    return {"User-Agent": AGENTS[agent],
+            "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9"}
+
+
 PACE = 5.0
 TIMEOUT = 30
 REFUSED = {403, 429, 503}
@@ -230,8 +273,9 @@ def page_name(url, kind):
 # ------------------------------------------------------------------ fetch ---
 
 class Fetcher:
-    def __init__(self, pace=PACE):
+    def __init__(self, pace=PACE, agent="project"):
         self.pace = pace
+        self.agent = agent
         self.last = 0.0
         self.refused = set()
         self.n = 0
@@ -242,7 +286,7 @@ class Fetcher:
             time.sleep(wait)
         self.last = time.time()
         self.n += 1
-        req = urllib.request.Request(url, headers=HEADERS)
+        req = urllib.request.Request(url, headers=headers(self.agent))
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.status, r.headers.get("Content-Type", ""), r.read()
@@ -267,7 +311,7 @@ class Fetcher:
         st, ct, body = self.raw(url)
         rec = {"url": url, "status": st, "content_type": ct,
                "read_on": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-               "bytes": len(body or b"")}
+               "agent": self.agent, "bytes": len(body or b"")}
         if st in REFUSED:
             self.refused.add(host)
             rec["note"] = "the host refused; not asked again in this run"
@@ -446,6 +490,20 @@ def run_officials(towns, fetcher, robots, per_town=4, force=False):
     return got, failed
 
 
+def refused_home(key):
+    """Did this town's home page come back refused, and never succeed?
+
+    A refusal is a fact about a host and a name, not about the town, so it is
+    kept and looked up rather than inferred from an empty directory.
+    """
+    meta = load_meta(key)
+    if any(r.get("kind") == "home" and r.get("status") == 200
+           for r in meta.values()):
+        return False
+    return any(r.get("kind") == "home" and r.get("status") in REFUSED
+               for r in meta.values())
+
+
 def status(towns):
     home = officials = nourl = 0
     missing = []
@@ -481,6 +539,11 @@ def main():
     ap.add_argument("--per-town", type=int, default=4)
     ap.add_argument("--pace", type=float, default=PACE)
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--agent", choices=sorted(AGENTS), default="project",
+                    help="which name to fetch under; 'browser' is the string "
+                         "fetch_town_clerks.py uses and is never the default")
+    ap.add_argument("--retry-refused", action="store_true",
+                    help="only the towns whose home page was refused")
     a = ap.parse_args()
 
     towns = municipalities()
@@ -504,7 +567,15 @@ def main():
                 print(f"      {s:3d}  {t[:40]:42s} {u}")
         return 0
 
-    fetcher, robots = Fetcher(a.pace), Robots()
+    if a.retry_refused:
+        towns = {k: v for k, v in towns.items() if refused_home(k)}
+        print(f"  {len(towns)} town(s) whose home page was refused: "
+              f"{', '.join(towns) or 'none'}")
+        if not towns:
+            return 0
+    fetcher, robots = Fetcher(a.pace, a.agent), Robots()
+    if a.agent != "project":
+        print(f"  fetching as {a.agent!r}")
     if a.home:
         got, failed, skipped = run_home(towns, fetcher, robots, a.force)
         print(f"\n  home pages: {got} fetched, {failed} failed, "

@@ -144,7 +144,7 @@
     "tests/test_cmte_match.js": "2026-09-12.2",
     "tests/test_markers.py": "2026-09-05.6",
     "text_sponsors.py": "2026-09-14.3",
-    "town_sites.py": "2026-09-20.2",
+    "town_sites.py": "2026-09-20.3",
     "topic_model.py": "2026-09-16.4",
     "topics.py": "2026-09-12.2",
     "transcribe_and_align.py": "2026-09-04.2",
