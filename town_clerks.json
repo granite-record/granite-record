@@ -186,18 +186,18 @@
  },
  "bean-s-grant": {
   "clerk": "Christina Zornio",
-  "clerk_address": "20 Park St Bean'S Grant 03581",
+  "clerk_address": "20 Park St Bean's Grant 03581",
   "clerk_raw": "CHRISTINA ZORNIO",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "czornio@gorhamnh.org",
   "phone": "603-466-2744",
-  "polling_place": "Gorham Town Hall 20 Park Street Gorham - For Polling Location Only Bean'S Grant 03581",
+  "polling_place": "Gorham Town Hall 20 Park Street Gorham - For Polling Location Only Bean's Grant 03581",
   "polling_raw": "GORHAM TOWN HALL 20 PARK STREET GORHAM - FOR POLLING LOCATION ONLY BEAN'S GRANT 03581",
   "state_hours": "8:00 AM - 7:00 PM"
  },
  "bean-s-purchase": {
   "clerk": "Leona Kealty",
-  "clerk_address": "74 Village Rd Bean'S Purchase 03581",
+  "clerk_address": "74 Village Rd Bean's Purchase 03581",
   "clerk_raw": "LEONA KEALTY",
   "email": "tctx@townofshelburnenh.gov",
   "phone": "603-466-2262"
@@ -779,7 +779,7 @@
  },
  "crawford-s-pur": {
   "clerk": "Christina Zornio",
-  "clerk_address": "20 Park St Crawford'S Purchase 03581",
+  "clerk_address": "20 Park St Crawford's Purchase 03581",
   "clerk_raw": "CHRISTINA ZORNIO",
   "email": "czornio@gorhamnh.org",
   "phone": "603-466-2744"
@@ -799,7 +799,7 @@
  },
  "cutt-s-grant": {
   "clerk": "Christina Zornio",
-  "clerk_address": "20 Park St Cutt'S Grant 03581",
+  "clerk_address": "20 Park St Cutt's Grant 03581",
   "clerk_raw": "CHRISTINA ZORNIO",
   "email": "czornio@gorhamnh.org",
   "phone": "603-466-2744"
@@ -944,15 +944,15 @@
  },
  "dix-s-grant": {
   "clerk": "Donna M Demers",
-  "clerk_address": "100 PO Box 100 Dix'S Grant 03579",
+  "clerk_address": "100 PO Box 100 Dix's Grant 03579",
   "clerk_raw": "DONNA M DEMERS",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "erroltownclerk@gmail.com",
   "local_hours": "11:00 AM - 7:00 PM",
   "phone": "603-482-3351",
-  "polling_place": "Errol Town Hall 33 Main St Dix'S Grant 03579",
+  "polling_place": "Errol Town Hall 33 Main St Dix's Grant 03579",
   "polling_place_note": "The same error as the Atkinson & Gilmanton Academy Grant row, in the same words: Errol Town Hall with Colebrook's street and ZIP.",
-  "polling_place_source_says": "Errol Town Hall 33 Dumont St Dix'S Grant 03576",
+  "polling_place_source_says": "Errol Town Hall 33 Dumont St Dix's Grant 03576",
   "polling_raw": "ERROL TOWN HALL 33 MAIN ST DIX'S GRANT 03579",
   "state_hours": "8:00 AM - 7:00 PM"
  },
@@ -1193,7 +1193,7 @@
  },
  "erving-s-location": {
   "clerk": "Marcia Lynn Parkhurst",
-  "clerk_address": "1679 US Rte 3 Erving'S Location 03576",
+  "clerk_address": "1679 US Rte 3 Erving's Location 03576",
   "clerk_raw": "MARCIA LYNN PARKHURST",
   "email": "towncolumbia@myfairpoint.net",
   "phone": "603-237-5255",
@@ -1422,13 +1422,13 @@
  },
  "green-s-grant": {
   "clerk": "Susan Valliere",
-  "clerk_address": "20 Park Street Green'S Grant 03581",
+  "clerk_address": "20 Park Street Green's Grant 03581",
   "clerk_raw": "SUSAN VALLIERE",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "svalliere@gorhamnh.gov",
   "local_hours": "10:00 AM - 06:00 PM",
   "phone": "603-466-9434",
-  "polling_place": "Gorham Town Hall 20 Park St Green'S Grant 03581",
+  "polling_place": "Gorham Town Hall 20 Park St Green's Grant 03581",
   "polling_raw": "GORHAM TOWN HALL 20 PARK ST GREEN'S GRANT 03581",
   "state_hours": "8:00 AM - 7:00 PM",
   "website": "https://www.gorhamnh.gov"
@@ -1482,14 +1482,14 @@
  },
  "hadley-s-purchase": {
   "clerk": "Christina Zornio",
-  "clerk_address": "20 Park St Hadley'S Purchase",
+  "clerk_address": "20 Park St Hadley's Purchase",
   "clerk_raw": "CHRISTINA ZORNIO",
   "email": "czornio@gorhamnh.org",
   "phone": "603-466-2744"
  },
  "hale-s-location": {
   "clerk": "Cheryl Ann Nealley",
-  "clerk_address": "56 Town Hall Rd Hale'S Location 03845",
+  "clerk_address": "56 Town Hall Rd Hale's Location 03845",
   "clerk_raw": "CHERYL ANN NEALLEY",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "townclerk@townofbartlettnh.org",
@@ -1537,8 +1537,10 @@
   "email": "clerk@hancocknh.gov",
   "local_hours": "08:00 AM - 07:00 PM",
   "phone": "603-525-4441",
-  "polling_place": "Meeetinghouse 41 Main St Hancock 03449",
-  "polling_raw": "MEEETINGHOUSE 41 MAIN ST HANCOCK 03449",
+  "polling_place": "Meetinghouse 41 Main St Hancock 03449",
+  "polling_place_note": "MEEETINGHOUSE, with three e's, is not a word and not a building. Hancock's meetinghouse is a real and well-known one, and the town spells it Meetinghouse.",
+  "polling_place_source_says": "Meeetinghouse 41 Main St Hancock 03449",
+  "polling_raw": "MEETINGHOUSE 41 MAIN ST HANCOCK 03449",
   "state_hours": "08:00 AM - 07:00 PM",
   "website": "https://www.hancocknh.org"
  },
@@ -1570,13 +1572,13 @@
  },
  "hart-s-location": {
   "clerk": "Kathleen Landry",
-  "clerk_address": "PO Box 540 Hart'S Location 03812",
+  "clerk_address": "PO Box 540 Hart's Location 03812",
   "clerk_raw": "KATHLEEN LANDRY",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "hartslocationtc@gmail.com",
   "local_hours": "11:00AM - 7:00PM",
   "phone": "603-374-6397",
-  "polling_place": "Notchland Inn 2 Morey Rd Hart'S Location 03812",
+  "polling_place": "Notchland Inn 2 Morey Rd Hart's Location 03812",
   "polling_raw": "NOTCHLAND INN 2 MOREY RD HART'S LOCATION 03812",
   "state_hours": "11:00AM - 7:00PM",
   "website": "https://hartslocation.com"
@@ -2358,12 +2360,12 @@
  },
  "martin-s-location": {
   "clerk": "Susan Valliere",
-  "clerk_address": "20 Park St Martin'S Location 03581",
+  "clerk_address": "20 Park St Martin's Location 03581",
   "clerk_raw": "SUSAN VALLIERE",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "svalliere@gorhamnh.gov",
   "phone": "603-466-9434",
-  "polling_place": "Gorham Town Hall 20 Park St Gorham - For Pollilng Location Only Martin'S Location 03581",
+  "polling_place": "Gorham Town Hall 20 Park St Gorham - For Pollilng Location Only Martin's Location 03581",
   "polling_raw": "GORHAM TOWN HALL 20 PARK ST GORHAM - FOR POLLILNG LOCATION ONLY MARTIN'S LOCATION 03581",
   "state_hours": "8:00 AM - 7:00 PM"
  },
@@ -2914,12 +2916,12 @@
  },
  "pinkham-s-grant": {
   "clerk": "Susan Valliere",
-  "clerk_address": "20 Park Street Pinkham'S Grant 03581",
+  "clerk_address": "20 Park Street Pinkham's Grant 03581",
   "clerk_raw": "SUSAN VALLIERE",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "svalliere@gorhamnh.gov",
   "phone": "603-466-9434",
-  "polling_place": "Gorham Town Hall-20 Park Street Gorham NH 20 Park St Pinkham'S Grant 03581",
+  "polling_place": "Gorham Town Hall-20 Park Street Gorham NH 20 Park St Pinkham's Grant 03581",
   "polling_raw": "GORHAM TOWN HALL-20 PARK STREET GORHAM NH 20 PARK ST PINKHAM'S GRANT 03581",
   "state_hours": "8:00 AM - 7:00 PM"
  },
@@ -3284,7 +3286,7 @@
  },
  "sargent-s-purchase": {
   "clerk": "Christina Zornio",
-  "clerk_address": "20 Park Street Sargent'S Purchase 03581",
+  "clerk_address": "20 Park Street Sargent's Purchase 03581",
   "clerk_raw": "CHRISTINA ZORNIO",
   "email": "czornio@gorhamnh.org",
   "phone": "603-466-2744",
@@ -3593,7 +3595,7 @@
  },
  "thompson-mes-s-purchase": {
   "clerk": "Christina Zornio",
-  "clerk_address": "20 Park St Thompson & Meserve'S Purchase 03581",
+  "clerk_address": "20 Park St Thompson & Meserve's Purchase 03581",
   "clerk_raw": "CHRISTINA ZORNIO",
   "email": "czornio@gorhamnh.org",
   "phone": "603-466-2744"
@@ -3786,13 +3788,13 @@
  },
  "wentworth-s-loc": {
   "clerk": "Donna M Demers",
-  "clerk_address": "PO Box 100 Wentworth'S Location 03579",
+  "clerk_address": "PO Box 100 Wentworth's Location 03579",
   "clerk_raw": "DONNA M DEMERS",
   "election": "11/03/2026-STATE GENERAL ELECTION",
   "email": "erroltownclerk@gmail.com",
   "local_hours": "11:00 AM - 7:00 PM",
   "phone": "603-482-3351",
-  "polling_place": "Errol Town Hall 33 Main St Wentworth'S Location 03579",
+  "polling_place": "Errol Town Hall 33 Main St Wentworth's Location 03579",
   "polling_raw": "ERROL TOWN HALL 33 MAIN ST WENTWORTH'S LOCATION 03579",
   "state_hours": "8:00 AM - 7:00 PM"
  },

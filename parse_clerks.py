@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.4
+# GRANITE_VERSION: 2026-09-12.5
 """
 The Secretary of State's clerks and polling places, out of the PDF.
 
@@ -84,7 +84,9 @@ recorded as nothing.
 CASE. The list is typed in capitals. Capitals are how the form stores it and
 not how a name is written, so the name and the polling place are title-cased
 for display and the original is kept beside them under _raw. The rule knows
-Mc, Mac, O', hyphens and the Roman-numeral suffixes.
+Mc, Mac, O', hyphens, the Roman-numeral suffixes, and that a single letter
+after an apostrophe is a possessive rather than the start of a name -- which
+it did not, until twenty-two places had gone out as "Dix'S Grant".
 """
 import argparse
 import bisect
@@ -141,8 +143,22 @@ def namecase(s):
                 return "O'" + w[2:].capitalize()
             return w.capitalize()
 
-        parts = re.split(r"([-'])", tok)
-        out.append("".join(p if p in "-'" else one(p) for p in parts if p))
+        # A SINGLE LETTER AFTER AN APOSTROPHE IS THE POSSESSIVE, not the start
+        # of a name. Splitting on the apostrophe hands "DIX'S" to the caser as
+        # three parts and it capitalised the third, so twenty-two places went
+        # out as "Dix'S Grant", "Bean'S Purchase", "Hale'S Location". O'Brien
+        # and O'Neil are unaffected: what follows their apostrophe is a whole
+        # name, not one letter.
+        parts = [p for p in re.split(r"([-'])", tok) if p]
+        cased = []
+        for i, p in enumerate(parts):
+            if p in "-'":
+                cased.append(p)
+            elif i and parts[i - 1] == "'" and len(p) == 1:
+                cased.append(p.lower())
+            else:
+                cased.append(one(p))
+        out.append("".join(cased))
     return " ".join(out)
 
 

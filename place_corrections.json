@@ -7,6 +7,22 @@
 
  "polling_place": {
 
+  "hancock": {
+   "source_says": "MEEETINGHOUSE 41 MAIN ST HANCOCK 03449",
+   "corrected_to": "MEETINGHOUSE 41 MAIN ST HANCOCK 03449",
+   "changed": "one letter. Nobody is sent anywhere different by this: the building, the street and the town are unchanged.",
+   "why": "MEEETINGHOUSE, with three e's, is not a word and not a building. Hancock's meetinghouse is a real and well-known one, and the town spells it Meetinghouse.",
+   "evidence": [
+    "www.hancocknh.org, read 2026-09-20, spells it 'Meetinghouse' in both places it appears, one of them the name of a standing body: 'Meetinghouse Oversight Committee'. No other spelling appears anywhere on the page.",
+    "The error is in the source and not in this project's parse: the CSV export of 2026-09-20 carries 'MEEETINGHOUSE 41 MAIN ST HANCOCK 03449' verbatim, and a CSV has no wrapping for a parser to get wrong."
+   ],
+   "primary_source": "https://app.sos.nh.gov/statelistclerkandpolling",
+   "second_source": "https://www.hancocknh.org/",
+   "second_source_read_on": "2026-09-20",
+   "corrected_on": "2026-09-20",
+   "status": "published"
+  },
+
   "atk-gil-academy-grant": {
    "source_says": "ERROL TOWN HALL 33 DUMONT ST AT.& GIL. AC. GT. 03576",
    "corrected_to": "ERROL TOWN HALL 33 MAIN ST AT.& GIL. AC. GT. 03579",
