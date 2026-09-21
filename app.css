@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.158 */
+/* GRANITE_VERSION: 2026-09-07.159 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -756,14 +756,18 @@ cursor:pointer;background:var(--film-stub);color:var(--film-stub-ink);font-size:
    a line you can click. It still carries the timestamp and what is at it, and
    it still becomes the 16:9 player on click, because .player iframe sets its
    own aspect ratio and never depended on this one. */
-/* BOTH LISTS, NOT JUST THE ONE I FOUND FIRST. Scoping this to .cday would
-   have fixed the committee page and left the bill page as it was: HB 1718's
-   Hearings tab is eight stubs of 603px in a 6,405px pane, so three quarters
-   of that tab is empty placeholder too. A station in a bill's proceedings and
-   a day in a committee's sittings are the same thing -- one of many
-   recordings offered in a row -- and the home page's single feature player,
-   which is neither, keeps its frame. */
-.cday .pstub,.stn .pstub{aspect-ratio:auto;justify-content:flex-start;
+/* A COMMITTEE'S SITTINGS ONLY, AND NOT A BILL'S PROCEEDINGS. This briefly
+   covered .stn as well, on the reasoning that a station on a bill's Hearings
+   tab and a day in a committee's sittings are the same thing -- one of many
+   recordings offered in a row -- and that HB 1718's eight stubs of 603px in a
+   6,405px pane were the same waste in worse proportion.
+
+   The reasoning was sound and it was not asked for. The bill page's Hearings
+   tab reads the way it is meant to: a bill has a handful of proceedings, each
+   one a thing you might actually watch, and the frame says so. A committee's
+   Sessions tab is 45 sittings being scanned by date. Same component, two
+   jobs, and only one of them wanted changing. */
+.cday .pstub{aspect-ratio:auto;justify-content:flex-start;
   text-align:left;padding:var(--sp-4) var(--sp-5);gap:var(--sp-3)}
 
 /* CITE THIS PAGE. Shut by default and quiet: a reader who wants it is looking
