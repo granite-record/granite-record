@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.12
+# GRANITE_VERSION: 2026-09-09.13
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -521,7 +521,40 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
                nav_current="legislators.html")
     return p.replace('<div id="results"></div>',
                      '<div id="results"><div class="officials">'
-                     + "".join(body) + "</div></div>", 1)
+                     + sectionise("".join(body)) + "</div></div>", 1)
+
+
+# THE SECTIONS WERE ALREADY THERE, JUST NOT IN THE MARKUP. The body is built
+# as a flat run of <h2>, <ul>, <p>, <h2>, <ul>... which reads correctly and
+# lays out only one way: straight down. Wrapping each heading and what follows
+# it in a <section> costs nothing to the reader and lets the stylesheet put
+# two of them abreast on a wide screen, which halves a page that was running
+# to 2,858px.
+#
+# Done here rather than at the ten places that append, because those ten are
+# the content and this is the shape of it -- and because a wrapper opened in
+# one branch and closed in another is exactly the sort of thing that ships
+# half-applied.
+def sectionise(html):
+    """Wrap each <h2 class="offsec"> and the blocks after it in a section."""
+    parts = re.split(r'(?=<h2 class="offsec")', html)
+    if len(parts) < 2:
+        return html
+    out = []
+    for i, chunk in enumerate(parts):
+        if not chunk.strip():
+            continue
+        if not chunk.startswith('<h2 class="offsec"'):
+            # Whatever sits above the first heading -- the title and the lead.
+            out.append(chunk)
+            continue
+        # HOW TO VOTE SPANS BOTH COLUMNS. It is the answer the reader came for
+        # -- where to vote, when, and who the clerk is -- and the rest of the
+        # page is the general explanation of who represents them. Putting it
+        # in a column beside the Governor would bury it.
+        wide = " twnwide" if "How to Vote" in chunk[:200] else ""
+        out.append(f'<section class="twnsec{wide}">{chunk}</section>')
+    return "".join(out)
 
 
 def main():

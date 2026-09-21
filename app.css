@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.152 */
+/* GRANITE_VERSION: 2026-09-07.153 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2154,6 +2154,28 @@ margin-top:var(--sp-1)}
    margin:0 rather than 0 auto so the heading starts where the brand and the
    footer start; .shell already holds the page's gutter. */
 .officials{max-width:760px;margin:0;padding:var(--sp-3) 0 var(--sp-10)}
+/* TWO ABREAST ON A WIDE SCREEN. A town page was one column 2,858px long, with
+   its 760px lists sitting in a 1,132px container -- 372px unused on every row
+   of a page whose whole job is a list of names and how to reach them.
+
+   The sections are grid items now, so the four that say who represents you
+   sit two abreast and the page comes in at about half the height. How to Vote
+   spans both: it is the answer the reader came for -- where, when, and the
+   clerk -- and the rest is the general explanation of who represents them.
+
+   align-items:start so a short section does not stretch to its neighbour's
+   height, and 1100px is the same threshold the bill card and the Reports tab
+   split at, so a reader dragging a window narrower crosses one line and not
+   three. Below it the page is exactly what it was. */
+@media (min-width:1100px){
+  .officials{max-width:1180px;display:grid;grid-template-columns:1fr 1fr;
+    gap:0 var(--sp-10);align-items:start}
+  .twnsec{min-width:0}
+  .twnwide{grid-column:1 / -1}
+  /* The first heading in a column has a rule above it that reads as a divider
+     from the section beside it rather than above it. */
+  .twnsec .offsec{margin-top:var(--sp-7)}
+}
 .offtitle{font-size:var(--t-hero);line-height:1.2;margin:var(--sp-3) 0 var(--sp-4)}
 .officials .lead{font-size:var(--t-lead);line-height:1.6;color:var(--ink);margin:0 0 var(--sp-7)}
 .offsec{font-size:var(--t-lead);margin:var(--sp-9) 0 var(--sp-3);padding-top:var(--sp-5);
