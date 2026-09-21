@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.228
+# GRANITE_VERSION: 2026-09-04.229
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2639,13 +2639,17 @@ var fixtures = [
    // markup with no version pane in it, which is correct.
    wantFocused:[
          // THE VERSION PANE, every branch of it, asserted by the sentences
-         // only its own code can produce. The picker is the SIZED arm -- an
-         // <ol class="vseq"> of stops -- rather than the flat button row it
-         // falls back to when any version lacks a word count, and each bar
-         // says what it drew in words rather than as a proportion.
-         'class="vseq"',
-         'class="vstop"',
-         "70 words out, 180 in",
+         // only its own code can produce.
+         //
+         // THE BARS ARE GONE and so are the three assertions that named them:
+         // 'class="vseq"', 'class="vstop"' and "70 words out, 180 in" were
+         // here for about two hours. They asserted a proportional band drawn
+         // between each pair of versions, which was asked to come out as
+         // clutter in front of the amendment itself. The picker is the row of
+         // buttons in every case now, where it used to be the fallback for a
+         // version with no word count.
+         'class="vpick"',
+         'data-ver=',
          // The count line carries both figures, and names the version
          // compared AGAINST rather than the one being shown -- "+180 -180
          // words against the version before" is what a wrong lookup produces
@@ -2655,11 +2659,7 @@ var fixtures = [
          // sentence and no single substring spans it.
          'class="vcount">+180',
          "70 words against",
-         "As Introduced</span>",
-         // And the denominator the bars are drawn to is the bill at its
-         // longest, stated, because a bar with an unstated scale is a
-         // decoration.
-         "1,310 words"]},
+         "As Introduced</span>"]},
   // A bill with nothing on it yet. The fixture above populates every field, so
   // it only ever runs the arm of each ternary that HAS data -- and every one
   // of those has an else. That is what most bills look like early in a

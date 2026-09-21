@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.107
+// GRANITE_VERSION: 2026-09-07.108
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2335,55 +2335,31 @@ function renderVersions(b,d){
       aria-pressed="${j===i?"true":"false"}">${esc(v.title)}<i>${
       esc((v.date||"").split(" ")[0])}</i></button>`;
 
-  // THE DISTANCE BETWEEN TWO VERSIONS, DRAWN. Every version's size in words
-  // is in the index, so the step that changed the bill can be seen before any
-  // of them is read -- which is the question a reader of this tab has, and
-  // the one a row of six buttons could not answer without six clicks.
+  // NO BARS. There used to be a proportional bar between each pair of
+  // versions, drawn to the bill at its longest, showing how many words went
+  // out and how many came in. Asked for in these terms on 20 September: "I
+  // don't think the bars help, I think they're visual clutter that gets in
+  // the way of seeing the amendment itself."
   //
-  // ONE DENOMINATOR FOR EVERY BAR, and it is the bill at its longest. Sized
-  // to its own step's total instead, a bar means something different in each
-  // row and the sequence stops being comparable, which is the only thing a
-  // sequence is for.
+  // That is right, and the reason is worth keeping rather than just the
+  // instruction. A bar answers "how much changed" with a shape. The question
+  // a reader of this tab actually has is "what changed", and since the
+  // comparison began drawing itself on the bill's own paragraphs that
+  // question is answered by the document one click away. The bar was a
+  // summary standing in front of the thing it summarised.
   //
-  // NO PERCENTAGE AND NO VERDICT. A percentage needs a denominator that moves
-  // step to step, and "0% of the text came out" is what a four-word change
-  // renders as. The words are exact and the bars carry the proportion. And
-  // nothing here calls a bill gutted: build_bill_versions.py records an "OLS
-  // Release" document that made a diff report 1,019 words removed and said
-  // exactly that, wrongly.
-  const words=vs.map(v=>(v||{}).words);
-  const sized=vs.length>1&&words.every(w=>typeof w==="number"&&w>0);
-  const D=sized?Math.max(...words):0;
-  const stepTo={};
-  (ix.steps||[]).forEach(s=>{stepTo[s.to]=s;});
-  const bar=(j)=>{
-    const s=stepTo[j];
-    if(!sized||!s)return "";
-    const out=Math.max(0,s.removed|0), inn=Math.max(0,s.added|0);
-    const rest=Math.max(0,D-out-inn);
-    const say=out&&inn?`${out.toLocaleString()} words out, ${inn.toLocaleString()} in`
-      :out?`${out.toLocaleString()} words out, none in`
-      :inn?`${inn.toLocaleString()} words in, none out`
-      :"nothing changed";
-    return `<div class="vgap"><div class="vbar" aria-hidden="true"
-      ><i class="vcut" style="flex:${out}"></i
-      ><i class="vadd" style="flex:${inn}"></i
-      ><i class="vrest" style="flex:${rest}"></i></div>
-      <p class="vsay">${say}</p></div>`;
-  };
-
-  const picker=!vs.length?"":!sized
-    // Until the index carries a word count for every version -- an older
-    // build, or a bill whose text would not count -- the row of buttons is
-    // what it always was. A bar cannot be drawn to a scale that is not there.
-    ? `<div class="vpick" role="group" aria-label="Versions of this bill's text">${
-        vs.map(vbtn).join("")}</div>`
-    : `<ol class="vseq" aria-label="Versions of this bill's text">${
-        vs.map((v,j)=>`<li class="vstop">${bar(j)}${vbtn(v,j)}</li>`).join("")}
-      </ol>
-      <p class="src vscale">Each bar is drawn against the bill at its longest,
-      ${D.toLocaleString()} words. The versions are the General Court&rsquo;s;
-      the comparison between them is this site&rsquo;s.</p>`;
+  // WHAT SURVIVES IT, because the bars were carrying two facts and only one
+  // was decoration. The exact word counts are still stated -- "+180 -70 words
+  // against As Introduced" in the line below -- because those are the record
+  // and they were always the honest half. What is gone is the proportion, the
+  // scale sentence that had to explain the denominator, and the six-row
+  // ordered list that existed to hang them on.
+  //
+  // So the picker is the row of buttons it used to fall back to, in every
+  // case rather than only when a word count was missing.
+  const picker=!vs.length?"":
+    `<div class="vpick" role="group" aria-label="Versions of this bill's text">${
+        vs.map(vbtn).join("")}</div>`;
 
   // The step that produced the version being shown, if there is one.
   const step=(ix.steps||[]).find(s=>s.to===i);
