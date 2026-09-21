@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.224
+# GRANITE_VERSION: 2026-09-04.225
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2168,12 +2168,15 @@ def _record_untouched():
                               one number every term, like the budget
       officials.json          offices filled by hand from four official sources
       member_corrections.json a name a generator got wrong, and the evidence
+      place_corrections.json  a polling place the Secretary of State's own
+                              list states wrongly, and the second source
 
     Naming only the first one meant the check grew stale as quietly as the
     thing it guards against: most of these had no guard at all.
     """
     HANDMADE = ["ground_truth.csv", "review/checked.jsonl", "bill_notes.json",
-                "officials.json", "member_corrections.json"]
+                "officials.json", "member_corrections.json",
+                "place_corrections.json"]
     bad = []
     for f in (sorted(Path(".").glob("build_*.py"))
               + sorted(Path(".").glob("fetch_*.py"))):
@@ -10699,6 +10702,52 @@ def _floterials_overlay():
     flot = sum(1 for d in districts if d["floterial"])
     return "ok", (f"{len(districts) - flot} base and {flot} floterial "
                   f"districts, every overlay over districts that exist")
+
+
+@check("files", "every correction still corrects what the source actually says")
+def _corrections_still_apply():
+    """A correction outlives the thing it corrects, and that is the danger.
+
+    place_corrections.json overrides three polling places the Secretary of
+    State's own list gets wrong -- Errol Town Hall with Colebrook's street and
+    ZIP, on three rows, which would send a voter thirty miles to the wrong
+    town. Each correction records what the list SAYS as well as what it should
+    say, and parse_clerks_csv.py refuses to apply one whose `source_says` no
+    longer matches.
+
+    This is the check for the other half of that: a correction the Secretary
+    of State has since fixed is a correction that should be deleted, and one
+    still silently sitting in the file is the site overriding a good value
+    with a stale one. Neither is caught by anything downstream, because the
+    output looks exactly as intended either way.
+    """
+    if not Path("place_corrections.json").exists():
+        return "skip", "no place_corrections.json here"
+    src = Path("sources/sos-clerks-and-polling-places-2026-09-20.csv")
+    if not src.exists():
+        return "skip", "the clerk list export is not in sources/"
+    m = imp("parse_clerks_csv")
+    if m is None:
+        return "skip", "parse_clerks_csv.py does not import"
+
+    fixes = json.loads(Path("place_corrections.json").read_text(encoding="utf-8"))
+    towns = m.load_towns("site")
+    import csv as _csv
+    with open(src, encoding="utf-8-sig", newline="") as fh:
+        rows = list(_csv.DictReader(fh))
+    _data, unmatched, applied, stale = m.build(rows, towns, fixes)
+
+    want = set(fixes.get("polling_place", {}))
+    bad = list(stale)
+    missed = want - set(applied)
+    if missed:
+        bad.append(f"corrections that matched no row at all: {sorted(missed)}")
+    if unmatched:
+        bad.append(f"{len(unmatched)} rows of the export name no town this "
+                   f"site has: {unmatched}")
+    assert not bad, "\n  ".join(bad)
+    return "ok", (f"{len(applied)} correction(s) applied, each against the "
+                  f"value the export still carries")
 
 
 @check("files", "GRANIT's geometry carries the districts we publish")

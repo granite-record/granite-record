@@ -1,0 +1,61 @@
+{
+ "_what": "Values the Secretary of State's clerk-and-polling list states wrongly, corrected against a second source, with the evidence for each correction beside it. This file is edited by hand. No generator writes it.",
+
+ "_why": "The Secretary of State's statewide list is the authority for polling places and almost always right. Where it is not, the site cannot simply repeat it: a wrong polling address sends somebody to the wrong building on election day, which is the one failure this data exists to prevent. So a correction is made only where a named second source states the value and the primary source disagrees with ITSELF, and the original is kept beside the correction rather than overwritten, so a reader and a later editor can both see what was changed and why.",
+
+ "_how": "parse_clerks_csv.py applies these and writes both values into town_clerks.json: the corrected value under the field, and what the Secretary of State's list says under <field>_source_says, with the reason under <field>_note. A correction whose source_says no longer matches the export is reported and NOT applied, because that means the Secretary of State has changed the row and this file is the thing that is now stale.",
+
+ "polling_place": {
+
+  "atk-gil-academy-grant": {
+   "source_says": "ERROL TOWN HALL 33 DUMONT ST AT.& GIL. AC. GT. 03576",
+   "corrected_to": "ERROL TOWN HALL 33 MAIN ST AT.& GIL. AC. GT. 03579",
+   "changed": "the street and the ZIP. The building is not in doubt: every one of the seven rows naming it says Errol Town Hall.",
+   "why": "Errol Town Hall is at 33 Main St, Errol 03579. 33 Dumont St 03576 is in Colebrook, about thirty miles away, and Colebrook's own row in the same list gives 27 Dumont St Colebrook 03576 as ITS polling place. A voter following this row would drive to the wrong town.",
+   "evidence": [
+    "The Secretary of State's own list contradicts itself: of the seven rows naming Errol Town Hall, four give 33 Main St 03579 (Errol, Cambridge, Wentworth's Location and Second College Grant), two give 33 Dumont St 03576 (this row and Dix's Grant) and one gives 33 US Route 3 03576 (Odell). One building cannot have three addresses.",
+    "NHDOT's City and Town Officials of the State of New Hampshire, embedded CreationDate 2025-09-02, gives Errol as '33 Main St, Errol, NH 03579'.",
+    "The error is in the source and not in this project's parse: raw band 11 on page 2 of sources/sos-clerks-and-polling-places.pdf is a single unfolded row reading 'ERROL TOWN HALL 33 DUMONT ST AT.& GIL. AC. GT. 03576' verbatim, and the CSV export of 2026-09-20 says the same."
+   ],
+   "primary_source": "https://app.sos.nh.gov/statelistclerkandpolling",
+   "second_source": "sources/nh-municipal-officials-2025-09-01.pdf",
+   "second_source_read_on": "2025-09-02",
+   "corrected_on": "2026-09-20",
+   "status": "published"
+  },
+
+  "dix-s-grant": {
+   "source_says": "ERROL TOWN HALL 33 DUMONT ST DIX'S GRANT 03576",
+   "corrected_to": "ERROL TOWN HALL 33 MAIN ST DIX'S GRANT 03579",
+   "changed": "the street and the ZIP. The building is not in doubt.",
+   "why": "The same error as the Atkinson & Gilmanton Academy Grant row, in the same words: Errol Town Hall with Colebrook's street and ZIP.",
+   "evidence": [
+    "The Secretary of State's own list contradicts itself: four of the seven rows naming Errol Town Hall give 33 Main St 03579.",
+    "NHDOT's City and Town Officials of the State of New Hampshire, embedded CreationDate 2025-09-02, gives Errol as '33 Main St, Errol, NH 03579'.",
+    "Present in both the 2026-09-12 PDF export and the 2026-09-20 CSV export, so it is the record and not a reading of it."
+   ],
+   "primary_source": "https://app.sos.nh.gov/statelistclerkandpolling",
+   "second_source": "sources/nh-municipal-officials-2025-09-01.pdf",
+   "second_source_read_on": "2025-09-02",
+   "corrected_on": "2026-09-20",
+   "status": "published"
+  },
+
+  "odell": {
+   "source_says": "ERROL TOWN HALL 33 US ROUTE 3 ODELL 03576",
+   "corrected_to": "ERROL TOWN HALL 33 MAIN ST ODELL 03579",
+   "changed": "the street and the ZIP. The building is not in doubt.",
+   "why": "A third spelling of the same building's address, and the only row that gives it as US Route 3. The ZIP is Colebrook's, as in the other two.",
+   "evidence": [
+    "The Secretary of State's own list contradicts itself: four of the seven rows naming Errol Town Hall give 33 Main St 03579.",
+    "NHDOT's City and Town Officials of the State of New Hampshire, embedded CreationDate 2025-09-02, gives Errol as '33 Main St, Errol, NH 03579'.",
+    "Present in both the 2026-09-12 PDF export and the 2026-09-20 CSV export."
+   ],
+   "primary_source": "https://app.sos.nh.gov/statelistclerkandpolling",
+   "second_source": "sources/nh-municipal-officials-2025-09-01.pdf",
+   "second_source_read_on": "2025-09-02",
+   "corrected_on": "2026-09-20",
+   "status": "published"
+  }
+ }
+}
