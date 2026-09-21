@@ -91,6 +91,12 @@ __pycache__/
 # STATE.md is written by handoff.py. Committing it would put a stale copy in
 # the repository for someone to trust.
 STATE.md
+# READINESS.md is written by readiness.py, and the same reasoning applies with
+# more force: it reports how many nights the scheduled work ran clean, which is
+# false the moment it is a day old. launch_register.json, the hand-kept half it
+# reads, IS tracked -- that is a person's record of what is known to be wrong
+# and how far each part of the site has been taken, and it belongs in history.
+READINESS.md
 testimony.json
 testimony_probe.json
 floor_H_2026-03-05.json

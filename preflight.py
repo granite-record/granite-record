@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.225
+# GRANITE_VERSION: 2026-09-04.226
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -2176,7 +2176,7 @@ def _record_untouched():
     """
     HANDMADE = ["ground_truth.csv", "review/checked.jsonl", "bill_notes.json",
                 "officials.json", "member_corrections.json",
-                "place_corrections.json"]
+                "place_corrections.json", "launch_register.json"]
     bad = []
     for f in (sorted(Path(".").glob("build_*.py"))
               + sorted(Path(".").glob("fetch_*.py"))):

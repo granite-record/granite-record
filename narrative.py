@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.33
+# GRANITE_VERSION: 2026-09-04.34
 """
 Turn a bill's docket entries into a plain-language history.
 
@@ -322,8 +322,32 @@ AMEND_RE = re.compile(
     # -- the date pattern was left sitting in front of "200-175". Thirteen of
     # HB2's Senate amendments were undated in the published narrative and 26
     # of its House ones were dated only by the sentence before them.
-    r"(?:(?:(?P<motion>AA|Adopted|AF|AL)"
-    r"|(?P<vote>VV|DV|RC)"
+    #
+    # AND THE DOCKET PUTS THINGS BETWEEN THE NUMBER AND THE MOTION. Nothing
+    # was allowed there, so the alternation below matched zero times and the
+    # line lost its motion, its vote kind AND its tally together -- 1,075
+    # amendment events, every one of them with vote_kind None. 2025-2026
+    # SB13 reads "Amendment # 2025-1934h (NT): AA DV 183-163" -- adopted on
+    # a division of 183 to 163 -- and the site showed none of the three. The
+    # date survived, because it is matched separately, which is why this
+    # looked like nothing was wrong.
+    #
+    # WHAT IS ACTUALLY THERE, counted over those 1,075 lines rather than
+    # guessed at: the New Title marker in four punctuation shapes ((NT):
+    # 330, "NT," 175, (NT) 79, "NT;" 5), a parenthesised sponsor ((Rep 132,
+    # (Rep. 48, (Reps 15), and the enrolled-bill marker (E 26, -EBA: 17,
+    # EBA 6). None of the three carries an outcome, so they are skipped
+    # rather than captured -- this pattern is read for what the chamber
+    # DID, and a title change is not that.
+    r"(?:(?:\(?(?:NT|New Title)\)?|-?EBA)[,;:]?\s*"
+    r"|\((?:Reps?|Sens?)\.?[^)]*\)[,;:]?\s*){0,3}"
+    # DIV is the House's other spelling of a division, and "Failed" is the
+    # spelled-out form of AF. The docket writes the outcome either way and
+    # this had the abbreviation of both and the word for only one -- the
+    # same half-a-pair that left 153 events with no outcome in
+    # build_site_v2.ADOPTED.
+    r"(?:(?:(?P<motion>AA|Adopted|AF|AL|Failed)"
+    r"|(?P<vote>VV|DIV|DV|RC)"
     r"|(?P<y>\d+)\s*Y?\s*[-\u2013]\s*(?P<n>\d+)\s*N?)[,;]?\s*){0,4}"
     r"(?:\(?(?:in recess of|In recess)\)?\s*)?"
     r"(?P<date>\d{1,2}/\d{1,2}/\d{4})?", re.I)

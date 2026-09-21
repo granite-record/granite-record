@@ -1,0 +1,119 @@
+{
+  "_what": "The hand-kept half of the launch readiness report. readiness.py reads this and writes READINESS.md; nothing generated ever writes this file. Two lists: errors a person knows about, and how far each part of the site has been taken. Both exist because they cannot be measured off disk -- an error nobody has noticed is not in here, and no script can tell a first draft from a second.",
+  "_how_to_use": "Add an error the moment it is found, with status open. When it is fixed, set status to fixed, put the commit in fixed_by, and name the preflight check that now guards it -- or say none, which is itself worth seeing. Move a feature to draft 2 only after it has actually been gone over, not after it has been touched.",
+  "_status_values": "error.status: open | fixed | source_gap. feature.draft: 1 | 2 | unreviewed.",
+
+  "errors": [
+    {
+      "found": "2026-09-20",
+      "what": "Fourteen committee seats held by thirteen sitting members were published on committees they no longer serve on, Joe Barton on House Legislative Administration among them. The database's own ActiveMember flag said so and was being discarded.",
+      "where": "site/committee/*.json, site/committees.html",
+      "reported_by": "a reader, via the person",
+      "status": "fixed",
+      "fixed_by": "368de6d",
+      "guard": "a committee's roster is today's -- it used to excuse a member whose roster named no committee, which was exactly this class"
+    },
+    {
+      "found": "2026-09-20",
+      "what": "Hillsborough 42 and 43 were labelled floterial districts and are base districts, which left Milford, Lyndeborough, Mont Vernon and New Boston belonging to no base district at all.",
+      "where": "districts/house.txt, site/districts.json, every town page for those four towns",
+      "reported_by": "found while surveying state GIS sources",
+      "status": "fixed",
+      "fixed_by": "5939ff7",
+      "guard": "every floterial district overlays districts that exist"
+    },
+    {
+      "found": "2026-09-20",
+      "what": "153 amendments whose docket line says plainly that they failed were published with no outcome, because the outcome map held the abbreviation of both results but the spelled-out form of only one.",
+      "where": "a bill's Bill Text tab, amendment cards",
+      "reported_by": "found while ordering the Bill Text rebuild",
+      "status": "fixed",
+      "fixed_by": "c18c73c",
+      "guard": "every motion the docket puts on an amendment has an outcome"
+    },
+    {
+      "found": "2026-09-20",
+      "what": "837 amendment events lost their motion, their vote kind and their tally together, because the docket puts a New Title marker, a parenthesised sponsor or an enrolled-bill marker between the amendment number and the result and the pattern allowed nothing there.",
+      "where": "a bill's Bill Text tab, amendment cards",
+      "reported_by": "found while investigating the outcome map",
+      "status": "fixed",
+      "fixed_by": "",
+      "guard": "partly -- the outcome map check catches a motion it cannot map, but nothing yet asserts that a docket line carrying a result is read"
+    },
+    {
+      "found": "2026-09-20",
+      "what": "About 64 of 235 polling-place strings carry run-together words from the source PDF's hard-wrapped text layer, such as 'Merrimack Valley Highschool Gymnasium' and '1 Memorial Drhudson'.",
+      "where": "town pages, How to Vote",
+      "reported_by": "the civic-data session's survey",
+      "status": "open",
+      "fixed_by": "",
+      "guard": "none"
+    },
+    {
+      "found": "2026-09-20",
+      "what": "At least one polling-place row has combined two municipalities: Atkinson & Gilmanton Academy Grant reads 'Errol Townhall 33 Dumont St', which is Errol's building with Colebrook's street and ZIP. This is the dangerous kind -- clean, plausible text naming a real building in the wrong town.",
+      "where": "town pages, How to Vote",
+      "reported_by": "the civic-data session's survey",
+      "status": "open",
+      "fixed_by": "",
+      "guard": "none"
+    },
+    {
+      "found": "2026-09-20",
+      "what": "24 current-term bills where bill_text.json's version disagrees with the database's newest printing, two of them showing a fiscal note where the database holds the introduced bill.",
+      "where": "a bill's Bill Text tab",
+      "reported_by": "the Bill Text design panel",
+      "status": "open",
+      "fixed_by": "",
+      "guard": "none"
+    },
+    {
+      "found": "2026-09-20",
+      "what": "town_officials.json is an NHDOT administrative contact directory dated 2 September 2025, not an elected-officials roster. It predates the November 2025 city elections and the March 2026 town elections, and carries about twelve town clerks across 234 municipalities and no tax collectors, treasurers or moderators at all.",
+      "where": "town pages, officials",
+      "reported_by": "the civic-data session's survey",
+      "status": "open",
+      "fixed_by": "",
+      "guard": "none"
+    },
+    {
+      "found": "2026-09-20",
+      "what": "Nothing schedules the nightly or the fetch lane. None of this machine's scheduled tasks names the repository, nightly.py or the lane, and there is no startup entry either, so every night that ran was started by hand. The gaps in the nightly log are not flaky automation; there is no automation. Deferred deliberately: the person wants this solved by moving the scheduled work to the cloud rather than by adding a Windows task, and after the current round of revisions.",
+      "where": "the fourth launch condition -- running unattended for a week",
+      "reported_by": "found while building this report",
+      "status": "open",
+      "fixed_by": "",
+      "guard": "readiness.py now asks the task scheduler directly and says so, so this cannot be mistaken for flaky automation again"
+    },
+    {
+      "found": "2026-09-20",
+      "what": "The Secretary of State publishes no polling place for about a third of rows and prints 'If the polling location is blank contact your city/town clerk'. This is a hole in the source, not in the collection, but a reader still cannot find where to vote.",
+      "where": "town pages, How to Vote",
+      "reported_by": "the civic-data session's survey",
+      "status": "source_gap",
+      "fixed_by": "",
+      "guard": "none"
+    }
+  ],
+
+  "features": [
+    {"name": "Home page",                 "draft": 2, "note": "reordered on one column in the person's order, search boxes merged, 20 September"},
+    {"name": "Bill list and bill card",   "draft": 2, "note": "status rail widened and centred 20 September"},
+    {"name": "Bill detail -- Summary",    "draft": 2, "note": "On the record returned to the top 20 September"},
+    {"name": "Bill detail -- Reports",    "draft": 2, "note": "two columns, recommendation on the pane's right edge, 20 September"},
+    {"name": "Bill detail -- Documents",  "draft": 2, "note": "each citation says what it is the record of"},
+    {"name": "Bill detail -- Bill Text",  "draft": 1, "note": "rebuild designed and ordered; the pane is empty on 18 of 19 terms"},
+    {"name": "Bill detail -- Votes",      "draft": "unreviewed", "note": ""},
+    {"name": "Bill detail -- Hearings",   "draft": "unreviewed", "note": ""},
+    {"name": "Bill detail -- Sponsors",   "draft": "unreviewed", "note": ""},
+    {"name": "Legislators page",          "draft": "unreviewed", "note": ""},
+    {"name": "A legislator's own page",   "draft": "unreviewed", "note": ""},
+    {"name": "Committee pages",           "draft": "unreviewed", "note": "roster corrected 20 September; the layout has not been gone over"},
+    {"name": "Town pages",                "draft": "unreviewed", "note": "polling place data has known defects; the page itself unreviewed"},
+    {"name": "Calendar and session days", "draft": 2, "note": "hooked up to information that already existed in several shapes"},
+    {"name": "Search",                    "draft": 2, "note": "whole index, panel cap lifted"},
+    {"name": "Learn section",             "draft": "unreviewed", "note": "contents rail added; the writing has not had a second pass"},
+    {"name": "About and Data pages",      "draft": 2, "note": "feeds and term indexes named"},
+    {"name": "404 and error states",      "draft": "unreviewed", "note": ""}
+  ]
+}

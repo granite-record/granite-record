@@ -102,7 +102,7 @@
     "member_links.py": "2026-09-13.3",
     "names.py": "2026-09-09.3",
     "narrate_archive.py": "2026-09-11.1",
-    "narrative.py": "2026-09-04.33",
+    "narrative.py": "2026-09-04.34",
     "netcheck.py": "2026-09-04.3",
     "nightly.py": "2026-09-04.13",
     "parse_clerks.py": "2026-09-12.4",
@@ -112,7 +112,7 @@
     "parse_officials.py": "2026-09-12.2",
     "parse_sos_districts.py": "2026-09-20.1",
     "past_members.py": "2026-09-10.1",
-    "preflight.py": "2026-09-04.225",
+    "preflight.py": "2026-09-04.226",
     "probe_alignment.py": "2026-09-05.62",
     "probe_amendments.py": "2026-09-04.3",
     "probe_archive.py": "2026-09-04.3",
@@ -156,7 +156,8 @@
     "unh_roster.py": "2026-09-19.2",
     "unh_survey.py": "2026-09-18.2",
     "verify_batch.py": "2026-09-04.4",
-    "wrangler.toml": "2026-09-12.2"
+    "wrangler.toml": "2026-09-12.2",
+    "readiness.py": "2026-09-20.2"
   },
   "generated": "2026-09-04"
 }
