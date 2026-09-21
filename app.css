@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.159 */
+/* GRANITE_VERSION: 2026-09-07.162 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -756,19 +756,14 @@ cursor:pointer;background:var(--film-stub);color:var(--film-stub-ink);font-size:
    a line you can click. It still carries the timestamp and what is at it, and
    it still becomes the 16:9 player on click, because .player iframe sets its
    own aspect ratio and never depended on this one. */
-/* A COMMITTEE'S SITTINGS ONLY, AND NOT A BILL'S PROCEEDINGS. This briefly
-   covered .stn as well, on the reasoning that a station on a bill's Hearings
-   tab and a day in a committee's sittings are the same thing -- one of many
-   recordings offered in a row -- and that HB 1718's eight stubs of 603px in a
-   6,405px pane were the same waste in worse proportion.
-
-   The reasoning was sound and it was not asked for. The bill page's Hearings
-   tab reads the way it is meant to: a bill has a handful of proceedings, each
-   one a thing you might actually watch, and the frame says so. A committee's
-   Sessions tab is 45 sittings being scanned by date. Same component, two
-   jobs, and only one of them wanted changing. */
-.cday .pstub{aspect-ratio:auto;justify-content:flex-start;
-  text-align:left;padding:var(--sp-4) var(--sp-5);gap:var(--sp-3)}
+/* THE STUB KEEPS ITS 16:9 FRAME EVERYWHERE. It was briefly compacted inside
+   a committee's day listing, on the reading that 29 stacked placeholders were
+   what made that tab hard to scan. That was the wrong diagnosis twice over --
+   first extended to the bill page, which was not asked about, and then wrong
+   about the committee page too: the embedded players were never the
+   complaint. What was confined was the TEXT, which is dealt with at .cnarr
+   and .cpurpose below. Left here as a note because the measurement that led
+   to it (18,439px of placeholder) was real and still tempting. */
 
 /* CITE THIS PAGE. Shut by default and quiet: a reader who wants it is looking
    for it, and a reader who does not should not have four citation formats
@@ -2099,9 +2094,42 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4)}
    height of the name. 84 chips on 17 committee pages, each 49px against a
    27px base. */
 .croster .mchip{margin:0}
-.cpurpose{margin:var(--sp-6) 0 0;max-width:var(--measure)}
+/* THE TEXT FILLS THE PAGE IT IS ON. --measure is 560px and it is right on a
+   bill, where the analysis sits beside a 488px facts panel and the two make
+   up the pane between them. On a committee page nothing sits beside it: the
+   info box, the roster, the player and the day's timeline all run the full
+   1,132px, and a paragraph stopping at 560 left half the row empty with
+   full-width furniture above and below it.
+
+   Asked for in those terms -- the text should fill the space rather than be
+   confined to the left. Worth knowing the trade that is being made: 1,132px
+   of 16px serif is a long line to track back from, longer than this project
+   caps prose at anywhere else. The judgment is that a committee narrative is
+   a few sentences read once, not a page of statute, and that a paragraph
+   marooned beside empty space reads as broken before it reads as readable. */
+.cpurpose{margin:var(--sp-6) 0 0}
 .cpurpose p{font-size:var(--t-body);line-height:1.65;margin:0}
 .cpurpose .src{margin-top:var(--sp-3)}
+/* And every other run of sentences on the page, which is the rest of the
+   complaint. The pane's own intro -- "45 days this committee met in 2025-2026
+   ..." -- is a direct child of .pane and so was missed by the first pass; it
+   sat at 560 under a full-width tab strip, which is the same left-confinement
+   one block up.
+
+   :has(.croster) SCOPES THIS TO A COMMITTEE PAGE and nothing else. .src is
+   used all over the site and .pane is shared with the bill card and the
+   legislator page, neither of which was asked about and neither of which has
+   a committee roster in it. A selector that reached them would be the same
+   over-reach as compacting the bill page's play stubs. */
+.cpurpose .src,.cday .src,.cday .note{max-width:none}
+main:has(.croster) .pane > .src,
+main:has(.croster) .cal .note,
+main:has(.croster) .cal p,
+/* And the day's timeline. .tl li caps at the measure, which is right on a
+   bill -- there the list sits in a 560px pane beside the facts panel. Here
+   320 of them sat at 560 inside a 1,132px row, so a bill's title wrapped
+   halfway across a line that had nothing in the other half. */
+main:has(.croster) .cday .tl li{max-width:none}
 /* The term governs every tab, so it sits above them rather than inside one. */
 .pterm{margin:var(--sp-6) 0 0}
 
@@ -2138,7 +2166,7 @@ max-width:100%}
 .cday{margin:0 0 var(--sp-7);padding:0 0 var(--sp-6);border-bottom:1px solid var(--rule)}
 .cday :is(h2,h3){font-size:var(--t-ui);font-weight:600;letter-spacing:.04em;text-transform:uppercase;
 color:var(--ink-2);margin:0 0 var(--sp-3)}
-.cnarr{font-size:var(--t-body);line-height:1.65;margin:0 0 var(--sp-4);max-width:var(--measure)}
+.cnarr{font-size:var(--t-body);line-height:1.65;margin:0 0 var(--sp-4)}
 /* The bill's title inside a committee day. NOT .ctitle: that is the card
    title, declared 469 lines above, and this one won on source order --
    so every bill title on every card rendered at 14px in --ink-2 instead
