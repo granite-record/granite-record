@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.226
+# GRANITE_VERSION: 2026-09-04.227
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1674,9 +1674,19 @@ def _no_control_bytes():
     """
     ok = {0x09, 0x0A, 0x0D}
     exts = {".py", ".css", ".js", ".html", ".json", ".md", ".bat"}
+    # town_sites/ added 20 September: 234 town pages fetched by another
+    # session, one of which is a binary response saved with an .html name, and
+    # this check went red on somebody else's download rather than on a source
+    # file. Worth noticing that this list is the same shape as the one the
+    # pane measure rule had to abandon -- "each attempt capped a list and the
+    # list was never the whole list". A fetched page cache is gitignored by
+    # definition, so asking git what it ignores would end this class of
+    # failure rather than adding to it; that is a change to make deliberately
+    # and not while two sessions are in the same tree.
     skip = ("site/", "work/", "archive/", "obsolete/", "logs/", "data/", "db/",
             "docket_pages/", "bill_text/", "legislation/", "captions/",
-            "review/", ".git/", "sources/", "brand/", "assets/")
+            "review/", ".git/", "sources/", "brand/", "assets/",
+            "town_sites/")
     bad, n = [], 0
     for f in sorted(Path(".").rglob("*")):
         if not f.is_file() or f.suffix.lower() not in exts:
@@ -2328,7 +2338,7 @@ require("./stub.js");
 const src = require("fs").readFileSync("./page.js", "utf8");
 let scope;
 try { scope = (0, eval)(src +
-    "; ({render, IDX, renderDetail, serviceLine, queryGroups, expand, groupWeight, yearOf, dkey, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
+    "; ({render, IDX, renderDetail, serviceLine, queryGroups, expand, groupWeight, yearOf, dkey, VERS, VPICK, VMODE, verKey, hasVersionIndex, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message);
             process.exit(1); }
 scope.IDX.length = 0;
@@ -2518,6 +2528,15 @@ var detail = {
   billtext:{version:"AS AMENDED BY THE HOUSE",title:"AN ACT x",analysis:"A summary.",
             body:"Be it Enacted: Amend RSA 91-A:4.",
             in_text:[{num:"2026-0503h",short:"503h",date:"5Mar2026"}],chars:40},
+  // THE VERSION APPARATUS WAS DEAD CODE IN THIS HARNESS. hasVersionIndex is
+  // false unless the record carries nver > 1 or namd, renderVersions returns
+  // "" the moment it is, and no fixture here set either -- so the picker, the
+  // bars, the count line and the whole diff view were never rendered once by
+  // any check, under --code or the full run. The only guard was a source-text
+  // check on app.js, which opens no version file and would have stayed green
+  // through any change to their shape. Found while planning to change exactly
+  // that shape, which would otherwise have shipped blind.
+  nver:2, namd:1,
   rsa:{"RSA 91-A:4":"https://gc.nh.gov/rsa/html/VI/91-A/91-A-4.htm"}};
 if (typeof scope.renderDetail !== "function") {
   console.log("renderDetail is not reachable from the harness"); process.exit(1); }
@@ -2613,7 +2632,34 @@ var fixtures = [
          "00:15:00 ends",
          "00:25:00 starts",
          "00:40:00 ends",
-         "00:02:30–00:15:00"]},
+         "00:02:30–00:15:00"],
+   // THE VERSION PANE IS ONLY DRAWN WHEN THE CARD IS OPEN, so these belong in
+   // wantFocused and not in want. Asserting them in both is how this first
+   // failed: the collapsed card renders 13,898 characters of perfectly good
+   // markup with no version pane in it, which is correct.
+   wantFocused:[
+         // THE VERSION PANE, every branch of it, asserted by the sentences
+         // only its own code can produce. The picker is the SIZED arm -- an
+         // <ol class="vseq"> of stops -- rather than the flat button row it
+         // falls back to when any version lacks a word count, and each bar
+         // says what it drew in words rather than as a proportion.
+         'class="vseq"',
+         'class="vstop"',
+         "70 words out, 180 in",
+         // The count line carries both figures, and names the version
+         // compared AGAINST rather than the one being shown -- "+180 -180
+         // words against the version before" is what a wrong lookup produces
+         // and it reads perfectly plausibly. Asserted as two fragments
+         // because the template wraps between "against" and the title, so the
+         // rendered markup has a newline and six spaces in the middle of the
+         // sentence and no single substring spans it.
+         'class="vcount">+180',
+         "70 words against",
+         "As Introduced</span>",
+         // And the denominator the bars are drawn to is the bill at its
+         // longest, stated, because a bar with an unstated scale is a
+         // decoration.
+         "1,310 words"]},
   // A bill with nothing on it yet. The fixture above populates every field, so
   // it only ever runs the arm of each ternary that HAS data -- and every one
   // of those has an else. That is what most bills look like early in a
@@ -2637,6 +2683,39 @@ var fixtures = [
 // const declared further down does not throw until something makes it
 // evaluate. Testing only the collapsed view passed a page that broke the
 // moment a bill was opened.
+// THE INDEX THE VERSION PANE READS, which arrives by fetch on a real page and
+// therefore never arrives here: dom_stub's fetch answers every request with an
+// empty array. Without it renderVersions stops at "Loading the versions..."
+// and nothing below that line is ever exercised. Hand-made rather than read
+// off disk, because this has to run under --code with no data present.
+//
+// The numbers are chosen so every branch draws: two versions so there is a
+// step, a word count on both so the bars are SIZED (without one the picker
+// falls back to a flat row of buttons and the sequence is skipped), and an
+// added and a removed figure so the bar has two segments and a sentence.
+//
+// AND IT IS AN ERROR, NOT A SKIP, if the harness cannot reach them. VERS and
+// verKey are not automatically in scope: the eval above returns a named object
+// literal, so anything missing from that list is simply undefined here. The
+// first version of this guard read `if (scope.VERS && ...)` and quietly did
+// nothing when they were absent -- the assertions then failed with "drew
+// 16,241 chars but not class=vseq", which points at the renderer and not at
+// the harness. A dependency that goes missing has to say so.
+if (!scope.VERS || typeof scope.verKey !== "function") {
+  console.log("the harness cannot reach VERS/verKey, so the version pane "
+              + "cannot be exercised -- add them to the eval's export list");
+  process.exit(1); }
+{
+  scope.VERS[scope.verKey(scope.IDX[0])] = {
+    versions: [{title:"As Introduced", date:"2026-01-07", words:1200,
+                text_url:"/versions/2026/HB1442.0.txt"},
+               {title:"As Amended by the House", date:"2026-03-11", words:1310,
+                text_url:"/versions/2026/HB1442.1.txt"}],
+    steps: [{from:0, to:1, added:180, removed:70,
+             url:"/versions/2026/HB1442.0-1.json"}],
+    amendments: [{num:"2026-0503h"}]};
+}
+
 for (var fi = 0; fi < fixtures.length; fi++) {
   for (var pass = 0; pass < 2; pass++) {
     var fx = fixtures[fi];
