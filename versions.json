@@ -2,8 +2,8 @@
   "files": {
     "about_figures.py": "2026-09-17.1",
     "align_all.py": "2026-09-04.2",
-    "app.css": "2026-09-07.150",
-    "app.js": "2026-09-07.106",
+    "app.css": "2026-09-07.151",
+    "app.js": "2026-09-07.107",
     "apply_markers.py": "2026-09-04.8",
     "archive_status.py": "2026-09-08.2",
     "archive_text.py": "2026-09-16.3",
@@ -11,7 +11,7 @@
     "bills.html": "2026-09-05.56",
     "build_all.py": "2026-09-05.31",
     "build_bill_pages.py": "2026-09-04.54",
-    "build_bill_versions.py": "2026-09-09.7",
+    "build_bill_versions.py": "2026-09-09.8",
     "build_brand.py": "2026-09-12.6",
     "build_calendar.py": "2026-09-18.9",
     "build_careers.py": "2026-09-09.1",
@@ -160,7 +160,7 @@
     "unh_survey.py": "2026-09-18.2",
     "verify_batch.py": "2026-09-04.4",
     "wrangler.toml": "2026-09-12.2",
-    "bill_blocks.py": "2026-09-20.4"
+    "bill_blocks.py": "2026-09-20.5"
   },
   "generated": "2026-09-04"
 }

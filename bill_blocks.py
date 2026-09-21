@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.4
+# GRANITE_VERSION: 2026-09-20.5
 """
 Read the General Court's own typeset bill HTML into blocks of marked runs.
 
@@ -71,6 +71,7 @@ wait for that rather than being flattened into it here.
 
 import argparse
 import collections
+import difflib
 import html as H
 import io
 import json
@@ -283,15 +284,90 @@ def diff_stream(bs):
     a hypothesis and it has not been tested, so it is written down as one.
     Twelve of 2,582 pairs, 0.5%.
     """
+    return [w for w, _, _, _ in word_spans(bs)]
+
+
+def word_spans(bs):
+    """Every diffable word with WHERE IT SITS: (word, block, start, end).
+
+    The same words diff_stream returns, each with the block it is in and its
+    character offsets inside that block's joined text. This is what lets a
+    comparison be drawn ON the document instead of as an excerpt beside it.
+
+    CHARACTER OFFSETS, NOT WORD INDICES, and the reason is a tokenisation that
+    cannot be made to agree otherwise. The runs inside a block split wherever
+    the Court changed typeface, which is usually mid-token: "[" is one run and
+    "in brackets" the next. Joining the runs and then splitting gives "[in" --
+    one word, and the same word the plain Text column has, which is what makes
+    the diff comparable with the record. Splitting each run separately would
+    give "[" and "in", two words, and a different stream.
+
+    A reader's browser has the runs, not the joined text, so a mark expressed
+    as "the 412th word" would have to be resolved against whichever of those
+    two streams the client happened to build. Character offsets into the
+    block's joined text are unambiguous: the client concatenates its runs,
+    which it already has, and the offsets land where the server meant. It also
+    handles the eleven places in 23,527 run boundaries where a boundary really
+    does fall inside an alphanumeric word -- "propert|y." -- which a
+    word-indexed mark cannot express at all.
+
+    Blocks are indexed over the WHOLE list, header and legend included, so an
+    index here means the same thing as an index into the blocks file. Only
+    which words are DIFFED is filtered.
+    """
     out = []
-    for b in bs:
+    for bi, b in enumerate(bs):
         if b["k"] in ("head", "legend"):
             continue
-        for w in "".join(t for _, t in b["runs"]).split():
+        text = "".join(t for _, t in (b.get("runs") or []))
+        for m in re.finditer(r"\S+", text):
+            w = m.group(0)
             if RULE_RUN.match(w):
                 continue
-            out.append(w)
+            out.append((w, bi, m.start(), m.end()))
     return out
+
+
+def marks(old_bs, new_bs):
+    """What one printing did to the next, as spans over the NEW document.
+
+    Returns (marks, added, removed). A mark is
+        [block, start, end, "+"]                matter this printing inserts
+        [block, at,    at,  "-", "the words"]   matter it removes
+    and both are positions in the NEW version's blocks, because that is the
+    document the reader is looking at.
+
+    A REMOVAL HAS NO PLACE IN THE NEW TEXT, which is the awkward case and the
+    reason removed words travel with their mark rather than being pointed at.
+    It is anchored at the start of the next surviving word, or at the end of
+    the last one when the removal runs to the end of the bill -- so it sits
+    where the reader would have found it.
+    """
+    a, b = word_spans(old_bs), word_spans(new_bs)
+    aw = [w for w, _, _, _ in a]
+    bw = [w for w, _, _, _ in b]
+    out, added, removed = [], 0, 0
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(
+            None, aw, bw, autojunk=False).get_opcodes():
+        if tag == "equal":
+            continue
+        if j1 != j2:
+            added += j2 - j1
+            # Consecutive inserted words inside one block are one mark; a run
+            # that crosses a paragraph becomes one mark per paragraph, because
+            # a span cannot straddle two blocks.
+            for _, bi, s, e in b[j1:j2]:
+                if out and out[-1][0] == bi and out[-1][3] == "+":
+                    out[-1][2] = e
+                else:
+                    out.append([bi, s, e, "+"])
+        if i1 != i2:
+            removed += i2 - i1
+            if b:
+                _, bi, s, e = b[j2] if j2 < len(b) else b[-1]
+                at = s if j2 < len(b) else e
+                out.append([bi, at, at, "-", " ".join(aw[i1:i2])])
+    return out, added, removed
 
 
 def as_marked(bs):

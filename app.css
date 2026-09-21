@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.150 */
+/* GRANITE_VERSION: 2026-09-07.151 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2898,6 +2898,15 @@ font-variant-numeric:tabular-nums}
    a section. Coloured like a failure it would shout down the text that
    replaces it, which is the thing the reader actually needs to read. */
 .vdel{text-decoration:line-through;color:var(--ink-2)}
+/* HOW MUCH OF THE BILL THIS SKIPS. The comparison shows the paragraphs that
+   changed; the ones between them are counted rather than silently dropped, so
+   a reader knows they are looking at part of a document and roughly how much
+   of it. The same reasoning as the "412 words unchanged" marker in the older
+   excerpt view -- an elision that does not say it is one reads as the whole
+   text. */
+.vgapn{font-family:var(--sans);font-size:var(--t-sm);color:var(--ink-2);
+  text-align:center;margin:var(--sp-5) 0;padding:var(--sp-3) 0;
+  border-top:1px solid var(--rule-2);border-bottom:1px solid var(--rule-2)}
 .vamds{list-style:none;padding:0;margin:var(--sp-4) 0 0}
 .vamds li{margin:0 0 var(--sp-4)}
 .vamds .dim{color:var(--ink-2);font-size:var(--t-sm);margin-left:var(--sp-3)}

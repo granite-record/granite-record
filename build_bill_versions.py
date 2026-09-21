@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.7
+# GRANITE_VERSION: 2026-09-09.8
 """
 Every version of a bill, in order, and what each amendment changed.
 
@@ -231,11 +231,35 @@ def main():
         steps = []
         for i in range(len(vs) - 1):
             r = runs(vs[i]["text"], vs[i + 1]["text"])
+            # MARKS BESIDE RUNS, not instead of them. runs is the comparison
+            # as an excerpt -- changed passages with context, the unchanged
+            # bulk elided. marks is the same comparison expressed as positions
+            # in the NEW version's blocks, which is what lets the change be
+            # drawn ON the document a reader is already looking at rather than
+            # beside it. Both are written until the page is proven against the
+            # second, because app.js keeps only x.runs today and a step file
+            # carrying marks alone would render an empty diff with no error.
+            #
+            # added and removed STAY COMPUTED FROM runs. They are read from
+            # the INDEX, before any step file is fetched, to draw the bars and
+            # the "+N -N words" line; recomputing them from a different stream
+            # would change numbers the site already states on 1,149 bills for
+            # no reader-visible gain.
+            mk, m_add, m_rem = ((bill_blocks.marks(vs[i]["blocks"],
+                                                   vs[i + 1]["blocks"]))
+                                if vs[i].get("blocks") and vs[i + 1].get("blocks")
+                                else ([], 0, 0))
             steps.append({
                 "from": i, "to": i + 1,
                 "added": sum(len(t.split()) for op, t in r if op == "+"),
                 "removed": sum(len(t.split()) for op, t in r if op == "-"),
                 "runs": r,
+                "marks": mk,
+                # The marks' own counts, kept apart from the index's. They
+                # differ on purpose: marks diff the stream with the running
+                # header, the legend and the rules taken out, and the index's
+                # figures come from the plain text with all three in.
+                "m_added": m_add, "m_removed": m_rem,
             })
         steps_total += len(steps)
         # THE INDEX AND THE DIFFS HERE; EACH VERSION'S TEXT BESIDE IT. HB2
@@ -300,7 +324,9 @@ def main():
                 amds += 1
             for s in steps:
                 (out / year / f'{bill}.{s["from"]}-{s["to"]}.json').write_text(
-                    json.dumps({"runs": s["runs"]}, separators=(",", ":")),
+                    json.dumps({"runs": s["runs"], "marks": s["marks"],
+                                "added": s["m_added"], "removed": s["m_removed"]},
+                               separators=(",", ":"), ensure_ascii=False),
                     encoding="utf-8")
             p = out / year / f"{bill}.json"
             p.write_text(json.dumps(rec, separators=(",", ":")),

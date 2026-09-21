@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.106
+// GRANITE_VERSION: 2026-09-07.107
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2265,6 +2265,53 @@ function hasVersionIndex(d){
   return !!d && (((d.nver || 0) > 1) || !!(d.namd || 0));
 }
 
+// WHAT ONE PRINTING DID TO THE NEXT, DRAWN ON THE DOCUMENT rather than beside
+// it. The older view excerpts the changed passages with context and elides the
+// rest, which answers "what changed" but loses where. This keeps the bill's
+// own paragraphs and marks the change in place, so a reader sees the section
+// it happened in.
+//
+// TWO MARKINGS, TWO VIEWS, NEVER OVERLAID. The Full text view shows the
+// COURT's marking -- what the bill does to existing law. This shows the
+// AMENDMENT's -- what this printing did to the one before it. They are
+// different questions about the same words, and drawing both at once would
+// make a passage that is added-by-the-bill and removed-by-an-amendment
+// unreadable, so this view reads the block's plain text and ignores the
+// per-run roles.
+function vmarked(bs,ms){
+  const by={};
+  ms.forEach(m=>{(by[m[0]]=by[m[0]]||[]).push(m);});
+  const out=[];let skipped=0;
+  const gap=()=>{
+    if(!skipped)return;
+    out.push(`<p class="vgapn">${skipped.toLocaleString()} paragraph${
+      skipped===1?"":"s"} unchanged</p>`);
+    skipped=0;
+  };
+  bs.forEach((bl,bi)=>{
+    const mine=by[bi];
+    if(!mine){if(bl.k!=="head"&&bl.k!=="legend")skipped++;return;}
+    gap();
+    const t=(bl.runs||[]).map(r=>r[1]).join("");
+    // A removal is anchored at the same offset as the insertion that replaces
+    // it, so the struck words are drawn first and read as "this became that".
+    mine.sort((x,y)=>(x[1]-y[1])||(x[3]==="-"?-1:1));
+    let at=0,html="";
+    mine.forEach(m=>{
+      const s=m[1],e=m[2],op=m[3];
+      if(s>=at)html+=esc(t.slice(at,s));
+      if(op==="-"){html+=`<del class="vdel">${esc(m[4]||"")}</del>`;
+        at=Math.max(at,s);}
+      else{html+=`<ins class="vins">${esc(t.slice(s,e))}</ins>`;
+        at=Math.max(at,e);}
+    });
+    html+=esc(t.slice(at));
+    out.push(`<p class="vblk vblk-${esc(bl.k||"ln")}">${html}</p>`);
+  });
+  gap();
+  return `<div class="vdoc">${out.join("")}</div>`;
+}
+
 function renderVersions(b,d){
   const key=verKey(b), ix=VERS[key];
   // Nothing to load, so nothing to say about loading it. The bill's own text
@@ -2350,9 +2397,24 @@ function renderVersions(b,d){
 
   let body="";
   if(step&&mode==="changes"){
-    const runs=VTEXT[step.runs_url];
-    body=runs===undefined?`<p class="spin">Loading what changed…</p>`
-      :Array.isArray(runs)?`<div class="vdiff">${runs.map(([op,txt])=>
+    const sf=VTEXT[step.runs_url];
+    const vb=vs[i]||{};
+    const doc=vb.blocks_url?VTEXT[vb.blocks_url]:undefined;
+    // THE PAYLOAD IS AN OBJECT NOW, and an array before this shipped. Both are
+    // handled because a reader's browser may hold either: the file changed
+    // shape and a cached copy of the old one is still a perfectly good diff.
+    const rs=sf&&!Array.isArray(sf)?(sf.runs||null):(Array.isArray(sf)?sf:null);
+    const mk=sf&&!Array.isArray(sf)?(sf.marks||null):null;
+    // MARKS WHEN BOTH HALVES ARE HERE, the excerpt otherwise. The marks are
+    // positions in the blocks file, so without the document they point at
+    // nothing -- and a version too old to have one still has its runs.
+    const onDoc=mk&&mk.length&&Array.isArray(doc)&&doc.length;
+    body=sf===undefined?`<p class="spin">Loading what changed…</p>`
+      :onDoc?vmarked(doc,mk)
+      // Still waiting on the document, but the excerpt is already here: draw
+      // it rather than a spinner, because it answers the question and the
+      // better view can replace it when it arrives.
+      :Array.isArray(rs)?`<div class="vdiff">${rs.map(([op,txt])=>
           op==="~"?`<span class="vskip">${esc(txt)} words unchanged</span>`
           :op==="+"?`<ins>${esc(txt)}</ins>`
           :op==="-"?`<del>${esc(txt)}</del>`
@@ -2435,20 +2497,33 @@ function wantVersionBody(b){
   // of it, so this is the only line that has to know the difference and a
   // version without one behaves exactly as it always did.
   const v=(ix.versions||[])[i]||{};
-  const url=(step&&mode==="changes")?step.runs_url:(v.blocks_url||v.text_url);
-  if(!url||VTEXT[url]!==undefined)return;
-  VTEXT[url]=undefined;
-  const json=url.endsWith(".json");
-  fetch(DATA(url.replace(/^\//,"")))
-    .then(r=>r.ok?(json?r.json():r.text()):Promise.reject(new Error("HTTP "+r.status)))
-    // x.blocks FIRST, x.runs SECOND, and neither clobbers the other: a runs
-    // file has no blocks key and a blocks file has no runs key, so each falls
-    // through to its own. Written as one expression because the alternative --
-    // renaming text_url to point at JSON -- would have sent 3,731 plain texts
-    // through r.json() and blanked the Full text view, which is the mode a
-    // reader lands on when a version has no step before it.
-    .then(x=>{VTEXT[url]=json?(x.blocks||x.runs||[]):x;repaint();})
-    .catch(()=>{VTEXT[url]=null;repaint();});
+  // WHAT CHANGED NEEDS TWO FILES NOW. The step file says WHERE the change is
+  // and the version's blocks file is the document those positions are in.
+  // Both are asked for together; whichever lands second triggers the repaint
+  // that draws them, and if the blocks never arrive the step file's runs
+  // still render the excerpt view this always had.
+  const need=(step&&mode==="changes")
+    ? [step.runs_url, v.blocks_url].filter(Boolean)
+    : [v.blocks_url||v.text_url];
+  need.forEach(url=>{
+    if(!url||VTEXT[url]!==undefined)return;
+    VTEXT[url]=undefined;
+    const json=url.endsWith(".json");
+    fetch(DATA(url.replace(/^\//,"")))
+      .then(r=>r.ok?(json?r.json():r.text()):Promise.reject(new Error("HTTP "+r.status)))
+      // THE WHOLE OBJECT FOR A STEP FILE, where this used to keep x.runs and
+      // discard every other key. A step file carrying marks and no runs would
+      // have yielded [] under the old line -- an empty comparison, drawn with
+      // no error, on all 2,582 steps. Blocks stay an array because that is
+      // what they are; a step is an object because it has more than one part.
+      //
+      // The alternative -- renaming text_url to point at JSON -- would have
+      // sent 3,731 plain texts through r.json() and blanked the Full text
+      // view, which is the mode a reader lands on when a version has no step
+      // before it. text_url still means what it always meant.
+      .then(x=>{VTEXT[url]=json?(x.blocks||x):x;repaint();})
+      .catch(()=>{VTEXT[url]=null;repaint();});
+  });
 }
 
 function renderDetail(b,d){
