@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.149 */
+/* GRANITE_VERSION: 2026-09-07.150 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2859,6 +2859,45 @@ font-variant-numeric:tabular-nums}
 .vtext{font-family:var(--serif);font-size:var(--t-ui);line-height:1.65;white-space:pre-wrap;
   word-break:break-word;background:var(--wash);border-radius:var(--r-out);
   padding:var(--sp-5) var(--sp-6);max-height:70vh;overflow:auto;margin:0}
+/* THE BILL AS THE COURT SET IT. Not a <pre> of flattened text: a New
+   Hampshire bill is written as an edit to the statute, and the General Court's
+   own typesetting says which words go in and which come out. This renders
+   that marking rather than throwing it away, which is what the plain text
+   column did.
+
+   THE COURT'S OWN CONVENTION, NOT AN INVENTED ONE. Added matter is bold
+   italic because that is how the bill is printed and how its own legend says
+   to read it; removed matter is struck because that is the other half of the
+   same sentence. A reader comparing this against the PDF sees the same
+   document, which is the whole point of quoting a record rather than
+   paraphrasing it.
+
+   The brackets around removed matter are left in the text deliberately. They
+   are the source's second encoding of the same fact, they survive for a
+   reader who cannot see a strike, and dropping them would be editing the
+   Court's document to suit our styling. */
+.vdoc{background:var(--wash);border-radius:var(--r-out);
+  padding:var(--sp-5) var(--sp-6);max-height:70vh;overflow:auto}
+.vblk{font-family:var(--serif);font-size:var(--t-read);line-height:1.6;
+  margin:0 0 var(--sp-4);word-break:break-word}
+.vblk:last-child{margin-bottom:0}
+/* The running header names the printing and the legend explains the marking.
+   Both are on the paper and both stay, quieter, because neither is the law. */
+.vblk-head,.vblk-legend{font-family:var(--sans);font-size:var(--t-sm);
+  color:var(--ink-2);line-height:1.5}
+.vblk-item{margin-left:var(--sp-7)}
+/* NO HIGHLIGHT BEHIND IT. Bold italic is what the Court prints and what the
+   bill's own legend tells the reader to look for; a coloured wash on top
+   would be this site's convention laid over the Court's, and the comment
+   above says not to do that. text-decoration:none because <ins> is underlined
+   by default in every browser, and an underline is what 1989-1996 bills used
+   to mean added matter -- two conventions for one thing on one page. */
+.vins{font-weight:600;font-style:italic;text-decoration:none;color:var(--ink)}
+/* --ink-2 RATHER THAN A RED. Removed matter is not an error and not a
+   warning; it is text the bill takes out, and it is often the longer half of
+   a section. Coloured like a failure it would shout down the text that
+   replaces it, which is the thing the reader actually needs to read. */
+.vdel{text-decoration:line-through;color:var(--ink-2)}
 .vamds{list-style:none;padding:0;margin:var(--sp-4) 0 0}
 .vamds li{margin:0 0 var(--sp-4)}
 .vamds .dim{color:var(--ink-2);font-size:var(--t-sm);margin-left:var(--sp-3)}

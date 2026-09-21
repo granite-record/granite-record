@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.3
+# GRANITE_VERSION: 2026-09-20.4
 """
 Read the General Court's own typeset bill HTML into blocks of marked runs.
 
@@ -97,7 +97,22 @@ SPAN = re.compile(r'<span\b[^>]*class="(cs[0-9A-Fa-f]{6,8})"[^>]*>(.*?)</span>',
 SIZE = re.compile(r"font-size:\s*([\d.]+)pt")
 ANCHOR = re.compile(r'<a\b[^>]*name="([^"]+)"', re.I)
 
-LEGEND = re.compile(r"matter (added|removed) (to|from) current law", re.I)
+# THE LEGEND IS THREE SENTENCES, NOT TWO, and the third was being set as
+# statute. Counted over a sample of every 23rd document: "Explanation: Matter
+# added to current law appears in bold italics." 207 times, "Matter removed
+# from current law appears [in brackets and struckthrough.]" 207 times, and
+# "Matter which is either (a) all new or (b) repealed and reenacted appears in
+# regular type" 207 times -- the last of which matched neither pattern, so
+# every bill in the state rendered one line of its own legend in the body
+# face as though the Court had enacted it. Found by looking at the rendered
+# page rather than at the parser.
+#
+# The full stop is optional because 2 of the 207 have none, and "Explanation"
+# needs its colon: "Explanation to Enrolled Bill Amendment to HB 464" is a
+# real heading on five bills and is not a legend.
+LEGEND = re.compile(
+    r"matter (added|removed) (to|from) current law"
+    r"|matter which is either\b.{0,90}?\bappears in regular type", re.I | re.S)
 EXPLANATION = re.compile(r"^\s*Explanation\s*:", re.I)
 # "SB 12 - AS INTRODUCED", "HB 99 - VERSION ADOPTED BY BOTH BODIES",
 # "HB 1718-FN - CHAPTERED FINAL VERSION". Matching only the "AS ..." wording

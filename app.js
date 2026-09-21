@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.105
+// GRANITE_VERSION: 2026-09-07.106
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2359,10 +2359,32 @@ function renderVersions(b,d){
           :`<span>${esc(txt)}</span>`).join("")}</div>`
       :`<p class="note">That comparison could not be loaded.</p>`;
   }else{
-    const u=(vs[i]||{}).text_url;
-    const txt=u?VTEXT[u]:null;
-    body=txt===undefined?`<p class="spin">Loading the text…</p>`
-      :typeof txt==="string"?`<pre class="vtext">${esc(txt)}</pre>`
+    // THE BILL AS THE COURT SET IT, with the Court's own marking of what it
+    // adds to and removes from existing law. A New Hampshire bill is an edit
+    // to the statute -- added matter in bold italics, removed matter in
+    // brackets and struck through -- and the plain text column the site used
+    // to read had that flattened out of it. The blocks file keeps it.
+    //
+    // THE BRACKETS STAY VISIBLE and the struck text is struck as well, which
+    // is belt and braces on purpose: they are two encodings of one fact in
+    // the source, a reader who cannot see the strike still reads the
+    // brackets, and printing the Court's own convention is the honest thing
+    // to show for a document this page is quoting rather than paraphrasing.
+    const vv=vs[i]||{};
+    const u=vv.blocks_url||vv.text_url;
+    const got=u?VTEXT[u]:null;
+    const isBlocks=Array.isArray(got)&&got.length&&got[0]&&got[0].runs;
+    body=got===undefined?`<p class="spin">Loading the text…</p>`
+      :isBlocks?`<div class="vdoc">${got.map(bl=>
+          `<p class="vblk vblk-${esc(bl.k||"ln")}">${(bl.runs||[]).map(
+            ([role,t])=>role==="add"?`<ins class="vins">${esc(t)}</ins>`
+              :role==="cut"?`<del class="vdel">${esc(t)}</del>`
+              :esc(t)).join("")}</p>`).join("")}</div>`
+      :typeof got==="string"?`<pre class="vtext">${esc(got)}</pre>`
+      // An empty array is a blocks file that parsed to nothing, which is a
+      // different failure from a fetch that did not arrive and says so.
+      :Array.isArray(got)?`<p class="note">The text of this version is on
+         file but could not be read into paragraphs.</p>`
       :`<p class="note">That text could not be loaded.</p>`;
   }
 
@@ -2408,14 +2430,24 @@ function wantVersionBody(b){
   const i=VPICK[key]===undefined?(ix.versions||[]).length-1:VPICK[key];
   const mode=VMODE[key]||"changes";
   const step=(ix.steps||[]).find(s=>s.to===i);
-  const url=(step&&mode==="changes")?step.runs_url
-    :((ix.versions||[])[i]||{}).text_url;
+  // THE BLOCKS FILE WHERE THERE IS ONE, and the plain text where there is not.
+  // build_bill_versions writes blocks_url BESIDE text_url rather than in place
+  // of it, so this is the only line that has to know the difference and a
+  // version without one behaves exactly as it always did.
+  const v=(ix.versions||[])[i]||{};
+  const url=(step&&mode==="changes")?step.runs_url:(v.blocks_url||v.text_url);
   if(!url||VTEXT[url]!==undefined)return;
   VTEXT[url]=undefined;
   const json=url.endsWith(".json");
   fetch(DATA(url.replace(/^\//,"")))
     .then(r=>r.ok?(json?r.json():r.text()):Promise.reject(new Error("HTTP "+r.status)))
-    .then(x=>{VTEXT[url]=json?(x.runs||[]):x;repaint();})
+    // x.blocks FIRST, x.runs SECOND, and neither clobbers the other: a runs
+    // file has no blocks key and a blocks file has no runs key, so each falls
+    // through to its own. Written as one expression because the alternative --
+    // renaming text_url to point at JSON -- would have sent 3,731 plain texts
+    // through r.json() and blanked the Full text view, which is the mode a
+    // reader lands on when a version has no step before it.
+    .then(x=>{VTEXT[url]=json?(x.blocks||x.runs||[]):x;repaint();})
     .catch(()=>{VTEXT[url]=null;repaint();});
 }
 

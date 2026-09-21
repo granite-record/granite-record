@@ -2,8 +2,8 @@
   "files": {
     "about_figures.py": "2026-09-17.1",
     "align_all.py": "2026-09-04.2",
-    "app.css": "2026-09-07.149",
-    "app.js": "2026-09-07.105",
+    "app.css": "2026-09-07.150",
+    "app.js": "2026-09-07.106",
     "apply_markers.py": "2026-09-04.8",
     "archive_status.py": "2026-09-08.2",
     "archive_text.py": "2026-09-16.3",
@@ -160,7 +160,7 @@
     "unh_survey.py": "2026-09-18.2",
     "verify_batch.py": "2026-09-04.4",
     "wrangler.toml": "2026-09-12.2",
-    "bill_blocks.py": "2026-09-20.3"
+    "bill_blocks.py": "2026-09-20.4"
   },
   "generated": "2026-09-04"
 }
