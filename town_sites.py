@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.1
+# GRANITE_VERSION: 2026-09-20.2
 """
 Fetch what New Hampshire's towns publish about their own officials.
 
@@ -292,8 +292,21 @@ def _keep(url, base, out, score, text):
     clean = f"{p.scheme}://{p.netloc}{p.path}" + (f"?{p.query}" if p.query else "")
     if clean.rstrip("/") == base.rstrip("/") or NOISE.search(clean):
         return
-    if clean not in out or score > out[clean][0]:
-        out[clean] = (score, text)
+    # ONE PAGE IS ONE PAGE whichever scheme it is linked under. Bath links its
+    # selectboard page as both http:// and https://, and counting them apart
+    # spent two of that town's four requests on the same page.
+    ident = (p.netloc.lower().lstrip("www."), p.path.rstrip("/").lower(), p.query)
+    # AND THE PAGE ITSELF BEATS A PAGE ABOUT IT. "Board of Selectmen
+    # Initiatives" matches the same pattern as "Board of Selectmen" and scored
+    # the same, so which got fetched was down to the order they happened to
+    # appear in. A link whose text is the office and little else is the
+    # roster; one with several more words is a page about the office.
+    rank = (score, -max(0, len(text.split()) - 4))
+    if ident not in out or rank > out[ident][0]:
+        keep_url = clean
+        if ident in out and p.scheme == "http" and out[ident][3].startswith("https"):
+            keep_url = out[ident][3]
+        out[ident] = (rank, score, text, keep_url)
 
 
 def links_from(html_text, base, sitemap=None):
@@ -329,7 +342,9 @@ def links_from(html_text, base, sitemap=None):
         if score:
             _keep(loc, base, out, score, words)
 
-    return sorted(((s, t, u) for u, (s, t) in out.items()), reverse=True)
+    return sorted(((score, text, url)
+                   for (_rank, score, text, url) in out.values()),
+                  key=lambda r: (-r[0], len(r[1]), r[1]))
 
 
 def saved(key, kind):
