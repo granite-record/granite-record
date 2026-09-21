@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.2
+# GRANITE_VERSION: 2026-09-20.3
 """
 Read the General Court's own typeset bill HTML into blocks of marked runs.
 
@@ -214,6 +214,71 @@ def blocks(doc):
     return out
 
 
+# A RULE IS NOT A WORD. The Court draws the line above a footer sometimes with
+# ASCII hyphens and sometimes with U+2500 BOX DRAWINGS LIGHT HORIZONTAL, and it
+# can differ between two printings of the SAME bill whose text is otherwise
+# byte-identical. Diffed as text, that reads as sixty-five words removed and
+# sixty-five added, which the page would then state as a change to the law.
+# Measured: 8,840 U+2500 inside the differing runs of pairs that are identical
+# in the Court's own plain column, and it is the ONLY non-ASCII character in
+# any of them -- so this is the whole of that defect and no quote or dash
+# normalisation is needed for it.
+RULE_RUN = re.compile(r"^[-_=~.·‐-―─━]{3,}$")
+
+
+def diff_stream(bs):
+    """The words that count as the bill's text when two printings are compared.
+
+    NOT THE SAME THING AS THE DOCUMENT, and the difference is the point. The
+    document keeps its running header, its legend and its rules, because a
+    reader is looking at a printed bill and those are on it. The comparison
+    drops all three, because none of them is the law:
+
+      * the running header names the printing, so it differs between every
+        pair by definition -- "AS INTRODUCED" against "AS AMENDED BY THE
+        HOUSE" -- and would report a change on every step ever taken;
+      * the legend explains the bold-italic and bracket conventions and is the
+        same sentence in every bill in the state;
+      * a rule is furniture, and is drawn with different characters in
+        different printings.
+
+    Scored rather than argued: of 2,582 consecutive printing pairs, 480 are
+    byte-identical in the database's own plain Text column and must therefore
+    come out at zero changes.
+
+        diffing every block                          479 called changed
+        dropping the running header                  136
+        dropping the legend as well                  136  (no effect: the
+                                                     legend is the same
+                                                     sentence in both)
+        dropping rule runs as well                    12
+
+    --probe reports that last number, so a change that lets furniture back
+    into the comparison fails loudly rather than publishing false claims about
+    bills.
+
+    THE REMAINING TWELVE ARE NOT UNDERSTOOD and are not claimed to be. What is
+    established: every differing word is plain ASCII, so no character this
+    parser mishandles is involved; the difference is present in the HTML and
+    absent from the plain column of the same two rows; and it takes the shape
+    of one printing having a character where the other has nothing, as in
+    '"Spouse"means' against '"Spouse"?means'. That pattern is what a lossy
+    encode looks like applied inconsistently between two printings, which
+    would put the damage in the database dump rather than here -- but that is
+    a hypothesis and it has not been tested, so it is written down as one.
+    Twelve of 2,582 pairs, 0.5%.
+    """
+    out = []
+    for b in bs:
+        if b["k"] in ("head", "legend"):
+            continue
+        for w in "".join(t for _, t in b["runs"]).split():
+            if RULE_RUN.match(w):
+                continue
+            out.append(w)
+    return out
+
+
 def as_marked(bs):
     """One string, brackets and braces showing the marking. For reading, and
     for a person to check this against the PDF with their own eyes."""
@@ -306,6 +371,44 @@ def probe(limit=None):
           f"({bracket_ok / max(1, tot) * 100:.1f}%)")
     print(f"\n  body font size, per document: "
           + ", ".join(f"{s:g}pt {c:,}" for s, c in sizes.most_common(5)))
+    if not limit:
+        _score_diff_stream()
+
+
+def _score_diff_stream():
+    """The one number that says whether the comparison lies.
+
+    A pair of printings the database's own plain column says are byte for byte
+    the same cannot have changed, so any the diff stream calls changed are
+    false claims about a bill -- the project's first triage category, not its
+    third. This is the guard on that.
+    """
+    order = json.loads((DB / "document_versions.json").read_text(encoding="utf-8"))
+    per = collections.defaultdict(list)
+    for i, lid, doc, plain, ver in rows():
+        # OLS Release is an AMENDMENT document, not a printing of the bill --
+        # 2,009 of 6,825 rows. Left in, it pairs a bill against its own
+        # amendment text and word-stream similarity collapses from 0.95 to
+        # 0.64, which reads as the documents being incomparable when it is
+        # only that the wrong two were compared.
+        if ver == "OLS Release":
+            continue
+        per[lid].append((order.get(ver, {}).get("sort", 999), ver, doc, plain))
+
+    pairs = identical = false = 0
+    for lid, vs in per.items():
+        vs.sort(key=lambda x: x[0])
+        for a, b in zip(vs, vs[1:]):
+            pairs += 1
+            if a[3] != b[3]:
+                continue
+            identical += 1
+            if diff_stream(blocks(a[2])) != diff_stream(blocks(b[2])):
+                false += 1
+    print(f"\n  {pairs:,} consecutive printing pairs, {identical:,} of them "
+          f"byte-identical\n  in the plain Text column")
+    print(f"    called changed anyway: {false:,}"
+          + ("   <- every one is a false claim about a bill" if false else ""))
 
 
 def main():

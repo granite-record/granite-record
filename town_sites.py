@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.5
+# GRANITE_VERSION: 2026-09-20.6
 """
 Fetch what New Hampshire's towns publish about their own officials.
 
@@ -156,6 +156,17 @@ NOISE = re.compile(
     r"/(news|calendar|event|events|agenda|agendas|minutes|archive|archives"
     r"|meeting|meetings|notice|notices|blog|post|posts)(/|$|\?)"
     r"|[?&](eid|aid|nid)=", re.I)
+
+# AND THE SAME WORDS IN THE LINK TEXT, which the path does not always carry.
+# "Select Board Meeting Minutes" matches the select-board pattern and scores
+# 90, and it is a page of attendees and motions: parsing Stark's produced
+# 1,294 candidate name-and-office pairs for a town that elects perhaps twenty
+# people. Thirty-one of the 514 pages fetched before this existed are of that
+# kind, and they account for nearly all of the noise.
+NOISE_TEXT = re.compile(
+    r"\b(minutes?|agendas?|newsletters?|meetings?|sessions?|notices?|"
+    r"calendars?|archives?|packets?|videos?|recordings?|schedules?|dates?|"
+    r"live\s*stream(ed)?)\b", re.I)
 
 
 # ---------------------------------------------------------------- targets ---
@@ -349,6 +360,12 @@ def _keep(url, base, out, score, text, hosts=None):
     clean = f"{p.scheme}://{p.netloc}{p.path}" + (f"?{p.query}" if p.query else "")
     if clean.rstrip("/") == base.rstrip("/") or NOISE.search(clean):
         return
+    # The noise words in the PATH as well, and not only as a whole segment.
+    # Stark's minutes page is /2024/05/select-board-meeting-minutes/ and its
+    # link text is just "Select Board", so neither the text filter nor a
+    # segment-shaped URL rule catches it; the words are inside one segment.
+    if NOISE_TEXT.search(re.sub(r"[-_/.]+", " ", p.path)):
+        return
     # ONE PAGE IS ONE PAGE whichever scheme it is linked under. Bath links its
     # selectboard page as both http:// and https://, and counting them apart
     # spent two of that town's four requests on the same page.
@@ -404,7 +421,7 @@ def links_from(html_text, base, sitemap=None):
         if not text or SKIP_HREF.search(href):
             continue
         score = score_of(text)
-        if score:
+        if score and not NOISE_TEXT.search(text):
             _keep(urllib.parse.urljoin(base, href), base, out, score, text,
                   hosts)
 
@@ -416,7 +433,7 @@ def links_from(html_text, base, sitemap=None):
         # page about the select board and says so in the only words it has.
         words = re.sub(r"[-_/]+", " ", urllib.parse.urlparse(loc).path).strip()
         score = score_of(words)
-        if score:
+        if score and not NOISE_TEXT.search(words):
             _keep(loc, base, out, score, words, hosts)
 
     return sorted(((score, text, url)
