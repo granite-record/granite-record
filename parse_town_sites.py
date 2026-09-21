@@ -184,6 +184,7 @@ NOT_A_NAME = re.compile(
     # spells a heading "Cemetary Trustees" and the misspelling matched no
     # office, so it read as a person. Nobody is called Trustees.
     r"trustees?|clerks?|agents?|collectors?|moderators?|supervisors?|"
+    r"terms?|expires?|inspectors?|managers?|administrators?|chiefs?|"
     r"commissioners?|council(?:l)?ors?|alderm[ae]n|selectm[ae]n|"
     r"treasurers?|auditors?|constables?|assistants?|directors?|"
     r"read more|click|home|search|menu|login|copyright|rights reserved)\b",
@@ -400,6 +401,18 @@ def read_town(key, keep_noisy=False):
                         "why": f"{len(pairs)} pairs is not a roster"})
             pages.append(rec)
             continue
+        # An office whose run overran what the office can hold has drifted
+        # into the next body, and the drift is somewhere inside it. Drop the
+        # whole run: there is no way to tell from the page which of fifteen
+        # names are the three selectmen, and publishing the first three would
+        # be a guess wearing the clothes of a roster.
+        by_office = collections.Counter(o for o, _q in pairs)
+        over = {o for o, n in by_office.items() if n > SEATS.get(o, SEAT_MAX)}
+        if over:
+            rec["dropped_offices"] = sorted(f"{o} ({by_office[o]})"
+                                            for o in over)
+            pairs = [(o, q) for o, q in pairs if o not in over]
+            rec["found"] = len(pairs)
         rec["status"] = "read"
         rec["says_elected"] = bool(ELECTED_PAGE.search(link))
         pages.append(rec)
@@ -441,9 +454,24 @@ def build(keys):
             if person["left"]:
                 rec["note"] = "the page marks this person as having left"
             people[k] = rec
-        out[key] = {"officials": sorted(people.values(),
+        # AND THE CAP AGAIN, ACROSS THE WHOLE TOWN. Capping per page is not
+        # enough: New Boston's fire wards come to nine over two pages, each
+        # page under the cap on its own, and Portsmouth ends with four mayors
+        # because more than one of its pages names one. A town has the seats
+        # it has however many pages mention them, so the count that matters is
+        # the town's, and an office over it is dropped whole for the same
+        # reason as before -- there is no way to tell which of the four is the
+        # mayor.
+        counts = collections.Counter(r["office"] for r in people.values())
+        over = {o for o, c in counts.items() if c > SEATS.get(o, SEAT_MAX)}
+        kept = [r for r in people.values() if r["office"] not in over]
+        out[key] = {"officials": sorted(kept,
                                         key=lambda r: (r["office"], r["name"])),
                     "pages": pages, "built": today}
+        if over:
+            out[key]["dropped_offices"] = sorted(
+                f"{o} ({counts[o]} people, {SEATS.get(o, SEAT_MAX)} seats)"
+                for o in over)
     return out
 
 

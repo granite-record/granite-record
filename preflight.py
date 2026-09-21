@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.227
+# GRANITE_VERSION: 2026-09-04.228
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10781,6 +10781,58 @@ def _floterials_overlay():
     flot = sum(1 for d in districts if d["floterial"])
     return "ok", (f"{len(districts) - flot} base and {flot} floterial "
                   f"districts, every overlay over districts that exist")
+
+
+@check("files", "no town official is published without a source or beyond a board's seats")
+def _town_officials_sane():
+    """A name against an office is a claim about a real person.
+
+    town_officials_web.json is read off 145 towns' own pages, which are not
+    built alike and are not built for this. Two things went wrong while it
+    was being written and both would have published a falsehood quietly:
+
+    An unrecognised heading let the office above it stay in force. Lyme
+    spells one "Cemetary Trustees"; the Treasurer heading above it carried
+    on, and three members of a board came out as the town's Treasurer.
+
+    And a roster page that lists every body in sequence gave Bennington
+    fifteen selectmen. RSA 41:8 has a town choose one selectman a year for a
+    three-year term -- three, or five where a town has voted so -- and
+    fifteen is a run that walked into the next body.
+
+    So this checks what survived: every record carries where it came from and
+    when, and no office holds more people than it can. Both are properties of
+    the output, so they hold however the parser is rewritten.
+    """
+    if not Path("town_officials_web.json").exists():
+        return "skip", "no town_officials_web.json here"
+    m = imp("parse_town_sites")
+    if m is None:
+        return "skip", "parse_town_sites.py does not import"
+    data = json.loads(Path("town_officials_web.json").read_text(encoding="utf-8"))
+
+    import collections as _c
+    bad, n = [], 0
+    for key, v in sorted(data.items()):
+        counts = _c.Counter()
+        for r in v.get("officials", []):
+            n += 1
+            for f in ("name", "office", "source_url", "read_on", "method",
+                      "status"):
+                if not r.get(f):
+                    bad.append(f"{key}: a record has no {f}: {r.get('name')!r}")
+            if r.get("status") not in ("published", "not_published_by_source",
+                                       "not_established"):
+                bad.append(f"{key}: {r.get('name')!r} has status "
+                           f"{r.get('status')!r}, which is not one of the three")
+            counts[r.get("office")] += 1
+        for office, c in counts.items():
+            cap = m.SEATS.get(office, m.SEAT_MAX)
+            if c > cap:
+                bad.append(f"{key}: {c} people hold {office}, which seats {cap}")
+    assert not bad, "\n  ".join(bad[:20])
+    return "ok", (f"{n} officials across {len(data)} towns, each with a source "
+                  f"and none beyond its office's seats")
 
 
 @check("files", "every correction still corrects what the source actually says")
