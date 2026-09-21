@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.13
+# GRANITE_VERSION: 2026-09-09.14
 """
 A page per town and ward: everyone who represents the people who live there.
 
@@ -77,15 +77,18 @@ def chip(m):
     return f'<span class="mchip p-{E(p)}">{E(m.get("display_full") or m.get("name") or "")}</span>'
 
 
-def off_row(who, how, seat=""):
+def off_row(who, how, seat="", cls=""):
     """One official: who they are on the left, how to reach them on the right.
 
     NOT a middle-dot string. These rows were built as `name &middot; email
     &middot; phone`, which DESIGN.md names as a default to avoid and which at
     360px wrapped three facts into a ribbon with no shape. The two halves are
     two cells now, and the stylesheet stacks them on a phone.
+
+    cls is for the one row that is not like the others -- see offvote.
     """
-    return ('<li class="offrow"><span class="offwho">' + who
+    return (f'<li class="offrow{(" " + cls) if cls else ""}">'
+            '<span class="offwho">' + who
             + (f'<span class="offseat">{seat}</span>' if seat else "")
             + '</span>'
             + ('<span class="offhow">' + "".join(how) + '</span>' if how else "")
@@ -346,11 +349,18 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
     if loc or town_off:
         rows = []
         if loc.get("polling_place"):
+            # THE ANSWER, NOT A ROW. This was drawn exactly like the line above
+            # it about the town's website -- same size, same weight, the label
+            # in grey underneath -- and it is the one fact on this page that,
+            # got wrong, stops somebody voting. The label goes above the
+            # address rather than below it, because a reader scanning for
+            # "where do I vote" needs the question before the answer, and the
+            # address itself is set larger than anything else in the section.
             hours = loc.get("state_hours") or ""
             rows.append(off_row(
                 E(loc["polling_place"]),
                 [f'<span class="offwhen">{E(hours)}</span>'] if hours else [],
-                "Where you vote"))
+                "Where you vote", cls="offvote"))
         # A TOWN THAT VOTES IN MORE THAN ONE PLACE, BEHIND ONE LINE. Eight of
         # them -- Berlin, Derry, Farmington, Goffstown, Hudson, Merrimack,
         # Salem and Walpole -- are one town in the district file this site's

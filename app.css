@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.153 */
+/* GRANITE_VERSION: 2026-09-07.154 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2205,6 +2205,27 @@ border-bottom:1px solid var(--rule);font-size:var(--t-ui);line-height:1.55}
    chapter list on a bill. This row spans both columns because it is not a
    who-and-how pair. */
 .offrow.offwards{display:block}
+/* WHERE YOU VOTE IS THE ANSWER. It was drawn as one more row -- same size and
+   weight as the line above it about the town's website, its label in grey
+   small print underneath -- and it is the one fact on a town page that, got
+   wrong, stops somebody voting.
+
+   THE LABEL GOES ABOVE THE ADDRESS, not below, because a reader scanning for
+   "where do I vote" needs the question before they can recognise the answer;
+   underneath, it only confirms what they have already had to work out. This
+   is the same order the bill pages settled on, answer under its own label
+   rather than followed by an explanation of itself.
+
+   No box and no colour. The section already carries a rule and a heading, and
+   a tinted panel here would say "notice" where the size already says it --
+   and would then have to compete with the status colours the rest of the site
+   reserves for whether a bill passed. */
+.offvote{align-items:baseline;padding-top:var(--sp-4)}
+.offvote .offwho{display:flex;flex-direction:column-reverse;gap:var(--sp-2)}
+.offvote .offseat{font-size:var(--t-xs);letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink-2);margin:0}
+.offvote .offwho{font-size:var(--t-lead);line-height:1.35;color:var(--ink)}
+.offvote .offwhen{font-size:var(--t-ui);color:var(--ink)}
 /* THE WARD PICKER, which is the same shape as the chapter list on a bill
    and the ward chips in the legislators finder: the answer on the line,
    the rest on request. The summary says which ward you are in, because a
