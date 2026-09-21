@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.156 */
+/* GRANITE_VERSION: 2026-09-07.158 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -739,6 +739,32 @@ background:var(--wash)}
 .pstub{width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;
 cursor:pointer;background:var(--film-stub);color:var(--film-stub-ink);font-size:var(--t-ui);gap:var(--sp-4);text-align:center;padding:var(--sp-6)}
 .pstub:hover{background:var(--film-stub-hot)}
+/* A FRAME WHERE THERE IS ONE RECORDING, A BAR WHERE THERE ARE TWENTY-NINE.
+   The stub reserves a 16:9 area so that clicking play does not shove the page
+   down, which is right on a bill: there is one recording and the shape says
+   "this is a video" before you read a word of it.
+
+   A committee's Sessions tab is the other case. Finance met 45 days in
+   2025-2026 and 29 of those days have a recording, so the same rule laid out
+   19,602px of empty placeholder -- a third of a 59,214px pane -- for a reader
+   who is scanning dates and will open at most one of them. Measured before
+   touching it, because "the players must be the problem" was the guess and
+   there are no iframes here at all: they are click-to-embed stubs already,
+   which is why the page is merely long rather than also slow.
+
+   So inside a day listing the stub is what it actually is until it is used --
+   a line you can click. It still carries the timestamp and what is at it, and
+   it still becomes the 16:9 player on click, because .player iframe sets its
+   own aspect ratio and never depended on this one. */
+/* BOTH LISTS, NOT JUST THE ONE I FOUND FIRST. Scoping this to .cday would
+   have fixed the committee page and left the bill page as it was: HB 1718's
+   Hearings tab is eight stubs of 603px in a 6,405px pane, so three quarters
+   of that tab is empty placeholder too. A station in a bill's proceedings and
+   a day in a committee's sittings are the same thing -- one of many
+   recordings offered in a row -- and the home page's single feature player,
+   which is neither, keeps its frame. */
+.cday .pstub,.stn .pstub{aspect-ratio:auto;justify-content:flex-start;
+  text-align:left;padding:var(--sp-4) var(--sp-5);gap:var(--sp-3)}
 
 /* CITE THIS PAGE. Shut by default and quiet: a reader who wants it is looking
    for it, and a reader who does not should not have four citation formats
