@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.4
+# GRANITE_VERSION: 2026-09-20.5
 """
 Fetch what New Hampshire's towns publish about their own officials.
 
@@ -537,28 +537,58 @@ def refused_home(key):
                for r in meta.values())
 
 
+def why_no_home(key):
+    """Why this town has no home page, as one of a fixed set of reasons.
+
+    These are different facts and the brief is emphatic that they must not be
+    stored as the same one. A town behind a bot filter, a town whose address
+    in our data is dead, and a town that has said in robots.txt that unnamed
+    crawlers may not read it are three different things, and only the last is
+    the town's own decision about us.
+    """
+    meta = load_meta(key)
+    if any(r.get("kind") == "home" and r.get("status") == 200
+           for r in meta.values()):
+        return None
+    if "_no_url" in meta:
+        return "no_website_recorded"
+    codes = {r.get("status") for r in meta.values() if r.get("kind") == "home"}
+    if any(c in REFUSED for c in codes):
+        return "refused_by_host"
+    if codes and all(c is None for c in codes):
+        return "address_does_not_resolve"
+    if 404 in codes:
+        return "not_found"
+    if any(r.get("status") == "robots_disallow" for r in meta.values()):
+        return "not_permitted_by_robots"
+    if codes:
+        return f"http_{sorted(str(c) for c in codes)[0]}"
+    return "not_attempted"
+
+
 def status(towns):
-    home = officials = nourl = 0
-    missing = []
+    home = officials = 0
+    why = collections.Counter()
+    who = collections.defaultdict(list)
     for key in towns:
         meta = load_meta(key)
-        h = any(r.get("kind") == "home" and r.get("status") == 200
-                for r in meta.values())
-        o = sum(1 for r in meta.values()
-                if r.get("kind") == "officials" and r.get("status") == 200)
-        home += h
-        officials += o
-        if "_no_url" in meta:
-            nourl += 1
-        if not h:
-            missing.append(key)
+        officials += sum(1 for r in meta.values()
+                         if r.get("kind") == "officials" and r.get("status") == 200)
+        reason = why_no_home(key)
+        if reason is None:
+            home += 1
+        else:
+            why[reason] += 1
+            who[reason].append(key)
     print(f"  {len(towns)} municipalities")
     print(f"    home page saved       {home}")
     print(f"    officials pages saved {officials}")
-    print(f"    no website recorded   {nourl}")
-    if missing:
-        print(f"    {len(missing)} without a home page: "
-              + ", ".join(missing[:14]) + (" ..." if len(missing) > 14 else ""))
+    for reason, n in why.most_common():
+        print(f"    {reason:26s} {n:4d}")
+    for reason, keys in sorted(who.items()):
+        print(f"  {reason} ({len(keys)}):")
+        for i in range(0, len(keys), 6):
+            print("      " + ", ".join(keys[i:i + 6]))
 
 
 def main():
