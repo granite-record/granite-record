@@ -39,11 +39,12 @@ PACE AND REFUSAL. Five seconds between requests. A host that answers 403, 429
 or 503 is recorded and not asked again in that run, and a run never retries
 anything on its own. The one way a refused town is asked again is
 `--retry-refused`, which a person starts, which fetches nothing else, and
-which is the whole of what the two agents above are for. Two sources for the
-address, because they
-disagree about 38 towns and one of them is sometimes the dead one -- Conway's
-clerk-list host does not resolve at all, and `deerfieldnh.gog` is a typo for
-`.gov`. Both are tried, in order, and the record says which answered.
+which is the whole of what the two agents above are for.
+
+Two sources for the address, because they disagree about 38 towns and one of
+them is sometimes the dead one -- Conway's clerk-list host does not resolve
+at all, and `deerfieldnh.gog` is a typo for `.gov`. Both are tried, in order,
+and the record says which answered.
 
 WHAT IS SAVED. The bytes, unmodified, plus a `_meta.json` for each town
 carrying for every URL: the URL asked, the status, the time it was read, the
