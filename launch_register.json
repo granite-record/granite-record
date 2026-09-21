@@ -2,7 +2,6 @@
   "_what": "The hand-kept half of the launch readiness report. readiness.py reads this and writes READINESS.md; nothing generated ever writes this file. Two lists: errors a person knows about, and how far each part of the site has been taken. Both exist because they cannot be measured off disk -- an error nobody has noticed is not in here, and no script can tell a first draft from a second.",
   "_how_to_use": "Add an error the moment it is found, with status open. When it is fixed, set status to fixed, put the commit in fixed_by, and name the preflight check that now guards it -- or say none, which is itself worth seeing. Move a feature to draft 2 only after it has actually been gone over, not after it has been touched.",
   "_status_values": "error.status: open | fixed | source_gap. feature.draft: 1 | 2 | unreviewed.",
-
   "errors": [
     {
       "found": "2026-09-20",
@@ -45,17 +44,17 @@
       "what": "About 64 of 235 polling-place strings carry run-together words from the source PDF's hard-wrapped text layer, such as 'Merrimack Valley Highschool Gymnasium' and '1 Memorial Drhudson'.",
       "where": "town pages, How to Vote",
       "reported_by": "the civic-data session's survey",
-      "status": "open",
-      "fixed_by": "",
-      "guard": "none"
+      "status": "fixed",
+      "fixed_by": "6bd4cc2 (another session): the clerk list read from the CSV the same page was offering, instead of the hard-wrapped PDF text layer",
+      "guard": "none yet -- nothing asserts that a polling string has no run-together words, and the PDF route still exists"
     },
     {
       "found": "2026-09-20",
-      "what": "At least one polling-place row has combined two municipalities: Atkinson & Gilmanton Academy Grant reads 'Errol Townhall 33 Dumont St', which is Errol's building with Colebrook's street and ZIP. This is the dangerous kind -- clean, plausible text naming a real building in the wrong town.",
+      "what": "At least one polling-place row has combined two municipalities: Atkinson & Gilmanton Academy Grant reads 'Errol Townhall 33 Dumont St', which is Errol's building with Colebrook's street and ZIP. This is the dangerous kind -- clean, plausible text naming a real building in the wrong town. RESOLVED 21 September: the row now reads 'Errol Town Hall 33 Main St At.& Gil. Ac. Gt. 03579' -- Errol's own street and ZIP rather than Colebrook's, so the bleed is gone and the row is internally consistent. NOT verified against any source that the Academy Grant's voters really do vote at Errol; unincorporated places commonly vote in a neighbouring town, so this is plausible and unconfirmed.",
       "where": "town pages, How to Vote",
       "reported_by": "the civic-data session's survey",
-      "status": "open",
-      "fixed_by": "",
+      "status": "fixed",
+      "fixed_by": "6bd4cc2 (another session), same CSV route",
       "guard": "none"
     },
     {
@@ -95,25 +94,96 @@
       "guard": "none"
     }
   ],
-
   "features": [
-    {"name": "Home page",                 "draft": 2, "note": "reordered on one column in the person's order, search boxes merged, 20 September"},
-    {"name": "Bill list and bill card",   "draft": 2, "note": "status rail widened and centred 20 September"},
-    {"name": "Bill detail -- Summary",    "draft": 2, "note": "On the record returned to the top 20 September"},
-    {"name": "Bill detail -- Reports",    "draft": 2, "note": "two columns, recommendation on the pane's right edge, 20 September"},
-    {"name": "Bill detail -- Documents",  "draft": 2, "note": "each citation says what it is the record of"},
-    {"name": "Bill detail -- Bill Text",  "draft": 1, "note": "rebuild designed and ordered; the pane is empty on 18 of 19 terms"},
-    {"name": "Bill detail -- Votes",      "draft": "unreviewed", "note": ""},
-    {"name": "Bill detail -- Hearings",   "draft": "unreviewed", "note": ""},
-    {"name": "Bill detail -- Sponsors",   "draft": "unreviewed", "note": ""},
-    {"name": "Legislators page",          "draft": "unreviewed", "note": ""},
-    {"name": "A legislator's own page",   "draft": "unreviewed", "note": ""},
-    {"name": "Committee pages",           "draft": "unreviewed", "note": "roster corrected 20 September; the layout has not been gone over"},
-    {"name": "Town pages",                "draft": "unreviewed", "note": "polling place data has known defects; the page itself unreviewed"},
-    {"name": "Calendar and session days", "draft": 2, "note": "hooked up to information that already existed in several shapes"},
-    {"name": "Search",                    "draft": 2, "note": "whole index, panel cap lifted"},
-    {"name": "Learn section",             "draft": "unreviewed", "note": "contents rail added; the writing has not had a second pass"},
-    {"name": "About and Data pages",      "draft": 2, "note": "feeds and term indexes named"},
-    {"name": "404 and error states",      "draft": "unreviewed", "note": ""}
+    {
+      "name": "Home page",
+      "draft": 2,
+      "note": "reordered on one column in the person's order, search boxes merged, 20 September"
+    },
+    {
+      "name": "Bill list and bill card",
+      "draft": 2,
+      "note": "status rail widened and centred 20 September"
+    },
+    {
+      "name": "Bill detail -- Summary",
+      "draft": 2,
+      "note": "On the record returned to the top 20 September"
+    },
+    {
+      "name": "Bill detail -- Reports",
+      "draft": 2,
+      "note": "two columns, recommendation on the pane's right edge, 20 September"
+    },
+    {
+      "name": "Bill detail -- Documents",
+      "draft": 2,
+      "note": "each citation says what it is the record of"
+    },
+    {
+      "name": "Bill detail -- Bill Text",
+      "draft": 2,
+      "note": "rebuilt 20-21 September: the Court's own marking of what the bill does to existing law, what-changed drawn on the bill's own paragraphs, bars removed. Current term only -- the archive needs the era parser, which is not written."
+    },
+    {
+      "name": "Bill detail -- Votes",
+      "draft": "unreviewed",
+      "note": ""
+    },
+    {
+      "name": "Bill detail -- Hearings",
+      "draft": "unreviewed",
+      "note": ""
+    },
+    {
+      "name": "Bill detail -- Sponsors",
+      "draft": "unreviewed",
+      "note": ""
+    },
+    {
+      "name": "Legislators page",
+      "draft": "unreviewed",
+      "note": "checked 21 September and it already flows in three columns -- long because there are 406 legislators, not because it wastes width. No change made."
+    },
+    {
+      "name": "A legislator's own page",
+      "draft": 1,
+      "note": "vote table rows made uniform 21 September; the header and the sponsored-bill list have not been gone over"
+    },
+    {
+      "name": "Committee pages",
+      "draft": 2,
+      "note": "text unconfined from the 560px measure 21 September; roster and info box were already sound"
+    },
+    {
+      "name": "Town pages",
+      "draft": 2,
+      "note": "two columns and the polling place made the answer, 21 September; the officials DATA is still the stale NHDOT directory"
+    },
+    {
+      "name": "Calendar and session days",
+      "draft": 2,
+      "note": "hooked up to information that already existed in several shapes"
+    },
+    {
+      "name": "Search",
+      "draft": 2,
+      "note": "whole index, panel cap lifted"
+    },
+    {
+      "name": "Learn section",
+      "draft": "unreviewed",
+      "note": "contents rail added; the writing has not had a second pass"
+    },
+    {
+      "name": "About and Data pages",
+      "draft": 2,
+      "note": "feeds and term indexes named"
+    },
+    {
+      "name": "404 and error states",
+      "draft": "unreviewed",
+      "note": ""
+    }
   ]
 }
