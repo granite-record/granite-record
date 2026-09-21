@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.154 */
+/* GRANITE_VERSION: 2026-09-07.156 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2964,8 +2964,28 @@ text-decoration-color:var(--rule-2);text-underline-offset:3px}
   .vfull th:nth-child(1){width:14%}
   .vfull th:nth-child(2){width:44%}
 }
-.votes .vt{display:block;color:var(--ink);font-size:var(--t-ui);line-height:1.35;
-  margin-top:var(--sp-1)}
+/* TWO LINES OF TITLE, NOT SIX. A legislator's Votes tab is a scanning
+   surface -- 591 rows for Rep. Daniels, 200 of them rendered at once -- and
+   the bill title was the only thing setting the row height. Measured before:
+   median row 97px against a 57px minimum, so the table ran to 19,150px and
+   the page to 20,245px, and the "Needed 212 -- two thirds" note that looked
+   like the culprit was on 15 rows of 200.
+
+   Some titles really are six lines. "relative to the state 10-year
+   transportation improvement plan; relative to toll rate adjustments and
+   periodic toll reviews for the New Hampshire turnpike system" is one
+   sentence of a bill's full title, and reading all of it is not what somebody
+   scanning a voting record is doing. The bill number beside it is a link to
+   the page that carries the whole thing, so nothing is lost -- it moves one
+   click away, which is where the rest of the bill already is. */
+.votes .vt{color:var(--ink);font-size:var(--t-ui);line-height:1.35;
+  margin-top:var(--sp-1);
+  /* max-height RATHER THAN -webkit-line-clamp, and not for want of trying it.
+     The clamp needs display:-webkit-box, and inside this table cell the
+     computed display came back flow-root with the clamp inert -- the rule
+     applied, the box did not. Two lines at 1.35 is 2.7em, which is a number
+     this can be asked for directly and which every engine honours. */
+  display:block;max-height:2.7em;overflow:hidden}
 .votes .vq{display:block;color:var(--ink-2);font-size:var(--t-sm);margin-top:var(--sp-2)}
 .votes .vq .dim{opacity:.8}
 /* Not nowrap: "Not Voting/Not Excused" is 22 characters and ran out of its
