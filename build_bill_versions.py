@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.6
+# GRANITE_VERSION: 2026-09-09.7
 """
 Every version of a bill, in order, and what each amendment changed.
 
@@ -49,6 +49,8 @@ import difflib
 import json
 import re
 from pathlib import Path
+
+import bill_blocks
 
 DB = Path("db")
 
@@ -166,6 +168,14 @@ def main():
     i_lid, i_dv, i_txt, i_dt = (lt.index("LegislationID"),
                                 lt.index("DocumentVersion"),
                                 lt.index("Text"), lt.index("DateTimeStamp"))
+    # AND THE COLUMN THE PLAIN ONE WAS FLATTENED FROM. HTMLText carries the
+    # Court's own marking of what the bill adds to and removes from existing
+    # law -- added matter in bold italics, removed matter struck through --
+    # which Text throws away. bill_blocks reads it; this is where it enters
+    # the build. Nothing downstream depends on it yet: the blocks file is
+    # written BESIDE the .txt and the index gains a field beside text_url, so
+    # an app.js that has never heard of either keeps working unchanged.
+    i_html = lt.index("HTMLText")
     per = collections.defaultdict(list)
     unknown = collections.Counter()
     for line in (DB / "LegislationText.psv").open(encoding="utf-8"):
@@ -183,10 +193,16 @@ def main():
             "sort": (order.get(label) or {}).get("sort", 999),
             "date": f[i_dt].strip(),
             "text": tidy(f[i_txt]),
+            # Parsed here rather than held as HTML: the source column is
+            # 173 MB across the table and the blocks are a third of that.
+            # A row whose HTML will not parse gets an empty list and simply
+            # has no blocks file, which the index then does not point at.
+            "blocks": bill_blocks.blocks(f[i_html]),
         })
 
     out = Path(a.site) / "versions"
     written = steps_total = texts = amds = lone = 0
+    blocks_written = 0
     manifest = collections.defaultdict(dict)
     multi = 0
     biggest = ("", 0)
@@ -247,7 +263,16 @@ def main():
                              "sort": v["sort"], "date": v["date"],
                              "chars": len(v["text"]),
                              "words": len(v["text"].split()),
-                             "text_url": f"/versions/{year}/{bill}.{i}.txt"}
+                             "text_url": f"/versions/{year}/{bill}.{i}.txt",
+                             # ADDED, NOT SUBSTITUTED. text_url never changes
+                             # meaning, so app.js's `url.endsWith(".json")`
+                             # test keeps giving the answer it always gave --
+                             # a rename there would have parsed 3,731 plain
+                             # texts as JSON and blanked the Full text view,
+                             # which is the default the reader lands on.
+                             **({"blocks_url":
+                                 f"/versions/{year}/{bill}.{i}.blocks.json"}
+                                if v.get("blocks") else {})}
                             for i, v in enumerate(vs)],
                "amendments": [{"date": v["date"], "chars": len(v["text"]),
                                "text_url": f"/versions/{year}/{bill}.a{j}.txt"}
@@ -263,6 +288,12 @@ def main():
                 (out / year / f"{bill}.{i}.txt").write_text(
                     v["text"], encoding="utf-8")
                 texts += 1
+                if v.get("blocks"):
+                    (out / year / f"{bill}.{i}.blocks.json").write_text(
+                        json.dumps({"blocks": v["blocks"]},
+                                   separators=(",", ":"), ensure_ascii=False),
+                        encoding="utf-8")
+                    blocks_written += 1
             for j, v in enumerate(amendments):
                 (out / year / f"{bill}.a{j}.txt").write_text(
                     v["text"], encoding="utf-8")
@@ -298,6 +329,16 @@ def main():
     print(f"  {written:,} written, {steps_total:,} amendment steps between "
           f"them, {texts:,} version texts and {amds:,} amendment texts "
           "beside them")
+    # SAID OUT LOUD, because a step that can write nothing and still exit 0 is
+    # how this project has lost work before. A blocks count of zero against a
+    # non-zero text count means HTMLText stopped parsing, and it would
+    # otherwise be invisible: the index simply omits blocks_url and the page
+    # falls back to the plain text exactly as it does today.
+    if texts:
+        print(f"  {blocks_written:,} of those carry the Court's own marking "
+              f"({blocks_written / texts * 100:.0f}%)"
+              + ("   <- NONE. HTMLText is not parsing." if not blocks_written
+                 else ""))
     if lone:
         print(f"  {lone:,} have one version and an amendment, so nothing to "
               "diff; the amendment is still written")
