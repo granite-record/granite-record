@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.1
+# GRANITE_VERSION: 2026-09-20.2
 """
 Read the General Court's own typeset bill HTML into blocks of marked runs.
 
@@ -49,11 +49,24 @@ documents before writing this rather than after:
    computed per document rather than assumed, because it differs between
    printings.
 
-3. THE BRACKETS ARE STILL IN THE TEXT. Removed matter is struck AND wrapped in
+3. A PARAGRAPH IS NOT ALWAYS A <p>, AND SPANS ARE NOT THE WHOLE STORY. Walking
+   <p> alone missed the spans inside <li>, <h1> and <h3>; collecting spans
+   with findall dropped the whitespace BETWEEN them, so "credits pursuant"
+   came out "creditspursuant" wherever the Court closed one span and opened
+   the next mid-sentence. Both are recorded at the patterns below.
+
+4. THE BRACKETS ARE STILL IN THE TEXT. Removed matter is struck AND wrapped in
    square brackets in the source, so the two encodings can be checked against
    each other -- a struck run that is not inside brackets, or a bracketed run
    that is not struck, means this parser has drifted. --probe reports that
    agreement as a number rather than trusting it.
+
+WHAT IS LEFT, named rather than half-handled. Three documents of 6,825 still
+differ from the plain column by more than 2%, and all three are fiscal notes
+whose figures live in <table> rather than in paragraphs -- "FY 2025 FY 2026
+FY 2027 GEN'L & EDUCATION TRUST FUND". Tables are a different kind of content
+from marked prose and want different treatment in the reading view, so they
+wait for that rather than being flattened into it here.
 """
 
 import argparse
@@ -70,13 +83,30 @@ RULE = re.compile(r"\.(cs[0-9A-Fa-f]{6,8})\s*\{([^}]*)\}")
 STYLE = re.compile(r"<style[^>]*>(.*?)</style>", re.S)
 # A <p> or <span> may carry a style attribute after its class, which is why
 # this does not look for class="..." immediately after the tag name.
-PARA = re.compile(r'<p\b[^>]*class="(cs[0-9A-Fa-f]{6,8})"[^>]*>(.*?)</p>', re.S)
+#
+# AND A PARAGRAPH IS NOT ALWAYS A <p>. Walking <p> alone reached 95,892 of the
+# 96,218 spans in a sample of 975 documents and missed 326 -- 319 in <li>,
+# five in <h3>, two in <h1>. That reads as a rounding error and is not: the
+# misses are concentrated, so on House Resolution 3 the <ol><li> block held
+# three of ten spans and more than half the words, and the document came out
+# at 39 words against the plain column's 161. A numbered list in a New
+# Hampshire bill carries statute like any other paragraph.
+PARA = re.compile(
+    r'<(p|li|h[1-6])\b[^>]*class="(cs[0-9A-Fa-f]{6,8})"[^>]*>(.*?)</\1>', re.S)
 SPAN = re.compile(r'<span\b[^>]*class="(cs[0-9A-Fa-f]{6,8})"[^>]*>(.*?)</span>', re.S)
 SIZE = re.compile(r"font-size:\s*([\d.]+)pt")
 ANCHOR = re.compile(r'<a\b[^>]*name="([^"]+)"', re.I)
 
 LEGEND = re.compile(r"matter (added|removed) (to|from) current law", re.I)
 EXPLANATION = re.compile(r"^\s*Explanation\s*:", re.I)
+# "SB 12 - AS INTRODUCED", "HB 99 - VERSION ADOPTED BY BOTH BODIES",
+# "HB 1718-FN - CHAPTERED FINAL VERSION". Matching only the "AS ..." wording
+# left the 166 enrolled and chaptered printings reading four to six words long,
+# which was most of what remained after the first pass -- so this matches a
+# bill number, a dash, and a run of capitals, and is anchored at both ends so a
+# sentence merely mentioning a bill number is not mistaken for the header.
+HEADER = re.compile(
+    r"^(?:[A-Z]{2,5}\s*\d+[-\w]*)\s*[-–]\s*[A-Z][A-Z \-]{3,}$")
 
 
 def strip_tags(s):
@@ -130,10 +160,21 @@ def blocks(doc):
     base = _body_size(roles, body)
 
     out = []
-    for pcls, inner in PARA.findall(body):
+    for tag, pcls, inner in PARA.findall(body):
         anchor = ANCHOR.search(inner)
+        # WALKED IN ORDER, NOT COLLECTED. findall over the spans drops
+        # whatever sits BETWEEN them, and what sits between them is sometimes
+        # the space that separates two words: "credits pursuant" came out
+        # "creditspursuant" wherever the Court closed one span and opened the
+        # next mid-sentence. The gaps are carried through as plain text.
         runs = []
-        for scls, raw in SPAN.findall(inner):
+        pos = 0
+        for m in SPAN.finditer(inner):
+            gap = strip_tags(inner[pos:m.start()])
+            pos = m.end()
+            if gap.strip() or (gap and runs):
+                runs.append(["plain", gap if gap.strip() else " "])
+            scls, raw = m.group(1), m.group(2)
             text = strip_tags(raw)
             if not text.strip():
                 continue
@@ -151,7 +192,21 @@ def blocks(doc):
         if not runs:
             continue
         flat = "".join(t for _, t in runs)
-        kind = "legend" if (LEGEND.search(flat) or EXPLANATION.match(flat)) else "ln"
+        # THE RUNNING HEADER IS NOT THE BILL. Every printing repeats its own
+        # number and version at the head -- "SB 12 - AS INTRODUCED" -- which
+        # the database's plain Text column does not carry. It is page
+        # furniture, and calling it text made this converter read four words
+        # longer than the record on most documents.
+        if HEADER.match(flat.strip()):
+            kind = "head"
+        elif LEGEND.search(flat) or EXPLANATION.match(flat):
+            kind = "legend"
+        elif tag in ("li",):
+            kind = "item"
+        elif tag.startswith("h"):
+            kind = "head"
+        else:
+            kind = "ln"
         blk = {"k": kind, "runs": [[r if r != "plain" else "", t] for r, t in runs]}
         if anchor:
             blk["id"] = anchor.group(1)
@@ -203,8 +258,15 @@ def probe(limit=None):
             no_html += 1
             continue
         legends += sum(1 for b in bs if b["k"] == "legend")
-        text = " ".join(t for b in bs if b["k"] != "legend"
-                        for _, t in b["runs"])
+        # RUNS JOIN WITH NOTHING, BLOCKS JOIN WITH A SPACE. Joining runs with
+        # a space was this probe's own bug and not the parser's: a bracket and
+        # the struck words inside it are two runs because they carry different
+        # marking, so "[in brackets" came out "[ in brackets" and counted one
+        # word extra every time. It made 1,711 documents look 2% long.
+        # The legend IS in the database's plain column and stays in; the
+        # running header is not and comes out.
+        text = " ".join("".join(t for _, t in b["runs"])
+                        for b in bs if b["k"] != "head")
         pw, bw = len(plain.split()), len(text.split())
         if pw:
             wdiff.append(abs(bw - pw) / pw)
