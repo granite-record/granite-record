@@ -219,3 +219,4 @@ reports/*
 # parse_granit.py records what each one is, where it came from and
 # when it was read, and skips cleanly when they are absent.
 sources/gis/*.zip
+town_sites/
