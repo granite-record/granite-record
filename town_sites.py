@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.3
+# GRANITE_VERSION: 2026-09-20.4
 """
 Fetch what New Hampshire's towns publish about their own officials.
 
@@ -327,12 +327,24 @@ def score_of(text):
     return max((s for s, pat in WANT if re.search(pat, text, re.I)), default=0)
 
 
-def _keep(url, base, out, score, text):
+def bare_host(netloc):
+    """'www.wolfeboronh.org' -> 'wolfeboronh.org'.
+
+    Written out because `netloc.lstrip("www.")` does not do this: lstrip takes
+    a SET of characters, so it eats every leading w and dot it can find and
+    turns wolfeboronh.org into olfeboronh.org. It happened to compare equal
+    only because both sides were mangled the same way.
+    """
+    h = netloc.lower().split("@")[-1]
+    return h[4:] if h.startswith("www.") else h
+
+
+def _keep(url, base, out, score, text, hosts=None):
     p = urllib.parse.urlparse(url)
     if p.scheme not in ("http", "https"):
         return
-    if p.netloc.lower().lstrip("www.") != \
-            urllib.parse.urlparse(base).netloc.lower().lstrip("www."):
+    ok = hosts or {bare_host(urllib.parse.urlparse(base).netloc)}
+    if bare_host(p.netloc) not in ok:
         return                              # stay on the town's own host
     clean = f"{p.scheme}://{p.netloc}{p.path}" + (f"?{p.query}" if p.query else "")
     if clean.rstrip("/") == base.rstrip("/") or NOISE.search(clean):
@@ -363,8 +375,27 @@ def links_from(html_text, base, sitemap=None):
     while its sitemap.xml lists all ninety-one pages including
     /pages/select-board. Where both exist they agree; where one is silent the
     other answers.
+
+    AND A SITEMAP NAMES THE TOWN'S CANONICAL HOST, which is not always the one
+    we asked. Ashland answers on ashlandnh.org, the address NHDOT holds, and
+    every one of the 96 URLs in its own sitemap is ashland.nh.gov. Rejecting
+    those as off-host left Ashland with no candidates at all -- it and four
+    other towns -- while the page it needs, /pages/boards-committees, sat in
+    the file. A host the sitemap itself uses throughout is the town's own by
+    definition, so it is allowed beside the one we asked, and the difference
+    is worth reading afterwards as a correction to the address we hold.
     """
     out = {}
+    hosts = {bare_host(urllib.parse.urlparse(base).netloc)}
+    smap_hosts = collections.Counter(
+        bare_host(urllib.parse.urlparse(u).netloc)
+        for u in re.findall(r"<loc>\s*([^<]+?)\s*</loc>", sitemap or ""))
+    if smap_hosts:
+        # Only a host the sitemap uses for most of itself; one stray absolute
+        # link to somewhere else is not the town changing address.
+        top, n = smap_hosts.most_common(1)[0]
+        if n >= 0.8 * sum(smap_hosts.values()):
+            hosts.add(top)
     for m in re.finditer(r"<a\b[^>]*href=[\"']([^\"']+)[\"'][^>]*>(.*?)</a>",
                          html_text or "", re.S | re.I):
         href, text = m.group(1).strip(), m.group(2)
@@ -374,7 +405,8 @@ def links_from(html_text, base, sitemap=None):
             continue
         score = score_of(text)
         if score:
-            _keep(urllib.parse.urljoin(base, href), base, out, score, text)
+            _keep(urllib.parse.urljoin(base, href), base, out, score, text,
+                  hosts)
 
     for loc in re.findall(r"<loc>\s*([^<]+?)\s*</loc>", sitemap or ""):
         loc = html.unescape(loc.strip())
@@ -385,7 +417,7 @@ def links_from(html_text, base, sitemap=None):
         words = re.sub(r"[-_/]+", " ", urllib.parse.urlparse(loc).path).strip()
         score = score_of(words)
         if score:
-            _keep(loc, base, out, score, words)
+            _keep(loc, base, out, score, words, hosts)
 
     return sorted(((score, text, url)
                    for (_rank, score, text, url) in out.values()),
