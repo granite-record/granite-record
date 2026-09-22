@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.110
+// GRANITE_VERSION: 2026-09-07.111
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1527,22 +1527,22 @@ ${d._error?`<div class="loaderr"><b>This bill's detail did not
 }
 
 function renderVotes(b,d){
-  // NO STANDING SENTENCE ABOVE THE VOTES. This tab used to open by explaining
-  // the roll call file, the ordering and the presiding officer's tie-breaking
-  // vote; that was cut to one line naming the bill and saying that roll calls
-  // record individual legislators where voice and division votes do not. The
-  // line is gone too, because every card below now says what its own vote was
-  // -- "There is no count and no record of how individual members voted" on a
-  // voice vote, and the count but not the members on a division -- so the
-  // paragraph was saying a second time, in general, what each vote already
-  // says about itself. A reader opening this tab wants the votes.
+  // NOTHING ABOVE THE VOTES. This tab opened, in turn, by explaining the roll
+  // call file and the presiding officer's tie-breaking vote; then with one
+  // line saying that roll calls record individual legislators where voice and
+  // division votes do not; then with the bill's own count of how many of its
+  // floor votes went unrecorded. All three are gone, and the last two for the
+  // same reason: every card below now says what its own vote was, in the
+  // words the person wrote -- "There is no count and no record of how
+  // individual members voted" on a voice vote, the count but not the members
+  // on a division. A reader who wants to know how many were unrecorded can
+  // count the cards that say so, and each one says it where they are looking.
   //
-  // d.vote_note STAYS: it is this bill's own, written by narrative.py, and it
-  // counts the votes that went unrecorded here rather than describing the
-  // kinds in the abstract. build_site_v2.vote_note_for already silences it
-  // where the table would contradict it.
-  const lead=d.vote_note?`<p class="note">${esc(d.vote_note)}</p>`:"";
-  return lead+((d.rollcalls||[]).length?d.rollcalls.map((rc,i)=>{
+  // d.vote_note is still built and still published in the record; it is only
+  // no longer drawn here. build_site_v2.vote_note_for and narrative.py are
+  // untouched, so nothing downstream of them changes and the sentence is one
+  // line away if it is wanted back.
+  return ((d.rollcalls||[]).length?d.rollcalls.map((rc,i)=>{
     const vk=rc.vote_kind||"RC";
     let body;
     if(vk==="RC"){
@@ -2056,7 +2056,7 @@ function renderSponsors(b,d){
   const spParty=Object.keys(pc).sort().map(k=>
     `<span title="${esc(PARTY_NAME[k]||k)}">${pc[k]} ${esc(k)}</span>`).join(" \u00b7 ");
   const sp=spAll.length?`
-    <p class="spcount">${spAll.length} sponsor${spAll.length===1?"":"s"}${
+    <p class="spcount">${spAll.length} Sponsor${spAll.length===1?"":"s"}${
       spParty?` \u00b7 ${spParty}`:""}</p>
     ${spBlock(origin)}${spBlock(origin==="S"?"H":"S")}
     ${spRest.length?`<h2 class="spgrp">Chamber not on file <span>${spRest.length}</span></h2>
@@ -2067,14 +2067,28 @@ function renderSponsors(b,d){
   // call that term is shown as it is printed, without a party.
   const fromText=spAll.length&&spAll.every(s=>s.source==="bill text");
   const asPrinted=fromText&&spAll.some(s=>!s.member_id);
-  return `${sp||`<p class="note">No sponsors on file.</p>`}
-      <p class="note" style="margin-top:12px">Prime sponsor in bold. ${fromText
-        ?`As named on the sponsor line of the bill's text, where the first name is
-          the prime sponsor.${asPrinted?` A name without a party is shown as the
-          text prints it: it could not be matched to one member who voted that
-          term.`:""}`
-        :"From the General Court sponsor file."}
-      <a href="${esc(d.docket_url)}" target="_blank" rel="noopener">Full docket and bill text on gencourt</a></p>`;
+  // THE STANDING NOTE IS GONE. It read "Prime sponsor in bold. From the
+  // General Court sponsor file." with a link to the docket, and all three
+  // parts were being said twice. The prime sponsor carries a PRIME label
+  // inside its own chip, which says it in the place a reader is looking and
+  // survives being read aloud, where bold does neither. Where the names came
+  // from is what the whole site is; the sponsor file is the unremarkable
+  // case. And the docket link is on the Summary tab already, in the "On the
+  // record" panel as "This bill on gencourt", so nothing here was the only
+  // way to the source.
+  //
+  // WHAT IS KEPT IS THE UNUSUAL CASE, and only on the bills it applies to.
+  // Before 2023 there is no sponsor file: the names are read off the sponsor
+  // line printed on the bill's own text, and one that matches nobody who cast
+  // a roll call that term is shown as printed, without a party. That is a
+  // caveat about the record rather than a description of the furniture, no
+  // card states it, and a reader comparing a pre-2023 roster with a modern
+  // one would otherwise have no way to know the two were gathered differently.
+  return `${sp||`<p class="note">No sponsors on file.</p>`}${fromText
+    ?`<p class="note" style="margin-top:12px">As named on the sponsor line of
+        the bill's text, where the first name is the prime sponsor.${asPrinted
+        ?` A name without a party is shown as the text prints it: it could not
+          be matched to one member who voted that term.`:""}</p>`:""}`;
 }
 
 // Amendments, in the order the docket took them up. A committee amendment

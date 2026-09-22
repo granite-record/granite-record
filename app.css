@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.164 */
+/* GRANITE_VERSION: 2026-09-07.165 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1095,7 +1095,22 @@ border-radius:var(--r-out);margin-bottom:var(--sp-5);overflow:hidden;
    whether the link can be reached or clicked at all, which is why it
    needed an onclick that stopped propagation. It is a sibling now, put
    in the corner with CSS, and sized as a real tap target. */
-.detail{position:absolute;top:9px;right:10px;z-index:2;display:flex;
+/* CENTRED ON THE STATUS CHIP, not on a number that happened to look right.
+   The two sit side by side in the card's top right and did not line up: the
+   chip's middle is 32.5px below the card's top edge -- 16px of head padding
+   plus half of its 31.3px height -- and the arrow's was 28px, so it rode
+   4.8px high.
+   top + translateY(-50%) RATHER THAN A TUNED top, because the arrow is not
+   one height. It is 36px here and 44px under the touch-target rule on a
+   phone, and at 44px it happened to centre while at 36px it did not, so any
+   single top value fixes one and breaks the other. Translating by half its
+   own height puts the middle on the line whatever the height is.
+   32px IS THE CHIP'S MIDDLE measured from the card's padding box, where an
+   absolutely positioned child's top is measured from. If the chip's type or
+   padding changes, this is that sum again and not a fudge to re-eyeball.
+   A status long enough to wrap to two lines will sit lower than the arrow;
+   that is on purpose, because the arrow belongs beside the first line. */
+.detail{position:absolute;top:32px;transform:translateY(-50%);right:10px;z-index:2;display:flex;
 align-items:center;justify-content:center;min-width:36px;min-height:36px;
 text-decoration:none;font-size:var(--t-body);color:var(--ink-2);border-radius:var(--r-out)}
 .detail:hover{color:var(--pine);background:var(--wash)}
@@ -1344,7 +1359,27 @@ letter-spacing:.04em;text-transform:uppercase}
 .card .pane > .fnwrap,
 .card .pane > table,
 .card .pane > .docket,
-.card .pane > .full{max-width:none}
+.card .pane > .full,
+/* AND THE BILL TEXT, which is the fifth go at this complaint and the one the
+   comment above predicted: a block added later is capped by default, and the
+   version pane was added later. Every one of its blocks was sitting at 560 in
+   a 903px pane -- the version tabs, the What changed / Full text switch, the
+   document itself and the list of amendments -- so the tab read as half a
+   tab. .vdoc is the one that matters: it is the bill, and it is the thing the
+   tab is named for.
+   The explanatory paragraph under "The amendments themselves" is deliberately
+   NOT here. It is prose, and prose takes the measure everywhere on this site
+   that is not a vote card; 560px is 76 characters and the floor is 80.
+   WORTH KNOWING THE TRADE, as the committee-page fix recorded for its own:
+   the bill text is a page of statute rather than a few sentences read once,
+   and statute at 870px is a longer line than this project sets prose at
+   anywhere else. Asked for in those terms all the same, and a document
+   marooned in half a box reads as broken before it reads as readable. */
+.card .pane > .vpick,
+.card .pane > .vmode,
+.card .pane > .vdoc,
+.card .pane > .amdsec,
+.card .pane > .vamds{max-width:none}
 
 /* ---- TWO COLUMNS ON A BILL'S OWN PAGE ---------------------------------
    The pane is 1094px at 1440 and the prose in it is 560px, because 560px is
