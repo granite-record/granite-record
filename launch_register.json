@@ -101,6 +101,33 @@
       "status": "fixed",
       "fixed_by": "7ff439a",
       "guard": "stripping the page furniture never deletes a line of the bill"
+    },
+    {
+      "found": "2026-09-22",
+      "what": "Interim study was described as returning a bill the following year, in three places: The General Court and How a bill becomes law on the Learn pages, and the tooltip on every bill card's 'carried over' chip. It does not. Measured on all 16 dockets on disk: 1,429 'Retained in Committee' actions, 100.0% of them in the first year of a term; 4,465 interim-study actions, 95.9% in the second. Of 267 current-term bills sent to interim study, the only actions after the referral are the study's own work sessions that autumn -- none in a later year. A retained bill survives into the second year with its number; an interim-study bill dies with the term and must be refiled as a new bill.",
+      "where": "learn/general-court.html, learn/how-a-bill-becomes-law.html, the 'carried over' chip on every bill card",
+      "reported_by": "an experienced state legislator, reviewing the Learn pages for the person",
+      "status": "fixed",
+      "fixed_by": "7da7c35",
+      "guard": "none -- it is a claim in prose and no check can read English. The docket measurement above is the thing to re-run if the rule is ever thought to have changed."
+    },
+    {
+      "found": "2026-09-22",
+      "what": "Four statements on Testifying and attending were wrong or misleading. Filling in a card is how the HOUSE asks to speak -- the Senate has one sign-in sheet with a column to tick. 'There is no fixed time limit' is wrong: no rule sets one, but chairs may and commonly do, typically the sponsor as long as they need and three minutes for everyone else. Saying the sign-ins 'are published after the hearing' read as though the bill's docket carried them; it does not, and they are in the General Court's own sign-in lookup. And 'you do not need to live in the district' described a district that does not apply, since committees hear bills for the whole state.",
+      "where": "learn/testifying.html",
+      "reported_by": "an experienced state legislator, reviewing the Learn pages for the person",
+      "status": "fixed",
+      "fixed_by": "7da7c35",
+      "guard": "none -- prose again"
+    },
+    {
+      "found": "2026-09-22",
+      "what": "Members' pay was given as '$100 a year', which is the arithmetic rather than the fact. It is $200 for the two-year term, paid once, in January of the first year, less withholding -- so a reader was left expecting an annual payment that does not exist.",
+      "where": "learn/general-court.html and the Learn index blurb",
+      "reported_by": "an experienced state legislator, reviewing the Learn pages for the person",
+      "status": "fixed",
+      "fixed_by": "7da7c35",
+      "guard": "none -- prose"
     }
   ],
   "features": [
@@ -136,23 +163,23 @@
     },
     {
       "name": "Bill detail -- Votes",
-      "draft": "unreviewed",
-      "note": ""
+      "draft": 2,
+      "note": "descriptions rewritten in the person's words and widened to the card, chips reshaped, the standing lead and the vote note removed, 22 September"
     },
     {
       "name": "Bill detail -- Hearings",
-      "draft": "unreviewed",
-      "note": ""
+      "draft": 2,
+      "note": "looked at 22 September and the person said it is fine as is; no change made"
     },
     {
       "name": "Bill detail -- Sponsors",
-      "draft": "unreviewed",
-      "note": ""
+      "draft": 2,
+      "note": "count capitalised and the standing note removed, 22 September; the pre-2023 provenance caveat kept because no card states it"
     },
     {
       "name": "Legislators page",
-      "draft": "unreviewed",
-      "note": "checked 21 September and it already flows in three columns -- long because there are 406 legislators, not because it wastes width. No change made."
+      "draft": 2,
+      "note": "checked 21 September and it already flows in three columns -- long because there are 406 legislators, not because it wastes width. No change needed, and it is reviewed rather than unreviewed."
     },
     {
       "name": "A legislator's own page",
@@ -182,7 +209,7 @@
     {
       "name": "Learn section",
       "draft": "unreviewed",
-      "note": "contents rail added; the writing has not had a second pass"
+      "note": "contents rail added; a legislator's factual corrections applied 22 September (see the errors below). The visual pass and the rest of the writing have not been done."
     },
     {
       "name": "About and Data pages",
