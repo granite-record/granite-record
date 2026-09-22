@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.3
+# GRANITE_VERSION: 2026-09-20.4
 """
 Who a New Hampshire town says holds its offices, out of the town's own pages.
 
@@ -199,6 +199,11 @@ NOT_A_NAME = re.compile(
     r"manages?|approves?|oversees?|handles?|responsible|provides?|"
     r"maintains?|issues?|collects?|administers?|coordinates?|assists?|"
     r"press to zoom|click here|learn more|view|download|"
+    # Breadcrumbs. Bedford's stub page is "Departments / Town Clerk /
+    # Elected Officials List / Elected Officials", and with Town Clerk
+    # read as a heading the three that follow were filed as the people
+    # holding it. Nobody is called Elected Officials List.
+    r"officials?|elected|lists?|directory|roster|staff|overview|"
     r"commissioners?|council(?:l)?ors?|alderm[ae]n|selectm[ae]n|"
     r"treasurers?|auditors?|constables?|assistants?|directors?|"
     r"read more|click|home|search|menu|login|copyright|rights reserved)\b",

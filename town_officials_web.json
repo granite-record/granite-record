@@ -974,48 +974,11 @@
  },
  "bedford": {
   "built": "2026-09-22",
-  "officials": [
-   {
-    "filled_by": "elected",
-    "filled_by_source": "the page is titled '713 Elected Officials List'",
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Bedford Elected Officials List",
-    "office": "Town Clerk",
-    "read_on": "2026-09-20T21:50:30-0400",
-    "role": null,
-    "source_url": "https://www.bedfordnh.gov/713/Elected-Officials-List",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "filled_by": "elected",
-    "filled_by_source": "the page is titled '713 Elected Officials List'",
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Elected Officials",
-    "office": "Town Clerk",
-    "read_on": "2026-09-20T21:50:30-0400",
-    "role": null,
-    "source_url": "https://www.bedfordnh.gov/713/Elected-Officials-List",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "filled_by": "elected",
-    "filled_by_source": "the page is titled '713 Elected Officials List'",
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Elected Officials List",
-    "office": "Town Clerk",
-    "read_on": "2026-09-20T21:50:30-0400",
-    "role": null,
-    "source_url": "https://www.bedfordnh.gov/713/Elected-Officials-List",
-    "status": "published",
-    "term_expires": null
-   }
-  ],
+  "officials": [],
   "pages": [
    {
     "agent": "project",
-    "found": 3,
+    "found": 0,
     "link_text": "713 Elected Officials List",
     "read_on": "2026-09-20T21:50:30-0400",
     "says_elected": true,
@@ -4585,22 +4548,12 @@
     "source_url": "https://goshennh.org/selectmen/",
     "status": "published",
     "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Elected Officials",
-    "office": "Board of Selectmen",
-    "read_on": "2026-09-20T22:07:10-0400",
-    "role": null,
-    "source_url": "https://goshennh.org/selectmen/",
-    "status": "published",
-    "term_expires": null
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 2,
+    "found": 1,
     "link_text": "Board of Selectmen",
     "read_on": "2026-09-20T22:07:10-0400",
     "says_elected": false,
@@ -5660,16 +5613,6 @@
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Elected Officials",
-    "office": "Town Council",
-    "read_on": "2026-09-20T22:16:15-0400",
-    "role": null,
-    "source_url": "https://www.hooksett.org/government/index.php",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
     "name": "Historical Society",
     "office": "Town Council",
     "read_on": "2026-09-20T22:16:10-0400",
@@ -5722,7 +5665,7 @@
    },
    {
     "agent": "project",
-    "found": 2,
+    "found": 1,
     "link_text": "Government",
     "read_on": "2026-09-20T22:16:15-0400",
     "says_elected": false,
@@ -9581,16 +9524,6 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Elected Positions",
-    "office": "School Board",
-    "read_on": "2026-09-20T22:33:00-0400",
-    "role": null,
-    "source_url": "https://www.raymondnh.gov/boards_committees/index.php",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
     "name": "Michael Evans",
     "office": "Tax Collector",
     "read_on": "2026-09-20T22:32:55-0400",
@@ -9633,7 +9566,7 @@
    },
    {
     "agent": "project",
-    "found": 2,
+    "found": 1,
     "link_text": "Boards & Committees",
     "read_on": "2026-09-20T22:33:00-0400",
     "says_elected": false,
