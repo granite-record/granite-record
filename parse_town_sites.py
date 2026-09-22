@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.1
+# GRANITE_VERSION: 2026-09-20.2
 """
 Who a New Hampshire town says holds its offices, out of the town's own pages.
 
@@ -18,7 +18,7 @@ treasurer, tax collector, trustee of trust funds, library trustee, auditor,
 constable or sewer commissioner. Ten of the thirteen statutory elected
 offices appear nowhere in it. The towns publish those themselves.
 
-THE THREE SHAPES, read off real pages before any of this was written:
+THE FOUR SHAPES, each read off a real page before it was handled:
 
   Portsmouth   an HTML table, "Name | Title | ... | Term", with the section
                header carrying the authority ("CITY COUNCIL (City Charter,
@@ -27,9 +27,17 @@ THE THREE SHAPES, read off real pages before any of this was written:
                "Name, role, year" lines until the next office. Richer than it
                looks: the page marks "(appointed)" and "(Resigned 7/2024)"
                itself, so those are read rather than assumed.
+  Benton       the name and the office on ONE line, hyphen-joined, with no
+               heading anywhere: "William Darcy-Selectman Chair". It looks
+               exactly like a heading, because it names an office, so the
+               line after it ended the run and the town came out empty.
+               Forty-nine towns had names and offices on the page and
+               yielded nothing, and this was the largest reason.
   Bedford      a page headed "Elected Officials List" with nothing under it.
                Not a PDF, not a redirect -- a stub. It yields nothing and
-               says so.
+               says so. Acworth is the same in a different way: 417,554 bytes
+               whose roster is inside an <iframe title="Table Master">, which
+               is not in the file at all.
 
 A PAGE OF ATTENDEES IS NOT A ROSTER, and this is the guard that matters. A
 survey of the 514 saved pages offered 13,113 candidate name-and-office pairs
@@ -185,6 +193,12 @@ NOT_A_NAME = re.compile(
     # office, so it read as a person. Nobody is called Trustees.
     r"trustees?|clerks?|agents?|collectors?|moderators?|supervisors?|"
     r"terms?|expires?|inspectors?|managers?|administrators?|chiefs?|"
+    # Description lines. Benton writes what each office does under the
+    # person holding it -- "Manages All Intent-to-Cut Applications" -- and
+    # three capitalised words is the shape of a name.
+    r"manages?|approves?|oversees?|handles?|responsible|provides?|"
+    r"maintains?|issues?|collects?|administers?|coordinates?|assists?|"
+    r"press to zoom|click here|learn more|view|download|"
     r"commissioners?|council(?:l)?ors?|alderm[ae]n|selectm[ae]n|"
     r"treasurers?|auditors?|constables?|assistants?|directors?|"
     r"read more|click|home|search|menu|login|copyright|rights reserved)\b",
@@ -224,10 +238,19 @@ def content_of(t):
     or `<aside>`. That is a fact about the document rather than a list of
     phrases to exclude, so it works on towns whose menu says something else.
     """
+    stripped = re.sub(r"(?is)<(nav|header|footer|aside)\b[^>]*>.*?</\1>", " ", t)
     m = re.search(r"(?is)<main\b[^>]*>(.*?)</main>", t)
-    if m and len(m.group(1)) > 400:
-        t = m.group(1)
-    return re.sub(r"(?is)<(nav|header|footer|aside)\b[^>]*>.*?</\1>", " ", t)
+    if not m:
+        return stripped
+    # A <main> IS NOT ALWAYS WHERE THE CONTENT IS. Acworth's page is 417,554
+    # bytes and its <main> is 1,841 of them, holding the words "Town
+    # Officials" and nothing else -- so preferring <main> on size alone threw
+    # the whole page away and the town came out empty. Whichever of the two
+    # actually carries more text is the content; on a page built the ordinary
+    # way that is <main>, and on one where <main> is a shell it is not.
+    def words(x):
+        return len(re.sub(r"\s+", " ", re.sub(r"(?s)<[^>]+>", " ", x)).strip())
+    return m.group(1) if words(m.group(1)) >= words(stripped) * 0.5 else stripped
 
 
 def flatten(t):
@@ -274,6 +297,36 @@ def looks_like_name(s):
     if office_of(s) or ROLE.search(s):
         return False
     return bool(NAME.match(s))
+
+
+def name_and_office(line):
+    """'William Darcy-Selectman Chair' -> ('Board of Selectmen', person).
+
+    A FOURTH SHAPE, found on Benton's page after the first three were
+    handled: the name and the office on ONE line with a hyphen between them,
+    no heading anywhere. Read as a heading -- which is what it looked like,
+    since it names an office -- the next line ("Town Affairs") ended the run
+    and the whole town came out empty. Forty-nine towns had names and offices
+    on the page and yielded nothing, and this is the largest reason.
+
+    The split is only accepted when the left side is a name AND the right
+    side is an office, which is what keeps a hyphenated surname intact:
+    "Kathleen Springham-Mack" splits to "Mack", which is not an office, so
+    the line is left alone.
+    """
+    for sep in (" - ", " – ", "-", "–", ",", "|", "•", ":"):
+        if sep not in line:
+            continue
+        left, right = line.split(sep, 1)
+        left, right = left.strip(), right.strip()
+        if not right or not looks_like_name(left):
+            continue
+        office = office_of(right)
+        if office:
+            p = split_person(left + " , " + right)
+            if p:
+                return office, p
+    return None
 
 
 def split_person(line):
@@ -334,6 +387,13 @@ def from_headings(lines):
     office = None
     run = 0
     for line in lines:
+        # A line that is a name AND an office is a person, not a heading, and
+        # it is checked first because it looks exactly like a heading.
+        pair = name_and_office(line)
+        if pair:
+            out.append(pair)
+            office, run = None, 0
+            continue
         o = office_of(line)
         # A heading is an office named by a SHORT line that is not a person.
         if o and not looks_like_name(re.split(r"[,|]", line)[0].strip()):
