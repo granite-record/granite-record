@@ -104,8 +104,8 @@
     },
     {
       "found": "2026-09-22",
-      "what": "Interim study was described as returning a bill the following year, in three places: The General Court and How a bill becomes law on the Learn pages, and the tooltip on every bill card's 'carried over' chip. It does not. Measured on all 16 dockets on disk: 1,429 'Retained in Committee' actions, 100.0% of them in the first year of a term; 4,465 interim-study actions, 95.9% in the second. Of 267 current-term bills sent to interim study, the only actions after the referral are the study's own work sessions that autumn -- none in a later year. A retained bill survives into the second year with its number; an interim-study bill dies with the term and must be refiled as a new bill.",
-      "where": "learn/general-court.html, learn/how-a-bill-becomes-law.html, the 'carried over' chip on every bill card",
+      "what": "Interim study was described as returning a bill the following year, in two published places: The General Court on the Learn pages, and the tooltip on every bill card's 'carried over' chip. (A third copy, in build_pages.LEARN, is not published -- it is kept as the reference to diff civics.py against, and was corrected for that reason. How a bill becomes law names interim study only in a count of outcomes and was right.) It does not. Measured on all 16 dockets on disk: 1,429 'Retained in Committee' actions, 100.0% of them in the first year of a term; 4,465 interim-study actions, 95.9% in the second. Of 267 current-term bills sent to interim study, the only actions after the referral are the study's own work sessions that autumn -- none in a later year. A retained bill survives into the second year with its number; an interim-study bill dies with the term and must be refiled as a new bill.",
+      "where": "learn/general-court.html and the 'carried over' chip on every bill card; also the unpublished build_pages.LEARN reference copy",
       "reported_by": "an experienced state legislator, reviewing the Learn pages for the person",
       "status": "fixed",
       "fixed_by": "7da7c35",
