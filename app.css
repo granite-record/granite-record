@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.163 */
+/* GRANITE_VERSION: 2026-09-07.164 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1435,11 +1435,19 @@ padding:var(--sp-4) var(--sp-5);margin:0 0 var(--sp-5);line-height:1.55;max-widt
    why there is no member list was stopping at 560 with four tenths of the
    card empty to the right of it, directly under a legend and a tally that
    both run the whole way.
-   SCOPED TO .rc, not lifted off .note, for the reason the committee-page fix
-   records: .note is shared with the legislator page, the calendar and every
-   other pane, none of which was asked about. Asked for in these terms -- the
-   descriptions for division and voice votes do not fill the space of the tab. */
-.rc .note{max-width:none}
+   SCOPED TO THE VOTES PANE, not lifted off .note, for the reason the
+   committee-page fix records: .note is shared with the legislator page, the
+   calendar and every other pane, none of which was asked about. Asked for in
+   these terms -- the descriptions for division and voice votes do not fill
+   the space of the tab.
+   THE SECOND SELECTOR IS THE BILL'S OWN VOTE NOTE, the one that counts the
+   floor votes that went unrecorded. It is a direct child of the pane rather
+   than of a card, so .rc .note does not reach it, and when the standing lead
+   paragraph above it was removed it inherited that paragraph's position -- a
+   560px line sitting over 927px cards, which is the complaint again in a new
+   place. :has(> .rc) is what keeps this to the votes pane: no other pane has
+   a roll call section as a child. */
+.rc .note,.pane:has(> .rc) > .note{max-width:none}
 .stn{position:relative;padding:0 0 var(--sp-6) var(--sp-8)}
 .stn:before{content:"";position:absolute;left:4px;top:6px;bottom:-4px;width:1px;background:var(--rule-2)}
 .stn:last-child:before{display:none}

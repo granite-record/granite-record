@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.109
+// GRANITE_VERSION: 2026-09-07.110
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1527,13 +1527,21 @@ ${d._error?`<div class="loaderr"><b>This bill's detail did not
 }
 
 function renderVotes(b,d){
-  // What this tab holds, in one sentence, naming the bill it is about. It
-  // used to explain the roll call file, the ordering, and the presiding
-  // officer's tie-breaking vote before a reader reached a single vote.
-  const lead=`<p class="src">All recorded votes on ${esc(b.n||b.id)}. Roll
-    call votes record how individual legislators voted on a certain motion,
-    but voice or division votes do not.</p>`
-    + (d.vote_note?`<p class="note">${esc(d.vote_note)}</p>`:"");
+  // NO STANDING SENTENCE ABOVE THE VOTES. This tab used to open by explaining
+  // the roll call file, the ordering and the presiding officer's tie-breaking
+  // vote; that was cut to one line naming the bill and saying that roll calls
+  // record individual legislators where voice and division votes do not. The
+  // line is gone too, because every card below now says what its own vote was
+  // -- "There is no count and no record of how individual members voted" on a
+  // voice vote, and the count but not the members on a division -- so the
+  // paragraph was saying a second time, in general, what each vote already
+  // says about itself. A reader opening this tab wants the votes.
+  //
+  // d.vote_note STAYS: it is this bill's own, written by narrative.py, and it
+  // counts the votes that went unrecorded here rather than describing the
+  // kinds in the abstract. build_site_v2.vote_note_for already silences it
+  // where the table would contradict it.
+  const lead=d.vote_note?`<p class="note">${esc(d.vote_note)}</p>`:"";
   return lead+((d.rollcalls||[]).length?d.rollcalls.map((rc,i)=>{
     const vk=rc.vote_kind||"RC";
     let body;
