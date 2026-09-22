@@ -6111,6 +6111,46 @@
     "sha256": "69c8a4641d844bbc57e403facef9ec4109097d505e4494fe31ef29c519c33236",
     "status": "read",
     "url": "https://www.laconianh.gov/390/Boards-Commissions"
+   },
+   {
+    "agent": "project",
+    "found": 0,
+    "link_text": "1236 Government Information",
+    "read_on": "2026-09-22T11:55:37-0400",
+    "says_elected": false,
+    "sha256": "c116cd36a4324c8aecee6d4e751acc67f65bf2dc497338d54bb6aeab18edc15b",
+    "status": "read",
+    "url": "https://www.laconianh.gov/1236/Government-Information"
+   },
+   {
+    "agent": "project",
+    "found": 0,
+    "link_text": "845 Know Your Government Officials",
+    "read_on": "2026-09-22T11:55:43-0400",
+    "says_elected": false,
+    "sha256": "cbbd3a422a51fe2d9509c8fa0951cfa54248e7f6ea18b0cb79b9c2d97f821b85",
+    "status": "read",
+    "url": "https://www.laconianh.gov/845/Know-Your-Government-Officials"
+   },
+   {
+    "agent": "project",
+    "found": 0,
+    "link_text": "Your Government",
+    "read_on": "2026-09-22T11:55:27-0400",
+    "says_elected": false,
+    "sha256": "c4908667ea46f03a372f99891151202d6288e63f6e3931b5668f08f5f816936e",
+    "status": "read",
+    "url": "https://www.laconianh.gov/27/Your-Government"
+   },
+   {
+    "agent": "project",
+    "found": 0,
+    "link_text": "Government Resources",
+    "read_on": "2026-09-22T11:55:32-0400",
+    "says_elected": false,
+    "sha256": "d458bbf82a9dacb528e548666a5f09d2559ccc0d5fa470c36d88fc13c670a9ec",
+    "status": "read",
+    "url": "https://www.laconianh.gov/businessdirectoryii.aspx"
    }
   ]
  },
@@ -10739,7 +10779,18 @@
  },
  "surry": {
   "built": "2026-09-22",
-  "officials": [],
+  "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Picture Credits",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-22T11:55:52-0400",
+    "role": null,
+    "source_url": "https://surry.nh.gov/about-this-site/",
+    "status": "published",
+    "term_expires": null
+   }
+  ],
   "pages": [
    {
     "agent": "project",
@@ -10768,6 +10819,16 @@
     "status": "not_read",
     "url": "https://surry.nh.gov/board-of-selectmen/select-board-meeting-agenda/",
     "why": "a meeting page"
+   },
+   {
+    "agent": "project",
+    "found": 1,
+    "link_text": "About Surry NH \u2013 Official Government Site",
+    "read_on": "2026-09-22T11:55:52-0400",
+    "says_elected": false,
+    "sha256": "41af68413a93daad6eb70b1eceec7a3d80a8d885d8a6aed46c9b7145d4baa839",
+    "status": "read",
+    "url": "https://surry.nh.gov/about-this-site/"
    }
   ]
  },

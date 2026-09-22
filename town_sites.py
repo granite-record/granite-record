@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.6
+# GRANITE_VERSION: 2026-09-20.7
 """
 Fetch what New Hampshire's towns publish about their own officials.
 
@@ -524,6 +524,17 @@ def run_officials(towns, fetcher, robots, per_town=4, force=False):
         for score, text, u in cands:
             res = fetcher.get(u, robots)
             if isinstance(res, dict):
+                # A REFUSAL HAS TO LEAVE A TRACE. Tilton's two candidate pages
+                # were both refused, the run printed "2 page(s)" because it
+                # counts candidates, and nothing at all was written -- so the
+                # town looked identical to one whose pages had never been
+                # asked for. Silence is not success, and a skip is a fact
+                # about a URL that belongs in the record beside the fetches.
+                res.update({"kind": "officials_skipped", "link_text": text,
+                            "score": score,
+                            "read_on": time.strftime("%Y-%m-%dT%H:%M:%S%z")})
+                meta[page_name(u, "skipped")] = res
+                failed += 1
                 continue
             rec, body = res
             rec.update({"kind": "officials", "link_text": text, "score": score})
@@ -584,13 +595,15 @@ def why_no_home(key):
 
 
 def status(towns):
-    home = officials = 0
+    home = officials = skipped = 0
     why = collections.Counter()
     who = collections.defaultdict(list)
     for key in towns:
         meta = load_meta(key)
         officials += sum(1 for r in meta.values()
                          if r.get("kind") == "officials" and r.get("status") == 200)
+        skipped += sum(1 for r in meta.values()
+                       if r.get("kind") == "officials_skipped")
         reason = why_no_home(key)
         if reason is None:
             home += 1
@@ -600,6 +613,8 @@ def status(towns):
     print(f"  {len(towns)} municipalities")
     print(f"    home page saved       {home}")
     print(f"    officials pages saved {officials}")
+    if skipped:
+        print(f"    officials pages refused {skipped}")
     for reason, n in why.most_common():
         print(f"    {reason:26s} {n:4d}")
     for reason, keys in sorted(who.items()):
