@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.230
+# GRANITE_VERSION: 2026-09-04.231
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1208,6 +1208,54 @@ def _chrome_spares_statute():
             f"{junk!r} survived: the page furniture is no longer removed, so "
             "a navigation page could be mistaken for a bill")
     return "ok", "9 lines, 682 words, five bills -- and the furniture still goes"
+
+
+@check("status", "a bill's version is read from its own heading, not its fiscal note")
+def _version_is_not_the_fiscal_note():
+    """SB139 and SB290 were published as fiscal notes. They are not.
+
+    fetch_bill_text takes the FIRST line matching VERSION_RE as the version,
+    so a heading shape the pattern does not accept is not a missing version --
+    it is the wrong one. A bill carrying a fiscal note prints a section
+    heading like "SB 290-FN- FISCAL NOTE" partway down, and that line matches
+    when the bill's own heading did not.
+
+    Both bills' text was the introduced bill and only the label was wrong,
+    which is the worse way round: the tab told a reader they were looking at a
+    fiscal note while showing them the bill. The record agrees -- the database
+    holds one printing of each, "Introduced", and no bill of this term has a
+    "Fiscal Note" printing at all.
+
+    The two headings are printed "SB - AS INTRODUCED", carrying no number, and
+    "SB 139 -FN - AS INTRODUCED", with a space before the -FN. Measured over
+    all 2,234 cached pages: 2,232 read exactly as before and no page lost a
+    version it had.
+
+    The samples are the real lines, so this needs nothing on disk.
+    """
+    f = imp("fetch_bill_text")
+    if f is None:
+        return "skip", "fetch_bill_text will not import"
+    for line, want in (("SB - AS INTRODUCED", "AS INTRODUCED"),
+                       ("SB 139 -FN - AS INTRODUCED", "AS INTRODUCED"),
+                       ("HB 1442-FN - AS AMENDED BY THE HOUSE",
+                        "AS AMENDED BY THE HOUSE"),
+                       ("CACR 19 - AS INTRODUCED", "AS INTRODUCED"),
+                       ("HB 2 - FINAL VERSION", "FINAL VERSION")):
+        m_ = f.VERSION_RE.search(line)
+        assert m_, f"VERSION_RE no longer matches the heading {line!r}"
+        got = f.WS.sub(" ", m_.group("v")).strip()
+        assert got == want, f"{line!r} read as {got!r}, wanted {want!r}"
+
+    # The fiscal note's own heading must lose to the bill's, which comes first.
+    page = ("SB 290 - AS INTRODUCED\n2025 SESSION\nSENATE BILL 290-FN\n"
+            "AN ACT relative to a thing.\n\nSB 290-FN- FISCAL NOTE\n")
+    got = f.WS.sub(" ", f.VERSION_RE.search(page).group("v")).strip()
+    assert got == "AS INTRODUCED", (
+        f"the fiscal note's section heading was read as the bill's version "
+        f"({got!r}), which is how SB139 and SB290 came to be published as "
+        "fiscal notes")
+    return "ok", "the bill's own heading wins, in all five printed shapes"
 
 
 @check("frontend", "the Bill Text tab asks for a version index only where one exists")

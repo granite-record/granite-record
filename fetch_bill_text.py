@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.23
+# GRANITE_VERSION: 2026-09-04.24
 """
 The text of each bill, as text rather than as a link to a PDF.
 
@@ -409,8 +409,24 @@ def probe(url, raw=False):
 # which amendments are in it, which is the join between an amendment and the
 # version that carries it -- and it comes free with the text.
 
+# THE FIRST HEADING THIS MATCHES IS TAKEN AS THE VERSION, so a heading shape
+# it does not accept is not a missing version -- it is the wrong one. A bill
+# with a fiscal note prints "SB 290-FN- FISCAL NOTE" as a section heading
+# partway down, and that line matches. So SB139 and SB290 were published as
+# "FN FISCAL NOTE" and "FISCAL NOTE": the text was the introduced bill both
+# times, and only the label was wrong, which is the worse way round -- a
+# reader is told they are looking at a fiscal note while reading the bill.
+#
+# Their own headings are printed "SB - AS INTRODUCED", with no number at all,
+# and "SB 139 -FN - AS INTRODUCED", with a space before the -FN. Hence \d*
+# rather than \d+, and the optional " -FN" group. Measured over all 2,234
+# cached pages of the term: 2,232 read exactly as before, these 2 change, and
+# no page lost a version it used to have. It agrees with the record -- the
+# database's only printing of either bill is "Introduced", and no bill of this
+# term has a "Fiscal Note" printing at all.
 VERSION_RE = re.compile(
-    r"^\s*(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR)\s*\d+[\w-]*\s*[-\u2013]\s*(?P<v>[A-Z][A-Z \u2019'/]{3,40})\s*$",
+    r"^\s*(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR)\s*\d*[\w-]*(?:\s+-[A-Z]+)?"
+    r"\s*[-\u2013]\s*(?P<v>[A-Z][A-Z \u2019'/]{3,40})\s*$",
     re.M)
 # "5Mar2026... 1054h", "04/16/2026 1384s"
 STAMP_RE = re.compile(
