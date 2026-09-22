@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.22
+# GRANITE_VERSION: 2026-09-04.23
 """
 The text of each bill, as text rather than as a link to a PDF.
 
@@ -278,9 +278,32 @@ CHROME = re.compile(
     r"my gcnh portal|chaptered final version|documents & media|other resources",
     re.I)
 
+# A NAVIGATION LABEL IS SHORT; A SECTION OF STATUTE IS NOT. These phrases are
+# matched against a whole line, and the body of a bill is rendered a paragraph
+# to a line, so a paragraph that happens to contain one of them was deleted
+# entire. "other resources" is the one that bit: it is a menu heading on the
+# General Court's site and it is also ordinary English. Across the 2,234
+# cached pages of this term it cut 9 lines, every one of them the bill's own
+# words and not one of them furniture -- 682 words of statute, on HB2,
+# HB1606, SB127, SB193 and SB551. HB1606 defines "real property" as "land,
+# buildings, crops, or other resources still attached to ... the land"; the
+# published page then used the term 26 times and never defined it.
+#
+# The other ten phrases matched nothing at all on those pages, so the list was
+# doing no work on a real bill and all of its work on the bill's text. It is
+# kept rather than trimmed, because it still has to recognise an error page
+# that came back 200, and because the next phrase to collide with a statute
+# would be a different bug with the same cause -- "redistricting information"
+# in an election bill, say. The length test is what stops that whole class:
+# the furniture is a menu item of two to five words, and the shortest line
+# this ever wrongly cut was 20.
+CHROME_MAX_WORDS = 10
+
 
 def strip_chrome(text):
-    return "\n".join(ln for ln in text.splitlines() if not CHROME.search(ln))
+    return "\n".join(
+        ln for ln in text.splitlines()
+        if not (CHROME.search(ln) and len(ln.split()) <= CHROME_MAX_WORDS))
 
 
 def url_for(text_pdf, bill, year):

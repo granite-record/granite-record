@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.229
+# GRANITE_VERSION: 2026-09-04.230
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -1148,6 +1148,66 @@ def _front_matter_off():
     assert at.front_matter_off(modern).startswith("ANALYSIS"), (
         "the rule-above-the-label path stopped working")
     return "ok", "the header comes off with or without a rule above the label"
+
+
+@check("status", "stripping the page furniture never deletes a line of the bill")
+def _chrome_spares_statute():
+    """682 words of statute were deleted from five bills by a menu heading.
+
+    fetch_bill_text.CHROME lists the General Court's page furniture so a bill
+    can be told apart from a navigation page, and strip_chrome drops any LINE
+    that contains one of those phrases. The body of a bill is rendered a
+    paragraph to a line, so a paragraph containing one of them went entirely.
+
+    "other resources" is the phrase that did it -- a menu heading on their
+    site, and also ordinary English. Across the 2,234 cached pages of the
+    current term it cut 9 lines and every one was the bill's own words: HB2,
+    HB1606, SB127, SB193 and SB551, 682 words in all. HB1606 lost the
+    definition of "real property", and the published page then used the term
+    26 times without ever defining it. The other ten phrases matched nothing
+    on any of those pages, so the list was doing none of its intended work and
+    all of this.
+
+    The fix is a length test rather than a shorter list, because the bug is
+    the class and not the phrase: "redistricting information" sitting in an
+    election bill would be the same fault again. Furniture is a menu item of
+    two to five words; the shortest line this wrongly cut was 20.
+
+    No data on disk and no network: the samples below are the real sentences,
+    so this runs under --code.
+    """
+    f = imp("fetch_bill_text")
+    if f is None:
+        return "skip", "fetch_bill_text will not import"
+    statute = (
+        'II. "Real property" means property consisting of land, buildings, '
+        "crops, or other resources still attached to or within the land or "
+        "improvements or fixtures permanently attached to the land or a "
+        "structure on it."
+    )
+    kept = f.strip_chrome(statute)
+    assert statute in kept, (
+        "strip_chrome deleted a section of statute because it contains the "
+        "words 'other resources'. That is how HB1606 came to use the term "
+        "'real property' 26 times and never define it")
+
+    # Every phrase in the list, in a sentence long enough to be the bill.
+    for phrase in ("other resources", "redistricting information",
+                   "quick links", "helpful links", "contact a senator",
+                   "documents & media", "chaptered final version"):
+        line = ("IV. The department shall publish a report describing the "
+                f"{phrase} which it maintains for the several towns and the "
+                "manner in which each may be obtained upon written request.")
+        assert line in f.strip_chrome(line), (
+            f"a section of statute containing {phrase!r} was deleted whole")
+
+    # And the furniture it is actually for still goes.
+    for junk in ("Quick Links", "Other Resources", "Skip to main content",
+                 "My GCNH Portal", "Documents & Media"):
+        assert f.strip_chrome(junk) == "", (
+            f"{junk!r} survived: the page furniture is no longer removed, so "
+            "a navigation page could be mistaken for a bill")
+    return "ok", "9 lines, 682 words, five bills -- and the furniture still goes"
 
 
 @check("frontend", "the Bill Text tab asks for a version index only where one exists")
