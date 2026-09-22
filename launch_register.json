@@ -59,12 +59,12 @@
     },
     {
       "found": "2026-09-20",
-      "what": "24 current-term bills where bill_text.json's version disagrees with the database's newest printing, two of them showing a fiscal note where the database holds the introduced bill.",
+      "what": "24 current-term bills where bill_text.json's version disagrees with the database's newest printing, two of them showing a fiscal note where the database holds the introduced bill. MEASURED 22 September, and 22 of the 24 were not an error at all. The comparison behind the number ranked a bill's printings by DocumentVersion.SortOrder, which is a stage order and not a chronological one -- 'As Amended by the House (2nd committee)' is 50 and 'As Amended by the Senate' is 30, though a House bill reaches the Senate later -- and it set the document's own printed heading against the database's separate vocabulary, which spells the same thing differently. Compared on the text instead, all 24 publish the right words: 23 are word-identical to the newest printing once the document heading is discounted and one differs by 13 words. The two fiscal-note ones were real and are fixed -- the text was the introduced bill both times and only the label was wrong, which is the worse way round.",
       "where": "a bill's Bill Text tab",
       "reported_by": "the Bill Text design panel",
-      "status": "open",
-      "fixed_by": "",
-      "guard": "none"
+      "status": "fixed",
+      "fixed_by": "3d9eb33",
+      "guard": "a bill's version is read from its own heading, not its fiscal note"
     },
     {
       "found": "2026-09-20",
@@ -92,6 +92,15 @@
       "status": "source_gap",
       "fixed_by": "",
       "guard": "none"
+    },
+    {
+      "found": "2026-09-22",
+      "what": "682 words of statute were deleted outright from five bills -- HB2, HB1606, SB127, SB193 and SB551. fetch_bill_text lists the General Court's page furniture so a bill can be told apart from a menu, and strip_chrome dropped any LINE containing one of those phrases; a bill's body is rendered a paragraph to a line. 'other resources' is a menu heading on their site and also ordinary English, and it cut 9 lines across the 2,234 cached pages of this term, every one of them the bill's own words and not one of them furniture. HB1606 lost the definition of 'real property', and the published page then used the term 26 times without ever defining it.",
+      "where": "a bill's Bill Text tab -- the text of the bill itself",
+      "reported_by": "found while measuring the registered 24-bill error, which turned out not to be one",
+      "status": "fixed",
+      "fixed_by": "7ff439a",
+      "guard": "stripping the page furniture never deletes a line of the bill"
     }
   ],
   "features": [
