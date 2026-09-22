@@ -648,16 +648,6 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Regular Member",
-    "office": "Planning Board",
-    "read_on": "2026-09-20T21:48:59-0400",
-    "role": null,
-    "source_url": "https://ashland.nh.gov/pages/boards-committees",
-    "status": "published",
-    "term_expires": "2026"
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
     "name": "Ronald Beard",
     "office": "Planning Board",
     "read_on": "2026-09-20T21:48:59-0400",
@@ -700,7 +690,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 9,
+    "found": 8,
     "link_text": "pages boards committees",
     "read_on": "2026-09-20T21:48:59-0400",
     "says_elected": false,
@@ -4751,16 +4741,6 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Annual Report",
-    "office": "Town Clerk/Tax Collector",
-    "read_on": "2026-09-20T22:08:25-0400",
-    "role": "Clerk",
-    "source_url": "http://grotonnh.org/Select%20Board%20Meetings/history.htm",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
     "name": "Hilary Coles",
     "office": "Town Clerk/Tax Collector",
     "read_on": "2026-09-20T22:08:40-0400",
@@ -4783,7 +4763,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 1,
+    "found": 0,
     "link_text": "Select Board",
     "read_on": "2026-09-20T22:08:25-0400",
     "says_elected": false,
@@ -4813,7 +4793,7 @@
    },
    {
     "agent": "project",
-    "found": 3,
+    "found": 2,
     "link_text": "Town Clerk / Tax Collector",
     "read_on": "2026-09-20T22:08:40-0400",
     "says_elected": false,
@@ -5630,16 +5610,6 @@
     "source_url": "https://www.hooksett.org/government/boards_committees/index.php",
     "status": "published",
     "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "New Page",
-    "office": "Town Council",
-    "read_on": "2026-09-20T22:16:15-0400",
-    "role": null,
-    "source_url": "https://www.hooksett.org/government/index.php",
-    "status": "published",
-    "term_expires": null
    }
   ],
   "pages": [
@@ -5665,7 +5635,7 @@
    },
    {
     "agent": "project",
-    "found": 1,
+    "found": 0,
     "link_text": "Government",
     "read_on": "2026-09-20T22:16:15-0400",
     "says_elected": false,
@@ -7054,16 +7024,6 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Annual Budgets",
-    "office": "Board of Aldermen",
-    "read_on": "2026-09-20T22:23:25-0400",
-    "role": null,
-    "source_url": "https://www.manchesternh.gov/Government",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
     "name": "Christine Fajardo",
     "office": "Board of Aldermen",
     "read_on": "2026-09-20T22:23:20-0400",
@@ -7282,7 +7242,7 @@
    },
    {
     "agent": "project",
-    "found": 1,
+    "found": 0,
     "link_text": "Government",
     "read_on": "2026-09-20T22:23:25-0400",
     "says_elected": false,
@@ -10128,16 +10088,6 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "New Business",
-    "office": "Treasurer",
-    "read_on": "2026-09-20T22:36:15-0400",
-    "role": null,
-    "source_url": "https://seabrooknh.info/boards-and-committees/selectmen/",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
     "name": "Upcoming Events",
     "office": "Zoning Board of Adjustment",
     "read_on": "2026-09-20T22:36:26-0400",
@@ -10156,7 +10106,7 @@
    },
    {
     "agent": "project",
-    "found": 3,
+    "found": 2,
     "link_text": "Board of Selectmen",
     "read_on": "2026-09-20T22:36:15-0400",
     "says_elected": false,
@@ -11982,26 +11932,6 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Public Health Division",
-    "office": "Planning Board",
-    "read_on": "2026-09-20T22:47:09-0400",
-    "role": null,
-    "source_url": "https://windhamnh.gov/27/Departments",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Residential Fences",
-    "office": "Planning Board",
-    "read_on": "2026-09-20T22:47:09-0400",
-    "role": null,
-    "source_url": "https://windhamnh.gov/27/Departments",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
     "name": "Current Tax Rate",
     "office": "Tax Collector",
     "read_on": "2026-09-20T22:47:09-0400",
@@ -12104,7 +12034,7 @@
    },
    {
     "agent": "project",
-    "found": 9,
+    "found": 7,
     "link_text": "Departments",
     "read_on": "2026-09-20T22:47:09-0400",
     "says_elected": false,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.231
+# GRANITE_VERSION: 2026-09-04.232
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10934,6 +10934,21 @@ def _town_officials_sane():
                 bad.append(f"{key}: {r.get('name')!r} has status "
                            f"{r.get('status')!r}, which is not one of the three")
             counts[r.get("office")] += 1
+            # A HEADING PUBLISHED AS A PERSON. The person, reviewing a sample
+            # of these records, marked "New Business" wrong: it had been
+            # published as Seabrook's Treasurer, off a selectmen page that
+            # carries a meeting agenda. The screen that followed found
+            # "Annual Report" as Groton's clerk, "New Page" as Hooksett's
+            # council, and Bedford's breadcrumbs as its Town Clerk.
+            #
+            # This list is deliberately NOT the parser's own: a check built
+            # from the parser's vocabulary can only agree with the parser.
+            name = (r.get("name") or "").lower()
+            if re.search(r"\b(business|report|page|officials?|agenda|minutes|"
+                         r"meeting|list|pledge|committee|department|board|"
+                         r"council|town|city)\b", name):
+                bad.append(f"{key}: {r.get('name')!r} is published as a "
+                           f"person holding {r.get('office')}")
         for office, c in counts.items():
             cap = m.SEATS.get(office, m.SEAT_MAX)
             if c > cap:

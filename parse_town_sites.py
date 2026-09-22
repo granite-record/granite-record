@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.4
+# GRANITE_VERSION: 2026-09-20.5
 """
 Who a New Hampshire town says holds its offices, out of the town's own pages.
 
@@ -204,6 +204,15 @@ NOT_A_NAME = re.compile(
     # read as a heading the three that follow were filed as the people
     # holding it. Nobody is called Elected Officials List.
     r"officials?|elected|lists?|directory|roster|staff|overview|"
+    # Agenda items and page furniture. The person, reviewing a sample,
+    # marked "New Business" wrong -- published as SEABROOK'S TREASURER,
+    # because the town's selectmen page carries a meeting agenda under
+    # the roster and two capitalised words is the shape of a name. The
+    # screen that followed found "Annual Report" as Groton's Town
+    # Clerk/Tax Collector and "New Page" as Hooksett's Town Council.
+    r"business|reports?|pledge|allegiance|approvals?|comments?|"
+    r"hearings?|adjourn\w*|correspondence|non-?public|announcements?|"
+    r"motions?|discussions?|updates?|items?|"
     r"commissioners?|council(?:l)?ors?|alderm[ae]n|selectm[ae]n|"
     r"treasurers?|auditors?|constables?|assistants?|directors?|"
     r"read more|click|home|search|menu|login|copyright|rights reserved)\b",
@@ -306,6 +315,11 @@ def looks_like_name(s):
     if not (3 < len(s) <= 46) or NOT_A_NAME.search(s):
         return False
     if office_of(s) or ROLE.search(s):
+        return False
+    # No person's first name is New, Old, Other, Annual or Public -- and each
+    # of those opens a heading this project has published as a person.
+    if s.split()[0].lower() in {"new", "old", "other", "annual", "public",
+                                "unfinished", "general", "regular", "consent"}:
         return False
     return bool(NAME.match(s))
 
