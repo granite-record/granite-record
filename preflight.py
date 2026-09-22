@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.232
+# GRANITE_VERSION: 2026-09-04.233
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10889,6 +10889,69 @@ def _floterials_overlay():
     flot = sum(1 for d in districts if d["floterial"])
     return "ok", (f"{len(districts) - flot} base and {flot} floterial "
                   f"districts, every overlay over districts that exist")
+
+
+@check("files", "every county has its eight elected officers, and none carries a home address")
+def _county_officers_sane():
+    """RSA 655:9 gives each county a sheriff, a county attorney, a treasurer,
+    a register of deeds, a register of probate and three commissioners by
+    district. Eighty seats, from the Secretary of State's own roster.
+
+    Two things went wrong while the parser was being written, and both are
+    the kind that pass silently:
+
+    Carroll and Sullivan write the commissioner heading "County Commissioner,
+    1st District" where the other eight write "District 1". Unrecognised, it
+    left the Register of Probate heading in force, and each of those counties
+    came out with four registers of probate and no commissioners.
+
+    And the roster prints each candidate's street address. The first run read
+    the address column's edge from the word "Address" instead of the
+    "Candidate" before it, so street numbers landed in the domicile and
+    "Conway 643 Stark Road" was about to be published as a town. A home
+    address is the one thing that file promises never to carry.
+
+    Both are properties of the output, so they are checked here whatever the
+    parser becomes.
+    """
+    p = Path("county_officials.json")
+    if not p.exists():
+        return "skip", "no county_officials.json here"
+    recs = json.loads(p.read_text(encoding="utf-8"))["officers"]
+    import collections as _c
+    want = {"Sheriff": 1, "County Attorney": 1, "County Treasurer": 1,
+            "Register of Deeds": 1, "Register of Probate": 1,
+            "County Commissioner": 3}
+    bad = []
+    seats = _c.Counter((r["county"], r["office"]) for r in recs)
+    counties = sorted({r["county"] for r in recs})
+    if len(counties) != 10:
+        bad.append(f"{len(counties)} counties, not ten")
+    for c in counties:
+        for office, n in want.items():
+            if seats[(c, office)] != n:
+                bad.append(f"{c} has {seats[(c, office)]} {office}, not {n}")
+        d = sorted(r.get("district") for r in recs
+                   if r["county"] == c and r["office"] == "County Commissioner")
+        if d != ["1", "2", "3"]:
+            bad.append(f"{c}'s commissioners sit for districts {d}, not 1-3")
+    for r in recs:
+        for f in ("name", "office", "county", "source_url", "read_on",
+                  "method", "status"):
+            if not r.get(f):
+                bad.append(f"{r.get('name')!r} has no {f}")
+        # Independent of the parser's own guard: a town has no digits and no
+        # street in it.
+        if re.search(r"\d|\bP\.?O\.?\b|\bBox\b|\b(Rd|Road|St|Street|Ave|"
+                     r"Avenue|Dr|Drive|Ln|Lane|Way|Hwy)\b", r.get("domicile", "")):
+            bad.append(f"{r['name']!r}'s domicile {r['domicile']!r} carries "
+                       f"an address")
+        for k in r:
+            if k.lower() in ("address", "street", "zip", "city_state_zip"):
+                bad.append(f"{r['name']!r} carries a field called {k!r}")
+    assert not bad, "\n  ".join(bad[:20])
+    return "ok", (f"{len(recs)} officers across {len(counties)} counties, every "
+                  f"seat filled once and no address carried")
 
 
 @check("files", "no town official is published without a source or beyond a board's seats")
