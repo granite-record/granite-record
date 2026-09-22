@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-20.2
+# GRANITE_VERSION: 2026-09-20.3
 """
 Who a New Hampshire town says holds its offices, out of the town's own pages.
 
@@ -209,6 +209,12 @@ NOT_A_NAME = re.compile(
 NOISE_TEXT = re.compile(
     r"\b(minutes?|agendas?|newsletters?|meetings?|sessions?|notices?|"
     r"calendars?|archives?|packets?|videos?|recordings?|schedules?|dates?|"
+    # A "Government Links" page is a list of OTHER governments. Holderness's
+    # names the White House, both US Senators, the Governor and three state
+    # representatives -- all real people, none of them Holderness officials.
+    # Nothing was published from it only because no municipal office matched;
+    # that is too narrow a margin to leave to chance.
+    r"links?|"
     r"live\s*stream(ed)?)\b", re.I)
 
 ELECTED_PAGE = re.compile(r"\belected\s+official", re.I)
@@ -381,12 +387,57 @@ def from_tables(text):
     return out
 
 
+# A CivicPlus page puts the term on its own line under each person, and
+# heads the roster with a bare "Members" after a paragraph about the body.
+# Both look like the end of a run and neither is.
+TERM_LINE = re.compile(r"^\s*(term|appointed|elected)\s*(expire[sd]?|ends?|"
+                       r"through|until)?\s*[:\-]?\s*(20\d\d|\d{1,2}/\d{1,2}/\d{2,4})",
+                       re.I)
+MEMBERS_LINE = re.compile(
+    r"^\s*(board\s+|committee\s+|commission\s+|current\s+|elected\s+)?"
+    r"members(hip)?\s*[:\-]?\s*$", re.I)
+
+
 def from_headings(lines):
-    """(office, person) where an office heads a run of people."""
+    """(office, person) where an office heads a run of people.
+
+    ATKINSON IS THE SHAPE THIS HAD TO LEARN. CivicPlus writes
+
+        Board of Selectmen          <- the heading
+        Overview
+        The Board of Selectmen is the executive, managerial ...
+        Meetings / 6 pm / Town Hall / 19 Academy Avenue
+        Members                     <- and the roster starts here
+        Wendy Barker, Chair
+        Term Expires: 2027
+        Peter Torosian, Vice-Chair
+        Term Expires: 2028
+
+    Under a rule that ends a run at the first line which is neither a person
+    nor an office, the heading died at "Overview" and every one of those
+    people was dropped. So two lines are no longer treated as the end of
+    anything: a bare "Members" REOPENS the office last seen, and a "Term
+    Expires: 2027" belongs to the person above it and carries their term.
+
+    Neither weakens the guard that matters. A run still cannot cross a line
+    it cannot account for, and reopening only ever restores an office the
+    page has already named.
+    """
     out = []
     office = None
+    last_office = None
     run = 0
     for line in lines:
+        if office is None and last_office and MEMBERS_LINE.match(line):
+            office, run = last_office, 0
+            continue
+        if out and TERM_LINE.match(line):
+            t = TERM.search(line)
+            if t and not out[-1][1].get("term_expires"):
+                out[-1][1]["term_expires"] = t.group(1)
+            if APPOINTED.search(line):
+                out[-1][1]["appointed"] = True
+            continue
         # A line that is a name AND an office is a person, not a heading, and
         # it is checked first because it looks exactly like a heading.
         pair = name_and_office(line)
@@ -397,7 +448,7 @@ def from_headings(lines):
         o = office_of(line)
         # A heading is an office named by a SHORT line that is not a person.
         if o and not looks_like_name(re.split(r"[,|]", line)[0].strip()):
-            office, run = o, 0
+            office, last_office, run = o, o, 0
             continue
         if office is None:
             continue
