@@ -213,6 +213,11 @@ NOT_A_NAME = re.compile(
     r"business|reports?|pledge|allegiance|approvals?|comments?|"
     r"hearings?|adjourn\w*|correspondence|non-?public|announcements?|"
     r"motions?|discussions?|updates?|items?|"
+    # And "Council" itself, which the office-noun list above only had as
+    # councillor. "Communications Council" was published as Loudon's
+    # Treasurer, and it was preflight's independent word list that caught
+    # it -- the parser's own vocabulary had nothing to say about it.
+    r"councils?|societ(?:y|ies)|associations?|foundations?|"
     r"commissioners?|council(?:l)?ors?|alderm[ae]n|selectm[ae]n|"
     r"treasurers?|auditors?|constables?|assistants?|directors?|"
     r"read more|click|home|search|menu|login|copyright|rights reserved)\b",

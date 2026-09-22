@@ -2461,16 +2461,6 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Historical Society",
-    "office": "Town Clerk/Tax Collector",
-    "read_on": "2026-09-20T21:56:15-0400",
-    "role": null,
-    "source_url": "https://charlestown-nh.gov/pages/city-council",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
     "name": "Useful Websites",
     "office": "Town Clerk/Tax Collector",
     "read_on": "2026-09-20T21:56:15-0400",
@@ -2483,7 +2473,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 2,
+    "found": 1,
     "link_text": "pages city council",
     "read_on": "2026-09-20T21:56:15-0400",
     "says_elected": false,
@@ -2493,7 +2483,7 @@
    },
    {
     "agent": "project",
-    "found": 4,
+    "found": 3,
     "link_text": "pages boards and commissions",
     "read_on": "2026-09-20T21:56:20-0400",
     "says_elected": false,
@@ -2503,7 +2493,7 @@
    },
    {
     "agent": "project",
-    "found": 5,
+    "found": 4,
     "link_text": "pages departments edited by irvin",
     "read_on": "2026-09-20T21:56:25-0400",
     "says_elected": false,
@@ -2513,7 +2503,7 @@
    },
    {
     "agent": "project",
-    "found": 2,
+    "found": 1,
     "link_text": "pages town clerk tax collector",
     "read_on": "2026-09-20T21:56:30-0400",
     "says_elected": false,
@@ -5590,28 +5580,7 @@
  },
  "hooksett": {
   "built": "2026-09-22",
-  "officials": [
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Historical Society",
-    "office": "Town Council",
-    "read_on": "2026-09-20T22:16:10-0400",
-    "role": null,
-    "source_url": "https://www.hooksett.org/government/boards_committees/index.php",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Land Use Subcommittee",
-    "office": "Town Council",
-    "read_on": "2026-09-20T22:16:10-0400",
-    "role": null,
-    "source_url": "https://www.hooksett.org/government/boards_committees/index.php",
-    "status": "published",
-    "term_expires": null
-   }
-  ],
+  "officials": [],
   "pages": [
    {
     "agent": "project",
@@ -5625,7 +5594,7 @@
    },
    {
     "agent": "project",
-    "found": 2,
+    "found": 0,
     "link_text": "Boards & Committees",
     "read_on": "2026-09-20T22:16:10-0400",
     "says_elected": false,
@@ -6568,16 +6537,6 @@
     "source_url": "https://www.loudonnh.org/1219/Board-of-Selectmen",
     "status": "published",
     "term_expires": "2029"
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Communications Council",
-    "office": "Treasurer",
-    "read_on": "2026-09-20T22:22:06-0400",
-    "role": null,
-    "source_url": "https://www.loudonnh.org/directory",
-    "status": "published",
-    "term_expires": null
    }
   ],
   "pages": [
@@ -6603,7 +6562,7 @@
    },
    {
     "agent": "project",
-    "found": 2,
+    "found": 0,
     "link_text": "Departments & Hours",
     "read_on": "2026-09-20T22:22:06-0400",
     "says_elected": false,
