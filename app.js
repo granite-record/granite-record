@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.108
+// GRANITE_VERSION: 2026-09-07.109
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -1542,13 +1542,12 @@ function renderVotes(b,d){
     }else if(vk==="DV"&&rc.yeas!=null){
       // A division vote is counted but anonymous. Chart the split; there is no
       // member list to show, and saying so is the point.
-      body=simpleDonut(rc,b.id,i)+`<p class="note" style="margin-top:11px">A division vote
-        records the count but not who voted which way, so there is no list of
-        members for this one.</p>`;
+      body=simpleDonut(rc,b.id,i)+`<p class="note" style="margin-top:11px">Decided on a
+        division vote. There is a total count of how many legislators voted for
+        each side, but no record of how individual members voted.</p>`;
     }else{
-      body=`<p class="note" style="margin-top:6px">Decided on a voice vote. Only
-        which side sounded louder was recorded — there is no count and no record
-        of how any member voted.</p>`;
+      body=`<p class="note" style="margin-top:6px">Decided on a voice vote. There is
+        no count and no record of how individual members voted.</p>`;
     }
     return `<section class="rc">
       <div class="rchead"><h2 class="rcq">${esc(rc.question)}${

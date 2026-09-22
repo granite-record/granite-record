@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.162 */
+/* GRANITE_VERSION: 2026-09-07.163 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -1185,7 +1185,18 @@ box-shadow:0 0 0 3px var(--pine-soft)}
    label is --ink-2 now, so there is nothing left for them to change. */
 /* A card head is a button, and the rail inside it must not look clickable. */
 .chead .rail{pointer-events:none}
-.cstat{margin-left:auto;font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-pill);white-space:nowrap}
+.cstat{margin-left:auto;font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-in);white-space:nowrap}
+/* ONE CHIP SHAPE ACROSS THE SITE. A person is drawn as .mchip -- a 3px
+   radius, a 1px edge, and a 3px bar down the left in the colour of the thing
+   it names. A bill's status and a vote's result were pills with no border at
+   all: a tint and nothing else, which in dark mode is #43211F on a #1A1C1E
+   card and recedes into it. The complaint was that they blend into the
+   background and do not match the legislator chips.
+   THE BAR IS currentColor, so none of the seven variant rules below needs to
+   change: each already sets `color` to its own status colour and `background`
+   to that colour's tint, so the edge follows the meaning for free and a new
+   status gets its bar without anyone remembering to add one. */
+.cstat,.rcres{border:1px solid var(--edge);border-left:3px solid currentColor}
 /* UNLESS THERE IS NO ROOM FOR IT. nowrap with no ceiling put "One chamber
    did not concur; a committee of conference was asked for" in a 494px pill
    inside a 272px row on a 360px screen, so the longest statuses were cut
@@ -1280,7 +1291,7 @@ a.cite{color:var(--pine)}
    member lists inside an expansion something to sit under. The type is
    unchanged -- the level is the outline, not the size. */
 .rcq{font-size:var(--t-body);font-weight:600;margin:0}.rcd{font-size:var(--t-ui);color:var(--ink-2)}
-.rcres{margin-left:auto;font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-pill)}
+.rcres{margin-left:auto;font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-in)}
 .pass{background:var(--st-law-bg);color:var(--st-law)}.fail{background:var(--st-done-bg);color:var(--st-done)}
 .votewrap{display:flex;gap:var(--sp-7);flex-wrap:wrap;align-items:flex-start;margin-top:var(--sp-4)}
 .donut circle{cursor:pointer}.donut circle:hover{opacity:.8}
@@ -1417,6 +1428,18 @@ letter-spacing:.04em;text-transform:uppercase}
 /* A note is a box, so the box is the measure and its text fills it. */
 .note{font-size:var(--t-ui);color:var(--ink-2);background:var(--paper);border-left:3px solid var(--rule-2);
 padding:var(--sp-4) var(--sp-5);margin:0 0 var(--sp-5);line-height:1.55;max-width:var(--measure)}
+/* EXCEPT INSIDE A VOTE, where nothing sits beside it. --measure is 560px and
+   it is right where it was written for: a bill's analysis runs beside a 488px
+   facts panel and the two make up the pane between them. A vote card is the
+   full pane -- 903px at this width, 1,098px at 1440 -- and the note that says
+   why there is no member list was stopping at 560 with four tenths of the
+   card empty to the right of it, directly under a legend and a tally that
+   both run the whole way.
+   SCOPED TO .rc, not lifted off .note, for the reason the committee-page fix
+   records: .note is shared with the legislator page, the calendar and every
+   other pane, none of which was asked about. Asked for in these terms -- the
+   descriptions for division and voice votes do not fill the space of the tab. */
+.rc .note{max-width:none}
 .stn{position:relative;padding:0 0 var(--sp-6) var(--sp-8)}
 .stn:before{content:"";position:absolute;left:4px;top:6px;bottom:-4px;width:1px;background:var(--rule-2)}
 .stn:last-child:before{display:none}
