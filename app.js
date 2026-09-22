@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.111
+// GRANITE_VERSION: 2026-09-07.112
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -2955,7 +2955,7 @@ function cardHtml(b,focus){
       <button class="chead" aria-expanded="${open}">
         <div class="crow"><span class="cnum">${esc(b.n)} (${esc(String(y))})</span>
         <span class="cyear">${b.carried
-          ?` <span class="chip" title="Filed one year, acted on in the next — retained in committee or sent to interim study">carried over</span>`:""}</span>
+          ?` <span class="chip" title="The docket shows action in more than one year of the term — usually a bill the committee retained in the first year and reported in the second">carried over</span>`:""}</span>
         <span class="cstat ${KIND[b.kind]||""}">${esc(b.status||"")}</span></div>
         <div class="ctitle">${esc(b.title)}</div>
         <div class="cmeta">${cmeta(b)}</div>

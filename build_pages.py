@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.113
+# GRANITE_VERSION: 2026-09-04.114
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -865,11 +865,14 @@ hearing is where the substantive argument actually happens.</p>
 <p>The General Court sits in two-year terms beginning in odd years. Bill numbers are
 unique across the whole term, so there is only ever one HB 84 in 2025–2026 — but
 there will be another in the next term.</p>
-<p>Most bills are settled in the year they are filed. Some are not: a committee can
-retain a bill for further work, or the chamber can send it for interim study, and it
-is taken up again the following year. Those show as <b>carried over</b> here, and
-they are the ones people most often fail to find, because they search the current
-year for a bill filed in the previous one.</p>
+<p>Most bills are settled in the year they are filed. Two things happen to the rest,
+and they are not the same. <b>Retaining</b> is a first-year move: the committee keeps
+the bill, works on it over the autumn and reports it in the second year, so it
+survives and keeps its number. Those show as <b>carried over</b> here, and they are
+the ones people most often fail to find, because they search the current year for a
+bill filed in the previous one. <b>Interim study</b> is a second-year move and it
+ends the bill: the committee studies it that autumn, but the bill dies with the term
+and has to be filed again, with a new number, to come back.</p>
 
 <h2>The path a bill takes</h2>
 <ol class="reading">

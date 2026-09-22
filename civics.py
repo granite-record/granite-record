@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.18
+# GRANITE_VERSION: 2026-09-08.19
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -255,12 +255,14 @@ FLOW_TESTIFY = [
 
 BODY_GENERAL_COURT = """
 <p>The New Hampshire legislative branch is made up of 400 representatives and
-24 senators. It is the largest state legislature in the country, with an
-average of around one legislator for every 3,300 people.</p>
+24 senators. It is the largest state legislature in the country: the last
+redistricting drew House districts to <b>3,444 residents a seat</b>.</p>
 
-<p>Members are paid $100 a year plus mileage. Almost none have staff. Most
-have other jobs, and the session is arranged around that: the House meets on
-a small number of full days, and committee work fills the rest.</p>
+<p>Members are paid <b>$200 for the two-year term</b> plus mileage &mdash; one
+payment, in January of the first year, less withholding. It is often quoted as
+$100 a year, which is the same money divided by two. Almost none have staff.
+Most have other jobs, and the session is arranged around that: the House meets
+on a small number of full days, and committee work fills the rest.</p>
 
 <p>Four hundred is the number of seats, not the number of members. Seats fall
 vacant and are filled at by-elections through the term, so the working size of
@@ -271,13 +273,23 @@ the House moves.</p>
 numbers are unique across the whole term, so there is only ever one HB 84 in
 2025&ndash;2026, and there will be another in the next term. That is why every
 address on this site carries the year.</p>
-<p>Most bills are either passed or killed in the year they are filed. Some
-are not: a
-committee can retain a bill for further work, or the chamber can send it for
-interim study, and it is taken up again the following year. Those show as
+<p>Most bills are either passed or killed in the year they are filed. Two
+things can happen to the rest, and they are not the same thing, though they
+are easily confused because both leave a bill unfinished at the end of a
+year.</p>
+<p><b>Retaining</b> happens in the first year only. A committee keeps the bill
+for more work, studies it over the autumn, and reports it to the chamber in
+the second year, where it is voted on like any other bill. A retained bill
+survives into the second year and keeps its number. Those show as
 <b>carried over</b> here, and they are the ones people most often fail to
 find, because they search the current year for a bill filed in the previous
 one.</p>
+<p><b>Interim study</b> happens in the second year only, and it ends the
+bill. The committee studies it over the autumn and may report on it, but the
+bill itself dies with the term. To come back it has to be filed again in the
+next term, where it will be a new bill with a new number &mdash; so a bill
+sent to interim study is not waiting to be taken up again, whatever the name
+suggests.</p>
 
 <h2>Every bill gets a public hearing</h2>
 <p>This is unusual. In most states a committee chair can decline to hear a
@@ -320,8 +332,10 @@ went the way its committee recommended.</p>
 <tr><td><b>OTP</b></td><td>Ought to Pass</td></tr>
 <tr><td><b>OTP/A</b></td><td>Ought to Pass as Amended</td></tr>
 <tr><td><b>ITL</b></td><td>Inexpedient to Legislate &mdash; kill the bill</td></tr>
-<tr><td><b>IS</b></td><td>Interim Study</td></tr>
-<tr><td><b>Retain</b></td><td>Hold the bill in the committee</td></tr>
+<tr><td><b>IS</b></td><td>Interim Study &mdash; second year only, and the
+bill dies with the term</td></tr>
+<tr><td><b>Retain</b></td><td>Hold the bill in the committee &mdash; first
+year only, and it returns in the second</td></tr>
 </tbody></table>
 """ + SHOWS.format("""
 <p>The [[term]] term filed <b>[[bills]] bills</b>: [[hb]] House bills, [[sb]]
@@ -1093,12 +1107,20 @@ as though you already knew all of this."""
 
 
 BODY_TESTIFYING = """
+<p><b>Every legislative meeting and hearing is open to the public.</b> You may
+attend in person, and most are live streamed and archived, so you can watch
+one later. Where you may <i>speak</i> is narrower: a public hearing is the
+meeting for that, and it is the only one at which members of the public are
+heard. You may attend any other meeting &mdash; an executive session, a
+subcommittee, a work session &mdash; but not speak at it.</p>
 <p>A public hearing is the meeting at which a committee hears a bill before it
 votes on what to recommend. Every bill introduced gets one, and anyone may
 speak at it.</p>
-<p>You do not need to be invited, you do not need to live in the district, and
-you do not need to speak. Signing in for or against is itself part of the
-record, and it is counted.</p>
+<p>You do not need to be invited, and you do not need to speak: signing in for
+or against is itself part of the record, and it is counted. Nor does a bill
+have to affect you. Committees hear bills for the whole state rather than for
+a district, so anyone may speak on any bill, whoever they are and wherever
+they live.</p>
 
 <h2>How hearings are announced</h2>
 <p>A hearing is announced in the chamber's calendar, which is published weekly,
@@ -1112,11 +1134,17 @@ day the calendar is published and the day of the hearing.</p>
 <tr><td><b>SH</b></td><td><b>State House:</b> 107 North Main Street,
 Concord.</td></tr>
 <tr><td><b>LOB</b></td><td><b>Legislative Office Building:</b> 33 North State
-Street, Concord. No longer used for hearings, and named in older
-notices.</td></tr>
+Street, Concord. Out of use for hearings while it is being worked on, and
+named in older notices.</td></tr>
 <tr><td><b>GP</b></td><td><b>Granite Place:</b> 1 Granite Place, Concord, where
 House committee meetings are now held.</td></tr>
 </tbody></table>
+<p>The Legislative Office Building is expected back in service around the
+start of the next term, and Granite Place to drop out of the rota when it is.
+That is what is expected rather than what has been announced, and this site
+will say it has happened when the notices say so. <b>Go by the notice for the
+hearing you are attending</b> &mdash; it names the building and the room, and
+it is right about the day it was published whatever this page says.</p>
 <p>Both chambers live stream their standing committee hearings, so a hearing
 can be watched as it happens.</p>
 
@@ -1130,19 +1158,29 @@ are published after the hearing.</p>
 and published, and it closes at the end of the day of the hearing. If the bill
 passes one chamber and gets a hearing in the other, there is a second window on
 the same terms.</p>
+<p>The sign-ins are not part of the bill's docket, and no link on the docket
+leads to them. They are kept in the General Court's own sign-in records, which
+its website offers as a lookup of its own. How long that lookup keeps a
+hearing is not documented anywhere this site can point to.</p>
 
 <h2>The steps, in order</h2>
 """ + flow_diagram(FLOW_TESTIFY, "How to testify, in order", level=3) + """
 
 <h2>Speaking at the hearing</h2>
-<p>Speaking is a separate act from signing in, and you fill in a card to do it.
-The sponsor speaks first, then the committee generally hears anyone who has
-asked to. There is no fixed time limit. A chair will ask you to be brief when
-many people are waiting, and repeating what the last speaker said is the thing
-most likely to get you moved along.</p>
-<p>You do not have to be an expert. The most useful testimony is usually the
-most specific: what this bill would do to you, in your town, with a number or a
-date in it.</p>
+<p>Speaking is a separate act from signing in, and the two chambers ask for it
+differently. In the <b>House</b> you fill in a pink card. In the <b>Senate</b>
+there is one sign-in sheet for everything, with a column to tick if you want
+to speak.</p>
+<p>The sponsor speaks first, then the committee generally hears anyone who has
+asked to. <b>No rule sets a time limit, but chairs may set one and often do</b>
+&mdash; commonly the sponsor is given as long as they need and everyone else
+about three minutes. A chair will also ask you to be brief when many people are
+waiting, and repeating what the last speaker said is the thing most likely to
+get you moved along.</p>
+<p>You do not have to be an expert. The most useful testimony is the most
+concrete: what this bill would do to you, in your town, said in particulars
+rather than in general &mdash; the cost, the date it would take effect, the
+number of people it would reach, whatever the specific is in your case.</p>
 
 <h2>What happens after the hearing</h2>
 <p>The committee votes on what to recommend at a later meeting called an
@@ -1380,9 +1418,9 @@ PART = "How to take part"
 
 TOPICS = [
     topic("general-court", "The General Court", HOW,
-          "400 representatives and 24 senators, paid $100 a year. The "
-          "largest state legislature in the country, and the page everything "
-          "else here hangs off.",
+          "400 representatives and 24 senators, paid $200 for the two-year "
+          "term. The largest state legislature in the country, and the page "
+          "everything else here hangs off.",
           BODY_GENERAL_COURT,
           [SRC_CONSTITUTION, SRC_HOUSE_RULES, SRC_SENATE_RULES,
            SRC_FIND_MEMBER]),
