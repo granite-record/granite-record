@@ -11271,6 +11271,44 @@ def _town_one_clerk(B):
     return "ok", "one clerk per page, the Secretary of State's; two administrators kept"
 
 
+@check("build", "a town page's source note sends a reader to a website only when it links one",
+       needs=("build_town_pages",))
+def _town_note_website(B):
+    """NHDOT records "no website" for Clarksville and Ellsworth and "website
+    was discontinued" for Stewartstown, and their pages told a reader to
+    check the town's own website for changes. The note names the website
+    only when the page links one -- from NHDOT or from the Secretary of
+    State's list -- and otherwise points at the town offices row above it.
+    """
+    import html as _html
+    import shell as S
+    tmpl = S.template()
+    row = [{"position": "Board of Selectman", "name": "Pat Doe",
+            "phone": "", "email": ""}]
+    off = {"_offices": {
+               "clarksville": {"officials": row, "website": "no website",
+                               "phone": "603-246-7751"},
+               "lyme": {"officials": row, "website": "www.lymenh.gov"},
+               "hart": {"officials": row},
+               "bath": {"officials": row}},
+           "_local": {"hart": {"website": "https://www.hartnh.gov"},
+                      "bath": {}}}
+    want = {"Clarksville": ", so ask the town offices for changes.",
+            "Lyme": ", so check Lyme's own website for changes.",
+            "Hart": ", so check Hart's own website for changes.",
+            "Bath": "."}
+    bad = []
+    for town, end in want.items():
+        page = B.build(town, "0", {"0": {}}, {}, [], off, "https://x.test", tmpl)
+        m = re.search(r"It does not show anyone elected or appointed since "
+                      r"then([^<]*)</p>", page)
+        got = _html.unescape(m.group(1)) if m else None
+        if got != end:
+            bad.append(f"{town}: the note ends {got!r}, not {end!r}")
+    assert not bad, "\n  ".join(bad)
+    return "ok", "website named on 2 fixture pages that link one, not on 2 that do not"
+
+
 @check("files", "the officials directory reads as printed where a cell runs into the next")
 def _officials_restream():
     """Four rows of NHDOT's directory print text wider than its cell.

@@ -199,6 +199,21 @@ def address_names(email, name):
     the surname, then anything. A surname of five letters or more may be one
     letter out, because the directory's own typing sometimes is: "ahanson"
     for Amy Hansen, "cbariont" for Carleigh Beriont.
+
+    The surname may also open the address, or follow one stray letter:
+    Nashua writes "clemonsb@", Lincoln "dalybos@", Hancock "smith@", and the
+    directory prints "lflanagan@" for Ian Flanagan and "JAiello@" for Anthony
+    Aiello. Of the 315 addresses in the September 2025 directory that name
+    their own row, 28 are recognised only that way.
+
+    IT IS LOOSER THAN "A NAME". That form, with the one-letter allowance,
+    also reads an office address as a person's: "clerk@" names a John Clark,
+    "roadagent@" a Bob Road, and "jsmith@" a Mary Smith, and
+    names_someone_else() would then withhold the office's address beside
+    anybody else. In the September 2025 directory it finds exactly the nine
+    wrong-person addresses and nothing else; with a new edition, the count
+    main() prints is where a correct address withheld this way would first
+    show.
     """
     fl = _first_last(name)
     if not fl or "@" not in (email or ""):
@@ -299,9 +314,17 @@ NHDOT = ("the New Hampshire Department of Transportation's directory of city "
          "and town officials, dated September 2025")
 
 
-def town_officials_block(town, key, town_off):
+def town_officials_block(town, key, town_off, site_on_page=None):
     """The '<Town> Officials' section: NHDOT's rows, the town offices, the
-    note that says where they come from. "" if NHDOT names nobody here."""
+    note that says where they come from. "" if NHDOT names nobody here.
+
+    `site_on_page` says whether the page links the town's website anywhere;
+    left out, it is whether this section does. The note sends a reader to that
+    website only when there is one to go to: NHDOT records "no website" for
+    Clarksville and Ellsworth and "website was discontinued" for
+    Stewartstown, and "check Clarksville's own website" sent them looking for
+    a page that is not there.
+    """
     if not town_off.get("officials"):
         return ""
     body = [f'<h2 class="offsec">{E(town)} Officials</h2>']
@@ -326,14 +349,22 @@ def town_officials_block(town, key, town_off):
     offices_site = weblink(town_off.get("website"))
     if offices_site:
         how.append(offices_site)
-    if town_off.get("mailing") or how:
+    offices_row = bool(town_off.get("mailing") or how)
+    if offices_row:
         body.append('<ul class="offlist">'
                     + off_row(E(town_off.get("mailing") or town),
                               how, "Town offices")
                     + "</ul>")
+    if site_on_page is None:
+        site_on_page = bool(offices_site)
+    if site_on_page:
+        then = f", so check {E(town)}'s own website for changes"
+    elif offices_row:
+        then = ", so ask the town offices for changes"
+    else:
+        then = ""
     body.append(f'<p class="note">Source: {NHDOT}. It does not show anyone '
-                f'elected or appointed since then, so check {E(town)}\'s own '
-                'website for changes.</p>')
+                f'elected or appointed since then{then}.</p>')
     return "".join(body)
 
 
@@ -690,7 +721,11 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
     # selectboard, so these are looked up by the town's slug and not the
     # ward's -- a ward elects a councillor, and the town is what the board
     # governs.
-    section = town_officials_block(town, slug(town, "0"), town_off)
+    # The same test the How to Vote block's "Town website" row is drawn by.
+    section = town_officials_block(
+        town, slug(town, "0"), town_off,
+        site_on_page=bool(weblink(town_off.get("website"))
+                          or weblink(loc.get("website"))))
     body.append(section)
 
     body.append('<p class="srcs">Sources: NH General Court, Secretary of '
