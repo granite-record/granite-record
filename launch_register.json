@@ -128,6 +128,15 @@
       "status": "fixed",
       "fixed_by": "7da7c35",
       "guard": "none -- prose"
+    },
+    {
+      "found": "2026-09-22",
+      "what": "The testifying page's diagram still said a speaker \"fills in a card\" after 7da7c35 had corrected that same claim in the prose above it. Filling in a card is the House; the Senate has one sign-in sheet with a column to tick. So a commit that fixed a sentence left the picture beside it saying the old thing -- the class of miss worth recording, because a diagram is where a reader looks first and it was not searched when the prose was.",
+      "where": "learn/testifying.html, the FLOW_TESTIFY diagram",
+      "reported_by": "found while adding a diagram to another Learn page, by reading the existing ones for their format",
+      "status": "fixed",
+      "fixed_by": "3eccc2a",
+      "guard": "none -- prose again. The lesson is procedural: when a fact is corrected on a Learn page, grep civics.py's FLOW_ tables for it too, because they state the same facts in a different shape."
     }
   ],
   "features": [
@@ -209,7 +218,7 @@
     {
       "name": "Learn section",
       "draft": "unreviewed",
-      "note": "contents rail added; a legislator's factual corrections applied 22 September (see the errors below). The visual pass and the rest of the writing have not been done."
+      "note": "the legislator's factual corrections applied 22 September; the hub redesigned the same day so its two columns read downward, with three start cards; and administrative-rules given a diagram built from RSA 541-A. The other twelve pages have not had a visual pass and ten still have no diagram."
     },
     {
       "name": "About and Data pages",
