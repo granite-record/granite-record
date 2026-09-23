@@ -77,7 +77,18 @@ def words(iso):
 
 
 def load_titles(site):
-    """{bill_id: (title, year)} from the term indexes the site already built."""
+    """({(term, bill_id): title}, {(term, bill_id): year}) from the term
+    indexes the site already built.
+
+    KEYED ON THE TERM, BECAUSE A BILL NUMBER IS NOT A BILL. The numbers start
+    again every two years, and these were keyed on the number alone, so
+    whichever term's index was read last owned every number: 73,268 of the
+    79,508 bill links on the sitting pages went to a bill of another term, and
+    the title beside each was that other bill's. The House page for
+    9 March 2016 linked HB 1102 to the 2026 bill of that number and printed
+    its title. Every action on a sitting day comes from one term's record, and
+    carries that term, so the lookup is by the pair.
+    """
     titles, years = {}, {}
     idx = site / "idx"
     if idx.exists():
@@ -88,8 +99,9 @@ def load_titles(site):
                 continue
             for b in rows:
                 if b.get("id"):
-                    titles[b["id"]] = b.get("title") or ""
-                    years[b["id"]] = b.get("year")
+                    key = (b.get("term") or f.stem, b["id"])
+                    titles[key] = b.get("title") or ""
+                    years[key] = b.get("year")
     return titles, years
 
 
@@ -199,7 +211,10 @@ def runs(items):
     """
     out = []
     for it in items:
-        if out and out[-1][0] == it.bill:
+        # The same number from two terms is two bills: the House organization
+        # day of 1 December 2004 took up HR 1 of 2003-2004 and HR 1 of
+        # 2005-2006.
+        if out and out[-1][0] == it.bill and out[-1][1][0].term == it.term:
             out[-1][1].append(it)
         else:
             out.append((it.bill, [it]))
@@ -238,10 +253,25 @@ def speakers_for(attrs, bill, item, sole=False):
     return mine, rest
 
 
-def bill_href(bid, years, esc):
-    yr = years.get(bid)
-    return (f"bill/{yr}/{bid.lower()}.html" if yr
-            else f"/bills#{esc(bid)}")
+def bill_href(term, bid, years):
+    """The page of THIS term's bill of that number, or None.
+
+    None where the term's index does not hold the bill, and the caller then
+    prints the number without a link. A WRONG LINK IS WORSE THAN NO LINK: the
+    old fallback, /bills#HB1, opened whichever HB 1 the bill list shows first,
+    which is the current term's.
+    """
+    yr = years.get((term, bid))
+    return f"bill/{yr}/{bid.lower()}.html" if yr else None
+
+
+def bill_link(term, bid, text, years, esc, cls=""):
+    """The bill's number, linked to its own term's page where there is one."""
+    href = bill_href(term, bid, years)
+    c = f' class="{cls}"' if cls else ""
+    if href:
+        return f'<a{c} href="{esc(href)}">{esc(text)}</a>'
+    return f"<span{c}>{esc(text)}</span>"
 
 
 def opening_html(narrative, body, members, esc):
@@ -350,7 +380,7 @@ def consent_html(cons, removed, titles, years, esc):
     groups = {}
     for i in cons:
         groups.setdefault(short_outcome(i), []).append(i)
-    n = len({i.bill for i in cons})
+    n = len({(i.term, i.bill) for i in cons})
     note = (f'{n} bill{"" if n == 1 else "s"} the chamber disposed of '
             "together, in one motion and without debate.")
     if removed:
@@ -366,9 +396,8 @@ def consent_html(cons, removed, titles, years, esc):
                  f'&mdash; {len(items)}</h3><ul class="sconslist">')
         for i in items:
             num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", i.bill)
-            ti = titles.get(i.bill) or ""
-            H.append(f'<li><a class="cbn" href="{esc(bill_href(i.bill, years, esc))}">'
-                     f"{esc(num)}</a>"
+            ti = titles.get((i.term, i.bill)) or ""
+            H.append("<li>" + bill_link(i.term, i.bill, num, years, esc, "cbn")
                      + (f'<span class="cbt">{esc(ti)}</span>' if ti else "")
                      + "</li>")
         H.append("</ul></div>")
@@ -409,12 +438,13 @@ def render(day, narrative, titles, years, members, esc):
                  "came in: the journal page is cited on only a few of them, "
                  "so they are listed by bill.</p>")
     for bill, items in runs(seq_items):
-        ti = titles.get(bill) or ""
+        term = items[0].term
+        href = bill_href(term, bill, years)
+        ti = titles.get((term, bill)) or ""
         num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bill)
         leftover = set()
         H.append('<article class="sitem">')
-        H.append(f'<h3><a class="sbill" href="{esc(bill_href(bill, years, esc))}">'
-                 f'{esc(num)}</a>'
+        H.append("<h3>" + bill_link(term, bill, num, years, esc, "sbill")
                  + (f'<span class="sbt">{esc(ti)}</span>' if ti else "") + "</h3>")
 
         for it in items:
@@ -444,9 +474,9 @@ def render(day, narrative, titles, years, members, esc):
                 H.append(f'<div class="svote" data-vote="{i}">'
                          f'<p class="stally">A {kindw}: '
                          f'<b>{it.yeas}</b> yeas, <b>{it.nays}</b> nays.</p></div>')
-                if it.kind == "RC":
+                if it.kind == "RC" and href:
                     H.append('<p class="swho">Who voted which way is on '
-                             f'<a href="{esc(bill_href(bill, years, esc))}">'
+                             f'<a href="{esc(href)}">'
                              f"{esc(num)}'s own page</a>.</p>")
             elif it.kind == "VV":
                 H.append('<p class="stally">Taken on a voice vote, so no count '

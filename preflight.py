@@ -3958,6 +3958,98 @@ def _links_resolve():
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("session", "a sitting page links each bill to its own term's bill",
+       needs=("build_session_pages", "session_days", "shell"))
+def _session_bill_term(BSP, SD, shell):
+    """73,268 of the 79,508 bill links on the sitting pages went to a bill
+    of another term, and printed that other bill's title.
+
+    The titles and years were keyed on the bill number alone, and a number
+    starts again every two years, so whichever term's index was read last
+    owned it: the House page for 9 March 2016 linked HB 1102 to the 2026 bill
+    of that number and printed "increasing the research and development tax
+    credit cap", and 3,688 of 4,207 House "who voted which way" pointers
+    reached the wrong bill's roll calls. The fixture below holds the same
+    number in two terms, with different years and titles, on all three kinds
+    of link the page writes -- the bill's heading, its consent-calendar line
+    and the roll call pointer -- plus a bill its term's index does not hold,
+    which must get no link rather than someone else's.
+    """
+    root = Path(tempfile.mkdtemp())
+    try:
+        idx = root / "site" / "idx"
+        idx.mkdir(parents=True)
+        (idx / "2015-2016.json").write_text(json.dumps([
+            {"id": "HB1102", "term": "2015-2016", "year": 2016,
+             "title": "relative to the 2016 bill"},
+            {"id": "HB1300", "term": "2015-2016", "year": 2016,
+             "title": "relative to a consent item"},
+            {"id": "HR1", "term": "2015-2016", "year": 2015,
+             "title": "the older resolution"}]), encoding="utf-8")
+        (idx / "2025-2026.json").write_text(json.dumps([
+            {"id": "HB1102", "term": "2025-2026", "year": 2026,
+             "title": "increasing the research and development tax credit cap"},
+            {"id": "HB1300", "term": "2025-2026", "year": 2026,
+             "title": "a 2026 bill of the same number"},
+            {"id": "HR1", "term": "2025-2026", "year": 2025,
+             "title": "the newer resolution"},
+            {"id": "HB9999", "term": "2025-2026", "year": 2026,
+             "title": "held by the other term only"}]), encoding="utf-8")
+        titles, years = BSP.load_titles(root / "site")
+
+        def item(bill, term, seq, **e):
+            ev = {"type": "floor", "body": "H", "action": "Ought to Pass",
+                  "motion": "MA", "raw": "Ought to Pass: MA"}
+            ev.update(e)
+            return SD.Item(bill, term, ev, seq)
+
+        rc = item("HB1102", "2015-2016", 1, vote_kind="RC", yeas="200",
+                  nays="150", cite_page="10")
+        cons = item("HB1300", "2015-2016", 2, vote_kind="VV", cite_page="11")
+        cons.consent = True
+        gone = item("HB9999", "2015-2016", 3, vote_kind="VV", cite_page="12")
+        day = SD.Day("H", "2016-03-09", [rc, cons, gone])
+        blank = {"attributions": [], "debates": [], "unanimous_consent": []}
+        html, _ = BSP.render(day, blank, titles, years,
+                             BSP.Members(root / "site"), shell.E)
+        hrefs = re.findall(r'href="(bill/[^"]+)"', html)
+        assert hrefs, "the fixture day wrote no bill link at all"
+        wrong = [h for h in hrefs if not h.startswith("bill/2016/")]
+        assert not wrong, ("a 2016 sitting links to another term's bill: "
+                           + ", ".join(wrong))
+        assert hrefs.count("bill/2016/hb1102.html") == 2, (
+            "HB 1102's heading and its roll call pointer should both reach "
+            f"bill/2016/hb1102.html; the links are {hrefs}")
+        assert 'class="cbn" href="bill/2016/hb1300.html"' in html, (
+            "the consent-calendar line does not reach the 2016 HB 1300")
+        assert "relative to the 2016 bill" in html and \
+            "research and development" not in html and \
+            "a 2026 bill of the same number" not in html, (
+            "the page prints another term's title beside a 2016 bill")
+        assert "/bills#" not in html and "hb9999" not in html, (
+            "a bill its own term's index does not hold was linked anyway; "
+            "it must be printed without a link")
+        assert '<span class="sbill">HB 9999</span>' in html, (
+            "the unindexed bill's number is not printed as plain text")
+
+        # One number from two terms on one day is two bills: the House
+        # organization day of 1 December 2004 took up HR 1 of both terms.
+        a = item("HR1", "2015-2016", 4, cite_page="1")
+        b = item("HR1", "2025-2026", 5, cite_page="2")
+        two = SD.Day("H", "2016-12-07", [a, b])
+        assert len(two.bills) == 2, "two terms' HR 1 counted as one bill"
+        html2, _ = BSP.render(two, blank, titles, years,
+                              BSP.Members(root / "site"), shell.E)
+        assert html2.count('<article class="sitem">') == 2 and \
+            "bill/2015/hr1.html" in html2 and "bill/2025/hr1.html" in html2, (
+            "HR 1 of two terms was drawn as one card, or linked to one term")
+        return "ok", ("heading, consent line and roll call pointer all reach "
+                      "the sitting's own term; an unindexed bill is not "
+                      "linked; one number from two terms is two cards")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 # A House Calendar, laid out the way pdftotext -layout returns one: the heading
 # begins a line, the prose that follows does not. The minority's paragraph
 # cites ANOTHER bill mid-sentence, which is what the real calendars do

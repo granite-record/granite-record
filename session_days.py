@@ -285,7 +285,9 @@ class Day:
 
     @property
     def bills(self):
-        return sorted({i.bill for i in self.items})
+        # One per BILL, and a bill is a number within a term: the House
+        # organization day of 1 December 2004 took up HR 1 of both terms.
+        return sorted(b for _, b in {(i.term, i.bill) for i in self.items})
 
     def split(self, removed=()):
         """(debated, consent) -- the day's sequence, and its consent list.
