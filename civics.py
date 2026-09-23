@@ -1022,7 +1022,8 @@ full course without ever appearing where people look for legislation.</p>
 """ + flow_diagram(FLOW_RULES, "How a rule is made", level=3) + """
 <p>Two routes skip most of that. An <b>emergency rule</b> (RSA 541-A:18) takes
 effect at once where the agency finds an imminent peril to public health or
-safety, with only whatever notice the agency finds practicable; an
+safety, or a risk of substantial fiscal harm to the state or its citizens,
+with only whatever notice the agency finds practicable; an
 <b>interim rule</b> (RSA 541-A:19) is a fast track for matching a new statute,
 a court decision or a federal requirement. Neither lasts more than 180 days,
 so both end in the ordinary course above or they end altogether.</p>
@@ -1132,10 +1133,22 @@ them assume you already know all of this."""
 # meeting, SB 2 and the default budget, and neither repeats it -- each links
 # it instead.
 #
-# Every RSA citation in both bodies was read on gc.nh.gov/rsa on 17 September
-# 2026. Where a sentence could not be tied to a section it carries no citation
-# rather than a guessed one; the county commissioners' number and the county
-# nursing homes are the two that were rewritten for exactly that reason.
+# The citations were first read on gc.nh.gov/rsa on 17 September 2026, and
+# that reading checked that each section existed rather than that it said
+# what the sentence beside it said. On 23 September every citation in both
+# bodies was re-read clause by clause against the General Court's own RSA
+# table (db/NH_RSA.psv), and ten sentences were corrected: the budget deadline
+# of an optional-fiscal-year county (24:14 II), the Supreme Court's exception
+# from bailiff security (104:5 III), recording cited to 478:1 rather than
+# 477:3-a and 478:4, the register of probate (490-F:13, 548:5, and 2026 CACR
+# 13), RSA 611 called "the coroners chapter" (it was the medical examiners'),
+# the manager-form petition (37:12, not 37:11), a village district's manager
+# (37:14), the treasurer and highway agents who may be appointed (669:15),
+# a charter amendment put "by the same route" as a new charter (49-B:5, 49-B:6)
+# and a charter repeal open to "a municipality" where 49-B:12 says any town.
+# Where a sentence could not be tied to a section it carries no citation
+# rather than a guessed one. preflight holds each corrected claim to its
+# section, in both directions.
 # ---------------------------------------------------------------------------
 BODY_COUNTY = """
 <p>New Hampshire has ten counties: Belknap, Carroll, Cheshire, Coos, Grafton,
@@ -1205,10 +1218,12 @@ recommended. The vote cannot be taken until 28 days have passed since the
 recommendations were mailed (RSA 24:21-a, III). Appropriations are itemised in
 detail and the clerk keeps the record of them (RSA 24:14, I).</p>
 
-<p><b>Missing the deadline has a consequence.</b> A convention that has not
-adopted a budget within 90 days of the start of the fiscal year does not get
-an extension. The budget as recommended by the commissioners takes effect as
-the county budget (RSA 24:14, II).</p>
+<p><b>Missing the deadline has a consequence.</b> The convention must adopt
+the budget within 90 days after the fiscal year begins if the county runs on a
+calendar year, or by 1 September if it is on an optional fiscal year. A
+convention that has not adopted one by then does not get an extension. The
+budget as recommended by the commissioners takes effect as the county budget
+(RSA 24:14, II).</p>
 
 <h2>What happens after the budget is adopted</h2>
 <p>The delegation is still the body that has to be asked. Commissioners and
@@ -1256,7 +1271,8 @@ terms in 2022, and Coos County, which did so in 2024 (RSA 653:1, V).</p>
 
 <p><b>Sheriff:</b> the sheriff and the sheriff's deputies serve and execute
 writs and other process directed to the department, and the department's
-bailiffs provide security in the state courts (RSA 104:5). Sheriffs and
+bailiffs provide security in every state court except the Supreme Court
+(RSA 104:5). Sheriffs and
 deputies have the same authority throughout the state as in their own county
 to serve process, investigate crimes and apprehend, and may enforce civil
 orders issued by any court (RSA 104:6).</p>
@@ -1271,24 +1287,33 @@ pays it out only on the commissioners' orders, keeps the account of what comes
 in and goes out, and reports at the end of the fiscal year (RSA 29:1).</p>
 
 <p><b>Register of deeds:</b> keeps the registry of deeds, which is the
-county's record of who owns which land. Every deed, mortgage and plan is
-recorded there and kept in the office the county provides (RSA 478:1).</p>
+county's record of who owns which land. Deeds, mortgages and the other
+documents that affect title to land are recorded there, and a deed that has
+not been recorded does not hold against a later buyer who paid for the land in
+good faith (RSA 477:3-a, 478:4). The register keeps the records safe in the
+office the county provides (RSA 478:1).</p>
 
-<p><b>Register of probate:</b> still elected, and almost all of the duties are
-gone. The probate court became a division of the Circuit Court, and most of
-RSA 548 was repealed with effect from 1 July 2011. What is left is a duty to
-work with the administrative judge of the Circuit Court on preserving closed
-files of historical significance (RSA 548:5). The office is named in the
-constitution, so removing it takes an amendment and not a bill:
-<a href="bill/2022/cacr21.html">CACR 21 (2022)</a> would have struck it out,
-passed both chambers, and went to the voters, where it did not reach the
-<a href="learn/the-constitution.html">two thirds of those voting</a> an
-amendment needs.</p>
+<p><b>Register of probate:</b> still elected, though almost all of the duties
+are gone. On 1 July 2011 the probate court became the probate division of the
+Circuit Court (RSA 490-F:3), and the registers' duties passed to the circuit
+court clerks, apart from a few the statute leaves with the register
+(RSA 490-F:13). Among those, the register works with the Secretary of State
+and the administrative judge of the Circuit Court on preserving closed files
+that may be of historical significance, and keeps an index of any files
+removed from the court (RSA 548:5). The office is named in the constitution,
+in articles 71 and 81 of Part Second, so removing it takes an amendment and
+not a bill: <a href="bill/2022/cacr21.html">CACR 21 (2022)</a> would have
+struck it out, passed both chambers, and went to the voters, where it did not
+reach the <a href="learn/the-constitution.html">two thirds of those
+voting</a> an amendment needs. In 2026 the legislature sent the question to
+the voters again, as <a href="bill/2026/cacr13.html">CACR 13 (2026)</a>, at
+the November 2026 general election.</p>
 
-<p><b>Coroner:</b> New Hampshire elects none. RSA 611, the coroners chapter,
-is repealed, and sudden, unexpected or unnatural deaths are investigated by
-the state's Office of the Chief Medical Examiner under RSA 611-B rather than
-by a county officer.</p>
+<p><b>Coroner:</b> New Hampshire elects none. Sudden, unexpected or unnatural
+deaths are investigated by medical examiners of the Office of the Chief
+Medical Examiner, a state office within the Department of Justice, rather than
+by a county officer (RSA 611-B:2, 611-B:11). RSA 611-B replaced RSA 611, the
+earlier medical examiners chapter, which was repealed in 2007.</p>
 
 <h2>What the county pays for, and where the money comes from</h2>
 <p>Two things dominate a county budget. A county may provide, keep and
@@ -1298,8 +1323,9 @@ a county liability: counties reimburse the state for nursing home and other
 long-term care Medicaid spending on the residents each county is answerable
 for, to the extent of the whole non-federal share of it, subject to a limit on
 how fast that bill may rise (RSA 167:18-a). Counties also run nursing homes of
-their own, which no chapter of Title II creates and which they have run for
-long enough that the statutes treat them as a given. The registry of deeds, the
+their own. No chapter of Title II creates them, but the statutes treat them as
+a given: the commissioners of each county appoint an administrator for the
+county nursing home (RSA 28:11). The registry of deeds, the
 sheriff's department and the county attorney's office are on the county payroll
 as well.</p>
 
@@ -1307,8 +1333,8 @@ as well.</p>
 the selectmen of each town in the county, requiring them to assess and collect
 that town's share of the county tax and pay it over (RSA 29:11). The town
 raises it in the property tax. That is why a tax bill carries a county line
-beside the town, school and state education lines, and why a vote taken by a
-delegation in December turns up on a bill months later.</p>
+beside the town, school and state education lines, and why a budget the
+delegation adopts turns up on a tax bill months later.</p>
 """ + SHOWS.format("""
 <p><a href="legislators.html">Every member of both chambers</a> has a page
 here, with the county and district they were elected from. The House members
@@ -1328,13 +1354,15 @@ they were elected to. The county's own record is kept by the county."""
 BODY_TOWNS = """
 <p>There are [[municipalities]] cities and towns in New Hampshire, and Title
 III of the Revised Statutes governs all of them. The difference between a city
-and a town is not size, and not the word on the sign. It is who the
-legislative body is &mdash; who adopts the budget and passes the
+and a town is not size, and not the word on the sign. In most places it is who
+the legislative body is &mdash; who adopts the budget and passes the
 ordinances.</p>
 
-<p>In a town, the legislative body is the voters themselves, assembled at
-<a href="learn/local-government.html">town meeting</a>. In a city, it is an
-elected council. Nearly everything else follows from that one difference.</p>
+<p>In most towns, the legislative body is the voters themselves, assembled at
+<a href="learn/local-government.html">town meeting</a>. In a city it is an
+elected council, and so it is in a town whose charter replaced the meeting
+with a town council (RSA 49-D:3). Nearly everything else follows from that one
+difference.</p>
 
 <h2>A town: the meeting decides, the selectboard carries it out</h2>
 <p><b>Selectmen:</b> the executive of a town. The statutes say selectmen
@@ -1344,10 +1372,13 @@ three (RSA 41:8). On the written application of 25 registered voters, or 2
 percent of them, whichever is less and never fewer than 10, the question of
 increasing the board to 5 goes on the ballot (RSA 41:8-b).</p>
 
-<p>The board does not set policy on its own account. It carries out what the
-meeting voted, administers the town between meetings, and puts together the
-warrant for the next one. The money it spends is the money the meeting
-appropriated.</p>
+<p>The board's first job is to carry out what the meeting voted: it manages
+the town's day-to-day business between meetings (RSA 41:8) and puts together
+the warrant for the next one. It has some powers of its own &mdash; it may
+regulate the use of the town's highways, sidewalks and commons (RSA 41:11),
+and it manages the town's land and buildings unless the town has handed that
+to other officers or another statute governs it (RSA 41:11-a) &mdash; but the
+money it spends is the money the meeting appropriated.</p>
 
 <p><b>Moderator:</b> presides at the meeting, regulates its business, decides
 questions of order and declares every vote passed. The moderator may postpone
@@ -1380,15 +1411,18 @@ council and the manager runs the administration.</p>
 <h2>Town managers and town administrators</h2>
 <p>A town may adopt the town manager form under RSA 37. It takes a vote: the
 chapter does not operate in a town until a majority of the voters present and
-voting at an annual meeting adopt it, and 10 or more voters may petition to
-put the question on the warrant (RSA 37:11). Once adopted, the selectmen
+voting at an annual meeting adopt it (RSA 37:11), and on the written
+application of 10 or more voters the selectmen must put the question in the
+warrant (RSA 37:12). Once adopted, the selectmen
 appoint the manager (RSA 37:2), who becomes the administrative head of all
 departments of the town and is responsible for administering them (RSA 37:5).
 The manager appoints and dismisses subordinate staff, examines the affairs of
-any department, and prepares the year's expenditure and revenue estimates
-(RSA 37:6). What the manager does not get are the things the meeting and the
-selectmen keep: warning town meetings, making bylaws, borrowing money, and
-assessing or collecting taxes (RSA 37:5).</p>
+any department under the manager's control, and prepares the year's
+expenditure and revenue estimates (RSA 37:6). What the manager does not get
+are the things the meeting and the selectmen keep, among them warning town
+meetings, making bylaws, borrowing money, assessing or collecting taxes,
+granting licences and laying out highways; nor does the manager supervise the
+town clerk or the town treasurer (RSA 37:5).</p>
 
 <p>A <b>town administrator</b> is a different thing, and the difference
 matters when you are working out who decides. There is no statutory office of
@@ -1410,14 +1444,19 @@ with the same powers a town has in relation to the same objects
 <p>A district holds its own meeting and has its own moderator, clerk,
 treasurer and commissioners, who have the same powers over the district's
 business as a town's moderator, clerk, treasurer and selectmen have over the
-town's (RSA 52:8). A village district may adopt the manager form on the same
-footing as a town (RSA 37:14). If you live in one, it is a separate line on
+town's (RSA 52:8). A village district may adopt the manager form too, but
+only once the town it lies in (or, if it spans towns, the one holding most of
+its taxable value) has adopted it, and it must then appoint that town's
+manager as its own (RSA 37:14). If you live in one, it is a separate line on
 your tax bill.</p>
 
 <h2>The other names on a town ballot</h2>
-<p>Some offices every town elects by ballot: selectmen, the moderator, the
-supervisors of the checklist, the town clerk, the town treasurer and highway
-agents (RSA 669:15).</p>
+<p>Some offices every town governed by selectmen elects by ballot: the
+selectmen themselves, the moderator, the supervisors of the checklist and the
+town clerk. The town treasurer and highway agents are elected the same way
+unless the town has provided for appointing them (RSA 669:15). A town whose
+charter gives the selectmen's powers to a town council has no selectmen, but it
+still elects its town clerk (RSA 41:16, 49-D:3).</p>
 
 <p>Others a town elects only if it has voted to: the tax collector, town
 assessors, constables or police officers, the fire chief or firewards, and the
@@ -1429,7 +1468,8 @@ committee or conservation commission (RSA 669:17).</p>
 licences and registrations, and runs the mechanics of elections. A town may
 vote to make the term 3 years (RSA 41:16-b).</td></tr>
 <tr><td><b>Tax collector</b></td><td>Collects the taxes the selectmen commit,
-remits them to the treasurer weekly, keeps the account of what was collected
+remits them to the treasurer at least weekly, and daily once receipts reach
+$1,500, keeps the account of what was collected
 and abated, and reports at year end (RSA 41:35).</td></tr>
 <tr><td><b>Clerk/tax collector</b></td><td>Many towns have combined the two
 into one office. It takes a petitioned article and a majority at the annual
@@ -1444,8 +1484,9 @@ town, who keep the voter checklist. One is elected every even-numbered year
 for 6 years, unless the town has adopted 3-year terms
 (RSA 41:46-a).</td></tr>
 <tr><td><b>Trustees of trust funds</b></td><td>Three, or five if the town has
-voted for five, administering the funds held in trust for the town. One is
-elected each year for three years (RSA 31:22).</td></tr>
+voted for five, administering the funds held in trust for the town. The term
+is three years, and on a board of three one trustee is elected each year
+(RSA 31:22).</td></tr>
 <tr><td><b>Library trustees</b></td><td>Any odd number the town decides on,
 elected at town meeting for staggered 3-year terms (RSA 202-A:6).</td></tr>
 <tr><td><b>Cemetery trustees</b></td><td>Elected by ballot at the annual town
@@ -1459,9 +1500,11 @@ property is let off a rule. In some towns you elect them and in others you do
 not, and which it is was a choice the town made.</p>
 
 <p>A <b>planning board</b> has 5 or 7 members in most towns, 7 or 9 in a town
-with a council, and 9 in a city. Members are appointed by the selectmen unless
-the local legislative body has voted that they be elected, and a town that has
-voted for election may later vote to go back (RSA 673:2).</p>
+with a council, and 9 in a city. In a town governed by a meeting, one
+selectman or administrative official of the town sits on it ex officio and the
+selectmen appoint the rest, unless the town meeting has voted that those
+members be elected; a town that has voted for election may later vote to go
+back (RSA 673:2).</p>
 
 <p>A <b>zoning board of adjustment</b> has 5 members, either elected in the
 manner RSA 669 prescribes or appointed in the manner the local legislative
@@ -1473,11 +1516,15 @@ its own budget and its own ballot. Its <b>school board</b> has 3, 5, 7 or 9
 members as the district votes, and 3 if it has not voted, elected for three
 years with an equal number elected each year where that can be done
 (RSA 671:4). A cooperative school district covers more than one town, and its
-board is made up of members from each.</p>
+articles of agreement decide how its board is chosen, among the methods the
+statute allows: all at large, from districts drawn by population, or at large
+with at least one member living in each of the districts that formed it
+(RSA 195:19-a).</p>
 
 <p><b>School administrative unit:</b> the SAU, the administrative body serving
 one district or several together. Its board is made up of the school board
-members of the districts in it. That board arranges superintendent services,
+members of the districts in it, each district's members sharing that
+district's votes (RSA 194-C:7). That board arranges superintendent services,
 sets the salaries of the administrative staff and apportions the cost among
 the member districts, and it has the power to remove the superintendent
 (RSA 194-C:5). This is why the superintendent answers to a board you did not
@@ -1494,10 +1541,22 @@ government (RSA 49-B:2).</p>
 <p>It starts with a question on the ballot. On the petition of 25 registered
 voters, or 2 percent of them, whichever is less and never fewer than 10, the
 voters are asked whether a charter commission shall be established
-(RSA 49-B:3). If they say yes, the commission is elected, it reports, and the
-charter it writes goes back to the voters at a referendum. An existing charter
-is amended by the same route (RSA 49-B:5), and a municipality may vote to
-return to the form of government it had before (RSA 49-B:12).</p>
+(RSA 49-B:3). If they say yes, a commission of nine is elected (RSA 49-B:4),
+it reports, and the charter it writes goes back to the voters, where it takes
+effect only if three fifths of the ballots cast on the question favour it
+(RSA 49-B:6).</p>
+
+<p>A charter already in force changes by one of two routes. A revision, which
+changes the form of government, goes through a charter commission of its own:
+the question of establishing one reaches the ballot by order of the municipal
+officers or on a petition of voters numbering at least 20 percent of the
+ballots cast at the last regular municipal election, and the revised charter
+too needs three fifths (RSA 49-B:4-d, 49-B:4-e, 49-B:6). Any other change is
+an amendment: the municipal officers, or a petition of voters numbering at
+least 15 percent of those ballots, put it on the ballot with no commission,
+and a majority adopts it (RSA 49-B:5, 49-B:6). A town may also repeal its
+charter and return to the form of government it had before, on a petition of
+its voters put to the ballot the same way as an amendment (RSA 49-B:12).</p>
 
 <p>A town charter does not have to abolish the town meeting. RSA 49-D:3 sets
 out the forms a town charter may choose between: a town council; an official
