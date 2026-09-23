@@ -137,6 +137,15 @@
       "status": "fixed",
       "fixed_by": "3eccc2a",
       "guard": "none -- prose again. The lesson is procedural: when a fact is corrected on a Learn page, grep civics.py's FLOW_ tables for it too, because they state the same facts in a different shape."
+    },
+    {
+      "found": "2026-09-23",
+      "what": "The SB 2 section of the town meeting page said the deliberative session is where articles are debated and amended \"and nothing is decided\". RSA 40:13, III gives the first session all business other than voting by official ballot, and IV has it vote on amendments -- including the only chance to change a sum of money before the ballot. What is true is narrower: no article is passed or defeated there. A reader told nothing is decided has been told they can skip the one session that shapes the ballot. The default budget was also half described: RSA 40:13, XI(b) lets the governing body adjust it until the ballots are printed, the definition omitted the reduction for eliminated positions, and the page implied the default is automatic when the governing body may instead call one special meeting.",
+      "where": "learn/local-government.html",
+      "reported_by": "found while building the town meeting and SB 2 diagram, by checking the page's existing claims against RSA 40:13 on disk",
+      "status": "fixed",
+      "fixed_by": "796ba20",
+      "guard": "none -- prose. The claims now cite the paragraph they rest on, so the next reader can check each one in place."
     }
   ],
   "features": [
@@ -218,7 +227,7 @@
     {
       "name": "Learn section",
       "draft": "unreviewed",
-      "note": "the legislator's factual corrections applied 22 September; the hub redesigned the same day so its two columns read downward, with three start cards; and administrative-rules given a diagram built from RSA 541-A. The other twelve pages have not had a visual pass and ten still have no diagram."
+      "note": "22-23 September: the legislator's factual corrections applied; the hub redesigned so its columns read downward, with three start cards; diagrams added to administrative-rules (from RSA 541-A) and local-government (a traditional meeting against SB 2, from RSA 39, 40 and 32). Found and fixed on the way: every four-phase flow diagram had its first phase off the screen at 1100px and wider, because its breakout assumed a centred column the contents rail had since moved. Eight pages still have no diagram and the writing has had no second pass beyond the corrections."
     },
     {
       "name": "About and Data pages",
