@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.24
+# GRANITE_VERSION: 2026-09-08.25
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -144,7 +144,8 @@ def record_figures(site, root=Path(".")):
     # (county, district), and the sitting members from the roster.
     house = {}
     senate = set()
-    for wards in _load(Path(site) / "districts.json", {}).values():
+    dist = _load(Path(site) / "districts.json", {})
+    for wards in dist.values():
         for w in wards.values():
             if w.get("senate"):
                 senate.add(w["senate"])
@@ -215,6 +216,15 @@ def record_figures(site, root=Path(".")):
                              if (m.get("email") or "").strip()),
         "floterial_seats": sum(h.get("seats") or 1 for h in house.values()
                                if h.get("floterial")),
+        # How many places -- towns and city wards, 320 of them -- have more
+        # than one state representative, whether from a district of several
+        # seats, a floterial over it, or both. The page used to explain this
+        # with a sentence about whole towns and equal population that the
+        # constitution contradicts; this is the count instead.
+        "multi_rep_places": sum(
+            1 for ws in dist.values() for w in ws.values()
+            if sum(h.get("seats") or 1 for h in w.get("house") or []) > 1),
+        "all_places": sum(len(ws) for ws in dist.values()),
         # The '1989' in 'back to 1989', from the terms themselves.
         "first_year": min((r.get("term") or "" for r in idx if r.get("term")),
                           default="-").split("-")[0],
@@ -241,6 +251,17 @@ def record_figures(site, root=Path(".")):
         "cacr_one_chamber": sum(1 for r in cacrs if marks(r)[1] == "p" and marks(r)[2] == "x"),
         "hearings": hearings,
     }
+    # THE WORKED EXAMPLE on the finding-your-representatives page, drawn from
+    # the map rather than typed: the diagram, and every fact the prose beside
+    # it names. civics.reps_example stops the build if the example town stops
+    # illustrating a floterial at all. The link to the town's own page comes
+    # from build_town_pages rather than being rebuilt here, because three
+    # places once built that address themselves and one built it wrongly.
+    if dist:
+        import build_town_pages
+        figures.update(civics.reps_example(dist))
+        figures["reps_town_url"] = build_town_pages.town_file(
+            figures["reps_town"], "0").lstrip("/")
     return {k: (f"{v:,}" if isinstance(v, int) else v) for k, v in figures.items()}
 
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.22
+# GRANITE_VERSION: 2026-09-08.23
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -240,6 +240,155 @@ def compare_diagram(rows, heading, left, right):
         out.append("</tr>")
     out.append("</tbody></table></div>")
     return "".join(out)
+
+
+# EVERYONE WHO REPRESENTS ONE ADDRESS, from the most local seat to the whole
+# state. The finding-your-representatives page explains in prose that most
+# towns and wards have more than one state representative and that a
+# floterial district is laid over others; this shows it for one real town,
+# where a reader can count.
+#
+# COUNTED FROM THE RECORD, NOT TYPED. The rows are built from site/districts.json
+# at build time by reps_example(), so the next redistricting redraws them rather
+# than leaving a page that names districts which no longer exist. build_civics
+# computes it into the [[reps_example]] figure the page carries.
+#
+# A table for the same reason compare_diagram is one: a screen reader reads
+# "State House, floterial; district Belknap 8; members 2; elected by ..." as one
+# row. Explicit roles because the rows restack on a phone.
+def layers_diagram(rows, heading):
+    out = [f'<div class="lay" role="group" aria-label="{heading}">'
+           f'<table class="laytab" role="table">'
+           f'<caption class="sr">{heading}</caption>'
+           '<thead role="rowgroup"><tr role="row">'
+           '<th scope="col" role="columnheader">Seat</th>'
+           '<th scope="col" role="columnheader">District</th>'
+           '<th scope="col" role="columnheader">Members</th>'
+           '<th scope="col" role="columnheader">Elected by</th>'
+           '</tr></thead><tbody role="rowgroup">']
+    for layer, district, members, shared, mark in rows:
+        cls, mcls, label = mark_of(mark)
+        klass = f' class="{cls}"' if cls else ""
+        out.append(
+            f'<tr role="row"{klass}>'
+            f'<th scope="row" role="rowheader">{layer}'
+            + (f'<i class="{mcls}">{label}</i>' if label else "") + "</th>"
+            f'<td role="cell" data-l="District">{district}</td>'
+            f'<td role="cell" data-l="Members">{members}</td>'
+            f'<td role="cell" data-l="Elected by">{shared}</td></tr>')
+    out.append("</tbody></table></div>")
+    return "".join(out)
+
+
+# THE WORKED EXAMPLE IS DANVILLE, chosen by checking every town that has a
+# one-town district of its own and exactly one floterial -- 31 of them -- on
+# three counts. Its floterial, Rockingham 32, lies exactly over three one-town
+# districts, Brentwood (Rockingham 6), Fremont (7) and Danville (8), so the
+# lesson is symmetric: each town elects one member of its own and the three
+# elect one more together. All three sit in the same Senate, Council and US
+# House districts, so every layer nests -- Belmont, the first choice, does not,
+# because its floterial crosses into a second Senate district and the picture
+# would have lied about nesting. And RSA 662, site/districts.json and the
+# Secretary of State's data agree on every layer of its chain.
+REPS_EXAMPLE = "Danville"
+
+
+def _names(xs):
+    xs = list(xs)
+    return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1]
+
+
+_WORD = {2: "two", 3: "three", 4: "four", 5: "five", 6: "six"}
+
+
+def reps_example(districts, town=REPS_EXAMPLE):
+    """Every figure the page states about its worked example, from
+    site/districts.json: the diagram itself, and the few facts the prose
+    beside it names -- which floterial, what it is laid over, how many. They
+    are figures rather than typed text for the diagram's own reason: typed
+    beside a diagram that redraws itself, they would be the half of the page
+    that went stale at the next redistricting.
+
+    Stops the build where the diagram would be wrong or pointless: the town
+    gone, split into wards, or no longer in exactly one floterial district. A
+    redistricting that did that silently would publish a page teaching
+    floterials with an example that has none. Where the town merely comes to
+    share its own district with neighbours the diagram still tells the truth,
+    so it says so and warns rather than stopping."""
+    wards = districts.get(town)
+    if not wards or list(wards) != ["0"]:
+        raise SystemExit(f"reps_example: {town} is missing from districts.json "
+                         "or is split into wards; choose another REPS_EXAMPLE")
+    rec = wards["0"]
+    own = [h for h in rec.get("house") or [] if not h.get("floterial")]
+    flot = [h for h in rec.get("house") or [] if h.get("floterial")]
+    if len(own) != 1 or len(flot) != 1:
+        raise SystemExit(
+            f"reps_example: {town} now has {len(own)} district(s) of its own "
+            f"and {len(flot)} floterial(s); the diagram needs exactly one of "
+            "each. Choose another REPS_EXAMPLE.")
+
+    def others(match):
+        """Every other town or city with a ward that matches, and whether any
+        of them is a city -- which decides 'towns' against 'towns and
+        cities' in the sentence."""
+        hit = sorted(t for t, ws in districts.items()
+                     if t != town and any(match(w) for w in ws.values()))
+        city = any(list(districts[t]) != ["0"] for t in hit)
+        return hit, ("towns and cities" if city else "towns")
+
+    def in_house(h):
+        key = (h["county"], h["district"])
+        return lambda w: any((x.get("county"), x.get("district")) == key
+                             for x in w.get("house") or [])
+
+    o, f = own[0], flot[0]
+    own_with, _ = others(in_house(o))
+    flot_with, _ = others(in_house(f))
+    # How many districts the floterial is laid over: every non-floterial
+    # district of the same county that one of its places also belongs to.
+    under = {(x["county"], x["district"])
+             for t in [town] + flot_with for w in districts[t].values()
+             if in_house(f)(w)
+             for x in w.get("house") or [] if not x.get("floterial")}
+    if own_with:
+        print(f"  reps_example: {town} now shares its own district with "
+              f"{_names(own_with)}; the diagram says so, but a one-town "
+              "district teaches the point more cleanly")
+
+    def wide(n, kind):
+        return f"{town} and {n:,} other {kind}"
+
+    sen, sk = others(lambda w: w.get("senate") == rec.get("senate"))
+    cou, ck = others(lambda w: w.get("council") == rec.get("council"))
+    con, nk = others(lambda w: w.get("congress") == rec.get("congress"))
+    rows = [
+        (f"State House &mdash; {town}'s own district",
+         f"{o['county']} {o['district']}", str(o.get("seats") or 1),
+         f"{town} voters alone" if not own_with
+         else f"{_names([town] + own_with)} together", ""),
+        ("State House &mdash; floterial",
+         f"{f['county']} {f['district']}", str(f.get("seats") or 1),
+         f"{_names([town] + flot_with)} together",
+         ("needs", f"Laid over {len(under)} districts")),
+        ("State Senate", f"District {rec.get('senate')}", "1",
+         wide(len(sen), sk), ""),
+        ("Executive Council", f"District {rec.get('council')}", "1",
+         wide(len(cou), ck), ""),
+        ("US House", f"District {rec.get('congress')}", "1",
+         wide(len(con), nk), ""),
+        ("US Senate", "The whole state", "2",
+         "Every voter in New Hampshire", ""),
+    ]
+    beneath = sorted(d for c, d in under)
+    return {
+        "reps_town": town,
+        "reps_example": layers_diagram(
+            rows, f"Everyone who represents a voter in {town}"),
+        "reps_flot": f"{f['county']} {f['district']}",
+        "reps_flot_under": f"{f['county']} {_names([str(d) for d in beneath])}",
+        "reps_under_n": _WORD.get(len(beneath), str(len(beneath))),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -1420,34 +1569,56 @@ BODY_REPS = """
 <p>New Hampshire is divided into [[house_districts]] House districts and
 [[senate_districts]] Senate districts. Every resident lives in one Senate
 district and in at least one House district, set by the town or ward they live
-in. Most people have more than one representative, because a House district is
-built out of whole towns and wards rather than drawn to equal population.</p>
+in.</p>
+<p>Most places have more than one state representative: [[multi_rep_places]]
+of the [[all_places]] towns and city wards, either because their own district
+elects several members, or because a floterial district is laid over it, or
+both. The districts are built from whole towns and wards &mdash; the
+constitution forbids the legislature to divide a town, ward or place when it
+draws them &mdash; and within that limit representation is to be "as equal as
+circumstances will admit" (Part II, Article 9).</p>
+
+<h2>Everyone who represents one town</h2>
+<p>This is every seat a voter in one town elects, from the most local to the
+whole state. The town is [[reps_town]], because its layers nest cleanly and
+show a floterial district plainly.</p>
+[[reps_example]]
+<p>Who holds each of those seats today is on <a href="[[reps_town_url]]">
+[[reps_town]]'s own page</a>, and every other town and ward has one like
+it.</p>
 
 <h2>What the district numbering means</h2>
 <p>A House district is written as a county and a number: Rockingham 13,
 Hillsborough 44, or abbreviated to <b>Rock 13</b>. The number is not a rank or
 a size. It is an index within that county, and the map is redrawn every ten
 years after the federal census.</p>
-<p>A district may be a single town, one or more wards of a city, or several
-small towns together. Where it has more than one seat, its members are elected
-at large across the whole of it, not one to each town. The largest elects
-[[largest]] representatives.</p>
+<p>A district may be a single town, one or more wards of a city, several towns
+together, or a city's wards joined with neighbouring towns. Where it has more
+than one seat, its members are elected at large across the whole of it, not
+one to each town. The largest elects [[largest]] representatives.</p>
 <p>Senate districts are numbered 1 to [[senate_districts]] across the whole
 state rather than by county, and many cross county lines. Each elects one
 senator, and district 22 is written <b>SD22</b>.</p>
 
 <h2>What a floterial district is</h2>
-<p>A floterial district is a House district drawn over several towns or wards
-that each already elect their own representative. It elects one or more
-additional members across all of them together.</p>
-<p>A town's population is rarely an exact multiple of what one seat is worth.
-A floterial is where those remainders are pooled, rather than a town being
-split between two districts.</p>
-<p>If you live in one of those towns, you are represented by both: the members
-of your own district, and the floterial members you share with the towns
-around you. [[floterial]] of the [[house_districts]] House districts are
-floterial, and they account for [[floterial_seats]] of the [[house_seats]]
-seats.</p>
+<p>A floterial district is a House district laid exactly over two or more
+neighbouring House districts in the same county, each of which already elects
+its own members. It elects one or more additional members across all of them
+together. [[reps_town]]'s is laid over [[reps_under_n]] districts.</p>
+<p>A town's population is rarely an exact multiple of what one seat is worth,
+and the constitution will not let the legislature split a town to even it out.
+A floterial is where those remainders are pooled instead.</p>
+<p>If you live in one of those towns or wards, you are represented by both: the
+members of your own district, and the floterial members you share with the
+towns or wards around you. [[floterial]] of the [[house_districts]] House
+districts are floterial, and they account for [[floterial_seats]] of the
+[[house_seats]] seats.</p>
+<p>The statute that sets out the districts, RSA 662:5, never uses the word
+<i>floterial</i>. It simply lists each district's towns and its seats. A
+floterial shows up there as a district covering exactly the same towns as two
+or more of the county's other districts put together &mdash; [[reps_flot]] is
+[[reps_flot_under]] combined. Every one of the [[floterial]] districts this
+site marks as floterial passes that test against the statute.</p>
 
 <h2>How to contact a member</h2>
 <p>[[members_email]] of the [[members_sitting]] sitting members publish an

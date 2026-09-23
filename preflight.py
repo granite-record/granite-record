@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.233
+# GRANITE_VERSION: 2026-09-04.234
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -3570,8 +3570,22 @@ def _built_site(here, root):
         {"H43": {"code": "H43", "name": "Commerce", "abbr": "COMMERCE"}}), encoding="utf-8")
     seat = {"congress": 1, "council": 3, "senate": 24, "house": [
         {"county": "Rockingham", "district": 13, "floterial": False, "seats": 2}]}
+    # AND THE LEARN PAGE'S WORKED EXAMPLE, as the real map has it: Danville,
+    # Brentwood and Fremont each a one-town district of their own, with the
+    # floterial Rockingham 32 laid over all three. civics.reps_example draws
+    # the finding-your-representatives diagram from these and stops the build
+    # if its town is missing -- rightly, on the real map -- so the fixture
+    # carries it rather than the diagram being skipped where it is absent.
+    # Skipping it would have left the one path through that code the fixture
+    # never runs, and a link to Danville's page that resolves to nothing.
+    def floterial_town(own):
+        return {"0": {"congress": 1, "council": 3, "senate": 23, "house": [
+            {"county": "Rockingham", "district": own, "floterial": False, "seats": 1},
+            {"county": "Rockingham", "district": 32, "floterial": True, "seats": 1}]}}
     (root / "site" / "districts.json").write_text(json.dumps(
-        {"Raymond": {"0": seat}, "Stratham": {"0": seat}}), encoding="utf-8")
+        {"Raymond": {"0": seat}, "Stratham": {"0": seat},
+         "Brentwood": floterial_town(6), "Fremont": floterial_town(7),
+         "Danville": floterial_town(8)}), encoding="utf-8")
     base = "https://graniterecord.org"
     steps = [
         ("build_site_v2.py", ["--data", "data", "--out", "site",

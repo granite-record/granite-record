@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.168 */
+/* GRANITE_VERSION: 2026-09-07.169 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2669,7 +2669,7 @@ color:var(--st-active);margin-top:var(--sp-2)}
    above so the two cannot drift apart. .cmp shares the rule. */
 @media (min-width:1100px){
   .lcols{container-type:inline-size}
-  .civics :is(.flow,.cmp){margin-left:0;margin-right:0;
+  .civics :is(.flow,.cmp,.lay){margin-left:0;margin-right:0;
   width:calc(100cqw - var(--rail) - var(--sp-11));max-width:none}
   .flowphases{grid-template-columns:repeat(4,minmax(0,1fr));gap:0 var(--sp-8)}
   .phase:not(:last-child):after{top:11px;left:100%;width:26px;height:1px}
@@ -2733,6 +2733,41 @@ margin-top:var(--sp-2)}
   .cmptab th[scope=row]{grid-column:auto;border-bottom:0;padding:var(--sp-4) 0 0}
   .cmptab td::before{content:none}
   .cmptab td.same{grid-column:2/-1}
+}
+
+/* ---- EVERYONE WHO REPRESENTS ONE ADDRESS ---------------------------------
+   layers_diagram's table: one row per seat a resident votes for, most local
+   first. Same parts as the two diagrams above -- the step card for a row, the
+   amber threshold mark for the floterial row, which is the thing the page is
+   teaching -- so all three read as one visual language.
+   A phone gets each seat as a card with its three facts labelled; from 600px
+   it is a real four-column table; from 1100px it takes the .flow breakout,
+   rightward up to the contents rail. */
+.lay{margin:var(--sp-7) 0 var(--sp-8)}
+.laytab{display:block;width:100%;border-collapse:collapse}
+.laytab thead{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.laytab tbody{display:grid;gap:var(--sp-3)}
+.laytab tr{display:block;background:var(--surface);border:1px solid var(--rule);
+border-radius:var(--r-out);padding:var(--sp-4) var(--sp-5)}
+.laytab tr.needs{border-left:3px solid var(--st-active)}
+.laytab th[scope=row]{display:block;text-align:left;font-size:var(--t-ui);
+font-weight:600;margin:0 0 var(--sp-2)}
+.laytab th[scope=row] i{display:block;font-style:normal;font-size:var(--t-sm);
+font-weight:600;color:var(--st-active);margin-top:var(--sp-1)}
+.laytab td{display:block;font-size:var(--t-sm);color:var(--ink-2);line-height:1.5}
+.laytab td::before{content:attr(data-l) ": ";font-weight:600;color:var(--ink)}
+@media (min-width:600px){
+  .laytab thead{position:static;width:auto;height:auto;margin:0 0 var(--sp-2);
+  overflow:visible;clip:auto;white-space:normal;display:block}
+  .laytab thead tr,.laytab tbody tr{display:grid;
+  grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) minmax(0,.55fr) minmax(0,2fr);
+  gap:var(--sp-4);align-items:start}
+  .laytab thead tr{background:none;border:0;padding:0 var(--sp-5) var(--sp-2)}
+  .laytab thead th{text-align:left;font-size:var(--t-sm);font-weight:600;
+  color:var(--ink-2);letter-spacing:.04em;text-transform:uppercase}
+  .laytab th[scope=row]{margin:0}
+  .laytab td::before{content:none}
 }
 
 /* A block that points into the record: the whole argument for this section
