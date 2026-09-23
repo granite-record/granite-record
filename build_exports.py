@@ -153,7 +153,8 @@ def rollcalls(out):
     rc = load("rollcalls.json", {})
     cols = ["roll_call", "term", "year", "body", "number", "date", "bill",
             "question", "question_plain", "yeas", "nays", "not_voting",
-            "passed", "procedural", "threshold_needed", "threshold_rule"]
+            "passed", "procedural", "threshold_needed", "threshold_rule",
+            "outcome_source"]
     rows = []
     for term, bills_ in (rc.items() if isinstance(rc, dict) else []):
         for _b, entries in (bills_.items() if isinstance(bills_, dict) else []):
@@ -168,11 +169,17 @@ def rollcalls(out):
                     1 if r.get("passed") else 0,
                     1 if r.get("procedural") else 0,
                     r.get("threshold_needed") or "",
-                    r.get("threshold_rule") or ""])
+                    r.get("threshold_rule") or "",
+                    r.get("outcome_source") or ""])
     rows.sort(key=lambda r: (str(r[2]), str(r[3]), int(r[4] or 0)))
     return write(out, "rollcalls.csv", cols, rows,
                  "Every recorded vote: the question in the record's words and "
-                 "in plain English, the tally, and what it needed to carry.")
+                 "in plain English, the tally, and what it needed to carry. "
+                 "passed is the outcome the clerk recorded wherever the "
+                 "General Court's docket or its House or Senate Journal names "
+                 "one, and outcome_source says which (docket, journal, count "
+                 "where the docket's outcome is impossible on its own tally, "
+                 "or rule where the record names none).")
 
 
 def votes(out, data):

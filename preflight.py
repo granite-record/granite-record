@@ -717,6 +717,228 @@ def _rule_vote_not_a_bill(rollcall_parser):
         shutil.rmtree(d, ignore_errors=True)
 
 
+# Every docket and Journal line below is copied from the files on disk, and
+# every roll call is a real one with its real number, question, tally and
+# ballot count, so each case is a vote that happened and whose outcome a
+# Journal on disk confirms.
+_RC_DOCKETS = {
+    "Docket_db_2011-2012.txt": [
+        "2012|2423|03/21/2012 02:52:45 PM|CACR26|H|Ought to Pass: MF RC 237-115 Lacking Necessary Three-Fifths Vote; HJ 28, PG.1684-1686|x",
+        "2012|2423|03/21/2012 03:21:03 PM|CACR26|H|Reconsideration of OTP (Rep Hess): MA RC 242-111; HJ 28, PG.1687-1689|x",
+        "2012|2423|03/21/2012 03:22:01 PM|CACR26|H|Ought to Pass: MA RC 239-114 By Necessary Three-Fifths Vote; HJ 28, PG.1689-1691|x",
+    ],
+    "Docket_db_2013-2014.txt": [
+        "2014|0624|01/08/2014 09:03:06 AM|HB435|H|Inexpedient to Legislate MA RC 129-156|x",
+        "2014|0624|01/08/2014 09:11:48 AM|HB435|H|Inexpedient to Legislate MF RC 132-169|x",
+    ],
+    "Docket_db_2001-2002.txt": [
+        "2002|0661|05/22/2002 01:18:27 PM|SB141|S|Notwithstanding the Governors Veto Shall the Bill Pass, RC 12y - 11n, Veto Sustained; SJ 15, Pg.603|x",
+    ],
+    "Docket_db_1999-2000.txt": [
+        "1999|1041|05/20/1999 01:27:25 PM|HB300|H|Introduced and ref to Finance;  Reps Chandler & Burling moved to Susp Rules for Hearing Notice,|x",
+        "1999|1041|05/20/1999 02:03:30 PM|HB300|H|motion failed 2/3RC(219-122);  HJ54, p1461-1464|x",
+    ],
+    "Docket_2017-2018.txt": [
+        "2018|2938|3/15/2018 12:00:00 AM|SB331|S|Inexpedient to Legislate, RC 13Y-11N, MA === BILL KILLED ===; 03/15/2018; SJ 8|x",
+        "2018|2938|3/15/2018 12:00:00 AM|SB331|S|Inexpedient to Legislate, RC 13Y-11N, MA === BILL KILLED ===; 03/15/2018; SJ 8|x",
+        "2018|2938|3/15/2018 12:00:00 AM|SB331|S|Inexpedient to Legislate, RC 12Y-12N, MF; 03/15/2018; SJ 8|x",
+    ],
+    "Docket_2023-2024.txt": [
+        "2024|2404|2/15/2024 12:00:00 AM|HB1212|H|Reconsider ITL (Rep. Cloutier): MF RC 187-181 02/15/2024 HJ 5 P. 44|x",
+    ],
+    "Docket.txt": [
+        "2026|2956|3/13/2026 11:05:31 AM|CACR25|H|Inexpedient to Legislate: MA RC 176-162 03/12/2026  HJ 8  P. 105|x",
+    ],
+}
+_RC_JOURNALS = {
+    # House Journal 6 of 2026, page 142 and the end of the day: a member
+    # allowed to continue by three fifths, under that term's rules.
+    "journals/2026/HJ 06 March 5, 2026.txt": "\n".join([
+        "The question being shall the member continue.",
+        "Rep. Wheeler requested a roll call; sufficiently seconded.",
+        "Comtois, Barbara      Freeman, Lisa          YEAS 91 - NAYS 82                        Woodcock, Stephen",
+        "Paige, David          Jacobs, Samantha              YEAS - 91                         Newell, Jodi",
+        "Grant, George      Hemingway, Wayne",
+        "",
+        "The motion failed lacking the necessary three-fifths vote and with a quorum not being reached, the House",
+        "",
+        "was adjourned."]),
+    # Senate Journal 8 of 2018: the Clerk's note on SB 331's first roll call.
+    "journals_senate/2018/SJ008.txt": "\n".join([
+        "                               SENATE CLERK'S NOTE",
+        "The roll call vote below on SB 331 was inadvertently entered in the Daily",
+        "Journal and has been corrected in the Senate Permanent Journal from",
+        "12-12 to 13-11.",
+        "",
+        "The question is on the adoption of the motion of Inexpedient to Legislate.",
+        "",
+        "Roll Call, Yeas: 13 - Nays: 11. Adopted."]),
+}
+
+
+def _rc(year, body, number, date, bill, q, y, n, seated):
+    return {"year": year, "body": body, "number": number, "date": date, "bill": bill,
+            "question": q, "question_raw": q, "yeas": y, "nays": n, "seated": seated}
+
+
+_RC_ROLLS = [
+    # 2012 CACR26: 239 of the 397 in office carried it; 3/5 of 400 would not
+    _rc("2012", "H", 180, "2012-03-21", "CACR26", "OTP", 237, 115, 397),
+    _rc("2012", "H", 181, "2012-03-21", "CACR26", "RECONSIDERATION (REP HESS)", 242, 111, 397),
+    _rc("2012", "H", 182, "2012-03-21", "CACR26", "OTP", 239, 114, 397),
+    # 2026 CACR25: killing a CACR is a majority question (HJ 8: adopted)
+    _rc("2026", "H", 215, "2026-03-12", "CACR25", "ITL", 176, 162, 392),
+    # 2014 HB435: the docket's MA is wrong (HJ 5: "the majority committee report failed")
+    _rc("2014", "H", 15, "2014-01-08", "HB435", "ITL", 129, 156, 394),
+    _rc("2014", "H", 16, "2014-01-08", "HB435", "ITL", 132, 169, 394),
+    # 2024 HB1212: the docket's MF is wrong (HJ 5: "the motion was adopted")
+    _rc("2024", "H", 60, "2024-02-15", "HB1212", "Reconsider", 187, 181, 396),
+    # 2002 SB141: a veto override worded the old way
+    _rc("2002", "S", 138, "2002-05-22", "SB141",
+        "Not withstanding the Governor's Veto-shall the bill pass", 12, 11, 24),
+    # 2018 SB331: three votes, paired in order; the first corrected (SJ 8)
+    _rc("2018", "S", 106, "2018-03-15", "SB331", "Inexpedient to Legislate", 12, 12, 24),
+    _rc("2018", "S", 107, "2018-03-15", "SB331", "Inexpedient to Legislate", 13, 11, 24),
+    _rc("2018", "S", 108, "2018-03-15", "SB331", "Inexpedient to Legislate", 12, 12, 24),
+    # 2025: a rules suspension with no bill and no docket line (HJ 5: failed, two thirds)
+    _rc("2025", "H", 21, "2025-02-13", None, "Rules Suspension", 199, 176, 399),
+    # 1999 HB300: "SUSP RULES", the roll-call file's abbreviation (HJ 17: failed, two thirds)
+    _rc("1999", "H", 103, "1999-05-20", "HB300",
+        "REPS CHANDLER & BURLING:  SUSP RULES FOR HEARING", 219, 122, 399),
+    # 2026: no docket line, and a threshold only that term's rules and the Journal know
+    _rc("2026", "H", 132, "2026-03-05", None, "Shall Member Continue", 91, 82, 392),
+]
+
+# (passed, threshold_needed, outcome_source), as the Journals record them
+_RC_WANT = {
+    ("2012", 180): (False, 239, "docket"), ("2012", 181): (True, None, "docket"),
+    ("2012", 182): (True, 239, "docket"), ("2026", 215): (True, None, "docket"),
+    ("2014", 15): (False, None, "count"), ("2014", 16): (False, None, "docket"),
+    ("2024", 60): (True, None, "count"), ("2002", 138): (False, 16, "docket"),
+    ("2018", 106): (True, None, "journal"), ("2018", 107): (True, None, "docket"),
+    ("2018", 108): (False, None, "docket"), ("2025", 21): (False, 250, "rule"),
+    ("1999", 103): (False, 228, "rule"), ("2026", 132): (False, None, "journal"),
+}
+
+
+@check("rollcalls", "the clerk's recorded outcome decides a roll call; three fifths "
+       "is of the members in office", needs=("rollcall_outcomes",))
+def _rollcall_outcomes(rollcall_outcomes):
+    """What a roll call decided is what the General Court recorded.
+
+    rollcall_parser used to decide it by rule, and the rule was wrong three
+    ways: three fifths on every motion about a CACR (2026's CACR25 kill,
+    "fell 64 short" of a bar it never faced), three fifths of the 400 seats
+    rather than of the members in office (239 of 397 carried CACR 26 in 2012,
+    and the site said Failed), and a veto override known by two wordings of
+    its question (SB 141 of 2002, sustained, said Adopted). A rules
+    suspension written "SUSP RULES" was not known at all, and a vote no
+    docket line names -- a member allowed to continue in March 2026 -- has
+    its threshold only in that term's rules and its outcome only in the
+    Journal.
+
+    This fails on a return to seats, to CACR-wide three fifths, to a narrow
+    veto or suspension vocabulary, or to the rule where the Journal speaks.
+    """
+    RO = rollcall_outcomes
+    d = Path(tempfile.mkdtemp())
+    try:
+        for name, lines in _RC_DOCKETS.items():
+            (d / name).write_text("\n".join(lines) + "\n", encoding="utf-8")
+        for name, text in _RC_JOURNALS.items():
+            (d / name).parent.mkdir(parents=True, exist_ok=True)
+            (d / name).write_text(text + "\n", encoding="utf-8")
+        rolls = [dict(r) for r in _RC_ROLLS]
+        RO.apply(rolls, root=d)
+        by = {(r["year"], r["number"]): r for r in rolls}
+        bad = []
+        for k, want in _RC_WANT.items():
+            r = by[k]
+            got = (r["passed"], r["threshold_needed"], r["outcome_source"])
+            if got != want:
+                bad.append(f"{k[0]}-{r['body']}-{k[1]} {r['bill']}: got {got}, want {want}")
+        assert not bad, "; ".join(bad)
+        notes = [r.get("threshold_note") or "" for r in rolls]
+        assert not any("entire" in x or "seats" in x for x in notes), (
+            "a threshold note still counts the seats: "
+            + "; ".join(x for x in notes if "entire" in x or "seats" in x))
+        assert by[("2012", 182)]["threshold_note"] == (
+            "Needed 239 — three fifths of the 397 members in office."), (
+            by[("2012", 182)]["threshold_note"])
+        assert "two thirds of the 23 members voting" in (
+            by[("2002", 138)]["threshold_note"] or ""), by[("2002", 138)]["threshold_note"]
+        sb331 = by[("2018", 106)]["outcome_conflict"] or ""
+        assert "Senate Clerk's note" in sb331 and "13–11" in sb331, (
+            f"SB 331's 12-12 ballots against the Permanent Journal's 13-11 are "
+            f"not explained: {sb331!r}")
+        assert not by[("2018", 108)]["outcome_conflict"], (
+            "the Clerk's note corrected the FIRST 12-12 roll call, not the second")
+        for k in (("2014", 15), ("2024", 60)):
+            assert by[k]["outcome_conflict"], f"{k}: the docket's impossible outcome went unremarked"
+        member = by[("2026", 132)]
+        assert member.get("threshold_unknown") and "three fifths" in (
+            member.get("threshold_note") or ""), (
+            "a threshold the Journal names without a count must be said in its "
+            f"words and drawn with no mark: {member}")
+        return "ok", (f"{len(rolls)} real votes decided as the Journals record them, "
+                      "from the docket, the Journal, the count or the rule")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+@check("data", "every roll call's outcome is the one the record gives it",
+       needs=("rollcall_outcomes",))
+def _rollcall_outcomes_data(rollcall_outcomes):
+    """The built rollcalls.json against the dockets and Journals on disk.
+
+    Re-deciding every roll call and comparing is the whole check: it fails
+    on a rollcalls.json built before the outcome was read from the record,
+    on one built by code that has since changed, and -- through the counts
+    below -- on a docket that silently stopped being read. The conflicts are
+    the votes where the record and the ballots disagree; there were seven
+    when this was written, each explained on its page, and a new one is for
+    a person to look at.
+    """
+    RO = rollcall_outcomes
+    p = Path("rollcalls.json")
+    if not p.exists():
+        return "skip", "no rollcalls.json here"
+    if not RO.docket_paths("."):
+        return "skip", "no Docket*.txt here"
+    data = json.loads(p.read_text(encoding="utf-8"))
+    rolls = [r for bills in data.values() for rows in bills.values() for r in rows]
+    missing = sum(1 for r in rolls if "outcome_source" not in r)
+    assert not missing, (
+        f"{missing:,} of {len(rolls):,} roll calls carry no outcome_source: "
+        "rollcalls.json predates the recorded outcome. Rebuild it with "
+        "python3 rollcall_parser.py --file RollCallSummary.txt --all --out rollcalls.json")
+    fresh = [dict(r) for r in rolls]
+    RO.apply(fresh, root=".")
+    moved = [f'{r["year"]}-{r["body"]}-{r["number"]}' for r, f in zip(rolls, fresh)
+             if (bool(r.get("passed")), r.get("threshold_needed"), r.get("outcome_source"))
+             != (bool(f["passed"]), f["threshold_needed"], f["outcome_source"])]
+    assert not moved, (
+        f"{len(moved)} roll calls in rollcalls.json are not what the record on "
+        f"disk decides now -- rebuild it. First few: {', '.join(moved[:5])}")
+    billed = [r for r in rolls if r.get("bill")]
+    from_docket = sum(1 for r in billed if (r.get("outcome_source") or "").startswith("docket"))
+    assert from_docket >= 0.9 * len(billed), (
+        f"only {from_docket:,} of {len(billed):,} roll calls on a bill took their "
+        "outcome from the docket; the pairing or the outcome reader has stopped "
+        "working")
+    conflicts = [f'{r["year"]}-{r["body"]}-{r["number"]}' for r in rolls
+                 if r.get("outcome_conflict")]
+    assert len(conflicts) <= 7, (
+        f"{len(conflicts)} roll calls where the record and the ballots disagree, "
+        "against seven when this check was written; a person should read the "
+        "new ones: " + ", ".join(conflicts))
+    seats = [r for r in rolls if "entire" in (r.get("threshold_note") or "")]
+    assert not seats, f"{len(seats)} threshold notes still count the seats"
+    return "ok", (f"{len(rolls):,} roll calls as the record decides them; "
+                  f"{from_docket:,} of {len(billed):,} on a bill from the docket, "
+                  f"{len(conflicts)} conflicts explained on their pages")
+
+
 @check("rollcalls", "floor_markers matches a spoken tally to the record")
 def _tally_match():
     if not Path("floor_markers.py").exists():

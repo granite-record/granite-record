@@ -902,9 +902,9 @@ is simply no answer to "how did my representative vote" — not because it is hi
 but because it was never recorded.</p>
 
 <p><b>A majority is not always enough.</b> Overriding a veto takes two thirds of
-those voting. A constitutional amendment takes three fifths of the entire membership
-— 240 of 400 in the House — whether or not everyone shows up. Amendments regularly
-win a clear majority and fail anyway.</p>
+those voting. A constitutional amendment takes three fifths of the members in office
+— 240 when all 400 House seats are filled — whether or not everyone shows up.
+Amendments regularly win a clear majority and fail anyway.</p>
 
 <p><b>The consent calendar is a signal about the committee.</b> A bill goes there
 when the committee vote was unanimous or nearly so and no dissenting member objected
@@ -937,8 +937,8 @@ voted on by both chambers</td></tr>
 <tr><td><b>SCR</b></td><td>Senate Concurrent Resolution — introduced in the Senate,
 voted on by both</td></tr>
 <tr><td><b>CACR</b></td><td>Constitutional Amendment Concurrent Resolution — a
-proposed change to the state constitution. Needs three fifths of the entire
-membership in each chamber, then a two-thirds vote of the people at the next
+proposed change to the state constitution. Needs three fifths of the members in
+office in each chamber, then a two-thirds vote of the people at the next
 general election. The governor has no role.</td></tr>
 </tbody></table>
 
@@ -2157,11 +2157,17 @@ def main():
                        f'<b>{x["vacant"]}</b></span>')
         note = ""
         if x.get("majority"):
-            note = (f'<p class="statemeta" style="margin:6px 0 0">A simple '
-                    f'majority is {x["majority"]}. A constitutional amendment '
-                    f'needs {x.get("three_fifths", "")}, three fifths of the '
-                    f'full membership. A veto override needs '
-                    f'{esc(x.get("two_thirds_note", ""))}.</p>')
+            # A bill passes with a majority of the members VOTING, so there is
+            # no fixed number to print for it; "a simple majority is 201" was
+            # a majority of the 400 seats, which decides nothing. Three fifths
+            # is of the members in office, counted from the roster, and the
+            # sentence says which count it is.
+            note = (f'<p class="statemeta" style="margin:6px 0 0">A bill passes '
+                    f'with a majority of the members voting. Passing a '
+                    f'constitutional amendment takes three fifths of the '
+                    f'members in office: {x.get("three_fifths", "")} of the '
+                    f'{x["sitting"]} on the current roster. A veto override '
+                    f'needs {esc(x.get("two_thirds_note", ""))}.</p>')
         return (f'<div class="comp"><div class="compline"><b>{esc(x["chamber"])}</b>'
                 f'<span class="statemeta">{x["sitting"]} of {x["seats"]} seats '
                 f'filled{f", {x['vacant']} vacant" if x.get("vacant") else ""}</span>'

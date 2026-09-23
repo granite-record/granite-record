@@ -1774,6 +1774,10 @@ def write_rollcall_index(out, rollcalls, votes_by_member):
                 }
                 if r.get("threshold_note"):
                     ix[key]["tn"] = r["threshold_note"]
+                # Where the clerk's record and the ballots disagree, the
+                # member's Votes row says so, as the bill's vote card does.
+                if r.get("outcome_conflict"):
+                    ix[key]["oc"] = r["outcome_conflict"]
 
     # HOW EACH PARTY VOTED, so a member's page can say when they broke with
     # their own. Yea and Nay only: a member not voting has not taken a side,
@@ -2070,10 +2074,17 @@ def build_composition(a, legs):
             "parties": [{"code": k, "name": PARTY_FULL.get(k, k), "n": v}
                         for k, v in sorted(counts.items(), key=lambda x: -x[1])],
             # Reference thresholds, stated as arithmetic rather than as any
-            # party's distance from them.
+            # party's distance from them. A bill passes with a majority of
+            # those voting, so that one has no fixed number. Three fifths
+            # (passing a constitutional amendment) is of the members IN
+            # OFFICE, not of the seats: 239 of the 397 then seated carried
+            # CACR 26 in 2012, and every CACR vote the dockets and Journals
+            # record as needing three fifths fits that count. Counted here
+            # from the roster, and the page says so, because the most recent
+            # roll call's ballots can differ from it by a member or two.
             "majority": total // 2 + 1,
             "two_thirds_note": "two thirds of those voting, so it moves with turnout",
-            "three_fifths": -(-3 * total // 5),
+            "three_fifths": -(-3 * len(members) // 5),
         }
 
     # Which districts are short a member. Only possible where the district files
@@ -3232,11 +3243,19 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
                      rc_order.get((r.get("body"), r.get("number")),
                                   10 ** 6 + int(r.get("number") or 0))),
             # What the yes side had to reach, so the chart can mark it.
-            # rollcall_parser works this out per motion: two thirds of
-            # those voting for a veto override, three fifths of the whole
-            # membership for a CACR, a simple majority otherwise.
+            # rollcall_outcomes works this out per motion: two thirds of
+            # those voting for a veto override or a rules suspension, three
+            # fifths of the members in office (the ballots, not the seats)
+            # to pass a CACR, and whatever the docket or the Journal names
+            # for a motion it says needed more; a simple majority otherwise.
+            # `passed` is the clerk's recorded outcome where the record
+            # names one, and where the record and the ballots disagree the
+            # page says so in the clerk's words rather than choosing quietly.
             "threshold_needed": r.get("threshold_needed"),
             "threshold_rule": r.get("threshold_rule"),
+            **({"threshold_unknown": True} if r.get("threshold_unknown") else {}),
+            **({"outcome_conflict": r["outcome_conflict"]}
+               if r.get("outcome_conflict") else {}),
             "tally": {p: dict(v) for p, v in tally.items()},
             # "s" is the surname-first sort key. The grids are read
             # alphabetically, and sorting the displayed string would order

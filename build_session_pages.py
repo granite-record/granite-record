@@ -181,8 +181,11 @@ def vote_payload(item):
             # Not always half plus one. The Senate writes "3/5 nec." into the
             # motion for a supermajority, and drawn as a simple majority the
             # ring's threshold mark says a motion cleared a bar it never
-            # faced, or missed one it did.
+            # faced, or missed one it did. Three fifths is of the members in
+            # office, which session_days takes from the roll call's ballots;
+            # where there are none, the ring draws no mark.
             "threshold_needed": item.threshold_needed,
+            **({"threshold_unknown": True} if item.threshold_unknown else {}),
             "kind": item.kind}
 
 

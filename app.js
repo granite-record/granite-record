@@ -865,9 +865,14 @@ function simpleDonut(rc,bid,i){
   const need=rc.threshold_needed||Math.floor(tot/2)+1;
   const frac=Math.min(1,Math.max(0,need/tot));
   const a=(180+GAP/2+(360-GAP)*frac)*Math.PI/180;
-  const tick=marker(a,R,need,"");
+  // No mark where the record says more than a majority was needed and the
+  // count it was needed of is not on record -- three fifths of the members in
+  // office, on a division, where nobody's ballot was recorded. A majority mark
+  // there would be a wrong one.
+  const tick=rc.threshold_unknown?"":marker(a,R,need,"");
   return `<div class="votewrap"><svg class="donut" viewBox="0 0 172 206" width="172" height="206"
-    role="img" aria-label="Division vote, ${y} yes to ${n} no, needing ${need}">
+    role="img" aria-label="Division vote, ${y} yes to ${n} no, needing ${
+      rc.threshold_unknown?"more than a majority":need}">
     <g transform="rotate(90 86 86)">${seg(avail*y/tot,"var(--yes)",won)}</g>
     <g transform="translate(172,0) scale(-1,1)"><g transform="rotate(90 86 86)">${seg(avail*n/tot,"var(--no)",!won)}</g></g>
     ${tick}${yn(GAP,R,won)}
@@ -926,10 +931,13 @@ function donut(bid,i,rc){
       stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${o}" opacity="${dim}"
       data-seg="${key}|${s.key}"></circle>`;
     }).join("");};
-  // Where the yes side had to reach. rollcall_parser works this out per
-  // motion, so a veto override marks two thirds and a CACR three fifths of the
-  // whole membership rather than of those who turned up. Without it a chart
-  // showing 204 to 116 looks like a comfortable win, and that vote failed.
+  // Where the yes side had to reach. rollcall_outcomes works this out per
+  // motion, so a veto override marks two thirds of those voting and passing a
+  // CACR three fifths of the members in office, which can sit beyond the ring
+  // entirely. Without it a chart showing 204 to 116 looks like a comfortable
+  // win, and that vote failed. Where the record says a vote needed more than a
+  // majority without saying of what (threshold_unknown), no mark is drawn
+  // rather than a majority mark that would be wrong; the note says why.
   const voting=(rc.yeas||0)+(rc.nays||0);
   const need=rc.threshold_needed||Math.floor(voting/2)+1;
   const frac=voting?Math.min(1,Math.max(0,need/voting)):0.5;
@@ -938,7 +946,7 @@ function donut(bid,i,rc){
   // tick starts flush with the inner edge and runs six past the outer one:
   // grounded on the inside, proud on the outside, so it reads as a mark
   // against the ring rather than a line drawn through it.
-  const tick=voting?marker(a,R,need,rc.threshold_rule):"";
+  const tick=(voting&&!rc.threshold_unknown)?marker(a,R,need,rc.threshold_rule):"";
   const won=!!rc.passed;
   const circles=`<g transform="rotate(90 86 86)">${arc(yes,"var(--yes)",won)}</g>
     <g transform="translate(172,0) scale(-1,1)"><g transform="rotate(90 86 86)">${arc(no,"var(--no)",!won)}</g></g>`;
@@ -973,6 +981,7 @@ function donut(bid,i,rc){
   }
   return `<div class="votewrap"><svg class="donut" viewBox="0 0 172 206" width="172" height="206"
     role="img" aria-label="Votes by party: ${rows.map(s=>`${PARTY_NAME[s.p]||s.p} ${s.side==='Yea'?'yes':'no'} ${s.n}`).join(", ")}. ${
+      rc.threshold_unknown?"Needed more than a majority":
       rc.threshold_rule?`Needed ${need}, ${esc(rc.threshold_rule)}`:`Needed ${need} for a majority`}.">
     ${circles}${tick}${yn(GAP,R,won)}
     ${score(rc.yeas,rc.nays,won)}</svg>
@@ -1565,6 +1574,7 @@ function renderVotes(b,d){
       <span class="rcres ${rc.passed?'pass':'fail'}">${rc.passed?"Adopted":"Failed"}</span></div>
       ${rc.mover?`<p class="rcby">Moved by ${esc(rc.mover)}</p>`:""}
       ${rc.threshold_note?`<p class="note" style="margin:6px 0 0">${esc(rc.threshold_note)}</p>`:""}
+      ${rc.outcome_conflict?`<p class="note" style="margin:6px 0 0">${esc(rc.outcome_conflict)}</p>`:""}
       ${body}</section>`;}).join("")
     :`<p class="note">No roll call votes on this bill.</p>`);
 }
@@ -3381,7 +3391,8 @@ function voteRow(r){
         r.mark.agreed?"with":"against"} ${esc(r.mark.word)}</i>`:""}</td>
     <td class="o" data-l="Outcome">${rc
       ? `<span class="${rc.p?"pass":"fail"}">${rc.p?"Adopted":"Failed"}</span>${
-          tallies}${rc.tn?`<i class="thr">${esc(rc.tn)}</i>`:""}`
+          tallies}${rc.tn?`<i class="thr">${esc(rc.tn)}</i>`:""}${
+          rc.oc?`<i class="thr">${esc(rc.oc)}</i>`:""}`
       : `<span class="dim">&mdash;</span>`}</td></tr>`;
 }
 
