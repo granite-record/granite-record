@@ -318,6 +318,11 @@ particular bills. It does not cover the underlying record, because it cannot —
 the bills, votes, calendars and recordings are the State of New Hampshire's,
 and facts are not copyrightable. [`DATA.md`](DATA.md) separates the three.
 
+The logo is the exception to all of it. The mark in `brand/` and the images
+drawn from it in `assets/` are used under a licence from their owner and are
+not offered under MIT. A fork should bring its own; `DATA.md` says exactly
+which files that means.
+
 ---
 
 ## Where to read next
