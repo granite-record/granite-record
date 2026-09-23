@@ -10662,6 +10662,67 @@ def _text_sponsors(text_sponsors, build_site_v2):
                   "another county refuses; the database's own list is never replaced")
 
 
+@check("naming", "sponsors.csv seats a sponsor where the bill's page does",
+       needs=("text_sponsors",))
+def _sponsors_csv_seat(text_sponsors):
+    """The database files six senators of 2023-2024 under chamber H, and
+    build_site_v2 corrects the seat from the bill's own printed line
+    (TS.seat_into) while build_exports.sponsors only merged -- so sponsors.csv
+    listed Donna Soucy, Jeb Bradley and four more as House members on 878 rows
+    of 443 bills whose pages say Senate, on the page that promises a download
+    and a page cannot disagree.
+
+    Both builders take both steps, and the download is built on a fixture:
+    2023 CACR 10's database row says H and its text prints "Sen. Soucy, Dist
+    18"; the current term keeps its roster's seat whatever the text says."""
+    here = Path(".").resolve()
+    for f in ("build_site_v2.py", "build_exports.py"):
+        src = (here / f).read_text(encoding="utf-8") if (here / f).exists() else ""
+        if not src:
+            return "skip", f"{f} not here"
+        for step in ("TS.merge_into(", "TS.seat_into("):
+            assert step in src, (f"{f} does not call {step[:-1]}, so its sponsors are "
+                                 "not the ones the other builder publishes")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "data").mkdir()
+        (root / "out").mkdir()
+        w = lambda p, o: (root / p).write_text(json.dumps(o), encoding="utf-8")
+        w("data/bills.json", {"2023-2024": {"CACR10": {}}, "2025-2026": {"HB1": {}}})
+        w("data/sponsors.json", {
+            "2023-2024": {"CACR10": [{"member_id": "", "name": "Donna Soucy",
+                                      "label": "Donna Soucy (D)", "party": "D",
+                                      "chamber": "H", "prime": True,
+                                      "source": "bill status page"}]},
+            "2025-2026": {"HB1": [{"member_id": "8", "name": "Mark McConkey",
+                                   "label": "Mark McConkey (R)", "party": "R",
+                                   "chamber": "S", "prime": True,
+                                   "source": "sponsor file"}]}})
+        w("text_sponsors.json", {
+            "2023-2024": {"CACR10": [{"name": "Donna Soucy", "chamber": "S",
+                                      "county": "", "district": "18",
+                                      "as_printed": "Sen. Soucy, Dist 18"}]},
+            "2025-2026": {"HB1": [{"name": "Mark McConkey", "chamber": "H",
+                                   "county": "Carroll", "district": "8",
+                                   "as_printed": "Rep. McConkey, Carr. 8"}]}})
+        r = _run([sys.executable, "-c",
+                  "import sys; sys.path.insert(0, sys.argv[1]); "
+                  "from pathlib import Path; import build_exports as BE; "
+                  "BE.sponsors(Path('out'), 'data')", str(here)],
+                 cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+        with (root / "out" / "sponsors.csv").open(encoding="utf-8", newline="") as fh:
+            got = {(x["term"], x["bill"]): x["chamber"] for x in csv.DictReader(fh)}
+        assert got.get(("2023-2024", "CACR10")) == "S", (
+            f"sponsors.csv puts Sen. Soucy in chamber {got.get(('2023-2024', 'CACR10'))!r}; "
+            "the bill prints \"Sen. Soucy, Dist 18\" and its page says Senate")
+        assert got.get(("2025-2026", "HB1")) == "S", (
+            "the current term's seat was taken from the text over its own roster")
+        return "ok", "both builders merge and seat; a 2023-2024 senator is S, the current term keeps its roster"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("data", "the Learn pages state the record's own figures, and none is left unfilled")
 def _learn_figures():
     """civics.py names each count as [[name]] and build_civics fills it from the

@@ -284,8 +284,19 @@ def sponsors(out, data):
     sp = load(Path(data) / "sponsors.json", {})
     # The same merge build_site_v2 makes, or the download would name nobody for
     # the bills whose pages name their sponsors from the bill's own text.
+    #
+    # AND THE SAME SEAT. build_site_v2 also dates a database sponsor's seat from
+    # the bill's own printed line (TS.seat_into), because the database files
+    # six senators of 2023-2024 under chamber H; this skipped that step, so
+    # sponsors.csv listed Donna Soucy, Jeb Bradley and four more as House
+    # members on 878 rows of 443 bills whose pages say Senate -- beside a page
+    # that promises a download and a page cannot disagree. The current term is
+    # left alone exactly as build_site_v2 leaves it: its roster is
+    # contemporaneous.
     if isinstance(sp, dict):
         TS.merge_into(sp)
+        bills_ = load(Path(data) / "bills.json", {})
+        TS.seat_into(sp, current=max(bills_) if bills_ else None)
     cols = ["term", "bill", "member_id", "member", "party", "chamber",
             "prime", "role", "source"]
     rows = []
