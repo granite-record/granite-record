@@ -99,8 +99,14 @@ FLOW = [
          "chosen by subject.", ""),
         ("Public hearing", "The sponsor introduces it, then anyone may speak "
          "for or against, or sign in without speaking.", "say"),
+        # NOT A PLACE A BILL DIES, and so no mark. The House Rules (Rule 50 in
+        # 1995 and 1997, Rule 42 in 2018) and the Senate Rules (4-2 and 4-3,
+        # as printed in the Senate Journal of 7 December 2022) both require a
+        # committee to report every bill it is given -- with no recommendation
+        # if it cannot agree -- so the floor, not the committee, ends a bill.
         ("Executive session", "The committee votes on what to recommend. A "
-         "separate meeting from the hearing, often days later.", "stop"),
+         "separate meeting from the hearing, often days later. It cannot end "
+         "the bill itself: the recommendation goes to the floor.", ""),
         ("Floor vote", "The full chamber decides, and is not bound by the "
          "committee's recommendation.", "stop"),
     ]),
@@ -116,7 +122,7 @@ FLOW = [
         ("Public hearing", "A second committee, a second public hearing. "
          "Missing the first chamber's does not cost you this one.", "say"),
         ("Executive session", "The second committee votes on its own "
-         "recommendation.", "stop"),
+         "recommendation, which goes to that chamber's floor.", ""),
         ("Floor vote", "If this chamber changes the bill, the first must "
          "agree to the change.", "stop"),
         ("Committee of conference", "Where it will not agree: members of both "
@@ -126,10 +132,12 @@ FLOW = [
     ("The Governor", [
         ("Enrolment", "A final check of the text for errors before it is "
          "sent.", ""),
-        ("Signed, vetoed, or left unsigned", "A bill left unsigned becomes "
-         "law anyway.", "stop"),
-        ("Override", "Two thirds of those voting in both chambers, or the "
-         "veto stands.", "stop"),
+        ("Signed, vetoed, or left unsigned", "A bill left unsigned for five "
+         "days, Sundays excepted, becomes law without a signature, unless the "
+         "legislature's adjournment prevents its return.", "stop"),
+        ("Override", "Two thirds of each chamber, by roll call, or the veto "
+         "stands. The House counts the two thirds among the members "
+         "voting.", "stop"),
     ]),
 ]
 
@@ -395,9 +403,18 @@ def reps_example(districts, town=REPS_EXAMPLE):
 # AMENDING THE CONSTITUTION. Every step and every threshold here is one the
 # prose on that page already states and cites to the Constitution itself; the
 # diagram reorganises it rather than adding to it. The thresholds ARE the
-# teaching point -- three fifths of the whole membership in each chamber, then
-# two thirds of the voters, and no part for the Governor at any stage -- so
-# they are the per-step labels rather than a generic mark.
+# teaching point -- three fifths of the members in office in each chamber,
+# then two thirds of those voting on the question, and no part for the
+# Governor at any stage -- so they are the per-step labels rather than a
+# generic mark.
+#
+# THE MEMBERS IN OFFICE, NOT THE SEATS. This said "240 of the 400 House
+# seats" until 23 September 2026, and the record says otherwise: in March
+# 2012 CACR 26 failed in the House at 237-115 and passed later that day at
+# 239-114 "By Necessary Three-Fifths Vote", with 397 members on the ballots
+# of both roll calls (Docket_db_2011-2012.txt; votes-2011-2012.csv). Three
+# fifths of the members on the ballots explains all 104 CACR roll calls whose
+# docket line names three fifths; three fifths of the seats explains 101.
 # ---------------------------------------------------------------------------
 FLOW_CACR = [
     ("How it starts", [
@@ -406,20 +423,23 @@ FLOW_CACR = [
          ""),
     ]),
     ("The first chamber", [
-        ("Three fifths of the whole membership", "Not three fifths of those "
-         "voting. 240 of the 400 House seats, whether or not everyone is "
-         "there, so an absence counts against it.",
-         ("needs", "240 of 400 in the House")),
+        ("Three fifths of the members in office", "Not three fifths of those "
+         "voting: an absent member counts against it, a vacant seat does "
+         "not. In 2012 the House carried CACR 26 with 239 votes, when 397 "
+         "members were in office: three fifths of 397 is 238.2, so 239 was "
+         "enough, where 240 would have been needed with every seat filled.",
+         ("needs", "Three fifths of the House's members")),
     ]),
     ("The second chamber", [
-        ("The same threshold again", "Three fifths of the entire "
-         "membership of the other chamber, on the same terms.",
-         ("needs", "Three fifths of all seats")),
+        ("The same threshold again", "Three fifths of the other chamber's "
+         "members in office, on the same terms: 15 of a full Senate of 24.",
+         ("needs", "Three fifths of its members")),
     ]),
     ("The voters", [
-        ("At the next general election", "Put to the people, where it needs "
-         "a two-thirds majority to take effect.",
-         ("needs", "Two thirds of those voting")),
+        ("At the next general election", "Put to the people, where it takes "
+         "effect only if two thirds of those voting on the question approve "
+         "it.",
+         ("needs", "Two thirds of those voting on it")),
         ("The Governor has no part", "No signature and no veto, at any point "
          "in this course.", ""),
     ]),
@@ -698,7 +718,10 @@ stop at any point on it. Most do.</p>
 are the two most often confused. A <b>public hearing</b> is where anyone may
 speak, and the committee takes no decision at it. An <b>executive session</b>
 is where the committee votes on what to recommend, usually days later and
-usually covering several bills at once. See
+usually covering several bills at once. A committee cannot end a bill there:
+the rules of both chambers require it to report every bill it is given, with
+no recommendation if it cannot agree on one, and the full chamber decides.
+See
 <a href="learn/testifying.html">Testifying and attending</a> for what happens
 at each, and
 <a href="learn/governor-and-council.html">The Governor and the Executive
@@ -716,55 +739,72 @@ failure of the bill or its sponsor.</p>
 <p>A chamber can put a question three ways. A <b>voice vote</b> records only
 which side sounded louder. A <b>division</b> records the count but not who
 voted which way. A <b>roll call</b> records every member by name. In the House
-one is taken only when a member moves for it and the required number of other
-members second the motion.</p>
+one is taken when a member moves for it and the required number of other
+members second the motion. A vote to override a veto is always a roll call,
+because the constitution requires one.</p>
 <p>Across the [[all_bills]] bills in this record, <b>[[all_rollcall]] have at
-least one recorded roll call and [[all_no_rollcall]] have none</b>. For a
-great many bills there is no answer to "how did my representative vote",
-because no record of names was ever made.</p>
+least one recorded roll call and [[all_no_rollcall]] have none</b>. Of those,
+[[pre_rollcall_bills]] are from before [[rollcall_first_year]], where this
+record's roll calls begin: roll calls were taken then too, and printed in the
+journals, but this site does not hold them. For most of the rest there is no
+answer to "how did my representative vote", because the bill was decided by
+voice vote or division and no record of names was made.</p>
 
 <h2>Votes that need more than a majority</h2>
-<p>Overriding a veto takes a two-thirds vote in each chamber, under Part
-Second, Article 44 of the state constitution, counted against the members
-voting. Amending the constitution takes three fifths of the entire membership
-of each chamber, which is 240 of the 400 House seats, and then two thirds of
-the voters, under Part Second, Article 100. That three-fifths threshold is
-counted against every seat rather than against the members present, so a
-measure can win a clear majority of those voting and fail anyway.</p>
+<p>Overriding a veto takes two thirds of each chamber, by roll call, under
+Part Second, Article 44 of the state constitution. The article says two thirds
+"of that house", and the House counts it among the members voting rather than
+against its whole membership: in August 2026 it overrode a veto 231 to 88
+when 384 members were in office. Amending the constitution takes three fifths
+of the members of each chamber, and then two thirds of those voting on the
+question at the election, under Part Second, Article 100. The chambers count
+that three fifths against every member in office rather than against those
+present &mdash; 240 when all 400 House seats are filled &mdash; so a measure
+can win a clear majority of those voting and fail anyway.</p>
 
 <h2>The consent calendar</h2>
 <p>A committee decides in executive session whether to send a bill to the
-consent calendar, and the ones that go there are the bills it broadly agrees
-about. Usually that agreement is unanimous, but not always: this
-site&rsquo;s own record holds thousands of committee reports marked for the
-consent calendar on a divided vote, among them reports carried 15&ndash;3 and
-4&ndash;2. The calendar is then
-decided in a single vote, without floor debate. What that vote adopts is the
-committee's recommendation on each bill, which for some of them is to kill it.
-Any member may ask for a bill to be taken off, and one that comes off is
-debated and voted on by itself at the end of the regular calendar.</p>
+consent calendar, and in both chambers that decision must be unanimous. It is
+a separate vote from the committee's recommendation: a recommendation carried
+on a divided vote can still go to the consent calendar, and this
+site&rsquo;s record holds thousands of House reports marked that way, among
+them reports carried 15&ndash;3. The calendar is then decided in a single
+vote, without floor debate. What that vote adopts is the committee's
+recommendation on each bill, which for some of them is to kill it. A bill can
+be taken off first, and one that comes off is debated and voted on by itself
+at the end of the regular calendar. Taking one off has needed ten members in
+the House since January 2023, and two senators in the Senate since April
+2026; before that, one member's request was enough in either chamber.</p>
 
 <h2>Two bills, followed all the way</h2>
-<p>Both ran the whole course, and in each the closest floor vote divided the
-House without dividing it by party. A majority of Republicans voted one way, a
-majority of Democrats the other, and a substantial minority of each party
-voted against its own side.</p>
+<p>Both went through both chambers, and in each the closest roll call divided
+the House without dividing it by party. A majority of Republicans voted one
+way, a majority of Democrats the other, and a substantial minority of each
+party voted against its own side.</p>
 
 <h3>HB 1002 (2024) &mdash; what a public record may cost</h3>
-<p>The ordinary course, start to finish. A town or agency answering a
+<p>A town or agency answering a
 right-to-know request may charge for the copies. The question was whether it
 may also charge for the staff time spent finding and reviewing the records.
 Supporters said small towns without full-time staff absorb real cost for
 requests that can run to thousands of pages. Opponents said a fee that tracks
 staff time can be set high enough to price an ordinary resident out of
-oversight. It was signed into law.</p>
-<p>It had a public hearing on 17 January 2024 and two executive sessions, all
-three on video. The committee split, and the House divided <b>193 to 179</b>
-on the majority's motion to pass the bill with an amendment: 62 Republicans
-for and 125 against, 128 Democrats for and 53 against.</p>
+oversight.</p>
+<p>It shows how little a first vote settles. The House Judiciary Committee
+heard it on 17 January 2024 and split 12&ndash;8 for passing it with an
+amendment, and on 1 February the House agreed, <b>193 to 179</b>: 63
+Republicans for and 125 against, 128 Democrats for and 53 against. A week
+later the House voted 195 to 183 to reopen that vote, and sent the bill back
+to the committee, which now split 11&ndash;9 for referring it to interim
+study, a recommendation that would have ended it for the term. The House
+refused, 105 to 266, adopted an amendment offered from the floor rather than
+by the committee, 345 to 24, and passed the bill 268 to 106. The Senate passed
+it on a voice vote, and Governor Sununu signed it into law on 14 June 2024.
+Five of its proceedings are on video: the House hearing, both House executive
+sessions, the work session between them, and the Senate hearing.</p>
 
 <h3>HB 1215 (2024) &mdash; a bill that went to a committee of conference</h3>
-<p>The same course by the longer road. It went to a Special Committee on
+<p>The longer road at the end of the course. It went to a Special Committee on
 Housing, then to a second chamber that changed it. On the motion to accept
 that change the House divided <b>172 to 180</b>, and the bill went to a
 <b>committee of conference</b>. It dealt with how long an approved development
@@ -801,8 +841,9 @@ plan.</p>
 <a href="bill/2026/hb649.html">HB 649</a>, on the maintenance obligations of
 motor vehicle operators, which passed in the second year and became law.</p>
 <p>Across the [[all_bills]] bills on this site, [[all_rollcall]] have at least
-one recorded vote and [[all_no_rollcall]] have none: most bills stop before
-anybody is asked to go on the record.</p>
+one recorded roll call. Of the [[law]] bills that became law in the [[term]] term,
+[[law_no_rollcall]] did so without a roll call on the floor of either
+chamber.</p>
 <p>Of the [[narrated]] bills with a narrative this term, <b>[[both_chambers]]
 reached both chambers</b> and <b>[[conference]] went to a committee of
 conference</b>. [[law]] became law: [[signed]] signed, [[unsigned]] without a
@@ -818,18 +859,20 @@ Guard.</p>
 <p>The Governor is elected for two years, at the same election as the whole
 legislature. When a bill has passed both chambers the Governor may sign it,
 veto it, or do nothing, in which case it becomes law without a signature after
-five days, Sundays excepted &mdash; unless the legislature has adjourned in the
-meantime, and then it does not become law at all. Part Second, Article 44 of
-the state constitution sets both.</p>
+five days, Sundays excepted &mdash; unless the legislature's adjournment
+prevents the Governor from returning it, and then it does not become law at
+all. Part Second, Article 44 of the state constitution sets both.</p>
 
 <h2>A veto is not always the end</h2>
-<p>The legislature can override a veto, but it takes two thirds of the members
-voting in each chamber. That is a high bar and most attempts fail.</p>
+<p>The legislature can override a veto, but it takes two thirds of each
+chamber, by roll call, starting with the chamber the bill came from. The
+constitution says two thirds "of that house", and the House counts that among
+the members voting. That is a high bar and most attempts fail.</p>
 <p>Across the [[terms]] terms on this site there are <b>[[vetoed]] vetoed bills</b>.
-In <b>[[veto_failed]]</b> the override failed. In <b>[[veto_overridden]]</b> it
-succeeded and the bill became law over the Governor's objection.[[veto_pending]]</p>
-<p>When the Governor vetoes a bill, the reasons are set out in a message read
-into the record of the chamber the bill came from. Those messages are printed
+In <b>[[veto_failed]]</b> the veto stood. In <b>[[veto_overridden]]</b> it was
+overridden and the bill became law over the Governor's objection.[[veto_pending]]</p>
+<p>When the Governor vetoes a bill, the reasons are set out in a message
+entered in the journal of the chamber the bill came from. Those messages are printed
 in the House and Senate calendars, and this site carries [[veto_messages]] of the
 [[vetoed]].</p>
 
@@ -851,7 +894,9 @@ has already been authorised. Both are arguments about the same fact.</p>
 BODY_GOVERNOR_HOLDS = """This site indexes the legislature, and it holds
 almost nothing about the Executive Council: no agendas, no contract votes, no
 nominations. What it does hold is the legislative half &mdash; the vetoes and
-the override votes, linked below. For the Council's own record, go to the
+the override votes, on each bill's own page: <a href="bill/2026/hb349.html">HB
+349</a>, whose veto stood, and <a href="bill/2026/hb2026.html">HB 2026</a>,
+whose veto was overridden. For the Council's own record, go to the
 Council."""
 
 
@@ -866,12 +911,15 @@ misdemeanours, small claims, probate and domestic relations.</p>
 <p>The Governor nominates and the Executive Council confirms &mdash; the same
 route as a commissioner, which is the clearest illustration of what the
 Council is for. There is no judicial election in New Hampshire at any level.
-Judges serve until the age of seventy, which is set by the constitution
-itself: Part Two, Article 78.</p>
+No one may serve as a judge after the age of seventy, which is set by the
+constitution itself: Part Second, Article 78. Raising it to seventy-five has
+been tried. A 2023 amendment to do so passed both chambers and went to the
+voters in November 2024, and a 2026 proposal to make the same change, which
+failed in the House, still described the limit as seventy.</p>
 
 <h2>Where the courts and the legislature meet</h2>
 <p>The legislature writes statutes, and the courts decide what they mean when
-there is a dispute over what was originally intended, and whether they are
+that is disputed, and whether they are
 permitted by the state or federal constitution. A decision striking down or
 narrowing a statute is sometimes followed by bills amending the language
 around the new standard, and those bills are in the record here like any
@@ -938,12 +986,19 @@ bill itself has to be filed by a legislator.</p>
 <h2>What an agency cannot do</h2>
 <p>It cannot give itself powers the statute does not grant. What it can do is
 decide the detail, and it does that by writing
-<a href="learn/administrative-rules.html">administrative rules</a>, which the
-legislature approves through JLCAR, the Joint Legislative Committee on
-Administrative Rules.</p>
+<a href="learn/administrative-rules.html">administrative rules</a>. Before a
+rule is adopted it goes to JLCAR, the Joint Legislative Committee on
+Administrative Rules, a committee of legislators from both chambers. It may
+approve the rule, approve it on a condition, or object. An objection does not
+by itself stop the rule, though the committee can hold it back for a time
+while it asks the legislature to block it by joint resolution; and if the
+committee takes no action within 60 days, the rule is treated as
+approved.</p>
 """ + SHOWS.format("""
-<p>Hearing recordings are linked from every bill's Videos tab, at the moment
-the bill was taken up. <a href="committees.html">Committee pages</a> list
+<p>Where a hearing was recorded &mdash; [[hearing_video_bills]] bills, nearly
+every one since [[hearing_video_from]] &mdash; the bill's Videos tab links the
+recording, opened where the bill was taken up when that moment has been
+found. <a href="committees.html">Committee pages</a> list
 every day a committee met and what it heard.</p>""")
 
 
@@ -1557,8 +1612,10 @@ you spoke or only signed in, the counts and any written testimony stay in the
 record.</p>
 """ + SHOWS.format("""
 <p>This site holds <b>[[hearings]] public hearings</b>, each with the committee
-and the day. Every bill's page shows its own hearings, and the Videos tab links
-the recording at the moment the bill was taken up.
+and the day. Every bill's page shows its own hearings. Where a hearing was
+recorded &mdash; [[hearing_video_bills]] bills, nearly every one since
+[[hearing_video_from]] &mdash; the Videos tab links it, opened where the bill
+was taken up when that moment has been found.
 <a href="committees.html">A committee's page</a> lists every day it met and
 what it heard.</p>
 <p>Bills also carry the sign-in counts: how many people registered supporting,
@@ -1637,7 +1694,8 @@ BODY_SITE = """
 [[all_bills]] bills across [[terms]] two-year terms, back to [[first_year]],
 with what each bill does, who sponsored it, when it was heard, how it was
 voted on, and where in the recording that happened. It is built by machine
-from the General Court's published files and rebuilt every night.</p>
+from the General Court's published files, and this page was last built on
+[[built_on]].</p>
 
 <p>Older terms hold less, and every bill's page says what its term carries and
 what has not been fetched.</p>
@@ -1659,7 +1717,8 @@ status, and a narrative of what has happened, in order, with each action
 linked to the journal or calendar that recorded it.</li>
 <li><b>Bill Text</b> &mdash; the text and its amendments, where more than one
 was published.</li>
-<li><b>Votes</b> &mdash; every recorded roll call, by member. Voice and
+<li><b>Votes</b> &mdash; every roll call this record holds, by member, from
+[[rollcall_first_year]] on. Voice and
 division votes appear in the narrative but have no member-by-member record to
 show, because none was made.</li>
 <li><b>Videos</b> &mdash; the hearing and floor recordings, opened at the
@@ -1697,8 +1756,8 @@ is the evidence.</p>
 <tr><td><b>DV</b></td><td><b>Division vote:</b> counted, names not recorded</td></tr>
 <tr><td><b>RC</b></td><td><b>Roll call:</b> each member recorded by name</td></tr>
 <tr><td><b>CC</b></td><td><b>Consent Calendar:</b> the committee's
-recommendation, to pass or to kill, adopted with the whole calendar in one
-vote, without floor debate</td></tr>
+recommendation, to pass, to kill or to send to interim study, adopted with the
+whole calendar in one vote, without floor debate</td></tr>
 <tr><td><b>OT3rdg</b></td><td><b>Ordered to a third reading</b></td></tr>
 <tr><td><b>HJ</b> / <b>SJ</b></td><td><b>House or Senate Journal:</b> the
 chamber's own record of the day, cited by issue and sometimes page</td></tr>
