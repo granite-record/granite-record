@@ -1287,11 +1287,31 @@ function archivedNote(d){
   // The !c.docket branch is NOT dead code and must not be removed with it: it
   // is the state every backfill term passes through, between landing in
   // data/bills.json and having its docket narrated.
-  const before1999=(!c.votes&&y&&y<1999)?` No roll call from before 1999 is in
-    the General Court's own record of votes: RollCallHistory.txt and
-    RollCallSummary.txt, the files every named vote on this site is read from,
-    begin with the 1999 session. That is where the record starts, not where
-    this site has got to.`:"";
+  //
+  // THE FILES START IN 1999, NOT THE VOTES. The House Journal of 1997 prints
+  // its roll calls name by name, so "that is where the record starts" was
+  // false for every one of those 8,525 pages. What begins in 1999 is the
+  // General Court's roll-call files, and the sentence now says so.
+  const before1999=(!c.votes&&y&&y<1999)?` No roll call from before 1999 is
+    listed by name here: the General Court's roll-call files, RollCallHistory.txt
+    and RollCallSummary.txt, which every named vote on this site is read from,
+    begin with the 1999 session. The docket gives the tallies it recorded, and
+    the printed journals name who voted which way.`:"";
+
+  // WHERE THE WRITTEN REPORTS START, which is the same kind of boundary. The
+  // House's written committee reports on this site are read from its
+  // calendars, and the General Court's online calendars begin in 1997, so the
+  // 6,676 bills of 1989-1996 were told the reports were "not yet fetched" --
+  // a backlog that no fetch could clear. For those terms the docket's report
+  // lines are the record of what each committee recommended, and the page
+  // already shows them.
+  const before1997=(!c.reports&&y&&y<1997)?` Written committee reports begin
+    here with 1997, the first year of the General Court's online calendars,
+    which print them; for this term the docket gives each committee's
+    recommendation and its vote.`:"";
+  // A bill that carries its own text does not need telling the text is
+  // elsewhere: 94 to 98 per cent of every archived term's bills have it.
+  const hasText=!!(((d.billtext||{}).body||"").trim());
 
   if(!c.docket){
     // WHAT IS HERE, THEN WHAT IS NOT. This branch told every bill of
@@ -1309,32 +1329,39 @@ function archivedNote(d){
     if(c.reports)have.push("the committee's written report");
     const gaps=["the docket's full history"];
     if(!hasSp)gaps.push("the sponsors");
-    if(!c.reports)gaps.push("the written committee reports");
+    if(!c.reports&&y>=1997)gaps.push("the written committee reports");
     if(!c.votes&&y>=1999)gaps.push("the roll calls");
     if(!c.hearings)gaps.push("its hearings");
     return P(`This term is archived. Here: ${and(have)}. Not yet on this
-      site for it: ${and(gaps)}.${before1999}`);
+      site for it: ${and(gaps)}.${before1997}${before1999}`);
   }
 
   // Has a docket. What is missing beyond it is what the reader needs told.
   const gaps=[];
   if(!hasSp)gaps.push("the sponsors");
-  if(!c.reports)gaps.push("the written committee reports");
+  if(!c.reports&&y>=1997)gaps.push("the written committee reports");
   if(!c.votes&&y>=1999)gaps.push("the roll calls naming individual members");
   if(!c.video&&y>=2019)gaps.push("a recording of any hearing");
   // Both returns carry it, not just the one with gaps. A pre-1999 term whose
   // sponsors and reports have landed reaches the first of these, and "the
   // recorded votes are all here" is false for every term before 1999 --
   // which is the same wrong claim in the other direction.
-  if(!gaps.length)
-    return P(`This term is archived, but its record is close to complete: the
-      docket, the sponsors${c.votes?`, the committee reports and the recorded
-      votes`:` and the committee reports`} are all here. What a current term
-      adds is the bill's own text, which is linked rather than loaded.${
-      before1999}`);
+  //
+  // WHAT IS HERE, NAMED FROM THE FLAGS. This said "the docket, the sponsors
+  // and the committee reports are all here" whenever nothing was missing,
+  // which a term before 1997 now reaches with no written report on it at all.
+  if(!gaps.length){
+    const have=["the docket", "the sponsors"];
+    if(c.reports)have.push("the committee reports");
+    if(c.votes)have.push("the recorded votes");
+    return P(`This term is archived, but its record is close to complete:
+      ${and(have)} are all here.${hasText?"":` What a current term adds is the
+      bill's own text, which is linked rather than loaded.`}${
+      before1997}${before1999}`);
+  }
   return P(`This term is archived, and its docket is here: every action the
     General Court recorded, and the committee's recommendation and the vote on
-    it. Not yet fetched for this term: ${and(gaps)}.${before1999}`);
+    it. Not yet fetched for this term: ${and(gaps)}.${before1997}${before1999}`);
 }
 
 // ===================================================== the bill's own facts ==
@@ -1828,8 +1855,14 @@ function renderHearings(b,d){
       +`<p class="note" style="margin-top:8px">A voice or division vote leaves no
       timestamp in the record, so there is nothing to point at within the
       sitting. The whole session is here.</p>`;
-    else if(s.state==="prestream")inner=`<div class="vbox"><p><b>No recording exists.</b>
-      Hearings were not livestreamed before 2020, so the written record is all there is.</p></div>`;
+    // WHERE THIS SITE'S RECORDINGS BEGIN, not where recording began. The
+    // House Calendars of 2013-2019 announce hearings streamed live, and none
+    // of those is on either YouTube channel, so "no recording exists" and
+    // "not livestreamed before 2020" were both claims the record contradicts.
+    // The month is about_figures.STREAM_START_WORDS, and preflight holds the
+    // two to each other.
+    else if(s.state==="prestream")inner=`<div class="vbox"><p><b>No recording to link.</b>
+      The General Court&rsquo;s YouTube channels, where this site finds its recordings, begin in May 2020, and this sitting was earlier.</p></div>`;
     // Defensive: if a proceeding carries a video id but an unrecognised state,
     // still offer the recording. Saying "no recording" when one is right there
     // is the worst possible failure -- it hides working data and looks like the
