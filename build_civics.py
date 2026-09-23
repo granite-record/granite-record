@@ -194,6 +194,14 @@ def record_figures(site, root=Path(".")):
     # record where 5,903 of 33,683 bills have one and none before 2019. The
     # term named is the earliest from which EVERY later term has nine bills
     # in ten filmed, so one well-recorded old term cannot stand for a run.
+    #
+    # THE TERM STILL SITTING IS NOT HELD TO IT. Its bills are heard across
+    # two years, so in January most have had no hearing to film: the first
+    # draft of this loop started from that term, stopped on it, and named no
+    # year at all, and both pages would have printed "nearly every one since"
+    # followed by nothing. The term still sitting counts towards the run when
+    # it already clears the bar and is passed over when it does not; every
+    # finished term is held to it.
     filmed = {(r.get("term"), r.get("bill")) for r in procs
               if r.get("kind") in ("public hearing", "hearing") and r.get("video_id")}
     per_term = Counter(r.get("term") for r in idx if r.get("term"))
@@ -201,8 +209,22 @@ def record_figures(site, root=Path(".")):
     video_from = ""
     for t in sorted(per_term, reverse=True):
         if filmed_term[t] < 0.9 * per_term[t]:
+            if t == term:
+                continue
             break
         video_from = t
+    # SILENCE IS NOT SUCCESS. A record of finished terms that names no year
+    # has lost its recordings rather than stopped making them, and the pages
+    # would quietly drop the year they give; this stops the build instead. A
+    # record of one term, which preflight's fixture site is, has no finished
+    # term to judge, and its pages say only how many bills were filmed.
+    if not video_from and len(per_term) > 1:
+        newest = "; ".join(f"{t}: {filmed_term[t]:,} of {per_term[t]:,}"
+                           for t in sorted(per_term, reverse=True)[:3])
+        raise SystemExit(
+            "the newest finished term does not have nine bills in ten with a filmed "
+            f"hearing ({newest}), so the Learn pages can name no year from which "
+            "hearings are on video. Check proceedings.csv's video_id column.")
     # ROLL CALLS IN THIS RECORD BEGIN IN ONE YEAR. A bill from before it has
     # none here because none were collected, not because none were taken: the
     # 1989-1990 docket names roll calls, and the 1997 journals print them.
@@ -210,6 +232,12 @@ def record_figures(site, root=Path(".")):
                 for rows_ in bills_.values() for x in rows_ or []
                 if str(x.get("year") or "").isdigit()]
     rc_first = min(rc_years, default=0)
+    # With no roll calls to read, two pages would say this record's roll calls
+    # begin "from 0 on" and count the bills "from before 0". Nothing true can
+    # be said without the file, so the build stops rather than print that.
+    if not rc_first:
+        raise SystemExit(f"{Path(root) / 'rollcalls.json'} holds no roll call with a year; "
+                         "the Learn pages would say the record's roll calls begin in 0")
     figures = {
         "term": term.replace("-", "&ndash;"),
         "bills": len(cur), "hb": prefix["HB"], "sb": prefix["SB"], "cacr": prefix["CACR"],
@@ -282,6 +310,10 @@ def record_figures(site, root=Path(".")):
         "hearings": hearings,
         "hearing_video_bills": len(filmed),
         "hearing_video_from": video_from.split("-")[0],
+        # The clause the pages print, so that a record with no year to name
+        # drops the clause rather than printing "since" and a gap.
+        "hearing_video_since": (f", nearly every one since {video_from.split('-')[0]}"
+                                if video_from else ""),
         "rollcall_first_year": str(rc_first),
         "pre_rollcall_bills": sum(1 for r in idx if not (r.get("nrc") or 0)
                                   and (r.get("term") or "")[-4:].isdigit()

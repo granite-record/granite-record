@@ -1995,6 +1995,13 @@ def _learn_rules(civics, learn_numbers, build_civics):
     two figures that went wrong -- veto_pending and the closest-votes table --
     on a record small enough to know the answer to, and the arithmetic half
     recomputes every threshold the pages work through in words.
+
+    The fixture also holds the figures written to replace those claims. The
+    first draft of the year from which hearings are on video started from the
+    term still sitting, so one unheard bill of that term named no year and two
+    pages printed "nearly every one since" and a gap; it is checked with that
+    bill in place, and a record that lost its recordings, or has no roll calls,
+    must stop the build rather than print a hole.
     """
     import math
     import tempfile as _tf
@@ -2085,11 +2092,38 @@ def _learn_rules(civics, learn_numbers, build_civics):
         (tmp / "index.json").write_text(json.dumps(idx), encoding="utf-8")
         (tmp / "rollcalls.json").write_text(json.dumps(rcs), encoding="utf-8")
         build_civics.P.load = lambda *a, **k: [dict(p) for p in procs]
+        # A stop is a finding of this check, never the end of the whole run:
+        # SystemExit is not an Exception, and would get past the runner.
+        def stops(site, root):
+            try:
+                build_civics.record_figures(site, root)
+            except SystemExit as e:
+                return str(e) or "stopped"
+            return ""
+
+        def figures(site, root):
+            try:
+                return build_civics.record_figures(site, root)
+            except SystemExit as e:
+                raise AssertionError(f"record_figures stopped on a record it should build: {e}")
+
         try:
-            fig = build_civics.record_figures(tmp, tmp)
+            fig = figures(tmp, tmp)
+            # A veto of the term still sitting, and a bill of it not heard
+            # yet: five of its six bills filmed, under the nine in ten.
             idx.append(row("2025-2026", "HB6", status="Vetoed"))
             (tmp / "index.json").write_text(json.dumps(idx), encoding="utf-8")
-            fig_waiting = build_civics.record_figures(tmp, tmp)
+            fig_waiting = figures(tmp, tmp)
+            # The newest finished term's recordings lost from the table.
+            build_civics.P.load = lambda *a, **k: [
+                dict(p, video_id="" if p["term"] == "2023-2024" else p["video_id"])
+                for p in procs]
+            lost = stops(tmp, tmp)
+            build_civics.P.load = lambda *a, **k: [dict(p) for p in procs]
+            # No roll calls at all.
+            (tmp / "bare").mkdir()
+            (tmp / "bare" / "rollcalls.json").write_text("{}", encoding="utf-8")
+            no_rc = stops(tmp, tmp / "bare")
         finally:
             build_civics.P.load = real_load
             notice_cache.clear()
@@ -2114,6 +2148,18 @@ def _learn_rules(civics, learn_numbers, build_civics):
         f"hearings on video: {fig['hearing_video_bills']} bills from "
         f"{fig['hearing_video_from']!r}; want 6 from 2023, the first term from which "
         "every later term is nine tenths filmed")
+    assert (fig_waiting["hearing_video_from"], fig_waiting["hearing_video_since"]) \
+        == ("2023", ", nearly every one since 2023"), (
+        "one unheard bill of the term still sitting changed the year hearings are on "
+        f"video from: {fig_waiting['hearing_video_from']!r}, clause "
+        f"{fig_waiting['hearing_video_since']!r}; that term is still being heard, "
+        "and the pages would print 'nearly every one since' and a gap")
+    assert "video_id" in lost, (
+        "a record whose newest finished term lost its recordings built anyway: "
+        + (lost or "no stop"))
+    assert "roll call" in no_rc, (
+        "a record with no roll calls built anyway, and the pages would say they "
+        "begin in 0: " + (no_rc or "no stop"))
     close = nums[nums.index("The closest votes"):]
     close = close[:close.index("<h2>")] if "<h2>" in close else close
     for bid, why in (("hb1", "a veto override"), ("hb4", "a rules suspension")):
@@ -2125,8 +2171,9 @@ def _learn_rules(civics, learn_numbers, build_civics):
         "the closest votes lost a majority question: an ordinary bill's passage, or a "
         "motion to kill a CACR, which needs no more than a majority")
     return "ok", (f"no retracted wording on {len(pages)} pages; {worked} worked "
-                  "thresholds recomputed; veto_pending and the closest votes right "
-                  "on a fixture")
+                  "thresholds recomputed; veto_pending, the closest votes and the "
+                  "hearings-on-video year right on a fixture, an unheard bill of "
+                  "the sitting term included")
 
 
 # A LEARN SENTENCE, THE SECTION IT CITES, AND WHAT THAT SECTION SAYS. Each row

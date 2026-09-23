@@ -995,8 +995,8 @@ while it asks the legislature to block it by joint resolution; and if the
 committee takes no action within 60 days, the rule is treated as
 approved.</p>
 """ + SHOWS.format("""
-<p>Where a hearing was recorded &mdash; [[hearing_video_bills]] bills, nearly
-every one since [[hearing_video_from]] &mdash; the bill's Videos tab links the
+<p>Where a hearing was recorded &mdash; [[hearing_video_bills]]
+bills[[hearing_video_since]] &mdash; the bill's Videos tab links the
 recording, opened where the bill was taken up when that moment has been
 found. <a href="committees.html">Committee pages</a> list
 every day a committee met and what it heard.</p>""")
@@ -1672,8 +1672,8 @@ record.</p>
 """ + SHOWS.format("""
 <p>This site holds <b>[[hearings]] public hearings</b>, each with the committee
 and the day. Every bill's page shows its own hearings. Where a hearing was
-recorded &mdash; [[hearing_video_bills]] bills, nearly every one since
-[[hearing_video_from]] &mdash; the Videos tab links it, opened where the bill
+recorded &mdash; [[hearing_video_bills]] bills[[hearing_video_since]]
+&mdash; the Videos tab links it, opened where the bill
 was taken up when that moment has been found.
 <a href="committees.html">A committee's page</a> lists every day it met and
 what it heard.</p>
