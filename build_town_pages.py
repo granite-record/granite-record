@@ -43,6 +43,9 @@ import re
 from pathlib import Path
 
 import shell as S
+# The parser's test for an e-mail address, so that what it accepts from a
+# threaded cell and what a page links are the same test.
+from parse_officials import EMAIL_OK
 
 E = S.E
 
@@ -106,8 +109,8 @@ def member_block(members, empty, seat=""):
                 if m.get("slug") else E(m.get("display_full") or m.get("name")))
         p = (m.get("party") or "X")[:1].upper()
         how = []
-        if m.get("email"):
-            how.append(f'<a href="mailto:{E(m["email"])}">{E(m["email"])}</a>')
+        if maillink(m.get("email")):
+            how.append(maillink(m.get("email")))
         if m.get("phone"):
             how.append(f'<span class="offtel">{E(m["phone"])}</span>')
         out.append(off_row(f'<span class="mchip p-{E(p)}">{link}</span>',
@@ -115,18 +118,223 @@ def member_block(members, empty, seat=""):
     return '<ul class="offlist">' + "".join(out) + "</ul>"
 
 
+# Ten digits, then an extension if there is one: "603-588-6785 ext 221",
+# "603-927-2400 ext. 4", "(603) 224-5000 x 12".
+PHONE = re.compile(r"^\s*\(?(\d{3})\)?[-. ]?(\d{3})[-. ]?(\d{4})\s*,?\s*"
+                   r"(?:(?:ext\.?|ex\.?|x)\s*(\d+))?\s*$", re.I)
+
+
 def tel(num):
     """A number that dials, on the device most readers are holding.
 
     These were plain text. A town clerk's number on a town page is the single
     most likely thing on this site to be tapped, and tapping it did nothing.
+
+    AN EXTENSION IS NOT MORE OF THE NUMBER. This took every digit in the
+    value, so "603-588-6785 ext 221" dialled +6035886785221 -- a number in no
+    country this site is about -- and 28 links on the town pages did that.
+    The extension is written the way a phone reads it now, `;ext=221` after
+    the number (RFC 3966), and a value that holds no single number -- two
+    numbers in one cell -- is shown as written and not linked, because either
+    guess would ring somebody.
     """
+    m = PHONE.match(num or "")
+    if m:
+        a, b, c, ext = m.groups()
+        href = f"tel:+1{a}{b}{c}" + (f";ext={ext}" if ext else "")
+        return f'<a class="offtel" href="{href}">{E(num)}</a>'
     digits = re.sub(r"[^0-9]", "", num or "")
     if len(digits) == 10:
         digits = "1" + digits
-    if len(digits) < 11:
-        return f'<span class="offtel">{E(num)}</span>'
-    return f'<a class="offtel" href="tel:+{digits}">{E(num)}</a>'
+    if len(digits) == 11 and digits.startswith("1"):
+        return f'<a class="offtel" href="tel:+{digits}">{E(num)}</a>'
+    return f'<span class="offtel">{E(num)}</span>'
+
+
+def maillink(addr):
+    """A mailto link for an e-mail address, and nothing for anything else.
+
+    NHDOT's e-mail column holds notes as well as addresses -- "can email
+    through the website, no stated email", "no stated email address", "not
+    listed", once a street address -- 125 of them across 104 towns, and every
+    one was published as a mailto link a reader could click. A note that
+    says there is no address tells a reader what no link already does, and
+    the town's website is on the page, so nothing is drawn.
+
+    All five places on these pages that write a mailto go through here.
+    """
+    a = (addr or "").strip()
+    if not EMAIL_OK.match(a):
+        return ""
+    return f'<a href="mailto:{E(a)}">{E(a)}</a>'
+
+
+# Words in a printed name that are not the person's first or last name.
+_NOT_A_NAME = {"jr", "sr", "ii", "iii", "iv", "dr", "mr", "mrs", "ms", "rev"}
+
+
+def _first_last(name):
+    words = [re.sub(r"[^a-z]", "", w) for w in (name or "").lower().split()]
+    words = [w for w in words if len(w) > 1 and w not in _NOT_A_NAME]
+    return (words[0], words[-1]) if len(words) >= 2 else None
+
+
+def _one_edit(a, b):
+    """Whether two strings differ by at most one letter added, lost or changed."""
+    if a == b:
+        return True
+    if abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) == 1
+    short, long_ = (a, b) if len(a) < len(b) else (b, a)
+    return any(short == long_[:i] + long_[i + 1:] for i in range(len(long_)))
+
+
+def address_names(email, name):
+    """Whether an e-mail address is built from this person's name.
+
+    The forms towns use: "rbridle", "jhoytselectman", "johnw.herbert",
+    "suemckinnon" -- a first name or initial, perhaps a middle initial, then
+    the surname, then anything. A surname of five letters or more may be one
+    letter out, because the directory's own typing sometimes is: "ahanson"
+    for Amy Hansen, "cbariont" for Carleigh Beriont.
+    """
+    fl = _first_last(name)
+    if not fl or "@" not in (email or ""):
+        return False
+    first, last = fl
+    if len(last) < 3:
+        return False
+    local = re.sub(r"[^a-z]", "", email.split("@", 1)[0].lower())
+    heads = {"", first[0], first}
+    heads |= {h + c for h in (first[0], first)
+              for c in "abcdefghijklmnopqrstuvwxyz"}
+    for h in heads:
+        if not local.startswith(h):
+            continue
+        rest = local[len(h):]
+        if len(last) < 5:
+            if rest.startswith(last):
+                return True
+            continue
+        for n in (len(last) - 1, len(last), len(last) + 1):
+            if n <= len(rest) and _one_edit(rest[:n], last):
+                return True
+    return False
+
+
+def names_someone_else(email, name, officials):
+    """The other official of the same town an address is named for, or "".
+
+    AN ADDRESS BESIDE THE WRONG PERSON. NHDOT prints nine addresses on the
+    wrong row: in Hampton four of the five selectmen carry another
+    selectman's address (Amy Hansen beside rbridle@, Rusty Bridle beside
+    ahanson@), Bow's and Salisbury's two selectmen carry each other's, and
+    Newfields' road agent carries the town clerk's. A page that draws
+    rbridle@ beside Amy Hansen tells a reader to write to her at Rusty
+    Bridle's address. An address that names the person beside it is theirs
+    and is kept; one that names nobody -- "selectmen@", "townclerk@" -- is
+    the office's and is kept; one that names another official of the town and
+    not this one is not drawn.
+    """
+    if not email or address_names(email, name):
+        return ""
+    me = re.sub(r"[^a-z]", "", (name or "").lower())
+    for o in officials:
+        other = o.get("name") or ""
+        if re.sub(r"[^a-z]", "", other.lower()) == me:
+            continue
+        if address_names(email, other):
+            return other
+    return ""
+
+
+# THE CLERK IS THE SECRETARY OF STATE'S. How to Vote names the town or city
+# clerk from the Secretary of State's list, and NHDOT's directory names one
+# too, on nineteen rows: twelve "Town Clerk", one "City Clerk" and six
+# "Town Administrator/ Town Clerk". Drawn together, thirty pages carried two
+# clerk rows and seven towns named two different people as clerk -- Windsor
+# had Stephanie L Houle above and Melissa Merrill below. The Secretary of
+# State keeps the list of clerks, so NHDOT's clerk rows are not drawn.
+CLERK_ROW = re.compile(r"\b(?:town|city) clerk\b", re.I)
+COMBINED_ROW = re.compile(r"^\s*town administrator\s*/\s*town clerk\s*$", re.I)
+
+# The six combined rows are on NHDOT's first two pages. The Secretary of
+# State names somebody else as clerk in all six, so the clerk half is wrong;
+# the administrator half is confirmed by a second source on this disk for
+# two of them, and those two are kept as "Town Administrator". The other four
+# -- Albany, Alexandria, Alstead, Amherst -- are not drawn: Alexandria's own
+# page calls its person an administrative assistant, and Alstead's names a
+# different Select Board Office Administrator. Keyed by the name NHDOT
+# prints, so a new edition naming somebody else is not relabelled unchecked.
+ADMINISTRATOR_CONFIRMED = {
+    # NHDOT's own address for him is administrator@alton.nh.gov
+    ("alton", "Ryan Heath"),
+    # town-atkinsonnh.com/334/Board-of-Selectmen, read 20 September 2026:
+    # "John Apple, Town Administrator"
+    ("atkinson", "John Apple"),
+}
+
+
+def local_offices(key, officials):
+    """The NHDOT rows a town page draws, as (office, row) pairs, in order."""
+    out = []
+    for o in officials or []:
+        pos = o.get("position") or ""
+        if COMBINED_ROW.match(pos):
+            if (key, o.get("name")) in ADMINISTRATOR_CONFIRMED:
+                out.append(("Town Administrator", o))
+            continue
+        if CLERK_ROW.search(pos):
+            continue
+        out.append((pos, o))
+    return out
+
+
+# The directory every row in a town's Officials section comes from, named in
+# full: "DoT" told a reader new to this nothing about which department, or
+# why a transport agency lists selectmen.
+NHDOT = ("the New Hampshire Department of Transportation's directory of city "
+         "and town officials, dated September 2025")
+
+
+def town_officials_block(town, key, town_off):
+    """The '<Town> Officials' section: NHDOT's rows, the town offices, the
+    note that says where they come from. "" if NHDOT names nobody here."""
+    if not town_off.get("officials"):
+        return ""
+    body = [f'<h2 class="offsec">{E(town)} Officials</h2>']
+    rows = []
+    for pos, o in local_offices(key, town_off["officials"]):
+        how = []
+        if o.get("phone"):
+            how.append(tel(o["phone"]))
+        if not names_someone_else(o.get("email"), o.get("name"),
+                                  town_off["officials"]):
+            if maillink(o.get("email")):
+                how.append(maillink(o.get("email")))
+        rows.append(off_row(f'<span class="mchip">{E(o["name"])}</span>',
+                            how, E(pos)))
+    if rows:
+        body.append('<ul class="offlist">' + "".join(rows) + "</ul>")
+    how = []
+    if town_off.get("phone"):
+        how.append(tel(town_off["phone"]))
+    if maillink(town_off.get("email")):
+        how.append(maillink(town_off.get("email")))
+    offices_site = weblink(town_off.get("website"))
+    if offices_site:
+        how.append(offices_site)
+    if town_off.get("mailing") or how:
+        body.append('<ul class="offlist">'
+                    + off_row(E(town_off.get("mailing") or town),
+                              how, "Town offices")
+                    + "</ul>")
+    body.append(f'<p class="note">Source: {NHDOT}. It does not show anyone '
+                f'elected or appointed since then, so check {E(town)}\'s own '
+                'website for changes.</p>')
+    return "".join(body)
 
 
 def weblink(url, label=None):
@@ -276,9 +484,8 @@ def office_block(title, holder, fallback_url, note=""):
             how.append(tel(holder["phone"]))
         if holder.get("phone_dc"):
             how.append(tel(holder["phone_dc"]) + " (Washington)")
-        if holder.get("email"):
-            how.append(f'<a href="mailto:{E(holder["email"])}">'
-                       f'{E(holder["email"])}</a>')
+        if maillink(holder.get("email")):
+            how.append(maillink(holder.get("email")))
         official_site = weblink(url)
         if official_site:
             how.append(official_site)
@@ -390,9 +597,8 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
             how = []
             if loc.get("phone"):
                 how.append(tel(loc["phone"]))
-            if loc.get("email"):
-                how.append(f'<a href="mailto:{E(loc["email"])}">'
-                           f'{E(loc["email"])}</a>')
+            if maillink(loc.get("email")):
+                how.append(maillink(loc.get("email")))
             rows.append(off_row(
                 f'<span class="mchip">{E(loc["clerk"])}</span>', how,
                 "Town or city clerk"))
@@ -484,39 +690,11 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
     # selectboard, so these are looked up by the town's slug and not the
     # ward's -- a ward elects a councillor, and the town is what the board
     # governs.
-    if town_off.get("officials"):
-        body.append(f'<h2 class="offsec">{E(town)} Officials</h2>')
-        rows = []
-        for o in town_off["officials"]:
-            how = []
-            if o.get("phone"):
-                how.append(tel(o["phone"]))
-            if o.get("email"):
-                how.append(f'<a href="mailto:{E(o["email"])}">'
-                           f'{E(o["email"])}</a>')
-            rows.append(off_row(f'<span class="mchip">{E(o["name"])}</span>',
-                                how, E(o.get("position") or "")))
-        body.append('<ul class="offlist">' + "".join(rows) + "</ul>")
-        how = []
-        if town_off.get("phone"):
-            how.append(tel(town_off["phone"]))
-        if town_off.get("email"):
-            how.append(f'<a href="mailto:{E(town_off["email"])}">'
-                       f'{E(town_off["email"])}</a>')
-        offices_site = weblink(town_off.get("website"))
-        if offices_site:
-            how.append(offices_site)
-        if town_off.get("mailing") or how:
-            body.append('<ul class="offlist">'
-                        + off_row(E(town_off.get("mailing") or town),
-                                  how, "Town offices")
-                        + "</ul>")
-        body.append('<p class="note">Source: DoT directory of city and town '
-                    'officials lists, as of September 2025. Check official '
-                    'town website for up-to-date information.</p>')
+    section = town_officials_block(town, slug(town, "0"), town_off)
+    body.append(section)
 
-    body.append('<p class="srcs">Source: NH General Court, Secretary of '
-                'State, DoT Municipal Directory</p>')
+    body.append('<p class="srcs">Sources: NH General Court, Secretary of '
+                'State' + (f", and {NHDOT}" if section else "") + '</p>')
 
     path = town_file(town, ward)
     desc = (f"Who represents {label}: state representatives, state senator, "
@@ -608,6 +786,27 @@ def main():
                     for v in off["_offices"].values())
             print(f"  town officials: {len(off['_offices'])} municipalities, "
                   f"{n} named offices from {offices}")
+            # WHAT IS NOT DRAWN, COUNTED. Each of these is a row or an address
+            # in the file that no page shows, and a count that moves is a
+            # new edition of the directory to read before publishing.
+            clerks = kept = notes = wrong = 0
+            for key, v in off["_offices"].items():
+                offs = v.get("officials") or []
+                drawn = local_offices(key, offs)
+                clerks += len(offs) - len(drawn)
+                kept += sum(1 for pos, o in drawn
+                            if pos != (o.get("position") or ""))
+                for pos, o in drawn:
+                    if o.get("email") and not maillink(o["email"]):
+                        notes += 1
+                    elif names_someone_else(o.get("email"), o.get("name"),
+                                            offs):
+                        wrong += 1
+            print(f"    {clerks} clerk rows not drawn (the clerk is the "
+                  f"Secretary of State's), {kept} kept as Town Administrator; "
+                  f"{notes} e-mail cells that are not an address and {wrong} "
+                  "addresses that name another official of the town, not "
+                  "linked")
         except ValueError as e:
             print(f"  town officials: {offices} did not parse ({e}); skipped")
     else:

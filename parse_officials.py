@@ -60,6 +60,12 @@ AND IT IS CHECKED. Four rows are prose -- "no website", "website was
 discontinued" -- and a fragment published as a live link sends a reader
 somewhere that is not the town, which is worse than sending them nowhere. A
 value that is not a host is not recorded.
+
+A CELL WIDER THAN ITS COLUMN. Four rows print a phone number or an office
+longer than its cell, and the overflow was threaded into the next column a
+character at a time -- Sutton's administrator's address came out "t.t
+o4wnadmin@sutton-nh.org". `restream` reads such a row again in the PDF's own
+order, and `--report` prints every row it changed.
 """
 import argparse
 import collections
@@ -144,6 +150,81 @@ def web_address(s):
     return s
 
 
+# An e-mail address, and nothing else. build_town_pages.py imports this and
+# draws a mailto link only for a value it matches, so a cell restream() will
+# accept and an address a town page will link are one test.
+EMAIL_OK = re.compile(r"^[A-Za-z0-9._%+'-]+@(?:[A-Za-z0-9](?:[A-Za-z0-9-]*"
+                      r"[A-Za-z0-9])?\.)+[A-Za-z]{2,}$")
+
+
+def restream(page, cellboxes):
+    """A one-line row's cells re-read in the PDF's own order, or None.
+
+    TEXT WIDER THAN ITS CELL. Four rows of the directory print something
+    longer than the column it sits in, and the characters past the cell's
+    right border land on top of the next column's text. pdfplumber hands each
+    character to the cell its position falls in, sorted left to right, so the
+    two cells come out threaded together a character at a time:
+
+      East Kingston  "603-642-8406 ext 1" + "gruelle@eastkingstonnh.gov"
+                     came out "603-642-8406 ex" + "t g1ruelle@eastkingstonnh.gov"
+      Sutton         "603-927-2400 ext. 4" + "townadmin@sutton-nh.org"
+                     came out "603-927-2400 ex" + "t.t o4wnadmin@sutton-nh.org"
+      Hooksett       "City Councilor, District 6 (Secretary)" + "Randall Lapierre"
+                     came out "... (Secretar" + "yR)andall Lapierre"
+      Somersworth    "Town Councilor, At-Large, Deputy Mayor" + "Dave Witham"
+                     came out "..., Deputy" + "MDaayvoer Witham"
+
+    Both halves were published, and the garbled e-mail addresses as links.
+    The fault is this parser's and not the directory's: the PDF's content
+    stream writes each cell as one unbroken run, so its own order gives back
+    exactly what was printed.
+
+    So a row whose characters run in a different order in the stream than
+    left to right is read again in stream order, split wherever the next
+    character jumps backwards or leaves a gap wider than a space, and each
+    run is given to the cell its first character sits in. Only a row on one
+    line (within 1pt): a cell that wraps onto a second line reads out of
+    order legitimately, and is left to the table as it was. None means leave
+    the row alone; the caller also refuses an answer whose e-mail is not an
+    address, and says which rows it changed.
+    """
+    boxes = [b for b in cellboxes if b]
+    if not boxes:
+        return None
+    top, bottom = min(b[1] for b in boxes), max(b[3] for b in boxes)
+    x0, x1 = min(b[0] for b in boxes), max(b[2] for b in boxes)
+    cs = [c for c in page.chars
+          if x0 <= c["x0"] < x1 and top <= c["top"] < bottom]
+    if not cs:
+        return None
+    tops = [c["top"] for c in cs]
+    if max(tops) - min(tops) > 1.0:
+        return None
+    stream = "".join(c["text"] for c in cs).replace(" ", "")
+    by_x = "".join(c["text"] for c in sorted(cs, key=lambda c: c["x0"]))
+    if stream == by_x.replace(" ", ""):
+        return None
+    runs, cur = [], [cs[0]]
+    for a, b in zip(cs, cs[1:]):
+        if b["x0"] < a["x0"] - 0.5 or b["x0"] - a["x1"] > 2.0:
+            runs.append(cur)
+            cur = [b]
+        else:
+            cur.append(b)
+    runs.append(cur)
+    out = [""] * len(cellboxes)
+    for run in runs:
+        x = run[0]["x0"]
+        col = next((i for i, b in enumerate(cellboxes)
+                    if b and b[0] <= x < b[2]), None)
+        if col is None:
+            return None
+        t = "".join(c["text"] for c in run).strip()
+        out[col] = (out[col] + " " + t).strip() if out[col] else t
+    return out
+
+
 def without_banner(pg):
     """The page with its "Town Info / Town Officials" banner taken off it.
 
@@ -172,6 +253,10 @@ def read(pdf_path):
     import pdfplumber
     towns, notes = collections.OrderedDict(), []
     raw_site = {}
+    # Every row restream() changed, as "before -> after". Kept apart from
+    # `notes` because each one changes text that is published, so all of them
+    # are printed, not the first few.
+    restreamed = []
     with pdfplumber.open(pdf_path) as pdf:
         # `here` CARRIES ACROSS PAGES. A town's offices run past the bottom of
         # a page -- Andover's start on page 2 and finish on page 3 -- and
@@ -181,17 +266,32 @@ def read(pdf_path):
         here = None
         for pg in pdf.pages:
             page, stripped = without_banner(pg)
-            tb = page.extract_table()
+            # The table itself and not only its text, so that each row's cell
+            # boxes are at hand for restream(). find_table() is the table
+            # extract_table() reads -- the largest on the page -- so every
+            # other row comes out exactly as it did.
+            tobj = page.find_table()
+            tb = tobj.extract() if tobj else None
             if not tb:
                 continue
             if not stripped:
                 notes.append(f"page {pg.page_number}: no banner found to strip")
-            for row in tb:
+            for row, robj in zip(tb, tobj.rows):
                 if len(row) < 10:
                     continue
                 cells = [clean(c) for c in row]
                 if not any(cells):
                     continue
+                fixed = restream(page, robj.cells)
+                if fixed and len(fixed) == len(cells):
+                    fixed = [clean(c) for c in fixed]
+                    if fixed != cells and (not fixed[EMAIL]
+                                           or EMAIL_OK.match(fixed[EMAIL])):
+                        restreamed.append(
+                            f"page {pg.page_number}: "
+                            f"{[c for c in cells if c]!r} -> "
+                            f"{[c for c in fixed if c]!r}")
+                        cells = fixed
                 head = cells[MUNI].lower()
                 # the page's own headers, which repeat on every page and once
                 # collided with a phone number in the text layer
@@ -241,7 +341,8 @@ def read(pdf_path):
                         "phone": cells[PHONE], "email": cells[EMAIL]})
     for name, t in towns.items():
         t["website"] = web_address(t["website"])
-    return towns, notes, {k: " ".join(v) for k, v in raw_site.items()}
+    return (towns, notes, {k: " ".join(v) for k, v in raw_site.items()},
+            restreamed)
 
 
 def tidy(towns):
@@ -271,7 +372,7 @@ def main():
     pdf = pathlib.Path(a.pdf)
     if not pdf.exists():
         sys.exit(f"{pdf} is not there; the directory lives in sources/")
-    towns, notes, raw_site = read(pdf)
+    towns, notes, raw_site, restreamed = read(pdf)
     towns = tidy(towns)
 
     dj = pathlib.Path(a.site) / "districts.json"
@@ -317,6 +418,24 @@ def main():
               "recorded as nothing:")
         for k, v in refused:
             print(f"      {k}: {v!r}")
+    # THE ROWS READ AGAIN, EVERY ONE. Each changes a name, an office, a phone
+    # number or an address that is published, so each is printed.
+    if restreamed:
+        print(f"    {len(restreamed)} rows where a cell ran into the next, "
+              "re-read in the PDF's own order:")
+        for n in restreamed:
+            print(f"      {n}")
+    # AN ADDRESS OR A NOTE, NEVER HALF OF EACH. The e-mail column holds notes
+    # as well as addresses ("no stated email address"), and the town pages
+    # draw a link only for an address. A value with an "@" in it that is not
+    # one is what a threaded cell looks like, and is named here.
+    half = sorted((k, o["name"], o["email"]) for k, r in out.items()
+                  for o in r["officials"]
+                  if "@" in o["email"] and not EMAIL_OK.match(o["email"]))
+    if half:
+        print(f"    {len(half)} e-mail cells hold an @ and are not an address:")
+        for k, name, e in half:
+            print(f"      {k}: {name}: {e!r}")
     for n in notes[:6]:
         print(f"    {n}")
     if a.report:
