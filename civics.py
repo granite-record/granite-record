@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.19
+# GRANITE_VERSION: 2026-09-08.21
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -238,8 +238,10 @@ FLOW_TESTIFY = [
          "scheduled and closes at the end of the day of the hearing.", ""),
     ]),
     ("At the hearing", [
-        ("Speaking is separate", "A different act from signing in, and you "
-         "fill in a card to do it. The sponsor speaks first.", "say"),
+        ("Speaking is separate", "A different act from signing in, and the "
+         "chambers ask for it differently: a pink card in the House, a "
+         "column to tick on the Senate's sheet. The sponsor speaks first, "
+         "and a chair may set a time limit for everyone after.", "say"),
         ("You need not speak", "A sign-in without a word said is in the "
          "record and is counted.", ""),
     ]),
@@ -249,6 +251,75 @@ FLOW_TESTIFY = [
         ("The other chamber", "If the bill passes, it gets a hearing in the "
          "second chamber and a second sign-in window on the same terms.",
          "say"),
+    ]),
+]
+
+# HOW A RULE IS MADE. Every step and every number here was read out of RSA
+# 541-A itself -- the chapter is on this disk in db/NH_RSA.psv, all 51
+# sections of it -- rather than from anybody's memory of how rulemaking works.
+# RSA 541-A:3 gives the sequence in the statute's own words: "Except for
+# interim or emergency rules, an agency shall adopt a rule by" filing a notice
+# under :6, filing the text under :10, holding a public hearing under :11,
+# filing a final proposal under :12, responding to the committee under :13,
+# and adopting and filing under :14. The phases below are that list, with the
+# deadlines from the sections it points at.
+#
+# THE EXCEPTION IS IN THE FIRST FIVE WORDS and is deliberately not drawn here.
+# Interim rules (:19) and emergency rules (:18) skip most of this, last 180
+# days, and are a different route rather than a branch of this one; the page's
+# prose carries them. Drawing them inside the sequence would misdescribe the
+# sequence.
+#
+# TWO CORRECTIONS WORTH KEEPING, both caught by checking the draft against the
+# statute a second time. There is no bare "amend" in this chapter: the actions
+# are adoption, readoption, readoption with amendment, and repeal. And part I,
+# article 28-a protects political subdivisions generally -- counties, cities,
+# towns and school districts -- not towns alone.
+FLOW_RULES = [
+    ("Before anyone can comment", [
+        ("The statute hands it over", "A bill says the agency \"shall adopt "
+         "rules\" about something, and stops. Everything it left open is "
+         "settled from here on, by the agency rather than by the "
+         "legislature.", ""),
+        ("Notice in the register", "The agency sends the director of "
+         "legislative services notice of what it means to do &mdash; adopt a "
+         "rule, readopt one, readopt it with a change, or repeal it. The "
+         "notice carries a fiscal impact statement and a statement that the "
+         "rule lays no unfunded obligation on a county, city, town or school "
+         "district.", ("needs", "20 days before the hearing")),
+        ("The full text, not a summary", "At least one complete section of "
+         "the rules as they would read, filed with the same office.", ""),
+    ]),
+    ("The public's turn", [
+        ("A public hearing", "At least one, on every proposed rule. Anyone "
+         "may speak, and anyone may send data, views or arguments in writing "
+         "instead.", "say"),
+        ("Comment stays open after it", "Written comment is taken for a "
+         "further period once the hearing is over.",
+         ("needs", "at least 5 business days")),
+    ]),
+    ("The legislature's turn", [
+        ("The final proposal", "The agency weighs the comment, settles the "
+         "text, and files it.",
+         ("needs", "21 to 180 days after the notice")),
+        ("The committee has 60 days", "The Joint Legislative Committee on "
+         "Administrative Rules &mdash; JLCAR, legislators from both chambers "
+         "&mdash; may approve the rule, approve it on a stated condition, or "
+         "object to it.", "stop"),
+        ("Silence is approval", "If the 60 days pass with no notice of "
+         "approval, conditional approval or objection, the statute deems the "
+         "rule approved. A rule can take effect without anyone having voted "
+         "for it.", ("needs", "no vote required")),
+        ("An objection is not a veto", "To actually stop a rule the "
+         "committee has to sponsor a joint resolution, and that has to pass "
+         "both chambers and go to the Governor like any other bill.", ""),
+    ]),
+    ("In force, and not for ever", [
+        ("Effective the next day", "Once adopted and filed the rule binds "
+         "whoever it covers, exactly as a statute would.", ""),
+        ("Ten years, then it lapses", "No rule is effective for longer than "
+         "ten years. To keep it, the agency runs the whole course again.",
+         "stop"),
     ]),
 ]
 
@@ -628,11 +699,18 @@ RSA 541-A". [[rules_delegated]] of the [[bills]] bills filed in the [[term]]
 term carry a sentence of that kind.</p>
 
 <h2>How a rule is made</h2>
-<p>The agency files the proposed rule, and notice of it appears in the
-rulemaking register. Every proposed rule then gets at least one public comment
-hearing, at which anyone may testify or comment in writing: RSA 541-A:11. The
-agency settles the final text in the light of the comment and files it for
-legislative review.</p>
+<p>RSA 541-A:3 sets out the course, and the deadlines below come from the
+sections it points at. The whole of it happens in the rulemaking register
+&mdash; a free bulletin the legislature's own staff publish online each week
+&mdash; and not in a chamber calendar, which is why a rulemaking can run its
+full course without ever appearing where people look for legislation.</p>
+""" + flow_diagram(FLOW_RULES, "How a rule is made", level=3) + """
+<p>Two routes skip most of that. An <b>emergency rule</b> (RSA 541-A:18) takes
+effect at once where the agency finds an imminent peril to public health or
+safety, with only whatever notice the agency finds practicable; an
+<b>interim rule</b> (RSA 541-A:19) is a fast track for matching a new statute,
+a court decision or a federal requirement. Neither lasts more than 180 days,
+so both end in the ordinary course above or they end altogether.</p>
 
 <h2>How the legislature reviews a rule</h2>
 <p>The <b>Joint Legislative Committee on Administrative Rules</b>, or JLCAR,

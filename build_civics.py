@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.23
+# GRANITE_VERSION: 2026-09-08.24
 """
 The civics section: a hub and one page per topic, in order.
 
@@ -463,20 +463,49 @@ def hub(topics):
            'period. Where the record holds nothing &mdash; the courts, the '
            'Executive Council &mdash; the page is short and says so rather '
            'than being padded with prose nobody here can check.</p>',
-           # THE ONE PAGE MOST PEOPLE WANT. Eleven equal items in a list made
-           # the reader choose before they knew what they were choosing
-           # between, and nine times in ten the answer is the same page.
-           '<div class="shows"><h2>If you read one</h2>'
-           '<p><a href="learn/how-a-bill-becomes-law.html">How a bill becomes '
-           'law</a> &mdash; the course a bill runs, the stages it can die at, '
-           'and two bills of 2024 followed all the way through with the '
-           'recording of every hearing and vote.</p></div>']
+           # THE THREE PAGES MOST PEOPLE WANT. Thirteen equal rows made the
+           # reader choose before they knew what they were choosing between,
+           # and the answer is nearly always one of three. This replaced a
+           # single promoted link in a tinted box, which had two faults: it
+           # named one page where a newcomer has three different first
+           # questions -- how does this work, who are these people, how do I
+           # say something -- and it was the heaviest object on the page while
+           # being a second copy of item 2 in the list below it.
+           #
+           # WHY THESE THREE, AND IN THIS ORDER. How a bill becomes law is the
+           # spine everything else hangs off. The General Court answers "who
+           # are they", which is the other cold-open question. Testifying is
+           # the one page that tells a reader they can do something, and it is
+           # the least known thing in the whole section.
+           '<h2>Start here</h2><div class="startrow">']
+    START = [("how-a-bill-becomes-law",
+              "The course a bill runs, and the stages it can die at."),
+             ("general-court",
+              "Who the 424 of them are, and how a two-year term is shaped."),
+             ("testifying",
+              "Anyone may speak on any bill. This is how.")]
+    by_slug = {t["slug"]: t for t in topics}
+    for slug, why in START:
+        t = by_slug.get(slug)
+        if not t:
+            continue
+        out.append(f'<a class="startcard" href="learn/{E(slug)}.html">'
+                   f'<b>{E(t["title"])}</b><span>{E(why)}</span></a>')
+    out.append("</div>")
     for group, note in civics.GROUPS:
         rows = [(i, t) for i, t in enumerate(topics) if t["group"] == group]
         if not rows:
             continue
+        # THE ROW COUNT IS THE STYLESHEET'S, COMPUTED HERE. The two columns
+        # fill downward rather than across, which needs grid-template-rows to
+        # know how many rows to make. That number is this list's own length
+        # halved and rounded up, and it is written into the element so the
+        # page needs no script to be right -- the same reason every other
+        # figure on these pages is counted at build time rather than drawn in
+        # the browser.
+        rowspan = (len(rows) + 1) // 2
         out.append(f'<h2>{E(group)}</h2><p class="src">{E(note)}</p>'
-                   '<ol class="tlist">')
+                   f'<ol class="tlist" style="--rows:{rowspan}">')
         for n, (i, t) in enumerate(rows, 1):
             out.append(
                 f'<li><a href="learn/{E(t["slug"])}.html">'
@@ -492,7 +521,7 @@ def hub(topics):
         '<h2>The record in numbers</h2>'
         '<p class="src">Counted from the General Court\'s own record, at '
         'build time, every time this site is built.</p>'
-        '<ol class="tlist"><li>'
+        '<ol class="tlist" style="--rows:1"><li>'
         '<a href="learn/by-the-numbers.html">'
         '<b>The record in numbers</b>'
         '<span>Vetoes and what happens to them, the closest votes on record, '

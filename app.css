@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.165 */
+/* GRANITE_VERSION: 2026-09-07.166 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2696,12 +2696,47 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-4)}
 .tlist{list-style:decimal;padding-left:var(--sp-8);margin:var(--sp-2) 0 var(--sp-8)}
 .tlist li{margin-bottom:var(--sp-1)}
 @media (min-width:900px){
+  /* DOWN A COLUMN, NOT ACROSS THE PAIR. The grid's default row flow filled
+     left, right, left, right, so a numbered list of ten put 1, 3, 5, 7, 9 in
+     the left column and the reader's eye, going down it, met every other
+     page. The person's words for it: the two columns appear to shuffle the
+     order of the pages back and forth -- on a list whose own heading says it
+     is in the order the institutions act on a bill.
+     grid-auto-flow:column fills the first column top to bottom and then the
+     second, so down the left is 1 to 5 and down the right is 6 to 10. That
+     needs an explicit row count, which is the list's own length halved and
+     rounded up: build_civics sets --rows on each list, at build time, so no
+     script runs and the page is right with JavaScript off. */
   .hubpage .tlist{display:grid;grid-template-columns:1fr 1fr;
+  grid-auto-flow:column;grid-template-rows:repeat(var(--rows,99),auto);
   column-gap:var(--sp-8);row-gap:var(--sp-2);align-items:start}
   /* The marker hangs outside a grid item's box, so the list needs the room
      on its left that a decimal list normally takes from its own padding. */
   .hubpage .tlist li{margin-bottom:0}
 }
+
+/* START HERE. Three pages answer nine visits in ten, and a reader who has
+   never been here cannot tell that from thirteen equal rows. These sit above
+   the lists as a shortcut, not as a replacement: the ordered lists below stay
+   complete, because "the institutions in the order they act on a bill" is a
+   thing worth teaching and a list with three gaps in it teaches it wrong.
+   The shape is the site's one chip shape -- 3px radius, a 1px edge and a 3px
+   bar down the left -- so a card here, a person's chip and a bill's status
+   are all recognisably the same object. */
+.startrow{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-5);
+margin:var(--sp-4) 0 var(--sp-8)}
+.startcard{display:block;padding:var(--sp-5);background:var(--surface);
+border:1px solid var(--edge);border-left:3px solid var(--pine);
+border-radius:var(--r-in);text-decoration:none;color:inherit}
+.startcard:hover{background:var(--pine-soft);border-color:var(--pine);
+border-left-color:var(--pine)}
+.startcard b{display:block;font-family:var(--sans);font-size:var(--t-body);
+color:var(--pine);margin-bottom:var(--sp-2)}
+.startcard span{display:block;font-size:var(--t-ui);color:var(--ink-2);
+line-height:1.5}
+/* One column well before the cards would be too narrow to read: three cards
+   in 700px is 220px each, which breaks the second line of every blurb. */
+@media (max-width:760px){.startrow{grid-template-columns:1fr;gap:var(--sp-4)}}
 .tlist a{display:block;padding:var(--sp-4) var(--sp-5);margin-left:-12px;text-decoration:none;
 border-radius:var(--r-in);color:inherit}
 .tlist a:hover{background:var(--pine-soft)}
