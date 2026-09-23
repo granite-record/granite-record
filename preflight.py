@@ -11362,7 +11362,7 @@ def _town_officials_cells():
     return "ok", f"{n} offices, every e-mail cell an address or a note"
 
 
-@check("files", "every town page links real addresses and dialable numbers, and names no second clerk")
+@check("data", "every town page links real addresses and dialable numbers, and names no second clerk")
 def _town_pages_built():
     """The built town pages, held to what the builder now writes.
 
@@ -11370,6 +11370,12 @@ def _town_pages_built():
     pages; 28 dial links carrying an extension's digits into the number; 30
     pages naming two clerks and 6 labelling an administrator "Town
     Administrator/ Town Clerk".
+
+    A data check, not a files one, on purpose: site/ is build output, and
+    nightly.py gates itself on preflight --code. As a files check it failed
+    --code on every page built before this code, which stopped the nightly
+    before build_all -- the one step that would have rebuilt the pages. The
+    builder's own behaviour is held under --code by the build checks above.
     """
     pages = sorted(Path("site/town").glob("*.html"))
     if not pages:
