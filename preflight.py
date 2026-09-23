@@ -9653,6 +9653,78 @@ def _chapters():
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("build", "a chapter the clerk spelled CH., Chap, Chapt: or Chp. is read on the law line and nowhere else")
+def _chapters_rare():
+    """Five laws had no chapter on the site because the docket spells it in a
+    form extract_chapters did not read: 1993 HB 241 "CH.0066", 1999 HB 426
+    "Chap, 0070", 2004 SB 335 "Chapt:0099", SB 438 "Chapt:0066" and SB 481
+    "Chp. 0258". The same forms name OTHER laws on other lines -- a study
+    committee's "for (Ch. 47)", "{LSR 0155, HB 154, CH. 183, ...}" -- and read
+    everywhere they would have cost eight laws the chapter they have and given
+    two bills another law's number. So they are read on a law line that
+    names no other bill, and each of those refusals is exercised here, on the
+    real lines."""
+    here = Path(".").resolve()
+    if not (here / "extract_chapters.py").exists():
+        return "skip", "extract_chapters.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "db").mkdir()
+        (root / "data").mkdir()
+        rows = [
+            ("1993", "0435", "HB  0241", "04/20/1993 10:00:00", "HB241",
+             "BECAME LAW WITHOUT SIGNATURE 04/20/93  EFF DATE:06/19/93 CH.0066"),
+            ("1999", "0561", "HB  0426", "05/28/1999 10:00:00", "HB426",
+             "Signed by the Governor on  5/28/1999   Eff:  7/27/1999  Chap, 0070"),
+            ("2004", "3033", "SB  0335", "05/12/2004 10:00:00", "SB335",
+             "Law Without Signature  05/12/04  Eff. 01/01/05, Chapt:0099 "
+             "[ Art 44, Pt II, NH Constitution]"),
+            ("2004", "3198", "SB  0481", "06/16/2004 10:00:00", "SB481",
+             "Law Without Signature, Article 44, Part II N.H. Constitution "
+             "06/16/04, Eff. 08/15/04: Chp. 0258"),
+            # A study committee's membership line names the law that made it,
+            # which is not this bill's: its own number stays its own.
+            ("2000", "2570", "HB  1462", "05/10/2000 10:00:00", "HB1462",
+             "Signed by the Governor on 5/10/2000 Eff: 7/9/2000 Chap: 0061"),
+            ("2000", "2570", "HB  1462", "06/01/2000 10:00:00", "HB1462",
+             "Study Committee Members: Senators Russman, Below, F. King, "
+             "Fraser, Cohen, for (Ch. 47)"),
+            # A law line about ANOTHER bill, on a bill that never became law.
+            ("1996", "2331", "HB  1179", "06/18/1997 10:00:00", "HB1179",
+             "{LSR 0155, HB 154, CH. 183, 1997  SIGNED BY GOV 6/18/97}"),
+            # And a cross-reference with no law in it at all.
+            ("1989", "9100", "HB  0001", "05/08/1989 10:00:00", "HB1",
+             "SIGNED BY GOVERNOR  5/8/89   EFF:  7/7/89     CHAP: 001"),
+            ("1989", "9100", "HB  0001", "05/08/1989 10:00:00", "HB1",
+             "CH.124,1989//"),
+        ]
+        (root / "db" / "Docket.psv").write_text(
+            "".join("|".join([y, l, e, d, b, "H", t, "x", "1", d, "1"]) + "\n"
+                    for y, l, e, d, b, t in rows), encoding="utf-8")
+        bills = {}
+        for y, l, e, d, b, t in rows:
+            yy = int(y) - (1 - int(y) % 2)
+            bills.setdefault(f"{yy}-{yy + 1}", {})[b] = {"bill": b, "lsr_num": l}
+        (root / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
+        r = _run([sys.executable, str(here / "extract_chapters.py")],
+                 cwd=root, capture_output=True, text=True, timeout=60,
+                 env={**os.environ, "PYTHONPATH": str(here)})
+        assert r.returncode == 0, (r.stdout + r.stderr).strip()[-300:]
+        got = json.loads((root / "chapters.json").read_text(encoding="utf-8"))
+        want = {("1993-1994", "HB241"): 66, ("1999-2000", "HB426"): 70,
+                ("2003-2004", "SB335"): 99, ("2003-2004", "SB481"): 258,
+                ("1999-2000", "HB1462"): 61, ("1995-1996", "HB1179"): None,
+                ("1989-1990", "HB1"): 1}
+        ch = lambda t, b: (got.get(t, {}).get(b) or {}).get("chapter")
+        wrong = [f"{b} of {t}: {ch(t, b)}, not {n}" for (t, b), n in want.items()
+                 if ch(t, b) != n]
+        assert not wrong, "; ".join(wrong)
+        return "ok", ("CH., Chap, Chapt: and Chp. read on a law line; a committee's "
+                      "\"for (Ch. 47)\", another bill's law line and a bare cross-reference are not")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("data", "no page but the search page opens with the hidden heading \"New Hampshire bills\"")
 def _sr_heading():
     """bills.html carries a visually hidden <h1>New Hampshire bills</h1>, and
