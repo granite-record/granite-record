@@ -167,7 +167,29 @@ PHRASES = [
     # AFFS as well as AFFAIRS. "Internal Affs" and "Public Affs" were on 24
     # pages, and are the same two committees these patterns already cover.
     (r"\bPUB(?:LIC)?\.?\s*AFF(?:AIR)?S\.?\b", "Public Affairs"),
-    (r"\bINTERNAL\s*AFF(?:AIR)?S\.?\b", "Internal Affairs"),
+    # TWO SENATE COMMITTEES WHOSE NAMES END IN "INTERNAL AFFAIRS". The pattern
+    # for Internal Affairs was not anchored, so it found those two words inside
+    # both longer names and returned the shorter one: S50 Election Law and
+    # Internal Affairs (2007-2008) and S40 Rules, Enrolled Bills and Internal
+    # Affairs (2013-2016) reached 38 bill cards and 111 histories as "Senate
+    # Internal Affairs", a committee none of those terms had. (S50 had the
+    # same name again in 2017-2018, but no docket line of 2017 or later
+    # reaches this table, so those terms were never affected.) Each name maps
+    # to itself here, ahead of that pattern, so the spelling without the
+    # comma, and the 2015-2016 lines that carry "by the necessary 2/3 vote,
+    # Pursuant to Senate Rule 3-26" after the name, come out as the committee
+    # too.
+    (r"\bELEC(?:TION)?\.?\s*LAW\s*(?:&|\+|AND)\s*INTERNAL\s*AFF(?:AIR)?S\.?\b",
+     "Election Law and Internal Affairs"),
+    (r"\bRULES\s*,?\s*ENROLLED\s*BILLS\s*,?\s*(?:&|\+|AND)\s*"
+     r"INTERNAL\s*AFF(?:AIR)?S\.?\b",
+     "Rules, Enrolled Bills and Internal Affairs"),
+    # And refused straight after the word "and" or an ampersand: "... and
+    # Internal Affairs" is the tail of a longer name or half of a joint
+    # referral, and in neither case the committee called Internal Affairs
+    # alone. preflight's full-name check is the wider guard: it fails if any
+    # entry here turns a committee's full name into a different committee.
+    (r"(?<!\bAND\s)(?<!&\s)\bINTERNAL\s*AFF(?:AIR)?S\.?\b", "Internal Affairs"),
     (r"\bELEC\.?\s*LAW\b", "Election Law"),
     (r"\bAPPROP\.?\b", "Appropriations"),
     (r"\bTRANS\.?$", "Transportation"),
@@ -235,9 +257,16 @@ PHRASES = [
      "Public Institutions, Health and Human Services"),
     (r"\bWILDLIFE\s*(?:&|\+|AND)\s*REC\.?$", "Wildlife and Recreation"),
     (r"\bLEG\.?\s*ADMIN\.?\b", "Legislative Administration"),
-    (r"\bLOC\.?\s*(?:&|\+|AND)\s*REG\.?\s*REV\.?\b",
+    # LOCAL as well as LOC. The House's Committee on Regulated Revenues, named
+    # so in legislation/1995/HR0001.html, the rules resolution of 1995, is the
+    # Committee on Local and Regulated Revenues in legislation/1997/HR0001.html.
+    # "LOCAL & REG REV" (1997 HB776) missed this pattern and fell to the next
+    # one, which put the older name on a 1997 bill. The next one is
+    # anchored at the start for the same reason: "REG REV" is only Regulated
+    # Revenues when nothing comes before it.
+    (r"\bLOC(?:AL)?\.?\s*(?:&|\+|AND)\s*REG\.?\s*REV\.?\b",
      "Local and Regulated Revenues"),
-    (r"\bREG\.?\s*REV\.?$", "Regulated Revenues"),
+    (r"^REG\.?\s*REV\.?$", "Regulated Revenues"),
     # REL optional: "St-Fed and Vets Affs" drops it, and there is no other
     # State-Federal committee for it to be confused with.
     (r"\bST\.?[- ]?FED\.?\s*(?:REL\.?\s*)?(?:&|\+|AND)\s*VETS?\.?\b",

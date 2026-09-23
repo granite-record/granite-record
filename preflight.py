@@ -6029,7 +6029,114 @@ def _referral(referrals):
     assert e("JUD") == "JUD" and e("WILDLIFE") == "WILDLIFE"
     assert e("PUB INSTIT") == "PUB INSTIT"
     assert e("ST-FED") == "ST-FED" and e("PUBLIC WKS") == "PUBLIC WKS"
-    return "ok", "ten real docket lines, the hearing shorthand, and two that name no committee"
+    # A longer name is not the shorter one inside it (23 September). The
+    # Internal Affairs pattern found those two words inside two Senate
+    # committees' names and returned "Internal Affairs" for both, on 38 cards
+    # of 2007-2016; "REG REV" did the same to Local and Regulated Revenues.
+    # 2007 SB234, 2015 SCR1, 2005 SB40, 1997 HB776 and 1989 HB172, verbatim.
+    assert c("Introduced and Referred to Election Law and Internal Affairs; "
+             "SJ 3, Pg.51") == "Election Law and Internal Affairs"
+    assert c("Introduced and Referred to Rules, Enrolled Bills and Internal "
+             "Affairs by the necessary 2/3 vote, Pursuant to Senate Rule 3-26; "
+             "SJ 4") == "Rules, Enrolled Bills and Internal Affairs"
+    assert c("Introduced and Referred to Internal Affairs; SJ 2, Pg.24") == \
+        "Internal Affairs"
+    assert c("INTRODUCED AND REF TO LOCAL & REG REV; HJ17, P284") == \
+        "Local and Regulated Revenues"
+    assert c("INTRODUCED AND REF TO REG REV          HJ 13 ,P 138") == \
+        "Regulated Revenues"
+    return "ok", ("fifteen real docket lines, the hearing shorthand, and two "
+                  "that name no committee")
+
+
+# Every committee name in data/committees.json when this was written, as a
+# literal so the check below needs nothing on disk.
+_FULL_COMMITTEE_NAMES = (
+    "Capital Budget", "Children and Family Law", "Commerce",
+    "Commerce and Consumer Affairs", "Committee of Conference",
+    "Criminal Justice and Public Safety",
+    "Criminal Justice and Public Safety Joint with Judiciary", "Education",
+    "Education Finance", "Education Funding",
+    "Education Policy and Administration",
+    "Education and Workforce Development", "Election Law",
+    "Election Law and Internal Affairs", "Election Law and Municipal Affairs",
+    "Energy and Natural Resources", "Environment and Agriculture",
+    "Executive Departments and Administration", "Finance",
+    "Fish and Game and Marine Resources", "Health and Human Services",
+    "Health, Human Services and Elderly Affairs", "Housing", "Judiciary",
+    "Labor, Industrial and Rehabilitative Services",
+    "Legislative Administration", "Municipal and County Government",
+    "No Committee Assignment", "Public Works and Highways",
+    "Public and Municipal Affairs", "Resources, Recreation and Development",
+    "Rules", "Rules and Enrolled Bills",
+    "Rules, Enrolled Bills and Internal Affairs",
+    "Science, Technology and Energy",
+    "Senate Special Committee on Redistricting", "Special Committee",
+    "Special Committee on COVID Response Efficacy",
+    "Special Committee on Childcare", "Special Committee on Commissions",
+    "Special Committee on Housing",
+    "Special Committee on Public Employee Pension Plans",
+    "Special Committee on Redistricting",
+    "Special Committee on the Division for Children, Youth and Families (DCYF)",
+    "Special Committee on the Family Division of the Circuit Court",
+    "State-Federal Relations and Veterans Affairs", "Transportation",
+    "Ways and Means",
+)
+
+
+def _swallowed(referrals, names_):
+    """The full names that expand() turns into a different committee."""
+    return sorted(f"{n!r} -> {referrals.expand(n)!r}" for n in set(names_)
+                  if referrals._key(referrals.expand(n)) != referrals._key(n))
+
+
+@check("narrative", "expand() never turns a committee's full name into a different committee",
+       needs=("referrals",))
+def _full_names_survive(referrals):
+    """A pattern for a short name must not fire inside a longer one.
+
+    referrals.PHRASES is searched, not matched, so an entry for "Internal
+    Affairs" also found those two words inside "Election Law and Internal
+    Affairs" and "Rules, Enrolled Bills and Internal Affairs", and 38 bill
+    cards of 2007-2016 named a Senate committee none of those terms had. A
+    full name already written out must come back as itself: this fails on any
+    PHRASES entry, present or future, that swallows one.
+    """
+    must = ("Election Law and Internal Affairs",
+            "Rules, Enrolled Bills and Internal Affairs",
+            "Election Law and Municipal Affairs", "Local and Regulated Revenues",
+            "Public and Municipal Affairs")
+    bad = _swallowed(referrals, _FULL_COMMITTEE_NAMES + must)
+    assert not bad, "expand() renames a committee: " + "; ".join(bad)
+    return "ok", f"{len(set(_FULL_COMMITTEE_NAMES + must))} full committee names each come back as themselves"
+
+
+@check("data", "every committee name on disk comes back from expand() as itself",
+       needs=("referrals",))
+def _full_names_on_disk(referrals):
+    """The same guard, over the names the General Court's own tables carry.
+
+    data/committees.json and db/Committees.psv (its Name and LongName
+    columns) name every committee this site links to, and grow when the
+    General Court adds one. The code check above holds a copy of the list as
+    it was; this reads the list as it is.
+    """
+    found = []
+    f = Path("data/committees.json")
+    if f.exists():
+        d = json.loads(f.read_text(encoding="utf-8"))
+        found += [c.get("name") for c in (d.values() if isinstance(d, dict) else d)
+                  if isinstance(c, dict) and c.get("name")]
+    p = Path("db/Committees.psv")
+    if p.exists():
+        for line in p.read_text(encoding="utf-8", errors="replace").splitlines():
+            cols = line.split("|")
+            found += [x.strip() for x in cols[1:3] if len(cols) > 2 and x.strip()]
+    if not found:
+        return "skip", "no data/committees.json or db/Committees.psv"
+    bad = _swallowed(referrals, found)
+    assert not bad, "expand() renames a committee: " + "; ".join(bad)
+    return "ok", f"{len(set(found))} committee names on disk each come back as themselves"
 
 
 @check("data", "an archived bill's committee came from a source that has one",
