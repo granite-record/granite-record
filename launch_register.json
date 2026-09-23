@@ -19,7 +19,7 @@
       "reported_by": "found while surveying state GIS sources",
       "status": "fixed",
       "fixed_by": "5939ff7",
-      "guard": "every floterial district overlays districts that exist"
+      "guard": "every place has exactly one district of its own, and every floterial is laid over them -- widened 23 September to catch a floterial that has lost its label as well as a base district that has gained one"
     },
     {
       "found": "2026-09-20",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.234
+# GRANITE_VERSION: 2026-09-04.235
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -10821,16 +10821,37 @@ def _no_c1():
     return "ok", "no control characters in the source"
 
 
-@check("files", "every floterial district overlays districts that exist")
+@check("files", "every place has exactly one district of its own, and every floterial is laid over them")
 def _floterials_overlay():
     """Hillsborough 42 and 43 were labelled floterial and were not.
 
-    A FLOTERIAL DISTRICT IS AN OVERLAY. It covers several towns or wards that
-    each already elect their own representative, and elects further members
-    across their combined population -- so a resident of one is genuinely in
-    two House districts at once. The definition is the check: every place in a
-    floterial district must also appear in some district that is not
-    floterial.
+    A FLOTERIAL DISTRICT IS AN OVERLAY. It is laid exactly over two or more
+    whole districts of its county and elects further members across their
+    combined population -- so a resident of one is genuinely in two House
+    districts at once. It is laid over DISTRICTS, not over towns that each
+    elect their own member: Belknap 8 lies over Belknap 3, where Sanbornton and
+    Tilton share one seat, so Sanbornton has no member of its own. (This
+    docstring said otherwise until 23 September, in the same words the Learn
+    page used, and both were corrected together.)
+
+    ONE INVARIANT CATCHES BOTH WAYS THE LABEL CAN BE WRONG: every town or ward
+    sits in exactly one district that is not floterial.
+
+      NONE means a base district is wearing the floterial label, so its towns
+      have been left with no district of their own. That is Hillsborough 42
+      and 43, below.
+
+      TWO OR MORE means a floterial has LOST its label, so it is counted as a
+      base district and every town under it appears to have two. Until 23
+      September nothing caught this half -- the check tested only that places
+      in a labelled floterial had a home -- so a floterial whose "(Floterial)"
+      marker fell out of districts/house.txt would have passed, and the site
+      would have told every resident under it that their extra members were
+      their own district's.
+
+    Where it finds a place with two, it names the culprit: of the districts
+    that place sits in, the one laid over another whole district is the
+    floterial that has lost its label.
 
     districts/house.txt had Hillsborough 43 as a floterial covering Milford
     and nothing else, and Hillsborough 42 as a floterial covering
@@ -10874,12 +10895,16 @@ def _floterials_overlay():
 
     assert districts, "districts/house.txt parsed to nothing"
 
-    based = set()
+    # Every district that is not floterial each place sits in. The invariant is
+    # that this list has exactly one entry for every place in the file.
+    homes = {}
     for d in districts:
         if not d["floterial"]:
-            based.update(d["places"])
+            for p in d["places"]:
+                homes.setdefault(p, []).append(d)
 
     bad = []
+    # NONE: a base district wearing the floterial label.
     for d in districts:
         if not d["floterial"]:
             continue
@@ -10887,22 +10912,55 @@ def _floterials_overlay():
             bad.append(f'{d["name"]} is floterial but covers only '
                        f'{d["places"][0]}')
             continue
-        orphan = [x for x in d["places"] if x not in based]
+        orphan = [x for x in d["places"] if x not in homes]
         if orphan:
+            # Blame this district only when EVERY town in it is homeless, as
+            # with Hillsborough 42. When only some are, this is a true
+            # floterial and the fault lies in a district beneath it that has
+            # been given the label -- which the single-place line above, or
+            # another line of this list, names. Saying "wrong label" here then
+            # would point the reader at the one district that is right.
+            verb, own = (("belongs", "its") if len(orphan) == 1
+                         else ("belong", "their"))
+            blame = (" -- it is a base district carrying the wrong label"
+                     if len(orphan) == len(d["places"]) else "")
             bad.append(f'{d["name"]} is floterial, but '
                        + ", ".join(orphan)
-                       + " belong to no district of their own")
+                       + f" {verb} to no district of {own} own{blame}")
+
+    # TWO OR MORE: a floterial that has lost its label. The culprit is the
+    # district among a doubled place's homes that is laid over another whole
+    # one; reported once per culprit rather than once per town under it.
+    culprits, unexplained = {}, []
+    for p, ds in sorted(homes.items()):
+        if len(ds) < 2:
+            continue
+        over = [a for a in ds if any(b is not a and set(b["places"]) < set(a["places"])
+                                     for b in ds)]
+        if over:
+            for a in over:
+                culprits.setdefault(a["name"], a)
+        else:
+            unexplained.append(f'{p} sits in ' + " and ".join(x["name"] for x in ds)
+                               + ", none of them laid over the other")
+    for name, a in sorted(culprits.items()):
+        under = sorted({b["name"] for p in a["places"] for b in homes.get(p, [])
+                        if b is not a})
+        bad.append(f'{name} is not labelled floterial, but it is laid over '
+                   + ", ".join(under) + " -- it is a floterial that has lost "
+                   "its label, so every town under it appears to have two "
+                   "districts of its own")
+    bad.extend(unexplained)
 
     assert not bad, (
-        "a floterial district overlays towns that already have a district, so "
-        "every place in one must appear in a non-floterial district too. "
-        "These do not, which means they are base districts carrying the wrong "
-        "label -- and the site would tell those towns' residents the wrong "
-        "thing about their own representation:\n  " + "\n  ".join(bad))
+        "every town and ward sits in exactly one House district that is not "
+        "floterial, and these break that. The site would tell residents the "
+        "wrong thing about their own representation:\n  " + "\n  ".join(bad))
 
     flot = sum(1 for d in districts if d["floterial"])
     return "ok", (f"{len(districts) - flot} base and {flot} floterial "
-                  f"districts, every overlay over districts that exist")
+                  f"districts; all {len(homes)} places sit in exactly one "
+                  f"district of their own")
 
 
 @check("files", "every county has its eight elected officers, and none carries a home address")
