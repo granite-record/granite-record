@@ -2809,6 +2809,26 @@ Disposition = namedtuple("Disposition",
                          "kind status told settled prefix stated stale")
 
 
+def bill_committees(b, bid):
+    """(committee, committees) for a bill's index row.
+
+    `committees` is every committee the bill has, each with its chamber, House
+    first; the card lists them in that order. `committee` is THE committee of
+    the bill -- what index.json, idx/<term>.json and the committee list in the
+    site's meta carry -- and it is the one in the chamber the bill began in.
+    It was committees[0], which made it the House's for every Senate bill that
+    crossed over: SB 1 of 2023, referred to the Senate's Judiciary, was filed
+    under House Finance.
+    """
+    cmtes = [f"{ch} {names.committee(nm)}" for ch, nm in
+             (("House", b.get("house_committee") or ""),
+              ("Senate", b.get("senate_committee") or "")) if nm]
+    origin = ("Senate " if str(b.get("chamber") or bid[:1]).upper()
+              .startswith("S") else "House ")
+    return (next((c for c in cmtes if c.startswith(origin)),
+                 cmtes[0] if cmtes else ""), cmtes)
+
+
 def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
                    narr, rcs, coverage, carried, dates, chapter=""):
     """One bill's row in the search index.
@@ -3595,10 +3615,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # RECREATION", 28 of them across the terms before about 2015 -- and
         # the current term writes it in title case. Same committee, two
         # spellings, and the facet listed both.
-        cmtes = [f"{ch} {names.committee(nm)}" for ch, nm in
-                 (("House", b.get("house_committee") or ""),
-                  ("Senate", b.get("senate_committee") or "")) if nm]
-        cmte = cmtes[0] if cmtes else ""
+        cmte, cmtes = bill_committees(b, bid)
         chapter = chapter_of(st, (chapters or {}).get(term, {}).get(bid),
                              n_chapter)
         index.append(bill_index_row(

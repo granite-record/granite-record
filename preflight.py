@@ -6111,6 +6111,191 @@ def _full_names_survive(referrals):
     return "ok", f"{len(set(_FULL_COMMITTEE_NAMES + must))} full committee names each come back as themselves"
 
 
+# Verbatim docket rows, by the file each is from. The bill's page narrates its
+# history from the same file, which is why the committee row must be read
+# from it too.
+_FIRST_REFERRAL_DOCKETS = {
+    "1989-1990": [   # Docket_db_1989-1990.txt: two measures numbered SCR 2
+        "1989|0564|01/05/1989 05:08:50 PM|SCR2|S|INTRODUCED AND REF TO DEV. REC & ENV.  SJ 3  ,P 28|01/05/1989 05:08:50 PM",
+        "1989|0564|02/07/1989 05:09:04 PM|SCR2|S|PASSED/ADOPTED|02/07/1989 05:09:04 PM",
+        "1989|0564|03/02/1989 05:09:09 PM|SCR2|H|INTRODUCED AND REF TO ENV & AGR        HJ 39 ,P900|03/02/1989 05:09:09 PM",
+        "1990|2730|01/03/1990 11:32:02 AM|SCR2|S|INTRODUCED AND REF TO PUBLIC AFFAIRS     SJ 1, P 6|01/03/1990 11:32:02 AM",
+    ],
+    "1991-1992": [   # Docket_db_1991-1992.txt: the committee on the next row
+        "1991|0820|01/03/1991 10:10:25 AM|SB151|S|INTRODUCED AND REF TO TRANSPORTATION; SJ 2,P 19|01/03/1991 10:10:25 AM",
+        "1991|0820|06/12/1991 08:54:00 AM|SB151|H|REP GROSS SUSP RULES FOR INTRO, MA 2/3VV; INTRODUCED AND REF TO|06/12/1991 08:54:00 AM",
+    ],
+    "1999-2000": [   # Docket_db_1999-2000.txt
+        "1999|0754|01/07/1999 09:50:11 AM|SB15|S|Introducing and referring to Insurance; SJ 2, P 26|01/07/1999 09:50:11 AM",
+        "1999|0754|02/09/1999 03:12:46 PM|SB15|S|Hearing, 2/16/99, Room 103, SH, 11:10 a.m.|02/09/1999 03:12:46 PM",
+        "1999|0660|05/27/1999 09:30:10 AM|HB722|s|Introduced and Refered to Judiciary SJ21 Pg.568|05/27/1999 09:30:10 AM",
+    ],
+    "2009-2010": [   # Docket_db_2009-2010.txt
+        "2010|2002|12/10/2009 11:52:27 AM|HB1587|H|To Be Introduced 1/6/2010 and Referred to Finance|12/10/2009 11:52:27 AM",
+    ],
+    "2011-2012": [   # Docket_db_2011-2012.txt: drafted late, then referred
+        "2012|3049|01/18/2012 02:04:48 PM|HB1716|H|Late Drafting and Introduction Approved By Rules Committee; HJ 10, PG.677|01/18/2012 02:04:48 PM",
+        "2012|3049|01/18/2012 02:05:19 PM|HB1716|H|Referred to Public Works and Highways; HJ 10, PG.677|01/18/2012 02:05:19 PM",
+    ],
+    "2021-2022": [   # Docket_2021-2022.txt: heard, THEN sent to the money committee
+        "2022|2702|1/24/2022 12:00:00 AM|HB1288|H|Public Hearing: 01/24/2022 1:45 p.m. LOB302-304|1/24/2022 12:00:00 AM",
+        "2022|2702|2/8/2022 12:00:00 AM|HB1288|H|Committee Report: Ought to Pass with Amendment #2022-0522h (Vote 18-0; CC)|2/8/2022 12:00:00 AM",
+        "2022|2702|2/17/2022 12:00:00 AM|HB1288|H|Referred to Ways and Means 02/16/2022|2/17/2022 12:00:00 AM",
+        "2022|2702|4/5/2022 12:00:00 AM|HB1288|S|Introduced 03/31/2022 and Referred to Executive Departments and Administration; SJ 8|4/5/2022 12:00:00 AM",
+    ],
+    "2023-2024": [   # Docket_2023-2024.txt
+        "2024|2468|12/1/2023 12:00:00 AM|HB1215|H|Introduced 01/03/2024 and referred to Special Committee on Housing|12/1/2023 12:00:00 AM",
+        "2024|2468|1/18/2024 12:00:00 AM|HB1215|H|Public Hearing: 02/16/2024 10:00 am LOB 302-304|1/18/2024 12:00:00 AM",
+        "2024|2468|4/2/2024 12:00:00 AM|HB1215|S|Introduced 03/21/2024 and Referred to Election Law and Municipal Affairs; SJ 8|4/2/2024 12:00:00 AM",
+        "2024|0057|12/23/2022 12:00:00 AM|HB91|H|Introduced 01/04/2023 and referred to Health, Human Services and Elderly Affairs|12/23/2022 12:00:00 AM",
+        "2024|0057|2/14/2023 12:00:00 AM|HB91|H|Referred to Finance 02/14/2023 HJ 5|2/14/2023 12:00:00 AM",
+    ],
+    "2025-2026": [   # Docket.txt, the current term
+        "2026|0994|1/22/2025 5:53:58 PM|SB83|S|  Introduced 01/09/2025 and Referred to Commerce;  SJ 3|1/22/2025 5:53:58 PM",
+        "2026|0994|1/23/2025 4:53:44 PM|SB83|S|SB 83 is vacated from Commerce and referred to Ways and Means; (In recess 01/09/2025);  SJ 3|1/23/2025 4:53:44 PM",
+        "2025|0138|1/6/2025 8:52:19 AM|HB165|H|  Introduced 01/08/2025 and referred to Municipal and County Government  HJ 2  P. 8|1/21/2025 2:00:30 PM",
+        "2025|0138|3/28/2025 8:02:24 AM|HB165|S|  Introduced 03/27/2025 and Referred to Finance;  SJ 10|3/6/2026 4:24:49 PM",
+        "2025|0957|1/22/2025 5:27:38 PM|CACR8|S|  Introduced 01/09/2025 and Referred to Judiciary;  SJ 3|1/22/2025 5:27:38 PM",
+        "2025|0957|3/28/2025 2:00:10 PM|CACR8|H|  Introduced (in recess of) 03/27/2025 and referred to Criminal Justice and Public Safety  HJ 11  P. 113|3/28/2025 2:00:10 PM",
+    ],
+}
+
+
+@check("narrative", "a bill's committee is its first referral in each chamber, read from its own term's docket",
+       needs=("referrals", "build_data", "build_site_v2"))
+def _first_referral(referrals, build_data, build_site_v2):
+    """The committee rows name the committee each chamber FIRST referred to.
+
+    Until 23 September the committee of every bill of 2016-2024 came from the
+    General Court search page's "Next/Last Comm" -- the LAST committee, in
+    ONE chamber -- because the docket was read only out of the database dump,
+    which stops in 2016. HB 1215 of 2024 was referred to the House Special
+    Committee on Housing and its page named only the Senate's committee; 778
+    bill-chambers named a later referral, mostly Finance, and 4,087 left out
+    the chamber the bill began in. Each assertion below is one way that came
+    back, on rows copied verbatim from the dockets.
+    """
+    import contextlib
+    import io
+    R, BD, BS = referrals, build_data, build_site_v2
+    c = R.committee
+    # The shapes the introduction line takes, and the one it must refuse.
+    for desc, want in (
+            ("To Be Introduced 1/6/2010 and Referred to Finance", "Finance"),
+            ("Introducing and referring to Insurance; SJ 2, P 26", "Insurance"),
+            ("Introduction and referring to Wildlife & Recreation, SJ 10, P 219",
+             "Wildlife and Recreation"),
+            ("[APPROVED BY RULES] INTRODUCED AND REF TO PUBLIC WORKS; HJ29,P577",
+             "Public Works"),
+            ("(JAN23)INTRODUCED AND REF TO TRANSPORTATION; SJ3, P49", "Transportation"),
+            ("04/09/91   INTRODUCED AND REF TO ENVIRONMENT;  SJ16,P234", "Environment"),
+            ("Rules Comm Approved: Introduced 1/23/2008 and Ref to Criminal Justice "
+             "& Public Safety; HJ 13, PG.724", "Criminal Justice and Public Safety"),
+            ("Introduced & ref:  Criminal Justice & Public Safety   HJ 7, pg 346 <Finance>",
+             "Criminal Justice and Public Safety"),
+            ("Introduced and ref Executive Dept. & Admin <W & M>    HJ20, pg 1256",
+             "Executive Departments and Administration"),
+            ("INTRODUCED AND REF TO EDUC. HJ9   ,P89", "Education"),
+            ("REP GROSS SUSP RULES FOR INTRO, MA 2/3VV; INTRODUCED AND REF TO", ""),
+            ("Committee Report: Refer to Interim Study", "")):
+        got = c(desc)
+        assert got == want, f"committee({desc[:50]!r}) gave {got!r}, wanted {want!r}"
+
+    with tempfile.TemporaryDirectory() as tmp:
+        found = {}
+        for term, lines in _FIRST_REFERRAL_DOCKETS.items():
+            p = Path(tmp) / f"Docket_{term}.txt"
+            p.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            found[term] = str(p)
+        refs, began = R.read_dockets(found, lsr_of={("1989-1990", "SCR2"): "2730"})
+        majority = R.from_dockets({"1989-1990": found["1989-1990"]})
+        # What each bill's committee rows must say.
+        want = {
+            ("2023-2024", "HB1215"): {"H": "Special Committee on Housing",
+                                      "S": "Election Law and Municipal Affairs"},
+            ("2023-2024", "HB91"): {"H": "Health, Human Services and Elderly Affairs"},
+            ("1999-2000", "SB15"): {"S": "Insurance"},
+            ("1999-2000", "HB722"): {"S": "Judiciary"},
+            ("2009-2010", "HB1587"): {"H": "Finance"},
+            ("2011-2012", "HB1716"): {"H": "Public Works and Highways"},
+            # Heard first, so the bare "Referred to" is the money pass: no
+            # House committee of referral is read, rather than a wrong one.
+            ("2021-2022", "HB1288"): {"S": "Executive Departments and Administration"},
+            # The record's own LSR picks the 1990 resolution, not the 1989 one.
+            ("1989-1990", "SCR2"): {"S": "Public Affairs"},
+            ("1991-1992", "SB151"): {"S": "Transportation"},
+            # A vacate replaces the first referral; the docket beats a code.
+            ("2025-2026", "SB83"): {"S": "Ways and Means"},
+            ("2025-2026", "HB165"): {"H": "Municipal and County Government",
+                                     "S": "Finance"},
+            ("2025-2026", "CACR8"): {"S": "Judiciary",
+                                     "H": "Criminal Justice and Public Safety"},
+        }
+        bad = [f"{k}: {refs.get(k)} wanted {v}" for k, v in want.items() if refs.get(k) != v]
+        assert not bad, "; ".join(bad)
+        assert "H" in majority.get(("1989-1990", "SCR2"), {}), (
+            "with no LSR given, the LSR most rows carry should be read")
+        assert began.get(("2025-2026", "CACR8")) == "S", began.get(("2025-2026", "CACR8"))
+
+        # The current term: the docket over the referral code, and the chamber
+        # a stub CACR began in.
+        bills = {
+            "SB83": {"lsr_year": "2026", "lsr_num": "0994", "chamber": "S",
+                     "house_committee": "", "senate_committee": "Commerce"},
+            "HB165": {"lsr_year": "2025", "lsr_num": "0138", "chamber": "H",
+                      "house_committee": "Municipal and County Government",
+                      "senate_committee": "Health and Human Services"},
+            "CACR8": {"lsr_year": "2025", "lsr_num": "0957", "chamber": "C",
+                      "house_committee": "Criminal Justice and Public Safety",
+                      "senate_committee": "Judiciary"}}
+        table = {"S01": {"name": "Commerce"}, "S02": {"name": "Ways and Means"},
+                 "S03": {"name": "Finance"}, "S26": {"name": "Health and Human Services"},
+                 "S04": {"name": "Judiciary"},
+                 "H01": {"name": "Municipal and County Government"},
+                 "H02": {"name": "Criminal Justice and Public Safety"}}
+        with contextlib.redirect_stdout(io.StringIO()):
+            BD._current_referrals(bills, table, found["2025-2026"])
+        assert bills["SB83"]["senate_committee"] == "Ways and Means", bills["SB83"]
+        assert bills["HB165"]["senate_committee"] == "Finance", bills["HB165"]
+        assert bills["HB165"]["house_committee"] == "Municipal and County Government"
+        assert bills["CACR8"]["chamber"] == "S", bills["CACR8"]
+
+    # Choosing between the docket's first referral and the search page's
+    # last committee.
+    known = {R._key(n) for n in ("Finance", "Public Works and Highways", "Ways and Means",
+                                 "Criminal Justice and Public Safety",
+                                 "Children and Family Law")}
+    pick = BD._pick_committee
+    for stored, first, in_use, got_want in (
+            ("Finance", "Insurance", (), "Insurance"),       # a later money pass
+            ("Public Works and Highways", "Public Works", {"publicworks"},
+             "Public Works and Highways"),                    # one committee
+            ("WILDLIFE, FISH AND GAME AND AGRICULTURE", "Wildlife, Fish and Game", (),
+             "Wildlife, Fish and Game"),                      # renamed later
+            ("Criminal Justice and Public Safety", "Criminal Justice", (),
+             "Criminal Justice and Public Safety"),           # cut short
+            ("Criminal Justice and Public Safety", "Criminal Justice",
+             {"criminaljustice"}, "Criminal Justice"),        # a name in use
+            ("ENVIRONMENT", "Enviroment", (), "ENVIRONMENT"),  # a clerk's typing
+            ("Ways and Means", "Ways and Means Committee", (), "Ways and Means"),
+            ("Children and Family Law", "Child and Fam", (), "Children and Family Law")):
+        got = pick(stored, first, known, in_use)
+        assert got == got_want, (f"_pick_committee({stored!r}, {first!r}) gave "
+                                 f"{got!r}, wanted {got_want!r}")
+
+    # THE committee of an index row is the originating chamber's; the card
+    # keeps House first.
+    got = BS.bill_committees({"chamber": "S", "house_committee": "Finance",
+                              "senate_committee": "Judiciary"}, "SB1")
+    assert got == ("Senate Judiciary", ["House Finance", "Senate Judiciary"]), got
+    got = BS.bill_committees({"chamber": "H", "house_committee": "Finance",
+                              "senate_committee": "Judiciary"}, "HB91")
+    assert got == ("House Finance", ["House Finance", "Senate Judiciary"]), got
+    return "ok", (f"{len(want)} bills read from verbatim docket rows, "
+                  "the docket's name against the search page's, and the "
+                  "originating chamber's committee first")
+
+
 @check("data", "every committee name on disk comes back from expand() as itself",
        needs=("referrals",))
 def _full_names_on_disk(referrals):
@@ -6137,6 +6322,75 @@ def _full_names_on_disk(referrals):
     bad = _swallowed(referrals, found)
     assert not bad, "expand() renames a committee: " + "; ".join(bad)
     return "ok", f"{len(set(found))} committee names on disk each come back as themselves"
+
+
+@check("data", "an archived bill's committees are its docket's first referrals, and THE committee is its own chamber's",
+       needs=("referrals", "build_data"))
+def _first_referral_on_disk(referrals, build_data):
+    """The built record against each term's own docket.
+
+    Wherever a chamber's docket names a first referral, data/bills.json must
+    show that committee, or the search page's spelling of the same one
+    (build_data._same_committee). And every row of site/index.json whose
+    bill has a committee in the chamber it began in must name that one as
+    THE committee. On the build of 23 September, 778 bill-chambers showed a
+    later referral, 4,087 left out the originating chamber's committee and
+    8,385 index rows named the other chamber's; this is what fails if the
+    reading, the keying on the term or the ordering comes undone. It
+    measures the wiring, not the reader: a docket line in a shape referrals
+    cannot read is invisible to both sides.
+    """
+    fb, fa = Path("data/bills.json"), Path("archive_bills.json")
+    if not (fb.exists() and fa.exists()):
+        return "skip", "no data/bills.json or archive_bills.json"
+    found = referrals.term_dockets()
+    if not found:
+        return "skip", "no archived docket on this disk"
+    bills = json.loads(fb.read_text(encoding="utf-8"))
+    arch = json.loads(fa.read_text(encoding="utf-8"))
+    refs = referrals.from_dockets(found, lsr_of={
+        (t, b): r.get("lsr", "") for t, bb in arch.items() for b, r in bb.items()})
+    fc = Path("data/committees.json")
+    table = json.loads(fc.read_text(encoding="utf-8")) if fc.exists() else {}
+    known = {referrals._key(c["name"]) for c in (table.values() if isinstance(table, dict) else table)
+             if isinstance(c, dict) and c.get("name")}
+    used = Counter((t, body, referrals._key(c)) for (t, _b), bodies in refs.items()
+                   for body, c in bodies.items())
+    in_use = {}
+    for (t, body, k), n in used.items():
+        if n >= 3:
+            in_use.setdefault((t, body), set()).add(k)
+    wrong, checked = [], 0
+    for (t, b), bodies in refs.items():
+        rec = (bills.get(t) or {}).get(b)
+        if not rec or not rec.get("archived"):
+            continue
+        for body, first in bodies.items():
+            checked += 1
+            shown = rec.get("house_committee" if body == "H" else "senate_committee") or ""
+            if not shown or (referrals._key(shown) != referrals._key(first) and not
+                             build_data._same_committee(first, shown, known,
+                                                        in_use.get((t, body), ()))):
+                wrong.append(f"{t} {b} {body}: shows {shown!r}, docket {first!r}")
+    assert not wrong, (f"{len(wrong)} of {checked:,} archived bill-chambers do not show "
+                       "the docket's first referral (rebuild with build_all.py if the "
+                       "code is newer than data/bills.json): " + "; ".join(wrong[:4]))
+    fi = Path("site/index.json")
+    if not fi.exists():
+        return "ok", f"{checked:,} archived bill-chambers show their first referral; no site/index.json"
+    rows = json.loads(fi.read_text(encoding="utf-8"))
+    off = []
+    for row in rows:
+        rec = (bills.get(row.get("term")) or {}).get(row.get("id")) or {}
+        ch = "Senate " if str(rec.get("chamber") or row.get("id", "")[:1]).upper() \
+            .startswith("S") else "House "
+        if any(c.startswith(ch) for c in row.get("committees") or []) \
+                and not str(row.get("committee") or "").startswith(ch):
+            off.append(f"{row.get('term')} {row.get('id')}: {row.get('committee')!r}")
+    assert not off, (f"{len(off):,} index rows name the other chamber's committee as "
+                     "THE committee: " + "; ".join(off[:4]))
+    return "ok", (f"{checked:,} archived bill-chambers show their first referral, and "
+                  f"{len(rows):,} index rows name the originating chamber's committee")
 
 
 @check("data", "an archived bill's committee came from a source that has one",

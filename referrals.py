@@ -2,7 +2,7 @@
 # GRANITE_VERSION: 2026-09-10.9
 """The committee a bill was referred to, read out of the docket.
 
-    python3 referrals.py            # what it finds, by year, no network
+    python3 referrals.py            # what it finds, by term, no network
     python3 referrals.py --check    # every expansion, and the evidence for it
 
 WHY THIS EXISTS
@@ -23,11 +23,16 @@ reader of that text; nothing else parses a referral out of a docket line.
 WHICH REFERRAL
 
 The FIRST one per chamber -- the committee of referral, the one the bill's
-own text prints as "REFERRED TO:". A bill can be re-referred, and for
-1999-2015 the field this fills came from the search page's "Next/Last Comm",
-which is the LAST one. That difference is real and is why this only ever
-fills a field that is empty: it never overwrites what the search page said,
-so no term has one bill's last committee sitting beside another's first.
+own text prints as "REFERRED TO:". A bill can be re-referred, and the search
+page's "Next/Last Comm" is the LAST one, in ONE chamber. So wherever a
+chamber's docket names a referral, that is the committee published, read
+from the same docket file the bill's history is narrated from
+(from_dockets); where the chamber later vacated the referral and sent the
+bill elsewhere, the committee it was sent to replaces the first. Where the
+docket names no referral in a chamber, the search page's committee stands.
+build_data._pick_committee keeps the search page's name instead of the
+docket's only where the docket's is a name the committee tables do not know
+and the two are one committee written two ways.
 
 THE ABBREVIATIONS ARE PROVEN, NOT GUESSED
 
@@ -73,8 +78,40 @@ SRC = Path("db/Docket.psv")
 # The three ways a referral is written. Anchored at the start of the
 # description so that "Committee Report: Refer to Interim Study" -- a
 # disposition, not a committee -- cannot match.
+#
+# THE INTRODUCTION, IN EVERY SHAPE THE CLERKS WROTE IT. The first form of this
+# pattern read "Introduced ... and ref(erred) to X" and nothing else, and every
+# other shape fell through to the search page's "Next/Last Comm" -- the LAST
+# committee -- or to no committee at all. Each alternative below is a shape
+# the dockets on this disk really use:
+#   "To Be Introduced 1/6/2010 and Referred to X"      pre-filed, 2009-2024
+#   "Introduction and referring to X"                  the Senate of 1999-2000
+#   "Introducing and referring to X"                   the Senate of 1999
+#   "Introduced and ref X" / "Introduced & ref: X"     the House of 2005-2006
+#   "04/09/91   INTRODUCED AND REF TO X"               a crossed-over bill's
+#                                                      first line, 1991-1998
+#   "Rules Comm Approved: Introduced 1/23/2008 and Ref to X"       2007-2008
+#   "Introduced and Refered to X"                      misspelt, 1999-2006
+#   "(JAN23)INTRODUCED AND REF TO X", "[APPROVED BY RULES] INTRODUCED ..."
+#   "SEN X SUSP RULES FOR INTRO, MA 2/3VV; INTRODUCED AND REF TO X"
+# Still anchored at the start, so "Committee Report: Refer to Interim Study"
+# cannot match, and NOT_A_NAME still refuses a referral to no committee.
+#
+# "ref\w*+" is possessive and the committee must begin with a letter or
+# digit: a line that ends "INTRODUCED AND REF TO", with the committee on the
+# clerk's next row, otherwise gave back the word "To" as a committee.
 INTRO = re.compile(
-    r"^\s*introduce[ds]?\b.{0,30}?\band\s+ref(?:erred)?\.?\s+to\s+(?P<c>.+)$", re.I)
+    r"^\s*(?:"
+    r"\(?\d{1,2}/\d{1,2}/\d{2,4}\)?\s*"
+    r"|\(?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\.?\s?\d{1,2}\)?\s*"
+    r"|\[[^\]]*\]\s*"
+    r"|rules\s+comm(?:ittee)?\s+approved:\s*"
+    r"|[^;]{0,60}\bsusp\w*\b[^;]*;\s*"
+    r")?"
+    r"(?:to\s+be\s+)?introduc\w*\b.{0,40}?"
+    r"(?:\band|&)\s+ref\w*+\.?(?:\s+\d{1,2}/\d{1,2}/\d{2,4})?"
+    r"(?:\s*to\b|\s*(?-i:to)(?=[A-Z]))?\s*:?\s*"
+    r"(?P<c>(?!to\s*$)\S.*)$", re.I)
 PASSED = re.compile(
     r"^\s*passed(?:\s+with\s+am)?\s+and\s+ref(?:erred)?\.?\s+to\s+(?P<c>.+)$", re.I)
 REREF = re.compile(r"^\s*re-?ref(?:erred)?\s+to\s+(?P<c>.+)$", re.I)
@@ -102,9 +139,12 @@ VACATED = re.compile(r"\bvacat\w*\b(?!\s+referral\s+to)[^;]*?"
 
 # What follows the committee on the same line: the journal citation, a date
 # in brackets, a parenthetical, or two spaces used as a column break.
+# The citation also comes run together ("EDUC. HJ9   ,P89"), and a vote's
+# fraction can follow the name ("Finance committee 2/3DIV(226-13)"); the
+# first reached bill pages as a committee called "Educ. Hj9".
 TAIL = re.compile(
-    r"\s*[;(\[].*$|\s{2,}.*$|\s+[HS]J\b.*$|\s*,\s*P(?:G|g)?\.?\s*\d.*$"
-    r"|\s*,\s*pg.*$|\s+\d{1,2}/\d{1,2}/\d{2,4}.*$", re.I)
+    r"\s*[;(\[].*$|\s{2,}.*$|\s+[HS]J(?:\b|(?=\d)).*$|\s*,\s*P(?:G|g)?\.?\s*\d.*$"
+    r"|\s*,\s*pg.*$|\s+\d{1,3}/+\d{1,4}.*$", re.I)
 # The vote that carried the motion, written after the committee.
 # The separator allows a full stop as well as a space or a comma, because the
 # clerk writes "MA. VV" as often as "MA, VV" and "MA VV". Without the stop the
@@ -364,6 +404,18 @@ def _key(s):
 
 def clean(s):
     """The committee, with what the clerk wrote after it taken off."""
+    # "Introduced and ref Education <W & M>": the angle brackets are the
+    # clerk's note of a SECOND committee the bill is expected to go to, not
+    # part of the first one's name. Left in, "Education <W and M>" matched no
+    # committee and the search page's last committee -- Ways and Means -- won.
+    # A note at the START is different: "<JOINT> APPROP AND WAYS & MEANS"
+    # (1989 HB764) is a joint referral to two committees, and the two spaces
+    # it leaves are TAIL's column break, so it reads as no committee rather
+    # than as one of the two -- which is what it read as before.
+    s = re.sub(r"\s*<[^>]*>", " ", s)
+    # "Ways &  Means": two spaces after an ampersand are not the column break
+    # TAIL takes them for, and without this the committee read "Ways".
+    s = re.sub(r"\s*&\s*", " & ", s)
     s = TAIL.sub("", s)
     s = VOTE.sub("", s)
     # AND THE MEMBER WHO MOVED IT. "VACATED TO JUDICIARY, REP POWERS MA VV"
@@ -426,6 +478,10 @@ def vacated(desc):
 def from_docket(path=SRC, lo=1989, hi=2015):
     """{(session year, bill): {body: committee}} -- the FIRST per body.
 
+    db/Docket.psv alone, keyed on the session year. The site no longer reads
+    this: from_dockets below reads every term's own docket. It stays as the
+    reader of the database dump by itself.
+
     The docket arrives in the order the clerk wrote it, so the first referral
     a body records is the committee of referral. setdefault is what keeps it
     first; a re-referral later in the same body does not replace it.
@@ -462,6 +518,150 @@ def from_docket(path=SRC, lo=1989, hi=2015):
             if c:
                 out[key].setdefault(body, c)
     return out
+
+
+def _term(year):
+    """"2023" or "2024" -> "2023-2024": the two-year term a session year is in."""
+    y = int(year)
+    s = y if y % 2 else y - 1
+    return f"{s}-{s + 1}"
+
+
+def term_dockets():
+    """{term: path} -- the one docket per archived term the site narrates.
+
+    The same choice narrate_archive.dockets() makes, and deliberately so: the
+    committee row and the history under it are read from the same file, so
+    the page cannot say "referred to the Special Committee on Housing" in its
+    history and name a Senate committee in its header.
+    """
+    import narrate_archive
+    return narrate_archive.dockets()
+
+
+# A BARE "Referred to X". See _read_docket for when it counts.
+PLAIN = re.compile(r"^\s*referred\s+to\s+(?P<c>.+)$", re.I)
+# Anything that means the committee has already started on the bill.
+HEARD = re.compile(r"\bhearing\b|\bexec(?:utive)?\s+session\b|committee\s+report",
+                   re.I)
+
+
+def _own_rows(path, term, lsr_of=None):
+    """[((term, bill), body, description)] -- each bill's OWN rows, in order.
+
+    ONE BILL NUMBER CAN CARRY TWO MEASURES. Resolutions and CACRs can be
+    numbered again in a term's second year, so 50 bill numbers across the
+    archived dockets carry rows under two or more LSRs in one term, 48 of
+    them with an introduction under more than one -- two different measures
+    under one number: SCR 2 of 1989-1990 is LSR 0564 in 1989 and the Fast
+    Day resolution, LSR 2730, in 1990; CACR 20 of 2007-2008 is the Senate's
+    LSR 1342 and, on one House row, LSR 2023. The database also files a few
+    rows under a bill number with another bill's LSR. So a bill's rows are
+    the ones whose LSR is the record's own (lsr_of, {(term, bill): lsr});
+    where the record names none, or names one that no row carries, the LSR
+    most of the bill's rows carry.
+    """
+    rows = []
+    lsrs = collections.defaultdict(collections.Counter)
+    with open(path, encoding="utf-8-sig", errors="replace") as fh:
+        for line in fh:
+            p = line.rstrip("\r\n").split("|")
+            if len(p) < 7 or not p[0].strip().isdigit():
+                continue
+            if _term(p[0].strip()) != term:
+                continue
+            # The body is upper-cased: 65 rows of 1999-2002 write "s".
+            key = (term, p[3].strip().upper())
+            lsr = p[1].strip().lstrip("0")
+            lsrs[key][lsr] += 1
+            rows.append((key, lsr, p[4].strip().upper(),
+                         "|".join(p[5:-1]) if len(p) > 7 else p[5]))
+    want = {}
+    for key, n in lsrs.items():
+        own = str((lsr_of or {}).get(key) or "").strip().lstrip("0")
+        want[key] = own if own in n else n.most_common(1)[0][0]
+    return [(key, body, desc) for key, lsr, body, desc in rows
+            if lsr == want[key]]
+
+
+def _read_docket(path, term, lsr_of=None):
+    """({(term, bill): {body: committee}}, {(term, bill): body}) from one file.
+
+    The first: the FIRST referral per body, which a vacate replaces -- the
+    rule from_docket states. The second: the body of the bill's first row,
+    which is the chamber it began in.
+    """
+    refs = collections.defaultdict(dict)
+    began = {}
+    heard = set()
+    for key, body, desc in _own_rows(path, term, lsr_of):
+        if body in ("H", "S"):
+            began.setdefault(key, body)
+        v = vacated(desc)
+        if v:
+            refs[key][body] = v
+            continue
+        c = committee(desc)
+        if not c and (key, body) not in heard:
+            # A BARE "Referred to X", before anything has been heard. A bill
+            # drafted late opens "Late Drafting and Introduction Approved By
+            # Rules Committee" and is then "Referred to Judiciary". 19
+            # bill-chambers of 2009-2016 are read this way; for nine House
+            # bills of 2012 it is the only House committee on record, and
+            # their pages named only the Senate's. Only before a hearing:
+            # HB 1288 of 2022 has no introduction row, was heard by Executive
+            # Departments and Administration, and THEN "Referred to Ways and
+            # Means", which is the money pass and not the committee of
+            # referral. Its House committee stays empty rather than wrong.
+            m = PLAIN.match(desc)
+            if m and not re.search(r"interim\s+study", desc, re.I):
+                c = AMP.sub(" and ", names.committee(expand(clean(m.group("c")))))
+        if HEARD.search(desc):
+            heard.add((key, body))
+        if c:
+            refs[key].setdefault(body, c)
+    return refs, began
+
+
+def read_dockets(found=None, lsr_of=None):
+    """(from_dockets(), first_bodies()) in one pass over the files."""
+    refs, began = {}, {}
+    for term, path in (found if found is not None else term_dockets()).items():
+        if Path(path).exists():
+            r, b = _read_docket(path, term, lsr_of)
+            refs.update(r)
+            began.update(b)
+    return refs, began
+
+
+def from_dockets(found=None, lsr_of=None):
+    """{(term, bill): {body: committee}} -- the FIRST per body, every term.
+
+    from_docket() read db/Docket.psv, which stops part way through 2016 and
+    has nothing for 2017-2024, and it was keyed on the session year. So four
+    and a half terms -- 2016 to 2024, about 9,000 bills -- took their
+    committee from the search page's "Next/Last Comm" alone: the LAST
+    committee, and only in ONE chamber. HB 1215 of 2024 was referred to the
+    House Special Committee on Housing and its page named only the Senate's
+    Election Law and Municipal Affairs, because that is where it ended.
+
+    Keyed on the TERM, because a bill carried into the second year keeps its
+    number and gains rows under the next session year. Which rows are the
+    bill's is decided by its LSR: _own_rows says why.
+
+    `found` is {term: path}, term_dockets() when omitted; `lsr_of` is
+    {(term, bill): the archive record's own LSR}.
+    """
+    return read_dockets(found, lsr_of)[0]
+
+
+def first_bodies(found=None, lsr_of=None):
+    """{(term, bill): "H" or "S"} -- the chamber of the bill's first docket row.
+
+    The search page files every CACR under the House, and 80 archived CACRs
+    were the Senate's. Its own docket says which chamber it began in.
+    """
+    return read_dockets(found, lsr_of)[1]
 
 
 def _corpus(path=SRC, lo=1989, hi=2015):
@@ -609,19 +809,22 @@ def main():
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--src", default=str(SRC))
     a = ap.parse_args()
-    if not Path(a.src).exists():
-        sys.exit(f"No {a.src}. This reads the database dump and nothing else.")
     if a.check:
+        if not Path(a.src).exists():
+            sys.exit(f"No {a.src}. --check reads the database dump's referrals.")
         print("EXPANSIONS, and the evidence for each:")
         return check()
-    got = from_docket(a.src)
-    by_year = collections.Counter()
-    for (year, _bill), bodies in got.items():
-        by_year[year] += 1
-    print(f"{len(got):,} bills carry a referral, {sum(by_year.values()):,} rows")
+    if not term_dockets():
+        sys.exit("No archived docket on this disk (Docket_db_*.txt, Docket_<term>.txt).")
+    got = from_dockets()
+    by_term = collections.Counter()
+    for (term, _bill), bodies in got.items():
+        by_term[term] += len(bodies)
+    print(f"{len(got):,} bills carry a referral, "
+          f"{sum(by_term.values()):,} bill-chambers, from each term's own docket")
     print()
-    for y in sorted(by_year):
-        print(f"  {y}: {by_year[y]:,}")
+    for t in sorted(by_term):
+        print(f"  {t}: {by_term[t]:,}")
     names = collections.Counter()
     for bodies in got.values():
         for c in bodies.values():
