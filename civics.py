@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.21
+# GRANITE_VERSION: 2026-09-08.22
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -182,6 +182,66 @@ def flow_diagram(flow=FLOW, heading="The course of a bill", level=2):
     return "".join(out)
 
 
+# TWO WAYS OF DOING THE SAME THING, compared stage by stage. flow_diagram draws
+# one course; some of these pages are about a choice between two -- a town
+# meeting against an SB 2 town, a statute against a constitutional amendment,
+# three forms of town government -- and the only honest picture of a choice is
+# the two side by side, the same stage on the same line.
+#
+# A TABLE, because that is what it is. A screen reader announces a cell with
+# its row and its column, so "the vote, SB 2 town: by official ballot" arrives
+# as one thing rather than as a paragraph the listener has to hold against the
+# one before it. Still no image, no script and no SVG: it is right with
+# JavaScript off, which is the reader the <noscript> block is failing.
+#
+# SAME means the two forms do not differ at that stage. The cell spans both
+# columns rather than repeating the sentence, because a row that says the same
+# thing twice reads as a difference the reader has failed to spot.
+#
+# A cell is text, or (text, mark) with a mark from MARKS -- "say" on the cell
+# where a member of the public can speak is the most useful one here, since
+# where you speak and where you vote are the whole difference between the two.
+SAME = object()
+
+
+def compare_diagram(rows, heading, left, right):
+    # THE ROLES ARE NOT DECORATION. On a phone the table is restacked, which
+    # means changing display on its rows and cells, and a browser that sees a
+    # table given display:grid may drop it from the accessibility tree
+    # altogether -- Safari does -- taking away the one reason it is a table.
+    # Explicit roles put the semantics back whatever the layout is doing.
+    def cell(v, col):
+        text, mark = (v if isinstance(v, (tuple, list)) else (v, ""))
+        cls, mcls, label = mark_of(mark)
+        return (f'<td role="cell" class="c{" " + cls if cls else ""}" '
+                f'data-l="{col}"><span>{text}</span>'
+                + (f'<i class="{mcls}">{label}</i>' if label else "")
+                + "</td>")
+    out = [f'<div class="cmp" role="group" aria-label="{heading}">'
+           f'<table class="cmptab" role="table">'
+           f'<caption class="sr">{heading}</caption>'
+           '<thead role="rowgroup"><tr role="row">'
+           '<th scope="col" role="columnheader">Stage</th>'
+           f'<th scope="col" role="columnheader">{left}</th>'
+           f'<th scope="col" role="columnheader">{right}</th>'
+           '</tr></thead><tbody role="rowgroup">']
+    for stage, a, b in rows:
+        out.append(f'<tr role="row"><th scope="row" role="rowheader">'
+                   f'{stage}</th>')
+        if a is SAME or b is SAME:
+            text = b if a is SAME else a
+            merged = cell(text, f"{left} and {right}")
+            opening = '<td role="cell" class="c'
+            assert merged.startswith(opening), "cell() changed its opening tag"
+            out.append(merged.replace(
+                opening, '<td role="cell" colspan="2" class="c same', 1))
+        else:
+            out.append(cell(a, left) + cell(b, right))
+        out.append("</tr>")
+    out.append("</tbody></table></div>")
+    return "".join(out)
+
+
 # ---------------------------------------------------------------------------
 # AMENDING THE CONSTITUTION. Every step and every threshold here is one the
 # prose on that page already states and cites to the Constitution itself; the
@@ -321,6 +381,57 @@ FLOW_RULES = [
          "ten years. To keep it, the agency runs the whole course again.",
          "stop"),
     ]),
+]
+
+# A TRADITIONAL TOWN MEETING AND AN SB 2 TOWN, one row per stage. Read out of
+# RSA 39, 40 and 32 on this disk, thirteen extractions each checked twice, and
+# then a third pass whose only job was to ask whether each row compares the
+# same thing on both sides. Its answer shaped what is here as much as the
+# statute did:
+#
+# ADOPTING THE FORM IS NOT A ROW. The traditional meeting is the default and is
+# never adopted, so a row for it would set "how a town adopts SB 2" against
+# "how a town rescinds it" -- two different acts dressed as one. It is in the
+# prose instead.
+#
+# "IF THE BUDGET FAILS" IS NOT A ROW EITHER, for a better reason: nothing in
+# these sections says what happens when a traditional meeting votes its budget
+# down, and a row would have to invent the left-hand cell. "The budget" is the
+# honest comparison -- set in the room against printed on a ballot with a
+# fallback -- and the page claims nothing about the case the law is silent on.
+#
+# "say" marks the two cells where a member of the public speaks. Where it sits
+# is the whole difference: in the traditional meeting it is the same room as
+# the vote, and in an SB 2 town it is a different day from it.
+CMP_TOWN = [
+    ("The warrant",
+     "The selectmen sign a warrant listing each question to be decided, "
+     "called an article, for a single meeting. Voters can add an article by "
+     "petition, due five Tuesdays before the meeting.",
+     "The same warrant, except that it sets a day for each of two sessions, "
+     "and petitions are due earlier &mdash; the second Tuesday in January for "
+     "a March vote."),
+    ("Debate and amendment",
+     ("At the meeting itself. Each article is debated and may be amended from "
+      "the floor, and the meeting may vote more or less than the sum an "
+      "article asks for.", "say"),
+     ("At a first session held weeks before the vote, usually called the "
+      "deliberative session. Articles are debated and may be amended, and "
+      "this is the only place a sum of money can be changed &mdash; but no "
+      "article is passed or defeated there.", "say")),
+    ("The vote",
+     "In the same room, straight after the debate. Five voters can ask in "
+     "writing for a secret ballot (three in a town of 500 or fewer).",
+     "At the polls, by official ballot, with absentee voting as in an "
+     "election. There is no debate, and each article reads as the first "
+     "session left it."),
+    ("The budget",
+     "Set in the room, where it can be amended up or down. There is no "
+     "default budget.",
+     ("Printed on the ballot beside a second figure, the default budget. If "
+      "the proposed budget fails the default takes effect, unless the "
+      "governing body calls one special meeting to try a revised budget.",
+      ("needs", "Voters cannot amend the default"))),
 ]
 
 
@@ -743,32 +854,60 @@ elected council or board of aldermen. Most towns have no council: the
 legislative body is the town meeting, and the registered voters adopt the
 budget themselves.</p>
 
-<h2>How a town meeting works</h2>
+<h2>Two ways to hold a town meeting</h2>
+<p>A town settles its business once a year, and there are two ways it can do
+it. At a <b>traditional town meeting</b> the voters debate each question and
+decide it in the same room on the same day. A town, school district or village
+district may instead adopt the <b>official ballot referendum form of
+meeting</b> (RSA 40:13), called <b>SB 2</b> after
+<a href="bill/1995/sb2.html">the 1995 bill</a> that created it. Under SB 2 the
+debate and the vote happen weeks apart, and the vote is cast at the polls.</p>
+""" + compare_diagram(CMP_TOWN, "A traditional town meeting and an SB 2 town, "
+                      "compared", "Traditional town meeting", "SB 2 town") + """
+
+<h2>The traditional town meeting</h2>
 <p><b>Warrant:</b> the notice of the meeting and the list of business to be
 decided at it. Nothing done at a town meeting except electing its officers is
 valid unless the subject was stated in the warrant (RSA 39:2). A <b>petitioned
 article</b> is one the selectmen must put on the warrant on the written
 application of 25 registered voters, or of 2 percent of the town's registered
 voters, whichever is fewer (RSA 39:3). The articles are debated and amended
-from the floor, and the budget is decided in the room.</p>
+from the floor, and the budget is decided in the room: where an article asks
+for a sum of money the meeting may vote more or less than it asks (RSA 39:2),
+though a town under the municipal budget law is held to the limit in RSA
+32:18.</p>
 
 <h2>How SB 2 towns vote</h2>
-<p>A town, school district or village district may instead adopt the
-<b>official ballot referendum form of meeting</b> (RSA 40:13), called
-<b>SB 2</b> after <a href="bill/1995/sb2.html">the 1995 bill</a> that created
-it. The meeting is then in two parts. At the first, the <b>deliberative
-session</b>, the articles are debated and amended and nothing is decided. At
-the second, they are voted on by official ballot on election day, as the first
-session left them.</p>
+<p>The meeting is held in two sessions. The first is usually called the
+<b>deliberative session</b>, though the statute calls it only the first
+session, and it handles everything except the ballot. Each article is
+explained and debated and may be amended, and the session votes on those
+amendments &mdash; so a great deal is decided there, even though no article
+is passed or defeated. An amendment may not remove an article's subject,
+though changing a sum of money does not count as doing so, and an article
+whose wording is set by law cannot be amended at all (RSA 40:13, IV).</p>
+<p>At the second session every article goes on the official ballot, worded as
+the first session left it, and is voted on at the polls with absentee voting
+as in an election. It passes by a simple majority unless a law, contract or
+written agreement requires two thirds, and nothing decided at the second
+session can be reconsidered (RSA 40:13, XIII and XV).</p>
+<p>A town or district adopts SB 2 by three fifths of those voting on the
+question, after a public hearing, and can return to a traditional meeting by
+the same three-fifths vote (RSA 40:14).</p>
 
 <h2>The default budget</h2>
-<p><b>Default budget:</b> what a town or district that has adopted the
-official ballot form falls back on if the operating budget on the ballot is
-defeated. It is last year's appropriations, adjusted for debt service,
-contracts and other obligations already incurred or mandated by law, and
-reduced by one-time spending (RSA 40:13, IX(b)). The voters cannot amend it
-(RSA 40:13, XI(b)). That is why the argument at a deliberative session is
-often about the default rather than the proposed budget.</p>
+<p><b>Default budget:</b> the figure an SB 2 town or district falls back on if
+the operating budget on the ballot is defeated. It starts from last year's
+operating budget, is raised or lowered for debt service, contracts and other
+obligations already incurred or required by law, and is reduced by one-time
+spending and by the cost of positions the proposed budget eliminates (RSA
+40:13, IX). If the proposed budget fails the default takes effect, unless the
+governing body instead calls one special meeting to try a revised budget.</p>
+<p>The voters cannot amend the default budget. The governing body &mdash; the
+selectmen or the school board &mdash; can adjust it, on relevant new
+information and only until the ballots are printed (RSA 40:13, XI(b)). That is
+why the argument at a deliberative session is so often about the default
+rather than the proposed budget.</p>
 """
 
 BODY_LOCAL_HOLDS = """This site covers the state legislature only. It holds no

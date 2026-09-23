@@ -1,4 +1,4 @@
-/* GRANITE_VERSION: 2026-09-07.166 */
+/* GRANITE_VERSION: 2026-09-07.168 */
 /* ONE MEASURE, AND IT BELONGS TO THE BOX.
    34em was not one width: em resolves against the element's own font size,
    so the same rule gave 544px to 16px prose and 476px to 14px notes -- the
@@ -2481,12 +2481,15 @@ grid-column:1}
    equally, so just above 860px the rail would take its full 300 while the
    article fell to about 214, the reverse of today, where 1fr yields and the
    article keeps its measure. */
-.lcols{display:grid;grid-template-columns:minmax(0,var(--measure)) 1fr;
+/* --rail is the contents rail's width, named once because the diagrams'
+   breakout below has to stop short of it and the two numbers must not be
+   allowed to drift apart. */
+.lcols{--rail:236px;display:grid;grid-template-columns:minmax(0,var(--measure)) 1fr;
 grid-template-rows:auto 1fr;column-gap:var(--sp-11);align-items:start}
 /* The rail is beside BOTH rows of the first column, not beside the prose with
    the heading above it: sticky needs one tall area to travel in. */
 .lside{grid-column:2;grid-row:1/span 2;
-position:sticky;top:20px;justify-self:end;width:236px;
+position:sticky;top:20px;justify-self:end;width:var(--rail);
 max-height:calc(100vh - 40px);overflow-y:auto;overflow-x:hidden;
 font-size:var(--t-ui);padding-top:var(--sp-5)}
 /* The sections of one page and the pages of one section are the same kind of
@@ -2640,18 +2643,96 @@ color:var(--pine);margin-top:var(--sp-2)}
 .step.needs{border-left:3px solid var(--st-active)}
 .step .needs-m{display:block;font-style:normal;font-size:var(--t-sm);font-weight:600;
 color:var(--st-active);margin-top:var(--sp-2)}
-/* FOUR ACROSS, AND OUT OF THE MEASURE. The note on .civics anticipated this
-   -- "a diagram is coming" -- and left .wide for it, which was never
-   written. This is that: the diagram is the one wide thing on a prose page,
-   and it breaks out of the 560px column symmetrically rather than being
-   squeezed into it. 230px a side puts it at 1020px inside the 1132px the
-   page column has at 1440, so it never reaches the page's own edge.
-   Below 1100px it stays stacked, because four readable columns do not fit
-   and a cramped diagram is worse than a tall one. */
+/* FOUR ACROSS, AND OUT OF THE MEASURE -- TO THE RIGHT ONLY. The diagram is the
+   one wide thing on a prose page, so from 1100px it leaves the 560px column
+   rather than being squeezed into it. Below 1100px it stays stacked, because
+   four readable columns do not fit and a cramped diagram is worse than a
+   tall one.
+
+   IT USED TO BREAK OUT 230px EACH SIDE, and that put its first phase off the
+   screen. The note here said 230 a side "puts it at 1020px inside the 1132px
+   the page column has at 1440, so it never reaches the page's own edge" --
+   true of a prose column CENTRED in the page, which is what it was when that
+   was written. The contents rail came later and moved the prose to the left
+   of .lcols, and nothing recalculated: measured at 1440, the prose starts at
+   146px, so -230 put the diagram's left edge at -84 and the first phase of
+   How a bill becomes law, the section's most important page, was mostly
+   off the screen. Every flow on these pages was, and nobody had looked at
+   one wider than 1000px.
+
+   So it now grows only into space that is actually empty: rightward, across
+   the column gap and the unused part of the rail's column, stopping the same
+   56px short of the rail that the gap keeps the prose from it. That room is
+   the page column's width less the prose, the rail and the gap, and it
+   changes with the window, so it is measured from .lcols as a container
+   rather than typed as a number. --rail is the rail's own width, named once
+   above so the two cannot drift apart. .cmp shares the rule. */
 @media (min-width:1100px){
-  .civics .flow{margin-left:-230px;margin-right:-230px}
+  .lcols{container-type:inline-size}
+  .civics :is(.flow,.cmp){margin-left:0;margin-right:0;
+  width:calc(100cqw - var(--rail) - var(--sp-11));max-width:none}
   .flowphases{grid-template-columns:repeat(4,minmax(0,1fr));gap:0 var(--sp-8)}
   .phase:not(:last-child):after{top:11px;left:100%;width:26px;height:1px}
+}
+
+/* ---- TWO WAYS OF DOING THE SAME THING -----------------------------------
+   compare_diagram's table: one stage per row, the two forms side by side. It
+   takes the flow diagram's parts -- the phase heading for the stage, the step
+   card for each cell, the same three marks -- so a page carrying both reads
+   as one visual language rather than two.
+
+   THREE LAYOUTS, BY WIDTH, one markup. A phone stacks each stage: heading,
+   then one form, then the other, each cell naming its own column. From 600px
+   the two forms sit side by side under the stage heading, which is the
+   comparison the table exists to make. From 1100px it breaks out of the 560px
+   measure by the .flow rule -- rightward, up to the contents rail -- and
+   becomes a real three-column table with the column headings shown.
+
+   The rows are restacked with display:grid, which is why civics.py gives the
+   table explicit roles: without them a browser may drop a regridded table
+   from the accessibility tree. */
+.cmp{margin:var(--sp-7) 0 var(--sp-8)}
+.cmptab{display:block;width:100%;border-collapse:collapse}
+.cmptab thead{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.cmptab tbody{display:grid;gap:var(--sp-6)}
+.cmptab tr{display:grid;grid-template-columns:1fr;gap:var(--sp-3)}
+.cmptab th[scope=row]{grid-column:1/-1;text-align:left;font-size:var(--t-sm);
+font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-2);
+margin:0;padding:0 0 var(--sp-3);border-bottom:1px solid var(--rule-2)}
+.cmptab td{display:block;background:var(--surface);border:1px solid var(--rule);
+border-radius:var(--r-out);padding:var(--sp-4) var(--sp-5);vertical-align:top}
+.cmptab td::before{content:attr(data-l);display:block;font-family:var(--sans);
+font-size:var(--t-sm);font-weight:600;color:var(--ink);margin-bottom:var(--sp-1)}
+.cmptab td > span{display:block;font-size:var(--t-sm);color:var(--ink-2);line-height:1.5}
+.cmptab td.same{grid-column:1/-1;background:var(--paper)}
+.cmptab td.dies{border-left:3px solid var(--st-done)}
+.cmptab td.say{border-left:3px solid var(--pine)}
+.cmptab td.needs{border-left:3px solid var(--st-active)}
+.cmptab td i{display:block;font-style:normal;font-size:var(--t-sm);font-weight:600;
+margin-top:var(--sp-2)}
+.cmptab .mark{color:var(--st-done)}
+.cmptab .say-m{color:var(--pine)}
+.cmptab .needs-m{color:var(--st-active)}
+@media (min-width:600px){
+  .cmptab tr{grid-template-columns:1fr 1fr}
+}
+@media (min-width:1100px){
+  /* The breakout itself is the .flow rule's, shared: rightward only, up to
+     the rail. */
+  .cmptab thead{position:static;width:auto;height:auto;margin:0;
+  overflow:visible;clip:auto;white-space:normal;display:block;
+  margin-bottom:var(--sp-3)}
+  .cmptab thead tr,.cmptab tbody tr{grid-template-columns:minmax(150px,.55fr) 1fr 1fr;
+  align-items:start}
+  .cmptab thead th{text-align:left;font-family:var(--sans);font-size:var(--t-ui);
+  font-weight:600;color:var(--ink);padding:0 var(--sp-5) var(--sp-3);
+  border-bottom:2px solid var(--rule-2)}
+  .cmptab thead th:first-child{padding-left:0;color:var(--ink-2)}
+  .cmptab tbody{gap:var(--sp-4)}
+  .cmptab th[scope=row]{grid-column:auto;border-bottom:0;padding:var(--sp-4) 0 0}
+  .cmptab td::before{content:none}
+  .cmptab td.same{grid-column:2/-1}
 }
 
 /* A block that points into the record: the whole argument for this section

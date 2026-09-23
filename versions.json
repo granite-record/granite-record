@@ -2,7 +2,7 @@
   "files": {
     "about_figures.py": "2026-09-17.1",
     "align_all.py": "2026-09-04.2",
-    "app.css": "2026-09-07.166",
+    "app.css": "2026-09-07.168",
     "app.js": "2026-09-07.112",
     "apply_markers.py": "2026-09-04.8",
     "archive_status.py": "2026-09-08.2",
@@ -38,7 +38,7 @@
     "check_live.py": "2026-09-04.12",
     "check_site.py": "2026-09-04.8",
     "child.py": "2026-09-10.1",
-    "civics.py": "2026-09-08.21",
+    "civics.py": "2026-09-08.22",
     "compile_reports.py": "2026-09-12.5",
     "design_home.py": "2026-09-19.1",
     "docket_era_1989.py": "2026-09-11.2",
