@@ -419,7 +419,8 @@ def reps_example(districts, town=REPS_EXAMPLE):
 FLOW_CACR = [
     ("How it starts", [
         ("Filed as a CACR", "A Constitutional Amendment Concurrent "
-         "Resolution. Statutes change by bill; the constitution does not.",
+         "Resolution, which may start in the House or the Senate. Statutes "
+         "change by bill; the constitution does not.",
          ""),
     ]),
     ("The first chamber", [
@@ -428,11 +429,12 @@ FLOW_CACR = [
          "not. In 2012 the House carried CACR 26 with 239 votes, when 397 "
          "members were in office: three fifths of 397 is 238.2, so 239 was "
          "enough, where 240 would have been needed with every seat filled.",
-         ("needs", "Three fifths of the House's members")),
+         ("needs", "Three fifths of its members")),
     ]),
     ("The second chamber", [
         ("The same threshold again", "Three fifths of the other chamber's "
-         "members in office, on the same terms: 15 of a full Senate of 24.",
+         "members in office, on the same terms: 240 when all 400 House seats "
+         "are filled, and 15 of a full Senate of 24.",
          ("needs", "Three fifths of its members")),
     ]),
     ("The voters", [
@@ -986,14 +988,15 @@ bill itself has to be filed by a legislator.</p>
 <h2>What an agency cannot do</h2>
 <p>It cannot give itself powers the statute does not grant. What it can do is
 decide the detail, and it does that by writing
-<a href="learn/administrative-rules.html">administrative rules</a>. Before a
-rule is adopted it goes to JLCAR, the Joint Legislative Committee on
-Administrative Rules, a committee of legislators from both chambers. It may
-approve the rule, approve it on a condition, or object. An objection does not
-by itself stop the rule, though the committee can hold it back for a time
-while it asks the legislature to block it by joint resolution; and if the
-committee takes no action within 60 days, the rule is treated as
-approved.</p>
+<a href="learn/administrative-rules.html">administrative rules</a>. Every
+rule except an emergency rule goes to JLCAR before it is adopted. JLCAR, the
+Joint Legislative Committee on Administrative Rules, is a committee of
+legislators from both chambers, and it may approve the rule, approve it on a
+condition, or object.
+For a rule made in the ordinary course, an objection does not by itself stop
+the rule, though the committee can hold it back for a time while it asks the
+legislature to block it by joint resolution; and if the committee takes no
+action within 60 days, the rule is treated as approved.</p>
 """ + SHOWS.format("""
 <p>Where a hearing was recorded &mdash; [[hearing_video_bills]]
 bills[[hearing_video_since]] &mdash; the bill's Videos tab links the
@@ -1516,10 +1519,10 @@ its own budget and its own ballot. Its <b>school board</b> has 3, 5, 7 or 9
 members as the district votes, and 3 if it has not voted, elected for three
 years with an equal number elected each year where that can be done
 (RSA 671:4). A cooperative school district covers more than one town, and its
-articles of agreement decide how its board is chosen, among the methods the
-statute allows: all at large, from districts drawn by population, or at large
-with at least one member living in each of the districts that formed it
-(RSA 195:19-a).</p>
+articles of agreement decide how its board is chosen. The statute allows
+several methods, among them electing all members at large, electing them from
+districts drawn by population, or electing them at large with at least one
+member living in each of the districts that formed it (RSA 195:19-a).</p>
 
 <p><b>School administrative unit:</b> the SAU, the administrative body serving
 one district or several together. Its board is made up of the school board
