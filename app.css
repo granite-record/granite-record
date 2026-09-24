@@ -2244,6 +2244,11 @@ cursor:pointer;list-style:none;padding:var(--sp-1) 0}
 .facttab th{color:var(--ink-2);font-weight:600;width:42%;padding-right:var(--sp-5)}
 .facts .src{margin:var(--sp-4) 0 0}
 @media (max-width:620px){.facttab th{width:46%}}
+/* A row that spans the panel -- How it got here -- has its label as a line
+   of its own and the value under it, one row as far as the rules go: no
+   rule between the two, and the label keeps the other labels' colour. */
+.facttab tr.wideh th{width:auto;border-bottom:0;padding-bottom:0}
+.facttab tr.wide td{padding-top:var(--sp-2)}
 /* HOW IT GOT HERE: one decision a line -- the glyph, the body, what it did,
    the day. The glyph carries the state in its shape (check, cross, turning
    arrow) and the rail's colours agree with it. The body is set heavier than

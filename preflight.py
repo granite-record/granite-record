@@ -4919,6 +4919,10 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
             f"{bid}'s How it got here lists {listed(g['summary'])!a}")
         assert "House Status" not in g["summary"] and "Senate Status" not in g["summary"], (
             f"{bid} still draws the status page's per-chamber rows")
+        # Across the panel, not in the value column: beside the analysis that
+        # column left the words about 66px (24 September).
+        assert '<tr class="wide"><td colspan="2"><ul class="jl">' in g["summary"], (
+            f"{bid}'s How it got here is drawn in the value column, not across the panel")
         # The list card's rail is the one it always was: no Introduced, no
         # dates, the index's four marks.
         assert 'class="rail"' in g["card"] and "<small>" not in g["card"] \

@@ -1516,7 +1516,7 @@ function journeyList(b,d){
 function factsTable(b,d){
   const f=d.facts||{};
   const rows=[];
-  const add=(k,v)=>{ if(v) rows.push([k,v]); };
+  const add=(k,v,wide)=>{ if(v) rows.push([k,v,wide]); };
 
   // NOT facts.gen_status, WHICH IS NOT A STATUS ON MOST BILLS. Counted over
   // the current term's 2,234: it reads "HOUSE" on 1,065 and "SENATE" on 454
@@ -1534,7 +1534,13 @@ function factsTable(b,d){
   // House on a voice vote and its House field is empty. The journey is read
   // from the docket instead, one line per decision, the same lines the rail
   // above is dated from (the person chose it on 24 September).
-  add("How it got here", journeyList(b,d));
+  //
+  // ACROSS THE WHOLE PANEL, its label on a line of its own. Beside the
+  // analysis the panel is at most 440px, and in the value column of a 42%
+  // label the list's glyph, body and day left about 66px for the words:
+  // "Passed with an amendment, 16–8" ran to four lines, a conference refusal
+  // to nine. Spanning both columns gives the words about 250px.
+  add("How it got here", journeyList(b,d), true);
   if(d.chapter)
     add("Chapter", `Chapter ${esc(d.chapter)}`
       + (d.year?`, Laws of ${esc(d.year)}`:""));
@@ -1582,8 +1588,10 @@ function factsTable(b,d){
   add("LSR", esc(f.lsr||""));
   if(!rows.length) return "";
   return `<section class="facts"><h2>On the record</h2>
-    <table class="facttab"><tbody>${rows.map(([k,v])=>
-      `<tr><th scope="row">${esc(k)}</th><td>${v}</td></tr>`).join("")}</tbody></table>
+    <table class="facttab"><tbody>${rows.map(([k,v,wide])=>wide
+      ?`<tr class="wideh"><th scope="colgroup" colspan="2">${esc(k)}</th></tr>`
+        +`<tr class="wide"><td colspan="2">${v}</td></tr>`
+      :`<tr><th scope="row">${esc(k)}</th><td>${v}</td></tr>`).join("")}</tbody></table>
     ${d.docket_url?`<p class="src"><a href="${esc(d.docket_url)}" target="_blank"
       rel="noopener">This bill on gencourt &#8599;</a></p>`:""}</section>`;
 }

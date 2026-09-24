@@ -1061,8 +1061,15 @@ CLOSING = {
     # report, not an ending, and it suppressed the paragraph on all 111.
     "Died when the session ended": (
         ("session ended", "died when the session", "died on the table"),
-        "No vote was ever taken on it, and the bill died when the session "
-        "ended. That is a procedural end rather than a decision -- much like a "
+        # "THE BILL ITSELF", because a vote on a motion about it is still a
+        # vote. HB 1364, HB 1559, HB 1420, HB 1223 and CACR 19 of 2026 each
+        # met a motion to take it up out of order that failed on a roll call
+        # or a division -- HB 1364's 151-180 -- and then nothing more, and
+        # the page said "No vote was ever taken on it" over the tally. The
+        # journey counts decisions on the bill, not procedural motions, so
+        # the sentence claims exactly that much.
+        "Neither chamber ever voted on the bill itself, and it died when the "
+        "session ended. That is a procedural end rather than a decision -- much like a "
         "bill left on the table, it ran out of time -- and it would have to be "
         "filed again as a new bill in a later term."),
     "Indefinitely postponed": (
