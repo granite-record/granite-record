@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.6
+# GRANITE_VERSION: 2026-09-12.7
 """
 Turn the drawn logo and icon into the files a site needs, once.
 
