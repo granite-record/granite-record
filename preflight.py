@@ -15654,6 +15654,14 @@ def _town_tabs(B, BP):
     if "In Grafton County." not in _html.unescape(lyme) or \
             "Grafton district 12" not in lyme:
         bad.append("the county and the districts are not said above the tabs")
+    concord = B.build("Concord", "0", {"0": {}}, dist, [rep, sen],
+                      {"_offices": {"concord": {"officials": [],
+                                                "website": "www.concordnh.gov"}},
+                       "_local": {"concord": local}}, "https://x.test", tmpl)
+    if "Town website" not in lyme.partition('id="vote"')[2] or \
+            "City website" not in concord.partition('id="vote"')[2]:
+        bad.append("How to vote calls a city's website the town's, or a "
+                   "town's the city's")
 
     css = Path("app.css").read_text(encoding="utf-8")
     strip = re.search(r"\.twntabs\{[^}]*\}", css)

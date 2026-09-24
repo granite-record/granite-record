@@ -907,7 +907,9 @@ def vote_sections(town, loc, town_off):
     # guess: see parse_officials.py.
     vote_site = weblink(town_off.get("website")) or weblink(loc.get("website"))
     if vote_site:
-        rows.append(off_row(vote_site, [], "Town website"))
+        # Concord's is the city's website, as its officials are city officials.
+        rows.append(off_row(vote_site, [], "City website"
+                            if slug(town, "0") in CITIES else "Town website"))
     if loc.get("clerk"):
         rows.append(clerk_row(loc))
     if by_ward:
