@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-13.2
+# GRANITE_VERSION: 2026-09-13.3
 """
 What a search engine is told a page is about, in schema.org's vocabulary.
 
