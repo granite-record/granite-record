@@ -9550,6 +9550,41 @@ def _calendar_study_committees():
             "the cancelled meeting is not marked cancelled")
         assert ">1 bill<" not in t and "(1 bill)" not in t, (
             "a meeting with no bill before it is counted as one bill")
+        # A CANCELLED MEETING IS NOT A SITTING. The week of 13 January 2025
+        # said "22 sittings on 5 days" with the Opioid Abatement commission's
+        # cancelled meeting among the 22. This week holds one meeting that
+        # sat and one that was cancelled, on two days.
+        lead = re.search(r'<p class="src">([^<]*)</p>', t).group(1)
+        assert lead.startswith("1 sitting on 1 day."), (
+            f"the week's lead counts the cancelled meeting: {lead!r}")
+        assert "One cancelled meeting is shown as well, and not counted." in lead, (
+            f"the lead does not say a cancelled meeting is shown: {lead!r}")
+        assert "covering 0" not in lead, f"the lead reads {lead!r}"
+        node = shutil.which("node") or shutil.which("node.exe")
+        if node:
+            # The week script's own count, run against the two cards: a
+            # small stand-in for the page, enough for the filter to read
+            # its attributes and write its count.
+            go = tmp / "week.js"
+            go.write_text("""
+function el(a){ return {hidden:false, a:a, hasAttribute:function(k){return k in a;},
+  getAttribute:function(k){return k in a ? a[k] : null;},
+  querySelector:function(){return null;}, querySelectorAll:function(){return [];},
+  addEventListener:function(){}}; }
+var meets=[el({"data-body":"","data-study":"","data-date":"2026-09-22"}),
+           el({"data-body":"","data-study":"","data-date":"2026-09-24","data-cancelled":""})];
+var count={textContent:""}, find={value:"", addEventListener:function(){}};
+var form={hidden:true, querySelectorAll:function(){return [];}, addEventListener:function(){}};
+var byId={wkfilter:form, wkcount:count, wkfind:find};
+global.localStorage={getItem:function(){return null;}, setItem:function(){}};
+global.document={getElementById:function(i){return byId[i]||null;},
+  querySelectorAll:function(s){return s===".calmeet" ? meets : [];}};
+""" + BC.WEEK_JS + "\nprocess.stdout.write(count.textContent);\n", encoding="utf-8")
+            r = _run([node, str(go)], capture_output=True, text=True,
+                     encoding="utf-8", timeout=60)
+            assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
+            assert r.stdout == "1 sitting this week.", (
+                f"the week script counts {r.stdout!r} with one meeting cancelled")
         js = BC.WEEK_JS
         assert re.search(r"try\{\s*if\(localStorage\.getItem", js) and \
             re.search(r"try\{\s*localStorage\.setItem", js), (

@@ -308,12 +308,17 @@ WEEK_JS = r"""
     return false;
   }
 
+  // A CANCELLED MEETING IS SHOWN AND NOT COUNTED, as the lead above counts:
+  // "22 sittings" of a week in which 21 met was a wrong number.
+  function sat(m){ return !m.hasAttribute("data-cancelled"); }
+  var total=meets.filter(sat).length;
+
   function apply(){
-    var q=(find.value||"").trim(), shown=0;
+    var q=(find.value||"").trim(), shown=0, seen=0;
     meets.forEach(function(m){
       var ok=matches(m,q);
       m.hidden=!ok;
-      if(ok)shown++;
+      if(ok){ seen++; if(sat(m)) shown++; }
     });
     // A day with nothing left in it is not an empty day, it is a day the
     // filter excluded -- so it goes too, rather than standing as a heading
@@ -322,13 +327,13 @@ WEEK_JS = r"""
       var any=d.querySelector(".calmeet:not([hidden])");
       d.hidden=!any;
     });
-    if(shown===meets.length){
-      count.textContent=meets.length+" sitting"+(meets.length===1?"":"s")+" this week.";
-    }else if(shown===0){
+    if(shown===total){
+      count.textContent=total+" sitting"+(total===1?"":"s")+" this week.";
+    }else if(seen===0){
       count.textContent="Nothing this week matches. "+
         "The General Court sits from January to June.";
     }else{
-      count.textContent=shown+" of "+meets.length+" sittings shown.";
+      count.textContent=shown+" of "+total+" sittings shown.";
     }
   }
 
@@ -735,7 +740,15 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
         for k, rows in (days_raw.get(date) or {}).items():
             meets[k] = rows
         days[date] = in_order(days_raw.get(date) or {})
-    busy = sum(1 for v in days.values() if v)
+    # A CANCELLED MEETING IS SHOWN AND NOT COUNTED. Its card stays, marked, so
+    # a reader who saw the notice can see it did not happen; but it is not a
+    # sitting, and counting every card said "22 sittings on 5 days" of the
+    # week of 13 January 2025, when one of the 22 was the Opioid Abatement
+    # commission's cancelled meeting. The same cards are left out of the
+    # week script's count, which reads data-cancelled off the card.
+    live = {k for k, rows in meets.items() if not BP.is_cancelled(rows)}
+    off = len(meets) - len(live)
+    busy = sum(1 for v in days.values() if any(k in live for k in v))
 
     # level=2: the h1 of this page is the week itself, so a day is the
     # section under it. On the home page the days sit under "Coming up"
@@ -743,9 +756,9 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     body, _missing = BP.cal_days(days, meets, titles, years, code, when, S.E,
                                  level=2, sessions=sessions, docs=docs)
 
-    n = sum(len(v) for v in days.values())
-    bills = len({(r["date"], r["bill"]) for rows in meets.values()
-                 for r in rows if r["bill"]})
+    n = sum(1 for v in days.values() for k in v if k in live)
+    bills = len({(r["date"], r["bill"]) for k in live for r in meets[k]
+                 if r["bill"]})
 
     nav = []
     if at > 0:
@@ -758,16 +771,29 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
         nav.append(f'<a class="wknext" href="{S.canon(href_for(order[at + 1], today))}">'
                    f'The week after &rsaquo;</a>')
 
+    # "covering 0 bills" was said of thirty weeks that held only study and
+    # statutory committees, which meet on no bill; the clause goes where
+    # there is nothing for it to count.
+    cancelled = (f" {'One' if off == 1 else off} cancelled meeting"
+                 f"{' is' if off == 1 else 's are'} shown as well, and not counted."
+                 if off else "")
     if n:
         lead = (f"{n} sitting{'' if n == 1 else 's'} on {busy} "
-                f"day{'' if busy == 1 else 's'}, covering {bills:,} "
-                f"bill{'' if bills == 1 else 's'}. A committee appears once a day, "
-                "however many times it sat; open one for its items in order.")
+                f"day{'' if busy == 1 else 's'}"
+                + (f", covering {bills:,} bill{'' if bills == 1 else 's'}"
+                   if bills else "")
+                + ". A committee appears once a day, however many times it "
+                "sat; open one for its items in order." + cancelled)
+    elif off:
+        lead = ("The one meeting set for this week was cancelled."
+                if off == 1 else
+                f"All {off} meetings set for this week were cancelled.")
     else:
         # In the tense of the week: a week that is over has nothing on the
-        # record, and one still to come has nothing scheduled yet.
+        # record, and one still to come has nothing scheduled yet -- "yet",
+        # because the study committees are read from a dated copy.
         lead = (("No meetings are on the record for this week. " if last < today
-                 else "No meetings are scheduled this week. ")
+                 else "No meetings are scheduled yet for this week. ")
                 + "The General Court sits from January to June, and committees "
                 "meet on bills from the autumn filing period onwards.")
 

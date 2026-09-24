@@ -545,6 +545,19 @@ def pchip(m, esc=_cesc):
             + (f" <i>{esc(role)}</i>" if role else "") + "</span>")
 
 
+def is_cancelled(rows):
+    """True when every row of a card is a cancelled meeting.
+
+    ONE DEFINITION, BECAUSE TWO PLACES USE IT: the card marks itself
+    data-cancelled from this, and the week's lead leaves the same cards out
+    of its count. A cancelled meeting is shown, so a reader who saw it
+    noticed can see it did not happen, and it is not a sitting -- counting
+    it said "22 sittings" of a week of 2025 in which 21 met.
+    """
+    return bool(rows) and all((r.get("what") or "").lower() == "cancelled"
+                              for r in rows)
+
+
 def cal_days(days, meets, titles, years, code, when, esc, level=3,
              sessions=None, docs=None):
     """The day blocks and their meeting cards, for any set of days.
@@ -625,8 +638,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # page's toggle; a cancelled one says that, so it is not offered
             # for anybody's own calendar.
             study = any(r.get("study") for r in rows)
-            cancelled = bool(rows) and all(
-                (r.get("what") or "").lower() == "cancelled" for r in rows)
+            cancelled = is_cancelled(rows)
             # WHAT A FILTER NEEDS, ON THE CARD ITSELF. The week page is static
             # HTML on a CDN and the filtering happens in the reader's browser,
             # so each card states its own chamber, committee and bills rather
