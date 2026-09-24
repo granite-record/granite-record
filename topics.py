@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.2
+# GRANITE_VERSION: 2026-09-12.3
 """A topic for the 29,449 bills the General Court never gave one.
 
     python3 topics.py --score              # measure it; no files written

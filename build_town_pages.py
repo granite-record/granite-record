@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.15
+# GRANITE_VERSION: 2026-09-09.16
 """
 A page per town and ward: everyone who represents the people who live there.
 

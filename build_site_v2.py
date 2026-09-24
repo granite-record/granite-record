@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.107
+# GRANITE_VERSION: 2026-09-05.108
 """
 Generate the faceted site from real General Court data.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.8
+# GRANITE_VERSION: 2026-09-05.9
 """
 Build proceedings.csv: one row per (bill, date, kind, recording), whether it
 is a committee hearing or a floor debate.
