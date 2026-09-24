@@ -297,14 +297,23 @@ def _same_committee(first, stored, known=(), in_use=()):
 
     ONE MISSPELT, OR SHORTENED WORD FOR WORD: "Enviroment", "Puplic
     Affairs", "Exe Depts and Admin", "State-Fed Relations and Vets Aff".
-    Enough by itself; the search page's spelling is the better one.
+    Enough by itself; the search page's spelling is the better one. The test
+    for a misspelling is a similarity ratio of 0.85 over the whole name, and
+    it is not only a misspelling test: ten bills of 2011-2012 were referred
+    in the House to the "Special Committee on Public Employee Pensions
+    Reform" (the docket) and show the "Special Committee on Public Employee
+    Pension Plans" (the search page, and the only name the tables know,
+    H47), at a ratio of 0.89. Whether that is one committee renamed, and so whether the
+    later name may stand, is the same question as the next paragraph's; the
+    ratio answers yes, as it did before 23 September.
 
     THE SEARCH PAGE'S NAME ADDS WORDS TO THE DOCKET'S. That is how a
     committee is renamed, and the search page can carry the name a committee
     had later in the term: the Senate's "Wildlife, Fish and Game" of 2007 was
     "Wildlife, Fish and Game and Agriculture" by 2008, and fourteen bills the
-    docket refers to it under the first name stored the second. A later name
-    never replaces the one the bill was referred to. So the longer name is
+    docket refers to it under the first name stored the second. In this
+    shape a later name never replaces the one the bill was referred to (the
+    ratio above is the one place it still can). So the longer name is
     kept only where it is the Public Works pair above, or where the docket
     merely cut a name short: the longer is a name the committee tables know,
     and the docket's shorter form is not one the clerks were using (in_use).
