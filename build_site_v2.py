@@ -3414,13 +3414,21 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
         # A dated docket line beats a status field that has not caught up.
         kind, status = settled
         stated = 1
-    elif told and told[0] == "active" and disposed:
+    elif told and disposed and (told[0] == "active"
+                                or told[1] == "Died when the session ended"):
         # A bill cannot be "In committee" after the chamber adopted a
         # motion to kill it. The status columns are not always advanced
         # once a bill is finished -- 21 of them still read REPORT FILED or
         # NO ACTION on bills signed into law -- and an in-progress status
         # is the one case where a dated floor vote is plainly later than
         # the field. Only "active" yields; a stated outcome still wins.
+        #
+        # AND "DIED, SESSION ENDED" IS NOT AN OUTCOME WHERE THE CHAMBER KILLED
+        # IT. Eleven CACRs the House killed in the first year of 2023-2024 or
+        # of 2025-2026 read that way -- CACR 1 of 2025 among them,
+        # "Inexpedient to Legislate: MA VV 03/26/2025" -- where the ones it
+        # killed in the second year say INEXPEDIENT TO LEGISLATE. The page
+        # then said "No vote was ever taken on it" over the docket's vote.
         kind, status = disposed
         stated = 1
     elif told:
