@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.5
+# GRANITE_VERSION: 2026-09-19.6
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.2
+# GRANITE_VERSION: 2026-09-19.3
 """
 What the House journal adds that the record does not: who spoke, and what.
 

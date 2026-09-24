@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-18.9
+# GRANITE_VERSION: 2026-09-18.10
 """
 The General Court's week, one page per week.
 

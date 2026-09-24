@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.13
+# GRANITE_VERSION: 2026-09-10.14
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 

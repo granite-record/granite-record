@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.3
+# GRANITE_VERSION: 2026-09-11.4
 """
 Which vocabulary a docket line is written in, and the glue it needs.
 

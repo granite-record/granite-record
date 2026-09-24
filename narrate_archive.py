@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.1
+# GRANITE_VERSION: 2026-09-11.2
 """
 Plain-language histories for every archived term whose docket is on disk.
 

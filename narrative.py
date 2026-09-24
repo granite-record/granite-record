@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.34
+# GRANITE_VERSION: 2026-09-04.35
 """
 Turn a bill's docket entries into a plain-language history.
 
