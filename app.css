@@ -1290,6 +1290,13 @@ box-shadow:0 0 0 3px var(--pine-soft)}
    label is --ink-2 now, so there is nothing left for them to change. */
 /* A card head is a button, and the rail inside it must not look clickable. */
 .chead .rail{pointer-events:none}
+/* THE DATED RAIL, on a bill's own view and an opened card: under each stop
+   its day and one or two words -- "22 May" / "16–8, amended". The label keeps
+   its line; the words under it may take two, which is the most a stop can
+   carry on a phone. Tabular figures, so the dates in a row line up by digit. */
+.rail.dated .stop{flex-direction:column;align-items:center;text-align:center}
+.rail.dated small{display:block;margin-top:var(--sp-1);font-size:var(--t-xs);
+line-height:1.35;color:var(--ink-2);font-variant-numeric:tabular-nums}
 .cstat{margin-left:auto;font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);border-radius:var(--r-in);white-space:nowrap}
 /* ONE CHIP SHAPE ACROSS THE SITE. A person is drawn as .mchip -- a 3px
    radius, a 1px edge, and a 3px bar down the left in the colour of the thing

@@ -3162,6 +3162,55 @@ function rail(b){
     ).join("")}</span>`;
 }
 
+// THE RAIL ON A BILL'S OWN VIEW, DATED -- the bill's own page and a card
+// opened in the list (the person chose it on 24 September). Under each stop
+// the day and one or two words of what happened there: "Senate / 22 May /
+// 16–8, amended". The list card keeps the bare rail above, which is a glyph
+// to scan past; this one is read.
+//
+// Its stops follow the bill's route and come from the record's journey
+// (build_site_v2.journey_rail): Introduced first; a resolution of one chamber
+// has that chamber; a concurrent resolution two chambers and no governor; a
+// CACR goes to the Voters, ringed while it waits for them. The marks are the
+// index's passage, the same the list card draws, and the words are the same
+// lines "How it got here" lists -- one account in three places.
+//
+// A stop not reached has no date. The year is on the first date and wherever
+// it changes, so "8 Jan 2025 ... 13 Feb ... 7 Jan 2026" reads without a key.
+const RAILMON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const RAILMONTH=["January","February","March","April","May","June","July",
+  "August","September","October","November","December"];
+function railDay(iso,year,long){
+  const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||"");
+  if(!m)return "";
+  return `${+m[3]} ${(long?RAILMONTH:RAILMON)[+m[2]-1]}${year?` ${m[1]}`:""}`;
+}
+function datedRail(b,d){
+  const st=((d||{}).journey||{}).rail||[];
+  if(!st.length)return rail(b);
+  let was="";
+  const cells=st.map(s=>{
+    const y=(s.date||"").slice(0,4);
+    const day=s.date?railDay(s.date,y!==was):"";
+    if(s.date)was=y;
+    const sub=[day,s.short].filter(Boolean);
+    return `<span class="stop s-${esc(s.mark==="-"?"o":s.mark)}"><b>${
+      RAILMARK[s.mark]||""}</b><i>${esc(s.stop)}</i>${sub.length
+      ?`<small>${sub.map(esc).join("<br>")}</small>`:""}</span>`;
+  });
+  // The same facts as a sentence, for a reader who hears the page: every
+  // date in full, a tally read "16 to 8" rather than a dash.
+  const said=st.map(s=>{
+    const when=s.date?railDay(s.date,true,true):"";
+    const what=(s.say||"").replace(/(\d)–(\d)/g,"$1 to $2");
+    return s.stop==="Introduced"
+      ?`Introduced${when?` ${when}`:""}`
+      :`${s.stop}: ${what.charAt(0).toLowerCase()+what.slice(1)}${when?`, ${when}`:""}`;
+  }).join("; ");
+  return `<span class="rail dated" role="img" aria-label="${esc(said)}"
+    title="${esc(said)}">${cells.join("")}</span>`;
+}
+
 function cardHtml(b,focus){
   const open=openCards.has(b.id);
   const y=b.year||(b.term?String(b.term).slice(0,4):"");
@@ -3176,7 +3225,7 @@ function cardHtml(b,focus){
         <span class="cstat ${KIND[b.kind]||""}">${esc(b.status||"")}</span></div>
         <div class="ctitle">${esc(b.title)}</div>
         <div class="cmeta">${cmeta(b)}</div>
-        ${rail(b)}
+        ${(open||focus)&&detail[dkey(b.id)]?datedRail(b,detail[dkey(b.id)]):rail(b)}
       </button>
       <div class="cbody" ${open?"":"hidden"}>${
         open?(detail[dkey(b.id)]?renderDetail(b,detail[dkey(b.id)]):`<p class="spin">Loading…</p>`):""}</div>
