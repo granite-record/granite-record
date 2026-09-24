@@ -27,6 +27,7 @@ import caption_span
 import narrative as N
 import fiscal
 import proceedings as P
+import senate_hearing_reports as SHR
 import csv
 import json
 import member_links as ML
@@ -2458,6 +2459,146 @@ def hearing_testimony(e, tdb, scraped):
     return {"testimony": scraped} if scraped else {}
 
 
+# THE SENATE'S OWN HEARING REPORTS, on the hearing they report.
+#
+# senate_hearing_reports.py reads them out of the database dump; this puts
+# each on the Senate public-hearing station of the same bill and the same
+# date, and resolves the legislators who testified to the member they are, so
+# the page can draw them with the chip everybody else on the site is drawn
+# with. Everyone else -- members of the public, officials, lobbyists -- is
+# printed as the report names them. The person decided on 24 September that
+# the reports are shown as the Senate published them, names and all; the
+# sign-in system's names stay out, which is hearing_testimony's rule above
+# and a different source.
+SPEAKER_TITLE = re.compile(
+    r"^(?P<t>Senators?|Sen\.|Representatives?\.?|Reps?\.)\s+(?P<n>.+)$")
+
+
+def speaker_index(people):
+    """{(chamber, surname): [member, ...]} over the sitting and the departed.
+
+    A surname here is everything after the first name, lower-cased, so
+    "Perkins Kwoka" and "Sabourin dit Choiniere" index whole.
+    """
+    idx = defaultdict(list)
+    for m in people:
+        ch = str(m.get("chamber") or "")[:1].upper()
+        last = str(m.get("last") or "").strip()
+        first = str(m.get("first") or "").strip()
+        if not last and "," in str(m.get("name") or ""):
+            last, first = [x.strip() for x in m["name"].split(",", 1)]
+        if ch and last:
+            idx[(ch, last.lower().replace("’", "'"))].append(
+                {**m, "_first": first.lower()})
+    return idx
+
+
+def resolve_speaker(heading, idx, name_part):
+    """The member a report's speaker line names, or None.
+
+    Only a line that opens with the chamber's own title -- "Senator Gannon",
+    "Rep. Alvin See" -- is tried, and only in that chamber. The surname must
+    name exactly one member of it, or name several and the first name settle
+    which; a first name that disagrees with the only candidate, and every
+    doubt besides, leaves the speaker as the plain text the report printed.
+    A wrong member in a chip is a factual error; a missing chip is not.
+    """
+    m = SPEAKER_TITLE.match(name_part(heading) or "")
+    if not m:
+        return None
+    ch = "S" if m.group("t").lower().startswith("sen") else "H"
+    # The report's apostrophe is a typesetter's and the roster's is not:
+    # "Prudhomme-O’Brien" and "Prudhomme-O'Brien" are one member.
+    words = m.group("n").replace("’", "'").split()
+    # A House member's seat run on -- "Rep. David Fracht-Grafton 16" -- and
+    # a generational suffix, "Henry Giasson III", are not the surname.
+    while len(words) > 1 and (words[-1].isdigit() or re.fullmatch(
+            r"(?:Jr|Sr|II|III|IV)\.?", words[-1])):
+        words.pop()
+    if not words:
+        return None
+    for cut in range(len(words)):
+        first = words[0].lower() if cut else ""
+        cands = idx.get((ch, " ".join(words[cut:]).lower()), [])
+        if not cands:
+            continue
+        if first:
+            exact = [c for c in cands if c["_first"] == first]
+            if len(exact) == 1:
+                return exact[0]
+            if len(cands) == 1 and cands[0]["_first"][:1] == first[:1]:
+                # "Dan Innis" for Daniel, "Pat Long" for Patrick.
+                return cands[0]
+            return None
+        return cands[0] if len(cands) == 1 else None
+    return None
+
+
+def hearing_report_for_page(rec, idx, name_part):
+    """One parsed report as the Hearings tab draws it, legislators resolved.
+
+    Returns (report, members resolved, legislator lines left as text).
+    """
+    got = miss = 0
+    secs = []
+    for s in rec.get("sections", []):
+        o = {k: v for k, v in s.items() if k != "speakers"}
+        if "speakers" in s:
+            o["speakers"] = []
+            for sp in s["speakers"]:
+                sp = dict(sp)
+                mem = resolve_speaker(sp.get("who", ""), idx, name_part)
+                if mem:
+                    got += 1
+                    # The report's own words for the person, in the chip the
+                    # site draws a legislator with: the party colour and the
+                    # link are the site's; the name is the Senate's.
+                    sp["member"] = {"label": name_part(sp["who"]),
+                                    "party_code": mem.get("party_code") or "",
+                                    "slug": own_slug(mem)}
+                elif SPEAKER_TITLE.match(name_part(sp.get("who", "")) or ""):
+                    miss += 1
+                o["speakers"].append(sp)
+        secs.append(o)
+    out = {k: v for k, v in rec.items()
+           if k not in ("sections", "filed", "bill", "subject")}
+    # What was heard, only where it is not the bill itself: the page is the
+    # bill's, and its title is already at the top of it. An amendment heard
+    # on its own is named, because that is what the report is about.
+    if SHR.AMEND_LINE.match(rec.get("subject") or ""):
+        out["subject"] = rec["subject"]
+    out["sections"] = secs
+    return out, got, miss
+
+
+def attach_hearing_reports(stations, reports, bid, idx, name_part, tally,
+                           unmatched):
+    """Each report onto the station of the hearing it reports.
+
+    That is the bill's Senate public hearing on the date the report gives --
+    the station the Hearings tab draws with the recording. A list on the
+    station, because a committee can hear a bill and then an amendment to it
+    the same afternoon and file a report of each. A report whose date the
+    docket has no Senate hearing for is not pinned to some other sitting: it
+    is counted and named in `unmatched`.
+    """
+    for rep in reports:
+        at = next((s for s in stations
+                   if s.get("body") == "S"
+                   and "hearing" in (s.get("what") or "").lower()
+                   and s.get("when") == rep.get("heard")), None)
+        if at is None:
+            tally["unmatched"] += 1
+            unmatched.append(f"{bid} {rep.get('heard')}")
+            continue
+        page, got, miss = hearing_report_for_page(rep, idx, name_part)
+        at.setdefault("reports", []).append(page)
+        tally["matched"] += 1
+        tally["members"] += got
+        tally["members_unresolved"] += miss
+        tally["plain"] += bool(rep.get("fallback"))
+
+
 # The four stops a bill passes, and what happened at each. "p" passed,
 # "h" here now, "x" stopped here, "-" never reached.
 #
@@ -3436,7 +3577,7 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 marks, sources, legs, leg_by_sort, leg_by_name,
                 votes_by_bill, vetoes=None, notes=None, coverage=None,
                 chapters=None, seats=None, session_over="", former=None,
-                links=None):
+                links=None, hearing_reports=None):
     """One JSON per bill, and the index row for each.
 
     This is the loop ARCHITECTURE item 5 names. It ran inside a 955-line
@@ -3485,6 +3626,13 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
     for _sit, _earlier in (links or {}).items():
         for _old in _earlier:
             _people.setdefault(str(_old), legs.get(_sit) or {})
+    # The Senate's hearing reports: who testified, resolved to members where
+    # a line names one. Counted as they are attached, so the build says how
+    # many found their hearing and names the ones that did not.
+    _hr_idx = speaker_index([*legs.values(), *(former or {}).values()])
+    _hr_name = SHR.name_part
+    hr_tally = Counter()
+    hr_unmatched = []
 
     # Every bill of every term the file holds. The term is still taken from the
     # bill's own filing year rather than from the key, so the two can be
@@ -3657,6 +3805,14 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 _hit = _by_date.get(_st.get("when"))
                 if _hit:
                     _st["testimony"] = {**_hit, "dated": True}
+        # The Senate committee's own report of the hearing, on the station
+        # for that hearing: the same bill, the Senate, a public hearing, the
+        # date the report gives. A report whose hearing the docket does not
+        # carry is left off the page and named in the build's output rather
+        # than pinned to some other sitting.
+        attach_hearing_reports(
+            stations, (hearing_reports or {}).get(term, {}).get(bid, []),
+            bid, _hr_idx, _hr_name, hr_tally, hr_unmatched)
         # Floor debates, stacked with the committee proceedings and sorted by
         # date so a bill's whole journey reads in order: hearing, executive
         # session, floor, then the second chamber.
@@ -3894,6 +4050,21 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
           f"{station_states['_recording_only']:,} recording only, "
           f"{station_states['_consent']:,} consent calendar, "
           f"{station_states['_no_recording']:,} no recording)")
+    if hearing_reports:
+        _offered = sum(len(v) for byb in hearing_reports.values()
+                       for v in byb.values())
+        print(f"  Senate hearing reports: {hr_tally['matched']:,} of "
+              f"{_offered:,} placed on their hearing "
+              f"({hr_tally['plain']:,} drawn as plain text); "
+              f"{hr_tally['members']:,} legislators who testified drawn as "
+              f"members, {hr_tally['members_unresolved']:,} left as the "
+              "report printed them")
+        if hr_unmatched:
+            # Named, not just counted: each is a report the site holds and
+            # does not show, and the reason is in the docket for that bill.
+            print(f"  {len(hr_unmatched):,} found no Senate public hearing "
+                  "of that bill on that date in proceedings.csv: "
+                  + ", ".join(hr_unmatched))
     return index, years, unnamed, dict(sponsored)
 
 
@@ -3928,6 +4099,9 @@ def parse_args():
                     help="governor's veto messages, from extract_vetoes.py; "
                          "skipped if the file is not there")
     ap.add_argument("--senate-reports", default="senate_reports.json")
+    ap.add_argument("--hearing-reports", default="senate_hearing_reports.json",
+                    help="the Senate committees' hearing reports, from "
+                         "senate_hearing_reports.py; skipped if not there")
     ap.add_argument("--chapters", default="chapters.json",
                     help="the chapter each bill became, from "
                          "extract_chapters.py; skipped if not there")
@@ -4151,6 +4325,17 @@ def main():
         n_bills = sum(len(byb) for byb in senate.values())
         print(f"Senate committee reports: {n_bills:,} bills, "
               f"{n_prose:,} with the committee's reasoning")
+    # The Senate's reports of its public hearings: who spoke and what the
+    # report says they said. {term: {bill: [report]}}, refused in any other
+    # shape for the reason above.
+    hearing_reports = load(a.hearing_reports, {})
+    if hearing_reports and not N.is_term_keyed(hearing_reports):
+        sys.exit(f"{a.hearing_reports} is not keyed on term. Delete it and "
+                 "run senate_hearing_reports.py again.")
+    if hearing_reports:
+        print(f"Senate hearing reports: "
+              f"{sum(len(v) for b in hearing_reports.values() for v in b.values()):,}"
+              f" across {sum(len(b) for b in hearing_reports.values()):,} bills")
     # Written by extract_amendments.py out of the cached calendars. Absent is
     # fine: the amendments are still listed, without their text.
     amend_texts = load("amendments.json", {})
@@ -4302,6 +4487,7 @@ def main():
                                votes_by_bill, vetoes=vetoes, notes=notes,
                                chapters=chapters, seats=seats,
                                former=former, links=links,
+                               hearing_reports=hearing_reports,
                                session_over=session_over(a.status),
                                coverage=archive_coverage(
                                    bills, narratives, sponsors, reports,

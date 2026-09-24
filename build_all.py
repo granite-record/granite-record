@@ -424,6 +424,16 @@ def plan(a):
                   "without which the page would draw a Versions tab on all "
                   "2,234 bills and put a 404 behind the 1,085 that have one"),
 
+        Step("the Senate's hearing reports: who testified and what they said",
+             ["senate_hearing_reports.py"],
+             needs=["db/CandH_Reports.psv"],
+             produces=["senate_hearing_reports.json"],
+             optional=True,
+             note="asks nobody anything -- it reads the dumped CandH_Reports "
+                  "table. BEFORE site data, which puts each report on the "
+                  "bill's Senate public hearing. Refuses to write when the "
+                  "dump holds none or most fail to read"),
+
         Step("site data",
              ["build_site_v2.py", "--data", "data", "--out", "site",
               "--segments", "work"],
