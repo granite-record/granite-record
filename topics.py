@@ -179,6 +179,17 @@ ALIAS = {
     "child y and jj": "Children and Family Law",
     "children, youth and juv just": "Children and Family Law",
     "child, yth and jj": "Children and Family Law",
+    # The names committee_names.official writes for the spellings above since
+    # 24 September, each read as its spellings were, so that giving a
+    # committee one name does not move the topics its bills were given:
+    # "Wildlife" is Wildlife and Marine Resources, "St-Fed" State-Federal
+    # Relations, the Commerce of 1995-1996 its long name, and the Senate's
+    # committee of 1989-1992 "Executive Departments".
+    "children, youth and juvenile justice": "Children and Family Law",
+    "wildlife and marine resources": "Fish and Game and Marine Resources",
+    "state-federal relations": "State-Federal Relations and Veterans Affairs",
+    "commerce, small business, consumer affairs and economic development": "Commerce",
+    "executive departments": "Executive Departments and Administration",
     "education and workforce development": "Education",
     "commerce, small business and consumer affairs": "Commerce",
     "commerce, labor and consumer protection": "Commerce",

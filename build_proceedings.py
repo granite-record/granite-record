@@ -371,6 +371,36 @@ def same_committee(a, b):
     return not ca or not cb or ca == cb
 
 
+def official_names(rows):
+    """Each committee row's committee under the name it had at the time.
+
+    The manifests carry what the docket's clerk wrote: "Exec Depts and Admin",
+    "Crim Just and PSfty", "Mun and Cnty Govt" on 1999-2006's hearings, and
+    "for Interim Study", a journal citation or a vote after the name on
+    thousands more. build_committees matches a name exactly, so some 22,200
+    rows under 656 such names reached no committee page, and House Executive
+    Departments and Administration, Criminal Justice and Public Safety and
+    Election Law showed no sitting at all for 1999-2004. committee_names.
+    official is the one place a name is settled -- the bills' committees go
+    through it too, in build_data -- and it only ever returns the row's own
+    committee, spelt as that chamber spelt it that term.
+
+    Before fold_to_events, which keys on the name: "EDUCATION VV" and
+    "Education" on one bill's one sitting are one event, and after this they
+    say so. Returns how many rows were renamed.
+    """
+    import committee_names as CN
+    n = 0
+    for r in rows:
+        was = r.get("committee") or ""
+        if was:
+            now = CN.official(was, r.get("body"), r.get("term"))
+            if now != was:
+                r["committee"] = now
+                n += 1
+    return n
+
+
 def _specificity(r):
     """Lower is more specific. Ties keep whichever row was read first."""
     return (KIND_RANK.get(r["kind"], 1), 0 if _cmte(r.get("committee")) else 1)
@@ -500,6 +530,10 @@ def main():
                   f"{(r['video_title'] or r['video_id'])[:44]}")
         if len(termless) > 10:
             print(f"      ... and {len(termless) - 10:,} more")
+    # One name per committee, before the fold that keys on it.
+    renamed = official_names(rows)
+    print(f"  {renamed:,} rows' committee written as its name at the time "
+          "(committee_names.official)")
     # One row per event, not per line of the sources. The floor index can
     # list a bill twice on one day when it had two runs of roll calls, and
     # the docket announces a hearing and then restates it on the day -- the
