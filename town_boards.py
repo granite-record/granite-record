@@ -42,6 +42,16 @@ The page must also be the only word: a board name on another of the town's
 pages that the chosen page lacks is a disagreement, and the town stays on
 the directory.
 
+And the page must say something the directory does not. A page naming
+exactly the directory's board, with no date after the March 2026 meeting and
+no term that began at it, is no evidence of anything newer than September
+2025 -- it may simply not have been touched since. Columbia's select board
+page lists Cloutier, Stohl and Campbell, as the directory did, undated and
+without terms; its own minutes of 12 March 2026 swear in "newly elected
+Selectman Karl Pike", and every meeting since lists Cloutier, Stohl and Pike.
+Hampton Falls and Sugar Hill have the same kind of page and nothing on disk
+either way, so they stay on the directory with it (see later_than_directory).
+
 A PARTIAL LIST IS NOT PUBLISHED, deliberately. A page that names four of five
 members proves the directory wrong about somebody, but not about whom -- and
 the missing name is as often the chair, whom the parser did not read, as a
@@ -311,13 +321,18 @@ def _dl1(a, b):
 def same_person(a, b):
     """The directory's name and the town's for one person: compatible, or
     the same surname with a given name one letter out ("Brain DuBois" is
-    "Brian DuBois"). Used to carry the directory's phone and e-mail to the
-    person it belongs to, and to compare the two lists; never to decide who
-    sits on a board."""
+    "Brian DuBois"), or the same given name with a long surname one letter
+    out (Bristol's "Don Milbrand", whose own address is dmilbrand@, is the
+    directory's "Don Millbrand"). Used to carry the directory's phone and
+    e-mail to the person it belongs to, and to compare the two lists; never
+    to decide who sits on a board."""
     if compatible(a, b):
         return True
     sa, sb, ga, gb = surname(a), surname(b), given(a), given(b)
-    return bool(sa) and sa == sb and len(ga) >= 4 and _dl1(ga, gb)
+    if bool(sa) and sa == sb and len(ga) >= 4 and _dl1(ga, gb):
+        return True
+    return (bool(ga) and ga == gb and min(len(sa), len(sb)) >= 5
+            and _dl1(sa, sb))
 
 
 def display_name(name):
@@ -437,6 +452,38 @@ def term_has_ended(year, read_on):
     return year < ry or (year == ry and rm > 3)
 
 
+def elected_at_meeting(year):
+    """Whether a term ending in `year` began at or after the March 2026
+    meeting: a selectman's term is three years (RSA 41:8), so a term ending
+    in 2029 or later is one that meeting, or a later one, filled."""
+    return year >= MEETING[0] + 3
+
+
+def later_than_directory(people, dboard, dated):
+    """What on the page is later than the directory, or "" for nothing.
+
+    `dated` is page_dated()'s answer. A date counts only when it is after
+    the meeting's month, since a page "updated March 2026" may predate it.
+    A board that differs from the directory's by a person shows the page was
+    changed since September 2025; the same people with no date and no term
+    shows nothing, which is Columbia's page, one selectman out of date.
+    """
+    if dated and dated[:2] > MEETING:
+        return f"the page is dated {dated[2]!r}"
+    new = sorted({int(p["term_expires"]) for p in people
+                  if str(p.get("term_expires") or "").isdigit()
+                  and elected_at_meeting(int(p["term_expires"]))})
+    if new:
+        return f"a term ending {new[-1]} began at the 2026 meeting"
+    extra = [p["name"] for p in people
+             if not any(same_person(o["name"], p["name"]) for o in dboard)]
+    gone = [o["name"] for o in dboard
+            if not any(same_person(o["name"], p["name"]) for p in people)]
+    if extra or gone:
+        return (f"the page names {extra} where the directory names {gone}")
+    return ""
+
+
 def stated_size(lines):
     """The board's size where the page says it: "Andover has a five-member
     Select Board", "a three member board of selectmen"."""
@@ -545,6 +592,13 @@ def decide(key, found, dot, lines_of):
     if len(people) != size:
         return dict(out, case="directory", partial=len(people) < size,
                     why=f"{len(people)} of {size} members read")
+    later = later_than_directory(people, dboard, dated)
+    if not later:
+        return dict(out, case="directory", unproven=True,
+                    why="the directory's own board, with no date or term on "
+                        "the page to show it changed after the March 2026 "
+                        "meeting")
+    out["later"] = later
     # The directory's name for each member, where it has the same person,
     # so the page can carry the phone and e-mail the directory gives them.
     for m in out["members"]:
@@ -594,7 +648,7 @@ def build(keys, dot):
             return cache[url]
         towns[key] = decide(key, found, dot.get(key), lines_of)
     boards = {k: {f: v[f] for f in ("source_url", "read_on", "size",
-                                     "size_from", "members")}
+                                     "size_from", "later", "members")}
               for k, v in towns.items() if v["case"] == "own"}
     return {
         "_what": ("Select boards read off towns' own websites, where the page "
@@ -638,12 +692,15 @@ def main(argv=None):
             if given(m["name"]) not in lex]
     partial = {k: v for k, v in towns.items() if v.get("partial")}
     stale = {k: v for k, v in towns.items() if v.get("stale")}
+    same = {k: v for k, v in towns.items() if v.get("unproven")}
     print(f"  {len(keys)} towns with saved pages; {len(boards)} give their "
           f"whole, current board")
     print(f"  on the directory: {len(partial)} with part of the board read, "
           f"{len(stale)} whose page is dated or lists an ended term, "
-          f"{len(data['not_used']) - len(partial) - len(stale)} for another "
-          "reason")
+          f"{len(same)} whose page is the directory's board with nothing "
+          f"later on it ({', '.join(sorted(same))}), "
+          f"{len(data['not_used']) - len(partial) - len(stale) - len(same)} "
+          "for another reason")
     if held:
         print(f"  S3, for a person to look at -- given names no NH list on "
               f"disk carries: {held}")

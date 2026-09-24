@@ -3,6 +3,7 @@
  "_what": "Select boards read off towns' own websites, where the page gives the whole board and is current. Written by town_boards.py from town_sites/; read by build_town_pages.py. A town not here is shown from the New Hampshire Department of Transportation's directory.",
  "boards": {
   "alexandria": {
+   "later": "the page names ['Brian Lewis'] where the directory names ['Chet Caron']",
    "members": [
     {
      "directory_name": "George Tuthill",
@@ -29,6 +30,7 @@
    "source_url": "http://alexandrianh.com/departments/selectmens-office/"
   },
   "allenstown": {
+   "later": "the page names ['Kris Fowler', 'John Childs'] where the directory names ['Scott McDonald', 'Laura Lambert']",
    "members": [
     {
      "directory_name": "Kathleen Pelissier",
@@ -67,6 +69,7 @@
    "source_url": "https://www.allenstownnh.gov/1297/Board-of-Selectmen"
   },
   "atkinson": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Wendy Barker",
@@ -105,6 +108,7 @@
    "source_url": "https://www.town-atkinsonnh.com/334/Board-of-Selectmen"
   },
   "benton": {
+   "later": "the page names ['Philip Chicoine'] where the directory names ['Kimberli Carpenter']",
    "members": [
     {
      "directory_name": "William Darcy",
@@ -131,6 +135,7 @@
    "source_url": "https://www.tobentonnh.org/page3"
   },
   "bow": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Kip McDaniel",
@@ -169,6 +174,7 @@
    "source_url": "https://bownh.gov/283/Board-of-Selectmen"
   },
   "bristol": {
+   "later": "the page names ['Shaun Lagueux', 'John Miller', 'Scott Severn'] where the directory names ['Rob Glassett', 'Carroll Brown Jr', 'Leslie Dion']",
    "members": [
     {
      "directory_name": null,
@@ -183,7 +189,7 @@
      "term_ends": null
     },
     {
-     "directory_name": null,
+     "directory_name": "Don Millbrand",
      "name": "Don Milbrand",
      "role": null,
      "term_ends": null
@@ -206,33 +212,8 @@
    "size_from": "the page states it",
    "source_url": "https://www.bristolnh.gov/1336/Select-Board"
   },
-  "columbia": {
-   "members": [
-    {
-     "directory_name": "Norman Cloutier",
-     "name": "Norman Cloutier",
-     "role": "Chairman",
-     "term_ends": null
-    },
-    {
-     "directory_name": "Eric Stohl",
-     "name": "Eric Stohl",
-     "role": null,
-     "term_ends": null
-    },
-    {
-     "directory_name": "Donald Campbell",
-     "name": "Donald Campbell",
-     "role": null,
-     "term_ends": null
-    }
-   ],
-   "read_on": "2026-09-20T21:59:00-0400",
-   "size": 3,
-   "size_from": "the directory lists 3",
-   "source_url": "https://columbianh.org/selectmen/"
-  },
   "dublin": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Susan Peters",
@@ -259,6 +240,7 @@
    "source_url": "https://www.townofdublin.org/222/Select-Board"
   },
   "gilmanton": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": null,
@@ -285,6 +267,7 @@
    "source_url": "https://www.gilmantonnh.gov/238/Board-of-Selectmen"
   },
   "gilsum": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Clem Lounder",
@@ -310,33 +293,8 @@
    "size_from": "the directory lists 3",
    "source_url": "https://gilsum-nh.gov/board-of-selectmen/"
   },
-  "hampton-falls": {
-   "members": [
-    {
-     "directory_name": "Edward Beattie",
-     "name": "Edward B. Beattie",
-     "role": "Chairman",
-     "term_ends": null
-    },
-    {
-     "directory_name": "Lou Gargiulo",
-     "name": "Lou Gargiulo",
-     "role": "Vice-Chairman",
-     "term_ends": null
-    },
-    {
-     "directory_name": "Mark Lane",
-     "name": "Mark R. Lane",
-     "role": null,
-     "term_ends": null
-    }
-   ],
-   "read_on": "2026-09-20T22:09:15-0400",
-   "size": 3,
-   "size_from": "the directory lists 3",
-   "source_url": "https://www.hamptonfalls.org/262/Board-of-Selectmen"
-  },
   "hancock": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Virginia Smith",
@@ -363,6 +321,7 @@
    "source_url": "https://www.hancocknh.org/boards_committees/n_z/selectboard/index.php"
   },
   "hanover": {
+   "later": "the page names ['Jarett Berke'] where the directory names ['Nancy Carter']",
    "members": [
     {
      "directory_name": "Athos Rassias",
@@ -401,6 +360,7 @@
    "source_url": "https://hanovernh.org/518/Selectboard"
   },
   "hebron": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Paul Hazelton",
@@ -427,6 +387,7 @@
    "source_url": "https://www.hebronnh.gov/1241/Select-Board"
   },
   "hollis": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "David Petry",
@@ -465,6 +426,7 @@
    "source_url": "https://www.hollisnh.gov/1454/Select-Board"
   },
   "jefferson": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Norman Brown",
@@ -491,6 +453,7 @@
    "source_url": "https://jeffersonnh.org/boards-and-committees/board-of-selectmen/"
   },
   "kensington": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": null,
@@ -517,6 +480,7 @@
    "source_url": "https://www.kensingtonnh.gov/1259/Board-of-Selectmen"
   },
   "loudon": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Dwayne Gilman",
@@ -543,6 +507,7 @@
    "source_url": "https://www.loudonnh.org/1219/Board-of-Selectmen"
   },
   "lyme": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Ben Kilham",
@@ -569,6 +534,7 @@
    "source_url": "https://www.lymenh.gov/pages/select-board"
   },
   "milan": {
+   "later": "the page names ['Jason Huter', 'Dana Brouillette'] where the directory names ['Randy Fortin', 'Kenneth Lee Dube']",
    "members": [
     {
      "directory_name": "Peter Nolet",
@@ -595,6 +561,7 @@
    "source_url": "https://www.townofmilan.com/government"
   },
   "newfields": {
+   "later": "the page names ['Catherine Tarnowski'] where the directory names ['Michael Sununu']",
    "members": [
     {
      "directory_name": "Hobart Harmon",
@@ -621,6 +588,7 @@
    "source_url": "https://www.newfieldsnh.gov/234/Select-Board"
   },
   "randolph": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Paul Jadis",
@@ -647,6 +615,7 @@
    "source_url": "https://randolph.nh.gov/board-of-selectmen/"
   },
   "rindge": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Larry Cleveland",
@@ -673,6 +642,7 @@
    "source_url": "https://www.rindgenh.gov/boards_commission/board_of_selectmen/index.php"
   },
   "salisbury": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Jim Hoyt",
@@ -699,6 +669,7 @@
    "source_url": "https://www.salisburynh.org/240/Board-of-Selectmen"
   },
   "sandown": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Eric Olsen",
@@ -737,6 +708,7 @@
    "source_url": "https://www.sandown.us/1226/Board-of-Selectmen"
   },
   "stoddard": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Jason Kovarik",
@@ -763,6 +735,7 @@
    "source_url": "https://www.stoddardnh.org/1228/Board-of-Selectmen"
   },
   "stratham": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Allison Knab",
@@ -788,33 +761,8 @@
    "size_from": "the directory lists 3",
    "source_url": "https://www.strathamnh.gov/boards/select_board/index.php"
   },
-  "sugar-hill": {
-   "members": [
-    {
-     "directory_name": "Chris Ellms",
-     "name": "Chris Ellms",
-     "role": "Chairman",
-     "term_ends": null
-    },
-    {
-     "directory_name": "Richard Bielefield",
-     "name": "Richard Bielefield",
-     "role": null,
-     "term_ends": null
-    },
-    {
-     "directory_name": "Russell Talbot",
-     "name": "Rusty Talbot",
-     "role": null,
-     "term_ends": null
-    }
-   ],
-   "read_on": "2026-09-20T22:40:44-0400",
-   "size": 3,
-   "size_from": "the directory lists 3",
-   "source_url": "https://www.sugarhillnh.org/boards-and-committees/board-of-selectmen/"
-  },
   "temple": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Ken Caisse",
@@ -841,6 +789,7 @@
    "source_url": "https://www.templenh.gov/258/Select-Board"
   },
   "unity": {
+   "later": "the page names ['Scott Powers'] where the directory names ['William Schroeter']",
    "members": [
     {
      "directory_name": "Garry Bator",
@@ -867,6 +816,7 @@
    "source_url": "https://townofunitynh.org/selectmen/"
   },
   "winchester": {
+   "later": "a term ending 2029 began at the 2026 meeting",
    "members": [
     {
      "directory_name": "Ben Kilanski",
@@ -954,6 +904,13 @@
    "source_url": "https://www.chichesternh.org/1283/Board-of-Selectmen",
    "why": "2 of 3 members read"
   },
+  "columbia": {
+   "read": 3,
+   "read_on": "2026-09-20T21:59:00-0400",
+   "size": 3,
+   "source_url": "https://columbianh.org/selectmen/",
+   "why": "the directory's own board, with no date or term on the page to show it changed after the March 2026 meeting"
+  },
   "dalton": {
    "read": 1,
    "read_on": "2026-09-20T21:59:51-0400",
@@ -1002,6 +959,13 @@
    "size": 5,
    "source_url": "https://www.greenland.nh.gov/1466/Board-of-Selectmen",
    "why": "1 of 5 members read"
+  },
+  "hampton-falls": {
+   "read": 3,
+   "read_on": "2026-09-20T22:09:15-0400",
+   "size": 3,
+   "source_url": "https://www.hamptonfalls.org/262/Board-of-Selectmen",
+   "why": "the directory's own board, with no date or term on the page to show it changed after the March 2026 meeting"
   },
   "harrisville": {
    "read": 1,
@@ -1058,6 +1022,13 @@
    "size": 3,
    "source_url": "https://seabrooknh.info/boards-and-committees/selectmen/",
    "why": "1 of 3 members read"
+  },
+  "sugar-hill": {
+   "read": 3,
+   "read_on": "2026-09-20T22:40:44-0400",
+   "size": 3,
+   "source_url": "https://www.sugarhillnh.org/boards-and-committees/board-of-selectmen/",
+   "why": "the directory's own board, with no date or term on the page to show it changed after the March 2026 meeting"
   },
   "wentworth": {
    "read": 3,

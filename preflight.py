@@ -15039,6 +15039,24 @@ def _town_boards_sane():
                 if T.compatible(a.get("name", ""), c.get("name", "")):
                     bad.append(f"{key}: {a['name']!r} and {c['name']!r} are "
                                "one person counted twice")
+        # Columbia's page named the directory's three, undated and without
+        # terms, six months after its minutes swore in a new selectman. The
+        # same board as the directory's is published only with a term the
+        # 2026 meeting began, or a date after it, to show the page is newer.
+        names = [m.get("name") or "" for m in ms]
+        same = len(names) == len(rows) and all(
+            any(T.same_person(r, nm) for r in rows) for nm in names) and all(
+            any(T.same_person(r, nm) for nm in names) for r in rows)
+        newer = any(str(m.get("term_ends") or "").isdigit()
+                    and int(m["term_ends"]) >= 2029 for m in ms) or \
+            "dated" in (b.get("later") or "")
+        if not b.get("later"):
+            bad.append(f"{key}: nothing recorded on the page is later than "
+                       "the directory")
+        elif same and not newer:
+            bad.append(f"{key}: the directory's own board with no term or "
+                       "date after the March 2026 meeting is published as "
+                       "the town's current board")
     assert not bad, "\n  ".join(bad[:20])
     return "ok", (f"{len(boards)} towns' own boards, {n} selectmen, every one "
                   "whole, current when read and from one page")
@@ -15293,6 +15311,9 @@ def _town_boards_decide(T, P):
       Carroll    "(resigned 4/21/2026)" is not a selectman
       Campton    five names, a directory of four and no size stated: not
       Bow        "a five member Board of Selectmen" is the size to meet
+      Columbia   the directory's own three, no date and no term: not -- its
+                 minutes swear in a selectman the page never added
+      Winchester the directory's own five, with a term ending 2029: published
       two pages  a name on another of the town's pages the first lacks: not
       a list of committees is not the board's page
 
@@ -15385,10 +15406,33 @@ def _town_boards_decide(T, P):
                 "The Town of Bow is governed by a five member Board of "
                 "Selectmen elected to staggered three year terms."]},
             dot("Kip McDaniel", "Angela Brennan", "Christopher Nicolopoulos"))),
+        ("Columbia", "directory", None, town(
+            {"https://columbia.test/selectmen/": [
+                "Selectmen", "Norman Cloutier, Chairman", "Eric Stohl",
+                "Donald Campbell",
+                "Selectmen’s Meetings are held on the 2nd & 4th Wednesdays "
+                "of each month beginning at 6:00 pm at the Columbia Town "
+                "Office."]},
+            dot("Norman Cloutier", "Donald Campbell", "Eric Stohl"))),
+        ("Winchester", "own", ["Ben Kilanski", "Trevor Croteau",
+                               "Herbert C. Stephens", "Jack Marsh",
+                               "Theresa Sepe"], town(
+            {"https://winchester.test/1389/Board-of-Selectmen": [
+                "Board of Selectmen", "Staff Contacts",
+                "Karey Miner - Town Administrator", "Board Members",
+                "Ben Kilanski - Chair", "Term Expires: 2029",
+                "Trevor Croteau - Vice Chair", "Term Expires: 2028",
+                "Herbert C. Stephens - Member", "Term Expires: 2028",
+                "Jack Marsh - Member", "Term Expires: 2027",
+                "Theresa Sepe - Member", "Term Expires: 2027"]},
+            dot("Ben Kilanski", "Herbert Stephens", "Jack Marsh",
+                "Theresa Sepe", "Trevor Croteau"))),
+        # The first page is read whole and is current, so the second page's
+        # extra name is the only thing that keeps this town off its roster.
         ("two pages", "directory", None, town(
             {"https://two.test/select-board": [
-                "Select Board", "Ann Aldous, Chair (2027)", "Bea Brandt (2028)",
-                "Cal Carver (2029)"],
+                "Select Board", "Ann Aldous, Chair (2027)",
+                "Bea Brandt, Member (2028)", "Cal Carver, Member (2029)"],
              "https://two.test/town-officials": [
                 "Board of Selectmen", "Dee Dunmore, Selectman (2028)"]},
             dot("Ann Aldous", "Bea Brandt", "Cal Carver"))),
@@ -15406,11 +15450,23 @@ def _town_boards_decide(T, P):
             have = [m["name"] for m in got["members"]]
             if have != names:
                 bad.append(f"{label}: publishes {have}, not {names}")
+    # Each "not" above for the reason it exists, not an earlier one that
+    # happens to catch the fixture too.
+    why = {label: got["why"] for label, _, _, got in cases}
+    for label, words in (("two pages", "another of the town's pages"),
+                         ("Columbia", "the directory's own board")):
+        if words not in why[label]:
+            bad.append(f"{label} is kept off its roster for another reason: "
+                       f"{why[label]!r}")
     lyme = cases[0][3]
     if [m.get("directory_name") for m in lyme.get("members") or []] != \
             ["Ben Kilham", "David Kahn", None]:
         bad.append("Lyme's members are not matched to the directory's rows for "
                    "the same people, so their phones and e-mail are lost")
+    if not T.same_person("Don Milbrand", "Don Millbrand") or \
+            T.same_person("Don Milbrand", "Dan Millbrand"):
+        bad.append("Bristol's Don Milbrand is not the directory's Don "
+                   "Millbrand, or a name two letters out is the same person")
     for text, year in (("Term: 2024 through 2027", "2027"), ("2025 - 2028", "2028"),
                        ("Term Expires: March 2027", "2027")):
         if P.term_year(text) != year:
