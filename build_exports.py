@@ -175,11 +175,17 @@ def rollcalls(out):
     return write(out, "rollcalls.csv", cols, rows,
                  "Every recorded vote: the question in the record's words and "
                  "in plain English, the tally, and what it needed to carry. "
-                 "passed is the outcome the clerk recorded wherever the "
-                 "General Court's docket or its House or Senate Journal names "
-                 "one, and outcome_source says which (docket, journal, count "
-                 "where the docket's outcome is impossible on its own tally, "
-                 "or rule where the record names none).")
+                 "passed is, wherever the record allows, the outcome the "
+                 "clerk recorded in the General Court's docket or its House "
+                 "or Senate Journal; outcome_source says where it came from: "
+                 "docket; docket, "
+                 "implied (the docket line implies the outcome rather than "
+                 "stating it, as a unanimous tally or an order to third "
+                 "reading does); journal; count, where the docket names an "
+                 "outcome its own tally does not allow under the threshold "
+                 "this site applies, so passed follows the members' votes "
+                 "and the vote's page says so; or rule, where the record "
+                 "names no outcome and the count decides it.")
 
 
 def votes(out, data):

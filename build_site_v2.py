@@ -3186,8 +3186,9 @@ def cacr_to_the_voters(narr, term, current, text="", today=None):
 # THE 2020 SENATE LEFT 427 BILLS ON THE TABLE, and its Rule 3-23 killed them at
 # adjournment: every one's last docket line is "Inexpedient to Legislate,
 # Senate Rule 3-23, Adjournment 09/16/2020", while its status field still said
-# LAID ON TABLE. The site already calls this ending "Died on the table" on 272
-# bills of other terms whose last line is the same.
+# LAID ON TABLE. The site already called this ending "Died on the table" on 211
+# bills whose last line is the same, 164 of them in other terms (2015-2016 to
+# 2023-2024) and 47 in 2019-2020 itself.
 TABLE_DEATH = re.compile(r"inexpedient to legislate,\s*senate\s+rule\s+3-23,\s*adjournment", re.I)
 
 
@@ -3541,7 +3542,8 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
             # for a motion it says needed more; a simple majority otherwise.
             # `passed` is the clerk's recorded outcome where the record
             # names one, and where the record and the ballots disagree the
-            # page says so in the clerk's words rather than choosing quietly.
+            # page says so -- in the site's own words, each side attributed
+            # to its source -- rather than choosing quietly.
             "threshold_needed": r.get("threshold_needed"),
             "threshold_rule": r.get("threshold_rule"),
             **({"threshold_unknown": True} if r.get("threshold_unknown") else {}),
