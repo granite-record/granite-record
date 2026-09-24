@@ -9,11 +9,11 @@
    who have left, every committee, every town and ward, the 43 subjects and
    the fixed pages: 322 KB, 58 KB over the wire -- fetched once, the first
    time somebody opens the box, so no page pays for it up front. Bills are not
-   in that file on purpose: 33,683 rows is more than a megabyte, and anything
-   the box does not recognise is handed to the bill search, which is one page
-   away and already does the hard part. A bill NUMBER is recognised here and
-   offered as the first answer, because that is the one bill lookup that needs
-   no index.
+   in that file on purpose: 33,683 rows is more than a megabyte. A bill NUMBER
+   is recognised here and offered as the first answer, because that is the
+   one bill lookup that needs no index; any other words are also looked for
+   in the current term's bills, from that term's own index, fetched the first
+   time they are needed -- see BILLS, IN THE SAME BOX below.
 
    WHAT 18 SEPTEMBER ADDED, in the person's words:
 
@@ -99,6 +99,16 @@ function findBill(q){
 // and would stop "vail" from being a name that STARTS with what was typed.
 const _fbare=s=>String(s||"").replace(/^Former /,"");
 
+// A name that starts with what was typed first, then one with a word
+// starting with it -- "Litchfield" puts the town and Rep. Litchfield above
+// anyone whose town or committee merely mentions it -- then the rest. `s` is
+// the query lowercased and trimmed; `edge` is _fedge(s).
+const _fedge=s=>new RegExp("\\b"+s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"));
+function _frank(r,s,edge){
+  const name=_fbare(r[1]).toLowerCase();
+  return name.startsWith(s)?0:edge.test(name)?1:2;
+}
+
 // `limit` is the panel's eight by default. /search passes Infinity: it is a
 // page and not a dropdown, so it shows everything that matched -- which is the
 // whole reason it exists.
@@ -106,17 +116,13 @@ function findMatch(q,limit){
   const s=(q||"").trim().toLowerCase();
   if(!s||!FIND.rows)return [];
   const words=s.split(/\s+/);
-  const esc=s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
-  const edge=new RegExp("\\b"+esc);
+  const edge=_fedge(s);
   const hit=[];
   for(const r of FIND.rows){
     const hay=`${r[1]} ${r[2]} ${r[4]||""}`.toLowerCase();
     if(!words.every(w=>hay.includes(w)))continue;
     const name=_fbare(r[1]).toLowerCase();
-    // A name that starts with what was typed first, then one with a word
-    // starting with it -- "Litchfield" puts the town and Rep. Litchfield above
-    // anyone whose town or committee merely mentions it -- then the rest.
-    const rank=name.startsWith(s)?0:edge.test(name)?1:2;
+    const rank=_frank(r,s,edge);
     // Match quality decides first, and only then does a member who has left
     // fall in behind one who has not: that is what "prioritize ... current
     // legislators before listing former ones" means with a list this long.
@@ -213,6 +219,146 @@ function _fmark(text,q){
     +_fesc(t.slice(i+s.length));
 }
 
+/* BILLS, IN THE SAME BOX (24 September). Until then this panel searched
+   find.json alone, which has no bills in it on purpose -- so "firearms",
+   "abortion", "property tax" and "housing" were answered "No matching
+   results." while the bill search held 12 to 119 bills of this term for each
+   of them; "guns" and Return opened a former representative named Gunski;
+   and "voting" was offered "Did you mean zoning?". Its one road to the bills
+   ran through /search, which said nothing matched before it offered them.
+   The person had asked for this box to search "anything including
+   legislators, committees, towns, and bills", and to "prioritize to the most
+   recent bills and current legislators before listing former ones".
+
+   So it searches the current term's bills as well, and counts them with the
+   bill search's own matcher -- app.js's, which a page that does not run
+   app.js loads as billmatch.js, cut out of app.js by build_pages.py -- so
+   that "All 30 bills that mention firearms" is the number /bills?q=firearms
+   then shows. The term is the one /bills opens on: away from a bill's own
+   page app.js's wantedTerm() takes the first of meta.json's terms, and so
+   does this. That term's index is about 135 KB over the wire, fetched the
+   first time somebody types something that is not a bill number and kept
+   for the rest of the visit; opening the box, or looking up HB 1442, costs
+   nothing.
+
+   When any of that fails the panel still offers the bill search for what
+   was typed, without a count, and does not say whether anything matched --
+   it cannot know. */
+const FBILLS={rows:null,term:"",api:null,loading:null,failed:false,redraw:false};
+function _fbillApi(){
+  // On bills.html and every record page, app.js is already loaded.
+  if(typeof queryGroups==="function"&&typeof groupWeight==="function"
+     &&typeof billNumbers==="function"&&typeof billKey==="function")
+    return {queryGroups,groupWeight,billNumbers,billKey};
+  return window.GR_BILLMATCH||null;
+}
+const _fdata=f=>new URL(f,location.origin+"/").href;
+function _fjson(f){
+  return fetch(_fdata(f)).then(r=>{
+    if(!r.ok)throw new Error(`${f} returned ${r.status}`);
+    return r.json();});
+}
+function _fscript(f){
+  return new Promise((ok,no)=>{
+    const s=document.createElement("script");
+    s.src=_fdata(f);s.onload=ok;s.onerror=()=>no(new Error(`${f} did not load`));
+    document.head.appendChild(s);
+  });
+}
+function findBillsLoad(){
+  if(FBILLS.rows||FBILLS.failed)return Promise.resolve(!!FBILLS.rows);
+  if(!FBILLS.loading)FBILLS.loading=Promise.all([
+    _fbillApi()?null:_fscript("billmatch.js"),
+    _fjson("meta.json").then(m=>{
+      FBILLS.term=((m&&m.terms)||[])[0]||"";
+      if(!FBILLS.term)throw new Error("meta.json names no term");
+      return _fjson("idx/"+encodeURIComponent(FBILLS.term)+".json");
+    })
+  ]).then(([,rows])=>{
+    const api=_fbillApi();
+    if(!api||!Array.isArray(rows))throw new Error("no matcher, or no bills");
+    // The three haystacks exactly as app.js's ensureTerm() builds them, and
+    // the rows its inTermOf() keeps.
+    const norm=s=>String(s||"").toLowerCase().replace(/-/g," ");
+    FBILLS.rows=rows.filter(b=>!b.term||b.term===FBILLS.term).map(b=>{
+      b.hayT=norm([b.id,b.n,b.title].join(" "));
+      b.hayS=norm(b.sponsor);
+      b.hayC=norm((b.committees||[b.committee||""]).join(" | "));
+      return b;});
+    FBILLS.api=api;
+    return true;
+  }).catch(()=>{FBILLS.failed=true;return false;});
+  return FBILLS.loading;
+}
+
+/* What /bills?q= lists for this, in the order it lists them: {state:"ready",
+   n, term, top} once the index is here; {state:"loading"} or
+   {state:"failed"} until then; and null for a search with nothing in it to
+   match -- "?" on its own, which the bill search reads as every bill. The
+   order is app.js's "best match" (its scoreOf and sortRows): the most of the
+   search in the title, then the sponsor, then the committee, the search's
+   own words in order worth two more, and bill number within each. A search
+   for bill numbers is number order, because every score is nought. */
+function findBills(q,limit){
+  const s=(q||"").trim();
+  if(!s)return null;
+  if(!FBILLS.rows)return {state:FBILLS.failed?"failed":"loading"};
+  const A=FBILLS.api,ids=A.billNumbers(s);
+  let gs=null,words="";
+  if(!ids){
+    gs=A.queryGroups(s);
+    if(!gs.length)return null;
+    words=gs.map(g=>g.word).join(" ");
+  }
+  const hit=[];
+  for(const b of FBILLS.rows){
+    let sc=0;
+    if(ids){if(!ids.includes(String(b.id).toUpperCase()))continue;}
+    else{
+      let every=true;
+      for(const g of gs){const w=A.groupWeight(b,g);if(!w){every=false;break;}sc+=w;}
+      if(!every)continue;
+      if(gs.length>1&&b.hayT.includes(words))sc+=2;
+    }
+    hit.push([sc,A.billKey(b),b]);
+  }
+  hit.sort((x,y)=>y[0]-x[0]||x[1][0]-y[1][0]||x[1][1]-y[1][1]);
+  return {state:"ready",n:hit.length,term:FBILLS.term,numbers:!!ids,
+          top:hit.slice(0,limit==null?3:limit).map(h=>h[2])};
+}
+
+// One bill as a row: its number, and its title under it. A resolution's
+// title can run past 600 characters, and a row is read at a glance.
+function findBillRow(b,q){
+  const y=String(b.year||String(b.term||"").slice(0,4));
+  let t=String(b.title||"");
+  const cut=t.length>160;
+  if(cut)t=t.slice(0,157).replace(/\s+\S*$/,"");
+  return `<a href="/bill/${encodeURIComponent(y)}/${encodeURIComponent(String(b.id).toLowerCase())}">
+    <span class="fl1"><span class="fname">${_fesc(b.n||b.id)}</span>
+    <span class="fkind">Bill</span></span>
+    ${t?`<span class="fwhat">${_fmark(t,q)}${cut?"&hellip;":""}</span>`:""}</a>`;
+}
+
+// The row that opens the bill search on what was typed: "All N bills that
+// mention" it once they are counted, and a plain offer before then or when
+// they could not be. `what` is a sentence about the bill search, for /search.
+function findBillsAll(B,q,what){
+  const quoted=`&ldquo;${_fesc(q)}&rdquo;`;
+  const ready=B&&B.state==="ready";
+  // "HB 1, SB 5" is a list of numbers, not words a bill mentions.
+  const verb=B&&B.numbers?["numbered","numbered"]:["that mentions","that mention"];
+  const name=ready?(B.n===1?`1 bill ${verb[0]} ${quoted}`
+      :`All ${B.n.toLocaleString()} bills ${verb[1]} ${quoted}`)
+    :`Search the bills for ${quoted}`;
+  const where=ready?`In the ${_fesc(B.term)} term.`
+    :B&&B.state==="loading"?"Counting this term&rsquo;s bills&hellip;":"";
+  const line=[where,what||(where?"":"In the bill search.")].filter(Boolean).join(" ");
+  return `<a class="fbills" href="/bills?q=${encodeURIComponent(q)}">
+    <span class="fl1"><span class="fname">${name}</span></span>
+    <span class="fwhat">${line}</span></a>`;
+}
+
 function findDraw(q){
   const out=document.getElementById("findout");
   if(!out)return;
@@ -220,7 +366,7 @@ function findDraw(q){
   const clr=document.getElementById("findclear");
   if(clr)clr.hidden=!s;
   if(!s){out.innerHTML=`<p class="fnote">Type a legislator, a committee, a
-    town, a subject or a bill number.</p>`;return;}
+    town, a subject, a bill number or words from a bill&rsquo;s title.</p>`;return;}
   const num=findBill(s);
   const rows=findMatch(s);
   // THE ONE LINE THAT LEAVES THE PANEL, and it leads to two different places.
@@ -236,14 +382,44 @@ function findDraw(q){
     <span class="fwhat">${num?"open this bill number in the bill search"
       :"every member, committee, town and subject that matches, and the bills"
       }</span></a>`;
-  const list=rows.map(r=>`<a href="${_fesc(_froot(r[3]))}">
+  const row=r=>`<a href="${_fesc(_froot(r[3]))}">
       <span class="fl1"><span class="fname">${_fmark(r[1],s)}</span>
       <span class="fkind">${_fesc(FKIND[r[0]]||r[0])}</span></span>
-      ${r[2]?`<span class="fwhat">${_fesc(r[2])}</span>`:""}</a>`).join("");
+      ${r[2]?`<span class="fwhat">${_fesc(r[2])}</span>`:""}</a>`;
+  // The bills, for anything that is not a bill number: the count and the
+  // first three. Hidden once counted at none, because "All 0 bills" is not an
+  // answer; shown uncounted while they are fetched, and redrawn when they
+  // arrive with whatever is in the box by then.
+  const B=num?null:findBills(s,3);
+  if(B&&B.state==="loading"&&!FBILLS.redraw){
+    FBILLS.redraw=true;
+    findBillsLoad().then(()=>{
+      const box=document.getElementById("findq");
+      if(box)findDraw(box.value);});
+  }
+  const counted=B&&B.state==="ready";
+  const bills=B&&(!counted||B.n)?findBillsAll(B,s)
+    +(counted?B.top.map(b=>findBillRow(b,s)).join(""):""):"";
+  // WHERE THE BILLS GO: after the sitting members, committees, towns and
+  // subjects whose name -- or a word of it -- starts with what was typed,
+  // and ahead of everything else, which is every former member and anything
+  // that only mentions it. So "Litchfield" still leads with the town and
+  // Rep. Litchfield, while "guns" leads with the bills and Gunski follows.
+  // Return takes the first row, so for a subject word it opens the bill
+  // search on it.
+  const low=s.toLowerCase(),edge=_fedge(low);
+  let at=0;
+  while(at<rows.length&&rows[at][0]!=="former"&&_frank(rows[at],low,edge)<2)at++;
+  const list=rows.slice(0,at).map(row).join("")+bills+rows.slice(at).map(row).join("");
+  // "No matching results." -- the person's words -- only when nothing here
+  // and no bill matches; "Did you mean" only when no bill does either, since
+  // its guesses come from names alone ("voting" was offered "zoning" over
+  // 141 bills). While the bills are being counted, neither: it is not known.
   let tail="";
-  if(!rows.length&&!num){
+  if(!rows.length&&!num&&(!B||(counted&&!B.n)||B.state==="failed")){
+    const none=!B||counted?"No matching results.":"";
     const did=findSuggest(s);
-    tail=`<p class="fnote">No matching results.${did?` Did you mean
+    if(none||did)tail=`<p class="fnote">${none}${did?`${none?" ":""}Did you mean
       <button type="button" class="fdym" data-q="${_fesc(did)}">${_fesc(did)}</button>?`
       :""}</p>`;
   }
@@ -284,7 +460,7 @@ function findMount(){
     <div class="findtop">
     <div class="findbox">
       <label class="sr" for="findq">Search for a legislator, committee, town, subject or bill</label>
-      <input id="findq" type="search" autocomplete="off" placeholder="A legislator, a committee, a town, or a bill number">
+      <input id="findq" type="search" autocomplete="off" placeholder="A legislator, a town, a subject or a bill">
       <button type="button" class="findclear" id="findclear" hidden aria-label="Clear the search box">&#10005;</button>
     </div>
     <button type="button" class="findcancel" id="findcancel">Cancel</button>
@@ -322,7 +498,8 @@ function findMount(){
   box.addEventListener("keydown",e=>{
     if(e.key==="Escape"){shut();btn.focus();}
     // Return takes the first answer, which is what a reader who typed a name
-    // and looked at the list is about to click.
+    // and looked at the list is about to click -- and, for a word no name
+    // starts with, the bill search on that word (see findDraw).
     if(e.key==="Enter"){const a=panel.querySelector(".findout a");if(a){e.preventDefault();location.href=a.href;}}
   });
   // A WAY OUT THAT IS NOT THE SCRIM. On a phone the sheet covers the page and
