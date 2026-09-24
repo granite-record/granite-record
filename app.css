@@ -1380,6 +1380,16 @@ letter-spacing:.04em;text-transform:uppercase}
    A block added later is capped by default, which is the right way round --
    the failure mode is a narrow box, not a broken one. */
 .card .pane > *{max-width:var(--measure)}
+/* INSIDE A RECORD, NOTHING IS HELD TO THE MEASURE (24 September). The person
+   wants text to fill the width it has, and a 560px column inside a wide pane
+   reads to them as broken. It was fixed one component at a time -- the vote
+   notes, the bill text, the pickers -- and each fix left the next tab still
+   narrow: the Reports tab was, because .repbody, .anbox, .testimony, .tl li
+   and a dozen more each cap themselves at var(--measure) as well. So the
+   measure itself is switched off for everything inside a card, which every
+   one of those rules reads, and a component added later inherits it. The
+   passage rail keeps its own fixed width: it is a diagram, not text. */
+.card{--measure:none}
 .card .pane > .rc,
 .card .pane > .stn,
 .card .pane > .chosen,
@@ -1688,10 +1698,9 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-2)}
    The rule between reports belongs to the report, not to its head, or the
    two draw one line each and the reader gets a double rule.
 
-   .rep takes the pane's measure cap like every other child until the two
-   columns open at 1100px. That is deliberate: a full-width rule over a 560px
-   report would run 442px past the last thing under it, which is the empty-box
-   complaint the cap above exists to answer. */
+   Inside a card the measure is none (see .card{--measure:none}), so a
+   report fills the pane at every width; at 1100px it opens into two
+   columns. */
 .rep{border-top:1px solid var(--rule);padding-top:var(--sp-5)}
 .rep .rephead{border-top:0;padding-top:0}
 .repbody{max-width:var(--measure)}
@@ -1716,11 +1725,11 @@ text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-2)}
    reader dragging a window narrower should cross one threshold, not two.
 
    The left column holds the committee, the day and the citation stacked; the
-   right holds the recommendation, the vote and the reasoning. The reasoning
-   keeps the measure -- 560px is where prose stays readable and that does not
-   change with the pane -- but the ROW above it takes the full track, so the
-   recommendation lands on the pane's right edge and a reader can run an eye
-   down four of them without reading a word. */
+   right holds the recommendation, the vote and the reasoning, which fills
+   its column (the person, 24 September: text fills the width it has). The
+   row above it takes the full track, so the recommendation lands on the
+   pane's right edge and a reader can run an eye down four of them without
+   reading a word. */
 @media (min-width:1100px){
   .card.focus .pane > .rep{max-width:none;display:grid;
     grid-template-columns:288px minmax(0,1fr);gap:0 46px;
