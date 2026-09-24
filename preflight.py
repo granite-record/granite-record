@@ -9645,7 +9645,7 @@ KNOWN_DOUBTFUL = {
                          "a disposition by rule dated to a Sunday",
     ("S", "1990-07-01"): "bills indefinitely postponed under Joint Rule 24(b), "
                          "a disposition by rule dated to a Sunday",
-    ("H", "1995-07-01"): "bills indefinitely postponed under Joint Rule 24(b), "
+    ("H", "1995-07-01"): "bills indefinitely postponed under Joint Rule 23-A, "
                          "a disposition by rule dated to a Saturday",
     ("H", "2012-03-11"): "one row dated by the moment it was entered, a Sunday; "
                          "its journal is the 7 March 2012 sitting's",

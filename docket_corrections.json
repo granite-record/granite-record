@@ -23,7 +23,8 @@
         "Docket.txt line 25145: '2026|2397|8/19/2026 2:27:49 PM|HB1491|H|Reconsider HB1491 (Rep. N. Germana): MF VV 09/19/2026  HJ 16  P. 48'; the veto row 'Veto Sustained 08/19/2026: RC 160-148 ... HJ 16 P. 44' was written at 2:03:51 PM",
         "88 of the 89 House rows of 2026 that cite HJ 16 are dated 08/19/2026, among them 61 'Died on Table, Session ended 08/19/2026 HJ 16' rows: the clerk's own statement that the session ended on 19 August",
         "House Session (08/19/2026) is on the House channel (channel_index_full.json); no House recording for 19 September 2026",
-        "19 September 2026 is a Saturday, after the last House sitting on record"
+        "19 September 2026 is a Saturday, after the last House sitting on record",
+        "journals/2026/HJ 16 August 19, 2026.txt, the page headed '48 19AUGUST2026HOUSERECORD', straight after the roll call that sustained the veto: 'Having voted with the prevailing side, Rep. Germana moved that the House reconsider its action whereby, on a roll call vote of 160-148, the House failed to override the Governor's veto on HB 1491, relative to pooled risk management programs. The motion failed.'"
       ],
       "note": "The General Court's online docket dates this 19 September 2026, a Saturday when the House did not meet. The House Journal for 19 August 2026 records it on page 48, and the docket entry was made that afternoon, so it is shown on 19 August.",
       "checked": "2026-09-23"
@@ -251,7 +252,7 @@
         "Docket_2017-2018.txt line 12998, dated 1/9/2018; the bill is in the 2017-2018 docket",
         "cites HJ 2; 19 other House rows cite HJ 2, dated 2018-01-09; journals/2018/HJ002.txt is dated Tuesday January 9, 2018 and prints HB 592"
       ],
-      "note": "The General Court's online docket dates this 8 January 2019, a year and a day late. The roll call on it was taken on 9 January 2018 and the House Journal for that day prints it, so it is shown on 9 January 2018.",
+      "note": "The General Court's online docket dates this 8 January 2019, almost a year after the vote. The roll call on it was taken on 9 January 2018 and the House Journal for that day prints it, so it is shown on 9 January 2018.",
       "checked": "2026-09-23"
     },
     {
@@ -268,7 +269,7 @@
         "cites HJ 2 page 27; journals/2018/HJ002.txt is dated Tuesday January 9, 2018 and prints HB 592",
         "a division, so no roll call of its own; the motion before it on the same bill was roll-called on 1/9/2018 at 11:50 AM"
       ],
-      "note": "The General Court's online docket dates this 8 January 2019, a year and a day late. The House Journal for 9 January 2018 prints it on page 27, so it is shown on that day.",
+      "note": "The General Court's online docket dates this 8 January 2019, almost a year after the vote. The House Journal for 9 January 2018 prints it on page 27, so it is shown on that day.",
       "checked": "2026-09-23"
     },
     {
@@ -285,7 +286,7 @@
         "Docket_2017-2018.txt line 13992, dated 1/9/2018",
         "cites HJ 2 page 28; journals/2018/HJ002.txt is dated Tuesday January 9, 2018 and prints HB 92"
       ],
-      "note": "The General Court's online docket dates this 8 January 2019, a year and a day late. The roll call on it was taken on 9 January 2018 and the House Journal for that day prints it, so it is shown on 9 January 2018.",
+      "note": "The General Court's online docket dates this 8 January 2019, almost a year after the vote. The roll call on it was taken on 9 January 2018 and the House Journal for that day prints it, so it is shown on 9 January 2018.",
       "checked": "2026-09-23"
     },
     {
