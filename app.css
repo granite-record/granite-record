@@ -1950,7 +1950,10 @@ color:var(--ink-2);background:var(--wash);border-radius:var(--r-in);padding:1px 
 .shell.focused{grid-template-columns:1fr}
 .shell.focused .facets{display:none}
 .card.focus{border-color:var(--rule-2)}
-.card.focus .chead{cursor:default}
+/* A bill's own page draws no ↗ link, so its head gives back the 46px the
+   link reserves on the right. Kept, it put the centred rail 15px left of the
+   card's middle at 1440 and took 4px from each of a phone's five stops. */
+.card.focus .chead{cursor:default;padding-right:var(--sp-6)}
 
 /* A BILL REQUEST'S CARD. "Cards should be shorter", and the shortness is not
    a smaller type size: it is that there is less on it. No rail, no expand
