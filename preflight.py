@@ -2476,6 +2476,334 @@ def _civics_examples():
     return "ok", note
 
 
+@check("frontend", "the Learn pages do not restate a rule the record contradicts",
+       needs=("civics", "learn_numbers", "build_civics"))
+def _learn_rules(civics, learn_numbers, build_civics):
+    """Seven Learn pages stated rules the General Court's own record refutes.
+
+    Found on 23 September 2026, each against a primary source on this disk:
+    "Part Two, Article 78", where the constitution's parts are First and
+    Second; three fifths "240 of the 400 House seats", where the House counts
+    the members in office -- CACR 26 failed at 237-115 and passed at 239-114 on
+    one day in 2012 with 397 seated; a consent-calendar report placed "when the
+    committee was unanimous or nearly so", where the House and Senate rules
+    both demand a unanimous placement; "a bill left unsigned becomes law
+    anyway", which drops Article 44's adjournment clause; a 1992 veto "still
+    awaiting its override vote" 34 years on; and two veto overrides that
+    needed two thirds listed as the term's closest votes at 160-159 and
+    176-175.
+
+    The prose half fails on the wording coming back. The fixture half runs the
+    two figures that went wrong -- veto_pending and the closest-votes table --
+    on a record small enough to know the answer to, and the arithmetic half
+    recomputes every threshold the pages work through in words.
+
+    The fixture also holds the figures written to replace those claims. The
+    first draft of the year from which hearings are on video started from the
+    term still sitting, so one unheard bill of that term named no year and two
+    pages printed "nearly every one since" and a gap; it is checked with that
+    bill in place, and a record that lost its recordings, or has no roll calls,
+    must stop the build rather than print a hole.
+    """
+    import math
+    import tempfile as _tf
+
+    # -- the wording ------------------------------------------------------
+    pages = {t["slug"]: " ".join([t["blurb"], t["body"], t.get("holds") or ""])
+             for t in civics.TOPICS}
+    BANNED = [(re.compile(r"\bPart (One|Two)\b"),
+               "the constitution's parts are Part First and Part Second"),
+              (re.compile(r"\b240 of (the )?400\b"),
+               "three fifths is of the members in office, not of the 400 seats"),
+              (re.compile(r"nearly so", re.I),
+               "a consent-calendar placement must be unanimous in both chambers"),
+              (re.compile(r"becomes\s+law\s+anyway", re.I),
+               "an unsigned bill does not become law if adjournment prevents its return"),
+              (re.compile(r"\bno of them\b", re.I),
+               "a count of nothing spelled as 'no of them'")]
+    def retracted(texts):
+        return [f"{slug}: {why} ({m.group(0)!r})"
+                for slug, text in texts.items() for rx, why in BANNED
+                for m in [rx.search(re.sub(r"\s+", " ", text))] if m]
+
+    bad = retracted(pages)
+    assert not bad, "; ".join(bad[:3])
+
+    # -- the arithmetic the prose works through -------------------------
+    flat = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", " ".join(pages.values())))
+    worked = 0
+    for m in re.finditer(r"three fifths of ([\d,]+) is (\d+(?:\.\d+)?)", flat):
+        n, got = int(m.group(1).replace(",", "")), float(m.group(2))
+        assert abs(got - 0.6 * n) < 1e-9, f"'{m.group(0)}': three fifths of {n} is {0.6 * n:g}"
+        worked += 1
+    for m in re.finditer(r"with (\d+) votes, when (\d+) members were in office", flat):
+        x, n = int(m.group(1)), int(m.group(2))
+        assert x == math.ceil(3 * n / 5), (
+            f"'{m.group(0)}': three fifths of {n} members needs {math.ceil(3 * n / 5)}")
+        worked += 1
+    for m in re.finditer(r"(\d+) when all (\d+) House seats are filled", flat):
+        x, n = int(m.group(1)), int(m.group(2))
+        assert x == math.ceil(3 * n / 5), f"'{m.group(0)}': three fifths of {n} is {math.ceil(3 * n / 5)}"
+        worked += 1
+    for m in re.finditer(r"(\d+) of a full Senate of (\d+)", flat):
+        x, n = int(m.group(1)), int(m.group(2))
+        assert x == math.ceil(3 * n / 5), f"'{m.group(0)}': three fifths of {n} is {math.ceil(3 * n / 5)}"
+        worked += 1
+    for m in re.finditer(r"overrode a veto (\d+) to (\d+) when (\d+) members were in office", flat):
+        y, n, seated = (int(g) for g in m.groups())
+        assert 3 * y >= 2 * (y + n) and 3 * y < 2 * seated, (
+            f"'{m.group(0)}' is offered as two thirds of those voting and not of the "
+            f"members in office, and the numbers do not show that")
+        worked += 1
+
+    # -- the figures, on a record whose answer is known ------------------
+    def row(term, bid, **kw):
+        return dict({"term": term, "id": bid, "year": int(term[-4:]), "nrc": 0}, **kw)
+
+    idx = [row("1991-1992", "HB1407", status="Vetoed"),
+           row("1997-1998", "HB9"),
+           row("1999-2000", "HB9"),
+           row("2023-2024", "HB5", status="Vetoed, override failed"),
+           row("2025-2026", "HB1", status="Vetoed, override failed"),
+           row("2025-2026", "HB2", kind="law"),
+           row("2025-2026", "HB3", kind="law", nrc=2),
+           row("2025-2026", "HB4", nrc=1),
+           row("2025-2026", "CACR1", nrc=2)]
+    H = {"body": "H", "year": 2026, "date": "2026-03-12", "procedural": False}
+    rcs = {"1999-2000": {"HB9": [dict(H, year=1999, question="Ought to Pass",
+                                      yeas=200, nays=150)]},
+           "2025-2026": {
+               "HB1": [dict(H, question="Veto Override", yeas=160, nays=159)],
+               "HB3": [dict(H, question="Ought to Pass", yeas=180, nays=179)],
+               "HB4": [dict(H, question="Rules Suspension", yeas=190, nays=189)],
+               "CACR1": [dict(H, question="Ought to Pass", yeas=201, nays=200),
+                         dict(H, question="Inexpedient to Legislate", yeas=176, nays=162)]}}
+    procs = [{"term": t, "bill": b, "kind": "public hearing", "body": "H",
+              "date": f"{t[-4:]}-01-10", "video_id": "v" if t >= "2023" else ""}
+             for t, b in (("1999-2000", "HB9"), ("2023-2024", "HB5"), ("2025-2026", "HB1"),
+                          ("2025-2026", "HB2"), ("2025-2026", "HB3"), ("2025-2026", "HB4"),
+                          ("2025-2026", "CACR1"))]
+    # record_figures reads the proceedings table through proceedings.load and
+    # caches the hearing-notice figure per term; both are put back afterwards,
+    # so nothing later in this run sees the fixture.
+    real_load = build_civics.P.load
+    notice_cache = build_civics._notice.__defaults__[0]
+    saved_cache = dict(notice_cache)
+    with _tf.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        (tmp / "index.json").write_text(json.dumps(idx), encoding="utf-8")
+        (tmp / "rollcalls.json").write_text(json.dumps(rcs), encoding="utf-8")
+        build_civics.P.load = lambda *a, **k: [dict(p) for p in procs]
+        # A stop is a finding of this check, never the end of the whole run:
+        # SystemExit is not an Exception, and would get past the runner.
+        def stops(site, root):
+            try:
+                build_civics.record_figures(site, root)
+            except SystemExit as e:
+                return str(e) or "stopped"
+            return ""
+
+        def figures(site, root):
+            try:
+                return build_civics.record_figures(site, root)
+            except SystemExit as e:
+                raise AssertionError(f"record_figures stopped on a record it should build: {e}")
+
+        try:
+            fig = figures(tmp, tmp)
+            # A veto of the term still sitting, and a bill of it not heard
+            # yet: five of its six bills filmed, under the nine in ten.
+            idx.append(row("2025-2026", "HB6", status="Vetoed"))
+            (tmp / "index.json").write_text(json.dumps(idx), encoding="utf-8")
+            fig_waiting = figures(tmp, tmp)
+            # The newest finished term's recordings lost from the table.
+            build_civics.P.load = lambda *a, **k: [
+                dict(p, video_id="" if p["term"] == "2023-2024" else p["video_id"])
+                for p in procs]
+            lost = stops(tmp, tmp)
+            build_civics.P.load = lambda *a, **k: [dict(p) for p in procs]
+            # No roll calls at all.
+            (tmp / "bare").mkdir()
+            (tmp / "bare" / "rollcalls.json").write_text("{}", encoding="utf-8")
+            no_rc = stops(tmp, tmp / "bare")
+        finally:
+            build_civics.P.load = real_load
+            notice_cache.clear()
+            notice_cache.update(saved_cache)
+        nums = learn_numbers.body(tmp, tmp)
+    bad = retracted({"by-the-numbers": nums})
+    assert not bad, "; ".join(bad)
+    assert fig["veto_pending"] == "", (
+        "a veto from a finished term (1992's HB 1407) is reported as still awaiting "
+        f"its override vote: {fig['veto_pending']!r}")
+    assert fig["veto_failed"] == "3", (
+        f"veto_failed is {fig['veto_failed']}; a veto no override vote reached in a "
+        "finished term stood, and wants counting with the failed overrides (3)")
+    assert "awaiting" in fig_waiting["veto_pending"], (
+        "a veto of the current term with no override vote yet is not reported as waiting")
+    assert (fig["rollcall_first_year"], fig["pre_rollcall_bills"], fig["law_no_rollcall"]) \
+        == ("1999", "2", "1"), (
+        "the roll-call figures are wrong on the fixture: first year "
+        f"{fig['rollcall_first_year']} (want 1999), bills before it {fig['pre_rollcall_bills']} "
+        f"(want 2), laws of the term with none {fig['law_no_rollcall']} (want 1)")
+    assert (fig["hearing_video_bills"], fig["hearing_video_from"]) == ("6", "2023"), (
+        f"hearings on video: {fig['hearing_video_bills']} bills from "
+        f"{fig['hearing_video_from']!r}; want 6 from 2023, the first term from which "
+        "every later term is nine tenths filmed")
+    assert (fig_waiting["hearing_video_from"], fig_waiting["hearing_video_since"]) \
+        == ("2023", ", nearly every one since 2023"), (
+        "one unheard bill of the term still sitting changed the year hearings are on "
+        f"video from: {fig_waiting['hearing_video_from']!r}, clause "
+        f"{fig_waiting['hearing_video_since']!r}; that term is still being heard, "
+        "and the pages would print 'nearly every one since' and a gap")
+    assert "video_id" in lost, (
+        "a record whose newest finished term lost its recordings built anyway: "
+        + (lost or "no stop"))
+    assert "roll call" in no_rc, (
+        "a record with no roll calls built anyway, and the pages would say they "
+        "begin in 0: " + (no_rc or "no stop"))
+    close = nums[nums.index("The closest votes"):]
+    close = close[:close.index("<h2>")] if "<h2>" in close else close
+    for bid, why in (("hb1", "a veto override"), ("hb4", "a rules suspension")):
+        assert f"bill/2026/{bid}\"" not in close, (
+            f"the closest votes list {bid.upper()}, {why}, which needed more than a majority")
+    assert "201&ndash;200" not in close, (
+        "the closest votes list a CACR's passage, which needed three fifths")
+    assert "bill/2026/hb3\"" in close and "176&ndash;162" in close, (
+        "the closest votes lost a majority question: an ordinary bill's passage, or a "
+        "motion to kill a CACR, which needs no more than a majority")
+    return "ok", (f"no retracted wording on {len(pages)} pages; {worked} worked "
+                  "thresholds recomputed; veto_pending, the closest votes and the "
+                  "hearings-on-video year right on a fixture, an unheard bill of "
+                  "the sitting term included")
+
+
+# A LEARN SENTENCE, THE SECTION IT CITES, AND WHAT THAT SECTION SAYS. Each row
+# is a claim that was wrong until 23 September 2026 -- the citation existed and
+# was in force, and the sentence beside it said something else -- written by
+# hand from db/NH_RSA.psv and never by a generator. The code check below holds
+# the page phrase and its citation together in one paragraph; the data check
+# further down holds the section's own words to the dump.
+LEARN_STATUTE_CLAIMS = [
+    # (page, phrase on the page, section cited, phrase in the section)
+    ("county-government", "by 1 September if it is on an optional fiscal year",
+     "24:14", "not later than September 1"),
+    ("county-government", "every state court except the Supreme Court",
+     "104:5", "in all state courts, except the supreme court"),
+    ("county-government", "does not hold against a later buyer",
+     "477:3-a", "shall not be effective as against bona fide purchasers"),
+    ("county-government", "Deeds, mortgages and the other documents",
+     "478:4", "shall receive, file and record"),
+    ("county-government", "The register keeps the records safe",
+     "478:1", "in a safe location"),
+    ("county-government", "the probate division of the",
+     "490-F:3", "a probate division"),
+    ("county-government", "passed to the circuit court clerks",
+     "490-F:13", "shall remain as duties of the registers of probate"),
+    ("county-government", "works with the Secretary of State",
+     "548:5", "coordinating with the secretary of state"),
+    ("county-government", "keeps an index of any files",
+     "548:5", "maintain a current index"),
+    ("county-government", "a state office within the Department of Justice",
+     "611-B:2", "within the department of justice the office of chief medical examiner"),
+    ("county-government", "Sudden, unexpected or unnatural deaths",
+     "611-B:11", "sudden unexpected death"),
+    ("county-government", "appoint an administrator for the county nursing home",
+     "28:11", "appoint an administrator for the county nursing home"),
+    ("city-and-town-government", "replaced the meeting with a town council",
+     "49-D:3", "legislative and governing body of the town"),
+    ("city-and-town-government", "regulate the use of the town's highways",
+     "41:11", "regulate the use of all public highways, sidewalks, and commons"),
+    ("city-and-town-government", "unless the town has handed that",
+     "41:11-a", "delegated to other public officers by vote of the town"),
+    ("city-and-town-government", "application of 10 or more voters",
+     "37:12", "written application of 10 or more voters"),
+    ("city-and-town-government", "any department under the manager's control",
+     "37:6", "any department under his control"),
+    ("city-and-town-government", "nor does the manager supervise the",
+     "37:5", "supervision of the offices of town clerk and town treasurer"),
+    ("city-and-town-government", "appoint that town's",
+     "37:14", "appoint as its manager the manager of such town"),
+    ("city-and-town-government", "unless the town has provided for appointing them",
+     "669:15", "unless provision has been made for appointment"),
+    ("city-and-town-government", "still elects its town clerk",
+     "41:16", "regardless of the form of government"),
+    ("city-and-town-government", "daily once receipts reach",
+     "41:35", "daily whenever tax receipts total $1,500"),
+    ("city-and-town-government", "on a board of three one trustee is elected each year",
+     "31:22", "one trustee shall be elected by a ballot at each annual town meeting"),
+    ("city-and-town-government", "sits on it ex officio",
+     "673:2", "as an ex officio member"),
+    ("city-and-town-government", "at least one member living in each",
+     "195:19-a", "at least one such resident representative"),
+    ("city-and-town-government", "each district's members sharing",
+     "194-C:7", "proportionate share of the school district's votes"),
+    ("city-and-town-government", "a commission of nine is elected",
+     "49-B:4", "shall consist of 9 members"),
+    ("city-and-town-government", "three fifths of the ballots cast on the question",
+     "49-B:6", "at least 3/5 of the ballots cast"),
+    ("city-and-town-government", "and a majority adopts it",
+     "49-B:6", "if a majority of the ballots cast on any question under paragraph ii"),
+    ("city-and-town-government", "at least 20 percent of the",
+     "49-B:4-e", "20 percent of the number of ballots cast"),
+    ("city-and-town-government", "at least 15 percent of those ballots",
+     "49-B:5", "at least 15 percent of the number of ballots cast"),
+    ("city-and-town-government", "A town may also repeal its",
+     "49-B:12", "any town, through the petition procedure"),
+    ("administrative-rules", "substantial fiscal harm",
+     "541-A:18", "substantial fiscal harm to the state or its citizens"),
+]
+
+
+def _cites_section(text, sec):
+    """True when `text` names RSA section `sec` as a whole citation: 49-B:4 is
+    not found in 49-B:4-e, nor 37:1 in 37:12."""
+    return re.search(r"(?<![\w:.-])" + re.escape(sec) + r"(?![\w-])", text) is not None
+
+
+@check("frontend", "a Learn page's statute citations stay with the claims they support",
+       needs=("civics",))
+def _learn_statute_claims(civics):
+    """The county and town pages paraphrased statutes by hand, and ten
+    sentences had dropped the clause that mattered: the Supreme Court's
+    exception from bailiff security (RSA 104:5 III), the optional-fiscal-year
+    budget deadline (24:14 II), the treasurer and highway agents a town may
+    appoint (669:15), the town's own vote a village district must wait for
+    (37:14), a charter amendment put "by the same route" as a new charter when
+    49-B:5 takes no commission and 49-B:6 only a majority. Every citation
+    existed, so a check that sections exist would have passed them all.
+
+    This holds each corrected claim to the section beside it: the page phrase
+    and its citation in one paragraph or table cell. The data check
+    "every RSA section the Learn pages cite is in force" holds the section's
+    words to the General Court's own table.
+    """
+    pages = {t["slug"]: t["body"] + " " + (t.get("holds") or "") for t in civics.TOPICS}
+    RETRACTED = ["coroners chapter", "same footing", "by the same route",
+                 "does not set policy on its own account",
+                 "90 days of the start of the fiscal year",
+                 "provide security in the state courts"]
+    bad = []
+    for slug, body in pages.items():
+        flat = re.sub(r"\s+", " ", body)
+        bad += [f"{slug} says {w!r} again" for w in RETRACTED if w in flat]
+    for slug, phrase, sec, _said in LEARN_STATUTE_CLAIMS:
+        body = pages.get(slug)
+        if body is None:
+            bad.append(f"no Learn page {slug}")
+            continue
+        blocks = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", b))
+                  for b in re.split(r"</p>|</td>|</li>", body)]
+        hit = [b for b in blocks if phrase in b]
+        if not hit:
+            bad.append(f"{slug} no longer says {phrase!r}")
+        elif not any(_cites_section(b, sec) for b in hit):
+            bad.append(f"{slug}: {phrase!r} has lost its citation to RSA {sec}")
+    assert not bad, "; ".join(bad[:4]) + (f" (and {len(bad) - 4} more)" if len(bad) > 4 else "")
+    return "ok", (f"{len(LEARN_STATUTE_CLAIMS)} corrected claims each beside the section "
+                  "that supports it; no retracted wording")
+
+
 @check("frontend", "nowrap is never applied to a block by element name")
 def _nowrap():
     """The shape of the defect that made every legislator page scroll sideways.
@@ -11856,6 +12184,210 @@ def _numbers_page_public():
         assert "by-the-numbers" in sm.read_text(encoding="utf-8", errors="replace"), (
             "the sitemap does not list the page of numbers")
     return "ok", "indexable, on the Learn hub and in the sitemap"
+
+
+@check("data", "the Learn pages' worked examples agree with the roll calls they cite")
+def _learn_examples_record():
+    """The Learn pages teach with real votes, typed into the prose, and one was
+    wrong: HB 1002's 193-179 was given as "62 Republicans for", where the
+    ballots of roll call 2024-H-35 hold 63. A figure typed from memory is the
+    thing every other number on these pages was changed to avoid, so each one
+    a page states is checked here against the roll call it describes:
+
+      * a party split -- "193 to 179: 63 Republicans for and 125 against" --
+        against the ballots of the House roll call on that bill with that
+        tally, the bill named by the heading above it;
+      * a count of members in office -- "231 to 88 when 384 members were in
+        office", "CACR 26 with 239 votes, when 397 members were in office" --
+        against the ballots of that roll call, one per member in office;
+      * "still awaiting its override vote", only while a veto of the current
+        term has no override yet;
+      * every row of the closest-votes table, against rollcalls.json: none may
+        be a question that needed more than a majority.
+    """
+    import csv as _csv
+    from collections import defaultdict
+    site = Path("site")
+    page = site / "learn" / "how-a-bill-becomes-law.html"
+    if not page.exists() or not (site / "data").is_dir():
+        return "skip", "the Learn pages or site/data are not built"
+
+    def text(p):
+        t = p.read_text(encoding="utf-8", errors="replace") if p.exists() else ""
+        return re.sub(r"\s+", " ", t)
+
+    tallies = {}
+
+    def house_votes(year):
+        """{(bill, yeas, nays): Counter of (party, vote)} for the House roll
+        calls of the term holding `year`, read once per term."""
+        hits = sorted(site.glob("data/votes-*.csv"))
+        f = next((h for h in hits if str(year) in h.stem.split("-")[1:]), None)
+        assert f, f"no site/data/votes-*.csv holds {year}"
+        if f not in tallies:
+            by = defaultdict(Counter)
+            with f.open(encoding="utf-8", newline="") as fh:
+                for r in _csv.DictReader(fh):
+                    if r.get("chamber") == "House":
+                        by[(r["roll_call"], r["bill"])][(r["party"], r["vote"])] += 1
+            out = defaultdict(list)
+            for (rc, bill), c in by.items():
+                y = sum(v for (_p, vote), v in c.items() if vote == "Yea")
+                n = sum(v for (_p, vote), v in c.items() if vote == "Nay")
+                out[(bill, y, n)].append(c)
+            tallies[f] = out
+        return tallies[f]
+
+    how = text(page)
+    checked = 0
+    # A party split, with the tally in bold before it in the same paragraph,
+    # under the heading that names its bill.
+    for m in re.finditer(r"(\d+) Republicans for and (\d+) against, (\d+) Democrats for "
+                         r"and (\d+) against", how):
+        para = how[how.rfind("<p", 0, m.start()):m.start()]
+        tally = re.findall(r"<b>(\d+) to (\d+)</b>", para)
+        assert tally, f"'{m.group(0)}' names no tally in bold before it in its paragraph"
+        head = re.findall(r"<h3[^>]*>\s*([A-Z]+) (\d+) \((\d{4})\)", how[:m.start()])
+        assert head, f"'{m.group(0)}' sits under no heading naming its bill"
+        kind, num, year = head[-1]
+        (y, n), (ry, rn, dy, dn) = map(int, tally[-1]), map(int, m.groups())
+        found = house_votes(year).get((f"{kind}{num}", y, n)) or []
+        assert found, f"no House roll call on {kind} {num} ({year}) was {y}-{n}"
+        c = found[0]
+        got = (c[("R", "Yea")], c[("R", "Nay")], c[("D", "Yea")], c[("D", "Nay")])
+        assert got == (ry, rn, dy, dn), (
+            f"{kind} {num} {y}-{n}: the page says R {ry}/{rn}, D {dy}/{dn}; the ballots "
+            f"say R {got[0]}/{got[1]}, D {got[2]}/{got[3]}")
+        checked += 1
+    # A count of the members in office, from the ballots of that roll call.
+    learn_all = " ".join(text(p) for p in sorted((site / "learn").glob("*.html")))
+    flat = re.sub(r"<[^>]+>", " ", learn_all)
+    flat = re.sub(r"\s+", " ", flat)
+    examples = [(m.group(1), None, int(m.group(2)), int(m.group(3)), int(m.group(4)))
+                for m in re.finditer(r"in \w+ (\d{4}) it overrode a veto (\d+) to (\d+) "
+                                     r"when (\d+) members were in office", flat)]
+    examples += [(m.group(1), f"CACR{m.group(2)}", int(m.group(3)), None, int(m.group(4)))
+                 for m in re.finditer(r"In (\d{4}) the House carried CACR (\d+) with (\d+) "
+                                      r"votes, when (\d+) members were in office", flat)]
+    for year, bill, y, n, seated in examples:
+        hits = [(key, c) for key, cs in house_votes(year).items() for c in cs
+                if key[1] == y and (n is None or key[2] == n)
+                and (bill is None or key[0] == bill)]
+        assert hits, f"no House roll call of {year} matches {bill or ''} {y}-{n or ''}"
+        assert any(sum(c.values()) == seated for _k, c in hits), (
+            f"{bill or 'the override'} {y}-{n or ''} of {year}: the page says {seated} "
+            f"members were in office; its ballots number "
+            f"{sorted({sum(c.values()) for _k, c in hits})}")
+        checked += 1
+    # veto_pending: only while a veto of the current term awaits its override.
+    gov = text(site / "learn" / "governor-and-council.html")
+    idx = json.loads((site / "index.json").read_text(encoding="utf-8")) \
+        if (site / "index.json").exists() else []
+    term = max((r.get("term") or "" for r in idx), default="")
+    if "awaiting" in gov and "override" in gov:
+        assert any(r.get("status") == "Vetoed" and r.get("term") == term for r in idx), (
+            "the governor page says a veto is still awaiting its override vote, and no "
+            f"vetoed bill of {term} is without one")
+    # The closest votes: no row needed more than a majority.
+    nums = text(site / "learn" / "by-the-numbers.html")
+    at = nums.find("The closest votes")
+    rows = 0
+    if at >= 0:
+        try:
+            import learn_numbers as LN
+        except ImportError:
+            return "skip", "learn_numbers.py will not import"
+        rcs = json.loads(Path("rollcalls.json").read_text(encoding="utf-8")) \
+            if Path("rollcalls.json").exists() else {}
+        cur = rcs.get(term) or {}
+        block = nums[at:]
+        block = block[:block.find("<h2", 10)] if "<h2" in block[10:] else block
+        for m in re.finditer(r'bill/\d{4}/([a-z0-9]+)"[^<]*</a></td><td>([^<]*)</td>'
+                             r"<td>[^<]*</td><td>(\d+)&ndash;(\d+)</td><td>([^<]*)</td>", block):
+            bid, y, n, day = m.group(1).upper(), int(m.group(3)), int(m.group(4)), m.group(5)
+            same = [r for r in cur.get(bid) or []
+                    if r.get("yeas") == y and r.get("nays") == n and (r.get("date") or "") == day]
+            assert not any(LN.needs_more_than_majority(bid, r) for r in same), (
+                f"the closest votes list {bid} {y}-{n} of {day}, a question that needed more "
+                "than a majority, so its margin says nothing about how close it was")
+            rows += 1
+        assert rows or "<tbody><tr>" not in block, (
+            "the closest-votes table has rows this cannot read, so none of them was checked")
+    return "ok", (f"{checked} worked examples match their ballots; {rows} closest votes, "
+                  "each a majority question")
+
+
+@check("data", "every RSA section the Learn pages cite is in force, and says what they quote")
+def _learn_statutes_in_force():
+    """Against the General Court's own RSA table, db/NH_RSA.psv.
+
+    Two halves. Every "RSA n:s" on every Learn page, and every section listed
+    after one in the same citation, must be a row of the table whose title
+    does not read "Repealed"; a chapter named alone must be a chapter of it.
+    And each claim in LEARN_STATUTE_CLAIMS must still find its words in its
+    section, so a re-dump in which a statute changed under a sentence stops
+    here rather than on a reader.
+
+    A data check and not a code one, on purpose: nightly.py gates itself on
+    `preflight --code`, and a statute amended by the legislature is a reason
+    to reread a page, not a reason to stop the night's build.
+    """
+    import html as _html
+    cols_p, rsa_p = Path("db/_columns.json"), Path("db/NH_RSA.psv")
+    if not (cols_p.exists() and rsa_p.exists()):
+        return "skip", "db/NH_RSA.psv is not on this disk"
+    try:
+        import civics
+    except Exception as e:                      # noqa: BLE001
+        return "skip", f"civics.py did not import ({e})"
+    cols = json.loads(cols_p.read_text(encoding="utf-8")).get("NH_RSA") or []
+    need = {"ChapterNo", "SectionNo", "Section", "rsa"}
+    assert need <= set(cols), f"db/_columns.json lacks NH_RSA columns {sorted(need - set(cols))}"
+    at = {c: cols.index(c) for c in need}
+    chapters, sections = set(), {}
+    with rsa_p.open(encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            p = line.rstrip("\n").split("|")
+            if len(p) != len(cols):
+                continue
+            chapters.add(p[at["ChapterNo"]].strip())
+            sections[p[at["SectionNo"]].strip()] = (p[at["Section"]], p[at["rsa"]])
+    assert len(sections) > 10000, f"db/NH_RSA.psv read as only {len(sections):,} sections"
+
+    ref = r"\d+(?:-[A-Z]+)?(?::\d+(?:-[a-z]+)*)?"
+    para = r"(?:,\s*[IVXL]+(?:\([a-z0-9]+\))?(?:(?:,\s*|\s+and\s+)[IVXL]+(?:\([a-z0-9]+\))?)*)?"
+    cite = re.compile(r"RSA\s+(" + ref + para + r"(?:(?:,\s*|\s+and\s+)" + ref + para + r")*)")
+    cited, bad = set(), []
+    for t in civics.TOPICS:
+        flat = re.sub(r"\s+", " ", _html.unescape(re.sub(r"<[^>]+>", " ",
+                                                          t["body"] + " " + (t.get("holds") or ""))))
+        for m in cite.finditer(flat):
+            for r_ in re.findall(ref, m.group(1)):
+                cited.add((t["slug"], r_))
+    for slug, r_ in sorted(cited):
+        if ":" not in r_:
+            if r_ not in chapters:
+                bad.append(f"{slug} cites RSA {r_}, which is no chapter of the table")
+            continue
+        row = sections.get(r_.replace(":", "-"))
+        if not row:
+            bad.append(f"{slug} cites RSA {r_}, which is not in the table")
+        elif re.search(r"\brepealed\b", row[0], re.I):
+            bad.append(f"{slug} cites RSA {r_}, repealed: {row[0][:70]}")
+
+    def words(s):
+        s = re.sub(r"<[^>]+>", " ", s.replace("&#150;", "-"))
+        return re.sub(r"\s+", " ", _html.unescape(s)).lower()
+
+    for slug, _phrase, sec, said in LEARN_STATUTE_CLAIMS:
+        row = sections.get(sec.replace(":", "-"))
+        if not row:
+            bad.append(f"RSA {sec}, cited on {slug}, is not in the table")
+        elif said.lower() not in words(row[1]):
+            bad.append(f"RSA {sec} no longer says {said!r}, which {slug} relies on")
+    assert not bad, "; ".join(bad[:4]) + (f" (and {len(bad) - 4} more)" if len(bad) > 4 else "")
+    return "ok", (f"{len({r for _s, r in cited})} cited sections and chapters in force; "
+                  f"{len(LEARN_STATUTE_CLAIMS)} anchored claims say what their sections say")
 
 
 @check("data", "a committee's members are the ones on it today, not every seat the table still holds")
