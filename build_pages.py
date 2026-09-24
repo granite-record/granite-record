@@ -552,10 +552,19 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
         # card carries its own time again now -- beside its bill count, which
         # is the more compact place for it -- so a span here would be the
         # same string twice.
-        html.append(f'<div class="calday" data-d="{esc(date)}"><{h} class="caldate">'
+        # A DAY WITH NOTHING ON IT, which only the week page passes: it lists
+        # every weekday so a quiet one reads as quiet rather than as missing.
+        # Its own class, so the week's filter never hides a line that is true
+        # under any filter, and the home rail's reader of `class="calday"`
+        # never counts it.
+        html.append(f'<div class="calday{"" if keys else " calnone"}" '
+                    f'data-d="{esc(date)}"><{h} class="caldate">'
                     f'<span>{esc(label)}</span>'
                     f'<span class="cdrel">{esc(rel)}</span>'
                     + f"</{h}>")
+        if not keys:
+            html.append('<p class="calempty">No meetings scheduled.</p></div>')
+            continue
         for key in keys:
             _d, cmte = key
             rows = meets[key]

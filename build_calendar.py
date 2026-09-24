@@ -111,7 +111,9 @@ WEEK_JS = r"""
   if(!form)return;
   form.hidden=false;
   var meets=[].slice.call(document.querySelectorAll(".calmeet"));
-  var days=[].slice.call(document.querySelectorAll(".calday"));
+  // A day with no meeting at all says so and stays, whatever the filter:
+  // "No meetings scheduled" is true of it under every filter there is.
+  var days=[].slice.call(document.querySelectorAll(".calday:not(.calnone)"));
   var count=document.getElementById("wkcount");
   var find=document.getElementById("wkfind");
   var chips=[].slice.call(form.querySelectorAll("[data-body]"));
@@ -426,11 +428,21 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                else f"in {off} days" if 0 < off <= 14 else "")
         return f"{DAYNAME[x.weekday()]} {x.day} {MONTH[x.month - 1]}", rel
 
+    # EVERY WEEKDAY, WITH OR WITHOUT A MEETING. A week listing only the days
+    # that held something let a quiet Monday simply vanish, and a reader
+    # could not tell a day with nothing on it from a day missing from the
+    # page. Monday to Friday are always drawn, an empty one saying so; a
+    # Saturday or Sunday only when something is on it, because the General
+    # Court does not keep weekends and seven headings over two empty days
+    # would be noise.
+    shown = sorted(set(dated) | {(first + datetime.timedelta(days=i)).isoformat()
+                                 for i in range(5)})
     meets, days = {}, OrderedDict()
-    for date in sorted(dated):
-        for k, rows in days_raw[date].items():
+    for date in shown:
+        for k, rows in (days_raw.get(date) or {}).items():
             meets[k] = rows
-        days[date] = in_order(days_raw[date])
+        days[date] = in_order(days_raw.get(date) or {})
+    busy = sum(1 for v in days.values() if v)
 
     # level=2: the h1 of this page is the week itself, so a day is the
     # section under it. On the home page the days sit under "Coming up"
@@ -454,8 +466,8 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                    f'The week after &rsaquo;</a>')
 
     if n:
-        lead = (f"{n} sitting{'' if n == 1 else 's'} on {len(days)} "
-                f"day{'' if len(days) == 1 else 's'}, covering {bills:,} "
+        lead = (f"{n} sitting{'' if n == 1 else 's'} on {busy} "
+                f"day{'' if busy == 1 else 's'}, covering {bills:,} "
                 f"bill{'' if bills == 1 else 's'}. A committee appears once a day, "
                 "however many times it sat; open one for its items in order.")
     else:

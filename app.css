@@ -498,6 +498,9 @@ padding-bottom:var(--sp-3);border-bottom:1px solid var(--rule);
 display:flex;align-items:baseline;gap:var(--sp-4)}
 .caldate .cdrel{font-weight:400;letter-spacing:0;text-transform:none;
 font-size:var(--t-ui);color:var(--ink-2);margin-left:auto}
+/* A weekday with nothing on it, said in a line under its date rather than
+   left out, so a quiet day does not read as a missing one. */
+.calempty{margin:0 0 var(--sp-4);font-size:var(--t-ui);color:var(--ink-2)}
 .calmeet{background:var(--surface);border:1px solid var(--rule-2);
 border-radius:var(--r-out);margin:0 0 var(--sp-4)}
 .calmeet[open]{box-shadow:0 3px 10px var(--shadow)}

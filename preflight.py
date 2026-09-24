@@ -9301,6 +9301,64 @@ def _calendar_every_week():
                   "them empty, each a page with its arrows on the weeks beside it")
 
 
+@check("frontend", "a week's page lists every weekday, and a weekend day only when something is on it")
+def _calendar_every_weekday():
+    """Live /calendar for 21-27 September 2026 showed Wednesday and Thursday.
+
+    build_calendar kept only the days that held a meeting, so Monday, Tuesday
+    and Friday were simply not there and a quiet day could not be told from a
+    missing one. This writes a week with a Wednesday and a Saturday sitting
+    and another with only a Wednesday, and wants Monday to Friday on both --
+    each empty one marked and saying "No meetings scheduled." -- the Saturday
+    on the first only, no Sunday on either, and the week's filter script
+    leaving the empty days alone.
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_calendar as BC
+    here = Path(".").resolve()
+    if not (here / "bills.html").exists():
+        return "skip", "bills.html is not here"
+    rows = [{"term": "2025-2026", "bill": b, "body": "H", "kind": "public hearing",
+             "date": d, "time": "10:00", "committee": "Commerce", "venue": "LOB 302"}
+            for b, d in (("HB1", "2026-01-14"), ("HB2", "2026-01-17"),
+                         ("HB3", "2026-01-21"))]
+    today = _dt.date(2026, 9, 24)
+    weeks = BC.weeks_from(rows)
+    order = sorted(weeks)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-weekdays-"))
+    try:
+        site = tmp / "site"
+        site.mkdir()
+        shutil.copy(here / "bills.html", site / "bills.html")
+        with contextlib.redirect_stdout(io.StringIO()):
+            for i, k in enumerate(order):
+                BC.week_page(site, "https://graniterecord.org", k, weeks, order, i,
+                             {}, {}, {}, [], today, set())
+        want = {"2026-W03": (["2026-01-12", "2026-01-13", "2026-01-14", "2026-01-15",
+                              "2026-01-16", "2026-01-17"], {"2026-01-14", "2026-01-17"}),
+                "2026-W04": (["2026-01-19", "2026-01-20", "2026-01-21", "2026-01-22",
+                              "2026-01-23"], {"2026-01-21"})}
+        for k, (dates, busy) in want.items():
+            t = (site / "calendar" / f"{k}.html").read_text(encoding="utf-8")
+            got = re.findall(r'<div class="calday( calnone)?" data-d="([^"]+)"', t)
+            assert [d for _e, d in got] == dates, (
+                f"{k} lists {[d for _e, d in got]}, not {dates}")
+            for empty, d in got:
+                assert bool(empty) == (d not in busy), (
+                    f"{k}: {d} is {'marked empty' if empty else 'not marked empty'}")
+            assert t.count("No meetings scheduled.") == len(dates) - len(busy), (
+                f"{k}: an empty weekday does not say it has no meetings")
+        assert '.calday:not(.calnone)' in BC.WEEK_JS, (
+            "the week's filter hides days with nothing left in them, and would "
+            "hide a day that has no meetings at all")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("Monday to Friday on every week, empty ones saying so; a "
+                  "Saturday only where it holds a sitting")
+
+
 @check("frontend", "the home page's Coming up is this week, the week the Calendar tab shows")
 def _coming_up_is_this_week():
     """Coming up drew a fortnight under a comment saying it drew a week.
