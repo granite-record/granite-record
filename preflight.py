@@ -779,11 +779,27 @@ def _cacr_partition(build_civics):
     were postponed" -- the same three CACRs in two counts, a "rest" that was
     six three-fifths failures and a death on the table, and "None of them
     reached the voters" beside CACR 13 on its way to the November ballot.
-    Each clause is now one status, and a clause with nothing in it is not
-    printed."""
+    Every CACR is now in one clause, and a clause with nothing in it is not
+    printed.
+
+    Then the page said "9 CACRs won a majority of those voting in the House
+    and still fell short" and, a paragraph later, "6 fell short of three
+    fifths on the House floor". The docket has 10. CACR 8 of 2025's line says
+    "Lacking Necessary Two-Thirds Vote", a clerk's slip for three fifths, and
+    was not read; CACR 8, 11, 12 and 18 each lost a House vote they had a
+    majority on and were counted only as dying when the session ended. Both
+    paragraphs now count one test, and the rows below are the real docket
+    lines of those CACRs (and of 2016's CACR 17, whose line names no
+    threshold at all)."""
     BC = build_civics
-    fifths = {"events": [{"body": "H", "raw": "Ought to Pass: MF RC 194-158 Lacking "
-                          "Necessary Three-Fifths Vote 03/05/2026"}]}
+
+    def ev(body, raw):
+        return {"body": body, "raw": raw}
+
+    def nar(*evs):
+        return {"events": list(evs)}
+
+    fifths = nar(ev("H", "Ought to Pass: MF RC 194-158 Lacking Necessary Three-Fifths Vote 03/05/2026"))
     rows = ([{"id": "CACR13", "status": "Passed both chambers, goes to the voters in November 2026",
               "passage": "Hpp--"}]
             + [{"id": f"CACR{i}", "status": "Killed", "passage": "Hx--x"} for i in range(20, 27)]
@@ -793,18 +809,53 @@ def _cacr_partition(build_civics):
                for i in range(41, 44)]
             + [{"id": f"CACR{i}", "status": "Died when the session ended", "passage": "Hx--x"}
                for i in range(50, 63)])
-    narr = {f"CACR{i}": fifths for i in range(30, 36)}
+    narr = {f"CACR{i}": fifths for i in range(30, 35)}
+    narr.update({
+        "CACR35": nar(ev("H", "Ought to Pass: MF RC 188-135 03/09/2016")),
+        "CACR40": nar(ev("H", "Lay CACR22 on Table (Rep. Hill): MA RC 175-153 03/05/2026"),
+                      ev("H", "Remove from Table (Rep. H. Howard): MF DV 100-230 03/11/2026")),
+        # CACR 8 of 2025, 11 and 12 of 2026: through the Senate, short in the House.
+        "CACR41": nar(ev("S", "Ought to Pass, RC 21Y-3N, MA, by Necessary 3/5; OT3rdg; 03/13/2025"),
+                      ev("H", "Ought to Pass: MF DV 203-158 Lacking Necessary Two-Thirds Vote 05/08/2025")),
+        "CACR42": nar(ev("S", "Ought to Pass with Amendments #2026-1219s, RC 23Y-1N, by necessary 3/5, "
+                              "MA; OT3rdg; 03/26/2026"),
+                      ev("H", "Ought to Pass: MF RC 199-157 Lacking Necessary Three-Fifths Vote 04/23/2026")),
+        "CACR43": nar(ev("S", "Ought to Pass, RC 16Y-8N, MA, by Necessary 3/5; OT3rdg; 02/19/2026"),
+                      ev("H", "Amendment # 2026-1134h: AA RC 192-148 05/14/2026"),
+                      ev("H", "Ought to Pass with Amendment 2026-1134h: MF RC 193-148 Lacking "
+                              "Necessary Three-Fifths Vote 05/14/2026")),
+        # CACR 18 of 2026, short; CACR 9, no majority; CACR 19, not a vote on passing it.
+        "CACR50": nar(ev("H", "Ought to Pass: MF DV 170-163 Lacking Necessary Three-Fifths Vote 03/12/2026")),
+        "CACR51": nar(ev("H", "Ought to Pass: MF DV 136-185 Lacking Necessary Three-Fifths Vote 03/11/2026")),
+        "CACR52": nar(ev("H", "Special Order to next order of business (Rep. A. Murray): MF DV 115-220 "
+                              "03/11/2026")),
+    })
     got = BC._cacr_record(rows, narr, "2025-2026")
     want = ("The 2025&ndash;2026 term filed <b>31 CACRs</b>. One passed both chambers and goes "
             "to the voters at the state general election in November 2026. 7 were killed "
-            "outright, 6 fell short of three fifths on the House floor, 1 died on the table, "
-            "and 16 died when the session ended, 3 of them after passing the Senate.")
+            "outright; 10 fell short of three fifths on the House floor, 3 of them after "
+            "passing the Senate; 1 died on the table; and 12 died when the session ended.")
     assert got == want, f"got {got!r}"
+    # The paragraph above it counts the same failures by the same test.
+    idx = ([dict(r, term="2025-2026") for r in rows]
+           + [{"id": "CACR26", "term": "2011-2012", "passage": "Hpp--",
+               "status": "Passed both chambers, went to the voters"}])
+    hurdle = BC._cacr_hurdle(idx, {"2025-2026": narr}, "2025-2026")
+    assert ("Of the 32 CACRs filed since 2011, 2 passed both chambers." in hurdle
+            and "In the 2025&ndash;2026 term, 10 CACRs won a majority of those voting "
+                "in the House and still fell short." in hurdle), hurdle
+    assert "%" not in hurdle and "margin" not in hurdle, (
+        "the hurdle paragraph measures a CACR's margin against those voting: " + hurdle)
+    # CACR 26 of 2012 fell two short and was carried on reconsideration.
+    cacr26 = nar(ev("H", "Ought to Pass: MF RC 237-115 Lacking Necessary Three-Fifths Vote"),
+                 ev("H", "Reconsideration of OTP (Rep Hess): MA RC 242-111"),
+                 ev("H", "Ought to Pass: MA RC 239-114 By Necessary Three-Fifths Vote"))
+    assert not BC._fell_short(cacr26, "Died when the session ended"), "a CACR the House carried fell short"
     one = BC._cacr_record([{"id": "CACR1", "status": "Killed", "passage": "Hx--x"}], {}, "2023-2024")
     assert "None passed both chambers. 1 was killed outright." in one, one
     assert " 0 " not in got and "no of" not in one, (got, one)
     assert BC._cacr_record([], {}, "2023-2024").endswith("filed no CACRs."), "an empty term"
-    return "ok", "31 CACRs in five clauses, each counted once"
+    return "ok", "31 CACRs in five clauses, each counted once, and the same 10 short on both paragraphs"
 
 
 # =============================================================== code: naming ==
