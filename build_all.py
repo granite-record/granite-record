@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.31
+# GRANITE_VERSION: 2026-09-05.32
 """
 Run the whole pipeline in the right order.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-12.2
+# GRANITE_VERSION: 2026-09-12.3
 """
 Municipal officials, out of the Department of Transportation's directory.
 

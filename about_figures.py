@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-17.1
+# GRANITE_VERSION: 2026-09-17.2
 """
 The figures about.html states, counted rather than typed.
 

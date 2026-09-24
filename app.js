@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.112
+// GRANITE_VERSION: 2026-09-07.113
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",

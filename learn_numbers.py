@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.2
+# GRANITE_VERSION: 2026-09-14.3
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.5
+# GRANITE_VERSION: 2026-09-19.6
 """
 A page for every day the House sat.
 

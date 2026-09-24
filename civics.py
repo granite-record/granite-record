@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.23
+# GRANITE_VERSION: 2026-09-08.24
 """
 The topics of the civics section: their order, their names, and their prose.
 

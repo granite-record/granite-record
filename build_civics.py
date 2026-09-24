@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.25
+# GRANITE_VERSION: 2026-09-08.26
 """
 The civics section: a hub and one page per topic, in order.
 
