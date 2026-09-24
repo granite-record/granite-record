@@ -411,6 +411,68 @@ def calendar_keys_from_queue(path="archive/queue.csv"):
     return out
 
 
+def journal_keys_from_queue(path="archive/queue.csv", since=2025):
+    """{"HJ 16 2026": (address, "2026-08-19")} for the journals the drain
+    fetched, from `since` on; the date is the one the file's name states, or
+    "" where it states none ("SJ 15.pdf").
+
+    The key is the journal's own number and the year of the folder it is
+    filed under, which is its series: a session's numbering restarts each
+    year and the December organization day opens the next year's, so
+    "HJ 01 December 4, 2024" is filed under 2025 and is HJ 1 2025 --
+    session_days.journal_series gives a sitting's date the same year. From
+    2025 only, for the reason calendar_keys_from_queue leaves journals out:
+    in 1997-2012 the docket's "HJ n" is the House Record's issue number, not
+    the file's, and the years between have not been checked. A number that
+    two held files claim answers nothing rather than either.
+    """
+    import csv
+    try:
+        rows = list(csv.DictReader(open(path, encoding="utf-8")))
+    except OSError:
+        return {}
+    months = ("january february march april may june july august september "
+              "october november december").split()
+    seen = defaultdict(set)
+    for r in rows:
+        if r.get("kind") != "journal" or r.get("state") != "held" or not r.get("url"):
+            continue
+        p = r["path"].replace("\\", "/").lower()
+        m = re.match(r"^journals(?:_senate)?/(\d{4})/(hj|sj)\s*0*(\d+)\b", p)
+        if not (m and int(m.group(1)) >= since):
+            continue
+        d = re.search(r"\b(" + "|".join(months) + r")\s+(\d{1,2}),?\s+(\d{4})", p)
+        named = (f"{d.group(3)}-{months.index(d.group(1)) + 1:02d}-{int(d.group(2)):02d}"
+                 if d else "")
+        seen[f"{m.group(2).upper()} {int(m.group(3))} {m.group(1)}"].add((r["url"], named))
+    return {k: v.pop() for k, v in seen.items() if len(v) == 1}
+
+
+def journal_url(date, cite, keys):
+    """The address of the journal a sitting on `date` is printed in, or "".
+
+    By the journal's NUMBER, which the sitting's own rows cite ("HJ 16"), and
+    never by the date alone. The year is the number's series, which for a
+    December sitting may be either year -- the organization day opens the
+    next year's numbering, and a December session in an odd year stays in its
+    own -- so both are tried, and a file is taken only where its own name
+    states this very date, or states none and the year is the series
+    session_days.journal_series gives. Anything else answers nothing: a
+    wrong journal is worse than no link.
+    """
+    import session_days
+    m = re.match(r"^([HS]J)\s*0*(\d+)$", (cite or "").strip().upper())
+    if not m or not date:
+        return ""
+    series = session_days.journal_series(date)
+    hits = set()
+    for y in {date[:4], series}:
+        v = keys.get(f"{m.group(1)} {int(m.group(2))} {y}")
+        if v and (v[1] == date or (not v[1] and y == series)):
+            hits.add(v[0])
+    return hits.pop() if len(hits) == 1 else ""
+
+
 # The General Court's own status vocabulary, mapped to the four display states.
 # Reading the field beats inferring it from docket prose: this is the fact most
 # people come to the site for, and a wrong guess here is a wrong headline.

@@ -638,6 +638,8 @@ def main():
 
     urls, wrote, with_narr, linked, unlinked = [], 0, 0, 0, 0
     order = mine[: a.limit] if a.limit else mine
+    import build_site_v2 as B2
+    journal_keys, jlinked = B2.journal_keys_from_queue(), 0
     for n, key in enumerate(order):
         day = days[key]
         date = day.date
@@ -685,9 +687,18 @@ def main():
                       og_type="article", nav_current="calendar.html",
                       jsonld=LD.listing(label, lead, base, S.canon(path)))
         payload = json.dumps(payloads, separators=(",", ":"))
+        # THE JOURNAL ITSELF, where the record holds its address: by the
+        # number this day's rows cite and never by the date alone (see
+        # build_site_v2.journal_url), so a page is linked to its own journal
+        # or to none.
+        jurl = B2.journal_url(date, day.journal, journal_keys) if day.journal else ""
+        if jurl:
+            jlinked += 1
+        cite = (f'<a class="jpdf" href="{S.E(jurl)}" rel="noopener">'
+                f'{S.E(day.journal)} (PDF)</a>' if jurl else S.E(day.journal))
         full = ('<div id="results"><div class="wkpage sesspage">'
                 f"<h1>{S.E(label)}</h1>"
-                + (f'<p class="src">{S.E(day.journal)}. {S.E(lead)}</p>'
+                + (f'<p class="src">{cite}. {S.E(lead)}</p>'
                    if day.journal else f'<p class="src">{S.E(lead)}</p>')
                 + f'<nav class="wknav" aria-label="Other sittings">{"".join(nav)}</nav>'
                 + block
@@ -712,6 +723,8 @@ def main():
         print(f"  sitemap.xml: {added} added, {dropped} no longer written taken out")
 
     print(f"  {wrote:,} {CHAMBER[body]} sitting days -> site/session/{body}/")
+    print(f"    {jlinked:,} link their journal PDF ({len(journal_keys):,} journals "
+          "from 2025 in archive/queue.csv)")
     print(f"    {with_narr:,} carry a journal narrative "
           f"(the journal starts {JOURNAL_FROM[:4]})")
     named = linked + unlinked

@@ -2589,6 +2589,11 @@ def _palette():
         TEXT += [(f"st-{st}", f"st-{st}-bg"), ("ink-2", f"st-{st}-bg")]
     BOUND = [("edge", "surface"), ("edge", "paper"),
              ("pine", "surface"), ("pine", "paper")]
+    # A meeting's kind: its ink is the chip's text on its tint, and it is also
+    # the card's edge bar and the chip's edge on the card and the page.
+    for k in ("hear", "meet", "exec", "conf", "floor"):
+        TEXT += [(f"cal-{k}", f"cal-{k}-bg")]
+        BOUND += [(f"cal-{k}", "surface"), (f"cal-{k}", "paper")]
 
     bad, n = [], 0
     for scheme, t in (("light", tok), ("dark", dark)):
@@ -9101,6 +9106,82 @@ def _meet_kind_agrees():
     return "ok", f"{len(table)} meeting kinds, the same in both renderers"
 
 
+@check("frontend", "a meeting takes the General Court's colour for its kind, and the week carries the key")
+def _meet_kind_colours():
+    """Work sessions, conferences and the floor were all orange.
+
+    The General Court's schedule, which staff read every week, colours a
+    hearing blue, a meeting green, an executive session orange and a
+    committee of conference red (fetch_schedule.py quotes the legend). The
+    calendar here gave a hearing gold and an executive session teal, and
+    every other kind fell to a catch-all bar in --st-study orange -- so 55
+    committees of conference and 60 floor sittings, and every work session,
+    wore the colour that means executive session there. No page carried a key.
+
+    This holds each kind that occurs in the record to its class, each class
+    to a chip rule, a bar rule and a key rule in app.css drawn from its own
+    --cal- token, the key to every class, and a built week to the key.
+    """
+    import build_pages as BP
+    want = {"public hearing": "k-hearing", "hearing": "k-hearing",
+            "executive session": "k-exec", "work session": "k-meet",
+            "subcommittee work session": "k-meet",
+            "full committee work session": "k-meet",
+            "study committee": "k-meet", "statutory committee": "k-meet",
+            "committee of conference": "k-conf", "floor debate": "k-floor"}
+    got = {k: BP.MEET_KIND.get(k, ("", ""))[1] for k in want}
+    assert got == want, ("meeting kinds take the wrong colour: "
+                         + ", ".join(f"{k} is {got[k]!r}, not {want[k]!r}"
+                                     for k in want if got[k] != want[k]))
+    css = Path("app.css").read_text(encoding="utf-8")
+    tok = {"k-hearing": "hear", "k-meet": "meet", "k-exec": "exec",
+           "k-conf": "conf", "k-floor": "floor"}
+    for cls, t in tok.items():
+        for rule in (rf"\.calkind\.{cls}\{{[^}}]*var\(--cal-{t}\)",
+                     rf"\.calmix \.{cls}\{{background:var\(--cal-{t}\)\}}",
+                     rf"\.calkey \.{cls}\{{background:var\(--cal-{t}\)\}}"):
+            assert re.search(rule, css), (
+                f"app.css has no rule matching {rule!r}: the {cls} colour is "
+                "not drawn from its own --cal- token")
+    assert re.search(r"\.calmix \.k-other\{background:var\(--edge\)\}", css), (
+        "a kind the table does not name borrows a colour instead of the neutral edge")
+    legend = [c for c, _w in BP.MEET_LEGEND]
+    assert sorted(legend) == sorted(tok), f"the key names {legend}, not {sorted(tok)}"
+
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_calendar as BC
+    here = Path(".").resolve()
+    if not (here / "bills.html").exists():
+        return "skip", "bills.html is not here"
+    rows = [{"term": "2025-2026", "bill": "HB1", "body": "H", "kind": k,
+             "date": "2026-03-05", "time": t, "committee": c, "venue": ""}
+            for k, t, c in (("floor debate", "", ""),
+                            ("committee of conference", "", ""),
+                            ("subcommittee work session", "10:00", "Commerce"))]
+    weeks = BC.weeks_from(rows)
+    order = sorted(weeks)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-kinds-"))
+    try:
+        site = tmp / "site"
+        site.mkdir()
+        shutil.copy(here / "bills.html", site / "bills.html")
+        with contextlib.redirect_stdout(io.StringIO()):
+            BC.week_page(site, "https://graniterecord.org", order[0], weeks, order, 0,
+                         {}, {}, {}, [], _dt.date(2026, 9, 24), set())
+        t = (site / "calendar" / f"{order[0]}.html").read_text(encoding="utf-8")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert 'class="calkey"' in t, "a week's page carries no key to its colours"
+    bars = re.findall(r'<span class="calmix" aria-hidden="true">(.*?)</span>', t)
+    seen = set(re.findall(r'<i class="(k-[a-z]+)"></i>', "".join(bars)))
+    assert seen == {"k-floor", "k-conf", "k-meet"}, (
+        f"a floor sitting, a conference and a work session drew bars {sorted(seen)}")
+    return "ok", (f"{len(want)} kinds on five colours, each from its own token, "
+                  "and the key on the week")
+
+
 # Every kind app.js ranks, two it does not, and the pairs text sorts wrongly:
 # HB1003/HB103, SB133/SB16, CACR29/CACR6. BILL_ORDER is where bills.html's
 # billKey puts them; BILL_SCRAMBLED is the same ids in no order at all.
@@ -9266,6 +9347,448 @@ def _bill_lists_by_number(BO, BC, BS, SP, BP):
     assert sponsors_csv == want, "sponsors.csv runs " + ", ".join(sponsors_csv)
     return "ok", ("committee, sponsored, consent, calendar, bills.csv and "
                   f"sponsors.csv all run {want[3]} before {want[5]}")
+
+
+@check("frontend", "every week from the first to the last has a page, and the arrows step one week")
+def _calendar_every_week():
+    """"The week after" 15-21 June 2026 went to 17-23 August.
+
+    build_calendar wrote a page only for a week that held a sitting, and each
+    page's arrows went to the neighbouring PAGE -- so out of session the arrow
+    labelled "The week after" jumped eight weeks, and /calendar/2026-W30 was a
+    404. A reader cannot tell a week that was skipped from one that was quiet.
+
+    This gives two sittings nine weeks apart and a build date a month after
+    the second, writes every week, and wants a page for each ISO week in the
+    span with its arrows on the weeks either side of it, the current week's
+    arrow on /calendar, and an empty week saying so rather than standing blank.
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_calendar as BC
+    here = Path(".").resolve()
+    if not (here / "bills.html").exists():
+        return "skip", "bills.html is not here"
+    rows = [{"term": "2025-2026", "bill": b, "body": "H", "kind": "public hearing",
+             "date": d, "time": "10:00", "committee": "Commerce", "venue": "LOB 302"}
+            for b, d in (("HB1", "2026-06-16"), ("HB2", "2026-08-18"))]
+    today = _dt.date(2026, 9, 24)
+    weeks = BC.weeks_from(rows)
+    added = BC.every_week(weeks, today)
+    order = sorted(weeks)
+    assert order[0] == "2026-W25" and order[-1] == BC.week_key(today), (
+        f"the weeks run {order[0]} to {order[-1]}, not 2026-W25 to "
+        f"{BC.week_key(today)}")
+    mondays = [_dt.date.fromisocalendar(int(k[:4]), int(k[6:]), 1) for k in order]
+    gaps = [f"{a} to {b}" for a, b, x, y in zip(order, order[1:], mondays, mondays[1:])
+            if (y - x).days != 7]
+    assert not gaps, "the weeks skip: " + ", ".join(gaps)
+    assert added == len(order) - 2, (
+        f"{added} weeks were added between two that hold sittings, of "
+        f"{len(order) - 2}")
+
+    def addr(k):
+        return "/calendar" if k == BC.week_key(today) else f"/calendar/{k}"
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-weeks-"))
+    try:
+        site = tmp / "site"
+        site.mkdir()
+        shutil.copy(here / "bills.html", site / "bills.html")
+        urls = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            for i, k in enumerate(order):
+                BC.week_page(site, "https://graniterecord.org", k, weeks, order, i,
+                             {}, {}, {}, urls, today, set())
+        for i, k in enumerate(order):
+            f = site / "calendar" / f"{k}.html"
+            assert f.exists(), f"calendar/{k}.html was not written"
+            t = f.read_text(encoding="utf-8")
+            nxt = re.findall(r'class="wknext" href="([^"]+)"', t)
+            prv = re.findall(r'class="wkprev" href="([^"]+)"', t)
+            if i + 1 < len(order):
+                assert nxt and set(nxt) == {addr(order[i + 1])}, (
+                    f"{k}: The week after goes to {nxt}, not {addr(order[i + 1])}")
+            if i:
+                assert prv and set(prv) == {addr(order[i - 1])}, (
+                    f"{k}: The week before goes to {prv}, not {addr(order[i - 1])}")
+        quiet = (site / "calendar" / "2026-W30.html").read_text(encoding="utf-8")
+        assert "No meetings are on the record for this week." in quiet, (
+            "an empty week that is over does not say nothing was on")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{len(order)} weeks from {order[0]} to {order[-1]}, {added} of "
+                  "them empty, each a page with its arrows on the weeks beside it")
+
+
+@check("frontend", "a week's page lists every weekday, and a weekend day only when something is on it")
+def _calendar_every_weekday():
+    """Live /calendar for 21-27 September 2026 showed Wednesday and Thursday.
+
+    build_calendar kept only the days that held a meeting, so Monday, Tuesday
+    and Friday were simply not there and a quiet day could not be told from a
+    missing one. This writes a week with a Wednesday and a Saturday sitting
+    and another with only a Wednesday, and wants Monday to Friday on both --
+    each empty one marked and saying "No meetings scheduled." -- the Saturday
+    on the first only, no Sunday on either, and the week's filter script
+    leaving the empty days alone.
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_calendar as BC
+    here = Path(".").resolve()
+    if not (here / "bills.html").exists():
+        return "skip", "bills.html is not here"
+    rows = [{"term": "2025-2026", "bill": b, "body": "H", "kind": "public hearing",
+             "date": d, "time": "10:00", "committee": "Commerce", "venue": "LOB 302"}
+            for b, d in (("HB1", "2026-01-14"), ("HB2", "2026-01-17"),
+                         ("HB3", "2026-01-21"))]
+    today = _dt.date(2026, 9, 24)
+    weeks = BC.weeks_from(rows)
+    order = sorted(weeks)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-weekdays-"))
+    try:
+        site = tmp / "site"
+        site.mkdir()
+        shutil.copy(here / "bills.html", site / "bills.html")
+        with contextlib.redirect_stdout(io.StringIO()):
+            for i, k in enumerate(order):
+                BC.week_page(site, "https://graniterecord.org", k, weeks, order, i,
+                             {}, {}, {}, [], today, set())
+        want = {"2026-W03": (["2026-01-12", "2026-01-13", "2026-01-14", "2026-01-15",
+                              "2026-01-16", "2026-01-17"], {"2026-01-14", "2026-01-17"}),
+                "2026-W04": (["2026-01-19", "2026-01-20", "2026-01-21", "2026-01-22",
+                              "2026-01-23"], {"2026-01-21"})}
+        for k, (dates, busy) in want.items():
+            t = (site / "calendar" / f"{k}.html").read_text(encoding="utf-8")
+            got = re.findall(r'<div class="calday( calnone)?" data-d="([^"]+)"', t)
+            assert [d for _e, d in got] == dates, (
+                f"{k} lists {[d for _e, d in got]}, not {dates}")
+            for empty, d in got:
+                assert bool(empty) == (d not in busy), (
+                    f"{k}: {d} is {'marked empty' if empty else 'not marked empty'}")
+            assert t.count("No meetings scheduled.") == len(dates) - len(busy), (
+                f"{k}: an empty weekday does not say it has no meetings")
+        assert '.calday:not(.calnone)' in BC.WEEK_JS, (
+            "the week's filter hides days with nothing left in them, and would "
+            "hide a day that has no meetings at all")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("Monday to Friday on every week, empty ones saying so; a "
+                  "Saturday only where it holds a sitting")
+
+
+@check("frontend", "study and statutory committees are on the calendar, named, dated to their source, and can be hidden")
+def _calendar_study_committees():
+    """The week of 21 September 2026 showed two sittings; the database held nine.
+
+    proceedings.csv is keyed on bills, so the calendar drew bill business
+    only, while its description said "Every hearing". Seven study and
+    statutory committee meetings that week -- the Road Toll commission, the
+    HHS Oversight Committee, the Commission on Aging -- were in db/ and read
+    by nothing. The one study committee that was on it, HB 1763's on
+    2 September, read "House -- committee not recorded".
+
+    This writes a small copy of the two database files, and wants: the
+    meetings read as rows in the database's own words, title-cased and
+    labelled study or statutory from CommitteeStatus; a cancelled one marked,
+    and not offered for anybody's calendar; the docket's committee-less row
+    for the bill named from the committee the bill set up and folded into its
+    meeting's card; the week page carrying the toggle, the source note with
+    the copy's date and a description that no longer says "Every"; and the
+    toggle's memory wrapped so a blocked storage leaves the page whole.
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_calendar as BC
+    here = Path(".").resolve()
+    if not (here / "bills.html").exists():
+        return "skip", "bills.html is not here"
+
+    def det(cid, year, bill, name, status):
+        f = [""] * 28
+        f[0], f[1], f[4], f[7], f[17] = cid, year, bill, name, status
+        return "|".join(f)
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-statstud-"))
+    try:
+        db = tmp / "db"
+        db.mkdir()
+        (db / "StatStudDetails.psv").write_text("\n".join([
+            det("1740", "2026", "HB1763", "COMMITTEE TO STUDY SITING AND MAINTENANCE "
+                "RULES REGARDING CERTAIN INTELLECTUAL AND DEVELOPMENTAL DISABILITY "
+                "(IDD) AND ACQUIRED BRAIN DISORDER (ABD) COMMUNITY RESIDENCES",
+                "Active Chaptered Study Committee"),
+            det("62", "1969", "", "COMMITTEE ON LEGISLATOR ORIENTATION",
+                "Active Statutory Committee"),
+            det("9", "1991", "", "A REPEALED BOARD", "Repealed")]) + "\n",
+            encoding="utf-8")
+        (db / "StatStudMeetings.psv").write_text("\n".join([
+            "|3023|1740|09/02/2026 10:00:00|GP Room 230  Regular Meeting||",
+            "|3056|62|09/22/2026 10:00:00|SH Room 122-123  Regular Meeting||",
+            "==CANCELLED==|3057|62|09/24/2026 13:00:00|==CANCELLED==SH Room 100  "
+            "Regular Meeting||",
+            "|3058|9|09/23/2026 10:00:00|LOB 101  Regular Meeting||",
+            "|12|62|01/11/1993 10:00:00|RM103, ST||",
+            # Venues the copy ran together, as it holds them: one the
+            # General Court's schedule has, one only a printed notice has,
+            # one neither has; a Teams passcode; and a type label of two
+            # words that used to leave "Public" on the place.
+            "|3080|62|09/30/2026 14:00:00|DHHSBrown BuildingConference Room 468129 "
+            "Pleasant StreetConcord, NH  03301 Organizational Meeting||",
+            "|3081|62|10/05/2026 10:00:00|NH Hospital Association125 Airport "
+            "RdConcord, NH  Regular Meeting||",
+            "|3082|62|10/06/2026 10:00:00|NH Fire Academy98 Smokey Bear Blvd., "
+            "Classroom 1Concord, NH  Regular Meeting||",
+            "|3083|62|10/07/2026 10:00:00|Dept of Justice, 1 Granite Place South, "
+            "Concord, NH or Teams Meeting ID: 279 737 604 573 Passcode: zKPHQY "
+            "Regular Meeting||",
+            "|3084|62|10/08/2026 10:00:00|Claremont Savings Bank Community Center, "
+            "152 South Street, Claremont Public Hearing||"]) + "\n", encoding="utf-8")
+        (tmp / "schedule_pages").mkdir()
+        (tmp / "schedule_pages" / "_events.json").write_text(json.dumps({"d": json.dumps([
+            {"title": "COMMITTEE ON LEGISLATOR ORIENTATION : DHHS\r\nBrown Building\r\n"
+                      "Conference Room 468\r\n129 Pleasant Street\r\nConcord, NH  03301",
+             "start": "2026-09-30T14:00:00", "url": "eventDetails.aspx?event=3080&et=2"},
+            # The same number at another time is another meeting: not taken.
+            {"title": "COMMITTEE ON LEGISLATOR ORIENTATION : Somewhere Else, 1 Main Street",
+             "start": "2026-10-06T09:00:00", "url": "eventDetails.aspx?event=3082&et=2"}])}),
+            encoding="utf-8")
+        (tmp / "meetings.json").write_text(json.dumps([
+            {"date": "2026-10-05", "committee": "Committee on Legislator Orientation",
+             "venue": "NH Hospital Association, 125 Airport Rd. Concord", "room": "",
+             "bill": "", "noticed": "2026-09-18", "calendar": "2026/HC033"},
+            {"date": "2026-10-05", "committee": "Committee on Legislator Orientation",
+             "venue": "NH Hospital Assoc- iation, 125 Airport Rd.", "room": "",
+             "bill": "", "noticed": "2026-09-11", "calendar": "2026/HC032"}]),
+            encoding="utf-8")
+        (db / "_manifest.json").write_text(json.dumps(
+            {"StatStudMeetings": {"fetched": "2026-09-08T20:45:43"}}), encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()) as said:
+            rows, names, fetched = BC.statstud(tmp)
+        assert fetched == "2026-09-08", f"the copy's date read as {fetched!r}"
+        assert "1 study/statutory meetings left out" in said.getvalue(), (
+            "a meeting of a committee labelled neither study nor statutory was "
+            "not reported as left out")
+        got = {(r["date"], r["committee"], r["kind"], r["time"], r["venue"]) for r in rows}
+        orient = "Committee on Legislator Orientation"
+        long = ("Committee to Study Siting and Maintenance Rules Regarding Certain "
+                "Intellectual and Developmental Disability (IDD) and Acquired Brain "
+                "Disorder (ABD) Community Residences")
+        stat = "statutory committee"
+        want = {("2026-09-02", long, "study committee", "10:00", "GP Room 230"),
+                ("2026-09-22", orient, stat, "10:00", "SH Room 122-123"),
+                ("2026-09-24", orient, "cancelled", "13:00", "SH Room 100"),
+                # A VENUE THE COPY RAN TOGETHER IS NEVER PRINTED AS STORED:
+                # "Room 468129" is Room 468 at 129 Pleasant Street. The
+                # schedule's own text for that meeting where it has it; the
+                # earliest printed notice that reads as a place; else none.
+                ("2026-09-30", orient, stat, "14:00",
+                 "DHHS, Brown Building, Conference Room 468, 129 Pleasant Street, "
+                 "Concord, NH 03301"),
+                ("2026-10-05", orient, stat, "10:00",
+                 "NH Hospital Association, 125 Airport Rd. Concord"),
+                ("2026-10-06", orient, stat, "10:00", ""),
+                # Nor a passcode, a link or an email address.
+                ("2026-10-07", orient, stat, "10:00", ""),
+                ("2026-10-08", orient, stat, "10:00",
+                 "Claremont Savings Bank Community Center, 152 South Street, Claremont")}
+        assert got == want, (f"the database copy read as {sorted(got - want)}; "
+                             f"missing {sorted(want - got)}")
+        assert "Public hearing." in {r["note"] for r in rows}, (
+            "a public hearing's type is not read whole")
+        for v, ok in (("GP Room 230", "GP Room 230"), ("REMOTE Room 000", "Remote"),
+                      ("McLane Middleton, 900 Elm Street, Manchester",
+                       "McLane Middleton, 900 Elm Street, Manchester"),
+                      ("BEAKingsman Room, 100 Main Street, Concord", ""),
+                      # Room 1 at 125 Airport Road, with the break lost.
+                      ("Foundation for Healthy Communities, Room 1125 Airport "
+                       "Road, Concord", ""),
+                      ("Department of Education, NH Room, 330 21 South Fruit Street", "")):
+            assert BC.place(v) == ok, f"the venue {v!r} reads as {BC.place(v)!r}"
+        assert BC.committee_name("COMMISSION TO STUDY THE USE OF OHRVS IN NEW "
+                                 "HAMPSHIRE") == ("Commission to Study the Use of "
+                                                  "OHRVs in New Hampshire")
+
+        docket = {"term": "2025-2026", "bill": "HB1763", "body": "H",
+                  "kind": "study committee", "date": "2026-09-02", "time": "",
+                  "committee": "", "venue": ""}
+        weeks = BC.weeks_from([docket] + rows, names=names)
+        day = weeks["2026-W36"]["2026-09-02"]
+        assert list(day) == [("2026-09-02", long)], (
+            f"HB 1763's study committee on 2 September is {list(day)}, not one "
+            "card under the committee's own name")
+        assert {(r["time"], r["venue"]) for r in day[("2026-09-02", long)]} == {
+            ("10:00", "GP Room 230")}, "the docket's row did not take its meeting's time and room"
+
+        note = ("Study and statutory committee meetings come from the General "
+                "Court's own database, as copied on 8 September 2026.")
+        site = tmp / "site"
+        site.mkdir()
+        shutil.copy(here / "bills.html", site / "bills.html")
+        order = sorted(weeks)
+        with contextlib.redirect_stdout(io.StringIO()):
+            for i, k in enumerate(order):
+                BC.week_page(site, "https://graniterecord.org", k, weeks, order, i,
+                             {}, {}, {}, [], _dt.date(2026, 9, 24), set(),
+                             study_note=note)
+        t = (site / "calendar.html").read_text(encoding="utf-8")
+        assert 'id="wkstudy" checked' in t, "the week has no study committee toggle, on by default"
+        assert "as copied on 8 September 2026" in t, "the week does not date its study committee data"
+        desc = re.search(r'name="description" content="([^"]*)"', t).group(1)
+        assert "Every" not in desc and "study and statutory" in desc, (
+            f"the description reads {desc!r}")
+        cards = re.findall(r'<details class="calmeet"([^>]*)>', t)
+        assert len(cards) == 2 and all('data-study=""' in c for c in cards), (
+            f"this week's study committee cards are {cards}")
+        assert sum('data-cancelled=""' in c for c in cards) == 1, (
+            "the cancelled meeting is not marked cancelled")
+        assert ">1 bill<" not in t and "(1 bill)" not in t, (
+            "a meeting with no bill before it is counted as one bill")
+        # A CANCELLED MEETING IS NOT A SITTING. The week of 13 January 2025
+        # said "22 sittings on 5 days" with the Opioid Abatement commission's
+        # cancelled meeting among the 22. This week holds one meeting that
+        # sat and one that was cancelled, on two days.
+        lead = re.search(r'<p class="src">([^<]*)</p>', t).group(1)
+        assert lead.startswith("1 sitting on 1 day."), (
+            f"the week's lead counts the cancelled meeting: {lead!r}")
+        assert "One cancelled meeting is shown as well, and not counted." in lead, (
+            f"the lead does not say a cancelled meeting is shown: {lead!r}")
+        assert "covering 0" not in lead, f"the lead reads {lead!r}"
+        node = shutil.which("node") or shutil.which("node.exe")
+        if node:
+            # The week script's own count, run against the two cards: a
+            # small stand-in for the page, enough for the filter to read
+            # its attributes and write its count.
+            go = tmp / "week.js"
+            go.write_text("""
+function el(a){ return {hidden:false, a:a, hasAttribute:function(k){return k in a;},
+  getAttribute:function(k){return k in a ? a[k] : null;},
+  querySelector:function(){return null;}, querySelectorAll:function(){return [];},
+  addEventListener:function(){}}; }
+var meets=[el({"data-body":"","data-study":"","data-date":"2026-09-22"}),
+           el({"data-body":"","data-study":"","data-date":"2026-09-24","data-cancelled":""})];
+var count={textContent:""}, find={value:"", addEventListener:function(){}};
+var form={hidden:true, querySelectorAll:function(){return [];}, addEventListener:function(){}};
+var byId={wkfilter:form, wkcount:count, wkfind:find};
+global.localStorage={getItem:function(){return null;}, setItem:function(){}};
+global.document={getElementById:function(i){return byId[i]||null;},
+  querySelectorAll:function(s){return s===".calmeet" ? meets : [];}};
+""" + BC.WEEK_JS + "\nprocess.stdout.write(count.textContent);\n", encoding="utf-8")
+            r = _run([node, str(go)], capture_output=True, text=True,
+                     encoding="utf-8", timeout=60)
+            assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
+            assert r.stdout == "1 sitting this week.", (
+                f"the week script counts {r.stdout!r} with one meeting cancelled")
+        js = BC.WEEK_JS
+        assert re.search(r"try\{\s*if\(localStorage\.getItem", js) and \
+            re.search(r"try\{\s*localStorage\.setItem", js), (
+                "the toggle's memory is not wrapped in try/catch; a browser that "
+                "blocks storage would stop the week's script")
+        assert 'm.hasAttribute("data-cancelled")' in js, (
+            "a cancelled meeting is offered for the reader's own calendar")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("three meetings read from the copy, named and labelled; a "
+                  "cancelled one marked; HB 1763's row folded into its "
+                  "committee's card; the toggle, the dated note and a true description")
+
+
+@check("frontend", "a calendar card links the calendar that first printed its notice, and a sitting its own journal")
+def _calendar_document_links():
+    """No calendar card and none of 1,601 sitting pages linked a source PDF.
+
+    The addresses were on disk all along: archive/queue.csv names the viewer
+    address of every calendar and journal fetched, and meetings.json names
+    the calendar each notice was printed in. The traps are both about WHICH
+    document. A notice is reprinted week after week, so the link is the
+    calendar that printed it first. And a sitting's journal is found by the
+    number its own rows cite, never by its date: the December organization
+    day opens the next year's numbering while a December session in an odd
+    year does not, so "HJ 19" of 17 December 2025 is filed under 2025 and a
+    date-based rule would have sent it to 2026's.
+
+    This writes a queue and a meetings.json and wants the earliest notice
+    linked, a number answered only where the file's own date agrees, an
+    ambiguous number answering nothing, and the card drawing the link.
+    """
+    import html as _h
+    import build_calendar as BC
+    import build_pages as BP
+    import build_site_v2 as B2
+    tmp = Path(tempfile.mkdtemp(prefix="gr-docs-"))
+    try:
+        V = "https://gc.nh.gov/house/calendars_journals/viewer.aspx?fileName="
+        q = tmp / "queue.csv"
+        rows = [("H", "journal", "2025", "HJ 19 December 17, 2025.pdf",
+                 V + "journals%5C2025%5CHJ%2019", r"journals\2025\HJ 19 December 17, 2025.pdf"),
+                ("H", "journal", "2026", "HJ 16 August 19, 2026.pdf",
+                 V + "journals%5C2026%5CHJ%2016", r"journals\2026\HJ 16 August 19, 2026.pdf"),
+                ("S", "journal", "2026", "SJ 15.pdf",
+                 V + "journals%5C2026%5CSJ%2015", r"journals_senate\2026\SJ 15.pdf"),
+                ("H", "journal", "2012", "HJ 5 March 1, 2012.pdf",
+                 V + "journals%5C2012%5CHJ%205", r"journals\2012\HJ 5 March 1, 2012.pdf"),
+                ("H", "calendar", "2026", "HC 29.pdf", V + "calendars%5C2026%5CHC%2029.pdf",
+                 r"calendars\2026\HC029.pdf"),
+                ("H", "calendar", "2026", "HC 32.pdf", V + "calendars%5C2026%5CHC%2032.pdf",
+                 r"calendars\2026\HC032.pdf")]
+        with q.open("w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(["chamber", "kind", "year", "name", "url", "path", "state",
+                        "attempts", "error", "bytes", "fetched"])
+            for r in rows:
+                w.writerow(list(r) + ["held", "0", "", "1", "2026-09-08"])
+        jk = B2.journal_keys_from_queue(str(q))
+        assert set(jk) == {"HJ 19 2025", "HJ 16 2026", "SJ 15 2026"}, (
+            f"journal keys read as {sorted(jk)}: 2025 on, keyed by number and folder year")
+        assert B2.journal_url("2025-12-17", "HJ 19", jk).endswith("HJ%2019"), (
+            "a December session in an odd year is not found in its own year's journals")
+        assert B2.journal_url("2026-08-19", "HJ 16", jk).endswith("HJ%2016")
+        assert B2.journal_url("2026-08-20", "HJ 16", jk) == "", (
+            "a sitting was linked to a journal whose own name gives another date")
+        assert B2.journal_url("2026-08-19", "SJ 15", jk).endswith("SJ%2015"), (
+            "a journal whose name states no date is not found by its number and series")
+        assert B2.journal_url("2026-08-19", "", jk) == ""
+
+        mj = tmp / "meetings.json"
+        mj.write_text(json.dumps([
+            {"date": "2026-09-25", "committee": "Solid Waste Working Group", "bill": "",
+             "calendar": "2026/HC032", "noticed": "2026-09-04"},
+            {"date": "2026-09-25", "committee": "Solid Waste Working Group", "bill": "",
+             "calendar": "2026/HC029", "noticed": "2026-08-07"},
+            {"date": "2026-09-24", "committee": "Commerce", "bill": "HB1753",
+             "calendar": "2026/HC032", "noticed": "2026-09-04"}]), encoding="utf-8")
+        notices = BC.first_notices(mj)
+        assert notices[1].get(("2026-09-25", "solid waste working group")) == "HC 29 2026", (
+            f"a reprinted notice links {notices[1]}, not the calendar that printed it first")
+        weeks = BC.weeks_from([
+            {"term": "2025-2026", "bill": "HB1753", "body": "H", "kind": "executive session",
+             "date": "2026-09-24", "time": "10:30", "committee": "Commerce", "venue": "GP 228"},
+            {"study": True, "bill": "", "kind": "statutory committee", "date": "2026-09-25",
+             "time": "09:30", "committee": "Solid Waste Working Group", "venue": "NHDES"},
+            {"term": "2025-2026", "bill": "HB9", "body": "H", "kind": "floor debate",
+             "date": "2026-08-19", "time": "", "committee": "", "venue": ""}], names={})
+        cal_urls = B2.calendar_keys_from_queue(str(q))
+        docs, n_cal, n_jnl = BC.doc_links(weeks, cal_urls, notices, jk,
+                                          {("H", "2026-08-19"): "HJ 16"})
+        assert docs.get(("2026-09-24", "Commerce")) == [
+            ("House Calendar 32", V + "calendars%5C2026%5CHC%2032.pdf")], docs
+        assert docs.get(("2026-09-25", "Solid Waste Working Group")) == [
+            ("House Calendar 29", V + "calendars%5C2026%5CHC%2029.pdf")], docs
+        assert docs.get(("2026-08-19", "House floor"), [("", "")])[0][0] == "House Journal 16", docs
+        assert (n_cal, n_jnl) == (2, 1), (n_cal, n_jnl)
+        key = ("2026-09-24", "Commerce")
+        page, _m = BP.cal_days({key[0]: [key]}, {key: weeks["2026-W39"][key[0]][key]},
+                               {}, {}, {}, lambda d: (d, ""), _h.escape, docs=docs)
+        assert f'href="{_h.escape(V)}calendars%5C2026%5CHC%2032.pdf" rel="noopener">' \
+               "House Calendar 32 (PDF)</a>" in page, "the card does not draw its notice's link"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("the first notice linked, journals found by number with their "
+                  "own date agreeing, and the link drawn on the card")
 
 
 @check("frontend", "the home page's Coming up is this week, the week the Calendar tab shows")

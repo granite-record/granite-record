@@ -281,11 +281,33 @@ RECENT_SHOWN = 5
 RECENT_MORE = ('<p class="actmore"><a class="morebtn" href="/bills?sort=recent">'
                'See all recent activity &rarr;</a></p>')
 
+# THE COLOURS ARE THE GENERAL COURT'S OWN, because staff already read its
+# schedule by them: blue a hearing, green a meeting (work sessions, study and
+# statutory committees), orange an executive session, red a committee of
+# conference -- the legend fetch_schedule.py quotes. The floor, which that
+# schedule does not colour, has one of its own. Until 24 September a hearing
+# was gold and every work session, conference and floor sitting fell to the
+# orange that means executive session there. A kind not named here keeps the
+# neutral k-other rather than borrowing a colour that means something else.
 MEET_KIND = {"public hearing": ("Public hearing", "k-hearing"),
              "hearing": ("Public hearing", "k-hearing"),
              "executive session": ("Executive session", "k-exec"),
-             "work session": ("Work session", ""),
-             "subcommittee work session": ("Subcommittee work session", "")}
+             "work session": ("Work session", "k-meet"),
+             "subcommittee work session": ("Subcommittee work session", "k-meet"),
+             "full committee work session": ("Full committee work session", "k-meet"),
+             "study committee": ("Study committee", "k-meet"),
+             "statutory committee": ("Statutory committee", "k-meet"),
+             "committee of conference": ("Committee of conference", "k-conf"),
+             "floor debate": ("Floor session", "k-floor")}
+
+# The key under a week's heading: each colour once, in the order a reader
+# meets them, worded as the chips are.
+MEET_LEGEND = (("k-hearing", "Public hearing"),
+               # Most green cards say "Statutory committee", so the key names it.
+               ("k-meet", "Work session, study or statutory committee"),
+               ("k-exec", "Executive session"),
+               ("k-conf", "Committee of conference"),
+               ("k-floor", "Floor session"))
 
 
 def meeting_key(u):
@@ -384,10 +406,10 @@ def calendar_html(out, today=None, rows=None):
     n_next = sum(len(v) for v in (weeks.get(nxt) or {}).values())
 
     # WHERE THE REST IS: next week's own page, which build_calendar writes
-    # for every week that has a sitting in it -- so it is only linked when
-    # next week has one, and otherwise the link is the Calendar tab, whose
-    # arrow reaches the next week that does. HOME_JS keeps this line when it
-    # empties the rail in the reader's clock.
+    # for every week in its range, empty ones included -- linked here only
+    # when next week has a sitting, and otherwise the link is the Calendar
+    # tab. HOME_JS keeps this line when it empties the rail in the reader's
+    # clock.
     if n_next:
         onward = (f"{n_next}{' more' if dates else ''} "
                   f"sitting{'' if n_next == 1 else 's'} next week. ",
@@ -524,8 +546,21 @@ def pchip(m, esc=_cesc):
             + (f" <i>{esc(role)}</i>" if role else "") + "</span>")
 
 
+def is_cancelled(rows):
+    """True when every row of a card is a cancelled meeting.
+
+    ONE DEFINITION, BECAUSE TWO PLACES USE IT: the card marks itself
+    data-cancelled from this, and the week's lead leaves the same cards out
+    of its count. A cancelled meeting is shown, so a reader who saw it
+    noticed can see it did not happen, and it is not a sitting -- counting
+    it said "22 sittings" of a week of 2025 in which 21 met.
+    """
+    return bool(rows) and all((r.get("what") or "").lower() == "cancelled"
+                              for r in rows)
+
+
 def cal_days(days, meets, titles, years, code, when, esc, level=3,
-             sessions=None):
+             sessions=None, docs=None):
     """The day blocks and their meeting cards, for any set of days.
 
     Split out of calendar_html on 18 September so the calendar PAGE draws the
@@ -552,10 +587,19 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
         # card carries its own time again now -- beside its bill count, which
         # is the more compact place for it -- so a span here would be the
         # same string twice.
-        html.append(f'<div class="calday" data-d="{esc(date)}"><{h} class="caldate">'
+        # A DAY WITH NOTHING ON IT, which only the week page passes: it lists
+        # every weekday so a quiet one reads as quiet rather than as missing.
+        # Its own class, so the week's filter never hides a line that is true
+        # under any filter, and the home rail's reader of `class="calday"`
+        # never counts it.
+        html.append(f'<div class="calday{"" if keys else " calnone"}" '
+                    f'data-d="{esc(date)}"><{h} class="caldate">'
                     f'<span>{esc(label)}</span>'
                     f'<span class="cdrel">{esc(rel)}</span>'
                     + f"</{h}>")
+        if not keys:
+            html.append('<p class="calempty">No meetings scheduled.</p></div>')
+            continue
         for key in keys:
             _d, cmte = key
             rows = meets[key]
@@ -588,7 +632,14 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             slots = sorted(x for x in (r.get("time") or "" for r in rows) if x)
             time = (slots[0] if len(set(slots)) == 1 else
                     f"{slots[0]}–{slots[-1]}") if slots else ""
-            n = len(rows)
+            # BILLS, NOT ROWS. A study or statutory committee's meeting is a
+            # row with no bill, and counting rows called it "(1 bill)".
+            n = sum(1 for r in rows if (r.get("bill") or "").strip())
+            # A study or statutory committee's card says so, for the week
+            # page's toggle; a cancelled one says that, so it is not offered
+            # for anybody's own calendar.
+            study = any(r.get("study") for r in rows)
+            cancelled = is_cancelled(rows)
             # WHAT A FILTER NEEDS, ON THE CARD ITSELF. The week page is static
             # HTML on a CDN and the filtering happens in the reader's browser,
             # so each card states its own chamber, committee and bills rather
@@ -607,6 +658,8 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                         + (f' data-time="{esc(slots[0])}"' if slots else "")
                         + (f' data-last="{esc(slots[-1])}"' if slots else "")
                         + (f' data-venue="{esc(venue)}"' if venue else "")
+                        + (' data-study=""' if study else "")
+                        + (' data-cancelled=""' if cancelled else "")
                         + "><summary>")
             # THE MIXED COLOUR. One segment per kind the day holds, stacked
             # down the edge of the card, so a committee doing two things reads
@@ -639,8 +692,9 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # particular. On its own where there is no time, for the same
             # reason.
             _bills = f'{n} bill{"" if n == 1 else "s"}'
-            html.append(f'<span class="calcount">'
-                        + (f"({_bills})" if time else _bills) + "</span>")
+            if n:
+                html.append(f'<span class="calcount">'
+                            + (f"({_bills})" if time else _bills) + "</span>")
             for k in kinds:
                 word, kcls = MEET_KIND.get(k.strip().lower(),
                                            (k.capitalize() if k else "Meeting", ""))
@@ -659,6 +713,20 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                                 + f'<span class="calkind {kcls}">{esc(word)}</span>'
                                 + (f'<span class="calwhere">{esc(vn)}</span>'
                                    if vn and not venue else "") + "</p>")
+                # A ROW WITH NO BILL is a study or statutory committee's
+                # meeting: it says what kind of meeting and what set the
+                # committee up, as text, and links nowhere -- there is no
+                # page here for a commission to lead to.
+                # ONCE: the database holds some meetings twice -- the Land and
+                # Community Heritage Authority's board on 16 November 2026 is
+                # meetings 2941 and 2942 -- and the card said its note twice.
+                for note in OrderedDict.fromkeys(
+                        r["note"] for r in items
+                        if not (r.get("bill") or "").strip() and r.get("note")):
+                    html.append(f'<p class="calnote">{esc(note)}</p>')
+                items = [r for r in items if (r.get("bill") or "").strip()]
+                if not items:
+                    continue
                 html.append('<ul class="calbills">')
                 for r in items:
                     bid = (r.get("bill") or "").strip()
@@ -693,7 +761,18 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                 floor = None
             elif floor and sessions is None:
                 floor = None
-            cc = code.get(cmte.strip().lower())
+            # THE OFFICIAL DOCUMENT, where the caller has one: the calendar
+            # that printed the notice, or the journal of a floor sitting.
+            # Addresses the record holds, passed in; never built here.
+            got = (docs or {}).get(key) or []
+            if got:
+                html.append('<p class="calmore caldocs">'
+                            + "".join(f'<a href="{esc(u)}" rel="noopener">'
+                                      f'{esc(w)} (PDF)</a>' for w, u in got)
+                            + "</p>")
+            # A study committee that shares a name with a standing one is not
+            # that committee, so its card does not borrow the page.
+            cc = None if study else code.get(cmte.strip().lower())
             if floor:
                 html.append('<p class="calmore">'
                             f'<a href="session/{floor}/{esc(_d)}.html">'
