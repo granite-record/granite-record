@@ -49,6 +49,7 @@ English so no page has to work it out twice.
 import collections
 import json
 import re
+from datetime import date as _date
 from pathlib import Path
 
 NARRATIVES = "narratives.json"
@@ -155,6 +156,128 @@ THRESHOLD = re.compile(r"\b(?P<a>\d)\s*/\s*(?P<b>\d)\s*nec", re.I)
 # way, and printing them as 76 separate entries buries the 41 it actually
 # debated.
 ON_CONSENT = re.compile(r"[;(]\s*CC\b")
+
+# A REPORT'S CC PLACES THE BILL ON ONE CALENDAR, IN ONE CHAMBER, ON ONE DAY.
+#
+# This used to mark every later floor action on a bill as a consent item, in
+# either chamber and for as long as the bill's last committee report said CC.
+# The veto day of 19 August 2026 listed a failed motion to reconsider HB 396
+# as "disposed of together, in one motion and without debate"; a House report's
+# CC followed its bill into the Senate, onto Senate pages from 2003 to 2010 --
+# years whose Senate Journals never mention a consent calendar; and a motion to
+# table, moved by a named member and carried on a roll call, was listed as
+# consent. The rule below is scored against the consent sections the House and
+# Senate Journals print, which is the chamber's own list of what the calendar
+# held. floor_items() applies it.
+#
+# WHAT A CONSENT CALENDAR ADOPTS IS A COMMITTEE'S REPORT, so the only floor
+# action that can be a consent item is the one that disposes of the bill the
+# way the report recommended: kill it, pass it, send it to interim study or
+# back to committee. Everything else -- a motion to table, to reconsider, to
+# move the bill to another day -- is a member's motion about the bill, taken
+# on its own.
+# "Ought Not to Pass" is a committee's report on a bill of address (HA 1 of
+# 2018 was on the consent calendar of 6 March); "Inexepdient" is the clerk's.
+REPORT_ADOPTED = re.compile(
+    r"^\s*(?:inex|ought\s+(?:not\s+)?to\s+(?:pass|adopt)|otp\b|itl\b|pass(?:ed)?\b|"
+    r"adopt(?:ed)?\b(?!\s+amendment)|interim\s+study|"
+    r"ref(?:er(?:red)?)?\.?\s+(?:[\w&.,' ]{0,40}\s)?(?:for|to)\s+interim\s+study|"
+    r"re-?\s*refer|rereferred)", re.I)
+
+# "Removed from Consent (Rep. Stone)", "REMOVED FROM CC, REQ REP SYTEK",
+# "HB 60 was Removed from the Consent Calendar". narratives.json types only
+# some of these consent_off: 346 House and 12 Senate rows of this kind arrive
+# as "other", and nine 1989 floor rows carry the removal inside the action.
+CONSENT_OFF = re.compile(r"removed\s+from\s+(?:the\s+)?(?:consent|cons\b|cons\.|CC\b)",
+                         re.I)
+
+# A SUSPENSION OF THE RULES IS NOT THE BILL'S DISPOSITION. "Reps Hess &
+# Nordgren Susp Rules for late ref to Finance" came before six consent bills
+# of 25 March 2003 were passed on the calendar, and "REPS WHEELER & BURLING
+# SUSP RULES FOR DEADLINE" before four of 20 May 1998. It neither uses up the
+# report nor is a consent item itself -- but only on the day it was taken: a
+# bill whose deadline was suspended and which came back a week later was
+# taken up on its own.
+SUSPENDS = re.compile(r"\bsusp(?:end(?:ed|s)?|ension|en)?\b|rules\s+suspen", re.I)
+
+# The clerk sometimes says it in the floor row itself: "ITL Report Adopted (CC
+# by nec 2/3)", "PASSED WITH AM/CONSENT CAL RC(270-60)", "Ought to Pass: MA
+# Div 282-9 (Consent Calendar)".
+SAID_IN_ROW = re.compile(r"\(\s*(?:CC|Cons(?:ent)?\.?\s+Cal\w*)\b|/\s*CONSENT\s+CAL\b",
+                         re.I)
+
+# A second committee's report is typed "other" in some years: "ED&A MAJ
+# REPORT OTP/AM FOR MAR26 (VOTE 12-0;CC)".
+REPORT_ROW = re.compile(r"\bREPORT\b", re.I)
+
+# THE SENATE SOMETIMES DATES ITS REPORT ROW AFTER THE VOTE. "Committee
+# Report: Ought to Pass, 05/16/2024; Vote 5-0; CC" follows the Senate's
+# consent calendar of 15 May 2024, which the Senate Journal prints with that
+# bill on it. A disposition with no report before it takes the chamber's next
+# row when that is a CC report dated within this many days; without it, 64
+# bills the Senate Journals print on a consent calendar were left off.
+REPORT_LAG_DAYS = 2
+
+
+def on_consent_calendar(report, e, item):
+    """Was this floor action the chamber adopting a consent-calendar report?
+
+    `report` is the committee report this is the first floor action after, or
+    None when another action, or a row saying the bill was removed from the
+    consent calendar, came between them.
+    """
+    if report is None or item.veto:
+        return False
+    if (report.get("body") or "").strip().upper() != \
+            (e.get("body") or "").strip().upper():
+        return False
+    # A member who moves something is not adopting the committee's report.
+    if item.mover:
+        return False
+    return bool(REPORT_ADOPTED.match(item.action or ""))
+
+
+def _reported_after(events, n, e, item):
+    """The chamber's own CC report, entered a day or two after the vote."""
+    if item.veto or item.mover or not REPORT_ADOPTED.match(item.action or ""):
+        return False
+    body = (e.get("body") or "").strip().upper()
+    try:
+        voted = _date.fromisoformat((e.get("date") or "")[:10])
+    except ValueError:
+        return False
+    for f in events[n + 1:]:
+        if (f.get("body") or "").strip().upper() != body:
+            continue
+        if f.get("type") in ("floor", "veto_override") and not f.get("cancelled"):
+            return False
+        if f.get("type") == "report":
+            try:
+                lag = (_date.fromisoformat((f.get("date") or "")[:10]) - voted).days
+            except ValueError:
+                return False
+            return (0 <= lag <= REPORT_LAG_DAYS
+                    and bool(ON_CONSENT.search(f.get("raw") or "")))
+    return False
+
+
+def _one_counted_vote(items):
+    """A consent calendar is ONE motion, so a counted vote on it is one tally
+    shared by every bill on it.
+
+    The Senate took the whole calendar by roll call through 2021 -- 23 to 1
+    on 22 April 2021, and every bill on it carries that tally -- and the
+    House divided on its calendar of 25 March 2014, 282 to 9. A roll call or
+    division that belongs to one bill alone was a vote on that bill, taken
+    after it came off the calendar, and is not a consent item.
+    """
+    counted = collections.Counter((i.kind, i.yeas, i.nays) for i in items
+                                  if i.consent and i.kind in ("RC", "DV"))
+    for i in items:
+        if i.consent and i.kind in ("RC", "DV") and \
+                counted[(i.kind, i.yeas, i.nays)] < 2:
+            i.consent = False
+
 
 VETO_TALLY = re.compile(r"\bRC\s*\(?\s*(?P<y>\d+)\s*Y?\s*-\s*"
                         r"(?P<n>\d+)\s*N?\s*\)?", re.I)
@@ -325,6 +448,51 @@ def _int(v):
         return None
 
 
+def floor_items(bill, term, events):
+    """[(event, Item)] for each floor action of one bill, in the record's
+    order, each Item's `consent` saying whether the chamber disposed of it on
+    its consent calendar. The day-level half of the rule, _one_counted_vote,
+    runs in load() once a day's items are together.
+
+    A committee report marked CC is PENDING until the bill's next floor
+    action, which uses it up. That action is a consent item only if it is in
+    the report's own chamber, has no named mover, is not a veto vote, and
+    disposes of the bill the way a report does. A row saying the bill was
+    removed from the consent calendar clears the report; a suspension of the
+    rules taken the same day leaves it in place.
+    """
+    out = []
+    events = events or []
+    pending, suspended_on = None, None
+    for n, e in enumerate(events):
+        kind = e.get("type")
+        raw = e.get("raw") or ""
+        floor = kind in ("floor", "veto_override")
+        if kind == "report" or (kind == "other" and REPORT_ROW.search(raw)
+                                and ON_CONSENT.search(raw)):
+            pending = e if ON_CONSENT.search(raw) else None
+            suspended_on = None
+        elif kind == "consent_off" or (not floor and CONSENT_OFF.search(raw)):
+            pending = None
+        if not floor or e.get("cancelled"):
+            continue
+        it = Item(bill, term, e, 0)
+        out.append((e, it))
+        day = (e.get("date") or "")[:10]
+        if (suspended_on and day != suspended_on) or CONSENT_OFF.search(raw):
+            pending = None
+        if not it.veto and SUSPENDS.search(it.action or raw):
+            suspended_on = suspended_on or day
+            continue
+        report, pending = pending, None
+        it.consent = (
+            on_consent_calendar(report, e, it)
+            or (not it.veto and not it.mover and not CONSENT_OFF.search(raw)
+                and bool(SAID_IN_ROW.search(raw)))
+            or (report is None and _reported_after(events, n, e, it)))
+    return out
+
+
 def load(path=NARRATIVES):
     """Every sitting day, as {(body, date): Day}.
 
@@ -343,24 +511,13 @@ def load(path=NARRATIVES):
     seq = 0
     for term, bills in sorted(data.items()):
         for bill, rec in sorted(bills.items()):
-            # A bill's events are in order, so the consent flag is simply
-            # whichever committee report was seen most recently.
-            on_consent = False
-            for e in (rec.get("events") or []):
-                if e.get("type") == "report":
-                    on_consent = bool(ON_CONSENT.search(e.get("raw") or ""))
-                if e.get("type") not in ("floor", "veto_override") \
-                        or e.get("cancelled"):
-                    continue
+            for e, it in floor_items(bill, term, rec.get("events")):
                 body = (e.get("body") or "").strip().upper()
                 date = (e.get("date") or "")[:10]
                 if body not in ("H", "S") or not re.match(r"\d{4}-\d\d-\d\d$", date):
                     continue
                 seq += 1
-                it = Item(bill, term, e, seq)
-                # A veto vote is never a consent item, whatever the bill's
-                # last committee report said months earlier.
-                it.consent = on_consent and not it.veto
+                it.seq = seq
                 grouped[(body, date)].append(it)
 
     assert grouped, ("no floor events in narratives.json -- every sitting day "
@@ -368,6 +525,7 @@ def load(path=NARRATIVES):
 
     days = {}
     for key, items in grouped.items():
+        _one_counted_vote(items)
         items.sort(key=lambda i: (i.page if i.page is not None else -1, i.seq))
         days[key] = Day(key[0], key[1], items)
     return days

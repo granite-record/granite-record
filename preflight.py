@@ -4050,6 +4050,152 @@ def _session_bill_term(BSP, SD, shell):
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("session", "the consent list holds only what the calendar disposed of",
+       needs=("session_days",))
+def _session_consent_only_the_calendar(SD):
+    """A bill's last committee report saying CC marked EVERY later floor
+    action on it as a consent item, in either chamber.
+
+    The veto day of 19 August 2026 listed a motion to reconsider HB 396 as
+    "disposed of together, in one motion and without debate"; 2,852 actions
+    were listed because the OTHER chamber's report said CC, and 2,109 came
+    after the docket recorded the bill being removed from the calendar.
+    Against the consent sections the House and Senate Journals print, the
+    pages named 3,132 bills as consent items that the journal does not, and
+    now name 397. The rows below are real docket wording, one case each, and
+    the day-level rule is checked through load() so that it cannot be dropped
+    from the path the pages use.
+    """
+    def ev(date, body, kind, raw, **kw):
+        e = {"date": date, "body": body, "type": kind, "raw": raw}
+        e.update(kw)
+        return e
+
+    def floor(date, body, raw, action, motion="MA", kind="VV", **kw):
+        return ev(date, body, "floor", raw, action=action, motion=motion,
+                  vote_kind=kind, **kw)
+
+    rep_h = "Committee Report: Ought to Pass 03/13/2024 (Vote 20-0; CC)"
+    bills = {
+        # the calendar's own item, then everything after it on the bill
+        "HB396": [ev("2026-01-06", "H", "report", rep_h),
+                  floor("2026-01-08", "H", "Ought to Pass: MA VV 01/08/2026",
+                        "Ought to Pass"),
+                  floor("2026-03-05", "S", "Ought to Pass, MA, VV; OT3rdg; "
+                        "03/05/2026", "Ought to Pass"),
+                  ev("2026-08-19", "H", "veto_override", "Veto Sustained "
+                     "08/19/2026: RC 204-116 Lacking Necessary Two-Thirds Vote"),
+                  floor("2026-08-19", "H", "Reconsider HB396 (Rep. Comtois): "
+                        "MA RC 187-120 08/19/2026", "Reconsider HB396",
+                        kind="RC", yeas="187", nays="120",
+                        mover="Rep. Comtois")],
+        # the House's report, and the Senate's is the next floor action
+        "HB9": [ev("2026-01-06", "H", "report", rep_h),
+                floor("2026-03-05", "S", "Ought to Pass, MA, VV; OT3rdg; "
+                      "03/05/2026", "Ought to Pass")],
+        # "Removed from Consent (Rep. Stone)" arrives typed "other"
+        "HB1543": [ev("2018-03-06", "H", "report", "Committee Report: "
+                      "Inexpedient to Legislate for 03/06/2018 (Vote 20-0; CC)"),
+                   ev("2018-03-06", "H", "other",
+                      "Removed from Consent (Rep. Stone) 03/06/2018"),
+                   floor("2018-03-22", "H", "Inexpedient to Legislate: MA VV "
+                         "03/22/2018", "Inexpedient to Legislate")],
+        # a suspension the same day leaves the report in place...
+        "HB785": [ev("2003-03-19", "H", "report",
+                     "Maj Report OTP for Mar 25 (Vote 19-0;CC)"),
+                  floor("2003-03-25", "H", "Reps Hess & Nordgren Susp Rules for "
+                        "late ref to Finance, MA 2/3VV",
+                        "Susp Rules for late ref to Finance"),
+                  floor("2003-03-25", "H", "Passed and ref to Finance",
+                        "Ought to Pass")],
+        # ...but not across days: the bill came back on its own
+        "HB158": [ev("2005-03-24", "H", "report",
+                     "Comm Report OTP/AM for Mar 30 (vote 16-0;CC)"),
+                  floor("2005-03-30", "H", "Reps O'Neil & Craig Susp Rules for "
+                        "Action Deadline, MA 2/3VV", "Susp Rules for Action Deadline"),
+                  floor("2005-04-06", "H", "Passed with Am VV",
+                        "Ought to Pass with Amendment")],
+        # a named member's motion is not the calendar
+        "HB1555": [ev("2022-03-01", "H", "report", "Committee Report: Refer for "
+                      "Interim Study (Vote 21-1; CC)"),
+                   floor("2022-03-10", "H", "Lay HB1555 on Table (Rep. Renzullo): "
+                         "MA RC 199-131 03/10/2022", "Lay HB1555 on Table",
+                         kind="RC", yeas="199", nays="131", mover="Rep. Renzullo")],
+        # the Senate dates its report row the day after the vote
+        "HB1526": [ev("2024-03-13", "H", "report", rep_h),
+                   floor("2024-03-28", "H", "Ought to Pass : MA VV 03/28/2024",
+                         "Ought to Pass"),
+                   floor("2024-05-15", "S", "Ought to Pass with Amendment "
+                         "2024-1848s, MA, VV; OT3rdg; 05/15/2024",
+                         "Ought to Pass with Amendment"),
+                   ev("2024-05-16", "S", "report", "Committee Report: Ought to "
+                      "Pass with Amendment #2024-1848s , 05/16/2024; Vote 5-0; CC")],
+        # a bill of address is reported Ought Not to Pass
+        "HA1": [ev("2018-02-27", "H", "report", "Committee Report: Ought Not to "
+                   "Pass for 03/06/2018 (Vote 20-0; CC)"),
+                floor("2018-03-06", "H", "Ought Not to Pass: MA VV 03/06/2018",
+                      "Ought Not to Pass")],
+        # the Senate took its calendar by one roll call: shared tallies stay,
+        # a tally of one bill's own does not
+        "SB11": [ev("2021-04-15", "S", "report", "Committee Report: Ought to "
+                    "Pass, 04/22/2021; Vote 5-0; CC"),
+                 floor("2021-04-22", "S", "Ought to Pass : RC 23Y-1N, MA; OT3rdg; "
+                       "04/22/2021", "Ought to Pass", kind="")],
+        "SB12": [ev("2021-04-15", "S", "report", "Committee Report: Ought to "
+                    "Pass, 04/22/2021; Vote 5-0; CC"),
+                 floor("2021-04-22", "S", "Ought to Pass : RC 23Y-1N, MA; OT3rdg; "
+                       "04/22/2021", "Ought to Pass", kind="")],
+        "SB13": [ev("2021-04-15", "S", "report", "Committee Report: Ought to "
+                    "Pass, 04/22/2021; Vote 5-0; CC"),
+                 floor("2021-04-22", "S", "Ought to Pass : RC 16Y-8N, MA; OT3rdg; "
+                       "04/22/2021", "Ought to Pass", kind="")],
+    }
+    root = Path(tempfile.mkdtemp())
+    try:
+        path = root / "narratives.json"
+        path.write_text(json.dumps({"2025-2026": {
+            b: {"events": e} for b, e in bills.items()}}), encoding="utf-8")
+        days = SD.load(path)
+
+        def consent(body, date, bill):
+            d = days.get((body, date))
+            assert d, f"the fixture's sitting {body} {date} was not built"
+            return [i.consent for i in d.items if i.bill == bill]
+
+        assert consent("H", "2026-01-08", "HB396") == [True], (
+            "the calendar's own disposition of HB 396 is not a consent item")
+        assert consent("H", "2026-08-19", "HB396") == [False, False], (
+            "the veto vote or the reconsideration of HB 396 on 19 August 2026 "
+            "is listed as a consent item")
+        assert consent("S", "2026-03-05", "HB396") == [False] and \
+            consent("S", "2026-03-05", "HB9") == [False], (
+            "a House report's CC made a Senate action a consent item")
+        assert consent("H", "2018-03-22", "HB1543") == [False], (
+            "a bill the docket says was 'Removed from Consent' is still listed "
+            "on the calendar")
+        assert consent("H", "2003-03-25", "HB785") == [False, True], (
+            "a same-day suspension of the rules either became a consent item or "
+            "used up the report before the bill passed on the calendar")
+        assert consent("H", "2005-04-06", "HB158") == [False], (
+            "a report outlived a suspension taken on an earlier day")
+        assert consent("H", "2022-03-10", "HB1555") == [False], (
+            "a named member's motion to table was listed as consent")
+        assert consent("S", "2024-05-15", "HB1526") == [True], (
+            "the Senate report row dated the day after its vote was missed")
+        assert consent("H", "2018-03-06", "HA1") == [True], (
+            "an Ought Not to Pass report on the calendar was missed")
+        got = {b: consent("S", "2021-04-22", b) for b in ("SB11", "SB12", "SB13")}
+        assert got == {"SB11": [True], "SB12": [True], "SB13": [False]}, (
+            "a calendar taken by one roll call keeps the bills that share its "
+            f"tally and drops a bill with a tally of its own; got {got}")
+        return "ok", ("the calendar's item only, in its own chamber: no veto "
+                      "day reconsideration, other chamber, removed bill, named "
+                      "mover or lone tally; same-day suspensions, a late Senate "
+                      "report row and Ought Not to Pass kept")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 # A House Calendar, laid out the way pdftotext -layout returns one: the heading
 # begins a line, the prose that follows does not. The minority's paragraph
 # cites ANOTHER bill mid-sentence, which is what the real calendars do
