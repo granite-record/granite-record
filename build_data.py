@@ -234,7 +234,7 @@ def _placeholder(name):
                    if w != "and") in _PLACEHOLDERS
 
 
-def _pick_committee(stored, first, known):
+def _pick_committee(stored, first, known, in_use=()):
     """The committee of referral, choosing between two sources that disagree.
 
     `stored` is the General Court search page's "Next/Last Comm" -- the LAST
@@ -249,20 +249,27 @@ def _pick_committee(stored, first, known):
     So the docket wins -- with one exception, which is the reason this is a
     function rather than an `or`.
 
-    THE EXCEPTION: the same committee under an older name. The clerk of 1999
+    THE EXCEPTION: one committee written two ways. The clerks of 1999-2006
     wrote "Public Works" for what the committee tables call "Public Works and
-    Highways", and about 170 bills differ only in that way. Preferring the
+    Highways", and 133 bills differ only in that way; clerks also misspell
+    and shorten ("Enviroment", "Child and Fam"). Preferring the
     docket there would trade a right committee for an unlinkable one: the site
     renders a committee the tables do not know as plain text rather than as a
     link, so the reader would lose the route to the committee's page and gain
-    nothing. Where the docket's name is one no table knows and the stored name
-    is, the two are taken to be the same committee and the linkable spelling
-    wins.
+    nothing. So where the docket's name is one no table knows, and the two
+    names can be one committee, the search page's spelling is kept.
 
-    That test is deliberately about LINKABILITY and not about similarity. Two
-    genuinely different committees -- Finance against Education -- are both
-    known, so the exception does not fire and the docket wins, which is the
-    whole point of the change.
+    That test was once about LINKABILITY alone, and it was too wide: every
+    committee since retired or renamed is one today's tables do not know --
+    the Senate's Insurance, Environment, Wildlife and Recreation, Public
+    Institutions, Health and Human Services among them -- so for all of those
+    the stored LAST committee won, which was overwhelmingly Finance. So the
+    two names must also be able to be one committee (_same_committee says
+    what that means). Finance against Insurance is not, and the docket wins.
+
+    `in_use` is the set of name keys the docket gives as a first referral
+    for three or more bills in this bill's term and chamber: the names the
+    clerks were actually using. _same_committee says what it guards against.
     """
     if not first:
         return stored
@@ -271,9 +278,144 @@ def _pick_committee(stored, first, known):
     import referrals as _r
     if _r._key(stored) == _r._key(first):
         return stored
-    if known and _r._key(first) not in known and _r._key(stored) in known:
-        return stored
-    return first
+    if known and _r._key(first) in known:
+        return first
+    return stored if _same_committee(first, stored, known, in_use) else first
+
+
+# THE ONE LONGER NAME THAT IS THE SAME COMMITTEE AT THE SAME TIME, whatever the
+# evidence below says. The clerk of 1999-2006 wrote "Public Works" for the
+# committee the tables call "Public Works and Highways", and _pick_committee's
+# exception was written for it.
+_SAME_COMMITTEE_LONGER = {("publicworks", "publicworkshighways")}
+
+
+def _same_committee(first, stored, known=(), in_use=()):
+    """Whether the docket's name and the search page's are one committee.
+
+    Three shapes, and what each needs:
+
+    ONE MISSPELT, OR SHORTENED WORD FOR WORD: "Enviroment", "Puplic
+    Affairs", "Exe Depts and Admin", "State-Fed Relations and Vets Aff".
+    Enough by itself; the search page's spelling is the better one. The test
+    for a misspelling is a similarity ratio of 0.85 over the whole name, and
+    it is not only a misspelling test: ten bills of 2011-2012 were referred
+    in the House to the "Special Committee on Public Employee Pensions
+    Reform" (the docket) and show the "Special Committee on Public Employee
+    Pension Plans" (the search page, and the only name the tables know,
+    H47), at a ratio of 0.89. Whether that is one committee renamed, and so whether the
+    later name may stand, is the same question as the next paragraph's; the
+    ratio answers yes, as it did before 23 September.
+
+    THE SEARCH PAGE'S NAME ADDS WORDS TO THE DOCKET'S. That is how a
+    committee is renamed, and the search page can carry the name a committee
+    had later in the term: the Senate's "Wildlife, Fish and Game" of 2007 was
+    "Wildlife, Fish and Game and Agriculture" by 2008, and fourteen bills the
+    docket refers to it under the first name stored the second. In this
+    shape a later name never replaces the one the bill was referred to (the
+    ratio above is the one place it still can). So the longer name is
+    kept only where it is the Public Works pair above, or where the docket
+    merely cut a name short: the longer is a name the committee tables know,
+    and the docket's shorter form is not one the clerks were using (in_use).
+    2005 HB1415's "Executive Departments and Admin" and 2007 SB66's "Criminal
+    Justice" are each the only such line in their term, against 155 and 108
+    first referrals to the full names. An abbreviation with words missing
+    ("Child and Fam", for Children and Family Law) likewise needs the longer
+    name to be one the tables know.
+
+    THE DOCKET'S NAME ADDS WORDS: "Ways and Means Committee", "JudiciarySJ".
+    The search page's name is kept where the tables know it.
+    """
+    import difflib
+    import referrals as _r
+    kf, ks = _r._key(first), _r._key(stored)
+    if not kf or not ks:
+        return False
+    if kf == ks or (kf, ks) in _SAME_COMMITTEE_LONGER:
+        return True
+    if ks.startswith(kf):                       # the stored name adds words
+        return ks in known and kf not in in_use
+    if kf.startswith(ks):                       # the docket's name adds words
+        return ks in known
+    if difflib.SequenceMatcher(None, kf, ks).ratio() >= 0.85:
+        return True
+    wf = [w for w in re.findall(r"[a-z]+", _r.AMP.sub(" and ", first).lower()) if w != "and"]
+    ws = [w for w in re.findall(r"[a-z]+", _r.AMP.sub(" and ", stored).lower()) if w != "and"]
+    short, full = (wf, ws) if len(wf) <= len(ws) else (ws, wf)
+
+    def shortens(w, f):
+        if f.startswith(w):
+            return True
+        if len(w) >= 3 and w[0] == f[0]:        # a contraction: "depts", "vets"
+            rest = iter(f)
+            return all(ch in rest for ch in w)
+        return False
+    if not (short and all(shortens(w, f) for w, f in zip(short, full))
+            and any(w != f for w, f in zip(short, full))):
+        return False
+    if len(wf) == len(ws):
+        return True
+    return ks in known                          # words missing as well
+
+
+def _current_referrals(bills, committees, docket):
+    """Correct the current term's committees and chamber from its own docket.
+
+    The committee comes from the General Court's referral codes (LSRs.txt, or
+    db/Legislation.psv's House and Senate CommitteeReferralCode). Where the
+    docket's introduction line names a committee the tables know, the two
+    agree on every current bill but five.
+
+    Four are VACATES: the chamber took the bill away from the committee the
+    code still names and sent it elsewhere -- "SB 83 is vacated from Commerce
+    and referred to Ways and Means". The archive publishes the committee a
+    bill was vacated TO as its committee of referral, because the first
+    referral did not stand, and the current term follows the same rule.
+
+    The fifth is HB 165 of 2025. Its Senate code is S26, Health and Human
+    Services; its docket reads "Introduced 03/27/2025 and Referred to
+    Finance", and the Senate calendar (calendars_senate/2025/SC016.txt) lists
+    its hearing before Finance. The docket, with the calendar beside it, is
+    taken over the code.
+
+    Only a name the committee tables know replaces a code, spelt as the
+    tables spell it, so a clerk's typing never displaces a linkable name.
+
+    And the CHAMBER a bill began in, where the record gives none: a CACR the
+    session files do not describe is a stub whose chamber is the letter C,
+    and its docket's first row says which chamber it began in (CACR 8 of
+    2025 began in the Senate).
+    """
+    if not bills or not Path(docket).exists():
+        return
+    import referrals as _r
+    term = {b: P.term_of(str(r.get("lsr_year") or "")) for b, r in bills.items()}
+    try:
+        refs, began = _r.read_dockets(
+            {t: str(docket) for t in set(term.values()) if t},
+            lsr_of={(term[b], b): r.get("lsr_num", "") for b, r in bills.items()})
+    except Exception as e:                       # a docket that will not read
+        print(f"  current term: docket referrals not read ({e})")
+        return
+    named = {(str(code)[:1].upper(), _r._key(c["name"])): c["name"]
+             for code, c in committees.items() if c.get("name")}
+    moved, placed = [], 0
+    for b, rec in bills.items():
+        ref = refs.get((term[b], b), {})
+        for body, field in (("H", "house_committee"), ("S", "senate_committee")):
+            name = named.get((body, _r._key(ref.get(body, ""))))
+            if name and _r._key(name) != _r._key(rec.get(field) or ""):
+                moved.append(f"{b} {body}: {rec.get(field) or '(none)'} -> {name}")
+                rec[field] = name
+        if rec.get("chamber") not in ("H", "S") and began.get((term[b], b)):
+            rec["chamber"] = began[(term[b], b)]
+            placed += 1
+    if moved:
+        print(f"  current term: {len(moved)} committee(s) taken from the docket "
+              "over the referral code: " + "; ".join(moved))
+    if placed:
+        print(f"  current term: {placed} bill(s) given the chamber they began in "
+              "from the docket")
 
 
 def hearing_in_term(raw, term):
@@ -672,6 +814,7 @@ def main():
         if leg_filled:
             print("db/Legislation.psv, for bills LSRs.txt does not carry: "
                   + ", ".join(f"{v:,} {k}" for k, v in leg_filled.items()))
+    _current_referrals(bills, committees, dp)
     nsuf = Counter()
     for b in bills.values():
         if b.get("suffix"):
@@ -1336,15 +1479,37 @@ def main():
     # bill alone, adding an archived term would put two different bills under
     # one key at the very top of the pipeline.
     # The committee of referral for every archived bill, from the docket
-    # already on this disk. No network: db/Docket.psv is the General Court's
-    # own database dump and covers 1989-2015. Empty if that file is absent,
-    # in which case nothing below changes.
+    # already on this disk. No network: each archived term's own docket, the
+    # file its history is narrated from (referrals.term_dockets). Empty if
+    # those files are absent, in which case nothing below changes.
+    #
+    # Every archived term's docket, not only the database dump: the dump
+    # stops part way through 2016, so 2016-2024 took the search page's LAST
+    # committee in ONE chamber. referrals.from_dockets says what that cost.
+    # Each bill's rows are chosen by the archive record's own LSR, because a
+    # resolution's number can carry two measures in one term.
+    ap_ = Path("archive_bills.json")
+    try:
+        arch = json.loads(ap_.read_text(encoding="utf-8")) if ap_.exists() else {}
+    except ValueError:
+        arch = {}
     try:
         import referrals
-        refs = referrals.from_docket()
-    except Exception as e:                       # a missing dump is not a failure
+        refs, began = referrals.read_dockets(lsr_of={
+            (t, b): r.get("lsr", "") for t, bb in arch.items()
+            for b, r in bb.items()})
+    except Exception as e:                       # a missing docket is not a failure
         print(f"  archive: no docket referrals ({e})")
-        refs = {}
+        refs, began = {}, {}
+    # The names the clerks were using, per term and chamber: any the docket
+    # gives as the first referral of three or more bills. _same_committee
+    # says why a longer stored name must not replace one of these.
+    _used = Counter((t, body, referrals._key(c)) for (t, _b), bodies in refs.items()
+                    for body, c in bodies.items())
+    in_use = defaultdict(set)
+    for (t, body, k), n in _used.items():
+        if n >= 3:
+            in_use[(t, body)].add(k)
     # The committee names the tables know, reduced the way referrals._key
     # reduces them so that "Ways & Means" and "Ways and Means" are one name.
     # _pick_committee says what this is for.
@@ -1366,12 +1531,8 @@ def main():
     #
     # A term the current session files already cover is left alone. The live
     # data is better than a search-results page in every respect.
-    ap_ = Path("archive_bills.json")
+    # (archive_bills.json was read above, for the referrals.)
     if ap_.exists():
-        try:
-            arch = json.loads(ap_.read_text(encoding="utf-8"))
-        except ValueError:
-            arch = {}
         added = 0
         for term, byb in arch.items():
             if term in by_term:
@@ -1389,24 +1550,32 @@ def main():
                 # The search page gave a committee for 1999 onward and none at
                 # all before it, so five terms and 8,525 bills had no committee
                 # of any kind. The docket has it: the clerk writes the referral
-                # into the description of the introduction line, and the
-                # database's own docket goes back to 1989. referrals.py reads
-                # it; this fills only what is empty, because the search page's
-                # value is the LAST committee and the docket's is the FIRST,
-                # and a term holding some of each would be two facts under one
-                # label.
-                ref = refs.get((str(r.get("year", "")), bid), {})
+                # into the description of the introduction line.
+                # referrals.from_dockets reads it for every archived term,
+                # 1989-2024, from the docket each term's history is narrated
+                # from, and _pick_committee lets it win -- except where the two
+                # are one committee under two spellings -- because the search
+                # page's value is the LAST committee in one chamber, and the
+                # docket's is the FIRST in each, or the committee a vacate
+                # moved the bill to.
+                ref = refs.get((term, bid), {})
                 by_term[term][bid] = {
                     "bill": bid,
                     "lsr": f"{r.get('year','')}-{r.get('lsr','')}",
                     "lsr_year": r.get("year", ""), "lsr_num": r.get("lsr", ""),
                     "title": r.get("title", ""),
-                    "chamber": r.get("body", ""),
+                    # A CACR's number does not say which chamber it began
+                    # in, and the search page files every one under the
+                    # House; its own docket's first row says.
+                    "chamber": ((began.get((term, bid)) if bid.startswith("CACR")
+                                 else "") or r.get("body", "")),
                     "subject_code": "", "subject": "",
                     "house_committee": _pick_committee(
-                        cm if ch == "House" else "", ref.get("H", ""), known),
+                        cm if ch == "House" else "", ref.get("H", ""), known,
+                        in_use.get((term, "H"), ())),
                     "senate_committee": _pick_committee(
-                        cm if ch == "Senate" else "", ref.get("S", ""), known),
+                        cm if ch == "Senate" else "", ref.get("S", ""), known,
+                        in_use.get((term, "S"), ())),
                     "hearing": hearing_in_term(r.get("last_hearing", ""),
                                                term),
                     "hearing_room": "",
