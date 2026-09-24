@@ -48,7 +48,7 @@ const KINDL={active:"In progress",law:"Became law",done:"Killed",
 const OTHER=[["Presiding","Presiding",
   "Recorded as presiding: in the chair, running the chamber for this vote, so no yes or no is recorded for them. The Speaker, the Senate President or a member filling in for them presides. It is not a missed vote."],
  ["Not Voting/Excused","Excused absence",
-  "Recorded as excused from this vote. An excuse can cover a whole day, part of a day or a single vote, so a member excused here may have voted on other questions the same day."],
+  "Recorded as excused from this vote. An excuse can cover a whole day, part of a day or a single vote, so a member excused here may have cast other votes the same day."],
  ["Not Voting/Not Excused","Absent, not excused",
   "Recorded as not voting and not excused. The roll call does not say why, or whether the member was in the chamber."]];
 

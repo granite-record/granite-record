@@ -936,7 +936,7 @@ hundreds of roll calls, and that is the job rather than absence.</p>
 
 <p><b>Not voting comes in two kinds.</b> A member recorded as excused was excused
 from that vote; an excuse can cover a whole day, part of a day or a single vote, so
-an excused member may have voted on other questions the same day. A member recorded
+an excused member may have cast other votes the same day. A member recorded
 as not excused did not vote, and the roll call does not say why.</p>
 
 <h2>Bills and resolutions are not the same thing</h2>
