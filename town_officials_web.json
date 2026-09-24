@@ -4401,7 +4401,7 @@
   ]
  },
  "goffstown": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -4411,7 +4411,7 @@
     "role": null,
     "source_url": "https://www.goffstownnh.gov/381/Select-Board",
     "status": "published",
-    "term_expires": "2026"
+    "term_expires": "2029"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -4421,7 +4421,7 @@
     "role": "Chairman",
     "source_url": "https://www.goffstownnh.gov/381/Select-Board",
     "status": "published",
-    "term_expires": "2024"
+    "term_expires": "2027"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -4431,7 +4431,7 @@
     "role": null,
     "source_url": "https://www.goffstownnh.gov/381/Select-Board",
     "status": "published",
-    "term_expires": "2024"
+    "term_expires": "2027"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -4441,7 +4441,7 @@
     "role": null,
     "source_url": "https://www.goffstownnh.gov/381/Select-Board",
     "status": "published",
-    "term_expires": "2025"
+    "term_expires": "2028"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -9058,7 +9058,7 @@
   ]
  },
  "portsmouth": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "dropped_offices": [
    "Mayor (4 people, 2 seats)"
   ],
@@ -9155,7 +9155,7 @@
     "role": null,
     "source_url": "https://www.cityofportsmouth.com/cityclerk/elected-city-officials",
     "status": "published",
-    "term_expires": "2026"
+    "term_expires": "2029"
    },
    {
     "filled_by": "elected",
@@ -9167,7 +9167,7 @@
     "role": null,
     "source_url": "https://www.cityofportsmouth.com/cityclerk/elected-city-officials",
     "status": "published",
-    "term_expires": "2024"
+    "term_expires": "2027"
    },
    {
     "filled_by": "elected",
@@ -9179,7 +9179,7 @@
     "role": null,
     "source_url": "https://www.cityofportsmouth.com/cityclerk/elected-city-officials",
     "status": "published",
-    "term_expires": "2024"
+    "term_expires": "2027"
    },
    {
     "filled_by": "elected",
@@ -9191,7 +9191,7 @@
     "role": null,
     "source_url": "https://www.cityofportsmouth.com/cityclerk/elected-city-officials",
     "status": "published",
-    "term_expires": "2024"
+    "term_expires": "2027"
    },
    {
     "filled_by": "elected",
@@ -9203,7 +9203,7 @@
     "role": null,
     "source_url": "https://www.cityofportsmouth.com/cityclerk/elected-city-officials",
     "status": "published",
-    "term_expires": "2024"
+    "term_expires": "2027"
    },
    {
     "filled_by": "elected",
@@ -9215,7 +9215,7 @@
     "role": null,
     "source_url": "https://www.cityofportsmouth.com/cityclerk/elected-city-officials",
     "status": "published",
-    "term_expires": "2026"
+    "term_expires": "2029"
    },
    {
     "filled_by": "elected",
@@ -9227,7 +9227,7 @@
     "role": null,
     "source_url": "https://www.cityofportsmouth.com/cityclerk/elected-city-officials",
     "status": "published",
-    "term_expires": "2026"
+    "term_expires": "2029"
    },
    {
     "filled_by": "elected",
@@ -9239,7 +9239,7 @@
     "role": null,
     "source_url": "https://www.cityofportsmouth.com/cityclerk/elected-city-officials",
     "status": "published",
-    "term_expires": "2026"
+    "term_expires": "2029"
    },
    {
     "filled_by": "elected",
@@ -9251,7 +9251,7 @@
     "role": null,
     "source_url": "https://www.cityofportsmouth.com/cityclerk/elected-city-officials",
     "status": "published",
-    "term_expires": "2026"
+    "term_expires": "2029"
    },
    {
     "filled_by": "elected",
@@ -9263,7 +9263,7 @@
     "role": null,
     "source_url": "https://www.cityofportsmouth.com/cityclerk/elected-city-officials",
     "status": "published",
-    "term_expires": "2024"
+    "term_expires": "2027"
    },
    {
     "filled_by": "elected",
@@ -9275,7 +9275,7 @@
     "role": null,
     "source_url": "https://www.cityofportsmouth.com/cityclerk/elected-city-officials",
     "status": "published",
-    "term_expires": "2026"
+    "term_expires": "2029"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -9297,7 +9297,7 @@
     "role": null,
     "source_url": "https://www.cityofportsmouth.com/cityclerk/elected-city-officials",
     "status": "published",
-    "term_expires": "2024"
+    "term_expires": "2027"
    },
    {
     "filled_by": "elected",
@@ -9309,7 +9309,7 @@
     "role": null,
     "source_url": "https://www.cityofportsmouth.com/cityclerk/elected-city-officials",
     "status": "published",
-    "term_expires": "2026"
+    "term_expires": "2029"
    },
    {
     "filled_by": "elected",
@@ -9321,7 +9321,7 @@
     "role": null,
     "source_url": "https://www.cityofportsmouth.com/cityclerk/elected-city-officials",
     "status": "published",
-    "term_expires": "2026"
+    "term_expires": "2029"
    }
   ],
   "pages": [
@@ -9511,7 +9511,7 @@
   "pages": []
  },
  "rindge": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -9521,7 +9521,7 @@
     "role": "Vice-Chair",
     "source_url": "https://www.rindgenh.gov/boards_commission/board_of_selectmen/index.php",
     "status": "published",
-    "term_expires": "2026"
+    "term_expires": "2029"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -9531,7 +9531,7 @@
     "role": "Chair",
     "source_url": "https://www.rindgenh.gov/boards_commission/board_of_selectmen/index.php",
     "status": "published",
-    "term_expires": "2025"
+    "term_expires": "2028"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -9541,7 +9541,7 @@
     "role": null,
     "source_url": "https://www.rindgenh.gov/boards_commission/board_of_selectmen/index.php",
     "status": "published",
-    "term_expires": "2024"
+    "term_expires": "2027"
    }
   ],
   "pages": [

@@ -161,6 +161,24 @@ ROLE = re.compile(
 APPOINTED = re.compile(r"\bappoint(?:ed|ment)?\b", re.I)
 RESIGNED = re.compile(r"\bresign(?:ed|ation)?\b|\bdeceased\b|\bvacant\b", re.I)
 TERM = re.compile(r"\b(20\d\d)\b")
+# A TERM WRITTEN AS A RANGE ENDS AT ITS SECOND YEAR. Goffstown writes "Term:
+# 2024 through 2027" and Rindge "2025 - 2028", and the first year was stored
+# as the one the term expires -- so a board elected for 2027 read as a board
+# whose terms ran out in 2024, which is the one question town_boards.py asks
+# of these years.
+TERM_RANGE = re.compile(r"\b(20\d\d)\s*(?:-|–|—|to|through|thru)\s*(20\d\d)\b",
+                        re.I)
+
+
+def term_year(text):
+    """The year a term ends: the second of "2024 through 2027", or else the
+    first year the text names, or None."""
+    m = TERM_RANGE.search(text or "")
+    if m:
+        return m.group(2)
+    t = TERM.search(text or "")
+    return t.group(1) if t else None
+
 
 # A written personal name. Two to four capitalised words, allowing an
 # initial, a hyphen, an apostrophe, a quoted nickname and a suffix. Anchored
@@ -370,10 +388,10 @@ def split_person(line):
     m = ROLE.search(rest)
     if m:
         role = re.sub(r"\s+", " ", m.group(0)).strip().title()
-    term = None
-    t = TERM.search(rest)
-    if t:
-        term = t.group(1)
+    # Off the line as written and not off `rest`: the split above cuts
+    # Rindge's "2025 - 2028" at its " - " into two parts, and the range with
+    # it.
+    term = term_year(line)
     return {"name": name, "role": role, "term_expires": term,
             "appointed": bool(APPOINTED.search(rest)),
             "left": bool(RESIGNED.search(rest))}
@@ -456,9 +474,9 @@ def from_headings(lines):
             office, run = last_office, 0
             continue
         if out and TERM_LINE.match(line):
-            t = TERM.search(line)
+            t = term_year(line)
             if t and not out[-1][1].get("term_expires"):
-                out[-1][1]["term_expires"] = t.group(1)
+                out[-1][1]["term_expires"] = t
             if APPOINTED.search(line):
                 out[-1][1]["appointed"] = True
             continue
