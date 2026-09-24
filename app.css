@@ -1603,6 +1603,52 @@ border:1.5px solid var(--pine);background:var(--surface)}
 .stn .w{font-size:var(--t-sm);color:var(--ink-2)}.stn .t{font-size:var(--t-ui);font-weight:600}
 .vbox{margin-top:var(--sp-4);border:1px dashed var(--rule-2);border-radius:var(--r-out);padding:var(--sp-5) var(--sp-5);background:var(--paper)}
 .vbox p{margin:0;font-size:var(--t-ui);color:var(--ink-2)}
+/* THE SENATE COMMITTEE'S HEARING REPORT, closed under the hearing's video.
+   The summary is interface (Public Sans, --t-ui); what opens is reading, in
+   the serif, and every heading in it is larger than what it heads: a section
+   at --t-lead over a speaker at --t-read over the points at --t-body. The
+   edge is --edge, not --rule-2, because the box is the control: 3.98:1 on
+   the card, where --rule-2 is 1.99:1. No measure: the text takes the width
+   the tab has. */
+.hrep{margin-top:var(--sp-4);border:1px solid var(--edge);border-radius:var(--r-out);
+background:var(--surface)}
+.hrep > summary{font-size:var(--t-ui);color:var(--pine);cursor:pointer;min-height:44px;
+display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-2) var(--sp-5);list-style:none}
+.hrep > summary::-webkit-details-marker{display:none}
+.hrep > summary b{font-weight:600}
+.hrep[open] > summary{border-bottom:1px solid var(--rule)}
+.hrep[open] > summary .caret{transform:rotate(90deg)}
+.hrb{padding:var(--sp-5)}
+.hrsrc,.hrnote,.hrnone{font-size:var(--t-ui);color:var(--ink-2);margin:0 0 var(--sp-5)}
+/* One grid for the whole list, so every value starts at the same x; each row
+   was its own grid, and the column moved with the length of its label. */
+.hrfacts{margin:0 0 var(--sp-5);display:grid;
+grid-template-columns:minmax(9em,max-content) 1fr;gap:var(--sp-3) var(--sp-4)}
+.hrfacts > div{display:contents}
+.hrfacts dt{font-size:var(--t-ui);font-weight:600;color:var(--ink)}
+.hrfacts dd{margin:0;font-size:var(--t-ui);color:var(--ink)}
+.hrb h2{font-family:var(--serif);font-size:var(--t-lead);font-weight:600;
+margin:var(--sp-7) 0 var(--sp-4);color:var(--ink)}
+.hrb h2:first-of-type{margin-top:var(--sp-5)}
+.hrsp{margin:0 0 var(--sp-6)}
+.hrsp h3{font-family:var(--serif);font-size:var(--t-read);font-weight:600;
+margin:0 0 var(--sp-3);display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-4);
+color:var(--ink)}
+/* The chip keeps its shape; only its size follows the heading it names, so
+   the legislator's name is no smaller than the points under it. */
+.hrsp h3 .mchip{font-size:inherit;margin:0}
+.hrrole{font-weight:400;color:var(--ink-2);font-size:var(--t-ui)}
+.hrpts{margin:0;padding-left:1.25em;font-family:var(--serif);font-size:var(--t-body);
+line-height:1.6;color:var(--ink)}
+.hrpts li{margin:0 0 var(--sp-2)}
+.hrpts ul{margin:var(--sp-2) 0 0;padding-left:1.25em}
+.hrpara{font-family:var(--serif);font-size:var(--t-body);line-height:1.6;margin:0 0 var(--sp-4);
+color:var(--ink)}
+@media (max-width:480px){
+  .hrfacts{grid-template-columns:1fr}
+  .hrfacts > div{display:block}
+  .hrb{padding:var(--sp-4)}
+}
 /* The player itself is in the shared region: both stylesheets draw it, and
    it was written out twice until 16 September. */
 .pbar{display:flex;gap:var(--sp-4);align-items:center;flex-wrap:wrap;padding:var(--sp-4) var(--sp-5);

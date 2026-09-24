@@ -3358,6 +3358,7 @@ ic_SOURCES = {
     "legislation": "fetch_legislation.py -- a directory of saved bill pages",
     "db/DocumentVersion.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/LegislationText.psv": "fetch_archive_db.py, which dumps the SQL views",
+    "db/CandH_Reports.psv": "fetch_archive_db.py, which dumps the SQL views",
 }
 
 
@@ -4331,6 +4332,111 @@ def _stream_start(build_site_v2, about_figures):
                   + (", the channels' first day" if first else "")
                   + "; no-recording sittings are prestream or novideo, keep their time and room, "
                     "and draw no player")
+
+
+@check("frontend", "a Senate hearing report draws closed under its hearing, "
+       "speakers under their names", needs=("build_site_v2", "senate_hearing_reports"))
+def _hearing_report_drawn(build_site_v2, senate_hearing_reports):
+    """app.js in node, on two real reports as the build hands them over.
+
+    What a reader must be able to rely on: the report is closed until asked
+    for and says how big it is; it says whose summary it is and of what date;
+    a legislator is drawn with the site's chip and everybody else as the
+    report names them; each section heading and each speaker is a heading
+    over their own points; and a report that could not be split is drawn as
+    the text it is, with no name put over anything.
+    """
+    ext, stub = Path("app.js"), Path("dom_stub.js")
+    if not (ext.exists() and stub.exists()):
+        return "skip", "app.js or dom_stub.js not here"
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    if not Path("tests/senate_hearing_reports.json").exists():
+        return "skip", "tests/senate_hearing_reports.json not here"
+    B, S = build_site_v2, senate_hearing_reports
+    idx = B.speaker_index([{"id": "S23", "name": "Gannon, Bill",
+                            "last": "Gannon", "first": "Bill", "chamber": "S",
+                            "party_code": "R", "district": "23"}])
+    got = _hearing_fixture(S)
+    sb11 = B.hearing_report_for_page(got["SB11"][0], idx, S.name_part)[0]
+    sb160 = B.hearing_report_for_page(got["SB160"][0], idx, S.name_part)[0]
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(ext.read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "reps.json").write_text(json.dumps([sb11, sb160]),
+                                        encoding="utf-8")
+        (root / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+const src = fs.readFileSync("./page.js", "utf8");
+let scope;
+try { scope = (0, eval)(src + "; ({hearingReport, renderHearings});"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+const [a, b] = JSON.parse(fs.readFileSync("./reps.json", "utf8"));
+const st = {when:"2025-01-14", time:"09:30", what:"hearing", body:"S",
+  committee:"Election Law and Municipal Affairs", state:"located", start:600,
+  end:1800, video_id:"VID1", reports:[a]};
+// The same hearing with no recording matched to it.
+const bare = {when:"2025-01-14", time:"09:30", what:"hearing", body:"S",
+  committee:"Election Law and Municipal Affairs", state:"none", reports:[a]};
+let out;
+try {
+  out = {one: scope.hearingReport(a), prose: scope.hearingReport(b),
+         tab: scope.renderHearings({id:"SB11", n:"SB 11"}, {stations:[st]}),
+         novid: scope.renderHearings({id:"SB11", n:"SB 11"},
+                                     {stations:[bare]})};
+} catch (e) { console.log("RENDER " + e.message); process.exit(1); }
+fs.writeFileSync("./out.json", JSON.stringify(out));
+""", encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True,
+                 timeout=90)
+        assert r.returncode == 0, (r.stdout + r.stderr).strip()[:200]
+        out = json.loads((root / "out.json").read_text(encoding="utf-8"))
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    one, prose, tab = out["one"], out["prose"], out["tab"]
+    assert re.match(r'\s*<details class="hrep">', one), (
+        "the report is not a closed disclosure: " + one[:80])
+    summ = re.search(r"<summary>(.*?)</summary>", one, re.S).group(1)
+    summ = re.sub(r"<[^>]+>|\s+", " ", summ)
+    assert "hearing report" in summ and "4 spoke: 1 for, 3 against" in summ, (
+        "the summary does not say what it is and its size: " + summ.strip())
+    assert ("Senate Election Law and Municipal Affairs Committee’s hearing "
+            "report of") in re.sub(r"\s+", " ", one), (
+        "the attribution to the committee's report is missing")
+    assert re.search(r'<h3><span class="mchip p-R"><a href="legislator/[^"]+">'
+                     r'Senator Gannon</a></span><span class="hrrole">Prime '
+                     r'Sponsor</span>', one), (
+        "Senator Gannon is not drawn with the member chip, in the report's "
+        "own words")
+    assert "<h3>Liz Tentarelli, League of Women Voters N.H.</h3>" in one, (
+        "a member of the public is not named as the report names her")
+    # h2 then h3: a pane's own headings are h2 (a roll call's question, a
+    # sponsor group), so the report's sections sit at that level and its
+    # speakers one below, and the outline never skips a level.
+    assert one.count("<h2>") >= 3 and one.count("<h3>") == 4 and \
+        "<h4>" not in one, (
+        f"{one.count('<h2>')} section headings and {one.count('<h3>')} "
+        "speaker headings, not 3+ and 4")
+    assert "<h3>" not in prose and 'class="hrpara"' in prose and \
+        "could not be read from its layout" in prose, (
+        "a report kept as text was drawn as speakers, or without saying why")
+    assert tab.index('class="player"') < tab.index('class="hrep"'), (
+        "the report is not under the hearing's recording")
+    # "The recording above is the hearing itself" is true only where there
+    # is one; fifteen reported hearings have none.
+    novid = out["novid"]
+    assert "the recording above" in re.sub(r"\s+", " ", tab), (
+        "the report under a recording no longer points at it")
+    assert "No recording matched" in novid and 'class="hrep"' in novid and \
+        "recording above" not in re.sub(r"\s+", " ", novid), (
+        "a report with no recording above it says there is one")
+    return "ok", ("closed, sized, attributed; a member in the chip, the "
+                  "public as named; prose kept as prose; under the video, "
+                  "and says so only where there is one")
 
 
 @check("frontend", "no const is read before the line that declares it")
@@ -7960,6 +8066,391 @@ def _testimony_dated(build_site_v2):
     assert f({"raw": "Ought to Pass: MA VV 03/06/2026", "date": "2026-03-06"},
              tdb, None) == {}, "a floor vote was given a sign-in count"
     return "ok", "the hearing's own count, or the bill's, and it says which"
+
+
+def _hearing_fixture(S):
+    """The six real Senate hearing reports in tests/, parsed and finished."""
+    fx = json.loads(Path("tests/senate_hearing_reports.json")
+                    .read_text(encoding="utf-8"))
+    out = {}
+    for b in ("SB4", "SB11", "SB160", "SB14", "HB666", "HB277"):
+        docs = S.parse_report(fx[b]["HTMLText"])
+        assert len(docs) == 1, f"{b}: {len(docs)} reports read out of one"
+        rec, doubts = docs[0]
+        out[b] = (S.finish(rec, doubts, b, "2025-01-10"),
+                  S.blocks(fx[b]["HTMLText"]))
+    return out
+
+
+@check("narrative", "a Senate hearing report is read speaker by speaker, word for word",
+       needs=("senate_hearing_reports",))
+def _senate_hearing_reports(senate_hearing_reports):
+    """Four real reports, names and all, because they are the Senate's record.
+
+    The person decided on 24 September that these are shown as the Senate
+    published them. So the check is not only that speakers come out, but that
+    every point is a line of the report itself, and that each sits under the
+    person the report put it under -- including the two layouts that put words
+    in the wrong mouth if read naively: SB 11 types a second witness as a
+    bullet under the first ("Ken Barnes, Contoocook" under Liz Tentarelli),
+    and SB 14 writes each heading on two lines, which read as two people gave
+    the first a speaker with nothing under it and the second the first one's
+    points -- 464 of them across the table. SB 160 is prose, with nobody's
+    name on a line of its own, and must be kept as prose, not guessed at.
+    """
+    S = senate_hearing_reports
+    if not Path("tests/senate_hearing_reports.json").exists():
+        return "skip", "tests/senate_hearing_reports.json not here"
+    got = _hearing_fixture(S)
+    sb4, bl4 = got["SB4"]
+    assert (sb4["committee"], sb4["heard"], sb4["opened"], sb4["closed"]) == (
+        "Senate Commerce Committee", "2025-01-09", "1:34 p.m.", "1:48 p.m."), (
+        "SB 4's header: " + json.dumps([sb4["committee"], sb4["heard"],
+                                         sb4["opened"], sb4["closed"]]))
+    assert sb4["present"].startswith("Senators Innis, Ricciardi"), sb4["present"]
+    assert [p[0] for p in sb4["positions"]] == [
+        "Who supports the bill", "Who opposes the bill",
+        "Who is neutral on the bill"], sb4["positions"]
+    sup = sb4["sections"][0]
+    assert sup["side"] == "support", sup["side"]
+    assert [sp["who"] for sp in sup["speakers"]] == [
+        "Senator Daniel Innis", "Steve Duprey",
+        "James Key-Wallace, Executive Director, New Hampshire Business "
+        "Finance Authority",
+        "Sam Evans-Brown, Executive Director, Clean Energy NH"], (
+        [sp["who"] for sp in sup["speakers"]])
+    # A senator's question to a witness stays under that witness, and the
+    # answer stays nested under the question.
+    q = [p for p in sup["speakers"][2]["points"] if isinstance(p, dict)]
+    assert q and q[0]["t"].startswith("Senator Innis asked") and \
+        q[0]["sub"][0].startswith("Director Key-Wallace said"), q
+    assert sb4["sections"][1].get("note") == "None", sb4["sections"][1]
+
+    # WORD FOR WORD: every point is a whole line of the report, in order.
+    def flat(bl):
+        out = []
+
+        def items(its):
+            for it in its:
+                out.append(it["t"])
+                items(it["sub"])
+        for k, v in bl:
+            (out.append(v) if k == "p" else items(v))
+        return out
+
+    def points(pts, acc):
+        for p in pts:
+            acc.append(p if isinstance(p, str) else p["t"])
+            if isinstance(p, dict):
+                points(p.get("sub", []), acc)
+        return acc
+    n = 0
+    for b, (rec, bl) in got.items():
+        raw, at = flat(bl), -1
+        for s in rec["sections"]:
+            for sp in s.get("speakers", []):
+                for t in points(sp["points"], []):
+                    nxt = next((j for j in range(at + 1, len(raw))
+                                if raw[j] == t), None)
+                    assert nxt is not None, (
+                        f"{b}: a point is not a line of the report, or is out "
+                        f"of order: {t[:70]!r}")
+                    at, n = nxt, n + 1
+
+    sb11 = got["SB11"][0]
+    opp = sb11["sections"][1]["speakers"]
+    assert [sp["who"] for sp in opp] == [
+        "Liz Tentarelli, League of Women Voters N.H.", "Ken Barnes, Contoocook",
+        "Representative Alvin See, Merrimack 26"], [sp["who"] for sp in opp]
+    assert opp[1]["points"][0].startswith("Doesn") and \
+        not any(str(p).startswith("Doesn") for p in opp[0]["points"]), (
+        "Ken Barnes's points were left under Liz Tentarelli")
+    # The committee's questions to the sponsor, written as paragraphs with
+    # the answers indented under them, stay the sponsor's, question over
+    # answer.
+    gan = sb11["sections"][0]["speakers"]
+    assert len(gan) == 1 and gan[0]["who"] == "Senator Gannon, Prime Sponsor", (
+        [sp["who"] for sp in gan])
+    qa = [p for p in gan[0]["points"] if isinstance(p, dict)]
+    assert len(qa) == 6 and qa[0]["t"].startswith("Senator Perkins Kwoka asked") \
+        and qa[0]["sub"][0].startswith("Senator Gannon said"), qa[:1]
+
+    sb14 = got["SB14"][0]
+    heads = [(sp["who"], sp.get("also")) for sp in
+             sb14["sections"][0]["speakers"]]
+    assert heads[0] == ("Senator Bill Gannon", ["Senate District 23"]), heads[0]
+    assert all(sp["points"] for s in sb14["sections"]
+               for sp in s.get("speakers", [])), (
+        "a speaker heading's second line was read as a speaker of its own")
+
+    sb160 = got["SB160"][0]
+    assert sb160.get("fallback"), "SB 160 is prose and was split into speakers"
+    assert all("speakers" not in s and s.get("text") is not None
+               for s in sb160["sections"]), sb160["sections"]
+    assert any("Sen. Lang explained" in str(x) for s in sb160["sections"]
+               for x in s["text"]), "SB 160's text did not come through"
+
+    # A WITNESS'S HEADING THE NAME TEST DID NOT KNOW. Filed as the speaker
+    # above's point, it took that witness's whole testimony, nested under it,
+    # into the wrong mouth -- 13 witnesses in 11 reports, three under a
+    # legislator's chip. HB 666 heads one with initials short of their last
+    # full stop; HB 277 runs a name into its organisation with no comma, and
+    # the report's own list of supporters names him.
+    hb666 = got["HB666"][0]
+    spk = hb666["sections"][0].get("speakers") or []
+    assert [sp["who"] for sp in spk] == [
+        "Representative Lisa Mazur", "Representative Henry Giasson",
+        "D.J Withee", "Representative Timothy Horrigan",
+        "Representative Kelley Potenza"], [sp["who"] for sp in spk]
+    assert spk[2].get("also") == ["Attorney - Windham, New Hampshire"] and \
+        spk[2]["points"][0].startswith("Mr. Withee testified in his "
+                                       "individual capacity"), spk[2]
+    assert not any((p if isinstance(p, str) else p["t"]).startswith(
+        ("D.J", "Attorney", "Mr. Withee")) for p in spk[1]["points"]), (
+        "D.J Withee's testimony was left under Rep. Giasson")
+    hb277 = got["HB277"][0]
+    spk = hb277["sections"][0].get("speakers") or []
+    assert [sp["who"] for sp in spk] == [
+        "Representative Peter Bixby", "Representative Judy Aron",
+        "Robert Johnson II New Hampshire Farm Bureau"], (
+        [sp["who"] for sp in spk])
+    assert len(spk[1]["points"]) == 3 and \
+        spk[2]["points"][0].startswith("Mr. Johnson stated"), spk[1:]
+    # And where the lists do not name the person, the report is not guessed
+    # at. SB 459's own lines: "Pasha Roberts 603 Equality" is on no list of
+    # SB 459's, which gives counts only.
+    blocks459 = [
+        ("p", "Aimee Terravechia, 603 Equality"),
+        ("ul", [{"t": "Ms. Terravechia spoke about her experience in sports.",
+                 "sub": []}]),
+        ("p", "Pasha Roberts 603 Equality"),
+        ("ul", [{"t": "Ms. Roberts explained that the governor had previously "
+                      "vetoed similar bills.", "sub": []}])]
+    spk, _n, why = S.split_speakers(
+        blocks459, "660 people signed up in opposition to this bill.")
+    assert not spk and "heading" in why, (
+        f"an unlisted heading was filed as a point: {why!r}")
+    spk, _n, why = S.split_speakers(
+        blocks459, "aimee terravechia (603 equality), pasha roberts "
+                   "(603 equality)")
+    assert not why and [sp["who"] for sp in spk] == [
+        "Aimee Terravechia, 603 Equality", "Pasha Roberts 603 Equality"], (
+        why, [sp["who"] for sp in spk])
+    # The completed date with the aide's initials run on to it was a point.
+    for line, day in (
+            ("VH Senate Hearing Report completed: January 31, 2025",
+             "2025-01-31"),
+            ("jab/Date Hearing Report completed: March 27, 2025",
+             "2025-03-27"),
+            ("V.H Date Hearing Report completed: January 23, 2026",
+             "2026-01-23")):
+        m = S.COMPLETED.match(line)
+        assert m and S.iso(m.group(1)) == day, line
+
+    # A POSITION LIST KEEPS THE SENATE'S COUNT and drops the instruction
+    # telling readers which member of staff to email. The count and the
+    # instruction often share a sentence; cutting by sentence took the count
+    # too, and eight reports showed a support count and no opposition row.
+    # The strings are the table's own.
+    for raw, kept in (
+            ("8 Individuals signed in Support of this legislation. Please "
+             "contact Joshua.Schauer@gc.nh.gov for more information.",
+             "8 Individuals signed in Support of this legislation."),
+            ("84 signed in opposition to HB 666-FN, contact "
+             "peter.mulvey@gc.nh.gov for further details.",
+             "84 signed in opposition to HB 666-FN"),
+            ("174 individuals were in opposition.Full sign in sheets are "
+             "available upon request by contacting the Legislative Aide, "
+             "Jessica Bourque (jessica.bourque@gc.nh.gov).",
+             "174 individuals were in opposition."),
+            ("54 people signed in opposition, for a complete list of those "
+             "who signed please email brendan.bunnell@gc.nh.gov.",
+             "54 people signed in opposition"),
+            ("11 individuals signed in opposition to HB 75-FN Contact Pete "
+             "Mulvey (peter.mulvey@gc.nh.gov) for further details.",
+             "11 individuals signed in opposition to HB 75-FN"),
+            ("1 Person signed in neutrality to?SB 96. ?To see the full list "
+             "of sign-ins, please email the committee aide "
+             "(ryan.meleedy@gc.nh.gov).",
+             "1 Person signed in neutrality to?SB 96."),
+            ("In total, 76 individuals signed-in in support of SB 36. The "
+             "full sign in sheets are available upon request to the "
+             "Legislative Aide, Sophie Walsh (sophie.walsh@gc.nh.gov).",
+             "In total, 76 individuals signed-in in support of SB 36."),
+            # Nothing but the instruction: the Senate's sentence stays, so
+            # the row still says that people took that side.
+            ("Please contact the Senate Finance Committee Aide for a "
+             "complete list of those opposed to SB297. "
+             "(Debra.Martone@gc.nh.gov)",
+             "Please contact the Senate Finance Committee Aide for a "
+             "complete list of those opposed to SB297.")):
+        assert S._clean_position(raw) == kept, (
+            f"{raw[:50]!r} became {S._clean_position(raw)!r}")
+    assert hb666["positions"][1] == [
+        "Who opposes the bill", "84 signed in opposition to HB 666-FN"], (
+        hb666["positions"])
+    # HB 2 breaks the instruction over two paragraphs; cleaned apart, the
+    # first half stood as the list.
+    rec2, _d = S.parse_document([
+        ("p", "Senate Finance Committee"),
+        ("p", "Hearing Date: May 6, 2025"),
+        ("p", "Who supports the bill: Please contact the Senate Finance "
+              "Committee Legislative"),
+        ("p", "Aide (Debra.Martone@gc.nh.gov) for a complete sign-in list."),
+        ("p", "Summary of testimony presented:")])
+    assert rec2["positions"] == [[
+        "Who supports the bill", "Please contact the Senate Finance "
+        "Committee Legislative Aide for a complete sign-in list."]], (
+        rec2["positions"])
+    assert sb14["positions"][1] == [
+        "Who opposes the bill",
+        "63 individuals signed in opposition to SB 14-FN."], sb14["positions"]
+    assert "@" not in json.dumps([r for r, _bl in got.values()]), (
+        "a staff address reached the parsed record")
+    # A sentence is never a speaker.
+    for line in ("Senator Perkins Kwoka asked whether the motivation is to "
+                 "protect voters or is it political.",
+                 "Senator Watters detailed the changes:",
+                 "Ultimately, everyone operates under the same rules.",
+                 "HB 51"):
+        assert not S.is_name_line(line), f"read as a speaker: {line!r}"
+    return "ok", (f"6 real reports: {n} points, each a line of the report in "
+                  "its order; a mis-indented witness, two-line headings, "
+                  "headings the name test missed, counts beside the aide's "
+                  "address and a prose report each handled")
+
+
+@check("narrative", "a bill's hearing and an amendment heard after it are two "
+       "reports, and a re-filing is one", needs=("senate_hearing_reports",))
+def _hearing_report_keys(senate_hearing_reports):
+    """One report per hearing, and a hearing is its date, what was heard and
+    when it opened -- not the date alone.
+
+    Seven bills were heard and then had an amendment heard the same
+    afternoon, each reported separately and sometimes in one row (HB 381 at
+    1:26 and its amendment at 1:51). Keyed on the date alone, the bill's own
+    report was thrown away. The table also holds the same hearing filed
+    twice, and the later filing is the one kept. The layout here is the
+    reports' own, cut to one witness each; nothing checked depends on the
+    words. A House row of the same type is a committee report and is left
+    out.
+    """
+    S = senate_hearing_reports
+
+    def doc(subject, opened, who):
+        return ("<p>Senate Finance Committee</p>"
+                f"<p>{subject}</p><p>Hearing Date: April 1, 2025</p>"
+                f"<p>Time Opened: {opened} Time Closed: 2:10 p.m.</p>"
+                f"<p>Who supports the bill: {who}</p>"
+                "<p>Summary of testimony presented in support:</p>"
+                f"<p>{who}</p><ul><li>Spoke to the bill.</li></ul>"
+                "<p>Date Hearing Report completed: April 2, 2025</p>")
+    bill = doc("HB 381-FN, relative to the state budget.", "1:26 p.m.",
+               "Senator Jane Roe")
+    amd = doc("AMENDMENT # 2025-1481s, to HB 381-FN, relative to the state "
+              "budget.", "1:51 p.m.", "Senator John Doe")
+
+    def row(stamp, chamber, html):
+        return "|".join(["1", stamp, "Hearing Report", "", chamber,
+                         f"<body>{html}</body>", "HB 381", ""])
+    root = Path(tempfile.mkdtemp())
+    try:
+        src = root / "CandH_Reports.psv"
+        src.write_text("\n".join([
+            row("04/02/2025 09:00:00", "S", bill + amd),
+            row("04/03/2025 09:00:00", "S", bill),       # filed again
+            row("04/02/2025 09:00:00", "H", bill)]) + "\n", encoding="utf-8")
+        out, c = S.parse_all(src)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert c["rows"] == 2, f"{c['rows']} rows read; the House row is not one"
+    recs = out.get(S.P.term_of("2025-04-01"), {}).get("HB381", [])
+    assert [r["opened"] for r in recs] == ["1:26 p.m.", "1:51 p.m."], (
+        "the bill's hearing and its amendment's were not kept apart: "
+        + json.dumps([[r["opened"], r["subject"][:20]] for r in recs]))
+    assert recs[1]["subject"].startswith("AMENDMENT"), recs[1]["subject"]
+    assert c["duplicates"] == 1 and recs[0]["filed"] == "2025-04-03", (
+        f"the re-filing was not folded to the later one: {c['duplicates']}, "
+        f"{recs[0]['filed']}")
+    return "ok", "the bill and its amendment apart, the later filing kept"
+
+
+@check("naming", "a hearing report lands on its own Senate hearing, legislators as members",
+       needs=("build_site_v2", "senate_hearing_reports"))
+def _hearing_report_attach(build_site_v2, senate_hearing_reports):
+    """The report goes on the Senate public hearing of that bill and that
+    date, and nowhere else; a legislator who testified is drawn as the member
+    only where exactly one member can be meant.
+
+    A wrong member in a chip is a factual error on a page General Court staff
+    read. A missing chip is not, so every doubt resolves to plain text.
+    """
+    B, S = build_site_v2, senate_hearing_reports
+    for f in ("speaker_index", "resolve_speaker", "attach_hearing_reports"):
+        assert hasattr(B, f), f"build_site_v2 has no {f}"
+    if not Path("tests/senate_hearing_reports.json").exists():
+        return "skip", "tests/senate_hearing_reports.json not here"
+    people = [
+        {"id": "S23", "name": "Gannon, Bill", "last": "Gannon", "first": "Bill",
+         "chamber": "S", "party_code": "R", "district": "23"},
+        {"id": "H26", "name": "See, Alvin", "last": "See", "first": "Alvin",
+         "chamber": "H", "party_code": "D", "district": "26",
+         "county": "Merrimack", "county_abbr": "Merr"},
+        {"id": "H1", "name": "Smith, Ann", "last": "Smith", "first": "Ann",
+         "chamber": "H", "party_code": "R"},
+        {"id": "H2", "name": "Smith, Bob", "last": "Smith", "first": "Bob",
+         "chamber": "H", "party_code": "D"},
+        {"id": "H13", "name": "Prudhomme-O'Brien, Katherine",
+         "last": "Prudhomme-O'Brien", "first": "Katherine", "chamber": "H",
+         "party_code": "R"}]
+    idx = B.speaker_index(people)
+
+    def who(line):
+        m = B.resolve_speaker(line, idx, S.name_part)
+        return m and m["id"]
+    assert who("Senator Gannon, Prime Sponsor") == "S23"
+    assert who("Senator Bill Gannon") == "S23"
+    assert who("Representative Alvin See, Merrimack 26") == "H26"
+    assert who("Representative Bob Smith") == "H2"
+    # The report's typeset apostrophe against the roster's plain one.
+    assert who("Representative Katherine Prudhomme-O’Brien, Rockingham "
+               "– District 13") == "H13"
+    for line in ("Rep. Smith",                 # two of them
+                 "Senator Alvin See",           # the wrong chamber
+                 "Senator Tim Gannon",          # a first name that disagrees
+                 "Liz Tentarelli, League of Women Voters N.H.",
+                 "Senators Bill Gannon and Tim McGough",
+                 # Two people's heading, cut at the bracket: HB 1766's shape.
+                 "Representatives Alvin See (Merr. 26) and Ann Smith"):
+        assert who(line) is None, f"{line!r} was drawn as member {who(line)}"
+
+    rec = _hearing_fixture(S)["SB11"][0]
+    stations = [{"body": "H", "what": "hearing", "when": "2025-01-14"},
+                {"body": "S", "what": "floor debate", "when": "2025-01-14"},
+                {"body": "S", "what": "hearing", "when": "2025-01-14"}]
+    tally, un = Counter(), []
+    B.attach_hearing_reports(stations, [rec, {**rec, "heard": "2025-01-30"}],
+                             "SB11", idx, S.name_part, tally, un)
+    assert [bool(s.get("reports")) for s in stations] == [False, False, True], (
+        "the report went on another sitting: "
+        + json.dumps([bool(s.get("reports")) for s in stations]))
+    assert un == ["SB11 2025-01-30"] and tally["unmatched"] == 1, (
+        f"a report with no hearing that day was not named: {un}")
+    page = stations[2]["reports"][0]
+    first = page["sections"][0]["speakers"][0]
+    assert first.get("member", {}).get("label") == "Senator Gannon", first
+    assert first["member"].get("slug"), "a resolved member carries no page"
+    assert "member" not in page["sections"][1]["speakers"][0], (
+        "a member of the public was drawn as a member")
+    assert not ({"filed", "bill"} & set(page)), sorted(page)
+    # The parser's reasons for keeping a report as text are its own, not the
+    # reader's, and do not travel in the page.
+    prose = B.hearing_report_for_page(_hearing_fixture(S)["SB160"][0], idx,
+                                      S.name_part)[0]
+    assert "fallback" not in prose and all(
+        "text" in s for s in prose["sections"]), sorted(prose)
+    return "ok", ("on its own hearing only, the rest named; members only "
+                  "where one is meant")
 
 
 @check("narrative", "a ballot row gives up a member's party and district",

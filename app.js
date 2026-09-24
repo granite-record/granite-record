@@ -1677,6 +1677,102 @@ function stationTitle(b,s){
     .filter(Boolean).join(" - ");
 }
 
+// THE SENATE COMMITTEE'S OWN REPORT OF THE HEARING, under the hearing's video.
+//
+// A Senate committee's aide writes up every public hearing: who came, which
+// side each took, and what each said. The person decided on 24 September that
+// these are shown as the Senate published them, members of the public named,
+// with the points the report attributes to each. (The online sign-in system is
+// a different source and stays counts-only -- signins() above.) Closed by
+// default: the station is about the recording, and a report can run to forty
+// speakers.
+//
+// Nothing here rewords a point. senate_hearing_reports.py splits a report into
+// speakers only where every line could be placed with confidence; where it
+// could not, a section arrives as `text`, the paragraphs and bullets in the
+// order the report has them, and is drawn that way with no name attached to
+// anything.
+const HR_SIDE={support:"for",oppose:"against",neutral:"neutral"};
+function hrPoint(p){
+  if(typeof p==="string")return `<li>${esc(p)}</li>`;
+  return `<li>${esc(p.t||"")}${(p.sub||[]).length
+    ?`<ul>${p.sub.map(hrPoint).join("")}</ul>`:""}</li>`;
+}
+function hrSpeaker(sp){
+  // A legislator the build resolved to a member is drawn with the chip
+  // everyone else on the site is drawn with, carrying the report's own words
+  // for them; the rest of the line -- "Prime Sponsor", a district -- follows
+  // as the report printed it. Everybody else is the report's text.
+  let name=esc(sp.who||"");
+  const m=sp.member;
+  if(m&&m.label&&String(sp.who||"").startsWith(m.label)){
+    const rest=String(sp.who).slice(m.label.length).replace(/^[\s,:;]+/,"");
+    name=`${pchip(m)}${rest?`<span class="hrrole">${esc(rest)}</span>`:""}`;
+  }
+  const also=(sp.also||[]).map(a=>`<span class="hrrole">${esc(a)}</span>`).join("");
+  const pts=sp.points||[];
+  return `<section class="hrsp"><h3>${name}${also}</h3>${pts.length
+    ?`<ul class="hrpts">${pts.map(hrPoint).join("")}</ul>`
+    :`<p class="hrnone">The report lists no points under this name.</p>`}</section>`;
+}
+function hrPlain(items){
+  // The unsplit case: paragraphs as paragraphs, bullets as bullets.
+  return items.map(x=>typeof x==="string"?`<p class="hrpara">${esc(x)}</p>`
+    :`<ul class="hrpts">${(x.li||[]).map(hrPoint).join("")}</ul>`).join("");
+}
+// `video` is whether the station drew a recording above the report: fifteen
+// Senate hearings with a report have none, and there the page said "the
+// recording above is the hearing itself" over "No recording matched".
+function hearingReport(r,video){
+  if(!r)return "";
+  const secs=r.sections||[];
+  // The size of it, in the summary, so a reader knows what opening it costs.
+  const bySide={};let spoke=0,plain=false;
+  secs.forEach(s=>{
+    if(s.text){if(s.text.length)plain=true;return;}
+    const n=(s.speakers||[]).length;spoke+=n;
+    if(HR_SIDE[s.side])bySide[s.side]=(bySide[s.side]||0)+n;
+  });
+  const sides=["support","oppose","neutral"].filter(k=>bySide[k])
+    .map(k=>`${bySide[k]} ${HR_SIDE[k]}`);
+  const size=spoke
+    ?`${spoke} spoke${sides.length&&Object.values(bySide).reduce((a,b)=>a+b,0)===spoke
+      ?`: ${sides.join(", ")}`:""}`
+    :(plain?"the committee’s summary of the testimony":"no testimony summarized");
+  const cmte=r.committee||"Senate committee";
+  const when=r.completed||r.heard;
+  const fact=(k,v)=>v?`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`:"";
+  const times=[r.opened&&`opened ${r.opened}`,r.closed&&`closed ${r.closed}`]
+    .filter(Boolean).join(", ");
+  const pos=(r.positions||[]).filter(p=>p[1]);
+  // A committee can hear an amendment on its own after the bill, the same
+  // afternoon, and report it separately; the summary says which this is.
+  const amd=r.subject?/AMENDMENT\s*#?\s*([0-9A-Za-z-]+)/i.exec(r.subject):null;
+  return `<details class="hrep"><summary><span class="caret"></span><span>
+    <b>The committee’s hearing report${amd?` on amendment ${esc(amd[1])}`:""}</b>
+    · ${esc(size)}</span></summary>
+    <div class="hrb">
+    ${r.subject?`<p class="hrsrc"><b>Heard:</b> ${esc(r.subject)}</p>`:""}
+    <p class="hrsrc">What each person said, as summarized in the ${esc(cmte)}’s
+      hearing report${when?` of ${fdate(when)}`:""}. The report is the committee
+      staff’s summary of the hearing, not a transcript${video
+        ?"; the recording above is the hearing itself":""}.</p>
+    <dl class="hrfacts">${fact("Hearing",times?`${fdate(r.heard)}, ${times}`:fdate(r.heard))}${
+      fact("Members present",r.present)}${fact("Members absent",r.absent)}</dl>
+    ${pos.length?`<h2>Who took a position</h2><dl class="hrfacts">${
+      pos.map(p=>fact(p[0],p[1])).join("")}</dl>`:""}
+    ${secs.map(s=>{
+      const body=s.text?hrPlain(s.text)
+        :(s.speakers||[]).map(hrSpeaker).join("");
+      const empty=!(s.text||[]).length&&!(s.speakers||[]).length;
+      return `<h2>${esc(s.label)}</h2>${s.text&&s.text.length
+        ?`<p class="hrnote">This section is shown as the report sets it out,
+          because who said which part could not be read from its layout with
+          confidence.</p>`:""}${
+        empty?`<p class="hrnone">${esc(s.note||"None.")}</p>`:body}`;}).join("")}
+    </div></details>`;
+}
+
 function renderHearings(b,d){
   // si, because the pid was built from the video and the timestamp, so two
   // proceedings on the same recording resolving to the same second shared one
@@ -1948,7 +2044,8 @@ function renderHearings(b,d){
     return `<div class="stn ${placed?"done":"pend"}">
       <div class="w">${esc(s.when)}${s.time?" at "+esc(s.time):""}${s.venue?" · "+esc(s.venue):""}</div>
       <div class="t">${esc(stationTitle(b,s))}</div>${
-        signins(s.testimony)}${inner}</div>`;}).join("")
+        signins(s.testimony)}${inner}${(s.reports||[]).map(r=>
+          hearingReport(r,inner.includes('class="player"'))).join("")}</div>`;}).join("")
     :`<p class="note">No scheduled proceedings on file.</p>`;
 }
 
