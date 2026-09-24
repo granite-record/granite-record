@@ -638,7 +638,7 @@ def main():
 
     urls, wrote, with_narr, linked, unlinked = [], 0, 0, 0, 0
     order = mine[: a.limit] if a.limit else mine
-    import build_site_v2 as B2
+    import queue_links as B2  # not build_site_v2: see queue_links.py
     journal_keys, jlinked = B2.journal_keys_from_queue(), 0
     for n, key in enumerate(order):
         day = days[key]

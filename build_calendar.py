@@ -760,7 +760,7 @@ def doc_links(weeks, cal_urls, notices, journal_keys, sittings):
     cite (session_days); build_site_v2.journal_url turns that into a file only
     where the number, the year and the file's own date agree.
     """
-    import build_site_v2 as B2
+    import queue_links as B2  # not build_site_v2: see queue_links.py
     by_bill, by_name = notices
     out, n_cal, n_jnl = {}, 0, 0
     floors = {v: k for k, v in FLOOR.items()}
@@ -1038,7 +1038,7 @@ def main():
     sits = sitting_pages(site)
     print(f"  {len(sits):,} sitting pages on disk to link to")
 
-    import build_site_v2 as B2
+    import queue_links as B2  # not build_site_v2: see queue_links.py
     cal_urls = B2.calendar_keys_from_queue()
     journal_keys = B2.journal_keys_from_queue()
     try:
