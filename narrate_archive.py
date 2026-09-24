@@ -73,6 +73,12 @@ def main():
         n = int(m.group(1).replace(",", "")) if m else 0
         bills += n
         print(f"  {term:11} {n:6,} bills  <- {path}")
+        # What docket_corrections.json did, and above all what it failed to
+        # do: an entry that stopped matching lets a mistyped date back onto
+        # the site, and this run's output is captured, so it is passed on.
+        for line in (r.stdout or "").splitlines():
+            if "docket_corrections.json" in line:
+                print("    " + line.strip())
     print(f"\n{bills:,} bills narrated into {a.out}")
     # Silence is not success: a run that narrated nothing looks exactly like
     # a term with no docket.

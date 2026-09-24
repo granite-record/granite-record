@@ -34,12 +34,23 @@ const KIND={active:"s-active",law:"s-law",done:"s-done",veto:"s-veto",
 // finished and successful and is not law. It needed its own word.
 const KINDL={active:"In progress",law:"Became law",done:"Killed",
              veto:"Vetoed",study:"Interim study",adopted:"Adopted"};
+// WHAT THE BALLOT CODE SAYS, AND NOTHING IT DOES NOT. Each line is attributed
+// to the record ("Recorded as ...") because the roll call carries the code and
+// no reason. On 42% of the House member-days with an Excused ballot,
+// 1999-2026, the member voted on another question that day, and a declared
+// conflict of interest is coded Excused too; on 81% of those with a Not
+// Excused ballot the member voted that day; and 12 roll calls record two
+// members presiding. The old lines claimed a whole day arranged beforehand
+// with a reason, a single presiding member who votes only on a tie, and a
+// member who walked out to avoid the vote. The labels are the person's to
+// change.
+// These strings are inserted into the page unescaped: no <, & or ".
 const OTHER=[["Presiding","Presiding",
-  "One member presides over each roll call and does not vote except to break a tie. This is the role, not a missed vote."],
+  "Recorded as presiding: in the chair, running the chamber for this vote, so no yes or no is recorded for them. The Speaker, the Senate President or a member filling in for them presides. It is not a missed vote."],
  ["Not Voting/Excused","Excused absence",
-  "Excused in advance for the whole day — illness, a death in the family, or other significant obligation."],
+  "Recorded as excused from this vote. An excuse can cover a whole day, part of a day or a single vote, so a member excused here may have cast other votes the same day."],
  ["Not Voting/Not Excused","Absent, not excused",
-  "Either left the chamber rather than vote on this question, or was away for the day without arranging an excuse."]];
+  "Recorded as not voting and not excused. The roll call does not say why, or whether the member was in the chamber."]];
 
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -1601,7 +1612,9 @@ ${d._error?`<div class="loaderr"><b>This bill's detail did not
         <span class="w">${esc(e.text||"")}${e.cite?` <span class="cite">${
           e.cite_url?`<a href="${esc(e.cite_url)}" target="_blank"
           rel="noopener">${esc(e.cite)}</a>`:esc(e.cite)}</span>`:""}${
-          signins(e.testimony)}</span>
+          signins(e.testimony)}${
+          /* a date put right by hand: the line above still says the other */
+          e.date_note?`<span class="note tldate">${esc(e.date_note)}</span>`:""}</span>
         </li>`).join("")}</ul></details>`:""}
 `;
 }

@@ -48,6 +48,7 @@ which this links to.
 
 import argparse
 import collections
+import datetime
 import json
 import re
 from pathlib import Path
@@ -78,7 +79,18 @@ def words(iso):
 
 
 def load_titles(site):
-    """{bill_id: (title, year)} from the term indexes the site already built."""
+    """({(term, bill_id): title}, {(term, bill_id): year}) from the term
+    indexes the site already built.
+
+    KEYED ON THE TERM, BECAUSE A BILL NUMBER IS NOT A BILL. The numbers start
+    again every two years, and these were keyed on the number alone, so
+    whichever term's index was read last owned every number: 73,268 of the
+    79,508 bill links on the sitting pages went to a bill of another term, and
+    the title beside each was that other bill's. The House page for
+    9 March 2016 linked HB 1102 to the 2026 bill of that number and printed
+    its title. Every action on a sitting day comes from one term's record, and
+    carries that term, so the lookup is by the pair.
+    """
     titles, years = {}, {}
     idx = site / "idx"
     if idx.exists():
@@ -89,8 +101,9 @@ def load_titles(site):
                 continue
             for b in rows:
                 if b.get("id"):
-                    titles[b["id"]] = b.get("title") or ""
-                    years[b["id"]] = b.get("year")
+                    key = (b.get("term") or f.stem, b["id"])
+                    titles[key] = b.get("title") or ""
+                    years[key] = b.get("year")
     return titles, years
 
 
@@ -203,7 +216,10 @@ def runs(items):
     """
     out = []
     for it in items:
-        if out and out[-1][0] == it.bill:
+        # The same number from two terms is two bills: the House organization
+        # day of 1 December 2004 took up HR 1 of 2003-2004 and HR 1 of
+        # 2005-2006.
+        if out and out[-1][0] == it.bill and out[-1][1][0].term == it.term:
             out[-1][1].append(it)
         else:
             out.append((it.bill, [it]))
@@ -242,10 +258,25 @@ def speakers_for(attrs, bill, item, sole=False):
     return mine, rest
 
 
-def bill_href(bid, years, esc):
-    yr = years.get(bid)
-    return (f"bill/{yr}/{bid.lower()}.html" if yr
-            else f"/bills#{esc(bid)}")
+def bill_href(term, bid, years):
+    """The page of THIS term's bill of that number, or None.
+
+    None where the term's index does not hold the bill, and the caller then
+    prints the number without a link. A WRONG LINK IS WORSE THAN NO LINK: the
+    old fallback, /bills#HB1, opened whichever HB 1 the bill list shows first,
+    which is the current term's.
+    """
+    yr = years.get((term, bid))
+    return f"bill/{yr}/{bid.lower()}.html" if yr else None
+
+
+def bill_link(term, bid, text, years, esc, cls=""):
+    """The bill's number, linked to its own term's page where there is one."""
+    href = bill_href(term, bid, years)
+    c = f' class="{cls}"' if cls else ""
+    if href:
+        return f'<a{c} href="{esc(href)}">{esc(text)}</a>'
+    return f"<span{c}>{esc(text)}</span>"
 
 
 def opening_html(narrative, body, members, esc):
@@ -295,6 +326,13 @@ def absences_html(narrative, body, members, esc):
 
     The groups are still read from the journal, because that is how the lines
     parse, and then flattened into one list.
+
+    THE NOTE SAYS WHAT THE JOURNAL SAYS AND NO MORE. It said these members
+    "were not in the chamber", which the ballots contradict on 244 member-days
+    from 1999 to 2026: on 11 March 2026 Rep. Cornell, on leave for the day, is
+    recorded excused on roll calls 133 to 172 and voting on 173 to 188. The
+    two records also disagree the other way: Rep. William Dolan, on leave on
+    7 January 2026, is recorded "not excused" on all 31 roll calls that day.
     """
     rows = narrative.get("absences") or []
     if not rows:
@@ -310,8 +348,12 @@ def absences_html(narrative, body, members, esc):
         return ""
     n = len(names)
     return ('<section class="sday"><h2>Excused for the day</h2>'
-            f'<p class="note">{n} member{"" if n == 1 else "s"} had leave of '
-            f'the {CHAMBER[body]} and were not in the chamber.</p>'
+            f'<p class="note">The journal records {n} member'
+            f'{"" if n == 1 else "s"} as having leave of the {CHAMBER[body]} '
+            "for the day, that is, permission to be away. A member on leave "
+            "may still have voted on part of the day, and the roll call "
+            "record does not always agree with the journal about who was "
+            "excused.</p>"
             '<p class="sspoke sabs">'
             + ", ".join(member_html(body, nm, members, esc) for nm in names)
             + "</p></section>")
@@ -354,7 +396,7 @@ def consent_html(cons, removed, titles, years, esc):
     groups = {}
     for i in cons:
         groups.setdefault(short_outcome(i), []).append(i)
-    n = len({i.bill for i in cons})
+    n = len({(i.term, i.bill) for i in cons})
     note = (f'{n} bill{"" if n == 1 else "s"} the chamber disposed of '
             "together, in one motion and without debate.")
     if removed:
@@ -371,9 +413,8 @@ def consent_html(cons, removed, titles, years, esc):
                  f'&mdash; {len(items)}</h3><ul class="sconslist">')
         for i in items:
             num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", i.bill)
-            ti = titles.get(i.bill) or ""
-            H.append(f'<li><a class="cbn" href="{esc(bill_href(i.bill, years, esc))}">'
-                     f"{esc(num)}</a>"
+            ti = titles.get((i.term, i.bill)) or ""
+            H.append("<li>" + bill_link(i.term, i.bill, num, years, esc, "cbn")
                      + (f'<span class="cbt">{esc(ti)}</span>' if ti else "")
                      + "</li>")
         H.append("</ul></div>")
@@ -414,12 +455,13 @@ def render(day, narrative, titles, years, members, esc):
                  "came in: the journal page is cited on only a few of them, "
                  "so they are listed by bill.</p>")
     for bill, items in runs(seq_items):
-        ti = titles.get(bill) or ""
+        term = items[0].term
+        href = bill_href(term, bill, years)
+        ti = titles.get((term, bill)) or ""
         num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", bill)
         leftover = set()
         H.append('<article class="sitem">')
-        H.append(f'<h3><a class="sbill" href="{esc(bill_href(bill, years, esc))}">'
-                 f'{esc(num)}</a>'
+        H.append("<h3>" + bill_link(term, bill, num, years, esc, "sbill")
                  + (f'<span class="sbt">{esc(ti)}</span>' if ti else "") + "</h3>")
 
         for it in items:
@@ -449,9 +491,9 @@ def render(day, narrative, titles, years, members, esc):
                 H.append(f'<div class="svote" data-vote="{i}">'
                          f'<p class="stally">A {kindw}: '
                          f'<b>{it.yeas}</b> yeas, <b>{it.nays}</b> nays.</p></div>')
-                if it.kind == "RC":
+                if it.kind == "RC" and href:
                     H.append('<p class="swho">Who voted which way is on '
-                             f'<a href="{esc(bill_href(bill, years, esc))}">'
+                             f'<a href="{esc(href)}">'
                              f"{esc(num)}'s own page</a>.</p>")
             elif it.kind == "VV":
                 H.append('<p class="stally">Taken on a voice vote, so no count '
@@ -567,12 +609,24 @@ def main():
                     help="H or S. A Senate page carries the record only: its "
                          "journal records no speakers")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--prune", action="store_true",
+                    help=f"remove more than {PRUNE_CEILING} pages of sittings "
+                         "the record no longer holds; without it a larger "
+                         "removal is refused")
     a = ap.parse_args()
     site, base = Path(a.site), a.base.rstrip("/")
     body = a.body.strip().upper()
 
     days = session_days.load()
-    mine = sorted(k for k in days if k[0] == body)
+    # A SITTING CANNOT BE AFTER THE BUILD. The Senate enters floor rows up to
+    # ten days before the sitting they belong to, and a mistyped month put a
+    # House sitting a month ahead of veto day; neither is a day to publish.
+    today = datetime.date.today().isoformat()
+    ahead = sorted(k for k in days if k[0] == body and k[1] > today)
+    mine = sorted(k for k in days if k[0] == body and k[1] <= today)
+    if ahead:
+        print(f"  {len(ahead)} {CHAMBER[body]} day(s) after today not built: "
+              + ", ".join(k[1] for k in ahead))
     # SILENCE IS NOT SUCCESS: no days is a Calendar linking at nothing, and a
     # build that said so by printing a zero.
     assert mine, f"no {CHAMBER.get(body, body)} sitting days in narratives.json"
@@ -646,6 +700,9 @@ def main():
         urls.append(base + S.canon(path))
         wrote += 1
 
+    # A run cut short by --limit leaves every page it did not build.
+    if not a.limit:
+        prune(out_dir, {k[1] for k in mine}, a.prune)
 
     # This chamber's days only, and all of them unless --limit cut the run
     # short: a limited run takes out only entries that were never an address.
@@ -666,6 +723,43 @@ def main():
         print(f"    {linked:,} of {named:,} speaker mentions resolved to a "
               f"member page ({100.0 * linked / named:.0f}%)")
     return 0
+
+
+# A DAY THAT STOPPED EXISTING KEEPS ITS PAGE unless this removes it. This step
+# owns site/session/<body>/ and writes a page per sitting; a sitting that a
+# corrected date moved away from -- "The House, Saturday 19 September 2026" --
+# would otherwise stay on disk, stay deployed and stay linkable from the
+# calendar, which reads the pages off the disk.
+#
+# AND A WRITER RUN ON A SUBSET DESTROYS THE REST, in reverse: a narratives.json
+# that held only some terms would take every other term's pages with it. So
+# more than PRUNE_CEILING removals at once is refused -- nothing is removed and
+# the step fails -- unless --prune says the person meant it. The first run
+# after the corrections of 24 September 2026 removes 8 House pages and 5
+# Senate ones.
+PRUNE_CEILING = 25
+
+
+def prune(out_dir, keep, allowed=False):
+    """Remove the pages in out_dir whose date is not in `keep`. Returns the
+    dates removed; refuses (SystemExit) past the ceiling without `allowed`."""
+    stale = sorted(f for f in out_dir.glob("*.html")
+                   if re.fullmatch(r"\d{4}-\d\d-\d\d", f.stem)
+                   and f.stem not in keep)
+    if len(stale) > PRUNE_CEILING and not allowed:
+        raise SystemExit(
+            f"REFUSED: {len(stale)} pages in {out_dir} are for sittings "
+            f"narratives.json does not hold ({', '.join(f.stem for f in stale[:6])}"
+            f"{', ...' if len(stale) > 6 else ''}). More than {PRUNE_CEILING} "
+            "at once looks like a narratives.json missing whole terms, not a "
+            "corrected date; nothing was removed. Rebuild the narratives, or "
+            "pass --prune if these sittings really are gone.")
+    for f in stale:
+        f.unlink()
+    if stale:
+        print(f"  {len(stale)} page(s) removed for sittings the record no "
+              f"longer holds: {', '.join(f.stem for f in stale)}")
+    return [f.stem for f in stale]
 
 
 def _lead(day, narrative, date, body="H"):

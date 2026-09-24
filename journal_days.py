@@ -435,9 +435,10 @@ def absences(block):
     """[{names, when, why}] -- who the House excused, and on what ground.
 
     The ground is the chamber's own formal category -- illness, important
-    business, illness in the family -- and not a diagnosis. It is printed here
-    because the journal prints it and because a reader asking why a member
-    missed a vote is asking a question the record answers.
+    business, illness in the family -- and not a diagnosis. It is parsed
+    because it ends the sentence the names sit in. It is not published:
+    build_session_pages prints names only, by the person's decision of 19 and
+    23 September 2026.
     """
     out = []
     m = LEAVE_HEAD.search(block)
