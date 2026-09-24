@@ -17,8 +17,14 @@
  * since 13 September a post sent to any other address, or to any path but
  * /api/report exactly, is refused before its body is read.
  *
- * EVERY ANSWER TO A POST IS 204. Success, a honeypot, a bad field, a full day,
- * a database error: the same empty answer, so a script learns nothing.
+ * EVERY ANSWER TO A POST IS 204, BUT ONE. Success, a duplicate, a honeypot, a
+ * bad field, a full day: the same empty answer, so a script learns nothing.
+ * The exception is a report that passed every rule and then could not be
+ * kept -- no database bound, or the database refused the write. That answers
+ * 503, because the box offers the email address only on a reply that is not
+ * a success, and until 24 September a storage failure was answered 204: the
+ * reader was thanked and the report existed only in the Function's log. A
+ * 503 tells a sender only that storage is down, which is no help to a script.
  *
  * THE READER'S WORDS ARE NOT TRUSTED HERE OR ANYWHERE AFTER. compile_reports.py
  * screens what arrives before any assistant reads it, and reports/TRIAGE.md is
@@ -46,10 +52,20 @@ export const TABS = new Set(["", "Summary", "Bill Text", "Votes", "Videos", "Rep
 
 // What a page can be, and the one shape its record takes. Measured from the
 // built site on 12 September: bills 2026/HB100, members by numeric id,
-// committees by code (H05, s100). Every legislator address ends in a number.
+// committees by code (H05, s100).
 const RECORD = /^(bill:\d{4}\/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3})$/;
 const PATH = /^\/(bill\/\d{4}\/[a-z]{2,6}\d{1,4}|legislator\/[a-z0-9-]{1,80}|committee\/[A-Za-z]\d{2,3})$/;
 const BUILD = /^[0-9T:.+\-Z]{0,40}$/;
+// A legislator's address is the slug build_site_v2.member_slug writes: the
+// name, then the county or "sd", then the district, lowercased, with every run
+// of anything else made one hyphen. NOT "ends in a number". The 12 September
+// rule said every address did, and it was true of the sitting roster; a former
+// member whose seat the record does not hold has a slug of the name alone --
+// /legislator/adam-schroadter and seven more -- and a report from any of their
+// pages was refused while the reader was thanked. The slug is a sender's
+// choice, so onRequest still accepts it only if the page there is that
+// member's. preflight runs every built legislator page through this file.
+const MEMBER_PAGE = /^\/legislator\/[a-z0-9]+(-[a-z0-9]+)*$/;
 
 const MAX_BODY = 4096;
 const MAX_NOTE = 1000;
@@ -106,7 +122,7 @@ export function validate(body) {
     if (url !== `/bill/${yr}/${id.toLowerCase()}`) return null;
   } else if (kind === "committee") {
     if (url !== `/committee/${ref}`) return null;
-  } else if (!/^\/legislator\/[a-z]+(-[a-z]+)*-\d+$/.test(url)) {
+  } else if (!MEMBER_PAGE.test(url)) {
     return null;                     // and onRequest checks the page is that member's
   }
   const note = cleanNote(body.note);
@@ -169,6 +185,9 @@ async function digest(s) {
 }
 
 const NOTHING = () => new Response(null, { status: 204 });
+// A report that passed every rule and could not be kept. Not 204, so the box
+// shows the reader the email address with their words filled in (app.js).
+const NOT_KEPT = () => new Response(null, { status: 503 });
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -176,6 +195,7 @@ export async function onRequest(context) {
     return new Response("POST only\n", {
       status: 405, headers: { "Allow": "POST", "Content-Type": "text/plain" } });
   }
+  let storing = false;             // set once the report has passed every rule
   try {
     // The address the request came to, before anything else is read. The
     // rate rule in front of this path is a rule on the graniterecord.org zone,
@@ -204,12 +224,13 @@ export async function onRequest(context) {
     try { body = JSON.parse(raw); } catch { return NOTHING(); }
     const r = validate(body);
     if (!r) return NOTHING();
-    if (!env.DB) {
-      console.log("report not stored: no DB binding on this deployment");
-      return NOTHING();
-    }
     if (r.kind === "member" && !(await memberPageMatches(env, request, r.url, r.ref)))
       return NOTHING();
+    if (!env.DB) {
+      console.log("report not stored: no DB binding on this deployment");
+      return NOT_KEPT();
+    }
+    storing = true;
 
     // One statement, so simultaneous posts cannot all read "499" and all go in,
     // and so a post reads one row, not the day's.
@@ -232,9 +253,13 @@ export async function onRequest(context) {
             r.note, r.build, r.hidden, dedup)
       .run();
   } catch (e) {
-    // Swallowed on purpose: the reader's box has already said thank you, and
-    // an error message is information. It appears in the Function's own log.
+    // The message stays in the Function's own log, because an error message is
+    // information. The answer depends on where it was thrown: before the
+    // report passed every rule it is a malformed post like any other, and 204;
+    // at the database it is a real report that was not kept, and 503, so the
+    // reader is offered the email address instead of being thanked.
     console.log("report not stored:", e && e.message);
+    if (storing) return NOT_KEPT();
   }
   return NOTHING();
 }
