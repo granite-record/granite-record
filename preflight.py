@@ -4464,6 +4464,194 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
                   "and says so only where there is one")
 
 
+def _journey_bills(B):
+    """Three bills of 2025-2026, from their own docket lines: HB 57, signed
+    into law; HB 68, killed in the Senate; CACR 13, on its way to the voters.
+    Each is put through the builder's own journey, passage and rail, and
+    returned as (index row, record) the way build_bills writes them."""
+    def ev(date, typ, body, raw):
+        return {"date": date, "type": typ, "body": body, "cancelled": False, "raw": raw}
+
+    def hands(*hs):
+        return [{"hand": h} for h in hs]
+    hb57 = {"stages": hands("H:committee", "H:floor", "S:committee", "S:floor",
+                            "H:floor", "G:governor"),
+            "events": [
+                ev("2025-01-08", "introduced", "H", "Introduced 01/08/2025 and referred to "
+                   "Criminal Justice and Public Safety"),
+                ev("2025-02-13", "floor", "H", "Ought to Pass: MA VV 02/13/2025"),
+                ev("2025-03-06", "introduced", "S", "Introduced 03/06/2025 and Referred to Judiciary"),
+                ev("2025-05-22", "amendment", "S", "Committee Amendment # 2025-2308s, RC 16Y-8N, AA; "
+                   "05/22/2025"),
+                ev("2025-05-22", "floor", "S", "Ought to Pass with Amendment #2025-2308s, RC 16Y-8N, "
+                   "MA; OT3rdg; 05/22/2025"),
+                ev("2025-06-12", "floor", "H", "Lay HB57 on Table (Rep. Scherr): MF DV 153-190 "
+                   "06/12/2025"),
+                ev("2025-06-12", "floor", "H", "House Concurs with Senate Amendment 2025-2308s "
+                   "(Rep. Roy): MA DV 192-153 06/12/2025"),
+                ev("2025-06-26", "enrolled", "S", "Enrolled Adopted, VV, (In recess 06/26/2025)"),
+                ev("2025-07-15", "governor", "H", "Signed by Governor Ayotte 07/15/2025; Chapter "
+                   "160; eff. 01/11/2026"),
+            ]}
+    hb68 = {"stages": hands("H:committee", "H:floor", "S:committee", "S:floor",
+                            "S:committee", "S:floor"),
+            "events": [
+                ev("2025-01-08", "introduced", "H", "Introduced 01/08/2025 and referred to "
+                   "Education Policy and Administration"),
+                ev("2025-03-20", "amendment", "H", "Amendment # 2025-0103h: AA DV 201-160 03/20/2025"),
+                ev("2025-03-20", "floor", "H", "Ought to Pass with Amendment 2025-0103h: MA RC "
+                   "217-156 03/20/2025"),
+                ev("2025-03-20", "introduced", "S", "Introduced 03/20/2025 and Referred to Education"),
+                ev("2025-05-01", "floor", "S", "Rereferred to Committee, MA, VV; 05/01/2025"),
+                ev("2026-01-07", "floor", "S", "Inexpedient to Legislate, MA, VV ; 01/07/2026"),
+            ]}
+    cacr13 = {"stages": hands("H:committee", "H:floor", "S:committee"),
+              "events": [
+                  ev("2026-01-07", "introduced", "H", "Introduced 01/07/2026 and referred to Judiciary"),
+                  ev("2026-02-05", "floor", "H", "Ought to Pass: MA DV 325-15 By Necessary "
+                     "Three-Fifths Vote 02/05/2026"),
+                  ev("2026-02-05", "introduced", "S", "Introduced 02/05/2026 and Referred to "
+                     "Executive Departments and Administration"),
+                  # Typed "other" by narrative.py, as it is on the site: the
+                  # journey reads the line, not the type.
+                  ev("2026-03-26", "other", "S", "Ought to Pass, RC 23Y-1N, MA, by Necessary 3/5; "
+                     "OT3rdg; 03/26/2026"),
+              ]}
+    out = []
+    for bid, narr, kind, status, chapter in (
+            ("HB57", hb57, "law", "Signed into law", "160"),
+            ("HB68", hb68, "done", "Killed", ""),
+            ("CACR13", cacr13, "adopted",
+             "Passed both chambers, goes to the voters in November 2026", "")):
+        intro, steps = B.journey(narr, bid, [], chapter, "")
+        passed = {c for c in "HS" if B.journey_state(steps, c) == "p"}
+        acted = list(dict.fromkeys(s["body"] for s in steps if s["body"] in "HS"))
+        rail = B.passage(narr["stages"], kind, status, bid, passed, acted)
+        why = B.journey_disagrees(steps, kind, status, rail, bid)
+        assert not why, f"{bid}: the journey and the rail {rail!r} disagree: {why}"
+        jrail = B.journey_rail(intro, steps, rail, bid, status)
+        for s in steps:
+            s.pop("short", None)
+        row = {"id": bid, "n": re.sub(r"(\d)", r" \1", bid, 1), "title": "a bill",
+               "year": 2025, "term": "2025-2026", "kind": kind, "status": status,
+               "passage": rail, "committees": [], "sponsor": ""}
+        out.append((row, {"journey": {"steps": steps, "rail": jrail},
+                          "chapter": chapter, "next_step": status}))
+    return out
+
+
+@check("frontend", "a bill's own rail is dated from its journey, and How it got here lists it",
+       needs=("build_site_v2",))
+def _journey_drawn(build_site_v2):
+    """Option A and C of 24 September, drawn in node the way the page draws them.
+
+    The rail on a bill's own view (and an opened card) gains Introduced and,
+    under each stop, a day and a word or two; the rail on a closed list card
+    stays as it was. On the record's House Status and Senate Status rows give
+    way to How it got here, one line per decision, the same lines the rail is
+    dated from. A signed bill, a bill killed in the second chamber and a CACR,
+    whose route ends at the voters rather than the governor."""
+    js, stub = Path("app.js"), Path("dom_stub.js")
+    if not (js.exists() and stub.exists() and shutil.which("node")):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    bills = _journey_bills(build_site_v2)
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
+        (root / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+const scope = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({cardHtml, renderDetail, journeyList, detail, dkey, IDX,"
+  + " setFocused:(x)=>{focused=x;}})");
+const out = {};
+for (const [row, d] of JSON.parse(fs.readFileSync("./bills.json", "utf8"))) {
+  scope.IDX.push(row);
+  scope.detail[scope.dkey(row.id)] = d;
+  scope.setFocused(row.id);
+  const page = scope.cardHtml(row, true);
+  const summary = scope.renderDetail(row, d);
+  scope.setFocused(null);
+  delete scope.detail[scope.dkey(row.id)];
+  out[row.id] = {page, summary, card: scope.cardHtml(row, false)};
+}
+const many = {journey: {steps: Array.from({length: 9}, (_, i) =>
+  ({date: "2025-03-0" + (i + 1), body: i % 2 ? "S" : "H", act: "passed", mark: "p",
+    text: "Line " + i}))}};
+out.many = scope.journeyList({id: "HB2"}, many);
+process.stdout.write("\\n@@" + JSON.stringify(out));
+""", encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=90)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not draw the journey under node: " + (r.stderr or r.stdout or "")[-300:])
+        got = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    def rail_of(html):
+        m = re.search(r'<span class="rail dated"[^>]*aria-label="([^"]*)"[^>]*>(.*?)</span>\s*</button>',
+                      html, re.S)
+        assert m, "the bill's own view drew no dated rail"
+        return m.group(1), re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", m.group(2))).strip()
+
+    def listed(html):
+        m = re.search(r'<ul class="jl">(.*?)</ul>', html, re.S)
+        assert m, "On the record has no How it got here list"
+        return [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", li)).strip()
+                for li in re.findall(r"<li[^>]*>(.*?)</li>", m.group(1), re.S)]
+
+    # The glyph is drawn before the words, so it is read first here too. The
+    # messages below print with !a: a check or a cross is not in the Windows
+    # console's code page, and a failure that cannot be printed stops the run.
+    want = {
+        "HB57": ("✓ Introduced 8 Jan 2025 ✓ House 13 Feb voice vote ✓ Senate 22 May 16–8, "
+                 "amended ✓ Governor 15 Jul signed ✓ Law Chapter 160",
+                 ["✓ House Passed on a voice vote 13 Feb 2025",
+                  "✓ Senate Passed with an amendment, 16–8 22 May 2025",
+                  "✓ House Agreed to the Senate's amendment, 192–153 12 Jun 2025",
+                  "✓ Governor Signed 15 Jul 2025",
+                  "✓ Law Chapter 160, in effect 11 Jan 2026"],
+                 "Introduced 8 January 2025; House: passed on a voice vote, 13 February 2025; "
+                 "Senate: passed with an amendment, 16 to 8, 22 May 2025; Governor: signed, "
+                 "15 July 2025; Law: chapter 160, in effect 11 Jan 2026"),
+        "HB68": ("✓ Introduced 8 Jan 2025 ✓ House 20 Mar 217–156, amended ✕ Senate 7 Jan 2026 "
+                 "killed Governor ✕ Law",
+                 ["✓ House Passed with an amendment, 217–156 20 Mar 2025",
+                  "↺ Senate Sent back to committee on a voice vote 1 May 2025",
+                  "✕ Senate Killed on a voice vote 7 Jan 2026"], None),
+        "CACR13": ("✓ Introduced 7 Jan 2026 ✓ House 5 Feb 325–15 ✓ Senate 26 Mar 23–1 "
+                   "Voters Nov 2026",
+                   ["✓ House Passed, 325–15 5 Feb 2026", "✓ Senate Passed, 23–1 26 Mar 2026"],
+                   None),
+    }
+    for bid, (rail_text, lines, aria) in want.items():
+        g = got[bid]
+        said, drawn = rail_of(g["page"])
+        assert drawn == rail_text, f"{bid}'s rail reads {drawn!a}, not {rail_text!a}"
+        if aria:
+            assert said == aria, f"{bid}'s rail says {said!a} to a reader who hears it"
+        assert listed(g["summary"]) == lines, (
+            f"{bid}'s How it got here lists {listed(g['summary'])!a}")
+        assert "House Status" not in g["summary"] and "Senate Status" not in g["summary"], (
+            f"{bid} still draws the status page's per-chamber rows")
+        # The list card's rail is the one it always was: no Introduced, no
+        # dates, the index's four marks.
+        assert 'class="rail"' in g["card"] and "<small>" not in g["card"] \
+            and "Introduced" not in g["card"], f"{bid}'s list card drew the dated rail"
+    assert "Governor" not in rail_of(got["CACR13"]["page"])[1], (
+        "a CACR's rail draws a governor, who never sees a constitutional amendment")
+    assert 'class="stop s-h"><b></b><i>Voters' in got["CACR13"]["page"], (
+        "CACR 13's Voters stop is not ringed while it waits for the election")
+    many = got["many"]
+    assert many.count("<li") == 7 and 'data-totab="1"' in many \
+        and "and 3 more on the Votes tab" in many, (
+            f"nine decisions are not six lines and a way to the Votes tab: {many[:200]!a}")
+    return "ok", ("HB 57, HB 68 and CACR 13: dated rails on their own view, the bare rail on "
+                  "the list, How it got here in place of the status rows, six lines at most")
+
+
 @check("frontend", "no const is read before the line that declares it")
 def _tdz():
     js, f = page_source()
@@ -14549,6 +14737,78 @@ def _rail():
         "to match.")
     return "ok", (f"{n:,} rails, {pppp:,} of them the whole way, "
                   f"{vetoes} vetoed and crossed at the governor")
+
+
+# THE OLDER TERMS' DISAGREEMENTS, counted when the journey was built (24
+# September) and each read against its docket: 82 bills of 1989-2024 where a
+# decision the status or the rail stands on is not in the docket -- a passage
+# the clerk recorded only as an amendment (HB 119 of 1993), a signature with
+# no line (HB 768 of 1989), a divided question with no whole-bill vote (HB
+# 1607 of 2024), a House bill whose first row the docket files under the
+# Senate (HB 652 of 2011). None is in the current term, which is held to none.
+# A ceiling rather than a list, so a regression anywhere in the archive fails.
+_JOURNEY_EXPLAINED = 82
+
+
+def _journey_story(records, rows, B):
+    """(counts, the current term's disagreements, the older terms') for
+    records [(term, bid, record)] against index rows {(term, bid): row}.
+    The dated rail's marks are held to the index's too: the list card and
+    the bill's own view draw one rail."""
+    n, now, old = Counter(), [], []
+    current = max((t for t, _b in rows), default="")
+    for term, bid, rec in records:
+        row = rows.get((term, bid))
+        if not row or not row.get("kind"):
+            continue
+        j = rec.get("journey") or {}
+        steps, rail = j.get("steps") or [], j.get("rail") or []
+        p = row.get("passage") or ""
+        why = B.journey_disagrees(steps, row["kind"], row.get("status"), p, bid)
+        marks = {s.get("stop"): s.get("mark") for s in rail}
+        if not why and p and rail:
+            other = "Senate" if p[0] == "H" else "House"
+            own = "House" if p[0] == "H" else "Senate"
+            for stop, m in zip((own, other, "Governor", "Law"), p[1:]):
+                if stop in marks and marks[stop] != m:
+                    why = f"the bill's own rail marks {stop} {marks[stop]!r} and the list card {m!r}"
+                    break
+        n["empty" if not steps else "disagree" if why else "agree"] += 1
+        if why:
+            (now if term == current else old).append(f"{term} {bid}: {why}")
+    return n, now, old
+
+
+@check("data", "a bill's journey, its status and its rail tell one story",
+       needs=("build_site_v2",))
+def _journey_agrees(build_site_v2):
+    """How it got here, the status chip and the rail are three claims about
+    one bill, and the page draws all three within a screen of each other. A
+    journey that ends in a kill under a chip saying "Signed into law", or a
+    rail that crosses the House beside a list saying the House passed it, is
+    the site contradicting itself -- which is how CACR 1 of 2025 came to say
+    "No vote was ever taken on it" over the House's vote to kill it.
+
+    Read from the built pages and the index, so it is about what a reader sees.
+    """
+    idx = Path("site/index.json")
+    if not (idx.exists() and Path("site/bill").is_dir()):
+        return "skip", "no built index and bill pages"
+    import site_read as SR
+    rows = {(r.get("term"), r.get("id")): r
+            for r in json.loads(idx.read_text(encoding="utf-8"))}
+    recs = ((rec.get("term") or "", bid, rec) for _y, bid, rec in SR.records("site"))
+    n, now, old = _journey_story(recs, rows, build_site_v2)
+    if not (n["agree"] or n["disagree"]):
+        return "skip", "no bill record carries a journey yet"
+    assert not now, (f"{len(now)} bills of the current term tell two stories: "
+                     f"{'; '.join(now[:3])!a}")
+    assert len(old) <= _JOURNEY_EXPLAINED, (
+        f"{len(old)} bills of the older terms disagree, and {_JOURNEY_EXPLAINED} were "
+        f"explained: {'; '.join(old[:3])!a}")
+    return "ok", (f"{n['agree']:,} bills agree; {len(old)} of the older terms do not, "
+                  f"each a decision the docket does not record; {n['empty']:,} have no "
+                  "floor decision on record")
 
 
 # Where the rail and the label disagree because the RAIL is wrong: CACR 9 of
