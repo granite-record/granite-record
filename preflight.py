@@ -7950,15 +7950,23 @@ def _about_reports():
 # "PASSED RC(210-136)" on a bill with no roll call counted, the budget bills
 # and rules resolutions whose own text names no sponsor. A regression that
 # brings any of them back fails here.
+#
+# And two the first rewrite introduced: every written report on an archived
+# bill is a House committee's, from a House Calendar, so "Written committee
+# reports start with the 1997-1998 term" credited the Senate's committees with
+# reports no archived term has; and floor_stated opens on the clerk's reading
+# of the committee report (segment_markers.FLOOR_OPEN_RE), not on the chair.
 CONTRADICTED = {
     "about": ("never sent anywhere", "gencourt.state.nh.us", "thinner record",
               "began streaming", "none does", "March 2020",
-              "That is where the record starts"),
+              "That is where the record starts",
+              "Written committee reports start"),
     "data": ("Everything this site knows", "decided on a voice vote",
              "It probably is", "34 GB of recordings", "has not been collected yet",
              "as the archived dockets are fetched", "Every recorded vote:",
              "An empty column is a field not yet collected",
-             "a record not yet collected rather than a bill without one"),
+             "a record not yet collected rather than a bill without one",
+             "chair opened and closed it", "Three values mean no moment"),
 }
 
 
@@ -8005,6 +8013,9 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
             "the About page's no-recording sentence does not split its total "
             f"into the sittings before the channels and the unmatched rest: {para[:200]!r}")
         assert AF.STREAM_START_WORDS in flat, "the About page does not say when the channels begin"
+        assert "The House committees' written reports" in flat and "Senate committees'" in flat, (
+            "the About page no longer says whose written reports begin in 1997: they are the "
+            "House committees', and no archived term has a Senate committee's")
 
         # ---- Data page and manifest, built by build_exports on a fixture ---
         (root / "data").mkdir()
@@ -8051,6 +8062,11 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
         unnamed = sorted(s for s in states if not re.search(r"\b%s\b" % s, what))
         assert not unnamed, f"proceedings.csv's how_placed can be {unnamed}, and its description never says so"
         assert "empty how_placed" in what, "proceedings.csv does not say what an empty how_placed means"
+        # The clerk opens a floor item by reading the committee report and
+        # the chair closes it with the result (segment_markers.FLOOR_OPEN_RE,
+        # FLOOR_CLOSE_RE); the gloss said the chair did both.
+        assert re.search(r"floor_stated \([^)]*clerk", what), (
+            "proceedings.csv no longer says a floor_stated debate opens on the clerk's reading")
 
         # ---- the bill pages' archived note, either side of each boundary ---
         def rec(term, reports, votes, text):
@@ -8069,14 +8085,21 @@ def _about_data_claims(build_pages, about_figures, build_site_v2):
         assert "Not yet fetched" not in n1991 and "1997" in n1991, (
             "a 1991 bill is told its written reports are not yet fetched, though the "
             f"online calendars that print them begin in 1997: {n1991[:200]!r}")
+        assert "The House committees' written reports begin" in n1991 and "its vote." not in n1991, (
+            "a 1991 bill is told written reports begin in 1997 for every committee, or that the "
+            "docket gives each committee's vote, when the reports are the House's and the "
+            f"docket gives no vote on a Senate report of that term: {n1991[:300]!r}")
+        assert "close to complete" not in n1991, (
+            "a 1991 bill, with no written report, named vote or recording, is told its record "
+            "is close to complete")
         assert "What a current term adds" not in n1991, (
             "a bill that carries its own text is told its text is elsewhere")
         assert "where the record starts" not in n1991 and "roll-call files" in n1991, (
             "the before-1999 note does not name the roll-call files as what begins in 1999")
         assert "linked rather than loaded" in n1997, (
             "a bill with no text of its own is no longer told where its text is")
-        assert "the written committee reports" in n2005, (
-            "a 2005 bill with no written report is no longer told the reports are a gap")
+        assert "the House committees' written reports" in n2005, (
+            "a 2005 bill with no written report is no longer told the House's reports are a gap")
         return "ok", ("About and Data pages and the manifest free of the 23 September sentences; "
                       f"{len(used)} passage marks and {len(states)} how_placed values documented; "
                       "the archived note right either side of 1997 and 1999")

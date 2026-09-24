@@ -1024,13 +1024,16 @@ of the public rather than public figures, and this site does not republish them.
 archived bill has its docket &#8212; the General Court's own line-by-line list
 of actions &#8212; and its sponsors, the committee it went to, its hearings and
 its text. Three parts of the record start later, because the General Court's
-copies of them that this site reads start later. Written committee reports
-start with the 1997-1998 term, the first in its online calendars; before that,
-the page gives each committee's recommendation and vote as the docket records
-them. Votes by name start in 1999, where its roll-call files begin; before
-that, the docket gives the tallies it recorded, and the printed journals name
-who voted which way. Recordings start in [[stream_start]], when its YouTube
-channels begin. Every archived bill links its own official record.</p>
+copies of them that this site reads start later. The House committees'
+written reports start with the 1997-1998 term, the first in its online
+calendars, and the Senate committees' with the current term, the only one its
+database holds them for. Before those, the page gives each committee's
+recommendation as the docket records it, and the committee's vote wherever the
+docket gives one. Votes by name start in 1999, where its roll-call files
+begin; before that, the docket gives the tallies it recorded, and the printed
+journals name who voted which way. Recordings start in [[stream_start]], when
+its YouTube channels begin. Every archived bill links its own official
+record.</p>
 
 <h2>What is taken from the record and what is generated</h2>
 <p>Dates, sponsors, vote tallies, committee assignments and hearing times are taken

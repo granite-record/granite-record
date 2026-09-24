@@ -1262,9 +1262,10 @@ function archivedNote(d){
   const P=s=>`<p class="note" style="margin:10px 0 0">${s} The bill's own
     record at the General Court is linked above.</p>`;
 
-  // The first year of the term. Roll calls are on record from 1999 and
-  // hearings on video from May 2020; before those, no such thing exists to
-  // fetch, and the page must not say it is merely missing.
+  // The first year of the term. The General Court's roll-call files begin in
+  // 1999, its online calendars in 1997 and its YouTube channels in May 2020;
+  // before those, the copy this site reads does not exist to fetch, and the
+  // page must not say it is merely missing.
   const y=parseInt(String(d.term||d.year||"").slice(0,4),10)||0;
   const and=xs=>xs.join(", ").replace(/, ([^,]*)$/," and $1");
   // A TERM'S SPONSORS ARRIVE A BILL AT A TIME, from the text the lane saves, so
@@ -1305,10 +1306,22 @@ function archivedNote(d){
   // a backlog that no fetch could clear. For those terms the docket's report
   // lines are the record of what each committee recommended, and the page
   // already shows them.
-  const before1997=(!c.reports&&y&&y<1997)?` Written committee reports begin
-    here with 1997, the first year of the General Court's online calendars,
-    which print them; for this term the docket gives each committee's
-    recommendation and its vote.`:"";
+  //
+  // THE HOUSE'S REPORTS, NOT EVERYONE'S. Every written report on an archived
+  // bill came from a House Calendar; the Senate's are read from the
+  // database, which holds 2025-2026 alone. And the docket's report lines
+  // (a COMM, COMMITTEE, MAJ or MIN REPORT that is not a conference's or an
+  // adoption) carry "(VOTE n-n)" on 93 to 96 per cent of the House's in each
+  // term of 1989-1996, but on none of the Senate's 3,601 of 1989-1994 --
+  // the one that does is a House report filed under S -- and on 510 of
+  // 1995-1996's 1,085. So "and its vote" was false of most Senate committees
+  // these pages name, and "the House committee's vote" would leave out the
+  // Senate's where the docket has it.
+  const before1997=(!c.reports&&y&&y<1997)?` The House committees' written
+    reports begin here with 1997, the first year of the General Court's online
+    calendars, which print them; the Senate committees' begin with 2025. For
+    this term the page gives each committee's recommendation as the docket
+    records it, and the committee's vote wherever the docket gives one.`:"";
   // A bill that carries its own text does not need telling the text is
   // elsewhere: 94 to 98 per cent of every archived term's bills have it.
   const hasText=!!(((d.billtext||{}).body||"").trim());
@@ -1326,10 +1339,10 @@ function archivedNote(d){
     // made this "its roll calls and member by member".
     if(c.votes)have.push("each member's vote on its roll calls");
     if(hasSp)have.push("its sponsors");
-    if(c.reports)have.push("the committee's written report");
+    if(c.reports)have.push("the House committee's written report");
     const gaps=["the docket's full history"];
     if(!hasSp)gaps.push("the sponsors");
-    if(!c.reports&&y>=1997)gaps.push("the written committee reports");
+    if(!c.reports&&y>=1997)gaps.push("the House committees' written reports");
     if(!c.votes&&y>=1999)gaps.push("the roll calls");
     if(!c.hearings)gaps.push("its hearings");
     return P(`This term is archived. Here: ${and(have)}. Not yet on this
@@ -1339,7 +1352,7 @@ function archivedNote(d){
   // Has a docket. What is missing beyond it is what the reader needs told.
   const gaps=[];
   if(!hasSp)gaps.push("the sponsors");
-  if(!c.reports&&y>=1997)gaps.push("the written committee reports");
+  if(!c.reports&&y>=1997)gaps.push("the House committees' written reports");
   if(!c.votes&&y>=1999)gaps.push("the roll calls naming individual members");
   if(!c.video&&y>=2019)gaps.push("a recording of any hearing");
   // Both returns carry it, not just the one with gaps. A pre-1999 term whose
@@ -1350,12 +1363,21 @@ function archivedNote(d){
   // WHAT IS HERE, NAMED FROM THE FLAGS. This said "the docket, the sponsors
   // and the committee reports are all here" whenever nothing was missing,
   // which a term before 1997 now reaches with no written report on it at all.
+  //
+  // "CLOSE TO COMPLETE" ONLY WHERE IT IS. A term of 1989-1996 reaches here
+  // with no written report, no named vote and no recording, and was told its
+  // record was close to complete; it is told what is here instead. And the
+  // written reports are the House committees': no archived term has a
+  // Senate committee's.
   if(!gaps.length){
     const have=["the docket", "the sponsors"];
-    if(c.reports)have.push("the committee reports");
+    if(c.reports)have.push("the House committees' written reports");
     if(c.votes)have.push("the recorded votes");
-    return P(`This term is archived, but its record is close to complete:
-      ${and(have)} are all here.${hasText?"":` What a current term adds is the
+    const lead=(c.reports&&c.votes)
+      ?`This term is archived, but its record is close to complete:
+      ${and(have)} are all here.`
+      :`This term is archived, and ${and(have)} are here.`;
+    return P(`${lead}${hasText?"":` What a current term adds is the
       bill's own text, which is linked rather than loaded.`}${
       before1997}${before1999}`);
   }
@@ -1791,9 +1813,10 @@ function renderHearings(b,d){
       // the previous bill's roll call and can be half an hour of other
       // business earlier, so it is only a fallback -- and ten minutes before
       // the vote is a worse fallback still, just a less wrong one.
-      // floor_stated has a start and an end the chair said, and no roll call
-      // at all. Everything below is the same except what may be claimed about
-      // the end: "timed to the second" is true of a roll call clock and false
+      // floor_stated has a start the clerk read (the committee report) and an
+      // end the chair said (the result), and no roll call at all. Everything
+      // below is the same except what may be claimed about the end: "timed
+      // to the second" is true of a roll call clock and false
       // of a caption line, and the difference is the whole point of the
       // wording on this site.
       placed=true;

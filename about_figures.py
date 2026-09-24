@@ -113,8 +113,8 @@ def figures(site="site", root="."):
             "recorded": _n(placed + rec_only),
             # Of the recorded ones, the share that lands on the moment. A
             # percentage of the WHOLE record would be a different and much
-            # less useful claim -- three quarters of the record is older than
-            # streaming and no method can place it.
+            # less useful claim -- most of the record is older than streaming
+            # and no method can place it.
             "placed_pct": (f"{100 * placed / (placed + rec_only):.0f}%"
                            if (placed + rec_only) else "&mdash;"),
             "prestream": _n(by.get("prestream") or 0),

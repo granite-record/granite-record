@@ -264,18 +264,20 @@ def proceedings_table(out, site):
                  "record, and the recording it is on where there is one. "
                  "start_seconds and end_seconds are the moment in the "
                  "recording the bill's page gives, and how_placed says how it "
-                 "was found: stated (the chair said it), floor_stated (the "
-                 "chair opened and closed it on the floor), floor_precise (a "
+                 "was found: stated (the chair said it), floor_stated (opened "
+                 "by the clerk's reading of the committee report and closed by "
+                 "the chair's announcement of the result), floor_precise (a "
                  "roll call's clock time), located (estimated from the "
                  "captions; the page says approximate), whole_video (the "
                  "recording is the proceeding) and floor_dated (the day's "
                  "floor session, with a start only where the clerk's reading "
-                 "of the committee report was found). Three values mean no "
-                 "moment was found: approximate, despite its name, is a "
-                 "recording in which the moment has not been found yet; "
-                 "consent is a bill adopted in a block on a consent calendar "
-                 "and never taken up on its own; and an empty how_placed is a "
-                 "proceeding with no recording matched to it. "
+                 "of the committee report was found). No moment was found "
+                 "for a floor_dated row with no start, nor for three other "
+                 "values: approximate, despite its name, is a recording in "
+                 "which the moment has not been found yet; consent is a bill "
+                 "adopted in a block on a consent calendar and never taken up "
+                 "on its own; and an empty how_placed is a proceeding with no "
+                 "recording matched to it. "
                  "scheduled_seconds is the meeting's called time minus the "
                  "stream's start, which is the schedule and not a finding.")
 
@@ -587,7 +589,7 @@ def data_page(site, out, tables, base, cov=()):
         with a stopwatch, the corrections, the offices filled in from official
         sources.</dd>
       <dt>What it does not</dt>
-      <dd>The record itself &mdash; the dockets, the database dump, the saved
+      <dd>The rest of the record &mdash; the dockets, the database dump, the saved
         bill pages, the calendars and the journals &mdash; which is the
         General Court&#39;s and changes as it does; the caption files this site
         reads timestamps out of, about 20 GB, and the audio of a few dozen
@@ -671,9 +673,9 @@ def main():
                   "never referred to a committee, a sitting with no "
                   "recording); the document that would fill it has not been "
                   "collected, or not in a version that names it; or the "
-                  "record gives it and this site does not "
-                  "read it yet. coverage says how much of each column of "
-                  "bills.csv is filled per term.",
+                  "record gives it and this site does not read it, or match "
+                  "it to a member, yet. coverage says how much of each "
+                  "column of bills.csv is filled per term.",
         "tables": [{k: v for k, v in t.items() if k != "over_cap"}
                    for t in tables],
     }
@@ -694,8 +696,8 @@ def main():
         "what": "How much of each column of bills.csv is filled, per term. "
                 "An empty cell is a field the bill's own record leaves empty, "
                 "one this site has not collected, or one the record gives "
-                "that this site does not read yet; the data page says which "
-                "is which.",
+                "that this site does not read yet; the data page gives "
+                "examples of each.",
         "columns": SPARSE, "by_term": cov,
     }
     (out / "manifest.json").write_text(
