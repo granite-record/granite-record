@@ -955,7 +955,7 @@ function donut(bid,i,rc){
   // worked out by comparing two numbers against a threshold.
   const legend=rows.map(s=>{
     const winner=(s.side==="Yea")===won;
-    return `<button class="lrow ${chosen===s.key?'sel':''}" data-seg="${key}|${s.key}">
+    return `<button type="button" class="lrow ${chosen===s.key?'sel':''}" aria-pressed="${chosen===s.key}" data-seg="${key}|${s.key}">
     <span class="sw" style="background:${PARTY_COLOR[s.p]||"var(--ink-2)"}"></span>
     <span>${PARTY_NAME[s.p]||s.p} — ${s.side==="Yea"?"Yes":"No"}${
       winner?`<span class="won" title="this side prevailed">\u2713</span>`:""}</span>
@@ -963,7 +963,7 @@ function donut(bid,i,rc){
   const others=OTHER.map(([st,label])=>({st,label,n:(rc.members||[]).filter(m=>m.v===st).length})).filter(o=>o.n);
   const oTot=others.reduce((a,o)=>a+o.n,0);
   const oRows=others.length?`<div class="othergrp"><div class="otherhd">Other — ${oTot}<span class="c">not in chart</span></div>
-    ${others.map(o=>`<button class="lrow ${chosen==="other-"+o.st?'sel':''}" data-seg="${key}|other-${o.st}">
+    ${others.map(o=>`<button type="button" class="lrow ${chosen==="other-"+o.st?'sel':''}" aria-pressed="${chosen==="other-"+o.st}" data-seg="${key}|other-${o.st}">
     <span class="sw sw-o"></span><span>${o.label}</span><span class="c">${o.n}</span></button>`).join("")}</div>`:"";
   let list="";
   if(chosen){
@@ -1053,7 +1053,7 @@ function score(y,n,won){
 
 function fullRecord(bid,i,rc){
   const k=`${bid}|${i}`;
-  if(!fullOpen.has(k))return `<button class="discl" data-full="${k}">View full voting record →</button>`;
+  if(!fullOpen.has(k))return `<button type="button" class="discl" aria-expanded="false" data-full="${k}">View full voting record →</button>`;
   // Sorted on the surname-first key, not on what is displayed: ordering
   // "Rep. Jodi Nelson (R)" alphabetically groups 400 members by honorific
   // and then by first name.
@@ -1071,7 +1071,7 @@ function fullRecord(bid,i,rc){
   const pair=p=>{const py=col("Yea",p),pn=col("Nay",p),nm=PARTY_NAME[p]||p;
     return `<div class="full"><div><h3>${nm} Yea — ${py.length}</h3>${grid(py)}</div>
     <div><h3>${nm} Nay — ${pn.length}</h3>${grid(pn)}</div></div>`;};
-  return `<button class="discl" data-full="${k}">Hide full voting record</button>
+  return `<button type="button" class="discl" aria-expanded="true" data-full="${k}">Hide full voting record</button>
     ${parties.map(pair).join("")}
     ${OTHER.map(sect).join("")}
     <p class="note" style="margin-top:12px">All ${tot} recorded members accounted for:
@@ -2879,10 +2879,15 @@ let UPCOMING = null;
 // with a copy, and focus fell to <body>: a keyboard reader who arrowed onto
 // Bill Text lost their place the moment its text loaded. Put focus back on the
 // copy, matched by id or, for a member or committee tab, by its position.
+// The Votes tab's own controls carry neither an id nor data-pt -- the
+// full-record button and the legend's rows -- so each is found again by
+// the data attribute saying what it opens (24 September).
 const repaint=()=>{
   const a=document.activeElement;
   const sel=a&&a!==document.body
-    ?(a.id?`#${CSS.escape(a.id)}`:a.dataset&&a.dataset.pt!==undefined?`.tab[data-pt="${a.dataset.pt}"]`:null)
+    ?(a.id?`#${CSS.escape(a.id)}`:a.dataset&&a.dataset.pt!==undefined?`.tab[data-pt="${a.dataset.pt}"]`
+      :a.dataset&&a.dataset.full!==undefined?`[data-full="${CSS.escape(a.dataset.full)}"]`
+      :a.dataset&&a.dataset.seg!==undefined?`[data-seg="${CSS.escape(a.dataset.seg)}"]`:null)
     :null;
   if(PAGE)renderPage();else render();
   if(sel){const f=document.querySelector(sel);if(f&&f!==document.activeElement)f.focus({preventScroll:true});}

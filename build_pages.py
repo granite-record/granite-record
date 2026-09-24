@@ -1928,8 +1928,9 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     ?`<h2>Most recent floor sessions</h2><div class="twoup">${ls.map(v=>
       `<div><p style="margin:0 0 6px;font-size:14px"><b>${esc(v.chamber||"")}</b>
         <span class="statemeta">${fd(v.date)}</span></p>
-        <div class="player"><div class="pstub" data-embed="${esc(v.video_id)}">
-          <span>&#9654;</span><span>Play</span></div></div></div>`).join("")}</div>`
+        <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"
+          aria-label="Play the ${esc(v.chamber||"")} floor session of ${fd(v.date)}">
+          <span>&#9654;</span><span>Play</span></button></div></div>`).join("")}</div>`
     :"";
 });
 document.addEventListener("click",e=>{
