@@ -2781,7 +2781,8 @@ function renderDetail(b,d){
   // placement is deliberate for the very long documents. What was missing is
   // the tab a reader looks for, so the test is now "is there a text", with the
   // version count still shown only when there is more than one to count.
-  const btHas=(d.nver||0)>1||(d.namd||0)||!!(((d.billtext||{}).body||"").trim());
+  const btHas=(d.nver||0)>1||(d.namd||0)||!!(((d.billtext||{}).body||"").trim())
+    ||!!(d.amendments||[]).length;
   const btTab=btHas
     ? `<button class="tab" role="tab" id="tab_${b.id}_6" aria-controls="pane_${b.id}_6"
         aria-selected="false" data-t="6">Bill Text${d.nver>1?` (${d.nver})`:""}</button>`
