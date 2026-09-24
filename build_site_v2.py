@@ -37,6 +37,7 @@ import names
 import re
 import sys
 import archive_text as AT
+import bill_order as BO
 import text_sponsors as TS
 import topic_model as TM
 import unicodedata
@@ -1985,6 +1986,13 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
     return out
 
 
+def sponsored_in_order(rows):
+    """A member's sponsored bills: prime first, then by year, oldest first,
+    then by bill number in bills.html's order (bill_order)."""
+    return sorted(rows, key=lambda x: (not x["prime"], x.get("year") or 0,
+                                       BO.bill_key(x["bill"])))
+
+
 def build_legislators(out, legs, votes_by_member, towns, unnamed,
                       sponsored=None, bill_year=None, links=None,
                       former=None):
@@ -2050,11 +2058,12 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
         # carry them, so the page could not show them and a search engine was
         # being told about a section that does not exist.
         #
-        # Prime sponsorship first, then the rest, newest first within each: a
-        # member's own bills are the ones they are asked about.
-        mine = sorted((sponsored or {}).get(mid, []),
-                      key=lambda x: (not x["prime"], x.get("year") or 0,
-                                     x["bill"]), reverse=False)
+        # Prime sponsorship first, then the rest: a member's own bills are the
+        # ones they are asked about. Within each, OLDEST year first -- this
+        # said "newest first" over code that has always run oldest first --
+        # and then by number as bills.html lists them. The number was compared
+        # as text, so HB436 was listed before HB61.
+        mine = sponsored_in_order((sponsored or {}).get(mid, []))
         # Which numbers the votes below were cast under, and the years in each
         # chamber, for the page to say why a senator's list has House votes in
         # it. Only where there are two: everyone else's file is as it was.

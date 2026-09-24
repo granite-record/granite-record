@@ -16,6 +16,7 @@ styles and is untouched.
 
 import argparse
 import about_figures
+import bill_order as BO
 import html as _html
 import shell as _shell
 import seating
@@ -544,10 +545,14 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # session and an executive session, so the body is a little
             # schedule rather than a flat list of bills: each slot keeps the
             # time it was set for and says what kind of sitting it is.
+            # Inside a slot, by number as bills.html lists them. Without the
+            # last key a slot kept proceedings.csv's order, which is the
+            # number's text: HB 101, HB 110, HB 78.
             slotted = OrderedDict()
             for r in sorted(rows, key=lambda x: ((x.get("time") or "~"),
                                                  (x.get("what") or ""),
-                                                 (x.get("venue") or ""))):
+                                                 (x.get("venue") or ""),
+                                                 BO.bill_key((x.get("bill") or "").strip()))):
                 slotted.setdefault(((r.get("time") or ""),
                                     (r.get("what") or ""),
                                     (r.get("venue") or "")), []).append(r)

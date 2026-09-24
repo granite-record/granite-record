@@ -33,6 +33,7 @@ import datetime as _dt
 import json
 from pathlib import Path
 
+import bill_order as BO
 import text_sponsors as TS
 # The month the General Court's YouTube channels begin, as the About page and
 # the bill pages say it: one constant, so the three cannot drift apart.
@@ -128,12 +129,19 @@ def bills(out, site):
              # Five characters: where it started and each stop it reached.
              # Documented on the data page rather than left as a code.
              b.get("passage", ""), b.get("nrc", 0), b.get("chapter", "")]
+            # By term, then by number as the site lists bills. As text,
+            # HB1003 was row 38 of 2025-2026 and HB103 row 67.
             for b in sorted(idx, key=lambda b: (str(b.get("term")),
-                                                str(b.get("id")))))
+                                                BO.bill_key(b.get("id")))))
     return write(out, "bills.csv", cols, rows,
                  "Every bill of every term: title, sponsor, committee, "
                  "outcome, how far it got, and the chapter of the laws it "
-                 "became.")
+                 "became. Rows run by term, then by bill in the order the "
+                 "site lists them: HB, HR, HCR, CACR, SB, SR, SCR, HJR, SJR, "
+                 "then any other kind, each by its number counted as a "
+                 "number, so HB 103 comes "
+                 "before HB 1003. sponsors.csv and proceedings.csv order "
+                 "their bill column the same way.")
 
 
 def legislators(out, site):
@@ -269,7 +277,7 @@ def proceedings_table(out, site):
                      "" if st.get("end") is None else st["end"],
                      st.get("state") or "", st.get("end_from") or "",
                      r.get("predicted_offset") or ""])
-    rows.sort(key=lambda r: (r[4], r[1]))
+    rows.sort(key=lambda r: (r[4], BO.bill_key(r[1])))
     print(f"  proceedings.csv: {placed:,} rows carry the time their page "
           "prints")
     return write(out, "proceedings.csv", cols, rows,
@@ -331,7 +339,7 @@ def sponsors(out, data):
                              m.get("party", ""), m.get("chamber", ""),
                              1 if m.get("prime") else 0, m.get("role", ""),
                              m.get("source") or "sponsor file"])
-    rows.sort(key=lambda r: (r[0], r[1], -r[6]))
+    rows.sort(key=lambda r: (r[0], BO.bill_key(r[1]), -r[6]))
     return write(out, "sponsors.csv", cols, rows,
                  "Who put their name to which bill, and who was prime. "
                  "Sponsoring is not voting and is not counted as one. source "

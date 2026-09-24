@@ -50,6 +50,7 @@ import re
 from pathlib import Path
 
 import proceedings as P
+import bill_order as BO
 import names
 import shell as S
 import structured as LD
@@ -265,6 +266,14 @@ def feed_link(code, name):
     again exactly as it was put in."""
     return (f'<link rel="alternate" type="application/rss+xml" '
             f'title="{S.E(name)} committee updates" href="/feed/committee/{S.E(code)}.xml">')
+
+
+def bills_in_order(by_term):
+    """A committee's referred bills, per term, by number as bills.html lists
+    them. Sorted on the id's text this put HB1003 before HB101 on the page:
+    the Bills tab shows this file's order and has no sort control."""
+    return {t: sorted(v, key=lambda b: BO.bill_key(b["id"]))
+            for t, v in by_term.items()}
 
 
 def load(p, default):
@@ -588,8 +597,7 @@ def main():
             # list of bills.
             "purpose": info.get("purpose") or None,
             "members": members,
-            "bills": {t: sorted(v, key=lambda b: b["id"])
-                      for t, v in referred.get(code, {}).items()},
+            "bills": bills_in_order(referred.get(code, {})),
             "sessions": sessions,
         }
         (out / f"{code}.json").write_text(json.dumps(rec), encoding="utf-8")
