@@ -768,11 +768,17 @@ cursor:pointer;background:var(--film-stub);color:var(--film-stub-ink);font-size:
 /* CITE THIS PAGE. Shut by default and quiet: a reader who wants it is looking
    for it, and a reader who does not should not have four citation formats
    between the record and the footer. Outside #results, so app.js redrawing a
-   record cannot take it away. */
+   record cannot take it away.
+
+   .pcite, NOT .cite -- one component taking another's name, as .ctitle,
+   .fhead and .chead did. .cite is the docket line's citation ("HJ 7, page
+   55") and carries white-space:nowrap further down; this <details> inherited
+   it, so above 720px every citation ran on one line past its box and opening
+   it made the whole page scroll sideways. */
 .citewrap{max-width:1180px;margin:0 auto;padding:0 var(--sp-8) var(--sp-9)}
-.cite > summary{display:inline-block;cursor:pointer;font-size:var(--t-ui);
+.pcite > summary{display:inline-block;cursor:pointer;font-size:var(--t-ui);
 color:var(--ink-2);padding:var(--sp-3) 0;list-style:none}
-.cite > summary::-webkit-details-marker{display:none}
+.pcite > summary::-webkit-details-marker{display:none}
 /* A CARET DRAWN, NOT TYPED. This was content:"<U+0083>A " -- a C1
    control character and a literal letter A, which every page on the site
    rendered as a little box followed by an A in front of "Cite this
@@ -782,13 +788,13 @@ color:var(--ink-2);padding:var(--sp-3) 0;list-style:none}
    The rest of the site has never had this problem because .caret is a
    pair of CSS borders rather than a character: there is nothing in it to
    mis-encode. This now matches it, down to the rotation on open. */
-.cite > summary::before{content:"";display:inline-block;
+.pcite > summary::before{content:"";display:inline-block;
 width:0;height:0;margin-right:var(--sp-3);
 border-left:6px solid currentColor;
 border-top:4.5px solid transparent;border-bottom:4.5px solid transparent;
 transition:transform .12s ease}
-.cite[open] > summary::before{transform:rotate(90deg)}
-.cite > summary:hover{color:var(--ink)}
+.pcite[open] > summary::before{transform:rotate(90deg)}
+.pcite > summary:hover{color:var(--ink)}
 .citebody{border-top:1px solid var(--rule);padding-top:var(--sp-5);
 max-width:var(--measure)}
 .citenote{font-size:var(--t-ui);color:var(--ink-2);margin:0 0 var(--sp-6)}

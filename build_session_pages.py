@@ -613,7 +613,9 @@ def main():
             nav.append(f'<a class="wknext" href="{S.canon(f"session/{body}/{next_}.html")}">'
                        f"The sitting after &rsaquo;</a>")
 
-        path = f"session/{body}/{date}.html"
+        # From the root, with its slash: the canonical link, the citation and
+        # the sitemap are the domain joined to this.
+        path = f"/session/{body}/{date}.html"
         html = S.page(S.template(site), path=path, base=base,
                       title=f"{label} | Granite Record",
                       description=(f"What the New Hampshire {CHAMBER[body]} did on "
@@ -635,20 +637,17 @@ def main():
                 "</div></div>")
         html = html.replace('<div id="results"></div>', full, 1)
         assert 'class="wkpage sesspage"' in html, f"{path}: no results slot"
-        (site / path).write_text(html, encoding="utf-8")
+        (site / path.lstrip("/")).write_text(html, encoding="utf-8")
         urls.append(base + S.canon(path))
         wrote += 1
 
 
-    sm = site / "sitemap.xml"
-    if sm.exists():
-        text = sm.read_text(encoding="utf-8")
-        add = "".join(f"<url><loc>{S.E(u)}</loc></url>\n" for u in urls
-                      if S.E(u) not in text)
-        if add:
-            sm.write_text(text.replace("</urlset>", add + "</urlset>"),
-                          encoding="utf-8")
-            print(f"  {len(add.splitlines())} added to sitemap.xml")
+    # This chamber's days only, and all of them unless --limit cut the run
+    # short: a limited run takes out only entries that were never an address.
+    added, dropped = S.sitemap_merge(site, base, urls, f"/session/{body}",
+                                     whole=not a.limit)
+    if added or dropped:
+        print(f"  sitemap.xml: {added} added, {dropped} no longer written taken out")
 
     print(f"  {wrote:,} {CHAMBER[body]} sitting days -> site/session/{body}/")
     print(f"    {with_narr:,} carry a journal narrative "
