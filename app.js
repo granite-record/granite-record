@@ -1592,7 +1592,16 @@ function renderSummary(b,d,rsa){
   // on HB 1, three left an empty row on HB 751. A float cannot push in-flow
   // content down at all, which is the property actually wanted. See .facts in
   // app.css.
-  return factsTable(b,d) + _an + `
+  // A BAND ACROSS THE TOP (the person, 24 September): on a desktop the
+  // analysis and any bill notes on the left and On the record on the right,
+  // with the stage sections full width below; on a phone the panel first,
+  // then the writing. The band holds the two as siblings in their own box, so
+  // the story below can never run under the panel, which is what the float
+  // did once text stopped being capped at 560px. No writing: the panel alone.
+  const _top=_an
+    ? `<div class="sumtop"><div class="sumrow"><div class="sumlead">${_an}</div>${factsTable(b,d)}</div></div>`
+    : factsTable(b,d);
+  return _top + `
 ${d._error?`<div class="loaderr"><b>This bill's detail did not
     load.</b><span>${esc(d._error)}</span></div>`:""}
     ${(d.notes||[]).map(x=>`<p class="note">${esc(x)}</p>`).join("")}
