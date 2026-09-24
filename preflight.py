@@ -10769,7 +10769,11 @@ def _sponsors_csv_seat(text_sponsors):
 
     Both builders take both steps, and the download is built on a fixture:
     2023 CACR 10's database row says H and its text prints "Sen. Soucy, Dist
-    18"; the current term keeps its roster's seat whatever the text says."""
+    18"; the current term keeps its roster's seat whatever the text says.
+
+    What this holds is that the two agree, not that the seat is right: 35
+    more rows of the six, on 15 bills with no printed seat seat_into can use
+    (see build_exports.sponsors), still say House on the page and here."""
     here = Path(".").resolve()
     for f in ("build_site_v2.py", "build_exports.py"):
         src = (here / f).read_text(encoding="utf-8") if (here / f).exists() else ""

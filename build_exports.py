@@ -295,6 +295,14 @@ def sponsors(out, data):
     # that promises a download and a page cannot disagree. The current term is
     # left alone exactly as build_site_v2 leaves it: its roster is
     # contemporaneous.
+    #
+    # NOT ALL OF THEM. The six sit in the House on 913 rows of that term, and
+    # seat_into can date 878. The other 35, on 15 bills, have no printed seat
+    # it can use, and their pages say House too: 26 on six resolutions with no
+    # saved text (SCR 1, SR 9, SR 10, SR 11, HCR 7, HCR 11); Donna Soucy on
+    # eight Senate bills whose text prints her beside Rep. Timothy Soucy, a
+    # pair seat_into will not split; and Carrie Gendreau on SB 118, whose
+    # saved text does not print her. Still wrong, on the page and here alike.
     if isinstance(sp, dict):
         TS.merge_into(sp)
         bills_ = load(Path(data) / "bills.json", {})
