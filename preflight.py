@@ -2588,6 +2588,11 @@ def _palette():
         TEXT += [(f"st-{st}", f"st-{st}-bg"), ("ink-2", f"st-{st}-bg")]
     BOUND = [("edge", "surface"), ("edge", "paper"),
              ("pine", "surface"), ("pine", "paper")]
+    # A meeting's kind: its ink is the chip's text on its tint, and it is also
+    # the card's edge bar and the chip's edge on the card and the page.
+    for k in ("hear", "meet", "exec", "conf", "floor"):
+        TEXT += [(f"cal-{k}", f"cal-{k}-bg")]
+        BOUND += [(f"cal-{k}", "surface"), (f"cal-{k}", "paper")]
 
     bad, n = [], 0
     for scheme, t in (("light", tok), ("dark", dark)):
@@ -9059,6 +9064,82 @@ def _meet_kind_agrees():
         f"only in app.js {sorted(set(other) - set(table))}, "
         f"different {sorted(k for k in set(table) & set(other) if table[k] != other[k])}")
     return "ok", f"{len(table)} meeting kinds, the same in both renderers"
+
+
+@check("frontend", "a meeting takes the General Court's colour for its kind, and the week carries the key")
+def _meet_kind_colours():
+    """Work sessions, conferences and the floor were all orange.
+
+    The General Court's schedule, which staff read every week, colours a
+    hearing blue, a meeting green, an executive session orange and a
+    committee of conference red (fetch_schedule.py quotes the legend). The
+    calendar here gave a hearing gold and an executive session teal, and
+    every other kind fell to a catch-all bar in --st-study orange -- so 55
+    committees of conference and 60 floor sittings, and every work session,
+    wore the colour that means executive session there. No page carried a key.
+
+    This holds each kind that occurs in the record to its class, each class
+    to a chip rule, a bar rule and a key rule in app.css drawn from its own
+    --cal- token, the key to every class, and a built week to the key.
+    """
+    import build_pages as BP
+    want = {"public hearing": "k-hearing", "hearing": "k-hearing",
+            "executive session": "k-exec", "work session": "k-meet",
+            "subcommittee work session": "k-meet",
+            "full committee work session": "k-meet",
+            "study committee": "k-meet", "statutory committee": "k-meet",
+            "committee of conference": "k-conf", "floor debate": "k-floor"}
+    got = {k: BP.MEET_KIND.get(k, ("", ""))[1] for k in want}
+    assert got == want, ("meeting kinds take the wrong colour: "
+                         + ", ".join(f"{k} is {got[k]!r}, not {want[k]!r}"
+                                     for k in want if got[k] != want[k]))
+    css = Path("app.css").read_text(encoding="utf-8")
+    tok = {"k-hearing": "hear", "k-meet": "meet", "k-exec": "exec",
+           "k-conf": "conf", "k-floor": "floor"}
+    for cls, t in tok.items():
+        for rule in (rf"\.calkind\.{cls}\{{[^}}]*var\(--cal-{t}\)",
+                     rf"\.calmix \.{cls}\{{background:var\(--cal-{t}\)\}}",
+                     rf"\.calkey \.{cls}\{{background:var\(--cal-{t}\)\}}"):
+            assert re.search(rule, css), (
+                f"app.css has no rule matching {rule!r}: the {cls} colour is "
+                "not drawn from its own --cal- token")
+    assert re.search(r"\.calmix \.k-other\{background:var\(--edge\)\}", css), (
+        "a kind the table does not name borrows a colour instead of the neutral edge")
+    legend = [c for c, _w in BP.MEET_LEGEND]
+    assert sorted(legend) == sorted(tok), f"the key names {legend}, not {sorted(tok)}"
+
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_calendar as BC
+    here = Path(".").resolve()
+    if not (here / "bills.html").exists():
+        return "skip", "bills.html is not here"
+    rows = [{"term": "2025-2026", "bill": "HB1", "body": "H", "kind": k,
+             "date": "2026-03-05", "time": t, "committee": c, "venue": ""}
+            for k, t, c in (("floor debate", "", ""),
+                            ("committee of conference", "", ""),
+                            ("subcommittee work session", "10:00", "Commerce"))]
+    weeks = BC.weeks_from(rows)
+    order = sorted(weeks)
+    tmp = Path(tempfile.mkdtemp(prefix="gr-kinds-"))
+    try:
+        site = tmp / "site"
+        site.mkdir()
+        shutil.copy(here / "bills.html", site / "bills.html")
+        with contextlib.redirect_stdout(io.StringIO()):
+            BC.week_page(site, "https://graniterecord.org", order[0], weeks, order, 0,
+                         {}, {}, {}, [], _dt.date(2026, 9, 24), set())
+        t = (site / "calendar" / f"{order[0]}.html").read_text(encoding="utf-8")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    assert 'class="calkey"' in t, "a week's page carries no key to its colours"
+    bars = re.findall(r'<span class="calmix" aria-hidden="true">(.*?)</span>', t)
+    seen = set(re.findall(r'<i class="(k-[a-z]+)"></i>', "".join(bars)))
+    assert seen == {"k-floor", "k-conf", "k-meet"}, (
+        f"a floor sitting, a conference and a work session drew bars {sorted(seen)}")
+    return "ok", (f"{len(want)} kinds on five colours, each from its own token, "
+                  "and the key on the week")
 
 
 # Every kind app.js ranks, two it does not, and the pairs text sorts wrongly:

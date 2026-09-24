@@ -109,6 +109,19 @@
 --st-done:#9E2B25;--st-done-bg:#FAE7E5;
 --st-study:#94500E;--st-study-bg:#FCEEDF;
 --st-veto:#7C2D3A;--st-veto-bg:#F7E4E7;
+/* A MEETING'S KIND, in the General Court's own colours, because staff read
+   its schedule by them: blue a hearing, green a meeting (work sessions,
+   study and statutory committees), orange an executive session, red a
+   committee of conference. The floor, which that schedule does not colour,
+   is violet. Their own tokens rather than the status ones, which mean what
+   happened to a bill and would drift with it. Each ink draws a bar and a
+   chip's edge, so it holds 3:1 against the card and the page, and 4.5:1 as
+   text on its own tint; preflight measures all of them. */
+--cal-hear:#1F5594;--cal-hear-bg:#E3ECF7;
+--cal-meet:#1E5B3C;--cal-meet-bg:#E3EFE7;
+--cal-exec:#94500E;--cal-exec-bg:#FCEEDF;
+--cal-conf:#9E2B25;--cal-conf-bg:#FAE7E5;
+--cal-floor:#6B3FA0;--cal-floor-bg:#EFE9F7;
 /* The home page's session box when the House is between sittings. These two
    were literals in build_pages.py's stylesheet -- the last pair of colours
    outside the palette, and so the last pair nothing could measure or
@@ -201,6 +214,11 @@ color-scheme:light}
 --st-done:#F0938C;--st-done-bg:#43211F;
 --st-study:#EDAE6E;--st-study-bg:#402C14;
 --st-veto:#EE9BA8;--st-veto-bg:#41222A;
+--cal-hear:#8FB4E8;--cal-hear-bg:#22304A;
+--cal-meet:#7FCB9C;--cal-meet-bg:#1C3A28;
+--cal-exec:#EDAE6E;--cal-exec-bg:#402C14;
+--cal-conf:#F0938C;--cal-conf-bg:#43211F;
+--cal-floor:#C4A6EE;--cal-floor-bg:#30264A;
 --wait:#E0BE7C;--wait-bg:#3A3116;
 --rep:#E88E86;--dem:#8FB4E8;--ind:#B9A9E0;
 --rep-soft:#3B2422;--dem-soft:#22304A;--ind-soft:#2E2842;
@@ -243,6 +261,11 @@ color-scheme:dark}
 --st-done:#F0938C;--st-done-bg:#43211F;
 --st-study:#EDAE6E;--st-study-bg:#402C14;
 --st-veto:#EE9BA8;--st-veto-bg:#41222A;
+--cal-hear:#8FB4E8;--cal-hear-bg:#22304A;
+--cal-meet:#7FCB9C;--cal-meet-bg:#1C3A28;
+--cal-exec:#EDAE6E;--cal-exec-bg:#402C14;
+--cal-conf:#F0938C;--cal-conf-bg:#43211F;
+--cal-floor:#C4A6EE;--cal-floor-bg:#30264A;
 --wait:#E0BE7C;--wait-bg:#3A3116;
 --rep:#E88E86;--dem:#8FB4E8;--ind:#B9A9E0;
 --rep-soft:#3B2422;--dem-soft:#22304A;--ind-soft:#2E2842;
@@ -520,8 +543,19 @@ flex:0 0 auto}
 .calkind{font-size:var(--t-sm);font-weight:600;padding:var(--sp-1) var(--sp-4);
 border-radius:var(--r-pill);white-space:nowrap;flex:0 0 auto;
 background:var(--wash);color:var(--ink-2)}
-.calkind.k-hearing{background:var(--st-active-bg);color:var(--st-active)}
-.calkind.k-exec{background:var(--pine-soft);color:var(--pine)}
+/* Each coloured chip carries an edge in its own ink: a tint alone is about
+   1.1:1 against the card and recedes into it, and the edge is what holds the
+   3:1 a graphic needs. Inset, so the chip is no larger for having one. */
+.calkind.k-hearing{background:var(--cal-hear-bg);color:var(--cal-hear);
+box-shadow:inset 0 0 0 1px var(--cal-hear)}
+.calkind.k-meet{background:var(--cal-meet-bg);color:var(--cal-meet);
+box-shadow:inset 0 0 0 1px var(--cal-meet)}
+.calkind.k-exec{background:var(--cal-exec-bg);color:var(--cal-exec);
+box-shadow:inset 0 0 0 1px var(--cal-exec)}
+.calkind.k-conf{background:var(--cal-conf-bg);color:var(--cal-conf);
+box-shadow:inset 0 0 0 1px var(--cal-conf)}
+.calkind.k-floor{background:var(--cal-floor-bg);color:var(--cal-floor);
+box-shadow:inset 0 0 0 1px var(--cal-floor)}
 /* THE DAY'S KINDS, DOWN THE EDGE. One entry is one committee on one day, so
    a day holding a hearing and then an executive session is one card -- and
    the bar says at a glance that it is doing more than one thing, divided into
@@ -536,9 +570,27 @@ background:var(--wash);color:var(--ink-2)}
 display:flex;flex-direction:column;overflow:hidden;
 border-radius:var(--r-out) 0 0 var(--r-out)}
 .calmix i{flex:1 1 0;display:block;background:var(--edge)}
-.calmix .k-hearing{background:var(--st-active)}
-.calmix .k-exec{background:var(--pine)}
-.calmix .k-other{background:var(--st-study)}
+.calmix .k-hearing{background:var(--cal-hear)}
+.calmix .k-meet{background:var(--cal-meet)}
+.calmix .k-exec{background:var(--cal-exec)}
+.calmix .k-conf{background:var(--cal-conf)}
+.calmix .k-floor{background:var(--cal-floor)}
+/* A kind the table does not name borrows no colour that means something
+   else; it is the neutral edge grey. */
+.calmix .k-other{background:var(--edge)}
+
+/* THE KEY, under a week's heading: each colour once, with the word the chips
+   use. The chips still name every kind on every card, so this is a guide to
+   the bars rather than the only place a meaning is given. */
+.calkey{display:flex;flex-wrap:wrap;gap:var(--sp-2) var(--sp-6);list-style:none;
+margin:0 0 var(--sp-6);padding:0;font-size:var(--t-sm);color:var(--ink-2)}
+.calkey li{display:inline-flex;align-items:center;gap:var(--sp-3)}
+.calkey i{display:inline-block;width:8px;height:14px;border-radius:2px;background:var(--edge)}
+.calkey .k-hearing{background:var(--cal-hear)}
+.calkey .k-meet{background:var(--cal-meet)}
+.calkey .k-exec{background:var(--cal-exec)}
+.calkey .k-conf{background:var(--cal-conf)}
+.calkey .k-floor{background:var(--cal-floor)}
 .calmeet > summary{padding-left:calc(var(--sp-6) + 5px)}
 
 /* One line of the day's schedule, above the bills it took. Only drawn when

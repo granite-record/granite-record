@@ -281,11 +281,32 @@ RECENT_SHOWN = 5
 RECENT_MORE = ('<p class="actmore"><a class="morebtn" href="/bills?sort=recent">'
                'See all recent activity &rarr;</a></p>')
 
+# THE COLOURS ARE THE GENERAL COURT'S OWN, because staff already read its
+# schedule by them: blue a hearing, green a meeting (work sessions, study and
+# statutory committees), orange an executive session, red a committee of
+# conference -- the legend fetch_schedule.py quotes. The floor, which that
+# schedule does not colour, has one of its own. Until 24 September a hearing
+# was gold and every work session, conference and floor sitting fell to the
+# orange that means executive session there. A kind not named here keeps the
+# neutral k-other rather than borrowing a colour that means something else.
 MEET_KIND = {"public hearing": ("Public hearing", "k-hearing"),
              "hearing": ("Public hearing", "k-hearing"),
              "executive session": ("Executive session", "k-exec"),
-             "work session": ("Work session", ""),
-             "subcommittee work session": ("Subcommittee work session", "")}
+             "work session": ("Work session", "k-meet"),
+             "subcommittee work session": ("Subcommittee work session", "k-meet"),
+             "full committee work session": ("Full committee work session", "k-meet"),
+             "study committee": ("Study committee", "k-meet"),
+             "statutory committee": ("Statutory committee", "k-meet"),
+             "committee of conference": ("Committee of conference", "k-conf"),
+             "floor debate": ("Floor session", "k-floor")}
+
+# The key under a week's heading: each colour once, in the order a reader
+# meets them, worded as the chips are.
+MEET_LEGEND = (("k-hearing", "Public hearing"),
+               ("k-meet", "Work session or study committee"),
+               ("k-exec", "Executive session"),
+               ("k-conf", "Committee of conference"),
+               ("k-floor", "Floor session"))
 
 
 def meeting_key(u):

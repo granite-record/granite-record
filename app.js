@@ -3709,8 +3709,13 @@ function plate(s){
 const MEET_KIND={"public hearing":["Public hearing","k-hearing"],
                  "hearing":["Public hearing","k-hearing"],
                  "executive session":["Executive session","k-exec"],
-                 "work session":["Work session",""],
-                 "subcommittee work session":["Subcommittee work session",""]};
+                 "work session":["Work session","k-meet"],
+                 "subcommittee work session":["Subcommittee work session","k-meet"],
+                 "full committee work session":["Full committee work session","k-meet"],
+                 "study committee":["Study committee","k-meet"],
+                 "statutory committee":["Statutory committee","k-meet"],
+                 "committee of conference":["Committee of conference","k-conf"],
+                 "floor debate":["Floor session","k-floor"]};
 
 // THE MARKUP HERE MUST MATCH build_pages.py's calendar_html(). Both emit the
 // same component against one set of rules in app.css's SHARED region, and

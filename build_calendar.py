@@ -500,11 +500,19 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
             'placeholder="Judiciary, or HB 1234"></label>'
             '<p class="wkcount" id="wkcount" role="status" aria-live="polite"></p>'
             '</form>')
+    # THE KEY TO THE COLOURS, which are the General Court's own for each kind
+    # of meeting. On every week, empty ones included, so the page reads the
+    # same wherever a reader lands.
+    key_html = ('<ul class="calkey" aria-label="What the colours mean">'
+                + "".join(f'<li><i class="{c}" aria-hidden="true"></i>{S.E(w)}</li>'
+                          for c, w in BP.MEET_LEGEND)
+                + "</ul>")
     block = ('<div id="results"><div class="wkpage">'
              f'<h1>The week of {S.E(label)}</h1>'
              f'<p class="src">{lead}</p>'
              f'<nav class="wknav" aria-label="Other weeks">{"".join(nav)}</nav>'
              f'{filt}'
+             f'{key_html}'
              f'{body}'
              f'<nav class="wknav wkfoot" aria-label="Other weeks">{"".join(nav)}</nav>'
              "</div></div>"
