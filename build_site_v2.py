@@ -2904,11 +2904,12 @@ J_VOICE = re.compile(r"(?<![A-Za-z])VV\b|\bvoice\s+vote\b")
 J_SKIP = re.compile(
     r"enrolled|special\s+order|reconsider|notice\s+of|^\s*(?:secs?|sections?)\b|"
     r"\b(?:remov\w*|taken|take)\s+(?:\w+\s+){0,2}from\s+(?:the\s+)?(?:table|consent)|"
-    r"from\s+the\s+consent|not\s+voted\s+on|pending\s+motion|\bprint\w*|"
+    r"from\s+the\s+consent|pending\s+motion|\bprint\w*|"
     r"limit\w*\s+debate|divisible|divided|previous\s+question|moved\s+the\s+question|"
     r"non-?\s?germane|\brul(?:ed|ing)\b|rescind|technical\s+(?:and\s+\w+\s+)?correction|"
     r"sent\s+to\s+(?:the\s+)?governor|^\s*sections?\b|change\s+rept|deadline|"
     r"late\s+(?:drafting|filing|introduction)|withdr[ae]w|\bappoint", re.I)
+J_NOT_VOTED = re.compile(r"^[^;]*?\bnot\s+voted\s+on\b\s*[)\]]?\s*,?\s*", re.I)
 # What a clause is about, tried in this order: a clause about a conference
 # report is not an adoption of the bill, and one about the other chamber's
 # amendment is not an amendment of this one.
@@ -3128,10 +3129,16 @@ def _j_roll_call(rcs, date, body, vote, said):
         return vote, None
     mine = [r for r in (rcs or []) if r.get("date") == date and r.get("body") == body]
     if y is not None:
-        for r in mine:
-            if ((r.get("yeas"), r.get("nays")) == (y, n)
-                    or (r.get("yeas_stated"), r.get("nays_stated")) == (y, n)):
-                return ("RC", r.get("yeas"), r.get("nays")), r.get("passed")
+        same = [r for r in mine
+                if (r.get("yeas"), r.get("nays")) == (y, n)
+                or (r.get("yeas_stated"), r.get("nays_stated")) == (y, n)]
+        # Two roll calls of a day can share a count: CACR 20 of 2018 failed
+        # to pass 13-11 and was laid on the table 13-11 the same morning.
+        # The one whose outcome is the line's own is this line's.
+        r = next((r for r in same if said is not None
+                  and bool(r.get("passed")) == bool(said)), same[0] if same else None)
+        if r:
+            return ("RC", r.get("yeas"), r.get("nays")), r.get("passed")
         return vote, None
     cand = [r for r in mine if not r.get("procedural")
             and bool(r.get("passed")) == bool(said)]
@@ -3154,7 +3161,12 @@ def _j_decide(seg, bid, rcs=(), date="", body=""):
         return {"act": "vetoed"}
     if J_UNSIGNED.search(seg) and not re.search(r"overrid", seg, re.I):
         return {"act": "unsigned"}
-    if J_SKIP.search(seg):
+    # A motion "not voted on" decided nothing, and what the clause says after
+    # it may have: "Ought to Pass (not voted on), Sen. Larsen Moved Laid on
+    # Table, MA, VV" (HB 101 of 2001) is the Senate laying the bill on the
+    # table.
+    seg = J_NOT_VOTED.sub("", seg)
+    if not seg.strip() or J_SKIP.search(seg):
         return None
     on_table = bool(J_ON_THE_TABLE.search(seg))
     seg = J_ON_THE_TABLE.sub(" ", seg)
