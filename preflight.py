@@ -6152,10 +6152,22 @@ def _session_as_of_dates(N, V):
         ("HB189", "2001"): [
             "2001|0133|05/09/2001 09:37:36 AM|HB189|S|Special Order To [05/17/01], MA, "
             "VV; SJ 12, Pg.262|05/09/2001 09:37:36 AM"],
+        # A DAY'S ROWS IN THE ORDER THEY WERE ENTERED, dated or not: the
+        # House defeated HB 705's conference report at 5:07 PM, reconsidered
+        # at 5:08 and adopted it at 5:14. The two floor rows are dated at
+        # midnight and "Defeated" by its minute, and the history put the
+        # defeat last -- on a bill that became law.
+        ("HB705", "2003"): [
+            "2003|0462|06/24/2003 05:07:35 PM|HB705|H|Conf Comm Report Defeated "
+            "RC(159-172);  HJ 51, p1628-1630|06/24/2003 05:07:35 PM",
+            "2003|0462|06/24/2003 05:08:03 PM|HB705|H|Rep Mock moved to Reconsider, MA "
+            "VV;  HJ 51, p1633|06/24/2003 05:08:03 PM",
+            "2003|0462|06/24/2003 05:14:32 PM|HB705|H|Conf Comm Report Adopted VV; HJ 51, "
+            "p1633|06/24/2003 05:14:32 PM"],
     }
     try:
         N.CORRECTIONS = []
-        got = {}
+        got, every = {}, {}
         for (bill, session), lines in rows.items():
             recs = []
             for x in lines:
@@ -6164,9 +6176,13 @@ def _session_as_of_dates(N, V):
                              "desc": p[5], "flags": [],
                              "created": _dt.strptime(p[2], "%m/%d/%Y %I:%M:%S %p")})
             N.TERM = N.P.term_of(session)
+            evs = N.build(bill, recs)["events"]
+            every[bill] = [e["raw"][:24] for e in evs]
             got[bill] = [(e["body"], e["date"], e["raw"][:24])
-                         for e in N.build(bill, recs)["events"]
-                         if e["type"] in ("floor", "veto_override")]
+                         for e in evs if e["type"] in ("floor", "veto_override")]
+        assert [x[:20] for x in every["HB705"]] == [
+                "Conf Comm Report Def", "Rep Mock moved to Re", "Conf Comm Report Ado"], (
+            f"a day's rows are not in the order the clerk entered them: {every['HB705']}")
         assert [d for _, d, _ in got["HB218"]] == ["2012-01-04"], (
             f"the clerk's 'done during 1/4/2012' did not date the veto vote: {got['HB218']}")
         assert ("H", "2013-06-12") in [(b, d) for b, d, _ in got["HB224"]], (
@@ -6185,7 +6201,8 @@ def _session_as_of_dates(N, V):
             f"a special order's date was read as the day it was done: {got['HB189']}")
         return "ok", ("'done during' dates a veto vote; a day in recess, an "
                       "answer ahead of its request and a special order's "
-                      "target date do not")
+                      "target date do not; a day's rows keep the order they "
+                      "were entered in")
     finally:
         N.CORRECTIONS, N.TERM = saved
 

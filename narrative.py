@@ -1458,10 +1458,26 @@ def hold_in_order(evs):
             back = True
         ev.pop("_stamp_date", None)
     if back:
-        evs.sort(key=lambda e: (e["when"], e.get("_row", 0)))
+        evs.sort(key=day_order)
     for ev in evs:
         ev.pop("_row", None)
     return evs
+
+
+def day_order(ev):
+    """The sort key of a bill's events: the day, then the order the clerk
+    entered the rows.
+
+    NOT THE MOMENT. A row whose line states its date is dated at midnight
+    and a row that states none at the minute it was entered, so sorting on
+    the moment put every dated row of a day ahead of every undated one,
+    whatever the order they were entered in. HB 705 of 2003's House
+    defeated its conference report 159-172 at 5:07 PM, reconsidered at 5:08
+    and adopted it at 5:14; the two floor rows are dated, "Conf Comm Report
+    Defeated" is not, and the history told the adoption first and the
+    defeat last -- which is how the bill's journey came to end in the House
+    with a rejection, on a bill that became law."""
+    return (ev["when"].date(), ev.get("_row", 0))
 
 
 def build(bill, rows):
@@ -1504,7 +1520,7 @@ def build(bill, rows):
         # it takes the key off again.
         ev["_row"] = len(evs)
         evs.append(ev)
-    evs.sort(key=lambda e: (e["when"], e["_row"]))
+    evs.sort(key=day_order)
     hold_in_order(evs)
 
     # Which committee held the bill when each thing happened. Only the referral
