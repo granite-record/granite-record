@@ -911,15 +911,15 @@ when the committee vote was unanimous or nearly so and no dissenting member obje
 to the placement. It then passes without floor debate. Ten members may petition to
 pull a bill off and have it taken up separately.</p>
 
-<p><b>Someone has to run the room.</b> For every House roll call one member is
-recorded as presiding — the Speaker, a Deputy Speaker, or a Speaker Pro Tempore —
-and does not vote except to break a tie. A Speaker will appear as not having voted on
+<p><b>Someone has to run the room.</b> Whoever is in the chair for a roll call —
+the Speaker, or a member the Speaker has asked to preside — is usually recorded as
+presiding rather than as voting. A Speaker will appear as not having voted on
 hundreds of roll calls, and that is the job rather than absence.</p>
 
-<p><b>Absences come in two kinds.</b> An excused absence was arranged in advance for
-the whole day — illness, a death in the family, or other significant obligation. An
-unexcused absence means the member either left the chamber rather than vote on that
-question, or was away without arranging it beforehand.</p>
+<p><b>Not voting comes in two kinds.</b> A member recorded as excused was excused
+from that vote; an excuse can cover a whole day, part of a day or a single vote, so
+an excused member may have voted on other questions the same day. A member recorded
+as not excused did not vote, and the roll call does not say why.</p>
 
 <h2>Bills and resolutions are not the same thing</h2>
 <p>Which chamber a measure starts in follows from its prime sponsor: a

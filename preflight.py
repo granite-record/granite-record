@@ -4471,6 +4471,110 @@ def _session_pages_pruned(BSP):
         shutil.rmtree(root, ignore_errors=True)
 
 
+# The House's leave list of 11 March 2026 (journals/2026/HJ 07 March 11,
+# 2026.txt, LEAVES OF ABSENCE) and of 7 January 2026 (HJ 01, the same block),
+# with the ballots RollCallHistory.txt holds for two of the members that day.
+LEAVE_2026_03_11 = [
+    (["Buco", "Cambrils", "Tom Dolan", "Ford", "Grote", "Gruber", "Molly Howard",
+      "Love", "Geoffrey Smith", "Sofikitis", "Swanson", "Varney"], "illness"),
+    (["Balboni", "Bennett", "DeDe-Poulin", "Girard", "Hicks", "Janigian", "Lovett",
+      "Lundgren", "Tim Mannion", "Markell", "Notter", "Plamondon", "Jonathan Smith",
+      "St. Clair", "Warden"], "important business"),
+    (["Cornell"], "illness in the family"),
+]
+# Rep. Cornell, member 841, 11 March 2026: Excused on H-133 to H-172, then a
+# Yea or Nay on every roll call from H-173 to H-188.
+BALLOTS_CORNELL = {**{n: "Not Voting/Excused" for n in range(133, 173)},
+                   **{n: ("Yea" if n in (173, 174, 179, 180, 182, 185, 186, 188)
+                          else "Nay") for n in range(173, 189)}}
+# Rep. William Dolan, member 10784, on leave for 7 January 2026 ("the day,
+# important business") and recorded Not Voting/Not Excused on all 31 roll
+# calls that day.
+BALLOTS_W_DOLAN = {n: "Not Voting/Not Excused" for n in range(1, 32)}
+
+
+@check("session", "an excused or absent member's line says what the record says, "
+       "and never why", needs=("build_session_pages", "shell"))
+def _vote_category_text(BSP, shell):
+    """Every full roll call told readers an Excused member was "excused in
+    advance for the whole day -- illness, a death in the family, or other
+    significant obligation".
+
+    The ballots say otherwise: on 42% of House member-days with an Excused
+    ballot, 1999-2026, the member voted on another question that day, and a
+    declared conflict of interest is coded Excused too. Presiding said "one
+    member presides ... and does not vote except to break a tie" over roll
+    calls that record two; Not Excused said the member "left the chamber
+    rather than vote". The sitting pages said everyone on the journal's leave
+    list "were not in the chamber" -- and Rep. Cornell, on leave for 11 March
+    2026, voted on sixteen roll calls that afternoon.
+
+    So each line is attributed to the record, bans the claims the record
+    contradicts and every reason word, and the sitting note is run on the real
+    leave lists with the ballots that contradict the old wording beside them.
+    The labels themselves are not checked: whether "Excused absence" and
+    "Absent, not excused" should be renamed is the person's decision.
+    """
+    src = Path("app.js").read_text(encoding="utf-8")
+    m = re.search(r"const OTHER=\[(.*?)\];", src, re.S)
+    assert m, "app.js no longer defines OTHER, the vote categories' text"
+    strs = re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1))
+    assert len(strs) == 9 and strs[0::3] == [
+        "Presiding", "Not Voting/Excused", "Not Voting/Not Excused"], (
+        f"OTHER is not the three categories it was: {strs[0::3]}")
+    labels, blurbs = strs[1::3], strs[2::3]
+    FALSE = ("in advance", "for the whole day", "rather than vote",
+             "left the chamber", "except to break a tie", "one member presides",
+             "not in the chamber", "had not been excused")
+    REASON = re.compile(r"\b(illness|business|death|family|weather|birth|sick)\b", re.I)
+    for text in labels + blurbs:
+        bad = [p for p in FALSE if p in text.lower()]
+        assert not bad, f"a vote category states what the record contradicts ({bad}): {text!r}"
+        assert not REASON.search(text), f"a vote category gives a reason: {text!r}"
+        assert not re.search(r'[<&"]', text), (
+            f"a vote category string is inserted unescaped and holds < & or \": {text!r}")
+    assert all(b.startswith("Recorded as") for b in blurbs), (
+        "each category's explanation must attribute itself to the record: "
+        + " | ".join(b[:40] for b in blurbs))
+    assert "part of a day" in blurbs[1] and "single vote" in blurbs[1], (
+        "the Excused explanation no longer says an excuse can cover part of a "
+        "day or a single vote")
+
+    # The ballots are the evidence the note has to allow for.
+    assert any(v in ("Yea", "Nay") for v in BALLOTS_CORNELL.values()) and \
+        any(v == "Not Voting/Excused" for v in BALLOTS_CORNELL.values())
+    assert set(BALLOTS_W_DOLAN.values()) == {"Not Voting/Not Excused"}
+    root = Path(tempfile.mkdtemp())
+    try:
+        members = BSP.Members(root)
+        for leave in (LEAVE_2026_03_11,
+                      [(["Aylward", "Bordes", "Cahill", "William Dolan"], "important business")]):
+            narr = {"absences": [{"names": names, "when": "the day", "why": why}
+                                 for names, why in leave]}
+            html = BSP.absences_html(narr, "H", members, shell.E)
+            names = [n for g, _ in leave for n in g]
+            text = re.sub(r"<[^>]+>", " ", html)
+            missing = [n for n in names if n not in text]
+            assert not missing, f"the leave list lost {missing}"
+            assert f"records {len(names)} member" in text, (
+                f"the note's count is not the {len(names)} names it lists")
+            assert not REASON.search(text), (
+                "a sitting page gives the reason a member was away: "
+                + REASON.search(text).group(0))
+            assert "not in the chamber" not in text and \
+                "may still have voted" in text and "does not always agree" in text, (
+                "the leave note says members on leave were absent, which Rep. "
+                "Cornell's ballots of 11 March 2026 contradict, or hides that the "
+                "roll call and the journal disagree, as on William Dolan's of "
+                "7 January 2026")
+        return "ok", ("the three categories are attributed to the record, with "
+                      "no contradicted claim and no reason; the leave note names "
+                      "members only and allows for the ballots that vote or "
+                      "disagree")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 # A House Calendar, laid out the way pdftotext -layout returns one: the heading
 # begins a line, the prose that follows does not. The minority's paragraph
 # cites ANOTHER bill mid-sentence, which is what the real calendars do

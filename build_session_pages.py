@@ -322,6 +322,13 @@ def absences_html(narrative, body, members, esc):
 
     The groups are still read from the journal, because that is how the lines
     parse, and then flattened into one list.
+
+    THE NOTE SAYS WHAT THE JOURNAL SAYS AND NO MORE. It said these members
+    "were not in the chamber", which the ballots contradict on 244 member-days
+    from 1999 to 2026: on 11 March 2026 Rep. Cornell, on leave for the day, is
+    recorded excused on roll calls 133 to 172 and voting on 173 to 188. The
+    two records also disagree the other way: Rep. William Dolan, on leave on
+    7 January 2026, is recorded "not excused" on all 31 roll calls that day.
     """
     rows = narrative.get("absences") or []
     if not rows:
@@ -337,8 +344,12 @@ def absences_html(narrative, body, members, esc):
         return ""
     n = len(names)
     return ('<section class="sday"><h2>Excused for the day</h2>'
-            f'<p class="note">{n} member{"" if n == 1 else "s"} had leave of '
-            f'the {CHAMBER[body]} and were not in the chamber.</p>'
+            f'<p class="note">The journal records {n} member'
+            f'{"" if n == 1 else "s"} as having leave of the {CHAMBER[body]} '
+            "for the day, that is, permission to be away. A member on leave "
+            "may still have voted on part of the day, and the roll call "
+            "record does not always agree with the journal about who was "
+            "excused.</p>"
             '<p class="sspoke sabs">'
             + ", ".join(member_html(body, nm, members, esc) for nm in names)
             + "</p></section>")
