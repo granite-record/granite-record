@@ -1801,6 +1801,31 @@ def _version_index_gate():
     return "ok", "the record decides, and it is right 33,030 times out of 33,030"
 
 
+@check("frontend", "a bill with one printing shows its text in the Bill Text tab, in the list too")
+def _bill_text_in_its_tab():
+    """The other half of the check above. With no version history the pane
+    rendered nothing, and the bill's text was drawn only below the tabs, only
+    for the bill a page is focused on -- so a card opened in the bills list
+    showed an empty Bill Text tab on every bill with one printing and no
+    amendments, which is most of the record (the person, 24 September:
+    "sometimes just doesn't display anything"). The pane now carries the text
+    for such a bill, and the block below the tabs is kept for bills with a
+    version history only, so nothing is drawn twice."""
+    p = Path("app.js")
+    if not p.exists():
+        return "skip", "app.js not in this directory"
+    t = p.read_text(encoding="utf-8")
+    assert "function billTextSection(" in t, "app.js has no billTextSection"
+    assert "hasVersionIndex(d)?renderVersions(b,d):billTextSection(" in t, (
+        "the Bill Text pane no longer draws the text of a bill with no version "
+        "history, so it opens empty in the bills list")
+    i = t.find("const btsec=")
+    assert i > 0 and "hasVersionIndex(d)" in t[i:i + 200], (
+        "the text below the tabs is drawn for bills whose tab already holds it, "
+        "so a one-printing bill's text appears twice on its page")
+    return "ok", "one printing: text in the tab; a version history: the viewer in the tab"
+
+
 @check("frontend", "no component quietly takes a class another one already uses")
 def _class_collisions():
     """The bug that has happened five times: .ctitle, .p-R, .cite, .fhead, .chead.

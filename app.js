@@ -2320,6 +2320,35 @@ function fiscalTable(f){
     <p class="src">Source: NH General Court</p></section>`;
 }
 
+// THE BILL TEXT AS A DOCUMENT: the section that sat below the tabs, as a
+// function so the Bill Text tab can hold it too. A bill with one printing
+// and no amendments has no version history for the tab to show, and its
+// text was drawn only below the tabs on the bill's own page -- so in the
+// bills list, where no bill is the page's own, the tab opened empty (the
+// person, 24 September: "sometimes just doesn't display anything"). Such a
+// bill now carries this in its tab, and the block below the tabs is kept
+// for bills with a version history only, so no text is drawn twice.
+function billTextSection(b,d,rsa){
+        // HOW LONG THE DOCUMENT IS, MEASURED, because this block is not in a
+        // tab: it sits below whichever one is open and was never hidden. HB 2
+        // of 2025 is 478,101 characters of text and 527,359 more across 43
+        // amendments, which laid the card out at 222,985px on a desktop and
+        // 504,778px on a phone -- three hundred and fifty screens of document
+        // under the summary of it. The median bill of the term is 11,511
+        // characters and wants no ceremony, so it opens as it always has.
+        const bodyLen=((d.billtext||{}).body||"").length;
+        const amdLen=(d.amendments||[]).reduce((n,a)=>n+((a&&a.text)||"").length,0);
+        const nAmd=(d.amendments||[]).length;
+        const LONG=30000;
+        const shut=bodyLen+amdLen>LONG;
+        const what=nAmd?`the text and ${nAmd} amendment${nAmd===1?"":"s"}`
+                       :"the text";
+        return `<section class="btsec"><h2 class="amdsec">Bill text</h2>
+        <p class="btwhat">The bill and its amendments, as the General Court publishes them. Everything above is this site’s account of the record; this is the document.</p>
+        <details class="btdoc"${shut?"":" open"}><summary><span class="shut">Show ${
+          what}</span><span class="open">Hide ${what}</span></summary>${
+        renderBillText(b,d,rsa)}</details></section>`;}
+
 function renderBillText(b,d,rsa){
   const brackets=(s)=>s.replace(/\[([^\]]{1,400})\]/g,
     (_,inner)=>`<del class="cut" title="removed by this amendment">${inner}</del>`);
@@ -2729,28 +2758,9 @@ function renderDetail(b,d){
   // bill was focused -- a refresh on a bill page reporting that its detail
   // would not load when the file had arrived fine. It is a call now, made
   // where it is used, so there is nothing left to order wrongly.
-  const btsec=(focused===b.id&&((d.billtext&&d.billtext.body)
+  const btsec=(focused===b.id&&hasVersionIndex(d)&&((d.billtext&&d.billtext.body)
     ||(d.amendments||[]).length))
-    ? (()=>{
-        // HOW LONG THE DOCUMENT IS, MEASURED, because this block is not in a
-        // tab: it sits below whichever one is open and was never hidden. HB 2
-        // of 2025 is 478,101 characters of text and 527,359 more across 43
-        // amendments, which laid the card out at 222,985px on a desktop and
-        // 504,778px on a phone -- three hundred and fifty screens of document
-        // under the summary of it. The median bill of the term is 11,511
-        // characters and wants no ceremony, so it opens as it always has.
-        const bodyLen=((d.billtext||{}).body||"").length;
-        const amdLen=(d.amendments||[]).reduce((n,a)=>n+((a&&a.text)||"").length,0);
-        const nAmd=(d.amendments||[]).length;
-        const LONG=30000;
-        const shut=bodyLen+amdLen>LONG;
-        const what=nAmd?`the text and ${nAmd} amendment${nAmd===1?"":"s"}`
-                       :"the text";
-        return `<section class="btsec"><h2 class="amdsec">Bill text</h2>
-        <p class="btwhat">The bill and its amendments, as the General Court publishes them. Everything above is this site’s account of the record; this is the document.</p>
-        <details class="btdoc"${shut?"":" open"}><summary><span class="shut">Show ${
-          what}</span><span class="open">Hide ${what}</span></summary>${
-        renderBillText(b,d,rsa)}</details></section>`;})()
+    ? billTextSection(b,d,rsa)
     : "";
 
   // BILL TEXT SITS SECOND, and the data-t numbers are deliberately NOT
@@ -2778,7 +2788,7 @@ function renderDetail(b,d){
     : "";
   const btPane=btHas
     ? `<div class="pane" role="tabpanel" id="pane_${b.id}_6" aria-labelledby="tab_${b.id}_6"
-        tabindex="0" data-t="6" hidden>${renderVersions(b,d)}</div>`
+        tabindex="0" data-t="6" hidden>${hasVersionIndex(d)?renderVersions(b,d):billTextSection(b,d,makeRsa(d))}</div>`
     : "";
 
   return `<div class="tabs" role="tablist">
