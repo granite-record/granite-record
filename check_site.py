@@ -165,16 +165,28 @@ def main():
     sm = site / "sitemap.xml"
     if sm.exists():
         locs = re.findall(r"<loc>([^<]+)</loc>", sm.read_text(encoding="utf-8"))
+        # THE BASE AND ITS SLASH, together. This used to take the base off
+        # and then lstrip("/") whatever was left, so
+        # "https://graniterecord.orgsession/H/2026-05-21" became a path that
+        # exists and passed -- 1,669 of them, on the live sitemap, until 24
+        # September. An address with no slash after the domain is one no
+        # browser will open, so it is counted here and not resolved.
+        root = a.base.rstrip("/") + "/"
         missing = 0
         for u in locs:
-            rel = u.replace(a.base.rstrip("/"), "").lstrip("/")
+            rel = u[len(root):] if u.startswith(root) else None
             if rel and not served(site / rel):
                 missing += 1
         print(f"\nsitemap: {len(locs):,} URLs, {missing:,} pointing at files "
               "that are not here")
         if missing:
             errors.append(f"{missing} sitemap URLs have no file")
-        wrong_base = [u for u in locs if not u.startswith(a.base.rstrip("/"))]
+        noslash = [u for u in locs if u.startswith(root[:-1]) and not u.startswith(root)]
+        if noslash:
+            errors.append(f"{len(noslash)} sitemap URLs have no slash after "
+                          f"{root[:-1]}, e.g. {noslash[0]} - a builder passed "
+                          "shell.page a path without its leading /")
+        wrong_base = [u for u in locs if not u.startswith(root[:-1])]
         if wrong_base:
             errors.append(f"{len(wrong_base)} sitemap URLs use a different base "
                           f"than {a.base} - rerun build_bill_pages.py --base")

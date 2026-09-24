@@ -1821,7 +1821,14 @@ def _class_collisions():
 
     To add one deliberately, put it in SHARED below with the component it
     belongs to. To find where a name is drawn, grep class=" in app.js, find.js,
-    bills.html and build_*.py.
+    bills.html, build_*.py and shell.py.
+
+    SHELL.PY IS A RENDERER TOO. It draws "Cite this page" on every page built
+    through shell.page(), and until 24 September this check did not read it --
+    so its <details class="cite"> went unseen beside app.js's docket
+    <span class="cite">, took that span's white-space:nowrap, and above 720px
+    every citation ran past its box and made the page scroll sideways. .cite
+    was already the third name in this docstring's first line.
     """
     import glob as _glob
     SHARED = {
@@ -1846,8 +1853,8 @@ def _class_collisions():
     }
     here = Path(".")
     app_side = ["app.js", "find.js", "bills.html"]
-    bld_side = sorted(_glob.glob("build_*.py"))
-    if not all((here / f).exists() for f in app_side) or not bld_side:
+    bld_side = sorted(_glob.glob("build_*.py")) + ["shell.py"]
+    if not all((here / f).exists() for f in app_side + ["shell.py"]) or not bld_side:
         return "skip", "not all renderers are in this directory"
 
     def drawn(paths):
@@ -1875,6 +1882,54 @@ def _class_collisions():
     gone = sorted(SHARED - both)
     return "ok", (f"{len(both)} names shared on purpose"
                   + (f"; {len(gone)} in SHARED no longer shared" if gone else ""))
+
+
+@check("frontend", "a citation closes a title with one full stop, whatever the title ended on")
+def _cite_one_stop():
+    """'...retirement benefits..”' and '...Circle.".”': 101 bills' citations.
+
+    shell.cite_block took ONE full stop off a name before MLA and Chicago
+    added their own, which is right for a title ending "insurance." and wrong
+    for every other ending the record has: a doubled stop in the source, a stop
+    inside a closing quotation mark, or both. Each case below is an ending
+    measured on the live index on 24 September, and the right-hand side is how
+    the quoted title must close -- one stop, inside any quotation mark, and an
+    ellipsis left looking like one.
+    """
+    import html as _html
+    try:
+        import shell as S
+    except ImportError:
+        return "skip", "shell.py will not import"
+    closes = {
+        "relative to insurance.": "relative to insurance.",
+        "for salary and retirement benefits..": "for salary and retirement benefits.",
+        'naming it "Oliveira Circle."': 'naming it "Oliveira Circle."',
+        "the Attorney's Independence Act..\"": "the Attorney's Independence Act.\"",
+        'the term "foal" and "colt.".': 'the term "foal" and "colt."',
+        'defining "critical habitat".': 'defining "critical habitat."',
+        "with “chartered public school”.": "with “chartered public school.”",
+        'as "Dictionary Week. "': 'as "Dictionary Week."',
+        "Rep. Adam Presa (R - Hills 12)": "Rep. Adam Presa (R - Hills 12).",
+        "expanding the commission'": "expanding the commission'.",
+        "state funds for new…": "state funds for new….",
+        "as it was...": "as it was...",
+    }
+    for name, want in closes.items():
+        stem, closed, bib = S.title_stops(name)
+        assert closed == want, f"{name!r} closes as {closed!r}, not {want!r}"
+        if "..." not in name:
+            assert not stem.rstrip('"”').endswith("."), (
+                f"{name!r}: APA's stem {stem!r} keeps a stop and APA adds one")
+    # And as drawn: no stop doubled across a quotation mark in any of the forms.
+    block = S.cite_block("/bill/2000/sb412.html",
+                         "SB 412 (2000): adopting the \"Court Integrity and "
+                         "Attorney's Independence Act..\"",
+                         "https://graniterecord.org", "1 January 2026")
+    text = _html.unescape(re.sub(r"<[^>]+>", "", block))
+    doubled = re.findall(r'\.["”\s]*\.(?!\.)', text.replace("n.d.", "nd"))
+    assert not doubled, f"the citation doubles a full stop: {doubled} in {text[-400:]!r}"
+    return "ok", f"{len(closes)} endings from the record close with one stop"
 
 
 @check("frontend", "the search panel's way out leads to a page the build writes")
@@ -5279,6 +5334,126 @@ def _links_resolve():
                       f"resolved through <base href> and served by a file or a "
                       f"_redirects rule; {offsite_bill} more name a bill this "
                       "fixture does not carry")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("build", "every page names its own address with a slash after the domain")
+def _addresses_have_slash():
+    """1,670 pages cited "https://graniterecord.orgsession/H/2026-05-21".
+
+    build_calendar and build_session_pages passed shell.page a path without its
+    leading slash, and every place the page states its own address is the
+    domain joined to that path: the "Cite this page" block a reader pastes into
+    their own work, the canonical link, og:url, the structured data -- and,
+    through the builder's own join, 1,669 sitemap entries. It went live on
+    18 September and was found on the 24th. Every link check here passed,
+    because every one of them read an href, and none of these is one:
+    preflight only asked that a canonical link be PRESENT, and check_site took
+    the base off a sitemap entry and then lstrip'd the slash, which was the
+    fault, away.
+
+    So this reads each of those addresses off every page of the fixture site
+    and wants the base followed by "/". It also plants the stale and the
+    malformed entries a builder rebuilt on its own would once have left in
+    sitemap.xml, reruns the calendar and the House's sitting days, and wants
+    them gone -- with the Senate's entry, which the House run does not own,
+    left where it was.
+    """
+    import html as _html
+    here = Path(".").resolve()
+    absent = [x for x in CHAIN_NEEDS + ["build_calendar.py", "shell.py"]
+              if not (here / x).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    sys.path.insert(0, str(here))
+    import shell as S
+    import build_calendar as BC
+    try:
+        S.address("https://graniterecord.org", "session/H/2026-05-21.html")
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("shell.address joined a path with no leading slash "
+                             "instead of refusing it")
+    root = Path(tempfile.mkdtemp())
+    try:
+        base, _steps = _built_site(here, root)
+        site = root / "site"
+        want = base + "/"
+        at_base = re.compile(re.escape(base) + r'[^\s"<,}&]*')
+        bad, seen = [], Counter()
+        for p in sorted(site.rglob("*.html")):
+            rel = p.relative_to(site).as_posix()
+            t = p.read_text(encoding="utf-8", errors="replace")
+            found = [("canonical", u) for u in
+                     re.findall(r'<link rel="canonical" href="([^"]*)"', t)]
+            found += [("og:url", u) for u in
+                      re.findall(r'<meta property="og:url" content="([^"]*)"', t)]
+            for block in re.findall(r'<dl class="citeforms">(.*?)</dl>', t, re.S):
+                found += [("citation", u) for u in at_base.findall(_html.unescape(block))]
+            for ld in re.findall(r'<script type="application/ld\+json">(.*?)</script>', t, re.S):
+                found += [("structured data", u) for u in at_base.findall(ld)]
+            for what, u in found:
+                seen[what] += 1
+                if not u.startswith(want):
+                    bad.append(f"{rel}: {what} {u}")
+            if rel.startswith(("calendar", "session/")) and found:
+                seen[rel.split("/")[0].replace(".html", "")] += 1
+        assert not bad, (f"{len(bad)} addresses with no slash after {base}: "
+                         + "; ".join(bad[:4]))
+        # Silence is not success: a fixture with no calendar or sitting day
+        # would pass this without having looked at the pages that broke.
+        for need in ("calendar", "session", "citation", "structured data"):
+            assert seen[need], f"the fixture site gave this check no {need} to read"
+
+        # The current week at both its addresses, one page to index.
+        import datetime as _dt
+        key = BC.week_key(_dt.date.today())
+        copy = site / "calendar" / f"{key}.html"
+        assert copy.exists(), (
+            f"calendar/{key}.html was not written: the dated address of the "
+            "current week is left to whatever an earlier build put there")
+        ct = copy.read_text(encoding="utf-8", errors="replace")
+        assert f'<link rel="canonical" href="{base}/calendar">' in ct, (
+            f"calendar/{key}.html does not name /calendar as the page it copies")
+        assert f'href="/calendar/{key}#results"' in ct, (
+            f"calendar/{key}.html's skip link leaves the page it is on")
+        sm = site / "sitemap.xml"
+        text = sm.read_text(encoding="utf-8")
+        locs = re.findall(r"<loc>([^<]*)</loc>", text)
+        assert all(u.startswith(want) for u in locs), (
+            "sitemap entries with no slash after the domain: "
+            + ", ".join(u for u in locs if not u.startswith(want))[:200])
+        assert f"<loc>{base}/calendar/{key}</loc>" not in text, (
+            f"the sitemap lists calendar/{key}, a copy of /calendar")
+
+        # Writers merge, and take out what they no longer write.
+        stale = [base + "calendar", base + "/calendar/1999-W01",
+                 base + "session/H/1999-01-05", base + "/session/H/1999-01-05"]
+        other = base + "/session/S/1999-01-05"
+        sm.write_text(text.replace("</urlset>", "".join(
+            f"<url><loc>{u}</loc></url>\n" for u in stale + [other]) + "</urlset>"),
+            encoding="utf-8")
+        for script, args in (("build_session_pages.py", []), ("build_calendar.py", [])):
+            r = _run([sys.executable, str(here / script), "--site", "site",
+                      "--base", base, *args],
+                     cwd=root, capture_output=True, text=True, timeout=180)
+            assert r.returncode == 0, f"{script} rerun: " + (r.stderr or r.stdout)[-200:]
+        after = sm.read_text(encoding="utf-8")
+        left = [u for u in stale if f"<loc>{u}</loc>" in after]
+        assert not left, "a rebuilt builder left its stale sitemap entries: " + ", ".join(left)
+        assert f"<loc>{other}</loc>" in after, (
+            "the House's sitting days took out a Senate entry it does not own")
+        again = re.findall(r"<loc>([^<]*)</loc>", after)
+        assert sorted(again) == sorted(locs + [other]), (
+            "rebuilding the calendar and the sitting days changed sitemap entries "
+            "they did not plant: "
+            + ", ".join(sorted(set(again) ^ set(locs + [other])))[:200])
+        return "ok", (f"{seen['canonical']} canonical links, {seen['citation']} citation "
+                      f"addresses, {seen['structured data']} structured-data ids and "
+                      f"{len(locs)} sitemap entries, all {want}...; the current week's "
+                      "copy names /calendar, and stale entries are taken out")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
