@@ -2704,6 +2704,9 @@ def attach_hearing_reports(stations, reports, bid, idx, name_part, tally,
 # in here. A special session numbers the same kinds with "SS" in front: SSHR 1
 # of 2008 is the House adopting its rules and has two stops, not four.
 ONE_CHAMBER = ("HR", "SR", "SSHR", "SSSR")
+# The chamber a measure starts in, by its number.
+OWN_CHAMBER = {"HB": "H", "HCR": "H", "HJR": "H", "HR": "H",
+               "SB": "S", "SCR": "S", "SJR": "S", "SR": "S"}
 
 
 # Written by build_bill_versions.py, which runs before this step. Absent is
@@ -2776,6 +2779,16 @@ def passage(stages, kind, status="", bill="", passed=None, acted=None):
     # answering for itself.
     origin = next((h.split(":")[0] for h in hands
                    if h.split(":")[0] in ("H", "S")), "H")
+    # UNLESS THE RECORD HAS FILED A ROW UNDER THE WRONG CHAMBER, and both
+    # chambers decided on the bill: then its number says which went first.
+    # HB 1650 of 2022 passed the House and the Senate on 5 January; the
+    # House's rows were entered on the 10th, and the rail opened in the
+    # Senate. The Senate's "Introduced 9/7/2011" on HB 652 of 2011 predates
+    # the House vote that sent it there. A bill decided on by one chamber
+    # keeps the record's answer, whatever its number.
+    own = OWN_CHAMBER.get(bill_prefix(bill), "") if bill else ""
+    if own and own != origin and {"H", "S"} <= set(acted or ()):
+        origin = own
     other = "S" if origin == "H" else "H"
     # The governor stop says what the GOVERNOR DID, not that the bill got as
     # far as the desk. Reaching a stop was being read as clearing it, so all

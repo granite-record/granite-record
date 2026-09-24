@@ -781,6 +781,15 @@ def _between_chambers(build_site_v2):
     want("Hpp--", rail, "CACR5 2004's rail")
     want("Hpp", B.passage([{"hand": "H:floor"}], "adopted", "Adopted by the House", "SSHR1"),
          "SSHR1 2008's rail")
+    # Both chambers decided, and the docket's first row is the second
+    # chamber's: the bill's number says where it started. HB 1650 of 2022's
+    # House rows were entered after the Senate's; HB 652 of 2011's Senate
+    # introduction is dated before the House passed it.
+    want("Hpppp", B.passage([{"hand": "S:floor"}, {"hand": "G:governor"}], "law",
+                            "Signed into law", "HB1650", {"H", "S"}, ["S", "H"]),
+         "HB1650 2022's rail")
+    want("Hpx-x", B.passage([{"hand": "S:committee"}, {"hand": "H:floor"}, {"hand": "S:floor"}],
+                            "done", "Killed", "HB652", {"H"}, ["H", "S"]), "HB652 2011's rail")
     assert not bad, "; ".join(bad)
     return "ok", ("both chambers adopted, a report voted down, a refusal to concur, "
                   "a retention moved past, the voters' answer, each from the docket")
