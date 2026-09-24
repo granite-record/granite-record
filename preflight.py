@@ -5896,7 +5896,7 @@ def _vacated(referrals):
     matched any of them, so until 17 September the site published, for those
     bills, the committee the chamber had explicitly taken the bill away from.
 
-    THE FOUR WAYS THIS GOES WRONG, each measured in the corpus and each one
+    THE FIVE WAYS THIS GOES WRONG, each measured in the corpus and each one
     line of the test below:
 
     1. "Vacate Referral to Ways & Means" means Ways and Means is the committee
@@ -5912,6 +5912,8 @@ def _vacated(referrals):
     4. "to Finance, MA. VV" -- the clerk separates the vote tokens with a full
        stop as often as with a comma, and a separator class that allowed only
        spaces and commas stripped just the last one, leaving "Finance, MA".
+    5. "MOVED TO VACATE TO HEALTH, ML RC(167-178)" is a vacate the House voted
+       DOWN (1995 HB54). Read as one, it published "Health, Ml".
 
     And the case that must NOT be broken by any of the above: a committee
     whose own name contains a comma. "Public Institutions, Health & Human
@@ -5940,7 +5942,9 @@ def _vacated(referrals):
         ("MOTION TO VACATE FROM FINANCE TO 2ND READING",
          "second reading is the chamber's calendar, not a committee"),
         ("Vacated from Ways and Means; HJ 19, pg.390",
-         "no destination on this row"),
+         "no destination on this row (_read_docket reads the next one)"),
+        ("REP HAETTENSCHWILLER MOVED TO VACATE TO HEALTH, ML RC(167-178);",
+         "the motion lost (ML), so Finance kept the bill"),
     ]
     for desc, why in refuse:
         got = referrals.vacated(desc)
@@ -6124,11 +6128,57 @@ _FIRST_REFERRAL_DOCKETS = {
     "1991-1992": [   # Docket_db_1991-1992.txt: the committee on the next row
         "1991|0820|01/03/1991 10:10:25 AM|SB151|S|INTRODUCED AND REF TO TRANSPORTATION; SJ 2,P 19|01/03/1991 10:10:25 AM",
         "1991|0820|06/12/1991 08:54:00 AM|SB151|H|REP GROSS SUSP RULES FOR INTRO, MA 2/3VV; INTRODUCED AND REF TO|06/12/1991 08:54:00 AM",
+        # The Senate's introduction filed under H, citing the Senate Journal.
+        "1992|0495|01/03/1991 01:30:07 PM|SB192|H|INTRODUCED AND REF TO INTERNAL AFFAIRS;  SJ 2,P 21|01/03/1991 01:30:07 PM",
+        "1992|0495|01/31/1991 10:32:49 AM|SB192|S|HEARING FEB14 10:30 RM101,LOB    FOR INTERNAL AFFAIRS|01/31/1991 10:32:49 AM",
+        "1992|0495|03/26/1991 09:34:05 AM|SB192|S|PASSED AND REF TO FIN; SJ13,P175|03/26/1991 09:34:05 AM",
+        "1992|0495|04/02/1991 03:05:32 PM|SB192|H|INTRODUCED AND REF TO EXEC DEPTS & ADMIN;  HJ60,P1371|04/02/1991 03:05:32 PM",
+    ],
+    "1993-1994": [   # Docket_db_1993-1994.txt: a reconsideration that lost
+        "1994|2852|02/16/1994 05:16:15 PM|SB668|H|INTRODUCED AND REF TO EXEC DEPTS & ADMIN; HJ27,P809|02/16/1994 05:16:15 PM",
+        "1994|2852|03/15/1994 05:29:09 PM|SB668|H|RECONSIDER INTRODUCTION, ML VV; HJ39,P1282|03/15/1994 05:29:09 PM",
+        "1994|2852|03/31/1994 03:13:44 PM|SB668|H|REF TO EXEC DEPTS & ADMIN; HJ45,P1468|03/31/1994 03:13:44 PM",
+    ],
+    "1995-1996": [   # Docket_db_1995-1996.txt
+        # A vacate the House voted down.
+        "1995|0897|02/16/1995 10:38:45 AM|HB54|H|INTRODUCED AND REF TO FINANCE; HJ31,P738|02/16/1995 10:38:45 AM",
+        "1995|0897|03/02/1995 07:03:17 PM|HB54|H|REP HAETTENSCHWILLER MOVED TO VACATE TO HEALTH, ML RC(167-178);|03/02/1995 07:03:17 PM",
+        "1995|0897|03/02/1995 07:04:00 PM|HB54|H|HJ31,P740-742|03/02/1995 07:04:00 PM",
+        # The other chamber's journal cited, and each row still its own
+        # chamber's: HCR 25's number is the House's, and HB 1171's Senate
+        # introduction is not the bill's first row.
+        "1996|2611|01/03/1996 12:10:00 PM|HCR25|H|INTRODUCED AND REF TO SCIENCE, TECH & EN; SJ9,P142|01/03/1996 12:10:00 PM",
+        "1996|2362|01/03/1996 03:58:11 PM|HB1171|H|INTRODUCED AND REF TO FINANCE; HJ4,P125|01/03/1996 03:58:11 PM",
+        "1996|2362|02/21/1996 03:10:00 PM|HB1171|S|INTRODUCED AND REF TO TRANSPORTATION; HJ9,P115|02/21/1996 03:10:00 PM",
     ],
     "1999-2000": [   # Docket_db_1999-2000.txt
         "1999|0754|01/07/1999 09:50:11 AM|SB15|S|Introducing and referring to Insurance; SJ 2, P 26|01/07/1999 09:50:11 AM",
         "1999|0754|02/09/1999 03:12:46 PM|SB15|S|Hearing, 2/16/99, Room 103, SH, 11:10 a.m.|02/09/1999 03:12:46 PM",
         "1999|0660|05/27/1999 09:30:10 AM|HB722|s|Introduced and Refered to Judiciary SJ21 Pg.568|05/27/1999 09:30:10 AM",
+        # The Senate's introduction filed under H, then the House's own.
+        "2000|2472|01/05/2000 11:11:10 AM|SB369|H|Introduced and Ref. to Insurance; SJ Convening Day, Pg.10|01/05/2000 11:11:10 AM",
+        "2000|2472|01/06/2000 08:26:41 AM|SB369|S|Hearing, Jan. 11, 9:30 a.m., Room 103, SH; SC1, Pg.3|01/06/2000 08:26:41 AM",
+        "2000|2472|02/10/2000 12:27:42 PM|SB369|H|Introduced and ref to Commerce;  HJ18, p479|02/10/2000 12:27:42 PM",
+        # A vacate whose row ends in "to", the committee on the next row.
+        "1999|0874|01/28/1999 12:00:00 AM|SB108|S|Introduction; to Executive Dept. and Administration; SJ 3, P 36|01/28/1999 12:00:00 AM",
+        "1999|0874|02/11/1999 11:24:43 AM|SB108|S|Sen. Cohen moved to Vacate from the Executive Departments and Administration to|02/11/1999 11:24:43 AM",
+        "1999|0874|02/11/1999 11:25:36 AM|SB108|S|the Public Institutions, Health and Human Services Committee.  MA, VV. SJ,   P.|02/11/1999 11:25:36 AM",
+    ],
+    "2001-2002": [   # Docket_db_2001-2002.txt: a referral reconsidered, then made again
+        "2002|0175|05/24/2001 12:30:10 PM|HB162|S|Introduced and Ref. to Public Affairs; SJ 14, Pg.301|05/24/2001 12:30:10 PM",
+        "2002|0175|05/31/2001 03:46:11 PM|HB162|S|Sen. Francoeur Moved Reconsideration of Introduction and Committee Referral, MA,VV; SJ 15, Pg.319|05/31/2001 03:46:11 PM",
+        "2002|0175|01/02/2002 05:13:36 PM|HB162|S|Introduced and Ref. to Education; SJ 1, Pg.10|01/02/2002 05:13:36 PM",
+    ],
+    "2007-2008": [   # Docket_db_2007-2008.txt: vacates written over two rows
+        "2007|0032|01/31/2007 11:24:05 AM|HB829|H|Introduced and ref to Ways and Means; HJ 14, pg.230|01/31/2007 11:24:05 AM",
+        "2007|0032|03/06/2007 12:08:11 PM|HB829|H|Rep. Almy: Vacate Referral to Ways & Means, MA VV; HJ 20, pg.407|03/06/2007 12:08:11 PM",
+        "2007|0032|03/06/2007 12:08:37 PM|HB829|H|Referred to Municipal & County Government; HJ 20, pg.407|03/06/2007 12:08:37 PM",
+        "2007|1094|04/12/2007 02:59:36 PM|HB866|S|Introduced and Referred to Executive Departments and Administration; SJ 12, Pg.301|04/12/2007 02:59:36 PM",
+        "2007|1094|05/03/2007 01:02:17 PM|HB866|S|Sen. Burling Moved HB 866 be Vacated; SJ 15, Pg.329|05/03/2007 01:02:17 PM",
+        "2007|1094|05/03/2007 01:02:51 PM|HB866|S|From ED&A to Public and Municipal Affairs, MA, VV; SJ 15, Pg.329|05/03/2007 01:02:51 PM",
+        "2008|2540|03/27/2008 10:33:46 AM|HB1509|S|Introduced and Referred to Executive Departments and Administration; SJ 11, Pg.362|03/27/2008 10:33:46 AM",
+        "2008|2540|04/10/2008 10:54:32 AM|HB1509|S|Sen. Burling Moved to Vacate HB 1509 From Executive Departments and Administration To|04/10/2008 10:54:32 AM",
+        "2008|2540|04/10/2008 10:55:23 AM|HB1509|S|The Committee On Ways and Means, MA, VV; SJ 12, Pg.368|04/10/2008 10:55:23 AM",
     ],
     "2009-2010": [   # Docket_db_2009-2010.txt
         "2010|2002|12/10/2009 11:52:27 AM|HB1587|H|To Be Introduced 1/6/2010 and Referred to Finance|12/10/2009 11:52:27 AM",
@@ -6136,6 +6186,13 @@ _FIRST_REFERRAL_DOCKETS = {
     "2011-2012": [   # Docket_db_2011-2012.txt: drafted late, then referred
         "2012|3049|01/18/2012 02:04:48 PM|HB1716|H|Late Drafting and Introduction Approved By Rules Committee; HJ 10, PG.677|01/18/2012 02:04:48 PM",
         "2012|3049|01/18/2012 02:05:19 PM|HB1716|H|Referred to Public Works and Highways; HJ 10, PG.677|01/18/2012 02:05:19 PM",
+    ],
+    "2015-2016": [   # Docket_2015-2016.txt: a vacate over two rows, then the hearing
+        "2016|0589|1/8/2015 12:00:00 AM|SB64|S|Introduced and Referred to Health and Human Services; SJ 4|1/8/2015 12:00:00 AM",
+        "2016|0589|3/31/2015 12:00:00 AM|SB64|H|Introduced and Referred to Health, Human Services and Elderly Affairs (in recess of 3/25/2015); HJ 28 , PG. 1299|3/31/2015 12:00:00 AM",
+        "2016|0589|4/1/2015 12:00:00 AM|SB64|H|Vacate (Rep Kotowski): MA VV; HJ 31 , PG. 1477|4/1/2015 12:00:00 AM",
+        "2016|0589|4/1/2015 12:00:00 AM|SB64|H|Referred to Commerce and Consumer Affairs; HJ 31 , PG. 1477|4/1/2015 12:00:00 AM",
+        "2016|0589|4/2/2015 12:00:00 AM|SB64|H|Public Hearing: 4/8/2015 11:30 AM LOB 302|4/2/2015 12:00:00 AM",
     ],
     "2021-2022": [   # Docket_2021-2022.txt: heard, THEN sent to the money committee
         "2022|2702|1/24/2022 12:00:00 AM|HB1288|H|Public Hearing: 01/24/2022 1:45 p.m. LOB302-304|1/24/2022 12:00:00 AM",
@@ -6156,7 +6213,7 @@ _FIRST_REFERRAL_DOCKETS = {
         "2025|0138|1/6/2025 8:52:19 AM|HB165|H|  Introduced 01/08/2025 and referred to Municipal and County Government  HJ 2  P. 8|1/21/2025 2:00:30 PM",
         "2025|0138|3/28/2025 8:02:24 AM|HB165|S|  Introduced 03/27/2025 and Referred to Finance;  SJ 10|3/6/2026 4:24:49 PM",
         "2025|0957|1/22/2025 5:27:38 PM|CACR8|S|  Introduced 01/09/2025 and Referred to Judiciary;  SJ 3|1/22/2025 5:27:38 PM",
-        "2025|0957|3/28/2025 2:00:10 PM|CACR8|H|  Introduced (in recess of) 03/27/2025 and referred to Criminal Justice and Public Safety  HJ 11  P. 113|3/28/2025 2:00:10 PM",
+        "2025|0957|3/28/2025 2:00:10 PM|CACR8|H|  Introduced (in recess of) 03/27/2025 and referred to Criminal Justice and Public Safety  HJ 11  P. 113|5/19/2025 3:19:49 PM",
     ],
 }
 
@@ -6224,6 +6281,31 @@ def _first_referral(referrals, build_data, build_site_v2):
             # The record's own LSR picks the 1990 resolution, not the 1989 one.
             ("1989-1990", "SCR2"): {"S": "Public Affairs"},
             ("1991-1992", "SB151"): {"S": "Transportation"},
+            # A first row filed under the House that cites the Senate Journal
+            # is the Senate's introduction (SB 369, SB 192); a row citing the
+            # other journal that is not the first, or whose number is its
+            # chamber's own, stays where it is filed (HB 1171, HCR 25).
+            ("1999-2000", "SB369"): {"S": "Insurance", "H": "Commerce"},
+            ("1991-1992", "SB192"): {"S": "Internal Affairs",
+                                     "H": "Executive Departments and Administration"},
+            ("1995-1996", "HCR25"): {"H": "Science, Technology and Energy"},
+            ("1995-1996", "HB1171"): {"H": "Finance", "S": "Transportation"},
+            # A vacate over two rows: the second row names where the bill
+            # went (SB 64 was heard by Commerce and Consumer Affairs), in
+            # each shape the clerks used -- including the one vacated()
+            # refuses on its own row (HB 829) and a row ending in "to".
+            ("2015-2016", "SB64"): {"S": "Health and Human Services",
+                                    "H": "Commerce and Consumer Affairs"},
+            ("2007-2008", "HB829"): {"H": "Municipal and County Government"},
+            ("2007-2008", "HB866"): {"S": "Public and Municipal Affairs"},
+            ("2007-2008", "HB1509"): {"S": "Ways and Means"},
+            ("1999-2000", "SB108"): {"S": "Public Institutions, Health and Human Services"},
+            # A vacate the House voted down moves nothing.
+            ("1995-1996", "HB54"): {"H": "Finance"},
+            # A carried reconsideration of the introduction clears the
+            # referral; one that lost does not.
+            ("2001-2002", "HB162"): {"S": "Education"},
+            ("1993-1994", "SB668"): {"H": "Executive Departments and Administration"},
             # A vacate replaces the first referral; the docket beats a code.
             ("2025-2026", "SB83"): {"S": "Ways and Means"},
             ("2025-2026", "HB165"): {"H": "Municipal and County Government",
@@ -6236,6 +6318,7 @@ def _first_referral(referrals, build_data, build_site_v2):
         assert "H" in majority.get(("1989-1990", "SCR2"), {}), (
             "with no LSR given, the LSR most rows carry should be read")
         assert began.get(("2025-2026", "CACR8")) == "S", began.get(("2025-2026", "CACR8"))
+        assert began.get(("1999-2000", "SB369")) == "S", began.get(("1999-2000", "SB369"))
 
         # The current term: the docket over the referral code, and the chamber
         # a stub CACR began in.

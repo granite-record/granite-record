@@ -28,7 +28,9 @@ page's "Next/Last Comm" is the LAST one, in ONE chamber. So wherever a
 chamber's docket names a referral, that is the committee published, read
 from the same docket file the bill's history is narrated from
 (from_dockets); where the chamber later vacated the referral and sent the
-bill elsewhere, the committee it was sent to replaces the first. Where the
+bill elsewhere, the committee it was sent to replaces the first, and where
+it reconsidered the introduction and referred the bill again, the second
+referral is the first that stood. Where the
 docket names no referral in a chamber, the search page's committee stands.
 build_data._pick_committee keeps the search page's name instead of the
 docket's only where the docket's is a name the committee tables do not know
@@ -97,9 +99,12 @@ SRC = Path("db/Docket.psv")
 # Still anchored at the start, so "Committee Report: Refer to Interim Study"
 # cannot match, and NOT_A_NAME still refuses a referral to no committee.
 #
-# "ref\w*+" is possessive and the committee must begin with a letter or
-# digit: a line that ends "INTRODUCED AND REF TO", with the committee on the
-# clerk's next row, otherwise gave back the word "To" as a committee.
+# "ref\w*+" is possessive and the committee must begin with a character that
+# is not a space (\S), and cannot be the word "to" alone: a line that ends
+# "INTRODUCED AND REF TO", with the committee on the clerk's next row,
+# otherwise gave back the word "To" as a committee. \S also admits
+# punctuation, which is harmless: clean() takes off a "<...>" note and
+# NOT_A_NAME refuses what is left if it is empty.
 INTRO = re.compile(
     r"^\s*(?:"
     r"\(?\d{1,2}/\d{1,2}/\d{2,4}\)?\s*"
@@ -133,9 +138,15 @@ REREF = re.compile(r"^\s*re-?ref(?:erred)?\s+to\s+(?P<c>.+)$", re.I)
 # which is few enough to be invisible in a spot check and quite enough to put
 # a wrong committee on a bill's page. The lookahead refuses it outright:
 # a vacate whose destination cannot be read is better than a confident
-# inversion, and HB829 keeps whatever the search page said.
+# inversion. HB829's destination is on the clerk's next row -- "Referred to
+# Municipal & County Government" -- and _read_docket reads it from there (see
+# VACATE_NEXT below).
 VACATED = re.compile(r"\bvacat\w*\b(?!\s+referral\s+to)[^;]*?"
                      r"\bto\s+(?P<c>[^;]+)", re.I)
+# The clerk's record that a motion was voted down: ML, "motion lost", and MF,
+# "motion failed". Upper case only, as the clerks write them, so that the
+# letters inside a committee's name cannot match.
+LOST = re.compile(r"\b(?:ML|MF)\b")
 
 # What follows the committee on the same line: the journal citation, a date
 # in brackets, a parenthetical, or two spaces used as a column break.
@@ -213,8 +224,10 @@ PHRASES = [
     # Internal Affairs (2007-2008) and S40 Rules, Enrolled Bills and Internal
     # Affairs (2013-2016) reached 38 bill cards and 111 histories as "Senate
     # Internal Affairs", a committee none of those terms had. (S50 had the
-    # same name again in 2017-2018, but no docket line of 2017 or later
-    # reaches this table, so those terms were never affected.) Each name maps
+    # same name again in 2017-2018. That term was unaffected only while no
+    # docket line of 2017 or later reached this table; from_dockets now sends
+    # every term's docket through it, so 2017-2018 depends on these entries
+    # exactly as 2007-2008 does.) Each name maps
     # to itself here, ahead of that pattern, so the spelling without the
     # comma, and the 2015-2016 lines that carry "by the necessary 2/3 vote,
     # Pursuant to Senate Rule 3-26" after the name, come out as the committee
@@ -468,9 +481,17 @@ def vacated(desc):
 
     See VACATED above for the shape, and for the one form that means the
     opposite and is refused rather than guessed at.
+
+    A MOTION THAT LOST MOVED NOTHING. "REP HAETTENSCHWILLER MOVED TO VACATE
+    TO HEALTH, ML RC(167-178)" (1995 HB54) is the House voting NOT to vacate:
+    Finance kept the bill and reported it. Read as a vacate, it put a
+    committee called "Health, Ml" on the page, and HB55's twin "Ed and a,
+    Ml". ML and MF are the clerk's "motion lost" and "motion failed"; these
+    two rows are the only ones in the dockets where either sits on a vacate
+    this pattern reads.
     """
     m = VACATED.search(desc or "")
-    if not m:
+    if not m or LOST.search(desc):
         return ""
     return AMP.sub(" and ", names.committee(expand(clean(m.group("c")))))
 
@@ -545,6 +566,92 @@ PLAIN = re.compile(r"^\s*referred\s+to\s+(?P<c>.+)$", re.I)
 HEARD = re.compile(r"\bhearing\b|\bexec(?:utive)?\s+session\b|committee\s+report",
                    re.I)
 
+# THREE THINGS A ROW CAN DO TO THE REFERRAL BEFORE IT, each found by setting
+# every changed committee beside the committee that held the bill's first
+# hearing in proceedings.csv. Each is a small, written-down shape rather than
+# a judgement, and _read_docket applies them.
+#
+# 1. A VACATE WRITTEN OVER TWO ROWS. The motion on one row, the destination
+#    on the chamber's next:
+#      "Vacate (Rep Kotowski): MA VV; HJ 31 , PG. 1477"
+#      "Referred to Commerce and Consumer Affairs; HJ 31 , PG. 1477"  2015 SB64
+#      "Vacated from Ways and Means; HJ 19, pg.390"
+#      "Referred to Commerce; HJ 19, pg.390"                          2007 HB613
+#      "Sen. Burling Moved HB 866 be Vacated; SJ 15, Pg.329"
+#      "From ED&A to Public and Municipal Affairs, MA, VV; SJ 15, Pg.329"
+#      "Sen. Cohen moved to Vacate from the Executive Departments and
+#       Administration to" / "the Public Institutions, Health and Human
+#       Services Committee.  MA, VV."                                 1999 SB108
+#    vacated() reads nothing on the first row, and on the second a "Referred
+#    to" arrives after the first referral and is outranked by it -- so the
+#    page named the committee the chamber had taken the bill AWAY from:
+#    Health, Human Services and Elderly Affairs for SB 64, which Commerce and
+#    Consumer Affairs heard in LOB 302. So a vacate row that names no
+#    destination lets the chamber's next row name one, in these shapes and no
+#    others. A row ending in "to" hands over the whole of the next row. A
+#    vacate to the table, to a reading or off a calendar -- "Vacated and Laid
+#    on Table" and "Vacated from Committee and Laid on Table", 311 rows of
+#    2019-2020 -- sent the bill to no committee, so it hands over nothing: a
+#    later "Referred to Finance" must not become the referral.
+VACATE_WORD = re.compile(r"\bvacat", re.I)
+NOT_TO_A_COMMITTEE = re.compile(r"\btable\b|\breading\b|\bcalendar\b", re.I)
+VACATE_NEXT = re.compile(
+    r"^\s*(?:(?:re-?)?ref(?:erred)?\.?\s+to|from\b[^;]*?\bto|to)\s+(?P<c>[^;]+)",
+    re.I)
+DANGLING = re.compile(r"\bto\s*$", re.I)
+#
+# 2. A CHAMBER TAKING BACK ITS OWN REFERRAL. On 31 May 2001 the Senate
+#    carried "Reconsideration of Introduction and Committee Referral" on five
+#    House bills and introduced each again in January 2002: HB 162 went from
+#    Public Affairs to Education, which heard it on 6 February 2002, and HB
+#    658 from Executive Departments and Administration to Public
+#    Institutions, Health and Human Services. The first referral was undone,
+#    so the next one is the first. A motion that lost -- "RECONSIDER
+#    INTRODUCTION, ML VV" (1993 SB668) -- undoes nothing.
+RECONSIDERED = re.compile(
+    r"\breconsider\w*\s+(?:(?:of|for|on)\s+)?(?:the\s+)?introduc", re.I)
+#
+# 3. AN INTRODUCTION FILED UNDER THE OTHER CHAMBER. The database files a few
+#    Senate introductions under the House: SB 369 of 2000's first row is
+#    body H, "Introduced and Ref. to Insurance; SJ Convening Day, Pg.10" --
+#    the Senate Journal -- and the House's own "Introduced and ref to
+#    Commerce; HJ18, p479" comes a month later. Read as filed, the House
+#    committee was Insurance, which never held it; Commerce heard it on 11
+#    April. So a bill's FIRST row, when it is an introduction filed under the
+#    chamber its number does not name and it cites only the journal of the
+#    chamber its number does, is that chamber's row. Both conditions are
+#    needed: HCR 25 of 1996's House introduction cites "SJ9" and is the
+#    House's own (its number is the House's, and the House heard it), and HB
+#    1171 of 1996's Senate introduction cites "HJ9" and is the Senate's (it
+#    is not the bill's first row). Eight Senate bills of 1991-1992 and SB 369
+#    of 2000 are this shape; a CACR's number names no chamber, so none is
+#    moved.
+NUMBERED = re.compile(r"^([HS])(?:B|R|CR|JR|A)\d", re.I)
+
+
+def _journal(desc, body):
+    """Whether a docket description cites that chamber's journal (HJ or SJ)."""
+    return re.search(r"\b%sJ(?:\b|(?=\d))" % body, desc, re.I) is not None
+
+
+def _filed_under(bill, body, desc):
+    """The chamber a bill's FIRST row belongs to: see 3 above."""
+    m = NUMBERED.match(bill)
+    if not m or not INTRO.match(desc):
+        return body
+    own = m.group(1).upper()
+    if body in ("H", "S") and body != own and _journal(desc, own) \
+            and not _journal(desc, body):
+        return own
+    return body
+
+
+def _destination(text):
+    """The committee a two-row vacate's second row names, or "": see 1 above."""
+    s = re.sub(r"^\s*(?:the\s+)?(?:committee\s+on\s+)?", "", text, flags=re.I)
+    s = re.sub(r"\s+committee$", "", clean(s), flags=re.I)
+    return AMP.sub(" and ", names.committee(expand(s))) if s else ""
+
 
 def _own_rows(path, term, lsr_of=None):
     """[((term, bill), body, description)] -- each bill's OWN rows, in order.
@@ -588,19 +695,41 @@ def _read_docket(path, term, lsr_of=None):
     """({(term, bill): {body: committee}}, {(term, bill): body}) from one file.
 
     The first: the FIRST referral per body, which a vacate replaces -- the
-    rule from_docket states. The second: the body of the bill's first row,
-    which is the chamber it began in.
+    rule from_docket states -- including a vacate written over two rows, and
+    which a carried reconsideration of the introduction clears. The second:
+    the body of the bill's first row, which is the chamber it began in. A
+    first row filed under the wrong chamber counts as the right one's for
+    both. The three rules are numbered above VACATE_WORD.
     """
     refs = collections.defaultdict(dict)
     began = {}
     heard = set()
+    seen = set()
+    pending = {}    # (key, body) -> True if the vacate row ended in "to"
     for key, body, desc in _own_rows(path, term, lsr_of):
+        if key not in seen:
+            seen.add(key)
+            body = _filed_under(key[1], body, desc)
         if body in ("H", "S"):
             began.setdefault(key, body)
+        dangling = pending.pop((key, body), None)
+        if dangling is not None:
+            m = None if dangling else VACATE_NEXT.match(desc)
+            dest = (_destination(desc) if dangling and not HEARD.search(desc)
+                    else _destination(m.group("c")) if m else "")
+            if dest:
+                refs[key][body] = dest
+                continue
+        if RECONSIDERED.search(desc) and not LOST.search(desc):
+            refs.get(key, {}).pop(body, None)
+            continue
         v = vacated(desc)
         if v:
             refs[key][body] = v
             continue
+        if VACATE_WORD.search(desc) and not VACATED.search(desc) \
+                and not LOST.search(desc) and not NOT_TO_A_COMMITTEE.search(desc):
+            pending[(key, body)] = DANGLING.search(desc) is not None
         c = committee(desc)
         if not c and (key, body) not in heard:
             # A BARE "Referred to X", before anything has been heard. A bill
