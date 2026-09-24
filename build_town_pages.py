@@ -34,6 +34,12 @@ no generator writes -- a name against an office is a claim about a real
 person, and it should come from somebody who checked. Where a name is blank
 the page names the office, gives the reader their district and links to the
 official directory, which is correct and does not go stale.
+
+A town's select board comes from the town's own website where that page
+lists the whole board and was current when read (town_boards.py decides, and
+writes town_boards.json), and otherwise from NHDOT's directory of September
+2025, which is dated on the page and shown without the chair it names. The
+town clerk comes from the Secretary of State's list.
 """
 
 import argparse
@@ -46,6 +52,9 @@ import shell as S
 # The parser's test for an e-mail address, so that what it accepts from a
 # threaded cell and what a page links are the same test.
 from parse_officials import EMAIL_OK
+# How a town's own page spells a board officer and a name, decided where the
+# board is read, so the page and town_boards.json cannot drift apart.
+from town_boards import board_role, display_name
 
 E = S.E
 
@@ -313,10 +322,89 @@ def local_offices(key, officials):
 NHDOT = ("the New Hampshire Department of Transportation's directory of city "
          "and town officials, dated September 2025")
 
+# NHDOT's rows for the select board: "Board of Selectman" and "Board of
+# Selectman, Chair", as it prints them.
+BOARD_ROW = re.compile(r"^\s*board of selectm[ae]n\b", re.I)
+# The officer a board or council chose for itself -- chair, vice chair,
+# secretary -- written after the seat. A board chooses its officers again
+# after every election, and the directory's chair disagrees with the town's
+# own page in 25 of the 40 towns where both name one, so the directory's are
+# not drawn. The seat itself ("City Councilor, Ward 3") is.
+OFFICER = re.compile(r"\s*(?:,\s*(?:(?:vice[\s-]?)?chair(?:man|woman|person)?|"
+                     r"secretary|clerk)|"
+                     r"\((?:secretary|clerk|(?:vice[\s-]?)?chair)\))\s*$", re.I)
+COUNCIL_ROW = re.compile(r"council|alder", re.I)
 
-def town_officials_block(town, key, town_off, site_on_page=None):
-    """The '<Town> Officials' section: NHDOT's rows, the town offices, the
-    note that says where they come from. "" if NHDOT names nobody here.
+
+def long_date(stamp):
+    """"2026-09-20T22:22:15-0400" as "20 September 2026"."""
+    m = re.match(r"(\d{4})-(\d\d)-(\d\d)", stamp or "")
+    if not m:
+        return ""
+    return f"{int(m.group(3))} {MONTHS[int(m.group(2)) - 1]} {m.group(1)}"
+
+
+def own_board_rows(board, officials):
+    """The select board as the town's own page lists it, one row a member.
+
+    The page gives names and the chair; the directory, where it has the SAME
+    person (town_boards.py matched them, and wrote the directory's spelling
+    down as directory_name), gives the phone and e-mail. An address that
+    names another official of the town is not drawn beside anybody, the same
+    rule every other row here follows. Returns (rows, whether any contact
+    came from the directory).
+    """
+    by_name = {o.get("name"): o for o in officials or []
+               if BOARD_ROW.match(o.get("position") or "")}
+    pool = list(officials or []) + [{"name": m["name"]}
+                                    for m in board.get("members") or []]
+    rows, borrowed = [], False
+    for m in board.get("members") or []:
+        how = []
+        o = by_name.get(m.get("directory_name") or "")
+        if o:
+            if o.get("phone"):
+                how.append(tel(o["phone"]))
+            if not names_someone_else(o.get("email"), o.get("name"), pool):
+                if maillink(o.get("email")):
+                    how.append(maillink(o.get("email")))
+            borrowed = borrowed or bool(how)
+        # Under a "Select board" heading, so the seat line carries only the
+        # officer the town's page names, and nothing for a member.
+        rows.append(off_row(
+            f'<span class="mchip">{E(display_name(m["name"]))}</span>', how,
+            E(board_role(m.get("role")))))
+    return rows, borrowed
+
+
+def dot_row(pos, o, officials):
+    """One of NHDOT's rows: the person, their seat, and how to reach them."""
+    how = []
+    if o.get("phone"):
+        how.append(tel(o["phone"]))
+    if not names_someone_else(o.get("email"), o.get("name"), officials):
+        if maillink(o.get("email")):
+            how.append(maillink(o.get("email")))
+    if BOARD_ROW.match(pos):
+        # Drawn under a "Select board" heading, and without the directory's
+        # chair: see OFFICER.
+        pos = ""
+    elif COUNCIL_ROW.search(pos):
+        pos = OFFICER.sub("", pos)
+    return off_row(f'<span class="mchip">{E(o["name"])}</span>', how, E(pos))
+
+
+def town_officials_block(town, key, town_off, site_on_page=None, board=None):
+    """The '<Town> Officials' section: the select board, NHDOT's other rows,
+    the town offices, and a note under each saying where it comes from. ""
+    if nobody is named here.
+
+    THE BOARD IS THE TOWN'S OWN WHERE THE TOWN'S PAGE GIVES ALL OF IT. `board`
+    is the town's entry in town_boards.json: the whole board, read off the
+    town's own website on a date, from a page that does not date itself
+    before the March 2026 town meeting. Everywhere else the board is NHDOT's,
+    from September 2025 -- before that meeting -- and says so, without the
+    directory's chair.
 
     `site_on_page` says whether the page links the town's website anywhere;
     left out, it is whether this section does. The note sends a reader to that
@@ -325,22 +413,13 @@ def town_officials_block(town, key, town_off, site_on_page=None):
     Stewartstown, and "check Clarksville's own website" sent them looking for
     a page that is not there.
     """
-    if not town_off.get("officials"):
+    officials = town_off.get("officials") or []
+    if not officials and not board:
         return ""
     body = [f'<h2 class="offsec">{E(town)} Officials</h2>']
-    rows = []
-    for pos, o in local_offices(key, town_off["officials"]):
-        how = []
-        if o.get("phone"):
-            how.append(tel(o["phone"]))
-        if not names_someone_else(o.get("email"), o.get("name"),
-                                  town_off["officials"]):
-            if maillink(o.get("email")):
-                how.append(maillink(o.get("email")))
-        rows.append(off_row(f'<span class="mchip">{E(o["name"])}</span>',
-                            how, E(pos)))
-    if rows:
-        body.append('<ul class="offlist">' + "".join(rows) + "</ul>")
+    drawn = local_offices(key, officials)
+    dot_board = [(p, o) for p, o in drawn if BOARD_ROW.match(p)]
+    others = [(p, o) for p, o in drawn if not BOARD_ROW.match(p)]
     how = []
     if town_off.get("phone"):
         how.append(tel(town_off["phone"]))
@@ -350,11 +429,10 @@ def town_officials_block(town, key, town_off, site_on_page=None):
     if offices_site:
         how.append(offices_site)
     offices_row = bool(town_off.get("mailing") or how)
-    if offices_row:
-        body.append('<ul class="offlist">'
+    offices_html = ('<ul class="offlist">'
                     + off_row(E(town_off.get("mailing") or town),
                               how, "Town offices")
-                    + "</ul>")
+                    + "</ul>") if offices_row else ""
     if site_on_page is None:
         site_on_page = bool(offices_site)
     if site_on_page:
@@ -363,8 +441,45 @@ def town_officials_block(town, key, town_off, site_on_page=None):
         then = ", so ask the town offices for changes"
     else:
         then = ""
-    body.append(f'<p class="note">Source: {NHDOT}. It does not show anyone '
-                f'elected or appointed since then{then}.</p>')
+    rest = bool(others or offices_row)
+
+    # THE BOARD, AND UNDER IT WHERE IT CAME FROM. The note sits under the
+    # names it is about: the board and the rest of the section can come from
+    # different places and different years.
+    if board and board.get("members"):
+        rows, borrowed = own_board_rows(board, officials)
+        src = weblink(board.get("source_url"))
+        note = (f"As {E(town)}'s website listed the select board when this "
+                f"site read it on {E(long_date(board.get('read_on')))}"
+                + (f": {src}" if src else "") + "."
+                + (f" The phone numbers and e-mail addresses beside the names "
+                   f"are from {NHDOT}." if borrowed else ""))
+    elif dot_board:
+        rows = [dot_row(p, o, officials) for p, o in dot_board]
+        # "Before the 2026 town elections": every town chose a selectman at
+        # its 2026 meeting, and every board chose its chair again after it.
+        note = (f"From {NHDOT}, before the 2026 town elections, so some of "
+                f"these people may have left the board." if rest else
+                f"From {NHDOT}, before the 2026 town elections. It does not "
+                f"show anyone elected or appointed since then{then}.")
+    else:
+        rows, note = [], ""
+    if not rows and not others and not offices_row:
+        return ""
+    if rows:
+        body.append('<h3 class="offh">Select board</h3>')
+        body.append('<ul class="offlist">' + "".join(rows) + "</ul>")
+        body.append(f'<p class="note">{note}</p>')
+        if rest:
+            body.append('<h3 class="offh">Other offices</h3>')
+    rows = [dot_row(p, o, officials) for p, o in others]
+    if rows:
+        body.append('<ul class="offlist">' + "".join(rows) + "</ul>")
+    body.append(offices_html)
+    if rest:
+        lead = "Source for everything else here" if note else "Source"
+        body.append(f'<p class="note">{lead}: {NHDOT}. It does not show '
+                    f'anyone elected or appointed since then{then}.</p>')
     return "".join(body)
 
 
@@ -722,14 +837,22 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
     # ward's -- a ward elects a councillor, and the town is what the board
     # governs.
     # The same test the How to Vote block's "Town website" row is drawn by.
+    board = (off.get("_boards") or {}).get(slug(town, "0"))
     section = town_officials_block(
         town, slug(town, "0"), town_off,
         site_on_page=bool(weblink(town_off.get("website"))
-                          or weblink(loc.get("website"))))
+                          or weblink(loc.get("website"))),
+        board=board)
     body.append(section)
 
-    body.append('<p class="srcs">Sources: NH General Court, Secretary of '
-                'State' + (f", and {NHDOT}" if section else "") + '</p>')
+    srcs = ["NH General Court", "Secretary of State"]
+    if section and board:
+        srcs.append(f"{E(town)}&rsquo;s own website")
+    if section and town_off.get("officials"):
+        srcs.append(NHDOT)
+    body.append('<p class="srcs">Sources: ' + ", ".join(srcs[:-1])
+                + (", and " if len(srcs) > 2 else " and ") + srcs[-1]
+                + '</p>')
 
     path = town_file(town, ward)
     desc = (f"Who represents {label}: state representatives, state senator, "
@@ -789,6 +912,9 @@ def main():
                     help="clerks and polling places, if parsed")
     ap.add_argument("--offices", default="town_officials.json",
                     help="the town's own officials, if parsed")
+    ap.add_argument("--boards", default="town_boards.json",
+                    help="select boards read off towns' own websites, "
+                         "written by town_boards.py")
     a = ap.parse_args()
 
     site = Path(a.site)
@@ -847,6 +973,22 @@ def main():
     else:
         print(f"  town officials: {offices} is not on disk, so the "
               "\"who runs\" section is not drawn")
+    # A town's own select board, where its website lists all of it and is
+    # current. Absent, every board is the directory's -- which is dated and
+    # says so, so the page is still true, only older.
+    boards = Path(a.boards)
+    if boards.exists():
+        try:
+            off["_boards"] = json.loads(
+                boards.read_text(encoding="utf-8")).get("boards") or {}
+            print(f"  select boards: {len(off['_boards'])} towns from their "
+                  f"own websites ({boards}); the rest from the directory")
+        except ValueError as e:
+            print(f"  select boards: {boards} did not parse ({e}); every "
+                  "board is the directory's")
+    else:
+        print(f"  select boards: {boards} is not on disk, so every board is "
+              "the directory's")
     tmpl = S.template(site)
 
     out = site / "town"
