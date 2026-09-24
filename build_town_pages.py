@@ -55,6 +55,9 @@ from parse_officials import EMAIL_OK
 # How a town's own page spells a board officer and a name, decided where the
 # board is read, so the page and town_boards.json cannot drift apart.
 from town_boards import board_role, display_name
+# The one person chip for a legislator, the same one the roster, a committee
+# and a bill draw.
+from build_pages import pchip
 
 E = S.E
 
@@ -84,11 +87,6 @@ def where(town, ward, wards):
     return f"{town}, Ward {ward}" if len(wards) > 1 else town
 
 
-def chip(m):
-    p = (m.get("party") or "X")[:1].upper()
-    return f'<span class="mchip p-{E(p)}">{E(m.get("display_full") or m.get("name") or "")}</span>'
-
-
 def off_row(who, how, seat="", cls=""):
     """One official: who they are on the left, how to reach them on the right.
 
@@ -108,23 +106,37 @@ def off_row(who, how, seat="", cls=""):
 
 
 def member_block(members, empty, seat=""):
-    """The people in a seat, each with a way to reach them."""
+    """The people in a seat, each with a way to reach them.
+
+    A LEGISLATOR IS DRAWN BY THE SHARED CHIP. This wrote a chip of its own --
+    the same classes, its own link and its own idea of the name -- which is
+    the drift pchip was made to end: a member reads the same here as on the
+    roster, a committee page and a bill.
+    """
     if not members:
         return f'<p class="note">{E(empty)}</p>'
     out = []
     for m in members:
-        link = (f'<a href="/legislator/{E(m["slug"])}">'
-                f'{E(m.get("display_full") or m.get("name"))}</a>'
-                if m.get("slug") else E(m.get("display_full") or m.get("name")))
-        p = (m.get("party") or "X")[:1].upper()
         how = []
         if maillink(m.get("email")):
             how.append(maillink(m.get("email")))
         if m.get("phone"):
             how.append(f'<span class="offtel">{E(m["phone"])}</span>')
-        out.append(off_row(f'<span class="mchip p-{E(p)}">{link}</span>',
-                           how, seat))
+        out.append(off_row(pchip(m), how, seat))
     return '<ul class="offlist">' + "".join(out) + "</ul>"
+
+
+# A seat the directory records as empty. "VACANT" is not a person, and a
+# person's chip around it said it was one: Danville's, Deering's and
+# Rindge's administrators and Roxbury's road agent.
+VACANT = re.compile(r"^\s*(?:position\s+)?vacant\s*$", re.I)
+
+
+def person(name):
+    """A town official's name as a chip, or a vacancy as the plain word."""
+    if VACANT.match(name or ""):
+        return "Vacant"
+    return f'<span class="mchip">{E(name)}</span>'
 
 
 # Ten digits, then an extension if there is one: "603-588-6785 ext 221",
@@ -371,9 +383,8 @@ def own_board_rows(board, officials):
             borrowed = borrowed or bool(how)
         # Under a "Select board" heading, so the seat line carries only the
         # officer the town's page names, and nothing for a member.
-        rows.append(off_row(
-            f'<span class="mchip">{E(display_name(m["name"]))}</span>', how,
-            E(board_role(m.get("role")))))
+        rows.append(off_row(person(display_name(m["name"])), how,
+                            E(board_role(m.get("role")))))
     return rows, borrowed
 
 
@@ -391,13 +402,37 @@ def dot_row(pos, o, officials):
         pos = ""
     elif COUNCIL_ROW.search(pos):
         pos = OFFICER.sub("", pos)
-    return off_row(f'<span class="mchip">{E(o["name"])}</span>', how, E(pos))
+    return off_row(person(o.get("name")), how, E(pos))
 
 
-def town_officials_block(town, key, town_off, site_on_page=None, board=None):
-    """The '<Town> Officials' section: the select board, NHDOT's other rows,
-    the town offices, and a note under each saying where it comes from. ""
-    if nobody is named here.
+def card(title, inner, wide=False):
+    """One section of a tab: a heading that outranks what it heads, and the
+    rows under it, in a card of its own so that where one section ends and
+    the next begins is a line on the page rather than a guess."""
+    return (f'<section class="twnsec{" twnwide" if wide else ""}">'
+            f'<h3 class="twnh">{title}</h3>{inner}</section>')
+
+
+def note(text):
+    return f'<p class="note">{text}</p>' if text else ""
+
+
+MAYOR_ROW = re.compile(r"^\s*(?:assistant\s+|deputy\s+)?mayor\b", re.I)
+# NEW HAMPSHIRE'S THIRTEEN CITIES, named rather than inferred. Read off the
+# directory's labels, Hooksett came out a city because NHDOT calls its town
+# councillors "City Councilor"; it is a town with a town council.
+CITIES = frozenset({"berlin", "claremont", "concord", "dover", "franklin",
+                    "keene", "laconia", "lebanon", "manchester", "nashua",
+                    "portsmouth", "rochester", "somersworth"})
+
+
+def officials_sections(town, key, town_off, site_on_page=None, board=None,
+                       loc=None):
+    """The Town officials tab, as cards: the select board (or a city's mayor
+    and council), the clerk, and the town offices with the rest of NHDOT's
+    rows. Each card says under its names where they came from, because the
+    three come from three places and two different years. [] if there is
+    nothing to show, which is every unincorporated place.
 
     THE BOARD IS THE TOWN'S OWN WHERE THE TOWN'S PAGE GIVES ALL OF IT. `board`
     is the town's entry in town_boards.json: the whole board, read off the
@@ -406,20 +441,35 @@ def town_officials_block(town, key, town_off, site_on_page=None, board=None):
     from September 2025 -- before that meeting -- and says so, without the
     directory's chair.
 
+    THE CLERK IS THE SECRETARY OF STATE'S, and it is here and in How to vote
+    both: the clerk runs the town's elections and keeps its records, and a
+    reader on either tab should not have to go to the other to find them.
+
     `site_on_page` says whether the page links the town's website anywhere;
-    left out, it is whether this section does. The note sends a reader to that
-    website only when there is one to go to: NHDOT records "no website" for
-    Clarksville and Ellsworth and "website was discontinued" for
-    Stewartstown, and "check Clarksville's own website" sent them looking for
-    a page that is not there.
+    left out, it is whether the offices card does. The last of NHDOT's notes
+    sends a reader to that website only when there is one to go to: NHDOT
+    records "no website" for Clarksville and Ellsworth and "website was
+    discontinued" for Stewartstown, and "check Clarksville's own website"
+    sent them looking for a page that is not there.
     """
+    # AN UNINCORPORATED PLACE HAS NO TOWN GOVERNMENT, so no tab for one. The
+    # directory covers all 234 of New Hampshire's towns and cities, and a
+    # place it does not list is one of the 25 grants, purchases, locations
+    # and unorganised towns the county governs. The Secretary of State does
+    # name a clerk for most of them -- Bean's Grant's is Gorham's clerk, who
+    # runs its elections at Gorham Town Hall -- and How to vote says so;
+    # under "Town clerk" she would read as an officer of a town that has none.
+    if not town_off and not board:
+        return []
     officials = town_off.get("officials") or []
-    if not officials and not board:
-        return ""
-    body = [f'<h2 class="offsec">{E(town)} Officials</h2>']
+    loc = loc or {}
     drawn = local_offices(key, officials)
     dot_board = [(p, o) for p, o in drawn if BOARD_ROW.match(p)]
-    others = [(p, o) for p, o in drawn if not BOARD_ROW.match(p)]
+    council = [(p, o) for p, o in drawn if not BOARD_ROW.match(p)
+               and (COUNCIL_ROW.search(p) or MAYOR_ROW.match(p))]
+    others = [(p, o) for p, o in drawn
+              if (p, o) not in dot_board and (p, o) not in council]
+    city = key in CITIES
     how = []
     if town_off.get("phone"):
         how.append(tel(town_off["phone"]))
@@ -429,10 +479,6 @@ def town_officials_block(town, key, town_off, site_on_page=None, board=None):
     if offices_site:
         how.append(offices_site)
     offices_row = bool(town_off.get("mailing") or how)
-    offices_html = ('<ul class="offlist">'
-                    + off_row(E(town_off.get("mailing") or town),
-                              how, "Town offices")
-                    + "</ul>") if offices_row else ""
     if site_on_page is None:
         site_on_page = bool(offices_site)
     if site_on_page:
@@ -441,46 +487,88 @@ def town_officials_block(town, key, town_off, site_on_page=None, board=None):
         then = ", so ask the town offices for changes"
     else:
         then = ""
-    rest = bool(others or offices_row)
+    # Which of NHDOT's cards is the last on the tab: it carries where to look
+    # for changes, once, rather than every card saying it.
+    dot_cards = [n for n, has in (
+        ("board", bool(dot_board) and not (board and board.get("members"))),
+        ("council", bool(council)),
+        ("offices", bool(others or offices_row))) if has]
 
-    # THE BOARD, AND UNDER IT WHERE IT CAME FROM. The note sits under the
-    # names it is about: the board and the rest of the section can come from
-    # different places and different years.
+    def since(which):
+        return ("It does not show anyone elected or appointed since then"
+                + (then if dot_cards and dot_cards[-1] == which else "") + ".")
+
+    out = []
+    # ---- who governs: the select board, or the mayor and council --------
     if board and board.get("members"):
         rows, borrowed = own_board_rows(board, officials)
         src = weblink(board.get("source_url"))
-        note = (f"As {E(town)}'s website listed the select board when this "
-                f"site read it on {E(long_date(board.get('read_on')))}"
-                + (f": {src}" if src else "") + "."
-                + (f" The phone numbers and e-mail addresses beside the names "
-                   f"are from {NHDOT}." if borrowed else ""))
+        out.append(card("Select board", (
+            '<ul class="offlist">' + "".join(rows) + "</ul>"
+            + note(f"As {E(town)}'s website listed the select board when "
+                   f"this site read it on "
+                   f"{E(long_date(board.get('read_on')))}"
+                   + (f": {src}" if src else "") + "."
+                   + (f" The phone numbers and e-mail addresses beside the "
+                      f"names are from {NHDOT}." if borrowed else "")))))
     elif dot_board:
-        rows = [dot_row(p, o, officials) for p, o in dot_board]
         # "Before the 2026 town elections": every town chose a selectman at
         # its 2026 meeting, and every board chose its chair again after it.
-        note = (f"From {NHDOT}, before the 2026 town elections, so some of "
-                f"these people may have left the board." if rest else
-                f"From {NHDOT}, before the 2026 town elections. It does not "
-                f"show anyone elected or appointed since then{then}.")
-    else:
-        rows, note = [], ""
-    if not rows and not others and not offices_row:
-        return ""
-    if rows:
-        body.append('<h3 class="offh">Select board</h3>')
-        body.append('<ul class="offlist">' + "".join(rows) + "</ul>")
-        body.append(f'<p class="note">{note}</p>')
-        if rest:
-            body.append('<h3 class="offh">Other offices</h3>')
-    rows = [dot_row(p, o, officials) for p, o in others]
-    if rows:
-        body.append('<ul class="offlist">' + "".join(rows) + "</ul>")
-    body.append(offices_html)
-    if rest:
-        lead = "Source for everything else here" if note else "Source"
-        body.append(f'<p class="note">{lead}: {NHDOT}. It does not show '
-                    f'anyone elected or appointed since then{then}.</p>')
-    return "".join(body)
+        out.append(card("Select board", (
+            '<ul class="offlist">'
+            + "".join(dot_row(p, o, officials) for p, o in dot_board)
+            + "</ul>"
+            + note(f"From {NHDOT}, before the 2026 town elections. "
+                   + since("board")))))
+    if council:
+        mayor = any(MAYOR_ROW.match(p) for p, _o in council)
+        body = ("aldermen" if any(re.search(r"alder", p, re.I)
+                                  for p, _o in council) else "council")
+        title = (f"Mayor and {body}" if mayor else
+                 "Board of aldermen" if body == "aldermen" else
+                 "City council" if city else "Town council")
+        out.append(card(title, (
+            '<ul class="offlist">'
+            + "".join(dot_row(p, o, officials) for p, o in council) + "</ul>"
+            + note(f"From {NHDOT}. " + since("council")))))
+    # ---- the clerk ---------------------------------------------------------
+    if loc.get("clerk"):
+        out.append(card("City clerk" if city else "Town clerk", (
+            '<ul class="offlist">' + clerk_row(loc, seat="") + "</ul>"
+            + note("From the Secretary of State's list of town and city "
+                   "clerks."))))
+    # ---- the town offices, and everyone else NHDOT lists ------------------
+    if others or offices_row:
+        rows = []
+        if offices_row:
+            # Under the card's own "Town offices" heading, so the row says
+            # what it is instead: where to write, and how else to reach them.
+            rows.append(off_row(E(town_off.get("mailing") or town), how,
+                                "Mailing address" if town_off.get("mailing")
+                                else "Contact"))
+        rows += [dot_row(p, o, officials) for p, o in others]
+        out.append(card("City offices" if city else "Town offices", (
+            '<ul class="offlist">' + "".join(rows) + "</ul>"
+            + note(f"From {NHDOT}. " + since("offices")))))
+    return out
+
+
+def town_officials_block(town, key, town_off, site_on_page=None, board=None,
+                         loc=None):
+    """The Town officials tab's cards as one string: see officials_sections."""
+    return "".join(officials_sections(town, key, town_off, site_on_page,
+                                      board, loc))
+
+
+def clerk_row(loc, seat="Town or city clerk"):
+    """The town or city clerk, from the Secretary of State's list. Under the
+    Town officials tab's "Town clerk" heading the seat is not said again."""
+    how = []
+    if loc.get("phone"):
+        how.append(tel(loc["phone"]))
+    if maillink(loc.get("email")):
+        how.append(maillink(loc.get("email")))
+    return off_row(person(loc["clerk"]), how, seat)
 
 
 def weblink(url, label=None):
@@ -648,211 +736,256 @@ def office_block(title, holder, fallback_url, note=""):
     # councillor is should not have to read three sentences about the Council
     # to get to the name; a reader who wants to know what the Council does has
     # it immediately after.
-    return ((f'<h3 class="offh">{E(title)}</h3>' if title else "")
-            + '<ul class="offlist">' + row + "</ul>"
-            + (f'<p class="note">{E(note)}</p>' if note else ""))
+    inner = ('<ul class="offlist">' + row + "</ul>"
+             + (f'<p class="note">{E(note)}</p>' if note else ""))
+    # A titled office is a card of its own on the Representatives tab.
+    return card(E(title), inner) if title else inner
 
 
-def state_house(dist, legs, body):
-    """The representatives, after the senator: more seats, smaller district."""
+def state_house(dist, legs):
+    """The State House card: each district the town sits in, with its
+    members. A floterial district is a second district over the first, so
+    the two are one card with a heading each, not two offices."""
     house = dist.get("house") or []
+    if not house:
+        return card("State House", '<p class="note">No House district is on '
+                                   'file for this ward.</p>')
+    parts = []
     for h in house:
         who = [m for m in legs
                if m.get("chamber") == "H"
                and (m.get("county") or "") == h.get("county")
                and str(m.get("district") or "") == str(h.get("district"))]
         seats = h.get("seats")
-        head = (f'{E(h.get("county",""))} district {h.get("district")}'
-                + (f' &middot; {seats} seat{"s" if seats and seats > 1 else ""}'
-                   if seats else ""))
-        body.append(f'<h3 class="offh">House &mdash; {head}</h3>')
+        parts.append(
+            f'<h4 class="twnsub">{E(h.get("county", ""))} district '
+            f'{E(str(h.get("district")))}'
+            + (" (floterial)" if h.get("floterial") else "")
+            + (f' <span class="twnseats">{seats} seat'
+               f'{"s" if seats > 1 else ""}</span>' if seats else "")
+            + "</h4>")
         if h.get("floterial"):
-            body.append('<p class="note">A floterial district overlays several '
-                        'towns that each already elect their own '
-                        'representative, and elects additional members across '
-                        'the combined population. You are represented by '
-                        'both.</p>')
-        body.append(member_block(who, "No sitting member is matched to this "
-                                      "district."))
-    if not house:
-        body.append('<p class="note">No House district is on file for this '
-                    'ward.</p>')
+            parts.append('<p class="note">A floterial district overlays several '
+                         'towns that each already elect their own '
+                         'representative, and elects additional members across '
+                         'the combined population. You are represented by '
+                         'both.</p>')
+        parts.append(member_block(who, "No sitting member is matched to this "
+                                       "district."))
+    return card("State House", "".join(parts))
 
 
-def build(town, ward, wards, dist, legs, off, base, tmpl):
-    """One town, highest office to lowest, with the vote at the top.
+def _and(items):
+    """"17", "17 and 28", "6, 7 and 32"."""
+    items = [str(i) for i in items]
+    return (", ".join(items[:-1]) + " and " + items[-1]) if len(items) > 1 \
+        else "".join(items)
 
-    THE ORDER IS THE POINT. This page used to open with the General Court,
-    because the General Court is what the rest of the site is about -- and a
-    reader who comes to a page called "who represents me" is not reading an
-    index of this site's coverage. They are looking up their own government,
-    and it runs Governor, Council, Congress, Senate, House, town hall. What
-    they came for most often is simpler still and used to be two thirds of the
-    way down: where do I vote, when, and who do I ring about it.
+
+def answer_line(dist):
+    """The county and the districts, in one line above the tabs: the answer
+    to "who represents me" in the words a ballot uses, before any of the
+    people. "In Merrimack County. Represented in the State House by
+    Merrimack districts 17 and 28, and in the State Senate by district 15."
+
+    The county is the House district's: a House district never crosses a
+    county line, so the county a town's districts carry is the town's.
     """
-    label = where(town, ward, wards)
-    loc = (off.get("_local") or {}).get(slug(town, ward)) or {}
-    town_off = (off.get("_offices") or {}).get(slug(town, "0")) or {}
-    body = [f'<h1 class="offtitle">{E(label)}</h1>',
-            ward_picker(town, ward, wards),
-            '<p class="lead">Everyone elected to represent the people who live '
-            'here, and how to reach them.</p>']
+    house = dist.get("house") or []
+    counties = []
+    for h in house:
+        if h.get("county") and h["county"] not in counties:
+            counties.append(h["county"])
+    bits = []
+    if len(counties) == 1:
+        c = counties[0]
+        nums = [h.get("district") for h in house]
+        bits.append(f"in the State House by {E(c)} "
+                    f"district{'s' if len(nums) > 1 else ''} {E(_and(nums))}")
+    elif house:
+        bits.append("in the State House by " + E(_and(
+            f"{h.get('county')} district {h.get('district')}" for h in house)))
+    if dist.get("senate"):
+        bits.append(f"in the State Senate by district {E(str(dist['senate']))}")
+    out = (f"In {E(counties[0])} County. " if len(counties) == 1 else "")
+    if bits:
+        out += "Represented " + ", and ".join(bits) + "."
+    return f'<p class="lead twnlede">{out.strip()}</p>' if out else ""
 
-    # ---- the vote, first --------------------------------------------------
-    if loc or town_off:
-        rows = []
-        if loc.get("polling_place"):
-            # THE ANSWER, NOT A ROW. This was drawn exactly like the line above
-            # it about the town's website -- same size, same weight, the label
-            # in grey underneath -- and it is the one fact on this page that,
-            # got wrong, stops somebody voting. The label goes above the
-            # address rather than below it, because a reader scanning for
-            # "where do I vote" needs the question before the answer, and the
-            # address itself is set larger than anything else in the section.
-            hours = loc.get("state_hours") or ""
-            rows.append(off_row(
-                E(loc["polling_place"]),
-                [f'<span class="offwhen">{E(hours)}</span>'] if hours else [],
-                "Where you vote", cls="offvote"))
-        # A TOWN THAT VOTES IN MORE THAN ONE PLACE, BEHIND ONE LINE. Eight of
-        # them -- Berlin, Derry, Farmington, Goffstown, Hudson, Merrimack,
-        # Salem and Walpole -- are one town in the district file this site's
-        # pages are named after and several voting wards on the Secretary of
-        # State's list, so there is no ward for this page to be about and no
-        # way to ask the reader which is theirs.
-        #
-        # Four addresses in a row was the first answer and it is three
-        # addresses too many: a reader wants one. So the number is stated and
-        # the list is behind it, which is the same shape as the chapter list
-        # on a bill and the filter panel on a phone -- the answer first, the
-        # rest on request.
-        by_ward = loc.get("polling_by_ward") or []
-        # THE FALLBACK IS ON USABILITY, NOT ON EMPTINESS. This read
-        # `town_officials or town_clerks`, so a town whose DoT row holds
-        # "no website" or one of the seven interleaved strings got that
-        # instead of the perfectly good address the clerks file had -- the
-        # first value was not empty, so the second was never reached. Eleven
-        # towns' addresses were on this disk and none of them was shown.
-        # Five towns now show no website at all, Portsmouth among them,
-        # because every value either file holds for them is mangled. That is
-        # a parser to mend, not a link to guess: see parse_officials.py.
-        vote_site = weblink(town_off.get("website")) or weblink(loc.get("website"))
-        if vote_site:
-            rows.append(off_row(vote_site, [], "Town website"))
-        if loc.get("clerk"):
-            how = []
-            if loc.get("phone"):
-                how.append(tel(loc["phone"]))
-            if maillink(loc.get("email")):
-                how.append(maillink(loc.get("email")))
-            rows.append(off_row(
-                f'<span class="mchip">{E(loc["clerk"])}</span>', how,
-                "Town or city clerk"))
-        if by_ward:
-            inner = []
-            for w in by_ward:
-                hours = w.get("state_hours") or ""
-                inner.append(off_row(
-                    E(w.get("polling_place") or ""),
-                    [f'<span class="offwhen">{E(hours)}</span>']
-                    if hours else [],
-                    f'Ward {E(w.get("ward"))}'))
-            rows.append(
-                '<li class="offrow offwards"><details class="wards">'
-                f'<summary>{E(town)} votes in {len(by_ward)} places, by '
-                'ward &mdash; show them</summary>'
-                '<ul class="offlist">' + "".join(inner) + "</ul></details></li>")
-        if rows:
-            when = election_line(loc.get("election", ""))
-            body.append('<h2 class="offsec">How to Vote'
-                        + (f' <span class="offwhen">({E(when)})</span>'
-                           if when else "")
-                        + "</h2>")
-            body.append('<ul class="offlist">' + "".join(rows) + "</ul>")
-            if not loc.get("polling_place") and not loc.get("polling_by_ward"):
-                # The Secretary of State's own list is blank here, as it is
-                # for 109 of its 331 rows.
-                body.append('<p class="note">The Secretary of State\'s list '
-                            'has no polling place recorded for here. The town '
-                            'clerk above is who to ask.</p>')
 
-    # ---- the state executive ----------------------------------------------
-    body.append('<h2 class="offsec">Executive Branch</h2>')
-    g = off.get("governor", {})
-    body.append(office_block("Governor of New Hampshire", g,
-                             g.get("official_url", ""),
-                             " ".join(g.get("about") or [])))
+def representatives_sections(dist, legs, off):
+    """The Representatives tab, nearest office first: the State House, the
+    State Senate, the Executive Council, the Governor, the US House and the
+    US Senate. The person's order, 24 September 2026 -- the seats a town
+    elects on its own ballot come before the ones the whole state does."""
+    out = [state_house(dist, legs)]
+    sd = dist.get("senate")
+    if sd:
+        who = [m for m in legs if m.get("chamber") == "S"
+               and str(m.get("district") or "") == str(sd)]
+        out.append(card(f"State Senate &mdash; district {E(str(sd))}",
+                        member_block(who, "No sitting senator is matched to "
+                                          "this district.")))
     cd = dist.get("council")
     if cd:
         c = off.get("council", {})
-        body.append(office_block(
-            f"Executive Council \u2014 district {cd}",
+        out.append(office_block(
+            f"Executive Council — district {cd}",
             (c.get("districts") or {}).get(str(cd)),
             c.get("official_url", ""),
             " ".join(c.get("about") or [])))
-
-    # ---- the federal delegation -------------------------------------------
-    body.append('<h2 class="offsec">Federal Delegation</h2>')
+    g = off.get("governor", {})
+    out.append(office_block("Governor", g, g.get("official_url", ""),
+                            " ".join(g.get("about") or [])))
+    gd = dist.get("congress")
+    if gd:
+        u = off.get("us_house", {})
+        out.append(office_block(
+            f"US House — New Hampshire district {gd}",
+            (u.get("districts") or {}).get(str(gd)),
+            u.get("official_url", ""),
+            " ".join(u.get("about") or [])))
     us = off.get("us_senate", {})
-    body.append('<h3 class="offh">US Senate</h3>')
     seats = us.get("seats") or []
     if seats:
         # No per-seat heading. Both are elected by the whole state and both
         # represent this town, so the names are what tells them apart --
         # senate.gov lists them in seniority order and calling one "senior"
         # here would be reading more into that order than it states.
-        rows = [office_block("", seat, us.get("official_url", ""))
-                for seat in seats]
-        body.append(re.sub(r"</ul><ul class=\"offlist\">", "", "".join(rows)))
+        inner = re.sub(r"</ul><ul class=\"offlist\">", "", "".join(
+            office_block("", seat, us.get("official_url", ""))
+            for seat in seats))
     else:
-        body.append(office_block("", {}, us.get("official_url", "")))
+        inner = office_block("", {}, us.get("official_url", ""))
     # Under the names, the same way round as every other office here.
     if us.get("about"):
-        body.append(f'<p class="note">{E(" ".join(us["about"]))}</p>')
-    gd = dist.get("congress")
-    if gd:
-        u = off.get("us_house", {})
-        body.append(office_block(
-            f"US House \u2014 New Hampshire district {gd}",
-            (u.get("districts") or {}).get(str(gd)),
-            u.get("official_url", ""),
-            " ".join(u.get("about") or [])))
+        inner += f'<p class="note">{E(" ".join(us["about"]))}</p>'
+    out.append(card("US Senate", inner))
+    return out
 
-    # ---- the General Court, senator before representative -----------------
-    body.append('<h2 class="offsec">Legislative Branch</h2>')
-    sd = dist.get("senate")
-    if sd:
-        who = [m for m in legs if m.get("chamber") == "S"
-               and str(m.get("district") or "") == str(sd)]
-        body.append(f'<h3 class="offh">Senate &mdash; district {sd}</h3>')
-        body.append(member_block(who, "No sitting senator is matched to this "
-                                      "district."))
-    state_house(dist, legs, body)
 
-    # ---- the town's own offices -------------------------------------------
+def vote_sections(town, loc, town_off):
+    """The How to vote tab: where, when, the town's website and the clerk,
+    in one card that spans the tab. [] where the Secretary of State's list
+    and the directory have nothing for here."""
+    if not (loc or town_off):
+        return []
+    rows = []
+    if loc.get("polling_place"):
+        # THE ANSWER, NOT A ROW. This was drawn exactly like the line below
+        # it about the town's website -- same size, same weight, the label in
+        # grey underneath -- and it is the one fact on this page that, got
+        # wrong, stops somebody voting. The label goes above the address
+        # rather than below it, because a reader scanning for "where do I
+        # vote" needs the question before the answer, and the address itself
+        # is set larger than anything else in the section.
+        hours = loc.get("state_hours") or ""
+        rows.append(off_row(
+            E(loc["polling_place"]),
+            [f'<span class="offwhen">{E(hours)}</span>'] if hours else [],
+            "Where you vote", cls="offvote"))
+    # A TOWN THAT VOTES IN MORE THAN ONE PLACE, BEHIND ONE LINE. Eight of
+    # them -- Berlin, Derry, Farmington, Goffstown, Hudson, Merrimack, Salem
+    # and Walpole -- are one town in the district file this site's pages are
+    # named after and several voting wards on the Secretary of State's list,
+    # so there is no ward for this page to be about and no way to ask the
+    # reader which is theirs.
+    #
+    # Four addresses in a row was the first answer and it is three addresses
+    # too many: a reader wants one. So the number is stated and the list is
+    # behind it, which is the same shape as the chapter list on a bill and
+    # the filter panel on a phone -- the answer first, the rest on request.
+    by_ward = loc.get("polling_by_ward") or []
+    # THE FALLBACK IS ON USABILITY, NOT ON EMPTINESS. This read
+    # `town_officials or town_clerks`, so a town whose DoT row holds "no
+    # website" or one of the seven interleaved strings got that instead of
+    # the perfectly good address the clerks file had -- the first value was
+    # not empty, so the second was never reached. Eleven towns' addresses
+    # were on this disk and none of them was shown. Five towns now show no
+    # website at all, Portsmouth among them, because every value either file
+    # holds for them is mangled. That is a parser to mend, not a link to
+    # guess: see parse_officials.py.
+    vote_site = weblink(town_off.get("website")) or weblink(loc.get("website"))
+    if vote_site:
+        rows.append(off_row(vote_site, [], "Town website"))
+    if loc.get("clerk"):
+        rows.append(clerk_row(loc))
+    if by_ward:
+        inner = []
+        for w in by_ward:
+            hours = w.get("state_hours") or ""
+            inner.append(off_row(
+                E(w.get("polling_place") or ""),
+                [f'<span class="offwhen">{E(hours)}</span>'] if hours else [],
+                f'Ward {E(w.get("ward"))}'))
+        rows.append(
+            '<li class="offrow offwards"><details class="wards">'
+            f'<summary>{E(town)} votes in {len(by_ward)} places, by '
+            'ward &mdash; show them</summary>'
+            '<ul class="offlist">' + "".join(inner) + "</ul></details></li>")
+    if not rows:
+        return []
+    inner = '<ul class="offlist">' + "".join(rows) + "</ul>"
+    if not loc.get("polling_place") and not by_ward:
+        # The Secretary of State's own list is blank here, as it is for 109
+        # of its 331 rows.
+        inner += ('<p class="note">The Secretary of State\'s list has no '
+                  'polling place recorded for here. The town clerk above is '
+                  'who to ask.</p>')
+    # The date is the card's heading: "Next Election: November 3rd" while it
+    # is ahead, "Election on file" after it -- see election_line.
+    when = election_line(loc.get("election", ""))
+    return [card(E(when) if when else "Where you vote", inner, wide=True)]
+
+
+def build(town, ward, wards, dist, legs, off, base, tmpl):
+    """One town: the answer above, then a tab for each kind of thing.
+
+    TABS, NOT ONE LONG PAGE (the person, 24 September 2026): the sections
+    "just read as very cluttered and indistinct, making them hard to parse".
+    Who represents the town, who runs it and how to vote in it are three
+    different questions, and a reader comes with one of them. Above the tabs
+    is the answer to the first in one line -- the county and the districts --
+    and Representatives is the tab a page opens on.
+
+    THE TABS ARE DATA. A tab is drawn only where the page has something to
+    put in it: an unincorporated place has no town officials and no Town
+    officials tab, and a town budget or a list of committees becomes a tab
+    the day its data is collected, by adding it to the list below.
+    """
+    label = where(town, ward, wards)
+    loc = (off.get("_local") or {}).get(slug(town, ward)) or {}
+    town_off = (off.get("_offices") or {}).get(slug(town, "0")) or {}
     # NHDOT's "City and Town Officials of the State of New Hampshire",
-    # September 2025, parsed by parse_officials.py: 1,414 named offices across
-    # all 234 municipalities the directory covers. A city's wards share one
-    # selectboard, so these are looked up by the town's slug and not the
+    # September 2025, parsed by parse_officials.py. A city's wards share one
+    # government, so these are looked up by the town's slug and not the
     # ward's -- a ward elects a councillor, and the town is what the board
     # governs.
-    # The same test the How to Vote block's "Town website" row is drawn by.
     board = (off.get("_boards") or {}).get(slug(town, "0"))
-    section = town_officials_block(
+    officials = officials_sections(
         town, slug(town, "0"), town_off,
+        # The same test the How to vote tab's "Town website" row is drawn by.
         site_on_page=bool(weblink(town_off.get("website"))
                           or weblink(loc.get("website"))),
-        board=board)
-    body.append(section)
+        board=board, loc=loc)
+    # A city's are city officials: Concord has a mayor, not a select board.
+    panels = [("representatives", "Representatives",
+               representatives_sections(dist, legs, off)),
+              ("officials", "City officials" if slug(town, "0") in CITIES
+               else "Town officials", officials),
+              ("vote", "How to vote", vote_sections(town, loc, town_off))]
 
     srcs = ["NH General Court", "Secretary of State"]
-    if section and board:
+    if board and officials:
         srcs.append(f"{E(town)}&rsquo;s own website")
-    if section and town_off.get("officials"):
+    if town_off.get("officials") and officials:
         srcs.append(NHDOT)
-    body.append('<p class="srcs">Sources: ' + ", ".join(srcs[:-1])
-                + (", and " if len(srcs) > 2 else " and ") + srcs[-1]
-                + '</p>')
+    body = [f'<h1 class="offtitle">{E(label)}</h1>',
+            ward_picker(town, ward, wards),
+            answer_line(dist),
+            tabbed(label, panels),
+            '<p class="srcs">Sources: ' + ", ".join(srcs[:-1])
+            + (", and " if len(srcs) > 2 else " and ") + srcs[-1] + '</p>']
 
     path = town_file(town, ward)
     desc = (f"Who represents {label}: state representatives, state senator, "
@@ -867,40 +1000,95 @@ def build(town, ward, wards, dist, legs, off, base, tmpl):
                nav_current="legislators.html")
     return p.replace('<div id="results"></div>',
                      '<div id="results"><div class="officials">'
-                     + sectionise("".join(body)) + "</div></div>", 1)
+                     + "".join(body) + "</div>" + TABS_JS + "</div>", 1)
 
 
-# THE SECTIONS WERE ALREADY THERE, JUST NOT IN THE MARKUP. The body is built
-# as a flat run of <h2>, <ul>, <p>, <h2>, <ul>... which reads correctly and
-# lays out only one way: straight down. Wrapping each heading and what follows
-# it in a <section> costs nothing to the reader and lets the stylesheet put
-# two of them abreast on a wide screen, which halves a page that was running
-# to 2,858px.
+def tabbed(label, panels):
+    """The tab strip and the panels it switches, from (id, name, [cards]).
+
+    THE LEGISLATORS PAGE'S TABS, the same pattern: a role=tablist with a
+    name, buttons with role=tab, aria-selected, aria-controls and a roving
+    tabindex, panels with role=tabpanel labelled by their tab, and the same
+    switching script (TABS_JS) with one addition -- the panel's id is its
+    address, so /town/lyme#vote opens How to vote and a click writes the
+    tab into the address without adding to the history.
+
+    WITHOUT JAVASCRIPT EVERY PANEL IS SHOWN, in order, each under its own
+    heading, and the strip is not: it is written `hidden` and the script is
+    what shows it, because a row of tabs that does nothing when pressed is
+    worse than no tabs. With the script running, the strip names the panel
+    and the panel's own heading is for a screen reader only.
+
+    A panel with nothing in it is not drawn and neither is its tab.
+    """
+    panels = [(pid, name, cards) for pid, name, cards in panels if cards]
+    tabs, panes = [], []
+    for i, (pid, name, cards) in enumerate(panels):
+        on = i == 0
+        tabs.append(
+            f'<button type="button" role="tab" id="tab-{pid}" '
+            f'data-pane="{pid}" aria-controls="{pid}" '
+            f'aria-selected="{"true" if on else "false"}" '
+            f'tabindex="{0 if on else -1}">{E(name)}</button>')
+        panes.append(
+            f'<div class="twnpane" id="{pid}" role="tabpanel" '
+            f'aria-labelledby="tab-{pid}"><h2 class="twnph">{E(name)}</h2>'
+            f'<div class="twngrid">{"".join(cards)}</div></div>')
+    return (f'<div class="twntabs" role="tablist" aria-label="About '
+            f'{E(label)}" hidden>' + "".join(tabs) + "</div>"
+            + "".join(panes))
+
+
+# THE SWITCHING SCRIPT, the legislators page's (build_pages.py, "THREE TABS,
+# WHICH ARE THE ORDERING") with the address added. Inline, after the panels,
+# so it runs before the page is first painted and a reader never sees three
+# panels collapse into one.
 #
-# Done here rather than at the ten places that append, because those ten are
-# the content and this is the shape of it -- and because a wrapper opened in
-# one branch and closed in another is exactly the sort of thing that ships
-# half-applied.
-def sectionise(html):
-    """Wrap each <h2 class="offsec"> and the blocks after it in a section."""
-    parts = re.split(r'(?=<h2 class="offsec")', html)
-    if len(parts) < 2:
-        return html
-    out = []
-    for i, chunk in enumerate(parts):
-        if not chunk.strip():
-            continue
-        if not chunk.startswith('<h2 class="offsec"'):
-            # Whatever sits above the first heading -- the title and the lead.
-            out.append(chunk)
-            continue
-        # HOW TO VOTE SPANS BOTH COLUMNS. It is the answer the reader came for
-        # -- where to vote, when, and who the clerk is -- and the rest of the
-        # page is the general explanation of who represents them. Putting it
-        # in a column beside the Governor would bury it.
-        wide = " twnwide" if "How to Vote" in chunk[:200] else ""
-        out.append(f'<section class="twnsec{wide}">{chunk}</section>')
-    return "".join(out)
+# ONE HISTORY ENTRY PER PAGE, NOT PER CLICK: replaceState rather than
+# pushState, so Back leaves the page rather than stepping through its tabs.
+# A hash that names no tab -- #results, from the skip link -- is left alone
+# and the first tab shown.
+TABS_JS = """<script>
+(function(){
+  var bar=document.querySelector(".twntabs");
+  if(!bar)return;
+  var tabs=[].slice.call(bar.querySelectorAll("[role=tab]"));
+  if(!tabs.length)return;
+  function named(h){
+    for(var i=0;i<tabs.length;i++)if(tabs[i].dataset.pane===h)return h;
+    return null;
+  }
+  function show(id,write){
+    tabs.forEach(function(t){
+      var on=t.dataset.pane===id;
+      t.setAttribute("aria-selected",String(on));
+      t.tabIndex=on?0:-1;
+      var pane=document.getElementById(t.dataset.pane);
+      if(pane)pane.hidden=!on;
+    });
+    if(write&&history.replaceState)history.replaceState(null,"","#"+id);
+  }
+  tabs.forEach(function(t){
+    t.addEventListener("click",function(){show(t.dataset.pane,true);});
+  });
+  bar.addEventListener("keydown",function(e){
+    var i=tabs.indexOf(document.activeElement);
+    if(i<0)return;
+    var j;
+    if(e.key==="ArrowRight")j=(i+1)%tabs.length;
+    else if(e.key==="ArrowLeft")j=(i-1+tabs.length)%tabs.length;
+    else return;
+    e.preventDefault();
+    tabs[j].focus(); show(tabs[j].dataset.pane,true);
+  });
+  addEventListener("hashchange",function(){
+    var h=named(location.hash.slice(1));
+    if(h)show(h,false);
+  });
+  bar.hidden=false;
+  show(named(location.hash.slice(1))||tabs[0].dataset.pane,false);
+})();
+</script>"""
 
 
 def main():

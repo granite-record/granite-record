@@ -15255,11 +15255,18 @@ def _town_note_website(B):
     bad = []
     for town, end in want.items():
         page = B.build(town, "0", {"0": {}}, {}, [], off, "https://x.test", tmpl)
-        m = re.search(r"It does not show anyone elected or appointed since "
-                      r"then([^<]*)</p>", page)
-        got = _html.unescape(m.group(1)) if m else None
+        # Each of NHDOT's cards on the Town officials tab says it is dated;
+        # the LAST says where to look for changes, and only the last, so a
+        # reader is told once.
+        ends = [_html.unescape(e) for e in re.findall(
+            r"It does not show anyone elected or appointed since "
+            r"then([^<]*)</p>", page)]
+        got = ends[-1] if ends else None
         if got != end:
             bad.append(f"{town}: the note ends {got!r}, not {end!r}")
+        if any(e != "." for e in ends[:-1]):
+            bad.append(f"{town}: where to look for changes is said "
+                       f"{len([e for e in ends if e != '.'])} times")
     assert not bad, "\n  ".join(bad)
     return "ok", "website named on 2 fixture pages that link one, not on 2 that do not"
 
@@ -15503,6 +15510,165 @@ def _town_board_drawn(B):
     assert not bad, "\n  ".join(bad)
     return "ok", ("the town's own board drawn with its source and date, the "
                   "directory's without its chair, contacts kept with their owner")
+
+
+@check("build", "a town page is tabs: each tab opens a panel with something in it, by click and by address",
+       needs=("build_town_pages", "build_pages"))
+def _town_tabs(B, BP):
+    """The person, 24 September 2026: a town page's sections "just read as
+    very cluttered and indistinct", and they asked for tabs -- the officials
+    who represent the town, the town's own officials, how to vote -- that
+    grow as more is collected. So a town page is the legislators page's tab
+    pattern: a named tablist, buttons with aria-selected, aria-controls and
+    a roving tabindex, panels labelled by their tab, Representatives first.
+
+    Three things would break quietly and are held here. A tab whose panel is
+    empty, or missing, is a control that opens nothing. A place with no town
+    government -- the 25 unincorporated places -- must have no Town officials
+    tab rather than an empty one, or one that files a neighbouring town's
+    clerk under "Town clerk". And the address: /town/lyme#vote must open How
+    to vote, and a click must write the tab into the address WITHOUT adding a
+    history entry, or Back walks through the tabs instead of leaving the page.
+    The script runs in node against dom_stub.js, with the page's own tabs.
+
+    The strip scrolls inside itself and the panels' grid tracks are
+    minmax(0, 1fr), so no number of tabs and no long address can make a
+    360px page scroll sideways; that is read off app.css.
+    """
+    import html as _html
+    import shell as S
+    tmpl = S.template()
+    rep = {"name": "Vail, Suzanne", "display_full": "Rep. Suzanne Vail (D - Hills 6)",
+           "party": "Democrat", "slug": "suzanne-vail-hills-6", "chamber": "H",
+           "county": "Grafton", "district": "12", "email": "", "phone": ""}
+    sen = {"name": "Abbas, Daryl", "display_full": "Sen. Daryl Abbas (R - SD5)",
+           "party": "Republican", "slug": "daryl-abbas-sd-5", "chamber": "S",
+           "district": "5", "email": "", "phone": ""}
+    dist = {"congress": 2, "council": 2, "senate": 5, "house": [
+        {"county": "Grafton", "district": 12, "floterial": False, "seats": 4}]}
+    local = {"clerk": "Emily Shepard", "polling_place": "Lyme Community Gymnasium",
+             "election": "11/03/2026-STATE GENERAL ELECTION", "phone": "603-795-2535"}
+    off = {"_offices": {"lyme": {"officials": [
+               {"position": "Board of Selectman", "name": "Ben Kilham",
+                "phone": "", "email": ""},
+               {"position": "Town Administrator", "name": "Dina Cutting",
+                "phone": "", "email": ""}], "website": "www.lymenh.gov"}},
+           "_local": {"lyme": local,
+                      "bean-s-grant": dict(local, clerk="Christina Zornio")}}
+    pages = {t: B.build(t, "0", {"0": {}}, dist, [rep, sen], off,
+                        "https://x.test", tmpl)
+             for t in ("Lyme", "Bean's Grant", "Nowhere")}
+    want = {"Lyme": ["representatives", "officials", "vote"],
+            "Bean's Grant": ["representatives", "vote"],
+            "Nowhere": ["representatives"]}
+    bad = []
+    for town, page in pages.items():
+        bars = re.findall(r'<div class="twntabs" role="tablist" aria-label="[^"]+" '
+                          r'hidden>(.*?)</div>', page, re.S)
+        if len(bars) != 1:
+            bad.append(f"{town}: {len(bars)} tab strips, written hidden until "
+                       "the script shows them")
+            continue
+        tabs = re.findall(r'role="tab" id="tab-(\w+)" data-pane="(\w+)" '
+                          r'aria-controls="(\w+)" aria-selected="(\w+)" '
+                          r'tabindex="(-?\d)"', bars[0])
+        ids = [t[0] for t in tabs]
+        if ids != want[town]:
+            bad.append(f"{town}: tabs {ids}, not {want[town]}")
+        for i, (tid, pane, ctl, sel, ti) in enumerate(tabs):
+            first = i == 0
+            if not tid == pane == ctl or (sel == "true") != first \
+                    or (ti == "0") != first:
+                bad.append(f"{town}: tab {tid} is not wired as the roster's are")
+            m = re.search(rf'<div class="twnpane" id="{ctl}" role="tabpanel" '
+                          rf'aria-labelledby="tab-{tid}"><h2 class="twnph">'
+                          rf'.*?<div class="twngrid">(.*?)</div></div>', page, re.S)
+            if not m or '<section class="twnsec' not in m.group(1):
+                bad.append(f"{town}: tab {tid} opens no panel, or an empty one")
+        levels = [int(x) for x in re.findall(r"<h([1-6])[ >]",
+                                             page[page.index('id="results"'):])]
+        if any(b > a + 1 for a, b in zip(levels, levels[1:])):
+            bad.append(f"{town}: the headings skip a level: {levels}")
+    lyme = pages["Lyme"]
+    if BP.pchip(rep) not in lyme or BP.pchip(sen) not in lyme:
+        bad.append("a legislator is not drawn with the shared person chip")
+    if "Christina Zornio" in pages["Bean's Grant"].split('id="vote"')[0]:
+        bad.append("an unincorporated place files its voting clerk as a town "
+                   "officer")
+    if "In Grafton County." not in _html.unescape(lyme) or \
+            "Grafton district 12" not in lyme:
+        bad.append("the county and the districts are not said above the tabs")
+
+    css = Path("app.css").read_text(encoding="utf-8")
+    strip = re.search(r"\.twntabs\{[^}]*\}", css)
+    grid = re.search(r"\.twngrid\{[^}]*\}", css)
+    if not strip or "overflow-x:auto" not in strip.group(0):
+        bad.append("the tab strip does not scroll inside itself, so tabs can "
+                   "widen a 360px page")
+    if not grid or "minmax(0,1fr)" not in grid.group(0):
+        bad.append("the panels' grid track can grow past the page")
+    if not re.search(r"\.twntabs\[hidden\]\{display:none\}", css) or \
+            not re.search(r"\.twnpane\[hidden\]\{display:none\}", css):
+        bad.append("a display rule overrides `hidden` on the strip or a panel")
+
+    node = shutil.which("node") or shutil.which("node.exe")
+    if node and not bad:
+        script = re.search(r"<script>\n(.*?)</script>", B.TABS_JS, re.S).group(1)
+        tabs = json.dumps([["representatives"], ["officials"], ["vote"]])
+        harness = """
+function node2(){
+  const e = el(); e.attrs = {};
+  e.setAttribute = function(k, v){ this.attrs[k] = String(v); };
+  e.getAttribute = function(k){ return k in this.attrs ? this.attrs[k] : null; };
+  e.focus = function(){ document.activeElement = this; };
+  return e;
+}
+const tabEls = %s.map(([p]) => { const t = node2(); t.dataset.pane = p; return t; });
+const panes = {}; tabEls.forEach(t => { panes[t.dataset.pane] = node2(); });
+const bar = node2(); bar.hidden = true; bar.querySelectorAll = () => tabEls;
+document.querySelector = s => s === ".twntabs" ? bar : null;
+document.getElementById = id => panes[id] || null;
+const wrote = []; let pushed = 0;
+history.replaceState = (a, b, u) => wrote.push(u);
+history.pushState = () => { pushed++; };
+const on = {}; globalThis.addEventListener = (t, f) => (on[t] = on[t] || []).push(f);
+location.hash = process.argv[2];
+const shown = () => Object.keys(panes).filter(p => !panes[p].hidden);
+const out = {};
+%s
+out.load = shown(); out.bar = bar.hidden;
+tabEls[1].fire("click"); out.click = shown();
+document.activeElement = tabEls[1]; bar.fire("keydown", {key: "ArrowRight"});
+out.arrow = shown();
+location.hash = "#representatives"; (on.hashchange || []).forEach(f => f());
+out.back = shown(); out.wrote = wrote; out.pushed = pushed;
+process.stdout.write(JSON.stringify(out));
+""" % (tabs, script)
+        stub = Path("dom_stub.js").read_text(encoding="utf-8")
+        for hsh, first in (("#vote", "vote"), ("", "representatives"),
+                           ("#results", "representatives")):
+            r = subprocess.run([node, "-e", stub + "\n" + harness, "x", hsh],
+                               capture_output=True, encoding="utf-8",
+                               timeout=60)
+            if r.returncode:
+                bad.append("the tab script would not run: " + r.stderr[-300:])
+                break
+            got = json.loads(r.stdout)
+            if got["load"] != [first] or got["bar"]:
+                bad.append(f"arriving at {hsh or 'no hash'!r} shows {got['load']}, "
+                           f"not {first}, with the strip hidden={got['bar']}")
+            if got["click"] != ["officials"] or got["arrow"] != ["vote"] \
+                    or got["back"] != ["representatives"]:
+                bad.append(f"click, arrow and address showed {got['click']}, "
+                           f"{got['arrow']} and {got['back']}")
+            if got["wrote"] != ["#officials", "#vote"] or got["pushed"]:
+                bad.append(f"switching wrote {got['wrote']} and pushed "
+                           f"{got['pushed']} history entries")
+    assert not bad, "\n  ".join(bad)
+    return "ok", ("tabs wired as the roster's, none empty, none for a place with "
+                  "no town government; #vote opens its tab and a click writes "
+                  "the address without a history entry"
+                  + ("" if node else " (node absent: script not run)"))
 
 
 @check("files", "the officials directory reads as printed where a cell runs into the next")
