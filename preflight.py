@@ -4683,12 +4683,19 @@ def _site_fixture(root):
     # The site reads proceedings.csv, not the manifest. Build it the way
     # build_all does, from the two sources the fixture just wrote.
     import subprocess, sys
-    for f in ("build_proceedings.py", "proceedings.py"):
+    for f in PROCEEDINGS_MODULES:
         if Path(f).exists():
             shutil.copy(f, root / f)
     r = _run([sys.executable, "build_proceedings.py"], cwd=root,
                        capture_output=True, text=True)
     assert r.returncode == 0, "fixture proceedings: " + (r.stderr or r.stdout)[-200:]
+
+
+# What build_proceedings.py needs beside it to run in a folder of its own: the
+# table's reader, and committee_names.py with the two modules it reads, since
+# every committee row's name is settled there before the table is written.
+PROCEEDINGS_MODULES = ("build_proceedings.py", "proceedings.py",
+                       "committee_names.py", "referrals.py", "names.py")
 
 
 @check("files", "no child process is read in an unnamed encoding")
@@ -4740,6 +4747,55 @@ def _child_encoding():
     return "ok", f"{n} direct subprocess calls, every text one names its encoding"
 
 
+@check("build", "a hearing is filed under its committee's name at the time, and one sitting once",
+       needs=("build_proceedings", "committee_names"))
+def _proceedings_official_names(build_proceedings, committee_names):
+    """The clerk of 1999-2006 wrote "Exec Depts and Admin" on the hearing
+    lines, and the committee pages match a name exactly: House Executive
+    Departments and Administration, Criminal Justice and Public Safety and
+    Election Law showed no sitting at all for 1999-2004 beside more than a
+    hundred bills a term. build_proceedings now writes every committee row's
+    name through committee_names.official, BEFORE the fold that keys on it,
+    so a sitting the docket wrote twice under two spellings -- 1991's HB 497,
+    "EDUCATION VV" and "Education" -- is one event. A row with a recording
+    keeps its name when that name is already the committee's, which every
+    row with a recording's is; the floor names no committee and stays so."""
+    BP = build_proceedings
+
+    def row(term, bill, body, kind, date, committee, video=""):
+        return {"term": term, "bill": bill, "body": body, "kind": kind,
+                "date": date, "time": "", "committee": committee,
+                "video_id": video, "source": "docket"}
+    rows = [
+        row("2001-2002", "HB101", "H", "public hearing", "2001-02-06",
+            "Exec Depts and Admin for Interim Study VV"),
+        row("2003-2004", "HB102", "H", "executive session", "2003-03-04",
+            "Crim Just and PSfty"),
+        row("1989-1990", "SB103", "S", "hearing", "1989-02-14", "Dev, Rec, and Envir"),
+        row("1991-1992", "HB497", "H", "executive session", "1991-10-22", "EDUCATION VV"),
+        row("1991-1992", "HB497", "H", "executive session", "1991-10-22", "Education"),
+        row("2025-2026", "HB104", "H", "public hearing", "2026-01-13",
+            "Executive Departments and Administration", video="VIDEO1"),
+        row("2025-2026", "HB104", "H", "floor debate", "2026-03-05", "", video="FLOOR1"),
+    ]
+    n = BP.official_names(rows)
+    got = [r["committee"] for r in rows]
+    assert got == ["Executive Departments and Administration",
+                   "Criminal Justice and Public Safety",
+                   "Development, Recreation and Environment",
+                   "Education", "Education",
+                   "Executive Departments and Administration", ""], got
+    assert n == 4, n
+    kept = BP.fold_to_events(rows)
+    assert len(kept) == 6, [(r["bill"], r["committee"]) for r in kept]
+    src = Path(BP.__file__).read_text(encoding="utf-8")
+    main_ = src[src.index("def main("):]
+    assert main_.index("official_names(rows)") < main_.index("fold_to_events(rows)"), (
+        "build_proceedings renames after the fold, so two spellings of one "
+        "sitting stay two events")
+    return "ok", "four clerk's spellings written as their committees; one sitting under two spellings folded"
+
+
 @check("build", "proceedings.csv builds from the fixture and both sources land in it")
 def _proceedings_table():
     """One table, both sources. This exists because five tools in one day
@@ -4749,7 +4805,7 @@ def _proceedings_table():
     import shutil, subprocess, sys, tempfile
     root = Path(tempfile.mkdtemp(prefix="gr-proc-"))
     try:
-        for f in ("build_proceedings.py", "proceedings.py"):
+        for f in PROCEEDINGS_MODULES:
             shutil.copy(f, root / f)
         cols = ["bill","body","committee","proceeding","sched_date","sched_time",
                 "venue","tier","bills_in_slot","match","video_id","video_title",
@@ -4805,7 +4861,7 @@ def _proceedings_term_shrink():
     --allow-shrink lets it through.
     """
     here = Path(".").resolve()
-    need = ("build_proceedings.py", "proceedings.py")
+    need = PROCEEDINGS_MODULES
     absent = [f for f in need if not (here / f).exists()]
     if absent:
         return "skip", "not here: " + ", ".join(absent)
@@ -8811,6 +8867,33 @@ def _committee_filter_one_name(committee_names):
                        "of a committee (rebuild the site): " + "; ".join(stray[:4]))
     return "ok", (f"{sum(len(v) for v in facet.values()):,} filter values across "
                   f"{len(facet)} terms, one per committee")
+
+
+@check("data", "every hearing is filed under the name its committee had then",
+       needs=("committee_names", "proceedings"))
+def _proceedings_one_name(committee_names, proceedings):
+    """proceedings.csv against the alias table, as the check above holds the
+    bills to it: a row whose committee committee_names.official would write
+    differently is a table built on older code, and a hearing the committee
+    pages cannot find. On the table of 24 September 11,911 of 96,438 were in
+    that state, 1,094 of them "Exec Depts and Admin"."""
+    P = proceedings
+    if not Path(P.PATH).exists():
+        return "skip", f"no {P.PATH}"
+    CN = committee_names
+    off, n = Counter(), 0
+    for r in P.load():
+        c = r.get("committee") or ""
+        if not c:
+            continue
+        n += 1
+        if CN.official(c, r.get("body"), r.get("term")) != c:
+            off[f"{r.get('term')} {r.get('body')} {c!r}"] += 1
+    assert not off, (f"{sum(off.values()):,} of {n:,} committee rows are not written "
+                     "as the committee's name at the time (rebuild with "
+                     "build_proceedings.py): "
+                     + "; ".join(f"{k} x{v}" for k, v in off.most_common(4)))
+    return "ok", f"{n:,} committee rows, each under the name its committee had then"
 
 
 @check("data", "an archived bill's committee came from a source that has one",
