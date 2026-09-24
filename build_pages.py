@@ -157,6 +157,8 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
   Cache-Control: public, max-age=0, must-revalidate
 /find.js
   Cache-Control: public, max-age=0, must-revalidate
+/billmatch.js
+  Cache-Control: public, max-age=0, must-revalidate
 # The two files a page reads to say what is true today: the home page's own
 # summary, and the header search's index of members, committees and towns. A
 # cached copy of either is a page contradicting itself -- the home page's
@@ -1378,6 +1380,58 @@ SEATING_JS = """
 </script>
 """
 
+# THE BILL MATCHER, FOR THE HEADER SEARCH. The header's panel and /search show
+# how many of the current term's bills match what was typed, and the number
+# has to be the one /bills?q= then shows -- a panel that promises "All 30
+# bills" and opens on 28 is a count the reader stops trusting. So they count
+# with app.js's own matcher rather than a second one. app.js marks the lines
+# that make it up (SYN and the query groups, the bill order, what a bill
+# number is) between BILLMATCH:BEGIN and BILLMATCH:END; this copies them,
+# unchanged and in order, into site/billmatch.js, inside a function so that
+# none of their names can collide with a page's own, and hands back the four
+# the header uses. find.js loads it only when somebody types, and only on a
+# page that does not already run app.js.
+BILLMATCH_BEGIN, BILLMATCH_END = "// BILLMATCH:BEGIN", "// BILLMATCH:END"
+BILLMATCH_EXPORTS = ("queryGroups", "groupWeight", "billNumbers", "billKey")
+
+
+def bill_matcher_js(app_js):
+    """The marked regions of app.js, as one script defining GR_BILLMATCH.
+
+    Stops the build rather than writing a partial file: a region left open,
+    an END with no BEGIN, or a region set that no longer defines what the
+    header calls would each ship a panel that counts nothing, silently."""
+    keep, inside, regions = [], False, 0
+    for n, line in enumerate(app_js.splitlines(), 1):
+        mark = line.strip()
+        if mark.startswith(BILLMATCH_BEGIN):
+            if inside:
+                raise SystemExit(f"app.js:{n}: BILLMATCH:BEGIN inside a "
+                                 f"region that is already open")
+            inside, regions = True, regions + 1
+            continue
+        if mark.startswith(BILLMATCH_END):
+            if not inside:
+                raise SystemExit(f"app.js:{n}: BILLMATCH:END with no BEGIN")
+            inside = False
+            continue
+        if inside:
+            keep.append(line)
+    if inside:
+        raise SystemExit("app.js: a BILLMATCH region is never closed")
+    body = "\n".join(keep)
+    missing = [f for f in BILLMATCH_EXPORTS
+               if not re.search(r"\bfunction " + f + r"\(", body)]
+    if not regions or missing:
+        raise SystemExit("app.js's BILLMATCH regions do not define "
+                         + ", ".join(missing or BILLMATCH_EXPORTS)
+                         + ": the header search could not count bills")
+    return ("// Written by build_pages.py from app.js's BILLMATCH regions, "
+            "for find.js.\n// Do not edit here: edit app.js.\n"
+            "window.GR_BILLMATCH=(function(){\n" + body + "\nreturn {"
+            + ",".join(BILLMATCH_EXPORTS) + "};\n})();\n")
+
+
 # THE ALL-RESULTS PAGE. find.js's panel is a dropdown: it shows eight rows and
 # hands the rest on. Until 19 September it handed them to the BILL search,
 # which indexes bills and nothing else -- so "See all search results for
@@ -1385,7 +1439,8 @@ SEATING_JS = """
 # find.json with the cap off and groups what it finds.
 #
 # It reuses find.js wholesale -- findRows, findMatch, findSuggest, _fmark,
-# _froot, FKIND -- because a second matcher would be a second thing to keep in
+# _froot, FKIND, and for the bills findBills, findBillsLoad, findBillsAll and
+# findBillRow -- because a second matcher would be a second thing to keep in
 # step with the first, and the panel and the page disagreeing about what
 # matches is the bug a reader would notice fastest. find.js is deferred, so
 # this waits for DOMContentLoaded rather than running as it is parsed.
@@ -1421,57 +1476,101 @@ const row=(r,q)=>`<a href="${esc(_froot(r[3]))}">
   <span class="fkind">${esc(FKIND[r[0]]||r[0])}</span></span>
   ${r[2]?`<span class="fwhat">${esc(r[2])}</span>`:""}</a>`;
 
-// The bill search, named as what it is rather than as a fallback. It is last
-// because the groups above are the answers this page holds; bills are one page
-// away and have filters this list could not offer.
-const bills=q=>`<section class="resgrp"><h2>Bills</h2>
-  <div class="findout resout"><a href="/bills?q=${encodeURIComponent(q)}">
-  <span class="fl1"><span class="fname">Search every bill for
-    &ldquo;${esc(q)}&rdquo;</span></span>
-  <span class="fwhat">Every bill since 1989, by number, by title and by the
-    words in its text &mdash; with filters for term, committee, sponsor and
-    what became of it.</span></a></div></section>`;
+// THE BILLS, counted. Until 24 September this was one card at the foot of the
+// page, "Search every bill for firearms", under a line saying nothing on the
+// site matched -- over 30 bills of this term. find.js's findBills counts them
+// with the bill search's own matcher, so the number here is the one /bills?q=
+// then shows, and the first five are listed. Before they are counted, or if
+// they cannot be, the card offers the bill search without a number.
+//
+// Its description used to say the bill search reads "the words in its text".
+// It does not: it reads a bill's number, title, sponsor and committee.
+const WHAT="The bill search has every term since 1989, with filters for "
+  +"committee, sponsor and what became of it.";
+const bills=(q,B)=>{
+  const counted=B&&B.state==="ready";
+  const body=counted&&B.n
+    ?findBillsAll(B,q,WHAT)+B.top.map(b=>findBillRow(b,q)).join("")
+    :counted
+    ?`<a href="/bills?q=${encodeURIComponent(q)}">
+      <span class="fl1"><span class="fname">Search every bill for
+        &ldquo;${esc(q)}&rdquo;</span></span>
+      <span class="fwhat">None in the ${esc(B.term)} term. ${WHAT}</span></a>`
+    :findBillsAll(B,q,WHAT);
+  return `<section class="resgrp"><h2>Bills${counted&&B.n
+    ?` <span class="resn">${B.n.toLocaleString()}</span>`:""}</h2>
+    <div class="findout resout">${body}</div></section>`;
+};
+// Groups a reader reaches for after the bills: members who have left, and
+// this site's own pages.
+const AFTER=new Set(["Former senators","Former representatives",
+  "Former members","Pages on this site"]);
+let waiting=false;
 
 function draw(q){
   const s=(q||"").trim();
   if(!s){
     head.textContent="Search the record";
     lead.textContent="Every sitting legislator and every member who has left, "
-      +"every committee, every town and ward, and every subject bills are "
-      +"filed under. Bills have their own search, with filters.";
+      +"every committee, every town and ward, every subject bills are filed "
+      +"under, and this term's bills. The bill search has every term, with "
+      +"filters.";
     out.innerHTML="";
     return;
   }
   const rows=findMatch(s,Infinity);
+  const B=findBills(s,5);
+  if(B&&B.state==="loading"&&!waiting){
+    waiting=true;
+    findBillsLoad().then(()=>draw(box.value));
+  }
+  const nB=B&&B.state==="ready"?B.n:null;
+  const term=nB===null?"":`in the ${B.term} term`;
   head.innerHTML=`Results for &ldquo;${esc(s)}&rdquo;`;
-  // "0 matches on this site, and the bills" is a sentence nobody would write.
-  // Where there are none, the line says so and the bill card below is the
-  // whole of the answer.
+  // The answer first. "0 matches on this site, and the bills" is a sentence
+  // nobody would write, and "nothing matches" above 30 bills is false.
+  const here=rows.length===1?"One match on this site"
+    :`${rows.length} matches on this site`;
+  const some=nB===1?`One bill ${term}`:`${(nB||0).toLocaleString()} bills ${term}`;
   lead.textContent=!rows.length
-    ?"No legislator, committee, town or subject on this site matches that."
-    :rows.length===1?"One match on this site, and the bills."
-    :`${rows.length} matches on this site, and the bills.`;
+    ?(nB?`${some} ${nB===1?"matches":"match"}. No legislator, committee, `
+        +"town or subject on this site does."
+      :nB===0?"Nothing on this site matches that: no legislator, committee, "
+        +`town or subject, and no bill ${term}.`
+      :"No legislator, committee, town or subject on this site matches that.")
+    :nB?`${here}, and ${some.charAt(0).toLowerCase()+some.slice(1)}.`
+    :nB===0?`${here}, and no bill ${term}.`
+    :`${here}, and the bills.`;
+  // WHERE THE BILLS GO, as in the header's panel: first when no sitting
+  // member, committee, town or subject is named with what was typed, and
+  // otherwise after those and ahead of the members who have left.
+  const low=s.toLowerCase(),edge=_fedge(low);
+  const named=rows.some(r=>r[0]!=="former"&&_frank(r,low,edge)<2);
   const left=rows.slice();
-  let html="";
+  let html=named?"":bills(s,B),placed=!named;
   for(const g of GROUPS){
     const mine=[];
     for(let i=left.length-1;i>=0;i--)
       if(g.k(left[i]))mine.unshift(left.splice(i,1)[0]);
     if(!mine.length)continue;
+    if(!placed&&AFTER.has(g.t)){html+=bills(s,B);placed=true;}
     html+=`<section class="resgrp"><h2>${esc(g.t)}
       <span class="resn">${mine.length}</span></h2>
       <div class="findout resout">${mine.map(r=>row(r,s)).join("")}</div></section>`;
   }
-  // Only when something close exists. findSuggest measures against every
-  // distinct word in the index and returns nothing rather than reaching: there
-  // is no Firearms subject in the General Court's own list, so a search for
-  // "firarms" offers nothing and says nothing.
-  if(!rows.length){
+  if(!placed)html+=bills(s,B);
+  // Only when something close exists, and only when no bill matched either:
+  // its guesses are names, and "voting" was offered "zoning" over 141 bills.
+  // findSuggest measures against every distinct word in the index and returns
+  // nothing rather than reaching: there is no Firearms subject in the General
+  // Court's own list, so a search for "firarms" offers nothing and says
+  // nothing.
+  if(!rows.length&&!nB&&!(B&&B.state==="loading")){
     const did=findSuggest(s);
-    html=did?`<p class="note">Did you mean
-      <a href="/search?q=${encodeURIComponent(did)}">${esc(did)}</a>?</p>`:"";
+    if(did)html=`<p class="note">Did you mean
+      <a href="/search?q=${encodeURIComponent(did)}">${esc(did)}</a>?</p>`+html;
   }
-  out.innerHTML=html+bills(s);
+  out.innerHTML=html;
 }
 
 const q0=new URLSearchParams(location.search).get("q")||"";
@@ -2022,6 +2121,17 @@ def main():
             dst.write_bytes(body)
             print(f"copied {name} into the site folder")
 
+    # The bill matcher, cut out of app.js for the header search on the pages
+    # that do not load app.js. See bill_matcher_js.
+    if Path("app.js").exists():
+        body = bill_matcher_js(
+            Path("app.js").read_text(encoding="utf-8")).encode("utf-8")
+        dst = out / "billmatch.js"
+        if not dst.exists() or dst.read_bytes() != body:
+            dst.write_bytes(body)
+            print("  billmatch.js: app.js's bill matcher, for the header "
+                  "search")
+
     # LF, not the platform default: this file is parsed by Pages, not
     # by anything on this machine, and write_text on Windows would
     # give every line a carriage return Cloudflare never asked for.
@@ -2522,12 +2632,12 @@ today.</p>
     # a near-copy of the bill search and the roster, which ARE indexed.
     search_body = """<h1 id="reshead">Search the record</h1>
 <p class="lead" id="reslead">Every sitting legislator and every member who has
-left, every committee, every town and ward, and every subject bills are filed
-under. Bills have their own search, with filters.</p>
+left, every committee, every town and ward, every subject bills are filed
+under, and this term's bills. The bill search has every term, with filters.</p>
 <form class="resfind" action="/search" method="get" role="search">
-  <label for="resq" class="sr">A legislator, a committee, a town or a subject</label>
+  <label for="resq" class="sr">A legislator, a committee, a town, a subject or a bill</label>
   <input id="resq" name="q" type="search" autocomplete="off"
-    placeholder="A legislator, a committee, a town, or a subject" disabled>
+    placeholder="A legislator, a committee, a town, a subject or a bill" disabled>
 </form>
 <div id="resout"></div>
 <noscript><p class="note">This page needs JavaScript to search. Without it,
@@ -2535,7 +2645,7 @@ the <a href="/bills">bill search</a>, the <a href="/legislators">roster</a> and
 the <a href="/committees">committee list</a> are all plain pages.</p></noscript>"""
     search_page = shell("Search | Granite Record", "", search_body,
                         desc="Search Granite Record for a legislator, a "
-                             "committee, a town or a subject.",
+                             "committee, a town, a subject or a bill.",
                         script=SEARCH_JS)
     search_page = search_page.replace(
         '<link rel="canonical" href="https://graniterecord.org/">',

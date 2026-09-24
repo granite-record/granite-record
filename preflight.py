@@ -1417,6 +1417,362 @@ def _find_all_results():
     return "ok", "find.js -> /search -> search.html, rows shared with the panel"
 
 
+# THE FIXTURE FOR _find_bills: a term of fifteen bills written so that each
+# sample search reaches the matcher a different way -- a synonym ("guns"), a
+# phrase ("school funding"), a trailing question mark, a sponsor's name, a
+# committee's, bill numbers padded and listed, a district that is shaped like
+# a number and is not one -- and one bill from another term filed in the same
+# index, which /bills leaves out and so must the panel.
+def _find_bills_fixture():
+    def bill(bid, year, title, sponsor, committee, topic="Other"):
+        kind = re.match(r"[A-Z]+", bid).group(0)
+        return {"id": bid, "n": f"{kind} {bid[len(kind):]}", "year": year,
+                "title": title, "sponsor": sponsor,
+                "sponsor_label": f"Rep. {sponsor} (R)", "committee": committee,
+                "committees": [committee], "topic": topic, "kind": "active",
+                "status": "Introduced", "term": "2025-2026",
+                "last_action": f"{year}-01-15", "votedays": []}
+    term = [
+        bill("HB101", 2025, "relative to the carrying of firearms on school "
+             "property", "Jodi Nelson", "House Criminal Justice and Public Safety"),
+        bill("HB102", 2025, "relative to pistol permits", "Alan Smith",
+             "House Criminal Justice and Public Safety"),
+        bill("HR5", 2025, "urging congress to protect the rights of firearm "
+             "owners", "Alan Smith", "House State-Federal Relations"),
+        bill("CACR3", 2025, "relating to the right to keep and bear arms",
+             "Jodi Nelson", "House Judiciary"),
+        bill("SB5", 2025, "relative to the property tax abatement process",
+             "Daryl Abbas", "Senate Ways and Means"),
+        bill("HB210", 2025, "relative to school funding and the cost of an "
+             "adequate education", "Rick Ladd", "House Education Funding",
+             "Education"),
+        bill("HB211", 2025, "establishing a commission on teacher recruitment",
+             "Rick Ladd", "House Education", "Education"),
+        bill("HB300", 2026, "relative to the right to know law and "
+             "governmental records", "Alan Smith", "House Judiciary"),
+        bill("HB301", 2026, "relative to absentee ballots and voter "
+             "registration", "Jodi Nelson", "House Election Law"),
+        bill("SB40", 2026, "relative to the minimum hourly rate",
+             "Daryl Abbas", "Senate Commerce"),
+        bill("HB450", 2026, "relative to housing density and local zoning "
+             "ordinances", "Alan Smith", "House Municipal and County Government",
+             "Zoning"),
+        bill("HB451", 2026, "relative to landlord and tenant disputes",
+             "Alan Smith", "House Judiciary"),
+        bill("SB77", 2026, "relative to consumer protection", "Daryl Abbas",
+             "Senate Commerce"),
+        bill("HB1442", 2026, "relative to insurance coverage at concord "
+             "hospital", "Jodi Nelson", "House Commerce and Consumer Affairs"),
+        # Both words, but not in the order searched: "insurance coverage"
+        # must list HB 1442 first, as /bills does, though HB 100 is lower.
+        bill("HB100", 2026, "relative to coverage under the state employee "
+             "insurance plan", "Rick Ladd", "House Executive Departments"),
+        bill("HB29", 2026, "relative to the city charter of concord",
+             "Alan Smith", "House Municipal and County Government"),
+    ]
+    other = bill("HB103", 2023, "relative to firearms storage", "Alan Smith",
+                 "House Criminal Justice and Public Safety")
+    other["term"] = "2023-2024"
+    find = [
+        ["legislator", "Sen. Daryl Abbas (R - SD22)",
+         "Senate · SD22 · Republican", "legislator/daryl-abbas-sd-22",
+         "Rockingham"],
+        ["legislator", "Rep. Jodi Nelson (R - Hills 29)",
+         "House · Hills 29 · Republican", "legislator/jodi-nelson",
+         "Hillsborough"],
+        ["committee", "Education", "House committee", "committee/H05", ""],
+        ["topic", "Education", "Bills on this subject",
+         "bills?topic=Education", ""],
+        ["topic", "Zoning", "Bills on this subject", "bills?topic=Zoning", ""],
+        ["town", "Concord", "Merrimack County", "town/concord", "Merrimack"],
+        ["former", "Former Rep. Michael Gunski",
+         "House · Straf 3 · 2003–2004",
+         "legislator/michael-gunski", "Strafford", 2004],
+        ["page", "Bill search", "Every bill since 1989", "bills", ""],
+    ]
+    meta = {"terms": ["2025-2026", "2023-2024"],
+            "topics": ["Education", "Other", "Zoning"],
+            "committees": sorted({b["committee"] for b in term}),
+            "sponsors": [], "votedays": [], "years": [2025, 2026]}
+    return {"/meta.json": meta, "/idx/2025-2026.json": term + [other],
+            "/find.json": find}
+
+
+_FIND_BILLS_QUERIES = [
+    "firearms", "guns", "property tax", "school funding", "right to know?",
+    "voting", "minimum wage", "nelson", "commerce", "housing", "education",
+    "concord", "abbas", "insurance coverage", "HB 0101", "HB101, SB5",
+    "hills 29", "xyzzy"]
+
+# Both sides answer fetch from the fixture, by path.
+_FIND_BILLS_FETCH = r"""
+const fs = require("fs");
+const FIX = JSON.parse(fs.readFileSync("./fixture.json", "utf8"));
+const Q = JSON.parse(fs.readFileSync("./queries.json", "utf8"));
+const ASKED = [];
+const FAIL_IDX = process.argv[2] === "fail";
+globalThis.fetch = async (u) => {
+  const p = new URL(u).pathname; ASKED.push(p);
+  if ((FAIL_IDX && p.startsWith("/idx/")) || !(p in FIX))
+    return {ok: false, status: 404, statusText: "Not Found",
+            json: async () => { throw new Error("404"); }};
+  return {ok: true, status: 200,
+          json: async () => JSON.parse(JSON.stringify(FIX[p]))};
+};
+const ticks = async (n) => { for (let i = 0; i < n; i++)
+  await new Promise(r => setImmediate(r)); };
+"""
+
+# /bills?q=: app.js, loaded the way bills.html loads it, and typed into. What
+# it shows is read off the page -- the count line and the cards in order.
+_FIND_BILLS_APP = r"""
+require("./stub.js");
+""" + _FIND_BILLS_FETCH + r"""
+const box = document.querySelector("#q"); box.disabled = true;
+let scope;
+try { scope = (0, eval)(fs.readFileSync("./app.js", "utf8")
+                        + ";({getIDX: () => IDX, getTerm: () => term})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+(async () => {
+  for (let i = 0; i < 400 && box.disabled !== false; i++) await ticks(1);
+  if (box.disabled !== false) {
+    console.log("app.js never finished loading the fixture"); process.exit(1); }
+  const out = {term: scope.getTerm(), loaded: scope.getIDX().length, q: {}};
+  for (const s of Q) {
+    box.value = s; box.fire("input");
+    const count = document.querySelector("#count").textContent;
+    const ids = [...document.querySelector("#results").innerHTML.matchAll(
+      /<article class="card[^"]*" data-id="([^"]+)"/g)].map(m => m[1]);
+    const m = /^([\d,]+) (?:of|matching)/.exec(count);
+    out.q[s] = {count, n: m ? +m[1].replace(/,/g, "") : null, ids: ids.slice(0, 5)};
+  }
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+# The header panel and /search: find.js on a page WITHOUT app.js, so the
+# matcher has to arrive as billmatch.js through the script tag find.js adds.
+# Each file runs as a script of its own, as a browser runs it -- a const one
+# declares is then visible to the next, which /search's inline script relies
+# on and an eval would hide.
+_FIND_BILLS_PANEL = r"""
+require("./stub.js");
+""" + _FIND_BILLS_FETCH + r"""
+const vm = require("vm");
+const script = (f) => vm.runInThisContext(fs.readFileSync(f, "utf8"),
+                                          {filename: f});
+const SCRIPTS = [];
+document.head.appendChild = (s) => {
+  SCRIPTS.push(String(s.src));
+  if (/\/billmatch\.js$/.test(String(s.src))) {
+    try { script("./billmatch.js"); }
+    catch (e) { console.log("BILLMATCH " + e.message); process.exit(1); }
+    if (s.onload) s.onload();
+  } else if (s.onerror) s.onerror();
+};
+let ready = null;
+document.addEventListener = (t, f) => { if (t === "DOMContentLoaded") ready = f; };
+let F;
+try { script("./find.js");
+      F = vm.runInThisContext("({FIND, FBILLS, findDraw, findBills, findBillsLoad})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+if (typeof queryGroups !== "undefined") {
+  console.log("the panel's side has app.js's matcher without loading it");
+  process.exit(1); }
+F.FIND.rows = FIX["/find.json"];
+const panel = document.getElementById("findout");
+const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
+(async () => {
+  const res = {q: {}, panel: {}};
+  draw(""); draw("hb 115");
+  res.askedIdle = ASKED.slice();
+  res.loading = draw("firearms");
+  await F.findBillsLoad(); await ticks(5);
+  res.state = F.FBILLS.rows ? "ready" : F.FBILLS.failed ? "failed" : "none";
+  res.asked = ASKED.slice(); res.scripts = SCRIPTS.slice();
+  for (const s of Q) {
+    const B = F.findBills(s, 5);
+    res.q[s] = B && B.state === "ready" ? {n: B.n, ids: B.top.map(b => b.id)} : B;
+    res.panel[s] = draw(s);
+  }
+  if (process.argv[2] !== "fail") {
+    script("./search.js");
+    location.search = "?q=firearms";
+    ready(); await ticks(10);
+    const box = document.getElementById("resq");
+    const lead = document.getElementById("reslead");
+    const out = document.getElementById("resout");
+    res.search = {};
+    for (const s of ["firearms", "abbas", "voting", "xyzzy"]) {
+      if (s !== "firearms") { box.value = s; box.fire("input"); await ticks(3); }
+      res.search[s] = {lead: lead.textContent, html: out.innerHTML};
+    }
+  }
+  console.log(JSON.stringify(res));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "the header search finds the bills /bills finds, and "
+                   "counts them alike", needs=("build_pages",))
+def _find_bills(BP):
+    """The header's box said "No matching results." to "firearms".
+
+    It searched find.json alone -- people, committees, towns, subjects -- so
+    "firearms", "abortion", "property tax" and "housing" were told nothing
+    matched while the bill search held 12 to 119 bills of the current term for
+    each; "guns" and Return opened a former representative named Gunski; and
+    "voting" was offered "Did you mean zoning?". /search, where the panel's
+    last row led, opened with "No legislator, committee, town or subject on
+    this site matches that." above the one link to the bills.
+
+    The panel and /search now count the current term's bills with app.js's own
+    matcher, which build_pages cuts out of app.js as billmatch.js. So this runs
+    /bills (app.js in node, typed into) and the panel (find.js with
+    billmatch.js, on a page with no app.js) over one fixture term and holds
+    them to the same count and the same first three bills for every sample
+    search -- and holds the panel to what it says around them: the bills
+    first when no name starts with the search, never "No matching results."
+    over a bill that matches, no "Did you mean" over one either, nothing
+    fetched before a word is typed, and the bill search still offered, with
+    no count, when the term's index cannot be had.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("app.js", "find.js", "dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    app = Path("app.js").read_text(encoding="utf-8")
+    try:
+        matcher = BP.bill_matcher_js(app)
+    except SystemExit as e:
+        raise AssertionError(f"build_pages cannot cut the matcher out of "
+                             f"app.js: {e}")
+    m = re.search(r"<script>(.*?)</script>", BP.SEARCH_JS, re.S)
+    assert m, "build_pages.SEARCH_JS carries no <script>"
+    root = Path(tempfile.mkdtemp())
+    try:
+        files = {"stub.js": Path("dom_stub.js").read_text(encoding="utf-8"),
+                 "app.js": app, "billmatch.js": matcher,
+                 "find.js": Path("find.js").read_text(encoding="utf-8"),
+                 "search.js": m.group(1),
+                 "fixture.json": json.dumps(_find_bills_fixture()),
+                 "queries.json": json.dumps(_FIND_BILLS_QUERIES),
+                 "app_side.js": _FIND_BILLS_APP,
+                 "panel_side.js": _FIND_BILLS_PANEL}
+        for name, text in files.items():
+            (root / name).write_text(text, encoding="utf-8")
+
+        def node(*args):
+            r = _run(["node", *args], cwd=root, capture_output=True,
+                     text=True, timeout=90)
+            said = (r.stdout + r.stderr).strip()
+            assert r.returncode == 0 and said, (
+                f"node {' '.join(args)}: "
+                + (said.splitlines() or ["no output"])[-1][:200])
+            return json.loads(said.splitlines()[-1])
+
+        A = node("app_side.js")
+        P = node("panel_side.js")
+        X = node("panel_side.js", "fail")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    # The two sides agree, search by search.
+    assert A["term"] == "2025-2026" and A["loaded"], (
+        f"app.js loaded {A['loaded']} bills of {A['term']!r} from the fixture")
+    assert P["state"] == "ready", "the panel never loaded the term's bills"
+    off = []
+    for q in _FIND_BILLS_QUERIES:
+        a, p = A["q"][q], P["q"][q]
+        if a["n"] is None:
+            off.append(f"{q!r}: /bills drew no count ({a['count']!r})")
+        elif not p or p.get("n") != a["n"]:
+            off.append(f"{q!r}: /bills {a['n']}, panel "
+                       f"{p.get('n') if isinstance(p, dict) else p}")
+        elif p["ids"][:3] != a["ids"][:3]:
+            off.append(f"{q!r}: /bills lists {a['ids'][:3]} first, the panel "
+                       f"{p['ids'][:3]}")
+    assert not off, ("the header search and /bills disagree about the bills: "
+                     + "; ".join(off[:4]))
+    # And agree about something: a check both sides pass by finding nothing
+    # proves nothing.
+    n = {q: A["q"][q]["n"] for q in _FIND_BILLS_QUERIES}
+    assert n["firearms"] >= 2 and n["guns"] >= 2 and n["xyzzy"] == 0 \
+        and n["HB 0101"] == 1 and n["hills 29"] == 0 \
+        and A["q"]["insurance coverage"]["ids"][:2] == ["HB1442", "HB100"], (
+        f"the fixture no longer exercises the matcher: {n}")
+
+    # Nothing is fetched for the bills until a word is typed.
+    assert not [a for a in P["askedIdle"] if "idx/" in a or "meta" in a], (
+        f"the panel fetched {P['askedIdle']} before anything but a bill "
+        f"number was typed -- the index is for readers who search words")
+    assert P["scripts"] == ["https://x/billmatch.js"] and \
+        P["asked"].count("/idx/2025-2026.json") == 1, (
+        f"the panel loaded {P['scripts']} and asked for {P['asked']}: the "
+        f"matcher and the term's index should each come once")
+
+    def first(html):
+        got = re.search(r'<a [^>]*href="([^"]+)"', html)
+        return got.group(1) if got else ""
+
+    pan = P["panel"]
+    bad = []
+    for q in ("firearms", "guns", "voting", "property tax"):
+        h = pan[q]
+        if first(h) != f"/bills?q={q.replace(' ', '%20')}":
+            bad.append(f"{q!r} leads with {first(h)!r}, not the bills "
+                       f"(Return opens the first row)")
+        if not re.search(rf"{n[q]:,} bills? that mentions? &ldquo;"
+                         rf"{re.escape(q)}&rdquo;", h):
+            bad.append(f"{q!r} does not say how many bills mention it")
+        if "No matching results" in h or "Did you mean" in h:
+            bad.append(f"{q!r} says nothing matched, or guesses, over "
+                       f"{n[q]} bills")
+        if "/search?q=" not in h:
+            bad.append(f"{q!r} lost the row to /search")
+    g = pan["guns"]
+    if not 0 <= g.find("/bills?q=guns") < g.find("/legislator/michael-gunski"):
+        bad.append("'guns' puts former Rep. Gunski above the gun bills")
+    e = pan["education"]
+    if not 0 <= e.find('href="/committee/H05"') < e.find("/bills?q=education") \
+            < e.find("/search?q="):
+        bad.append("'education' does not lead with the committee its name "
+                   "starts, then the bills")
+    if "No matching results." not in pan["xyzzy"] or "/bills?q=" in pan["xyzzy"]:
+        bad.append("'xyzzy', which nothing matches, is not told so")
+    if "/bills?q=firearms" not in P["loading"] or "No matching" in P["loading"]:
+        bad.append("while the bills are fetched the panel does not offer them, "
+                   "or says nothing matched")
+    xf = X["panel"]["firearms"]
+    if X["state"] != "failed" or first(xf) != "/bills?q=firearms" \
+            or "that mention" in xf or "No matching" in xf:
+        bad.append("with the term's index unreachable the panel does not "
+                   "fall back to an uncounted link to the bill search")
+    assert not bad, "the header search panel: " + "; ".join(bad[:3])
+
+    # /search says the same.
+    s = P["search"]
+    lead, html = s["firearms"]["lead"], s["firearms"]["html"]
+    assert lead.startswith(f"{n['firearms']} bills in the 2025-2026 term "
+                           f"match") and "matches that" not in lead, (
+        f"/search?q=firearms opens with {lead!r}")
+    assert html.find("<h2>Bills") == html.find("<h2>") >= 0 and \
+        f"All {n['firearms']} bills that mention &ldquo;firearms&rdquo;" \
+        in html, (
+        "/search?q=firearms does not lead with the counted bills")
+    ab = s["abbas"]["html"]
+    assert 0 <= ab.find("<h2>Senators") < ab.find("<h2>Bills"), (
+        "/search?q=abbas puts the bills above the senator it names")
+    assert s["xyzzy"]["lead"].startswith("Nothing on this site matches"), (
+        f"/search?q=xyzzy opens with {s['xyzzy']['lead']!r}")
+    assert "Did you mean" not in s["voting"]["html"], (
+        "/search?q=voting guesses at another word over the bills that match")
+    return "ok", (f"{len(_FIND_BILLS_QUERIES)} searches counted alike by "
+                  f"/bills and the header (firearms {n['firearms']}, guns "
+                  f"{n['guns']}); bills lead where no name does")
+
+
 @check("frontend", "the assets are revalidated, and no page names a version")
 def _asset_headers():
     """What replaced "a page asks for the script it was built against".

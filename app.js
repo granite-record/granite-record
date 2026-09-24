@@ -43,6 +43,16 @@ const OTHER=[["Presiding","Presiding",
 
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+/* THE BILL MATCHER IS SHARED WITH THE HEADER SEARCH. Every line between a
+   "BILLMATCH:BEGIN" and the "BILLMATCH:END" after it is copied by
+   build_pages.py into site/billmatch.js, which find.js loads on the pages
+   that do not run this file -- so the header's "All 30 bills that mention
+   firearms" is counted by the same code that lists /bills?q=firearms, not by
+   a second matcher that drifts from this one. What is inside the markers must
+   therefore stand alone: no DOM, no page state, and nothing it names that is
+   declared outside a marked region. preflight runs the copy on its own and
+   fails if it does not. */
+// BILLMATCH:BEGIN
 /* Bills are drafted in statutory vocabulary; people search in ordinary words.
    "AN ACT relative to the state minimum hourly rate" will never be found by
    someone typing "minimum wage". These are GROUPS rather than mappings: every
@@ -296,6 +306,7 @@ function groupWeight(b,g){
   }
   return w;
 }
+// BILLMATCH:END
 // NOTHING FOUND is still an answer with somewhere to go. A search of several
 // parts that no bill has all of says which parts do find bills on their own,
 // with how many, as searches to run -- rather than a blank page for a reader
@@ -363,11 +374,13 @@ const dkey=id=>`${yearOf(id)}/${id}`;
 // House bills before Senate bills, then numerically. Bill numbers are strings
 // like "HB 1442", so a plain string sort puts HB 1000 before HB 99 and mixes
 // the chambers together.
+// BILLMATCH:BEGIN -- the order bills sort in; see the note above SYN.
 const KINDORDER={HB:0,HR:1,HCR:2,CACR:3,SB:4,SR:5,SCR:6,HJR:7,SJR:8};
 function billKey(b){
   const m=/^([A-Z]+)\s*(\d+)/.exec(b.id.toUpperCase())||[];
   return [KINDORDER[m[1]] ?? 99, parseInt(m[2]||"0",10)];
 }
+// BILLMATCH:END
 // A bill has one status and one subject, but it can pass through two
 // committees, so a facet value is a list. Sorting the list alphabetically also
 // groups it: every House committee, then every Senate one.
@@ -758,6 +771,7 @@ need("meta.json")
    bill. The id in the index is unpadded: HB115, across all 33,683 of them,
    not one of which carries a leading zero. The lookahead keeps a digit, so
    even a nonsense "HB000" comes out as a number rather than as "HB". */
+// BILLMATCH:BEGIN -- what counts as a bill number; see the note above SYN.
 function billNumbers(q){
   const parts=q.split(",").map(s=>s.trim()).filter(Boolean);
   if(!parts.length)return null;
@@ -765,6 +779,7 @@ function billNumbers(q){
                          .replace(/^([A-Z]{2,5})0+(?=\d)/,"$1"));
   return ids.every(i=>/^[A-Z]{2,5}\d+$/.test(i))?ids:null;
 }
+// BILLMATCH:END
 function matches(b,ignore){
   // A bill number is unique WITHIN a term, so a number search ignores the
   // sidebar filters -- they can only hide the answer. It stays inside the
