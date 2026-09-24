@@ -14740,14 +14740,14 @@ def _rail():
 
 
 # THE OLDER TERMS' DISAGREEMENTS, counted when the journey was built (24
-# September) and each read against its docket: 82 bills of 1989-2024 where a
+# September) and each read against its docket: 78 bills of 1989-2024 where a
 # decision the status or the rail stands on is not in the docket -- a passage
 # the clerk recorded only as an amendment (HB 119 of 1993), a signature with
 # no line (HB 768 of 1989), a divided question with no whole-bill vote (HB
 # 1607 of 2024), a House bill whose first row the docket files under the
 # Senate (HB 652 of 2011). None is in the current term, which is held to none.
 # A ceiling rather than a list, so a regression anywhere in the archive fails.
-_JOURNEY_EXPLAINED = 82
+_JOURNEY_EXPLAINED = 78
 
 
 def _journey_story(records, rows, B):
