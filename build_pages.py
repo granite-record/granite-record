@@ -303,7 +303,8 @@ MEET_KIND = {"public hearing": ("Public hearing", "k-hearing"),
 # The key under a week's heading: each colour once, in the order a reader
 # meets them, worded as the chips are.
 MEET_LEGEND = (("k-hearing", "Public hearing"),
-               ("k-meet", "Work session or study committee"),
+               # Most green cards say "Statutory committee", so the key names it.
+               ("k-meet", "Work session, study or statutory committee"),
                ("k-exec", "Executive session"),
                ("k-conf", "Committee of conference"),
                ("k-floor", "Floor session"))
@@ -405,10 +406,10 @@ def calendar_html(out, today=None, rows=None):
     n_next = sum(len(v) for v in (weeks.get(nxt) or {}).values())
 
     # WHERE THE REST IS: next week's own page, which build_calendar writes
-    # for every week that has a sitting in it -- so it is only linked when
-    # next week has one, and otherwise the link is the Calendar tab, whose
-    # arrow reaches the next week that does. HOME_JS keeps this line when it
-    # empties the rail in the reader's clock.
+    # for every week in its range, empty ones included -- linked here only
+    # when next week has a sitting, and otherwise the link is the Calendar
+    # tab. HOME_JS keeps this line when it empties the rail in the reader's
+    # clock.
     if n_next:
         onward = (f"{n_next}{' more' if dates else ''} "
                   f"sitting{'' if n_next == 1 else 's'} next week. ",
@@ -716,9 +717,13 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                 # meeting: it says what kind of meeting and what set the
                 # committee up, as text, and links nowhere -- there is no
                 # page here for a commission to lead to.
-                for r in items:
-                    if not (r.get("bill") or "").strip() and r.get("note"):
-                        html.append(f'<p class="calnote">{esc(r["note"])}</p>')
+                # ONCE: the database holds some meetings twice -- the Land and
+                # Community Heritage Authority's board on 16 November 2026 is
+                # meetings 2941 and 2942 -- and the card said its note twice.
+                for note in OrderedDict.fromkeys(
+                        r["note"] for r in items
+                        if not (r.get("bill") or "").strip() and r.get("note")):
+                    html.append(f'<p class="calnote">{esc(note)}</p>')
                 items = [r for r in items if (r.get("bill") or "").strip()]
                 if not items:
                     continue
