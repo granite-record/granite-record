@@ -722,14 +722,29 @@ def _between_chambers(build_site_v2):
     got = B.between_chambers(n, "In a committee of conference")
     if got and got[1] == B.CONF_REJECTED:
         bad.append("SB14 2025: a report adopted on reconsideration read as rejected")
-    # SB 135 of 2014: a failed motion to RECONSIDER an adopted report, on a
-    # bill that went to the governor, is not the report failing.
-    n = _nar(_ev("H", "Reconsideration, Conference Committee Report #2089c (Rep Lambert): MF RC 108-247; HJ52, PG.1678-1680", "floor", "MF"),
-             _ev("H", "Conference Committee Report #2089c Adopted, VV; HJ52, PG.1675"),
-             _ev("S", "Conference Committee Report 2089c; Adopted, VV"))
-    got = B.between_chambers(n, "Passed, awaiting the governor")
-    if got:
-        bad.append(f"SB135 2014: a failed reconsideration moved an enrolled bill to {got}")
+    # SB 135 of 2013: a failed motion to RECONSIDER an adopted report, on a
+    # bill that went to the governor, is not the report failing. In the
+    # docket's own order (10:53:04, then 10:53:40) the reconsideration is the
+    # House's last word, so only the skip keeps it from reading as rejected;
+    # same-day rows are not reliably in order, so both orders are tried.
+    adopt = _ev("H", "Conference Committee Report #2089c Adopted, VV; HJ52, PG.1675")
+    recon = _ev("H", "Reconsideration, Conference Committee Report #2089c (Rep Lambert): MF RC 108-247; HJ52, PG.1678-1680", "floor", "MF")
+    senate = _ev("S", "Conference Committee Report 2089c; Adopted, VV")
+    for order in ((adopt, recon, senate), (recon, adopt, senate)):
+        got = B.between_chambers(_nar(*order), "Passed, awaiting the governor")
+        if got:
+            bad.append(f"SB135 2013: a failed reconsideration moved an enrolled bill to {got}")
+    # The report's own clause decides, not the row: HB 170 of 2001's failed
+    # motion to reconsider follows the report on the same row, and HB 50 of
+    # 1997's failed motion to table comes before it.
+    for raws in (("Conference Committee Report, , RC 15Y-9N, Adopted; SJ 19, Pg.592-623",
+                  "Conf Comm Report Adopted RC(190-181);  Rep Herman moved to Reconsider, ML RC(177-192);"),
+                 ("CONF COMM REPORT ADOPTED RC(22-2); SJ23(I),P5527-532",
+                  "REP K SMITH MOVED LOT, ML RC(112-252); CONF COMM REPORT ADOPTED")):
+        got = B.between_chambers(_nar(_ev("S", raws[0]), _ev("H", raws[1])),
+                                 "Conference committee report adopted")
+        if got:
+            bad.append(f"{raws[1][:30]}: another motion's ML read as the report failing ({got})")
     # SB 34 of 2026: the House passed it amended, the Senate refused to concur.
     st = {"house_status": "PASSED/ADOPTED WITH AMENDMENT", "senate_status": None}
     n = _nar(_ev("S", "Ought to Pass: RC 16Y-8N, MA; OT3rdg; 03/06/2025"),
@@ -978,6 +993,21 @@ _RC_DOCKETS = {
         "1999|1041|05/20/1999 01:27:25 PM|HB300|H|Introduced and ref to Finance;  Reps Chandler & Burling moved to Susp Rules for Hearing Notice,|x",
         "1999|1041|05/20/1999 02:03:30 PM|HB300|H|motion failed 2/3RC(219-122);  HJ54, p1461-1464|x",
     ],
+    # A row with no outcome of its own borrows the previous row's, but not its
+    # words: SB 228's "Motion: OTP" is a majority vote under a suspension.
+    "Docket_db_2005-2006.txt": [
+        "2005|1083|11/16/2005 03:43:12 PM|SB228|H|Rep O'Neil & Craig Susp Rules for introduction and consideration MA 2/3 VV|x",
+        "2005|1083|11/16/2005 03:46:14 PM|SB228|H|Motion: OTP  RC(332-4)  HJ 21, pg 1735|x",
+        "2005|1083|11/16/2005 03:49:07 PM|SB228|H|Enrolled;  HJ 21, Pg. 1739|x",
+    ],
+    # CACR 19's tabling, 17-7 on 14 June, has no RC line of its own; the
+    # term-wide fallback must not hand it the 7 June rules suspension's 17-7.
+    "Docket_db_2007-2008.txt": [
+        "2007|1341|06/07/2007 04:09:16 PM|CACR19|S|Sen. Larsen Rules Suspension 18b,21,22,24,[48a,b,c,d,g,h] for Introduction; 2/3 nec. RC 17Y-7N, MA|x",
+        "2007|1341|06/14/2007 01:48:45 PM|CACR19|S|Sen. Kenney Floor Amendment{2149}(New Title) RC 8Y-16N, AF; SJ 23, Pg.703-704|x",
+        "2007|1341|06/14/2007 02:18:13 PM|CACR19|S|Ought to Pass RC 14Y-10N, MF, 3/5 nec; SJ 23, Pg.704|x",
+        "2007|1341|06/14/2007 02:32:30 PM|CACR19|S|Sen. Gottesman Moved Laid on Table 17Y-7N, MA; SJ 23, Pg.704-705|x",
+    ],
     "Docket_2017-2018.txt": [
         "2018|2938|3/15/2018 12:00:00 AM|SB331|S|Inexpedient to Legislate, RC 13Y-11N, MA === BILL KILLED ===; 03/15/2018; SJ 8|x",
         "2018|2938|3/15/2018 12:00:00 AM|SB331|S|Inexpedient to Legislate, RC 13Y-11N, MA === BILL KILLED ===; 03/15/2018; SJ 8|x",
@@ -1047,6 +1077,14 @@ _RC_ROLLS = [
         "REPS CHANDLER & BURLING:  SUSP RULES FOR HEARING", 219, 122, 399),
     # 2026: no docket line, and a threshold only that term's rules and the Journal know
     _rc("2026", "H", 132, "2026-03-05", None, "Shall Member Continue", 91, 82, 392),
+    # 2005 SB228: a majority vote, whatever the row above it needed
+    _rc("2005", "H", 152, "2005-11-16", "SB228", "MOTION:  OTP", 332, 4, 396),
+    # 2007 CACR19: an amendment, three fifths to pass, and a tabling no RC line names
+    _rc("2007", "S", 168, "2007-06-14", "CACR19", "Floor Amendment (2149s) Sen. Kenney/Sen. Burling",
+        8, 16, 24),
+    _rc("2007", "S", 169, "2007-06-14", "CACR19", "Ought to Pass Sen. Clegg/Sen. Foster", 14, 10, 24),
+    _rc("2007", "S", 170, "2007-06-14", "CACR19", "Laid on Table Sen. Sgambati/Sen. Reynolds",
+        17, 7, 24),
 ]
 
 # (passed, threshold_needed, outcome_source), as the Journals record them
@@ -1058,6 +1096,8 @@ _RC_WANT = {
     ("2018", 106): (True, None, "journal"), ("2018", 107): (True, None, "docket"),
     ("2018", 108): (False, None, "docket"), ("2025", 21): (False, 250, "rule"),
     ("1999", 103): (False, 228, "rule"), ("2026", 132): (False, None, "journal"),
+    ("2005", 152): (True, None, "docket"), ("2007", 168): (False, None, "docket"),
+    ("2007", 169): (False, 15, "docket"), ("2007", 170): (True, None, "rule"),
 }
 
 
