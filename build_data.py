@@ -283,6 +283,32 @@ def _pick_committee(stored, first, known, in_use=()):
     return stored if _same_committee(first, stored, known, in_use) else first
 
 
+def _official_committees(by_term):
+    """Every bill's committees under the one name each had at the time.
+
+    committee_names.official says how, and what it may not do. It runs here,
+    after _pick_committee has chosen WHICH committee, and only ever changes
+    how that committee is spelt -- so the cards, the Committee filter,
+    meta.json, bills.csv and the committee pages' bill lists, which all read
+    this file, name it one way. The 1991-1992 filter listed "Child Y and Jj",
+    "Child, Y and Jj" and "Children Y and Jj" as three committees, and
+    1989-1990 carried 112 values for 39 committees.
+
+    Returns {(was, now): count}, which main prints.
+    """
+    import committee_names as CN
+    moved = Counter()
+    for term, byb in by_term.items():
+        for rec in byb.values():
+            for field, ch in (("house_committee", "H"), ("senate_committee", "S")):
+                was = rec.get(field) or ""
+                now = CN.official(was, ch, term) if was else was
+                if now != was:
+                    rec[field] = now
+                    moved[(was, now)] += 1
+    return moved
+
+
 # THE ONE LONGER NAME THAT IS THE SAME COMMITTEE AT THE SAME TIME, whatever the
 # evidence below says. The clerk of 1999-2006 wrote "Public Works" for the
 # committee the tables call "Public Works and Highways", and _pick_committee's
@@ -1603,6 +1629,14 @@ def main():
     if stray:
         print(f"  {len(stray):,} bills have no filing year and are left out of "
               f"bills.json: {sorted(stray)[:5]}")
+    # One name per committee, the one it had at the time: see
+    # _official_committees. Said out loud, because a table that stopped
+    # matching would otherwise just quietly put the extra spellings back.
+    moved = _official_committees(by_term)
+    if moved:
+        print(f"  committee names: {sum(moved.values()):,} bill-chamber "
+              f"labels under {len(moved)} spellings written as the "
+              "committee's name at the time")
     # The newest term the pipeline holds, which is the one the current
     # session's own files describe.
     current_term = max(by_term) if by_term else ""

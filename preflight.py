@@ -8270,6 +8270,137 @@ def _full_names_survive(referrals):
     return "ok", f"{len(set(_FULL_COMMITTEE_NAMES + must))} full committee names each come back as themselves"
 
 
+@check("narrative", "a committee has one name in each term, the one it had then",
+       needs=("committee_names",))
+def _one_name_per_committee(committee_names):
+    """The 1991-1992 Committee filter listed "House Child Y and Jj" (34),
+    "House Child, Y and Jj" (12) and "House Children Y and Jj" (3) as three
+    committees, 1989-1990 listed 112 values for 39, and the clerk's shorthand
+    on 1999-2006's hearings kept every one of them off the committee pages.
+
+    committee_names.official is what settles a name now, and what it may do
+    is narrow: return the name it was given, or a name OFFICIAL lists for
+    that chamber and term. This holds it to that on real spellings, and to
+    the two rules no entry may break: an alias never turns a different
+    committee's name, in a term both had, into its own, and never writes a
+    name onto a year before the committee carried it.
+    """
+    CN = committee_names
+    bad = CN.conflicts() + CN.unplaced()
+    assert not bad, "; ".join(bad[:4])
+    cyjj = "Children, Youth and Juvenile Justice"
+    cases = (
+            # The three the person saw, and 1989's other spellings.
+            ("Child Y and Jj", "H", "1991-1992", cyjj),
+            ("Child, Y and Jj", "H", "1991-1992", cyjj),
+            ("Children Y and Jj", "H", "1991-1992", cyjj),
+            ("Children, Youth and Juv Just", "H", "1989-1990", cyjj),
+            ("Child/Juv Just", "H", "1989-1990", cyjj),
+            # The Senate's nine ways of 1989-1990.
+            ("Dev, Rec, and Envir", "S", "1989-1990",
+             "Development, Recreation and Environment"),
+            ("Dev. Rec. and Env", "S", "1989-1990",
+             "Development, Recreation and Environment"),
+            # The name at the time, and never a later one.
+            ("Executive Departments and Administration", "S", "1991-1992",
+             "Executive Departments"),
+            ("Exec. Depart", "S", "1989-1990", "Executive Departments"),
+            ("EXEC DEPTS+ADMIN", "S", "1993-1994",
+             "Executive Departments and Administration"),
+            ("Commerce", "H", "1991-1992",
+             "Commerce, Small Business and Consumer Affairs"),
+            ("Commerce", "H", "1995-1996",
+             "Commerce, Small Business, Consumer Affairs and Economic Development"),
+            ("Commerce", "H", "1999-2000", "Commerce"),
+            ("Public Works", "H", "1993-1994", "Public Works"),
+            ("Public Works", "H", "1999-2000", "Public Works and Highways"),
+            ("Judiciary", "H", "1997-1998", "Judiciary and Family Law"),
+            ("Judiciary", "H", "1999-2000", "Judiciary"),
+            ("Health", "H", "1989-1990", "Health, Human Services and Elderly Affairs"),
+            ("Special Committee on Public Employee Pension Plans", "H", "2011-2012",
+             "Special Committee on Public Employee Pensions Reform"),
+            ("Special Committee on Public Employee Pension Plans", "H", "2015-2016",
+             "Special Committee on Public Employee Pension Plans"),
+            # The clerk's shorthand and what follows the name.
+            ("Exec Depts and Admin for Interim Study VV", "H", "2001-2002",
+             "Executive Departments and Administration"),
+            ("Crim Just and PSfty", "H", "2003-2004", "Criminal Justice and Public Safety"),
+            ("Mun and Cnty Govt committee", "H", "1999-2000",
+             "Municipal and County Government"),
+            ("Elec Law", "H", "1999-2000", "Election Law"),
+            ("Health HS and EA: HJ18, p274", "H", "1999-2000",
+             "Health, Human Services and Elderly Affairs"),
+            ("Executive Departments and Administration [3/17/2011]", "H", "2011-2012",
+             "Executive Departments and Administration"),
+            ("Finance committee 2/3DIV(226-13)", "H", "1999-2000", "Finance"),
+            ("PUBLIC WORKS RC(252-67)", "H", "1997-1998", "Public Works and Highways"),
+            ("Wildlife & Recreation", "S", "1999-2000", "Wildlife and Recreation"),
+            ("Transportation and Interstate Cooperation Committee", "S", "2009-2010",
+             "Transportation and Interstate Cooperation"),
+            # Typing slips, where one committee is the only one that close.
+            ("Transporation", "H", "1999-2000", "Transportation"),
+            ("Enviroment", "S", "1999-2000", "Environment"),
+            ("Juduciary", "S", "2003-2004", "Judiciary"),
+            # Left as written: a House abbreviation in the Senate; a Senate
+            # committee's name expanded for the House; a note that is part of
+            # the name; the chamber's own placeholder; and a joint referral.
+            ("St Inst", "S", "1991-1992", "St Inst"),
+            ("INSUR", "H", "1991-1992", "INSUR"),
+            ("Special Committee on the Division for Children, Youth and "
+             "Families (DCYF)", "H", "2025-2026",
+             "Special Committee on the Division for Children, Youth and "
+             "Families (DCYF)"),
+            ("No Committee Assignment", "H", "2025-2026", "No Committee Assignment"),
+            ("E and a and Rr and D", "H", "1993-1994", "E and a and Rr and D"),
+            ("", "H", "1991-1992", ""))
+    for name, ch, term, want in cases:
+        got = CN.official(name, ch, term)
+        assert got == want, f"official({name!r}, {ch}, {term}) gave {got!r}, wanted {want!r}"
+    # Every committee the General Court names today comes back as itself, in
+    # either chamber, and anything official() writes is left alone by it.
+    moved = [f"{ch} {n!r} -> {CN.official(n, ch, '2025-2026')!r}"
+             for n in _FULL_COMMITTEE_NAMES for ch in "HS"
+             if CN.official(n, ch, "2025-2026") != n]
+    assert not moved, "today's names are rewritten: " + "; ".join(moved[:4])
+    again = [f"{ch} {lo}-{hi} {nm!r}" for ch, lo, hi, nm in CN.OFFICIAL
+             for y in range(lo, hi, 2)
+             if CN.official(nm, ch, f"{y}-{y + 1}") != nm]
+    assert not again, "an official name is rewritten: " + "; ".join(again[:4])
+    return "ok", (f"{len(CN.ALIASES)} aliases onto {len(CN.OFFICIAL)} names at the "
+                  "time, none taking another committee's name; "
+                  f"{len(cases)} real spellings placed or left as written")
+
+
+@check("narrative", "build_data writes each bill's committees under their names at the time",
+       needs=("committee_names", "build_data"))
+def _bills_official_committees(committee_names, build_data):
+    """The alias table does nothing unless build_data runs it, and every
+    reader of a bill's committee -- the cards, the Committee filter,
+    meta.json, bills.csv, the committee pages' bill lists -- reads what
+    build_data wrote. Three 1991-1992 spellings of one committee go in; one
+    name comes out, a current bill is left alone, and the count says so."""
+    by_term = {
+        "1991-1992": {
+            "HB1": {"house_committee": "Child Y and Jj", "senate_committee": ""},
+            "HB2": {"house_committee": "Child, Y and Jj",
+                    "senate_committee": "Executive Departments and Administration"},
+            "HB3": {"house_committee": "Children Y and Jj", "senate_committee": "Fin"}},
+        "2025-2026": {
+            "HB4": {"house_committee": "Municipal and County Government",
+                    "senate_committee": "Election Law and Municipal Affairs"}}}
+    moved = build_data._official_committees(by_term)
+    old = by_term["1991-1992"]
+    assert {r["house_committee"] for r in old.values()} == {
+        "Children, Youth and Juvenile Justice"}, old
+    assert old["HB2"]["senate_committee"] == "Executive Departments", old["HB2"]
+    assert old["HB3"]["senate_committee"] == "Finance", old["HB3"]
+    assert by_term["2025-2026"]["HB4"] == {
+        "house_committee": "Municipal and County Government",
+        "senate_committee": "Election Law and Municipal Affairs"}
+    assert sum(moved.values()) == 5, moved
+    return "ok", "three spellings of 1991-1992 written as one name; a current bill untouched"
+
+
 # Verbatim docket rows, by the file each is from. The bill's page narrates its
 # history from the same file, which is why the committee row must be read
 # from it too.
@@ -8598,6 +8729,10 @@ def _first_referral_on_disk(referrals, build_data):
     for (t, body, k), n in used.items():
         if n >= 3:
             in_use.setdefault((t, body), set()).add(k)
+    # The docket's first referral as build_data writes it: under the name the
+    # committee had at the time (committee_names.official), which is a
+    # spelling of the same committee and never a different one.
+    import committee_names as CN
     wrong, checked = [], 0
     for (t, b), bodies in refs.items():
         rec = (bills.get(t) or {}).get(b)
@@ -8606,9 +8741,11 @@ def _first_referral_on_disk(referrals, build_data):
         for body, first in bodies.items():
             checked += 1
             shown = rec.get("house_committee" if body == "H" else "senate_committee") or ""
-            if not shown or (referrals._key(shown) != referrals._key(first) and not
+            said = {referrals._key(first), referrals._key(CN.official(first, body, t))}
+            if not shown or (referrals._key(shown) not in said and not
                              build_data._same_committee(first, shown, known,
-                                                        in_use.get((t, body), ()))):
+                                                        in_use.get((t, body), ())) and
+                             referrals._key(CN.official(shown, body, t)) not in said):
                 wrong.append(f"{t} {b} {body}: shows {shown!r}, docket {first!r}")
     assert not wrong, (f"{len(wrong)} of {checked:,} archived bill-chambers do not show "
                        "the docket's first referral (rebuild with build_all.py if the "
@@ -8629,6 +8766,51 @@ def _first_referral_on_disk(referrals, build_data):
                      "THE committee: " + "; ".join(off[:4]))
     return "ok", (f"{checked:,} archived bill-chambers show their first referral, and "
                   f"{len(rows):,} index rows name the originating chamber's committee")
+
+
+@check("data", "the Committee filter names each committee once in a term",
+       needs=("committee_names",))
+def _committee_filter_one_name(committee_names):
+    """The built record against the alias table.
+
+    Every bill-chamber committee in data/bills.json, and every value of the
+    bills page's Committee filter in site/index.json, must be what
+    committee_names.official writes for it -- which is what build_data
+    wrote, so this fails when a build ran on older code or a new spelling
+    arrived that the table resolves and the data does not yet show. On the
+    build of 24 September the filter carried 259 values across all terms,
+    112 of them in 1989-1990 for 39 committees.
+    """
+    fb = Path("data/bills.json")
+    if not fb.exists():
+        return "skip", "no data/bills.json"
+    CN = committee_names
+    bills = json.loads(fb.read_text(encoding="utf-8"))
+    off = Counter()
+    for t, byb in bills.items():
+        for rec in byb.values():
+            for field, ch in (("house_committee", "H"), ("senate_committee", "S")):
+                v = rec.get(field) or ""
+                if v and CN.official(v, ch, t) != v:
+                    off[f"{t} {ch} {v!r} -> {CN.official(v, ch, t)!r}"] += 1
+    assert not off, (f"{sum(off.values()):,} bill committees are not written as "
+                     "the committee's name at the time (rebuild with build_all.py "
+                     "if the code is newer than data/bills.json): "
+                     + "; ".join(k for k, _ in off.most_common(4)))
+    fi = Path("site/index.json")
+    if not fi.exists():
+        return "ok", "data/bills.json names each committee once; no site/index.json"
+    facet = {}
+    for row in json.loads(fi.read_text(encoding="utf-8")):
+        for c in row.get("committees") or []:
+            facet.setdefault(row.get("term"), set()).add(c)
+    stray = sorted(f"{t} {c!r}" for t, cs in facet.items() for c in cs
+                   if c.split(" ", 1)[0] in ("House", "Senate") and
+                   CN.official(c.split(" ", 1)[1], c[0], t) != c.split(" ", 1)[1])
+    assert not stray, (f"{len(stray)} Committee filter values are another spelling "
+                       "of a committee (rebuild the site): " + "; ".join(stray[:4]))
+    return "ok", (f"{sum(len(v) for v in facet.values()):,} filter values across "
+                  f"{len(facet)} terms, one per committee")
 
 
 @check("data", "an archived bill's committee came from a source that has one",
