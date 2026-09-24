@@ -13038,6 +13038,357 @@ def _town_officials_sane():
                   f"and none beyond its office's seats")
 
 
+@check("build", "a town page links an e-mail address and nothing else, and never beside the wrong person",
+       needs=("build_town_pages",))
+def _town_mailto(B):
+    """175 mailto links on 132 town pages were not addresses.
+
+    NHDOT's e-mail column holds notes as well as addresses, and every note
+    was published as a link: "can email through the website, no stated
+    email", "no stated email address", "not listed", a street address, and
+    two addresses threaded together with a phone number's overflow. And nine
+    addresses sit on the wrong row -- rbridle@ beside Amy Hansen in Hampton,
+    each other's beside Bow's and Salisbury's two selectmen, the town clerk's
+    beside Newfields' road agent.
+
+    Fixture rows carry the ten distinct values the directory had in that
+    column that are not addresses, one good address, and the Hampton,
+    Salisbury and Newfields rows as NHDOT prints them.
+    """
+    notes = ["can email through the website, no stated email",
+             "no stated email address",
+             "can email through the website, no stated email address",
+             "can email thorugh the website, no stated email address",
+             "can email thorugh the website, no stated email",
+             "210 Main St", "not listed",
+             "an email through the website, no stated email address",
+             "t g1ruelle@eastkingstonnh.gov", "t.t o4wnadmin@sutton-nh.org"]
+    offs = [{"position": "Road Agent", "name": f"Person {i}", "phone": "",
+             "email": v} for i, v in enumerate(notes)]
+    offs.append({"position": "Town Administrator", "name": "Grace Ruelle",
+                 "phone": "", "email": "gruelle@eastkingstonnh.gov"})
+    html = B.town_officials_block("East Kingston", "east-kingston",
+                                  {"officials": offs, "email": "not listed"})
+    got = re.findall(r'href="mailto:([^"]*)"', html)
+    assert got == ["gruelle@eastkingstonnh.gov"], (
+        f"a town page links {got}; only the one address in the fixture is an "
+        "address, and a note published as a mailto is a link to nowhere")
+
+    # Nothing on these pages may write a mailto except through maillink().
+    src = Path("build_town_pages.py").read_text(encoding="utf-8")
+    sites = src.count('href="mailto:')
+    assert sites == 1, (
+        f"build_town_pages.py writes a mailto href in {sites} places. Every "
+        "one goes through maillink(), which is where a note is refused.")
+
+    hampton = [
+        ("Town Manager", "James Sullivan", "jsullivan@hamptonnh.gov"),
+        ("Board of Selectman, Chair", "Rusty Bridle", "ahanson@hamptonnh.gov"),
+        ("Board of Selectman", "Amy Hansen", "rbridle@town.hampton.nh.us"),
+        ("Board of Selectman", "Carleigh Beriont", "crage@hamptonnh.gov"),
+        ("Board of Selectman", "Charles Rage", "jwaddell@hamptonnh.gov"),
+        ("Board of Selectman", "Jeffery Grip", "cbariont@hamptonnh.gov"),
+        ("Public Works Director", "Jennifer Hale", "jhale@hamptonnh.gov")]
+    salisbury = [
+        ("Town Administrator", "April Rollins", "salisburyadmin@tds.net"),
+        ("Board of Selectman, Chair", "Brett Walker",
+         "brettwalkerselectman@gmail.com"),
+        ("Board of Selectman", "Jim Hoyt", "johnw.herbert@tds.net"),
+        ("Board of Selectman", "John Herbert", "jhoytselectman@gmail.com")]
+    newfields = [
+        ("Board of Selectman", "Hobart Harmon", "hharmon@newfieldsnh.gov"),
+        ("Town Clerk", "Sue McKinnon", "suemckinnon@newfieldsnh.gov"),
+        ("Road Agent", "Brian Knipstein", "suemckinnon@newfieldsnh.gov")]
+    wrong = {"Rusty Bridle", "Amy Hansen", "Carleigh Beriont", "Jeffery Grip",
+             "Jim Hoyt", "John Herbert", "Brian Knipstein"}
+    bad = []
+    for town in (hampton, salisbury, newfields):
+        rows = [{"position": p, "name": n, "phone": "", "email": e}
+                for p, n, e in town]
+        for o in rows:
+            other = B.names_someone_else(o["email"], o["name"], rows)
+            if bool(other) != (o["name"] in wrong):
+                bad.append(f"{o['name']} beside {o['email']}: "
+                           f"{'names ' + other if other else 'kept'}")
+    assert not bad, (
+        "an address beside the wrong person is drawn, or one beside its own "
+        "is not: " + "; ".join(bad))
+    rows = [{"position": p, "name": n, "phone": "", "email": e}
+            for p, n, e in hampton]
+    html = B.town_officials_block("Hampton", "hampton", {"officials": rows})
+    for addr in ("ahanson@", "rbridle@", "crage@", "cbariont@"):
+        assert f"mailto:{addr}" not in html, (
+            f"Hampton's page links {addr} beside a selectman it does not "
+            "belong to")
+    for addr in ("jsullivan@", "jhale@"):
+        assert f"mailto:{addr}" in html, f"Hampton's page lost {addr}, which is its owner's"
+    return "ok", (f"{len(notes)} notes refused, 1 address linked, "
+                  f"{len(wrong)} addresses beside the wrong person withheld")
+
+
+@check("build", "a town page's phone number dials, extension and all",
+       needs=("build_town_pages",))
+def _town_tel(B):
+    """28 dial links on the town pages rang numbers in no country.
+
+    tel() took every digit in the value, so "603-588-6785 ext 221" became
+    tel:+6035886785221. The extension is written as ;ext= now, and a cell that
+    holds two numbers is shown and not dialled.
+    """
+    want = {"603-588-6785 ext 221": "tel:+16035886785;ext=221",
+            "603-927-2400 ext. 4": "tel:+16039272400;ext=4",
+            "603-382-5200 ext.261": "tel:+16033825200;ext=261",
+            "603-642-8406 ext 1": "tel:+16036428406;ext=1",
+            "(603) 271-3420": "tel:+16032713420",
+            "603-271-3420": "tel:+16032713420",
+            "1-603-271-3420": "tel:+16032713420",
+            "603-382-5200 ext. 266 VM 603- 382-6771": None,
+            "603-523-770": None}
+    bad = []
+    for num, href in want.items():
+        m = re.search(r'href="([^"]*)"', B.tel(num))
+        got = m.group(1) if m else None
+        if got != href:
+            bad.append(f"{num!r} -> {got}, not {href}")
+    assert not bad, "; ".join(bad)
+    return "ok", f"{len(want)} numbers, extensions dialled after the number"
+
+
+@check("build", "a town page names one clerk, the Secretary of State's",
+       needs=("build_town_pages",))
+def _town_one_clerk(B):
+    """Thirty town pages named two clerks, and seven named two people.
+
+    How to Vote names the clerk from the Secretary of State's list; NHDOT's
+    directory names one too, on nineteen rows, and both were drawn. Windsor
+    had Stephanie L Houle above and Melissa Merrill below. NHDOT's six
+    "Town Administrator/ Town Clerk" rows are the worst of it: the Secretary
+    of State names somebody else as clerk in all six. Two of the six are
+    confirmed as administrators by a second source and are kept as that --
+    Alton and Atkinson -- and the other four are not drawn.
+
+    A board officer called Clerk is a different office and stays.
+    """
+    import shell as S
+    tmpl = S.template()
+    town_rows = {
+        "albany": [("Town Administrator/ Town Clerk", "Kelly Collins"),
+                   ("Board of Selectman, Chair", "Kathy Golding")],
+        "alton": [("Town Administrator/ Town Clerk", "Ryan Heath"),
+                  ("Board of Selectman", "Andrew Morse")],
+        "windsor": [("Town Clerk", "Melissa Merrill"),
+                    ("Board of Selectman, Clerk", "Sean O'Keefe")],
+        "manchester": [("City Clerk", "Matthew Normand"),
+                       ("Mayor", "Jay Ruais")]}
+    clerk = {"albany": "Sandra Vizard", "alton": "Jennifer Collins",
+             "windsor": "Stephanie L Houle", "manchester": "Matthew Normand"}
+    off = {"_offices": {k: {"officials": [
+               {"position": p, "name": n, "phone": "", "email": ""}
+               for p, n in rows]} for k, rows in town_rows.items()},
+           "_local": {k: {"clerk": v, "polling_place": "Town Hall"}
+                      for k, v in clerk.items()}}
+    bad = []
+    for key in town_rows:
+        town = key.title()
+        page = B.build(town, "0", {"0": {}}, {}, [], off, "https://x.test", tmpl)
+        seats = re.findall(r'<span class="offseat">([^<]*)</span>', page)
+        vote = [s for s in seats if s == "Town or city clerk"]
+        other = [s for s in seats if s != "Town or city clerk"
+                 and re.search(r"\b(?:town|city) clerk\b", s, re.I)]
+        if len(vote) != 1 or other:
+            bad.append(f"{town}: {len(vote)} How to Vote clerk rows, and "
+                       f"{other} below")
+        if f'<span class="mchip">{clerk[key]}</span><span class="offseat">' \
+                f'Town or city clerk' not in page:
+            bad.append(f"{town}: the Secretary of State's clerk is not the one named")
+    alton = B.build("Alton", "0", {"0": {}}, {}, [], off, "https://x.test", tmpl)
+    if '<span class="mchip">Ryan Heath</span><span class="offseat">Town Administrator</span>' not in alton:
+        bad.append("Alton's administrator, confirmed by his own address, is not kept")
+    albany = B.build("Albany", "0", {"0": {}}, {}, [], off, "https://x.test", tmpl)
+    if "Kelly Collins" in albany:
+        bad.append("Albany's combined row is drawn, and nothing confirms either half")
+    windsor = B.build("Windsor", "0", {"0": {}}, {}, [], off, "https://x.test", tmpl)
+    if "Melissa Merrill" in windsor:
+        bad.append("Windsor names NHDOT's clerk beside the Secretary of State's")
+    if "Board of Selectman, Clerk" not in windsor:
+        bad.append("a board officer called Clerk was taken for the town clerk")
+    assert not bad, "\n  ".join(bad)
+    return "ok", "one clerk per page, the Secretary of State's; two administrators kept"
+
+
+@check("build", "a town page's source note sends a reader to a website only when it links one",
+       needs=("build_town_pages",))
+def _town_note_website(B):
+    """NHDOT records "no website" for Clarksville and Ellsworth and "website
+    was discontinued" for Stewartstown, and their pages told a reader to
+    check the town's own website for changes. The note names the website
+    only when the page links one -- from NHDOT or from the Secretary of
+    State's list -- and otherwise points at the town offices row above it.
+    """
+    import html as _html
+    import shell as S
+    tmpl = S.template()
+    row = [{"position": "Board of Selectman", "name": "Pat Doe",
+            "phone": "", "email": ""}]
+    off = {"_offices": {
+               "clarksville": {"officials": row, "website": "no website",
+                               "phone": "603-246-7751"},
+               "lyme": {"officials": row, "website": "www.lymenh.gov"},
+               "hart": {"officials": row},
+               "bath": {"officials": row}},
+           "_local": {"hart": {"website": "https://www.hartnh.gov"},
+                      "bath": {}}}
+    want = {"Clarksville": ", so ask the town offices for changes.",
+            "Lyme": ", so check Lyme's own website for changes.",
+            "Hart": ", so check Hart's own website for changes.",
+            "Bath": "."}
+    bad = []
+    for town, end in want.items():
+        page = B.build(town, "0", {"0": {}}, {}, [], off, "https://x.test", tmpl)
+        m = re.search(r"It does not show anyone elected or appointed since "
+                      r"then([^<]*)</p>", page)
+        got = _html.unescape(m.group(1)) if m else None
+        if got != end:
+            bad.append(f"{town}: the note ends {got!r}, not {end!r}")
+    assert not bad, "\n  ".join(bad)
+    return "ok", "website named on 2 fixture pages that link one, not on 2 that do not"
+
+
+@check("files", "the officials directory reads as printed where a cell runs into the next")
+def _officials_restream():
+    """Four rows of NHDOT's directory print text wider than its cell.
+
+    pdfplumber threaded the overflow into the next column a character at a
+    time, and all four were published: Grace Ruelle's address as
+    "t g1ruelle@eastkingstonnh.gov", Sutton's as "t.t o4wnadmin@sutton-nh.org",
+    Hooksett's councillor as "yR)andall Lapierre" and Somersworth's deputy
+    mayor as "MDaayvoer Witham". parse_officials.restream reads such a row in
+    the PDF's own order. This reads the directory itself -- it is in git --
+    and holds the four rows to what the PDF prints.
+    """
+    pdf = Path("sources/nh-municipal-officials-2025-09-01.pdf")
+    if not pdf.exists():
+        return "skip", "the NHDOT directory is not in sources/"
+    try:
+        import pdfplumber                                    # noqa: F401
+    except Exception:
+        return "skip", "pdfplumber is not installed"
+    P = imp("parse_officials")
+    if P is None:
+        return "skip", "parse_officials.py does not import"
+    towns, _notes, _raw, restreamed = P.read(pdf)
+    rows = {(t, o["name"]): o for t, r in towns.items() for o in r["officials"]}
+    want = {("East Kingston", "Grace Ruelle"): ("603-642-8406 ext 1", "gruelle@eastkingstonnh.gov",
+                                                "Town Administrator"),
+            ("Sutton", "Julia Jones"): ("603-927-2400 ext. 4", "townadmin@sutton-nh.org",
+                                        "Town Administrator"),
+            ("Hooksett", "Randall Lapierre"): ("603-341-8311", "rlapierre@hooksett.org",
+                                               "City Councilor, District 6 (Secretary)"),
+            ("Somersworth", "Dave Witham"): ("", "dwitham@somersworthnh.gov",
+                                             "Town Councilor, At-Large, Deputy Mayor")}
+    bad = []
+    for k, (phone, email, pos) in want.items():
+        o = rows.get(k)
+        if not o or (o["phone"], o["email"], o["position"]) != (phone, email, pos):
+            bad.append(f"{k[0]}'s {k[1]} reads {o and (o['phone'], o['email'], o['position'])}")
+    if len(restreamed) != len(want):
+        bad.append(f"{len(restreamed)} rows re-read, not {len(want)}: {restreamed}")
+    half = [f"{t}: {o['email']!r}" for (t, _), o in rows.items()
+            if "@" in o["email"] and not P.EMAIL_OK.match(o["email"])]
+    if half:
+        bad.append("half an address and half something else: " + ", ".join(half))
+    assert not bad, "\n  ".join(bad)
+    return "ok", "four overflowing rows read as printed, and no half-address left"
+
+
+@check("data", "town_officials.json holds addresses or notes, never half of each")
+def _town_officials_cells():
+    """The file the town pages read, held to what the parser now writes.
+
+    Data, and not code, because this file is regenerated rather than edited:
+    a parser fix does nothing for the site until `parse_officials.py` has been
+    run again, and until then the town pages go on publishing the old values.
+    An e-mail cell with an "@" is an address; a phone is a number, with an
+    extension if it has one, or one of the four cells NHDOT prints that are
+    not -- each named below.
+    """
+    f = Path("town_officials.json")
+    if not f.exists():
+        return "skip", "no town_officials.json here"
+    P = imp("parse_officials")
+    if P is None:
+        return "skip", "parse_officials.py does not import"
+    B = imp("build_town_pages")
+    if B is None:
+        return "skip", "build_town_pages.py does not import"
+    # As the directory prints them: Barnstead's second selectman carries the
+    # administrator's extension, Plaistow's cell holds two numbers, and
+    # Grafton's and Wentworth's town numbers are one digit short.
+    printed = {"ext. 4", "603-382-5200 ext. 266 VM 603- 382-6771",
+               "603-523-770", "603-764-995"}
+    data = json.loads(f.read_text(encoding="utf-8"))
+    bad, n = [], 0
+    for key, v in sorted(data.items()):
+        phones = [("town", v.get("phone") or "")]
+        for o in v.get("officials") or []:
+            n += 1
+            e = o.get("email") or ""
+            if "@" in e and not P.EMAIL_OK.match(e):
+                bad.append(f"{key}: {o.get('name')}'s e-mail {e!r}")
+            phones.append((o.get("name"), o.get("phone") or ""))
+        for who, ph in phones:
+            if ph and not B.PHONE.match(ph) and ph not in printed:
+                bad.append(f"{key}: {who}'s phone {ph!r}")
+    assert not bad, (
+        "town_officials.json carries cells the parser no longer writes -- run "
+        "parse_officials.py and rebuild the town pages:\n  " + "\n  ".join(bad[:12]))
+    return "ok", f"{n} offices, every e-mail cell an address or a note"
+
+
+@check("data", "every town page links real addresses and dialable numbers, and names no second clerk")
+def _town_pages_built():
+    """The built town pages, held to what the builder now writes.
+
+    Before 23 September: 175 mailto links that were not addresses, on 132
+    pages; 28 dial links carrying an extension's digits into the number; 30
+    pages naming two clerks and 6 labelling an administrator "Town
+    Administrator/ Town Clerk".
+
+    A data check, not a files one, on purpose: site/ is build output, and
+    nightly.py gates itself on preflight --code. As a files check it failed
+    --code on every page built before this code, which stopped the nightly
+    before build_all -- the one step that would have rebuilt the pages. The
+    builder's own behaviour is held under --code by the build checks above.
+    """
+    pages = sorted(Path("site/town").glob("*.html"))
+    if not pages:
+        return "skip", "site/town is not built"
+    P = imp("parse_officials")
+    if P is None:
+        return "skip", "parse_officials.py does not import"
+    import html as _html
+    bad = []
+    for f in pages:
+        h = f.read_text(encoding="utf-8")
+        for m in re.findall(r'href="mailto:([^"]*)"', h):
+            if not P.EMAIL_OK.match(_html.unescape(m)):
+                bad.append(f"{f.name}: mailto {m!r}")
+        for t in re.findall(r'href="tel:([^"]*)"', h):
+            if not re.fullmatch(r"\+1\d{10}(?:;ext=\d+)?", t):
+                bad.append(f"{f.name}: tel {t!r}")
+        seats = re.findall(r'<span class="offseat">([^<]*)</span>', h)
+        if seats.count("Town or city clerk") > 1:
+            bad.append(f"{f.name}: {seats.count('Town or city clerk')} clerk rows")
+        for s in seats:
+            if s != "Town or city clerk" and re.search(r"\b(?:town|city) clerk\b", s, re.I):
+                bad.append(f"{f.name}: NHDOT's {s!r} beside the Secretary of State's clerk")
+    assert not bad, (
+        f"{len(bad)} problems on the built town pages -- rebuild them with "
+        "build_town_pages.py:\n  " + "\n  ".join(bad[:12]))
+    return "ok", (f"{len(pages)} pages, every mailto an address, every tel "
+                  "dialable, no second clerk")
+
+
 @check("files", "every correction still corrects what the source actually says")
 def _corrections_still_apply():
     """A correction outlives the thing it corrects, and that is the danger.
