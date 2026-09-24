@@ -946,6 +946,9 @@ footer .in{max-width:1180px;margin:0;padding:0 var(--sp-8)}
 font-weight:600;color:var(--ink-2);margin:0 0 var(--sp-4)}
 footer .attrib{margin:0;max-width:62ch;font-family:var(--serif);
 font-size:var(--t-ui);line-height:1.6}
+/* The artist's credit, which her licence asks for in the footer of every
+   page (and on About): a line under the attribution, in its voice. */
+footer .logocredit{margin:var(--sp-4) 0 0;font-size:var(--t-sm);color:var(--ink-2)}
 footer .attrib b{color:var(--ink);font-weight:600}
 /* AN EXTERNAL LINK SAYS SO. Settled in the footer artifact and wanted
    generally; it was never implemented, so "Source on GitHub" and the feedback
@@ -3497,6 +3500,11 @@ padding:var(--sp-8) var(--sp-8) var(--sp-12)}
 :where(body.pg) h1{font-size:var(--t-title);font-weight:600;letter-spacing:-.015em;margin:0 0 var(--sp-3)}
 :where(body.pg) h2{font-size:var(--t-lead);font-weight:600;margin:var(--sp-9) 0 var(--sp-4)}
 :where(body.pg) h3{font-size:var(--t-ui);font-weight:600;margin:var(--sp-7) 0 var(--sp-4)}
+/* A quotation in someone else's words -- the artist's, on About -- set off
+   by a rule rather than a box, so it reads as quoted and not as a note. */
+:where(body.pg) blockquote.artist{margin:var(--sp-5) 0 0;padding:0 0 0 var(--sp-6);
+border-left:3px solid var(--rule-2);font-family:var(--serif);color:var(--ink-2)}
+:where(body.pg) blockquote.artist p{margin:0 0 var(--sp-4)}
 :where(body.pg) p{margin:0 0 var(--sp-5)}
 /* 34em is 68 characters at the body size. Without it the lead ran
    to 148 and the footer to 182 on a 1440px screen. */:where(body.pg) .lead{font-family:var(--serif);font-size:var(--t-lead);line-height:1.65;
@@ -3940,7 +3948,13 @@ clip:rect(0 0 0 0);white-space:nowrap;border:0}
    paints backgrounds away and would leave an empty heading.
    Centred in its column, as the person asked the same evening; the lead and
    the search under it keep their own alignment. */@supports ((-webkit-mask-image:url(x)) or (mask-image:url(x))){
-:where(body.pg) h1.lockup{width:min(100%,280px);aspect-ratio:1039/479;margin:var(--sp-1) auto var(--sp-6);
+/* THE ARTIST'S STACKED LOCKUP (24 September): Debra Caplan's drawing with
+   the name in two lines, 1365x725 once cut to its ink, at 360px in the
+   478px middle column -- a detailed drawing needs the room the clipart did
+   not. The box is her proportions; on a checkout without her files
+   (assets/licensed/ is gitignored) the clipart lockup is fitted inside it
+   by the mask's contain rather than stretched. */
+:where(body.pg) h1.lockup{width:min(100%,360px);aspect-ratio:1365/725;margin:var(--sp-1) auto var(--sp-6);
     background:var(--ink);
     -webkit-mask:url(/lockup.png) center/contain no-repeat;
     mask:url(/lockup.png) center/contain no-repeat}

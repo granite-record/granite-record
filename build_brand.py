@@ -14,10 +14,12 @@ the next build and is never in the repository. The drawn originals live in
 which `build_pages.py` copies into `site/` beside the pages. One source, one
 copy step, and the originals are recoverable.
 
-The logo is TEMPORARY. It is an Old Man of the Mountain made from licensed
-clipart, good to use and likely to change, and the whole point of keeping the
-originals and this script is that replacing it later is one command rather
-than an archaeology exercise.
+The clipart below is now the SMALL mark. Since 24 September the logo proper is
+Debra Caplan's drawing (see write_licensed): her lockups draw the home page's
+heading and the link cards into assets/licensed/, which is gitignored with
+brand/licensed/, and build_pages.py lays them over these. The favicon, the tab
+icons and the header's mark stay this clipart Old Man of the Mountain, which
+reads at 16 to 32 pixels where the detailed drawing does not.
 
 WHAT IS DERIVED, AND WHY EACH ONE
 
@@ -217,15 +219,22 @@ LABEL_FONTS = ("C:/Windows/Fonts/arialbd.ttf",
 
 def write_og_sections():
     """og-<kind>.png, 1200x630: the logo above, the kind of page below."""
+    from PIL import Image
+    grey = Image.open(need(BRAND / "logo-on-white.png")).convert("L")
+    box = grey.point(lambda v: 255 - v).getbbox()
+    src = Image.open(BRAND / "logo-on-white.png").convert("RGB").crop(box)
+    _section_cards(src, OUT)
+    return "section cards: " + ", ".join(OG_SECTIONS)
+
+
+def _section_cards(src, out):
+    """Draw every og-<kind>.png from one ink-on-white logo into out."""
     import os
     from PIL import Image, ImageDraw, ImageFont
     font_path = next((f for f in LABEL_FONTS if os.path.exists(f)), None)
     if not font_path:
         sys.exit("No bold sans font for the section cards' labels: add one to LABEL_FONTS.")
     font = ImageFont.truetype(font_path, 30)
-    grey = Image.open(need(BRAND / "logo-on-white.png")).convert("L")
-    box = grey.point(lambda v: 255 - v).getbbox()
-    src = Image.open(BRAND / "logo-on-white.png").convert("RGB").crop(box)
     W, H = 1200, 630
     k = min(W * 0.78 / src.width, H * 0.60 / src.height)
     im = src.resize((int(src.width * k), int(src.height * k)), Image.LANCZOS)
@@ -239,8 +248,7 @@ def write_og_sections():
         for ch, w in zip(label, widths):
             draw.text((x, top + im.height + 58), ch, font=font, fill=(70, 74, 72))
             x += w + 3
-        card.save(OUT / name, optimize=True)
-    return "section cards: " + ", ".join(OG_SECTIONS)
+        card.save(out / name, optimize=True)
 
 
 def write_lockup():
@@ -260,6 +268,71 @@ def write_lockup():
     im.save(OUT / "lockup.png", optimize=True)
     return f"lockup.png {alpha.width}x{alpha.height}, cut to the ink"
 
+
+# THE ARTIST'S LOGO (24 September 2026). Debra Caplan of Peterborough drew the
+# mark; her two lockups -- the drawing with "Granite Record" on one line, and
+# stacked -- are licensed to the project. The person asked that her files never
+# be in the public repository, so they live in brand/licensed/ and everything
+# drawn from them goes to assets/licensed/, and both are gitignored.
+# build_pages.py lays assets/licensed/ over assets/ when it is there.
+#
+# WHAT THE DRAWING IS USED FOR, AND WHAT IT IS NOT. The home page's heading
+# (the stacked lockup, in the narrow middle column) and the link cards (the
+# one-line lockup, which fits a 1200x630 card). The favicon, the tab icons and
+# the header's 24px mark stay the clipart above: the person judged the detailed
+# drawing does not read at small sizes.
+LICENSED = BRAND / "licensed"
+LICENSED_OUT = OUT / "licensed"
+
+
+def _licensed(stem):
+    return next((LICENSED / f"{stem}{ext}" for ext in (".png", ".webp")
+                 if (LICENSED / f"{stem}{ext}").exists()), None)
+
+
+def _ink(path):
+    """The ink of a lockup as an alpha channel, cut to the ink's own box.
+
+    Her lockups arrive as black ink on a transparent ground, so the alpha is
+    already the ink; a copy on a white ground is read by darkness instead, the
+    way write_lockup reads the clipart.
+    """
+    from PIL import Image
+    im = Image.open(path).convert("RGBA")
+    alpha = im.getchannel("A")
+    if alpha.getextrema()[0] == 255:
+        alpha = im.convert("L").point(lambda v: 255 - v)
+    box = alpha.getbbox()
+    if not box:
+        sys.exit(f"{path.relative_to(ROOT)} has no ink")
+    return alpha.crop(box)
+
+
+def write_licensed():
+    """The home page's lockup and the link cards, from the artist's lockups."""
+    from PIL import Image
+    stacked, wide = _licensed("lockup-stacked"), _licensed("lockup-wide")
+    if not (stacked and wide):
+        return None
+    LICENSED_OUT.mkdir(parents=True, exist_ok=True)
+    a = _ink(stacked)
+    im = Image.new("LA", a.size, 0)
+    im.putalpha(a)
+    im.save(LICENSED_OUT / "lockup.png", optimize=True)
+    # The link cards want ink on white, so the one-line lockup's alpha is
+    # painted black onto a white card.
+    aw = _ink(wide)
+    ink = Image.new("RGB", aw.size, (255, 255, 255))
+    ink.paste((0, 0, 0), (0, 0), aw)
+    W, H = 1200, 630
+    card = Image.new("RGB", (W, H), (255, 255, 255))
+    k = min(W * 0.84 / ink.width, H * 0.70 / ink.height)
+    big = ink.resize((int(ink.width * k), int(ink.height * k)), Image.LANCZOS)
+    card.paste(big, ((W - big.width) // 2, (H - big.height) // 2))
+    card.save(LICENSED_OUT / "og.png", optimize=True)
+    _section_cards(ink, LICENSED_OUT)
+    return (f"licensed: lockup.png {a.width}x{a.height} (stacked), og.png and "
+            f"{len(OG_SECTIONS)} section cards (one line) -> assets/licensed/")
 
 MANIFEST = """{
   "name": "Granite Record",
@@ -300,6 +373,8 @@ def main():
     said.append(write_og())
     said.append(write_og_sections())
     said.append(write_lockup())
+    said.append(write_licensed() or "licensed: none on this machine, so the "
+                "clipart is used everywhere (brand/licensed/ is gitignored)")
     (OUT / "site.webmanifest").write_text(MANIFEST, encoding="utf-8")
     said.append("site.webmanifest")
     for line in said:
