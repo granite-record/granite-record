@@ -582,6 +582,98 @@ def every_week(weeks, today):
     return added
 
 
+# ---- the official documents behind a card ----------------------------------
+#
+# A meeting's notice is printed in the House or Senate Calendar, and a
+# sitting is recorded in its Journal. Linking both lets a reader check a card
+# against the General Court's own document, which is the standard a clerk
+# would apply. ONLY ADDRESSES THE RECORD HOLDS: archive/queue.csv names the
+# viewer address of every calendar and journal fetched, and nothing here
+# builds one from a pattern.
+CAL_WORD = {"HC": "House Calendar", "SC": "Senate Calendar"}
+JOURNAL_WORD = {"H": "House Journal", "S": "Senate Journal"}
+
+
+def _words(s):
+    return " ".join(re.findall(r"[a-z0-9]+", (s or "").lower()))
+
+
+def first_notices(path=Path("meetings.json")):
+    """({(date, BILL): "HC 32 2026"}, {(date, name words): key}).
+
+    meetings.json is calendar_meetings.py's reading of the calendar PDFs on
+    disk, and each row names the calendar that printed it and the date that
+    calendar came out. The same notice is reprinted week after week -- this
+    week's Solid Waste Working Group is in HC 29, 30, 31 and 32 -- so the one
+    linked is the calendar that FIRST printed it. A row with no bill is keyed
+    on the committee's name, compared word for word.
+    """
+    try:
+        rows = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}, {}
+    by_bill, by_name = {}, {}
+    for r in rows if isinstance(rows, list) else []:
+        date = (r.get("date") or "")[:10]
+        m = re.match(r"^(\d{4})/(HC|SC)0*(\d+)([A-Z]?)$", r.get("calendar") or "")
+        if date < FROM or not m:
+            continue
+        key = f"{m.group(2)} {int(m.group(3))}{m.group(4)} {m.group(1)}"
+        rank = (r.get("noticed") or "9999", int(m.group(3)))
+        bill = re.sub(r"\s+", "", r.get("bill") or "").upper()
+        k, into = ((date, bill), by_bill) if bill else (
+            (date, _words(r.get("committee"))), by_name)
+        if k not in into or rank < into[k][0]:
+            into[k] = (rank, key)
+    return ({k: v[1] for k, v in by_bill.items()},
+            {k: v[1] for k, v in by_name.items()})
+
+
+def doc_links(weeks, cal_urls, notices, journal_keys, sittings):
+    """{meeting_key: [(label, address)]} -- the notice's calendar for a
+    committee's card, the journal for a floor card.
+
+    `sittings` is {(body, date): "HJ 16"}, the journal each sitting's own rows
+    cite (session_days); build_site_v2.journal_url turns that into a file only
+    where the number, the year and the file's own date agree.
+    """
+    import build_site_v2 as B2
+    by_bill, by_name = notices
+    out, n_cal, n_jnl = {}, 0, 0
+    floors = {v: k for k, v in FLOOR.items()}
+    for days in weeks.values():
+        for date, day in days.items():
+            for key, rows in day.items():
+                links = []
+                body = floors.get(key[1])
+                if body:
+                    url = B2.journal_url(date, sittings.get((body, date)), journal_keys)
+                    if url:
+                        links.append((f"{JOURNAL_WORD[body]} "
+                                      f"{sittings[(body, date)].split()[-1].lstrip('0')}",
+                                      url))
+                        n_jnl += 1
+                else:
+                    keys = []
+                    for r in rows:
+                        k = (by_bill.get((date, (r.get("bill") or "").upper()))
+                             if r.get("bill") else by_name.get((date, _words(key[1]))))
+                        if k and k in cal_urls and k not in keys:
+                            keys.append(k)
+                    for k in sorted(keys, key=lambda x: (x.split()[2], x.split()[0],
+                                                         int(re.match(r"\d+", x.split()[1]).group(0)))):
+                        # The year only where it is not the meeting's own: a
+                        # January hearing noticed in December's calendar.
+                        pre, num, yr = k.split()
+                        links.append((f"{CAL_WORD[pre]} {num}"
+                                      + (f" of {yr}" if yr != date[:4] else ""),
+                                      cal_urls[k]))
+                    n_cal += bool(keys)
+                if links:
+                    out[key] = links
+    return out, n_cal, n_jnl
+
+
 def in_order(day):
     """A day's meeting keys in the order they start, untimed ones last.
 
@@ -609,7 +701,7 @@ def sitting_pages(site):
 
 
 def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
-              today, sessions=frozenset(), study_note=""):
+              today, sessions=frozenset(), study_note="", docs=None):
     """Write one week's page. `study_note` says where the study and
     statutory committee meetings come from; empty when there are none, and
     then neither the toggle nor the description mentions them."""
@@ -649,7 +741,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     # section under it. On the home page the days sit under "Coming up"
     # and stay h3.
     body, _missing = BP.cal_days(days, meets, titles, years, code, when, S.E,
-                                 level=2, sessions=sessions)
+                                 level=2, sessions=sessions, docs=docs)
 
     n = sum(len(v) for v in days.values())
     bills = len({(r["date"], r["bill"]) for rows in meets.values()
@@ -801,11 +893,28 @@ def main():
 
     sits = sitting_pages(site)
     print(f"  {len(sits):,} sitting pages on disk to link to")
+
+    import build_site_v2 as B2
+    cal_urls = B2.calendar_keys_from_queue()
+    journal_keys = B2.journal_keys_from_queue()
+    try:
+        import session_days
+        sittings = {k: v.journal for k, v in session_days.load().items()
+                    if k[1] >= FROM and v.journal}
+    except Exception as e:  # the journal links are an addition; the week stands without them
+        print(f"  WARNING: session_days would not load ({e!r}); no journal links")
+        sittings = {}
+    docs, n_cal, n_jnl = doc_links(weeks, cal_urls, first_notices(), journal_keys, sittings)
+    # SILENCE IS NOT SUCCESS: printed either way, so a queue or meetings.json
+    # that stopped being read shows as a zero rather than as nothing.
+    print(f"  {n_cal:,} meetings linked to the calendar that printed their notice, "
+          f"{n_jnl:,} floor sittings to their journal ({len(cal_urls):,} calendars "
+          f"and {len(journal_keys):,} journals in archive/queue.csv)")
     urls, total = [], 0
     for i, key in enumerate(order):
         total += week_page(site, base, key, weeks, order, i,
                            titles, years, code, urls, today, sits,
-                           study_note=study_note)
+                           study_note=study_note, docs=docs)
 
     # Every week is rebuilt on every run, so a calendar address in the sitemap
     # that this run did not write -- the current week's dated copy, a week

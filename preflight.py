@@ -9564,6 +9564,100 @@ def _calendar_study_committees():
                   "committee's card; the toggle, the dated note and a true description")
 
 
+@check("frontend", "a calendar card links the calendar that first printed its notice, and a sitting its own journal")
+def _calendar_document_links():
+    """No calendar card and none of 1,601 sitting pages linked a source PDF.
+
+    The addresses were on disk all along: archive/queue.csv names the viewer
+    address of every calendar and journal fetched, and meetings.json names
+    the calendar each notice was printed in. The traps are both about WHICH
+    document. A notice is reprinted week after week, so the link is the
+    calendar that printed it first. And a sitting's journal is found by the
+    number its own rows cite, never by its date: the December organization
+    day opens the next year's numbering while a December session in an odd
+    year does not, so "HJ 19" of 17 December 2025 is filed under 2025 and a
+    date-based rule would have sent it to 2026's.
+
+    This writes a queue and a meetings.json and wants the earliest notice
+    linked, a number answered only where the file's own date agrees, an
+    ambiguous number answering nothing, and the card drawing the link.
+    """
+    import html as _h
+    import build_calendar as BC
+    import build_pages as BP
+    import build_site_v2 as B2
+    tmp = Path(tempfile.mkdtemp(prefix="gr-docs-"))
+    try:
+        V = "https://gc.nh.gov/house/calendars_journals/viewer.aspx?fileName="
+        q = tmp / "queue.csv"
+        rows = [("H", "journal", "2025", "HJ 19 December 17, 2025.pdf",
+                 V + "journals%5C2025%5CHJ%2019", r"journals\2025\HJ 19 December 17, 2025.pdf"),
+                ("H", "journal", "2026", "HJ 16 August 19, 2026.pdf",
+                 V + "journals%5C2026%5CHJ%2016", r"journals\2026\HJ 16 August 19, 2026.pdf"),
+                ("S", "journal", "2026", "SJ 15.pdf",
+                 V + "journals%5C2026%5CSJ%2015", r"journals_senate\2026\SJ 15.pdf"),
+                ("H", "journal", "2012", "HJ 5 March 1, 2012.pdf",
+                 V + "journals%5C2012%5CHJ%205", r"journals\2012\HJ 5 March 1, 2012.pdf"),
+                ("H", "calendar", "2026", "HC 29.pdf", V + "calendars%5C2026%5CHC%2029.pdf",
+                 r"calendars\2026\HC029.pdf"),
+                ("H", "calendar", "2026", "HC 32.pdf", V + "calendars%5C2026%5CHC%2032.pdf",
+                 r"calendars\2026\HC032.pdf")]
+        with q.open("w", encoding="utf-8", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(["chamber", "kind", "year", "name", "url", "path", "state",
+                        "attempts", "error", "bytes", "fetched"])
+            for r in rows:
+                w.writerow(list(r) + ["held", "0", "", "1", "2026-09-08"])
+        jk = B2.journal_keys_from_queue(str(q))
+        assert set(jk) == {"HJ 19 2025", "HJ 16 2026", "SJ 15 2026"}, (
+            f"journal keys read as {sorted(jk)}: 2025 on, keyed by number and folder year")
+        assert B2.journal_url("2025-12-17", "HJ 19", jk).endswith("HJ%2019"), (
+            "a December session in an odd year is not found in its own year's journals")
+        assert B2.journal_url("2026-08-19", "HJ 16", jk).endswith("HJ%2016")
+        assert B2.journal_url("2026-08-20", "HJ 16", jk) == "", (
+            "a sitting was linked to a journal whose own name gives another date")
+        assert B2.journal_url("2026-08-19", "SJ 15", jk).endswith("SJ%2015"), (
+            "a journal whose name states no date is not found by its number and series")
+        assert B2.journal_url("2026-08-19", "", jk) == ""
+
+        mj = tmp / "meetings.json"
+        mj.write_text(json.dumps([
+            {"date": "2026-09-25", "committee": "Solid Waste Working Group", "bill": "",
+             "calendar": "2026/HC032", "noticed": "2026-09-04"},
+            {"date": "2026-09-25", "committee": "Solid Waste Working Group", "bill": "",
+             "calendar": "2026/HC029", "noticed": "2026-08-07"},
+            {"date": "2026-09-24", "committee": "Commerce", "bill": "HB1753",
+             "calendar": "2026/HC032", "noticed": "2026-09-04"}]), encoding="utf-8")
+        notices = BC.first_notices(mj)
+        assert notices[1].get(("2026-09-25", "solid waste working group")) == "HC 29 2026", (
+            f"a reprinted notice links {notices[1]}, not the calendar that printed it first")
+        weeks = BC.weeks_from([
+            {"term": "2025-2026", "bill": "HB1753", "body": "H", "kind": "executive session",
+             "date": "2026-09-24", "time": "10:30", "committee": "Commerce", "venue": "GP 228"},
+            {"study": True, "bill": "", "kind": "statutory committee", "date": "2026-09-25",
+             "time": "09:30", "committee": "Solid Waste Working Group", "venue": "NHDES"},
+            {"term": "2025-2026", "bill": "HB9", "body": "H", "kind": "floor debate",
+             "date": "2026-08-19", "time": "", "committee": "", "venue": ""}], names={})
+        cal_urls = B2.calendar_keys_from_queue(str(q))
+        docs, n_cal, n_jnl = BC.doc_links(weeks, cal_urls, notices, jk,
+                                          {("H", "2026-08-19"): "HJ 16"})
+        assert docs.get(("2026-09-24", "Commerce")) == [
+            ("House Calendar 32", V + "calendars%5C2026%5CHC%2032.pdf")], docs
+        assert docs.get(("2026-09-25", "Solid Waste Working Group")) == [
+            ("House Calendar 29", V + "calendars%5C2026%5CHC%2029.pdf")], docs
+        assert docs.get(("2026-08-19", "House floor"), [("", "")])[0][0] == "House Journal 16", docs
+        assert (n_cal, n_jnl) == (2, 1), (n_cal, n_jnl)
+        key = ("2026-09-24", "Commerce")
+        page, _m = BP.cal_days({key[0]: [key]}, {key: weeks["2026-W39"][key[0]][key]},
+                               {}, {}, {}, lambda d: (d, ""), _h.escape, docs=docs)
+        assert f'href="{_h.escape(V)}calendars%5C2026%5CHC%2032.pdf" rel="noopener">' \
+               "House Calendar 32 (PDF)</a>" in page, "the card does not draw its notice's link"
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("the first notice linked, journals found by number with their "
+                  "own date agreeing, and the link drawn on the card")
+
+
 @check("frontend", "the home page's Coming up is this week, the week the Calendar tab shows")
 def _coming_up_is_this_week():
     """Coming up drew a fortnight under a comment saying it drew a week.

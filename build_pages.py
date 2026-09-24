@@ -546,7 +546,7 @@ def pchip(m, esc=_cesc):
 
 
 def cal_days(days, meets, titles, years, code, when, esc, level=3,
-             sessions=None):
+             sessions=None, docs=None):
     """The day blocks and their meeting cards, for any set of days.
 
     Split out of calendar_html on 18 September so the calendar PAGE draws the
@@ -744,6 +744,15 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                 floor = None
             elif floor and sessions is None:
                 floor = None
+            # THE OFFICIAL DOCUMENT, where the caller has one: the calendar
+            # that printed the notice, or the journal of a floor sitting.
+            # Addresses the record holds, passed in; never built here.
+            got = (docs or {}).get(key) or []
+            if got:
+                html.append('<p class="calmore caldocs">'
+                            + "".join(f'<a href="{esc(u)}" rel="noopener">'
+                                      f'{esc(w)} (PDF)</a>' for w, u in got)
+                            + "</p>")
             # A study committee that shares a name with a standing one is not
             # that committee, so its card does not borrow the page.
             cc = None if study else code.get(cmte.strip().lower())
