@@ -2241,11 +2241,15 @@ column-gap:var(--sp-3);align-items:baseline;padding:var(--sp-1) 0}
 .jl .jb{font-weight:600}
 .jl .jd{color:var(--ink-2);font-size:var(--t-sm);white-space:nowrap;
 font-variant-numeric:tabular-nums}
+/* The lines "Show 3 more" holds back. `.jl li` sets display:grid, which
+   outranks the browser's own [hidden] rule, so this has to say it. */
+.jl li[hidden]{display:none}
 .jl .jmore{display:block;padding-left:calc(1.1em + var(--sp-3))}
 .jl .jmore button:hover{text-decoration:underline}
 @media (max-width:620px){
   .jl li{grid-template-columns:1.1em minmax(0,1fr)}
   .jl .jt,.jl .jd{grid-column:2}
+  .jl .jmore button{min-height:44px}
 }
 
 /* ==================================== a legislator's page and a committee's ==

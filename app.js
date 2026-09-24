@@ -447,6 +447,8 @@ const wideEnough=typeof matchMedia==="function"
 const openGroups=new Set(wideEnough?["committee"]:[]);
 let sponsorFilter="";
 const openCards=new Set(),openTab={},detail={},segSel={},fullOpen=new Set();
+// The bills whose How it got here the reader opened past its first six lines.
+const jOpen=new Set();
 
 /* A TAB HAS AN ADDRESS, 14 September. /bill/2026/hb1442/votes opens that
    bill's Votes tab, /legislator/<who>/votes a member's, /committee/H05/sessions
@@ -512,6 +514,7 @@ try{skipHere();}catch(_){}
 function forgetCardState(){
   openCards.clear();
   fullOpen.clear();
+  jOpen.clear();
   for (const k of Object.keys(openTab)) delete openTab[k];
   for (const k of Object.keys(segSel)) delete segSel[k];
 }
@@ -1479,28 +1482,34 @@ function rsaChapters(d){
 // where it sent it round again (tabled, back to committee, the other
 // chamber's amendment refused).
 //
-// SIX LINES AT MOST. HB 2 of 2025 went through both chambers, a committee of
-// conference and the governor; the whole list is the Votes tab's. The first
-// two and the last four are kept -- where it began and how it ended -- and
-// the rest are counted between them, as a way to that tab.
+// SIX LINES UNTIL ASKED. HB 2 of 2025 went through both chambers, a committee
+// of conference and the governor. The first two and the last four are shown
+// -- where it began and how it ended -- and the rest are in the list, hidden,
+// behind "Show 3 more", which opens them where they are.
+//
+// NOT A WAY TO THE VOTES TAB. It read "and 3 more on the Votes tab", and of
+// the 2,195 bills whose list is capped, 473 hid a line that tab does not
+// have: a voice vote has no card there, and HB 396 of 1989's Votes tab reads
+// "No roll call votes on this bill." HB 1102 of 2026 hid both chambers'
+// voice votes adopting its conference report. The hidden lines are this
+// list's own, so this list is where they open.
 const JMARK={p:"✓",x:"✕",h:"↺"};
 const JBODY={H:"House",S:"Senate",G:"Governor",L:"Law",V:"Voters"};
 const JOURNEY_SHOWN=6;
 function journeyList(b,d){
   const st=((d.journey||{}).steps)||[];
   if(!st.length)return "";
-  const line=s=>`<li class="j-${esc(s.mark)}"><span class="jg" aria-hidden="true">${
-    JMARK[s.mark]||""}</span><span class="jb">${esc(JBODY[s.body]||s.body)}</span><span
-    class="jt">${esc(s.text)}</span><span class="jd">${
-    s.date?esc(railDay(s.date,true)):""}</span></li>`;
-  let rows=st.map(line);
-  if(st.length>JOURNEY_SHOWN){
-    const more=st.length-JOURNEY_SHOWN;
-    rows=[...rows.slice(0,2),
-      `<li class="jmore"><button type="button" class="link" data-totab="1">and ${
-        more} more on the Votes tab</button></li>`,
-      ...rows.slice(st.length-(JOURNEY_SHOWN-2))];
-  }
+  const k=dkey(b.id);
+  const cut=st.length>JOURNEY_SHOWN&&!jOpen.has(k);
+  const hide=i=>cut&&i>=2&&i<st.length-(JOURNEY_SHOWN-2);
+  const line=(s,i)=>`<li class="j-${esc(s.mark)}"${hide(i)?" hidden":""}><span class="jg"
+    aria-hidden="true">${JMARK[s.mark]||""}</span><span class="jb">${
+    esc(JBODY[s.body]||s.body)}</span><span class="jt">${esc(s.text)}</span><span
+    class="jd">${s.date?esc(railDay(s.date,true)):""}</span></li>`;
+  const rows=st.map(line);
+  if(cut)rows.splice(st.length-(JOURNEY_SHOWN-2),0,
+    `<li class="jmore"><button type="button" class="link" data-jmore="${esc(k)}">Show ${
+      st.length-JOURNEY_SHOWN} more</button></li>`);
   return `<ul class="jl">${rows.join("")}</ul>`;
 }
 
@@ -4104,12 +4113,6 @@ document.addEventListener("click",e=>{
   if(vm){PAGE.vshow=(PAGE.vshow||VOTES_SHOWN)+VOTES_SHOWN;renderPage();return;}
   const ct=e.target.closest(".card .tab[data-t]");
   if(ct){openTab[ct.closest(".card").dataset.id]=ct.dataset.t;renderPage();return;}
-  const tt=e.target.closest(".card [data-totab]");
-  if(tt){const cid=tt.closest(".card").dataset.id;openTab[cid]=tt.dataset.totab;
-    renderPage();
-    const to=document.getElementById(`tab_${cid}_${tt.dataset.totab}`);
-    if(to)to.focus();
-    return;}
   const head=e.target.closest(".chead");
   if(head&&!e.target.closest("a")){
     const id=head.closest(".card").dataset.id;
@@ -4613,6 +4616,18 @@ document.addEventListener("click",e=>{
     repaint();return;}
   const f=e.target.closest("[data-full]");
   if(f){const k=f.dataset.full;fullOpen.has(k)?fullOpen.delete(k):fullOpen.add(k);repaint();return;}
+  // "Show 3 more", in How it got here: the hidden lines open where they are,
+  // with no redraw, and the keyboard lands on the first of them, since the
+  // button it was on is gone. jOpen keeps them open through the next redraw.
+  const jm=e.target.closest("[data-jmore]");
+  if(jm){
+    jOpen.add(jm.dataset.jmore);
+    const ul=jm.closest(".jl");
+    const shut=ul?[...ul.querySelectorAll("li[hidden]")]:[];
+    for(const li of shut)li.hidden=false;
+    jm.closest("li").remove();
+    if(shut[0]){shut[0].tabIndex=-1;shut[0].focus({preventScroll:true});}
+    return;}
   const g=e.target.closest(".fhead");
   if(g){openGroups.has(g.dataset.g)?openGroups.delete(g.dataset.g):openGroups.add(g.dataset.g);renderFacets();return;}
   // The phone's filter disclosure. The class goes on .shell rather than on
@@ -4647,17 +4662,6 @@ document.addEventListener("click",e=>{
     if(term===ALL_TERMS){const own=head.closest(".card").querySelector("a.detail");
       if(own){location.href=own.href;return;}}
     if(openCards.has(id)){openCards.delete(id);render();}else openBill(id);return;}
-  // "and 4 more on the Votes tab", in How it got here: the tab, and the
-  // keyboard's place on it, since the button itself is redrawn away.
-  const tt=e.target.closest("[data-totab]");
-  if(tt){
-    const cid=tt.closest(".card").dataset.id;
-    openTab[cid]=tt.dataset.totab;
-    if(focused===cid)tabAddress(slugOf(BILL_TABS,tt.dataset.totab));
-    render();
-    const to=document.getElementById(`tab_${cid}_${tt.dataset.totab}`);
-    if(to)to.focus();
-    return;}
   const tab=e.target.closest(".tab");
   if(tab){
     const cid=tab.closest(".card").dataset.id;

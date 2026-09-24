@@ -4541,7 +4541,7 @@ def _journey_bills(B):
         jrail = B.journey_rail(intro, steps, rail, bid, status)
         for s in steps:
             s.pop("short", None)
-        row = {"id": bid, "n": re.sub(r"(\d)", r" \1", bid, 1), "title": "a bill",
+        row = {"id": bid, "n": re.sub(r"(\d)", r" \1", bid, count=1), "title": "a bill",
                "year": 2025, "term": "2025-2026", "kind": kind, "status": status,
                "passage": rail, "committees": [], "sponsor": ""}
         # The status page's per-chamber fields, which the records still
@@ -4566,8 +4566,8 @@ def _journey_reads(build_site_v2):
     def ev(body, date, raw, typ="floor", **kw):
         return {"body": body, "date": date, "raw": raw, "type": typ, "cancelled": False, **kw}
 
-    def run(bid, *evs, chapter="", law=""):
-        intro, steps = B.journey({"events": list(evs)}, bid, [], chapter, law)
+    def run(bid, *evs, chapter="", law="", term=""):
+        intro, steps = B.journey({"events": list(evs)}, bid, [], chapter, law, term)
         return intro, [(s["date"], s["body"], s["act"], s["text"]) for s in steps]
 
     bad = []
@@ -4701,10 +4701,124 @@ def _journey_reads(build_site_v2):
              ev("S", "1993-03-25", "PASSED VV; HJ46,P217 + 221", cite="HJ 46"))[1],
          [("1993-03-03", "H", "passed", "Passed with an amendment"),
           ("1993-03-25", "S", "passed", "Passed on a voice vote")], "HB426 1993")
+
+    # A BILL KILLED BY RULE AT ADJOURNMENT DIED THE DAY THE ROW STATES, not
+    # the day it was entered: 427 of 2019-2020's were entered in September
+    # 2021 and read as killed a year after the term ended. HB 201's row
+    # states 2021 too, and neither day is in the term, so it goes undated.
+    died = "Killed under Senate Rule 3-23, still on the table at adjournment"
+    want(run("HB1496", ev("S", "2020-06-16", "Introduced 06/16/2020, and Laid on Table, MA, VV; "
+                                             "06/16/2020"),
+             ev("S", "2021-09-09", "Inexpedient to Legislate, Senate Rule 3-23, Adjournment "
+                                   "09/16/2020", "other"), term="2019-2020")[1],
+         [("2020-06-16", "S", "tabled", "Laid on the table on a voice vote"),
+          ("2020-09-16", "S", "died", died)], "HB1496 2020")
+    want(run("HB201", ev("S", "2020-06-16", "Vacated from Committee and Laid on Table, MA, VV; "
+                                            "06/16/2020"),
+             ev("S", "2021-09-09", "Inexpedient to Legislate, Senate Rule 3-23, Adjournment "
+                                   "09/16/2021", "other"), term="2019-2020")[1][-1],
+         ("", "S", "died", died), "HB201 2020")
+    # And an introduction whose row states the clerk's year is undated.
+    want(run("SB53", ev("S", "1999-01-28", "Introduction and referring Public Institutions, "
+                                           "Health and Human Services 1/28/98", "introduced"),
+             term="1999-2000")[0], "", "SB53 1999 introduced")
+
+    # A CONFERENCE REPORT FILED IS NOT A VOTE, and "As Passed by the House
+    # {2199}" names the version it proposes. SB 32 of 2008 read as the House
+    # passing the bill; HB 429 of 2007 as the Senate passing it twice.
+    want(run("SB32", ev("H", "2008-05-30", "Conference Committee Report #2084, As Passed by "
+                                           "the Senate: Filed", "other"),
+             ev("H", "2008-06-04", "Conference Committee Report #2084 Failed, VV", "other"))[1],
+         [("2008-06-04", "H", "conf_rejected", "Rejected the conference report on a voice vote")],
+         "SB32 2008")
+    want(run("HB429", ev("S", "2007-06-21", "Conference Committee Report; As Passed by the "
+                                            "House {2199}, Filed", "other"),
+             ev("S", "2007-06-27", "As Passed by the House {2199} RC 13Y-11N, Adopted",
+                "other"))[1],
+         [("2007-06-27", "S", "conf_adopted", "Adopted the conference report, 13–11")],
+         "HB429 2007")
+    want(run("SB103", ev("H", "2021-06-16", "Conference Committee Report #2021-1946c Filed "
+                                            "06/10/2021; Version Adopted by Senate", "other"))[1],
+         [], "SB103 2021")
+    # A vote the clerk wrote in the same row as the filing is still a vote.
+    want(run("HB25", ev("S", "1991-06-26", "CONF COMM REPORT (S AM + NEW AM) FILED; CONF COMM "
+                                           "REPORT ADOPTED RC(19-3); SJ33,P661-665"))[1],
+         [("1991-06-26", "S", "conf_adopted", "Adopted the conference report, 19–3")],
+         "HB25 1991")
+
+    # THE CHAPTER IS NOT A THIRD VOTE ON THE VETO. HB 455 of 2019's House
+    # overrode once, 247-123.
+    want([s[:3] for s in run(
+        "HB455", ev("H", "2019-05-03", "Vetoed by Governor Sununu 05/03/2019", "governor"),
+        ev("H", "2019-05-23", "Veto Overridden 05/23/2019: RC 247-123 by Required Two-Thirds "
+                              "Vote", "veto_override"),
+        ev("S", "2019-05-30", "Notwithstanding the Governor's Veto, Shall HB 455-FN Become Law: "
+                              "RC 16Y-8N, Veto Overridden by necessary two-thirds vote; "
+                              "05/30/2019", "other"),
+        ev("H", "2019-05-30", "Veto Overriden 05/30/2019: Eff: 05/30/2019; Chapter 42",
+           "other"), chapter="42")[1]],
+         [("2019-05-03", "G", "vetoed"), ("2019-05-23", "H", "override"),
+          ("2019-05-30", "S", "override"), ("", "L", "law")], "HB455 2019")
+
+    # AN ANSWER AFTER WHAT IT ANSWERS, whichever chamber's row was entered
+    # first that day: HB 10 of 2025's House concurrence (1:52) and the
+    # Senate's passage with that amendment (2:48).
+    want([s[1:3] for s in run(
+        "HB10", ev("H", "2025-06-05", "House Concurs with Senate Amendment 2025-2150s (Rep. "
+                                      "DeSimone): MA RC 210-160 06/05/2025"),
+        ev("S", "2025-06-05", "Ought to Pass with Amendments #2025-2150s and #2025-2646s, MA, "
+                              "VV; OT3rdg; 06/05/2025"))[1]],
+         [("S", "passed"), ("H", "concurred")], "HB10 2025 order")
+
+    # A VOTE TO OVERRIDE IS COUNTED FOR THE OVERRIDE, and a failed
+    # supermajority says what it fell short of.
+    want(run("HB358", ev("H", "2025-12-17", "Veto Sustained 12/17/2025: RC 176-175 Lacking "
+                                            "Necessary Two-Thirds Vote"))[1][-1][3],
+         "Veto sustained, 176–175 to override, short of two thirds", "HB358 2025")
+    want(run("CACR4", ev("H", "2026-01-07", "Ought to Pass with Amendment 2025-2937h: MF RC "
+                                            "184-157 Lacking Necessary Three-Fifths Vote "
+                                            "01/07/2026"))[1][-1][3],
+         "Failed to pass, 184–157, short of three fifths", "CACR4 2026")
     assert not bad, "; ".join(bad)
     return "ok", ("second committees, a waived referral, enrolments, rules suspensions, "
                   "several effective dates, the day a line states, a chair's ruling, a "
-                  "motion not to adopt and a reconsidered defeat, each as the docket has it")
+                  "motion not to adopt, a reconsidered defeat, a kill at adjournment, a "
+                  "conference report filed and a chaptered override, each as the docket "
+                  "has it")
+
+
+@check("status", "an amendment offered before it was adopted keeps its outcome",
+       needs=("build_site_v2",))
+def _amendment_offered_first(build_site_v2):
+    """The Senate enters a floor amendment when it is offered and again when
+    it carries. HB 266 of 2026 (Chapter 4), in the order the clerk entered
+    them: "Sen. Birdsell Floor Amendment # 2026-0720s; 02/19/2026" at 10:23,
+    then "... # 2026-0720s, AA, VV" at 10:26. Keeping only the first row that
+    names a number, as bill_amendments did, the Bill Text tab lost "adopted"
+    and "Voice Vote" on three amendments the Senate adopted -- once the
+    history kept the clerk's order of a day's rows. HB 718 of 2025's was
+    offered on 15 May and adopted on 5 June, and the day beside "adopted" is
+    the day it was."""
+    B = build_site_v2
+
+    def ev(date, raw, motion="", vote_kind=""):
+        return {"type": "amendment", "body": "S", "date": date, "raw": raw,
+                "amendment": "", "amend_kind": "Floor Amendment", "motion": motion,
+                "vote_kind": vote_kind, "mover": "Sen. Birdsell", "cancelled": False}
+
+    got = B.bill_amendments({"events": [
+        ev("2026-02-19", "Sen. Birdsell Floor Amendment # 2026-0720s; 02/19/2026"),
+        ev("2026-02-19", "Sen. Birdsell Floor Amendment # 2026-0720s, AA, VV; 02/19/2026",
+           "AA", "VV")]}, {})
+    assert [(a["num"], a["adopted"], a["vote_kind"], a["date"]) for a in got] == [
+        ("2026-0720s", True, "VV", "2026-02-19")], f"HB 266's 2026-0720s reads {got!a}"
+    got = B.bill_amendments({"events": [
+        ev("2025-05-15", "Sen. Innis Floor Amendment # 2025-2080s; 05/15/2025"),
+        ev("2025-06-05", "Sen. Innis Floor Amendment # 2025-2080s, AA, VV; 06/05/2025",
+           "AA", "VV")]}, {})
+    assert [(a["adopted"], a["date"]) for a in got] == [(True, "2025-06-05")], (
+        f"HB 718's 2025-2080s reads {got!a}")
+    return "ok", "an offered amendment takes the outcome, and the day, of the row that decided it"
 
 
 @check("frontend", "a bill's own rail is dated from its journey, and How it got here lists it",
@@ -4731,7 +4845,7 @@ def _journey_drawn(build_site_v2):
 require("./stub.js");
 const fs = require("fs");
 const scope = (0, eval)(fs.readFileSync("./page.js", "utf8")
-  + "; ({cardHtml, renderDetail, journeyList, detail, dkey, IDX,"
+  + "; ({cardHtml, renderDetail, journeyList, detail, dkey, IDX, jOpen,"
   + " setFocused:(x)=>{focused=x;}})");
 const out = {};
 for (const [row, d] of JSON.parse(fs.readFileSync("./bills.json", "utf8"))) {
@@ -4748,6 +4862,8 @@ const many = {journey: {steps: Array.from({length: 9}, (_, i) =>
   ({date: "2025-03-0" + (i + 1), body: i % 2 ? "S" : "H", act: "passed", mark: "p",
     text: "Line " + i}))}};
 out.many = scope.journeyList({id: "HB2"}, many);
+scope.jOpen.add(scope.dkey("HB2"));
+out.manyOpen = scope.journeyList({id: "HB2"}, many);
 process.stdout.write("\\n@@" + JSON.stringify(out));
 """, encoding="utf-8")
         r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=90)
@@ -4811,12 +4927,22 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
         "a CACR's rail draws a governor, who never sees a constitutional amendment")
     assert 'class="stop s-h"><b></b><i>Voters' in got["CACR13"]["page"], (
         "CACR 13's Voters stop is not ringed while it waits for the election")
-    many = got["many"]
-    assert many.count("<li") == 7 and 'data-totab="1"' in many \
-        and "and 3 more on the Votes tab" in many, (
-            f"nine decisions are not six lines and a way to the Votes tab: {many[:200]!a}")
+    # Nine decisions: six shown and three held back IN THE LIST, behind a
+    # button that opens them there. Not a link to the Votes tab, which has no
+    # card for a voice vote -- 473 capped bills hid a line it does not have.
+    many, opened = got["many"], got["manyOpen"]
+    shown = [li for li in re.findall(r"<li[^>]*>", many) if " hidden" not in li]
+    assert many.count("<li") == 10 and len(shown) == 7 and "data-jmore=" in many \
+        and "Show 3 more" in many and "Votes tab" not in many, (
+            f"nine decisions are not six lines and three held back in place: {many[:200]!a}")
+    assert [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", li)).strip().split(" ", 2)[-1][:6]
+            for li in re.findall(r"<li[^>]*>(.*?)</li>", opened, re.S)] == \
+        [f"Line {i}" for i in range(9)] and "data-jmore" not in opened \
+        and " hidden" not in opened, (
+            f"opened, the nine decisions are not all there in order: {opened[:200]!a}")
     return "ok", ("HB 57, HB 68 and CACR 13: dated rails on their own view, the bare rail on "
-                  "the list, How it got here in place of the status rows, six lines at most")
+                  "the list, How it got here in place of the status rows, six lines until "
+                  "the rest are opened in place")
 
 
 @check("frontend", "no const is read before the line that declares it")
