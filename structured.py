@@ -35,6 +35,20 @@ Every function returns a dict; shell.page() serialises it safely.
 """
 
 JURISDICTION = "US-NH"
+# WHO PUBLISHES THE PAGE, as distinct from who made the bill. A bill page used
+# to be a single Legislation object whose @id was this site's address and whose
+# publisher was the General Court -- which told a machine reader the General
+# Court published graniterecord.org/bill/..., the one thing this site takes
+# most care never to claim. The bill is still the General Court's; the page
+# about it is Granite Record's, and says so.
+def _site(base):
+    return {"@type": "WebSite", "name": "Granite Record", "url": base + "/"}
+
+
+def _publisher(base):
+    return {"@type": "Organization", "name": "Granite Record", "url": base + "/"}
+
+
 LEGISLATURE = {"@type": "GovernmentOrganization", "name": "New Hampshire General Court",
                "url": "https://gc.nh.gov/"}
 CHAMBER = {"H": {"@type": "GovernmentOrganization", "name": "New Hampshire House of Representatives",
@@ -61,8 +75,9 @@ def bill(b, d, base, canon_path):
     prefix = m.group(0) if m else ""
     url = base + canon_path
     obj = {"@type": "Legislation",
-           "@id": url,
+           "@id": url + "#legislation",
            "url": url,
+           "mainEntityOfPage": url,
            "name": f"{b.get('n') or bid} ({b.get('year')}): {(b.get('title') or '').strip()}".strip(": "),
            "legislationIdentifier": b.get("n") or bid,
            "legislationJurisdiction": JURISDICTION,
@@ -74,7 +89,10 @@ def bill(b, d, base, canon_path):
                 if s.get("label") or s.get("name")]
     if sponsors:
         obj["sponsor"] = [{"@type": "Person", "name": n} for n in sponsors[:20]]
-    return [obj, _crumbs(base, [("Granite Record", "/"), ("Bills", "/bills"),
+    page = {"@type": "WebPage", "@id": url, "url": url, "name": obj["name"],
+            "about": {"@id": url + "#legislation"},
+            "isPartOf": _site(base), "publisher": _publisher(base)}
+    return [page, obj, _crumbs(base, [("Granite Record", "/"), ("Bills", "/bills"),
                                 (f"{b.get('term')}", f"/directory/bills-{b.get('term')}"),
                                 (b.get("n") or bid, canon_path)])]
 
