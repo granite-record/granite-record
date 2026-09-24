@@ -41,15 +41,22 @@ session after it has had one working day. The card carries a chip per kind and
 a divided colour bar, and its body lists the day's items in order with the time
 and room each was set for.
 
-WHAT IS NOT HERE. proceedings.csv is keyed on bills, so this shows bill
-business only. The General Court's own schedule also lists study committees,
-boards and commissions sitting with no bill before them -- the Assessing
-Standards Board, the Mount Washington Commission -- and none of those appear.
+STUDY AND STATUTORY COMMITTEES. proceedings.csv is keyed on bills, so on its
+own this showed bill business only, while the General Court's schedule also
+lists the study commissions, boards and statutory committees that sit with no
+bill before them -- seven of them in the week of 21 September 2026, against
+two sittings shown. They come from the database copy in db/
+(StatStudMeetings.psv, with StatStudDetails.psv for each committee's name and
+whether it is a study or a statutory one), drawn as their own cards in the
+meeting colour, and a reader can hide them with a toggle. NOTHING REFRESHES
+THAT COPY YET -- it is a fetch_*_db.py run, which is the person's to start --
+so the page states the date it was taken.
 """
 
 import argparse
 import datetime
 import json
+import re
 from collections import OrderedDict, defaultdict
 from pathlib import Path
 
@@ -99,6 +106,158 @@ def floor_name(kind, body):
     return f"{'House' if body == 'H' else 'Senate'} \u2014 committee not recorded"
 
 
+# ---- study and statutory committees, from the database copy ---------------
+#
+# StatStudMeetings.psv: webtext|MeetingID|CommitteeID|MeetingDate|
+# MeetingLocation|username|DateModified. StatStudDetails.psv has 28 fields
+# (db/_columns.json); the ones read here are CommitteeID (0), CommitteeYear
+# (1), CondensedBillNo (4), CommitteeName (7) and CommitteeStatus (17), a
+# plain label such as "Active Chaptered Study Committee" or "Active
+# Statutory Committee" -- which is what says study or statutory. The 0/1
+# Committeetype flag does not track it.
+STATSTUD_DIR = Path("db")
+
+# Names are stored in capitals. Title case, with the short words down and
+# the acronyms the names actually carry kept as the General Court writes them.
+_SMALL = {"a", "an", "and", "as", "at", "by", "for", "in", "of", "on", "or",
+          "the", "to", "with"}
+_ACRONYM = {"NH": "NH", "RSA": "RSA", "OHRVS": "OHRVs", "SAUS": "SAUs",
+            "SIEC": "SIEC", "IDD": "IDD", "ABD": "ABD"}
+
+
+def committee_name(caps):
+    """COMMITTEE ON LEGISLATOR ORIENTATION -> Committee on Legislator Orientation."""
+    words = (caps or "").strip().rstrip(".").split()
+    out = []
+    for i, w in enumerate(words):
+        parts = []
+        for p in w.split("-"):
+            core = p.strip("(),")
+            if core.upper() in _ACRONYM:
+                parts.append(p.replace(core, _ACRONYM[core.upper()]))
+            elif i and p.lower() in _SMALL:
+                parts.append(p.lower())
+            else:
+                parts.append(re.sub(r"[A-Za-z]", lambda m: m.group(0).upper(),
+                                    p.lower(), count=1))
+        out.append("-".join(parts))
+    return " ".join(out)
+
+
+_MARK = re.compile(r"^\s*==\s*([A-Z ]+?)\s*==\s*")
+_TYPE = re.compile(r"\s*((?:Regular|Organizational|Subcommittee|Special)\s+Meeting"
+                   r"|Other Meeting Type|Hearing|Session)\s*$", re.I)
+
+
+def _where(loc):
+    """(room, what kind of meeting) out of 'GP Room 234  Regular Meeting'.
+
+    The record joins the two with spaces. A U+FFFD in it is a character the
+    database copy lost -- 'NHDES \ufffd 29 Hazen Drive' -- and is shown as a
+    dash, which is what separates a name from an address there; that is a
+    reading of it, not a recovered character.
+    """
+    s = _MARK.sub("", loc or "").replace("\ufffd", "\u2013")
+    kind = ""
+    m = _TYPE.search(s)
+    if m:
+        kind = "" if m.group(1).lower() == "other meeting type" else m.group(1)
+        s = s[:m.start()]
+    return re.sub(r"\s+", " ", s).strip(" ,"), kind.capitalize()
+
+
+def statstud(root=Path(".")):
+    """(rows, names, fetched): the study and statutory committee meetings
+    from FROM on, shaped as weeks_from reads rows; {bill: [(year, name)]}
+    for the committees a bill set up; and the date the copy was taken.
+
+    ([], {}, "") where the copy is not on disk -- the caller says so.
+    """
+    d = Path(root) / STATSTUD_DIR
+    det_f, meet_f = d / "StatStudDetails.psv", d / "StatStudMeetings.psv"
+    if not (det_f.exists() and meet_f.exists()):
+        return [], {}, ""
+    det, names = {}, defaultdict(list)
+    for ln in det_f.read_text(encoding="utf-8", errors="replace").splitlines():
+        f = ln.split("|")
+        if len(f) < 18 or not f[0].strip():
+            continue
+        label = f[17].strip()
+        kind = ("statutory committee" if "statutory" in label.lower()
+                else "study committee" if "study" in label.lower() else "")
+        name = committee_name(f[7])
+        bill = re.sub(r"\s+", "", f[4]).upper()
+        det[f[0].strip()] = (name, kind, bill, f[1].strip())
+        if bill:
+            names[bill].append((f[1].strip(), name))
+    rows, skipped = [], 0
+    for ln in meet_f.read_text(encoding="utf-8", errors="replace").splitlines():
+        f = ln.split("|")
+        if len(f) < 5:
+            continue
+        try:
+            when = datetime.datetime.strptime(f[3].strip(), "%m/%d/%Y %H:%M:%S")
+        except ValueError:
+            continue
+        date = when.date().isoformat()
+        if date < FROM:
+            continue
+        c = det.get(f[2].strip())
+        if not c or not c[1]:
+            # A committee the details do not name, or one labelled neither
+            # study nor statutory ("Repealed"): not guessed at.
+            skipped += 1
+            continue
+        name, kind, bill, year = c
+        room, mtype = _where(f[4])
+        marks = {m.upper() for m in re.findall(r"==\s*([A-Za-z ]+?)\s*==",
+                                               f[0] + " " + f[4])}
+        cancelled = "CANCELLED" in marks
+        note = (mtype + "." if mtype else "")
+        if bill:
+            pretty = re.sub(r"^([A-Z]+)", r"\1 ", bill)
+            note += (" " if note else "") + f"Set up by {pretty} of {year}."
+        rows.append({"date": date,
+                     "time": "" if when.time() == datetime.time(0) else when.strftime("%H:%M"),
+                     "bill": "", "committee": name,
+                     "kind": "cancelled" if cancelled else kind,
+                     "venue": room, "body": "", "term": "",
+                     "study": True, "note": note})
+    if skipped:
+        print(f"  {skipped} study/statutory meetings left out: their committee "
+              "is not named, or not labelled study or statutory, in StatStudDetails")
+    fetched = ""
+    try:
+        man = json.loads((d / "_manifest.json").read_text(encoding="utf-8"))
+        fetched = (man.get("StatStudMeetings") or {}).get("fetched", "")[:10]
+    except (OSError, ValueError, AttributeError):
+        pass
+    return rows, dict(names), fetched
+
+
+_NAMES = None
+
+
+def study_names():
+    """{bill: [(year, name)]} for the committees a bill set up, read once."""
+    global _NAMES
+    if _NAMES is None:
+        _NAMES = statstud()[1]
+    return _NAMES
+
+
+def study_name(bill, term, names):
+    """The study committee a bill of this term set up, or None.
+
+    The docket's floor index records a study committee's meeting under the
+    bill it studies and with no committee -- HB 1763 on 2 September 2026 was
+    "House -- committee not recorded" -- and the database copy names it.
+    """
+    years = set(re.findall(r"\d{4}", term or ""))
+    hits = {n for y, n in names.get((bill or "").upper(), []) if not years or y in years}
+    return hits.pop() if len(hits) == 1 else None
+
+
 # THE FILTER RUNS IN THE READER'S BROWSER, AND THE PAGE IS WHOLE WITHOUT IT.
 # Every card is already in the HTML with its chamber, committee and bills on
 # it, so this hides and shows what is there rather than fetching or rebuilding
@@ -123,7 +282,21 @@ WEEK_JS = r"""
   // it, and none of them is what the attribute holds.
   function norm(s){ return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,""); }
 
+  // STUDY AND STATUTORY COMMITTEES, on unless the reader turned them off
+  // here before. The choice is a convenience kept in this browser; storage
+  // that is blocked or empty leaves the default, which is on.
+  var study=document.getElementById("wkstudy");
+  var SKEY="gr.calendar.study";
+  if(study){
+    try{ if(localStorage.getItem(SKEY)==="0") study.checked=false; }catch(e){}
+    study.addEventListener("change",function(){
+      try{ localStorage.setItem(SKEY, study.checked?"1":"0"); }catch(e){}
+      apply();
+    });
+  }
+
   function matches(m,q){
+    if(study && !study.checked && m.hasAttribute("data-study")) return false;
     if(body && (m.getAttribute("data-body")||"").indexOf(body)<0) return false;
     if(!q) return true;
     var c=(m.getAttribute("data-cmte")||"");
@@ -187,7 +360,8 @@ WEEK_JS = r"""
   }
   function details(m){
     var date=m.getAttribute("data-date"), time=m.getAttribute("data-time");
-    if(!date) return null;
+    // A cancelled meeting is not offered for anybody's calendar.
+    if(!date || m.hasAttribute("data-cancelled")) return null;
     var cmte=(m.querySelector(".calcmte")||{}).textContent||"A sitting";
     var kinds=[].slice.call(m.querySelectorAll("summary .calkind"))
                  .map(function(k){return k.textContent;}).join(", ");
@@ -286,8 +460,11 @@ def href_for(key, today):
     return "/calendar.html" if key == week_key(today) else f"/calendar/{key}.html"
 
 
-def collect(site):
-    """{week: {date: {meeting_key: [rows]}}}, plus the lookups a card needs."""
+def collect(site, study_rows=()):
+    """{week: {date: {meeting_key: [rows]}}}, plus the lookups a card needs.
+
+    `study_rows` are statstud()'s, merged with the proceedings so a study
+    committee that also has a bill's row on the day is one card."""
     titles, years = {}, {}
     idx = site / "idx"
     if idx.exists():
@@ -311,10 +488,11 @@ def collect(site):
         except (ValueError, OSError):
             pass
 
-    return weeks_from(proceedings.load()), titles, years, code
+    return (weeks_from(list(proceedings.load()) + list(study_rows)),
+            titles, years, code)
 
 
-def weeks_from(rows):
+def weeks_from(rows, names=None):
     """{week: {date: {meeting_key: [rows]}}} out of proceedings rows.
 
     ONE READING OF THE WEEK, AND THE HOME PAGE USES IT TOO. The home page's
@@ -326,6 +504,7 @@ def weeks_from(rows):
     sittings -- the floor included -- because they are the same rows.
     """
     weeks = defaultdict(lambda: defaultdict(OrderedDict))
+    names = study_names() if names is None else names
     for r in rows:
         date = (r.get("date") or "")[:10]
         if date < FROM:
@@ -335,6 +514,8 @@ def weeks_from(rows):
         except ValueError:
             continue
         cmte = (r.get("committee") or "").strip()
+        if not cmte and (r.get("kind") or "").strip().lower() == "study committee":
+            cmte = study_name(r.get("bill"), r.get("term"), names) or ""
         if not cmte:
             cmte = floor_name(r.get("kind"),
                               (r.get("body") or "").strip().upper()) or ""
@@ -353,7 +534,24 @@ def weeks_from(rows):
                # each biennium, and the rail resolves a title out of that
                # term's index rather than whichever term's HB 1 was read last.
                "term": (r.get("term") or "").strip()}
+        if r.get("study"):
+            row["study"] = True
+            row["note"] = r.get("note") or ""
         weeks[week_key(d)][date].setdefault(BP.meeting_key(row), []).append(row)
+    # A BILL'S ROW AT A STUDY COMMITTEE'S MEETING TAKES THE MEETING'S TIME AND
+    # ROOM. The docket gives neither; the database copy's row for the same
+    # committee on the same day does, and without this the one card would
+    # list the day twice, once untimed.
+    for days in weeks.values():
+        for day in days.values():
+            for key, rs in day.items():
+                src = [x for x in rs if x.get("study") and x["what"] != "cancelled"]
+                if len(src) != 1:
+                    continue
+                for x in rs:
+                    if (not x.get("study") and x["what"].lower() == "study committee"
+                            and not x["time"] and not x["venue"]):
+                        x["time"], x["venue"] = src[0]["time"], src[0]["venue"]
     return weeks
 
 
@@ -411,7 +609,10 @@ def sitting_pages(site):
 
 
 def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
-              today, sessions=frozenset()):
+              today, sessions=frozenset(), study_note=""):
+    """Write one week's page. `study_note` says where the study and
+    statutory committee meetings come from; empty when there are none, and
+    then neither the toggle nor the description mentions them."""
     days_raw = weeks[key]
     dated = [d for d in days_raw if days_raw[d]]
     first = monday(datetime.date.fromisoformat(min(dated) if dated
@@ -498,7 +699,13 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
             '<label class="wkfind" for="wkfind">Committee or bill'
             '<input type="search" id="wkfind" autocomplete="off" '
             'placeholder="Judiciary, or HB 1234"></label>'
-            '<p class="wkcount" id="wkcount" role="status" aria-live="polite"></p>'
+            # ON UNLESS THE READER TURNS IT OFF, and the script remembers
+            # which. With no script the whole week is shown, which is the
+            # toggle's default anyway.
+            + ('<label class="wktoggle" for="wkstudy">'
+               '<input type="checkbox" id="wkstudy" checked>'
+               'Show study and statutory committees</label>' if study_note else "")
+            + '<p class="wkcount" id="wkcount" role="status" aria-live="polite"></p>'
             '</form>')
     # THE KEY TO THE COLOURS, which are the General Court's own for each kind
     # of meeting. On every week, empty ones included, so the page reads the
@@ -513,7 +720,8 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              f'<nav class="wknav" aria-label="Other weeks">{"".join(nav)}</nav>'
              f'{filt}'
              f'{key_html}'
-             f'{body}'
+             + (f'<p class="src calsrc">{S.E(study_note)}</p>' if study_note else "")
+             + f'{body}'
              f'<nav class="wknav wkfoot" aria-label="Other weeks">{"".join(nav)}</nav>'
              "</div></div>"
              # Inline in the body, which is where every other page-specific
@@ -523,9 +731,13 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     for f in copies:
         html = S.page(S.template(site), path=f, canonical=path, base=base,
                       title=f"The week of {label} | Granite Record",
-                      description=("Every hearing, work session, executive session and "
-                                   f"floor sitting of the New Hampshire General Court, "
-                                   f"{label}."),
+                      # WHAT THE PAGE HOLDS, and no more: it said "Every
+                      # hearing..." while it held bill business only.
+                      description=("Hearings, work sessions, executive sessions, "
+                                   "floor sittings"
+                                   + (" and study and statutory committee meetings"
+                                      if study_note else "")
+                                   + f" of the New Hampshire General Court, {label}."),
                       og_title=f"The week of {label}",
                       globals={"GR_STATIC": True}, noscript="",
                       skip_label="Skip to the week", sr_title="", og_type="website",
@@ -549,10 +761,36 @@ def main():
     a = ap.parse_args()
     site, base = Path(a.site), a.base.rstrip("/")
 
-    weeks, titles, years, code = collect(site)
+    global _NAMES
+    study_rows, _NAMES, fetched = statstud()
+    # SILENCE IS NOT SUCCESS: a build without the database copy still draws
+    # every bill's sitting, and says out loud that the study and statutory
+    # committees are missing rather than dropping them without a word. The
+    # page then claims only what it has.
+    if study_rows:
+        print(f"  {len(study_rows):,} study and statutory committee meetings from "
+              f"the database copy of {fetched or 'an unknown date'}")
+    else:
+        print("  WARNING: no study or statutory committee meetings -- "
+              f"{STATSTUD_DIR}/StatStudMeetings.psv or StatStudDetails.psv is not "
+              "on disk, so the calendar shows bill business only")
+    weeks, titles, years, code = collect(site, study_rows)
     # SILENCE IS NOT SUCCESS: no weeks is a Calendar tab pointing at nothing,
     # and a build that said so only by printing a zero.
     assert weeks, f"no proceedings dated {FROM} or later; the calendar would be empty"
+    study_note = ""
+    if study_rows:
+        when = fetched
+        try:
+            x = datetime.date.fromisoformat(fetched)
+            when = f"{x.day} {MONTH[x.month - 1]} {x.year}"
+        except ValueError:
+            pass
+        study_note = ("Study and statutory committee meetings come from the "
+                      "General Court's own database, as copied on "
+                      f"{when or 'an unrecorded date'}. Nothing has refreshed "
+                      "that copy since, so a meeting set, moved or cancelled "
+                      "after that date is not shown here.")
 
     today = datetime.date.today()
     here = week_key(today)
@@ -566,7 +804,8 @@ def main():
     urls, total = [], 0
     for i, key in enumerate(order):
         total += week_page(site, base, key, weeks, order, i,
-                           titles, years, code, urls, today, sits)
+                           titles, years, code, urls, today, sits,
+                           study_note=study_note)
 
     # Every week is rebuilt on every run, so a calendar address in the sitemap
     # that this run did not write -- the current week's dated copy, a week

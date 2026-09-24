@@ -9440,6 +9440,130 @@ def _calendar_every_weekday():
                   "Saturday only where it holds a sitting")
 
 
+@check("frontend", "study and statutory committees are on the calendar, named, dated to their source, and can be hidden")
+def _calendar_study_committees():
+    """The week of 21 September 2026 showed two sittings; the database held nine.
+
+    proceedings.csv is keyed on bills, so the calendar drew bill business
+    only, while its description said "Every hearing". Seven study and
+    statutory committee meetings that week -- the Road Toll commission, the
+    HHS Oversight Committee, the Commission on Aging -- were in db/ and read
+    by nothing. The one study committee that was on it, HB 1763's on
+    2 September, read "House -- committee not recorded".
+
+    This writes a small copy of the two database files, and wants: the
+    meetings read as rows in the database's own words, title-cased and
+    labelled study or statutory from CommitteeStatus; a cancelled one marked,
+    and not offered for anybody's calendar; the docket's committee-less row
+    for the bill named from the committee the bill set up and folded into its
+    meeting's card; the week page carrying the toggle, the source note with
+    the copy's date and a description that no longer says "Every"; and the
+    toggle's memory wrapped so a blocked storage leaves the page whole.
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_calendar as BC
+    here = Path(".").resolve()
+    if not (here / "bills.html").exists():
+        return "skip", "bills.html is not here"
+
+    def det(cid, year, bill, name, status):
+        f = [""] * 28
+        f[0], f[1], f[4], f[7], f[17] = cid, year, bill, name, status
+        return "|".join(f)
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-statstud-"))
+    try:
+        db = tmp / "db"
+        db.mkdir()
+        (db / "StatStudDetails.psv").write_text("\n".join([
+            det("1740", "2026", "HB1763", "COMMITTEE TO STUDY SITING AND MAINTENANCE "
+                "RULES REGARDING CERTAIN INTELLECTUAL AND DEVELOPMENTAL DISABILITY "
+                "(IDD) AND ACQUIRED BRAIN DISORDER (ABD) COMMUNITY RESIDENCES",
+                "Active Chaptered Study Committee"),
+            det("62", "1969", "", "COMMITTEE ON LEGISLATOR ORIENTATION",
+                "Active Statutory Committee"),
+            det("9", "1991", "", "A REPEALED BOARD", "Repealed")]) + "\n",
+            encoding="utf-8")
+        (db / "StatStudMeetings.psv").write_text("\n".join([
+            "|3023|1740|09/02/2026 10:00:00|GP Room 230  Regular Meeting||",
+            "|3056|62|09/22/2026 10:00:00|SH Room 122-123  Regular Meeting||",
+            "==CANCELLED==|3057|62|09/24/2026 13:00:00|==CANCELLED==SH Room 100  "
+            "Regular Meeting||",
+            "|3058|9|09/23/2026 10:00:00|LOB 101  Regular Meeting||",
+            "|12|62|01/11/1993 10:00:00|RM103, ST||"]) + "\n", encoding="utf-8")
+        (db / "_manifest.json").write_text(json.dumps(
+            {"StatStudMeetings": {"fetched": "2026-09-08T20:45:43"}}), encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()) as said:
+            rows, names, fetched = BC.statstud(tmp)
+        assert fetched == "2026-09-08", f"the copy's date read as {fetched!r}"
+        assert "1 study/statutory meetings left out" in said.getvalue(), (
+            "a meeting of a committee labelled neither study nor statutory was "
+            "not reported as left out")
+        got = {(r["date"], r["committee"], r["kind"], r["time"], r["venue"]) for r in rows}
+        orient = "Committee on Legislator Orientation"
+        long = ("Committee to Study Siting and Maintenance Rules Regarding Certain "
+                "Intellectual and Developmental Disability (IDD) and Acquired Brain "
+                "Disorder (ABD) Community Residences")
+        want = {("2026-09-02", long, "study committee", "10:00", "GP Room 230"),
+                ("2026-09-22", orient, "statutory committee", "10:00", "SH Room 122-123"),
+                ("2026-09-24", orient, "cancelled", "13:00", "SH Room 100")}
+        assert got == want, (f"the database copy read as {sorted(got - want)}; "
+                             f"missing {sorted(want - got)}")
+        assert BC.committee_name("COMMISSION TO STUDY THE USE OF OHRVS IN NEW "
+                                 "HAMPSHIRE") == ("Commission to Study the Use of "
+                                                  "OHRVs in New Hampshire")
+
+        docket = {"term": "2025-2026", "bill": "HB1763", "body": "H",
+                  "kind": "study committee", "date": "2026-09-02", "time": "",
+                  "committee": "", "venue": ""}
+        weeks = BC.weeks_from([docket] + rows, names=names)
+        day = weeks["2026-W36"]["2026-09-02"]
+        assert list(day) == [("2026-09-02", long)], (
+            f"HB 1763's study committee on 2 September is {list(day)}, not one "
+            "card under the committee's own name")
+        assert {(r["time"], r["venue"]) for r in day[("2026-09-02", long)]} == {
+            ("10:00", "GP Room 230")}, "the docket's row did not take its meeting's time and room"
+
+        note = ("Study and statutory committee meetings come from the General "
+                "Court's own database, as copied on 8 September 2026.")
+        site = tmp / "site"
+        site.mkdir()
+        shutil.copy(here / "bills.html", site / "bills.html")
+        order = sorted(weeks)
+        with contextlib.redirect_stdout(io.StringIO()):
+            for i, k in enumerate(order):
+                BC.week_page(site, "https://graniterecord.org", k, weeks, order, i,
+                             {}, {}, {}, [], _dt.date(2026, 9, 24), set(),
+                             study_note=note)
+        t = (site / "calendar.html").read_text(encoding="utf-8")
+        assert 'id="wkstudy" checked' in t, "the week has no study committee toggle, on by default"
+        assert "as copied on 8 September 2026" in t, "the week does not date its study committee data"
+        desc = re.search(r'name="description" content="([^"]*)"', t).group(1)
+        assert "Every" not in desc and "study and statutory" in desc, (
+            f"the description reads {desc!r}")
+        cards = re.findall(r'<details class="calmeet"([^>]*)>', t)
+        assert len(cards) == 2 and all('data-study=""' in c for c in cards), (
+            f"this week's study committee cards are {cards}")
+        assert sum('data-cancelled=""' in c for c in cards) == 1, (
+            "the cancelled meeting is not marked cancelled")
+        assert ">1 bill<" not in t and "(1 bill)" not in t, (
+            "a meeting with no bill before it is counted as one bill")
+        js = BC.WEEK_JS
+        assert re.search(r"try\{\s*if\(localStorage\.getItem", js) and \
+            re.search(r"try\{\s*localStorage\.setItem", js), (
+                "the toggle's memory is not wrapped in try/catch; a browser that "
+                "blocks storage would stop the week's script")
+        assert 'm.hasAttribute("data-cancelled")' in js, (
+            "a cancelled meeting is offered for the reader's own calendar")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("three meetings read from the copy, named and labelled; a "
+                  "cancelled one marked; HB 1763's row folded into its "
+                  "committee's card; the toggle, the dated note and a true description")
+
+
 @check("frontend", "the home page's Coming up is this week, the week the Calendar tab shows")
 def _coming_up_is_this_week():
     """Coming up drew a fortnight under a comment saying it drew a week.

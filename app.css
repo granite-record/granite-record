@@ -617,6 +617,9 @@ border-bottom:1px solid var(--rule);font-size:var(--t-ui)}
 .calbills .cbn{flex:0 0 88px;font-weight:600;font-variant-numeric:tabular-nums;
 display:inline-block;padding:var(--sp-1) 0}
 .calbills .cbt{color:var(--ink-2);line-height:1.45}
+/* What a study or statutory committee's meeting is, where a bill's card
+   lists its bills: the kind of meeting and what set the committee up. */
+.calnote{margin:var(--sp-4) 0 0;font-size:var(--t-ui);color:var(--ink-2);line-height:1.45}
 .calmore{margin:var(--sp-5) 0 0;font-size:var(--t-ui);display:flex;gap:var(--sp-6);flex-wrap:wrap}
 /* The same 22px the bill numbers above them had. */
 .calmore a{display:inline-block;padding:var(--sp-1) 0}
@@ -3070,6 +3073,11 @@ padding:var(--sp-3) var(--sp-4);min-height:40px;width:100%;
 background:var(--surface);border:1px solid var(--rule-2);border-radius:4px}
 .wkfind input:focus-visible{outline:2px solid var(--pine);outline-offset:1px}
 .wkcount{flex:1 0 100%;margin:0;font-size:var(--t-sm);color:var(--ink-2)}
+/* Study and statutory committees on or off. A real checkbox, so the
+   keyboard and a screen reader already know it; the label is the target. */
+.wktoggle{display:inline-flex;align-items:center;gap:var(--sp-3);min-height:40px;
+font-size:var(--t-ui);font-weight:600;color:var(--ink-2);cursor:pointer}
+.wktoggle input{width:18px;height:18px;margin:0;accent-color:var(--pine)}
 .calday[hidden],.calmeet[hidden]{display:none}
 
 /* PUTTING A SITTING IN SOMEBODY'S OWN CALENDAR. Quiet, at the foot of the

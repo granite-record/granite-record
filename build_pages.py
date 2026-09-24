@@ -618,7 +618,15 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             slots = sorted(x for x in (r.get("time") or "" for r in rows) if x)
             time = (slots[0] if len(set(slots)) == 1 else
                     f"{slots[0]}–{slots[-1]}") if slots else ""
-            n = len(rows)
+            # BILLS, NOT ROWS. A study or statutory committee's meeting is a
+            # row with no bill, and counting rows called it "(1 bill)".
+            n = sum(1 for r in rows if (r.get("bill") or "").strip())
+            # A study or statutory committee's card says so, for the week
+            # page's toggle; a cancelled one says that, so it is not offered
+            # for anybody's own calendar.
+            study = any(r.get("study") for r in rows)
+            cancelled = bool(rows) and all(
+                (r.get("what") or "").lower() == "cancelled" for r in rows)
             # WHAT A FILTER NEEDS, ON THE CARD ITSELF. The week page is static
             # HTML on a CDN and the filtering happens in the reader's browser,
             # so each card states its own chamber, committee and bills rather
@@ -637,6 +645,8 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                         + (f' data-time="{esc(slots[0])}"' if slots else "")
                         + (f' data-last="{esc(slots[-1])}"' if slots else "")
                         + (f' data-venue="{esc(venue)}"' if venue else "")
+                        + (' data-study=""' if study else "")
+                        + (' data-cancelled=""' if cancelled else "")
                         + "><summary>")
             # THE MIXED COLOUR. One segment per kind the day holds, stacked
             # down the edge of the card, so a committee doing two things reads
@@ -669,8 +679,9 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # particular. On its own where there is no time, for the same
             # reason.
             _bills = f'{n} bill{"" if n == 1 else "s"}'
-            html.append(f'<span class="calcount">'
-                        + (f"({_bills})" if time else _bills) + "</span>")
+            if n:
+                html.append(f'<span class="calcount">'
+                            + (f"({_bills})" if time else _bills) + "</span>")
             for k in kinds:
                 word, kcls = MEET_KIND.get(k.strip().lower(),
                                            (k.capitalize() if k else "Meeting", ""))
@@ -689,6 +700,16 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                                 + f'<span class="calkind {kcls}">{esc(word)}</span>'
                                 + (f'<span class="calwhere">{esc(vn)}</span>'
                                    if vn and not venue else "") + "</p>")
+                # A ROW WITH NO BILL is a study or statutory committee's
+                # meeting: it says what kind of meeting and what set the
+                # committee up, as text, and links nowhere -- there is no
+                # page here for a commission to lead to.
+                for r in items:
+                    if not (r.get("bill") or "").strip() and r.get("note"):
+                        html.append(f'<p class="calnote">{esc(r["note"])}</p>')
+                items = [r for r in items if (r.get("bill") or "").strip()]
+                if not items:
+                    continue
                 html.append('<ul class="calbills">')
                 for r in items:
                     bid = (r.get("bill") or "").strip()
@@ -723,7 +744,9 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                 floor = None
             elif floor and sessions is None:
                 floor = None
-            cc = code.get(cmte.strip().lower())
+            # A study committee that shares a name with a standing one is not
+            # that committee, so its card does not borrow the page.
+            cc = None if study else code.get(cmte.strip().lower())
             if floor:
                 html.append('<p class="calmore">'
                             f'<a href="session/{floor}/{esc(_d)}.html">'
