@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-11.4
+# GRANITE_VERSION: 2026-09-11.5
 """
 The chapter of the session laws each bill became, read out of the docket.
 
@@ -28,9 +28,12 @@ also how such a slip is found everywhere else -- see WHAT IS WITHHELD.
 
 HOW A NUMBER IS READ
 
-After "Chapter", "Chap.", "Chap:" or "Chap-", which are every form the clerks
-used, and not when ":1" or "-A" follows it: that is a section or an RSA
-chapter ("Chapter 23:1 Committee Members Appointed by President"). "See" and
+After "Chapter", "Chap.", "Chap:" or "Chap-", which are nearly every form the
+clerks used, and not when ":1" or "-A" follows it: that is a section or an
+RSA chapter ("Chapter 23:1 Committee Members Appointed by President"). The
+rarer "CH.", "Chap,", "Chapt:" and "Chp." are read too, but only on the line
+that made the bill law, because on any other line they name another law
+(see CHAPTER_RARE). "See" and
 whatever follows it on the line are dropped first, because they name another
 law -- "See Chapter 240 for additional dates", "(SEE HB27, CH360 FOR EFF.
 DATES)". A row is read only when its LSR is the bill's own: the database's
@@ -81,6 +84,21 @@ OUT = Path("chapters.json")
 # until the I. was allowed for.
 CHAPTER = re.compile(r"\bchap(?:ter)?\s*[.:\-]?\s*0*(\d{1,4})"
                      r"(?:(?=I{1,3}\.)|\b(?![:\-]\s*[0-9A-Z]))", re.I)
+# THE RARER SPELLINGS, AND ONLY ON THE LINE THAT MADE THIS BILL LAW. Five
+# laws carried their number in a form the pattern above does not read, and
+# had no chapter on the site: 1993 HB 241 "CH.0066", 1999 HB 426 "Chap,
+# 0070", and 2004 SB 335 "Chapt:0099", SB 438 "Chapt:0066" and SB 481 "Chp.
+# 0258" -- the last four the chapter their enrolled text is headed with. The
+# same forms also stand in the dockets for OTHER laws: "CH.124,1989" on 1989
+# HB 1, "for (Ch. 47)" on a study committee's membership line, "{LSR 0155,
+# HB 154, CH. 183, 1997 SIGNED BY GOV 6/18/97}" on 1996 HB 1179. Read on
+# every line, they would have cost eight laws the chapter they have, by
+# giving each a second number, and given two bills another law's. So they
+# count only on a law line that did not fail and names no other bill.
+CHAPTER_RARE = re.compile(r"\b(?:ch(?=\s*\.)|chp|chapt)\s*[.:\-,]?\s*0*(\d{1,4})"
+                          r"(?:(?=I{1,3}\.)|\b(?![:\-]\s*[0-9A-Z]))"
+                          r"|\bchap\s*,\s*0*(\d{1,4})\b", re.I)
+OTHER_BILL = re.compile(r"\b(?:HB|SB|HCR|SCR|HJR|SJR|CACR|HR|SR)\s*\d", re.I)
 SEE = re.compile(r"\(?\bsee\b[^)]*\)?", re.I)
 SPECIAL = re.compile(r"spec(?:ial)?\.?\s*sess", re.I)
 # The lines that make a bill law, or record that it did. A failed override
@@ -153,8 +171,13 @@ def read(bills):
                 f["dates"].append(when(text, rowdate))
         if VETO_STOOD.search(text) and not f["failed"]:
             f["failed"] = text.strip()
-        for m in CHAPTER.finditer(SEE.sub(" ", text)):
-            n = int(m.group(1))
+        plain = SEE.sub(" ", text)
+        nums = [int(m.group(1)) for m in CHAPTER.finditer(plain)]
+        if (LAW.search(text) and not FAILED.search(text)
+                and not OTHER_BILL.search(plain)):
+            nums += [int(m.group(1) or m.group(2))
+                     for m in CHAPTER_RARE.finditer(plain)]
+        for n in nums:
             if not 0 < n < 1500:
                 continue
             if n not in f["numbers"]:

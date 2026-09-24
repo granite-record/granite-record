@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.8
+# GRANITE_VERSION: 2026-09-04.9
 """
 Parse RollCallSummary.txt into per-bill voting records.
 
@@ -13,13 +13,19 @@ Two things this handles that a naive parser gets wrong:
    Which House category is "excused" and which is "absent" is NOT established.
    They are reported together as "did not vote" rather than guessed at.
 
-2. A MAJORITY IS NOT ALWAYS ENOUGH.
-   Veto overrides need two thirds of those voting. Constitutional amendments
-   (CACRs) need three fifths of the ENTIRE membership -- 240 of 400 in the
-   House, 15 of 24 in the Senate -- regardless of how many showed up. CACR 10
-   drew 194-158 in March 2026: a clear majority, and it failed. The official
-   status reads "Failed to Pass with Necessary Three-fifths Vote". Showing the
-   tally without the threshold actively misleads.
+2. A MAJORITY IS NOT ALWAYS ENOUGH, AND THE RECORD SAYS WHICH.
+   Veto overrides and rules suspensions need two thirds of those voting.
+   Passing a constitutional amendment (a CACR) needs three fifths of the
+   members IN OFFICE -- 239 of the 397 seated carried CACR 26 in 2012 -- not
+   of the 400 seats. Other motions on a CACR are majority questions unless
+   the House's rules of the day said otherwise, and the docket says so where
+   they did. What each vote DECIDED is the clerk's, read off the docket (or,
+   for a vote no docket line names, the Journal) by rollcall_outcomes.py after
+   the ballots are counted; the rule here only supplies the number a
+   threshold note and the chart's tick need, and the outcome where the record
+   names none. CACR 10 drew 194-158 in March 2026: a clear majority, and it
+   failed, "Lacking Necessary Three-Fifths Vote". Showing the tally without
+   the threshold actively misleads.
 
 3. A BILL NUMBER MEANS NOTHING WITHOUT A TERM.
    HB396 exists in every biennium. The download covers the current session
@@ -36,6 +42,7 @@ Two things this handles that a naive parser gets wrong:
 import argparse
 import json
 import proceedings as P
+import rollcall_outcomes as RO
 import re
 import sys
 from collections import Counter, defaultdict
@@ -95,17 +102,14 @@ PROCEDURAL = {"call of the roll", "rules suspension", "limit debate", "print rem
 BILL_NO = re.compile(r"^(?:HB|SB|CACR|HR|SR|HCR|SCR|HJR|SJR)\d+$", re.I)
 
 
-def threshold(question_std, bill, body, yeas, nays):
-    """(needed, rule_text, basis) or (None, None, None) for a simple majority."""
-    voting = yeas + nays
-    if question_std == "Veto Override":
-        need = -(-2 * voting // 3)          # ceil(2/3 of those voting)
-        return need, "two thirds of members voting", voting
-    if bill and bill.upper().startswith("CACR"):
-        seats = SEATS[body]
-        need = -(-3 * seats // 5)           # ceil(3/5 of entire membership)
-        return need, f"three fifths of the entire {seats}-member membership", seats
-    return None, None, None
+def threshold(question_raw, bill, yeas, nays, seated):
+    """(needed, rule_text) or (None, None) for a simple majority.
+
+    Provisional: parse_all() settles it from the ballots (the members in
+    office) and the record. One rule, in rollcall_outcomes.threshold.
+    """
+    return RO.threshold({"question_raw": question_raw, "bill": bill,
+                         "yeas": yeas, "nays": nays, "seated": seated})
 
 
 def parse(path, want_bill=None):
@@ -160,17 +164,9 @@ def parse(path, want_bill=None):
             if body == "H" and seated > SEATS["H"]:
                 not_voting = seated = None
 
-            need, rule, basis = threshold(std, bill, body, yeas, nays)
-            if need is None:
-                passed = yeas > nays
-                margin_note = None
-            else:
-                passed = yeas >= need
-                if not passed and yeas > nays:
-                    margin_note = (f"A majority voted yes, but this needed {need} "
-                                   f"({rule}) and fell {need - yeas} short.")
-                else:
-                    margin_note = f"Needed {need} \u2014 {rule}."
+            need, rule = threshold(raw_q, bill, yeas, nays, seated)
+            passed = yeas >= need if need else yeas > nays
+            margin_note = RO.note(passed, yeas, nays, need, rule)
 
             out.append({
                 "year": year, "body": body, "number": num,
@@ -310,6 +306,27 @@ def parse_all(current, extra_dir):
           + (f"; {differ:,} where the General Court's summary and its ballots "
              "disagree now take the headline from the ballots, and keep the "
              "stated tally beside it" if differ else ""))
+    # WHAT EACH VOTE DECIDED, after the ballots have said who was in office.
+    # The clerk's outcome where a docket line names it and could be right,
+    # the Journal's where no docket line does, the rule where neither does.
+    # See rollcall_outcomes.py.
+    root = Path(".")
+    src = RO.apply(out, root=root)
+    conflicts = sum(1 for r in out if r.get("outcome_conflict"))
+    print("  outcome: " + ", ".join(f"{v:,} from the {k}" for k, v in sorted(src.items()) if v)
+          + (f"; {conflicts} where the record and the count disagree, kept as "
+             "outcome_conflict" if conflicts else ""))
+    # SILENCE IS NOT SUCCESS: a docket that stopped being read would leave
+    # every outcome to the rule and still exit zero. A tree with no docket at
+    # all -- a fresh checkout, the preflight fixture -- is told so and goes on.
+    from_docket = src.get("docket", 0) + src.get("docket, implied", 0)
+    if out and not from_docket:
+        if RO.docket_paths(root):
+            sys.exit("Docket files are on disk but no roll call's outcome was "
+                     "read from one -- the pairing or the outcome reader has "
+                     "stopped working. See rollcall_outcomes.py.")
+        print("  WARNING: no Docket*.txt here, so every outcome comes from the "
+              "rule rather than the clerk's record.")
     return out, files
 
 

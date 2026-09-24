@@ -41,10 +41,14 @@ than a claim that nothing is.
 
 Worth saying in advance, so you do not spend an evening on them:
 
-- **Every POST to `/api/report` answers `204`.** Success, a rejected field, a
-  honeypot hit, the daily ceiling, a database error — the same empty response.
+- **Nearly every POST to `/api/report` answers `204`.** Success, a duplicate, a
+  rejected field, a honeypot hit, the daily ceiling — the same empty response.
   That is deliberate, so that a script learns nothing from the difference. It
-  does mean you cannot tell from outside whether your report was stored.
+  does mean you cannot tell from outside whether your report was stored. The
+  one exception is a well-formed report the database could not keep, which
+  answers `503` so that the box on the page offers the reader the email
+  address instead of thanking them; it tells a sender only that storage is
+  down.
 - **The database credentials for the General Court's SQL host are public.** The
   General Court publishes them at gc.nh.gov/downloads. They are not ours and
   they are not a leak.

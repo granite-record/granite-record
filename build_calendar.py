@@ -22,7 +22,9 @@ the weeks as files: the arrows become links, every week is an address a reader
 can send to somebody, and the whole thing works with no script at all.
 
   site/calendar.html            the current week, which is what the tab opens
-  site/calendar/2026-W38.html   every other week, one file each
+  site/calendar/2026-W38.html   every week, one file each; the current one is
+                                a copy of calendar.html that names it as the
+                                page to index and cite
 
 WHAT IS ON A WEEK
 
@@ -274,8 +276,12 @@ def span_words(a, b):
 
 
 def href_for(key, today):
-    """Where a week lives. The current one is the tab's own page."""
-    return "calendar.html" if key == week_key(today) else f"calendar/{key}.html"
+    """Where a week lives. The current one is the tab's own page.
+
+    From the site root, with its slash: shell.page joins this to the domain for
+    the page's canonical link and citation, and without it they read
+    "https://graniterecord.orgcalendar" on every week until 24 September."""
+    return "/calendar.html" if key == week_key(today) else f"/calendar/{key}.html"
 
 
 def collect(site):
@@ -303,8 +309,22 @@ def collect(site):
         except (ValueError, OSError):
             pass
 
+    return weeks_from(proceedings.load()), titles, years, code
+
+
+def weeks_from(rows):
+    """{week: {date: {meeting_key: [rows]}}} out of proceedings rows.
+
+    ONE READING OF THE WEEK, AND THE HOME PAGE USES IT TOO. The home page's
+    Coming up rail is this week's days from today on, and it used to be drawn
+    from home.json's fortnight instead: committee rows only, cut at eighty,
+    and counted in days that had meetings -- so on 23 September 2026 it ran to
+    7 October, and in session it stopped partway through one day. It reads
+    this now, so the rail and the Calendar tab it links to hold the same
+    sittings -- the floor included -- because they are the same rows.
+    """
     weeks = defaultdict(lambda: defaultdict(OrderedDict))
-    for r in proceedings.load():
+    for r in rows:
         date = (r.get("date") or "")[:10]
         if date < FROM:
             continue
@@ -326,9 +346,23 @@ def collect(site):
                # is on the proceedings row already; nothing here derived it
                # from the committee's name, which would have been a second
                # answer to a question the record answers itself.
-               "body": (r.get("body") or "").strip().upper()}
+               "body": (r.get("body") or "").strip().upper(),
+               # THE TERM, for the home rail: a bill number names one bill in
+               # each biennium, and the rail resolves a title out of that
+               # term's index rather than whichever term's HB 1 was read last.
+               "term": (r.get("term") or "").strip()}
         weeks[week_key(d)][date].setdefault(BP.meeting_key(row), []).append(row)
-    return weeks, titles, years, code
+    return weeks
+
+
+def in_order(day):
+    """A day's meeting keys in the order they start, untimed ones last.
+
+    One ordering for the week page and the home rail, so the two list a day's
+    committees the same way round.
+    """
+    return sorted(day, key=lambda k: (min((r["time"] or "~") for r in day[k]),
+                                      k[1]))
 
 
 def sitting_pages(site):
@@ -359,17 +393,17 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     def when(d):
         x = datetime.date.fromisoformat(d)
         off = (x - today).days
+        # <= 14, as HOME_JS has it: `< 14` left a day exactly a fortnight off
+        # with no label at all until the script wrote one.
         rel = ("today" if off == 0 else "tomorrow" if off == 1
-               else f"in {off} days" if 0 < off < 14 else "")
+               else f"in {off} days" if 0 < off <= 14 else "")
         return f"{DAYNAME[x.weekday()]} {x.day} {MONTH[x.month - 1]}", rel
 
     meets, days = {}, OrderedDict()
     for date in sorted(dated):
         for k, rows in days_raw[date].items():
             meets[k] = rows
-        days[date] = sorted(
-            days_raw[date],
-            key=lambda k: (min((r["time"] or "~") for r in days_raw[date][k]), k[1]))
+        days[date] = in_order(days_raw[date])
 
     # level=2: the h1 of this page is the week itself, so a day is the
     # section under it. On the home page the days sit under "Coming up"
@@ -387,7 +421,7 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                    f'&lsaquo; The week before</a>')
     here = week_key(today)
     if key != here and here in order:
-        nav.append(f'<a class="wkhere" href="{S.canon("calendar.html")}">This week</a>')
+        nav.append(f'<a class="wkhere" href="{S.canon("/calendar.html")}">This week</a>')
     if at < len(order) - 1:
         nav.append(f'<a class="wknext" href="{S.canon(href_for(order[at + 1], today))}">'
                    f'The week after &rsaquo;</a>')
@@ -403,18 +437,13 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                 "period onwards.")
 
     path = href_for(key, today)
-    html = S.page(S.template(site), path=path, base=base,
-                  title=f"The week of {label} | Granite Record",
-                  description=("Every hearing, work session, executive session and "
-                               f"floor sitting of the New Hampshire General Court, "
-                               f"{label}."),
-                  og_title=f"The week of {label}",
-                  globals={"GR_STATIC": True}, noscript="",
-                  skip_label="Skip to the week", sr_title="", og_type="website",
-                  nav_current="calendar.html",
-                  jsonld=LD.listing(f"The week of {label}",
-                                    f"The General Court's business, {label}.",
-                                    base, S.canon(path)))
+    # THE CURRENT WEEK IS WRITTEN AT BOTH ITS ADDRESSES. /calendar is the tab,
+    # and /calendar/2026-W39 is the address somebody was sent last week as
+    # "next week". Leaving the dated file to the build that wrote it then was
+    # how it went stale: its "week before" link pointed back at /calendar,
+    # which was the same week. The copy is rewritten on every build and names
+    # /calendar as the page it copies, so there is one page to index.
+    copies = [path] + ([f"/calendar/{key}.html"] if path == "/calendar.html" else [])
     # HIDDEN UNTIL THE SCRIPT UNHIDES IT. A control that does nothing is worse
     # than no control, and this page is whole without one: every card is in the
     # HTML already.
@@ -441,11 +470,24 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
              # script on this site lives -- shell.page takes no script, and a
              # separate file for forty lines would be a request per week page.
              f"<script>{WEEK_JS}</script>")
-    html = html.replace('<div id="results"></div>', block, 1)
-    assert '<div class="wkpage">' in html, f"{path}: the template has no results slot"
-    out = site / path.lstrip("/")
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(html, encoding="utf-8")
+    for f in copies:
+        html = S.page(S.template(site), path=f, canonical=path, base=base,
+                      title=f"The week of {label} | Granite Record",
+                      description=("Every hearing, work session, executive session and "
+                                   f"floor sitting of the New Hampshire General Court, "
+                                   f"{label}."),
+                      og_title=f"The week of {label}",
+                      globals={"GR_STATIC": True}, noscript="",
+                      skip_label="Skip to the week", sr_title="", og_type="website",
+                      nav_current="calendar.html",
+                      jsonld=LD.listing(f"The week of {label}",
+                                        f"The General Court's business, {label}.",
+                                        base, S.canon(path)))
+        html = html.replace('<div id="results"></div>', block, 1)
+        assert '<div class="wkpage">' in html, f"{f}: the template has no results slot"
+        out = site / f.lstrip("/")
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(html, encoding="utf-8")
     urls.append(base + S.canon(path))
     return n
 
@@ -477,15 +519,12 @@ def main():
         total += week_page(site, base, key, weeks, order, i,
                            titles, years, code, urls, today, sits)
 
-    sm = site / "sitemap.xml"
-    if sm.exists():
-        text = sm.read_text(encoding="utf-8")
-        add = "".join(f"<url><loc>{S.E(u)}</loc></url>\n" for u in urls
-                      if S.E(u) not in text)
-        if add:
-            sm.write_text(text.replace("</urlset>", add + "</urlset>"),
-                          encoding="utf-8")
-            print(f"  {len(add.splitlines())} added to sitemap.xml")
+    # Every week is rebuilt on every run, so a calendar address in the sitemap
+    # that this run did not write -- the current week's dated copy, a week
+    # that no longer has a proceeding -- is taken out, not left beside the rest.
+    added, dropped = S.sitemap_merge(site, base, urls, "/calendar")
+    if added or dropped:
+        print(f"  sitemap.xml: {added} added, {dropped} no longer written taken out")
 
     print(f"  {len(order)} weeks -> calendar.html and calendar/ "
           f"({total:,} sittings; {here} is this week)")

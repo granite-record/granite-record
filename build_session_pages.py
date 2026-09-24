@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.5
+# GRANITE_VERSION: 2026-09-19.6
 """
 A page for every day the House sat.
 
@@ -53,6 +53,7 @@ import json
 import re
 from pathlib import Path
 
+import bill_order as BO
 import session_days
 import journal_days
 import shell as S
@@ -194,8 +195,11 @@ def vote_payload(item):
             # Not always half plus one. The Senate writes "3/5 nec." into the
             # motion for a supermajority, and drawn as a simple majority the
             # ring's threshold mark says a motion cleared a bar it never
-            # faced, or missed one it did.
+            # faced, or missed one it did. Three fifths is of the members in
+            # office, which session_days takes from the roll call's ballots;
+            # where there are none, the ring draws no mark.
             "threshold_needed": item.threshold_needed,
+            **({"threshold_unknown": True} if item.threshold_unknown else {}),
             "kind": item.kind}
 
 
@@ -397,13 +401,14 @@ def consent_html(cons, removed, titles, years, esc):
             "together, in one motion and without debate.")
     if removed:
         pretty = ", ".join(re.sub(r"^([A-Z]+)(\d)", r"\1 \2", b)
-                           for b in sorted(removed))
+                           for b in sorted(removed, key=BO.bill_key))
         note += (f" {pretty} {'was' if len(removed) == 1 else 'were'} taken off "
                  "the list at a member's request and debated separately.")
     H = ['<section class="sday"><h2>On the consent calendar</h2>'
          f'<p class="note">{esc(note)}</p>']
     for label in sorted(groups):
-        items = sorted(groups[label], key=lambda x: x.bill)
+        # By number as bills.html lists them; as text, SB 16 followed SB 133.
+        items = sorted(groups[label], key=lambda x: BO.bill_key(x.bill))
         H.append(f'<div class="scons"><h3 class="slab">{esc(label)} '
                  f'&mdash; {len(items)}</h3><ul class="sconslist">')
         for i in items:
@@ -667,7 +672,9 @@ def main():
             nav.append(f'<a class="wknext" href="{S.canon(f"session/{body}/{next_}.html")}">'
                        f"The sitting after &rsaquo;</a>")
 
-        path = f"session/{body}/{date}.html"
+        # From the root, with its slash: the canonical link, the citation and
+        # the sitemap are the domain joined to this.
+        path = f"/session/{body}/{date}.html"
         html = S.page(S.template(site), path=path, base=base,
                       title=f"{label} | Granite Record",
                       description=(f"What the New Hampshire {CHAMBER[body]} did on "
@@ -689,27 +696,20 @@ def main():
                 "</div></div>")
         html = html.replace('<div id="results"></div>', full, 1)
         assert 'class="wkpage sesspage"' in html, f"{path}: no results slot"
-        (site / path).write_text(html, encoding="utf-8")
+        (site / path.lstrip("/")).write_text(html, encoding="utf-8")
         urls.append(base + S.canon(path))
         wrote += 1
 
-    gone = [] if a.limit else prune(out_dir, {k[1] for k in mine}, a.prune)
+    # A run cut short by --limit leaves every page it did not build.
+    if not a.limit:
+        prune(out_dir, {k[1] for k in mine}, a.prune)
 
-    sm = site / "sitemap.xml"
-    if sm.exists():
-        text = sm.read_text(encoding="utf-8")
-        # build_bill_pages rewrites the sitemap from scratch earlier in
-        # build_all; this is for a run of this step on its own.
-        for g in gone:
-            text = re.sub(r"<url><loc>[^<]*session/" + body + "/" + re.escape(g)
-                          + r"(?:\.html)?</loc></url>\n?", "", text)
-        add = "".join(f"<url><loc>{S.E(u)}</loc></url>\n" for u in urls
-                      if S.E(u) not in text)
-        if add or gone:
-            sm.write_text(text.replace("</urlset>", add + "</urlset>"),
-                          encoding="utf-8")
-        if add:
-            print(f"  {len(add.splitlines())} added to sitemap.xml")
+    # This chamber's days only, and all of them unless --limit cut the run
+    # short: a limited run takes out only entries that were never an address.
+    added, dropped = S.sitemap_merge(site, base, urls, f"/session/{body}",
+                                     whole=not a.limit)
+    if added or dropped:
+        print(f"  sitemap.xml: {added} added, {dropped} no longer written taken out")
 
     print(f"  {wrote:,} {CHAMBER[body]} sitting days -> site/session/{body}/")
     print(f"    {with_narr:,} carry a journal narrative "

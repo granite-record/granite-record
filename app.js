@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-07.112
+// GRANITE_VERSION: 2026-09-07.114
 // What each kind of document actually is, said once rather than in every row.
 const DOCWHAT={text:"the bill as it currently stands",
   status:"the page this site takes a bill's status from",
@@ -54,6 +54,16 @@ const OTHER=[["Presiding","Presiding",
 
 const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+/* THE BILL MATCHER IS SHARED WITH THE HEADER SEARCH. Every line between a
+   "BILLMATCH:BEGIN" and the "BILLMATCH:END" after it is copied by
+   build_pages.py into site/billmatch.js, which find.js loads on the pages
+   that do not run this file -- so the header's "All 30 bills that mention
+   firearms" is counted by the same code that lists /bills?q=firearms, not by
+   a second matcher that drifts from this one. What is inside the markers must
+   therefore stand alone: no DOM, no page state, and nothing it names that is
+   declared outside a marked region. preflight runs the copy on its own and
+   fails if it does not. */
+// BILLMATCH:BEGIN
 /* Bills are drafted in statutory vocabulary; people search in ordinary words.
    "AN ACT relative to the state minimum hourly rate" will never be found by
    someone typing "minimum wage". These are GROUPS rather than mappings: every
@@ -307,6 +317,7 @@ function groupWeight(b,g){
   }
   return w;
 }
+// BILLMATCH:END
 // NOTHING FOUND is still an answer with somewhere to go. A search of several
 // parts that no bill has all of says which parts do find bills on their own,
 // with how many, as searches to run -- rather than a blank page for a reader
@@ -374,11 +385,20 @@ const dkey=id=>`${yearOf(id)}/${id}`;
 // House bills before Senate bills, then numerically. Bill numbers are strings
 // like "HB 1442", so a plain string sort puts HB 1000 before HB 99 and mixes
 // the chambers together.
+// BILLMATCH:BEGIN -- the order bills sort in; see the note above SYN.
 const KINDORDER={HB:0,HR:1,HCR:2,CACR:3,SB:4,SR:5,SCR:6,HJR:7,SJR:8};
 function billKey(b){
   const m=/^([A-Z]+)\s*(\d+)/.exec(b.id.toUpperCase())||[];
   return [KINDORDER[m[1]] ?? 99, parseInt(m[2]||"0",10)];
 }
+// BILLMATCH:END
+// The same order for two bare bill numbers. A committee's bills, a member's
+// and a calendar slot arrive already listed by the build (bill_order.py is
+// this key in Python), and these sort them again so that the page never
+// depends on the file having done it: those lists have no sort control, and
+// as text HB 1003 came before HB 101.
+const billCmp=(a,b)=>{const x=billKey({id:String(a||"")}),y=billKey({id:String(b||"")});
+  return x[0]-y[0]||x[1]-y[1];};
 // A bill has one status and one subject, but it can pass through two
 // committees, so a facet value is a list. Sorting the list alphabetically also
 // groups it: every House committee, then every Senate one.
@@ -769,6 +789,7 @@ need("meta.json")
    bill. The id in the index is unpadded: HB115, across all 33,683 of them,
    not one of which carries a leading zero. The lookahead keeps a digit, so
    even a nonsense "HB000" comes out as a number rather than as "HB". */
+// BILLMATCH:BEGIN -- what counts as a bill number; see the note above SYN.
 function billNumbers(q){
   const parts=q.split(",").map(s=>s.trim()).filter(Boolean);
   if(!parts.length)return null;
@@ -776,6 +797,7 @@ function billNumbers(q){
                          .replace(/^([A-Z]{2,5})0+(?=\d)/,"$1"));
   return ids.every(i=>/^[A-Z]{2,5}\d+$/.test(i))?ids:null;
 }
+// BILLMATCH:END
 function matches(b,ignore){
   // A bill number is unique WITHIN a term, so a number search ignores the
   // sidebar filters -- they can only hide the answer. It stays inside the
@@ -876,9 +898,14 @@ function simpleDonut(rc,bid,i){
   const need=rc.threshold_needed||Math.floor(tot/2)+1;
   const frac=Math.min(1,Math.max(0,need/tot));
   const a=(180+GAP/2+(360-GAP)*frac)*Math.PI/180;
-  const tick=marker(a,R,need,"");
+  // No mark where the record says more than a majority was needed and the
+  // count it was needed of is not on record -- three fifths of the members in
+  // office, on a division, where nobody's ballot was recorded. A majority mark
+  // there would be a wrong one.
+  const tick=rc.threshold_unknown?"":marker(a,R,need,"");
   return `<div class="votewrap"><svg class="donut" viewBox="0 0 172 206" width="172" height="206"
-    role="img" aria-label="Division vote, ${y} yes to ${n} no, needing ${need}">
+    role="img" aria-label="Division vote, ${y} yes to ${n} no, needing ${
+      rc.threshold_unknown?"more than a majority":need}">
     <g transform="rotate(90 86 86)">${seg(avail*y/tot,"var(--yes)",won)}</g>
     <g transform="translate(172,0) scale(-1,1)"><g transform="rotate(90 86 86)">${seg(avail*n/tot,"var(--no)",!won)}</g></g>
     ${tick}${yn(GAP,R,won)}
@@ -937,10 +964,13 @@ function donut(bid,i,rc){
       stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${o}" opacity="${dim}"
       data-seg="${key}|${s.key}"></circle>`;
     }).join("");};
-  // Where the yes side had to reach. rollcall_parser works this out per
-  // motion, so a veto override marks two thirds and a CACR three fifths of the
-  // whole membership rather than of those who turned up. Without it a chart
-  // showing 204 to 116 looks like a comfortable win, and that vote failed.
+  // Where the yes side had to reach. rollcall_outcomes works this out per
+  // motion, so a veto override marks two thirds of those voting and passing a
+  // CACR three fifths of the members in office, which can sit beyond the ring
+  // entirely. Without it a chart showing 204 to 116 looks like a comfortable
+  // win, and that vote failed. Where the record says a vote needed more than a
+  // majority without saying of what (threshold_unknown), no mark is drawn
+  // rather than a majority mark that would be wrong; the note says why.
   const voting=(rc.yeas||0)+(rc.nays||0);
   const need=rc.threshold_needed||Math.floor(voting/2)+1;
   const frac=voting?Math.min(1,Math.max(0,need/voting)):0.5;
@@ -949,7 +979,7 @@ function donut(bid,i,rc){
   // tick starts flush with the inner edge and runs six past the outer one:
   // grounded on the inside, proud on the outside, so it reads as a mark
   // against the ring rather than a line drawn through it.
-  const tick=voting?marker(a,R,need,rc.threshold_rule):"";
+  const tick=(voting&&!rc.threshold_unknown)?marker(a,R,need,rc.threshold_rule):"";
   const won=!!rc.passed;
   const circles=`<g transform="rotate(90 86 86)">${arc(yes,"var(--yes)",won)}</g>
     <g transform="translate(172,0) scale(-1,1)"><g transform="rotate(90 86 86)">${arc(no,"var(--no)",!won)}</g></g>`;
@@ -958,7 +988,7 @@ function donut(bid,i,rc){
   // worked out by comparing two numbers against a threshold.
   const legend=rows.map(s=>{
     const winner=(s.side==="Yea")===won;
-    return `<button class="lrow ${chosen===s.key?'sel':''}" data-seg="${key}|${s.key}">
+    return `<button type="button" class="lrow ${chosen===s.key?'sel':''}" aria-pressed="${chosen===s.key}" data-seg="${key}|${s.key}">
     <span class="sw" style="background:${PARTY_COLOR[s.p]||"var(--ink-2)"}"></span>
     <span>${PARTY_NAME[s.p]||s.p} — ${s.side==="Yea"?"Yes":"No"}${
       winner?`<span class="won" title="this side prevailed">\u2713</span>`:""}</span>
@@ -966,7 +996,7 @@ function donut(bid,i,rc){
   const others=OTHER.map(([st,label])=>({st,label,n:(rc.members||[]).filter(m=>m.v===st).length})).filter(o=>o.n);
   const oTot=others.reduce((a,o)=>a+o.n,0);
   const oRows=others.length?`<div class="othergrp"><div class="otherhd">Other — ${oTot}<span class="c">not in chart</span></div>
-    ${others.map(o=>`<button class="lrow ${chosen==="other-"+o.st?'sel':''}" data-seg="${key}|other-${o.st}">
+    ${others.map(o=>`<button type="button" class="lrow ${chosen==="other-"+o.st?'sel':''}" aria-pressed="${chosen==="other-"+o.st}" data-seg="${key}|other-${o.st}">
     <span class="sw sw-o"></span><span>${o.label}</span><span class="c">${o.n}</span></button>`).join("")}</div>`:"";
   let list="";
   if(chosen){
@@ -984,6 +1014,7 @@ function donut(bid,i,rc){
   }
   return `<div class="votewrap"><svg class="donut" viewBox="0 0 172 206" width="172" height="206"
     role="img" aria-label="Votes by party: ${rows.map(s=>`${PARTY_NAME[s.p]||s.p} ${s.side==='Yea'?'yes':'no'} ${s.n}`).join(", ")}. ${
+      rc.threshold_unknown?"Needed more than a majority":
       rc.threshold_rule?`Needed ${need}, ${esc(rc.threshold_rule)}`:`Needed ${need} for a majority`}.">
     ${circles}${tick}${yn(GAP,R,won)}
     ${score(rc.yeas,rc.nays,won)}</svg>
@@ -1055,7 +1086,7 @@ function score(y,n,won){
 
 function fullRecord(bid,i,rc){
   const k=`${bid}|${i}`;
-  if(!fullOpen.has(k))return `<button class="discl" data-full="${k}">View full voting record →</button>`;
+  if(!fullOpen.has(k))return `<button type="button" class="discl" aria-expanded="false" data-full="${k}">View full voting record →</button>`;
   // Sorted on the surname-first key, not on what is displayed: ordering
   // "Rep. Jodi Nelson (R)" alphabetically groups 400 members by honorific
   // and then by first name.
@@ -1073,7 +1104,7 @@ function fullRecord(bid,i,rc){
   const pair=p=>{const py=col("Yea",p),pn=col("Nay",p),nm=PARTY_NAME[p]||p;
     return `<div class="full"><div><h3>${nm} Yea — ${py.length}</h3>${grid(py)}</div>
     <div><h3>${nm} Nay — ${pn.length}</h3>${grid(pn)}</div></div>`;};
-  return `<button class="discl" data-full="${k}">Hide full voting record</button>
+  return `<button type="button" class="discl" aria-expanded="true" data-full="${k}">Hide full voting record</button>
     ${parties.map(pair).join("")}
     ${OTHER.map(sect).join("")}
     <p class="note" style="margin-top:12px">All ${tot} recorded members accounted for:
@@ -1273,9 +1304,10 @@ function archivedNote(d){
   const P=s=>`<p class="note" style="margin:10px 0 0">${s} The bill's own
     record at the General Court is linked above.</p>`;
 
-  // The first year of the term. Roll calls are on record from 1999 and
-  // hearings on video from May 2020; before those, no such thing exists to
-  // fetch, and the page must not say it is merely missing.
+  // The first year of the term. The General Court's roll-call files begin in
+  // 1999, its online calendars in 1997 and its YouTube channels in May 2020;
+  // before those, the copy this site reads does not exist to fetch, and the
+  // page must not say it is merely missing.
   const y=parseInt(String(d.term||d.year||"").slice(0,4),10)||0;
   const and=xs=>xs.join(", ").replace(/, ([^,]*)$/," and $1");
   // A TERM'S SPONSORS ARRIVE A BILL AT A TIME, from the text the lane saves, so
@@ -1298,11 +1330,43 @@ function archivedNote(d){
   // The !c.docket branch is NOT dead code and must not be removed with it: it
   // is the state every backfill term passes through, between landing in
   // data/bills.json and having its docket narrated.
-  const before1999=(!c.votes&&y&&y<1999)?` No roll call from before 1999 is in
-    the General Court's own record of votes: RollCallHistory.txt and
-    RollCallSummary.txt, the files every named vote on this site is read from,
-    begin with the 1999 session. That is where the record starts, not where
-    this site has got to.`:"";
+  //
+  // THE FILES START IN 1999, NOT THE VOTES. The House Journal of 1997 prints
+  // its roll calls name by name, so "that is where the record starts" was
+  // false for every one of those 8,525 pages. What begins in 1999 is the
+  // General Court's roll-call files, and the sentence now says so.
+  const before1999=(!c.votes&&y&&y<1999)?` No roll call from before 1999 is
+    listed by name here: the General Court's roll-call files, RollCallHistory.txt
+    and RollCallSummary.txt, which every named vote on this site is read from,
+    begin with the 1999 session. The docket gives the tallies it recorded, and
+    the printed journals name who voted which way.`:"";
+
+  // WHERE THE WRITTEN REPORTS START, which is the same kind of boundary. The
+  // House's written committee reports on this site are read from its
+  // calendars, and the General Court's online calendars begin in 1997, so the
+  // 6,676 bills of 1989-1996 were told the reports were "not yet fetched" --
+  // a backlog that no fetch could clear. For those terms the docket's report
+  // lines are the record of what each committee recommended, and the page
+  // already shows them.
+  //
+  // THE HOUSE'S REPORTS, NOT EVERYONE'S. Every written report on an archived
+  // bill came from a House Calendar; the Senate's are read from the
+  // database, which holds 2025-2026 alone. And the docket's report lines
+  // (a COMM, COMMITTEE, MAJ or MIN REPORT that is not a conference's or an
+  // adoption) carry "(VOTE n-n)" on 93 to 96 per cent of the House's in each
+  // term of 1989-1996, but on none of the Senate's 3,601 of 1989-1994 --
+  // the one that does is a House report filed under S -- and on 510 of
+  // 1995-1996's 1,085. So "and its vote" was false of most Senate committees
+  // these pages name, and "the House committee's vote" would leave out the
+  // Senate's where the docket has it.
+  const before1997=(!c.reports&&y&&y<1997)?` The House committees' written
+    reports begin here with 1997, the first year of the General Court's online
+    calendars, which print them; the Senate committees' begin with 2025. For
+    this term the page gives each committee's recommendation as the docket
+    records it, and the committee's vote wherever the docket gives one.`:"";
+  // A bill that carries its own text does not need telling the text is
+  // elsewhere: 94 to 98 per cent of every archived term's bills have it.
+  const hasText=!!(((d.billtext||{}).body||"").trim());
 
   if(!c.docket){
     // WHAT IS HERE, THEN WHAT IS NOT. This branch told every bill of
@@ -1317,35 +1381,51 @@ function archivedNote(d){
     // made this "its roll calls and member by member".
     if(c.votes)have.push("each member's vote on its roll calls");
     if(hasSp)have.push("its sponsors");
-    if(c.reports)have.push("the committee's written report");
+    if(c.reports)have.push("the House committee's written report");
     const gaps=["the docket's full history"];
     if(!hasSp)gaps.push("the sponsors");
-    if(!c.reports)gaps.push("the written committee reports");
+    if(!c.reports&&y>=1997)gaps.push("the House committees' written reports");
     if(!c.votes&&y>=1999)gaps.push("the roll calls");
     if(!c.hearings)gaps.push("its hearings");
     return P(`This term is archived. Here: ${and(have)}. Not yet on this
-      site for it: ${and(gaps)}.${before1999}`);
+      site for it: ${and(gaps)}.${before1997}${before1999}`);
   }
 
   // Has a docket. What is missing beyond it is what the reader needs told.
   const gaps=[];
   if(!hasSp)gaps.push("the sponsors");
-  if(!c.reports)gaps.push("the written committee reports");
+  if(!c.reports&&y>=1997)gaps.push("the House committees' written reports");
   if(!c.votes&&y>=1999)gaps.push("the roll calls naming individual members");
   if(!c.video&&y>=2019)gaps.push("a recording of any hearing");
   // Both returns carry it, not just the one with gaps. A pre-1999 term whose
   // sponsors and reports have landed reaches the first of these, and "the
   // recorded votes are all here" is false for every term before 1999 --
   // which is the same wrong claim in the other direction.
-  if(!gaps.length)
-    return P(`This term is archived, but its record is close to complete: the
-      docket, the sponsors${c.votes?`, the committee reports and the recorded
-      votes`:` and the committee reports`} are all here. What a current term
-      adds is the bill's own text, which is linked rather than loaded.${
-      before1999}`);
+  //
+  // WHAT IS HERE, NAMED FROM THE FLAGS. This said "the docket, the sponsors
+  // and the committee reports are all here" whenever nothing was missing,
+  // which a term before 1997 now reaches with no written report on it at all.
+  //
+  // "CLOSE TO COMPLETE" ONLY WHERE IT IS. A term of 1989-1996 reaches here
+  // with no written report, no named vote and no recording, and was told its
+  // record was close to complete; it is told what is here instead. And the
+  // written reports are the House committees': no archived term has a
+  // Senate committee's.
+  if(!gaps.length){
+    const have=["the docket", "the sponsors"];
+    if(c.reports)have.push("the House committees' written reports");
+    if(c.votes)have.push("the recorded votes");
+    const lead=(c.reports&&c.votes)
+      ?`This term is archived, but its record is close to complete:
+      ${and(have)} are all here.`
+      :`This term is archived, and ${and(have)} are here.`;
+    return P(`${lead}${hasText?"":` What a current term adds is the
+      bill's own text, which is linked rather than loaded.`}${
+      before1997}${before1999}`);
+  }
   return P(`This term is archived, and its docket is here: every action the
     General Court recorded, and the committee's recommendation and the vote on
-    it. Not yet fetched for this term: ${and(gaps)}.${before1999}`);
+    it. Not yet fetched for this term: ${and(gaps)}.${before1997}${before1999}`);
 }
 
 // ===================================================== the bill's own facts ==
@@ -1578,6 +1658,7 @@ function renderVotes(b,d){
       <span class="rcres ${rc.passed?'pass':'fail'}">${rc.passed?"Adopted":"Failed"}</span></div>
       ${rc.mover?`<p class="rcby">Moved by ${esc(rc.mover)}</p>`:""}
       ${rc.threshold_note?`<p class="note" style="margin:6px 0 0">${esc(rc.threshold_note)}</p>`:""}
+      ${rc.outcome_conflict?`<p class="note" style="margin:6px 0 0">${esc(rc.outcome_conflict)}</p>`:""}
       ${body}</section>`;}).join("")
     :`<p class="note">No roll call votes on this bill.</p>`);
 }
@@ -1777,9 +1858,10 @@ function renderHearings(b,d){
       // the previous bill's roll call and can be half an hour of other
       // business earlier, so it is only a fallback -- and ten minutes before
       // the vote is a worse fallback still, just a less wrong one.
-      // floor_stated has a start and an end the chair said, and no roll call
-      // at all. Everything below is the same except what may be claimed about
-      // the end: "timed to the second" is true of a roll call clock and false
+      // floor_stated has a start the clerk read (the committee report) and an
+      // end the chair said (the result), and no roll call at all. Everything
+      // below is the same except what may be claimed about the end: "timed
+      // to the second" is true of a roll call clock and false
       // of a caption line, and the difference is the whole point of the
       // wording on this site.
       placed=true;
@@ -1841,8 +1923,14 @@ function renderHearings(b,d){
       +`<p class="note" style="margin-top:8px">A voice or division vote leaves no
       timestamp in the record, so there is nothing to point at within the
       sitting. The whole session is here.</p>`;
-    else if(s.state==="prestream")inner=`<div class="vbox"><p><b>No recording exists.</b>
-      Hearings were not livestreamed before 2020, so the written record is all there is.</p></div>`;
+    // WHERE THIS SITE'S RECORDINGS BEGIN, not where recording began. The
+    // House Calendars of 2013-2019 announce hearings streamed live, and none
+    // of those is on either YouTube channel, so "no recording exists" and
+    // "not livestreamed before 2020" were both claims the record contradicts.
+    // The month is about_figures.STREAM_START_WORDS, and preflight holds the
+    // two to each other.
+    else if(s.state==="prestream")inner=`<div class="vbox"><p><b>No recording to link.</b>
+      The General Court&rsquo;s YouTube channels, where this site finds its recordings, begin in May 2020, and this sitting was earlier.</p></div>`;
     // Defensive: if a proceeding carries a video id but an unrecognised state,
     // still offer the recording. Saying "no recording" when one is right there
     // is the worst possible failure -- it hides working data and looks like the
@@ -2786,7 +2874,10 @@ document.addEventListener("submit",async e=>{
   try{
     const r=await fetch("/api/report",{method:"POST",signal:ctl.signal,
       headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-    if(!r.ok)throw new Error(`the server answered ${r.status}`);
+    // 503 is the Function's one answer for a report it accepted and could not
+    // keep (functions/api/report.js), so it gets words a reader can use.
+    if(!r.ok)throw new Error(r.status===503?"the site could not save it just now":
+      `the server answered ${r.status}`);
     form.elements.note.value="";
     st.textContent="Thank you. It will be checked against the record.";
   }catch(err){
@@ -2826,10 +2917,15 @@ let UPCOMING = null;
 // with a copy, and focus fell to <body>: a keyboard reader who arrowed onto
 // Bill Text lost their place the moment its text loaded. Put focus back on the
 // copy, matched by id or, for a member or committee tab, by its position.
+// The Votes tab's own controls carry neither an id nor data-pt -- the
+// full-record button and the legend's rows -- so each is found again by
+// the data attribute saying what it opens (24 September).
 const repaint=()=>{
   const a=document.activeElement;
   const sel=a&&a!==document.body
-    ?(a.id?`#${CSS.escape(a.id)}`:a.dataset&&a.dataset.pt!==undefined?`.tab[data-pt="${a.dataset.pt}"]`:null)
+    ?(a.id?`#${CSS.escape(a.id)}`:a.dataset&&a.dataset.pt!==undefined?`.tab[data-pt="${a.dataset.pt}"]`
+      :a.dataset&&a.dataset.full!==undefined?`[data-full="${CSS.escape(a.dataset.full)}"]`
+      :a.dataset&&a.dataset.seg!==undefined?`[data-seg="${CSS.escape(a.dataset.seg)}"]`:null)
     :null;
   if(PAGE)renderPage();else render();
   if(sel){const f=document.querySelector(sel);if(f&&f!==document.activeElement)f.focus({preventScroll:true});}
@@ -3054,6 +3150,7 @@ function idxRow(b){
 
 // The bills of one tab, as cards, with the outcome filter above them.
 function billPane(rows,note){
+  rows=rows.slice().sort((a,b)=>billCmp(a.id,b.id));
   const statuses=[...new Set(rows.map(b=>b.status).filter(Boolean))].sort();
   const shown=rows.filter(b=>!PAGE.status||b.status===PAGE.status);
   return `<div class="bfilt"><label>Status
@@ -3394,7 +3491,8 @@ function voteRow(r){
         r.mark.agreed?"with":"against"} ${esc(r.mark.word)}</i>`:""}</td>
     <td class="o" data-l="Outcome">${rc
       ? `<span class="${rc.p?"pass":"fail"}">${rc.p?"Adopted":"Failed"}</span>${
-          tallies}${rc.tn?`<i class="thr">${esc(rc.tn)}</i>`:""}`
+          tallies}${rc.tn?`<i class="thr">${esc(rc.tn)}</i>`:""}${
+          rc.oc?`<i class="thr">${esc(rc.oc)}</i>`:""}`
       : `<span class="dim">&mdash;</span>`}</td></tr>`;
 }
 
@@ -3675,7 +3773,8 @@ function calendarBlock(rows,heading){
       // it was set for.
       const byslot=new Map();
       bills.slice().sort((a,b)=>((a.time||"~")+(a.what||"")+(a.venue||""))
-        .localeCompare((b.time||"~")+(b.what||"")+(b.venue||"")))
+        .localeCompare((b.time||"~")+(b.what||"")+(b.venue||""))
+        ||billCmp(a.bill,b.bill))
         .forEach(b=>{const sk=[b.time||"",b.what||"",b.venue||""].join("\u0000");
           if(!byslot.has(sk))byslot.set(sk,[]);byslot.get(sk).push(b);});
       const kinds=[],rooms=[];

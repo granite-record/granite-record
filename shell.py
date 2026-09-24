@@ -95,6 +95,46 @@ BRAND = "Granite Record"
 # where it can, and this is what a reader without JavaScript is given.
 BUILT = datetime.date.today().strftime("%d %B %Y").lstrip("0")
 
+# The punctuation a name can end on: full stops, spaces and closing double
+# quotes, in whatever order the source typed them. Not an apostrophe: 1994's
+# HB 1263 ends "...the commission'", and that is a word, not a quotation.
+_CLOSING = re.compile(r'[.\s"”]+$')
+
+
+def title_stops(name):
+    """(stem, closed, bib): a name with no closing full stop, with exactly one,
+    and as BibTeX should carry it.
+
+    MLA and Chicago close a quoted title with a full stop of their own, and
+    33,313 of 33,683 bill titles already end in one, so the citation has to
+    take the name's stop off before adding its own. Taking off ONE stop left
+    a double full stop wherever the name ended some other way, as MLA drew it
+    until 24 September:
+
+      ...salary and retirement benefits..       -> benefits..”
+      ...to "Oliveira Circle."  (93 bills)      -> Circle.".”
+      ...the term "foal" and "colt.".           -> colt.".”
+
+    So the whole closing run is read at once: every stop in it collapses to
+    one, and the quotation marks keep their order around it. The stop goes
+    INSIDE a closing quote, as both styles put it -- 'to "Oliveira Circle."'
+    closes as it was written. APA italicises the name and puts its stop after
+    the italics, so it takes the stem. BibTeX adds no stop and carries the
+    name as written, with a doubled stop collapsed.
+
+    AN ELLIPSIS IS LEFT ALONE, because a name that really was shortened should
+    still look it: "…" is not in the closing run at all, and three typed
+    stops are kept as three.
+    """
+    m = _CLOSING.search(name)
+    run = m.group(0) if m else ""
+    if "..." in run:
+        return name, name, name
+    core = name[: len(name) - len(run)]
+    quotes = re.sub(r"[.\s]", "", run)
+    closed = f"{core}.{quotes}"
+    return core + quotes, closed, (closed if "." in run else name)
+
 
 def cite_block(path, title, base, built=""):
     """How to cite this page, in the four forms a paper or a newsroom asks for.
@@ -116,33 +156,32 @@ def cite_block(path, title, base, built=""):
     true about the page rather than "Accessed ." -- and the note says which
     date it is, so neither reader is misled.
     """
-    url = f"{base}{canon(path)}"
+    url = address(base, path)
     # The record's name, without the browser tab's " | Granite Record".
     name = title.split(" | ")[0].strip()
-    # MLA, APA and Chicago each close the name with a full stop of their own,
-    # and 33,313 of 33,683 bill titles already end in one -- "relative to
-    # portable electronics insurance.." . BibTeX adds none, so it keeps the
-    # name as written. Only ONE trailing stop is removed: an ellipsis is left
-    # alone, because a name that really was shortened should still look it.
-    stem = name[:-1].rstrip() if name.endswith(".") and not name.endswith("…") else name
+    stem, closed, bib = title_stops(name)
     day = f'<span class="citeday">{E(built)}</span>'
     # A BibTeX key a person can read: the address, minus the punctuation
     # BibTeX treats as syntax.
     key = canon(path).strip("/").replace("/", "-").replace(".", "") or "granite-record"
     forms = [
-        ("MLA", f'&ldquo;{E(stem)}.&rdquo; <i>{BRAND}</i>, {E(url)}. '
+        ("MLA", f'&ldquo;{E(closed)}&rdquo; <i>{BRAND}</i>, {E(url)}. '
                 f'Accessed {day}.'),
         ("APA", f'{BRAND}. (n.d.). <i>{E(stem)}</i>. Retrieved {day}, '
                 f'from {E(url)}'),
-        ("Chicago", f'{BRAND}. &ldquo;{E(stem)}.&rdquo; Accessed {day}. '
+        ("Chicago", f'{BRAND}. &ldquo;{E(closed)}&rdquo; Accessed {day}. '
                     f'{E(url)}.'),
         ("BibTeX", f'<code>@misc{{{E(key)},<br>&nbsp;&nbsp;title = '
-                   f'{{{E(name)}}},<br>&nbsp;&nbsp;howpublished = {{{BRAND}}},'
+                   f'{{{E(bib)}}},<br>&nbsp;&nbsp;howpublished = {{{BRAND}}},'
                    f'<br>&nbsp;&nbsp;url = {{{E(url)}}},'
                    f'<br>&nbsp;&nbsp;note = {{Accessed {day}}}<br>}}</code>'),
     ]
     rows = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in forms)
-    return ('<section class="citewrap"><details class="cite">'
+    # .pcite, NOT .cite. `.cite` is the docket line's citation span in app.js
+    # ("HJ 7, page 55"), and app.css gives it white-space:nowrap -- which this
+    # <details> inherited, so above 720px every citation ran on one line past
+    # its box and opening it made the whole page scroll sideways.
+    return ('<section class="citewrap"><details class="pcite">'
             '<summary>Cite this page</summary>'
             '<div class="citebody">'
             '<p class="citenote">Granite Record indexes the General '
@@ -178,6 +217,70 @@ def canon(path):
     if path == "index.html":
         return "/"
     return path[:-5] if path.endswith(".html") else path
+
+
+def address(base, path):
+    """A page's whole address: the site, then where the host serves the page.
+
+    A PATH WITHOUT ITS LEADING SLASH IS REFUSED, NOT REPAIRED. build_calendar
+    and build_session_pages passed "calendar.html" and
+    "session/H/2026-05-21.html", and until 24 September 1,670 pages named
+    themselves "https://graniterecord.orgsession/H/2026-05-21" -- in the
+    citation a reader pastes into their own work, the canonical link, og:url,
+    the structured data and 1,669 sitemap entries. Only the first three are
+    joined here. The builder writes the other two from the same path, so
+    adding the slash quietly here would have mended the page's head and left
+    its sitemap entry wrong; refusing makes the builder mend the path it uses
+    everywhere.
+    """
+    assert path.startswith("/"), (
+        f"page path {path!r} does not start with '/', so its address would read "
+        f"{base}{canon(path)} -- no slash after the domain. Pass it as "
+        f"'/{path}'.")
+    return base + canon(path)
+
+
+def sitemap_merge(site, base, urls, owns, whole=True):
+    """Put a builder's addresses in sitemap.xml, and take out its stale ones.
+
+    build_bill_pages writes the file from scratch and the builders after it add
+    their own pages. Adding was all the calendar and the sitting days did, so
+    an address one stopped writing stayed listed until the next full build --
+    and had either been rebuilt alone after the slash was mended, the 1,669
+    entries reading "https://graniterecord.orgsession/..." would have stayed
+    beside their corrected twins.
+
+    `owns` is the part of the site the builder writes, as a path: "/calendar"
+    is /calendar and everything under /calendar/. An entry there that this run
+    did not write is dropped, but only when the run wrote the whole of it
+    (`whole`). A run limited to a few pages must not take the rest out, so it
+    drops only the entries that were never a real address. Every other entry
+    is left exactly as it was. Returns (added, dropped).
+    """
+    sm = Path(site) / "sitemap.xml"
+    if not sm.exists():
+        return 0, 0
+    own = "/" + owns.strip("/")
+    want = list(dict.fromkeys(E(u) for u in urls))
+    keep = set(want)
+    kept, have, dropped = [], set(), 0
+    for line in sm.read_text(encoding="utf-8").splitlines(keepends=True):
+        m = re.search(r"<loc>([^<]*)</loc>", line)
+        loc = m.group(1) if m else ""
+        rest = loc[len(base):] if loc.startswith(base) else None
+        if rest is not None and loc not in keep:
+            p = "/" + rest.lstrip("/")
+            if (p == own or p.startswith(own + "/")) and (whole or not rest.startswith("/")):
+                dropped += 1
+                continue
+        have.add(loc)
+        kept.append(line)
+    add = "".join(f"<url><loc>{u}</loc></url>\n" for u in want if u not in have)
+    if add or dropped:
+        text = "".join(kept)
+        assert "</urlset>" in text, f"{sm} has no </urlset> to add before"
+        sm.write_text(text.replace("</urlset>", add + "</urlset>", 1), encoding="utf-8")
+    return len(add.splitlines()), dropped
 
 # A search result shows roughly the first sixty characters of a title and a
 # hundred and sixty of a description. Longer is not penalised -- it is simply
@@ -294,7 +397,7 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
          alternate="", skip_label="Skip to the content", og_title=None,
          sr_title=None, nav_current="", jsonld=None,
          data_json=None, data_url=None, og_type="article", og_image=None,
-         og_alt=None, cite=True, cite_title=None):
+         og_alt=None, cite=True, cite_title=None, canonical=None):
     """One record's page: the template, told which record it is.
 
     sr_title replaces the template's own visually-hidden <h1>. bills.html
@@ -303,7 +406,16 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     opening the committees index, a member's page or a civics page is told
     "New Hampshire bills" before it is told anything true. It is invisible,
     which is why it has gone unnoticed, and it is the first thing announced,
-    which is why it matters."""
+    which is why it matters.
+
+    canonical names the page this one is a copy of, where it is one: the
+    calendar writes the current week at /calendar and again at its dated
+    address, so a link to that week sent last week still opens. The copy's
+    canonical link, og:url and citation name the original; its skip link
+    stays on the page it is on."""
+    here = address(base, path)
+    if canonical:
+        here = address(base, canonical)
     if nav_current:
         # The template is bills.html, so its nav marks Bills as the current
         # page and every page built from it inherits that -- the committees
@@ -327,7 +439,7 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         # put two on every record page.
         + f"\n<title>{E(title)}</title>"
         + f'\n<meta name="description" content="{E(description)}">'
-        + f'\n<link rel="canonical" href="{base}{canon(path)}">'
+        + f'\n<link rel="canonical" href="{here}">'
         + (f"\n{alternate}" if alternate else "")
         # "article" for a record's page, "website" for a list of them: the
         # committees index and the directories are not articles.
@@ -339,7 +451,7 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         # og:url and og:site_name: a card unfurled from a shared link had no
         # address of its own and no site to belong to, so it read as a
         # headline from nowhere. Same address as the canonical, deliberately.
-        + f'\n<meta property="og:url" content="{base}{canon(path)}">'
+        + f'\n<meta property="og:url" content="{here}">'
         + f'\n<meta property="og:site_name" content="{BRAND}">'
         # The wide card: every page names a 1200x630 image, and "summary" had
         # X draw a thumbnail of the square icon beside the words instead.
@@ -416,7 +528,8 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         # and outlives the visit. It is the one string here worth carrying
         # separately.
         out = out.replace('<footer><div class="in">',
-                          cite_block(path, cite_title or og_title or title,
+                          cite_block(canonical or path,
+                                     cite_title or og_title or title,
                                      base, BUILT)
                           + '<footer><div class="in">', 1)
 

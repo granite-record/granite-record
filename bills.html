@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GRANITE_VERSION: 2026-09-05.56 -->
+<!-- GRANITE_VERSION: 2026-09-05.57 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -56,7 +56,7 @@ if(t==="dark"||t==="light")document.documentElement.dataset.theme=t;}catch(e){}
 <a href="learn.html">Learn</a>
 <a href="calendar.html">Calendar</a></div>
 <!-- THEMER:BTN -->
-<button class="themer" id="themer" type="button" hidden>Light</button>
+<button class="themer" id="themer" type="button" hidden><svg class="thsun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.6"/><path d="M10 1.8v2.2M10 16v2.2M1.8 10h2.2M16 10h2.2M4.2 4.2l1.6 1.6M14.2 14.2l1.6 1.6M4.2 15.8l1.6-1.6M14.2 5.8l1.6-1.6"/></svg><svg class="thmoon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16.4 12.4A7 7 0 0 1 7.6 3.6a7 7 0 1 0 8.8 8.8z"/></svg><span class="thword">Light</span></button>
 <!-- /THEMER:BTN --></div>
 <button class="navmenu" id="navmenu" type="button" aria-expanded="false" aria-controls="navdrop" aria-label="Sections"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3.2 6h13.6M3.2 10h13.6M3.2 14h13.6"/></svg></button>
 </div></nav>
@@ -168,7 +168,14 @@ Court is right and we want to know.</p>
     // so the one thing a reader wants from it, what happens if I press this,
     // was the one thing it did not say. The aria-label has always named the
     // destination; the visible word now agrees with it.
-    b.textContent=v==="dark"?"Light":"Dark";
+    // AN ICON SINCE 24 SEPTEMBER, at the person's request: a sun or a moon
+    // for the theme a press will give, the same destination the word named.
+    // The word stays in the markup -- hidden beside the icon on a desktop,
+    // shown in the phone's Sections panel, where nothing else says "theme".
+    var to=v==="dark"?"light":"dark";
+    b.setAttribute("data-to",to);
+    var w=b.querySelector(".thword"); if(w) w.textContent=to==="light"?"Light":"Dark";
+    b.title=to==="light"?"Switch to the light theme":"Switch to the dark theme";
     b.setAttribute("aria-label","Colour theme: "+v+". Activate to switch to "
       +(v==="dark"?"light":"dark")+".");
   }

@@ -28,3 +28,19 @@ review/checked.jsonl are measurements a person made by watching recordings with
 a stopwatch. They are included under the same terms, and are worth naming
 separately only because they cannot be regenerated: if they are lost, somebody
 has to sit down and watch the videos again.
+
+THE LOGO IS NOT COVERED
+
+The logo is the one part of this repository that is not offered under the MIT
+licence, or under any other terms. It is used by this project under a licence
+from its owner, and that licence is not passed on to anyone else.
+
+That covers the images in brand/, the copies of them at the root of the
+repository (Icon.png, Logo Black.png and Logo White.png), and everything
+build_brand.py draws from them into assets/: the mark, the lockup, the icons,
+the favicon and the link-preview cards. The present mark is a stand-in made
+from clipart the project bought. A hand-drawn logo, licensed from its artist,
+will replace it, and the same applies to that one.
+
+A fork of this project should bring its own logo. The code that draws one,
+build_brand.py, is MIT like the rest of the code; the pictures it draws are not.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.114
+# GRANITE_VERSION: 2026-09-04.116
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
@@ -16,6 +16,7 @@ styles and is untouched.
 
 import argparse
 import about_figures
+import bill_order as BO
 import html as _html
 import shell as _shell
 import seating
@@ -157,6 +158,8 @@ HEADERS = """# Written by build_pages.py. Not an asset; Pages reads it.
   Cache-Control: public, max-age=0, must-revalidate
 /find.js
   Cache-Control: public, max-age=0, must-revalidate
+/billmatch.js
+  Cache-Control: public, max-age=0, must-revalidate
 # The two files a page reads to say what is true today: the home page's own
 # summary, and the header search's index of members, committees and towns. A
 # cached copy of either is a page contradicting itself -- the home page's
@@ -274,9 +277,6 @@ REPO = "https://github.com/granite-record/granite-record"
 # Five is a glance; the twelve it showed before was most of a phone screen for
 # a list nobody reads to the end. The overflow goes to the bill search, which
 # sorts by most recent action and does it better than a table can.
-# Seven days of the rail, which is the Calendar tab's own unit too.
-HOME_DAYS = 7
-
 RECENT_SHOWN = 5
 RECENT_MORE = ('<p class="actmore"><a class="morebtn" href="/bills?sort=recent">'
                'See all recent activity &rarr;</a></p>')
@@ -344,25 +344,76 @@ def meeting_key(u):
 # one, HOME_JS's _meetline, and the clock block that counted the days off
 # the total. meeting_key() stays: the calendar groups by it.
 
-def calendar_html(H, out):
-    """The next fortnight of committee business, by day and then by meeting."""
+def calendar_html(out, today=None, rows=None):
+    """What is left of this week, by day and then by meeting.
+
+    `today` and `rows` are preflight's: it draws the rail for a fixed date out
+    of rows it wrote, rather than out of the clock and proceedings.csv.
+    """
     import datetime as _dt
     from collections import OrderedDict
+    # build_calendar imports this module, so it is imported here, once both
+    # are loaded, rather than at the top where it would be a cycle.
+    import build_calendar as BC
+    import proceedings
 
     # main()'s esc is nested inside it and this is module level, so it gets
     # its own -- the same one shell() uses two hundred lines down.
     esc = lambda s: _html.escape(str(s or ""), quote=True)
 
-    up = H.get("upcoming") or []
-    if not up:
-        # The honest out-of-session state. The General Court is a part-time
-        # legislature and this is what the page says for half the year, so it
-        # says when business resumes rather than just "nothing".
+    # THIS WEEK, FROM TODAY TO SUNDAY, AND ALL OF IT. The rail's own comment
+    # said it showed the Calendar tab's week, and it did not: it drew
+    # home.json's fortnight, cut at the seventh DATE that had a meeting, so on
+    # Wednesday 23 September 2026 it ran to Wednesday 7 October and seven of
+    # its nine cards were in other weeks. In session the other limit bit
+    # first -- home.json keeps eighty bill rows, and a January day holds 138 --
+    # so it stopped partway through one day while calendar.html showed the
+    # whole week.
+    # And it held committee rows only, where the week page holds the floor.
+    #
+    # So it reads the week the way the Calendar tab does, out of the same
+    # rows through the same function, from today to that week's Sunday, with
+    # no cap. home.json's fortnight is left alone: the hearings feed reads it.
+    today = today or _dt.date.today()
+    weeks = BC.weeks_from(proceedings.load() if rows is None else rows)
+    sunday = BC.monday(today) + _dt.timedelta(days=6)
+    week = weeks.get(BC.week_key(today)) or {}
+    dates = sorted(d for d in week
+                   if today.isoformat() <= d <= sunday.isoformat() and week[d])
+    nxt = BC.week_key(sunday + _dt.timedelta(days=1))
+    n_next = sum(len(v) for v in (weeks.get(nxt) or {}).values())
+
+    # WHERE THE REST IS: next week's own page, which build_calendar writes
+    # for every week that has a sitting in it -- so it is only linked when
+    # next week has one, and otherwise the link is the Calendar tab, whose
+    # arrow reaches the next week that does. HOME_JS keeps this line when it
+    # empties the rail in the reader's clock.
+    if n_next:
+        onward = (f"{n_next}{' more' if dates else ''} "
+                  f"sitting{'' if n_next == 1 else 's'} next week. ",
+                  f"calendar/{nxt}.html", "See next week")
+    else:
+        onward = ("Nothing is on the calendar for next week yet. ",
+                  "calendar.html", "See the full calendar")
+    more = ('<p class="calmore calall">' + esc(onward[0])
+            + f'<a href="{esc(onward[1])}">{esc(onward[2])}</a></p>')
+
+    if not dates:
+        # THE REST OF THE WEEK IS EMPTY every weekend in session and every
+        # day out of it. Out of session -- next week empty too -- it says when
+        # business resumes rather than just "nothing", because the General
+        # Court is a part-time legislature and this is what the page says for
+        # half the year.
+        note = "Nothing is scheduled for the rest of this week."
+        if not n_next:
+            note += (" The General Court sits from January to June, and "
+                     "committees meet on bills from the autumn filing period "
+                     "onwards.")
         return ('<section class="cal"><h2>Coming up</h2>'
-                '<p class="note">No committee meetings are scheduled in the '
-                'next two weeks. The General Court sits from January to June, '
-                'and committees meet on bills from the autumn filing period '
-                'onwards.</p></section>')
+                f'<p class="note">{esc(note)}</p>{more}</section>')
+
+    meets = {k: rs for d in dates for k, rs in week[d].items()}
+    up = [r for rs in meets.values() for r in rs]
 
     # --- titles and years, from the term index, once per term ---------------
     titles, years, missing = {}, {}, 0
@@ -388,12 +439,6 @@ def calendar_html(H, out):
         except (ValueError, OSError):
             pass
 
-    meets = OrderedDict()
-    for u in up:
-        meets.setdefault(meeting_key(u), []).append(u)
-
-    today = _dt.date.today()
-
     def when(d):
         """Tue 15 Sep, and how far off it is -- the part a reader acts on."""
         try:
@@ -402,48 +447,22 @@ def calendar_html(H, out):
             return d, ""
         off = (dd - today).days
         rel = ("today" if off == 0 else "tomorrow" if off == 1
-               else f"in {off} days" if 0 < off < 14 else "")
+               else f"in {off} days" if 0 < off <= 14 else "")
         return dd.strftime("%a %d %b").replace(" 0", " "), rel
 
-    # Ordered by when each meeting STARTS, which is no longer in the key --
-    # so it is read back off the meeting's earliest bill.
-    def starts(k):
-        slots = sorted(x for x in (r.get("time") or "" for r in meets[k]) if x)
-        return (k[0], slots[0] if slots else "", k[1])
+    # A day's committees in the order they start, by the week page's own
+    # ordering, so the two list them the same way round.
+    days = OrderedDict((d, BC.in_order(week[d])) for d in dates)
 
-    days = OrderedDict()
-    for key in sorted(meets, key=starts):
-        days.setdefault(key[0], []).append(key)
-
-    # A WEEK IN THE RAIL, NOT A FORTNIGHT. This drew every day it had, and in
-    # session that is fourteen days of committee cards down a 300px column --
-    # long enough that the middle of the home page ends well above the end of
-    # its own left rail. Asked on 19 September for it to be "a bit more
-    # consolidated ... so it isn't as long".
-    #
-    # SEVEN DAYS rather than a count of meetings, because a day is the unit a
-    # reader is looking for: cutting at "the next twelve meetings" would end
-    # the rail halfway through a Thursday. The week is also the Calendar tab's
-    # own unit, so the rail and the page it links to agree about what a week
-    # is.
-    shown = OrderedDict()
-    cut = 0
-    for i, (d, keys) in enumerate(days.items()):
-        if i < HOME_DAYS:
-            shown[d] = keys
-        else:
-            cut += len(keys)
-
+    # A WEEK IN THE RAIL, NOT A FORTNIGHT: in session a fortnight is fourteen
+    # days of committee cards down a 300px column, and it was asked on 19
+    # September to be "a bit more consolidated ... so it isn't as long". A
+    # week is the Calendar tab's own unit, and the rail is now that week.
     html = ['<section class="cal"><h2>Coming up</h2>']
-    body, missing = cal_days(shown, meets, titles, years, code, when, esc)
+    body, missing = cal_days(days, meets, titles, years, code, when, esc)
     html.append(body)
-    # WHAT WAS CUT, AND WHERE THE REST IS. A rail that quietly stops after a
-    # week looks like a fortnight with nothing in its second half.
-    more = (f"{cut} more sitting{'' if cut == 1 else 's'} in the fortnight "
-            "beyond these. " if cut else "")
-    html.append('<p class="calmore calall">' + esc(more)
-                + '<a href="calendar.html">See the full calendar</a></p>')
-    return "".join(html) + cal_notes(H, up, missing, esc)
+    html.append(more)
+    return "".join(html) + cal_notes(up, missing, esc)
 
 
 # ONE CHIP FOR A PERSON, AND THIS IS THE SECOND COPY OF IT.
@@ -544,10 +563,14 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # session and an executive session, so the body is a little
             # schedule rather than a flat list of bills: each slot keeps the
             # time it was set for and says what kind of sitting it is.
+            # Inside a slot, by number as bills.html lists them. Without the
+            # last key a slot kept proceedings.csv's order, which is the
+            # number's text: HB 101, HB 110, HB 78.
             slotted = OrderedDict()
             for r in sorted(rows, key=lambda x: ((x.get("time") or "~"),
                                                  (x.get("what") or ""),
-                                                 (x.get("venue") or ""))):
+                                                 (x.get("venue") or ""),
+                                                 BO.bill_key((x.get("bill") or "").strip()))):
                 slotted.setdefault(((r.get("time") or ""),
                                     (r.get("what") or ""),
                                     (r.get("venue") or "")), []).append(r)
@@ -685,20 +708,15 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
     return "".join(html), missing
 
 
-def cal_notes(H, up, missing, esc):
-    """The two notes under the calendar: what was cut, and what a hearing is."""
+def cal_notes(up, missing, esc):
+    """The note under the calendar: what a hearing is."""
     html = []
-    # What did not fit. build_site_v2 writes upcoming[:80] and its
-    # hearings_next_14 counts the fortnight's bill rows uncapped, so the
-    # difference is what the cap dropped. The status box beside this counts the
-    # MEETINGS these rows make -- it can only count the rows it was given, and
-    # says "at least" when this line has something to report, so the two
-    # numbers no longer stand next to each other contradicting one another.
-    more = (H.get("status") or {}).get("hearings_next_14", 0) - len(up)
-    if more > 0:
-        html.append(f'<p class="note">{more} more bill{"" if more == 1 else "s"} '
-                    "sit in the fortnight beyond these; each one is on its own "
-                    "committee's page.</p>")
+    # NO "MORE BILLS IN THE FORTNIGHT BEYOND THESE". That note counted what
+    # home.json's eighty-row cap dropped, and in session the dropped rows
+    # fell on the day already shown or the next one, not beyond them. The
+    # rail reads the week uncapped now, so nothing is dropped, and what lies
+    # past the week is calendar_html's own line, which counts next week and
+    # links to it.
     # A public hearing is the one a reader can speak at; an executive session
     # is the one where the committee votes. Worth saying once.
     html.append('<p class="note">Anyone may attend and speak at a public '
@@ -902,9 +920,9 @@ is simply no answer to "how did my representative vote" — not because it is hi
 but because it was never recorded.</p>
 
 <p><b>A majority is not always enough.</b> Overriding a veto takes two thirds of
-those voting. A constitutional amendment takes three fifths of the entire membership
-— 240 of 400 in the House — whether or not everyone shows up. Amendments regularly
-win a clear majority and fail anyway.</p>
+those voting. A constitutional amendment takes three fifths of the members in office
+— 240 when all 400 House seats are filled — whether or not everyone shows up.
+Amendments regularly win a clear majority and fail anyway.</p>
 
 <p><b>The consent calendar is a signal about the committee.</b> A bill goes there
 when the committee vote was unanimous or nearly so and no dissenting member objected
@@ -937,8 +955,8 @@ voted on by both chambers</td></tr>
 <tr><td><b>SCR</b></td><td>Senate Concurrent Resolution — introduced in the Senate,
 voted on by both</td></tr>
 <tr><td><b>CACR</b></td><td>Constitutional Amendment Concurrent Resolution — a
-proposed change to the state constitution. Needs three fifths of the entire
-membership in each chamber, then a two-thirds vote of the people at the next
+proposed change to the state constitution. Needs three fifths of the members in
+office in each chamber, then a two-thirds vote of the people at the next
 general election. The governor has no role.</td></tr>
 </tbody></table>
 
@@ -1005,24 +1023,35 @@ Court: what each bill does, who sponsored it, when it was heard, how it was vote
 and where in the recording it was discussed.</p>
 
 <h2>Where the information comes from</h2>
-<p>Bill histories, hearing schedules and sponsors come from the General Court's
-published data files. Vote tallies and individual member votes come from its roll
-call files, and for sessions those files no longer cover, from the read-only
-database the General Court publishes credentials for. The House's committee
+<p>Bill histories and hearing schedules come from the General Court's docket:
+for the current term its published data files, for 2015 to 2024 its web pages,
+and before that the read-only database the General Court publishes credentials
+for. Sponsors from 2023 on come from its sponsor file and bill status pages, and
+before 2023 from the sponsor line printed on each bill's own text. Vote tallies
+and individual member votes come from its roll call files, and for sessions
+those files no longer cover, from the same database. The House's committee
 majority and minority reports are taken from the House Calendar; the Senate's
-come from that same database, which is where the Senate files them. Hearing and
+come from the database too, which is where the Senate files them. Hearing and
 session recordings are the General Court's own, on YouTube, linked rather than
 copied.</p>
 <p>Where a hearing shows how many people signed in for and against a bill, those
 are counts and nothing else. The General Court's sign-in sheet records a name, a
 town and often written testimony for every person; almost all of them are members
 of the public rather than public figures, and this site does not republish them.</p>
-<p>An earlier term marked <i>archived</i> is a thinner record on purpose. For
-the 2023-2024 term the bills, their titles and statuses, the committees they
-went to, their hearing dates, their sponsors and every recorded vote are here.
-What is not is the docket &#8212; the General Court's own line-by-line list of
-actions &#8212; and the written committee reports, which are a further request
-per bill. Every archived bill links its own official record, which has both.</p>
+<p>A term before the current one is marked <i>archived</i>. Nearly every
+archived bill has its docket &#8212; the General Court's own line-by-line list
+of actions &#8212; and its sponsors, the committee it went to, its hearings and
+its text. Three parts of the record start later, because the General Court's
+copies of them that this site reads start later. The House committees'
+written reports start with the 1997-1998 term, the first in its online
+calendars, and the Senate committees' with the current term, the only one its
+database holds them for. Before those, the page gives each committee's
+recommendation as the docket records it, and the committee's vote wherever the
+docket gives one. Votes by name start in 1999, where its roll-call files
+begin; before that, the docket gives the tallies it recorded, and the printed
+journals name who voted which way. Recordings start in [[stream_start]], when
+its YouTube channels begin. Every archived bill links its own official
+record.</p>
 
 <h2>What is taken from the record and what is generated</h2>
 <p>Dates, sponsors, vote tallies, committee assignments and hearing times are taken
@@ -1040,12 +1069,13 @@ all &#8212; it does not guess.</p>
 <p>The record here holds [[stations]] occasions on which a bill was taken up
 &#8212; hearings, executive sessions, work sessions and floor debates &#8212;
 across [[station_bills]] bills. What the site can say about each one depends
-almost entirely on whether a recording of it exists.</p>
-<p>For [[no_recording]] of them, none does. The General Court began streaming
-its committee rooms and its chambers in [[stream_start]]; [[prestream]] of
-these sittings happened before that, which is [[prestream_pct]] of the whole
-record; the rest are sittings since then that no recording has been matched
-to. Those carry the date, the committee and the room, and nothing to play.</p>
+almost entirely on whether there is a recording of it to link.</p>
+<p>For [[no_recording]] of them, there is no recording to offer. The recordings
+this site links are on the General Court's YouTube channels, which begin in
+[[stream_start]]; [[prestream]] of these sittings happened before that, which
+is [[prestream_pct]] of the whole record, and the other [[unmatched]] are
+sittings since then that no recording has been matched to. Most carry the
+date, the committee and the room, and nothing to play.</p>
 <p>[[recorded]] have a recording. On [[placed]] of them &#8212;
 [[placed_pct]] &#8212; the page opens the recording at the moment the bill
 was taken up. On the other [[recording_only]] it links the recording and says
@@ -1084,8 +1114,13 @@ tell one reader from another, and nothing about what you read is stored
 against you.</p>
 <p>Nothing else is collected. There are no accounts, no email addresses and
 no advertising. The feeds need no subscription, so nothing knows who takes
-them. The search box works in your own browser against files this site
-serves; what you type is never sent anywhere. Video is embedded from
+them. Search runs in your own browser against files this site serves. When a
+search takes you to a results page &mdash; the bill search, the record search
+or the legislator list &mdash; your words travel in that page&rsquo;s address.
+This site&rsquo;s server receives them, as it receives any address, and the
+page-view count may record that address like any other. The typefaces come
+from Google Fonts, so Google sees a request for them when a page opens. Video
+is embedded from
 YouTube&rsquo;s no-cookie address, which still means YouTube sees a request
 when a player is opened &mdash; a player only loads if you press play.</p>
 <p>One thing a reader sends deliberately is feedback, through the form
@@ -1102,7 +1137,7 @@ deleted after a week.</p>
 
 <h2>Corrections</h2>
 <p>If something here misrepresents the record, it should be corrected. The official
-record at gencourt.state.nh.us always takes precedence over anything shown here.</p>
+record at gc.nh.gov always takes precedence over anything shown here.</p>
 
 <h2>Independence</h2>
 <p>This site is not affiliated with or endorsed by the New Hampshire General Court.
@@ -1378,6 +1413,58 @@ SEATING_JS = """
 </script>
 """
 
+# THE BILL MATCHER, FOR THE HEADER SEARCH. The header's panel and /search show
+# how many of the current term's bills match what was typed, and the number
+# has to be the one /bills?q= then shows -- a panel that promises "All 30
+# bills" and opens on 28 is a count the reader stops trusting. So they count
+# with app.js's own matcher rather than a second one. app.js marks the lines
+# that make it up (SYN and the query groups, the bill order, what a bill
+# number is) between BILLMATCH:BEGIN and BILLMATCH:END; this copies them,
+# unchanged and in order, into site/billmatch.js, inside a function so that
+# none of their names can collide with a page's own, and hands back the four
+# the header uses. find.js loads it only when somebody types, and only on a
+# page that does not already run app.js.
+BILLMATCH_BEGIN, BILLMATCH_END = "// BILLMATCH:BEGIN", "// BILLMATCH:END"
+BILLMATCH_EXPORTS = ("queryGroups", "groupWeight", "billNumbers", "billKey")
+
+
+def bill_matcher_js(app_js):
+    """The marked regions of app.js, as one script defining GR_BILLMATCH.
+
+    Stops the build rather than writing a partial file: a region left open,
+    an END with no BEGIN, or a region set that no longer defines what the
+    header calls would each ship a panel that counts nothing, silently."""
+    keep, inside, regions = [], False, 0
+    for n, line in enumerate(app_js.splitlines(), 1):
+        mark = line.strip()
+        if mark.startswith(BILLMATCH_BEGIN):
+            if inside:
+                raise SystemExit(f"app.js:{n}: BILLMATCH:BEGIN inside a "
+                                 f"region that is already open")
+            inside, regions = True, regions + 1
+            continue
+        if mark.startswith(BILLMATCH_END):
+            if not inside:
+                raise SystemExit(f"app.js:{n}: BILLMATCH:END with no BEGIN")
+            inside = False
+            continue
+        if inside:
+            keep.append(line)
+    if inside:
+        raise SystemExit("app.js: a BILLMATCH region is never closed")
+    body = "\n".join(keep)
+    missing = [f for f in BILLMATCH_EXPORTS
+               if not re.search(r"\bfunction " + f + r"\(", body)]
+    if not regions or missing:
+        raise SystemExit("app.js's BILLMATCH regions do not define "
+                         + ", ".join(missing or BILLMATCH_EXPORTS)
+                         + ": the header search could not count bills")
+    return ("// Written by build_pages.py from app.js's BILLMATCH regions, "
+            "for find.js.\n// Do not edit here: edit app.js.\n"
+            "window.GR_BILLMATCH=(function(){\n" + body + "\nreturn {"
+            + ",".join(BILLMATCH_EXPORTS) + "};\n})();\n")
+
+
 # THE ALL-RESULTS PAGE. find.js's panel is a dropdown: it shows eight rows and
 # hands the rest on. Until 19 September it handed them to the BILL search,
 # which indexes bills and nothing else -- so "See all search results for
@@ -1385,7 +1472,8 @@ SEATING_JS = """
 # find.json with the cap off and groups what it finds.
 #
 # It reuses find.js wholesale -- findRows, findMatch, findSuggest, _fmark,
-# _froot, FKIND -- because a second matcher would be a second thing to keep in
+# _froot, FKIND, and for the bills findBills, findBillsLoad, findBillsAll and
+# findBillRow -- because a second matcher would be a second thing to keep in
 # step with the first, and the panel and the page disagreeing about what
 # matches is the bug a reader would notice fastest. find.js is deferred, so
 # this waits for DOMContentLoaded rather than running as it is parsed.
@@ -1421,57 +1509,101 @@ const row=(r,q)=>`<a href="${esc(_froot(r[3]))}">
   <span class="fkind">${esc(FKIND[r[0]]||r[0])}</span></span>
   ${r[2]?`<span class="fwhat">${esc(r[2])}</span>`:""}</a>`;
 
-// The bill search, named as what it is rather than as a fallback. It is last
-// because the groups above are the answers this page holds; bills are one page
-// away and have filters this list could not offer.
-const bills=q=>`<section class="resgrp"><h2>Bills</h2>
-  <div class="findout resout"><a href="/bills?q=${encodeURIComponent(q)}">
-  <span class="fl1"><span class="fname">Search every bill for
-    &ldquo;${esc(q)}&rdquo;</span></span>
-  <span class="fwhat">Every bill since 1989, by number, by title and by the
-    words in its text &mdash; with filters for term, committee, sponsor and
-    what became of it.</span></a></div></section>`;
+// THE BILLS, counted. Until 24 September this was one card at the foot of the
+// page, "Search every bill for firearms", under a line saying nothing on the
+// site matched -- over 30 bills of this term. find.js's findBills counts them
+// with the bill search's own matcher, so the number here is the one /bills?q=
+// then shows, and the first five are listed. Before they are counted, or if
+// they cannot be, the card offers the bill search without a number.
+//
+// Its description used to say the bill search reads "the words in its text".
+// It does not: it reads a bill's number, title, sponsor and committee.
+const WHAT="The bill search has every term since 1989, with filters for "
+  +"committee, sponsor and what became of it.";
+const bills=(q,B)=>{
+  const counted=B&&B.state==="ready";
+  const body=counted&&B.n
+    ?findBillsAll(B,q,WHAT)+B.top.map(b=>findBillRow(b,q)).join("")
+    :counted
+    ?`<a href="/bills?q=${encodeURIComponent(q)}">
+      <span class="fl1"><span class="fname">Search every bill for
+        &ldquo;${esc(q)}&rdquo;</span></span>
+      <span class="fwhat">None in the ${esc(B.term)} term. ${WHAT}</span></a>`
+    :findBillsAll(B,q,WHAT);
+  return `<section class="resgrp"><h2>Bills${counted&&B.n
+    ?` <span class="resn">${B.n.toLocaleString()}</span>`:""}</h2>
+    <div class="findout resout">${body}</div></section>`;
+};
+// Groups a reader reaches for after the bills: members who have left, and
+// this site's own pages.
+const AFTER=new Set(["Former senators","Former representatives",
+  "Former members","Pages on this site"]);
+let waiting=false;
 
 function draw(q){
   const s=(q||"").trim();
   if(!s){
     head.textContent="Search the record";
     lead.textContent="Every sitting legislator and every member who has left, "
-      +"every committee, every town and ward, and every subject bills are "
-      +"filed under. Bills have their own search, with filters.";
+      +"every committee, every town and ward, every subject bills are filed "
+      +"under, and this term's bills. The bill search has every term, with "
+      +"filters.";
     out.innerHTML="";
     return;
   }
   const rows=findMatch(s,Infinity);
+  const B=findBills(s,5);
+  if(B&&B.state==="loading"&&!waiting){
+    waiting=true;
+    findBillsLoad().then(()=>draw(box.value));
+  }
+  const nB=B&&B.state==="ready"?B.n:null;
+  const term=nB===null?"":`in the ${B.term} term`;
   head.innerHTML=`Results for &ldquo;${esc(s)}&rdquo;`;
-  // "0 matches on this site, and the bills" is a sentence nobody would write.
-  // Where there are none, the line says so and the bill card below is the
-  // whole of the answer.
+  // The answer first. "0 matches on this site, and the bills" is a sentence
+  // nobody would write, and "nothing matches" above 30 bills is false.
+  const here=rows.length===1?"One match on this site"
+    :`${rows.length} matches on this site`;
+  const some=nB===1?`One bill ${term}`:`${(nB||0).toLocaleString()} bills ${term}`;
   lead.textContent=!rows.length
-    ?"No legislator, committee, town or subject on this site matches that."
-    :rows.length===1?"One match on this site, and the bills."
-    :`${rows.length} matches on this site, and the bills.`;
+    ?(nB?`${some} ${nB===1?"matches":"match"}. No legislator, committee, `
+        +"town or subject on this site does."
+      :nB===0?"Nothing on this site matches that: no legislator, committee, "
+        +`town or subject, and no bill ${term}.`
+      :"No legislator, committee, town or subject on this site matches that.")
+    :nB?`${here}, and ${some.charAt(0).toLowerCase()+some.slice(1)}.`
+    :nB===0?`${here}, and no bill ${term}.`
+    :`${here}, and the bills.`;
+  // WHERE THE BILLS GO, as in the header's panel: first when no sitting
+  // member, committee, town or subject is named with what was typed, and
+  // otherwise after those and ahead of the members who have left.
+  const low=s.toLowerCase(),edge=_fedge(low);
+  const named=rows.some(r=>r[0]!=="former"&&_frank(r,low,edge)<2);
   const left=rows.slice();
-  let html="";
+  let html=named?"":bills(s,B),placed=!named;
   for(const g of GROUPS){
     const mine=[];
     for(let i=left.length-1;i>=0;i--)
       if(g.k(left[i]))mine.unshift(left.splice(i,1)[0]);
     if(!mine.length)continue;
+    if(!placed&&AFTER.has(g.t)){html+=bills(s,B);placed=true;}
     html+=`<section class="resgrp"><h2>${esc(g.t)}
       <span class="resn">${mine.length}</span></h2>
       <div class="findout resout">${mine.map(r=>row(r,s)).join("")}</div></section>`;
   }
-  // Only when something close exists. findSuggest measures against every
-  // distinct word in the index and returns nothing rather than reaching: there
-  // is no Firearms subject in the General Court's own list, so a search for
-  // "firarms" offers nothing and says nothing.
-  if(!rows.length){
+  if(!placed)html+=bills(s,B);
+  // Only when something close exists, and only when no bill matched either:
+  // its guesses are names, and "voting" was offered "zoning" over 141 bills.
+  // findSuggest measures against every distinct word in the index and returns
+  // nothing rather than reaching: there is no Firearms subject in the General
+  // Court's own list, so a search for "firarms" offers nothing and says
+  // nothing.
+  if(!rows.length&&!nB&&!(B&&B.state==="loading")){
     const did=findSuggest(s);
-    html=did?`<p class="note">Did you mean
-      <a href="/search?q=${encodeURIComponent(did)}">${esc(did)}</a>?</p>`:"";
+    if(did)html=`<p class="note">Did you mean
+      <a href="/search?q=${encodeURIComponent(did)}">${esc(did)}</a>?</p>`+html;
   }
-  out.innerHTML=html+bills(s);
+  out.innerHTML=html;
 }
 
 const q0=new URLSearchParams(location.search).get("q")||"";
@@ -1622,10 +1754,11 @@ function roster(){
       return `<details class="cgrp"><summary><span>${esc(c)}</span>`
         +`<span class="ccount">${ms.length}</span>`
         +`<span class="caret">&#9656;</span></summary><div class="grid">`
-        +ms.map(m=>`<div class="mem">`
-          +`<a href="legislator/${esc(m.slug)}.html">${esc(m.display)}</a>`
-          +` <span class="chip pt-${esc(m.p)}">${esc(m.p)}</span>`
-          +` <span class="mdist">${esc(m.dlabel)}</span></div>`).join("")
+        // THE SAME CHIP AS THE OTHER TWO VIEWS (pchip in Python), which the
+        // person asked for on 19 September; this view kept its own name, pill
+        // and district until 24 September. display_full carries all three.
+        +ms.map(m=>`<div class="mem"><span class="mchip p-${esc(m.p)}">`
+          +`<a href="legislator/${esc(m.slug)}.html">${esc(m.full)}</a></span></div>`).join("")
         +`</div></details>`;
     }).join("");
   }).join("");
@@ -1647,6 +1780,7 @@ Promise.all([fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({})),
      slug:m.slug, chamber:m.chamber, county:m.county||"",
      district:m.district, dlabel:m.district_label||("dist "+m.district),
      display:m.display_plain||m.name, sortname:m.sort||m.name||"",
+     full:m.display_full||m.display_plain||m.name||"",
      // [.] and [ ] rather than the escapes: this JavaScript lives inside a
      // Python string, and a backslash in one is a warning in the other.
      name:(m.display_plain||m.name||"").replace(/^(Rep|Sen)[.][ ]*/,""),
@@ -1804,43 +1938,52 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // to the data. .statgrid still styles the same grid on the data page.
 
   // #upcoming IS NOT TOUCHED HERE, ON PURPOSE. The calendar is rendered into
-  // the page by calendar_html() at build time, from the same home.json this
-  // script reads -- so re-rendering it here would be a second renderer of one
-  // thing, which is the mistake this project has paid for more than once, and
-  // it would render it WORSE: the bill titles are resolved out of
-  // site/idx/<term>.json, 1.19 MB that the home page must not fetch to print
-  // four of them, and the meeting rows are <details> elements that need no
-  // script to open. Leaving it alone means the calendar also works before this
-  // file loads and with JavaScript off.
+  // the page by calendar_html() at build time, from the rows the Calendar
+  // tab's week is drawn from -- so re-rendering it here would be a second
+  // renderer of one thing, which is the mistake this project has paid for
+  // more than once, and it would render it WORSE: the bill titles are
+  // resolved out of site/idx/<term>.json, 1.19 MB that the home page must not
+  // fetch to print four of them, and the meeting rows are <details> elements
+  // that need no script to open. Leaving it alone means the calendar also
+  // works before this file loads and with JavaScript off.
 
   // COMING UP, IN THE READER'S OWN CLOCK. The calendar block is written when
   // the site is built, and a build stands for as long as it stands, so the
   // home page has headed a past day "today" with a committee session that had
   // already met at the top of the list. Each day carries its own date, so
   // this drops the days that have gone and says how far off the rest are now.
+  //
+  // AND THE DAYS PAST THE READER'S SUNDAY. The rail is this week, as the
+  // Calendar tab's is, and "this week" is the reader's as much as "today" is:
+  // a build made just after midnight on a Monday, read somewhere it is still
+  // Sunday evening, holds next week's days, and they are not coming up this
+  // week. getDay() calls Sunday 0, which ends an ISO week rather than
+  // starting one, so on a Sunday the week has no days left after today.
   // Nothing else here is touched.
   (function(){
     const now=new Date(); now.setHours(0,0,0,0);
+    const toSun=(7-now.getDay())%7;
     const days=[...document.querySelectorAll(".calday[data-d]")];
     let left=0;
     days.forEach(d=>{
       const p=d.dataset.d.split("-").map(Number);
       const off=Math.round((new Date(p[0],p[1]-1,p[2])-now)/86400000);
-      if(off<0){d.remove();return;}
+      if(off<0||off>toSun){d.remove();return;}
       left++;
       const rel=d.querySelector(".cdrel");
-      // Fourteen days out is still inside the fortnight this block covers, so
-      // it says how far off it is like every other day. `off<14` left the last
-      // day of the window with no label at all.
+      // `off<=14`, as the built labels have it: a week's days never reach
+      // it, and a bound that matched them was the point -- `off<14` once left
+      // the last day of a fortnight with no label at all.
       if(rel)rel.textContent=off===0?"today":off===1?"tomorrow"
         :off<=14?`in ${off} days`:"";
     });
     const cal=document.querySelector(".cal");
     if(cal&&days.length&&!left){
-      cal.innerHTML=`<h2>Coming up</h2><p class="note">No committee meetings are
-        scheduled in the next two weeks. The General Court sits from January to
-        June, and committees meet on bills from the autumn filing period
-        onwards.</p>`;
+      // The line under the rail stays: it says what next week holds and is
+      // the way to it, which is the useful thing to say about an empty week.
+      const more=cal.querySelector(".calall");
+      cal.innerHTML=`<h2>Coming up</h2><p class="note">Nothing else is
+        scheduled this week.</p>`+(more?more.outerHTML:"");
     }
     // "Last updated N days ago" is the one line whose whole job is to say the
     // summary may be stale; it cannot be a number frozen at build time.
@@ -1911,8 +2054,9 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     ?`<h2>Most recent floor sessions</h2><div class="twoup">${ls.map(v=>
       `<div><p style="margin:0 0 6px;font-size:14px"><b>${esc(v.chamber||"")}</b>
         <span class="statemeta">${fd(v.date)}</span></p>
-        <div class="player"><div class="pstub" data-embed="${esc(v.video_id)}">
-          <span>&#9654;</span><span>Play</span></div></div></div>`).join("")}</div>`
+        <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"
+          aria-label="Play the ${esc(v.chamber||"")} floor session of ${fd(v.date)}">
+          <span>&#9654;</span><span>Play</span></button></div></div>`).join("")}</div>`
     :"";
 });
 document.addEventListener("click",e=>{
@@ -2021,6 +2165,17 @@ def main():
         if not dst.exists() or dst.read_bytes() != body:
             dst.write_bytes(body)
             print(f"copied {name} into the site folder")
+
+    # The bill matcher, cut out of app.js for the header search on the pages
+    # that do not load app.js. See bill_matcher_js.
+    if Path("app.js").exists():
+        body = bill_matcher_js(
+            Path("app.js").read_text(encoding="utf-8")).encode("utf-8")
+        dst = out / "billmatch.js"
+        if not dst.exists() or dst.read_bytes() != body:
+            dst.write_bytes(body)
+            print("  billmatch.js: app.js's bill matcher, for the header "
+                  "search")
 
     # LF, not the platform default: this file is parsed by Pages, not
     # by anything on this machine, and write_text on Windows would
@@ -2157,11 +2312,17 @@ def main():
                        f'<b>{x["vacant"]}</b></span>')
         note = ""
         if x.get("majority"):
-            note = (f'<p class="statemeta" style="margin:6px 0 0">A simple '
-                    f'majority is {x["majority"]}. A constitutional amendment '
-                    f'needs {x.get("three_fifths", "")}, three fifths of the '
-                    f'full membership. A veto override needs '
-                    f'{esc(x.get("two_thirds_note", ""))}.</p>')
+            # A bill passes with a majority of the members VOTING, so there is
+            # no fixed number to print for it; "a simple majority is 201" was
+            # a majority of the 400 seats, which decides nothing. Three fifths
+            # is of the members in office, counted from the roster, and the
+            # sentence says which count it is.
+            note = (f'<p class="statemeta" style="margin:6px 0 0">A bill passes '
+                    f'with a majority of the members voting. Passing a '
+                    f'constitutional amendment takes three fifths of the '
+                    f'members in office: {x.get("three_fifths", "")} of the '
+                    f'{x["sitting"]} on the current roster. A veto override '
+                    f'needs {esc(x.get("two_thirds_note", ""))}.</p>')
         return (f'<div class="comp"><div class="compline"><b>{esc(x["chamber"])}</b>'
                 f'<span class="statemeta">{x["sitting"]} of {x["seats"]} seats '
                 f'filled{f", {x['vacant']} vacant" if x.get("vacant") else ""}</span>'
@@ -2229,6 +2390,10 @@ def main():
             n = (m.get("name") or "")
             return (n.split(",")[0] if "," in n else n).strip().lower()
 
+        def given(m):
+            n = (m.get("name") or "")
+            return (n.split(",", 1)[1] if "," in n else "").strip().lower()
+
         def li(m, lead):
             """One row: the column that leads it, then the person as a chip.
 
@@ -2281,7 +2446,9 @@ def main():
         # senator between two representatives with nothing to say which was
         # which except the honorific, and the two chambers are not one body.
         def alpha_block(ms, heading):
-            ms = sorted(ms, key=surname)
+            # Surname, then given name: the seat order it fell back on put
+            # Michael Aron above Judy Aron and three Smiths out of order.
+            ms = sorted(ms, key=lambda m: (surname(m), given(m)))
             return (f'<h2>{heading} &mdash; {len(ms)}</h2>'
                     '<ol class="seatlist rlist">'
                     + "".join(li(m, "") for m in ms) + "</ol>")
@@ -2391,7 +2558,7 @@ it, or a name, county, party or committee to find a member.</p>
                    "recorded vote they cast.",
               wide=True, script=LEGFIND_JS + SEATING_JS), encoding="utf-8")
 
-    static_up = calendar_html(H, out)
+    static_up = calendar_html(out)
 
     # The Committees card's offer, counted rather than typed. See
     # committees_with_roster: what the card promises is a roster, so the number
@@ -2522,12 +2689,12 @@ today.</p>
     # a near-copy of the bill search and the roster, which ARE indexed.
     search_body = """<h1 id="reshead">Search the record</h1>
 <p class="lead" id="reslead">Every sitting legislator and every member who has
-left, every committee, every town and ward, and every subject bills are filed
-under. Bills have their own search, with filters.</p>
+left, every committee, every town and ward, every subject bills are filed
+under, and this term's bills. The bill search has every term, with filters.</p>
 <form class="resfind" action="/search" method="get" role="search">
-  <label for="resq" class="sr">A legislator, a committee, a town or a subject</label>
+  <label for="resq" class="sr">A legislator, a committee, a town, a subject or a bill</label>
   <input id="resq" name="q" type="search" autocomplete="off"
-    placeholder="A legislator, a committee, a town, or a subject" disabled>
+    placeholder="A legislator, a committee, a town, a subject or a bill" disabled>
 </form>
 <div id="resout"></div>
 <noscript><p class="note">This page needs JavaScript to search. Without it,
@@ -2535,7 +2702,7 @@ the <a href="/bills">bill search</a>, the <a href="/legislators">roster</a> and
 the <a href="/committees">committee list</a> are all plain pages.</p></noscript>"""
     search_page = shell("Search | Granite Record", "", search_body,
                         desc="Search Granite Record for a legislator, a "
-                             "committee, a town or a subject.",
+                             "committee, a town, a subject or a bill.",
                         script=SEARCH_JS)
     search_page = search_page.replace(
         '<link rel="canonical" href="https://graniterecord.org/">',

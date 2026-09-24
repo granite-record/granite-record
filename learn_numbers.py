@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-14.2
+# GRANITE_VERSION: 2026-09-14.3
 """
 The record in numbers: a Learn page of statistics computed from the site's own data.
 
@@ -70,6 +70,30 @@ def _cat(text):
     if "inexpedient to legislate" in t or "indefinitely postpone" in t:
         return "KILL"
     return None
+
+
+# A QUESTION A MAJORITY DOES NOT DECIDE. A veto override needs two thirds, a
+# rules suspension two thirds, and passing a constitutional amendment three
+# fifths of the members in office, so a margin of one on any of them says
+# nothing about how close it was: HB 1072's override at 160-159 was 53 short
+# of what it needed, and it led the table of closest votes. Decided by the
+# question rather than by threshold_needed, which has been set on CACR motions
+# that need only a majority -- a kill motion and a floor amendment among them
+# -- so a close vote of that kind would have been dropped for no reason.
+_OVERRIDE_Q = re.compile(r"veto|become law", re.I)
+_SUSPEND_Q = re.compile(r"\bsusp", re.I)
+_CACR_PASSAGE_Q = re.compile(r"^\s*(ought to pass|otp|concur|adopt conference|third reading|"
+                             r"final passage|pass)", re.I)
+
+
+def needs_more_than_majority(bid, r):
+    """True for a roll call on a question that needs more than a majority."""
+    q = " ".join(str(r.get(k) or "") for k in ("question", "question_raw"))
+    if _OVERRIDE_Q.search(q) or _SUSPEND_Q.search(q):
+        return True
+    return (bid or "").upper().startswith("CACR") and bool(
+        _CACR_PASSAGE_Q.search(r.get("question") or "")
+        or _CACR_PASSAGE_Q.search(r.get("question_raw") or ""))
 
 
 def overturned(narr):
@@ -157,13 +181,17 @@ def body(site=Path("site"), root=Path(".")):
         failed, over, pending = (st_["Vetoed, override failed"], st_["Veto overridden, became law"],
                                  st_["Vetoed"])
         vetoed = failed + over + pending
+        # Only the current term can still be waiting. A veto of a finished
+        # term that no override vote reached stood, as build_civics counts it.
+        if t != current:
+            failed, pending = failed + pending, 0
         reached = st_["Signed into law"] + st_["Became law unsigned"] + vetoed
         vrows.append([_t(t), f"{reached:,}", f"{vetoed} ({_pct(vetoed, reached)})",
                       str(failed), str(over), str(pending) if pending else ""])
     out.append("<h2>Vetoes</h2><p>Of the bills that reached the governor in each of the last ten "
                "terms, how many were vetoed, and what became of the veto. A bill that became "
                "law without a signature reached the governor and was not vetoed.</p>"
-               + _table(["Term", "Reached the governor", "Vetoed", "Veto sustained",
+               + _table(["Term", "Reached the governor", "Vetoed", "Veto stood",
                          "Overridden", "Awaiting"], vrows))
 
     # 3. How the votes were taken, by year.
@@ -197,6 +225,8 @@ def body(site=Path("site"), root=Path(".")):
             y, n = r.get("yeas"), r.get("nays")
             if not isinstance(y, int) or not isinstance(n, int) or r.get("procedural"):
                 continue
+            if needs_more_than_majority(bid, r):
+                continue
             if y + n < (100 if r.get("body") == "H" else 10):
                 continue
             close.append((abs(y - n), bid, r))
@@ -205,7 +235,8 @@ def body(site=Path("site"), root=Path(".")):
              E(r.get("question_plain") or r.get("question") or ""), f"{r['yeas']}&ndash;{r['nays']}",
              E(r.get("date") or "")] for _m, b, r in close[:10]]
     out.append(f"<h2>The closest votes of {_t(current)}</h2><p>The ten "
-               "roll calls on bills decided by the fewest votes, procedural motions left out.</p>"
+               "roll calls on bills decided by the fewest votes, procedural motions and votes "
+               "that needed more than a majority left out.</p>"
                + _table(["Bill", "Chamber", "Question", "Yeas&ndash;nays", "Date"], crow))
 
     # 5. Consent calendar share by committee.
@@ -228,9 +259,14 @@ def body(site=Path("site"), root=Path(".")):
                 by_c[cm][1] += 1
     ccrows = sorted(([E(c), f"{n:,}", f"{k:,}", _pct(k, n)] for c, (n, k) in by_c.items() if n >= 10),
                     key=lambda r: -float(r[3].rstrip("%")) if r[3].endswith("%") else 0)
-    out.append(f"<h2>Consent calendars, by committee</h2><p>A report goes on the consent calendar "
-               "when the committee was unanimous or nearly so, and it passes without debate unless "
-               f"a member has it removed. For each committee of {_t(current)} "
+    out.append(f"<h2>Consent calendars, by committee</h2><p>A committee sends a report to the "
+               "consent calendar by its own vote, and in both chambers that vote must be unanimous, "
+               "though the recommendation itself may have been carried on a divided one. The "
+               "whole calendar is adopted in one vote without debate, and what it adopts is each "
+               "committee's recommendation, to pass the bill, to kill it, or to send it to interim "
+               "study, unless the bill is first taken off &mdash; since January 2023 at the request "
+               "of ten members in the House, and since April 2026 of two in the Senate. "
+               f"For each committee of {_t(current)} "
                "with ten reports or more: the share that went on the consent calendar and stayed "
                "there &mdash; a measure of how often the committee agreed with itself.</p>"
                + _table(["Committee", "Reports", "On consent and kept there", "Share"], ccrows))
@@ -243,7 +279,9 @@ def body(site=Path("site"), root=Path(".")):
         unsigned = sum(1 for r in rs if r.get("status") == "Became law unsigned")
         urows.append([_t(t), f"{laws:,}", f"{unsigned} ({_pct(unsigned, laws)})"])
     out.append("<h2>Laws without the governor's signature</h2><p>A bill the governor neither "
-               "signs nor vetoes becomes law anyway.</p>"
+               "signs nor vetoes within five days, Sundays excepted, becomes law without a "
+               "signature &mdash; unless the legislature's adjournment prevents its return, and "
+               "then it does not become law (Part Second, Article 44).</p>"
                + _table(["Term", "Laws", "Without a signature"], urows))
 
     out.append("<h2>Still to come</h2><ul>"

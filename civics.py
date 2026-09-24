@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.23
+# GRANITE_VERSION: 2026-09-08.24
 """
 The topics of the civics section: their order, their names, and their prose.
 
@@ -99,8 +99,14 @@ FLOW = [
          "chosen by subject.", ""),
         ("Public hearing", "The sponsor introduces it, then anyone may speak "
          "for or against, or sign in without speaking.", "say"),
+        # NOT A PLACE A BILL DIES, and so no mark. The House Rules (Rule 50 in
+        # 1995 and 1997, Rule 42 in 2018) and the Senate Rules (4-2 and 4-3,
+        # as printed in the Senate Journal of 7 December 2022) both require a
+        # committee to report every bill it is given -- with no recommendation
+        # if it cannot agree -- so the floor, not the committee, ends a bill.
         ("Executive session", "The committee votes on what to recommend. A "
-         "separate meeting from the hearing, often days later.", "stop"),
+         "separate meeting from the hearing, often days later. It cannot end "
+         "the bill itself: the recommendation goes to the floor.", ""),
         ("Floor vote", "The full chamber decides, and is not bound by the "
          "committee's recommendation.", "stop"),
     ]),
@@ -116,7 +122,7 @@ FLOW = [
         ("Public hearing", "A second committee, a second public hearing. "
          "Missing the first chamber's does not cost you this one.", "say"),
         ("Executive session", "The second committee votes on its own "
-         "recommendation.", "stop"),
+         "recommendation, which goes to that chamber's floor.", ""),
         ("Floor vote", "If this chamber changes the bill, the first must "
          "agree to the change.", "stop"),
         ("Committee of conference", "Where it will not agree: members of both "
@@ -126,10 +132,12 @@ FLOW = [
     ("The Governor", [
         ("Enrolment", "A final check of the text for errors before it is "
          "sent.", ""),
-        ("Signed, vetoed, or left unsigned", "A bill left unsigned becomes "
-         "law anyway.", "stop"),
-        ("Override", "Two thirds of those voting in both chambers, or the "
-         "veto stands.", "stop"),
+        ("Signed, vetoed, or left unsigned", "A bill left unsigned for five "
+         "days, Sundays excepted, becomes law without a signature, unless the "
+         "legislature's adjournment prevents its return.", "stop"),
+        ("Override", "Two thirds of each chamber, by roll call, or the veto "
+         "stands. The House counts the two thirds among the members "
+         "voting.", "stop"),
     ]),
 ]
 
@@ -395,31 +403,45 @@ def reps_example(districts, town=REPS_EXAMPLE):
 # AMENDING THE CONSTITUTION. Every step and every threshold here is one the
 # prose on that page already states and cites to the Constitution itself; the
 # diagram reorganises it rather than adding to it. The thresholds ARE the
-# teaching point -- three fifths of the whole membership in each chamber, then
-# two thirds of the voters, and no part for the Governor at any stage -- so
-# they are the per-step labels rather than a generic mark.
+# teaching point -- three fifths of the members in office in each chamber,
+# then two thirds of those voting on the question, and no part for the
+# Governor at any stage -- so they are the per-step labels rather than a
+# generic mark.
+#
+# THE MEMBERS IN OFFICE, NOT THE SEATS. This said "240 of the 400 House
+# seats" until 23 September 2026, and the record says otherwise: in March
+# 2012 CACR 26 failed in the House at 237-115 and passed later that day at
+# 239-114 "By Necessary Three-Fifths Vote", with 397 members on the ballots
+# of both roll calls (Docket_db_2011-2012.txt; votes-2011-2012.csv). Three
+# fifths of the members on the ballots explains all 104 CACR roll calls whose
+# docket line names three fifths; three fifths of the seats explains 101.
 # ---------------------------------------------------------------------------
 FLOW_CACR = [
     ("How it starts", [
         ("Filed as a CACR", "A Constitutional Amendment Concurrent "
-         "Resolution. Statutes change by bill; the constitution does not.",
+         "Resolution, which may start in the House or the Senate. Statutes "
+         "change by bill; the constitution does not.",
          ""),
     ]),
     ("The first chamber", [
-        ("Three fifths of the whole membership", "Not three fifths of those "
-         "voting. 240 of the 400 House seats, whether or not everyone is "
-         "there, so an absence counts against it.",
-         ("needs", "240 of 400 in the House")),
+        ("Three fifths of the members in office", "Not three fifths of those "
+         "voting: an absent member counts against it, a vacant seat does "
+         "not. In 2012 the House carried CACR 26 with 239 votes, when 397 "
+         "members were in office: three fifths of 397 is 238.2, so 239 was "
+         "enough, where 240 would have been needed with every seat filled.",
+         ("needs", "Three fifths of its members")),
     ]),
     ("The second chamber", [
-        ("The same threshold again", "Three fifths of the entire "
-         "membership of the other chamber, on the same terms.",
-         ("needs", "Three fifths of all seats")),
+        ("The same threshold again", "Three fifths of the other chamber's "
+         "members in office, on the same terms: 240 when all 400 House seats "
+         "are filled, and 15 of a full Senate of 24.",
+         ("needs", "Three fifths of its members")),
     ]),
     ("The voters", [
-        ("At the next general election", "Put to the people, where it needs "
-         "a two-thirds majority to take effect.",
-         ("needs", "Two thirds of those voting")),
+        ("At the next general election", "Put to the people, where it takes "
+         "effect only if two thirds of those voting on the question approve "
+         "it.",
+         ("needs", "Two thirds of those voting on it")),
         ("The Governor has no part", "No signature and no veto, at any point "
          "in this course.", ""),
     ]),
@@ -698,7 +720,10 @@ stop at any point on it. Most do.</p>
 are the two most often confused. A <b>public hearing</b> is where anyone may
 speak, and the committee takes no decision at it. An <b>executive session</b>
 is where the committee votes on what to recommend, usually days later and
-usually covering several bills at once. See
+usually covering several bills at once. A committee cannot end a bill there:
+the rules of both chambers require it to report every bill it is given, with
+no recommendation if it cannot agree on one, and the full chamber decides.
+See
 <a href="learn/testifying.html">Testifying and attending</a> for what happens
 at each, and
 <a href="learn/governor-and-council.html">The Governor and the Executive
@@ -716,55 +741,72 @@ failure of the bill or its sponsor.</p>
 <p>A chamber can put a question three ways. A <b>voice vote</b> records only
 which side sounded louder. A <b>division</b> records the count but not who
 voted which way. A <b>roll call</b> records every member by name. In the House
-one is taken only when a member moves for it and the required number of other
-members second the motion.</p>
+one is taken when a member moves for it and the required number of other
+members second the motion. A vote to override a veto is always a roll call,
+because the constitution requires one.</p>
 <p>Across the [[all_bills]] bills in this record, <b>[[all_rollcall]] have at
-least one recorded roll call and [[all_no_rollcall]] have none</b>. For a
-great many bills there is no answer to "how did my representative vote",
-because no record of names was ever made.</p>
+least one recorded roll call and [[all_no_rollcall]] have none</b>. Of those,
+[[pre_rollcall_bills]] are from before [[rollcall_first_year]], where this
+record's roll calls begin: roll calls were taken then too, and printed in the
+journals, but this site does not hold them. For most of the rest there is no
+answer to "how did my representative vote", because the bill was decided by
+voice vote or division and no record of names was made.</p>
 
 <h2>Votes that need more than a majority</h2>
-<p>Overriding a veto takes a two-thirds vote in each chamber, under Part
-Second, Article 44 of the state constitution, counted against the members
-voting. Amending the constitution takes three fifths of the entire membership
-of each chamber, which is 240 of the 400 House seats, and then two thirds of
-the voters, under Part Second, Article 100. That three-fifths threshold is
-counted against every seat rather than against the members present, so a
-measure can win a clear majority of those voting and fail anyway.</p>
+<p>Overriding a veto takes two thirds of each chamber, by roll call, under
+Part Second, Article 44 of the state constitution. The article says two thirds
+"of that house", and the House counts it among the members voting rather than
+against its whole membership: in August 2026 it overrode a veto 231 to 88
+when 384 members were in office. Amending the constitution takes three fifths
+of the members of each chamber, and then two thirds of those voting on the
+question at the election, under Part Second, Article 100. The chambers count
+that three fifths against every member in office rather than against those
+present &mdash; 240 when all 400 House seats are filled &mdash; so a measure
+can win a clear majority of those voting and fail anyway.</p>
 
 <h2>The consent calendar</h2>
 <p>A committee decides in executive session whether to send a bill to the
-consent calendar, and the ones that go there are the bills it broadly agrees
-about. Usually that agreement is unanimous, but not always: this
-site&rsquo;s own record holds thousands of committee reports marked for the
-consent calendar on a divided vote, among them reports carried 15&ndash;3 and
-4&ndash;2. The calendar is then
-decided in a single vote, without floor debate. What that vote adopts is the
-committee's recommendation on each bill, which for some of them is to kill it.
-Any member may ask for a bill to be taken off, and one that comes off is
-debated and voted on by itself at the end of the regular calendar.</p>
+consent calendar, and in both chambers that decision must be unanimous. It is
+a separate vote from the committee's recommendation: a recommendation carried
+on a divided vote can still go to the consent calendar, and this
+site&rsquo;s record holds thousands of House reports marked that way, among
+them reports carried 15&ndash;3. The calendar is then decided in a single
+vote, without floor debate. What that vote adopts is the committee's
+recommendation on each bill, which for some of them is to kill it. A bill can
+be taken off first, and one that comes off is debated and voted on by itself
+at the end of the regular calendar. Taking one off has needed ten members in
+the House since January 2023, and two senators in the Senate since April
+2026; before that, one member's request was enough in either chamber.</p>
 
 <h2>Two bills, followed all the way</h2>
-<p>Both ran the whole course, and in each the closest floor vote divided the
-House without dividing it by party. A majority of Republicans voted one way, a
-majority of Democrats the other, and a substantial minority of each party
-voted against its own side.</p>
+<p>Both went through both chambers, and in each the closest roll call divided
+the House without dividing it by party. A majority of Republicans voted one
+way, a majority of Democrats the other, and a substantial minority of each
+party voted against its own side.</p>
 
 <h3>HB 1002 (2024) &mdash; what a public record may cost</h3>
-<p>The ordinary course, start to finish. A town or agency answering a
+<p>A town or agency answering a
 right-to-know request may charge for the copies. The question was whether it
 may also charge for the staff time spent finding and reviewing the records.
 Supporters said small towns without full-time staff absorb real cost for
 requests that can run to thousands of pages. Opponents said a fee that tracks
 staff time can be set high enough to price an ordinary resident out of
-oversight. It was signed into law.</p>
-<p>It had a public hearing on 17 January 2024 and two executive sessions, all
-three on video. The committee split, and the House divided <b>193 to 179</b>
-on the majority's motion to pass the bill with an amendment: 62 Republicans
-for and 125 against, 128 Democrats for and 53 against.</p>
+oversight.</p>
+<p>It shows how little a first vote settles. The House Judiciary Committee
+heard it on 17 January 2024 and split 12&ndash;8 for passing it with an
+amendment, and on 1 February the House agreed, <b>193 to 179</b>: 63
+Republicans for and 125 against, 128 Democrats for and 53 against. A week
+later the House voted 195 to 183 to reopen that vote, and sent the bill back
+to the committee, which now split 11&ndash;9 for referring it to interim
+study, a recommendation that would have ended it for the term. The House
+refused, 105 to 266, adopted an amendment offered from the floor rather than
+by the committee, 345 to 24, and passed the bill 268 to 106. The Senate passed
+it on a voice vote, and Governor Sununu signed it into law on 14 June 2024.
+Five of its proceedings are on video: the House hearing, both House executive
+sessions, the work session between them, and the Senate hearing.</p>
 
 <h3>HB 1215 (2024) &mdash; a bill that went to a committee of conference</h3>
-<p>The same course by the longer road. It went to a Special Committee on
+<p>The longer road at the end of the course. It went to a Special Committee on
 Housing, then to a second chamber that changed it. On the motion to accept
 that change the House divided <b>172 to 180</b>, and the bill went to a
 <b>committee of conference</b>. It dealt with how long an approved development
@@ -801,8 +843,9 @@ plan.</p>
 <a href="bill/2026/hb649.html">HB 649</a>, on the maintenance obligations of
 motor vehicle operators, which passed in the second year and became law.</p>
 <p>Across the [[all_bills]] bills on this site, [[all_rollcall]] have at least
-one recorded vote and [[all_no_rollcall]] have none: most bills stop before
-anybody is asked to go on the record.</p>
+one recorded roll call. Of the [[law]] bills that became law in the [[term]] term,
+[[law_no_rollcall]] did so without a roll call on the floor of either
+chamber.</p>
 <p>Of the [[narrated]] bills with a narrative this term, <b>[[both_chambers]]
 reached both chambers</b> and <b>[[conference]] went to a committee of
 conference</b>. [[law]] became law: [[signed]] signed, [[unsigned]] without a
@@ -818,18 +861,20 @@ Guard.</p>
 <p>The Governor is elected for two years, at the same election as the whole
 legislature. When a bill has passed both chambers the Governor may sign it,
 veto it, or do nothing, in which case it becomes law without a signature after
-five days, Sundays excepted &mdash; unless the legislature has adjourned in the
-meantime, and then it does not become law at all. Part Second, Article 44 of
-the state constitution sets both.</p>
+five days, Sundays excepted &mdash; unless the legislature's adjournment
+prevents the Governor from returning it, and then it does not become law at
+all. Part Second, Article 44 of the state constitution sets both.</p>
 
 <h2>A veto is not always the end</h2>
-<p>The legislature can override a veto, but it takes two thirds of the members
-voting in each chamber. That is a high bar and most attempts fail.</p>
+<p>The legislature can override a veto, but it takes two thirds of each
+chamber, by roll call, starting with the chamber the bill came from. The
+constitution says two thirds "of that house", and the House counts that among
+the members voting. That is a high bar and most attempts fail.</p>
 <p>Across the [[terms]] terms on this site there are <b>[[vetoed]] vetoed bills</b>.
-In <b>[[veto_failed]]</b> the override failed. In <b>[[veto_overridden]]</b> it
-succeeded and the bill became law over the Governor's objection.[[veto_pending]]</p>
-<p>When the Governor vetoes a bill, the reasons are set out in a message read
-into the record of the chamber the bill came from. Those messages are printed
+In <b>[[veto_failed]]</b> the veto stood. In <b>[[veto_overridden]]</b> it was
+overridden and the bill became law over the Governor's objection.[[veto_pending]]</p>
+<p>When the Governor vetoes a bill, the reasons are set out in a message
+entered in the journal of the chamber the bill came from. Those messages are printed
 in the House and Senate calendars, and this site carries [[veto_messages]] of the
 [[vetoed]].</p>
 
@@ -851,7 +896,9 @@ has already been authorised. Both are arguments about the same fact.</p>
 BODY_GOVERNOR_HOLDS = """This site indexes the legislature, and it holds
 almost nothing about the Executive Council: no agendas, no contract votes, no
 nominations. What it does hold is the legislative half &mdash; the vetoes and
-the override votes, linked below. For the Council's own record, go to the
+the override votes, on each bill's own page: <a href="bill/2026/hb349.html">HB
+349</a>, whose veto stood, and <a href="bill/2026/hb2026.html">HB 2026</a>,
+whose veto was overridden. For the Council's own record, go to the
 Council."""
 
 
@@ -866,12 +913,15 @@ misdemeanours, small claims, probate and domestic relations.</p>
 <p>The Governor nominates and the Executive Council confirms &mdash; the same
 route as a commissioner, which is the clearest illustration of what the
 Council is for. There is no judicial election in New Hampshire at any level.
-Judges serve until the age of seventy, which is set by the constitution
-itself: Part Two, Article 78.</p>
+No one may serve as a judge after the age of seventy, which is set by the
+constitution itself: Part Second, Article 78. Raising it to seventy-five has
+been tried. A 2023 amendment to do so passed both chambers and went to the
+voters in November 2024, and a 2026 proposal to make the same change, which
+failed in the House, still described the limit as seventy.</p>
 
 <h2>Where the courts and the legislature meet</h2>
 <p>The legislature writes statutes, and the courts decide what they mean when
-there is a dispute over what was originally intended, and whether they are
+that is disputed, and whether they are
 permitted by the state or federal constitution. A decision striking down or
 narrowing a statute is sometimes followed by bills amending the language
 around the new standard, and those bills are in the record here like any
@@ -900,14 +950,9 @@ three thresholds, none of which involves the Governor.</p>
 """ + flow_diagram(FLOW_CACR, "How the constitution is amended", level=3) + """
 
 <h2>Why almost none get through</h2>
-<p>The first step is the one that stops most of them, because a three-fifths
-threshold measured against the whole membership is very close to
-unattainable in a chamber where turnout varies.</p>
+<p>[[cacr_hurdle]]</p>
 """ + SHOWS.format("""
-<p>The [[term]] term filed <b>[[cacr]] CACRs</b>. [[cacr_voters]]
-[[cacr_killed]] were killed outright, [[cacr_session_end]] died when the session
-ended, [[cacr_one_chamber]] passed one chamber and stopped, and the rest are
-still in committee or were postponed.</p>
+<p>[[cacr_record]]</p>
 <p>They sit in <a href="bills.html">the bill list</a> beside ordinary bills.
 A CACR that shows "Passed one chamber" has a much longer way to go than a bill
 with the same words beside it.</p>""")
@@ -938,12 +983,20 @@ bill itself has to be filed by a legislator.</p>
 <h2>What an agency cannot do</h2>
 <p>It cannot give itself powers the statute does not grant. What it can do is
 decide the detail, and it does that by writing
-<a href="learn/administrative-rules.html">administrative rules</a>, which the
-legislature approves through JLCAR, the Joint Legislative Committee on
-Administrative Rules.</p>
+<a href="learn/administrative-rules.html">administrative rules</a>. Every
+rule except an emergency rule goes to JLCAR before it is adopted. JLCAR, the
+Joint Legislative Committee on Administrative Rules, is a committee of
+legislators from both chambers, and it may approve the rule, approve it on a
+condition, or object.
+For a rule made in the ordinary course, an objection does not by itself stop
+the rule, though the committee can hold it back for a time while it asks the
+legislature to block it by joint resolution; and if the committee takes no
+action within 60 days, the rule is treated as approved.</p>
 """ + SHOWS.format("""
-<p>Hearing recordings are linked from every bill's Videos tab, at the moment
-the bill was taken up. <a href="committees.html">Committee pages</a> list
+<p>Where a hearing was recorded &mdash; [[hearing_video_bills]]
+bills[[hearing_video_since]] &mdash; the bill's Videos tab links the
+recording, opened where the bill was taken up when that moment has been
+found. <a href="committees.html">Committee pages</a> list
 every day a committee met and what it heard.</p>""")
 
 
@@ -967,7 +1020,8 @@ full course without ever appearing where people look for legislation.</p>
 """ + flow_diagram(FLOW_RULES, "How a rule is made", level=3) + """
 <p>Two routes skip most of that. An <b>emergency rule</b> (RSA 541-A:18) takes
 effect at once where the agency finds an imminent peril to public health or
-safety, with only whatever notice the agency finds practicable; an
+safety, or a risk of substantial fiscal harm to the state or its citizens,
+with only whatever notice the agency finds practicable; an
 <b>interim rule</b> (RSA 541-A:19) is a fast track for matching a new statute,
 a court decision or a federal requirement. Neither lasts more than 180 days,
 so both end in the ordinary course above or they end altogether.</p>
@@ -1077,10 +1131,22 @@ them assume you already know all of this."""
 # meeting, SB 2 and the default budget, and neither repeats it -- each links
 # it instead.
 #
-# Every RSA citation in both bodies was read on gc.nh.gov/rsa on 17 September
-# 2026. Where a sentence could not be tied to a section it carries no citation
-# rather than a guessed one; the county commissioners' number and the county
-# nursing homes are the two that were rewritten for exactly that reason.
+# The citations were first read on gc.nh.gov/rsa on 17 September 2026, and
+# that reading checked that each section existed rather than that it said
+# what the sentence beside it said. On 23 September every citation in both
+# bodies was re-read clause by clause against the General Court's own RSA
+# table (db/NH_RSA.psv), and ten sentences were corrected: the budget deadline
+# of an optional-fiscal-year county (24:14 II), the Supreme Court's exception
+# from bailiff security (104:5 III), recording cited to 478:1 rather than
+# 477:3-a and 478:4, the register of probate (490-F:13, 548:5, and 2026 CACR
+# 13), RSA 611 called "the coroners chapter" (it was the medical examiners'),
+# the manager-form petition (37:12, not 37:11), a village district's manager
+# (37:14), the treasurer and highway agents who may be appointed (669:15),
+# a charter amendment put "by the same route" as a new charter (49-B:5, 49-B:6)
+# and a charter repeal open to "a municipality" where 49-B:12 says any town.
+# Where a sentence could not be tied to a section it carries no citation
+# rather than a guessed one. preflight holds each corrected claim to its
+# section, in both directions.
 # ---------------------------------------------------------------------------
 BODY_COUNTY = """
 <p>New Hampshire has ten counties: Belknap, Carroll, Cheshire, Coos, Grafton,
@@ -1150,10 +1216,12 @@ recommended. The vote cannot be taken until 28 days have passed since the
 recommendations were mailed (RSA 24:21-a, III). Appropriations are itemised in
 detail and the clerk keeps the record of them (RSA 24:14, I).</p>
 
-<p><b>Missing the deadline has a consequence.</b> A convention that has not
-adopted a budget within 90 days of the start of the fiscal year does not get
-an extension. The budget as recommended by the commissioners takes effect as
-the county budget (RSA 24:14, II).</p>
+<p><b>Missing the deadline has a consequence.</b> The convention must adopt
+the budget within 90 days after the fiscal year begins if the county runs on a
+calendar year, or by 1 September if it is on an optional fiscal year. A
+convention that has not adopted one by then does not get an extension. The
+budget as recommended by the commissioners takes effect as the county budget
+(RSA 24:14, II).</p>
 
 <h2>What happens after the budget is adopted</h2>
 <p>The delegation is still the body that has to be asked. Commissioners and
@@ -1201,7 +1269,8 @@ terms in 2022, and Coos County, which did so in 2024 (RSA 653:1, V).</p>
 
 <p><b>Sheriff:</b> the sheriff and the sheriff's deputies serve and execute
 writs and other process directed to the department, and the department's
-bailiffs provide security in the state courts (RSA 104:5). Sheriffs and
+bailiffs provide security in every state court except the Supreme Court
+(RSA 104:5). Sheriffs and
 deputies have the same authority throughout the state as in their own county
 to serve process, investigate crimes and apprehend, and may enforce civil
 orders issued by any court (RSA 104:6).</p>
@@ -1216,24 +1285,33 @@ pays it out only on the commissioners' orders, keeps the account of what comes
 in and goes out, and reports at the end of the fiscal year (RSA 29:1).</p>
 
 <p><b>Register of deeds:</b> keeps the registry of deeds, which is the
-county's record of who owns which land. Every deed, mortgage and plan is
-recorded there and kept in the office the county provides (RSA 478:1).</p>
+county's record of who owns which land. Deeds, mortgages and the other
+documents that affect title to land are recorded there, and a deed that has
+not been recorded does not hold against a later buyer who paid for the land in
+good faith (RSA 477:3-a, 478:4). The register keeps the records safe in the
+office the county provides (RSA 478:1).</p>
 
-<p><b>Register of probate:</b> still elected, and almost all of the duties are
-gone. The probate court became a division of the Circuit Court, and most of
-RSA 548 was repealed with effect from 1 July 2011. What is left is a duty to
-work with the administrative judge of the Circuit Court on preserving closed
-files of historical significance (RSA 548:5). The office is named in the
-constitution, so removing it takes an amendment and not a bill:
-<a href="bill/2022/cacr21.html">CACR 21 (2022)</a> would have struck it out,
-passed both chambers, and went to the voters, where it did not reach the
-<a href="learn/the-constitution.html">two thirds of those voting</a> an
-amendment needs.</p>
+<p><b>Register of probate:</b> still elected, though almost all of the duties
+are gone. On 1 July 2011 the probate court became the probate division of the
+Circuit Court (RSA 490-F:3), and the registers' duties passed to the circuit
+court clerks, apart from a few the statute leaves with the register
+(RSA 490-F:13). Among those, the register works with the Secretary of State
+and the administrative judge of the Circuit Court on preserving closed files
+that may be of historical significance, and keeps an index of any files
+removed from the court (RSA 548:5). The office is named in the constitution,
+in articles 71 and 81 of Part Second, so removing it takes an amendment and
+not a bill: <a href="bill/2022/cacr21.html">CACR 21 (2022)</a> would have
+struck it out, passed both chambers, and went to the voters, where it did not
+reach the <a href="learn/the-constitution.html">two thirds of those
+voting</a> an amendment needs. In 2026 the legislature sent the question to
+the voters again, as <a href="bill/2026/cacr13.html">CACR 13 (2026)</a>, at
+the November 2026 general election.</p>
 
-<p><b>Coroner:</b> New Hampshire elects none. RSA 611, the coroners chapter,
-is repealed, and sudden, unexpected or unnatural deaths are investigated by
-the state's Office of the Chief Medical Examiner under RSA 611-B rather than
-by a county officer.</p>
+<p><b>Coroner:</b> New Hampshire elects none. Sudden, unexpected or unnatural
+deaths are investigated by medical examiners of the Office of the Chief
+Medical Examiner, a state office within the Department of Justice, rather than
+by a county officer (RSA 611-B:2, 611-B:11). RSA 611-B replaced RSA 611, the
+earlier medical examiners chapter, which was repealed in 2007.</p>
 
 <h2>What the county pays for, and where the money comes from</h2>
 <p>Two things dominate a county budget. A county may provide, keep and
@@ -1243,8 +1321,9 @@ a county liability: counties reimburse the state for nursing home and other
 long-term care Medicaid spending on the residents each county is answerable
 for, to the extent of the whole non-federal share of it, subject to a limit on
 how fast that bill may rise (RSA 167:18-a). Counties also run nursing homes of
-their own, which no chapter of Title II creates and which they have run for
-long enough that the statutes treat them as a given. The registry of deeds, the
+their own. No chapter of Title II creates them, but the statutes treat them as
+a given: the commissioners of each county appoint an administrator for the
+county nursing home (RSA 28:11). The registry of deeds, the
 sheriff's department and the county attorney's office are on the county payroll
 as well.</p>
 
@@ -1252,8 +1331,8 @@ as well.</p>
 the selectmen of each town in the county, requiring them to assess and collect
 that town's share of the county tax and pay it over (RSA 29:11). The town
 raises it in the property tax. That is why a tax bill carries a county line
-beside the town, school and state education lines, and why a vote taken by a
-delegation in December turns up on a bill months later.</p>
+beside the town, school and state education lines, and why a budget the
+delegation adopts turns up on a tax bill months later.</p>
 """ + SHOWS.format("""
 <p><a href="legislators.html">Every member of both chambers</a> has a page
 here, with the county and district they were elected from. The House members
@@ -1273,13 +1352,15 @@ they were elected to. The county's own record is kept by the county."""
 BODY_TOWNS = """
 <p>There are [[municipalities]] cities and towns in New Hampshire, and Title
 III of the Revised Statutes governs all of them. The difference between a city
-and a town is not size, and not the word on the sign. It is who the
-legislative body is &mdash; who adopts the budget and passes the
+and a town is not size, and not the word on the sign. In most places it is who
+the legislative body is &mdash; who adopts the budget and passes the
 ordinances.</p>
 
-<p>In a town, the legislative body is the voters themselves, assembled at
-<a href="learn/local-government.html">town meeting</a>. In a city, it is an
-elected council. Nearly everything else follows from that one difference.</p>
+<p>In most towns, the legislative body is the voters themselves, assembled at
+<a href="learn/local-government.html">town meeting</a>. In a city it is an
+elected council, and so it is in a town whose charter replaced the meeting
+with a town council (RSA 49-D:3). Nearly everything else follows from that one
+difference.</p>
 
 <h2>A town: the meeting decides, the selectboard carries it out</h2>
 <p><b>Selectmen:</b> the executive of a town. The statutes say selectmen
@@ -1289,10 +1370,13 @@ three (RSA 41:8). On the written application of 25 registered voters, or 2
 percent of them, whichever is less and never fewer than 10, the question of
 increasing the board to 5 goes on the ballot (RSA 41:8-b).</p>
 
-<p>The board does not set policy on its own account. It carries out what the
-meeting voted, administers the town between meetings, and puts together the
-warrant for the next one. The money it spends is the money the meeting
-appropriated.</p>
+<p>The board's first job is to carry out what the meeting voted: it manages
+the town's day-to-day business between meetings (RSA 41:8) and puts together
+the warrant for the next one. It has some powers of its own &mdash; it may
+regulate the use of the town's highways, sidewalks and commons (RSA 41:11),
+and it manages the town's land and buildings unless the town has handed that
+to other officers or another statute governs it (RSA 41:11-a) &mdash; but the
+money it spends is the money the meeting appropriated.</p>
 
 <p><b>Moderator:</b> presides at the meeting, regulates its business, decides
 questions of order and declares every vote passed. The moderator may postpone
@@ -1325,15 +1409,18 @@ council and the manager runs the administration.</p>
 <h2>Town managers and town administrators</h2>
 <p>A town may adopt the town manager form under RSA 37. It takes a vote: the
 chapter does not operate in a town until a majority of the voters present and
-voting at an annual meeting adopt it, and 10 or more voters may petition to
-put the question on the warrant (RSA 37:11). Once adopted, the selectmen
+voting at an annual meeting adopt it (RSA 37:11), and on the written
+application of 10 or more voters the selectmen must put the question in the
+warrant (RSA 37:12). Once adopted, the selectmen
 appoint the manager (RSA 37:2), who becomes the administrative head of all
 departments of the town and is responsible for administering them (RSA 37:5).
 The manager appoints and dismisses subordinate staff, examines the affairs of
-any department, and prepares the year's expenditure and revenue estimates
-(RSA 37:6). What the manager does not get are the things the meeting and the
-selectmen keep: warning town meetings, making bylaws, borrowing money, and
-assessing or collecting taxes (RSA 37:5).</p>
+any department under the manager's control, and prepares the year's
+expenditure and revenue estimates (RSA 37:6). What the manager does not get
+are the things the meeting and the selectmen keep, among them warning town
+meetings, making bylaws, borrowing money, assessing or collecting taxes,
+granting licences and laying out highways; nor does the manager supervise the
+town clerk or the town treasurer (RSA 37:5).</p>
 
 <p>A <b>town administrator</b> is a different thing, and the difference
 matters when you are working out who decides. There is no statutory office of
@@ -1355,14 +1442,19 @@ with the same powers a town has in relation to the same objects
 <p>A district holds its own meeting and has its own moderator, clerk,
 treasurer and commissioners, who have the same powers over the district's
 business as a town's moderator, clerk, treasurer and selectmen have over the
-town's (RSA 52:8). A village district may adopt the manager form on the same
-footing as a town (RSA 37:14). If you live in one, it is a separate line on
+town's (RSA 52:8). A village district may adopt the manager form too, but
+only once the town it lies in (or, if it spans towns, the one holding most of
+its taxable value) has adopted it, and it must then appoint that town's
+manager as its own (RSA 37:14). If you live in one, it is a separate line on
 your tax bill.</p>
 
 <h2>The other names on a town ballot</h2>
-<p>Some offices every town elects by ballot: selectmen, the moderator, the
-supervisors of the checklist, the town clerk, the town treasurer and highway
-agents (RSA 669:15).</p>
+<p>Some offices every town governed by selectmen elects by ballot: the
+selectmen themselves, the moderator, the supervisors of the checklist and the
+town clerk. The town treasurer and highway agents are elected the same way
+unless the town has provided for appointing them (RSA 669:15). A town whose
+charter gives the selectmen's powers to a town council has no selectmen, but it
+still elects its town clerk (RSA 41:16, 49-D:3).</p>
 
 <p>Others a town elects only if it has voted to: the tax collector, town
 assessors, constables or police officers, the fire chief or firewards, and the
@@ -1374,7 +1466,8 @@ committee or conservation commission (RSA 669:17).</p>
 licences and registrations, and runs the mechanics of elections. A town may
 vote to make the term 3 years (RSA 41:16-b).</td></tr>
 <tr><td><b>Tax collector</b></td><td>Collects the taxes the selectmen commit,
-remits them to the treasurer weekly, keeps the account of what was collected
+remits them to the treasurer at least weekly, and daily once receipts reach
+$1,500, keeps the account of what was collected
 and abated, and reports at year end (RSA 41:35).</td></tr>
 <tr><td><b>Clerk/tax collector</b></td><td>Many towns have combined the two
 into one office. It takes a petitioned article and a majority at the annual
@@ -1389,8 +1482,9 @@ town, who keep the voter checklist. One is elected every even-numbered year
 for 6 years, unless the town has adopted 3-year terms
 (RSA 41:46-a).</td></tr>
 <tr><td><b>Trustees of trust funds</b></td><td>Three, or five if the town has
-voted for five, administering the funds held in trust for the town. One is
-elected each year for three years (RSA 31:22).</td></tr>
+voted for five, administering the funds held in trust for the town. The term
+is three years, and on a board of three one trustee is elected each year
+(RSA 31:22).</td></tr>
 <tr><td><b>Library trustees</b></td><td>Any odd number the town decides on,
 elected at town meeting for staggered 3-year terms (RSA 202-A:6).</td></tr>
 <tr><td><b>Cemetery trustees</b></td><td>Elected by ballot at the annual town
@@ -1404,9 +1498,11 @@ property is let off a rule. In some towns you elect them and in others you do
 not, and which it is was a choice the town made.</p>
 
 <p>A <b>planning board</b> has 5 or 7 members in most towns, 7 or 9 in a town
-with a council, and 9 in a city. Members are appointed by the selectmen unless
-the local legislative body has voted that they be elected, and a town that has
-voted for election may later vote to go back (RSA 673:2).</p>
+with a council, and 9 in a city. In a town governed by a meeting, one
+selectman or administrative official of the town sits on it ex officio and the
+selectmen appoint the rest, unless the town meeting has voted that those
+members be elected; a town that has voted for election may later vote to go
+back (RSA 673:2).</p>
 
 <p>A <b>zoning board of adjustment</b> has 5 members, either elected in the
 manner RSA 669 prescribes or appointed in the manner the local legislative
@@ -1418,11 +1514,15 @@ its own budget and its own ballot. Its <b>school board</b> has 3, 5, 7 or 9
 members as the district votes, and 3 if it has not voted, elected for three
 years with an equal number elected each year where that can be done
 (RSA 671:4). A cooperative school district covers more than one town, and its
-board is made up of members from each.</p>
+articles of agreement decide how its board is chosen. The statute allows
+several methods, among them electing all members at large, electing them from
+districts drawn by population, or electing them at large with at least one
+member living in each of the districts that formed it (RSA 195:19-a).</p>
 
 <p><b>School administrative unit:</b> the SAU, the administrative body serving
 one district or several together. Its board is made up of the school board
-members of the districts in it. That board arranges superintendent services,
+members of the districts in it, each district's members sharing that
+district's votes (RSA 194-C:7). That board arranges superintendent services,
 sets the salaries of the administrative staff and apportions the cost among
 the member districts, and it has the power to remove the superintendent
 (RSA 194-C:5). This is why the superintendent answers to a board you did not
@@ -1439,10 +1539,22 @@ government (RSA 49-B:2).</p>
 <p>It starts with a question on the ballot. On the petition of 25 registered
 voters, or 2 percent of them, whichever is less and never fewer than 10, the
 voters are asked whether a charter commission shall be established
-(RSA 49-B:3). If they say yes, the commission is elected, it reports, and the
-charter it writes goes back to the voters at a referendum. An existing charter
-is amended by the same route (RSA 49-B:5), and a municipality may vote to
-return to the form of government it had before (RSA 49-B:12).</p>
+(RSA 49-B:3). If they say yes, a commission of nine is elected (RSA 49-B:4),
+it reports, and the charter it writes goes back to the voters, where it takes
+effect only if three fifths of the ballots cast on the question favour it
+(RSA 49-B:6).</p>
+
+<p>A charter already in force changes by one of two routes. A revision, which
+changes the form of government, goes through a charter commission of its own:
+the question of establishing one reaches the ballot by order of the municipal
+officers or on a petition of voters numbering at least 20 percent of the
+ballots cast at the last regular municipal election, and the revised charter
+too needs three fifths (RSA 49-B:4-d, 49-B:4-e, 49-B:6). Any other change is
+an amendment: the municipal officers, or a petition of voters numbering at
+least 15 percent of those ballots, put it on the ballot with no commission,
+and a majority adopts it (RSA 49-B:5, 49-B:6). A town may also repeal its
+charter and return to the form of government it had before, on a petition of
+its voters put to the ballot the same way as an amendment (RSA 49-B:12).</p>
 
 <p>A town charter does not have to abolish the town meeting. RSA 49-D:3 sets
 out the forms a town charter may choose between: a town council; an official
@@ -1557,8 +1669,10 @@ you spoke or only signed in, the counts and any written testimony stay in the
 record.</p>
 """ + SHOWS.format("""
 <p>This site holds <b>[[hearings]] public hearings</b>, each with the committee
-and the day. Every bill's page shows its own hearings, and the Videos tab links
-the recording at the moment the bill was taken up.
+and the day. Every bill's page shows its own hearings. Where a hearing was
+recorded &mdash; [[hearing_video_bills]] bills[[hearing_video_since]]
+&mdash; the Videos tab links it, opened where the bill
+was taken up when that moment has been found.
 <a href="committees.html">A committee's page</a> lists every day it met and
 what it heard.</p>
 <p>Bills also carry the sign-in counts: how many people registered supporting,
@@ -1637,7 +1751,8 @@ BODY_SITE = """
 [[all_bills]] bills across [[terms]] two-year terms, back to [[first_year]],
 with what each bill does, who sponsored it, when it was heard, how it was
 voted on, and where in the recording that happened. It is built by machine
-from the General Court's published files and rebuilt every night.</p>
+from the General Court's published files, and this page was last built on
+[[built_on]].</p>
 
 <p>Older terms hold less, and every bill's page says what its term carries and
 what has not been fetched.</p>
@@ -1659,7 +1774,8 @@ status, and a narrative of what has happened, in order, with each action
 linked to the journal or calendar that recorded it.</li>
 <li><b>Bill Text</b> &mdash; the text and its amendments, where more than one
 was published.</li>
-<li><b>Votes</b> &mdash; every recorded roll call, by member. Voice and
+<li><b>Votes</b> &mdash; every roll call this record holds, by member, from
+[[rollcall_first_year]] on. Voice and
 division votes appear in the narrative but have no member-by-member record to
 show, because none was made.</li>
 <li><b>Videos</b> &mdash; the hearing and floor recordings, opened at the
@@ -1697,8 +1813,8 @@ is the evidence.</p>
 <tr><td><b>DV</b></td><td><b>Division vote:</b> counted, names not recorded</td></tr>
 <tr><td><b>RC</b></td><td><b>Roll call:</b> each member recorded by name</td></tr>
 <tr><td><b>CC</b></td><td><b>Consent Calendar:</b> the committee's
-recommendation, to pass or to kill, adopted with the whole calendar in one
-vote, without floor debate</td></tr>
+recommendation, to pass, to kill or to send to interim study, adopted with the
+whole calendar in one vote, without floor debate</td></tr>
 <tr><td><b>OT3rdg</b></td><td><b>Ordered to a third reading</b></td></tr>
 <tr><td><b>HJ</b> / <b>SJ</b></td><td><b>House or Senate Journal:</b> the
 chamber's own record of the day, cited by issue and sometimes page</td></tr>

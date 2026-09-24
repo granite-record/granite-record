@@ -98,7 +98,8 @@ Three things are absent on purpose and are not missing:
 - `secrets.json` — a YouTube API key, wanted by one step of the pipeline, which
   skips and says so without it. Nothing else in the repository needs a
   credential, and `preflight` has a check that no tracked file carries one.
-- `work/` — the caption files, about 34 GB, re-fetchable.
+- `work/` — the recordings' caption files, about 20 GB, and the audio of a few
+  dozen transcribed here, about 15 GB; all of it re-fetchable.
 - `site/` — the built output.
 
 So `build_all.py --local` on a fresh clone has almost nothing to build from,
@@ -317,6 +318,11 @@ bill histories, the explainers under `/learn`, and the editorial notes on
 particular bills. It does not cover the underlying record, because it cannot —
 the bills, votes, calendars and recordings are the State of New Hampshire's,
 and facts are not copyrightable. [`DATA.md`](DATA.md) separates the three.
+
+The logo is the exception to all of it. The mark in `brand/` and the images
+drawn from it in `assets/` are used under a licence from their owner and are
+not offered under MIT. A fork should bring its own; `DATA.md` says exactly
+which files that means.
 
 ---
 

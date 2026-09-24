@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.12
+# GRANITE_VERSION: 2026-09-10.13
 """
 The record as CSV, for anyone who wants to work with it rather than read it.
 
@@ -33,7 +33,11 @@ import datetime as _dt
 import json
 from pathlib import Path
 
+import bill_order as BO
 import text_sponsors as TS
+# The month the General Court's YouTube channels begin, as the About page and
+# the bill pages say it: one constant, so the three cannot drift apart.
+from about_figures import STREAM_START_WORDS
 
 # Cloudflare Pages refuses a file larger than this. Checked before writing,
 # because the alternative is finding out during a deploy.
@@ -125,12 +129,19 @@ def bills(out, site):
              # Five characters: where it started and each stop it reached.
              # Documented on the data page rather than left as a code.
              b.get("passage", ""), b.get("nrc", 0), b.get("chapter", "")]
+            # By term, then by number as the site lists bills. As text,
+            # HB1003 was row 38 of 2025-2026 and HB103 row 67.
             for b in sorted(idx, key=lambda b: (str(b.get("term")),
-                                                str(b.get("id")))))
+                                                BO.bill_key(b.get("id")))))
     return write(out, "bills.csv", cols, rows,
                  "Every bill of every term: title, sponsor, committee, "
                  "outcome, how far it got, and the chapter of the laws it "
-                 "became.")
+                 "became. Rows run by term, then by bill in the order the "
+                 "site lists them: HB, HR, HCR, CACR, SB, SR, SCR, HJR, SJR, "
+                 "then any other kind, each by its number counted as a "
+                 "number, so HB 103 comes "
+                 "before HB 1003. sponsors.csv and proceedings.csv order "
+                 "their bill column the same way.")
 
 
 def legislators(out, site):
@@ -153,7 +164,8 @@ def rollcalls(out):
     rc = load("rollcalls.json", {})
     cols = ["roll_call", "term", "year", "body", "number", "date", "bill",
             "question", "question_plain", "yeas", "nays", "not_voting",
-            "passed", "procedural", "threshold_needed", "threshold_rule"]
+            "passed", "procedural", "threshold_needed", "threshold_rule",
+            "outcome_source"]
     rows = []
     for term, bills_ in (rc.items() if isinstance(rc, dict) else []):
         for _b, entries in (bills_.items() if isinstance(bills_, dict) else []):
@@ -168,11 +180,25 @@ def rollcalls(out):
                     1 if r.get("passed") else 0,
                     1 if r.get("procedural") else 0,
                     r.get("threshold_needed") or "",
-                    r.get("threshold_rule") or ""])
+                    r.get("threshold_rule") or "",
+                    r.get("outcome_source") or ""])
     rows.sort(key=lambda r: (str(r[2]), str(r[3]), int(r[4] or 0)))
     return write(out, "rollcalls.csv", cols, rows,
-                 "Every recorded vote: the question in the record's words and "
-                 "in plain English, the tally, and what it needed to carry.")
+                 "Every roll call in the General Court's roll-call files, "
+                 "which begin in 1999: the question in the record's words and "
+                 "in plain English, the tally, and what it needed to carry "
+                 "where that was more than a majority. "
+                 "passed is, wherever the record allows, the outcome the "
+                 "clerk recorded in the General Court's docket or its House "
+                 "or Senate Journal; outcome_source says where it came from: "
+                 "docket; docket, "
+                 "implied (the docket line implies the outcome rather than "
+                 "stating it, as a unanimous tally or an order to third "
+                 "reading does); journal; count, where the docket names an "
+                 "outcome its own tally does not allow under the threshold "
+                 "this site applies, so passed follows the members' votes "
+                 "and the vote's page says so; or rule, where the record "
+                 "names no outcome and the count decides it.")
 
 
 def votes(out, data):
@@ -251,7 +277,7 @@ def proceedings_table(out, site):
                      "" if st.get("end") is None else st["end"],
                      st.get("state") or "", st.get("end_from") or "",
                      r.get("predicted_offset") or ""])
-    rows.sort(key=lambda r: (r[4], r[1]))
+    rows.sort(key=lambda r: (r[4], BO.bill_key(r[1])))
     print(f"  proceedings.csv: {placed:,} rows carry the time their page "
           "prints")
     return write(out, "proceedings.csv", cols, rows,
@@ -259,9 +285,20 @@ def proceedings_table(out, site):
                  "record, and the recording it is on where there is one. "
                  "start_seconds and end_seconds are the moment in the "
                  "recording the bill's page gives, and how_placed says how it "
-                 "was found: stated (the chair said it), floor_stated, "
-                 "floor_precise (a roll call's clock time), located (estimated "
-                 "from the captions; the page says approximate). "
+                 "was found: stated (the chair said it), floor_stated (opened "
+                 "by the clerk's reading of the committee report and closed by "
+                 "the chair's announcement of the result), floor_precise (a "
+                 "roll call's clock time), located (estimated from the "
+                 "captions; the page says approximate), whole_video (the "
+                 "recording is the proceeding) and floor_dated (the day's "
+                 "floor session, with a start only where the clerk's reading "
+                 "of the committee report was found). No moment was found "
+                 "for a floor_dated row with no start, nor for three other "
+                 "values: approximate, despite its name, is a recording in "
+                 "which the moment has not been found yet; consent is a bill "
+                 "adopted in a block on a consent calendar and never taken up "
+                 "on its own; and an empty how_placed is a proceeding with no "
+                 "recording matched to it. "
                  "scheduled_seconds is the meeting's called time minus the "
                  "stream's start, which is the schedule and not a finding.")
 
@@ -270,8 +307,27 @@ def sponsors(out, data):
     sp = load(Path(data) / "sponsors.json", {})
     # The same merge build_site_v2 makes, or the download would name nobody for
     # the bills whose pages name their sponsors from the bill's own text.
+    #
+    # AND THE SAME SEAT. build_site_v2 also dates a database sponsor's seat from
+    # the bill's own printed line (TS.seat_into), because the database files
+    # six senators of 2023-2024 under chamber H; this skipped that step, so
+    # sponsors.csv listed Donna Soucy, Jeb Bradley and four more as House
+    # members on 878 rows of 443 bills whose pages say Senate -- beside a page
+    # that promises a download and a page cannot disagree. The current term is
+    # left alone exactly as build_site_v2 leaves it: its roster is
+    # contemporaneous.
+    #
+    # NOT ALL OF THEM. The six sit in the House on 913 rows of that term, and
+    # seat_into can date 878. The other 35, on 15 bills, have no printed seat
+    # it can use, and their pages say House too: 26 on six resolutions with no
+    # saved text (SCR 1, SR 9, SR 10, SR 11, HCR 7, HCR 11); Donna Soucy on
+    # eight Senate bills whose text prints her beside Rep. Timothy Soucy, a
+    # pair seat_into will not split; and Carrie Gendreau on SB 118, whose
+    # saved text does not print her. Still wrong, on the page and here alike.
     if isinstance(sp, dict):
         TS.merge_into(sp)
+        bills_ = load(Path(data) / "bills.json", {})
+        TS.seat_into(sp, current=max(bills_) if bills_ else None)
     cols = ["term", "bill", "member_id", "member", "party", "chamber",
             "prime", "role", "source"]
     rows = []
@@ -283,28 +339,34 @@ def sponsors(out, data):
                              m.get("party", ""), m.get("chamber", ""),
                              1 if m.get("prime") else 0, m.get("role", ""),
                              m.get("source") or "sponsor file"])
-    rows.sort(key=lambda r: (r[0], r[1], -r[6]))
+    rows.sort(key=lambda r: (r[0], BO.bill_key(r[1]), -r[6]))
     return write(out, "sponsors.csv", cols, rows,
                  "Who put their name to which bill, and who was prime. "
                  "Sponsoring is not voting and is not counted as one. source "
                  "says where each name was read: the General Court's sponsor "
                  "file, its bill status page, or the sponsor line printed on "
                  "the bill's text (every term before 2023), where the first "
-                 "name is taken as prime and member_id is empty for anyone "
-                 "not matched to a member who cast a roll call that term.")
+                 "name is taken as prime. member_id is empty where this site "
+                 "has not matched the name to a member: every sponsor before "
+                 "1999, when the roll-call files it matches against begin, "
+                 "and several thousand after, nearly all of them 2023-2024 "
+                 "names read from the bill status page.")
 
 
 # How the tables join, said once here rather than guessed at by everyone
 # who downloads them. Keyed by file so the page and the manifest agree.
 JOINS = {
     "votes-": "roll_call joins rollcalls.csv; bill + term joins bills.csv; "
-              "member_id joins legislators.csv.",
+              "member_id joins legislators.csv for a sitting member, and a "
+              "former member has no row there.",
     "rollcalls.csv": "roll_call is year-body-number and is the key the vote "
                      "files use. bill + term joins bills.csv.",
     "sponsors.csv": "bill + term joins bills.csv; member_id joins "
-                    "legislators.csv.",
+                    "legislators.csv for a sitting member, and a former "
+                    "member has no row there.",
     "proceedings.csv": "bill + term joins bills.csv. video_id is a YouTube id.",
-    "legislators.csv": "id is member_id in the vote and sponsor files.",
+    "legislators.csv": "id is member_id in the vote and sponsor files. Only "
+                       "the sitting members are here.",
     "bills.csv": "bill + term is the key every other table refers to. A bill "
                  "number alone is not a key: HB100 names a different bill in "
                  "every biennium.",
@@ -445,7 +507,8 @@ def data_page(site, out, tables, base, cov=()):
     body = f'''<div class="civics hubpage datapage">
     <div class="phead">
       <h1>The data</h1>
-      <p class="pmeta">Everything this site knows, as CSV. {sum(t["rows"] for t in tables):,}
+      <p class="pmeta">The bills, roll calls, member votes, sponsors, hearings
+        and sitting legislators behind this site, as CSV. {sum(t["rows"] for t in tables):,}
         rows across {len(tables)} tables.</p>
     </div>
     <p class="src">These are built from the same files the pages are drawn
@@ -458,28 +521,57 @@ def data_page(site, out, tables, base, cov=()):
       the pair <code>bill</code>&nbsp;+&nbsp;<code>term</code> is what joins
       them. Getting this wrong silently merges two centuries of different
       bills, which is a mistake this project has made and fixed.</p>
-    <p class="src"><b>The <code>passage</code> column</b> in bills.csv is one
-      character per stop: where the bill started, then the House, the Senate,
-      the Governor and the statute book. <code>p</code> passed,
-      <code>x</code> stopped there, <code>-</code> never reached it. A
-      resolution has three characters rather than five, because it has fewer
-      places to go.</p>
+    <p class="src"><b>The <code>passage</code> column</b> in bills.csv is
+      where the bill started, <code>H</code> or <code>S</code>, then one
+      character per stop in the order it travelled: the chamber it started
+      in, the other chamber, the Governor and the statute book.
+      <code>p</code> passed, <code>x</code> stopped there, <code>h</code> is
+      there now, <code>-</code> has not reached it. So a Senate bill reads
+      Senate first. A House or Senate resolution, which only its own chamber
+      adopts, has three characters rather than five; a concurrent or joint
+      resolution goes to both chambers and has five. The column is empty
+      where the docket does not record enough of the bill&#39;s journey to
+      draw it, or records one its outcome contradicts.</p>
     <p class="src"><b>The <code>chapter</code> column</b> is the chapter of
-      that year's session laws the bill became, as the General Court's docket
-      records it &mdash; &ldquo;1, special session&rdquo; for a special
-      session's own numbering. It is empty for a bill that did not become law, and for the
-      few whose docket gives the same number to two bills in one year, where
-      one of them is a typing error the docket cannot say which.</p>
-    <p class="src"><b>Where a number is missing it is missing on purpose.</b> A
-      hearing with no start time is one nobody has placed in the recording
-      yet, not one that did not happen; a bill with no roll calls was decided
-      on a voice vote, which records no individual member.</p>
+      that year's session laws the bill became: the bill&#39;s status page
+      where the General Court gives one, and otherwise the docket&#39;s law
+      line &mdash; &ldquo;1, special session&rdquo; for a special session's
+      own numbering. It is empty for a bill that did not become law, and for
+      a few laws whose chapter this site could not take from the docket: it
+      gives none, gives one number to two bills in a year &mdash; one of them
+      a typing error the docket cannot say which &mdash; or writes it in a
+      form not yet read.</p>
+    <p class="src"><b>A blank cell is usually an answer.</b> In
+      proceedings.csv a sitting with no <code>start_seconds</code> has no
+      moment in a recording to point at. Most have no recording to link at
+      all, and nearly all of those are older than the General Court&#39;s
+      YouTube channels, which begin in {STREAM_START_WORDS}; a bill passed on a consent
+      calendar was adopted in a block and never taken up on its own; the rest
+      have a recording in which the moment has not been found yet, and
+      <code>how_placed</code> says which. In bills.csv,
+      <code>roll_calls</code> counts the roll calls on the bill itself, where
+      each member&#39;s vote is recorded by name, and leaves out procedural
+      ones such as suspending the rules. It counts from the General
+      Court&#39;s roll-call files, which begin in 1999, so a bill from before
+      then has none here, even where the docket gives a roll call&#39;s tally
+      and the printed journals name who voted. A later bill with none was
+      decided by a voice or division vote, which records no individual
+      member, or has no floor vote on record.</p>
 
     <h2>What is filled in, and for which terms</h2>
-    <p class="src">Every bill back to 1989 has a title and an outcome. The
-      rest arrives term by term as the archived dockets are fetched, and a
-      column that is empty below is empty because the record has not been
-      collected yet &mdash; not because the bill had no sponsor.</p>
+    <p class="src">Every bill back to 1989 has a title, a status and an
+      outcome. The other columns are filled wherever this site has read them
+      from the record, and the table below counts how far that reaches in
+      each term. An empty cell has one of three reasons. The record may leave
+      it empty: a rules or memorial resolution names no sponsor, and a
+      resolution that neither chamber referred has no committee. The
+      document that would fill it may not be here, or may be here in a
+      version that does not name it &mdash; mostly the text of older
+      resolutions and petitions, which is where sponsors before 2023 are
+      read from, and a few budget bills and bills of 1993-1994 whose saved
+      page is not the bill as introduced. Or the record gives it and this
+      site does not read it from there yet, as with some committee referrals
+      the docket records.</p>
     <div class="covwrap"><table class="cov">
       <thead><tr><th>Term</th><th>Bills</th><th>Sponsor</th><th>Committee</th>
         <th>Topic</th><th>Passage</th></tr></thead>
@@ -508,16 +600,17 @@ def data_page(site, out, tables, base, cov=()):
       summaries. Use it for whatever you like; a link back to
       graniterecord.org helps somebody check your working, which is the point
       of publishing the whole thing rather than a chart of it.</p>
-    <p class="note">Found something that looks wrong? It probably is, and the
-      page for that bill links the General Court&#39;s own record so the two
-      can be compared.</p>
+    <p class="note">Found something that looks wrong? The page for that bill
+      links the General Court&#39;s own record so the two can be compared, and
+      its <i>Report a problem with this page</i> box tells us.</p>
 
     <h2>Read the code</h2>
     <p>Every script that fetches, parses and builds this site is public, so a
       figure here can be traced to the line that produced it.</p>
     <p><a class="out" href="https://github.com/granite-record/granite-record"
       target="_blank" rel="noopener">granite-record on GitHub</a> &mdash; MIT
-      licensed.</p>
+      licensed, except the logo, which is used under a licence from its owner
+      and is not part of the open-source release.</p>
     <dl class="repo">
       <dt>What a clone gets</dt>
       <dd>{_rf}The roll-call history as the General Court published it, and
@@ -525,14 +618,19 @@ def data_page(site, out, tables, base, cov=()):
         with a stopwatch, the corrections, the offices filled in from official
         sources.</dd>
       <dt>What it does not</dt>
-      <dd>The built site and the caption files: about 34 GB of recordings this
-        site reads timestamps out of, and a folder that is regenerated from
-        them in a single run. Both are re-fetchable, and a repository carrying
-        either would be unusable.</dd>
+      <dd>The rest of the record &mdash; the dockets, the database dump, the saved
+        bill pages, the calendars and the journals &mdash; which is the
+        General Court&#39;s and changes as it does; the caption files this site
+        reads timestamps out of, about 20 GB, and the audio of a few dozen
+        recordings transcribed here, about 15 GB; and the built site, which
+        one run regenerates. All of it can be fetched or built again, and a
+        repository carrying it would be unusable.</dd>
       <dt>Rebuilding it</dt>
-      <dd><code>python3 build_all.py --local</code> builds the whole site from
-        the files already on disk and asks the General Court for nothing.
-        <code>python3 preflight.py</code> runs the checks.</dd>
+      <dd>A fresh clone has almost nothing to build from; the README says how
+        to fetch the record, and how gently. With the record on disk,
+        <code>python3 build_all.py --local</code> builds the whole site and
+        asks the General Court for nothing. <code>python3 preflight.py</code>
+        runs the checks, and most of them need no record at all.</dd>
     </dl>
 
     <h2>The whole record, as lists</h2>
@@ -545,9 +643,10 @@ def data_page(site, out, tables, base, cov=()):
     page = S.page(tmpl, path="/data.html", base=base,
                   title="The data | Granite Record",
                   og_title="The data",
-                  description=("Every bill, vote, sponsor and hearing the "
-                               "New Hampshire General Court has on record, "
-                               "as CSV files anyone can download."),
+                  description=("Every New Hampshire bill since 1989, every "
+                               "roll call since 1999, and the sponsors and "
+                               "hearings on record, as CSV files anyone can "
+                               "download."),
                   globals={"GR_STATIC": True}, noscript="",
                   skip_label="Skip to the tables",
                   # NOT the empty string. shell.page only strips the
@@ -598,8 +697,14 @@ def main():
                   "rather than this site. The software that built these files, "
                   "and the summaries and other texts generated here, are MIT "
                   "licensed -- see LICENSE in the source repository.",
-        "caveat": "An empty column is a field not yet collected, not a field "
-                  "the record says is empty.",
+        "caveat": "An empty cell has one of three reasons: the record leaves "
+                  "it empty (a document that names no sponsor, a resolution "
+                  "never referred to a committee, a sitting with no "
+                  "recording); the document that would fill it has not been "
+                  "collected, or not in a version that names it; or the "
+                  "record gives it and this site does not read it, or match "
+                  "it to a member, yet. coverage says how much of each "
+                  "column of bills.csv is filled per term.",
         "tables": [{k: v for k, v in t.items() if k != "over_cap"}
                    for t in tables],
     }
@@ -617,9 +722,11 @@ def main():
             + "\nSplit them before publishing.")
     cov = coverage(out)
     manifest["coverage"] = {
-        "what": "How much of each column of bills.csv is filled, per term. A "
-                "column that is empty is a record not yet collected rather "
-                "than a bill without one.",
+        "what": "How much of each column of bills.csv is filled, per term. "
+                "An empty cell is a field the bill's own record leaves empty, "
+                "one this site has not collected, or one the record gives "
+                "that this site does not read yet; the data page gives "
+                "examples of each.",
         "columns": SPARSE, "by_term": cov,
     }
     (out / "manifest.json").write_text(

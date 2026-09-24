@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-19.4
+# GRANITE_VERSION: 2026-09-19.5
 """
 A sitting day of the House or Senate, assembled from what is already parsed.
 
@@ -117,8 +117,20 @@ INLINE_VOTE = re.compile(r"\b(?P<kind>RC|DV|VV)\s*(?P<y>\d+)\s*Y\s*-\s*"
 # "3/5 nec." and "2/3 nec." -- the motion needed a supermajority. Drawn as a
 # simple majority the threshold mark on the ring sits in the wrong place and
 # the chart says a motion cleared a bar it did not have to clear, or missed one
-# it never faced.
+# it never faced. The House spells it out -- "By Necessary Three-Fifths Vote",
+# "Lacking Necessary Two-Thirds Vote" -- and was drawn at a majority.
 THRESHOLD = re.compile(r"\b(?P<a>\d)\s*/\s*(?P<b>\d)\s*nec", re.I)
+THRESHOLD_WORDS = re.compile(r"\b(?:two|three)[\s-]*(?P<f>thirds|fifths)\b", re.I)
+
+# TWO THIRDS AND THREE FIFTHS ARE OF DIFFERENT THINGS. Two thirds is of those
+# voting, which the tally beside it gives. Three fifths -- passing a
+# constitutional amendment -- is of the members IN OFFICE, and only the ballots
+# of a roll call say how many that was: 239 of the 397 then seated carried
+# CACR 26 in 2012, where three fifths of those voting would have been 212. So a
+# three-fifths mark is taken from rollcalls.json, which rollcall_outcomes
+# worked out from those ballots, and where no roll call carries one -- a
+# division, where nobody's ballot was recorded -- no mark is drawn at all.
+ROLLCALLS = "rollcalls.json"
 
 # A VETO VOTE IS A FLOOR VOTE, AND IT IS THE BIGGEST ONE OF THE YEAR.
 #
@@ -309,7 +321,7 @@ class Item:
 
     __slots__ = ("bill", "term", "action", "mover", "carried", "kind",
                  "yeas", "nays", "cite", "page", "raw", "seq", "need", "veto",
-                 "consent")
+                 "consent", "fifths")
 
     def __init__(self, bill, term, e, seq):
         self.bill = bill
@@ -327,6 +339,9 @@ class Item:
         self.need = None
         self.veto = False
         self.consent = False
+        # Three fifths, whose count only the roll call's ballots give; load()
+        # fills self.need from rollcalls.json where it can.
+        self.fifths = False
         if e.get("type") == "veto_override":
             _veto(e, self)
             return
@@ -342,22 +357,40 @@ class Item:
                 self.kind = self.kind or m.group("kind").upper()
                 if self.yeas is None:
                     self.yeas, self.nays = int(m.group("y")), int(m.group("n"))
+        frac = None
         th = THRESHOLD.search(src)
         if th:
             a, b = int(th.group("a")), int(th.group("b"))
             if 0 < a < b:
-                tot = (self.yeas or 0) + (self.nays or 0)
-                if tot:
-                    # Ceiling: three fifths of 24 is 14.4, and 15 votes carry it.
-                    self.need = -(-tot * a // b)
+                frac = (a, b)
+        else:
+            tw = THRESHOLD_WORDS.search(src)
+            if tw:
+                frac = (2, 3) if tw.group("f").lower() == "thirds" else (3, 5)
+        if frac == (3, 5):
+            self.fifths = True
+        elif frac:
+            tot = (self.yeas or 0) + (self.nays or 0)
+            if tot:
+                # Of those voting, rounded up: two thirds of 23 is 15.33,
+                # and it takes 16.
+                self.need = -(-tot * frac[0] // frac[1])
 
     @property
     def threshold_needed(self):
-        """Votes needed to carry, which is not always half plus one."""
+        """Votes needed to carry, which is not always half plus one -- or
+        None where it was three fifths of a count the record does not give."""
         if self.need:
             return self.need
+        if self.fifths:
+            return None
         tot = (self.yeas or 0) + (self.nays or 0)
         return (tot // 2) + 1 if tot else 0
+
+    @property
+    def threshold_unknown(self):
+        """More than a majority was needed, and of how many is not known."""
+        return self.fifths and not self.need
 
     @property
     def kind_words(self):
@@ -493,7 +526,34 @@ def floor_items(bill, term, events):
     return out
 
 
-def load(path=NARRATIVES):
+def _fifths_from_rollcalls(path=ROLLCALLS):
+    """{(body, date, yeas, nays): {threshold_needed}} for the roll calls whose
+    threshold is three fifths, by the ballots' tally and by the tally the
+    General Court's summary stated, since the docket line may carry either.
+    A set, so that two roll calls on one day with the same count but
+    different thresholds answer nothing rather than the wrong one."""
+    p = Path(path)
+    out = collections.defaultdict(set)
+    if not p.exists():
+        return out
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except ValueError:
+        return out
+    for bills in (data.values() if isinstance(data, dict) else []):
+        for rows in bills.values():
+            for r in rows:
+                if "three fifths" not in (r.get("threshold_rule") or ""):
+                    continue
+                for y, n in {(r.get("yeas"), r.get("nays")),
+                             (r.get("yeas_stated"), r.get("nays_stated"))}:
+                    if y is not None and n is not None:
+                        out[(r.get("body"), r.get("date"), y, n)].add(
+                            r.get("threshold_needed"))
+    return out
+
+
+def load(path=NARRATIVES, rollcalls=ROLLCALLS):
     """Every sitting day, as {(body, date): Day}.
 
     Ordered within a day by the journal page the action is printed on, which
@@ -522,6 +582,14 @@ def load(path=NARRATIVES):
 
     assert grouped, ("no floor events in narratives.json -- every sitting day "
                      "page would be empty, and the build would not say so")
+
+    need = _fifths_from_rollcalls(rollcalls)
+    for (body, date), items in grouped.items():
+        for it in items:
+            if it.fifths and it.counted:
+                got = need.get((body, date, it.yeas, it.nays))
+                if got and len(got) == 1:
+                    it.need = next(iter(got))
 
     days = {}
     for key, items in grouped.items():
