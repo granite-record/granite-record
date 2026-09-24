@@ -6839,6 +6839,34 @@ def _committee_tense(BC):
     return "ok", "future days scheduled, past days met"
 
 
+@check("build", "committee names that reach no page stop the build past a stated ceiling",
+       needs=("build_committees",))
+def _committee_unmatched_ceiling(BC):
+    """build_committees printed six of the names that matched no committee
+    page and exited 0. It was 15 names on 10 September and 656 on 24
+    September, with House Executive Departments and Administration showing no
+    sitting day for 1999-2004, and no log said when it happened. The count is
+    now held to UNMATCHED_CEILING: at the ceiling the build goes on, one past
+    it main() stops with the names, and main() still asks."""
+    from collections import Counter as C
+    ceiling = BC.UNMATCHED_CEILING
+    assert 112 <= ceiling <= 300, (
+        f"UNMATCHED_CEILING is {ceiling}: 112 names matched no page on 24 "
+        "September, and a ceiling far above that would not have stopped the jump "
+        "to 656")
+    at = C({f"H Name {i}": 1 for i in range(ceiling)})
+    over = C({f"H Name {i}": 1 for i in range(ceiling + 1)})
+    over["H Exec Depts and Admin"] = 1094
+    assert BC.unmatched_guard(at) == "", "the guard stops a build at its own ceiling"
+    msg = BC.unmatched_guard(over)
+    assert msg and str(ceiling) in msg and "Exec Depts and Admin" in msg, msg
+    src = Path(BC.__file__).read_text(encoding="utf-8")
+    main_ = src[src.index("def main("):]
+    assert re.search(r"stop = unmatched_guard\(unmatched\)\s+if stop:\s+raise SystemExit",
+                     main_), "build_committees.main no longer stops on the guard"
+    return "ok", f"ceiling {ceiling}: at it the build goes on, past it it stops and names them"
+
+
 @check("build", "a committee is archived only on two facts, and never on a guess",
        needs=("build_committees",))
 def _committees_archived(BC):

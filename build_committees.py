@@ -276,6 +276,38 @@ def bills_in_order(by_term):
             for t, v in by_term.items()}
 
 
+# THE CEILING ON COMMITTEE NAMES THAT REACH NO PAGE. A hearing whose
+# committee's name matches nothing in data/committees.json is on no committee
+# page, and this used to print six of them and exit 0. On 10 September that
+# was 15 names; by 24 September, once every older term's manifest had
+# arrived, it was 656 -- and House Executive Departments and Administration
+# showed no sitting day at all for 1999-2004 -- with nothing in any log to
+# say when it happened. committee_names.official brought it to 112: the
+# committees of their day that no page exists for (House Commerce of
+# 1997-2010, the Senate's Public Affairs and Insurance ...) and a handful of
+# fragments the docket parser leaves. A ceiling a third above that lets a new
+# special committee or two through and stops the build on the next jump.
+UNMATCHED_CEILING = 150
+
+
+def unmatched_guard(unmatched, ceiling=UNMATCHED_CEILING):
+    """The message to stop the build with, or "" when the count is in bounds.
+
+    `unmatched` is {"H Exec Depts and Admin": rows}, as main counts it.
+    """
+    if len(unmatched) <= ceiling:
+        return ""
+    top = "; ".join(f"{nm!r} on {n:,} rows" for nm, n in unmatched.most_common(8))
+    return (f"{len(unmatched)} committee names in proceedings.csv match no "
+            f"committee page, over the ceiling of {ceiling} this file states "
+            f"(UNMATCHED_CEILING). The hearings under them are on no committee "
+            f"page. The most common: {top}. If they are a committee's shorthand "
+            "or a new spelling, committee_names.py is where it is settled and "
+            "build_proceedings.py writes it; if proceedings.csv predates that, "
+            "rebuild it. If they are real committees with no page, raise the "
+            "ceiling and say why beside it.")
+
+
 def load(p, default):
     f = Path(p)
     if not f.exists():
@@ -818,13 +850,19 @@ def main():
     print(f"  {lead_n} of {written} have a chair on file")
     if unmatched:
         print(f"  {len(unmatched)} committee name(s) in proceedings.csv match "
-              "nothing in data/committees.json:")
+              f"nothing in data/committees.json (the ceiling is "
+              f"{UNMATCHED_CEILING}):")
         for nm, n in unmatched.most_common(6):
             print(f"    {nm!r} on {n:,} rows")
     empty = [i["code"] for i in index if not i["n_sessions"]]
     if empty:
         print(f"  {len(empty)} committee(s) have no sitting day on record: "
               + ", ".join(empty[:8]))
+    # SILENCE IS NOT SUCCESS: the pages are written, and the build stops here
+    # if the names that reach none of them have grown past the ceiling.
+    stop = unmatched_guard(unmatched)
+    if stop:
+        raise SystemExit(stop)
     return 0
 
 
