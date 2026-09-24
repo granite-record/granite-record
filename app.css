@@ -4087,6 +4087,14 @@ columns:270px;column-gap:var(--sp-7)}
 /* A row split across a column break would put a member's name at the foot of
    one column and their district at the head of the next. */
 :where(body.pg) .seatrow{break-inside:avoid}
+/* THE ALPHABETICAL VIEW RUNS ONE COLUMN PER PARTY (24 September), so each
+   party's list is a single column A to Z rather than balanced across two.
+   The columns stack on a phone. The party heading outranks its rows. */
+:where(body.pg) .partycols{display:grid;gap:var(--sp-5) var(--sp-7);
+grid-template-columns:repeat(auto-fit,minmax(270px,1fr));align-items:start}
+:where(body.pg) .partycols .seatlist{columns:auto}
+:where(body.pg) .pcol h3{font-size:var(--t-body);font-weight:600;letter-spacing:.05em;
+text-transform:uppercase;color:var(--ink-2);margin:0 0 var(--sp-3)}
 :where(body.pg) .seatrow[hidden]{display:none}
 :where(body.pg) .seatrow{display:flex;align-items:baseline;gap:var(--sp-4);
 padding:var(--sp-3) var(--sp-3);border-bottom:1px solid var(--rule);

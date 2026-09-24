@@ -1164,7 +1164,7 @@ SEATING_JS = """
   var list=document.getElementById("seatlist");
   if(!list)return;
   var svg=document.querySelector(".seatmap");
-  var wrap=document.querySelector(".seatwrap");
+  var wrap=document.querySelector(".seatwrap"), dragged=false;
   var note=document.getElementById("seatnote");
   var q=document.getElementById("sq"), go=document.getElementById("sgo");
   var rows=[].slice.call(list.querySelectorAll(".seatrow"));
@@ -1218,7 +1218,11 @@ SEATING_JS = """
     say();
     if(!picked)return;
     var row=rowFor(picked.getAttribute("data-seat"));
-    if(row){row.hidden=false;row.scrollIntoView({block:"nearest"});}
+    // NO JUMP TO THE LIST (the person, 24 September). Choosing a seat used to
+    // scroll the page down to its row; the chart's own link, under it, names
+    // the member and goes to their page, so the reader stays on the chart.
+    // The row is still marked, and still shown if a search had hidden it.
+    if(row)row.hidden=false;
     centre(picked);
   }
   function seatByNumber(seat){
@@ -1288,6 +1292,7 @@ SEATING_JS = """
     // on a seat would otherwise swallow the tap that chooses it.
     var from=null;
     wrap.addEventListener("pointerdown",function(e){
+      dragged=false;
       if(e.pointerType==="touch")return;      // one finger already pans natively
       if(e.target.closest&&e.target.closest("[data-seat]"))return;
       from={x:e.clientX,y:e.clientY,l:wrap.scrollLeft,t:wrap.scrollTop};
@@ -1296,6 +1301,7 @@ SEATING_JS = """
     });
     wrap.addEventListener("pointermove",function(e){
       if(!from)return;
+      if(Math.abs(e.clientX-from.x)+Math.abs(e.clientY-from.y)>4)dragged=true;
       wrap.scrollLeft=from.l-(e.clientX-from.x);
       wrap.scrollTop =from.t-(e.clientY-from.y);
     });
@@ -1364,6 +1370,14 @@ SEATING_JS = """
     });
     svg.addEventListener("mouseout",function(){say();});
   }
+  // A CLICK ON THE FLOOR ITSELF LETS GO (the person, 24 September): anywhere
+  // in the chart that is not a seat deselects whoever was chosen. A drag to
+  // pan also ends in a click, so one that moved is not taken for a let-go.
+  if(wrap)wrap.addEventListener("click",function(e){
+    if(seatHit(e.target))return;
+    if(dragged){dragged=false;return;}
+    if(picked)pick(null);
+  });
   draw();
 })();
 
@@ -2445,13 +2459,29 @@ def main():
         # asked for on 18 September. One alphabet across both chambers put a
         # senator between two representatives with nothing to say which was
         # which except the honorific, and the two chambers are not one body.
+        # ONE COLUMN PER PARTY (the person, 24 September): within each chamber
+        # the alphabetical view is broken up by party, each column A to Z by
+        # last name and then by first name -- Alissandra Murray before Megan
+        # Murray. The largest party first, so the majority leads.
+        PARTY_PLURAL = {"Republican": "Republicans", "Democrat": "Democrats",
+                        "Democratic": "Democrats", "Independent": "Independents",
+                        "Libertarian": "Libertarians"}
+
         def alpha_block(ms, heading):
-            # Surname, then given name: the seat order it fell back on put
-            # Michael Aron above Judy Aron and three Smiths out of order.
-            ms = sorted(ms, key=lambda m: (surname(m), given(m)))
+            groups = {}
+            for m in ms:
+                groups.setdefault((m.get("party") or "Party not on file").strip(), []).append(m)
+            cols = []
+            for party, pm in sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+                # Surname, then given name: the seat order it once fell back on
+                # put Michael Aron above Judy Aron and three Smiths out of order.
+                pm = sorted(pm, key=lambda m: (surname(m), given(m)))
+                name = PARTY_PLURAL.get(party, party) if len(pm) != 1 else party
+                cols.append(f'<section class="pcol"><h3>{esc(name)} &mdash; {len(pm)}</h3>'
+                            '<ol class="seatlist rlist">'
+                            + "".join(li(m, "") for m in pm) + "</ol></section>")
             return (f'<h2>{heading} &mdash; {len(ms)}</h2>'
-                    '<ol class="seatlist rlist">'
-                    + "".join(li(m, "") for m in ms) + "</ol>")
+                    '<div class="partycols">' + "".join(cols) + "</div>")
         by_last = alpha_block(S, "Senate") + alpha_block(H, "House")
         by_seat_rows = "".join(
             li(m, seating.plate(m["seat"]) if m.get("seat") else "") for m in H)
