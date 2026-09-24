@@ -52,6 +52,7 @@ import json
 import re
 from pathlib import Path
 
+import bill_order as BO
 import session_days
 import journal_days
 import shell as S
@@ -358,13 +359,14 @@ def consent_html(cons, removed, titles, years, esc):
             "together, in one motion and without debate.")
     if removed:
         pretty = ", ".join(re.sub(r"^([A-Z]+)(\d)", r"\1 \2", b)
-                           for b in sorted(removed))
+                           for b in sorted(removed, key=BO.bill_key))
         note += (f" {pretty} {'was' if len(removed) == 1 else 'were'} taken off "
                  "the list at a member's request and debated separately.")
     H = ['<section class="sday"><h2>On the consent calendar</h2>'
          f'<p class="note">{esc(note)}</p>']
     for label in sorted(groups):
-        items = sorted(groups[label], key=lambda x: x.bill)
+        # By number as bills.html lists them; as text, SB 16 followed SB 133.
+        items = sorted(groups[label], key=lambda x: BO.bill_key(x.bill))
         H.append(f'<div class="scons"><h3 class="slab">{esc(label)} '
                  f'&mdash; {len(items)}</h3><ul class="sconslist">')
         for i in items:

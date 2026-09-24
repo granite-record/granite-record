@@ -7881,6 +7881,169 @@ def _meet_kind_agrees():
     return "ok", f"{len(table)} meeting kinds, the same in both renderers"
 
 
+# Every kind app.js ranks, two it does not, and the pairs text sorts wrongly:
+# HB1003/HB103, SB133/SB16, CACR29/CACR6. BILL_ORDER is where bills.html's
+# billKey puts them; BILL_SCRAMBLED is the same ids in no order at all.
+BILL_ORDER = ["HB78", "HB99", "HB101", "HB103", "HB110", "HB1003", "HB1027",
+              "HR10", "HCR2", "CACR6", "CACR29", "SB16", "SB133", "SB161",
+              "SR1", "SCR4", "HJR1", "SJR3", "PET1", "LSR270012"]
+BILL_SCRAMBLED = ["SB16", "HB1003", "CACR29", "HB101", "SB133", "HB78", "HR10",
+                  "HB99", "HB110", "CACR6", "SJR3", "HB1027", "HCR2", "SB161",
+                  "HB103", "HJR1", "SR1", "SCR4", "LSR270012", "PET1"]
+_CBN = re.compile(r'class="cbn" href="[^"]*">([^<]*)</a>')
+
+
+@check("frontend", "app.js and bill_order.py list bills in one order, and the page re-sorts what it is handed",
+       needs=("bill_order",))
+def _bill_order_matches_app(BO):
+    """HB1003 before HB103, on the pages whose lists have no sort control.
+
+    bills.html's own list sorted by number from the start, through billKey.
+    The lists the build wrote sorted the number's TEXT -- a committee's Bills
+    tab opened HB1003, HB101, HB1027 -- and billPane and calendarBlock drew
+    them in whatever order the file held. So bill_order.py is billKey in
+    Python, and this runs app.js's own billKey against it rather than
+    comparing the two as text; and it runs billPane and calendarBlock on a
+    scrambled list, because the page re-sorting is the guard that holds even
+    when a file was written by an older build.
+    """
+    odd = ["hb99", "HB 5", "HB5", "HB2-FN", "HB", "", "X1"]
+    ids = BILL_SCRAMBLED + odd
+    assert sorted(BILL_SCRAMBLED, key=BO.bill_key) == BILL_ORDER, (
+        "bill_order.bill_key puts bills in "
+        + ", ".join(sorted(BILL_SCRAMBLED, key=BO.bill_key)))
+    js, stub = Path("app.js"), Path("dom_stub.js")
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not (js.exists() and stub.exists() and node):
+        return "skip", "app.js, dom_stub.js or node is not here"
+    cal = [{"date": "2026-01-13", "committee": "Commerce", "time": "10:00",
+            "what": "public hearing", "venue": "LOB 302", "bill": b}
+           for b in BILL_SCRAMBLED]
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "ids.json").write_text(json.dumps(ids), encoding="utf-8")
+        (root / "plain.json").write_text(json.dumps(BILL_SCRAMBLED), encoding="utf-8")
+        (root / "cal.json").write_text(json.dumps(cal), encoding="utf-8")
+        (root / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+let s;
+try { s = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({billKey, billCmp, billPane, calendarBlock, setPage:(p)=>{PAGE=p;}});"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const ids = JSON.parse(fs.readFileSync("./ids.json", "utf8"));
+const out = {keys: ids.map(id => s.billKey({id}))};
+const plain = JSON.parse(fs.readFileSync("./plain.json", "utf8"));
+out.sorted = plain.slice().sort(s.billCmp);
+s.setPage({kind: "committee", data: null, terms: [], term: "", status: ""});
+const rows = plain.map(id => ({id, n: id, title: "a bill", status: "Passed",
+  kind: "active", committees: [], topic: "", sponsor: "", term: "2025-2026",
+  year: "2025"}));
+out.pane = [...s.billPane(rows, n => n + " bills")
+  .matchAll(/<article class="card[^"]*" data-id="([^"]*)"/g)].map(m => m[1]);
+out.cal = [...s.calendarBlock(JSON.parse(fs.readFileSync("./cal.json", "utf8")), "Coming up")
+  .matchAll(/class="cbn" href="[^"]*">([^<]*)<\\/a>/g)].map(m => m[1].replace(" ", ""));
+process.stdout.write(JSON.stringify(out));
+""", encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
+        got = json.loads(r.stdout)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    differ = [f"{i!r}: app.js {k}, bill_order {list(BO.bill_key(i)[:2])}"
+              for i, k in zip(ids, got["keys"]) if k != list(BO.bill_key(i)[:2])]
+    assert not differ, "billKey and bill_order disagree: " + "; ".join(differ[:5])
+    assert got["sorted"] == BILL_ORDER, "billCmp sorts " + ", ".join(got["sorted"])
+    assert got["pane"] == BILL_ORDER, (
+        "billPane (a committee's or member's Bills tab) draws "
+        + ", ".join(got["pane"]))
+    assert got["cal"] == BILL_ORDER, (
+        "calendarBlock draws one slot's bills as " + ", ".join(got["cal"]))
+    return "ok", (f"{len(ids)} ids keyed alike; billPane and a calendar slot "
+                  f"run {got['pane'][3]} before {got['pane'][5]}")
+
+
+@check("build", "the lists of bills the build writes run by number, as bills.html's does",
+       needs=("bill_order", "build_committees", "build_site_v2",
+              "build_session_pages", "build_pages"))
+def _bill_lists_by_number(BO, BC, BS, SP, BP):
+    """A committee's bills, a member's sponsored bills, a sitting day's consent
+    calendar, a calendar slot, bills.csv and sponsors.csv.
+
+    Each of these sorted the bill number as text, so HB1003 came before HB103
+    and SB 16 after SB 133. The audit of 24 September counted 499 committee
+    term lists, 1,237 members' files, 656 consent lists and 158 calendar slots
+    out of order on the built site. Each is fed the same scrambled ids here and
+    must give back bills.html's order.
+    """
+    import html as _h
+    from types import SimpleNamespace as _NS
+    want, mixed = BILL_ORDER, BILL_SCRAMBLED
+
+    got = [r["id"] for r in BC.bills_in_order(
+        {"2025-2026": [{"id": b} for b in mixed]})["2025-2026"]]
+    assert got == want, "a committee's Bills tab runs " + ", ".join(got)
+
+    rows = [{"bill": b, "prime": i % 2 == 0, "year": 2025 + (i % 3 == 0)}
+            for i, b in enumerate(mixed)]
+    exp = sorted(rows, key=lambda r: (not r["prime"], r["year"], want.index(r["bill"])))
+    got = BS.sponsored_in_order(rows)
+    assert got == exp, ("a member's sponsored bills run "
+                        + ", ".join(r["bill"] for r in got))
+
+    cons = [_NS(bill=b, action="ought to pass", carried=True) for b in mixed]
+    page = SP.consent_html(cons, ["SB29", "SB285", "SB28"], {}, {}, _h.escape)
+    got = [x.replace(" ", "") for x in _CBN.findall(page)]
+    assert got == want, "a consent calendar lists " + ", ".join(got)
+    assert "SB 28, SB 29, SB 285 were taken off" in page, \
+        "the bills taken off a consent calendar are not named by number"
+
+    key = ("2026-01-13", "Commerce")
+    slot = [{"bill": b, "time": "10:00", "what": "public hearing",
+             "venue": "LOB 302", "body": "H"} for b in mixed]
+    page, _missing = BP.cal_days({key[0]: [key]}, {key: slot}, {}, {},
+                                 {"commerce": "H43"}, lambda d: (d, ""), _h.escape)
+    got = [x.replace(" ", "") for x in _CBN.findall(page)]
+    assert got == want, "a calendar slot lists " + ", ".join(got)
+
+    # The downloads, in a folder of their own: sponsors() reads
+    # text_sponsors.json from where it runs, and the real one is not a fixture.
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp())
+    try:
+        for d in ("site", "data", "out"):
+            (root / d).mkdir()
+        (root / "site" / "index.json").write_text(json.dumps(
+            [{"term": t, "id": b, "title": "a bill"}
+             for b in mixed for t in ("2025-2026", "2023-2024")]), encoding="utf-8")
+        (root / "data" / "sponsors.json").write_text(json.dumps(
+            {"2025-2026": {b: [{"member_id": "1", "name": "A", "prime": True}]
+                           for b in mixed}}), encoding="utf-8")
+        (root / "data" / "bills.json").write_text(json.dumps({"2025-2026": {}}),
+                                                  encoding="utf-8")
+        r = _run([sys.executable, "-c",
+                  f"import sys; sys.path.insert(0, {str(here)!r}); "
+                  "from pathlib import Path; import build_exports as E; "
+                  "E.bills(Path('out'), Path('site')); "
+                  "E.sponsors(Path('out'), 'data')"],
+                 cwd=root, capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-300:]
+        with (root / "out" / "bills.csv").open(encoding="utf-8", newline="") as fh:
+            bills_csv = [(x["term"], x["bill"]) for x in csv.DictReader(fh)]
+        with (root / "out" / "sponsors.csv").open(encoding="utf-8", newline="") as fh:
+            sponsors_csv = [x["bill"] for x in csv.DictReader(fh)]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    exp = [(t, b) for t in ("2023-2024", "2025-2026") for b in want]
+    assert bills_csv == exp, ("bills.csv runs " + ", ".join(
+        b for t, b in bills_csv if t == "2025-2026"))
+    assert sponsors_csv == want, "sponsors.csv runs " + ", ".join(sponsors_csv)
+    return "ok", ("committee, sponsored, consent, calendar, bills.csv and "
+                  f"sponsors.csv all run {want[3]} before {want[5]}")
+
+
 @check("build", "every deploy names the production branch, and both name the same one")
 def _deploy_branch():
     """wrangler takes a deploy's branch from git unless told, so a Pages

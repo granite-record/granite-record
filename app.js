@@ -368,6 +368,13 @@ function billKey(b){
   const m=/^([A-Z]+)\s*(\d+)/.exec(b.id.toUpperCase())||[];
   return [KINDORDER[m[1]] ?? 99, parseInt(m[2]||"0",10)];
 }
+// The same order for two bare bill numbers. A committee's bills, a member's
+// and a calendar slot arrive already listed by the build (bill_order.py is
+// this key in Python), and these sort them again so that the page never
+// depends on the file having done it: those lists have no sort control, and
+// as text HB 1003 came before HB 101.
+const billCmp=(a,b)=>{const x=billKey({id:String(a||"")}),y=billKey({id:String(b||"")});
+  return x[0]-y[0]||x[1]-y[1];};
 // A bill has one status and one subject, but it can pass through two
 // committees, so a facet value is a list. Sorting the list alphabetically also
 // groups it: every House committee, then every Senate one.
@@ -3112,6 +3119,7 @@ function idxRow(b){
 
 // The bills of one tab, as cards, with the outcome filter above them.
 function billPane(rows,note){
+  rows=rows.slice().sort((a,b)=>billCmp(a.id,b.id));
   const statuses=[...new Set(rows.map(b=>b.status).filter(Boolean))].sort();
   const shown=rows.filter(b=>!PAGE.status||b.status===PAGE.status);
   return `<div class="bfilt"><label>Status
@@ -3734,7 +3742,8 @@ function calendarBlock(rows,heading){
       // it was set for.
       const byslot=new Map();
       bills.slice().sort((a,b)=>((a.time||"~")+(a.what||"")+(a.venue||""))
-        .localeCompare((b.time||"~")+(b.what||"")+(b.venue||"")))
+        .localeCompare((b.time||"~")+(b.what||"")+(b.venue||""))
+        ||billCmp(a.bill,b.bill))
         .forEach(b=>{const sk=[b.time||"",b.what||"",b.venue||""].join("\u0000");
           if(!byslot.has(sk))byslot.set(sk,[]);byslot.get(sk).push(b);});
       const kinds=[],rooms=[];
