@@ -5855,11 +5855,11 @@ def _testimony_dated(build_site_v2):
 
 
 def _hearing_fixture(S):
-    """The four real Senate hearing reports in tests/, parsed and finished."""
+    """The six real Senate hearing reports in tests/, parsed and finished."""
     fx = json.loads(Path("tests/senate_hearing_reports.json")
                     .read_text(encoding="utf-8"))
     out = {}
-    for b in ("SB4", "SB11", "SB160", "SB14"):
+    for b in ("SB4", "SB11", "SB160", "SB14", "HB666", "HB277"):
         docs = S.parse_report(fx[b]["HTMLText"])
         assert len(docs) == 1, f"{b}: {len(docs)} reports read out of one"
         rec, doubts = docs[0]
@@ -5976,12 +5976,118 @@ def _senate_hearing_reports(senate_hearing_reports):
     assert any("Sen. Lang explained" in str(x) for s in sb160["sections"]
                for x in s["text"]), "SB 160's text did not come through"
 
-    # A position list keeps the Senate's count and drops the sentence telling
-    # readers which member of staff to email.
-    assert S._clean_position(
-        "8 Individuals signed in Support of this legislation. Please contact "
-        "Joshua.Schauer@gc.nh.gov for more information.") == (
-        "8 Individuals signed in Support of this legislation.")
+    # A WITNESS'S HEADING THE NAME TEST DID NOT KNOW. Filed as the speaker
+    # above's point, it took that witness's whole testimony, nested under it,
+    # into the wrong mouth -- 13 witnesses in 11 reports, three under a
+    # legislator's chip. HB 666 heads one with initials short of their last
+    # full stop; HB 277 runs a name into its organisation with no comma, and
+    # the report's own list of supporters names him.
+    hb666 = got["HB666"][0]
+    spk = hb666["sections"][0].get("speakers") or []
+    assert [sp["who"] for sp in spk] == [
+        "Representative Lisa Mazur", "Representative Henry Giasson",
+        "D.J Withee", "Representative Timothy Horrigan",
+        "Representative Kelley Potenza"], [sp["who"] for sp in spk]
+    assert spk[2].get("also") == ["Attorney - Windham, New Hampshire"] and \
+        spk[2]["points"][0].startswith("Mr. Withee testified in his "
+                                       "individual capacity"), spk[2]
+    assert not any((p if isinstance(p, str) else p["t"]).startswith(
+        ("D.J", "Attorney", "Mr. Withee")) for p in spk[1]["points"]), (
+        "D.J Withee's testimony was left under Rep. Giasson")
+    hb277 = got["HB277"][0]
+    spk = hb277["sections"][0].get("speakers") or []
+    assert [sp["who"] for sp in spk] == [
+        "Representative Peter Bixby", "Representative Judy Aron",
+        "Robert Johnson II New Hampshire Farm Bureau"], (
+        [sp["who"] for sp in spk])
+    assert len(spk[1]["points"]) == 3 and \
+        spk[2]["points"][0].startswith("Mr. Johnson stated"), spk[1:]
+    # And where the lists do not name the person, the report is not guessed
+    # at. SB 459's own lines: "Pasha Roberts 603 Equality" is on no list of
+    # SB 459's, which gives counts only.
+    blocks459 = [
+        ("p", "Aimee Terravechia, 603 Equality"),
+        ("ul", [{"t": "Ms. Terravechia spoke about her experience in sports.",
+                 "sub": []}]),
+        ("p", "Pasha Roberts 603 Equality"),
+        ("ul", [{"t": "Ms. Roberts explained that the governor had previously "
+                      "vetoed similar bills.", "sub": []}])]
+    spk, _n, why = S.split_speakers(
+        blocks459, "660 people signed up in opposition to this bill.")
+    assert not spk and "heading" in why, (
+        f"an unlisted heading was filed as a point: {why!r}")
+    spk, _n, why = S.split_speakers(
+        blocks459, "aimee terravechia (603 equality), pasha roberts "
+                   "(603 equality)")
+    assert not why and [sp["who"] for sp in spk] == [
+        "Aimee Terravechia, 603 Equality", "Pasha Roberts 603 Equality"], (
+        why, [sp["who"] for sp in spk])
+    # The completed date with the aide's initials run on to it was a point.
+    for line, day in (
+            ("VH Senate Hearing Report completed: January 31, 2025",
+             "2025-01-31"),
+            ("jab/Date Hearing Report completed: March 27, 2025",
+             "2025-03-27"),
+            ("V.H Date Hearing Report completed: January 23, 2026",
+             "2026-01-23")):
+        m = S.COMPLETED.match(line)
+        assert m and S.iso(m.group(1)) == day, line
+
+    # A POSITION LIST KEEPS THE SENATE'S COUNT and drops the instruction
+    # telling readers which member of staff to email. The count and the
+    # instruction often share a sentence; cutting by sentence took the count
+    # too, and eight reports showed a support count and no opposition row.
+    # The strings are the table's own.
+    for raw, kept in (
+            ("8 Individuals signed in Support of this legislation. Please "
+             "contact Joshua.Schauer@gc.nh.gov for more information.",
+             "8 Individuals signed in Support of this legislation."),
+            ("84 signed in opposition to HB 666-FN, contact "
+             "peter.mulvey@gc.nh.gov for further details.",
+             "84 signed in opposition to HB 666-FN"),
+            ("174 individuals were in opposition.Full sign in sheets are "
+             "available upon request by contacting the Legislative Aide, "
+             "Jessica Bourque (jessica.bourque@gc.nh.gov).",
+             "174 individuals were in opposition."),
+            ("54 people signed in opposition, for a complete list of those "
+             "who signed please email brendan.bunnell@gc.nh.gov.",
+             "54 people signed in opposition"),
+            ("11 individuals signed in opposition to HB 75-FN Contact Pete "
+             "Mulvey (peter.mulvey@gc.nh.gov) for further details.",
+             "11 individuals signed in opposition to HB 75-FN"),
+            ("1 Person signed in neutrality to?SB 96. ?To see the full list "
+             "of sign-ins, please email the committee aide "
+             "(ryan.meleedy@gc.nh.gov).",
+             "1 Person signed in neutrality to?SB 96."),
+            ("In total, 76 individuals signed-in in support of SB 36. The "
+             "full sign in sheets are available upon request to the "
+             "Legislative Aide, Sophie Walsh (sophie.walsh@gc.nh.gov).",
+             "In total, 76 individuals signed-in in support of SB 36."),
+            # Nothing but the instruction: the Senate's sentence stays, so
+            # the row still says that people took that side.
+            ("Please contact the Senate Finance Committee Aide for a "
+             "complete list of those opposed to SB297. "
+             "(Debra.Martone@gc.nh.gov)",
+             "Please contact the Senate Finance Committee Aide for a "
+             "complete list of those opposed to SB297.")):
+        assert S._clean_position(raw) == kept, (
+            f"{raw[:50]!r} became {S._clean_position(raw)!r}")
+    assert hb666["positions"][1] == [
+        "Who opposes the bill", "84 signed in opposition to HB 666-FN"], (
+        hb666["positions"])
+    # HB 2 breaks the instruction over two paragraphs; cleaned apart, the
+    # first half stood as the list.
+    rec2, _d = S.parse_document([
+        ("p", "Senate Finance Committee"),
+        ("p", "Hearing Date: May 6, 2025"),
+        ("p", "Who supports the bill: Please contact the Senate Finance "
+              "Committee Legislative"),
+        ("p", "Aide (Debra.Martone@gc.nh.gov) for a complete sign-in list."),
+        ("p", "Summary of testimony presented:")])
+    assert rec2["positions"] == [[
+        "Who supports the bill", "Please contact the Senate Finance "
+        "Committee Legislative Aide for a complete sign-in list."]], (
+        rec2["positions"])
     assert sb14["positions"][1] == [
         "Who opposes the bill",
         "63 individuals signed in opposition to SB 14-FN."], sb14["positions"]
@@ -5994,9 +6100,10 @@ def _senate_hearing_reports(senate_hearing_reports):
                  "Ultimately, everyone operates under the same rules.",
                  "HB 51"):
         assert not S.is_name_line(line), f"read as a speaker: {line!r}"
-    return "ok", (f"4 real reports: {n} points, each a line of the report in "
-                  "its order; a mis-indented witness, two-line headings and a "
-                  "prose report each handled")
+    return "ok", (f"6 real reports: {n} points, each a line of the report in "
+                  "its order; a mis-indented witness, two-line headings, "
+                  "headings the name test missed, counts beside the aide's "
+                  "address and a prose report each handled")
 
 
 @check("naming", "a hearing report lands on its own Senate hearing, legislators as members",

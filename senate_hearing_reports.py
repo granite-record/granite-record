@@ -63,8 +63,9 @@ number, which is dropped with the line it is on.
 A speaker is a line that reads as a name -- a person's name, optionally a
 title before it and an organisation after a comma -- and a point is anything
 else. Where a section's structure cannot be read with that confidence -- text
-before the first name, a bullet that reads as another speaker's name under
-the wrong heading -- the report is NOT guessed at: its sections are carried
+before the first name, a bullet or a paragraph that reads as another
+speaker's heading and that the report's own position lists do not name --
+the report is NOT guessed at: its sections are carried
 as the plain paragraphs and bullets they are, in order, with nobody's name
 attached, and `fallback` says so. The page draws those as the text they are.
 
@@ -204,7 +205,12 @@ def blocks(markup):
 
 
 # ------------------------------------------------------------ vocabulary ---
-COMPLETED = re.compile(r"^Date Hearing Report completed\s*:?\s*(.*)$", re.I)
+# "Date Hearing Report completed: January 10, 2025", and four times with the
+# aide's initials run on to the front of it -- "VH Senate Hearing Report
+# completed", "jab/Date ...", "jab Date ...", "V.H Date ..." -- which were
+# being filed as the last speaker's point, with the date lost.
+COMPLETED = re.compile(r"^(?:[A-Za-z.]{1,5}\s*/?\s*)?(?:Date\s+|Senate\s+)?"
+                       r"Hearing Report completed\s*:?\s*(.*)$", re.I)
 LABEL = re.compile(
     r"^(?P<label>Hearing Date|Time Opened|Members of the Committee Present|"
     r"Members of the Committee Absent|Bill Analysis|Amendment Analysis|"
@@ -242,10 +248,16 @@ TITLE = (r"(?:Senators?|Sen\.|Representatives?\.?|Reps?\.|Hon\.|Honorable|"
          r"Councillor|Secretary of State|Treasurer|Lt\.|Colonel|Col\.|"
          r"Captain|Capt\.|Sergeant|Sgt\.|Major|General|Rev\.|Reverend|"
          r"Father|Professor|Prof\.|President|Speaker|Superintendent|"
-         r"Commander|Officer|Trooper|Lieutenant)")
+         r"Commander|Officer|Trooper|Lieutenant|"
+         # "Atty. Leah Cole Durst" (HB 1 and HB 2), "Maj. Gen. David
+         # Mikolaities" (SB 196): headings these were missing, whose
+         # witnesses' points were filed under the speaker before them.
+         r"Atty\.|Maj\.|Gen\.|Brig\.)")
 # One word of a name: capitalised, initials, or one of the particles
 # surnames carry here -- "Sabourin dit Choiniere", "de Vries", "St. John".
-NAME_WORD = (r"(?:(?:[A-Z]\.){1,3}|[A-Z][\w'’\-]*\.?|de|dit|van|von|"
+# Initials may run without their last full stop: "D.J Withee" (HB 666).
+NAME_WORD = (r"(?:(?:[A-Z]\.){1,3}(?:[A-Z](?![\w'’\-]))?|[A-Z][\w'’\-]*\.?|"
+             r"de|dit|van|von|"
              r"der|den|la|le|du|da|del|di|St\.|Mc\w+|O'\w+|\"[A-Z][\w]*\"|"
              r"“[A-Z]\w*”)")
 ONE_NAME = rf"(?:{TITLE}\s+)?{NAME_WORD}(?:\s+{NAME_WORD}){{0,5}}"
@@ -392,21 +404,63 @@ def side_of(label):
     return "all"
 
 
+# Where the instruction to write to the aide begins. Read off all 833 position
+# lists in the table that carry an address: "Contact Pete Mulvey (...)",
+# "Please contact ...", "The full sign in sheets are available upon request
+# by contacting ..." (and "Full sign-sheets", once), "To see the full list of
+# sign-ins, please email ...", "for a complete list of those who signed
+# please email ...", "If you would like a complete list, please contact
+# ...", "For more information, please contact ...", "Please reach out to
+# ...". The last form stops at a comma or a full stop so that "signed in
+# opposition to HB 666-FN" is never read as "to ... details".
+INSTRUCTION = re.compile(
+    r"\b(?:(?:please|plese)\s+)?(?:contact(?:ing)?|e-?mail|reach\s+out)\b|"
+    r"\b(?:the\s+)?full\s+sign[- ]?(?:in[- ]?)?sheets?\b|"
+    r"\b(?:to|for|if)\b[^.;,?!]{0,40}?\b(?:list|information|details?)\b",
+    re.I)
+
+
 def _clean_position(text):
-    """A position list without the sentence telling readers whom to email.
+    """A position list without the instruction telling readers whom to email.
 
     "272 people signed in support of the bill. Full sign in sheets are
     available upon request by contacting the Legislative Aide, Sophie Walsh
-    (sophie.walsh@...)." The first sentence is the Senate's record; the
-    second is an instruction to write to a named staff member, and it is the
-    one piece of a position list this does not carry. Dropped whole, never
-    edited.
+    (sophie.walsh@...)." The count is the Senate's record; the instruction to
+    write to a named member of staff is the one piece of a position list this
+    does not carry. It is cut from where it begins to the end of its
+    sentence, and nothing before it is touched: the count and the instruction
+    often share a sentence -- "84 signed in opposition to HB 666-FN, contact
+    ...", "174 individuals were in opposition.Full sign in sheets ...", "63
+    people signed in opposition, for a complete list of those who signed
+    please email ..." -- and cutting by sentence took the count with it on
+    eight reports, which then showed a support count and no opposition row.
+
+    Where the instruction is the whole of it -- "Please contact the Senate
+    Finance Committee Aide for a complete list of those opposed to SB297.
+    (...)" -- cutting it would hide that anyone took that side at all, so the
+    Senate's sentence is kept and only the bracketed address comes out.
+    Nothing is reworded either way.
     """
-    if not CONTACT.search(text):
+    first = CONTACT.search(text)
+    if not first:
         return text
-    parts = re.split(r"(?<=[.!])\s+(?=[A-Z])", text)
-    kept = [p for p in parts if not CONTACT.search(p)]
-    return " ".join(kept).strip()
+    last = list(CONTACT.finditer(text))[-1]
+    ins = INSTRUCTION.search(text, 0, first.start())
+    start = ins.start() if ins else first.start()
+    # The instruction runs to the end of the sentence the last address is in;
+    # anything after that is the Senate's again.
+    tail = text[last.end():]
+    stop = re.search(r"[.!?](?=\s+[A-Z])", tail)
+    after = tail[stop.end():].strip() if stop else ""
+    kept = text[:start].rstrip(" ,;:–—")
+    # "... to?SB 96. ?To see the full list": the stray mark before the
+    # instruction is the converter's, not a question.
+    kept = re.sub(r"(?<=[.!])\s*\?$", "", kept).strip()
+    if kept:
+        return _join(kept, after)
+    alone = re.sub(r"\s*\(\s*(?:" + CONTACT.pattern + r")\s*\)", "", text)
+    alone = re.sub(r"\s+([.,;])", r"\1", alone).strip()
+    return "" if CONTACT.search(alone) else alone
 
 
 # ----------------------------------------------------------------- parse ---
@@ -468,7 +522,7 @@ def parse_document(bl):
             # A position list that runs on to a second paragraph:
             # "... Lobbyists who oppose include ...".
             if pos is not None and not set(v) <= set("_- "):
-                pos[1] = _join(pos[1], _clean_position(v))
+                pos[1] = _join(pos[1], v)
             elif set(v) <= set("_- "):
                 pos = None
             continue
@@ -486,9 +540,20 @@ def parse_document(bl):
         elif label.endswith("absent"):
             rec["absent"] = rest
         elif label.startswith("who"):
-            pos = [m.group("label").strip(), _clean_position(rest)]
+            pos = [m.group("label").strip(), rest]
             rec["positions"].append(pos)
-    rec["positions"] = [[lab, txt] for lab, txt in rec["positions"]]
+    # Cleaned once each list is whole: HB 1 and HB 2 break "Please contact
+    # the Senate Finance Committee Legislative" / "Aide (...) for a complete
+    # sign-in list." over two paragraphs, and cleaning each alone left the
+    # first half standing as the list.
+    raw_positions = rec["positions"]
+    rec["positions"] = [[lab, _clean_position(txt)]
+                        for lab, txt in raw_positions]
+    # Silence is not success: a list the cleaning left empty is a row the
+    # page no longer draws, and parse_all names every one.
+    rec["emptied"] = [lab for (lab, raw), (_l, txt)
+                      in zip(raw_positions, rec["positions"])
+                      if raw.strip() and not txt]
 
     # ---- the testimony, heading by heading
     sec = None
@@ -579,6 +644,23 @@ def split_speakers(sec_blocks, known):
                 continue
             if cur is None:
                 return [], note, f"text before the first name: {v[:60]!r}"
+            # A heading is_name_line turned down -- "Robert Johnson II New
+            # Hampshire Farm Bureau", "Pasha Roberts 603 Equality", "David" --
+            # filed here would give that witness's whole testimony, nested
+            # under it, to the speaker above: 13 witnesses in 11 reports,
+            # three of them under a legislator's chip. The report's own
+            # position lists settle it where they name the person, as they
+            # do for a witness typed as a bullet below; otherwise the report
+            # is not guessed at.
+            if not heading and reads_as_heading(v):
+                if _listed(v, known):
+                    cur = {"who": v.rstrip(":").strip(), "points": []}
+                    speakers.append(cur)
+                    heading, under = True, False
+                    continue
+                return [], note, (f"a line that reads as another speaker's "
+                                  f"heading, under {cur['who'][:40]!r}: "
+                                  f"{v[:60]!r}")
             cur["points"].append(v)
             heading, under = False, True
             continue
@@ -639,6 +721,88 @@ def is_heading_line(text):
     low = [w for w in re.findall(r"[A-Za-z][\w'’\-]*", t)
            if w[0].islower() and w not in JOINING]
     return len(low) <= 4
+
+
+# Verbs a short point uses and a heading does not, in any case: "Supported
+# SB 144", "Mr. Tierney opposed SB 260", "THIS BILL WAS RECESSED UNTIL
+# FEBRUARY 10TH". Kept apart from VERB, which is lower case only so that
+# "Will" can stay a name; none of these is anybody's name.
+HEAD_VERB = re.compile(
+    r"\b(?:opposed|opposes|supported|supports|spoke|speaking|appeared|"
+    r"deferred|concurred|agrees|agreed|cosponsored|urges|urged|updates|"
+    r"updated|deleted|completed|recessed|represents|representing|testified|"
+    r"introduced|brought|outlined|suggested|offered|signed|thanked|was|were|"
+    r"is|are)\b", re.I)
+# How a sentence or a sub-heading opens and a person's heading does not:
+# "This bill:", "Amendment #1641s:", "Two examples of recent instances:".
+NOT_A_NAME = {
+    "This", "That", "These", "Those", "The", "A", "An", "It", "Its", "He",
+    "She", "They", "We", "I", "His", "Her", "Their", "Our", "Amendment",
+    "Section", "Page", "Line", "Lines", "RSA", "Additionally", "Also",
+    "However", "Finally", "Overall", "In", "On", "At", "For", "With", "If",
+    "When", "Under", "After", "Before", "As", "Since", "Because", "No", "Yes",
+    "All", "Some", "Many", "Most", "Both", "Each", "Every", "Other",
+    "Another", "Current", "One", "Two", "Three", "Four", "Five", "Six",
+    "Seven", "Eight", "Nine", "Ten", "Question", "Questions", "Testimony",
+    "Summary"}
+
+
+def reads_as_heading(text):
+    """True where a paragraph that is_name_line turned down still reads as a
+    speaker's heading rather than as something a speaker said:
+
+        Robert Johnson II New Hampshire Farm Bureau
+        Shawn Foster Senior Pastor at Crossing Light Church, Windham, NH
+        Cori Tebbetts, Plainfield (her statement was read by her friend)
+        Phil, LBG Courage Coalition
+        David
+
+    Short, no question, no verb outside its brackets, at most one lower-case
+    word that is not a joining word, and not opening the way a sentence or a
+    sub-heading does. It is deliberately wide: split_speakers asks it only of
+    a paragraph that would otherwise be filed as the speaker above's point,
+    and a line it wrongly calls a heading costs the report its split, never
+    a name.
+    """
+    t = norm(text)
+    if not t or "?" in t or not t[0].isupper() or t.endswith(","):
+        return False
+    if (BILL_LINE.match(t) or SECTION.match(t) or NONE_NOTE.match(t)
+            or COMPLETED.match(t)):
+        return False
+    outside = norm(re.sub(r"\([^)]*\)?", " ", t))
+    if not outside or VERB.search(outside) or HEAD_VERB.search(outside):
+        return False
+    words = re.findall(r"[A-Za-z][\w'’\-]*", outside)
+    if not words or len(outside.split()) > 16 or words[0] in NOT_A_NAME:
+        return False
+    low = [w for w in words if w[0].islower() and w not in JOINING]
+    if len(low) > 1:
+        return False
+    # A sentence ends with a full stop; a heading that does is short and
+    # has no lower-case word in it.
+    return not (outside.endswith(".") and (low or len(words) > 8))
+
+
+def _listed(text, known):
+    """Whether the name a heading opens with starts an entry of the report's
+    own position lists -- "..., Shawn Foster, ...", "..., David, ...". An
+    organisation in brackets after somebody's name does not count: only what
+    follows the start of the list, a comma, a semicolon or "and"."""
+    head = _head(text)[0].replace("’", "'")
+    words = head.split()
+    if not words:
+        return False
+    k = known.replace("’", "'")
+    start = rf"(?:^|[,;:]\s*|\band\s+|&\s*)(?:{TITLE}\s+)?"
+    if len(words) == 1:
+        # One word only as a whole entry: "David" is on SB 558's list as
+        # "David", and is not "David Dokken".
+        return bool(re.search(start + re.escape(words[0]) +
+                              r"\s*(?:[,;(.]|$|\s+and\b)", k, re.I))
+    return any(re.search(start + re.escape(" ".join(words[:n])) +
+                         r"(?![\w'\-])", k, re.I)
+               for n in range(len(words), 1, -1))
 
 
 def _plain_blocks(sec_blocks):
@@ -734,7 +898,7 @@ def parse_all(path=SOURCE):
     out, census = {}, {"rows": 0, "parsed": 0, "fallback": 0,
                        "two_documents": 0, "no_date": [], "unread": [],
                        "speakers": 0, "points": 0, "with_testimony": 0,
-                       "bill_differs": []}
+                       "bill_differs": [], "emptied": []}
     for r in read_rows(path):
         census["rows"] += 1
         bill = re.sub(r"\s+", "", r["BillNbr"]).upper()
@@ -752,6 +916,9 @@ def parse_all(path=SOURCE):
             if said and said != bill:
                 census["bill_differs"].append((bill, said))
             heard = rec["heard"]
+            if rec.get("emptied"):
+                census["emptied"].append(
+                    f"{bill} {heard}: " + "; ".join(rec["emptied"]))
             if not heard:
                 census["no_date"].append(bill)
                 continue
@@ -852,6 +1019,10 @@ def main():
               "one and are not carried: " + ", ".join(c["no_date"][:12]))
     if c["unread"]:
         print(f"  {len(c['unread']):,} had no text at all")
+    if c["emptied"]:
+        print(f"  {len(c['emptied']):,} position lists were nothing but an "
+              "address to write to, and are not drawn: "
+              + ", ".join(c["emptied"]))
     if a.fallbacks:
         for term, byb in sorted(out.items()):
             for bill, recs in sorted(byb.items()):
