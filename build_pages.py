@@ -277,9 +277,6 @@ REPO = "https://github.com/granite-record/granite-record"
 # Five is a glance; the twelve it showed before was most of a phone screen for
 # a list nobody reads to the end. The overflow goes to the bill search, which
 # sorts by most recent action and does it better than a table can.
-# Seven days of the rail, which is the Calendar tab's own unit too.
-HOME_DAYS = 7
-
 RECENT_SHOWN = 5
 RECENT_MORE = ('<p class="actmore"><a class="morebtn" href="/bills?sort=recent">'
                'See all recent activity &rarr;</a></p>')
@@ -347,25 +344,76 @@ def meeting_key(u):
 # one, HOME_JS's _meetline, and the clock block that counted the days off
 # the total. meeting_key() stays: the calendar groups by it.
 
-def calendar_html(H, out):
-    """The next fortnight of committee business, by day and then by meeting."""
+def calendar_html(out, today=None, rows=None):
+    """What is left of this week, by day and then by meeting.
+
+    `today` and `rows` are preflight's: it draws the rail for a fixed date out
+    of rows it wrote, rather than out of the clock and proceedings.csv.
+    """
     import datetime as _dt
     from collections import OrderedDict
+    # build_calendar imports this module, so it is imported here, once both
+    # are loaded, rather than at the top where it would be a cycle.
+    import build_calendar as BC
+    import proceedings
 
     # main()'s esc is nested inside it and this is module level, so it gets
     # its own -- the same one shell() uses two hundred lines down.
     esc = lambda s: _html.escape(str(s or ""), quote=True)
 
-    up = H.get("upcoming") or []
-    if not up:
-        # The honest out-of-session state. The General Court is a part-time
-        # legislature and this is what the page says for half the year, so it
-        # says when business resumes rather than just "nothing".
+    # THIS WEEK, FROM TODAY TO SUNDAY, AND ALL OF IT. The rail's own comment
+    # said it showed the Calendar tab's week, and it did not: it drew
+    # home.json's fortnight, cut at the seventh DATE that had a meeting, so on
+    # Wednesday 23 September 2026 it ran to Wednesday 7 October and seven of
+    # its nine cards were in other weeks. In session the other limit bit
+    # first -- home.json keeps eighty bill rows, and a January day holds 138 --
+    # so it stopped partway through one day while calendar.html showed the
+    # whole week.
+    # And it held committee rows only, where the week page holds the floor.
+    #
+    # So it reads the week the way the Calendar tab does, out of the same
+    # rows through the same function, from today to that week's Sunday, with
+    # no cap. home.json's fortnight is left alone: the hearings feed reads it.
+    today = today or _dt.date.today()
+    weeks = BC.weeks_from(proceedings.load() if rows is None else rows)
+    sunday = BC.monday(today) + _dt.timedelta(days=6)
+    week = weeks.get(BC.week_key(today)) or {}
+    dates = sorted(d for d in week
+                   if today.isoformat() <= d <= sunday.isoformat() and week[d])
+    nxt = BC.week_key(sunday + _dt.timedelta(days=1))
+    n_next = sum(len(v) for v in (weeks.get(nxt) or {}).values())
+
+    # WHERE THE REST IS: next week's own page, which build_calendar writes
+    # for every week that has a sitting in it -- so it is only linked when
+    # next week has one, and otherwise the link is the Calendar tab, whose
+    # arrow reaches the next week that does. HOME_JS keeps this line when it
+    # empties the rail in the reader's clock.
+    if n_next:
+        onward = (f"{n_next}{' more' if dates else ''} "
+                  f"sitting{'' if n_next == 1 else 's'} next week. ",
+                  f"calendar/{nxt}.html", "See next week")
+    else:
+        onward = ("Nothing is on the calendar for next week yet. ",
+                  "calendar.html", "See the full calendar")
+    more = ('<p class="calmore calall">' + esc(onward[0])
+            + f'<a href="{esc(onward[1])}">{esc(onward[2])}</a></p>')
+
+    if not dates:
+        # THE REST OF THE WEEK IS EMPTY every weekend in session and every
+        # day out of it. Out of session -- next week empty too -- it says when
+        # business resumes rather than just "nothing", because the General
+        # Court is a part-time legislature and this is what the page says for
+        # half the year.
+        note = "Nothing is scheduled for the rest of this week."
+        if not n_next:
+            note += (" The General Court sits from January to June, and "
+                     "committees meet on bills from the autumn filing period "
+                     "onwards.")
         return ('<section class="cal"><h2>Coming up</h2>'
-                '<p class="note">No committee meetings are scheduled in the '
-                'next two weeks. The General Court sits from January to June, '
-                'and committees meet on bills from the autumn filing period '
-                'onwards.</p></section>')
+                f'<p class="note">{esc(note)}</p>{more}</section>')
+
+    meets = {k: rs for d in dates for k, rs in week[d].items()}
+    up = [r for rs in meets.values() for r in rs]
 
     # --- titles and years, from the term index, once per term ---------------
     titles, years, missing = {}, {}, 0
@@ -391,12 +439,6 @@ def calendar_html(H, out):
         except (ValueError, OSError):
             pass
 
-    meets = OrderedDict()
-    for u in up:
-        meets.setdefault(meeting_key(u), []).append(u)
-
-    today = _dt.date.today()
-
     def when(d):
         """Tue 15 Sep, and how far off it is -- the part a reader acts on."""
         try:
@@ -405,48 +447,22 @@ def calendar_html(H, out):
             return d, ""
         off = (dd - today).days
         rel = ("today" if off == 0 else "tomorrow" if off == 1
-               else f"in {off} days" if 0 < off < 14 else "")
+               else f"in {off} days" if 0 < off <= 14 else "")
         return dd.strftime("%a %d %b").replace(" 0", " "), rel
 
-    # Ordered by when each meeting STARTS, which is no longer in the key --
-    # so it is read back off the meeting's earliest bill.
-    def starts(k):
-        slots = sorted(x for x in (r.get("time") or "" for r in meets[k]) if x)
-        return (k[0], slots[0] if slots else "", k[1])
+    # A day's committees in the order they start, by the week page's own
+    # ordering, so the two list them the same way round.
+    days = OrderedDict((d, BC.in_order(week[d])) for d in dates)
 
-    days = OrderedDict()
-    for key in sorted(meets, key=starts):
-        days.setdefault(key[0], []).append(key)
-
-    # A WEEK IN THE RAIL, NOT A FORTNIGHT. This drew every day it had, and in
-    # session that is fourteen days of committee cards down a 300px column --
-    # long enough that the middle of the home page ends well above the end of
-    # its own left rail. Asked on 19 September for it to be "a bit more
-    # consolidated ... so it isn't as long".
-    #
-    # SEVEN DAYS rather than a count of meetings, because a day is the unit a
-    # reader is looking for: cutting at "the next twelve meetings" would end
-    # the rail halfway through a Thursday. The week is also the Calendar tab's
-    # own unit, so the rail and the page it links to agree about what a week
-    # is.
-    shown = OrderedDict()
-    cut = 0
-    for i, (d, keys) in enumerate(days.items()):
-        if i < HOME_DAYS:
-            shown[d] = keys
-        else:
-            cut += len(keys)
-
+    # A WEEK IN THE RAIL, NOT A FORTNIGHT: in session a fortnight is fourteen
+    # days of committee cards down a 300px column, and it was asked on 19
+    # September to be "a bit more consolidated ... so it isn't as long". A
+    # week is the Calendar tab's own unit, and the rail is now that week.
     html = ['<section class="cal"><h2>Coming up</h2>']
-    body, missing = cal_days(shown, meets, titles, years, code, when, esc)
+    body, missing = cal_days(days, meets, titles, years, code, when, esc)
     html.append(body)
-    # WHAT WAS CUT, AND WHERE THE REST IS. A rail that quietly stops after a
-    # week looks like a fortnight with nothing in its second half.
-    more = (f"{cut} more sitting{'' if cut == 1 else 's'} in the fortnight "
-            "beyond these. " if cut else "")
-    html.append('<p class="calmore calall">' + esc(more)
-                + '<a href="calendar.html">See the full calendar</a></p>')
-    return "".join(html) + cal_notes(H, up, missing, esc)
+    html.append(more)
+    return "".join(html) + cal_notes(up, missing, esc)
 
 
 # ONE CHIP FOR A PERSON, AND THIS IS THE SECOND COPY OF IT.
@@ -692,20 +708,15 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
     return "".join(html), missing
 
 
-def cal_notes(H, up, missing, esc):
-    """The two notes under the calendar: what was cut, and what a hearing is."""
+def cal_notes(up, missing, esc):
+    """The note under the calendar: what a hearing is."""
     html = []
-    # What did not fit. build_site_v2 writes upcoming[:80] and its
-    # hearings_next_14 counts the fortnight's bill rows uncapped, so the
-    # difference is what the cap dropped. The status box beside this counts the
-    # MEETINGS these rows make -- it can only count the rows it was given, and
-    # says "at least" when this line has something to report, so the two
-    # numbers no longer stand next to each other contradicting one another.
-    more = (H.get("status") or {}).get("hearings_next_14", 0) - len(up)
-    if more > 0:
-        html.append(f'<p class="note">{more} more bill{"" if more == 1 else "s"} '
-                    "sit in the fortnight beyond these; each one is on its own "
-                    "committee's page.</p>")
+    # NO "MORE BILLS IN THE FORTNIGHT BEYOND THESE". That note counted what
+    # home.json's eighty-row cap dropped, and in session the dropped rows
+    # fell on the day already shown or the next one, not beyond them. The
+    # rail reads the week uncapped now, so nothing is dropped, and what lies
+    # past the week is calendar_html's own line, which counts next week and
+    # links to it.
     # A public hearing is the one a reader can speak at; an executive session
     # is the one where the committee votes. Worth saying once.
     html.append('<p class="note">Anyone may attend and speak at a public '
@@ -1927,43 +1938,52 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
   // to the data. .statgrid still styles the same grid on the data page.
 
   // #upcoming IS NOT TOUCHED HERE, ON PURPOSE. The calendar is rendered into
-  // the page by calendar_html() at build time, from the same home.json this
-  // script reads -- so re-rendering it here would be a second renderer of one
-  // thing, which is the mistake this project has paid for more than once, and
-  // it would render it WORSE: the bill titles are resolved out of
-  // site/idx/<term>.json, 1.19 MB that the home page must not fetch to print
-  // four of them, and the meeting rows are <details> elements that need no
-  // script to open. Leaving it alone means the calendar also works before this
-  // file loads and with JavaScript off.
+  // the page by calendar_html() at build time, from the rows the Calendar
+  // tab's week is drawn from -- so re-rendering it here would be a second
+  // renderer of one thing, which is the mistake this project has paid for
+  // more than once, and it would render it WORSE: the bill titles are
+  // resolved out of site/idx/<term>.json, 1.19 MB that the home page must not
+  // fetch to print four of them, and the meeting rows are <details> elements
+  // that need no script to open. Leaving it alone means the calendar also
+  // works before this file loads and with JavaScript off.
 
   // COMING UP, IN THE READER'S OWN CLOCK. The calendar block is written when
   // the site is built, and a build stands for as long as it stands, so the
   // home page has headed a past day "today" with a committee session that had
   // already met at the top of the list. Each day carries its own date, so
   // this drops the days that have gone and says how far off the rest are now.
+  //
+  // AND THE DAYS PAST THE READER'S SUNDAY. The rail is this week, as the
+  // Calendar tab's is, and "this week" is the reader's as much as "today" is:
+  // a build made just after midnight on a Monday, read somewhere it is still
+  // Sunday evening, holds next week's days, and they are not coming up this
+  // week. getDay() calls Sunday 0, which ends an ISO week rather than
+  // starting one, so on a Sunday the week has no days left after today.
   // Nothing else here is touched.
   (function(){
     const now=new Date(); now.setHours(0,0,0,0);
+    const toSun=(7-now.getDay())%7;
     const days=[...document.querySelectorAll(".calday[data-d]")];
     let left=0;
     days.forEach(d=>{
       const p=d.dataset.d.split("-").map(Number);
       const off=Math.round((new Date(p[0],p[1]-1,p[2])-now)/86400000);
-      if(off<0){d.remove();return;}
+      if(off<0||off>toSun){d.remove();return;}
       left++;
       const rel=d.querySelector(".cdrel");
-      // Fourteen days out is still inside the fortnight this block covers, so
-      // it says how far off it is like every other day. `off<14` left the last
-      // day of the window with no label at all.
+      // `off<=14`, as the built labels have it: a week's days never reach
+      // it, and a bound that matched them was the point -- `off<14` once left
+      // the last day of a fortnight with no label at all.
       if(rel)rel.textContent=off===0?"today":off===1?"tomorrow"
         :off<=14?`in ${off} days`:"";
     });
     const cal=document.querySelector(".cal");
     if(cal&&days.length&&!left){
-      cal.innerHTML=`<h2>Coming up</h2><p class="note">No committee meetings are
-        scheduled in the next two weeks. The General Court sits from January to
-        June, and committees meet on bills from the autumn filing period
-        onwards.</p>`;
+      // The line under the rail stays: it says what next week holds and is
+      // the way to it, which is the useful thing to say about an empty week.
+      const more=cal.querySelector(".calall");
+      cal.innerHTML=`<h2>Coming up</h2><p class="note">Nothing else is
+        scheduled this week.</p>`+(more?more.outerHTML:"");
     }
     // "Last updated N days ago" is the one line whose whole job is to say the
     // summary may be stale; it cannot be a number frozen at build time.
@@ -2538,7 +2558,7 @@ it, or a name, county, party or committee to find a member.</p>
                    "recorded vote they cast.",
               wide=True, script=LEGFIND_JS + SEATING_JS), encoding="utf-8")
 
-    static_up = calendar_html(H, out)
+    static_up = calendar_html(out)
 
     # The Committees card's offer, counted rather than typed. See
     # committees_with_roster: what the card promises is a roster, so the number

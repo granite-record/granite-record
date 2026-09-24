@@ -309,8 +309,22 @@ def collect(site):
         except (ValueError, OSError):
             pass
 
+    return weeks_from(proceedings.load()), titles, years, code
+
+
+def weeks_from(rows):
+    """{week: {date: {meeting_key: [rows]}}} out of proceedings rows.
+
+    ONE READING OF THE WEEK, AND THE HOME PAGE USES IT TOO. The home page's
+    Coming up rail is this week's days from today on, and it used to be drawn
+    from home.json's fortnight instead: committee rows only, cut at eighty,
+    and counted in days that had meetings -- so on 23 September 2026 it ran to
+    7 October, and in session it stopped partway through one day. It reads
+    this now, so the rail and the Calendar tab it links to hold the same
+    sittings -- the floor included -- because they are the same rows.
+    """
     weeks = defaultdict(lambda: defaultdict(OrderedDict))
-    for r in proceedings.load():
+    for r in rows:
         date = (r.get("date") or "")[:10]
         if date < FROM:
             continue
@@ -332,9 +346,23 @@ def collect(site):
                # is on the proceedings row already; nothing here derived it
                # from the committee's name, which would have been a second
                # answer to a question the record answers itself.
-               "body": (r.get("body") or "").strip().upper()}
+               "body": (r.get("body") or "").strip().upper(),
+               # THE TERM, for the home rail: a bill number names one bill in
+               # each biennium, and the rail resolves a title out of that
+               # term's index rather than whichever term's HB 1 was read last.
+               "term": (r.get("term") or "").strip()}
         weeks[week_key(d)][date].setdefault(BP.meeting_key(row), []).append(row)
-    return weeks, titles, years, code
+    return weeks
+
+
+def in_order(day):
+    """A day's meeting keys in the order they start, untimed ones last.
+
+    One ordering for the week page and the home rail, so the two list a day's
+    committees the same way round.
+    """
+    return sorted(day, key=lambda k: (min((r["time"] or "~") for r in day[k]),
+                                      k[1]))
 
 
 def sitting_pages(site):
@@ -365,17 +393,17 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
     def when(d):
         x = datetime.date.fromisoformat(d)
         off = (x - today).days
+        # <= 14, as HOME_JS has it: `< 14` left a day exactly a fortnight off
+        # with no label at all until the script wrote one.
         rel = ("today" if off == 0 else "tomorrow" if off == 1
-               else f"in {off} days" if 0 < off < 14 else "")
+               else f"in {off} days" if 0 < off <= 14 else "")
         return f"{DAYNAME[x.weekday()]} {x.day} {MONTH[x.month - 1]}", rel
 
     meets, days = {}, OrderedDict()
     for date in sorted(dated):
         for k, rows in days_raw[date].items():
             meets[k] = rows
-        days[date] = sorted(
-            days_raw[date],
-            key=lambda k: (min((r["time"] or "~") for r in days_raw[date][k]), k[1]))
+        days[date] = in_order(days_raw[date])
 
     # level=2: the h1 of this page is the week itself, so a day is the
     # section under it. On the home page the days sit under "Coming up"

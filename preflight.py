@@ -5110,6 +5110,32 @@ def _chain():
         assert n_toc, ("no learn page carries a contents rail, so nothing here "
                        "was actually checked")
 
+        # COMING UP ON THE BUILT HOME PAGE IS THE BUILD DATE'S WEEK: no day
+        # before the build date or after that week's Sunday, and every day in
+        # between that the fixture's proceedings.csv holds a sitting on. The
+        # fixture's hearing is dated three days from the clock, so from Monday
+        # to Thursday it is on the rail and from Friday it is next week's and
+        # must not be. _coming_up_is_this_week draws it for fixed dates.
+        import build_calendar as BC
+        import proceedings as _P
+        from datetime import date as _date, timedelta as _td
+        built = _date.fromisoformat(json.loads((root / "site" / "home.json").read_text(
+            encoding="utf-8"))["generated"])
+        wk_end = built + _td(days=6 - built.weekday())
+        homepage = (root / "site" / "index.html").read_text(encoding="utf-8",
+                                                            errors="replace")
+        rail = re.findall(r'class="calday" data-d="([^"]+)"', homepage)
+        stray = [d for d in rail if not built.isoformat() <= d <= wk_end.isoformat()]
+        assert not stray, (
+            f"the built home page's Coming up shows {stray}, outside the week "
+            f"it was built in ({built} to {wk_end})")
+        week = BC.weeks_from(_P.load(root / "proceedings.csv")).get(
+            BC.week_key(built)) or {}
+        due = sorted(d for d in week if d >= built.isoformat() and week[d])
+        assert rail == due, (
+            f"the built home page's Coming up shows {rail}; the fixture's "
+            f"sittings from {built} to {wk_end} fall on {due}")
+
         idx = json.loads((root / "site" / "index.json").read_text(encoding="utf-8"))
         current = max((b.get("term") or "" for b in idx), default="")
         kind_of = {(str(b.get("year")), str(b.get("id")).upper()):
@@ -8573,6 +8599,177 @@ def _bill_lists_by_number(BO, BC, BS, SP, BP):
     assert sponsors_csv == want, "sponsors.csv runs " + ", ".join(sponsors_csv)
     return "ok", ("committee, sponsored, consent, calendar, bills.csv and "
                   f"sponsors.csv all run {want[3]} before {want[5]}")
+
+
+@check("frontend", "the home page's Coming up is this week, the week the Calendar tab shows")
+def _coming_up_is_this_week():
+    """Coming up drew a fortnight under a comment saying it drew a week.
+
+    Its comment said the rail was "the Calendar tab's own unit, so the rail
+    and the page it links to agree". It was not: it read home.json's fourteen
+    days and stopped at the seventh DATE that had a meeting, so on Wednesday
+    23 September 2026 it ran to 7 October and seven of its nine cards were in
+    other weeks. In session a second limit bit first -- home.json keeps
+    eighty bill rows and a January day holds 138 -- so the rail stopped
+    partway through one day while calendar.html showed the whole week. It
+    also held committee rows only, where the week page holds the floor. A
+    note under it said "N more bills sit in the fortnight beyond these" about
+    rows the cap had dropped from the day already shown.
+
+    Nothing checked the window, so nothing noticed. This draws the rail for
+    four fixed days -- a Monday, a Thursday, a Saturday and a Sunday, the one
+    getDay() calls 0 -- out of rows written here, and holds it to the week
+    build_calendar draws: from today to Sunday, every sitting in that span,
+    the floor included, a hundred bills on one day and all of them shown,
+    and next week counted and linked rather than listed. Then it runs
+    HOME_JS's own block in node against a stub page, because the build is
+    read for days after it is made and it is the script that keeps the rail
+    to the READER's week. _chain holds the built fixture home page to it too.
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_pages as BP
+    import build_calendar as BC
+
+    def rows_for(today, weekdays_only=False):
+        rows = []
+        for k in range(-3, 12):
+            d = today + _dt.timedelta(days=k)
+            if weekdays_only and d.weekday() > 4:
+                continue
+            rows.append({"term": "2025-2026", "bill": f"HB{200 + k}", "body": "H",
+                         "kind": "public hearing", "date": d.isoformat(),
+                         "time": "10:00", "committee": "Commerce",
+                         "venue": "LOB 302"})
+        if weekdays_only:
+            return rows
+        # PAST THE OLD CAP: a hundred bills in one sitting, where home.json
+        # kept eighty rows for the whole fortnight.
+        for i in range(100):
+            rows.append({"term": "2025-2026", "bill": f"SB{i + 1}", "body": "S",
+                         "kind": "executive session", "date": today.isoformat(),
+                         "time": f"{9 + i // 12:02d}:{(i % 12) * 5:02d}",
+                         "committee": "Judiciary", "venue": "SH 100"})
+        # A FLOOR SITTING, which carries no committee: the Calendar tab shows
+        # it, and the rail's old source dropped every one.
+        rows.append({"term": "2025-2026", "bill": "HB9", "body": "H",
+                     "kind": "floor debate", "date": today.isoformat(),
+                     "time": "", "committee": "", "venue": ""})
+        return rows
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-comingup-"))
+    try:
+        checked = 0
+        for today in (_dt.date(2026, 9, 21), _dt.date(2026, 9, 24),
+                      _dt.date(2026, 9, 26), _dt.date(2026, 9, 27)):
+            rows = rows_for(today)
+            with contextlib.redirect_stdout(io.StringIO()):
+                page = BP.calendar_html(tmp, today=today, rows=rows)
+            sun = BC.monday(today) + _dt.timedelta(days=6)
+            t, s = today.isoformat(), sun.isoformat()
+            shown = re.findall(r'class="calday" data-d="([^"]+)"', page)
+            wide = [d for d in shown if not t <= d <= s]
+            assert not wide, (
+                f"built on {today:%a %d %b}, Coming up shows {wide}, outside "
+                f"this week ({t} to {s}) -- the rail is the Calendar tab's "
+                "week, not a fortnight")
+            # The same sittings the Calendar tab's week holds from today on:
+            # read through the same function, so the two cannot differ.
+            week = BC.weeks_from(rows).get(BC.week_key(today)) or {}
+            want = {(k[0], k[1].lower()) for d in week if d >= t
+                    for k in week[d]}
+            got = set(re.findall(
+                r'<details class="calmeet"[^>]*? data-cmte="([^"]*)"[^>]*? '
+                r'data-date="([^"]*)"', page))
+            got = {(d, c) for c, d in got}
+            assert got == want, (
+                f"built on {today:%a %d %b}, Coming up and the Calendar tab's "
+                f"week disagree: only on the rail {sorted(got - want)}, only "
+                f"on the week page {sorted(want - got)}")
+            assert "House floor" in page, (
+                "a floor sitting this week is on the Calendar tab and not in "
+                "Coming up")
+            n_sb = len(set(re.findall(r'bills#SB(\d+)"', page)))
+            assert n_sb == 100, (
+                f"one sitting of 100 bills shows {n_sb} of them in Coming up: "
+                "the rail is capped again, and cuts a day short")
+            nxt = BC.week_key(sun + _dt.timedelta(days=1))
+            n_next = len({k for d, day in (BC.weeks_from(rows).get(nxt) or {}).items()
+                          for k in day})
+            line = re.search(r'<p class="calmore calall">(.*?)</p>', page)
+            assert line and f'href="calendar/{nxt}.html"' in line.group(1) \
+                and line.group(1).startswith(f"{n_next} more sitting"), (
+                    f"built on {today:%a %d %b}, the line under Coming up "
+                    f"should count next week's {n_next} sittings and link "
+                    f"calendar/{nxt}.html; it reads "
+                    f"{line.group(1) if line else 'nothing'!r}")
+            assert "fortnight" not in page, (
+                "Coming up still speaks of a fortnight, and it shows one week")
+            checked += 1
+
+        # A SATURDAY WITH THE WEEK'S BUSINESS OVER: the rail says so and
+        # points at next week, rather than showing next week as this one.
+        sat = _dt.date(2026, 9, 26)
+        with contextlib.redirect_stdout(io.StringIO()):
+            page = BP.calendar_html(tmp, today=sat,
+                                    rows=rows_for(sat, weekdays_only=True))
+        assert "calday" not in page, (
+            "with nothing left this week, Coming up still draws a day: "
+            + page[:200])
+        assert "rest of this week" in page and 'href="calendar/2026-W40.html"' in page, (
+            "an empty week does not say so and link to next week: " + page[:300])
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    # --- and in the reader's clock, which is what keeps it there ------------
+    node = shutil.which("node") or shutil.which("node.exe")
+    if not node:
+        return "ok", (f"{checked} build dates; node is not on PATH, so HOME_JS's "
+                      "own week was not run")
+    m = re.search(r"\(function\(\)\{\s*const now=new Date\(\);.*?\n  \}\)\(\);",
+                  BP.HOME_JS, re.S)
+    assert m and ".calday[data-d]" in m.group(0), (
+        "HOME_JS has no block reading .calday[data-d] in the reader's clock")
+    span = [(_dt.date(2026, 9, 20) + _dt.timedelta(days=k)).isoformat()
+            for k in range(16)]
+    for reader, days, want_kept in (
+            ("2026-09-21", span, span[1:8]),     # a Monday: the whole week
+            ("2026-09-24", span, span[4:8]),     # a Thursday: to Sunday
+            ("2026-09-27", span, span[7:8]),     # a Sunday: only today
+            ("2026-09-27", span[8:], [])):       # a Sunday, next week built
+        y, mo, d = map(int, reader.split("-"))
+        prog = (
+            "const R=Date;class D extends R{constructor(...a){a.length?super(...a)"
+            f":super({y},{mo - 1},{d},15,30);}}static now(){{return new D().getTime();}}}}"
+            "globalThis.Date=D;"
+            "const mk=d=>({dataset:{d},gone:false,rel:{textContent:''},"
+            "remove(){this.gone=true;},querySelector(s){return s==='.cdrel'?this.rel:null;}});"
+            f"const days={json.dumps(days)}.map(mk);"
+            "const calall={outerHTML:'<p class=\"calmore calall\">NEXT</p>'};"
+            "const cal={innerHTML:'',querySelector(s){return s==='.calall'?calall:null;}};"
+            "globalThis.document={querySelectorAll(s){return s==='.calday[data-d]'?days:[];},"
+            "querySelector(s){return s==='.cal'?cal:null;}};\n"
+            + m.group(0) + "\n"
+            "process.stdout.write(JSON.stringify({kept:days.filter(e=>!e.gone)"
+            ".map(e=>e.dataset.d),labels:days.filter(e=>!e.gone).map(e=>e.rel.textContent),"
+            "cal:cal.innerHTML}));")
+        r = subprocess.run([node, "-e", prog], capture_output=True, timeout=60)
+        assert r.returncode == 0, ("HOME_JS's Coming up block would not run: "
+                                   + r.stderr.decode("utf-8", "replace")[-300:])
+        got = json.loads(r.stdout.decode("utf-8", "replace"))
+        assert got["kept"] == want_kept, (
+            f"read on {reader}, HOME_JS keeps {got['kept']} of the rail; this "
+            f"week from that day is {want_kept}")
+        assert all(x for x in got["labels"]), (
+            f"read on {reader}, a day in Coming up has no relative label: "
+            f"{got['labels']}")
+        if not want_kept:
+            assert "this week" in got["cal"] and "NEXT" in got["cal"], (
+                "when the reader's week has nothing left, HOME_JS must say so "
+                "and keep the line that links to next week: " + got["cal"][:200])
+    return "ok", (f"{checked} build dates and 4 reading dates: today to Sunday, "
+                  "uncapped, the floor included, next week linked")
 
 
 @check("build", "every deploy names the production branch, and both name the same one")
