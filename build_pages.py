@@ -1005,24 +1005,35 @@ Court: what each bill does, who sponsored it, when it was heard, how it was vote
 and where in the recording it was discussed.</p>
 
 <h2>Where the information comes from</h2>
-<p>Bill histories, hearing schedules and sponsors come from the General Court's
-published data files. Vote tallies and individual member votes come from its roll
-call files, and for sessions those files no longer cover, from the read-only
-database the General Court publishes credentials for. The House's committee
+<p>Bill histories and hearing schedules come from the General Court's docket:
+for the current term its published data files, for 2015 to 2024 its web pages,
+and before that the read-only database the General Court publishes credentials
+for. Sponsors from 2023 on come from its sponsor file and bill status pages, and
+before 2023 from the sponsor line printed on each bill's own text. Vote tallies
+and individual member votes come from its roll call files, and for sessions
+those files no longer cover, from the same database. The House's committee
 majority and minority reports are taken from the House Calendar; the Senate's
-come from that same database, which is where the Senate files them. Hearing and
+come from the database too, which is where the Senate files them. Hearing and
 session recordings are the General Court's own, on YouTube, linked rather than
 copied.</p>
 <p>Where a hearing shows how many people signed in for and against a bill, those
 are counts and nothing else. The General Court's sign-in sheet records a name, a
 town and often written testimony for every person; almost all of them are members
 of the public rather than public figures, and this site does not republish them.</p>
-<p>An earlier term marked <i>archived</i> is a thinner record on purpose. For
-the 2023-2024 term the bills, their titles and statuses, the committees they
-went to, their hearing dates, their sponsors and every recorded vote are here.
-What is not is the docket &#8212; the General Court's own line-by-line list of
-actions &#8212; and the written committee reports, which are a further request
-per bill. Every archived bill links its own official record, which has both.</p>
+<p>A term before the current one is marked <i>archived</i>. Nearly every
+archived bill has its docket &#8212; the General Court's own line-by-line list
+of actions &#8212; and its sponsors, the committee it went to, its hearings and
+its text. Three parts of the record start later, because the General Court's
+copies of them that this site reads start later. The House committees'
+written reports start with the 1997-1998 term, the first in its online
+calendars, and the Senate committees' with the current term, the only one its
+database holds them for. Before those, the page gives each committee's
+recommendation as the docket records it, and the committee's vote wherever the
+docket gives one. Votes by name start in 1999, where its roll-call files
+begin; before that, the docket gives the tallies it recorded, and the printed
+journals name who voted which way. Recordings start in [[stream_start]], when
+its YouTube channels begin. Every archived bill links its own official
+record.</p>
 
 <h2>What is taken from the record and what is generated</h2>
 <p>Dates, sponsors, vote tallies, committee assignments and hearing times are taken
@@ -1040,12 +1051,13 @@ all &#8212; it does not guess.</p>
 <p>The record here holds [[stations]] occasions on which a bill was taken up
 &#8212; hearings, executive sessions, work sessions and floor debates &#8212;
 across [[station_bills]] bills. What the site can say about each one depends
-almost entirely on whether a recording of it exists.</p>
-<p>For [[no_recording]] of them, none does. The General Court began streaming
-its committee rooms and its chambers in [[stream_start]]; [[prestream]] of
-these sittings happened before that, which is [[prestream_pct]] of the whole
-record; the rest are sittings since then that no recording has been matched
-to. Those carry the date, the committee and the room, and nothing to play.</p>
+almost entirely on whether there is a recording of it to link.</p>
+<p>For [[no_recording]] of them, there is no recording to offer. The recordings
+this site links are on the General Court's YouTube channels, which begin in
+[[stream_start]]; [[prestream]] of these sittings happened before that, which
+is [[prestream_pct]] of the whole record, and the other [[unmatched]] are
+sittings since then that no recording has been matched to. Most carry the
+date, the committee and the room, and nothing to play.</p>
 <p>[[recorded]] have a recording. On [[placed]] of them &#8212;
 [[placed_pct]] &#8212; the page opens the recording at the moment the bill
 was taken up. On the other [[recording_only]] it links the recording and says
@@ -1084,8 +1096,13 @@ tell one reader from another, and nothing about what you read is stored
 against you.</p>
 <p>Nothing else is collected. There are no accounts, no email addresses and
 no advertising. The feeds need no subscription, so nothing knows who takes
-them. The search box works in your own browser against files this site
-serves; what you type is never sent anywhere. Video is embedded from
+them. Search runs in your own browser against files this site serves. When a
+search takes you to a results page &mdash; the bill search, the record search
+or the legislator list &mdash; your words travel in that page&rsquo;s address.
+This site&rsquo;s server receives them, as it receives any address, and the
+page-view count may record that address like any other. The typefaces come
+from Google Fonts, so Google sees a request for them when a page opens. Video
+is embedded from
 YouTube&rsquo;s no-cookie address, which still means YouTube sees a request
 when a player is opened &mdash; a player only loads if you press play.</p>
 <p>One thing a reader sends deliberately is feedback, through the form
@@ -1102,7 +1119,7 @@ deleted after a week.</p>
 
 <h2>Corrections</h2>
 <p>If something here misrepresents the record, it should be corrected. The official
-record at gencourt.state.nh.us always takes precedence over anything shown here.</p>
+record at gc.nh.gov always takes precedence over anything shown here.</p>
 
 <h2>Independence</h2>
 <p>This site is not affiliated with or endorsed by the New Hampshire General Court.

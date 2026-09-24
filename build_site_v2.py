@@ -24,6 +24,9 @@ Standard library only.
 
 import argparse
 import caption_span
+# Where the recordings this site links begin: one constant, which about.html
+# states in words and station_for_proceeding and station_for_floor split on.
+from about_figures import STREAM_START
 import narrative as N
 import fiscal
 import proceedings as P
@@ -1410,8 +1413,9 @@ def station_for_proceeding(p, bid, segs, marks):
     # `candidates` is the same argument one level up -- the day and the
     # committee are known and the tape is not. It is tested before the date,
     # because "recordings of this committee exist that day" is a fact about
-    # the index and 2020-03-01 is a fact about the calendar; nothing reaches
-    # both, since nothing was streamed before the streams began. 317
+    # the index and STREAM_START, the day the General Court's YouTube
+    # channels begin, is a fact about the calendar; nothing reaches both,
+    # since the index holds nothing older than the channels. 317
     # proceedings of 100,556 are in it: 236 Finance, whose divisions stream
     # separately and which the docket does not tell apart, and 81 whose
     # scheduled minute fell inside more than one stream. They used to fall
@@ -1423,7 +1427,7 @@ def station_for_proceeding(p, bid, segs, marks):
         state, start = "approximate", None
     elif cands:
         state, start = "candidates", None
-    elif p["sched_date"] < "2020-03-01":
+    elif p["sched_date"] < STREAM_START:
         state, start = "prestream", None
     else:
         state, start = "novideo", None
@@ -1633,6 +1637,30 @@ def station_for_floor(f, bid, marks):
     stations[-1] after appending.
     """
     precise = f.get("precise") and f.get("debate_end")
+    # NO RECORDING AT ALL. 1,613 committee-of-conference sittings are on the
+    # docket and on neither of the General Court's channels, and they came
+    # through here as "floor_dated" -- which app.js draws as a player: an
+    # embed of an empty id and an "Open on YouTube" link to watch?v=, on
+    # sittings from 1990 on. They take the two states a committee sitting
+    # with nothing to play takes, split on the same date: older than the
+    # channels, or since them and unmatched. And they keep the time and the
+    # room the docket gives, which proceedings.csv has for all but one and
+    # the page used to drop.
+    if not f.get("video_id"):
+        # The index's own word for what this is, as below.
+        kind = f.get("kind") or "floor debate"
+        return {
+            "when": f["date"], "time": f.get("time") or None,
+            "what": kind,
+            "committee": ("House" if f.get("body") == "H" else "Senate"
+                          ) if kind == "floor debate" else None,
+            "venue": f.get("venue") or None, "video_id": "", "watch": None,
+            "predicted": None, "start": None, "debate_end": None,
+            "window_start": None,
+            "motions": f.get("motions", []), "tallies": f.get("tallies", []),
+            "state": ("prestream" if (f.get("date") or "") < STREAM_START
+                      else "novideo"),
+            "candidate": None}
     if f.get("whole_video"):
         # The title names the bill, so the entire recording is this
         # proceeding. No timestamp to estimate and none needed.
@@ -4581,6 +4609,9 @@ def main():
             "kind": r["kind"], "debate_end": r["debate_end"],
             "window_start": r["window_start"], "precise": r["precise"],
             "whole_video": r["whole_video"], "title": r["video_title"],
+            # The docket's time and room, which station_for_floor gives a
+            # sitting with no recording. Nothing reads them on the rest.
+            "time": r["time"], "venue": r["venue"],
         })
     print(f"{sum(len(v) for v in procs.values()):,} committee proceedings and "
           f"{sum(len(v) for v in floor.values()):,} floor appearances from "

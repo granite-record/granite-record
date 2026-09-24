@@ -98,7 +98,8 @@ Three things are absent on purpose and are not missing:
 - `secrets.json` — a YouTube API key, wanted by one step of the pipeline, which
   skips and says so without it. Nothing else in the repository needs a
   credential, and `preflight` has a check that no tracked file carries one.
-- `work/` — the caption files, about 34 GB, re-fetchable.
+- `work/` — the recordings' caption files, about 20 GB, and the audio of a few
+  dozen transcribed here, about 15 GB; all of it re-fetchable.
 - `site/` — the built output.
 
 So `build_all.py --local` on a fresh clone has almost nothing to build from,

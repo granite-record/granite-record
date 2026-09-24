@@ -3456,6 +3456,135 @@ def _states_covered():
     return "ok", f"{len(emitted)} states emitted, all drawn, one chain"
 
 
+def _app_js(expr):
+    """app.js loaded in node against dom_stub.js, and `expr` evaluated with
+    `scope` holding renderHearings and archivedNote. Returns the value as
+    JSON, or None where node, app.js or the stub is not here.
+
+    The value is printed after a marker, so anything app.js itself logs while
+    it loads cannot be mistaken for it.
+    """
+    js, stub = Path("app.js"), Path("dom_stub.js")
+    if not (js.exists() and stub.exists() and shutil.which("node")):
+        return None
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "go.js").write_text(
+            'require("./stub.js");\n'
+            'const src = require("fs").readFileSync("./page.js", "utf8");\n'
+            'const scope = (0, eval)(src + "; ({renderHearings, archivedNote})");\n'
+            'const out = (' + expr + ');\n'
+            'process.stdout.write("\\n@@" + JSON.stringify(out));\n',
+            encoding="utf-8")
+        r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True,
+                 timeout=60)
+        assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+            "app.js did not run under node: " + (r.stderr or r.stdout or "")[-300:])
+        return json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("frontend", "the stream date is one constant, and a sitting with no recording is never offered one",
+       needs=("build_site_v2", "about_figures"))
+def _stream_start(build_site_v2, about_figures):
+    """Where the recordings this site links begin, said once and drawn right.
+
+    The date was two literals: "2020-03-01" in station_for_proceeding and in
+    about_figures, which the About page states as "March 2020". The General
+    Court's YouTube channels begin on 14 May 2020, so 385 committee sittings
+    of March to May 2020 read "No recording matched" when nothing could have
+    been, and changing the constant alone would have moved the prose and left
+    the builder where it was. build_site_v2 imports it now.
+
+    And a floor or conference appearance with no recording came out as
+    "floor_dated", which app.js draws as a player: 1,613 committee-of-
+    conference sittings from 1990 on offered an embed of an empty id and an
+    "Open on YouTube" link to watch?v=. They take the committee states now.
+
+    The page's own sentence is held to the same constant, because app.js
+    cannot import it: the month it names is STREAM_START_WORDS.
+    """
+    import inspect
+    B, AF = build_site_v2, about_figures
+    assert getattr(B, "STREAM_START", None) == AF.STREAM_START, (
+        f"build_site_v2 splits on {getattr(B, 'STREAM_START', 'a literal of its own')!r} "
+        f"and the About page on {AF.STREAM_START!r}; import the one constant")
+    for fn in (B.station_for_proceeding, B.station_for_floor):
+        lit = re.findall(r"(?:19|20)\d\d-\d\d-\d\d", inspect.getsource(fn))
+        assert not lit, (f"{fn.__name__} carries the date literal {lit[0]}; the "
+                         "stream date is about_figures.STREAM_START and nowhere else")
+    # WHERE THE CHANNELS BEGIN, from the index of both of them. Tracked, so
+    # this runs on a fresh clone; a date the index does not bear out is a
+    # claim about the General Court's recordings that nothing supports.
+    idx = Path("channel_index_full.json")
+    first = None
+    if idx.exists():
+        d = json.loads(idx.read_text(encoding="utf-8"))
+        first = min((v.get("published") or "")[:10]
+                    for ch in ("house", "senate")
+                    for v in ((d.get(ch) or {}).get("videos") or [])
+                    if v.get("published"))
+        assert first == AF.STREAM_START, (
+            f"the earliest recording on either channel is {first}, and "
+            f"STREAM_START says {AF.STREAM_START}")
+
+    def sitting(date):
+        return {"bill": "HB1", "body": "H", "committee": "Judiciary",
+                "proceeding": "public hearing", "sched_date": date,
+                "sched_time": "10:00", "venue": "LOB 206", "video_id": "",
+                "candidate_ids": ""}
+    for date, want in (("2020-03-02", "prestream"), (AF.STREAM_START, "novideo"),
+                       ("2021-01-06", "novideo"), ("1995-04-01", "prestream")):
+        got = B.station_for_proceeding(sitting(date), "HB1", {}, {})["state"]
+        assert got == want, f"a committee sitting of {date} with no recording is {got!r}, not {want!r}"
+
+    def conference(date, vid=""):
+        return {"date": date, "body": "H", "video_id": vid, "motions": [],
+                "tallies": [], "kind": "committee of conference",
+                "debate_end": None, "window_start": None, "precise": False,
+                "whole_video": False, "title": "", "time": "10:00",
+                "venue": "RM 102,LOB"}
+    PLAYED = {"floor_dated", "floor_precise", "floor_stated", "whole_video", "consent"}
+    for date, want in (("1995-04-01", "prestream"), ("2025-06-17", "novideo")):
+        st = B.station_for_floor(conference(date), "HB1", {})
+        assert st["state"] == want, (
+            f"a conference sitting of {date} with no recording is {st['state']!r}, "
+            f"not {want!r}; {'floor_dated draws a player for an empty id' if st['state'] in PLAYED else ''}")
+        assert not st.get("watch") and not st.get("video_id"), (
+            f"a conference sitting with no recording links {st.get('watch')!r}")
+        assert (st.get("time"), st.get("venue")) == ("10:00", "RM 102,LOB"), (
+            "a conference sitting with no recording lost the time and room the "
+            f"docket gives: {st.get('time')!r}, {st.get('venue')!r}")
+    rec = B.station_for_floor(conference("2025-06-17", "VIDX"), "HB1", {})
+    assert rec["state"] == "floor_dated" and "VIDX" in (rec.get("watch") or ""), (
+        f"a conference sitting WITH a recording no longer offers it: {rec}")
+
+    # THE PAGE. Both no-recording states draw no player and no YouTube link,
+    # and the prestream box names the month the constant does.
+    stations = [B.station_for_floor(conference("1995-04-01"), "HB1", {}),
+                B.station_for_proceeding(sitting("2021-01-06"), "HB1", {}, {})]
+    html_ = _app_js("scope.renderHearings({id:'HB1', n:'HB 1'}, {stations:"
+                    + json.dumps(stations) + "})")
+    if html_ is None:
+        return "ok", (f"one constant, {AF.STREAM_START}"
+                      + (", the channels' first day" if first else "")
+                      + "; no-recording sittings take the committee states (node not here, page not drawn)")
+    assert "youtube.com" not in html_ and "data-embed" not in html_, (
+        "a sitting with no recording is drawn with a player or a YouTube link")
+    assert AF.STREAM_START_WORDS in html_, (
+        f"the prestream box does not name {AF.STREAM_START_WORDS!r}, the month "
+        "about_figures.STREAM_START_WORDS says the channels begin")
+    for bad in ("No recording exists", "livestreamed"):
+        assert bad not in html_, f"the page still says {bad!r}, which the House Calendars contradict"
+    return "ok", (f"one constant, {AF.STREAM_START}"
+                  + (", the channels' first day" if first else "")
+                  + "; no-recording sittings are prestream or novideo, keep their time and room, "
+                    "and draw no player")
+
+
 @check("frontend", "no const is read before the line that declares it")
 def _tdz():
     js, f = page_source()
@@ -8760,6 +8889,170 @@ def _about_reports():
     return "ok", f"the box named as it is labelled, and deleted after {said}, as the compiler does"
 
 
+# Sentences the About page, the Data page and manifest.json carried on 23
+# September, each contradicted by the record: the site's own dockets for every
+# archived term, the House Calendars that announced live streams before 2020,
+# the search forms that put a query in the address, the 1995 docket's
+# "PASSED RC(210-136)" on a bill with no roll call counted, the budget bills
+# and rules resolutions whose own text names no sponsor. A regression that
+# brings any of them back fails here.
+#
+# And two the first rewrite introduced: every written report on an archived
+# bill is a House committee's, from a House Calendar, so "Written committee
+# reports start with the 1997-1998 term" credited the Senate's committees with
+# reports no archived term has; and floor_stated opens on the clerk's reading
+# of the committee report (segment_markers.FLOOR_OPEN_RE), not on the chair.
+CONTRADICTED = {
+    "about": ("never sent anywhere", "gencourt.state.nh.us", "thinner record",
+              "began streaming", "none does", "March 2020",
+              "That is where the record starts",
+              "Written committee reports start"),
+    "data": ("Everything this site knows", "decided on a voice vote",
+             "It probably is", "34 GB of recordings", "has not been collected yet",
+             "as the archived dockets are fetched", "Every recorded vote:",
+             "An empty column is a field not yet collected",
+             "a record not yet collected rather than a bill without one",
+             "chair opened and closed it", "Three values mean no moment"),
+}
+
+
+@check("build", "the About and Data pages, and an archived bill's note, make no claim the record contradicts",
+       needs=("build_pages", "about_figures", "build_site_v2"))
+def _about_data_claims(build_pages, about_figures, build_site_v2):
+    """The About page, the Data page and the machine-readable manifest were
+    read end to end on 23 September against the record, and twenty-eight
+    passages were wrong: the archived terms described as having no docket
+    when all eighteen have one, streaming dated to March 2020, a search box
+    that "never sent anywhere" beside three forms that put the query in the
+    address, every empty cell called "not yet collected", a passage column
+    described as House-first for 8,794 Senate bills. The bill pages' archived
+    note told 6,676 bills of 1989-1996 their written reports were "not yet
+    fetched", from calendars that are not online before 1997.
+
+    Three halves. The pages are filled and rendered on fixtures and read for
+    the sentences that were wrong; what the pages document is checked against
+    what the code emits -- every passage character, every how_placed value;
+    and the note is drawn in node for the terms either side of each boundary.
+    """
+    BP, AF, B = build_pages, about_figures, build_site_v2
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp())
+    try:
+        # ---- About: a census whose two no-recording groups add up ----------
+        (root / "site").mkdir()
+        census = {"total": 100, "bills": 40, "placed": 15, "recording_only": 5,
+                  "consent": 5, "no_recording": 75,
+                  "by_state": {"prestream": 70, "novideo": 5, "stated": 15,
+                               "approximate": 5, "consent": 5}}
+        (root / "site" / "station_census.json").write_text(json.dumps(census),
+                                                           encoding="utf-8")
+        figs = AF.figures(site=root / "site", root=here)
+        if "marked" not in figs:
+            return "skip", "alignment_score.json is not here, so about.html cannot be filled"
+        about = AF.fill(BP.ABOUT, figs)
+        flat = " ".join(about.split())
+        for bad in CONTRADICTED["about"]:
+            assert bad not in flat, f"about.html says {bad!r} again"
+        para = next((p for p in re.findall(r"<p>(.*?)</p>", flat)
+                     if "no recording to offer" in p), "")
+        assert para and all(n in para for n in ("75", "70", "5")), (
+            "the About page's no-recording sentence does not split its total "
+            f"into the sittings before the channels and the unmatched rest: {para[:200]!r}")
+        assert AF.STREAM_START_WORDS in flat, "the About page does not say when the channels begin"
+        assert "The House committees' written reports" in flat and "Senate committees'" in flat, (
+            "the About page no longer says whose written reports begin in 1997: they are the "
+            "House committees', and no archived term has a Senate committee's")
+
+        # ---- Data page and manifest, built by build_exports on a fixture ---
+        (root / "data").mkdir()
+        shutil.copy2(here / "bills.html", root / "site" / "bills.html")
+        passages = {"HB1": "Hpppp", "SB2": "Spxx-", "HB3": "Hphh-",
+                    "HR4": "Hpp", "HB5": ""}
+        (root / "site" / "index.json").write_text(json.dumps([
+            {"term": "2025-2026", "year": "2026", "id": b, "title": "a bill",
+             "status": "In committee", "kind": "active", "passage": p}
+            for b, p in passages.items()]), encoding="utf-8")
+        (root / "site" / "legislators.json").write_text("[]", encoding="utf-8")
+        (root / "data" / "sponsors.json").write_text("{}", encoding="utf-8")
+        (root / "data" / "member_votes.json").write_text("[]", encoding="utf-8")
+        (root / "rollcalls.json").write_text("{}", encoding="utf-8")
+        r = _run([sys.executable, str(here / "build_exports.py"), "--site", "site",
+                  "--data", "data"], cwd=root, capture_output=True, text=True,
+                 timeout=120, env={**os.environ, "GRANITE_PROCEEDINGS": ""})
+        assert r.returncode == 0, "build_exports on the fixture: " + (r.stderr or r.stdout)[-300:]
+        data = " ".join((root / "site" / "data.html").read_text(encoding="utf-8").split())
+        manifest = json.loads((root / "site" / "data" / "manifest.json").read_text(encoding="utf-8"))
+        mtext = " ".join(json.dumps(manifest).split())
+        for bad in CONTRADICTED["data"]:
+            assert bad not in data, f"data.html says {bad!r} again"
+            assert bad not in mtext, f"manifest.json says {bad!r} again"
+        with (root / "site" / "data" / "bills.csv").open(encoding="utf-8", newline="") as fh:
+            used = {ch for row in csv.DictReader(fh) for ch in row["passage"]}
+        undocumented = sorted(c for c in used if f"<code>{c}</code>" not in data)
+        assert not undocumented, (
+            f"bills.csv's passage column uses {undocumented} and data.html does not say what it means")
+        assert AF.STREAM_START_WORDS in data, "data.html does not say when the channels begin"
+        # Every state a station with a recording can carry is a how_placed
+        # value, and the table's own description names each. A station with
+        # no recording is written with an empty how_placed, which it explains.
+        # The states are read the way _states_covered reads them, from both
+        # the builder and the page's own branches, since a ternary in the
+        # builder hides its else arm from any one pattern.
+        src = Path(B.__file__).read_text(encoding="utf-8")
+        states = set(re.findall(r'"state":\s*"(\w+)"', src))
+        states |= set(re.findall(r'\["state"\]\s*=\s*"(\w+)"', src))
+        states |= set(re.findall(r'state,\s*start\s*=\s*"(\w+)"', src))
+        states |= set(re.findall(r's\.state\s*===\s*"(\w+)"', page_source()[0]))
+        states -= {"prestream", "novideo", "candidates"}
+        what = next(t["what"] for t in manifest["tables"] if t["file"] == "proceedings.csv")
+        unnamed = sorted(s for s in states if not re.search(r"\b%s\b" % s, what))
+        assert not unnamed, f"proceedings.csv's how_placed can be {unnamed}, and its description never says so"
+        assert "empty how_placed" in what, "proceedings.csv does not say what an empty how_placed means"
+        # The clerk opens a floor item by reading the committee report and
+        # the chair closes it with the result (segment_markers.FLOOR_OPEN_RE,
+        # FLOOR_CLOSE_RE); the gloss said the chair did both.
+        assert re.search(r"floor_stated \([^)]*clerk", what), (
+            "proceedings.csv no longer says a floor_stated debate opens on the clerk's reading")
+
+        # ---- the bill pages' archived note, either side of each boundary ---
+        def rec(term, reports, votes, text):
+            return {"term": term, "sponsors": [{"name": "A Sponsor"}],
+                    "billtext": {"body": "Be it Enacted..."} if text else None,
+                    "archived": {"docket": True, "committee": True, "hearings": True,
+                                 "sponsors": True, "reports": reports, "votes": votes,
+                                 "video": False}}
+        notes = _app_js("[" + ",".join(
+            "scope.archivedNote(" + json.dumps(x) + ")" for x in (
+                rec("1991-1992", False, False, True), rec("1997-1998", True, False, False),
+                rec("2005-2006", False, True, True))) + "]")
+        if notes is None:
+            return "ok", "About and Data pages and the manifest clean (node not here, the archived note not drawn)"
+        n1991, n1997, n2005 = (" ".join(n.split()) for n in notes)
+        assert "Not yet fetched" not in n1991 and "1997" in n1991, (
+            "a 1991 bill is told its written reports are not yet fetched, though the "
+            f"online calendars that print them begin in 1997: {n1991[:200]!r}")
+        assert "The House committees' written reports begin" in n1991 and "its vote." not in n1991, (
+            "a 1991 bill is told written reports begin in 1997 for every committee, or that the "
+            "docket gives each committee's vote, when the reports are the House's and the "
+            f"docket gives no vote on a Senate report of that term: {n1991[:300]!r}")
+        assert "close to complete" not in n1991, (
+            "a 1991 bill, with no written report, named vote or recording, is told its record "
+            "is close to complete")
+        assert "What a current term adds" not in n1991, (
+            "a bill that carries its own text is told its text is elsewhere")
+        assert "where the record starts" not in n1991 and "roll-call files" in n1991, (
+            "the before-1999 note does not name the roll-call files as what begins in 1999")
+        assert "linked rather than loaded" in n1997, (
+            "a bill with no text of its own is no longer told where its text is")
+        assert "the House committees' written reports" in n2005, (
+            "a 2005 bill with no written report is no longer told the House's reports are a gap")
+        return "ok", ("About and Data pages and the manifest free of the 23 September sentences; "
+                      f"{len(used)} passage marks and {len(states)} how_placed values documented; "
+                      "the archived note right either side of 1997 and 1999")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("files", "the triage rules keep a person between a report and a substantial change")
 def _triage_rules():
     """reports/TRIAGE.md is what the triage session follows, and this holds it
@@ -10329,6 +10622,78 @@ def _chapters():
         shutil.rmtree(root, ignore_errors=True)
 
 
+@check("build", "a chapter the clerk spelled CH., Chap, Chapt: or Chp. is read on the law line and nowhere else")
+def _chapters_rare():
+    """Five laws had no chapter on the site because the docket spells it in a
+    form extract_chapters did not read: 1993 HB 241 "CH.0066", 1999 HB 426
+    "Chap, 0070", 2004 SB 335 "Chapt:0099", SB 438 "Chapt:0066" and SB 481
+    "Chp. 0258". The same forms name OTHER laws on other lines -- a study
+    committee's "for (Ch. 47)", "{LSR 0155, HB 154, CH. 183, ...}" -- and read
+    everywhere they would have cost eight laws the chapter they have and given
+    two bills another law's number. So they are read on a law line that
+    names no other bill, and each of those refusals is exercised here, on the
+    real lines."""
+    here = Path(".").resolve()
+    if not (here / "extract_chapters.py").exists():
+        return "skip", "extract_chapters.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "db").mkdir()
+        (root / "data").mkdir()
+        rows = [
+            ("1993", "0435", "HB  0241", "04/20/1993 10:00:00", "HB241",
+             "BECAME LAW WITHOUT SIGNATURE 04/20/93  EFF DATE:06/19/93 CH.0066"),
+            ("1999", "0561", "HB  0426", "05/28/1999 10:00:00", "HB426",
+             "Signed by the Governor on  5/28/1999   Eff:  7/27/1999  Chap, 0070"),
+            ("2004", "3033", "SB  0335", "05/12/2004 10:00:00", "SB335",
+             "Law Without Signature  05/12/04  Eff. 01/01/05, Chapt:0099 "
+             "[ Art 44, Pt II, NH Constitution]"),
+            ("2004", "3198", "SB  0481", "06/16/2004 10:00:00", "SB481",
+             "Law Without Signature, Article 44, Part II N.H. Constitution "
+             "06/16/04, Eff. 08/15/04: Chp. 0258"),
+            # A study committee's membership line names the law that made it,
+            # which is not this bill's: its own number stays its own.
+            ("2000", "2570", "HB  1462", "05/10/2000 10:00:00", "HB1462",
+             "Signed by the Governor on 5/10/2000 Eff: 7/9/2000 Chap: 0061"),
+            ("2000", "2570", "HB  1462", "06/01/2000 10:00:00", "HB1462",
+             "Study Committee Members: Senators Russman, Below, F. King, "
+             "Fraser, Cohen, for (Ch. 47)"),
+            # A law line about ANOTHER bill, on a bill that never became law.
+            ("1996", "2331", "HB  1179", "06/18/1997 10:00:00", "HB1179",
+             "{LSR 0155, HB 154, CH. 183, 1997  SIGNED BY GOV 6/18/97}"),
+            # And a cross-reference with no law in it at all.
+            ("1989", "9100", "HB  0001", "05/08/1989 10:00:00", "HB1",
+             "SIGNED BY GOVERNOR  5/8/89   EFF:  7/7/89     CHAP: 001"),
+            ("1989", "9100", "HB  0001", "05/08/1989 10:00:00", "HB1",
+             "CH.124,1989//"),
+        ]
+        (root / "db" / "Docket.psv").write_text(
+            "".join("|".join([y, l, e, d, b, "H", t, "x", "1", d, "1"]) + "\n"
+                    for y, l, e, d, b, t in rows), encoding="utf-8")
+        bills = {}
+        for y, l, e, d, b, t in rows:
+            yy = int(y) - (1 - int(y) % 2)
+            bills.setdefault(f"{yy}-{yy + 1}", {})[b] = {"bill": b, "lsr_num": l}
+        (root / "data" / "bills.json").write_text(json.dumps(bills), encoding="utf-8")
+        r = _run([sys.executable, str(here / "extract_chapters.py")],
+                 cwd=root, capture_output=True, text=True, timeout=60,
+                 env={**os.environ, "PYTHONPATH": str(here)})
+        assert r.returncode == 0, (r.stdout + r.stderr).strip()[-300:]
+        got = json.loads((root / "chapters.json").read_text(encoding="utf-8"))
+        want = {("1993-1994", "HB241"): 66, ("1999-2000", "HB426"): 70,
+                ("2003-2004", "SB335"): 99, ("2003-2004", "SB481"): 258,
+                ("1999-2000", "HB1462"): 61, ("1995-1996", "HB1179"): None,
+                ("1989-1990", "HB1"): 1}
+        ch = lambda t, b: (got.get(t, {}).get(b) or {}).get("chapter")
+        wrong = [f"{b} of {t}: {ch(t, b)}, not {n}" for (t, b), n in want.items()
+                 if ch(t, b) != n]
+        assert not wrong, "; ".join(wrong)
+        return "ok", ("CH., Chap, Chapt: and Chp. read on a law line; a committee's "
+                      "\"for (Ch. 47)\", another bill's law line and a bare cross-reference are not")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("data", "no page but the search page opens with the hidden heading \"New Hampshire bills\"")
 def _sr_heading():
     """bills.html carries a visually hidden <h1>New Hampshire bills</h1>, and
@@ -11373,6 +11738,71 @@ def _text_sponsors(text_sponsors, build_site_v2):
             f"{n} bills gained sponsors; wanted the two the database names nobody for")
     return "ok", ("six eras of sponsor line; initial, county and district decide in that order; "
                   "another county refuses; the database's own list is never replaced")
+
+
+@check("naming", "sponsors.csv seats a sponsor where the bill's page does",
+       needs=("text_sponsors",))
+def _sponsors_csv_seat(text_sponsors):
+    """The database files six senators of 2023-2024 under chamber H, and
+    build_site_v2 corrects the seat from the bill's own printed line
+    (TS.seat_into) while build_exports.sponsors only merged -- so sponsors.csv
+    listed Donna Soucy, Jeb Bradley and four more as House members on 878 rows
+    of 443 bills whose pages say Senate, on the page that promises a download
+    and a page cannot disagree.
+
+    Both builders take both steps, and the download is built on a fixture:
+    2023 CACR 10's database row says H and its text prints "Sen. Soucy, Dist
+    18"; the current term keeps its roster's seat whatever the text says.
+
+    What this holds is that the two agree, not that the seat is right: 35
+    more rows of the six, on 15 bills with no printed seat seat_into can use
+    (see build_exports.sponsors), still say House on the page and here."""
+    here = Path(".").resolve()
+    for f in ("build_site_v2.py", "build_exports.py"):
+        src = (here / f).read_text(encoding="utf-8") if (here / f).exists() else ""
+        if not src:
+            return "skip", f"{f} not here"
+        for step in ("TS.merge_into(", "TS.seat_into("):
+            assert step in src, (f"{f} does not call {step[:-1]}, so its sponsors are "
+                                 "not the ones the other builder publishes")
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "data").mkdir()
+        (root / "out").mkdir()
+        w = lambda p, o: (root / p).write_text(json.dumps(o), encoding="utf-8")
+        w("data/bills.json", {"2023-2024": {"CACR10": {}}, "2025-2026": {"HB1": {}}})
+        w("data/sponsors.json", {
+            "2023-2024": {"CACR10": [{"member_id": "", "name": "Donna Soucy",
+                                      "label": "Donna Soucy (D)", "party": "D",
+                                      "chamber": "H", "prime": True,
+                                      "source": "bill status page"}]},
+            "2025-2026": {"HB1": [{"member_id": "8", "name": "Mark McConkey",
+                                   "label": "Mark McConkey (R)", "party": "R",
+                                   "chamber": "S", "prime": True,
+                                   "source": "sponsor file"}]}})
+        w("text_sponsors.json", {
+            "2023-2024": {"CACR10": [{"name": "Donna Soucy", "chamber": "S",
+                                      "county": "", "district": "18",
+                                      "as_printed": "Sen. Soucy, Dist 18"}]},
+            "2025-2026": {"HB1": [{"name": "Mark McConkey", "chamber": "H",
+                                   "county": "Carroll", "district": "8",
+                                   "as_printed": "Rep. McConkey, Carr. 8"}]}})
+        r = _run([sys.executable, "-c",
+                  "import sys; sys.path.insert(0, sys.argv[1]); "
+                  "from pathlib import Path; import build_exports as BE; "
+                  "BE.sponsors(Path('out'), 'data')", str(here)],
+                 cwd=root, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, (r.stderr or r.stdout)[-300:]
+        with (root / "out" / "sponsors.csv").open(encoding="utf-8", newline="") as fh:
+            got = {(x["term"], x["bill"]): x["chamber"] for x in csv.DictReader(fh)}
+        assert got.get(("2023-2024", "CACR10")) == "S", (
+            f"sponsors.csv puts Sen. Soucy in chamber {got.get(('2023-2024', 'CACR10'))!r}; "
+            "the bill prints \"Sen. Soucy, Dist 18\" and its page says Senate")
+        assert got.get(("2025-2026", "HB1")) == "S", (
+            "the current term's seat was taken from the text over its own roster")
+        return "ok", "both builders merge and seat; a 2023-2024 senator is S, the current term keeps its roster"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
 
 
 @check("data", "the Learn pages state the record's own figures, and none is left unfilled")

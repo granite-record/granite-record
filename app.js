@@ -1271,9 +1271,10 @@ function archivedNote(d){
   const P=s=>`<p class="note" style="margin:10px 0 0">${s} The bill's own
     record at the General Court is linked above.</p>`;
 
-  // The first year of the term. Roll calls are on record from 1999 and
-  // hearings on video from May 2020; before those, no such thing exists to
-  // fetch, and the page must not say it is merely missing.
+  // The first year of the term. The General Court's roll-call files begin in
+  // 1999, its online calendars in 1997 and its YouTube channels in May 2020;
+  // before those, the copy this site reads does not exist to fetch, and the
+  // page must not say it is merely missing.
   const y=parseInt(String(d.term||d.year||"").slice(0,4),10)||0;
   const and=xs=>xs.join(", ").replace(/, ([^,]*)$/," and $1");
   // A TERM'S SPONSORS ARRIVE A BILL AT A TIME, from the text the lane saves, so
@@ -1296,11 +1297,43 @@ function archivedNote(d){
   // The !c.docket branch is NOT dead code and must not be removed with it: it
   // is the state every backfill term passes through, between landing in
   // data/bills.json and having its docket narrated.
-  const before1999=(!c.votes&&y&&y<1999)?` No roll call from before 1999 is in
-    the General Court's own record of votes: RollCallHistory.txt and
-    RollCallSummary.txt, the files every named vote on this site is read from,
-    begin with the 1999 session. That is where the record starts, not where
-    this site has got to.`:"";
+  //
+  // THE FILES START IN 1999, NOT THE VOTES. The House Journal of 1997 prints
+  // its roll calls name by name, so "that is where the record starts" was
+  // false for every one of those 8,525 pages. What begins in 1999 is the
+  // General Court's roll-call files, and the sentence now says so.
+  const before1999=(!c.votes&&y&&y<1999)?` No roll call from before 1999 is
+    listed by name here: the General Court's roll-call files, RollCallHistory.txt
+    and RollCallSummary.txt, which every named vote on this site is read from,
+    begin with the 1999 session. The docket gives the tallies it recorded, and
+    the printed journals name who voted which way.`:"";
+
+  // WHERE THE WRITTEN REPORTS START, which is the same kind of boundary. The
+  // House's written committee reports on this site are read from its
+  // calendars, and the General Court's online calendars begin in 1997, so the
+  // 6,676 bills of 1989-1996 were told the reports were "not yet fetched" --
+  // a backlog that no fetch could clear. For those terms the docket's report
+  // lines are the record of what each committee recommended, and the page
+  // already shows them.
+  //
+  // THE HOUSE'S REPORTS, NOT EVERYONE'S. Every written report on an archived
+  // bill came from a House Calendar; the Senate's are read from the
+  // database, which holds 2025-2026 alone. And the docket's report lines
+  // (a COMM, COMMITTEE, MAJ or MIN REPORT that is not a conference's or an
+  // adoption) carry "(VOTE n-n)" on 93 to 96 per cent of the House's in each
+  // term of 1989-1996, but on none of the Senate's 3,601 of 1989-1994 --
+  // the one that does is a House report filed under S -- and on 510 of
+  // 1995-1996's 1,085. So "and its vote" was false of most Senate committees
+  // these pages name, and "the House committee's vote" would leave out the
+  // Senate's where the docket has it.
+  const before1997=(!c.reports&&y&&y<1997)?` The House committees' written
+    reports begin here with 1997, the first year of the General Court's online
+    calendars, which print them; the Senate committees' begin with 2025. For
+    this term the page gives each committee's recommendation as the docket
+    records it, and the committee's vote wherever the docket gives one.`:"";
+  // A bill that carries its own text does not need telling the text is
+  // elsewhere: 94 to 98 per cent of every archived term's bills have it.
+  const hasText=!!(((d.billtext||{}).body||"").trim());
 
   if(!c.docket){
     // WHAT IS HERE, THEN WHAT IS NOT. This branch told every bill of
@@ -1315,35 +1348,51 @@ function archivedNote(d){
     // made this "its roll calls and member by member".
     if(c.votes)have.push("each member's vote on its roll calls");
     if(hasSp)have.push("its sponsors");
-    if(c.reports)have.push("the committee's written report");
+    if(c.reports)have.push("the House committee's written report");
     const gaps=["the docket's full history"];
     if(!hasSp)gaps.push("the sponsors");
-    if(!c.reports)gaps.push("the written committee reports");
+    if(!c.reports&&y>=1997)gaps.push("the House committees' written reports");
     if(!c.votes&&y>=1999)gaps.push("the roll calls");
     if(!c.hearings)gaps.push("its hearings");
     return P(`This term is archived. Here: ${and(have)}. Not yet on this
-      site for it: ${and(gaps)}.${before1999}`);
+      site for it: ${and(gaps)}.${before1997}${before1999}`);
   }
 
   // Has a docket. What is missing beyond it is what the reader needs told.
   const gaps=[];
   if(!hasSp)gaps.push("the sponsors");
-  if(!c.reports)gaps.push("the written committee reports");
+  if(!c.reports&&y>=1997)gaps.push("the House committees' written reports");
   if(!c.votes&&y>=1999)gaps.push("the roll calls naming individual members");
   if(!c.video&&y>=2019)gaps.push("a recording of any hearing");
   // Both returns carry it, not just the one with gaps. A pre-1999 term whose
   // sponsors and reports have landed reaches the first of these, and "the
   // recorded votes are all here" is false for every term before 1999 --
   // which is the same wrong claim in the other direction.
-  if(!gaps.length)
-    return P(`This term is archived, but its record is close to complete: the
-      docket, the sponsors${c.votes?`, the committee reports and the recorded
-      votes`:` and the committee reports`} are all here. What a current term
-      adds is the bill's own text, which is linked rather than loaded.${
-      before1999}`);
+  //
+  // WHAT IS HERE, NAMED FROM THE FLAGS. This said "the docket, the sponsors
+  // and the committee reports are all here" whenever nothing was missing,
+  // which a term before 1997 now reaches with no written report on it at all.
+  //
+  // "CLOSE TO COMPLETE" ONLY WHERE IT IS. A term of 1989-1996 reaches here
+  // with no written report, no named vote and no recording, and was told its
+  // record was close to complete; it is told what is here instead. And the
+  // written reports are the House committees': no archived term has a
+  // Senate committee's.
+  if(!gaps.length){
+    const have=["the docket", "the sponsors"];
+    if(c.reports)have.push("the House committees' written reports");
+    if(c.votes)have.push("the recorded votes");
+    const lead=(c.reports&&c.votes)
+      ?`This term is archived, but its record is close to complete:
+      ${and(have)} are all here.`
+      :`This term is archived, and ${and(have)} are here.`;
+    return P(`${lead}${hasText?"":` What a current term adds is the
+      bill's own text, which is linked rather than loaded.`}${
+      before1997}${before1999}`);
+  }
   return P(`This term is archived, and its docket is here: every action the
     General Court recorded, and the committee's recommendation and the vote on
-    it. Not yet fetched for this term: ${and(gaps)}.${before1999}`);
+    it. Not yet fetched for this term: ${and(gaps)}.${before1997}${before1999}`);
 }
 
 // ===================================================== the bill's own facts ==
@@ -1774,9 +1823,10 @@ function renderHearings(b,d){
       // the previous bill's roll call and can be half an hour of other
       // business earlier, so it is only a fallback -- and ten minutes before
       // the vote is a worse fallback still, just a less wrong one.
-      // floor_stated has a start and an end the chair said, and no roll call
-      // at all. Everything below is the same except what may be claimed about
-      // the end: "timed to the second" is true of a roll call clock and false
+      // floor_stated has a start the clerk read (the committee report) and an
+      // end the chair said (the result), and no roll call at all. Everything
+      // below is the same except what may be claimed about the end: "timed
+      // to the second" is true of a roll call clock and false
       // of a caption line, and the difference is the whole point of the
       // wording on this site.
       placed=true;
@@ -1838,8 +1888,14 @@ function renderHearings(b,d){
       +`<p class="note" style="margin-top:8px">A voice or division vote leaves no
       timestamp in the record, so there is nothing to point at within the
       sitting. The whole session is here.</p>`;
-    else if(s.state==="prestream")inner=`<div class="vbox"><p><b>No recording exists.</b>
-      Hearings were not livestreamed before 2020, so the written record is all there is.</p></div>`;
+    // WHERE THIS SITE'S RECORDINGS BEGIN, not where recording began. The
+    // House Calendars of 2013-2019 announce hearings streamed live, and none
+    // of those is on either YouTube channel, so "no recording exists" and
+    // "not livestreamed before 2020" were both claims the record contradicts.
+    // The month is about_figures.STREAM_START_WORDS, and preflight holds the
+    // two to each other.
+    else if(s.state==="prestream")inner=`<div class="vbox"><p><b>No recording to link.</b>
+      The General Court&rsquo;s YouTube channels, where this site finds its recordings, begin in May 2020, and this sitting was earlier.</p></div>`;
     // Defensive: if a proceeding carries a video id but an unrecognised state,
     // still offer the recording. Saying "no recording" when one is right there
     // is the worst possible failure -- it hides working data and looks like the

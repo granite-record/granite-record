@@ -42,11 +42,17 @@ import json
 import re
 from pathlib import Path
 
-# The date the streams begin. build_site_v2.station_for_proceeding splits
-# "no recording exists" from "no recording was matched" on it, and the About
-# page has to describe the same boundary in words.
-STREAM_START = "2020-03-01"
-STREAM_START_WORDS = "March 2020"
+# The date the General Court's YouTube channels begin: the House's first
+# upload is of 14 May 2020 and the Senate's of 29 May, as
+# channel_index_full.json records them. build_site_v2 imports this rather than
+# repeating it, and splits "no recording to link: the sitting is older than
+# the channels" from "no recording matched" on it; the About page and app.js
+# say the same boundary in words. It is where the recordings this site links
+# begin, not a claim that nothing was ever streamed before it -- the House
+# Calendars of 2013-2019 announce live streams, and none of those recordings
+# is on either channel.
+STREAM_START = "2020-05-14"
+STREAM_START_WORDS = "May 2020"
 
 
 def _load(p, default=None):
@@ -107,8 +113,8 @@ def figures(site="site", root="."):
             "recorded": _n(placed + rec_only),
             # Of the recorded ones, the share that lands on the moment. A
             # percentage of the WHOLE record would be a different and much
-            # less useful claim -- three quarters of the record is older than
-            # streaming and no method can place it.
+            # less useful claim -- most of the record is older than streaming
+            # and no method can place it.
             "placed_pct": (f"{100 * placed / (placed + rec_only):.0f}%"
                            if (placed + rec_only) else "&mdash;"),
             "prestream": _n(by.get("prestream") or 0),
