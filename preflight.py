@@ -4388,6 +4388,12 @@ def _session_as_of_dates(N, V):
         assert ("S", "2004-05-13") in [(b, d) for b, d, _ in got["HB369"]], (
             "the Senate's accession was dated before the House request it "
             f"answered: {got['HB369']}")
+        # Put back on its own day, it must also go back to its place in it:
+        # the House asked at 10:54 AM, the Senate acceded at 4:39 PM.
+        assert [(b, d) for b, d, _ in got["HB369"]] == [
+            ("S", "2004-05-06"), ("H", "2004-05-13"), ("S", "2004-05-13")], (
+            "the Senate's accession, put back on 13 May, still comes before "
+            f"the House request it answered that morning: {got['HB369']}")
         assert [d for _, d, _ in got["HB189"]] == ["2001-05-09"], (
             f"a special order's date was read as the day it was done: {got['HB189']}")
         return "ok", ("'done during' dates a veto vote; a day in recess, an "

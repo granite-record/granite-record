@@ -1433,6 +1433,14 @@ def hold_in_order(evs):
     in recess of, not the day it acted. Where any action of the bill falls
     after the as-of date and by the day the row was entered, the row keeps
     the day it was entered.
+
+    AND ITS PLACE IN THAT DAY. A row put back keeps the midnight of the day
+    it was entered, and so ties every other row of that day; a stable sort
+    would leave it where the as-of date had put it, ahead of them all -- the
+    Senate's accession of 4:39 PM before the House's request of 10:54 AM, on
+    fourteen bills of 2004. Ties are broken by the order the rows were
+    entered (ev["_row"], set by build), which is the order they had before
+    any as-of date moved one.
     """
     back = False
     for ev in evs:
@@ -1450,7 +1458,9 @@ def hold_in_order(evs):
             back = True
         ev.pop("_stamp_date", None)
     if back:
-        evs.sort(key=lambda e: e["when"])
+        evs.sort(key=lambda e: (e["when"], e.get("_row", 0)))
+    for ev in evs:
+        ev.pop("_row", None)
     return evs
 
 
@@ -1490,8 +1500,11 @@ def build(bill, rows):
             ev["date"] = fixed
         clamp_year(ev, r.get("session") or session)
         ev["when"] = event_date(ev, r["created"])
+        # The order it was entered in, for hold_in_order to break a tie by;
+        # it takes the key off again.
+        ev["_row"] = len(evs)
         evs.append(ev)
-    evs.sort(key=lambda e: e["when"])
+    evs.sort(key=lambda e: (e["when"], e["_row"]))
     hold_in_order(evs)
 
     # Which committee held the bill when each thing happened. Only the referral
