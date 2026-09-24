@@ -2888,10 +2888,12 @@ J_YES_WORD = re.compile(r"\b(?:adopted|adpoted|adotped|passed|overrid+en|concurr
 J_NO_WORD = re.compile(r"\b(?:failed|fails|lost|defeated|lacking|not\s+adopted|"
                        r"sustained|overturned)\b", re.I)
 # A tally, however the clerk wrote it: "RC 217-156", "RC(15-8)", "RC 16Y-8N",
-# "DIV (166-103)", "DV 183-163", "Division 13Y-11N", "ROLL CALL: YEAS 5 NAYS 17".
+# "DIV (166-103)", "DV 183-163", "Division 13Y-11N", "ROLL CALL: YEAS 5 NAYS
+# 17", "ROLL CALL VOTE: YEA-13 NAYS-11" (HB 377 of 1989).
 J_TALLY = re.compile(
-    r"\b(?P<k>RC|DIV|DV|Division|Roll\s*Call)\b\.?\s*[:,]?\s*\(?\s*(?:YEAS:?\s*)?"
-    r"(?P<y>\d{1,3})\s*[Yy]?\s*(?:[-–]|,?\s*NAYS:?)\s*(?P<n>\d{1,3})(?!\d)", re.I)
+    r"\b(?P<k>RC|DIV|DV|Division|Roll\s*Call)\b(?:\s+vote)?\.?\s*[:,]?\s*\(?\s*"
+    r"(?:YEAS?\s*[-:]?\s*)?(?P<y>\d{1,3})\s*[Yy]?\s*(?:[-–]|,?\s*NAYS?\s*[-:]?)\s*"
+    r"(?P<n>\d{1,3})(?!\d)", re.I)
 J_RC_BARE = re.compile(r"\bRC\b|\bRoll\s*Call\b", re.I)
 # "VV", "2/3VV", "MA 2/3 VV". Upper case only: it is a code, not a word.
 J_VOICE = re.compile(r"(?<![A-Za-z])VV\b|\bvoice\s+vote\b")
