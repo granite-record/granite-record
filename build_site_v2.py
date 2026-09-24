@@ -3731,8 +3731,18 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # the URL of that journal or calendar where we have it. That is the
             # official record of the line being displayed, and it is the thing
             # that makes a claim on this site checkable rather than trusted.
+            # A DATE A PERSON CORRECTED (docket_corrections.json) is shown on
+            # the day it happened, beside the clerk's line, which still says
+            # the other date -- so the line carries why, in plain words.
             "events": [{"date": e["date"], "text": e.get("raw", ""),
                         "routine": is_routine(e.get("raw", "")),
+                        **({"date_as_recorded": e["date_as_recorded"],
+                            "date_note": e.get("date_note") or (
+                                "The General Court's online docket gives "
+                                "another date for this; the journal and the "
+                                "other records of the sitting place it on the "
+                                "date shown.")}
+                           if e.get("date_as_recorded") else {}),
                         **hearing_testimony(
                             e, tdb, testimony.get(bid) if own else None),
                         **_cite(e, sources, (e.get("date") or "")[:4])}

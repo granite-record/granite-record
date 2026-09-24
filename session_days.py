@@ -535,6 +535,116 @@ def one(body, date, path=NARRATIVES):
     return load(path).get((body.strip().upper(), date))
 
 
+# ------------------------------------------------- a sitting that never was --
+#
+# ONE MISTYPED DATE PUBLISHES A WHOLE SITTING. Every (chamber, date) that
+# carries a floor action becomes a page, so "Reconsider HB1491 ... MF VV
+# 09/19/2026 HJ 16 P. 48", written at 2:27 PM on 19 August four pages after
+# that afternoon's veto vote, built "The House, Saturday 19 September 2026"
+# and linked it as the sitting after veto day. Eleven such pages were live.
+# docket_corrections.json puts the rows right; this is how the next one is
+# noticed rather than published.
+
+def _nth_weekday(y, m, wd, n):
+    d = _date(y, m, 1)
+    return d.fromordinal(d.toordinal() + (wd - d.weekday()) % 7 + 7 * (n - 1))
+
+
+def holidays(year):
+    """The state's legal holidays in a year: the fixed ones, and Civil Rights
+    Day, Presidents Day, Memorial Day, Labor Day and Thanksgiving with the day
+    after it. Neither chamber has sat on one in the record."""
+    last_may = _date(year, 5, 31)
+    thanks = _nth_weekday(year, 11, 3, 4)
+    return {_date(year, 1, 1), _nth_weekday(year, 1, 0, 3),
+            _nth_weekday(year, 2, 0, 3),
+            last_may.fromordinal(last_may.toordinal() - last_may.weekday()),
+            _date(year, 7, 4), _nth_weekday(year, 9, 0, 1), _date(year, 11, 11),
+            thanks, thanks.fromordinal(thanks.toordinal() + 1),
+            _date(year, 12, 25)}
+
+
+def journal_series(date):
+    """The year whose journal numbering a sitting's date belongs to. Numbers
+    restart each session, and the December organization day opens the NEXT
+    year's: journals/2023/HJ 01 December 7, 2022.txt."""
+    return str(int(date[:4]) + 1) if date[5:7] == "12" else date[:4]
+
+
+JOURNAL_NO = re.compile(r"^([HS])J\s*(\d+)$")
+
+
+def read_rollcall_dates(paths):
+    """{body: {iso date}} on which that chamber took a roll call, from
+    RollCallSummary files. The voting system dates these, not the docket --
+    with one caveat measured on 2020-21, when the House sat away from the
+    State House and its roll calls were dated a day late."""
+    out = collections.defaultdict(set)
+    for f in paths:
+        with open(f, encoding="utf-8-sig", errors="replace") as fh:
+            for line in fh:
+                p = line.split("|")
+                m = (re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", p[3].strip())
+                     if len(p) > 3 else None)
+                if m:
+                    out[p[1].strip().upper()].add(
+                        f"{m.group(3)}-{int(m.group(1)):02d}-{int(m.group(2)):02d}")
+    return out
+
+
+def doubtful(days, today=None, rollcall_dates=None):
+    """{(body, date): [reason, ...]} for the sitting days the record itself
+    casts doubt on. A day is doubtful when it
+
+      - is after `today` (the build date);
+      - falls on a Saturday, a Sunday or a state holiday;
+      - or when every one of its actions that cites a journal cites one whose
+        other actions sit, three to one or more, on a single other date --
+        and the chamber took no roll call that day.
+
+    The last is the rule that caught the typed-wrong dates: the HB 1491 row
+    cites HJ 16, and the other 88 House rows citing HJ 16 of 2026 are dated
+    19 August. It is a flag for a person, not a verdict -- a day can be
+    doubtful and real -- and it cannot see a slipped year (01/08/2019 for
+    01/09/2018), which only the corrections file catches.
+    """
+    today = today or _date.today()
+    rc = rollcall_dates or {}
+    by_cite = collections.defaultdict(collections.Counter)
+    for (body, date), d in days.items():
+        for i in d.items:
+            m = JOURNAL_NO.match(i.cite or "")
+            if m:
+                by_cite[(body, journal_series(date), int(m.group(2)))][date] += 1
+    out = {}
+    for (body, date), d in sorted(days.items()):
+        x = _date.fromisoformat(date)
+        why = []
+        if x > today:
+            why.append("after the build date")
+        if x.weekday() >= 5:
+            why.append(DAYNAME[x.weekday()])
+        if x in holidays(x.year):
+            why.append("a state holiday")
+        cited = [JOURNAL_NO.match(i.cite or "") for i in d.items]
+        cited = [m for m in cited if m]
+        if cited and date not in rc.get(body, ()):
+            homes = set()
+            for m in cited:
+                c = by_cite[(body, journal_series(date), int(m.group(2)))]
+                top, tn = max(((k, v) for k, v in c.items() if k != date),
+                              key=lambda kv: (kv[1], kv[0]), default=(None, 0))
+                homes.add(top if top and tn >= 3 and c[date] * 3 <= tn else None)
+            if None not in homes:
+                why.append("its journal belongs to " + ", ".join(sorted(homes)))
+        if why:
+            out[(body, date)] = why
+    return out
+
+
+DAYNAME = "Monday Tuesday Wednesday Thursday Friday Saturday Sunday".split()
+
+
 def main():
     import argparse
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[1])

@@ -48,6 +48,7 @@ which this links to.
 
 import argparse
 import collections
+import datetime
 import json
 import re
 from pathlib import Path
@@ -592,12 +593,24 @@ def main():
                     help="H or S. A Senate page carries the record only: its "
                          "journal records no speakers")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--prune", action="store_true",
+                    help=f"remove more than {PRUNE_CEILING} pages of sittings "
+                         "the record no longer holds; without it a larger "
+                         "removal is refused")
     a = ap.parse_args()
     site, base = Path(a.site), a.base.rstrip("/")
     body = a.body.strip().upper()
 
     days = session_days.load()
-    mine = sorted(k for k in days if k[0] == body)
+    # A SITTING CANNOT BE AFTER THE BUILD. The Senate enters floor rows up to
+    # ten days before the sitting they belong to, and a mistyped month put a
+    # House sitting a month ahead of veto day; neither is a day to publish.
+    today = datetime.date.today().isoformat()
+    ahead = sorted(k for k in days if k[0] == body and k[1] > today)
+    mine = sorted(k for k in days if k[0] == body and k[1] <= today)
+    if ahead:
+        print(f"  {len(ahead)} {CHAMBER[body]} day(s) after today not built: "
+              + ", ".join(k[1] for k in ahead))
     # SILENCE IS NOT SUCCESS: no days is a Calendar linking at nothing, and a
     # build that said so by printing a zero.
     assert mine, f"no {CHAMBER.get(body, body)} sitting days in narratives.json"
@@ -669,15 +682,22 @@ def main():
         urls.append(base + S.canon(path))
         wrote += 1
 
+    gone = [] if a.limit else prune(out_dir, {k[1] for k in mine}, a.prune)
 
     sm = site / "sitemap.xml"
     if sm.exists():
         text = sm.read_text(encoding="utf-8")
+        # build_bill_pages rewrites the sitemap from scratch earlier in
+        # build_all; this is for a run of this step on its own.
+        for g in gone:
+            text = re.sub(r"<url><loc>[^<]*session/" + body + "/" + re.escape(g)
+                          + r"(?:\.html)?</loc></url>\n?", "", text)
         add = "".join(f"<url><loc>{S.E(u)}</loc></url>\n" for u in urls
                       if S.E(u) not in text)
-        if add:
+        if add or gone:
             sm.write_text(text.replace("</urlset>", add + "</urlset>"),
                           encoding="utf-8")
+        if add:
             print(f"  {len(add.splitlines())} added to sitemap.xml")
 
     print(f"  {wrote:,} {CHAMBER[body]} sitting days -> site/session/{body}/")
@@ -692,6 +712,43 @@ def main():
         print(f"    {linked:,} of {named:,} speaker mentions resolved to a "
               f"member page ({100.0 * linked / named:.0f}%)")
     return 0
+
+
+# A DAY THAT STOPPED EXISTING KEEPS ITS PAGE unless this removes it. This step
+# owns site/session/<body>/ and writes a page per sitting; a sitting that a
+# corrected date moved away from -- "The House, Saturday 19 September 2026" --
+# would otherwise stay on disk, stay deployed and stay linkable from the
+# calendar, which reads the pages off the disk.
+#
+# AND A WRITER RUN ON A SUBSET DESTROYS THE REST, in reverse: a narratives.json
+# that held only some terms would take every other term's pages with it. So
+# more than PRUNE_CEILING removals at once is refused -- nothing is removed and
+# the step fails -- unless --prune says the person meant it. The first run
+# after the corrections of 24 September 2026 removes 8 House pages and 5
+# Senate ones.
+PRUNE_CEILING = 25
+
+
+def prune(out_dir, keep, allowed=False):
+    """Remove the pages in out_dir whose date is not in `keep`. Returns the
+    dates removed; refuses (SystemExit) past the ceiling without `allowed`."""
+    stale = sorted(f for f in out_dir.glob("*.html")
+                   if re.fullmatch(r"\d{4}-\d\d-\d\d", f.stem)
+                   and f.stem not in keep)
+    if len(stale) > PRUNE_CEILING and not allowed:
+        raise SystemExit(
+            f"REFUSED: {len(stale)} pages in {out_dir} are for sittings "
+            f"narratives.json does not hold ({', '.join(f.stem for f in stale[:6])}"
+            f"{', ...' if len(stale) > 6 else ''}). More than {PRUNE_CEILING} "
+            "at once looks like a narratives.json missing whole terms, not a "
+            "corrected date; nothing was removed. Rebuild the narratives, or "
+            "pass --prune if these sittings really are gone.")
+    for f in stale:
+        f.unlink()
+    if stale:
+        print(f"  {len(stale)} page(s) removed for sittings the record no "
+              f"longer holds: {', '.join(f.stem for f in stale)}")
+    return [f.stem for f in stale]
 
 
 def _lead(day, narrative, date, body="H"):

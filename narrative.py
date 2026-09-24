@@ -977,6 +977,90 @@ STAGE_LABEL = {
 TESTIMONY = {}
 TERM = ""
 
+# A DATE THE CLERK TYPED WRONG, put right by a person, with the evidence beside
+# it. docket_corrections.json is a hand-made file in the family of
+# member_corrections.json: no generator writes it, this is its only reader,
+# and an entry is applied only while the docket row still says what the entry
+# says it says. "Reconsider HB1491 (Rep. N. Germana): MF VV 09/19/2026 HJ 16
+# P. 48" was written at 2:27 PM on 19 August, four journal pages after that
+# afternoon's veto vote, and it published a House sitting on a Saturday in
+# September that never happened.
+CORRECTIONS_FILE = "docket_corrections.json"
+CORRECTIONS = []
+CORRECTED = set()
+SIBLINGS = []
+
+
+def _squash(s):
+    """Whitespace collapsed, so a row the clerk re-spaced still matches."""
+    return re.sub(r"\s+", " ", str(s or "")).strip()
+
+
+def load_corrections(path):
+    """The entries of docket_corrections.json, or [] where there is none."""
+    p = Path(path) if path else None
+    if not p or not p.exists():
+        return []
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    return [e for e in (doc.get("dates") or []) if isinstance(e, dict)
+            and e.get("source_says") and e.get("corrected_to")]
+
+
+def _iso(mdy):
+    try:
+        return datetime.strptime(mdy, "%m/%d/%Y").strftime("%Y-%m-%d")
+    except (TypeError, ValueError):
+        return ""
+
+
+def corrected_date(r, bill):
+    """(corrected mm/dd/yyyy, the entry) for this docket row, or (None, None).
+
+    Matched on session, bill, chamber and the row's own text, whitespace
+    collapsed on both sides."""
+    desc = _squash(r.get("desc"))
+    for i, e in enumerate(CORRECTIONS):
+        if (str(e.get("bill", "")).upper() == bill.upper()
+                and str(e.get("body", "")).upper() == str(r.get("body", "")).upper()
+                and str(e.get("session")) == str(r.get("session"))
+                and _squash(e["source_says"]) == desc):
+            CORRECTED.add(i)
+            y, m, d = e["corrected_to"].split("-")
+            return f"{m}/{d}/{y}", e
+    return None, None
+
+
+def _sibling_rows(bill, rows):
+    """Rows no entry corrects that state an entry's mistyped date and cite
+    its journal. SB 152's committee amendment carried the same Sunday date as
+    its floor vote beside it and was missed until a second reading; a row
+    like that is a correction nobody has written yet."""
+    out = []
+    for e in CORRECTIONS:
+        if str(e.get("bill", "")).upper() != bill.upper():
+            continue
+        try:
+            y, m, d = str(e.get("stated_date") or "").split("-")
+        except ValueError:
+            continue
+        stated = re.compile(rf"\b0?{int(m)}/0?{int(d)}/{y}\b")
+        cite = cite_of(e.get("source_says"))[0]
+        for r in rows:
+            # An action the pages date: not a note such as "Removed from
+            # Consent (Reps. ...)", which names the day it was noted.
+            if classify(r.get("desc") or "")["_type"] not in (
+                    "floor", "veto_override", "amendment", "enrolled"):
+                continue
+            if (str(r.get("session")) == str(e.get("session"))
+                    and str(r.get("body", "")).upper() == str(e.get("body", "")).upper()
+                    and stated.search(r.get("desc") or "")
+                    and (not cite or cite_of(r.get("desc"))[0] == cite)
+                    and not any(_squash(x["source_says"]) == _squash(r.get("desc"))
+                                for x in CORRECTIONS
+                                if str(x.get("bill", "")).upper() == bill.upper())):
+                out.append((bill, _squash(r.get("desc"))))
+    return sorted(set(out))
+
 
 def signins(bill, date):
     """", with online testimony at 55 signed in support, 140 in opposition
@@ -1336,8 +1420,44 @@ def describe(ev, body, seen_intro=False):
     return None
 
 
+HELD_IN_ORDER = ("floor", "veto_override", "amendment", "enrolled", "governor")
+
+
+def hold_in_order(evs):
+    """An as-of date (docket_vocab.as_of) may not move an action ahead of one
+    it followed. evs is sorted; it is re-sorted if anything is put back.
+
+    The clerk's "[05/06/04]" on "Senator Peterson Accede to House Request for
+    C of C", entered on 13 May 2004, would have dated the Senate's answer six
+    days before the House's request -- the date is the sitting the Senate was
+    in recess of, not the day it acted. Where any action of the bill falls
+    after the as-of date and by the day the row was entered, the row keeps
+    the day it was entered.
+    """
+    back = False
+    for ev in evs:
+        stamp = ev.get("_stamp_date")
+        if not stamp:
+            continue
+        try:
+            entered = datetime.strptime(stamp, "%m/%d/%Y")
+        except ValueError:
+            continue
+        if any(o is not ev and o.get("_type") in HELD_IN_ORDER
+               and not o.get("cancelled") and ev["when"] < o["when"] <= entered
+               for o in evs):
+            ev["date"], ev["when"] = stamp, entered
+            back = True
+        ev.pop("_stamp_date", None)
+    if back:
+        evs.sort(key=lambda e: e["when"])
+    return evs
+
+
 def build(bill, rows):
     rows = sorted(rows, key=lambda r: r["created"])
+    if CORRECTIONS:
+        SIBLINGS.extend(_sibling_rows(bill, rows))
     # A DATABASE-ERA BILL IS READ IN ITS OWN DECADE'S VOCABULARY. The dump
     # covers 1989-2016, whose lines abbreviate almost everything and date
     # almost nothing; docket_vocab reads those and returns events in exactly
@@ -1359,10 +1479,20 @@ def build(bill, rows):
         ev["body"] = r["body"]
         ev["cancelled"] = "CANCELLED" in r["flags"]
         ev["recessed"] = "RECESSED" in r["flags"]
+        fixed, entry = corrected_date(r, bill) if CORRECTIONS else (None, None)
+        if fixed:
+            # The docket's own date is kept beside the corrected one: the
+            # bill page shows the clerk's line verbatim, and that line still
+            # carries the date the docket gives.
+            ev["date_as_recorded"] = _iso(ev.get("date")) or (
+                entry.get("stated_date") or "")
+            ev["date_note"] = (entry.get("note") or "").strip()
+            ev["date"] = fixed
         clamp_year(ev, r.get("session") or session)
         ev["when"] = event_date(ev, r["created"])
         evs.append(ev)
     evs.sort(key=lambda e: e["when"])
+    hold_in_order(evs)
 
     # Which committee held the bill when each thing happened. Only the referral
     # line names one, so it is carried forward until the next referral -- the
@@ -1527,6 +1657,11 @@ def build(bill, rows):
                     # one: a hearing cites the calendar that noticed it, a
                     # floor vote the journal page that recorded it.
                     "cite": e.get("cite", ""), "cite_page": e.get("cite_page", ""),
+                    # Where a person corrected the date (docket_corrections
+                    # .json), the date the docket itself gives, and why.
+                    **({"date_as_recorded": e["date_as_recorded"],
+                        "date_note": e.get("date_note", "")}
+                       if e.get("date_as_recorded") else {}),
                     **({**_floor_fields(e),
                         "motion": (e.get("motion") or "").upper(),
                         "vote_kind": (e.get("vote") or "").upper(),
@@ -1568,6 +1703,36 @@ def build(bill, rows):
     }
 
 
+def report_corrections(results):
+    """Say what docket_corrections.json did to this run, and what it did not.
+
+    A CORRECTION THAT MATCHES NOTHING HAS STOPPED WORKING -- the clerk fixed
+    or re-worded the row upstream -- and the mistyped date it was holding back
+    is published again, so it is reported rather than passed over. Only this
+    run's terms are judged: an entry for another term is not this docket's to
+    match. Returns (applied, stale) as lists of entries.
+    """
+    if not CORRECTIONS:
+        return [], []
+    mine = [i for i, e in enumerate(CORRECTIONS)
+            if str(e.get("bill", "")).upper() in {
+                b.upper() for b in results.get(
+                    P.term_of(str(e.get("session", ""))), {})}]
+    hit = [CORRECTIONS[i] for i in mine if i in CORRECTED]
+    stale = [CORRECTIONS[i] for i in mine if i not in CORRECTED]
+    if hit:
+        print(f"  docket_corrections.json: {len(hit)} docket date(s) corrected")
+    for e in stale:
+        print(f"  ! docket_corrections.json: {e.get('bill')} of "
+              f"{e.get('session')} matched no docket row and was NOT applied; "
+              f"the row no longer reads {_squash(e.get('source_says'))!r}")
+    for bill, desc in SIBLINGS:
+        print(f"  ! docket_corrections.json: {bill} has another row with a "
+              f"corrected entry's date and journal and no entry of its own: "
+              f"{desc!r}")
+    return hit, stale
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--docket", default="Docket.txt")
@@ -1580,10 +1745,14 @@ def main():
     ap.add_argument("--testimony", default="testimony_db.json",
                     help="sign-in counts, so a public hearing says how many "
                          "signed in and on which side; skipped if not there")
+    ap.add_argument("--corrections", default=CORRECTIONS_FILE,
+                    help="docket dates a person has corrected, with the "
+                         "evidence; hand-made, and skipped if not there")
     a = ap.parse_args()
 
-    global MEMBERS, TESTIMONY
+    global MEMBERS, TESTIMONY, CORRECTIONS
     MEMBERS = load_members(a.members)
+    CORRECTIONS = load_corrections(a.corrections)
     try:
         TESTIMONY = json.loads(Path(a.testimony).read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -1602,6 +1771,7 @@ def main():
         TERM = P.term_of(rows[0].get("session", ""))
         results[TERM][b] = build(b, rows)
     results = dict(results)
+    report_corrections(results)
     n_sign = sum(1 for byb in results.values() for r in byb.values()
                  if "online testimony at" in (r["narrative"] or ""))
     print(f"  {n_sign:,} bills say how many signed in at a hearing"

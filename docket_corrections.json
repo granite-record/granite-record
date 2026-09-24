@@ -1,0 +1,426 @@
+{
+  "_whose": "This file belongs to the person who runs Granite Record, like member_corrections.json and place_corrections.json. Claude drafted the 24 entries below on 24 September 2026 for that person's review: 18 from the phantom-sitting investigation of 23 September, and 6 more where the House Journal and the roll call agree with each other against the docket. narrative.py applies every entry until the person removes it. Read them; the file is yours.",
+
+  "_what": "Dates the General Court's docket states wrongly, corrected by a person, with the evidence for each correction beside it. This file is edited by hand. No generator writes it, and preflight fails if any build_* or fetch_* script opens it for writing.",
+
+  "_why": "A floor action's date decides which sitting it belongs to, and a sitting page is built for every date that carries one. A single mistyped date therefore publishes a sitting that never happened -- 'The House, Saturday 19 September 2026' -- and takes the action off the day it did happen. A correction is made only where the record settles it and nothing points the other way: the journal the row cites, the other rows that cite the same journal, the time the row was written, and where one exists the roll call's own timestamp, which comes from the voting system rather than the docket.",
+
+  "_how": "narrative.py is the only reader. It matches an entry on session (the docket's first column), bill, body and the text of the docket row (source_says), with runs of spaces collapsed on both sides; uses corrected_to as the event's date; and keeps the docket's own date beside it as date_as_recorded, with 'note' shown under the docket line on the bill's page. An entry whose row no longer reads as source_says is reported by narrative.py and NOT applied, and preflight fails on it while that term's docket is on disk: it means the General Court has changed the row and this file is now the thing that is stale. narrative.py also warns about any row of the same bill that carries an entry's mistyped date and journal but has no entry of its own.",
+
+  "_not_for": "Business a chamber did while standing in recess of an earlier sitting (HJ 14 of 2024 prints non-concurrences of 24, 28 and 29 May under the 23 May sitting), dispositions under a joint rule, and database-era rows dated by the moment they were entered. Those are not typing errors and are left for the person to decide; preflight lists them as known doubtful days.",
+
+  "dates": [
+    {
+      "session": "2026",
+      "bill": "HB1491",
+      "body": "H",
+      "row_written": "2026-08-19 14:27:49",
+      "source_says": "Reconsider HB1491 (Rep. N. Germana): MF VV 09/19/2026  HJ 16  P. 48",
+      "stated_date": "2026-09-19",
+      "corrected_to": "2026-08-19",
+      "why": "A month slip: 09 for 08. The row was written at 2:27 PM on 19 August, 24 minutes after the same bill's veto vote, and cites House Journal 16 page 48, four pages after that vote at page 44.",
+      "evidence": [
+        "Docket.txt line 25145: '2026|2397|8/19/2026 2:27:49 PM|HB1491|H|Reconsider HB1491 (Rep. N. Germana): MF VV 09/19/2026  HJ 16  P. 48'; the veto row 'Veto Sustained 08/19/2026: RC 160-148 ... HJ 16 P. 44' was written at 2:03:51 PM",
+        "88 of the 89 House rows of 2026 that cite HJ 16 are dated 08/19/2026, among them 61 'Died on Table, Session ended 08/19/2026 HJ 16' rows: the clerk's own statement that the session ended on 19 August",
+        "House Session (08/19/2026) is on the House channel (channel_index_full.json); no House recording for 19 September 2026",
+        "19 September 2026 is a Saturday, after the last House sitting on record"
+      ],
+      "note": "The General Court's online docket dates this 19 September 2026, a Saturday when the House did not meet. The House Journal for 19 August 2026 records it on page 48, and the docket entry was made that afternoon, so it is shown on 19 August.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2026",
+      "bill": "SB533",
+      "body": "S",
+      "row_written": "2026-02-19 13:37:16",
+      "source_says": "Inexpedient to Legislate, RC 16Y-8N, MA === BILL KILLED ===; 02/16/2026;  SJ 4",
+      "stated_date": "2026-02-16",
+      "corrected_to": "2026-02-19",
+      "why": "A day slip: 16 for 19. 16 February 2026 was Presidents Day; the roll call the row records was taken on 19 February.",
+      "evidence": [
+        "RollCallSummary.txt line 357: '2026|S|28|2/19/2026 12:00:00 AM|SB533|16|8|...|Inexpedient to Legislate'",
+        "Docket.txt line 17596, written 2/19/2026 1:37:16 PM",
+        "cites SJ 4; 80 other Senate rows cite SJ 4, all dated 2026-02-19; journals_senate/2026/SJ 04 February 19, 2026.txt prints SB 533",
+        "Senate Session (02/19/2026) on the Senate channel"
+      ],
+      "note": "The General Court's online docket dates this 16 February 2026, Presidents Day. The Senate's roll call on it was taken on 19 February 2026 and the Senate Journal for that day prints it, so it is shown on 19 February.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2026",
+      "bill": "HB232",
+      "body": "H",
+      "row_written": "2026-05-21 13:30:10",
+      "source_says": "House Concurs with Senate Amendment 2026-1624s (Rep. Lynn): MA RC 179-154 05/20/2026  HJ 14  P. 16",
+      "stated_date": "2026-05-20",
+      "corrected_to": "2026-05-21",
+      "why": "A day slip: 20 for 21, on three rows written during the 21 May sitting. The House did not sit on 20 May.",
+      "evidence": [
+        "RollCallSummary.txt line 288: '2026|H|288|5/21/2026 1:29:53 PM|HB232|179|154|...|Concur'",
+        "Docket.txt line 23617, written 5/21/2026 1:30:10 PM, seventeen seconds after that roll call",
+        "cites HJ 14; 63 other House rows cite HJ 14, all dated 2026-05-21; journals/2026/HJ 14 May 21, 2026.txt prints HB 232",
+        "House Session (05/21/2026) recorded; none for 20 May"
+      ],
+      "note": "The General Court's online docket dates this 20 May 2026, a day the House did not meet. The roll call on it was taken on 21 May 2026 and the House Journal for that day prints it, so it is shown on 21 May.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2026",
+      "bill": "HB1337",
+      "body": "H",
+      "row_written": "2026-05-21 11:37:09",
+      "source_says": "House Concurs with Senate Amendment 2026-1867s (Rep. W. MacDonald): MA VV 05/20/2026  HJ 14  P. 11",
+      "stated_date": "2026-05-20",
+      "corrected_to": "2026-05-21",
+      "why": "A day slip: 20 for 21, on three rows written during the 21 May sitting. The House did not sit on 20 May.",
+      "evidence": [
+        "Docket.txt line 23608, written 5/21/2026 11:37:09 AM",
+        "cites HJ 14 page 11; 63 other House rows cite HJ 14, all dated 2026-05-21; journals/2026/HJ 14 May 21, 2026.txt prints HB 1337",
+        "House Session (05/21/2026) recorded; none for 20 May",
+        "a voice vote, so no roll call to cross-check; HB 232's at page 16 of the same journal was taken on 5/21/2026"
+      ],
+      "note": "The General Court's online docket dates this 20 May 2026, a day the House did not meet. The House Journal for 21 May 2026 prints it on page 11, and the docket entry was made that morning, so it is shown on 21 May.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2026",
+      "bill": "HB1723",
+      "body": "H",
+      "row_written": "2026-05-21 14:05:08",
+      "source_says": "House Concurs with Senate Amendment 2026-1811s and 2026-1307s (Rep. Vose): MA DV 186-153 05/20/2026  HJ 14  P. 22",
+      "stated_date": "2026-05-20",
+      "corrected_to": "2026-05-21",
+      "why": "A day slip: 20 for 21, on three rows written during the 21 May sitting. The House did not sit on 20 May.",
+      "evidence": [
+        "Docket.txt line 23636, written 5/21/2026 2:05:08 PM",
+        "cites HJ 14 page 22; 63 other House rows cite HJ 14, all dated 2026-05-21; journals/2026/HJ 14 May 21, 2026.txt prints HB 1723",
+        "House Session (05/21/2026) recorded; none for 20 May",
+        "a division, so no roll call to cross-check"
+      ],
+      "note": "The General Court's online docket dates this 20 May 2026, a day the House did not meet. The House Journal for 21 May 2026 prints it on page 22, and the docket entry was made that afternoon, so it is shown on 21 May.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2026",
+      "bill": "HB1416",
+      "body": "H",
+      "row_written": "2026-03-13 11:45:48",
+      "source_says": "Inexpedient to Legislate: MF RC 165-176 03/13/2026  HJ 8  P. 90",
+      "stated_date": "2026-03-13",
+      "corrected_to": "2026-03-12",
+      "why": "The row was written the morning after the vote and carries the day it was written. The roll call it records was taken on 12 March.",
+      "evidence": [
+        "RollCallSummary.txt line 209: '2026|H|209|3/12/2026 3:46:50 PM|HB1416|165|176|...|ITL'",
+        "Docket.txt line 20049, written 3/13/2026 11:45:48 AM",
+        "cites HJ 8 page 90; 72 other House rows cite HJ 8, dated 2026-03-12; journals/2026/HJ 08 March 12, 2026.txt prints HB 1416",
+        "the House sat on 11 and 12 March 2026 (recordings for both); no recording or journal for 13 March"
+      ],
+      "note": "The General Court's online docket dates this 13 March 2026, the day the entry was made. The roll call it records was taken on 12 March 2026 and the House Journal for that day prints it, so it is shown on 12 March.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2025",
+      "bill": "HB739",
+      "body": "H",
+      "row_written": "2025-03-13 14:12:18",
+      "source_says": "Lay HB 739 on Table (Rep. Cordelli): MF DV 150-223 03/12/2025  HJ 8  P. 62",
+      "stated_date": "2025-03-12",
+      "corrected_to": "2025-03-13",
+      "why": "A day slip: 12 for 13, on a row written during the 13 March sitting. The House did not sit on 12 March 2025.",
+      "evidence": [
+        "Docket.txt line 5505, written 3/13/2025 2:12:18 PM",
+        "cites HJ 8 page 62; 83 other House rows cite HJ 8, all dated 2025-03-13; journals/2025/HJ 08 March 13, 2025.txt prints Rep. Cordelli's motion on HB 739",
+        "House Session (03/13/2025) recorded; none for 12 March 2025",
+        "a division, so no roll call to cross-check"
+      ],
+      "note": "The General Court's online docket dates this 12 March 2025, a day the House did not meet. The House Journal for 13 March 2025 prints the motion on page 62, and the docket entry was made that afternoon, so it is shown on 13 March.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2023",
+      "bill": "HB497",
+      "body": "H",
+      "row_written": "2023-03-16 00:00:00",
+      "source_says": "Reconsider HB497 (Rep. Hoell): MF DV 174-182 03/06/2023 HJ 9",
+      "stated_date": "2023-03-06",
+      "corrected_to": "2023-03-16",
+      "why": "A dropped digit: 06 for 16. The reconsideration is printed in the 16 March journal; the House did not sit on 6 March 2023.",
+      "evidence": [
+        "Docket_2023-2024.txt line 13411: '2023|0594|3/16/2023 12:00:00 AM|HB497|H|Reconsider HB497 (Rep. Hoell): MF DV 174-182 03/06/2023 HJ 9'",
+        "cites HJ 9; 76 other House rows cite HJ 9, dated 2023-03-16; journals/2023/HJ 09 March 16, 2023.txt prints Rep. Hoell's motion to reconsider HB 497",
+        "House Session (03/16/2023) recorded; no journal or recording for 6 March 2023"
+      ],
+      "note": "The General Court's online docket dates this 6 March 2023, a day the House did not meet. The House Journal for 16 March 2023 prints the motion, so it is shown on 16 March.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2023",
+      "bill": "HB63",
+      "body": "H",
+      "row_written": "2023-02-23 00:00:00",
+      "source_says": "Inexpedient to Legislate: MA DV 189-158 02/23/2022 HJ 7 P. 10",
+      "stated_date": "2022-02-23",
+      "corrected_to": "2023-02-23",
+      "why": "A year slip: 2022 for 2023. HB 63 of the 2023 session; the vote is printed in the 23 February 2023 journal.",
+      "evidence": [
+        "Docket_2023-2024.txt line 15018, dated 2/23/2023; the bill is in the 2023-2024 docket",
+        "cites HJ 7 page 10; 42 other House rows of 2023 cite HJ 7, dated 2023-02-23; journals/2023/HJ 07 February 23, 2023.txt prints HB 63",
+        "HJ 7 of 2022 was 16 March 2022 (79 rows); nothing places HB 63 of this term on 23 February 2022"
+      ],
+      "note": "The General Court's online docket dates this 23 February 2022, in the term before this bill was introduced. The House Journal for 23 February 2023 prints the vote on page 10, so it is shown on that day.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2023",
+      "bill": "HB49",
+      "body": "S",
+      "row_written": "2023-04-13 00:00:00",
+      "source_says": "Ought to Pass : MA, VV; OT3rdg; Read a Third Time, and Final Passage in the early session, MA, VV; 04/13/2022; SJ 13",
+      "stated_date": "2022-04-13",
+      "corrected_to": "2023-04-13",
+      "why": "A year slip: 2022 for 2023. HB 49 of the 2023 session; printed in the 13 April 2023 journal.",
+      "evidence": [
+        "Docket_2023-2024.txt line 13313, dated 4/13/2023; the bill is in the 2023-2024 docket",
+        "cites SJ 13; 61 other Senate rows of 2023 cite SJ 13, dated 2023-04-13; journals_senate/2023/SJ 13 April 13, 2023.txt prints HB 49"
+      ],
+      "note": "The General Court's online docket dates this 13 April 2022, in the term before this bill was introduced. The Senate Journal for 13 April 2023 prints it, so it is shown on that day.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2022",
+      "bill": "HB1020",
+      "body": "S",
+      "row_written": "2022-03-31 00:00:00",
+      "source_says": "Sen. Watters Moved Laid on Table, MA, VV; 03/31/2021; SJ 7",
+      "stated_date": "2021-03-31",
+      "corrected_to": "2022-03-31",
+      "why": "A year slip: 2021 for 2022, on three tablings entered on 31 March 2022.",
+      "evidence": [
+        "Docket_2021-2022.txt line 540, dated 3/31/2022",
+        "cites SJ 7; 74 other Senate rows cite SJ 7, dated 2022-03-31; journals_senate/2022/SJ 07 March 31, 2022.txt prints the motions on HB 1020, HB 1319 and HB 91",
+        "SJ 7 of 2021 was 11 March 2021; no source on this disk shows the Senate sitting on 31 March 2021"
+      ],
+      "note": "The General Court's online docket dates this 31 March 2021, a year early. The Senate Journal for 31 March 2022 prints the motion, so it is shown on that day.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2022",
+      "bill": "HB1319",
+      "body": "S",
+      "row_written": "2022-03-31 00:00:00",
+      "source_says": "Sen. Carson Moved Laid on Table, MA, VV; 03/31/2021; SJ 7",
+      "stated_date": "2021-03-31",
+      "corrected_to": "2022-03-31",
+      "why": "A year slip: 2021 for 2022, on three tablings entered on 31 March 2022.",
+      "evidence": [
+        "Docket_2021-2022.txt line 3672, dated 3/31/2022",
+        "cites SJ 7; 74 other Senate rows cite SJ 7, dated 2022-03-31; journals_senate/2022/SJ 07 March 31, 2022.txt prints the motions on HB 1020, HB 1319 and HB 91",
+        "SJ 7 of 2021 was 11 March 2021; no source on this disk shows the Senate sitting on 31 March 2021"
+      ],
+      "note": "The General Court's online docket dates this 31 March 2021, a year early. The Senate Journal for 31 March 2022 prints the motion, so it is shown on that day.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2022",
+      "bill": "HB91",
+      "body": "S",
+      "row_written": "2022-03-31 00:00:00",
+      "source_says": "Sen. Carson Moved Laid on Table, MA, VV; 03/31/2021; SJ 7",
+      "stated_date": "2021-03-31",
+      "corrected_to": "2022-03-31",
+      "why": "A year slip: 2021 for 2022, on three tablings entered on 31 March 2022.",
+      "evidence": [
+        "Docket_2021-2022.txt line 13595, dated 3/31/2022",
+        "cites SJ 7; 74 other Senate rows cite SJ 7, dated 2022-03-31; journals_senate/2022/SJ 07 March 31, 2022.txt prints the motions on HB 1020, HB 1319 and HB 91",
+        "SJ 7 of 2021 was 11 March 2021; no source on this disk shows the Senate sitting on 31 March 2021"
+      ],
+      "note": "The General Court's online docket dates this 31 March 2021, a year early. The Senate Journal for 31 March 2022 prints the motion, so it is shown on that day.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2018",
+      "bill": "HB592",
+      "body": "H",
+      "row_written": "2018-01-09 00:00:00",
+      "source_says": "Ought to Pass with Amendment 0503h: MF RC 165-180 01/08/2019 HJ 2 P. 25",
+      "stated_date": "2019-01-08",
+      "corrected_to": "2018-01-09",
+      "why": "Year and day slipped together: 01/08/2019 for 01/09/2018. The roll call on this row was taken on 9 January 2018.",
+      "evidence": [
+        "rollcalls/RollCallSummary_2018.txt line 22: '2018|H|22|1/9/2018 11:50:18 AM|HB592|165|180|...|OTPA'",
+        "Docket_2017-2018.txt line 12998, dated 1/9/2018; the bill is in the 2017-2018 docket",
+        "cites HJ 2; 19 other House rows cite HJ 2, dated 2018-01-09; journals/2018/HJ002.txt is dated Tuesday January 9, 2018 and prints HB 592"
+      ],
+      "note": "The General Court's online docket dates this 8 January 2019, a year and a day late. The roll call on it was taken on 9 January 2018 and the House Journal for that day prints it, so it is shown on 9 January 2018.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2018",
+      "bill": "HB592",
+      "body": "H",
+      "row_written": "2018-01-09 00:00:00",
+      "source_says": "Inexpedient to Legislate: MA DV 187-158 01/08/2019 HJ 2 P. 27",
+      "stated_date": "2019-01-08",
+      "corrected_to": "2018-01-09",
+      "why": "Year and day slipped together, as on the row before it: 01/08/2019 for 01/09/2018.",
+      "evidence": [
+        "Docket_2017-2018.txt line 12999, dated 1/9/2018, two journal pages after the roll call row above",
+        "cites HJ 2 page 27; journals/2018/HJ002.txt is dated Tuesday January 9, 2018 and prints HB 592",
+        "a division, so no roll call of its own; the motion before it on the same bill was roll-called on 1/9/2018 at 11:50 AM"
+      ],
+      "note": "The General Court's online docket dates this 8 January 2019, a year and a day late. The House Journal for 9 January 2018 prints it on page 27, so it is shown on that day.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2018",
+      "bill": "HB92",
+      "body": "H",
+      "row_written": "2018-01-09 00:00:00",
+      "source_says": "Inexpedient to Legislate: MA RC 188-157 01/08/2019 HJ 2 P. 28",
+      "stated_date": "2019-01-08",
+      "corrected_to": "2018-01-09",
+      "why": "Year and day slipped together: 01/08/2019 for 01/09/2018. The roll call on this row was taken on 9 January 2018.",
+      "evidence": [
+        "rollcalls/RollCallSummary_2018.txt line 23: '2018|H|23|1/9/2018 12:06:03 PM|HB92|188|157|...|ITL'",
+        "Docket_2017-2018.txt line 13992, dated 1/9/2018",
+        "cites HJ 2 page 28; journals/2018/HJ002.txt is dated Tuesday January 9, 2018 and prints HB 92"
+      ],
+      "note": "The General Court's online docket dates this 8 January 2019, a year and a day late. The roll call on it was taken on 9 January 2018 and the House Journal for that day prints it, so it is shown on 9 January 2018.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2017",
+      "bill": "SB152",
+      "body": "S",
+      "row_written": "2017-03-16 00:00:00",
+      "source_says": "Ought to Pass with Amendment 2017-0797s, MA, VV; OT3rdg; 03/19/2017; SJ 9",
+      "stated_date": "2017-03-19",
+      "corrected_to": "2017-03-16",
+      "why": "A day slip: 19 for 16. 19 March 2017 was a Sunday.",
+      "evidence": [
+        "Docket_2017-2018.txt line 15081, dated 3/16/2017",
+        "cites SJ 9; 76 other Senate rows cite SJ 9, all dated 2017-03-16; journals_senate/2017/SJ009.txt opens 'COMMENCEMENT - MARCH 16, 2017 SESSION' and prints SB 152"
+      ],
+      "note": "The General Court's online docket dates this 19 March 2017, a Sunday. The Senate Journal for 16 March 2017 prints it, so it is shown on 16 March.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2017",
+      "bill": "SB152",
+      "body": "S",
+      "row_written": "2017-03-16 00:00:00",
+      "source_says": "Committee Amendment #2017-0797s , AA, VV; 03/19/2017; SJ 9",
+      "stated_date": "2017-03-19",
+      "corrected_to": "2017-03-16",
+      "why": "The same mistyped 03/19/2017, a Sunday, as the SB 152 floor row beside it. Corrected with it, or the amendment would read as adopted three days after the bill passed with it.",
+      "evidence": [
+        "Docket_2017-2018.txt line 15080, dated 3/16/2017, the row before the floor row above",
+        "journals_senate/2017/SJ009.txt: 'COMMENCEMENT - MARCH 16, 2017 SESSION'; SB 152's committee amendment 2017-0797s is printed in the 16 March portion"
+      ],
+      "note": "The General Court's online docket dates this 19 March 2017, a Sunday. The Senate Journal for 16 March 2017 prints the amendment, so it is shown on 16 March.",
+      "checked": "2026-09-23"
+    },
+    {
+      "session": "2018",
+      "bill": "HB1814",
+      "body": "H",
+      "row_written": "2018-03-07 00:00:00",
+      "source_says": "Inexpedient to Legislate: MA RC 228-102 03/06/2018 HJ 7 P. 20",
+      "stated_date": "2018-03-06",
+      "corrected_to": "2018-03-07",
+      "why": "The House sat on both 6 and 7 March 2018, and the row puts a vote of the 7th on the 6th. The roll call and the journal agree on the 7th.",
+      "evidence": [
+        "Docket_2017-2018.txt line 7836: '2018|...|3/7/2018 12:00:00 AM|HB1814|H|Inexpedient to Legislate: MA RC 228-102 03/06/2018 HJ 7 P. 20'",
+        "rollcalls/RollCallSummary_2018.txt line 106: '2018|H|106|3/7/2018 10:58:50 AM|HB1814|228|102|...|ITL'",
+        "journals/2018/HJ007.txt, the sitting of 7 March 2018 by its own day header, prints HB 1814 and 'YEAS 228 - NAYS 102'"
+      ],
+      "note": "The General Court's online docket dates this 6 March 2018. The roll call it records was taken on 7 March 2018 and the House Journal for that day prints it, so it is shown on 7 March.",
+      "checked": "2026-09-24"
+    },
+    {
+      "session": "2018",
+      "bill": "HB1560",
+      "body": "H",
+      "row_written": "2018-03-07 00:00:00",
+      "source_says": "Inexpedient to Legislate: MA RC 188-140 03/06/2018 HJ 7 P. 34",
+      "stated_date": "2018-03-06",
+      "corrected_to": "2018-03-07",
+      "why": "As HB 1814 on the same journal: a vote of 7 March 2018 dated the 6th. The roll call and the journal agree on the 7th.",
+      "evidence": [
+        "Docket_2017-2018.txt line 4754: '2018|...|3/7/2018 12:00:00 AM|HB1560|H|Inexpedient to Legislate: MA RC 188-140 03/06/2018 HJ 7 P. 34'",
+        "rollcalls/RollCallSummary_2018.txt line 109: '2018|H|109|3/7/2018 12:01:25 PM|HB1560|188|140|...|ITL'",
+        "journals/2018/HJ007.txt, the sitting of 7 March 2018, prints HB 1560 and 'YEAS 188 - NAYS 140'"
+      ],
+      "note": "The General Court's online docket dates this 6 March 2018. The roll call it records was taken on 7 March 2018 and the House Journal for that day prints it, so it is shown on 7 March.",
+      "checked": "2026-09-24"
+    },
+    {
+      "session": "2022",
+      "bill": "HB1667",
+      "body": "H",
+      "row_written": "2022-03-17 00:00:00",
+      "source_says": "Ought to Pass : MA RC 205-127 03/16/2022 HJ 8",
+      "stated_date": "2022-03-16",
+      "corrected_to": "2022-03-17",
+      "why": "The House sat on both 16 and 17 March 2022, and the row puts a vote of the 17th on the 16th. The roll call and the journal agree on the 17th.",
+      "evidence": [
+        "Docket_2021-2022.txt line 7577: '2022|...|3/17/2022 12:00:00 AM|HB1667|H|Ought to Pass : MA RC 205-127 03/16/2022 HJ 8'",
+        "rollcalls/RollCallSummary_2022.txt line 155: '2022|H|157|3/17/2022 4:04:06 PM|HB1667|205|127|...|OTP'",
+        "journals/2022/HJ 08 March 17, 2022.txt prints HB 1667 and 'YEAS 205 - NAYS 127'"
+      ],
+      "note": "The General Court's online docket dates this 16 March 2022. The roll call it records was taken on 17 March 2022 and the House Journal for that day prints it, so it is shown on 17 March.",
+      "checked": "2026-09-24"
+    },
+    {
+      "session": "2024",
+      "bill": "HB354",
+      "body": "H",
+      "row_written": "2024-01-04 00:00:00",
+      "source_says": "Ought to Pass with Amendment 2023-2415h: MA RC 190-177 01/04/2024 HJ 1 P. 100",
+      "stated_date": "2024-01-04",
+      "corrected_to": "2024-01-03",
+      "why": "The House sat on 3 and 4 January 2024, and this row and HB 144's carry each other's day. The roll call and the journal agree on the 3rd.",
+      "evidence": [
+        "Docket_2023-2024.txt line 11633: '2024|...|1/4/2024 12:00:00 AM|HB354|H|Ought to Pass with Amendment 2023-2415h: MA RC 190-177 01/04/2024 HJ 1 P. 100'",
+        "rollcalls/RollCallSummary_2024.txt line 5: '2024|H|5|1/3/2024 11:17:53 AM|HB354|190|177|...|OTPA'",
+        "journals/2024/HJ 01 January 3, 2024.txt prints HB 354 and, after its amendment, 'YEAS 190 - NAYS 177'"
+      ],
+      "note": "The General Court's online docket dates this 4 January 2024. The roll call it records was taken on 3 January 2024 and the House Journal for that day prints it, so it is shown on 3 January.",
+      "checked": "2026-09-24"
+    },
+    {
+      "session": "2024",
+      "bill": "HB144",
+      "body": "H",
+      "row_written": "2024-01-04 00:00:00",
+      "source_says": "Inexpedient to Legislate: MA RC 297-63 01/03/2024 HJ 2 P. 61",
+      "stated_date": "2024-01-03",
+      "corrected_to": "2024-01-04",
+      "why": "The House sat on 3 and 4 January 2024, and this row and HB 354's carry each other's day. The roll call and the journal agree on the 4th.",
+      "evidence": [
+        "Docket_2023-2024.txt line 5820: '2024|...|1/4/2024 12:00:00 AM|HB144|H|Inexpedient to Legislate: MA RC 297-63 01/03/2024 HJ 2 P. 61'",
+        "rollcalls/RollCallSummary_2024.txt line 30: '2024|H|30|1/4/2024 3:59:03 PM|HB144|297|63|...|ITL'",
+        "journals/2024/HJ 02 January 4, 2024.txt prints HB 144 and 'YEAS 297 - NAYS 63'"
+      ],
+      "note": "The General Court's online docket dates this 3 January 2024. The roll call it records was taken on 4 January 2024 and the House Journal for that day prints it, so it is shown on 4 January.",
+      "checked": "2026-09-24"
+    },
+    {
+      "session": "2026",
+      "bill": "HB1061",
+      "body": "H",
+      "row_written": "2026-03-12 15:24:25",
+      "source_says": "Indefinitely Postpone (Rep. Sweeney): MA RC 188-149 03/12/2026  HJ 7  P. 92",
+      "stated_date": "2026-03-12",
+      "corrected_to": "2026-03-11",
+      "why": "The row was written the afternoon after the vote and carries the day it was written. The roll call and House Journal 7 both put the vote on 11 March.",
+      "evidence": [
+        "Docket.txt line 20026: '2026|3086|3/12/2026 3:24:25 PM|HB1061|H|Indefinitely Postpone (Rep. Sweeney): MA RC 188-149 03/12/2026  HJ 7  P. 92'",
+        "RollCallSummary.txt line 146: '2026|H|146|3/11/2026 11:49:39 AM|HB1061|188|149|...|Indefinitely Postpone'",
+        "journals/2026/HJ 07 March 11, 2026.txt prints the motion that HB 1061 be Indefinitely Postponed and 'YEAS 188 - NAYS 149'"
+      ],
+      "note": "The General Court's online docket dates this 12 March 2026, the day the entry was made. The roll call it records was taken on 11 March 2026 and the House Journal for that day prints it, so it is shown on 11 March.",
+      "checked": "2026-09-24"
+    }
+  ]
+}

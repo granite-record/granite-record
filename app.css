@@ -1256,6 +1256,9 @@ line-height:1.5}
 /* Same reason: the date in a routine row is --ink-3 already, and .62 on
    top of that put it at 1.9:1. These are real docket lines. */
 .tl li.routine{color:var(--ink-2)}
+/* Under a docket line whose date a person corrected: why the date beside it
+   is not the one the line gives. A note box, on its own line. */
+.tl .tldate{display:block;margin:var(--sp-2) 0 0}
 .story{margin:var(--sp-6) 0 var(--sp-7)}
 .stg{margin:0 0 var(--sp-5);padding-left:var(--sp-5);border-left:2px solid var(--rule-2)}
 .stg:last-child{margin-bottom:0}

@@ -1521,7 +1521,9 @@ ${d._error?`<div class="loaderr"><b>This bill's detail did not
         <span class="w">${esc(e.text||"")}${e.cite?` <span class="cite">${
           e.cite_url?`<a href="${esc(e.cite_url)}" target="_blank"
           rel="noopener">${esc(e.cite)}</a>`:esc(e.cite)}</span>`:""}${
-          signins(e.testimony)}</span>
+          signins(e.testimony)}${
+          /* a date put right by hand: the line above still says the other */
+          e.date_note?`<span class="note tldate">${esc(e.date_note)}</span>`:""}</span>
         </li>`).join("")}</ul></details>`:""}
 `;
 }

@@ -2288,13 +2288,16 @@ def _record_untouched():
       member_corrections.json a name a generator got wrong, and the evidence
       place_corrections.json  a polling place the Secretary of State's own
                               list states wrongly, and the second source
+      docket_corrections.json a date the docket states wrongly, and the
+                              journal and roll call that settle it
 
     Naming only the first one meant the check grew stale as quietly as the
     thing it guards against: most of these had no guard at all.
     """
     HANDMADE = ["ground_truth.csv", "review/checked.jsonl", "bill_notes.json",
                 "officials.json", "member_corrections.json",
-                "place_corrections.json", "launch_register.json"]
+                "place_corrections.json", "launch_register.json",
+                "docket_corrections.json"]
     bad = []
     for f in (sorted(Path(".").glob("build_*.py"))
               + sorted(Path(".").glob("fetch_*.py"))):
@@ -4192,6 +4195,278 @@ def _session_consent_only_the_calendar(SD):
                       "day reconsideration, other chamber, removed bill, named "
                       "mover or lone tally; same-day suspensions, a late Senate "
                       "report row and Ought Not to Pass kept")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+# Real Docket.txt rows. HB 1491's reconsideration says 09/19/2026 and was
+# written 24 minutes after its veto vote of 19 August, four journal pages on;
+# the other three are veto votes of that afternoon, which place HJ 16.
+DOCKET_HB1491 = [
+    "2026|2397|8/19/2026 2:03:51 PM|HB1491|H|Veto Sustained 08/19/2026: RC "
+    "160-148 Lacking Necessary Two-Thirds Vote  HJ 16  P. 44|9/4/2026 11:05:29 AM",
+    "2026|2397|8/19/2026 2:27:49 PM|HB1491|H|Reconsider HB1491 (Rep. N. "
+    "Germana): MF VV 09/19/2026  HJ 16  P. 48|9/4/2026 11:06:43 AM",
+    "2026|2504|8/19/2026 11:33:27 AM|HB1267|H|Veto Overridden 08/19/2026: RC "
+    "311-6 by Required Two-Thirds Vote  HJ 16  P. 25|9/4/2026 10:06:29 AM",
+    "2026|2931|8/19/2026 11:36:22 AM|HB1336|H|Veto Sustained 08/19/2026: RC "
+    "159-155 Lacking Necessary Two-Thirds Vote  HJ 16  P. 27|9/4/2026 10:06:58 AM",
+    "2026|3067|8/19/2026 11:47:55 AM|HB1358|H|Veto Sustained 08/19/2026: RC "
+    "150-166 Lacking Necessary Two-Thirds Vote  HJ 16  P. 31|9/4/2026 10:07:49 AM",
+]
+# SB 152 of 2017: two rows carrying the same Sunday, 03/19/2017.
+DOCKET_SB152 = [
+    "2017|0860|3/16/2017 12:00:00 AM|SB152|S|Committee Amendment #2017-0797s , "
+    "AA, VV; 03/19/2017; SJ 9|3/16/2017 12:00:00 AM",
+    "2017|0860|3/16/2017 12:00:00 AM|SB152|S|Ought to Pass with Amendment "
+    "2017-0797s, MA, VV; OT3rdg; 03/19/2017; SJ 9|3/16/2017 12:00:00 AM",
+]
+
+
+@check("session", "a corrected docket date lands on its sitting, and a doubtful day is flagged",
+       needs=("narrative", "session_days"))
+def _session_corrected_dates(N, SD):
+    """Eleven sittings that never happened were live pages.
+
+    "The House, Saturday 19 September 2026" was built from one row whose
+    month the clerk typed as 09 for 08; "The Senate, Monday 16 February
+    2026" was Presidents Day. docket_corrections.json holds each mistyped
+    date with its evidence, narrative.py applies it while the row still
+    reads as the entry says, and session_days.doubtful() is how the next
+    one is noticed. This builds the real rows both ways: uncorrected, the
+    day is flagged as a Saturday whose journal belongs to 19 August;
+    corrected, the action is on 19 August with the docket's own date kept
+    beside it; and an entry whose row the clerk has since changed is
+    reported and not applied, so it cannot hold a date back silently.
+    """
+    import contextlib
+    import io
+    from datetime import date as _d
+    saved = (N.CORRECTIONS, set(N.CORRECTED), list(N.SIBLINGS), N.TERM)
+    root = Path(tempfile.mkdtemp())
+    entry = {"session": "2026", "bill": "HB1491", "body": "H",
+             # one space where the docket has two: matched all the same
+             "source_says": "Reconsider HB1491 (Rep. N. Germana): MF VV "
+                            "09/19/2026 HJ 16 P. 48",
+             "stated_date": "2026-09-19", "corrected_to": "2026-08-19",
+             "note": "The docket dates this 19 September 2026."}
+    sb152 = {"session": "2017", "bill": "SB152", "body": "S",
+             "source_says": DOCKET_SB152[1].split("|")[5],
+             "stated_date": "2017-03-19", "corrected_to": "2017-03-16"}
+    try:
+        def build(lines, corrections):
+            (root / "Docket.txt").write_text("\n".join(lines) + "\n",
+                                              encoding="utf-8")
+            N.CORRECTIONS = corrections
+            N.CORRECTED.clear()
+            del N.SIBLINGS[:]
+            out = {}
+            for b, rows in N.parse_docket(str(root / "Docket.txt")).items():
+                N.TERM = N.P.term_of(rows[0]["session"])
+                out.setdefault(N.TERM, {})[b] = N.build(b, rows)
+            with contextlib.redirect_stdout(io.StringIO()):
+                hit, stale = N.report_corrections(out)
+            return out, hit, stale
+
+        def days_of(narr):
+            p = root / "narratives.json"
+            p.write_text(json.dumps(narr), encoding="utf-8")
+            return SD.load(p)
+
+        def reconsider(narr):
+            return next(e for e in narr["2025-2026"]["HB1491"]["events"]
+                        if e["raw"].startswith("Reconsider"))
+
+        plain, _, _ = build(DOCKET_HB1491, [])
+        days = days_of(plain)
+        assert ("H", "2026-09-19") in days, (
+            "the fixture's mistyped row did not make the phantom sitting it "
+            "made on the live site, so this check tests nothing")
+        flags = SD.doubtful(days, _d(2026, 9, 24), {"H": set()})
+        why = flags.get(("H", "2026-09-19")) or []
+        assert "Saturday" in why and any("belongs to 2026-08-19" in w for w in why), (
+            f"19 September 2026 is not flagged as a Saturday whose journal is "
+            f"19 August's: {why}")
+        assert ("H", "2026-08-19") not in flags, (
+            f"the real veto day is flagged: {flags.get(('H', '2026-08-19'))}")
+
+        fixed, hit, stale = build(DOCKET_HB1491, [entry])
+        e = reconsider(fixed)
+        assert e["date"] == "2026-08-19" and e.get("date_as_recorded") == "2026-09-19" \
+            and e.get("date_note"), (
+            f"the correction was not applied, or lost the docket's own date: {e}")
+        assert hit == [entry] and not stale, "the applied entry was not reported"
+        days = days_of(fixed)
+        assert ("H", "2026-09-19") not in days and len(days[("H", "2026-08-19")]) == 5, (
+            "the corrected row did not move onto 19 August's sitting")
+
+        # The clerk puts the row right upstream: the entry stops matching,
+        # is reported, and the row's own date stands.
+        mended = [x.replace("MF VV 09/19/2026", "MF VV 08/19/2026") for x in DOCKET_HB1491]
+        again, hit, stale = build(mended, [entry])
+        e = reconsider(again)
+        assert stale == [entry] and not hit and "date_as_recorded" not in e \
+            and e["date"] == "2026-08-19", (
+            "an entry whose row no longer reads as it says was applied, or "
+            "was not reported as stale")
+
+        # A second row with the same mistyped date and journal and no entry
+        # of its own is named, as SB 152's amendment should have been.
+        build(DOCKET_SB152, [sb152])
+        assert any("Committee Amendment" in d for _, d in N.SIBLINGS), (
+            "SB 152's amendment row, carrying the corrected entry's date and "
+            "journal, was not reported as a missed sibling")
+        return "ok", ("uncorrected, 19 September 2026 is flagged a Saturday on "
+                      "19 August's journal; corrected, the action is on 19 "
+                      "August with the docket's date kept; a stale entry and a "
+                      "missed sibling row are reported")
+    finally:
+        N.CORRECTIONS, N.TERM = saved[0], saved[3]
+        N.CORRECTED.clear()
+        N.CORRECTED.update(saved[1])
+        N.SIBLINGS[:] = saved[2]
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("session", "the clerk's as-of date dates a row, but never ahead of what it answers",
+       needs=("narrative", "docket_vocab"))
+def _session_as_of_dates(N, V):
+    """A database-era floor row that states no date is dated by the moment it
+    was entered -- unless the clerk wrote the day it was done.
+
+    "[done during 1/4/2012 morning veto session]" was entered on 30 November
+    2011 and put four of January's veto votes on a November page. But
+    "[Recess of 6/5/13]" names the sitting the House was in recess of, and
+    dated by it HB 224's non-concurrence would come a day BEFORE the Senate
+    amendment it refused; the Senate's "[05/06/04]" on HB 369 would have it
+    accede to a House request six days before the House made it. Real rows,
+    each case once.
+    """
+    from datetime import datetime as _dt
+    saved = (N.CORRECTIONS, N.TERM)
+    rows = {
+        ("HB218", "2011"): [
+            "2011|0291|11/30/2011 09:57:16 AM|HB218|H|Veto Sustained: RC 231-128 "
+            "Lacking Rquired Two Thirds Vote, [done during 1/4/2012 morning veto "
+            "session]; HJ 76, PG.2297-2300|11/30/2011 09:57:16 AM"],
+        ("HB224", "2013"): [
+            "2013|0305|06/06/2013 10:43:40 AM|HB224|S|Ought to Pass with Amendment "
+            "1947s, MA, VV; OT3rdg|06/06/2013 10:43:40 AM",
+            "2013|0305|06/12/2013 11:14:47 AM|HB224|H|House Non-Concurs with Senate "
+            "AM #1947s and Requests C of C (Rep. Shurtleff): MA VV [Recess of "
+            "6/5/13]; HJ49, PG.1650|06/12/2013 11:14:47 AM"],
+        ("HB369", "2004"): [
+            "2004|0125|05/06/2004 09:36:17 PM|HB369|S|Ought to Pass as Amended{1544},"
+            "(New Title), MA, VV; OT3rdg; SJ 15, Pg.448|05/06/2004 09:36:17 PM",
+            "2004|0125|05/13/2004 10:54:26 AM|HB369|H|House Nonconc with Sen Am req "
+            "Conf Comm, Rep Mock MA VV;   HJ 39, p 1547|05/13/2004 10:54:26 AM",
+            "2004|0125|05/13/2004 04:39:38 PM|HB369|S|Senator Peterson Accede to House "
+            "Request for C of C, MA, VV [05/06/04]; SJ 15-A, Pg.466|05/13/2004 04:39:38 PM"],
+        ("HB189", "2001"): [
+            "2001|0133|05/09/2001 09:37:36 AM|HB189|S|Special Order To [05/17/01], MA, "
+            "VV; SJ 12, Pg.262|05/09/2001 09:37:36 AM"],
+    }
+    try:
+        N.CORRECTIONS = []
+        got = {}
+        for (bill, session), lines in rows.items():
+            recs = []
+            for x in lines:
+                p = x.split("|")
+                recs.append({"lsr": f"{p[0]}-{p[1]}", "session": p[0], "body": p[4],
+                             "desc": p[5], "flags": [],
+                             "created": _dt.strptime(p[2], "%m/%d/%Y %I:%M:%S %p")})
+            N.TERM = N.P.term_of(session)
+            got[bill] = [(e["body"], e["date"], e["raw"][:24])
+                         for e in N.build(bill, recs)["events"]
+                         if e["type"] in ("floor", "veto_override")]
+        assert [d for _, d, _ in got["HB218"]] == ["2012-01-04"], (
+            f"the clerk's 'done during 1/4/2012' did not date the veto vote: {got['HB218']}")
+        assert ("H", "2013-06-12") in [(b, d) for b, d, _ in got["HB224"]], (
+            "a row done in recess of 5 June 2013 was moved onto 5 June, ahead "
+            f"of the Senate amendment it refused: {got['HB224']}")
+        assert ("S", "2004-05-13") in [(b, d) for b, d, _ in got["HB369"]], (
+            "the Senate's accession was dated before the House request it "
+            f"answered: {got['HB369']}")
+        assert [d for _, d, _ in got["HB189"]] == ["2001-05-09"], (
+            f"a special order's date was read as the day it was done: {got['HB189']}")
+        return "ok", ("'done during' dates a veto vote; a day in recess, an "
+                      "answer ahead of its request and a special order's "
+                      "target date do not")
+    finally:
+        N.CORRECTIONS, N.TERM = saved
+
+
+@check("session", "a sitting's page goes when its day does, never a term at once, "
+       "and none is built ahead of today", needs=("build_session_pages",))
+def _session_pages_pruned(BSP):
+    """Correcting a date does not take its page down by itself.
+
+    build_session_pages wrote a page per sitting and never removed one, so
+    site/session/H/2026-09-19.html would have stayed on disk, deployed and
+    linked after the row behind it was put right. It removes them now -- and,
+    because a writer run on a subset destroys the rest, refuses to remove more
+    than PRUNE_CEILING at once without --prune, which is what a narratives.json
+    missing whole terms would ask of it. A day after the build is not built:
+    the Senate enters rows up to ten days ahead of its sittings.
+    """
+    import datetime
+    here = Path(".").resolve()
+    if not (here / "bills.html").exists():
+        return "skip", "no bills.html here to build a page from"
+    root = Path(tempfile.mkdtemp())
+    try:
+        site = root / "site"
+        (site / "session" / "S").mkdir(parents=True)
+        shutil.copy2(here / "bills.html", root / "bills.html")
+        ahead = (datetime.date.today() + datetime.timedelta(days=12)).isoformat()
+
+        def floor(date):
+            return {"date": date, "body": "S", "type": "floor",
+                    "raw": "Ought to Pass, MA, VV", "action": "Ought to Pass",
+                    "motion": "MA", "vote_kind": "VV"}
+        (root / "narratives.json").write_text(json.dumps({"2025-2026": {
+            "SB1": {"events": [floor("2026-02-19"), floor(ahead)]},
+            "SB2": {"events": [floor("2026-03-05")]}}}), encoding="utf-8")
+        base = "https://graniterecord.org"
+        stale = ["2026-02-16"]
+        for d in stale:
+            (site / "session" / "S" / f"{d}.html").write_text("old", encoding="utf-8")
+        (site / "sitemap.xml").write_text(
+            '<?xml version="1.0"?><urlset>\n'
+            + "".join(f"<url><loc>{base}/session/S/{d}.html</loc></url>\n"
+                      for d in stale + ["2026-02-19"]) + "</urlset>", encoding="utf-8")
+
+        def run(*extra):
+            return _run([sys.executable, str(here / "build_session_pages.py"),
+                         "--site", "site", "--base", base, "--body", "S", *extra],
+                        cwd=root, capture_output=True, text=True, timeout=180)
+        r = run()
+        assert r.returncode == 0, "build_session_pages: " + (r.stderr or r.stdout)[-300:]
+        pages = sorted(p.stem for p in (site / "session" / "S").glob("*.html"))
+        assert pages == ["2026-02-19", "2026-03-05"], (
+            f"expected the two sittings and nothing else, got {pages}")
+        sm = (site / "sitemap.xml").read_text(encoding="utf-8")
+        assert "2026-02-16" not in sm, "the removed day is still in sitemap.xml"
+        assert ahead not in sm and "after today not built" in r.stdout, (
+            "a day after the build was published, or skipped without saying so")
+
+        many = [f"2001-01-{n:02d}" for n in range(1, BSP.PRUNE_CEILING + 3)]
+        for d in many:
+            (site / "session" / "S" / f"{d}.html").write_text("old", encoding="utf-8")
+        r = run()
+        left = len(list((site / "session" / "S").glob("*.html")))
+        assert r.returncode != 0 and "REFUSED" in (r.stderr + r.stdout) \
+            and left == 2 + len(many), (
+            f"{len(many)} removals at once were not refused, or a refusal "
+            f"still removed pages ({left} left)")
+        r = run("--prune")
+        left = sorted(p.stem for p in (site / "session" / "S").glob("*.html"))
+        assert r.returncode == 0 and left == ["2026-02-19", "2026-03-05"], (
+            f"--prune did not remove the {len(many)} stale pages: {left[:4]}")
+        return "ok", (f"a gone day's page and sitemap entry are removed; more "
+                      f"than {BSP.PRUNE_CEILING} at once is refused without "
+                      "--prune; a day after today is not built")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -9241,6 +9516,145 @@ def _no_empty_dates():
     assert not bad, (f"{len(bad)} of {n:,} bills have a sentence with an empty "
                      f"date: {'; '.join(bad[:2])}")
     return "ok", f"{n:,} bills, no sentence stops where a date should be"
+
+
+# The doubtful sittings a person has still to rule on, each with its reason.
+# A day flagged and NOT here fails the check below if it is 2017 or later, or
+# on a weekend or a state holiday; older days flagged only because their
+# journal belongs to another sitting are listed as warnings -- almost all are
+# rows dated by the moment they were entered, which measured no worse than any
+# bulk re-dating (98.3% against roll calls). Remove a line when it is decided.
+KNOWN_DOUBTFUL = {
+    ("H", "2024-05-24"): "business the House did in recess of its 23 May 2024 "
+                         "sitting, which HJ 14 prints under 23 May",
+    ("H", "2024-05-28"): "business the House did in recess of its 23 May 2024 "
+                         "sitting, which HJ 14 prints under 23 May",
+    ("H", "2024-05-29"): "business the House did in recess of its 23 May 2024 "
+                         "sitting, which HJ 14 prints under 23 May",
+    ("H", "1990-07-01"): "bills indefinitely postponed under Joint Rule 24(b), "
+                         "a disposition by rule dated to a Sunday",
+    ("S", "1990-07-01"): "bills indefinitely postponed under Joint Rule 24(b), "
+                         "a disposition by rule dated to a Sunday",
+    ("H", "1995-07-01"): "bills indefinitely postponed under Joint Rule 24(b), "
+                         "a disposition by rule dated to a Saturday",
+    ("H", "2012-03-11"): "one row dated by the moment it was entered, a Sunday; "
+                         "its journal is the 7 March 2012 sitting's",
+}
+
+
+@check("data", "no sitting page for a day the chamber did not sit")
+def _no_phantom_sittings():
+    """Eleven pages for sittings that never happened were live.
+
+    One mistyped docket date publishes a whole sitting: "The House, Saturday
+    19 September 2026" was a reconsideration of 19 August with its month typed
+    09. docket_corrections.json put the eleven right; this is how the twelfth
+    is noticed rather than published. session_days.doubtful() flags a day on a
+    weekend or a state holiday, after the build, or whose every journal
+    citation belongs to another sitting with no roll call of its own.
+
+    A day after the build is never published -- build_session_pages skips it
+    -- so that is checked on the pages, not the record: the Senate enters rows
+    up to ten days ahead, and the nightly must not stop on that.
+    """
+    import datetime
+    narr = Path("narratives.json")
+    if not narr.exists():
+        return "skip", "no narratives.json here"
+    import session_days as SD
+    today = datetime.date.today()
+    days = SD.load(narr)
+    rc = SD.read_rollcall_dates(
+        [p for p in sorted(Path("rollcalls").glob("RollCallSummary_*.txt"))
+         + [Path("RollCallSummary.txt")] if p.exists()])
+    flags = SD.doubtful(days, today, rc)
+    new, warn = [], []
+    for key, why in sorted(flags.items()):
+        why = [w for w in why if w != "after the build date"]
+        if not why or key in KNOWN_DOUBTFUL:
+            continue
+        hard = key[1] >= "2017" or any(w in SD.DAYNAME or w == "a state holiday"
+                                       for w in why)
+        (new if hard else warn).append(f"{key[0]} {key[1]} ({'; '.join(why)})")
+    published_ahead = sorted(
+        f"{p.parent.name} {p.stem}" for p in Path("site/session").glob("*/*.html")
+        if re.fullmatch(r"\d{4}-\d\d-\d\d", p.stem) and p.stem > today.isoformat())
+    assert not published_ahead, (
+        "sitting pages dated after today are on disk: "
+        + ", ".join(published_ahead[:6]))
+    assert not new, (
+        f"{len(new)} sitting day(s) the record itself doubts, not on the known "
+        "list: " + "; ".join(new[:5]) + ". A mistyped docket date goes in "
+        "docket_corrections.json with its evidence; a day a person has ruled "
+        "on goes in KNOWN_DOUBTFUL with the reason")
+    resolved = sorted(f"{k[0]} {k[1]}" for k in KNOWN_DOUBTFUL if k not in flags)
+    return "ok", (f"{len(days):,} sittings; {len(KNOWN_DOUBTFUL) - len(resolved)} "
+                  "known doubtful days await a decision; "
+                  f"{len(warn)} database-era days flagged as warnings"
+                  + (f" (e.g. {warn[0]})" if warn else "")
+                  + (f"; no longer doubtful: {', '.join(resolved)}"
+                     if resolved else ""))
+
+
+@check("data", "every docket date a person corrected still matches its row")
+def _corrections_still_match():
+    """An entry in docket_corrections.json holds back a mistyped date only
+    while the docket row still reads as the entry says.
+
+    If the General Court edits the row -- even without fixing the date --
+    the entry stops matching, narrative.py prints a warning into a build log
+    nobody reads, and the phantom sitting comes back. For HB 592's year slip
+    (01/08/2019 for 01/09/2018) no other guard would see it, because a
+    weekday in term time is not doubtful on its face. So an entry that
+    matches no row fails here whenever its term's docket is on disk.
+    """
+    f = Path("docket_corrections.json")
+    if not f.exists():
+        return "skip", "no docket_corrections.json here"
+    import narrative as N
+    import narrate_archive
+    entries = N.load_corrections(f)
+    assert entries, "docket_corrections.json holds no usable entry"
+    archived = narrate_archive.dockets()
+    cache = {}
+
+    def rows(path):
+        if path not in cache:
+            got = {}
+            with open(path, encoding="utf-8-sig", errors="replace") as fh:
+                for line in fh:
+                    p = line.rstrip("\n").split("|")
+                    if len(p) >= 7:
+                        got.setdefault(p[0].strip(), set()).add(
+                            (p[3].strip().upper(), p[4].strip().upper(),
+                             N._squash(p[5])))
+            cache[path] = got
+        return cache[path]
+
+    stale, checked, absent = [], 0, 0
+    for e in entries:
+        session = str(e.get("session"))
+        paths = [p for p in (archived.get(N.P.term_of(session)), "Docket.txt")
+                 if p and Path(p).exists()]
+        held = [rows(p)[session] for p in paths if session in rows(p)]
+        if not held:
+            absent += 1
+            continue
+        checked += 1
+        want = (str(e["bill"]).upper(), str(e["body"]).upper(),
+                N._squash(e["source_says"]))
+        if not any(want in h for h in held):
+            stale.append(f"{e['bill']} of {session}: "
+                         f"{N._squash(e['source_says'])[:70]!r}")
+    assert not stale, (
+        f"{len(stale)} correction(s) match no docket row, so the date they "
+        "held back is published again: " + "; ".join(stale[:4]) + ". Re-read "
+        "the row; update source_says, or remove the entry if the General Court "
+        "has fixed the date")
+    return "ok", (f"{checked} of {len(entries)} corrections checked against "
+                  f"the docket on disk, all still matching"
+                  + (f"; {absent} for a term whose docket is not here"
+                     if absent else ""))
 
 
 @check("data", "a fetched schedule still has bills in it")

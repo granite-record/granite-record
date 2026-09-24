@@ -91,7 +91,70 @@ _PRINTS_A_DATE = ("introduced", "hearing", "exec", "worksession",
 _DATE_OK = re.compile(r"^\d{1,2}/\d{1,2}/\d{4}$")
 
 
-def _ensure_date(d, created, session=None):
+# THE CLERK'S OWN AS-OF DATE, where a floor row that states no date carries
+# one. Such a row is dated by the moment it was entered, which is right 98% of
+# the time and wrong exactly when the clerk says so: "Veto Sustained: RC
+# 231-128 ..., [done during 1/4/2012 morning veto session]" was entered on
+# 30 November 2011 and put four of January's veto votes on a November page;
+# "ITL [1/4/2006] MA", entered on 5 January, put the 4 January consent
+# calendar's bills on the 5th.
+#
+# NOT BUSINESS DONE IN RECESS. "[Recess of 6/5/13]", "(In recess of 5/15/14)"
+# and "[Recessed from 5/17/12 Session]" name the sitting the chamber was in
+# recess of -- the day the journal prints the business under -- not the day
+# it was done, and so, in effect, do the Senate's bare "[05/06/04]" and
+# "[06/09/05]" on accessions entered a week later: dated by them, the Senate
+# acceded to a House request six days before the House made it. Measured
+# over every database-era docket, the rule with those markers moved 91 rows
+# and put 68 of them before an action of the bill they answer. How a day in
+# recess is shown is the person's decision; this leaves those rows on the
+# day they were entered, and narrative.hold_in_order() refuses any as-of
+# date that would still move an action ahead of one it followed. As it
+# stands it moves 14 rows, puts none ahead of anything, empties two pages
+# that held nothing else, creates none, and the five with a roll call agree
+# with its date.
+#
+# Not a bare date at the start of a row -- "11/3/99" led a row voted on
+# 5 January 2000 -- and not a row about a special order, a deadline or a
+# reporting date, whose date is the one being set rather than the one it
+# happened on. Only within AS_OF_DAYS of the row's own stamp: "[06/09/04]" on
+# a row of June 2005 is a slipped year, not an as-of date.
+AS_OF = re.compile(
+    r"\[\s*(?:done during\s+)?(?P<a>\d{1,2}/\d{1,2}/\d{2,4})"
+    r"|\((?:as of|on)\s+(?P<b>\d{1,2}/\d{1,2}/\d{2,4})\)"
+    r"|^\s*<(?P<c>\d{1,2}/\d{1,2}/\d{2,4})>", re.I)
+AS_OF_NOT = re.compile(r"special order|deadline|reporting date|extended to|"
+                       r"rept date", re.I)
+AS_OF_DAYS = 90
+
+
+def as_of(desc, created, session=None):
+    """The date the clerk wrote a floor row as of, or None."""
+    if not desc or created is None or AS_OF_NOT.search(desc):
+        return None
+    m = AS_OF.search(desc)
+    if not m:
+        return None
+    mo, dy, yr = (int(x) for x in (m.group("a") or m.group("b")
+                                   or m.group("c")).split("/"))
+    if yr < 100:
+        yr += 2000 if yr < 50 else 1900
+    try:
+        when = _date(yr, mo, dy)
+    except ValueError:
+        return None
+    if abs((when - created.date()).days) > AS_OF_DAYS:
+        return None
+    try:
+        year = int(str(session)[:4])
+    except (TypeError, ValueError):
+        year = None
+    if year is not None and not (year - 1 <= when.year <= year + 1):
+        return None
+    return when
+
+
+def _ensure_date(d, created, session=None, desc=None):
     """A date on every event that prints one, and inside its own session.
 
     Two things go wrong in the dump. The clerk mistypes ("Signed by the
@@ -100,6 +163,10 @@ def _ensure_date(d, created, session=None):
     hearing typed "3/20/99", a row whose own timestamp is 1904. A date
     outside the bill's own session is not a fact about the bill, so the day
     and month are kept and the year is the session's.
+
+    A floor row that states no date is dated by the moment it was entered --
+    here, or already by the era's normalise() -- unless the clerk wrote the
+    date it was done as of (as_of, above).
     """
     if d.get("_type") not in _PRINTS_A_DATE:
         return d
@@ -107,6 +174,14 @@ def _ensure_date(d, created, session=None):
         if created is None:
             return d
         d["date"] = created.strftime("%m/%d/%Y")
+    if d.get("_type") in ("floor", "veto_override") and created is not None \
+            and d["date"] == created.strftime("%m/%d/%Y"):
+        stated = as_of(desc if desc is not None else d.get("_raw"),
+                       created, session)
+        if stated:
+            # kept, so narrative.hold_in_order can put it back
+            d["_stamp_date"] = d["date"]
+            d["date"] = stated.strftime("%m/%d/%Y")
     try:
         year = int(str(session)[:4])
     except (TypeError, ValueError):
@@ -147,7 +222,7 @@ def _expand_committees(d):
     return d
 
 
-def _event(pid, typ, m, fixed, clean, mod, created, session=None):
+def _event(pid, typ, m, fixed, clean, mod, created, session=None, desc=None):
     d = dict(m.groupdict())
     for k, v in (fixed or {}).items():
         if not d.get(k):
@@ -164,7 +239,7 @@ def _event(pid, typ, m, fixed, clean, mod, created, session=None):
             fix(d, created)
     if typ == "report":
         d.update(narrative.report_fields(d.pop("rest", "") or ""))
-    return _expand_committees(_ensure_date(d, created, session))
+    return _expand_committees(_ensure_date(d, created, session, desc))
 
 
 def classify(desc, created=None, session=None):
@@ -181,7 +256,8 @@ def classify(desc, created=None, session=None):
     for pid, typ, pat, fixed in first:
         m = pat.search(clean)
         if m:
-            return _event(pid, typ, m, fixed, clean, mod, created, session)
+            return _event(pid, typ, m, fixed, clean, mod, created, session,
+                          desc)
     ev = narrative.classify(desc)
     if ev["_type"] != "other":
         # A modern pattern read it; it still needs this era's glue, because
@@ -192,11 +268,12 @@ def classify(desc, created=None, session=None):
                 fix(ev, created)
             except TypeError:
                 fix(ev, ev["_type"], created)
-        return _expand_committees(_ensure_date(ev, created, session))
+        return _expand_committees(_ensure_date(ev, created, session, desc))
     for pid, typ, pat, fixed in after:
         m = pat.search(clean)
         if m:
-            return _event(pid, typ, m, fixed, clean, mod, created, session)
+            return _event(pid, typ, m, fixed, clean, mod, created, session,
+                          desc)
     for name, pat in routine:
         if pat.search(clean):
             return {"_type": "other", "_raw": clean, "_era": "routine:" + name}
