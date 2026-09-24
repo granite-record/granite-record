@@ -3235,10 +3235,13 @@ function datedRail(b,d){
       ?`<small>${sub.map(esc).join("<br>")}</small>`:""}</span>`;
   });
   // The same facts as a sentence, for a reader who hears the page: every
-  // date in full, a tally read "16 to 8" rather than a dash.
+  // date in full -- the Law stop's words carry one of their own, "in effect
+  // 11 Jan 2026" -- and a tally read "16 to 8" rather than a dash.
   const said=st.map(s=>{
     const when=s.date?railDay(s.date,true,true):"";
-    const what=(s.say||"").replace(/(\d)–(\d)/g,"$1 to $2");
+    const what=(s.say||"").replace(/(\d)–(\d)/g,"$1 to $2")
+      .replace(/\b(\d{1,2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4})\b/g,
+        (_m,d,mo,y)=>`${d} ${RAILMONTH[RAILMON.indexOf(mo)]} ${y}`);
     return s.stop==="Introduced"
       ?`Introduced${when?` ${when}`:""}`
       :`${s.stop}: ${what.charAt(0).toLowerCase()+what.slice(1)}${when?`, ${when}`:""}`;

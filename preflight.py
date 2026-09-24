@@ -4782,7 +4782,7 @@ process.stdout.write("\\n@@" + JSON.stringify(out));
                   "✓ Law Chapter 160, in effect 11 Jan 2026"],
                  "Introduced 8 January 2025; House: passed on a voice vote, 13 February 2025; "
                  "Senate: passed with an amendment, 16 to 8, 22 May 2025; Governor: signed, "
-                 "15 July 2025; Law: chapter 160, in effect 11 Jan 2026"),
+                 "15 July 2025; Law: chapter 160, in effect 11 January 2026"),
         "HB68": ("✓ Introduced 8 Jan 2025 ✓ House 20 Mar 217–156, amended ✕ Senate 7 Jan 2026 "
                  "killed Governor ✕ Law",
                  ["✓ House Passed with an amendment, 217–156 20 Mar 2025",
