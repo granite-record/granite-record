@@ -355,6 +355,33 @@ def weeks_from(rows):
     return weeks
 
 
+def every_week(weeks, today):
+    """Give every ISO week from the first to the last a place in `weeks`.
+
+    A WEEK WITH NOTHING IN IT IS STILL A WEEK. Only weeks holding a sitting
+    used to get a page, so "The week after" on 15-21 June 2026 went to 17-23
+    August -- eight weeks on, under a label that says one -- and an address
+    like /calendar/2026-W30 was a 404. The empty weeks are given their Monday
+    with nothing on it, which is what week_page reads a span from, and they
+    are pages like any other that say plainly nothing was on.
+
+    The current week is always in the range, so the tab opens on it out of
+    session rather than on whenever the House last sat. Returns how many
+    weeks were added.
+    """
+    keys = set(weeks) | {week_key(today)}
+    first = min(datetime.date.fromisocalendar(int(k[:4]), int(k[6:]), 1) for k in keys)
+    last = max(datetime.date.fromisocalendar(int(k[:4]), int(k[6:]), 1) for k in keys)
+    added, d = 0, first
+    while d <= last:
+        k = week_key(d)
+        if k not in weeks or not weeks[k]:
+            weeks[k][d.isoformat()] = OrderedDict()
+            added += 1
+        d += datetime.timedelta(days=7)
+    return added
+
+
 def in_order(day):
     """A day's meeting keys in the order they start, untimed ones last.
 
@@ -432,9 +459,12 @@ def week_page(site, base, key, weeks, order, at, titles, years, code, urls,
                 f"bill{'' if bills == 1 else 's'}. A committee appears once a day, "
                 "however many times it sat; open one for its items in order.")
     else:
-        lead = ("Nothing sat this week. The General Court sits from January to "
-                "June, and committees meet on bills from the autumn filing "
-                "period onwards.")
+        # In the tense of the week: a week that is over has nothing on the
+        # record, and one still to come has nothing scheduled yet.
+        lead = (("No meetings are on the record for this week. " if last < today
+                 else "No meetings are scheduled this week. ")
+                + "The General Court sits from January to June, and committees "
+                "meet on bills from the autumn filing period onwards.")
 
     path = href_for(key, today)
     # THE CURRENT WEEK IS WRITTEN AT BOTH ITS ADDRESSES. /calendar is the tab,
@@ -506,10 +536,9 @@ def main():
 
     today = datetime.date.today()
     here = week_key(today)
-    if here not in weeks:
-        # Out of session the current week holds nothing, and the tab still has
-        # to open on it rather than on whenever the House last sat.
-        weeks[here][today.isoformat()] = OrderedDict()
+    # Every week from the first to the last, the current one included, so the
+    # arrows step one week at a time and every week has an address.
+    empty = every_week(weeks, today)
     order = sorted(weeks)
 
     sits = sitting_pages(site)
@@ -527,7 +556,8 @@ def main():
         print(f"  sitemap.xml: {added} added, {dropped} no longer written taken out")
 
     print(f"  {len(order)} weeks -> calendar.html and calendar/ "
-          f"({total:,} sittings; {here} is this week)")
+          f"({total:,} sittings; {here} is this week; {empty} weeks with "
+          f"nothing on them written as pages of their own)")
     return 0
 
 

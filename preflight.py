@@ -9228,6 +9228,79 @@ def _bill_lists_by_number(BO, BC, BS, SP, BP):
                   f"sponsors.csv all run {want[3]} before {want[5]}")
 
 
+@check("frontend", "every week from the first to the last has a page, and the arrows step one week")
+def _calendar_every_week():
+    """"The week after" 15-21 June 2026 went to 17-23 August.
+
+    build_calendar wrote a page only for a week that held a sitting, and each
+    page's arrows went to the neighbouring PAGE -- so out of session the arrow
+    labelled "The week after" jumped eight weeks, and /calendar/2026-W30 was a
+    404. A reader cannot tell a week that was skipped from one that was quiet.
+
+    This gives two sittings nine weeks apart and a build date a month after
+    the second, writes every week, and wants a page for each ISO week in the
+    span with its arrows on the weeks either side of it, the current week's
+    arrow on /calendar, and an empty week saying so rather than standing blank.
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_calendar as BC
+    here = Path(".").resolve()
+    if not (here / "bills.html").exists():
+        return "skip", "bills.html is not here"
+    rows = [{"term": "2025-2026", "bill": b, "body": "H", "kind": "public hearing",
+             "date": d, "time": "10:00", "committee": "Commerce", "venue": "LOB 302"}
+            for b, d in (("HB1", "2026-06-16"), ("HB2", "2026-08-18"))]
+    today = _dt.date(2026, 9, 24)
+    weeks = BC.weeks_from(rows)
+    added = BC.every_week(weeks, today)
+    order = sorted(weeks)
+    assert order[0] == "2026-W25" and order[-1] == BC.week_key(today), (
+        f"the weeks run {order[0]} to {order[-1]}, not 2026-W25 to "
+        f"{BC.week_key(today)}")
+    mondays = [_dt.date.fromisocalendar(int(k[:4]), int(k[6:]), 1) for k in order]
+    gaps = [f"{a} to {b}" for a, b, x, y in zip(order, order[1:], mondays, mondays[1:])
+            if (y - x).days != 7]
+    assert not gaps, "the weeks skip: " + ", ".join(gaps)
+    assert added == len(order) - 2, (
+        f"{added} weeks were added between two that hold sittings, of "
+        f"{len(order) - 2}")
+
+    def addr(k):
+        return "/calendar" if k == BC.week_key(today) else f"/calendar/{k}"
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-weeks-"))
+    try:
+        site = tmp / "site"
+        site.mkdir()
+        shutil.copy(here / "bills.html", site / "bills.html")
+        urls = []
+        with contextlib.redirect_stdout(io.StringIO()):
+            for i, k in enumerate(order):
+                BC.week_page(site, "https://graniterecord.org", k, weeks, order, i,
+                             {}, {}, {}, urls, today, set())
+        for i, k in enumerate(order):
+            f = site / "calendar" / f"{k}.html"
+            assert f.exists(), f"calendar/{k}.html was not written"
+            t = f.read_text(encoding="utf-8")
+            nxt = re.findall(r'class="wknext" href="([^"]+)"', t)
+            prv = re.findall(r'class="wkprev" href="([^"]+)"', t)
+            if i + 1 < len(order):
+                assert nxt and set(nxt) == {addr(order[i + 1])}, (
+                    f"{k}: The week after goes to {nxt}, not {addr(order[i + 1])}")
+            if i:
+                assert prv and set(prv) == {addr(order[i - 1])}, (
+                    f"{k}: The week before goes to {prv}, not {addr(order[i - 1])}")
+        quiet = (site / "calendar" / "2026-W30.html").read_text(encoding="utf-8")
+        assert "No meetings are on the record for this week." in quiet, (
+            "an empty week that is over does not say nothing was on")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", (f"{len(order)} weeks from {order[0]} to {order[-1]}, {added} of "
+                  "them empty, each a page with its arrows on the weeks beside it")
+
+
 @check("frontend", "the home page's Coming up is this week, the week the Calendar tab shows")
 def _coming_up_is_this_week():
     """Coming up drew a fortnight under a comment saying it drew a week.
