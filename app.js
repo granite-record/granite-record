@@ -2773,7 +2773,10 @@ document.addEventListener("submit",async e=>{
   try{
     const r=await fetch("/api/report",{method:"POST",signal:ctl.signal,
       headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-    if(!r.ok)throw new Error(`the server answered ${r.status}`);
+    // 503 is the Function's one answer for a report it accepted and could not
+    // keep (functions/api/report.js), so it gets words a reader can use.
+    if(!r.ok)throw new Error(r.status===503?"the site could not save it just now":
+      `the server answered ${r.status}`);
     form.elements.note.value="";
     st.textContent="Thank you. It will be checked against the record.";
   }catch(err){

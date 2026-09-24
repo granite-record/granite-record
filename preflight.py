@@ -7505,6 +7505,54 @@ ok("a member report from another member's page is not", rows.length === 2);
 r = await onRequest({ env, request: req("https://graniterecord.org",
   { ...member, url: "/legislator/owner-verified-close-all-1", note: "third" }) });
 ok("a member report with no page to check is not", rows.length === 2);
+// Every address the site builds for a member (24 September 2026). The rule said
+// every legislator address ends in a number; a former member whose seat the
+// record does not hold has a slug of the name alone, and a report from any of
+// those eight pages was refused while the reader was thanked.
+const numberless = ["adam-schroadter", "deborah-wheeler", "edith-hogan", "james-devine",
+  "james-rolston", "joanne-ward", "peter-silva", "tammy-simmons"];
+for (const s of [...numberless, "jodi-nelson-rock-13", "debra-altschiller-sd-24",
+                 "abigail-rooney-straf-1", "pat-long-sd-20"])
+  ok(`/legislator/${s} is accepted`, validate({ ...member, url: "/legislator/" + s }) !== null);
+for (const junk of ["/legislator/", "/legislator/-adam", "/legislator/adam-",
+    "/legislator/adam--schroadter", "/legislator/Adam-Schroadter", "/legislator/adam_schroadter",
+    "/legislator/adam.schroadter", "/legislator/adam-schroadter/", "/legislator/adam-schroadter.html",
+    "/legislator/a/b", "/legislator/adam%%20schroadter", "/legislator/adam schroadter",
+    "/legislators/adam-schroadter", "/committee/adam-schroadter", "/legislator/" + "a".repeat(81)])
+  ok(`${junk} is refused as a member's page`, validate({ ...member, url: junk }) === null);
+r = await onRequest({ env: { ...env, ASSETS: assets('<script>window.GR_MEMBER="377020";</script>') },
+  request: req("https://graniterecord.org", { ...member, record: "member:377020",
+    url: "/legislator/adam-schroadter", note: "a former member's page with no seat number" }) });
+ok("a report from a former member's page with no seat number is stored",
+   r.status === 204 && rows.length === 3);
+// A report that passed every rule and could not be kept answers 503, so the box
+// offers the reader the email address (24 September 2026). It answered 204, and
+// the reader was thanked for a report that existed only in the Function's log.
+const kept = rows.length;
+r = await onRequest({ env: {}, request: req("https://graniterecord.org", { ...good, note: "no database" }) });
+ok("no database bound: a real report answers 503", r.status === 503);
+r = await onRequest({ env: {}, request: req("https://graniterecord.org", { ...good, website: "x" }) });
+ok("no database bound: a honeypot still answers 204", r.status === 204);
+r = await onRequest({ env: {}, request: req("https://evil.example", good) });
+ok("no database bound: another origin still answers 204", r.status === 204);
+r = await onRequest({ env: {}, request: req("https://graniterecord.org",
+  { ...member, url: "/legislator/owner-verified-close-all-1", note: "no page to check" }) });
+ok("no database bound: a member report with no page to check still answers 204", r.status === 204);
+const throwing = (first, run) => ({ DB: { prepare: () => ({ bind: () => ({ first, run }) }) } });
+const boom = async () => { throw new Error("D1_ERROR: the database is unavailable"); };
+r = await onRequest({ env: throwing(boom, boom), request: req("https://graniterecord.org",
+  { ...good, note: "the day's count throws" }) });
+ok("the database throws on the day's count: 503", r.status === 503);
+r = await onRequest({ env: throwing(async () => 1, boom), request: req("https://graniterecord.org",
+  { ...good, note: "the insert throws" }) });
+ok("the insert throws: 503", r.status === 503);
+r = await onRequest({ env: throwing(boom, boom), request: req("https://graniterecord.org",
+  { ...good, field: "rewrite" }) });
+ok("the database throws, but the report is malformed: still 204", r.status === 204);
+r = await onRequest({ env: throwing(async () => 1, async () => ({ meta: { changes: 0 } })),
+  request: req("https://graniterecord.org", { ...good, note: "a duplicate the insert ignores" }) });
+ok("a duplicate the insert ignores: still 204", r.status === 204);
+ok("none of those stored a row", rows.length === kept);
 // The address a post was sent to, not only the Origin it claims (13 September
 // 2026). graniterecord.pages.dev and every production deployment's hash address
 // run with the production database bound, the zone's rate rule sees neither,
@@ -7562,7 +7610,10 @@ def _report_function():
     words -- sent to one of the site's own addresses at /api/report exactly,
     from the site's own origin, after the box has been open three seconds,
     with the honeypot empty. It answers 204 to all of it, so a script learns
-    nothing. And it
+    nothing -- except a report that passed every rule and could not be kept,
+    which answers 503 so the box offers the reader the email address. It
+    accepts a report from every address the site builds for a member,
+    including a former member's that carries no seat number. And it
     reads nothing that identifies a reader: no IP header, no cookie; the
     schema has no column that could hold one.
     """
@@ -7608,7 +7659,102 @@ def _report_function():
         shutil.rmtree(root, ignore_errors=True)
     return "ok", (f"{len(cols)} columns, none about the reader; the host and path sent to and "
                   "the origin, honeypot, dwell, shape and record-page agreement all enforced; "
-                  "always 204")
+                  "204, or 503 for a real report storage could not keep")
+
+
+REPORT_BOX_TEST = r"""
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+import { onRequest } from %s;
+const require = createRequire(import.meta.url);
+require("./stub.js");
+const on = {};
+document.addEventListener = (t, f) => { (on[t] = on[t] || []).push(f); };
+let env = {};
+let calls = 0;
+// The page's fetch, wired to the Function itself: what the box shows is what
+// report.js answers, not a status this test made up.
+globalThis.fetch = async (url, opts = {}) => {
+  if (url !== "/api/report")
+    return { ok: true, status: 200, json: async () => ({}), text: async () => "" };
+  calls++;
+  return onRequest({ env, request: new Request("https://graniterecord.org/api/report", {
+    method: opts.method, body: opts.body,
+    headers: { ...opts.headers, "Origin": "https://graniterecord.org" } }) });
+};
+try { (0, eval)(readFileSync("./page.js", "utf8")); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+if ((on.submit || []).length !== 1) {
+  console.log("nothing listens for the report box being sent"); process.exit(1); }
+globalThis.setTimeout = () => 0;    // the six-second give-up never fires here
+Object.assign(location, { pathname: "/legislator/adam-schroadter",
+  hostname: "graniterecord.org", origin: "https://graniterecord.org" });
+const page = { fetch: async () => new Response('<script>window.GR_MEMBER="377020";</script>') };
+async function send(note) {
+  const st = { textContent: "", innerHTML: "" }, btn = { disabled: false };
+  const box = { dataset: { rkind: "member", rref: "377020" } };
+  const form = { dataset: { opened: String(Date.now() - 9000) },
+    elements: { note: { value: note }, field: { value: "other" }, website: { value: "" } },
+    closest: s => s === ".reportform" ? form : s === ".report" ? box : null,
+    querySelector: s => s === ".reportstate" ? st : btn };
+  await on.submit[0]({ target: form, preventDefault() {} });
+  return { st, left: form.elements.note.value };
+}
+const fail = [];
+const offered = x => x.st.innerHTML.includes("mailto:contact@graniterecord.org") &&
+  x.st.innerHTML.includes("could not save it just now") && x.left !== "" &&
+  !/Thank you/.test(x.st.textContent + x.st.innerHTML);
+let rows = 0;
+const good = { DB: { prepare: () => ({ bind: () => ({ first: async () => 1,
+  run: async () => { rows++; } }) }) } };
+const boom = async () => { throw new Error("D1_ERROR"); };
+env = { ASSETS: page };
+if (!offered(await send("No database is bound here."))) fail.push("no database: no email offered");
+env = { ASSETS: page, DB: { prepare: () => ({ bind: () => ({ first: async () => 1, run: boom }) }) } };
+if (!offered(await send("The insert throws here."))) fail.push("the insert throws: no email offered");
+env = { ASSETS: page, DB: good.DB };
+const ok = await send("The district shown is out of date.");
+if (!(ok.st.textContent.startsWith("Thank you") && ok.left === "" && rows === 1))
+  fail.push("a kept report from a former member's page was not thanked and cleared: " +
+            JSON.stringify({ text: ok.st.textContent, html: ok.st.innerHTML, rows }));
+if (calls !== 3) fail.push(`the box posted ${calls} times for 3 sends`);
+console.log(fail.length ? "FAILED: " + fail.join("; ") : "ALL OK");
+process.exit(fail.length ? 1 : 0);
+"""
+
+
+@check("build", "a report the site could not keep offers the reader the email address, not thanks")
+def _report_box_fallback():
+    """The box on the page and the Function behind it, run together in node.
+
+    The box offers the email address with the reader's words filled in only
+    when the reply is not a success, and until 24 September the Function
+    answered 204 when no database was bound or the database refused the
+    write. A storage failure thanked the reader for a report nobody would
+    read. This posts from app.js's own submit handler, on a former member's
+    page with no seat number in its address, into report.js's own onRequest:
+    with no database and with a throwing insert the box must offer the email
+    address and keep the words; with a working one it must say thank you.
+    """
+    fn, app, stub = Path("functions/api/report.js"), Path("app.js"), Path("dom_stub.js")
+    absent = [str(p) for p in (fn, app, stub) if not p.exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    node = shutil.which("node")
+    if not node:
+        return "skip", "node is not on PATH"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "page.js").write_text(app.read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+        t = root / "t.mjs"
+        t.write_text(REPORT_BOX_TEST % json.dumps(fn.resolve().as_uri()), encoding="utf-8")
+        r = _run([node, str(t)], capture_output=True, text=True, cwd=root)
+        assert r.returncode == 0 and "ALL OK" in r.stdout, (r.stdout + r.stderr).strip()[-400:]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("no database and a failed insert each offer the email address with the "
+                  "words kept; a stored report from /legislator/adam-schroadter is thanked")
 
 
 REPORT_GENUINE = [
@@ -7765,6 +7911,91 @@ def _report_agree(CR):
     assert rendered <= box_tabs, f"a tab the pages render is missing from the report list: {sorted(rendered - box_tabs)}"
     return "ok", (f"{len(fn_fields)} fields, one record shape, {len(sent)} keys sent and read, "
                   f"{len(box_tabs)} tabs the same in all three")
+
+
+REPORT_PAGES_TEST = r"""
+import { readFileSync } from "node:fs";
+import { onRequest } from %s;
+const pages = JSON.parse(readFileSync(%s, "utf8"));
+let rows = 0;
+const env = { DB: { prepare: () => ({ bind: () => ({ first: async () => 1,
+  run: async () => { rows++; } }) }) } };
+const bad = [];
+for (const [url, record, file] of pages) {
+  // The built page itself, served at its own address and nowhere else.
+  env.ASSETS = { fetch: async u => new URL(u).pathname === url
+    ? new Response(readFileSync(file, "utf8")) : new Response("", { status: 404 }) };
+  const before = rows;
+  const r = await onRequest({ env, request: new Request("https://graniterecord.org/api/report", {
+    method: "POST", headers: { "Origin": "https://graniterecord.org",
+                               "Content-Type": "application/json" },
+    body: JSON.stringify({ record, url, tab: "", field: "other", build: "", elapsed: 9000,
+                           note: "A check that a report from this page is kept." }) }) });
+  if (r.status !== 204 || rows !== before + 1) bad.push(url);
+}
+console.log(JSON.stringify({ n: pages.length, bad }));
+"""
+
+
+def _report_pages_kept(site, fn, node):
+    """Send one report from every built legislator and committee page, as the
+    box on that page would, through the Function's own onRequest with the page
+    served from disk. Returns ({kind: pages sent from}, [addresses not kept],
+    pages with no box). Separate from the check so it can be pointed at a
+    built site and a report.js in two different folders."""
+    pages, sent, boxless = [], Counter(), 0
+    for folder, glob_name, kind in (("legislator", "GR_MEMBER", "member"),
+                                    ("committee", "GR_COMMITTEE", "committee")):
+        for f in sorted((Path(site) / folder).glob("*.html")):
+            m = re.search(rf'window\.{glob_name}="([^"]*)"',
+                          f.read_text(encoding="utf-8", errors="replace"))
+            if not m:
+                boxless += 1          # no global, so app.js mounts no box
+                continue
+            pages.append([f"/{folder}/{f.stem}", f"{kind}:{m.group(1)}", str(f.resolve())])
+            sent[kind] += 1
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "pages.json").write_text(json.dumps(pages), encoding="utf-8")
+        t = root / "t.mjs"
+        t.write_text(REPORT_PAGES_TEST % (json.dumps(Path(fn).resolve().as_uri()),
+                                          json.dumps(str(root / "pages.json"))),
+                     encoding="utf-8")
+        r = _run([node, str(t)], capture_output=True, text=True, timeout=600)
+        assert r.returncode == 0, (r.stdout + r.stderr).strip()[-400:]
+        out = json.loads(r.stdout.strip().splitlines()[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert out["n"] == len(pages), f"node read {out['n']} of {len(pages)} pages"
+    return dict(sent), out["bad"], boxless
+
+
+@check("data", "a report from every built legislator and committee page is one the Function keeps")
+def _report_pages():
+    """The box is on every legislator and committee page, and the Function
+    refuses a report whose address it does not recognise -- answering 204, so
+    the reader is thanked either way. From 12 to 24 September the rule said
+    every legislator address ends in a number; eight former members' pages,
+    /legislator/adam-schroadter among them, have a slug of the name alone,
+    and every report sent from them was dropped. The code check tests shapes;
+    this sends one report from each page the build actually wrote, so the
+    next slug the builder learns to write is tested the night it appears."""
+    site, fn = Path("site"), Path("functions/api/report.js")
+    if not (site / "legislator").is_dir():
+        return "skip", "site/legislator not built"
+    if not fn.exists():
+        return "skip", "no functions/api/report.js here"
+    node = shutil.which("node")
+    if not node:
+        return "skip", "node is not on PATH"
+    sent, bad, boxless = _report_pages_kept(site, fn, node)
+    total = sum(sent.values())
+    assert sent.get("member"), "no legislator page carries GR_MEMBER, so none has a report box"
+    assert not bad, (f"{len(bad)} of {total:,} pages send a report the Function drops while "
+                     f"thanking the reader: " + ", ".join(bad[:6]))
+    return "ok", (f"{sent.get('member', 0):,} legislator and {sent.get('committee', 0):,} "
+                  f"committee pages each sent one report, and every one was kept"
+                  + (f"; {boxless} pages carry no box" if boxless else ""))
 
 
 @check("files", "a preview deployment's reports never land among real ones")
