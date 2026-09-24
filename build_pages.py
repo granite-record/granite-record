@@ -833,6 +833,8 @@ def shell(title, current, body, wide=False, script="", desc="",
 General Court</b>. Not affiliated with the General Court, and not a substitute
 for it &mdash; where this site and the Court&rsquo;s own record disagree, the
 Court is right and we want to know.</p>
+<p class="logocredit">Logo drawn by Debra Caplan, an artist in Peterborough, NH
+&middot; <a href="https://www.linescapesnh.com/" rel="noopener">linescapesnh.com</a></p>
 </div>
 <div class="fcol">
 <p class="fcolhead">The record</p>
@@ -1142,6 +1144,22 @@ record at gc.nh.gov always takes precedence over anything shown here.</p>
 <h2>Independence</h2>
 <p>This site is not affiliated with or endorsed by the New Hampshire General Court.
 It takes no position on any bill.</p>
+
+<h2>The logo</h2>
+<p>The Granite Record logo was drawn by Debra Caplan, an artist in Peterborough,
+New Hampshire, and is used under licence from her. More of her work is at
+<a href="https://www.linescapesnh.com/" rel="noopener">linescapesnh.com</a>.
+In her own words:</p>
+<blockquote class="artist">
+<p>I moved to Peterborough, NH in 2011, and fell in love with the town; its rich
+past, historic buildings and vibrant art community.</p>
+<p>My idea for LineScapes prints sprang from my early school research into Louis
+Prang, the father of lithography and a promoter of affordable art for all,
+through lithographic prints.</p>
+<p>I began making prints of my pen and ink sketches of Peterborough buildings,
+hand-coloring some, and matting or framing them. &hellip; Over the years I have
+added scenes from the Monadnock Region, New Hampshire and beyond.</p>
+</blockquote>
 """
 
 SEATING_JS = """
@@ -2145,16 +2163,34 @@ def main():
     brand = Path("assets")
     if brand.is_dir():
         moved = 0
+        # THE LICENSED LOGO GOES OVER THE CLIPART. assets/licensed/ holds what
+        # build_brand.py draws from Debra Caplan's lockups; it is gitignored,
+        # because the person asked that her files never be in the public
+        # repository, so it exists only on a machine that has them. Where it
+        # does, its files replace the clipart copies of the same name (the home
+        # page's lockup, the link cards); the favicon and tab icons are not in
+        # it and stay the clipart, which reads better at small sizes.
+        licensed = brand / "licensed"
+        over = {f.name: f for f in sorted(licensed.iterdir()) if f.is_file()} \
+            if licensed.is_dir() else {}
         for f in sorted(brand.iterdir()):
             if not f.is_file():
                 continue
             dst = out / f.name
+            b = over.pop(f.name, f).read_bytes()
+            if not dst.exists() or dst.read_bytes() != b:
+                dst.write_bytes(b)
+                moved += 1
+        for name, f in over.items():
+            dst = out / name
             b = f.read_bytes()
             if not dst.exists() or dst.read_bytes() != b:
                 dst.write_bytes(b)
                 moved += 1
-        print(f"  brand: {len(list(brand.iterdir()))} files in assets/, "
-              f"{moved} copied into the site folder")
+        print(f"  brand: {len(list(brand.iterdir()))} files in assets/"
+              + (f", the artist's logo over {len([p for p in licensed.iterdir() if p.is_file()])} of them"
+                 if licensed.is_dir() else ", clipart only (no assets/licensed/ on this machine)")
+              + f"; {moved} copied into the site folder")
     else:
         print("  brand: no assets/ -- run python3 build_brand.py")
 

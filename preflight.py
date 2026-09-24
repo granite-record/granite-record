@@ -1836,6 +1836,7 @@ def _class_collisions():
         # pages and again in build_pages.shell() for the static ones
         "brand", "navdrop", "navmenu", "navtabs", "top", "in", "skip", "sr",
         "attrib", "fcol", "fcolhead", "fcols", "footdata", "lic", "flinks",
+        "logocredit",
         "out", "note", "src", "count", "caret", "chev",
         # the header search panel: find.js mounts it everywhere, and
         # build_pages draws the same row on /search
@@ -6851,6 +6852,45 @@ def _feed_promises():
                      ("civics.py", "Every bill, member and committee has an RSS feed")):
         assert stale not in Path(f).read_text(encoding="utf-8"), f"{f} still says: {stale}"
     return "ok", "home and Learn say only bills still moving have feeds"
+
+
+@check("frontend", "the logo's artist is credited where her licence says, and her files stay out of git")
+def _logo_licence():
+    """The licence for Debra Caplan's logo (24 September 2026) asks for her name
+    and a link to linescapesnh.com in the site footer and on the About page,
+    and the person asked that her files never be in this public repository.
+
+    The footer is written twice -- bills.html for the record pages,
+    build_pages.shell() for the rest -- so a credit dropped from one copy would
+    leave thousands of pages without it and every check of the other passing.
+    And brand/licensed/ and assets/licensed/ are gitignored, which stops a
+    `git add .` but not a `git add -f`, so this asks git what it tracks."""
+    import subprocess
+    for f in ("bills.html", "build_pages.py"):
+        src = Path(f).read_text(encoding="utf-8")
+        assert src.count('class="logocredit"') == 1, f"{f}: the footer's logo credit is missing or doubled"
+        assert "Debra Caplan" in src and "https://www.linescapesnh.com/" in src, \
+            f"{f}: the footer credit no longer names Debra Caplan and links linescapesnh.com"
+    about = Path("build_pages.py").read_text(encoding="utf-8")
+    about = about[about.index('ABOUT = """'):]
+    about = about[:about.index('"""', 12)]
+    assert "<h2>The logo</h2>" in about and "Debra Caplan" in about \
+        and "https://www.linescapesnh.com/" in about, \
+        "the About page lost the logo section, its credit or its link"
+    ignored = Path(".gitignore").read_text(encoding="utf-8")
+    for d in ("brand/licensed/", "assets/licensed/"):
+        assert d in ignored, f".gitignore no longer keeps {d} out of the repository"
+    try:
+        r = subprocess.run(["git", "ls-files", "brand/licensed", "assets/licensed"],
+                           capture_output=True, text=True, encoding="utf-8", timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return "skip", "git is not here to ask what it tracks"
+    if r.returncode != 0:
+        return "skip", "not a git checkout"
+    tracked = r.stdout.split()
+    assert not tracked, ("the artist's licensed files are tracked by git and would be "
+                         "published with the code: " + ", ".join(tracked[:5]))
+    return "ok", "credit in both footers and on About; brand/licensed and assets/licensed untracked"
 
 
 @check("frontend", "there is one stylesheet, and style.css is a view of it")

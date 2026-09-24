@@ -220,3 +220,12 @@ reports/*
 # when it was read, and skips cleanly when they are absent.
 sources/gis/*.zip
 town_sites/
+
+# THE LICENSED LOGO (24 September 2026). Debra Caplan's drawing, the lockups
+# made from it and every file build_brand.py derives from them are licensed
+# to this project, not open source, and the person asked that they never be
+# in this repository. They live on the machine that builds the site and reach
+# the live site only through that build. See DATA.md; preflight fails if any
+# of them is ever tracked.
+brand/licensed/
+assets/licensed/

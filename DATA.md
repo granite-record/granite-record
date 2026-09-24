@@ -38,9 +38,13 @@ from its owner, and that licence is not passed on to anyone else.
 That covers the images in brand/, the copies of them at the root of the
 repository (Icon.png, Logo Black.png and Logo White.png), and everything
 build_brand.py draws from them into assets/: the mark, the lockup, the icons,
-the favicon and the link-preview cards. The present mark is a stand-in made
-from clipart the project bought. A hand-drawn logo, licensed from its artist,
-will replace it, and the same applies to that one.
+the favicon and the link-preview cards. The logo is drawn by Debra Caplan, an
+artist in Peterborough, New Hampshire (linescapesnh.com), and licensed from
+her; her files are not in this repository at all, because the licence is not
+the project's to pass on. They live in brand/licensed/ and assets/licensed/ on
+the machine that builds the site, both gitignored. The favicon and the other
+small icons are still the clipart the project bought, which reads better at
+those sizes; the same terms apply to it.
 
 A fork of this project should bring its own logo. The code that draws one,
 build_brand.py, is MIT like the rest of the code; the pictures it draws are not.
