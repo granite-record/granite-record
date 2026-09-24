@@ -3000,10 +3000,15 @@ const [a, b] = JSON.parse(fs.readFileSync("./reps.json", "utf8"));
 const st = {when:"2025-01-14", time:"09:30", what:"hearing", body:"S",
   committee:"Election Law and Municipal Affairs", state:"located", start:600,
   end:1800, video_id:"VID1", reports:[a]};
+// The same hearing with no recording matched to it.
+const bare = {when:"2025-01-14", time:"09:30", what:"hearing", body:"S",
+  committee:"Election Law and Municipal Affairs", state:"none", reports:[a]};
 let out;
 try {
   out = {one: scope.hearingReport(a), prose: scope.hearingReport(b),
-         tab: scope.renderHearings({id:"SB11", n:"SB 11"}, {stations:[st]})};
+         tab: scope.renderHearings({id:"SB11", n:"SB 11"}, {stations:[st]}),
+         novid: scope.renderHearings({id:"SB11", n:"SB 11"},
+                                     {stations:[bare]})};
 } catch (e) { console.log("RENDER " + e.message); process.exit(1); }
 fs.writeFileSync("./out.json", JSON.stringify(out));
 """, encoding="utf-8")
@@ -3042,8 +3047,17 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
         "a report kept as text was drawn as speakers, or without saying why")
     assert tab.index('class="player"') < tab.index('class="hrep"'), (
         "the report is not under the hearing's recording")
+    # "The recording above is the hearing itself" is true only where there
+    # is one; fifteen reported hearings have none.
+    novid = out["novid"]
+    assert "the recording above" in re.sub(r"\s+", " ", tab), (
+        "the report under a recording no longer points at it")
+    assert "No recording matched" in novid and 'class="hrep"' in novid and \
+        "recording above" not in re.sub(r"\s+", " ", novid), (
+        "a report with no recording above it says there is one")
     return "ok", ("closed, sized, attributed; a member in the chip, the "
-                  "public as named; prose kept as prose; under the video")
+                  "public as named; prose kept as prose; under the video, "
+                  "and says so only where there is one")
 
 
 @check("frontend", "no const is read before the line that declares it")
@@ -6106,6 +6120,61 @@ def _senate_hearing_reports(senate_hearing_reports):
                   "address and a prose report each handled")
 
 
+@check("narrative", "a bill's hearing and an amendment heard after it are two "
+       "reports, and a re-filing is one", needs=("senate_hearing_reports",))
+def _hearing_report_keys(senate_hearing_reports):
+    """One report per hearing, and a hearing is its date, what was heard and
+    when it opened -- not the date alone.
+
+    Seven bills were heard and then had an amendment heard the same
+    afternoon, each reported separately and sometimes in one row (HB 381 at
+    1:26 and its amendment at 1:51). Keyed on the date alone, the bill's own
+    report was thrown away. The table also holds the same hearing filed
+    twice, and the later filing is the one kept. The layout here is the
+    reports' own, cut to one witness each; nothing checked depends on the
+    words. A House row of the same type is a committee report and is left
+    out.
+    """
+    S = senate_hearing_reports
+
+    def doc(subject, opened, who):
+        return ("<p>Senate Finance Committee</p>"
+                f"<p>{subject}</p><p>Hearing Date: April 1, 2025</p>"
+                f"<p>Time Opened: {opened} Time Closed: 2:10 p.m.</p>"
+                f"<p>Who supports the bill: {who}</p>"
+                "<p>Summary of testimony presented in support:</p>"
+                f"<p>{who}</p><ul><li>Spoke to the bill.</li></ul>"
+                "<p>Date Hearing Report completed: April 2, 2025</p>")
+    bill = doc("HB 381-FN, relative to the state budget.", "1:26 p.m.",
+               "Senator Jane Roe")
+    amd = doc("AMENDMENT # 2025-1481s, to HB 381-FN, relative to the state "
+              "budget.", "1:51 p.m.", "Senator John Doe")
+
+    def row(stamp, chamber, html):
+        return "|".join(["1", stamp, "Hearing Report", "", chamber,
+                         f"<body>{html}</body>", "HB 381", ""])
+    root = Path(tempfile.mkdtemp())
+    try:
+        src = root / "CandH_Reports.psv"
+        src.write_text("\n".join([
+            row("04/02/2025 09:00:00", "S", bill + amd),
+            row("04/03/2025 09:00:00", "S", bill),       # filed again
+            row("04/02/2025 09:00:00", "H", bill)]) + "\n", encoding="utf-8")
+        out, c = S.parse_all(src)
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert c["rows"] == 2, f"{c['rows']} rows read; the House row is not one"
+    recs = out.get(S.P.term_of("2025-04-01"), {}).get("HB381", [])
+    assert [r["opened"] for r in recs] == ["1:26 p.m.", "1:51 p.m."], (
+        "the bill's hearing and its amendment's were not kept apart: "
+        + json.dumps([[r["opened"], r["subject"][:20]] for r in recs]))
+    assert recs[1]["subject"].startswith("AMENDMENT"), recs[1]["subject"]
+    assert c["duplicates"] == 1 and recs[0]["filed"] == "2025-04-03", (
+        f"the re-filing was not folded to the later one: {c['duplicates']}, "
+        f"{recs[0]['filed']}")
+    return "ok", "the bill and its amendment apart, the later filing kept"
+
+
 @check("naming", "a hearing report lands on its own Senate hearing, legislators as members",
        needs=("build_site_v2", "senate_hearing_reports"))
 def _hearing_report_attach(build_site_v2, senate_hearing_reports):
@@ -6150,7 +6219,9 @@ def _hearing_report_attach(build_site_v2, senate_hearing_reports):
                  "Senator Alvin See",           # the wrong chamber
                  "Senator Tim Gannon",          # a first name that disagrees
                  "Liz Tentarelli, League of Women Voters N.H.",
-                 "Senators Bill Gannon and Tim McGough"):
+                 "Senators Bill Gannon and Tim McGough",
+                 # Two people's heading, cut at the bracket: HB 1766's shape.
+                 "Representatives Alvin See (Merr. 26) and Ann Smith"):
         assert who(line) is None, f"{line!r} was drawn as member {who(line)}"
 
     rec = _hearing_fixture(S)["SB11"][0]
@@ -6172,6 +6243,12 @@ def _hearing_report_attach(build_site_v2, senate_hearing_reports):
     assert "member" not in page["sections"][1]["speakers"][0], (
         "a member of the public was drawn as a member")
     assert not ({"filed", "bill"} & set(page)), sorted(page)
+    # The parser's reasons for keeping a report as text are its own, not the
+    # reader's, and do not travel in the page.
+    prose = B.hearing_report_for_page(_hearing_fixture(S)["SB160"][0], idx,
+                                      S.name_part)[0]
+    assert "fallback" not in prose and all(
+        "text" in s for s in prose["sections"]), sorted(prose)
     return "ok", ("on its own hearing only, the rest named; members only "
                   "where one is meant")
 

@@ -2506,6 +2506,10 @@ def resolve_speaker(heading, idx, name_part):
     m = SPEAKER_TITLE.match(name_part(heading) or "")
     if not m:
         return None
+    # "Representatives Barbara Comtois (Belk. 7) and Peters Bixby (Straf. 13)"
+    # heads two people's points; a chip would give them to the first.
+    if m.group("t").lower().rstrip(".") in ("senators", "representatives"):
+        return None
     ch = "S" if m.group("t").lower().startswith("sen") else "H"
     # The report's apostrophe is a typesetter's and the roster's is not:
     # "Prudhomme-O’Brien" and "Prudhomme-O'Brien" are one member.
@@ -2560,8 +2564,11 @@ def hearing_report_for_page(rec, idx, name_part):
                     miss += 1
                 o["speakers"].append(sp)
         secs.append(o)
+    # `fallback` is the parser's diagnosis of why a report stayed as text,
+    # snippets and all; the page reads a section's `text` instead, and the
+    # reasons are for senate_hearing_reports.py --fallbacks, not the reader.
     out = {k: v for k, v in rec.items()
-           if k not in ("sections", "filed", "bill", "subject")}
+           if k not in ("sections", "filed", "bill", "subject", "fallback")}
     # What was heard, only where it is not the bill itself: the page is the
     # bill's, and its title is already at the top of it. An amendment heard
     # on its own is named, because that is what the report is about.
@@ -4336,6 +4343,12 @@ def main():
         print(f"Senate hearing reports: "
               f"{sum(len(v) for b in hearing_reports.values() for v in b.values()):,}"
               f" across {sum(len(b) for b in hearing_reports.values()):,} bills")
+    else:
+        # Silence is not success: without this line a hand-run build that
+        # never had the file looks the same as one whose reports all landed.
+        print(f"Senate hearing reports: NONE -- {a.hearing_reports} is not "
+              "here or is empty, so no Hearings tab carries one. "
+              "senate_hearing_reports.py writes it.")
     # Written by extract_amendments.py out of the cached calendars. Absent is
     # fine: the amendments are still listed, without their text.
     amend_texts = load("amendments.json", {})

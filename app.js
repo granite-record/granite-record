@@ -1626,7 +1626,10 @@ function hrPlain(items){
   return items.map(x=>typeof x==="string"?`<p class="hrpara">${esc(x)}</p>`
     :`<ul class="hrpts">${(x.li||[]).map(hrPoint).join("")}</ul>`).join("");
 }
-function hearingReport(r){
+// `video` is whether the station drew a recording above the report: fifteen
+// Senate hearings with a report have none, and there the page said "the
+// recording above is the hearing itself" over "No recording matched".
+function hearingReport(r,video){
   if(!r)return "";
   const secs=r.sections||[];
   // The size of it, in the summary, so a reader knows what opening it costs.
@@ -1658,8 +1661,8 @@ function hearingReport(r){
     ${r.subject?`<p class="hrsrc"><b>Heard:</b> ${esc(r.subject)}</p>`:""}
     <p class="hrsrc">What each person said, as summarized in the ${esc(cmte)}’s
       hearing report${when?` of ${fdate(when)}`:""}. The report is the committee
-      staff’s summary of the hearing, not a transcript; the recording above is
-      the hearing itself.</p>
+      staff’s summary of the hearing, not a transcript${video
+        ?"; the recording above is the hearing itself":""}.</p>
     <dl class="hrfacts">${fact("Hearing",times?`${fdate(r.heard)}, ${times}`:fdate(r.heard))}${
       fact("Members present",r.present)}${fact("Members absent",r.absent)}</dl>
     ${pos.length?`<h2>Who took a position</h2><dl class="hrfacts">${
@@ -1940,7 +1943,8 @@ function renderHearings(b,d){
     return `<div class="stn ${placed?"done":"pend"}">
       <div class="w">${esc(s.when)}${s.time?" at "+esc(s.time):""}${s.venue?" · "+esc(s.venue):""}</div>
       <div class="t">${esc(stationTitle(b,s))}</div>${
-        signins(s.testimony)}${inner}${(s.reports||[]).map(hearingReport).join("")}</div>`;}).join("")
+        signins(s.testimony)}${inner}${(s.reports||[]).map(r=>
+          hearingReport(r,inner.includes('class="player"'))).join("")}</div>`;}).join("")
     :`<p class="note">No scheduled proceedings on file.</p>`;
 }
 
