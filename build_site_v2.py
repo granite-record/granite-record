@@ -1059,7 +1059,18 @@ CLOSING = {
 }
 
 
-def closing_stage(label, narr):
+# "No vote was ever taken on it" is a claim, and on 35 of the 111 bills of
+# 2025-2026 that carried it the docket records one: HB 243 passed both
+# chambers and went to a committee of conference that never reported; CACR 8
+# passed the Senate 21-3 and failed in the House, 203-158. Where a chamber
+# decided anything, this is what the ending was instead.
+SESSION_ENDED_AFTER_VOTES = (
+    "It had not finished its passage when the session ended, and the bill died "
+    "then. That is a procedural end rather than a decision -- it ran out of "
+    "time -- and it would have to be filed again as a new bill in a later term.")
+
+
+def closing_stage(label, narr, decided=False):
     """A last paragraph for a bill whose ending the docket never narrates.
 
     The docket records actions, and a session ending is not an action: it just
@@ -1067,7 +1078,8 @@ def closing_stage(label, narr):
     status page knows the bill died with the term, so a settled red headline
     sat above a history that trailed off mid-sentence.
 
-    Returns None where the history already says it.
+    `decided` is whether the journey has a chamber deciding anything on the
+    bill. Returns None where the history already says it.
     """
     hit = CLOSING.get(label)
     if not hit:
@@ -1076,6 +1088,8 @@ def closing_stage(label, narr):
     told = " ".join(s.get("text", "") for s in (narr or {}).get("stages", [])).lower()
     if any(g in told for g in guards):
         return None
+    if decided and label == "Died when the session ended":
+        text = SESSION_ENDED_AFTER_VOTES
     return {"label": "How it ended", "text": text}
 
 
@@ -5244,7 +5258,10 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             # is only on the status page. 120 bills showed a settled headline
             # over a story that stopped at the committee report.
             "stages": ((narr or {}).get("stages", [])
-                       + [x for x in [closing_stage(status, narr)] if x]),
+                       + [x for x in [closing_stage(
+                           status, narr,
+                           decided=any(s_["body"] in ("H", "S") for s_ in jsteps))]
+                          if x]),
             "notes": (narr or {}).get("notes", []),
             # Belongs on the Votes tab, not above the history.
             # NOT OVER THE TOP OF THE ROLL CALLS. narrative counts the
