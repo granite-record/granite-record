@@ -900,14 +900,9 @@ three thresholds, none of which involves the Governor.</p>
 """ + flow_diagram(FLOW_CACR, "How the constitution is amended", level=3) + """
 
 <h2>Why almost none get through</h2>
-<p>The first step is the one that stops most of them, because a three-fifths
-threshold measured against the whole membership is very close to
-unattainable in a chamber where turnout varies.</p>
+<p>[[cacr_hurdle]]</p>
 """ + SHOWS.format("""
-<p>The [[term]] term filed <b>[[cacr]] CACRs</b>. [[cacr_voters]]
-[[cacr_killed]] were killed outright, [[cacr_session_end]] died when the session
-ended, [[cacr_one_chamber]] passed one chamber and stopped, and the rest are
-still in committee or were postponed.</p>
+<p>[[cacr_record]]</p>
 <p>They sit in <a href="bills.html">the bill list</a> beside ordinary bills.
 A CACR that shows "Passed one chamber" has a much longer way to go than a bill
 with the same words beside it.</p>""")

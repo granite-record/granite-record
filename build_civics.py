@@ -122,6 +122,187 @@ def _notice(root, term, _seen={}):
     return _seen[term]
 
 
+# WHAT BECAME OF A TERM'S CONSTITUTIONAL AMENDMENTS, as a partition of them.
+#
+# The page used to say "N were killed outright, N died when the session ended,
+# N passed one chamber and stopped, and the rest are still in committee or
+# were postponed" -- and for 2025-2026 the same three CACRs were in two of
+# those counts, "the rest" were six three-fifths failures and one death on the
+# table, and the rail it counted from called CACR 13 stopped in the Senate that
+# passed it 23-1. Every CACR is in exactly one clause, and a clause with
+# nothing in it is left out rather than printed as "0".
+#
+# THE CLAUSE IS WHAT ENDED IT. A CACR that won a majority on the House floor
+# and fell short of three fifths is counted there, whatever its status then
+# became: CACR 11 of 2026 passed the Senate 23-1, fell short in the House
+# 199-157, and its status is "Died when the session ended" because nothing
+# moved it after. The paragraph above this one counts the same failures by
+# the same test (_fell_short), so the page cannot give two numbers for them.
+_FLOOR_TALLY = re.compile(r"\b(?:RC|DIV|DV)\b\s*[:(]?\s*(\d{1,3})\s*Y?\s*[-–]\s*(\d{1,3})\s*N?\b",
+                          re.I)
+_PASSING = re.compile(r"ought to pass|\bOTP\b|passage|third reading|3rd reading|\bpassed\b", re.I)
+_NOT_PASSING = re.compile(r"table|reconsider|postpone|interim|refer", re.I)
+_FAILED = re.compile(r"\bM[FL]\b|lacking|\bfail", re.I)
+_NUM = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six",
+        7: "Seven", 8: "Eight", 9: "Nine"}
+
+
+def _passage_votes(rec):
+    """[(body, yeas, nays, carried)] -- the floor votes on passing a CACR,
+    with the tally the docket line prints, WHATEVER THRESHOLD THE LINE NAMES.
+
+    Passing one always takes three fifths, so a failed motion to pass with
+    more yeas than nays fell short of it, and the line is not needed to say
+    so. It used to be: CACR 8 of 2025's "Ought to Pass: MF DV 203-158 Lacking
+    Necessary Two-Thirds Vote" is a clerk's slip -- the House Journal of 8 May
+    2025 says "lacking the necessary 3/5ths vote" -- and 2016's CACR 17, "MF
+    RC 188-135", names no threshold at all. Both were missed."""
+    out = []
+    for e in (rec or {}).get("events", []) or []:
+        raw = e.get("raw") or ""
+        if e.get("cancelled"):
+            continue
+        if not _PASSING.search(raw) or _NOT_PASSING.search(raw):
+            continue
+        m = _FLOOR_TALLY.search(raw)
+        if not m:
+            continue
+        failed = bool(_FAILED.search(raw))
+        carried = not failed and bool(re.search(r"\bMA\b|adopted", raw, re.I))
+        if failed or carried:
+            out.append(((e.get("body") or "").upper(), int(m.group(1)),
+                        int(m.group(2)), carried))
+    return out
+
+
+def _fell_short(rec, status=""):
+    """True when a House vote on passing this CACR had more yeas than nays
+    and failed, and no House vote on passing it carried. A CACR the House
+    then carried on another vote (CACR 26 of 2012 fell two short, was
+    reconsidered and carried 239-114) did not fall short, and nor did one
+    both chambers passed."""
+    if (status or "").startswith("Passed both chambers"):
+        return False
+    house = [v for v in _passage_votes(rec) if v[0] == "H"]
+    return (any(not c and y > n for _, y, n, c in house)
+            and not any(c for *_, c in house))
+
+
+def _cacr_hurdle(idx, every_narr, term):
+    """What the record shows about the three-fifths step: how few CACRs get
+    through, and how many this term won a House majority and still failed.
+
+    It used to add that the ones that get through "tend to pass by wide
+    margins", from the share of those voting: 68% to 97% yes. Against the
+    bar itself -- three fifths of the members in office -- two of those eight
+    House votes had not one vote to spare: CACR 26 of 2012 carried 239-114
+    when 239 was the number needed, the day it had failed 237-115, and CACR
+    16 of 2018 carried 235-96 with 391 members in office. A margin measured
+    against those voting is the measure the sentence before it says is not
+    the one that counts."""
+    all_cacrs = [r for r in idx if (r.get("id") or "").startswith("CACR")]
+    if not all_cacrs:
+        return ""
+    through = [r for r in all_cacrs if (r.get("status") or "").startswith("Passed both chambers")]
+    first = min((r.get("term") or "" for r in all_cacrs), default="").split("-")[0]
+    shown = term.replace("-", "&ndash;")
+    out = (f"Of the {len(all_cacrs):,} CACRs filed since {first}, "
+           + (f"{len(through):,} passed both chambers." if through
+              else "none passed both chambers."))
+    out += (" Three fifths is counted against the members in office rather than "
+            "against those voting, so a member who does not vote counts against "
+            "it, and a CACR can win even three fifths of those voting and still "
+            "fail.")
+    narr = every_narr.get(term, {})
+    short = [r for r in all_cacrs if r.get("term") == term
+             and _fell_short(narr.get(r.get("id")), r.get("status"))]
+    if short:
+        out += (f" In the {shown} term, {len(short):,} "
+                f"{'CACR' if len(short) == 1 else 'CACRs'} won a majority of those "
+                "voting in the House and still fell short.")
+    return out
+
+
+def _voters_verb(label, n):
+    """"Passed both chambers, goes to the voters in November 2026" -> "goes to
+    the voters at the state general election in November 2026", agreeing
+    with n."""
+    s = label.split(", ", 1)[1] if ", " in label else "went to the voters"
+    s = re.sub(r"to the voters in (?=[A-Z])", "to the voters at the state general election in ", s)
+    if s.startswith(("ratified", "not ratified")):
+        return ("was " if n == 1 else "were ") + s
+    if s.startswith("goes") and n != 1:
+        return "go" + s[4:]
+    return s
+
+
+def _cacr_record(cacrs, narr, term):
+    """The term's CACRs, every one in exactly one clause: the voters, a
+    three-fifths failure on the House floor where the docket records one,
+    and otherwise its status."""
+    if not cacrs:
+        return f"The {term.replace('-', '&ndash;')} term filed no CACRs."
+    shown = term.replace("-", "&ndash;")
+    short = [r for r in cacrs if _fell_short(narr.get(r.get("id")), r.get("status"))]
+    rest = [r for r in cacrs if all(r is not s for s in short)]
+    by = Counter(r.get("status") or "" for r in rest)
+    head = f"The {shown} term filed <b>{len(cacrs):,} {'CACR' if len(cacrs) == 1 else 'CACRs'}</b>."
+    voters = sorted(s for s in by if s.startswith("Passed both chambers"))
+    nv = sum(by[s] for s in voters)
+    if not nv:
+        lead = "None passed both chambers."
+    elif len(voters) == 1:
+        lead = (f"{_NUM.get(nv, f'{nv:,}')} passed both chambers and "
+                f"{_voters_verb(voters[0], nv)}.")
+    else:
+        lead = (f"{nv:,} passed both chambers: "
+                + ", ".join(f"{by[s]:,} {_voters_verb(s, by[s])}" for s in voters) + ".")
+
+    def n_(k):
+        return f"{k:,}"
+
+    clauses = []
+    if by["Killed"]:
+        clauses.append(f"{n_(by['Killed'])} {'was' if by['Killed'] == 1 else 'were'} killed outright")
+    if short:
+        sen = sum(1 for r in short if (r.get("passage") or "")[:2] == "Sp")
+        tail = ""
+        if sen:
+            tail = (f", {sen:,} of them after passing the Senate" if len(short) > 1
+                    else ", after passing the Senate")
+        clauses.append(f"{n_(len(short))} fell short of three fifths on the House floor{tail}")
+    failed = [r for r in rest if r.get("status") == "Failed to pass"]
+    if failed:
+        clauses.append(f"{n_(len(failed))} failed a floor vote")
+    if by["Died on the table"]:
+        clauses.append(f"{n_(by['Died on the table'])} died on the table")
+    ended = [r for r in rest if r.get("status") == "Died when the session ended"]
+    if ended:
+        after = Counter((r.get("passage") or "")[:1] for r in ended
+                        if (r.get("passage") or "")[1:2] == "p")
+        tail = ""
+        if sum(after.values()):
+            where = " or ".join(("the Senate" if c == "S" else "the House")
+                                for c in sorted(after))
+            tail = (f", {sum(after.values()):,} of them after passing {where}"
+                    if len(ended) > 1 else f", after passing {where}")
+        clauses.append(f"{n_(len(ended))} died when the session ended{tail}")
+    done = {"Killed", "Failed to pass", "Died on the table",
+            "Died when the session ended", *voters}
+    for s in sorted(s for s in by if s not in done):
+        clauses.append(f"{n_(by[s])} {'is' if by[s] == 1 else 'are'} listed as “{s}”")
+    body = ""
+    if clauses:
+        # A clause with a comma of its own ("10 fell short ..., 3 of them after
+        # passing the Senate") would run into the next; semicolons keep a
+        # reader from counting the tail as another clause.
+        sep = "; " if any("," in c for c in clauses) else ", "
+        body = " " + (clauses[0] if len(clauses) == 1
+                      else sep.join(clauses[:-1]) + sep + "and " + clauses[-1]) + "."
+        body = " " + body[1].upper() + body[2:]
+    return f"{head} {lead}{body}"
+
+
 def record_figures(site, root=Path(".")):
     """Every count the Learn pages state, from what the build has just written.
 
@@ -164,7 +345,8 @@ def record_figures(site, root=Path(".")):
             if v.get("body") == "H" and str(v.get("year")) in years:
                 seated[(v.get("year"), v.get("vote_number"))] += 1
 
-    narr = _load(Path(root) / "narratives.json", {}).get(term, {})
+    every_narr = _load(Path(root) / "narratives.json", {})
+    narr = every_narr.get(term, {})
 
     def chambers(rec):
         labels = [" " + (s.get("label") or "") + " " for s in rec.get("stages") or []]
@@ -174,11 +356,9 @@ def record_figures(site, root=Path(".")):
               if r.get("status") in ("Vetoed, override failed", "Veto overridden, became law", "Vetoed")}
     messages = _load(Path(root) / "veto_messages.json", {})
     pending = sum(1 for r in idx if r.get("status") == "Vetoed")
-    # Constitutional amendments of the term, by the passage marks the index
-    # carries: origin, then first chamber, second chamber, governor, law.
+    # Constitutional amendments of the term, read from their statuses -- what
+    # each page asserts -- and from the docket's own floor lines for the votes.
     cacrs = [r for r in cur if (r.get("id") or "").startswith("CACR")]
-    marks = lambda r: (r.get("passage") or "-----").ljust(5, "-")
-    both = sum(1 for r in cacrs if marks(r)[2] == "p")
     # A hearing of a bill, once however many recordings it was matched against.
     hearings = len({(r.get("term"), r.get("bill"), r.get("body"), r.get("date")) for r in P.load()
                     if r.get("kind") in ("public hearing", "hearing")})
@@ -244,11 +424,10 @@ def record_figures(site, root=Path(".")):
         "veto_messages": sum(1 for t, b in vetoed if b in messages.get(t, {})),
         "veto_pending": ("" if not pending else " One is still awaiting its override vote."
                          if pending == 1 else f" {pending} are still awaiting their override votes."),
-        "cacr_voters": ("<b>None of them reached the voters.</b>" if not both else
-                        f"<b>{both:,} passed both chambers and went to the voters.</b>"),
-        "cacr_killed": sum(1 for r in cacrs if r.get("status") == "Killed"),
-        "cacr_session_end": sum(1 for r in cacrs if r.get("status") == "Died when the session ended"),
-        "cacr_one_chamber": sum(1 for r in cacrs if marks(r)[1] == "p" and marks(r)[2] == "x"),
+        # The constitution page's two CACR paragraphs, each a sentence built
+        # here because its clauses come and go with the counts.
+        "cacr_hurdle": _cacr_hurdle(idx, every_narr, term),
+        "cacr_record": _cacr_record(cacrs, every_narr.get(term, {}), term),
         "hearings": hearings,
     }
     # THE WORKED EXAMPLE on the finding-your-representatives page, drawn from

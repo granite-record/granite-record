@@ -419,8 +419,27 @@ def calendar_keys_from_queue(path="archive/queue.csv"):
 # Measured on this term: 32 adopted resolutions read "Passed one chamber" and
 # three more read "In progress", one of them offering "Pending action in the
 # other chamber" for a resolution that has no other chamber.
-SINGLE_CHAMBER = {"HR": "House", "SR": "Senate"}
-NO_GOVERNOR = {"HCR", "SCR", "CACR"}
+# "SS" is a special session's numbering of the same kinds: SSHR 1 of 2008 is
+# the House adopting its rules, SSHCR 1 of 2015 a concurrent resolution both
+# chambers adopted the same day.
+SINGLE_CHAMBER = {"HR": "House", "SR": "Senate", "SSHR": "House", "SSSR": "Senate"}
+NO_GOVERNOR = {"HCR", "SCR", "CACR", "SSHCR", "SSSCR"}
+
+
+def origin_of(bid, narr=None, st=None):
+    """"H" or "S": the chamber the bill started in. The docket's first line,
+    then the status page's body, then the letters -- a CACR can start in
+    either chamber, so its letters cannot say, and data/bills.json's
+    "chamber" is "H" on 537 of the 545 CACRs, CACR 9 of 1995 (a Senate one)
+    among them."""
+    first = next((e for e in (narr or {}).get("events", [])
+                  if not e.get("cancelled") and e.get("body")), None)
+    for v in ((first or {}).get("body"), (st or {}).get("body")):
+        v = (v or "").strip().upper()[:1]
+        if v in ("H", "S"):
+            return v
+    p = bill_prefix(bid)
+    return "S" if (p[2:] if p.startswith("SS") else p).startswith("S") else "H"
 
 # "(New Title)" AT THE FRONT OF A TITLE IS NOT PART OF THE TITLE. It is the
 # General Court's mark that an amendment changed a bill's subject, and 5,718 of
@@ -970,7 +989,7 @@ def is_routine(text):
     return bool(ROUTINE.search(text or ""))
 
 
-def classify_stated(st, prefix=""):
+def classify_stated(st, prefix="", origin=""):
     """Map the page's own status wording to a display state, or None.
 
     Scans every status field at once and takes the most specific match, rather
@@ -983,9 +1002,27 @@ def classify_stated(st, prefix=""):
                     for f in ("gen_status", "house_status", "senate_status"))
     if not blob.strip():
         return None
-    for needle, kind, label in STATED:
-        if needle in blob:
-            return for_bill_kind(needle, kind, label, prefix)
+    hit = next(((n, k, l) for n, k, l in STATED if n in blob), None)
+    # A RESOLUTION BOTH CHAMBERS PASSED IS FINISHED, and "passed/adopted" is
+    # in every such record's fields -- so the STATED row below answered
+    # "Passed one chamber" for 151 of them (CACR 13 of 2026 among them, its
+    # own status box saying "Senate: PASSED/ADOPTED"), and the bare-PASSED
+    # fallback at the foot of this function was never reached. What says
+    # both chambers are done is the SECOND chamber's own field reading
+    # PASSED/ADOPTED without amendment -- nothing is left to concur in.
+    # gen_status PASSED is not enough on its own: HCR 10 and HCR 11 of 2024
+    # carry it with no Senate action in their dockets at all. Only where
+    # nothing more decisive is stated: a resolution a field says was killed
+    # stays so.
+    if prefix in NO_GOVERNOR and (hit is None or hit[0] in ("passed/adopted", "in committee")):
+        second = (st.get("senate_status" if (origin or "H") == "H" else "house_status")
+                  or "").strip().lower()
+        if second.startswith("passed/adopted") and "amend" not in second:
+            if prefix == "CACR":
+                return "adopted", "Passed both chambers, goes to the voters"
+            return "adopted", "Adopted by both chambers"
+    if hit:
+        return for_bill_kind(*hit, prefix)
     # Nothing in the table matched. GeneralCodes.txt code 04 is "PASSED", and
     # the table does not carry it because for a bill it says nothing the docket
     # does not say better -- passed the legislature, governor next. For a
@@ -1243,8 +1280,22 @@ def classify(narr, rcs, prefix=""):
     # bills of 2017-2026 say exactly that and nothing else.
     if re.search(r"inexpedient to legislate,\s*(?:senate|house)\s+rule", text):
         return "done", "Killed"
-    if any(e.get("type") == "retained" for e in evs):
-        return "active", "Retained in committee"
+    # RETAINED IS WHERE A BILL WAS, NOT WHERE IT IS once anything came after.
+    # Read as "any retention anywhere" it called 21 bills "Retained in
+    # committee" that had since been reported, passed both chambers and gone
+    # to a committee of conference -- HB 589 of 2002 among them.
+    # Moved on means the chamber then passed it, or the other chamber took it
+    # up; a later vote that failed leaves the answer where it was.
+    ret = [i for i, e in enumerate(evs) if e.get("type") == "retained"]
+    if ret:
+        where = evs[ret[-1]].get("body")
+        moved_on = any(
+            (e.get("type") == "floor" and (e.get("motion") or "").upper() == "MA"
+             and re.search(r"ought to pass|adopted", e.get("action") or "", re.I))
+            or (e.get("body") and where and e.get("body") != where)
+            for e in evs[ret[-1] + 1:])
+        if not moved_on:
+            return "active", "Retained in committee"
     # THE LAST THING THE RECORD SAYS. Where a committee has reported and no
     # floor vote is on the page, that is the honest answer: 51 bills of 2021
     # carry a majority report of Inexpedient to Legislate, a minority report
@@ -1774,6 +1825,10 @@ def write_rollcall_index(out, rollcalls, votes_by_member):
                 }
                 if r.get("threshold_note"):
                     ix[key]["tn"] = r["threshold_note"]
+                # Where the clerk's record and the ballots disagree, the
+                # member's Votes row says so, as the bill's vote card does.
+                if r.get("outcome_conflict"):
+                    ix[key]["oc"] = r["outcome_conflict"]
 
     # HOW EACH PARTY VOTED, so a member's page can say when they broke with
     # their own. Yea and Nay only: a member not voting has not taken a side,
@@ -2070,10 +2125,17 @@ def build_composition(a, legs):
             "parties": [{"code": k, "name": PARTY_FULL.get(k, k), "n": v}
                         for k, v in sorted(counts.items(), key=lambda x: -x[1])],
             # Reference thresholds, stated as arithmetic rather than as any
-            # party's distance from them.
+            # party's distance from them. A bill passes with a majority of
+            # those voting, so that one has no fixed number. Three fifths
+            # (passing a constitutional amendment) is of the members IN
+            # OFFICE, not of the seats: 239 of the 397 then seated carried
+            # CACR 26 in 2012, and every CACR vote the dockets and Journals
+            # record as needing three fifths fits that count. Counted here
+            # from the roster, and the page says so, because the most recent
+            # roll call's ballots can differ from it by a member or two.
             "majority": total // 2 + 1,
             "two_thirds_note": "two thirds of those voting, so it moves with turnout",
-            "three_fifths": -(-3 * total // 5),
+            "three_fifths": -(-3 * len(members) // 5),
         }
 
     # Which districts are short a member. Only possible where the district files
@@ -2469,8 +2531,9 @@ def hearing_testimony(e, tdb, scraped):
 # one chamber -- its rules, its own thanks and condolences -- and they never
 # cross, never reach a governor and never become law. A concurrent resolution
 # (HCR, SCR) and a constitutional amendment (CACR) do cross, so they are not
-# in here.
-ONE_CHAMBER = ("HR", "SR")
+# in here. A special session numbers the same kinds with "SS" in front: SSHR 1
+# of 2008 is the House adopting its rules and has two stops, not four.
+ONE_CHAMBER = ("HR", "SR", "SSHR", "SSSR")
 
 
 # Written by build_bill_versions.py, which runs before this step. Absent is
@@ -2540,6 +2603,10 @@ def passage(stages, kind, status="", bill=""):
     for stop in (origin, other, "G"):
         if stop not in seen:
             out.append("-")
+        elif stop == "G" and bill and bill_prefix(bill) in NO_GOVERNOR:
+            # "Enrolled" is filed with the governor, but a CACR, HCR or SCR
+            # never goes to one: 30 resolution rails read "Governor: passed".
+            out.append("-")
         elif stop == "G":
             out.append("x" if vetoed else
                        "p" if kind == "law" else
@@ -2552,6 +2619,11 @@ def passage(stages, kind, status="", bill=""):
             # veto of HB 1442 by 165-149 had passed the bill in May, and
             # crossing it because the override was the last thing in the
             # docket said the House had rejected it.
+            out.append("p")
+        elif kind == "adopted":
+            # A resolution both chambers adopted stopped in the second one
+            # because it was finished, not because it was refused there:
+            # CACR 13 of 2026 drew a cross on the Senate that passed it 23-1.
             out.append("p")
         elif stop == last:
             out.append("x")
@@ -2805,8 +2877,12 @@ def bill_sponsor_list(bid, b, year, term, current, sponsors, legs,
     return sp_list
 
 
+# `between` is true where a dated docket line between the chambers decided
+# the status over the fields (between_chambers and the two rules beside it),
+# so status_source can say the docket did.
 Disposition = namedtuple("Disposition",
-                         "kind status told settled prefix stated stale")
+                         "kind status told settled prefix stated stale between",
+                         defaults=(False,))
 
 
 def bill_index_row(bid, b, year, term, cmte, cmtes, disp, prime,
@@ -2919,8 +2995,205 @@ def study_report(narr):
     return best
 
 
+# WHAT THE TWO CHAMBERS DID WITH EACH OTHER'S VERSION, from the docket.
+#
+# The status fields name a stage and stop there: HB 1215 of 2024 has a Senate
+# field saying CONFERENCE REPORT ADOPTED and nothing in STATED for the House's
+# CONFERENCE REPORT FAILED, so it read "Conference committee report adopted"
+# over a docket whose last line is the House voting the report down 102-261.
+# CACR 6 and CACR 12 of 2012 have no field saying it at all. And SB 34 of 2026
+# read "Passed one chamber" because its Senate field is blank -- the docket has
+# the House passing it amended and the Senate refusing to concur.
+CONF_REPORT = re.compile(r"conf(?:erence)?\.?\s*comm(?:ittee)?\.?\s*rep(?:ort|t)?\b"
+                         r"|committee of conference report", re.I)
+# "Failed", and the older dockets' "Fails", "lost" and "defeated": 1999's
+# HB 252 "Conf Comm Report Fails DIV(76-210)", 2006's HB 381 "Conf Comm Report
+# lost RC(154-175)".
+CONF_FAILED = re.compile(r"\bfail(?:ed|s)?\b|not adopted|\brejected\b|lacking|"
+                         r"\blost\b|\bdefeated\b", re.I)
+# A NEW committee of conference -- "New Conf Comm", "New Committee of
+# Conference", "new C of C" -- but not "New Conf Comm Report ... MA", which
+# is the new conference's report being adopted (SB 140 of 1999).
+NEW_CONF = re.compile(r"\bnew\s+(?:conf(?:erence)?\.?\s*comm(?:ittee)?\.?(?!\s*rep)|"
+                      r"comm\w*\s+of\s+conf|c\s?of\s?c(?!\s*rep))", re.I)
+# The clause about the report ends where the next member's motion starts:
+# "Conf Comm Report Adopted RC(190-181); Rep Herman moved to Reconsider, ML".
+NEXT_MOTION = re.compile(r";\s*(?:rep|reps|sen|senator)\b|moved to reconsider", re.I)
+CONF_REJECTED = "Died when the conference report was rejected"
+
+
+def _conference_vote(said, e, raw, m):
+    """One chamber's vote on a conference report, into `said`, from the clause
+    that names the report -- not from the whole row, where an MF or ML
+    often belongs to another motion."""
+    before = raw[:m.start()]
+    # A motion ABOUT the report -- to reconsider it, table it, suspend the
+    # rules for it -- is not a vote on it, when it is in the same clause as
+    # the report's name: "Reconsideration, Conference Committee Report #2089c
+    # ...: MF RC 108-247" (SB 135 of 2014) left the adopted report standing.
+    if re.search(r"(?:reconsider\w*|susp\w*|table|\bLOT\b)[^;]*$", before, re.I):
+        return
+    tail = raw[m.start():]
+    cut = NEXT_MOTION.search(tail)
+    if cut:
+        tail = tail[:cut.start()]
+    if re.search(r"susp", tail, re.I):
+        return
+    body = (e.get("body") or "").upper() or "?"
+    if CONF_FAILED.search(tail) or re.search(r"\bM[FL]\b", tail):
+        said[body] = "failed"
+    elif re.search(r"\badopted\b", tail, re.I) or re.search(r"\bMA\b", tail):
+        said[body] = "adopted"
+
+
+def conference_outcome(evs):
+    """{chamber: "adopted" | "failed"} -- each chamber's LAST vote on a
+    conference report, as veto_outcome reads overrides: a chamber may
+    reconsider (SB 14 of 2025 failed 183-186, then carried 185-182).
+
+    A NEW conference asked for or agreed to starts the count again -- but one
+    the other chamber REFUSED leaves the rejected report as the last word:
+    HB 1211 of 1992 lost its report, the House asked for a new conference and
+    the Senate refused to accede. Same-day rows are not reliably in order, so
+    either side may come first (HB 723 of 1998 has the House acceding before
+    the Senate's request)."""
+    said = {}
+    saved = None
+    for e in evs:
+        raw = e.get("raw") or ""
+        if NEW_CONF.search(raw) and re.search(r"refus", raw, re.I):
+            if saved is not None:
+                said = saved
+            continue
+        ms = list(CONF_REPORT.finditer(raw))
+        # The report's vote first: the narrative joins wrapped rows, so one
+        # event can carry "REPORT LOST ...; REQ NEW CONF COMM, ... MA".
+        if ms:
+            _conference_vote(said, e, raw, ms[-1])
+        if NEW_CONF.search(raw) and (re.search(r"\bMA\b", raw)
+                                     or re.search(r"\bacced", raw, re.I)):
+            saved = said if said else saved
+            said = {}
+    return said
+
+
+def concurrence_outcome(evs):
+    """("non", asked_for_conference) or ("con", False): the last decision on
+    concurring with the other chamber's amendment, or None. A motion to
+    concur that FAILED is a refusal (HB 1215: 172-180), and a motion to
+    non-concur that failed is not one."""
+    last = None
+    for e in evs:
+        raw = e.get("raw") or ""
+        low = raw.lower()
+        failed = bool(re.search(r"\bM[FL]\b", raw))
+        if re.search(r"non-?\s?conc|\bnonc\b|refused to accept|refuses? to concur|"
+                     r"refused to concur", low):
+            if not failed:
+                last = ("non", bool(re.search(r"\bc\s?of\s?c\b|cofc|conf(?:erence)?\b", low)))
+        elif re.search(r"\bconc(?:ur\w*)?\b", low) and "enrolled" not in low:
+            if failed:
+                last = ("non", False)
+            elif re.search(r"\bMA\b|\bVV\b", raw):
+                last = ("con", False)
+    return last
+
+
+# The labels a later dated docket line is allowed to replace: the stages a bill
+# goes THROUGH. An outcome -- killed, tabled, law, vetoed -- is never replaced.
+BEFORE_CONFERENCE = {
+    "Passed one chamber", "In progress", "In committee", "Retained in committee",
+    "Committee report filed", "Passed, awaiting the governor",
+    "In a committee of conference", "Conference committee report adopted",
+    "One chamber did not concur",
+    "One chamber did not concur; a committee of conference was asked for"}
+BEFORE_CONCURRENCE = {
+    "Passed one chamber", "In progress", "In committee", "Retained in committee",
+    "Committee report filed"}
+
+
+def between_chambers(narr, status):
+    """A dated docket answer to what became of the two versions, or None."""
+    evs = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
+    conf = conference_outcome(evs)
+    if status in BEFORE_CONFERENCE and "failed" in conf.values():
+        return "done", CONF_REJECTED
+    # A committee of conference the other chamber REFUSED to form never sat:
+    # SB 58 of 1990, "HOUSE REFUSED TO ACCEDE", and HB 1432 of 2022.
+    if status == "In a committee of conference" and not conf:
+        req = [i for i, e in enumerate(evs) if re.search(r"acced", e.get("raw") or "", re.I)]
+        if req and re.search(r"refus", evs[req[-1]].get("raw") or "", re.I):
+            return "active", ("One chamber did not concur; a committee of "
+                              "conference was asked for")
+    if status in BEFORE_CONCURRENCE and not conf:
+        c = concurrence_outcome(evs)
+        if c and c[0] == "non":
+            return "active", ("One chamber did not concur; a committee of "
+                              "conference was asked for" if c[1]
+                              else "One chamber did not concur")
+    return None
+
+
+# A resolution the second chamber adopted says so in the docket even where its
+# status field does not: HCR 6 of 1990, "S INTRODUCED AND ADOPTED" the day the
+# House adopted it, and SCR 3 of 1996, "H ADOPTED DIV(178-116)".
+SECOND_ADOPTED = re.compile(r"^\s*(?:introduced and )?adopted\b", re.I)
+
+# What became of a CACR once both chambers passed it is the voters' to say, and
+# the docket records their answer for nine of them: "AMENDMENT ADOPTED BY 2/3
+# REF(199,229-26,336)" (CACR 23 of 1990) and "Amendment Failed Referendum
+# (271,091 - 205,589)" (CACR 5 of 2004). A referendum needs two thirds, so
+# "failed" there means it did not reach two thirds, not that most voted no.
+REFERENDUM = re.compile(r"\bamendment\s+(?P<how>adopted|failed)\b[^;]{0,20}?\bref(?:erendum)?\b\s*\(",
+                        re.I)
+# Its own text names the election: "submitted to the qualified voters of the
+# state at the state general election to be held in November, 2026".
+ELECTION_IN_TEXT = re.compile(r"general election to be held in (?P<month>[A-Z][a-z]+),?\s*(?P<year>\d{4})")
+TO_THE_VOTERS = "Passed both chambers, goes to the voters"
+
+
+def election_day(year):
+    """The state general election: the Tuesday after the first Monday in
+    November."""
+    d = _date(int(year), 11, 2)
+    while d.weekday() != 1:
+        d += _td(days=1)
+    return d
+
+
+def cacr_to_the_voters(narr, term, current, text="", today=None):
+    """What a CACR both chambers passed now says, in the tense the record
+    allows: the voters' answer where the docket records it; past tense for a
+    closed term; for the current term, the election its own text names, in
+    the future tense until that day."""
+    for e in reversed([e for e in (narr or {}).get("events", []) if not e.get("cancelled")]):
+        m = REFERENDUM.search(e.get("raw") or "")
+        if m:
+            return ("Passed both chambers, ratified by the voters"
+                    if m.group("how").lower() == "adopted"
+                    else "Passed both chambers, not ratified by the voters")
+    m = ELECTION_IN_TEXT.search(text or "")
+    if term != current:
+        return "Passed both chambers, went to the voters"
+    if not m:
+        return TO_THE_VOTERS
+    when = f"{m.group('month')} {m.group('year')}"
+    over = (today or _date.today()) > election_day(m.group("year"))
+    return (f"Passed both chambers, went to the voters in {when}" if over
+            else f"Passed both chambers, goes to the voters in {when}")
+
+
+# THE 2020 SENATE LEFT 427 BILLS ON THE TABLE, and its Rule 3-23 killed them at
+# adjournment: every one's last docket line is "Inexpedient to Legislate,
+# Senate Rule 3-23, Adjournment 09/16/2020", while its status field still said
+# LAID ON TABLE. The site already called this ending "Died on the table" on 211
+# bills whose last line is the same, 164 of them in other terms (2015-2016 to
+# 2023-2024) and 47 in 2019-2020 itself.
+TABLE_DEATH = re.compile(r"inexpedient to legislate,\s*senate\s+rule\s+3-23,\s*adjournment", re.I)
+
+
 def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
-                     override_failed="", term_over=False):
+                     override_failed="", term_over=False, text="", today=None):
     """What became of this bill, and where that answer came from.
 
     The two counters the build reports at the end leave as data rather than
@@ -2945,8 +3218,9 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
     override vote" because its fields stop at VETOED BY GOVERNOR.
     """
     stated = stale = 0
+    between = None
     prefix = bill_prefix(bid)
-    told = classify_stated(st, prefix)
+    told = classify_stated(st, prefix, origin_of(bid, narr, st))
     settled = docket_outcome(narr)
     # THE DOCKET LINE THAT NUMBERED THE CHAPTER, OR RECORDED A FAILED
     # OVERRIDE, COUNTS WHENEVER THE HISTORY ITSELF SAYS NOTHING -- not only
@@ -3012,6 +3286,35 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
     # docket records "Died on Table, Session ended" for these, but not until
     # the General Court closes the term -- 10 October last term -- so the site
     # would have said it for another month.
+    #
+    # A DATED DOCKET LINE BETWEEN THE CHAMBERS outranks a field that stopped
+    # at an earlier stage -- the rule docket_outcome already applies to the
+    # governor, and floor_disposed to a chamber's own kill. It replaces only a
+    # stage, never an outcome, and it does not make the bill "settled": SB 34
+    # of 2026's box would then read "Pending action in the other chamber".
+    # `between` carries the fact that the docket decided, for status_source.
+    if not settled:
+        between = between_chambers(narr, status)
+        if between:
+            kind, status = between
+            stated = 1
+        elif prefix in NO_GOVERNOR and status == "Passed one chamber":
+            org = origin_of(bid, narr, st)
+            evs2 = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
+            if any((e.get("body") or "").upper()[:1] not in ("", org)
+                   and SECOND_ADOPTED.search(e.get("raw") or "")
+                   and not re.search(r"\bam\b|amend", e.get("raw") or "", re.I)
+                   for e in evs2):
+                between = ("adopted", TO_THE_VOTERS if prefix == "CACR"
+                           else "Adopted by both chambers")
+                kind, status = between
+        elif status == "Laid on the table":
+            evs2 = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
+            if evs2 and TABLE_DEATH.search(evs2[-1].get("raw") or ""):
+                between = ("done", "Died on the table")
+                kind, status = between
+    if status == TO_THE_VOTERS:
+        status = cacr_to_the_voters(narr, term, current, text, today)
     if kind == "active" and (term != current or term_over):
         kind = "done"
         stale = 1
@@ -3026,7 +3329,7 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
                            "Vetoed, override vote pending")):
         status = "Vetoed"
     return Disposition(kind, status, told, settled, prefix,
-                       stated, stale)
+                       stated, stale, bool(between))
 
 
 def bill_documents(b, bid, st, narr, sources, rep_written, rep_docket):
@@ -3232,11 +3535,20 @@ def bill_rollcalls(bid, term, rcs, narr, votes_by_bill, legs, unnamed):
                      rc_order.get((r.get("body"), r.get("number")),
                                   10 ** 6 + int(r.get("number") or 0))),
             # What the yes side had to reach, so the chart can mark it.
-            # rollcall_parser works this out per motion: two thirds of
-            # those voting for a veto override, three fifths of the whole
-            # membership for a CACR, a simple majority otherwise.
+            # rollcall_outcomes works this out per motion: two thirds of
+            # those voting for a veto override or a rules suspension, three
+            # fifths of the members in office (the ballots, not the seats)
+            # to pass a CACR, and whatever the docket or the Journal names
+            # for a motion it says needed more; a simple majority otherwise.
+            # `passed` is the clerk's recorded outcome where the record
+            # names one, and where the record and the ballots disagree the
+            # page says so -- in the site's own words, each side attributed
+            # to its source -- rather than choosing quietly.
             "threshold_needed": r.get("threshold_needed"),
             "threshold_rule": r.get("threshold_rule"),
+            **({"threshold_unknown": True} if r.get("threshold_unknown") else {}),
+            **({"outcome_conflict": r["outcome_conflict"]}
+               if r.get("outcome_conflict") else {}),
             "tally": {p: dict(v) for p, v in tally.items()},
             # "s" is the surname-first sort key. The grids are read
             # alphabetically, and sorting the displayed string would order
@@ -3552,7 +3864,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
             b, bid, st, narr, rcs, term, current,
             term_over=bool(session_over) and term == current,
             law_line=dl.get("line", ""),
-            override_failed=dl.get("override_failed", ""))
+            override_failed=dl.get("override_failed", ""),
+            # A CACR's own text names the election it goes to, which is
+            # what decides whether it "goes" or "went" to the voters.
+            text=((P.per_term(bill_texts, term, current).get(bid) or {}).get("text", "")
+                  if bill_prefix(bid) == "CACR" else ""))
         kind, status = disp.kind, disp.status
         told, settled, prefix = disp.told, disp.settled, disp.prefix
         n_stated += disp.stated
@@ -3753,7 +4069,11 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                 status, term, current),
             **({"archived": (coverage or {}).get(term) or True}
                if b.get("archived") else {}),
-            "status_source": ("General Court docket" if settled
+            # "General Court docket" where a dated docket line decided the
+            # status over the fields: settled (the governor, a veto), or
+            # between the chambers (a refusal to concur, a conference report
+            # voted down, a resolution the second chamber adopted).
+            "status_source": ("General Court docket" if settled or disp.between
                               else "General Court bill status page" if told
                               else "derived from the docket"),
             "chapter": chapter,

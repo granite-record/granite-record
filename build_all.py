@@ -156,7 +156,10 @@ def plan(a):
         Step("roll call tallies and thresholds",
              ["rollcall_parser.py", "--file", "RollCallSummary.txt", "--all",
               "--out", "rollcalls.json"],
-             needs=["RollCallSummary.txt"], produces=["rollcalls.json"]),
+             needs=["RollCallSummary.txt", "Docket.txt"], produces=["rollcalls.json"],
+             note="what each vote decided is the clerk's: rollcall_outcomes.py "
+                  "reads every Docket*.txt for the recorded outcome, and the "
+                  "House and Senate Journals for a vote no docket line names"),
 
         Step("build data (first pass)",
              ["build_data.py", "--dir", ".", "--out", "data"],

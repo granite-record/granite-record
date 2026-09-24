@@ -618,6 +618,261 @@ def _unsigned_status(build_site_v2):
     return "ok", f"{label} / {build_site_v2.next_step(n, {})}"
 
 
+def _ev(body, raw, type_="other", motion=None, action=None, date="2026-01-01"):
+    return {"body": body, "raw": raw, "type": type_, "motion": motion,
+            "action": action, "cancelled": False, "date": date}
+
+
+def _nar(*evs, hands=()):
+    return {"events": list(evs), "stages": [{"hand": h} for h in hands]}
+
+
+@check("status", "what the two chambers did with each other's version is read from the docket",
+       needs=("build_site_v2",))
+def _between_chambers(build_site_v2):
+    """Every line below is a real docket row, quoted from Docket.txt,
+    Docket_2023-2024.txt, Docket_2021-2022.txt, Docket_db_* or the narrated
+    record built from them.
+
+    The status fields name one chamber's last stage and stop: CACR 13 of
+    2026 read "Passed one chamber" beside its own "Senate: PASSED/ADOPTED";
+    HB 1215 of 2024 read "Conference committee report adopted" over the
+    House voting that report down 102-261; SB 34 of 2026 read "Passed one
+    chamber" after the Senate refused to concur; HB 589 of 2002 read
+    "Retained in committee" after passing both chambers. This fails on a
+    return to any of them, on a reconsidered report read as rejected, and on
+    a CACR said to be going to an election that has passed.
+    """
+    B = build_site_v2
+    bad = []
+
+    def want(label, got, what):
+        if got != label:
+            bad.append(f"{what}: wanted {label!r}, got {got!r}")
+
+    # CACR 13 of 2026: both chambers by three fifths, and its own text names
+    # the election -- future tense before it, past tense after.
+    st = {"gen_status": "SENATE", "senate_status": "PASSED/ADOPTED", "body": "H"}
+    n = _nar(_ev("H", "Introduced 01/07/2026 and referred to Judiciary", "introduced"),
+             _ev("H", "Ought to Pass: MA DV 325-15 By Necessary Three-Fifths Vote 02/05/2026",
+                 "floor", "MA", "Ought to Pass"),
+             _ev("S", "Ought to Pass, RC 23Y-1N, MA, by Necessary 3/5; OT3rdg; 03/26/2026"))
+    text = ("submitted to the qualified voters of the state at the state general "
+            "election to be held in November, 2026.")
+    d = B.bill_disposition({}, "CACR13", st, n, [], "2025-2026", "2025-2026",
+                           term_over=True, text=text, today=B._date(2026, 9, 23))
+    want("Passed both chambers, goes to the voters in November 2026", d.status, "CACR13 before the election")
+    want("adopted", d.kind, "CACR13's kind")
+    d = B.bill_disposition({}, "CACR13", st, n, [], "2025-2026", "2025-2026",
+                           term_over=True, text=text, today=B._date(2026, 11, 4))
+    want("Passed both chambers, went to the voters in November 2026", d.status, "CACR13 after the election")
+    d = B.bill_disposition({}, "CACR13", st, n, [], "2025-2026", "2027-2028")
+    want("Passed both chambers, went to the voters", d.status, "a closed term's CACR")
+    # The voters' own answer, where the docket records it.
+    for raw, label in (("Amendment Failed Referendum (271,091 - 205,589); 2005 Red Book, p.___",
+                        "Passed both chambers, not ratified by the voters"),
+                       ("AMENDMENT ADOPTED BY 2/3 REF(199,229-26,336); 1991 RED BOOK,P294",
+                        "Passed both chambers, ratified by the voters")):
+        n2 = _nar(*n["events"], _ev("H", raw))
+        d = B.bill_disposition({}, "CACR5", st, n2, [], "2003-2004", "2025-2026")
+        want(label, d.status, raw[:30])
+    # HCR 10 of 2024: gen_status PASSED and a House-only docket -- not both.
+    st = {"gen_status": "PASSED", "house_status": "PASSED/ADOPTED", "senate_status": "", "body": "H"}
+    n = _nar(_ev("H", "Ought to Pass : MA VV 02/01/2024", "floor", "MA", "Ought to Pass"))
+    want("Passed one chamber", B.bill_disposition({}, "HCR10", st, n, [], "2023-2024",
+                                                  "2025-2026").status, "HCR10 2024")
+    # HCR 6 of 1990: the Senate's adoption is in the docket, not the fields.
+    st = {"gen_status": "", "house_status": "PASSED/ADOPTED", "senate_status": ""}
+    n = _nar(_ev("H", "REPS PALUMBO & CHAMBERS SUSP RULES TO CONSIDER, MA 2/3VV, ADOPTED HJ24, P399",
+                 "floor", "MA", "Adopted"),
+             _ev("S", "INTRODUCED AND ADOPTED", "floor", "MA"))
+    d = B.bill_disposition({}, "HCR6", st, n, [], "1989-1990", "2025-2026")
+    want("Adopted by both chambers", d.status, "HCR6 1990")
+    # HB 1215 of 2024: the Senate adopted the report and the House voted it down.
+    st = {"gen_status": "SENATE", "house_status": "CONFERENCE REPORT FAILED",
+          "senate_status": "CONFERENCE REPORT ADOPTED"}
+    n = _nar(_ev("H", "Ought to Pass with Amendment 2024-1080h: MA VV 03/28/2024", "floor", "MA",
+                 "Ought to Pass with Amendment"),
+             _ev("H", "House Concurs with Senate Amendment 2024-1961s (Rep. Alexander Jr.): MF RC 172-180 05/30/2024",
+                 "floor", "MF"),
+             _ev("H", "House Non-Concurs with Senate Amendment 2024-1961s and Requests CofC (Rep. Alexander Jr.): MA VV 05/30/2024",
+                 "floor", "MA"),
+             _ev("S", "Conference Committee Report #2024-2273c , Adopted, VV; 06/13/2024"),
+             _ev("H", "Conference Committee Report 2024-2273c: Failed, RC 102-261 06/13/2024"))
+    d = B.bill_disposition({}, "HB1215", st, n, [], "2023-2024", "2025-2026")
+    want(B.CONF_REJECTED, d.status, "HB1215 2024")
+    if not d.between:
+        bad.append("HB1215 2024: decided by the docket but not marked so for status_source")
+    # The older dockets' words for a report voted down, and a new conference
+    # the other chamber refused (HB 381 of 2006, HB 252 of 2000, HB 1211 of 1992).
+    for raws in (["Committee of Conference Report {2101}, Division 14Y-9N, Adopted",
+                  "Conf Comm Report lost RC(154-175)"],
+                 ["Conf Comm Report, Sen Trombly, MA, VV",
+                  "Conf Comm Report Fails DIV(76-210); HJ77, p2079"],
+                 ["CONF COMM REPORT ADOPTED VV; SJ21,P618-619",
+                  "CONF COMM REPORT LOST RC(117-206); HOUSE DISCHARGE CONF COMM, REQ NEW CONF COMM, REP GROSS MA VV; HJ82,P2121-2124",
+                  "SEN REFUSED TO ACCEDE TO REQ FOR NEW CONF COMM, SEN W. KING MA VV; SJ21,P670"]):
+        got = B.between_chambers(_nar(*[_ev("H" if i % 2 else "S", r) for i, r in enumerate(raws)]),
+                                 "Conference committee report adopted")
+        want(("done", B.CONF_REJECTED), got, raws[-1][:34])
+    # SB 14 of 2025: failed 183-186, reconsidered, adopted 185-182 -- not rejected.
+    n = _nar(_ev("H", "Conference Committee Report 2025-2850c: Failed, RC 183-186 06/26/2025"),
+             _ev("H", "Reconsider Adopt CofC Report (Rep. Litchfield): MA RC 184-182 06/26/2025"),
+             _ev("H", "Conference Committee Report 2025-2850c: Adopted, RC 185-182 06/26/2025"))
+    got = B.between_chambers(n, "In a committee of conference")
+    if got and got[1] == B.CONF_REJECTED:
+        bad.append("SB14 2025: a report adopted on reconsideration read as rejected")
+    # SB 135 of 2013: a failed motion to RECONSIDER an adopted report, on a
+    # bill that went to the governor, is not the report failing. In the
+    # docket's own order (10:53:04, then 10:53:40) the reconsideration is the
+    # House's last word, so only the skip keeps it from reading as rejected;
+    # same-day rows are not reliably in order, so both orders are tried.
+    adopt = _ev("H", "Conference Committee Report #2089c Adopted, VV; HJ52, PG.1675")
+    recon = _ev("H", "Reconsideration, Conference Committee Report #2089c (Rep Lambert): MF RC 108-247; HJ52, PG.1678-1680", "floor", "MF")
+    senate = _ev("S", "Conference Committee Report 2089c; Adopted, VV")
+    for order in ((adopt, recon, senate), (recon, adopt, senate)):
+        got = B.between_chambers(_nar(*order), "Passed, awaiting the governor")
+        if got:
+            bad.append(f"SB135 2013: a failed reconsideration moved an enrolled bill to {got}")
+    # The report's own clause decides, not the row: HB 170 of 2001's failed
+    # motion to reconsider follows the report on the same row, and HB 50 of
+    # 1997's failed motion to table comes before it.
+    for raws in (("Conference Committee Report, , RC 15Y-9N, Adopted; SJ 19, Pg.592-623",
+                  "Conf Comm Report Adopted RC(190-181);  Rep Herman moved to Reconsider, ML RC(177-192);"),
+                 ("CONF COMM REPORT ADOPTED RC(22-2); SJ23(I),P5527-532",
+                  "REP K SMITH MOVED LOT, ML RC(112-252); CONF COMM REPORT ADOPTED")):
+        got = B.between_chambers(_nar(_ev("S", raws[0]), _ev("H", raws[1])),
+                                 "Conference committee report adopted")
+        if got:
+            bad.append(f"{raws[1][:30]}: another motion's ML read as the report failing ({got})")
+    # SB 34 of 2026: the House passed it amended, the Senate refused to concur.
+    st = {"house_status": "PASSED/ADOPTED WITH AMENDMENT", "senate_status": None}
+    n = _nar(_ev("S", "Ought to Pass: RC 16Y-8N, MA; OT3rdg; 03/06/2025"),
+             _ev("H", "Ought to Pass with Amendment 2025-3056h: MA RC 186-155 01/07/2026", "floor",
+                 "MA", "Ought to Pass with Amendment"),
+             _ev("S", "Sen. Ward Moved Nonconcur with the House Amendment, MA, VV; 02/05/2026",
+                 "floor", "MA"))
+    d = B.bill_disposition({}, "SB34", st, n, [], "2025-2026", "2025-2026", term_over=True)
+    want("One chamber did not concur", d.status, "SB34 2026")
+    # HB 1432 of 2022: the conference asked for was refused, so none sat.
+    n = _nar(_ev("H", "House Non-Concurs with Senate Amendment 2022-1837s and Requests CofC (Reps. McConkey, Milz, B. Boyd, Fedolfi): MA VV 05/05/2022", "floor", "MA"),
+             _ev("S", "Sen. Birdsell Refused to Accede to House Request for Committee of Conference, MA, VV; 05/12/2022", "floor", "MA"))
+    want(("active", "One chamber did not concur; a committee of conference was asked for"),
+         B.between_chambers(n, "In a committee of conference"), "HB1432 2022")
+    # HB 589 of 2002: retained, then passed both chambers and went to conference.
+    n = _nar(_ev("H", "Retained in Committee", "retained"),
+             _ev("H", "Comm Am{2307}, AA VV; Passed with Am VV", "floor", "MA", "Ought to Pass with Amendment"),
+             _ev("S", "Ought to Pass with Amendment, MA, VV", "floor", "MA", "Ought to Pass with Amendment"),
+             _ev("H", "House Nonconc with Sen Am req Conf Comm, Rep Gilman MA VV", "floor", "MA"),
+             _ev("H", "(Conf Comm Report Not Signed)"))
+    d = B.bill_disposition({}, "HB589", {}, n, [], "2001-2002", "2025-2026")
+    if d.status == "Retained in committee" or B.classify(n, [], "HB")[1] == "Retained in committee":
+        bad.append("HB589 2002: still 'Retained in committee' after passing both chambers")
+    # 2020: laid on the table in the Senate, killed at adjournment by Rule 3-23.
+    st = {"senate_status": "LAID ON TABLE"}
+    n = _nar(_ev("S", "Vacated from Committee and Laid on Table, MA, VV; 06/16/2020", "floor", "MA"),
+             _ev("S", "Inexpedient to Legislate, Senate Rule 3-23, Adjournment 09/16/2020"))
+    want("Died on the table", B.bill_disposition({}, "CACR20", st, n, [], "2019-2020",
+                                                 "2025-2026").status, "CACR20 2020")
+    # The rails: no governor on a resolution, both chambers passed on one
+    # both adopted, and two stops for a special session's House resolution.
+    rail = B.passage([{"hand": "H:floor"}, {"hand": "S:floor"}, {"hand": "G:governor"}],
+                     "adopted", "Passed both chambers, went to the voters", "CACR5")
+    want("Hpp--", rail, "CACR5 2004's rail")
+    want("Hpp", B.passage([{"hand": "H:floor"}], "adopted", "Adopted by the House", "SSHR1"),
+         "SSHR1 2008's rail")
+    assert not bad, "; ".join(bad)
+    return "ok", ("both chambers adopted, a report voted down, a refusal to concur, "
+                  "a retention moved past, the voters' answer, each from the docket")
+
+
+@check("status", "the constitution page counts each CACR of the term once",
+       needs=("build_civics",))
+def _cacr_partition(build_civics):
+    """The page said "7 were killed outright, 16 died when the session ended,
+    4 passed one chamber and stopped, and the rest are still in committee or
+    were postponed" -- the same three CACRs in two counts, a "rest" that was
+    six three-fifths failures and a death on the table, and "None of them
+    reached the voters" beside CACR 13 on its way to the November ballot.
+    Every CACR is now in one clause, and a clause with nothing in it is not
+    printed.
+
+    Then the page said "9 CACRs won a majority of those voting in the House
+    and still fell short" and, a paragraph later, "6 fell short of three
+    fifths on the House floor". The docket has 10. CACR 8 of 2025's line says
+    "Lacking Necessary Two-Thirds Vote", a clerk's slip for three fifths, and
+    was not read; CACR 8, 11, 12 and 18 each lost a House vote they had a
+    majority on and were counted only as dying when the session ended. Both
+    paragraphs now count one test, and the rows below are the real docket
+    lines of those CACRs (and of 2016's CACR 17, whose line names no
+    threshold at all)."""
+    BC = build_civics
+
+    def ev(body, raw):
+        return {"body": body, "raw": raw}
+
+    def nar(*evs):
+        return {"events": list(evs)}
+
+    fifths = nar(ev("H", "Ought to Pass: MF RC 194-158 Lacking Necessary Three-Fifths Vote 03/05/2026"))
+    rows = ([{"id": "CACR13", "status": "Passed both chambers, goes to the voters in November 2026",
+              "passage": "Hpp--"}]
+            + [{"id": f"CACR{i}", "status": "Killed", "passage": "Hx--x"} for i in range(20, 27)]
+            + [{"id": f"CACR{i}", "status": "Failed to pass", "passage": "Hx--x"} for i in range(30, 36)]
+            + [{"id": "CACR40", "status": "Died on the table", "passage": "Hx--x"}]
+            + [{"id": f"CACR{i}", "status": "Died when the session ended", "passage": "Spx-x"}
+               for i in range(41, 44)]
+            + [{"id": f"CACR{i}", "status": "Died when the session ended", "passage": "Hx--x"}
+               for i in range(50, 63)])
+    narr = {f"CACR{i}": fifths for i in range(30, 35)}
+    narr.update({
+        "CACR35": nar(ev("H", "Ought to Pass: MF RC 188-135 03/09/2016")),
+        "CACR40": nar(ev("H", "Lay CACR22 on Table (Rep. Hill): MA RC 175-153 03/05/2026"),
+                      ev("H", "Remove from Table (Rep. H. Howard): MF DV 100-230 03/11/2026")),
+        # CACR 8 of 2025, 11 and 12 of 2026: through the Senate, short in the House.
+        "CACR41": nar(ev("S", "Ought to Pass, RC 21Y-3N, MA, by Necessary 3/5; OT3rdg; 03/13/2025"),
+                      ev("H", "Ought to Pass: MF DV 203-158 Lacking Necessary Two-Thirds Vote 05/08/2025")),
+        "CACR42": nar(ev("S", "Ought to Pass with Amendments #2026-1219s, RC 23Y-1N, by necessary 3/5, "
+                              "MA; OT3rdg; 03/26/2026"),
+                      ev("H", "Ought to Pass: MF RC 199-157 Lacking Necessary Three-Fifths Vote 04/23/2026")),
+        "CACR43": nar(ev("S", "Ought to Pass, RC 16Y-8N, MA, by Necessary 3/5; OT3rdg; 02/19/2026"),
+                      ev("H", "Amendment # 2026-1134h: AA RC 192-148 05/14/2026"),
+                      ev("H", "Ought to Pass with Amendment 2026-1134h: MF RC 193-148 Lacking "
+                              "Necessary Three-Fifths Vote 05/14/2026")),
+        # CACR 18 of 2026, short; CACR 9, no majority; CACR 19, not a vote on passing it.
+        "CACR50": nar(ev("H", "Ought to Pass: MF DV 170-163 Lacking Necessary Three-Fifths Vote 03/12/2026")),
+        "CACR51": nar(ev("H", "Ought to Pass: MF DV 136-185 Lacking Necessary Three-Fifths Vote 03/11/2026")),
+        "CACR52": nar(ev("H", "Special Order to next order of business (Rep. A. Murray): MF DV 115-220 "
+                              "03/11/2026")),
+    })
+    got = BC._cacr_record(rows, narr, "2025-2026")
+    want = ("The 2025&ndash;2026 term filed <b>31 CACRs</b>. One passed both chambers and goes "
+            "to the voters at the state general election in November 2026. 7 were killed "
+            "outright; 10 fell short of three fifths on the House floor, 3 of them after "
+            "passing the Senate; 1 died on the table; and 12 died when the session ended.")
+    assert got == want, f"got {got!r}"
+    # The paragraph above it counts the same failures by the same test.
+    idx = ([dict(r, term="2025-2026") for r in rows]
+           + [{"id": "CACR26", "term": "2011-2012", "passage": "Hpp--",
+               "status": "Passed both chambers, went to the voters"}])
+    hurdle = BC._cacr_hurdle(idx, {"2025-2026": narr}, "2025-2026")
+    assert ("Of the 32 CACRs filed since 2011, 2 passed both chambers." in hurdle
+            and "In the 2025&ndash;2026 term, 10 CACRs won a majority of those voting "
+                "in the House and still fell short." in hurdle), hurdle
+    assert "%" not in hurdle and "margin" not in hurdle, (
+        "the hurdle paragraph measures a CACR's margin against those voting: " + hurdle)
+    # CACR 26 of 2012 fell two short and was carried on reconsideration.
+    cacr26 = nar(ev("H", "Ought to Pass: MF RC 237-115 Lacking Necessary Three-Fifths Vote"),
+                 ev("H", "Reconsideration of OTP (Rep Hess): MA RC 242-111"),
+                 ev("H", "Ought to Pass: MA RC 239-114 By Necessary Three-Fifths Vote"))
+    assert not BC._fell_short(cacr26, "Died when the session ended"), "a CACR the House carried fell short"
+    one = BC._cacr_record([{"id": "CACR1", "status": "Killed", "passage": "Hx--x"}], {}, "2023-2024")
+    assert "None passed both chambers. 1 was killed outright." in one, one
+    assert " 0 " not in got and "no of" not in one, (got, one)
+    assert BC._cacr_record([], {}, "2023-2024").endswith("filed no CACRs."), "an empty term"
+    return "ok", "31 CACRs in five clauses, each counted once, and the same 10 short on both paragraphs"
+
+
 # =============================================================== code: naming ==
 
 @check("naming", "members are named the same way everywhere",
@@ -715,6 +970,253 @@ def _rule_vote_not_a_bill(rollcall_parser):
         return "ok", "the rule vote is procedural and the bill's is not"
     finally:
         shutil.rmtree(d, ignore_errors=True)
+
+
+# Every docket and Journal line below is copied from the files on disk, and
+# every roll call is a real one with its real number, question, tally and
+# ballot count, so each case is a vote that happened and whose outcome a
+# Journal on disk confirms.
+_RC_DOCKETS = {
+    "Docket_db_2011-2012.txt": [
+        "2012|2423|03/21/2012 02:52:45 PM|CACR26|H|Ought to Pass: MF RC 237-115 Lacking Necessary Three-Fifths Vote; HJ 28, PG.1684-1686|x",
+        "2012|2423|03/21/2012 03:21:03 PM|CACR26|H|Reconsideration of OTP (Rep Hess): MA RC 242-111; HJ 28, PG.1687-1689|x",
+        "2012|2423|03/21/2012 03:22:01 PM|CACR26|H|Ought to Pass: MA RC 239-114 By Necessary Three-Fifths Vote; HJ 28, PG.1689-1691|x",
+    ],
+    "Docket_db_2013-2014.txt": [
+        "2014|0624|01/08/2014 09:03:06 AM|HB435|H|Inexpedient to Legislate MA RC 129-156|x",
+        "2014|0624|01/08/2014 09:11:48 AM|HB435|H|Inexpedient to Legislate MF RC 132-169|x",
+    ],
+    "Docket_db_2001-2002.txt": [
+        "2002|0661|05/22/2002 01:18:27 PM|SB141|S|Notwithstanding the Governors Veto Shall the Bill Pass, RC 12y - 11n, Veto Sustained; SJ 15, Pg.603|x",
+    ],
+    "Docket_db_1999-2000.txt": [
+        "1999|1041|05/20/1999 01:27:25 PM|HB300|H|Introduced and ref to Finance;  Reps Chandler & Burling moved to Susp Rules for Hearing Notice,|x",
+        "1999|1041|05/20/1999 02:03:30 PM|HB300|H|motion failed 2/3RC(219-122);  HJ54, p1461-1464|x",
+    ],
+    # A row with no outcome of its own borrows the previous row's, but not its
+    # words: SB 228's "Motion: OTP" is a majority vote under a suspension.
+    "Docket_db_2005-2006.txt": [
+        "2005|1083|11/16/2005 03:43:12 PM|SB228|H|Rep O'Neil & Craig Susp Rules for introduction and consideration MA 2/3 VV|x",
+        "2005|1083|11/16/2005 03:46:14 PM|SB228|H|Motion: OTP  RC(332-4)  HJ 21, pg 1735|x",
+        "2005|1083|11/16/2005 03:49:07 PM|SB228|H|Enrolled;  HJ 21, Pg. 1739|x",
+    ],
+    # CACR 19's tabling, 17-7 on 14 June, has no RC line of its own; the
+    # term-wide fallback must not hand it the 7 June rules suspension's 17-7.
+    "Docket_db_2007-2008.txt": [
+        "2007|1341|06/07/2007 04:09:16 PM|CACR19|S|Sen. Larsen Rules Suspension 18b,21,22,24,[48a,b,c,d,g,h] for Introduction; 2/3 nec. RC 17Y-7N, MA|x",
+        "2007|1341|06/14/2007 01:48:45 PM|CACR19|S|Sen. Kenney Floor Amendment{2149}(New Title) RC 8Y-16N, AF; SJ 23, Pg.703-704|x",
+        "2007|1341|06/14/2007 02:18:13 PM|CACR19|S|Ought to Pass RC 14Y-10N, MF, 3/5 nec; SJ 23, Pg.704|x",
+        "2007|1341|06/14/2007 02:32:30 PM|CACR19|S|Sen. Gottesman Moved Laid on Table 17Y-7N, MA; SJ 23, Pg.704-705|x",
+    ],
+    "Docket_2017-2018.txt": [
+        "2018|2938|3/15/2018 12:00:00 AM|SB331|S|Inexpedient to Legislate, RC 13Y-11N, MA === BILL KILLED ===; 03/15/2018; SJ 8|x",
+        "2018|2938|3/15/2018 12:00:00 AM|SB331|S|Inexpedient to Legislate, RC 13Y-11N, MA === BILL KILLED ===; 03/15/2018; SJ 8|x",
+        "2018|2938|3/15/2018 12:00:00 AM|SB331|S|Inexpedient to Legislate, RC 12Y-12N, MF; 03/15/2018; SJ 8|x",
+    ],
+    "Docket_2023-2024.txt": [
+        "2024|2404|2/15/2024 12:00:00 AM|HB1212|H|Reconsider ITL (Rep. Cloutier): MF RC 187-181 02/15/2024 HJ 5 P. 44|x",
+    ],
+    "Docket.txt": [
+        "2026|2956|3/13/2026 11:05:31 AM|CACR25|H|Inexpedient to Legislate: MA RC 176-162 03/12/2026  HJ 8  P. 105|x",
+    ],
+}
+_RC_JOURNALS = {
+    # House Journal 6 of 2026, page 142 and the end of the day: a member
+    # allowed to continue by three fifths, under that term's rules.
+    "journals/2026/HJ 06 March 5, 2026.txt": "\n".join([
+        "The question being shall the member continue.",
+        "Rep. Wheeler requested a roll call; sufficiently seconded.",
+        "Comtois, Barbara      Freeman, Lisa          YEAS 91 - NAYS 82                        Woodcock, Stephen",
+        "Paige, David          Jacobs, Samantha              YEAS - 91                         Newell, Jodi",
+        "Grant, George      Hemingway, Wayne",
+        "",
+        "The motion failed lacking the necessary three-fifths vote and with a quorum not being reached, the House",
+        "",
+        "was adjourned."]),
+    # Senate Journal 8 of 2018: the Clerk's note on SB 331's first roll call.
+    "journals_senate/2018/SJ008.txt": "\n".join([
+        "                               SENATE CLERK'S NOTE",
+        "The roll call vote below on SB 331 was inadvertently entered in the Daily",
+        "Journal and has been corrected in the Senate Permanent Journal from",
+        "12-12 to 13-11.",
+        "",
+        "The question is on the adoption of the motion of Inexpedient to Legislate.",
+        "",
+        "Roll Call, Yeas: 13 - Nays: 11. Adopted."]),
+}
+
+
+def _rc(year, body, number, date, bill, q, y, n, seated):
+    return {"year": year, "body": body, "number": number, "date": date, "bill": bill,
+            "question": q, "question_raw": q, "yeas": y, "nays": n, "seated": seated}
+
+
+_RC_ROLLS = [
+    # 2012 CACR26: 239 of the 397 in office carried it; 3/5 of 400 would not
+    _rc("2012", "H", 180, "2012-03-21", "CACR26", "OTP", 237, 115, 397),
+    _rc("2012", "H", 181, "2012-03-21", "CACR26", "RECONSIDERATION (REP HESS)", 242, 111, 397),
+    _rc("2012", "H", 182, "2012-03-21", "CACR26", "OTP", 239, 114, 397),
+    # 2026 CACR25: killing a CACR is a majority question (HJ 8: adopted)
+    _rc("2026", "H", 215, "2026-03-12", "CACR25", "ITL", 176, 162, 392),
+    # 2014 HB435: the docket's MA is wrong (HJ 5: "the majority committee report failed")
+    _rc("2014", "H", 15, "2014-01-08", "HB435", "ITL", 129, 156, 394),
+    _rc("2014", "H", 16, "2014-01-08", "HB435", "ITL", 132, 169, 394),
+    # 2024 HB1212: the docket's MF is wrong (HJ 5: "the motion was adopted")
+    _rc("2024", "H", 60, "2024-02-15", "HB1212", "Reconsider", 187, 181, 396),
+    # 2002 SB141: a veto override worded the old way
+    _rc("2002", "S", 138, "2002-05-22", "SB141",
+        "Not withstanding the Governor's Veto-shall the bill pass", 12, 11, 24),
+    # 2018 SB331: three votes, paired in order; the first corrected (SJ 8)
+    _rc("2018", "S", 106, "2018-03-15", "SB331", "Inexpedient to Legislate", 12, 12, 24),
+    _rc("2018", "S", 107, "2018-03-15", "SB331", "Inexpedient to Legislate", 13, 11, 24),
+    _rc("2018", "S", 108, "2018-03-15", "SB331", "Inexpedient to Legislate", 12, 12, 24),
+    # 2025: a rules suspension with no bill and no docket line (HJ 5: failed, two thirds)
+    _rc("2025", "H", 21, "2025-02-13", None, "Rules Suspension", 199, 176, 399),
+    # 1999 HB300: "SUSP RULES", the roll-call file's abbreviation (HJ 17: failed, two thirds)
+    _rc("1999", "H", 103, "1999-05-20", "HB300",
+        "REPS CHANDLER & BURLING:  SUSP RULES FOR HEARING", 219, 122, 399),
+    # 2026: no docket line, and a threshold only that term's rules and the Journal know
+    _rc("2026", "H", 132, "2026-03-05", None, "Shall Member Continue", 91, 82, 392),
+    # 2005 SB228: a majority vote, whatever the row above it needed
+    _rc("2005", "H", 152, "2005-11-16", "SB228", "MOTION:  OTP", 332, 4, 396),
+    # 2007 CACR19: an amendment, three fifths to pass, and a tabling no RC line names
+    _rc("2007", "S", 168, "2007-06-14", "CACR19", "Floor Amendment (2149s) Sen. Kenney/Sen. Burling",
+        8, 16, 24),
+    _rc("2007", "S", 169, "2007-06-14", "CACR19", "Ought to Pass Sen. Clegg/Sen. Foster", 14, 10, 24),
+    _rc("2007", "S", 170, "2007-06-14", "CACR19", "Laid on Table Sen. Sgambati/Sen. Reynolds",
+        17, 7, 24),
+]
+
+# (passed, threshold_needed, outcome_source), as the Journals record them
+_RC_WANT = {
+    ("2012", 180): (False, 239, "docket"), ("2012", 181): (True, None, "docket"),
+    ("2012", 182): (True, 239, "docket"), ("2026", 215): (True, None, "docket"),
+    ("2014", 15): (False, None, "count"), ("2014", 16): (False, None, "docket"),
+    ("2024", 60): (True, None, "count"), ("2002", 138): (False, 16, "docket"),
+    ("2018", 106): (True, None, "journal"), ("2018", 107): (True, None, "docket"),
+    ("2018", 108): (False, None, "docket"), ("2025", 21): (False, 250, "rule"),
+    ("1999", 103): (False, 228, "rule"), ("2026", 132): (False, None, "journal"),
+    ("2005", 152): (True, None, "docket"), ("2007", 168): (False, None, "docket"),
+    ("2007", 169): (False, 15, "docket"), ("2007", 170): (True, None, "rule"),
+}
+
+
+@check("rollcalls", "the clerk's recorded outcome decides a roll call; three fifths "
+       "is of the members in office", needs=("rollcall_outcomes",))
+def _rollcall_outcomes(rollcall_outcomes):
+    """What a roll call decided is what the General Court recorded.
+
+    rollcall_parser used to decide it by rule, and the rule was wrong three
+    ways: three fifths on every motion about a CACR (2026's CACR25 kill,
+    "fell 64 short" of a bar it never faced), three fifths of the 400 seats
+    rather than of the members in office (239 of 397 carried CACR 26 in 2012,
+    and the site said Failed), and a veto override known by two wordings of
+    its question (SB 141 of 2002, sustained, said Adopted). A rules
+    suspension written "SUSP RULES" was not known at all, and a vote no
+    docket line names -- a member allowed to continue in March 2026 -- has
+    its threshold only in that term's rules and its outcome only in the
+    Journal.
+
+    This fails on a return to seats, to CACR-wide three fifths, to a narrow
+    veto or suspension vocabulary, or to the rule where the Journal speaks.
+    """
+    RO = rollcall_outcomes
+    d = Path(tempfile.mkdtemp())
+    try:
+        for name, lines in _RC_DOCKETS.items():
+            (d / name).write_text("\n".join(lines) + "\n", encoding="utf-8")
+        for name, text in _RC_JOURNALS.items():
+            (d / name).parent.mkdir(parents=True, exist_ok=True)
+            (d / name).write_text(text + "\n", encoding="utf-8")
+        rolls = [dict(r) for r in _RC_ROLLS]
+        RO.apply(rolls, root=d)
+        by = {(r["year"], r["number"]): r for r in rolls}
+        bad = []
+        for k, want in _RC_WANT.items():
+            r = by[k]
+            got = (r["passed"], r["threshold_needed"], r["outcome_source"])
+            if got != want:
+                bad.append(f"{k[0]}-{r['body']}-{k[1]} {r['bill']}: got {got}, want {want}")
+        assert not bad, "; ".join(bad)
+        notes = [r.get("threshold_note") or "" for r in rolls]
+        assert not any("entire" in x or "seats" in x for x in notes), (
+            "a threshold note still counts the seats: "
+            + "; ".join(x for x in notes if "entire" in x or "seats" in x))
+        assert by[("2012", 182)]["threshold_note"] == (
+            "Needed 239 — three fifths of the 397 members in office."), (
+            by[("2012", 182)]["threshold_note"])
+        assert "two thirds of the 23 members voting" in (
+            by[("2002", 138)]["threshold_note"] or ""), by[("2002", 138)]["threshold_note"]
+        sb331 = by[("2018", 106)]["outcome_conflict"] or ""
+        assert "Senate Clerk's note" in sb331 and "13–11" in sb331, (
+            f"SB 331's 12-12 ballots against the Permanent Journal's 13-11 are "
+            f"not explained: {sb331!r}")
+        assert not by[("2018", 108)]["outcome_conflict"], (
+            "the Clerk's note corrected the FIRST 12-12 roll call, not the second")
+        for k in (("2014", 15), ("2024", 60)):
+            assert by[k]["outcome_conflict"], f"{k}: the docket's impossible outcome went unremarked"
+        member = by[("2026", 132)]
+        assert member.get("threshold_unknown") and "three fifths" in (
+            member.get("threshold_note") or ""), (
+            "a threshold the Journal names without a count must be said in its "
+            f"words and drawn with no mark: {member}")
+        return "ok", (f"{len(rolls)} real votes decided as the Journals record them, "
+                      "from the docket, the Journal, the count or the rule")
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+@check("data", "every roll call's outcome is the one the record gives it",
+       needs=("rollcall_outcomes",))
+def _rollcall_outcomes_data(rollcall_outcomes):
+    """The built rollcalls.json against the dockets and Journals on disk.
+
+    Re-deciding every roll call and comparing is the whole check: it fails
+    on a rollcalls.json built before the outcome was read from the record,
+    on one built by code that has since changed, and -- through the counts
+    below -- on a docket that silently stopped being read. The conflicts are
+    the votes where the record and the ballots disagree; there were seven
+    when this was written, each explained on its page, and a new one is for
+    a person to look at.
+    """
+    RO = rollcall_outcomes
+    p = Path("rollcalls.json")
+    if not p.exists():
+        return "skip", "no rollcalls.json here"
+    if not RO.docket_paths("."):
+        return "skip", "no Docket*.txt here"
+    data = json.loads(p.read_text(encoding="utf-8"))
+    rolls = [r for bills in data.values() for rows in bills.values() for r in rows]
+    missing = sum(1 for r in rolls if "outcome_source" not in r)
+    assert not missing, (
+        f"{missing:,} of {len(rolls):,} roll calls carry no outcome_source: "
+        "rollcalls.json predates the recorded outcome. Rebuild it with "
+        "python3 rollcall_parser.py --file RollCallSummary.txt --all --out rollcalls.json")
+    fresh = [dict(r) for r in rolls]
+    RO.apply(fresh, root=".")
+    moved = [f'{r["year"]}-{r["body"]}-{r["number"]}' for r, f in zip(rolls, fresh)
+             if (bool(r.get("passed")), r.get("threshold_needed"), r.get("outcome_source"))
+             != (bool(f["passed"]), f["threshold_needed"], f["outcome_source"])]
+    assert not moved, (
+        f"{len(moved)} roll calls in rollcalls.json are not what the record on "
+        f"disk decides now -- rebuild it. First few: {', '.join(moved[:5])}")
+    billed = [r for r in rolls if r.get("bill")]
+    from_docket = sum(1 for r in billed if (r.get("outcome_source") or "").startswith("docket"))
+    assert from_docket >= 0.9 * len(billed), (
+        f"only {from_docket:,} of {len(billed):,} roll calls on a bill took their "
+        "outcome from the docket; the pairing or the outcome reader has stopped "
+        "working")
+    conflicts = [f'{r["year"]}-{r["body"]}-{r["number"]}' for r in rolls
+                 if r.get("outcome_conflict")]
+    assert len(conflicts) <= 7, (
+        f"{len(conflicts)} roll calls where the record and the ballots disagree, "
+        "against seven when this check was written; a person should read the "
+        "new ones: " + ", ".join(conflicts))
+    seats = [r for r in rolls if "entire" in (r.get("threshold_note") or "")]
+    assert not seats, f"{len(seats)} threshold notes still count the seats"
+    return "ok", (f"{len(rolls):,} roll calls as the record decides them; "
+                  f"{from_docket:,} of {len(billed):,} on a bill from the docket, "
+                  f"{len(conflicts)} conflicts explained on their pages")
 
 
 @check("rollcalls", "floor_markers matches a spoken tally to the record")
@@ -9634,6 +10136,43 @@ def _rail():
         "to match.")
     return "ok", (f"{n:,} rails, {pppp:,} of them the whole way, "
                   f"{vetoes} vetoed and crossed at the governor")
+
+
+# Where the rail and the label disagree because the RAIL is wrong: CACR 9 of
+# 1995 started in the Senate, and its docket files a House stage first. The
+# label is right. Named, so that a new one is noticed.
+_RAIL_KNOWN = {("1995-1996", "CACR9")}
+
+
+@check("data", "a bill both chambers passed does not read \"Passed one chamber\"")
+def _second_chamber_label():
+    """The status chip and the rail beside it are one fact said twice.
+
+    Before 23 September, 49 bills read "Passed one chamber" beside a rail
+    whose second chamber was passed -- CACR 13 of 2026 among them, adopted
+    by the Senate 23-1 -- and 30 resolutions drew a governor who never sees
+    a resolution. This reads the built index for both.
+    """
+    idx = Path("site/index.json")
+    if not idx.exists():
+        return "skip", "index.json is not built"
+    rows = json.loads(idx.read_text(encoding="utf-8"))
+    both, gov = [], []
+    for b in rows:
+        p = b.get("passage") or ""
+        key = (b.get("term"), b.get("id"))
+        if (len(p) == 5 and p[2] == "p" and b.get("status") == "Passed one chamber"
+                and key not in _RAIL_KNOWN):
+            both.append(f"{key[0]} {key[1]} {p}")
+        if (len(p) == 5 and p[3] != "-"
+                and re.match(r"^(?:SS)?(?:HCR|SCR|CACR)\d", b.get("id") or "")):
+            gov.append(f"{key[0]} {key[1]} {p}")
+    assert not both, (f"{len(both)} bills read \"Passed one chamber\" beside a rail "
+                      f"that passed the second chamber: {'; '.join(both[:5])}")
+    assert not gov, (f"{len(gov)} resolutions draw a governor on their rail: "
+                     f"{'; '.join(gov[:5])}")
+    return "ok", (f"{len(rows):,} bills: no second chamber passed under "
+                  "\"Passed one chamber\", and no governor on a resolution")
 
 
 @check("data", "a committee's stated purpose is the rule, not the page around it")
