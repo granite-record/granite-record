@@ -2894,8 +2894,10 @@ J_NOT_FLOOR = {"hearing", "exec", "worksession", "report", "conference_meeting",
                "vacated", "subcommittee"}
 # The motion codes are case-sensitive, as rollcall_outcomes reads them: "ma"
 # is a syllable of a name as often as it is a motion.
-J_YES_CODE = re.compile(r"\b(?:MA|AA)\b")
-J_NO_CODE = re.compile(r"\b(?:MF|ML|AF|AL)\b")
+# Lower case only where a voice vote follows: "Sen. Hollingworth susp rules
+# for 3rd reading, ma 2/3vv; 3rd reading; ma vv" (HB 100 of 1999).
+J_YES_CODE = re.compile(r"\b(?:MA|AA)\b|\b(?:ma|aa)(?=[,\s]+(?:2/3\s*)?vv\b)")
+J_NO_CODE = re.compile(r"\b(?:MF|ML|AF|AL)\b|\b[am][fl](?=[,\s]+(?:2/3\s*)?vv\b)")
 J_YES_WORD = re.compile(r"\b(?:adopted|adpoted|adotped|passed|overrid+en|concurred|"
                         r"carried|killed)\b", re.I)
 J_NO_WORD = re.compile(r"\b(?:failed|fails|lost|defeated|lacking|not\s+adopted|"
@@ -2909,26 +2911,118 @@ J_TALLY = re.compile(
     r"(?P<n>\d{1,3})(?!\d)", re.I)
 J_RC_BARE = re.compile(r"\bRC\b|\bRoll\s*Call\b", re.I)
 # "VV", "2/3VV", "MA 2/3 VV". Upper case only: it is a code, not a word.
-J_VOICE = re.compile(r"(?<![A-Za-z])VV\b|\bvoice\s+vote\b")
+J_VOICE = re.compile(r"(?<![A-Za-z])(?:VV|vv)\b|\bvoice\s+vote\b")
 # Business that is not a decision about the bill's fate, however it was
 # carried: the order of the day, the rules, a reconsideration (whose result is
 # the next decision), a bill coming off the table or the consent calendar, a
 # motion recorded as pending or not voted on, the chair's rulings.
+# Not "GOVERNOR'S VETO SUSTAINED RC(11-11) (VETO MESSAGE PRINTED)" (SB 105 of
+# 1993): the message was printed; the vote is the House's.
 J_SKIP = re.compile(
     r"enrolled|special\s+order|reconsider|notice\s+of|^\s*(?:secs?|sections?)\b|"
     r"\b(?:remov\w*|taken|take)\s+(?:\w+\s+){0,2}from\s+(?:the\s+)?(?:table|consent)|"
-    r"from\s+the\s+consent|pending\s+motion|\bprint\w*|"
+    r"from\s+the\s+consent|pending\s+motion|(?<!message )\bprint\w*|"
     r"limit\w*\s+debate|divisible|divided|previous\s+question|moved\s+the\s+question|"
     r"non-?\s?germane|\brul(?:ed|ing)\b|rescind|technical\s+(?:and\s+\w+\s+)?correction|"
     r"sent\s+to\s+(?:the\s+)?governor|^\s*sections?\b|change\s+rept|deadline|"
     r"late\s+(?:drafting|filing|introduction)|withdr[ae]w|\bappoint", re.I)
 J_NOT_VOTED = re.compile(r"^[^;]*?\bnot\s+voted\s+on\b\s*[)\]]?\s*,?\s*", re.I)
+# A VOTE TO SUSPEND THE RULES DECIDES ONLY THAT THE RULES ARE SUSPENDED, and
+# the business it names is what it lets the chamber take up, not what the
+# chamber then did with it. "REPS WHEELER & BURLING MOVED TO SUSP RULES FOR
+# CONF COMM REPORT, ML RC(221-135)" (HB 1 and HB 2 of 1997) is 221 members
+# wanting to take the report up, short of two thirds -- and it read as the
+# House rejecting the budget's conference report. "Rules Suspension to
+# consider at the present time ... MF lacking necessary 2/3 RC 197-143" (CACR
+# 21 of 2020) read as the House defeating a CACR a majority wanted to hear.
+# So the suspension is taken out of the clause, through its own outcome and
+# the vote that carried it, and what the clause says after that is read as
+# usual: "Sen. Below Moved Rule Suspension, MA, VV (2/3rds Nec) Sen. Below
+# Moved Rerefer, MA, VV" (HB 542 of 1999) is the bill sent back to committee.
+J_SUSPEND = re.compile(r"\bsusp(?:\.|\w*)", re.I)
+# "RULES SUSPENDED PLACED ON THIRD READING PASSED/ADOPTED" (HB 750 of 1989),
+# "JOINT RULES SUSPENDED CONF COMM REPORT ADOPTED": the clerk's past tense,
+# with no vote of its own. The words go, and the business after them stays.
+J_SUSPENDED = re.compile(r"\b(?:(?:joint|jt\.?|house|senate)\s+)?rules?\s+suspended\b\s*[:;,]?",
+                         re.I)
+# The business a suspension would allow "if passed" is not its outcome.
+J_IF_PASSED = re.compile(r"\b(?:if|upon|when)\s+(?:so\s+)?(?:passed|adopted|passage)\b", re.I)
+# Its outcome is the first motion code after it, or on a line with none the
+# first word of one -- not "adopted" in "by the adopted Senate deadline for
+# HBs. 2/3 necessary, MA, RC 24Y-0N" (HB 652 of 2012).
+J_SUSP_CODE = re.compile(r"\b(?:MA|MF|ML|AA|AF|AL)\b")
+# The purpose, not a rule it sets aside: "SUSP RULES TO REF TO FINANCE", "for
+# late ref to Finance" -- not "Rules Suspension to consider at the present
+# time without required referral to committee" (HB 1650 of 2022).
+J_SUSP_REFERRAL = re.compile(r"\b(?:to|for)\s+(?:late\s+)?ref(?:er(?:ral)?|\.)?\s+to\s+"
+                             r"(?P<c>[A-Za-z0-9][A-Za-z0-9&/ ]*?)\s*(?:,|\(|\bafter\b|$)", re.I)
+J_SUSP_WORD = re.compile(r"\b(?:adopted|failed|lost|lacking|carried|defeated|not\s+getting)\b",
+                         re.I)
+# What follows a suspension's outcome and is still the suspension's: the vote
+# and the two thirds it needed.
+J_SUSP_VOTE = re.compile(
+    r"(?:[\s,;:.()]*(?:\d\s*/\s*\d\s*(?:rds?)?\s*(?:VV|nec\w*\.?)?|"
+    r"(?:RC|DV|DIV|Division)?\s*\(?\s*\d{1,3}\s*[YN]?\s*-\s*-?\s*\d{1,3}\s*[YN]?|"
+    r"(?:VV|RC|DV|Division|DIV|MF|MA|ML|vote|the|by|two-thirds|lacking|obtaining|getting|not)\b|"
+    r"(?:required|nec|req)\w*\.?|"
+    r"\d{1,2}/\d{1,2}/\d{2,4}))*[\s,;:.()]*", re.I)
+
+
+def _j_unsuspend(clause):
+    """A clause without the suspension of the rules in it: "" where that is
+    all it was."""
+    m = J_SUSPEND.search(clause or "")
+    if not m:
+        return clause
+    past = next((x for x in J_SUSPENDED.finditer(clause)
+                 if x.start() <= m.start() < x.end()), None)
+    # What was before it and what comes after are kept apart, each a clause
+    # of its own: "REPS PALUMBO & CHAMBERS SUSP RULES TO CONSIDER, MA 2/3VV,
+    # ADOPTED" (HCR 6 of 1989) is the resolution adopted, not the movers.
+    if past and not re.search(r"\bmov\w*|\bmotion\b", clause[:past.start()], re.I):
+        return _j_unsuspend("; ".join(x for x in (clause[:past.start()].strip(" ,;:/"),
+                                                   clause[past.end():].strip(" ,;:/")) if x))
+    head = clause[:m.start()]
+    # Blanked rather than removed, so positions in the rest still count.
+    rest = J_IF_PASSED.sub(lambda x: " " * len(x.group(0)), clause[m.end():])
+    o = J_SUSP_CODE.search(rest) or J_SUSP_WORD.search(rest)
+    if not o:
+        # No outcome: the clause from the suspension on is the motion,
+        # wrapped onto the next row if it goes on (_j_rows joins it).
+        return head.strip(" ,;:")
+    end = J_SUSP_VOTE.match(rest, o.end()).end()
+    left = _j_unsuspend("; ".join(x for x in (head.strip(" ,;:"), rest[end:].strip(" ,;:"))
+                                  if x))
+    # EXCEPT A SUSPENSION TO SEND THE BILL TO A SECOND COMMITTEE, which is
+    # the referral: "COMM AM, AA VV; PASSED WITH AM VV; REPS A TORR & TROMBLY
+    # SUSP RULES TO REF TO FINANCE, MA 2/3VV" (HB 1162 of 1996), whose House
+    # passage was in March, after Finance.
+    ref = J_SUSP_REFERRAL.search(rest, 0, o.start())
+    if ref and re.match(r"MA|AA|adopted|carried", o.group(0), re.I):
+        return f"Referred to {ref.group('c').strip()}" + (f"; {left}" if left else "")
+    return left
+
+
+# The procedural motions whose outcome the clerk can put in the next clause:
+# "Enrolled Bill Amendment{2230}; Adopted", "Sen. Gordon Moved Remove From
+# Table; MA, VV". Not a finished act -- "REP BUCKLEY WITHDREW RECOMMIT
+# MOTION; ADOPTED VV" is SCR 1 of 1995 adopted.
+J_TAKES_OUTCOME = re.compile(r"\benroll|\b(?:remov\w*|taken|take)\s+(?:\w+\s+){0,2}from\s+"
+                             r"(?:the\s+)?table|\breconsider|special\s+order", re.I)
+
+
 # What a clause is about, tried in this order: a clause about a conference
 # report is not an adoption of the bill, and one about the other chamber's
 # amendment is not an amendment of this one.
 J_ACTS = [
-    ("veto_vote", re.compile(r"overrid|sustain|notwithstanding|"
-                             r"\bshall\b[^;]{0,40}\bbecome\s+law", re.I)),
+    # A vote on the veto names the veto. "SUSTAINED" alone is also the House
+    # upholding its chair: "RULING OF CHR" / "SUSTAINED VV; PASSED WITH AM
+    # RC(233-122)" (HB 1075 of 1998, which became law) drew a veto the
+    # governor never made. A vote wrapped onto the next row, "...; GOVERNOR'S
+    # VETO" / "SUSTAINED RC(221-117)" (HB 332 of 1995), is joined by _j_rows.
+    ("veto_vote", re.compile(r"\bveto\w*\b[^;]{0,60}?\b(?:overrid|sustain)|"
+                             r"\b(?:overrid|sustain)\w*[^;]{0,60}?\bveto|"
+                             r"notwithstanding|\bshall\b[^;]{0,40}\bbecome\s+law", re.I)),
     ("conference", re.compile(r"conf(?:erence)?\.?\s*comm(?:ittee)?\.?\s*rep(?:ort|t)?\b"
                               r"|committee of conference report|\bC\s?of\s?C\s+rep", re.I)),
     ("accede", re.compile(r"acced", re.I)),
@@ -2944,8 +3038,11 @@ J_ACTS = [
                         r"(?P<rule>(?:senate|house|joint)\s+rule\s+[\w\-]+(?:\([\w]+\))*)"
                         r"|died\s+on\s+(?:the\s+)?table\s*\(\s*(?P<rule2>rule\s+[\w\-]+)\s*\)",
                         re.I)),
-    ("study", re.compile(r"interim\s+study|\bint\.?\s+study|\bRFS\b|"
-                         r"refer\w*\s+for\s+study", re.I)),
+    # And the clerk's spellings: "REP HOLDEN MOVED REF FOR STUDY, MA VV" (CACR
+    # 25 of 1992), "Sen. Below moved Rerefer to Iterim Study, MA, VV" (HB 109
+    # of 2000).
+    ("study", re.compile(r"\bin?terim\s+study|\bint\.?\s+study|\bRFS\b|"
+                         r"\bref(?:er\w*)?\.?\s+for\s+study", re.I)),
     ("postponed", re.compile(r"indefinite\w*\s+postpone|\bindef\w*\.?\s+post", re.I)),
     # "Inexpedient to Lehgislate, MA, VV" (HB 353 of 2002): the clerk's
     # typing, so the first word is enough.
@@ -2958,8 +3055,8 @@ J_ACTS = [
     # "ADOPTED VV", "INTRODUCED AND ADOPTED", "PASSED/ADOPTED", "ADOPTED WITH
     # AM". After another motion it is that motion's outcome -- "ITL REPORT
     # ADOPTED" is a bill killed.
-    ("passed", re.compile(r"ought\s+to\s+pass|\bOTP\w*|\bthird\s+reading\b|"
-                          r"\b3rd\s+reading\b|\bOT\s?3\s?rd?g\b|\bpassed\b|^\s*pass\b|"
+    ("passed", re.compile(r"ought\s+to\s+(?:pass|adopt)|\bOTP\w*|\bthird\s+reading\b|"
+                          r"\b3rd\s+r(?:ea)?d(?:in)?g\b|\bOT\s?3\s?rd?g\b|\bpassed\b|^\s*pass\b|"
                           r"^\s*(?:[HS]\s+)?(?:introduced\s+and\s+)?adopt(?:ed|ion)?\b|"
                           r"\badopted\s+with\s+am|\bresolution\s+adopted\b", re.I)),
 ]
@@ -2983,23 +3080,57 @@ J_AMENDED = re.compile(r"\bw(?:ith|/)\s*am|\bas\s+amended|\bOTP\s*/\s*AM|\bOTPA\
 # "RE-REFERRED TO HEALTH", "REFERRED TO INTERIM STUDY", with no code after.
 J_DONE_VERB = re.compile(r"\b(?:laid|tabled|re-?referred|recommitted|referred|"
                          r"postponed)\b", re.I)
+# "Ought to Pass, MA. VV. Rule 24 (refer to Finance)" and "..., AA, Refered
+# to Finance Rule #24" (HB 224 and HB 1240 of 1999-2000) are the Senate
+# sending a bill it approved to Finance, as much as "PASSED WITH AM AND REF
+# TO FINANCE" is.
 J_REFERRED_TO = re.compile(
-    r"\bref(?:er(?:red)?)?\.?\s+to\s+(?P<c>(?!interim)[A-Za-z][A-Za-z&/ ]{1,40}?)"
-    r"(?=\s*(?:\(|\[|rule\b|;|,|$|\d))", re.I)
+    r"\bref(?:er(?:r?ed)?)?\.?\s+to\s+(?P<c>(?!interim)[A-Za-z][A-Za-z&/ ]{1,40}?)"
+    r"(?=\s*(?:\(|\)|\[|\]|rule\b|;|,|$|\d))", re.I)
 J_BARE_REFERRAL = re.compile(r"^\s*ref(?:er(?:red)?)?\.?\s+to\s+(?P<c>[A-Za-z][A-Za-z&/ ,]+?)"
                              r"\s*(?:\(|\[|\d|rule\b|$)", re.I)
 J_SECOND_COMMITTEE = [(re.compile(r"^fin", re.I), "Finance"),
                       (re.compile(r"^approp", re.I), "Appropriations"),
                       (re.compile(r"^(?:ways|w\s*&\s*m)", re.I), "Ways and Means"),
                       (re.compile(r"^capital", re.I), "Capital Budget")]
-J_THIRD = re.compile(r"third\s+reading|3rd\s+reading", re.I)
+J_THIRD = re.compile(r"third\s+reading|3rd\s+r(?:ea)?d(?:in)?g|\bOT\s?3\s?rd?g\b", re.I)
 J_SIGNED = re.compile(r"signed\s+by\s+(?:the\s+)?gov|governor\s+signed", re.I)
 J_VETOED = re.compile(r"vetoed\s+by\s+(?:the\s+)?gov|^\s*vetoed\b", re.I)
+# "...enacted in accordance with Article 44, Part II of New Hampshire
+# Constitution without signature of the Governor, July 16, 2008" (SB 312 of
+# 2008) has no "the" before "signature".
 J_UNSIGNED = re.compile(r"law\s+without\s+(?:the\s+)?(?:governor'?s\s+)?signature|"
-                        r"without\s+the\s+signature\s+of\s+the\s+governor", re.I)
+                        r"without\s+(?:the\s+)?signature\s+of\s+the\s+governor", re.I)
 J_OTHER_BILL = re.compile(r"\b(?:HB|SB|HCR|SCR|HJR|SJR|CACR)\s*(\d+)", re.I)
-J_EFF = re.compile(r"\beff(?:ective|\.)?\s*[:.]?\s*(\d{1,2})/(\d{1,2})/(\d{2,4})(\*)?",
-                   re.I)
+J_WAIVED = re.compile(r"\bwaiv\w*\b[^;]*\breferral|\breferral\b[^;]*\bwaiv", re.I)
+# Where a governor's line starts saying when the law takes effect.
+J_EFF_ANY = re.compile(r"\beff(?:ective|\.|:|-)?(?![a-z])|\btake\s+effect", re.I)
+# A LAW WITH MORE THAN ONE EFFECTIVE DATE HAS NO ONE DATE TO STATE. "eff. I.
+# Sec 3 1/1/2027 II. Rem eff 8/1/2026" (HB 131 of 2026), "eff as provided in
+# Sec 3" (HB 557 of 2025), "EFF: 06/05/98*", and the governor's row carried on
+# a row of its own: "I. Sections 5 & 6 Eff. 07/01/2011" and then "II.
+# Remainder Eff. 08/12/2007" (HB 337 of 2007), which read as "in effect 1 Jul
+# 2011" for a law most of which took effect four years earlier.
+J_EFF_SEVERAL = re.compile(
+    r"\bsec(?:tion)?s?\b|\bsec\.|\bremain\w*|\brem\b|as\s+provided|\bprov\b|"
+    r"\bpart\s+[IVX]+\s+(?:eff|shall)|(?:^|[\s;.,])[IVX]{1,4}\.\s|multiple|\*|\bparagraph", re.I)
+# The governor's row carried on in rows of its own.
+J_EFF_MORE = re.compile(r"^\s*(?:\*|[IVX]{1,4}\.|part\s+[IVX]+\b|(?:the\s+)?remainder\b|"
+                        r"effective\b|eff\b|sec(?:tion)?s?\b)", re.I)
+J_DAY = re.compile(r"(?<![\d/])(\d{1,2})\s*/\s*(\d{1,2})\s*/\s*(\d{4}|\d{2})(?![\d/])")
+J_MONTH_DAY = re.compile(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+"
+                         r"(\d{1,2}),?\s+(\d{4})\b", re.I)
+# The day a clause states at its end: "Adopted and read a 3rd time MA VV
+# 01/05/22". Not a sitting the chamber met "in recess of", and not a date in
+# brackets, the older dockets' "done as of" a sitting: "Introduced and
+# Adopted [11/30/2011]", entered on 4 January.
+J_CLAUSE_DAY = re.compile(r"(?<!recess of )(?<!recess of\) )(?<!recess )(?<![\d/\[])"
+                          r"(\d{1,2})/(\d{1,2})/(\d{4}|\d{2})\W*$", re.I)
+# "Introduced ...", "5/3/2001 Introduced and ref to Judiciary", "Introducing
+# and referred to Public Affairs" (SB 12 of 1999), "Sen. Birdsell Moved
+# Introduction; 2/3 necessary, MA, VV" (SCR 1 of 2023).
+J_INTRO_ROW = re.compile(r"^\s*(?:\d{1,2}/\d{1,2}/\d{2,4}\s+)?introduc(?:ed|ing|tion)\b|"
+                         r"\bmoved\s+introduction\b", re.I)
 J_REF_TALLY = re.compile(r"\(\s*([\d,]{3,})\s*[-–]\s*([\d,]{3,})\s*\)")
 J_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
          "Nov", "Dec"]
@@ -3095,7 +3226,8 @@ def _j_segments(raw):
     Amendment; Requests C of C, MA, VV", "Conference Committee Report #
     2026-2114c; RC 15Y-8N, Adopted"."""
     out = []
-    for p in (x.strip() for x in (raw or "").split(";")):
+    for p in (y.strip() for x in (raw or "").split(";")
+              for y in _j_unsuspend(x.strip()).split(";")):
         if not p:
             continue
         # Not a floor amendment's own vote after a motion that was only
@@ -3103,11 +3235,26 @@ def _j_segments(raw):
         # RC(190-152)" (HB 1475 of 2000) is the amendment carrying, not the
         # bill -- which was killed that morning.
         nxt = _j_act(p)
-        if (out and not _j_has_outcome(out[-1]) and _j_act(out[-1])
-                and _j_has_outcome(p) and (
+        # AN OUTCOME ALONE IS THE OUTCOME OF THE CLAUSE BEFORE IT, whatever
+        # that clause was about: "Enrolled Bill Amendment{2230}; Adopted" is
+        # the enrolled bill amendment adopted (HB 1243 of 2006), and "Enrolled
+        # Bill; Adopted, SJ 14" the enrolment (HB 235 of 2000). Read apart, the
+        # bare "Adopted" was a committee report adopted -- a kill, on two bills
+        # that became law.
+        if (out and not _j_has_outcome(out[-1]) and _j_has_outcome(p)
+                and not re.search(r"withdr[ae]w", out[-1], re.I) and (
+                (_j_act(out[-1]) and (
                     nxt is None or J_OUTCOME_ONLY.match(p)
-                    or (nxt == "amendment" and _j_act(out[-1]) == "conference"))):
+                    or (nxt == "amendment" and _j_act(out[-1]) == "conference")))
+                or (J_TAKES_OUTCOME.search(out[-1]) and J_OUTCOME_ONLY.match(p)))):
             out[-1] = f"{out[-1]}; {p}"
+        # Across a clause that is neither motion nor outcome: "Sen. Prescott
+        # moved Nonconcur with House Amendment #1958h, NT; Requests C of C;
+        # MA VV" (SB 255 of 2015) is the Senate refusing the amendment.
+        elif (len(out) > 1 and J_OUTCOME_ONLY.match(p) and not _j_act(out[-1])
+              and not _j_has_outcome(out[-1]) and _j_act(out[-2])
+              and not _j_has_outcome(out[-2])):
+            out[-2:] = [f"{out[-2]}; {out[-1]}; {p}"]
         else:
             out.append(p)
     return out
@@ -3218,8 +3365,20 @@ def _j_motion(seg, act, m, begin, end, alone, bid="", ctx=((), "", "")):
     # bill, a committee's REPORT being adopted, whatever it recommended.
     # Where no row says which (_j_rows joins the one that does), it says
     # nothing about the bill.
+    # Not where the clause says the bill was read a third time: "Adopted and
+    # read a 3rd time MA VV 01/05/22" is the House passing HB 1650 of 2022.
     bare = (act == "passed" and not bill_prefix(bid).endswith("R") and re.match(
-        r"\s*(?:[HS]\s+)?(?:introduced\s+and\s+)?adopt", m.group(0), re.I))
+        r"\s*(?:[HS]\s+)?adopt", m.group(0), re.I)
+        and not re.search(r"\bread\s+(?:a\s+)?(?:3rd|third)\s+time", seg, re.I))
+    # "INTRODUCED AND ADOPTED" on a bill is no committee's report: in the
+    # Senate of the 1990s, under a suspension of the rules, it is the bill
+    # passing ("SEN DELAHUNTY SUSP RULES TO CONSIDER, MA 2/3VV; INTRODUCED AND
+    # ADOPTED VV", HB 27 of 1993, signed a week later); in the House of
+    # 2019, "Introduced and Adopted (without objection)" ahead of "Ought to
+    # Pass : MA RC 316-40", the motion to introduce it. So it is a passage
+    # that a passage of the same day replaces, tally and all (_j_settle).
+    intro_adopt = (act == "passed" and not bill_prefix(bid).endswith("R") and re.match(
+        r"\s*(?:[HS]\s+)?introduced\s+and\s+adopt", m.group(0), re.I))
     said = _j_outcome(part, 0)
     if said is None and alone:
         said = _j_outcome(seg, at)
@@ -3276,6 +3435,17 @@ def _j_motion(seg, act, m, begin, end, alone, bid="", ctx=((), "", "")):
     if act == "conference":
         if re.search(r"\btable\b", part, re.I):
             return None
+        # A motion NOT to adopt, carried, is the report rejected: "Sen.
+        # Pignatelli Moved Non Adopt Conference Committee Report RC 17Y-7N,
+        # Non Adopt" (SB 69 of 2001) read as the Senate adopting it 17-7.
+        # So is "REFUSED TO ADOPT CONF COMM REPT, REQ NEW CONF COMM REPORT,
+        # SEN HEATH MA VV" (HB 352 of 1991).
+        if re.search(r"\bnon[-\s]?adopt|\bnot\s+(?:to\s+)?adopt(?!ed)|\bmov\w*\s+(?:to\s+)?reject"
+                     r"|\brefus\w*\s+to\s+adopt", seg[:end], re.I):
+            if not said:
+                return None
+            out["act"] = "conf_rejected"
+            return out
         out["act"] = "conf_adopted" if said else "conf_rejected"
     elif act == "accede":
         if not said:
@@ -3296,9 +3466,14 @@ def _j_motion(seg, act, m, begin, end, alone, bid="", ctx=((), "", "")):
             out["act"] = "failed"
         else:
             out["act"] = "passed"
+            if intro_adopt:
+                out["intro_adopt"] = True
             out["amended"] = bool(J_AMENDED.search(seg[:end]))
-            out["third"] = bool(J_THIRD.search(part)) and not re.search(
-                r"ought\s+to\s+pass|\bOTP", part, re.I)
+            # "Passed by Third Reading Resolution" (HB 118 of 2005, the day
+            # after "Ought to Pass, RC 16Y-8N, MA") is the passage it names,
+            # read a third time, and not a second one.
+            out["third"] = bool(J_THIRD.search(seg)) and not re.search(
+                r"ought\s+to\s+pass|\bOTP", seg, re.I)
             to = J_REFERRED_TO.search(part)
             if to:
                 out["act"] = "referred"
@@ -3311,10 +3486,24 @@ def _j_motion(seg, act, m, begin, end, alone, bid="", ctx=((), "", "")):
 
 
 def _j_second_committee(name):
+    """The committee a chamber sent a bill on to after approving it: the
+    money committees by their full names, any other by its own, written out
+    the way the rest of the site writes a committee."""
+    name = (name or "").strip(" ,.")
     for rx, full in J_SECOND_COMMITTEE:
-        if rx.search((name or "").strip()):
+        if rx.search(name):
             return full
-    return ""
+    # "SUSP RULES TO REF TO 2ND COMM": the docket does not say which.
+    if re.match(r"(?:a\s+)?(?:2nd|second)\s+comm", name, re.I):
+        return "a second committee"
+    if not re.search(r"[A-Za-z]{3}", name):
+        return ""
+    try:
+        import referrals
+        return referrals.AMP.sub(" and ", names.committee(
+            referrals.expand(referrals.clean(name)))) or name
+    except Exception:                                       # pragma: no cover
+        return name
 
 
 def _j_vote_words(vote):
@@ -3341,9 +3530,10 @@ def _j_words(st, bid):
         text = ("Adopted" if resolution else "Passed") + (" with an amendment" if am else "")
         return text + long_, ", ".join(x for x in (short, "amended" if am else "") if x)
     if act == "referred":
-        to = _j_second_committee(st.get("to")) or "another committee"
-        return (f"Approved and sent to {to}" + long_,
-                f"to {to}" if to != "another committee" else "sent on")
+        to = _j_second_committee(st.get("to"))
+        money = to in {full for _rx, full in J_SECOND_COMMITTEE}
+        return (f"Approved and sent to {to or 'another committee'}" + long_,
+                f"to {to}" if money else "to committee")
     if act == "died":
         # The docket's words, not the status chip's: the rule killed it.
         rule = st.get("rule") or ""
@@ -3376,21 +3566,100 @@ def _j_words(st, bid):
                           and act in ("killed", "failed") else word)
 
 
-def _j_effective(line):
-    """The one date a law took effect, or "" where the line gives none or
-    several ("I. sec 4 eff 12/1/26 ...", "EFF: 6/5/89*")."""
-    ms = list(J_EFF.finditer(line or ""))
-    if not ms or any(m.group(4) for m in ms):
+def _j_effective(*lines):
+    """The one date a law took effect, or "" where its lines give none or
+    several. `lines` are the governor's row, the rows that carry it on, and
+    the chapter's line: all of them are read, and any sign of a second date
+    -- a section, a remainder, "as provided", a starred date -- is enough to
+    state none."""
+    lines = [x for x in lines if x]
+    if any(J_EFF_SEVERAL.search(x) for x in lines):
         return ""
-    days = {_j_iso(m.group(1), m.group(2), m.group(3)) for m in ms}
+    # Each line's dates after its own "eff": HB 1256 of 2026's "Law Without
+    # Signature 06/05/2026; Chapter 128; eff.Enacted in accordance with
+    # Article 44" states no effective date at all.
+    days = {_j_iso(*d.groups()) for x in lines for m in [J_EFF_ANY.search(x)] if m
+            for d in J_DAY.finditer(x, m.start())} - {""}
     return days.pop() if len(days) == 1 else ""
+
+
+def _j_days(a, b):
+    """Days from ISO date b to ISO date a; 0 where either is missing."""
+    try:
+        return (_date.fromisoformat(a) - _date.fromisoformat(b)).days
+    except (TypeError, ValueError):
+        return 0
+
+
+def _j_stated_day(text):
+    """The first date a line states, "2007-06-11", or ""."""
+    got = []
+    for m in J_DAY.finditer(text or ""):
+        iso = _j_iso(*m.groups())
+        if iso:
+            got.append((m.start(), iso))
+            break
+    m = J_MONTH_DAY.search(text or "")
+    if m:
+        try:
+            got.append((m.start(), _date(int(m.group(3)), J_MON.index(m.group(1)[:3].title()) + 1,
+                                         int(m.group(2))).isoformat()))
+        except ValueError:
+            pass
+    return min(got)[1] if got else ""
+
+
+def _j_gov_more(evs, gov):
+    """The rows that carry a governor's row on -- "II. Remainder Eff.
+    08/12/2007" -- in the order they follow it."""
+    try:
+        i = next(k for k, x in enumerate(evs) if x is gov)
+    except StopIteration:
+        return []
+    out = []
+    for x in evs[i + 1:i + 8]:
+        if x.get("type") not in ("other", "governor") or not J_EFF_MORE.match(x.get("raw") or ""):
+            break
+        out.append(x.get("raw") or "")
+    return out
+
+
+def _j_introduced(evs, bid):
+    """The day the bill was introduced in the chamber it started in: the
+    day its introduction row states where it states one ("Introduced pursuant
+    to Rule 36c 02/20/2025", HR 17 of 2025, entered on the 25th), else the
+    day of the row.
+
+    IN ITS OWN CHAMBER. A bill is introduced twice, once in each chamber, and
+    the first row typed as an introduction is not always the first chamber's:
+    SCR 1 of 2023's Senate row, "Sen. Birdsell Moved Introduction; 2/3
+    necessary, MA, VV; 02/09/2023", is typed as a floor decision, and the
+    House's introduction of 16 March was taken for the resolution's."""
+    rows = [e for e in evs
+            if e.get("type") == "introduced" or J_INTRO_ROW.search(e.get("raw") or "")]
+    pre = bill_prefix(bid)
+    own = "S" if pre.startswith("S") else "H" if pre.startswith("H") else ""
+    # Where the first chamber's own row is missing, no date: SB 109 of 2009
+    # has only the House's "Introduced and Referred to Transportation", a
+    # fortnight after the Senate passed it.
+    if own:
+        rows = [e for e in rows if (e.get("body") or "")[:1].upper() == own]
+    days = []
+    for e in rows:
+        d = e.get("date") or ""
+        said = _j_stated_day(e.get("raw") or "")
+        if said and not e.get("date_as_recorded") and (not d or said <= d):
+            d = said
+        if d:
+            days.append(d)
+    return min(days) if days else ""
 
 
 # What a committee report recommended, as the decision its adoption was.
 J_FROM_REPORT = [(re.compile(r"inexpedient", re.I), "killed"),
                  (re.compile(r"interim\s+study", re.I), "study"),
                  (re.compile(r"indefinitely\s+postpone", re.I), "postponed"),
-                 (re.compile(r"ought\s+to\s+pass", re.I), "passed"),
+                 (re.compile(r"ought\s+to\s+(?:pass|adopt)", re.I), "passed"),
                  (re.compile(r"re-?\s?refer|recommit", re.I), "recommitted")]
 J_WRAPPED_TALLY = re.compile(r"\(\s*\d+\s*-?\s*$")
 J_TALLY_TAIL = re.compile(r"^\s*-?\s*\d+\s*\)")
@@ -3412,6 +3681,7 @@ def _j_rows(evs):
     of 1997, and its "ADOPTED VV" is the House's floor row of the same day --
     in whichever order the two were entered."""
     tails = defaultdict(list)
+    voted = set()
     for e in evs:
         if e.get("type") != "report":
             continue
@@ -3420,9 +3690,20 @@ def _j_rows(evs):
         if (segs and re.search(r"\bM[AFL]\b|\bmoved\b|\bsubst", raw, re.I)
                 and _j_act(segs[-1]) and not _j_has_outcome(segs[-1])):
             tails[(e.get("body"), e.get("date"))].append(raw)
+        # A report row that is itself the floor's vote on the report, whole:
+        # "Minority Committee Report: Ought to Pass with AM #0625h NT: MA RC
+        # 193-141" (HB 1623 of 2008) is the House passing the bill; "COMM
+        # REPORT ITL, ML VV; RE-REFERRED TO MUN & CNTY GOVT, REP BEHRENS MA
+        # VV" (HB 475 of 1995) is it sending the bill back. Not the Senate's
+        # "Committee Report; Ought to Pass with Amendment{0400s} (New
+        # Title), MA, VV" (SB 165 of 2009), the committee's own report,
+        # whose floor vote is a row of its own a fortnight later.
+        elif ((J_YES_CODE.search(raw) or J_NO_CODE.search(raw))
+              and not re.match(r"\s*committee\s+report\s*;", raw, re.I)):
+            voted.add(id(e))
     out = []
     for e in evs:
-        if e.get("type") in J_NOT_FLOOR:
+        if e.get("type") in J_NOT_FLOOR and id(e) not in voted:
             continue
         raw = e.get("raw") or ""
         first = (_j_segments(raw) or [""])[0]
@@ -3437,9 +3718,27 @@ def _j_rows(evs):
             last = segs_p[-1] if segs_p else ""
             first = segs_n[0] if segs_n else ""
             tally = J_WRAPPED_TALLY.search(prev) and J_TALLY_TAIL.match(raw)
-            if same and (tally or (last and _j_act(last) and not _j_has_outcome(last)
-                                   and first and _j_has_outcome(first)
-                                   and (J_OUTCOME_ONLY.match(first) or not _j_act(first)))):
+            # A motion wrapped mid-phrase: "...; NEW CONF COMM" and "REPORT
+            # ADOPTED VV" (HB 1399 of 1992), "...; GOVERNOR'S VETO" and
+            # "SUSTAINED RC(221-117)" (HB 332 of 1995) -- neither half names
+            # a motion, and the two together do.
+            wrapped = (last and not _j_has_outcome(last) and first and _j_has_outcome(first)
+                       and not _j_act(first) and _j_act(f"{last} {first}"))
+            # And a suspension of the rules the clerk ran onto the next row:
+            # "REPS KURK & PFAFF SUSP" and "RULES FOR 3RD READING, MA 2/3VV".
+            # Read alone, the second half is the bill passing.
+            # Where the next row starts a motion of its own, it is not the
+            # rest of this one, unless this one broke off at "SUSP".
+            tail_p = prev.split(";")[-1]
+            sm = J_SUSPEND.search(tail_p)
+            open_susp = bool(sm) and not (J_SUSP_CODE.search(tail_p, sm.end())
+                                          or J_SUSP_WORD.search(tail_p, sm.end())) and (
+                bool(re.search(r"\bsusp\w*\.?\s*$", tail_p, re.I))
+                or not _j_act(raw.split(";")[0]))
+            if same and (tally or wrapped or open_susp
+                         or (last and _j_act(last) and not _j_has_outcome(last)
+                             and first and _j_has_outcome(first)
+                             and (J_OUTCOME_ONLY.match(first) or not _j_act(first)))):
                 out[-1] = (pe, prev.rstrip() + ("" if tally else " ") + raw.lstrip())
                 continue
         out.append((e, raw))
@@ -3455,16 +3754,55 @@ def journey(narr, bid, rcs=(), chapter="", law_line=""):
     rail (`short`).
     """
     evs = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
-    intro = next((e.get("date") for e in evs if e.get("type") == "introduced"), "") or next(
-        (e.get("date") for e in evs
-         if re.match(r"\s*introduced\b", e.get("raw") or "", re.I)), "")
+    intro = _j_introduced(evs, bid)
     steps, amended = [], set()
-    gov_raw = ""
+    gov_raw, gov_more = "", []
     reports = [e for e in evs if e.get("type") == "report"]
+    # A second committee's chair can waive the referral, and the bill then
+    # goes on as the chamber passed it: HB 243 of 2025, "Ought to Pass: MA
+    # VV", "Referred to Criminal Justice and Public Safety", "Referral Waived
+    # by Committee Chair per House Rule 47(f)", all on 20 February, and in
+    # the Senate a fortnight later. The waiver can be entered ahead of the
+    # referral it waives (SB 482 of 2026), or days after it.
+    waived = {((e.get("body") or "")[:1].upper(), e.get("date") or "")
+              for e in evs if J_WAIVED.search(e.get("raw") or "")}
+    pending = {}
     for e, raw in _j_rows(evs):
         body = (e.get("body") or "").upper()[:1]
+        # THE JOURNAL A ROW CITES NAMES THE CHAMBER THAT ACTED. "PASSED VV;
+        # SJ12,P305 + 318" is filed under the House on HB 1113 of 1994 and
+        # is the Senate passing it; "Sen. Francoeur Moved Laid On Table, MA,
+        # VV" sits under the House on HB 1249 of 2002 with the Senate
+        # Journal's page. Read by the filing, the House passed those bills
+        # twice and the Senate never did.
+        # BUT A CITATION CAN BE THE TYPO, and then the filing is right. Which
+        # it is, the chamber that held the bill says -- the one whose
+        # introduction or committee report came last before the row: HB 366
+        # of 1995's "ITL REPORT ADOPTED; SJ25,P532" is the House killing a
+        # bill the Senate never received, and HB 426 of 1993's "PASSED VV;
+        # HJ46,P217 + 221", filed under the Senate the day of the Senate
+        # committee's report, is the Senate passing it.
+        cite = (e.get("cite") or "").upper()
+        if cite[:2] in ("HJ", "SJ") and body in ("H", "S") and cite[0] != body:
+            before = evs[:next((k for k, x in enumerate(evs) if x is e), len(evs))]
+            held = next(((x.get("body") or "")[:1].upper() for x in reversed(before)
+                         if x.get("type") in ("introduced", "report")
+                         or J_INTRO_ROW.search(x.get("raw") or "")), "")
+            # Or the row says whose it is: "SEN CONC WITH HOUSE AM, SEN DANAIS
+            # MA VV; SJ10,P117" (SB 157 of 1995) is the Senate concurring,
+            # back from the House with no new introduction.
+            who = ("S" if re.match(r"\s*(?:sen(?:ator)?s?\b\.?|senate\b)", raw, re.I)
+                   else "H" if re.match(r"\s*(?:reps?\b\.?|house\b)", raw, re.I) else "")
+            if held == cite[0] or who == cite[0] or J_INTRO_ROW.search(raw):
+                body = cite[0]
         date = e.get("date") or ""
         for seg in _j_segments(raw):
+            if J_WAIVED.search(seg):
+                last = next((s for s in reversed(steps) if s["body"] == body), None)
+                if last and last["act"] == "referred":
+                    last["act"] = "passed"
+                    last.pop("to", None)
+                continue
             # A BILL TAKEN OFF THE TABLE WAS NOT LEFT ON IT, whether the same
             # day or later: SB 315 of 2012 was passed and tabled with a batch
             # of Senate bills on 25 April, taken off on 16 May and signed in
@@ -3479,23 +3817,54 @@ def journey(narr, bid, rcs=(), chapter="", law_line=""):
                 mine = [i for i, s in enumerate(steps) if s["body"] == body]
                 if said and mine and steps[mine[-1]]["act"] == "tabled":
                     steps.pop(mine[-1])
-                continue
+                # And what the clause does next: "Sen D'Allesandro Moved
+                # Remove From Table, MA, VV, Ought to Pass, MA, VV, OT3rdg,
+                # MA, VV" (HB 501 of 1999) is the Senate passing the bill.
+                o = J_SUSP_CODE.search(seg, off.end()) or J_SUSP_WORD.search(seg, off.end())
+                seg = seg[J_SUSP_VOTE.match(seg, o.end()).end():] if o else ""
+                if not _j_act(seg):
+                    continue
             # "Ought to Pass ...: MA RC 197-149" and then, the same day,
             # "Referred to Finance" -- or "...MA, VV; Refer to Finance Rule
             # 4-5" on one line: the chamber approved it and sent it to a
             # second committee, which is not the bill leaving the chamber.
+            # ANY SECOND COMMITTEE, not only the money ones. HB 493 of 2025
+            # was approved on 13 March and "Referred to Executive Departments
+            # and Administration" the same day, which killed it 193-177 in
+            # April; read as passed, the House passed a bill it never passed.
+            # THE CLERKS OF 1989 WROTE THE REFERRAL WHEN THEY GOT TO IT: before
+            # the passage it followed ("REFERRED TO FINANCE/APPROP" at 12:49,
+            # "PASSED/ADOPTED" at 14:36, HB 115 of 1989), or days after it
+            # (HB 396, passed on 21 April, "REFERRED TO APPROP/FINANCE" on the
+            # 25th). A passage the chamber sent on to a second committee
+            # before the other chamber did anything is that referral; one
+            # waiting for its passage takes it when it comes.
             ref = J_BARE_REFERRAL.match(seg)
             to = _j_second_committee(ref.group("c")) if ref and not _j_act(seg) else ""
             if to:
-                last = next((s for s in reversed(steps) if s["body"] == body), None)
-                if last and last["date"] == date and last["act"] == "passed":
+                at = next((i for i in range(len(steps) - 1, -1, -1)
+                           if steps[i]["body"] == body), None)
+                last = steps[at] if at is not None else None
+                if (last and last["act"] == "passed" and (body, date) not in waived
+                        and 0 <= _j_days(date, last["date"]) <= 30
+                        and not any(s["body"] in ("H", "S") for s in steps[at + 1:])):
                     last["act"], last["to"] = "referred", to
+                elif (body, date) not in waived:
+                    pending[(body, date)] = to
                 continue
             got = _j_decide(seg, bid, rcs, date, body)
             if got is None:
                 continue
             if got == "amended":
                 amended.add((body, date))
+                # The amendment's row can carry the referral that followed
+                # the passage: "Sen. Pignatelli Floor Amendment, {2150}, AA,
+                # VV, Rule 24 (Refer to Finance)" (HB 707 of 1999).
+                to_ = J_REFERRED_TO.search(seg)
+                last = next((s for s in reversed(steps) if s["body"] == body), None)
+                if (to_ and last and last["date"] == date and last["act"] == "passed"
+                        and (body, date) not in waived):
+                    last["act"], last["to"] = "referred", to_.group("c").strip()
                 continue
             if got["act"] == "report_adopted":
                 rec = next((r.get("recommendation") or "" for r in reversed(reports)
@@ -3503,14 +3872,45 @@ def journey(narr, bid, rcs=(), chapter="", law_line=""):
                             and (r.get("date") or "") <= date
                             and r.get("side") != "Minority" and r.get("recommendation")), "")
                 act = next((a for rx, a in J_FROM_REPORT if rx.search(rec)), "")
+                # No report to adopt: the rules were suspended to take the
+                # bill up without one, and "ADOPTED VV" is the bill -- "REPS
+                # TEAGUE & WALLNER SUSP RULES TO CONSIDER, MA 2/3VV; ADOPTED
+                # VV" (HB 1503 of 1992, signed in June). Not an amendment's
+                # adoption: "Adopt Remainder Floor Amendment {2421h}; AA VV".
+                if not rec and not re.search(r"amend|\brep(?:ort|t)\b", seg, re.I):
+                    act = "passed"
                 if not act:
                     continue
                 got = {**got, "act": act,
                        "amended": act == "passed" and bool(re.search(r"amend", rec, re.I))}
             st = {"date": date, "body": body, **got}
+            # THE DAY THE CLAUSE STATES, where the row was dated by its entry:
+            # "Adopted and read a 3rd time MA VV 01/05/22", entered on 10
+            # January (HB 1650 of 2022) -- four days after the governor
+            # signed the bill it passed. Not a sitting the chamber met "in
+            # recess of", which is the day before the one it acted on.
+            said = J_CLAUSE_DAY.search(seg)
+            if (said and got["act"] not in ("signed", "vetoed", "unsigned")
+                    and not e.get("date_as_recorded")):
+                day = _j_iso(*said.groups())
+                if day and -60 <= _j_days(day, date) < 0:
+                    st["date"] = day
             if got["act"] in ("signed", "vetoed", "unsigned"):
                 st["body"] = "G"
                 gov_raw = raw
+                gov_more = _j_gov_more(evs, e)
+                # THE DAY THE LINE GIVES, NOT THE DAY IT WAS ENTERED. "Signed
+                # by the Governor on 06/11/07" (HB 101 of 2007) was entered on
+                # the 12th, and 628 governor lines were dated by their entry.
+                # Not a day before the chambers finished with the bill -- "on
+                # 06/14/10" on a bill of 2011 is the clerk's year -- nor far
+                # from the row itself, and not where a person corrected the
+                # docket's date (docket_corrections.json).
+                said = _j_stated_day(J_EFF_ANY.split(raw, 1)[0])
+                done = max((s["date"] for s in steps if s["body"] in ("H", "S")), default="")
+                if (said and not e.get("date_as_recorded") and done <= said
+                        and _j_days(said, date) <= 14):
+                    st["date"] = said
                 # A veto overridden is enacted "without the signature of the
                 # governor" (HB 1422 of 2026, the day after both chambers
                 # overrode). That is the override's result, which the Law
@@ -3519,15 +3919,16 @@ def journey(narr, bid, rcs=(), chapter="", law_line=""):
                     continue
             if st["act"] == "passed" and (body, date) in amended:
                 st["amended"] = True
+            if st["act"] == "passed" and (body, date) in pending:
+                st["act"], st["to"] = "referred", pending.pop((body, date))
             steps.append(st)
     # The governor's line where the history has none but the chapter's
     # line does: the same evidence, read the same way.
     if law_line and not any(s["body"] == "G" for s in steps):
         got = _j_decide(law_line, bid)
         if isinstance(got, dict) and got["act"] in ("signed", "unsigned"):
-            m = re.search(r"(\d{1,2})/(\d{1,2})/(\d{2,4})", law_line)
-            steps.append({"date": _j_iso(*m.groups()) if m else "", "body": "G",
-                          **got})
+            steps.append({"date": _j_stated_day(J_EFF_ANY.split(law_line, 1)[0]),
+                          "body": "G", **got})
             gov_raw = law_line
     # A vote on a veto is the record of the veto. The 1989 docket has
     # "GOVERNOR'S VETO SUSTAINED, RC(172-140)" on HB 377 and no line of its
@@ -3541,9 +3942,26 @@ def journey(narr, bid, rcs=(), chapter="", law_line=""):
     seen_g = set()
     steps = [s for s in steps if s["body"] != "G"
              or not (s["act"] in seen_g or seen_g.add(s["act"]))]
+    # In the order of the days the lines now carry, which a row dated by its
+    # entry can have put out of step: HB 1650 of 2022's House passage of 5
+    # January was entered after the governor's signature of the 6th. Stable,
+    # so a day's own order stands; an undated line keeps its place.
+    carry, keyed = "", []
+    for i, s in enumerate(steps):
+        carry = s["date"] or carry
+        keyed.append((carry, i, s))
+    steps = [s for _d, _i, s in sorted(keyed, key=lambda x: (x[0], x[1]))]
     steps = _j_settle(steps)
+    # An introduction dated after the first decision on the bill is a date
+    # the docket has wrong -- HB 113 of 2005's "Introduced and ref to Crim
+    # Just & PSfty" stands at 1 December 2006, eleven months after the House
+    # killed it -- and the stop goes undated rather than out of order.
+    first_day = min((s["date"] for s in steps if s["body"] in ("H", "S") and s["date"]),
+                    default="")
+    if intro and first_day and intro > first_day:
+        intro = ""
     if chapter:
-        eff = _j_effective(gov_raw or law_line)
+        eff = _j_effective(gov_raw, *gov_more, law_line)
         steps.append({"date": "", "body": "L", "act": "law",
                       "text": f"Chapter {chapter}" + (
                           f", in effect {_j_prose_date(eff)}" if eff else ""),
@@ -3568,9 +3986,22 @@ def journey(narr, bid, rcs=(), chapter="", law_line=""):
             else:
                 st["text"], st["short"] = _j_words(st, bid)
         for k in ("vote", "amended", "third", "to", "conf", "rule", "adjourned",
-                  "unanswered"):
+                  "unanswered", "intro_adopt"):
             st.pop(k, None)
     return intro, steps
+
+
+def _j_merge(into, st):
+    """A second passage of the same sitting, folded into the first: amended
+    if either was, and the count of the one that has a count -- but never the
+    count of a motion to introduce ("Introduced and Adopted: MA DV 259-66 By
+    Necessary Two-Thirds Vote", then "Ought to Pass : MA VV", HB 2023 of
+    2022)."""
+    into["amended"] = into.get("amended") or st.get("amended")
+    if st.get("intro_adopt"):
+        return
+    if into.pop("intro_adopt", False) or st["vote"][1] is not None or not into["vote"][0]:
+        into["vote"] = st["vote"]
 
 
 def _j_settle(steps):
@@ -3581,15 +4012,28 @@ def _j_settle(steps):
     out = []
     for st in steps:
         prev = out[-1] if out else None
+        # The same across the other chamber's rows of that day: HB 282 of
+        # 2025 passed the Senate on 26 June, was reconsidered and passed
+        # again with a second amendment, and the House's concurrence in both
+        # amendments sits between the two rows.
+        mine = next((s for s in reversed(out) if s["body"] == st["body"]), None)
+        if (st["act"] == "passed" and st["body"] in ("H", "S") and mine is not None
+                and mine is not prev and mine["act"] == "passed"
+                and mine["date"] == st["date"]):
+            _j_merge(mine, st)
+            continue
         if (prev and st["body"] in ("H", "S") and prev["body"] == st["body"]
                 and prev["date"] == st["date"]):
             if st["act"] == "passed" and prev["act"] in ("passed", "referred") \
                     and st.get("third"):
+                # With its count, where the third reading had one:
+                # "Ought to Pass with Amendment {1084}, AA, VV; OT3rdg, RC
+                # 23Y-1N, MA" (SB 110 of 2001).
+                if prev["act"] == "passed":
+                    _j_merge(prev, st)
                 continue
             if st["act"] == "passed" and prev["act"] == "passed":
-                prev["amended"] = prev.get("amended") or st.get("amended")
-                if st["vote"][1] is not None or not prev["vote"][0]:
-                    prev["vote"] = st["vote"]
+                _j_merge(prev, st)
                 continue
             # A motion to pass that failed is a substitute motion the clerk
             # wrote AFTER the result it lost to: "ITL REPORT ADOPTED VV; REP.
@@ -3740,7 +4184,11 @@ def journey_disagrees(steps, kind, status, rail, bid):
     name = {"H": "House", "S": "Senate"}
 
     def passed(b):
-        return any(s["body"] == b and s["act"] in J_PASSING for s in steps)
+        # A chamber that agreed to the other's version agreed to the bill:
+        # "SEN CONCURS WITH HOUSE AM TO JT RULES" is the Senate's word on HCR
+        # 28 of 1996.
+        return any(s["body"] == b and (s["act"] in J_PASSING or s["act"] == "concurred")
+                   for s in steps)
 
     # THE RAIL. A chamber the rail passes is one the journey has passing it;
     # a chamber the rail crosses is not one the journey leaves passed.
@@ -3823,14 +4271,22 @@ def journey_disagrees(steps, kind, status, rail, bid):
     if status == "Passed one chamber":
         if last and last["act"] in J_ENDING:
             return f"{status}, and the last decision is {last['text'][:40]!r}"
-        return "" if (passed("H") != passed("S")) else f"{status}, and the lines have " + (
-            "both chambers passing it" if passed("H") else "neither passing it")
-    # A bill still in its first committee has had no floor decision carry it.
+        # By where each chamber's own last word left it: HB 707 of 1999 was
+        # approved by the Senate and sent to Finance, which never reported.
+        carried = [b for b in ("H", "S") if journey_state(steps, b) == "p"]
+        return "" if len(carried) == 1 else f"{status}, and the lines have " + (
+            "both chambers passing it" if carried else "neither passing it")
+    # A bill still in its first committee has had no floor decision carry it
+    # -- or none that stood: HB 442 of 1993 was approved and sent to
+    # Appropriations, and then to interim study, where its report was filed.
     if status in ("In committee", "Committee report filed", "Retained in committee") and \
-            (passed("H") or passed("S")):
+            any(journey_state(steps, b) == "p" for b in ("H", "S")):
         return f"{status}, and the lines have a chamber passing it"
     # Everything else says the bill was still on its way when it stopped:
-    # died when the session ended, in progress.
+    # died when the session ended, in progress. An interim study's report
+    # filed is the study's end: HB 442 of 1993.
+    if status == "Committee report filed" and last and last["act"] == "study":
+        return ""
     if last and last["act"] in {"killed", "postponed", "study", "died"}:
         return f"{status}, and the last decision is {last['text'][:40]!r}"
     return ""

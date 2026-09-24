@@ -4544,9 +4544,167 @@ def _journey_bills(B):
         row = {"id": bid, "n": re.sub(r"(\d)", r" \1", bid, 1), "title": "a bill",
                "year": 2025, "term": "2025-2026", "kind": kind, "status": status,
                "passage": rail, "committees": [], "sponsor": ""}
+        # The status page's per-chamber fields, which the records still
+        # carry: the page must not draw them. Without them here, a page that
+        # drew the House Status and Senate Status rows again passed.
         out.append((row, {"journey": {"steps": steps, "rail": jrail},
-                          "chapter": chapter, "next_step": status}))
+                          "chapter": chapter, "next_step": status,
+                          "facts": {"house_status": "PASSED/ADOPTED WITH AMENDMENT",
+                                    "senate_status": "INEXPEDIENT TO LEGISLATE"}}))
     return out
+
+
+@check("status", "the journey reads each decision as the docket records it",
+       needs=("build_site_v2",))
+def _journey_reads(build_site_v2):
+    """Every line below is a real docket row. Each case is a line the
+    journey once read as the opposite of what the docket says, or with a day
+    the docket does not give -- found in review on 24 September, when How it
+    got here was still a branch."""
+    B = build_site_v2
+
+    def ev(body, date, raw, typ="floor", **kw):
+        return {"body": body, "date": date, "raw": raw, "type": typ, "cancelled": False, **kw}
+
+    def run(bid, *evs, chapter="", law=""):
+        intro, steps = B.journey({"events": list(evs)}, bid, [], chapter, law)
+        return intro, [(s["date"], s["body"], s["act"], s["text"]) for s in steps]
+
+    bad = []
+
+    def want(got, expect, what):
+        if got != expect:
+            bad.append(f"{what}: {got!a}")
+
+    # A SECOND COMMITTEE, ANY SECOND COMMITTEE. HB 493 of 2025 was approved
+    # and sent on; the House never passed it.
+    want(run("HB493",
+             ev("H", "2025-03-13", "Amendment # 2025-0715h: AA VV 03/13/2025", "amendment"),
+             ev("H", "2025-03-13", "Ought to Pass with Amendment 2025-0715h: MA VV 03/13/2025"),
+             ev("H", "2025-03-13", "Referred to Executive Departments and Administration "
+                "03/13/2025", "rereferred"),
+             ev("H", "2025-04-10", "Inexpedient to Legislate: MA DV 193-177 04/10/2025"))[1],
+         [("2025-03-13", "H", "referred", "Approved and sent to Executive Departments and "
+           "Administration on a voice vote"),
+          ("2025-04-10", "H", "killed", "Killed, 193–177")], "HB493 2025")
+    # Unless its chair waived the referral: HB 243 of 2025 passed the House.
+    want(run("HB243",
+             ev("H", "2025-02-20", "Ought to Pass: MA VV 02/20/2025"),
+             ev("H", "2025-02-20", "Referred to Criminal Justice and Public Safety 02/20/2025",
+                "rereferred"),
+             ev("H", "2025-02-20", "Referral Waived by Committee Chair per House Rule 47(f) "
+                "02/20/2025", "other"))[1],
+         [("2025-02-20", "H", "passed", "Passed on a voice vote")], "HB243 2025")
+    # 1989's clerks wrote the referral before the passage, or days after.
+    want([x[2] for x in run("HB115",
+                            ev("S", "1989-03-16", "REFERRED TO FINANCE/APPROP", "rereferred"),
+                            ev("S", "1989-03-16", "PASSED/ADOPTED"),
+                            ev("S", "1989-05-04", "PASSED/ADOPTED"))[1]],
+         ["referred", "passed"], "HB115 1989")
+    want([x[2] for x in run("HB396",
+                            ev("S", "1989-04-21", "PASSED/ADOPTED"),
+                            ev("S", "1989-04-25", "REFERRED TO APPROP/FINANCE", "rereferred"),
+                            ev("S", "1989-05-09", "PASSED/ADOPTED"))[1]],
+         ["referred", "passed"], "HB396 1989")
+    # AN ENROLMENT'S "ADOPTED" IS THE ENROLMENT'S, not a committee report's:
+    # HB 1243 of 2006, killed by that reading on the bill that became law.
+    want(run("HB1243",
+             ev("H", "2006-02-23", "Maj Rprt: ITL for March 8 (vote 12-7; RC)", "report",
+                recommendation="Inexpedient to Legislate", side="Majority"),
+             ev("H", "2006-03-09", "Passed with AM, MA, VV"),
+             ev("H", "2006-05-31", "Enrolled Bill Amendment{2230}; Adopted", "amendment"))[1],
+         [("2006-03-09", "H", "passed", "Passed with an amendment on a voice vote")],
+         "HB1243 2006")
+    want(run("HB235", ev("S", "2000-03-13", "Committee Report Inexpedient to Legislate; SC17, "
+                         "Pg.5", "report", recommendation="Inexpedient to Legislate", side=""),
+             ev("S", "2000-03-16", "Sen Below Floor Amendment{3818} RC 15Y- 8N, MA; "
+                "OT3rdg, MA,VV", "other"),
+             ev("S", "2000-05-11", "Enrolled Bill; Adopted", "enrolled"))[1],
+         [("2000-03-16", "S", "passed", "Passed with an amendment on a voice vote")],
+         "HB235 2000")
+    # A VOTE TO SUSPEND THE RULES decides that the rules are suspended.
+    want(run("CACR21", ev("H", "2020-06-12", "Rules Suspension to consider at the present time "
+                          "without required referral to commmittee, public hearing and report "
+                          "from committee, and if passed, allow for immediate third reading MF "
+                          "lacking necessary 2/3 RC 197-143 06/11/2020", "other"))[1],
+         [], "CACR21 2020")
+    want(run("HB1", ev("H", "1997-06-10", "REPS WHEELER & BURLING MOVED TO SUSP RULES FOR CONF "
+                       "COMM REPORT, ML RC(221-135)"))[1], [], "HB1 1997")
+    # ...except where what it allowed is a second committee.
+    want([x[2:] for x in run("HB1162", ev("H", "1996-02-21", "COMM AM, AA VV; PASSED WITH AM "
+                                           "VV; REPS A TORR & TROMBLY SUSP"),
+                              ev("H", "1996-02-21", "RULES TO REF TO FINANCE, MA 2/3VV; "
+                                 "HJ30,P1078", "other"))[1]],
+         [("referred", "Approved and sent to Finance on a voice vote")], "HB1162 1996")
+    # A LAW WITH SEVERAL EFFECTIVE DATES HAS NO ONE DATE TO STATE.
+    want(run("HB131", ev("H", "2026-07-02", "Signed by Governor Ayotte 07/02/2026; Chapter 205; "
+                         "eff. I. Sec 3 1/1/2027 II. Rem eff 8/1/2026", "governor"),
+             chapter="205")[1][-1][3], "Chapter 205", "HB131 2026")
+    want(run("HB337", ev("H", "2007-07-20", "Signed by the Governor on 07/13/07; Chapter 0296; "
+                         "I. Sections 5 & 6 Eff. 07/01/2011", "governor"),
+             ev("H", "2007-07-20", "II. Remainder Eff. 08/12/2007", "other"),
+             chapter="296")[1][-1][3], "Chapter 296", "HB337 2007")
+    want(run("SB151", ev("S", "2025-07-15", "Signed by the Governor on 07/15/2025; Chapter 0238; "
+                         "Effective 01/01/2026", "governor"), chapter="238")[1][-1][3],
+         "Chapter 238, in effect 1 Jan 2026", "SB151 2025")
+    # THE DAY THE LINE GIVES, not the day it was entered.
+    want(run("HB101", ev("H", "2007-06-12", "Signed by the Governor on 06/11/07; Eff. Date "
+                         "08/10/07; Chapter 0069", "governor"))[1][0][0], "2007-06-11",
+         "HB101 2007's signature")
+    want(run("HR17", ev("H", "2025-02-25", "Introduced pursuant to Rule 36c 02/20/2025", "other"),
+             ev("H", "2025-03-06", "Ought to Pass: MA VV 03/06/2025"))[0], "2025-02-20",
+         "HR17 2025's introduction")
+    want(run("SCR1", ev("S", "2023-02-09", "Sen. Birdsell Moved Introduction; 2/3 necessary, MA, "
+                        "VV; 02/09/2023"),
+             ev("S", "2023-02-09", "Ought to Pass : MA, VV; OT3rdg; 02/09/2023"),
+             ev("H", "2023-03-16", "Introduced (in recess of) 03/16/2023 and referred to "
+                "Election Law", "introduced"))[0], "2023-02-09", "SCR1 2023's introduction")
+    want(run("HB1650", ev("S", "2022-01-05", "Ought to Pass : MA, VV; OT3rdg; Read a Third Time, "
+                          "and Final Passage in the early session, MA, VV; 01/05/2022"),
+             ev("H", "2022-01-10", "Adopted and read a 3rd time MA VV 01/05/22", "other"))[1],
+         [("2022-01-05", "S", "passed", "Passed on a voice vote"),
+          ("2022-01-05", "H", "passed", "Passed on a voice vote")], "HB1650 2022")
+    # THE OPPOSITE OF THE DOCKET. The chair's ruling sustained is no veto.
+    want([x[1:3] for x in run("HB1075", ev("H", "1998-05-14", "RULING OF CHR", "amendment"),
+                              ev("H", "1998-05-14", "SUSTAINED VV; PASSED WITH AM RC(233-122); "
+                                 "REP ROOT MOVED TO RECONSIDER, ML VV"))[1]],
+         [("H", "passed")], "HB1075 1998")
+    want(run("SB69", ev("S", "2001-06-26", "Sen. Pignatelli Moved Non Adopt Conference Committee "
+                        "Report RC 17Y-7N, Non Adopt", "other"))[1],
+         [("2001-06-26", "S", "conf_rejected", "Rejected the conference report, 17–7")],
+         "SB69 2001")
+    want([x[2] for x in run("HB705",
+                            ev("H", "2003-06-24", "Conf Comm Report Defeated RC(159-172)", "other"),
+                            ev("H", "2003-06-24", "Rep Mock moved to Reconsider, MA VV"),
+                            ev("H", "2003-06-24", "Conf Comm Report Adopted VV"))[1]],
+         ["conf_adopted"], "HB705 2003")
+    # The journal a row cites names the chamber: the Senate's passage of HB
+    # 1113 of 1994, filed under the House. But not a chamber the bill had
+    # not reached: HB 366 of 1995 was killed by the House, whatever its
+    # row cites.
+    want(run("HB1113", ev("H", "1994-02-08", "PASSED WITH AM; HJ19,P553 + 587", cite="HJ 19"),
+             ev("S", "1994-02-10", "INTRODUCED AND REF TO JUDICIARY; SJ5,P123", "introduced",
+                cite="SJ 5"),
+             ev("H", "1994-04-21", "PASSED VV; SJ12,P305 + 318", cite="SJ 12"))[1],
+         [("1994-02-08", "H", "passed", "Passed with an amendment"),
+          ("1994-04-21", "S", "passed", "Passed on a voice vote")], "HB1113 1994")
+    want(run("HB366", ev("H", "1995-01-05", "INTRODUCED AND REF TO JUDICIARY & F L; HJ11,P152",
+                         "introduced", cite="HJ 11"),
+             ev("H", "1995-02-15", "ITL REPORT ADOPTED; SJ25,P532", cite="SJ 25"))[1],
+         [("1995-02-15", "H", "killed", "Killed")], "HB366 1995")
+    # The citation is the typo here: filed under the Senate, the day of the
+    # Senate committee's report, and cited to the House Journal.
+    want(run("HB426", ev("H", "1993-03-03", "PASSED WITH AM; HJ31,P697-699 + 735", cite="HJ 31"),
+             ev("S", "1993-03-11", "INTRODUCED AND REF TO ENVIRONMENT; SJ9,P201", "introduced",
+                cite="SJ 9"),
+             ev("S", "1993-03-24", "COMM REPORT  OTP  MAR25", "report"),
+             ev("S", "1993-03-25", "PASSED VV; HJ46,P217 + 221", cite="HJ 46"))[1],
+         [("1993-03-03", "H", "passed", "Passed with an amendment"),
+          ("1993-03-25", "S", "passed", "Passed on a voice vote")], "HB426 1993")
+    assert not bad, "; ".join(bad)
+    return "ok", ("second committees, a waived referral, enrolments, rules suspensions, "
+                  "several effective dates, the day a line states, a chair's ruling, a "
+                  "motion not to adopt and a reconsidered defeat, each as the docket has it")
 
 
 @check("frontend", "a bill's own rail is dated from its journey, and How it got here lists it",
@@ -14765,15 +14923,25 @@ def _rail():
                   f"{vetoes} vetoed and crossed at the governor")
 
 
-# THE OLDER TERMS' DISAGREEMENTS, counted when the journey was built (24
-# September) and each read against its docket: 78 bills of 1989-2024 where a
-# decision the status or the rail stands on is not in the docket -- a passage
-# the clerk recorded only as an amendment (HB 119 of 1993), a signature with
-# no line (HB 768 of 1989), a divided question with no whole-bill vote (HB
-# 1607 of 2024), a House bill whose first row the docket files under the
-# Senate (HB 652 of 2011). None is in the current term, which is held to none.
-# A ceiling rather than a list, so a regression anywhere in the archive fails.
-_JOURNEY_EXPLAINED = 78
+# THE OLDER TERMS' DISAGREEMENTS, recounted on 24 September after review found
+# that the first count of 78 held journey mistakes as well as docket gaps (HB
+# 1075 of 1998's phantom veto among them). Each of the 36 left was read
+# against its docket, and none is the journey misreading a line:
+#   13 where the docket does not record a decision the status or the rail
+#      stands on -- no signature line (HB 768 of 1989), a passage recorded
+#      only as amendment votes (HB 119 of 1993), as a divided question's
+#      parts (HB 2018 of 2018) or with no motion code (SB 119 of 2009), no
+#      override vote (HB 396 of 2024);
+#   11 where the docket files a row under the other chamber, or two measures
+#      share a number, and the rail's stops are drawn from that filing (SB
+#      187 of 1991, SR 1 of 1995, CACR 9 of 1995, CACR 20 of 2007);
+#   12 where the status word says what the docket does not -- HB 1141 of
+#      2022 "Referred for interim study" over "Inexpedient to Legislate: MA
+#      VV 03/15/2022", HR 13 of 2007 "In committee" over "Introduced and
+#      Adopted".
+# None is in the current term, which is held to none. A ceiling rather than a
+# list, so a regression anywhere in the archive fails.
+_JOURNEY_EXPLAINED = 36
 
 
 def _journey_story(records, rows, B):
@@ -14833,8 +15001,8 @@ def _journey_agrees(build_site_v2):
         f"{len(old)} bills of the older terms disagree, and {_JOURNEY_EXPLAINED} were "
         f"explained: {'; '.join(old[:3])!a}")
     return "ok", (f"{n['agree']:,} bills agree; {len(old)} of the older terms do not, "
-                  f"each a decision the docket does not record; {n['empty']:,} have no "
-                  "floor decision on record")
+                  f"each a gap, a misfiled row or a status word in the docket itself; "
+                  f"{n['empty']:,} have no floor decision on record")
 
 
 # Where the rail and the label disagree because the RAIL is wrong: CACR 9 of
