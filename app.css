@@ -3508,8 +3508,12 @@ border-left:3px solid var(--rule-2);font-family:var(--serif);color:var(--ink-2)}
 :where(body.pg) p{margin:0 0 var(--sp-5)}
 /* 34em is 68 characters at the body size. Without it the lead ran
    to 148 and the footer to 182 on a 1440px screen. */:where(body.pg) .lead{font-family:var(--serif);font-size:var(--t-lead);line-height:1.65;
-color:var(--ink);max-width:28em}
-:where(body.pg) .note, :where(body.pg) .statemeta, :where(body.pg) .corrections, :where(body.pg) .wrap>p:not(.lead), :where(body.pg) .wrap li{max-width:34em}
+color:var(--ink);max-width:none}
+/* NO READING MEASURE ON THESE PAGES EITHER (24 September), for the same
+   reason as inside a record: the person wants text to fill the width it
+   has, and About's paragraphs sat in a 544px column of an 820px page with
+   the artist's quotation running the full width beneath them. */
+:where(body.pg) .note, :where(body.pg) .statemeta, :where(body.pg) .corrections, :where(body.pg) .wrap>p:not(.lead), :where(body.pg) .wrap li{max-width:none}
 :where(body.pg) b, :where(body.pg) strong{font-weight:600}
 :where(body.pg) .reading{font-family:var(--serif);font-size:var(--t-body);line-height:1.68}
 :where(body.pg) .reading li{margin-bottom:var(--sp-4)}
