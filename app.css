@@ -2225,6 +2225,28 @@ cursor:pointer;list-style:none;padding:var(--sp-1) 0}
 .facttab th{color:var(--ink-2);font-weight:600;width:42%;padding-right:var(--sp-5)}
 .facts .src{margin:var(--sp-4) 0 0}
 @media (max-width:620px){.facttab th{width:46%}}
+/* HOW IT GOT HERE: one decision a line -- the glyph, the body, what it did,
+   the day. The glyph carries the state in its shape (check, cross, turning
+   arrow) and the rail's colours agree with it. The body is set heavier than
+   the words after it, which are the answer; the day is quiet and does not
+   wrap. On a phone the words and the day go under the body. */
+.jl{list-style:none;margin:0;padding:0}
+.jl li{display:grid;grid-template-columns:1.1em 4.6em minmax(0,1fr) auto;
+column-gap:var(--sp-3);align-items:baseline;padding:var(--sp-1) 0}
+.jl li:first-child{padding-top:0}
+.jl .jg{font-weight:700;text-align:center}
+.jl .j-p .jg{color:var(--st-law)}
+.jl .j-x .jg{color:var(--st-done)}
+.jl .j-h .jg{color:var(--pine)}
+.jl .jb{font-weight:600}
+.jl .jd{color:var(--ink-2);font-size:var(--t-sm);white-space:nowrap;
+font-variant-numeric:tabular-nums}
+.jl .jmore{display:block;padding-left:calc(1.1em + var(--sp-3))}
+.jl .jmore button:hover{text-decoration:underline}
+@media (max-width:620px){
+  .jl li{grid-template-columns:1.1em minmax(0,1fr)}
+  .jl .jt,.jl .jd{grid-column:2}
+}
 
 /* ==================================== a legislator's page and a committee's ==
    Both are this app with one record open, the way a bill's page is, so they

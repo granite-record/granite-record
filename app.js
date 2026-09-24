@@ -1437,8 +1437,10 @@ function archivedNote(d){
 //
 // Measured on the current term's 847 bills before this was written: every one
 // carries a general status, 763 a House status, 526 a Senate status, and the
-// two chambers disagree on 321 of them. The per-chamber rows are not
-// decoration, which is why they are kept and the panel is not.
+// two chambers disagree on 321 of them. The per-chamber rows were kept for
+// that, and have since given way to How it got here (journeyList), which says
+// what each chamber did from the docket on every bill, not the half of them
+// whose status page filled the field.
 //
 // CHAPTER IS NOT AN RSA CHAPTER. Both are called a chapter and they are
 // different numberings. `chapter` is the session law: HB 1 of 2025 became
@@ -1470,6 +1472,38 @@ function rsaChapters(d){
   return [...seen.entries()];
 }
 
+// THE JOURNEY AS A LIST: a glyph, the body, what it did in plain words with its
+// tally, and the day -- "✓ Senate  Passed with an amendment, 16–8  22 May
+// 2025". The glyph carries the state as the rail's does: a check where the
+// decision carried the bill on, a cross where it stopped it, a turning arrow
+// where it sent it round again (tabled, back to committee, the other
+// chamber's amendment refused).
+//
+// SIX LINES AT MOST. HB 2 of 2025 went through both chambers, a committee of
+// conference and the governor; the whole list is the Votes tab's. The first
+// two and the last four are kept -- where it began and how it ended -- and
+// the rest are counted between them, as a way to that tab.
+const JMARK={p:"✓",x:"✕",h:"↺"};
+const JBODY={H:"House",S:"Senate",G:"Governor",L:"Law",V:"Voters"};
+const JOURNEY_SHOWN=6;
+function journeyList(b,d){
+  const st=((d.journey||{}).steps)||[];
+  if(!st.length)return "";
+  const line=s=>`<li class="j-${esc(s.mark)}"><span class="jg" aria-hidden="true">${
+    JMARK[s.mark]||""}</span><span class="jb">${esc(JBODY[s.body]||s.body)}</span><span
+    class="jt">${esc(s.text)}</span><span class="jd">${
+    s.date?esc(railDay(s.date,true)):""}</span></li>`;
+  let rows=st.map(line);
+  if(st.length>JOURNEY_SHOWN){
+    const more=st.length-JOURNEY_SHOWN;
+    rows=[...rows.slice(0,2),
+      `<li class="jmore"><button type="button" class="link" data-totab="1">and ${
+        more} more on the Votes tab</button></li>`,
+      ...rows.slice(st.length-(JOURNEY_SHOWN-2))];
+  }
+  return `<ul class="jl">${rows.join("")}</ul>`;
+}
+
 function factsTable(b,d){
   const f=d.facts||{};
   const rows=[];
@@ -1484,12 +1518,14 @@ function factsTable(b,d){
   // site's own classification says the same thing in words a reader uses, so
   // nothing is lost by taking it from there for all of them.
   add("Bill Status", esc(b.status||d.next_step||""));
-  // The Court's own per-chamber fields, which ARE the extra information: 763
-  // bills carry a House status, 526 a Senate status, and the two differ on
-  // 321 of them.
-  if(f.house_status) add("House Status", esc(f.house_status));
-  if(f.senate_status && f.senate_status!==f.house_status)
-    add("Senate Status", esc(f.senate_status));
+  // HOW IT GOT HERE, IN PLACE OF THE HOUSE STATUS AND SENATE STATUS ROWS.
+  // Those were the General Court's own per-chamber fields, and they are blank
+  // for one chamber on most bills: this term 932 bills carried only a House
+  // status, 351 only a Senate one and 156 neither -- HB 57 of 2025 passed the
+  // House on a voice vote and its House field is empty. The journey is read
+  // from the docket instead, one line per decision, the same lines the rail
+  // above is dated from (the person chose it on 24 September).
+  add("How it got here", journeyList(b,d));
   if(d.chapter)
     add("Chapter", `Chapter ${esc(d.chapter)}`
       + (d.year?`, Laws of ${esc(d.year)}`:""));
@@ -4065,6 +4101,12 @@ document.addEventListener("click",e=>{
   if(vm){PAGE.vshow=(PAGE.vshow||VOTES_SHOWN)+VOTES_SHOWN;renderPage();return;}
   const ct=e.target.closest(".card .tab[data-t]");
   if(ct){openTab[ct.closest(".card").dataset.id]=ct.dataset.t;renderPage();return;}
+  const tt=e.target.closest(".card [data-totab]");
+  if(tt){const cid=tt.closest(".card").dataset.id;openTab[cid]=tt.dataset.totab;
+    renderPage();
+    const to=document.getElementById(`tab_${cid}_${tt.dataset.totab}`);
+    if(to)to.focus();
+    return;}
   const head=e.target.closest(".chead");
   if(head&&!e.target.closest("a")){
     const id=head.closest(".card").dataset.id;
@@ -4602,6 +4644,17 @@ document.addEventListener("click",e=>{
     if(term===ALL_TERMS){const own=head.closest(".card").querySelector("a.detail");
       if(own){location.href=own.href;return;}}
     if(openCards.has(id)){openCards.delete(id);render();}else openBill(id);return;}
+  // "and 4 more on the Votes tab", in How it got here: the tab, and the
+  // keyboard's place on it, since the button itself is redrawn away.
+  const tt=e.target.closest("[data-totab]");
+  if(tt){
+    const cid=tt.closest(".card").dataset.id;
+    openTab[cid]=tt.dataset.totab;
+    if(focused===cid)tabAddress(slugOf(BILL_TABS,tt.dataset.totab));
+    render();
+    const to=document.getElementById(`tab_${cid}_${tt.dataset.totab}`);
+    if(to)to.focus();
+    return;}
   const tab=e.target.closest(".tab");
   if(tab){
     const cid=tab.closest(".card").dataset.id;
