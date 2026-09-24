@@ -4628,6 +4628,16 @@ def _chain():
     root = Path(tempfile.mkdtemp())
     try:
         base, steps = _built_site(here, root)
+        # llms.txt (24 September): it exists, says the one thing that must
+        # never move -- this is not the General Court's official record --
+        # and the example bill address it gives is a page that was built.
+        llms = (root / "site" / "llms.txt").read_text(encoding="utf-8")
+        assert llms.startswith("# Granite Record"), "llms.txt lost its title"
+        assert "not the General Court's official record" in llms, \
+            "llms.txt no longer says the site is not the official record"
+        ex = re.search(re.escape(base) + r"/bill/(\d{4})/([a-z0-9]+)", llms)
+        assert ex and (root / "site" / "bill" / ex.group(1) / f"{ex.group(2)}.html").exists(), \
+            "llms.txt gives an example bill address that was not built"
         # Every bill page that advertises a feed has one. The records moved
         # inside the pages on 9 September and build_feeds went on reading the
         # old side files, so 5,436 pages linked a feed nobody wrote -- and this
@@ -5483,8 +5493,14 @@ def _structured_data(LD, S):
     inner = s[s.index(">") + 1:-len("</script>")]
     assert "</" not in inner, "structured data can end its own script element"
     g = json.loads(inner)
-    assert [x["@type"] for x in g["@graph"]] == ["Legislation", "BreadcrumbList"], g
-    assert g["@graph"][0]["legislationJurisdiction"] == "US-NH"
+    assert [x["@type"] for x in g["@graph"]] == ["WebPage", "Legislation", "BreadcrumbList"], g
+    assert g["@graph"][1]["legislationJurisdiction"] == "US-NH"
+    # The page is Granite Record's; the bill is the General Court's. A single
+    # Legislation node at the page's address with the General Court as its
+    # publisher credited the site to the legislature.
+    assert g["@graph"][0]["publisher"]["name"] == "Granite Record", g["@graph"][0]
+    assert g["@graph"][1]["@id"] != g["@graph"][0]["@id"], (
+        "the bill and the page about it share an @id")
     m = {"name": "Doe, Jane", "display_plain": "Rep. Jane Doe", "chamber": "H",
          "county": "Hillsborough", "district": "12", "party": "Democratic",
          "email": "jane.doe@leg.state.nh.us", "phone": "603-555-0100", "address": "1 Main St"}

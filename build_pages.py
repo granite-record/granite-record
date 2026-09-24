@@ -1639,10 +1639,11 @@ function roster(){
       return `<details class="cgrp"><summary><span>${esc(c)}</span>`
         +`<span class="ccount">${ms.length}</span>`
         +`<span class="caret">&#9656;</span></summary><div class="grid">`
-        +ms.map(m=>`<div class="mem">`
-          +`<a href="legislator/${esc(m.slug)}.html">${esc(m.display)}</a>`
-          +` <span class="chip pt-${esc(m.p)}">${esc(m.p)}</span>`
-          +` <span class="mdist">${esc(m.dlabel)}</span></div>`).join("")
+        // THE SAME CHIP AS THE OTHER TWO VIEWS (pchip in Python), which the
+        // person asked for on 19 September; this view kept its own name, pill
+        // and district until 24 September. display_full carries all three.
+        +ms.map(m=>`<div class="mem"><span class="mchip p-${esc(m.p)}">`
+          +`<a href="legislator/${esc(m.slug)}.html">${esc(m.full)}</a></span></div>`).join("")
         +`</div></details>`;
     }).join("");
   }).join("");
@@ -1664,6 +1665,7 @@ Promise.all([fetch(DATA("districts.json")).then(r=>r.json()).catch(()=>({})),
      slug:m.slug, chamber:m.chamber, county:m.county||"",
      district:m.district, dlabel:m.district_label||("dist "+m.district),
      display:m.display_plain||m.name, sortname:m.sort||m.name||"",
+     full:m.display_full||m.display_plain||m.name||"",
      // [.] and [ ] rather than the escapes: this JavaScript lives inside a
      // Python string, and a backslash in one is a warning in the other.
      name:(m.display_plain||m.name||"").replace(/^(Rep|Sen)[.][ ]*/,""),
@@ -1928,8 +1930,9 @@ fetch(DATA("home.json")).then(r=>r.json()).then(H=>{
     ?`<h2>Most recent floor sessions</h2><div class="twoup">${ls.map(v=>
       `<div><p style="margin:0 0 6px;font-size:14px"><b>${esc(v.chamber||"")}</b>
         <span class="statemeta">${fd(v.date)}</span></p>
-        <div class="player"><div class="pstub" data-embed="${esc(v.video_id)}">
-          <span>&#9654;</span><span>Play</span></div></div></div>`).join("")}</div>`
+        <div class="player"><button type="button" class="pstub" data-embed="${esc(v.video_id)}"
+          aria-label="Play the ${esc(v.chamber||"")} floor session of ${fd(v.date)}">
+          <span>&#9654;</span><span>Play</span></button></div></div>`).join("")}</div>`
     :"";
 });
 document.addEventListener("click",e=>{
@@ -2252,6 +2255,10 @@ def main():
             n = (m.get("name") or "")
             return (n.split(",")[0] if "," in n else n).strip().lower()
 
+        def given(m):
+            n = (m.get("name") or "")
+            return (n.split(",", 1)[1] if "," in n else "").strip().lower()
+
         def li(m, lead):
             """One row: the column that leads it, then the person as a chip.
 
@@ -2304,7 +2311,9 @@ def main():
         # senator between two representatives with nothing to say which was
         # which except the honorific, and the two chambers are not one body.
         def alpha_block(ms, heading):
-            ms = sorted(ms, key=surname)
+            # Surname, then given name: the seat order it fell back on put
+            # Michael Aron above Judy Aron and three Smiths out of order.
+            ms = sorted(ms, key=lambda m: (surname(m), given(m)))
             return (f'<h2>{heading} &mdash; {len(ms)}</h2>'
                     '<ol class="seatlist rlist">'
                     + "".join(li(m, "") for m in ms) + "</ol>")

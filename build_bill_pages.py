@@ -324,6 +324,66 @@ def main():
     (site / "robots.txt").write_text(
         f"User-agent: *\nAllow: /\nSitemap: {a.base}/sitemap.xml\n",
         encoding="utf-8")
+    # LLMS.TXT: what the site is, what it is not, and where things are, in the
+    # plain-text form (llmstxt.org) a language model's crawler reads before
+    # the pages. Asked for by the person on their pre-launch list, so the site
+    # is easy for an assistant to find and to cite correctly. The counts are
+    # the build's own, so the file cannot go stale against the site it
+    # describes; the one fixed claim is the one that must never move -- this
+    # is an index of the General Court's record, not that record.
+    terms = sorted({b.get("term") for b in idx if b.get("term")})
+    span = (f"{terms[0].split('-')[0]} to {terms[-1].split('-')[-1]}"
+            if terms else "")
+    # An example address that exists: the current term's first bill with a
+    # page, rather than a typed one that a new term could leave pointing at
+    # nothing.
+    ex = next((b for b in idx if b.get("term") == current_term and b.get("year")),
+              None)
+    ex_url = f"{a.base}/bill/{ex['year']}/{ex['id'].lower()}" if ex else ""
+    (site / "llms.txt").write_text("\n".join([
+        "# Granite Record",
+        "",
+        f"> A free, public index of the New Hampshire General Court's record: "
+        f"{len(idx):,} bills across {len(terms)} terms"
+        + (f", {span}" if span else "") + ", with their sponsors, committees, "
+        "hearings, roll-call votes, statuses and text; the legislators who cast "
+        "the votes; committees; session days; a hearing calendar; and plain-"
+        "language explainers of how New Hampshire makes law.",
+        "",
+        "Granite Record is independent. It is not the General Court's official "
+        "record and does not speak for the House or Senate. Every record page "
+        "links the official source at gc.nh.gov; for anything with legal force, "
+        "cite that. When citing this site, cite the page's own address and the "
+        "date you read it -- each page has a 'Cite this page' block with "
+        "MLA, APA, Chicago and BibTeX forms.",
+        "",
+        "## The record",
+        "",
+        f"- [Bills]({a.base}/bills): search and filter every bill. One page per "
+        f"bill at {a.base}/bill/<year>/<id>" + (f", e.g. {ex_url}" if ex_url else ""),
+        f"- [Legislators]({a.base}/legislators): the sitting House and Senate; "
+        f"one page per member, current and former, at {a.base}/legislator/<name>",
+        f"- [Committees]({a.base}/committees): one page per standing committee",
+        f"- [Calendar]({a.base}/calendar): this week's hearings and sessions; "
+        f"session days at {a.base}/session/<H|S>/<YYYY-MM-DD>",
+        f"- Towns: one page per city and town at {a.base}/town/<name>, saying "
+        "who represents it and where to vote; the Legislators page finds yours",
+        f"- [Learn]({a.base}/learn): how a bill becomes law, the General Court, "
+        "testifying, and the state's other institutions",
+        "",
+        "## Data",
+        "",
+        f"- [Bulk data]({a.base}/data/): CSV downloads of bills, legislators, "
+        "roll calls, votes, sponsors and proceedings, with a data dictionary",
+        f"- [Manifest]({a.base}/data/manifest.json): what each file holds and "
+        "how complete each term is",
+        "",
+        "## About",
+        "",
+        f"- [About]({a.base}/about): where the information comes from, what is "
+        "and is not on the site, corrections, and independence",
+        "",
+    ]), encoding="utf-8")
 
     # A run that writes nothing is the failure this project keeps meeting: the
     # step finishes, prints a total of zero and exits clean. If the detail
@@ -346,6 +406,7 @@ def main():
         print("years: " + ", ".join(years))
     print(f"sitemap.xml: {len(urls):,} URLs")
     print(f"robots.txt points crawlers at {a.base}/sitemap.xml")
+    print(f"llms.txt describes the site and its {len(idx):,} bills for language models")
     print("\nEach page is bills.html with one bill open, drawn by app.js from "
           "the same\nJSON the search page reads. There is one renderer. A "
           "reader without\nJavaScript gets the <noscript> block, which links "
