@@ -2824,9 +2824,9 @@
   "municipality": "East Kingston",
   "officials": [
    {
-    "email": "t g1ruelle@eastkingstonnh.gov",
+    "email": "gruelle@eastkingstonnh.gov",
     "name": "Grace Ruelle",
-    "phone": "603-642-8406 ex",
+    "phone": "603-642-8406 ext 1",
     "position": "Town Administrator"
    },
    {
@@ -4818,6 +4818,12 @@
     "position": "City Councilor, District 5"
    },
    {
+    "email": "rlapierre@hooksett.org",
+    "name": "Randall Lapierre",
+    "phone": "603-341-8311",
+    "position": "City Councilor, District 6 (Secretary)"
+   },
+   {
     "email": "rduhaime@hooksett.org",
     "name": "Roger Duhaime",
     "phone": "",
@@ -4828,12 +4834,6 @@
     "name": "Timothy Tsantoulis",
     "phone": "603-669-6999",
     "position": "City Councilor, District 1"
-   },
-   {
-    "email": "rlapierre@hooksett.org",
-    "name": "yR)andall Lapierre",
-    "phone": "603-341-8311",
-    "position": "City Councilor, District 6 (Secretar"
    },
    {
     "email": "bberthiaume@hooksett.org",
@@ -9092,6 +9092,12 @@
     "position": "Town Councilor, Ward 4"
    },
    {
+    "email": "dwitham@somersworthnh.gov",
+    "name": "Dave Witham",
+    "phone": "",
+    "position": "Town Councilor, At-Large, Deputy Mayor"
+   },
+   {
     "email": "thevince@comcast.net",
     "name": "Ken Vincent",
     "phone": "",
@@ -9102,12 +9108,6 @@
     "name": "Laura Barry",
     "phone": "",
     "position": "Town Councilor, At-Large"
-   },
-   {
-    "email": "dwitham@somersworthnh.gov",
-    "name": "MDaayvoer Witham",
-    "phone": "",
-    "position": "Town Councilor, At-Large, Deputy"
    },
    {
     "email": "mpepin@comcast.net",
@@ -9636,9 +9636,9 @@
   "municipality": "Sutton",
   "officials": [
    {
-    "email": "t.t o4wnadmin@sutton-nh.org",
+    "email": "townadmin@sutton-nh.org",
     "name": "Julia Jones",
-    "phone": "603-927-2400 ex",
+    "phone": "603-927-2400 ext. 4",
     "position": "Town Administrator"
    },
    {
