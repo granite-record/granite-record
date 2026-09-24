@@ -145,8 +145,107 @@ def committee_name(caps):
 
 
 _MARK = re.compile(r"^\s*==\s*([A-Z ]+?)\s*==\s*")
+# The whole label, so none of it is left on the room: with "Hearing" and
+# "Session" alone, "Public Hearing" left "Claremont Public" as the place and
+# "Subcommittee Work Session" left "Concord Subcommittee Work".
 _TYPE = re.compile(r"\s*((?:Regular|Organizational|Subcommittee|Special)\s+Meeting"
-                   r"|Other Meeting Type|Hearing|Session)\s*$", re.I)
+                   r"|Other Meeting Type|(?:Public\s+)?Hearing"
+                   r"|(?:Subcommittee\s+)?(?:Work\s+)?Session)\s*$", re.I)
+
+# A VENUE IS SHOWN ONLY WHERE IT READS AS THE PLACE. The database copy lost
+# the line breaks inside MeetingLocation, so its lines run together:
+# "DHHSBrown BuildingConference Room 468129 Pleasant StreetConcord, NH" is
+# Room 468 at 129 Pleasant Street, and printed as stored it reads as Room
+# 468129. The General Court's own schedule has the same text with its
+# breaks, so the loss is the copy's, not the source's -- and a wrong room or
+# street number on a card is a wrong fact. These are the marks of a lost
+# break: a lower-case letter against a capital, an acronym against a word
+# ("BEAKingsman Room"), a letter against a digit, a
+# number against a word, a bracket against the next word, a room number of
+# five digits or one followed by a street's name, two numbers in a row before
+# a street ("Room, 330 21 South Fruit Street"), and a word split at a line's
+# end ("Ad- ministration") in a calendar's text.
+_JOINED = re.compile(r"[a-z][A-Z]|[A-Z]{2}[A-Z][a-z]{2}|[A-Za-z]\d|\d[A-Z][a-z]"
+                     r"|\)[A-Za-z0-9]"
+                     r"|(?i:\broom)\s*#?\s*\d{5,}"
+                     r"|(?i:\broom)\s*#?\s*\d+[A-Z]?\s+(?:[A-Z][\w.']*\s+){1,3}"
+                     r"(?:Street|St|Road|Rd|Drive|Dr|Avenue|Ave|Lane|Ln|Way"
+                     r"|Boulevard|Blvd|Highway|Hwy|Place|Pl|Court|Ct)\b"
+                     r"|\b\d+ \d+ [A-Z][a-z]|[a-z]- [a-z]")
+# NOR IS WHAT IS NOT A PLACE. The field also carries webinar addresses, a
+# named employee's email and telephone cut off mid-name, and Teams meeting
+# numbers with their passcodes. They are in the official notice, which the
+# card links where the record has it; a card's one line of place is not
+# where a passcode or somebody's email address belongs.
+_NOT_PLACE = re.compile(r"(?i)https?:|www\.|@|passcode|meeting id|dial in|register")
+
+
+def place(v):
+    """The venue as the record has it, or "" where it does not read as a place.
+
+    Leaving a venue out is the safe failure: the card still has its day,
+    time and committee, and no address on it is one the record did not give.
+    """
+    v = re.sub(r"\s+,", ",", re.sub(r"\s+", " ", v or "")).strip(" ,")
+    # "REMOTE Room 000" and "Offsite Room 9999" are the database's word for
+    # where, with a placeholder where the room would be.
+    v = re.sub(r"^(\w+) Room (?:0+|9999)$", lambda m: m.group(1).capitalize(), v)
+    if (not v or len(v) > 150 or _NOT_PLACE.search(v)
+            # McLane and MacDonald are names, not two lines run together.
+            or _JOINED.search(re.sub(r"\bMa?c(?=[A-Z])", "", v))):
+        return ""
+    return v
+
+
+def schedule_venues(path=Path("schedule_pages") / "_events.json"):
+    """{meeting id: (start, venue)} from the General Court's own schedule.
+
+    fetch_schedule's copy of the schedule's event feed titles each study
+    committee meeting "NAME : place", with the place's line breaks intact, and
+    its address eventDetails.aspx?event=N&et=2 carries the same N as the
+    database's MeetingID: all 77 of that copy's meetings in the 2026 database
+    rows join on it at the same minute. It covers August to December 2026,
+    which is the weeks a reader is most likely to open.
+    """
+    try:
+        d = json.loads(Path(path).read_text(encoding="utf-8"))
+        rows = json.loads(d["d"]) if isinstance(d, dict) else d
+    except (OSError, ValueError, KeyError, TypeError):
+        return {}
+    out = {}
+    for r in rows if isinstance(rows, list) else []:
+        m = re.search(r"[?&]event=(\d+)&et=2\b", str(r.get("url") or ""))
+        title = str(r.get("title") or "")
+        if not m or " : " not in title:
+            continue
+        lines = [x.strip().rstrip(",").strip() for x in
+                 title.split(" : ", 1)[1].splitlines()]
+        v = place(", ".join(x for x in lines if x))
+        if v:
+            out[m.group(1)] = (str(r.get("start") or "")[:16], v)
+    return out
+
+
+def notice_venues(path=Path("meetings.json")):
+    """{(date, committee words): venue} for the meetings with no bill, as the
+    House or Senate Calendar printed them -- the earliest notice whose venue
+    reads as a place. Where the database copy's venue ran together, this is
+    the same meeting's place in the General Court's printed notice."""
+    try:
+        rows = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for r in sorted(rows if isinstance(rows, list) else [],
+                    key=lambda r: r.get("noticed") or "9999"):
+        date = (r.get("date") or "")[:10]
+        if date < FROM or (r.get("bill") or "").strip():
+            continue
+        v = place((r.get("venue") or "").strip() or (r.get("room") or "").strip())
+        k = (date, _words(r.get("committee")))
+        if v and k not in out:
+            out[k] = v
+    return out
 
 
 def _where(loc):
@@ -191,6 +290,8 @@ def statstud(root=Path(".")):
         if bill:
             names[bill].append((f[1].strip(), name))
     rows, skipped = [], 0
+    printed, noticed, unplaced = notice_venues(Path(root) / "meetings.json"), 0, 0
+    posted = schedule_venues(Path(root) / "schedule_pages" / "_events.json")
     for ln in meet_f.read_text(encoding="utf-8", errors="replace").splitlines():
         f = ln.split("|")
         if len(f) < 5:
@@ -210,7 +311,18 @@ def statstud(root=Path(".")):
             continue
         name, kind, bill, year = c
         room, mtype = _where(f[4])
-        marks = {m.upper() for m in re.findall(r"==\s*([A-Za-z ]+?)\s*==",
+        if room and not place(room):
+            # The copy's own venue does not read as a place: the General
+            # Court's schedule for this very meeting, then the calendar's
+            # printed notice of it, else none.
+            sched = posted.get(f[1].strip())
+            room = (sched[1] if sched and sched[0] == when.isoformat()[:16]
+                    else printed.get((date, _words(name)), ""))
+            noticed += bool(room)
+            unplaced += not room
+        else:
+            room = place(room)
+        marks ={m.upper() for m in re.findall(r"==\s*([A-Za-z ]+?)\s*==",
                                                f[0] + " " + f[4])}
         cancelled = "CANCELLED" in marks
         note = (mtype + "." if mtype else "")
@@ -226,6 +338,12 @@ def statstud(root=Path(".")):
     if skipped:
         print(f"  {skipped} study/statutory meetings left out: their committee "
               "is not named, or not labelled study or statutory, in StatStudDetails")
+    # SILENCE IS NOT SUCCESS: a venue left off a card is said out loud here.
+    if noticed or unplaced:
+        print(f"  {noticed + unplaced} study/statutory venues do not read as a place "
+              f"in the database copy (lines run together, or a link or passcode): "
+              f"{noticed} taken from the General Court's schedule or the "
+              f"calendar that printed the notice, {unplaced} left off the card")
     fetched = ""
     try:
         man = json.loads((d / "_manifest.json").read_text(encoding="utf-8"))

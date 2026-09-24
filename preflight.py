@@ -9492,7 +9492,39 @@ def _calendar_study_committees():
             "==CANCELLED==|3057|62|09/24/2026 13:00:00|==CANCELLED==SH Room 100  "
             "Regular Meeting||",
             "|3058|9|09/23/2026 10:00:00|LOB 101  Regular Meeting||",
-            "|12|62|01/11/1993 10:00:00|RM103, ST||"]) + "\n", encoding="utf-8")
+            "|12|62|01/11/1993 10:00:00|RM103, ST||",
+            # Venues the copy ran together, as it holds them: one the
+            # General Court's schedule has, one only a printed notice has,
+            # one neither has; a Teams passcode; and a type label of two
+            # words that used to leave "Public" on the place.
+            "|3080|62|09/30/2026 14:00:00|DHHSBrown BuildingConference Room 468129 "
+            "Pleasant StreetConcord, NH  03301 Organizational Meeting||",
+            "|3081|62|10/05/2026 10:00:00|NH Hospital Association125 Airport "
+            "RdConcord, NH  Regular Meeting||",
+            "|3082|62|10/06/2026 10:00:00|NH Fire Academy98 Smokey Bear Blvd., "
+            "Classroom 1Concord, NH  Regular Meeting||",
+            "|3083|62|10/07/2026 10:00:00|Dept of Justice, 1 Granite Place South, "
+            "Concord, NH or Teams Meeting ID: 279 737 604 573 Passcode: zKPHQY "
+            "Regular Meeting||",
+            "|3084|62|10/08/2026 10:00:00|Claremont Savings Bank Community Center, "
+            "152 South Street, Claremont Public Hearing||"]) + "\n", encoding="utf-8")
+        (tmp / "schedule_pages").mkdir()
+        (tmp / "schedule_pages" / "_events.json").write_text(json.dumps({"d": json.dumps([
+            {"title": "COMMITTEE ON LEGISLATOR ORIENTATION : DHHS\r\nBrown Building\r\n"
+                      "Conference Room 468\r\n129 Pleasant Street\r\nConcord, NH  03301",
+             "start": "2026-09-30T14:00:00", "url": "eventDetails.aspx?event=3080&et=2"},
+            # The same number at another time is another meeting: not taken.
+            {"title": "COMMITTEE ON LEGISLATOR ORIENTATION : Somewhere Else, 1 Main Street",
+             "start": "2026-10-06T09:00:00", "url": "eventDetails.aspx?event=3082&et=2"}])}),
+            encoding="utf-8")
+        (tmp / "meetings.json").write_text(json.dumps([
+            {"date": "2026-10-05", "committee": "Committee on Legislator Orientation",
+             "venue": "NH Hospital Association, 125 Airport Rd. Concord", "room": "",
+             "bill": "", "noticed": "2026-09-18", "calendar": "2026/HC033"},
+            {"date": "2026-10-05", "committee": "Committee on Legislator Orientation",
+             "venue": "NH Hospital Assoc- iation, 125 Airport Rd.", "room": "",
+             "bill": "", "noticed": "2026-09-11", "calendar": "2026/HC032"}]),
+            encoding="utf-8")
         (db / "_manifest.json").write_text(json.dumps(
             {"StatStudMeetings": {"fetched": "2026-09-08T20:45:43"}}), encoding="utf-8")
         with contextlib.redirect_stdout(io.StringIO()) as said:
@@ -9506,11 +9538,37 @@ def _calendar_study_committees():
         long = ("Committee to Study Siting and Maintenance Rules Regarding Certain "
                 "Intellectual and Developmental Disability (IDD) and Acquired Brain "
                 "Disorder (ABD) Community Residences")
+        stat = "statutory committee"
         want = {("2026-09-02", long, "study committee", "10:00", "GP Room 230"),
-                ("2026-09-22", orient, "statutory committee", "10:00", "SH Room 122-123"),
-                ("2026-09-24", orient, "cancelled", "13:00", "SH Room 100")}
+                ("2026-09-22", orient, stat, "10:00", "SH Room 122-123"),
+                ("2026-09-24", orient, "cancelled", "13:00", "SH Room 100"),
+                # A VENUE THE COPY RAN TOGETHER IS NEVER PRINTED AS STORED:
+                # "Room 468129" is Room 468 at 129 Pleasant Street. The
+                # schedule's own text for that meeting where it has it; the
+                # earliest printed notice that reads as a place; else none.
+                ("2026-09-30", orient, stat, "14:00",
+                 "DHHS, Brown Building, Conference Room 468, 129 Pleasant Street, "
+                 "Concord, NH 03301"),
+                ("2026-10-05", orient, stat, "10:00",
+                 "NH Hospital Association, 125 Airport Rd. Concord"),
+                ("2026-10-06", orient, stat, "10:00", ""),
+                # Nor a passcode, a link or an email address.
+                ("2026-10-07", orient, stat, "10:00", ""),
+                ("2026-10-08", orient, stat, "10:00",
+                 "Claremont Savings Bank Community Center, 152 South Street, Claremont")}
         assert got == want, (f"the database copy read as {sorted(got - want)}; "
                              f"missing {sorted(want - got)}")
+        assert "Public hearing." in {r["note"] for r in rows}, (
+            "a public hearing's type is not read whole")
+        for v, ok in (("GP Room 230", "GP Room 230"), ("REMOTE Room 000", "Remote"),
+                      ("McLane Middleton, 900 Elm Street, Manchester",
+                       "McLane Middleton, 900 Elm Street, Manchester"),
+                      ("BEAKingsman Room, 100 Main Street, Concord", ""),
+                      # Room 1 at 125 Airport Road, with the break lost.
+                      ("Foundation for Healthy Communities, Room 1125 Airport "
+                       "Road, Concord", ""),
+                      ("Department of Education, NH Room, 330 21 South Fruit Street", "")):
+            assert BC.place(v) == ok, f"the venue {v!r} reads as {BC.place(v)!r}"
         assert BC.committee_name("COMMISSION TO STUDY THE USE OF OHRVS IN NEW "
                                  "HAMPSHIRE") == ("Commission to Study the Use of "
                                                   "OHRVs in New Hampshire")
