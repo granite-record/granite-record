@@ -4264,22 +4264,33 @@ def _j_answers_after(steps, bid):
     amendment, 210–160" (entered at 1:52) ahead of the Senate passing it with
     that amendment (2:48), both on 5 June. And a vetoed bill goes back to the
     chamber it started in, which votes on the veto first: SB 434 of 2026 had
-    the House sustaining the veto ahead of the Senate overriding it."""
+    the House sustaining the veto ahead of the Senate overriding it.
+
+    And a bill passes the chamber its number names before the other one:
+    HB 1650 of 2022 passed both on 5 January, and the Senate's row, entered
+    that day, was listed ahead of the House's, entered on the 10th."""
     pre = bill_prefix(bid)
     origin = "H" if pre.startswith("H") else "S" if pre.startswith("S") else ""
     veto = ("override", "sustained")
+    passing = ("passed", "referred")
+    # The chamber the number names, special sessions' "SSHB" included.
+    named = (pre[2:] if pre.startswith("SS") else pre)[:1]
+    named = named if named in ("H", "S") else ""
 
-    def answers(s, t):
+    def answers(s, t, before):
         if not s["date"] or s["date"] != t["date"] or {s["body"], t["body"]} != {"H", "S"}:
             return False
         return ((s["act"] in ("concurred", "nonconcurred") and t["act"] == "passed")
-                or (s["act"] in veto and t["act"] in veto and origin and s["body"] != origin))
+                or (s["act"] in veto and t["act"] in veto and origin and s["body"] != origin)
+                or (s["act"] in passing and t["act"] in passing and t["body"] == named
+                    and not any(x["body"] == named and x["act"] in passing for x in before)))
 
     out = list(steps)
     i = 0
     while i < len(out):
         s = out[i]
-        last = max((j for j in range(i + 1, len(out)) if answers(s, out[j])), default=None)
+        last = max((j for j in range(i + 1, len(out)) if answers(s, out[j], out[:i])),
+                   default=None)
         if last is None:
             i += 1
             continue

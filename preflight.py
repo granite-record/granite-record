@@ -4707,8 +4707,10 @@ def _journey_reads(build_site_v2):
     want(run("HB1650", ev("S", "2022-01-05", "Ought to Pass : MA, VV; OT3rdg; Read a Third Time, "
                           "and Final Passage in the early session, MA, VV; 01/05/2022"),
              ev("H", "2022-01-10", "Adopted and read a 3rd time MA VV 01/05/22", "other"))[1],
-         [("2022-01-05", "S", "passed", "Passed on a voice vote"),
-          ("2022-01-05", "H", "passed", "Passed on a voice vote")], "HB1650 2022")
+         # The House first: the bill's number names it, whatever order the
+         # two rows of that day were entered in.
+         [("2022-01-05", "H", "passed", "Passed on a voice vote"),
+          ("2022-01-05", "S", "passed", "Passed on a voice vote")], "HB1650 2022")
     # And the sitting a row was entered ahead of: HB 1573 of 2024's Senate
     # adopted the report on 13 June (Senate Journal 17), not the 12th, when
     # it did not sit. Not a weekend: SB 152 of 2017's row states a Sunday.
