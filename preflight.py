@@ -485,13 +485,16 @@ def _amend_not_rejected(narrative):
         ev["body"] = body
         return N.describe(ev, body) or ""
 
-    def history(bill, lines):
-        rows = [{"lsr": "", "session": "2026", "body": b, "desc": d,
-                 "created": _dt(2026, 2, 19, 10, i), "flags": []}
+    def history(bill, lines, session="2026"):
+        # A database-era session is read by that era's own vocabulary, the
+        # way the real rows are; each row is entered a minute after the one
+        # before it, on one day.
+        rows = [{"lsr": "", "session": session, "body": b, "desc": d,
+                 "created": _dt(int(session), 2, 19, 10, i), "flags": []}
                 for i, (b, d) in enumerate(lines)]
         keep = N.TERM
         try:
-            N.TERM = "2025-2026"
+            N.TERM = N.P.term_of(session)
             return N.build(bill, rows)["narrative"]
         finally:
             N.TERM = keep
@@ -505,14 +508,22 @@ def _amend_not_rejected(narrative):
              "on a roll call 14–10", "rejected"),
             ("Committee Amendment #2020-1471s : Sections 7 and 24, RC 12Y-12N, AF; 06/16/2020; "
              "SJ 8", "S", "was rejected on a roll call 12–12", "adopted"),
+            # Alone, a row cannot say the docket holds no vote: that is a
+            # claim about the bill's other rows, which only build() reads.
             ("Sen. Rosenwald Floor Amendment # 2025-0752s; 03/06/2025;  SJ 6", "S",
-             "the docket records no vote on it", "rejected"),
+             "proposed a floor amendment (2025-0752s)", "rejected|no vote"),
             ("Sen. Soucy Floor Amendment #2016-1160s , Not Voted On; 03/24/2016; SJ 10", "S",
              "it was not voted on", "rejected"),
             ("Floor Amendment #2014-1812h (Rep. Hoell) MF RC 110-205", "H",
-             "was rejected on a roll call 110–205", "adopted")):
+             "was rejected on a roll call 110–205", "adopted"),
+            # A calendar's notice of an amendment to come is not a floor
+            # amendment offered (HB 1661 of 2022).
+            ("Amendment #2022-1475s to HB 1661 will be proposed; SC 16", "S",
+             "Notice was given that an amendment (2022-1475s) would be proposed",
+             "floor|rejected|no vote")):
         got = one(line, body)
-        if want not in got or never in got or "Offered," in got or "Withdraws," in got:
+        if (want not in got or any(x in got for x in never.split("|"))
+                or "Offered," in got or "Withdraws," in got):
             bad.append(f"{line[:40]}... -> {got!r}")
     got = history("HB266", [
         ("S", "Sen. Birdsell Floor Amendment # 2026-0720s; 02/19/2026;  SJ 4"),
@@ -525,8 +536,57 @@ def _amend_not_rejected(narrative):
         ("S", "Sen. Soucy Floor Amendment #2016-1160s , AF, VV; 03/24/2016; SJ 10")])
     if "not voted on" in got or "rejected on a voice vote" not in got:
         bad.append(f"SB 535: {got!r}")
+    # "THE DOCKET RECORDS NO VOTE ON IT" is a claim about every row of the
+    # bill, and was made on six bills whose other rows held the vote: the
+    # number spelled another way, or on a row that is not an amendment row.
+    # Each history below is the real bill's rows for that amendment.
+    for bill, session, lines, want, never in (
+            # Decided on rows that begin with the number, and passed with it.
+            ("SB318", "2018", [
+                ("S", "Sen. Bradley Offered Floor Amendment #2018-1198s ; 03/22/2018; SJ 10"),
+                ("S", "Sen. Feltes Moved to divide the Question on 2018-1198s; 03/22/2018; SJ 10"),
+                ("S", "2018-1198s All Remaining Sections, and Sec.13, RC 11Y-10N, Adopted; "
+                      "03/22/2018; SJ 10"),
+                ("S", "Ought to Pass with Amendment 2018-1198s, RC 11Y-10N, MA; OT3rdg; "
+                      "03/22/2018; SJ 10")],
+             "proposed a floor amendment (2018-1198s)", "no vote|rejected"),
+            # "2013-1554h" announced in May, "1554h" rejected in June: told once.
+            ("SCR1", "2013", [
+                ("H", "Floor Amendment #2013-1554h(NT) (Rep Cushing); HJ41, PG.1410-1412"),
+                ("H", "Floor Amendment #1554h(NT) (Rep Cushing): AF VV; HJ52, PG.1709-1711")],
+             "(1554h) was rejected on a voice vote", "no vote|2013-1554h"),
+            ("HB422", "2014", [
+                ("S", "Sen. Boutin Floor Amendment #2014-1550s"),
+                ("S", "Sen. Boutin Withdrew Floor Amendment 1550s")],
+             "it was later withdrawn", "no vote|rejected"),
+            ("SB119", "2025", [
+                ("S", "Sen. Rosenwald Floor Amendment # 2025-0752s; 03/06/2025;  SJ 6"),
+                ("S", "Chair Ruled Sections of Amendment # 2025-0752s Non-Germane, "
+                      "03/06/2025;  SJ 6")],
+             "the chair ruled sections of it non-germane", "no vote|rejected"),
+            # Where nothing else names it, it is still said (SB 296 of 2014).
+            ("SB296", "2014", [
+                ("H", "Floor Amendment #2014-1494h (Rep. Baldasaro)")],
+             "the docket records no vote on it", "rejected"),
+            # A withdrawn amendment is one of the day's run, and the count
+            # says so: HB 1 of 2011 read "took up 13" where it took up 16.
+            ("HB1", "2011", [
+                ("H", "Floor Amendment #2011-1261h (Rep Foose) Failed, RC 106-251; HJ 35, PG.1225-1227"),
+                ("H", "Floor Amendment #2011-1306h (Rep Emerson), Withdrawn; HJ 35, PG.1227-1230"),
+                ("H", "Floor Amendment #2011-1321h (Rep Hatch) Failed, RC 107-254; HJ 35, PG.1230-1232"),
+                ("H", "Floor Amendment #2011-1322h (Rep Hatch) Failed, RC 106-249; HJ 35, PG.1232-1234")],
+             "took up 4 floor amendments", "took up 3|A floor amendment (2011-1306h)"),
+            # The database era reads "Div." as a division and leaves the
+            # tally on the row: HB 1487 of 2012.
+            ("HB1487", "2012", [
+                ("S", "Sen. Bradley Floor Amendment #2012-1903s, Div. 16Y-8N, AA; SJ 12, Pg.439")],
+             "adopted on a division vote 16–8", "rejected")):
+        got = history(bill, lines, session)
+        if want not in got or any(x in got for x in never.split("|")):
+            bad.append(f"{bill} of {session}: {got!r}")
     assert not bad, "; ".join(bad)
-    return "ok", ("an announcement gives way to the row that decides it; withdrawn, not "
+    return "ok", ("an announcement gives way to the row that decides it, however it spells "
+                  "the number; no vote is claimed while another row names it; withdrawn, not "
                   "voted on, part of an amendment and codes out of order read as they say")
 
 

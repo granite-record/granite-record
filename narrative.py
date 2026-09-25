@@ -409,6 +409,47 @@ def amendment_outcome(raw):
             tally.group(2) if tally else None)
 
 
+# ONE AMENDMENT, SPELLED SEVERAL WAYS. SCR 1 of 2013 announced "2013-1554h"
+# in May and rejected "1554h(NT)" in June; SB 88 of 2011 laid "#2235(NT)" on
+# the table; SB 135 of 2017 divided the question on "2017-1215". Matched
+# letter for letter, each announcement was read as never decided, and the
+# history said "the docket records no vote on it" a sentence away from the
+# vote. The year, the leading zeros and the chamber's letter may each be
+# missing; the digits may not. A bare number counts only with its letter or
+# after "#", so a tally, a date or a section is never taken for one.
+AMEND_NUM = re.compile(
+    r"(?:\b(?P<year>(?:19|20)\d\d)-|(?P<hash>[#{])\s*|\b)"
+    r"(?P<digits>\d{3,4})(?P<letter>[a-z])?(?![\w-])")
+# What another row says of an amendment it names: "Sen. Boutin Withdrew Floor
+# Amendment 1550s" (HB 422 of 2014), "Chair Ruled Sections of Amendment #
+# 2025-0752s Non-Germane" (SB 119 of 2025). Neither is an amendment row, so
+# neither is told, and the announcement is the one place to say it.
+AMEND_WITHDRAWN = re.compile(r"withdr[ae]w", re.I)
+AMEND_RULED = re.compile(r"\bruled\b[^;]*non-?germane", re.I)
+
+
+def amend_keys(text):
+    """(year, number, letter) for every amendment number text names, the
+    year and the letter None where it leaves them out."""
+    out = []
+    for m in AMEND_NUM.finditer(text or ""):
+        y, d, ltr = m.group("year"), int(m.group("digits")), m.group("letter")
+        if not (y or ltr or m.group("hash")):
+            continue
+        # "2017-2018" is a term, not amendment 2018 of 2017.
+        if y and not ltr and d == int(y) + 1:
+            continue
+        out.append((y, d, ltr))
+    return out
+
+
+def same_amendment(a, b):
+    """Do two amend_keys() name one amendment? The number must agree, and
+    the year and letter wherever both are written."""
+    return a[1] == b[1] and all(x == z or not x or not z
+                                for x, z in ((a[0], b[0]), (a[2], b[2])))
+
+
 # "Enrolled Adopted, VV, (In recess 06/26/2025)" / "Enrolled (in recess of) 06/26/2025"
 ENROLLED_RE = re.compile(
     r"^Enrolled\b(?!\s+Bill)\s*(?P<motion>Adopted)?[,;]?\s*(?P<vote>VV|DV|RC)?[,;]?\s*"
@@ -776,9 +817,15 @@ DIVIDED = (
 # Deliberately does NOT match a sentence naming who offered the amendment:
 # that is a fact worth its own sentence, and a run carrying one stays as it
 # is.
+#
+# A withdrawn one is part of the day's run. It was folded in as "rejected"
+# until the rows were read for what they say, and once it read "withdrawn"
+# it broke the run: HB 1 of 2011 "took up 13 floor amendments" on 31 March,
+# then told 1306h, 1321h and 1322h one sentence each, where the House took
+# up sixteen.
 FLOOR_AMD = re.compile(
     r"^A floor amendment \((?P<num>[^)]+)\)"
-    r"(?:, offered by (?P<by>[^,]+),)? was (?P<what>adopted|rejected)"
+    r"(?:, offered by (?P<by>[^,]+),)? was (?P<what>adopted|rejected|withdrawn)"
     r"(?P<how> on a [a-z ]+?)?(?P<tally> \d+\u2013\d+)?"
     r"(?P<when> on \w+ \d{1,2}, \d{4})?"
     r"(?:, changing the text of the bill)?\.$")
@@ -825,17 +872,24 @@ def fold_amendments(run, chamber):
 
     ok = [m for m in run if m.group("what") == "adopted"]
     no = [m for m in run if m.group("what") == "rejected"]
+    wd = [m for m in run if m.group("what") == "withdrawn"]
     when = next((m.group("when") for m in run if m.group("when")), "")
     lead = (f"On {when[4:]} the {chamber} took up {len(run)} floor amendments"
             if when else f"The {chamber} took up {len(run)} floor amendments")
+    gone = (f" {'Amendment' if len(wd) == 1 else 'Amendments'} "
+            + and_list([cite(m) for m in wd])
+            + f" {'was' if len(wd) == 1 else 'were'} withdrawn." if wd else "")
+    if not ok and not no:
+        return (f"{lead}, and all of them were withdrawn: "
+                + and_list([cite(m) for m in wd]) + ".")
     if not ok:
-        return (f"{lead} and rejected all of them: "
-                + and_list([cite(m) for m in no]) + ".")
+        return (f"{lead} and rejected {'all of them' if not wd else 'the rest'}: "
+                + and_list([cite(m) for m in no]) + "." + gone)
     if not no:
-        return (f"{lead} and adopted all of them: "
-                + and_list([cite(m) for m in ok]) + ".")
+        return (f"{lead} and adopted {'all of them' if not wd else 'the rest'}: "
+                + and_list([cite(m) for m in ok]) + "." + gone)
     return (f"{lead}. It adopted " + and_list([cite(m) for m in ok])
-            + ", and rejected " + and_list([cite(m) for m in no]) + ".")
+            + ", and rejected " + and_list([cite(m) for m in no]) + "." + gone)
 
 
 def collapse(sentences, chamber="House"):
@@ -1374,6 +1428,12 @@ def describe(ev, body, seen_intro=False):
             if not vk and vk2:
                 vk, _ = VOTE_KIND.get(vk2, (None, None))
                 y, n = y or y2, n or n2
+            # The kind read without its count: the database era's "Div.
+            # 16Y-8N, AA" (HB 1487 of 2012) arrives as a division and no
+            # tally, and the tally is on the row.
+            elif (vk and vk2 and vk2 != "VV" and not (y and n)
+                  and VOTE_KIND.get(vk2, (None, None))[0] == vk):
+                y, n = y2, n2
             if said in (None, "not voted on") and ev.get("_decided_elsewhere"):
                 return None
         how = (f" on a {vk}" if vk else "") + (f" {y}\u2013{n}"
@@ -1395,15 +1455,32 @@ def describe(ev, body, seen_intro=False):
         # Offered Floor Amendment" read "offered by Sen. Bradley Offered".
         mover = MOVER_VERB.sub("", (ev.get("mover") or "").strip())
         by = f", offered by {expand_mover(mover)}," if mover else ""
+        # "Amendment #2022-0339s to HB 50 will be proposed and can be accessed
+        # via the General Court Website": a Senate Calendar's notice of an
+        # amendment to come, not one offered on the floor. Five bills of 2022
+        # carry one, four of them pointing to the redistricting committee's
+        # page of submissions, and each was told as a floor amendment.
+        if said is None and re.search(r"\bwill be proposed\b", ev.get("_raw") or "", re.I):
+            return f"Notice was given that an amendment ({num}) would be proposed{when}."
         if said in (None, "not voted on"):
-            # Offered, and nothing on the docket decides it -- or the docket
-            # says in as many words that it was not voted on.
+            # Offered, and no amendment row decides it -- or the docket says
+            # in as many words that it was not voted on. What the bill's other
+            # rows say of it is build()'s _fate; with none, nothing is claimed
+            # beyond the offer, and "no vote" is said only where no other row
+            # names the amendment at all.
             verb = "proposed" if said is None else "offered"
+            fate = ev.get("_fate") or ""
+            tail = ("; it was not voted on" if said else "") + (
+                (" and was later withdrawn" if said else "; it was later withdrawn")
+                if fate == "withdrawn"
+                else "; the chair ruled sections of it non-germane" if fate == "sections ruled"
+                else "; the chair ruled it non-germane" if fate == "ruled"
+                else "; the docket records no vote on it" if fate == "unnamed" and not said
+                else "")
             return ((f"{expand_mover(mover)} {verb} {who[0].lower()}{who[1:]}"
                      if mover else f"{who} was {verb}").replace(
                          "amendment", f"amendment ({num})", 1)
-                    + when + ("; the docket records no vote on it." if said is None
-                              else "; it was not voted on."))
+                    + when + tail + ".")
         if part:
             who = f"Part of {who[0].lower()}{who[1:]}"
         # "changing the text of the bill" was appended to every amendment,
@@ -1680,15 +1757,43 @@ def build(bill, rows):
     # by the row that decides it (amendment_outcome). "Not Voted On" decides
     # nothing when another row does: SB 535 of 2016's 2016-1160s is "Not
     # Voted On" and then "AF, VV" the same day.
-    decided = {(e["body"], (e.get("num") or "").strip()) for e in evs
-               if e["_type"] == "amendment" and not e["cancelled"]
-               and (e.get("num") or "").strip()
-               and ((e.get("motion") or "").strip()
-                    or amendment_outcome(e.get("_raw"))[0] not in (None, "not voted on"))}
-    for e in evs:
-        if (e["_type"] == "amendment" and (e.get("num") or "").strip()
-                and (e["body"], (e.get("num") or "").strip()) in decided):
-            e["_decided_elsewhere"] = True
+    #
+    # One that no amendment row decides is told with what the other rows DO
+    # say of it (_fate, which describe reads), because "the docket records no
+    # vote on it" is a claim about every row of the bill. It was made from the
+    # amendment rows alone, numbers matched letter for letter, and was false
+    # on SB 318 of 2018, whose 2018-1198s was divided and adopted 11-10 on
+    # rows that begin with the number, and on HB 1696 of 2016, whose "1230s"
+    # failed in three parts. See amend_keys().
+    opened = [e for e in evs
+              if e["_type"] == "amendment" and not e["cancelled"]
+              and (e.get("num") or "").strip()
+              and "Enrolled Bill" not in (e.get("what") or "")
+              and not (e.get("motion") or "").strip()
+              and amendment_outcome(e.get("_raw"))[0] in (None, "not voted on")]
+    if opened:
+        skip = {id(e) for e in opened}
+        named = [(e, amend_keys(e.get("_raw"))) for e in evs
+                 if not e["cancelled"] and id(e) not in skip]
+        for a in opened:
+            mine = amend_keys(a["num"])[:1]
+            if not mine:
+                continue
+            there = [e for e, keys in named
+                     if any(same_amendment(mine[0], k) for k in keys)]
+            ours = [e.get("_raw") or "" for e in there if e["body"] == a["body"]]
+            # An amendment row of the same chamber naming it carries an
+            # outcome, or it would be in opened: that row tells it.
+            if any(e["_type"] == "amendment" and e["body"] == a["body"]
+                   for e in there):
+                a["_decided_elsewhere"] = True
+            ruled = [x for x in ours if AMEND_RULED.search(x)]
+            a["_fate"] = (
+                "unnamed" if not there
+                else "withdrawn" if any(AMEND_WITHDRAWN.search(x) for x in ours)
+                else "sections ruled" if any(re.search(r"\bsections?\s+of\b", x, re.I)
+                                             for x in ruled)
+                else "ruled" if ruled else "")
     for ev in evs:
         if ev["cancelled"]:
             continue
