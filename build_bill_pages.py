@@ -312,8 +312,14 @@ def main():
               # page was on every header and in no sitemap -- the same shape
               # of defect as the nav tuple in build_pages.py, one level down.
               "committees.html", "learn.html", "data.html", "about.html"):
-        if (site / p).exists():
-            urls.append((a.base + S.canon("/" + p), generated))
+        # ALWAYS, NOT ONLY IF THE FILE IS THERE YET. committees.html, learn.html
+        # and data.html are written by steps that run after this one, so a
+        # build into an empty site/ -- every night on GitHub's machine --
+        # dropped all three (found 25 September 2026). Every one is built on
+        # every run, and check_site fails the publish if a sitemap address
+        # has no file, so a page that stops being built is caught loudly
+        # rather than left out quietly.
+        urls.append((a.base + S.canon("/" + p), generated))
 
     (site / "sitemap.xml").write_text(
         '<?xml version="1.0" encoding="UTF-8"?>\n'
