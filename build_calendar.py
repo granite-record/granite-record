@@ -1898,8 +1898,13 @@ def week_facts(key, weeks, today):
     off = len(meets) - len(live)
     busy = sum(1 for v in days.values() if any(k in live for k in v))
     n = sum(1 for v in days.values() for k in v if k in live)
-    bills = len({(r["date"], r["bill"]) for k in live for r in meets[k]
-                 if r["bill"]})
+    # EACH BILL ONCE IN THE WEEK, as a card counts each bill once in its day.
+    # Keyed on the day as well, a bill heard on Tuesday and voted on Thursday
+    # was two of the bills the week "covered". On the term too, because a
+    # number names a different bill in each biennium and a week can straddle
+    # two of them.
+    bills = len({(r.get("term") or "", r["bill"].strip().upper())
+                 for k in live for r in meets[k] if r["bill"].strip()})
 
     # "covering 0 bills" was said of thirty weeks that held only study and
     # statutory committees, which meet on no bill; the clause goes where

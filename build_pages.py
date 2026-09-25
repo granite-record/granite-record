@@ -780,7 +780,16 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                     f"{slots[0]}–{slots[-1]}") if slots else ""
             # BILLS, NOT ROWS. A study or statutory committee's meeting is a
             # row with no bill, and counting rows called it "(1 bill)".
-            n = sum(1 for r in rows if (r.get("bill") or "").strip())
+            # AND EACH BILL ONCE. A bill heard and then voted on the same day
+            # is two items on the card and one bill: House Housing on 21
+            # January 2025 heard eight bills and voted on five of them after,
+            # and its card said "(13 bills)" over the eight it lists. 250 of
+            # the 1,883 cards since January 2025 stated more bills than they
+            # held, House Commerce's of 18 February 2026 "(53 bills)" over 37.
+            # The items stay two, each in its own slot; the count is of the
+            # bills.
+            n = len({(r.get("bill") or "").strip().upper() for r in rows
+                     if (r.get("bill") or "").strip()})
             # A study or statutory committee's card says so, for the week
             # page's toggle; a cancelled one says that, so it is not offered
             # for anybody's own calendar.
