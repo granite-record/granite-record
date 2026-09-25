@@ -15189,6 +15189,19 @@ ok(C.weekCols(week,days,F({})).length===5, "a Saturday whose one meeting is a st
 ok(rows.map(x=>x.h).join()==="09,10,", "the week's rows: "+rows.map(x=>x.h));
 ok([].concat(...rows.map(x=>[].concat(...x.cells))).length===7, "a card is missing from the week at a glance");
 ok(rows[2].cells[2].map(e=>e.name).join()==="Committee of conference on HB 3,House floor", "the untimed row holds the floor and the conference");
+// ---- the day a week opens on ----
+// Today where the week holds it; else its first sitting the filters show,
+// so a week whose Monday is a study commission's alone does not open on a
+// day showing nothing; else its first sitting; else its Monday.
+const agingDay={head:"",cards:[aging[0]]}, judDay={head:"",cards:[jud]};
+const two={"2026-03-09":agingDay,"2026-03-10":judDay};
+ok(C.firstDay("2026-W11",two,"2026-01-05","2026-01-05","2026-12-27",F({}))==="2026-03-10"
+   && C.firstDay("2026-W11",two,"2026-01-05","2026-01-05","2026-12-27",ON)==="2026-03-09"
+   && C.firstDay("2026-W11",two,"2026-01-05","2026-01-05","2026-12-27")==="2026-03-09"
+   && C.firstDay("2026-W11",{"2026-03-09":agingDay},"2026-01-05","2026-01-05","2026-12-27",F({}))==="2026-03-09"
+   && C.firstDay("2026-W11",two,"2026-03-12","2026-01-05","2026-12-27",F({}))==="2026-03-12"
+   && C.firstDay("2026-W11",{},"2026-01-05","2026-01-05","2026-12-27",F({}))==="2026-03-09",
+   "the day a week opens on: "+C.firstDay("2026-W11",two,"2026-01-05","2026-01-05","2026-12-27",F({})));
 // ---- the clock ----
 const clocks={"09:05":"9:05 AM","9:30":"9:30 AM","00:30":"12:30 AM","12:00":"12:00 PM","12:15":"12:15 PM",
   "13:30":"1:30 PM","23:59":"11:59 PM","":"","TBA":"TBA","24:00":"24:00"};
@@ -15810,6 +15823,27 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
      && /^“The week of 16–22 March 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W2.QA(".pcite dd")[0].textContent),
      "the tab shows the reader's week and cites the build's: "+W2.QA(".pcite dd")[0].textContent);
   ok(W2.addr()==="/calendar", "the tab opened on the reader's week wrote an address: "+W2.addr());
+  // THE DAY A WEEK OPENS ON IS ITS FIRST SITTING THE FILTERS SHOW. That
+  // reader goes back to the week of 9 March, which opens on the 10th. With
+  // hearings and votes unticked its first shown is the 11th: in the list
+  // the mark follows, and the address still names no day; in the Day view
+  // the day being read stays, and the address names it. Either way a reload
+  // opens what was on the screen.
+  const prev2=W2.Q(".calhead .wknav a.wkprev"); prev2.focus(); prev2.click(); await W2.step();
+  ok(W2.sel()==="2026-03-10" && W2.addr()==="/calendar?week=2026-W11", "the week before opens on "+W2.sel()+" at "+W2.addr());
+  await W2.tick("hearing",false); await W2.tick("exec",false);
+  ok(W2.sel()==="2026-03-11" && W2.addr()==="/calendar?week=2026-W11&kinds=work,conf,floor",
+     "the list's mark did not follow the filters to the first day they show: "+W2.sel()+" at "+W2.addr());
+  const R3=reload(W2,{today:[2026,3,18]}); await R3.run();
+  ok(R3.sel()==="2026-03-11" && R3.addr()===W2.addr(), "a reload after a filter opened "+R3.sel()+" at "+R3.addr());
+  await W2.tick("hearing",true); await W2.tick("exec",true);
+  ok(W2.sel()==="2026-03-10", "the mark did not come back with the boxes: "+W2.sel());
+  W2.view("day").click(); await W2.settle();
+  await W2.tick("hearing",false); await W2.tick("exec",false);
+  ok(W2.sel()==="2026-03-10" && W2.addr()==="/calendar?week=2026-W11&day=2026-03-10&view=day&kinds=work,conf,floor",
+     "a filter moved the day the Day view was reading, or the address lost it: "+W2.sel()+" at "+W2.addr());
+  const R4=reload(W2,{today:[2026,3,18]}); await R4.run();
+  ok(R4.sel()==="2026-03-10" && R4.addr()===W2.addr(), "a reload of the Day view after a filter opened "+R4.sel()+" at "+R4.addr());
   // ---- a phone: the month folds to the week, and only the fold's own button is remembered ----
   const W4=world("calendar.html","/calendar",{narrow:true});
   await W4.run();

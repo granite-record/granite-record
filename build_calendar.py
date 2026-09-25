@@ -691,14 +691,21 @@ WEEK_JS = r"""
     });
   }
   // The day a week opens on, when the address does not name one: today if
-  // the week holds it, else its first day with a sitting, else its Monday.
-  function firstDay(key,days,today,first,last){
+  // the week holds it, else its first day with a sitting the filters `f`
+  // show, else its first day with any sitting, else its Monday. THE FILTERS'
+  // SITTING FIRST since study committees start hidden (25 September 2026): a
+  // week whose Monday held only a study commission opened on a day that
+  // showed nothing, in the Day view and in the grid.
+  function firstDay(key,days,today,first,last,f){
     var mon=keyMonday(key);
     for(var i=0;i<7;i++){ if(addDays(mon,i)===today && today>=first && today<=last) return today; }
-    for(var j=0;j<7;j++){
-      var day=days[addDays(mon,j)];
-      if(day && day.cards.some(function(e){ return !e.cancelled; })) return addDays(mon,j);
-    }
+    var live=function(e){ return !e.cancelled; },
+        tests=f?[function(e){ return live(e)&&matches(e,f); },live]:[live];
+    for(var t=0;t<tests.length;t++)
+      for(var j=0;j<7;j++){
+        var day=days[addDays(mon,j)];
+        if(day && day.cards.some(tests[t])) return addDays(mon,j);
+      }
     return mon<first?first:mon;
   }
 
@@ -930,7 +937,7 @@ WEEK_JS = r"""
   // A new key for the Study Committee box: the one before it remembered
   // turning study committees OFF, when they were on for everybody.
   var SKEY="gr.calendar.showstudy", S, SEL, VIEWM, FOCUS, AUTO;
-  function opening(k){ return clamp(firstDay(k,DAYS,TODAY,FIRST,LAST)); }
+  function opening(k){ return clamp(firstDay(k,DAYS,TODAY,FIRST,LAST,S)); }
   // Every day of the week the calendar has is here, so what it opens on is
   // settled. The page's own week is whole as it came: a Saturday or Sunday
   // it does not draw is one with nothing on it.
@@ -1361,6 +1368,19 @@ WEEK_JS = r"""
     });
   }
   function apply(){
+    // THE DAY A WEEK OPENS ON CAN CHANGE WITH THE FILTERS, being its first
+    // sitting they show. In the list and the week, where the day is only
+    // marked, the mark follows it, and the address still needs no day. In
+    // the Day view the day is what is being read: it stays, and from then
+    // on the address names it, so a reload opens the day that was on the
+    // screen.
+    if(AUTO&&whole(weekKey(SEL))){
+      var o=opening(weekKey(SEL));
+      if(o!==SEL){
+        if(S.v==="day") AUTO=false;
+        else{ if(VIEWM===month(SEL)) VIEWM=month(o); if(FOCUS===SEL) FOCUS=o; SEL=o; }
+      }
+    }
     syncControls(); drawGrid(); drawPanel(); commit(false);
     if(peekD) showPeek(peekD,peekFrom);
   }
