@@ -634,22 +634,37 @@ WEEK_JS = r"""
   // A CANCELLED MEETING IS SHOWN AND NOT COUNTED, as the week's lead counts:
   // "22 sittings" of a week in which 21 met was a wrong number.
   function tally(entries,f){
-    var t={total:0,shown:0,seen:0};
+    var t={total:0,shown:0,seen:0,study:0};
+    // What ticking Study Committee would add, where it is unticked.
+    var g=f.cats.indexOf("study")<0
+      ? {picks:f.picks,body:f.body,q:f.q,cats:f.cats.concat(["study"])} : null;
     entries.forEach(function(e){
       var ok=matches(e,f);
       if(!e.cancelled) t.total++;
       if(ok){ t.seen++; if(!e.cancelled) t.shown++; }
+      else if(g && !e.cancelled && matches(e,g)) t.study++;
     });
     return t;
   }
   function countLine(t,where){
+    var line;
     if(t.shown===t.total)
-      return (t.total?plural(t.total,"sitting"):"No sittings")+" "+where+".";
-    if(!t.seen)
-      return t.total===1 ? "The one sitting "+where+" does not match."
-                         : "None of the "+t.total+" sittings "+where+" match.";
-    return t.shown+" of "+plural(t.total,"sitting")+" shown"
-      +(where==="this week"?"":" "+where)+".";
+      line=(t.total?plural(t.total,"sitting"):"No sittings")+" "+where+".";
+    else if(!t.seen)
+      line=t.total===1 ? "The one sitting "+where+" does not match."
+                       : "None of the "+t.total+" sittings "+where+" match.";
+    else
+      line=t.shown+" of "+plural(t.total,"sitting")+" shown"
+        +(where==="this week"?"":" "+where)+".";
+    // THE HIDDEN STUDY MEETINGS SAY SO. Study Committee starts unticked (the
+    // person, 25 September), and 30 of the record's 103 weeks hold nothing
+    // else, so a new reader met "None of the 7 sittings this week match."
+    // with no word of why. The line says how many the box would show.
+    if(t.study)
+      line+=" "+(t.study===1 ? "1 study committee meeting is"
+                             : t.study+" study committee meetings are")
+        +" hidden: tick Study Committee to show "+(t.study===1?"it":"them")+".";
+    return line;
   }
 
   // ---- the arrangements --------------------------------------------------------

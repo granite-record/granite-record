@@ -14221,7 +14221,8 @@ process.stdout.write(C.countLine(C.tally(cards,on),"this week")+" | "
             r = _run([node, str(go), str(site / "calendar.html")], capture_output=True,
                      text=True, encoding="utf-8", timeout=60)
             assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
-            assert r.stdout == "1 sitting this week. | The one sitting this week does not match.", (
+            assert r.stdout == ("1 sitting this week. | The one sitting this week does not match."
+                                " 1 study committee meeting is hidden: tick Study Committee to show it."), (
                 f"the week script counts {r.stdout!r} with one meeting cancelled, with the "
                 "study committees shown and then as a new reader sees the week")
         js = BC.WEEK_JS
@@ -15126,7 +15127,7 @@ ok(cat("standing",["meet"])==="work" && cat("study",["study"])==="study" && cat(
    && cat("standing",["hearing","exec","meet"])==="hearing,exec,work" && cat("standing",["conf"])==="conf"
    && cat("standing",[])==="work",
    "a card answers to the wrong box: "+[cat("standing",["meet"]),cat("study",["study"]),cat("study",["hearing"]),cat("standing",["other"])]);
-ok(count(F({}))==="5 of 6 sittings shown.", "a new reader's week: "+count(F({})));
+ok(count(F({}))==="5 of 6 sittings shown. 1 study committee meeting is hidden: tick Study Committee to show it.", "a new reader's week: "+count(F({})));
 ok(names(F({})).join()==="Committee of conference on HB 3,House Commerce,House Judiciary,House floor,Senate Finance",
    "a new reader's week holds "+names(F({})));
 ok(count(ON)==="6 sittings this week.", "every box ticked: "+count(ON));
@@ -15137,10 +15138,10 @@ ok(names(F({cats:["floor"]})).join()==="House floor", "Floor Session alone keeps
 ok(names(F({cats:["conf"]})).join()==="Committee of conference on HB 3", "Committee of Conference alone keeps "+names(F({cats:["conf"]})));
 ok(names(F({cats:["study"]})).join()==="Commission on Aging,Commission on Aging" && count(F({cats:["study"]}))==="1 of 6 sittings shown.",
    "Study Committee alone keeps "+names(F({cats:["study"]}))+" and counts "+count(F({cats:["study"]})));
-ok(count(F({cats:["work"]}))==="None of the 6 sittings this week match.", "Work Session alone, in a week of none: "+count(F({cats:["work"]})));
+ok(count(F({cats:["work"]}))==="None of the 6 sittings this week match. 1 study committee meeting is hidden: tick Study Committee to show it.", "Work Session alone, in a week of none: "+count(F({cats:["work"]})));
 // An entry holding two kinds stays while either is ticked, and whole.
 ok(names(F({cats:["hearing","work","conf","floor"]})).join()==="Committee of conference on HB 3,House Judiciary,House floor,Senate Finance"
-   && count(F({cats:["hearing","work","conf","floor"]}))==="4 of 6 sittings shown.",
+   && count(F({cats:["hearing","work","conf","floor"]}))==="4 of 6 sittings shown. 1 study committee meeting is hidden: tick Study Committee to show it.",
    "Executive Session unticked keeps "+names(F({cats:["hearing","work","conf","floor"]})));
 // Committees by name: only those, still in the kinds ticked, and a study
 // committee asked for by name whatever its box says.
@@ -15601,7 +15602,7 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   // Commission on Aging's two cards.
   const plain=statik.filter(k=>!/Aging/.test(k));
   ok(plain.length===5 && W.keys().join()===plain.join(), "the list the script draws is not the page's own less the study committee: "+W.keys());
-  ok($("wkcount").textContent==="5 of 6 sittings shown.", "the count reads "+$("wkcount").textContent);
+  ok($("wkcount").textContent==="5 of 6 sittings shown. 1 study committee meeting is hidden: tick Study Committee to show it.", "the count reads "+$("wkcount").textContent);
   ok($("calreset").hidden, "the reset control shows over a new reader's own filters");
   ok(QA(".caladd",$("calview")).length===5, "add-to-calendar on "+QA(".caladd",$("calview")).length+" cards, not the 5 shown that sat");
   ok($("cmprev").getAttribute("aria-disabled")==="true", "the month before the calendar's first is offered");
@@ -15690,13 +15691,13 @@ const CLOCK=new RegExp("^\\d{1,2}:\\d\\d"+NB+"(AM|PM)(–\\d{1,2}:\\d\\d"+NB+"(A
   ok(W.store.get("gr.calendar.showstudy")==="0" && W.keys().join()===plain.join() && $("calreset").hidden && W.addr()==="/calendar?week=2026-W11",
      "Study Committee unticked again: "+W.addr());
   await W.tick("exec",false);
-  ok(!W.keys().some(k=>/House Commerce/.test(k)) && W.keys().some(k=>/House Judiciary/.test(k)) && $("wkcount").textContent==="4 of 6 sittings shown.",
+  ok(!W.keys().some(k=>/House Commerce/.test(k)) && W.keys().some(k=>/House Judiciary/.test(k)) && $("wkcount").textContent==="4 of 6 sittings shown. 1 study committee meeting is hidden: tick Study Committee to show it.",
      "Executive Session unticked: "+$("wkcount").textContent+" "+W.keys()+" -- a committee that also heard bills stays");
   ok(!QA(".cmdots i",Q('td[data-d="2026-03-12"]',$("cmgrid"))).length, "the grid's dots do not follow the boxes");
   ok(W.addr()==="/calendar?week=2026-W11&kinds=hearing,work,conf,floor", "the address: "+W.addr());
   await W.tick("exec",true);
   await W.tick("floor",false);
-  ok(!W.keys().some(k=>/House floor/.test(k)) && $("wkcount").textContent==="4 of 6 sittings shown.", "Floor Session unticked: "+W.keys());
+  ok(!W.keys().some(k=>/House floor/.test(k)) && $("wkcount").textContent==="4 of 6 sittings shown. 1 study committee meeting is hidden: tick Study Committee to show it.", "Floor Session unticked: "+W.keys());
   await W.tick("floor",true);
   // ---- the side: a committee by name, a chamber, the search ----
   $("cpfind").dispatchEvent(W.ev("focus",{bubbles:false})); await W.settle();
