@@ -754,6 +754,21 @@ def _between_chambers(build_site_v2):
                  "floor", "MA"))
     d = B.bill_disposition({}, "SB34", st, n, [], "2025-2026", "2025-2026", term_over=True)
     want("One chamber did not concur", d.status, "SB34 2026")
+    # HB 549 of 1991: both chambers' fields say PASSED/ADOPTED, the Senate's
+    # WITH AMENDMENT, and the House never took the amendment up -- not
+    # "Passed one chamber". A House resolution the docket shows "Introduced
+    # and Adopted" (HR 13 of 2007) is not "In committee".
+    st = {"gen_status": "SENATE", "house_status": "PASSED/ADOPTED WITH AMENDMENT",
+          "senate_status": "PASSED/ADOPTED WITH AMENDMENT"}
+    n = _nar(_ev("H", "APPROP AM, AA VV; PASSED WITH AM VV; HJ65,P1476 + 1480", "floor", "MA",
+                 "Passed with Am"),
+             _ev("S", "FL AM (NEW TITLE), AA VV; SEN W. KING FL AM (NEW TITLE), AA VV; PASSED WITH "
+                      "AM VV; SJ34,P696-697 + 699", "floor", "MA", "Passed with Am"))
+    want("Died when the session ended", B.bill_disposition({}, "HB549", st, n, [], "1991-1992",
+                                                           "2025-2026").status, "HB549 1991")
+    want("Adopted by the House", B.bill_disposition(
+        {}, "HR13", {"gen_status": "HOUSE", "house_status": "", "senate_status": ""},
+        _nar(_ev("H", "Introduced and Adopted")), [], "2007-2008", "2025-2026").status, "HR13 2007")
     # HB 1432 of 2022: the conference asked for was refused, so none sat.
     n = _nar(_ev("H", "House Non-Concurs with Senate Amendment 2022-1837s and Requests CofC (Reps. McConkey, Milz, B. Boyd, Fedolfi): MA VV 05/05/2022", "floor", "MA"),
              _ev("S", "Sen. Birdsell Refused to Accede to House Request for Committee of Conference, MA, VV; 05/12/2022", "floor", "MA"))
@@ -4870,6 +4885,13 @@ def _journey_reads(build_site_v2):
     want(run("SB103", ev("H", "2021-06-16", "Conference Committee Report #2021-1946c Filed "
                                             "06/10/2021; Version Adopted by Senate", "other"))[1],
          [], "SB103 2021")
+    # A conference line no passage precedes is no conference: SB 200 of 1989
+    # was killed in February, and its docket has one adopted in May.
+    want(run("SB200", ev("S", "1989-02-08", "COMMITTEE REPORT ITL", "report",
+                         recommendation="Inexpedient to Legislate", side=""),
+             ev("S", "1989-02-09", "ITL REPORT ADOPTED"),
+             ev("S", "1989-05-24", "CONF COMM REPORT ADOPTED"))[1],
+         [("1989-02-09", "S", "killed", "Killed")], "SB200 1989")
     # A vote the clerk wrote in the same row as the filing is still a vote.
     want(run("HB25", ev("S", "1991-06-26", "CONF COMM REPORT (S AM + NEW AM) FILED; CONF COMM "
                                            "REPORT ADOPTED RC(19-3); SJ33,P661-665"))[1],
@@ -15221,9 +15243,15 @@ def _rail():
 #      2022 "Referred for interim study" over "Inexpedient to Legislate: MA
 #      VV 03/15/2022", HR 13 of 2007 "In committee" over "Introduced and
 #      Adopted".
+# Five of those were then fixed rather than explained, which leaves 31: HR
+# 13's chip now reads its adoption; HB 549 of 1991, SB 1 of 2005 and HB 1534
+# of 2016, whose status fields say both chambers passed them, no longer read
+# "Passed one chamber"; and SB 200 of 1989's "CONF COMM REPORT ADOPTED", three
+# months after the Senate killed it, is not read as a conference no passage
+# could have called.
 # None is in the current term, which is held to none. A ceiling rather than a
 # list, so a regression anywhere in the archive fails.
-_JOURNEY_EXPLAINED = 36
+_JOURNEY_EXPLAINED = 31
 
 
 def _journey_story(records, rows, B):

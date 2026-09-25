@@ -1321,9 +1321,14 @@ def classify(narr, rcs, prefix=""):
     if evs and evs[-1].get("type") == "report" and not any(
             e.get("type") == "floor" for e in evs):
         return "active", "Committee report filed"
+    # And a resolution of one chamber "Introduced and Adopted", which the
+    # clerk writes with no motion code: HR 13 of 2007 read "In committee"
+    # over the one line of its docket that adopted it.
     adopted_floor = any(
-        e.get("type") == "floor" and (e.get("motion") or "").upper() == "MA"
-        and re.search(r"ought to pass|adopted", e.get("action") or "", re.I)
+        (e.get("type") == "floor" and (e.get("motion") or "").upper() == "MA"
+         and re.search(r"ought to pass|adopted", e.get("action") or "", re.I))
+        or (prefix in SINGLE_CHAMBER
+            and re.match(r"\s*introduced\s+and\s+adopted\b", e.get("raw") or "", re.I))
         for e in (narr or {}).get("events", []) if not e.get("cancelled"))
     if adopted_floor or any(r.get("passed") for r in rcs):
         # A resolution of one chamber that has carried a vote is finished.
@@ -4197,6 +4202,17 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
     steps = [s for _d, _i, s in sorted(keyed, key=lambda x: (x[0], x[1]))]
     steps = _j_answers_after(_j_in_recess(steps), bid)
     steps = _j_settle(_j_amended_on(steps))
+    # A CONFERENCE FOLLOWS A PASSAGE. SB 200 of 1989 was killed on 9
+    # February, "ITL REPORT ADOPTED", and its docket then has "CONF COMM
+    # REPORT ADOPTED" on 24 May -- a report of a conference no chamber's vote
+    # could have called, which made the rail pass the Senate under a
+    # "Killed" chip. A conference line after a decision that ended the bill,
+    # and no passage, is not read.
+    steps = [s for i, s in enumerate(steps)
+             if s["act"] not in ("conf_adopted", "conf_rejected", "conf_refused")
+             or not any(t["act"] in J_ENDING for t in steps[:i])
+             or any(t["act"] in ("passed", "referred", "concurred", "nonconcurred")
+                    for t in steps[:i])]
     # An introduction dated after the first decision on the bill is a date
     # the docket has wrong -- HB 113 of 2005's "Introduced and ref to Crim
     # Just & PSfty" stands at 1 December 2006, eleven months after the House
@@ -5403,6 +5419,18 @@ def bill_disposition(b, bid, st, narr, rcs, term, current, law_line="",
             if evs2 and TABLE_DEATH.search(evs2[-1].get("raw") or ""):
                 between = ("done", "Died on the table")
                 kind, status = between
+        # "PASSED/ADOPTED" IN BOTH CHAMBERS' FIELDS IS NOT ONE CHAMBER. HB 549
+        # of 1991, SB 1 of 2005 and HB 1534 of 2016 read "Passed one chamber"
+        # where the House's field and the Senate's each say PASSED/ADOPTED,
+        # one of them WITH AMENDMENT, and their dockets agree: the second
+        # chamber passed it amended and the first never took the amendment
+        # up. In a closed term that is a bill that died when the session
+        # ended, the General Court's own words for the same end on 41 others.
+        elif (status == "Passed one chamber" and prefix not in NO_GOVERNOR
+              and prefix not in SINGLE_CHAMBER and (term != current or term_over)
+              and all((st.get(f) or "").strip().lower().startswith("passed/adopted")
+                      for f in ("house_status", "senate_status"))):
+            kind, status = "done", "Died when the session ended"
     if status == TO_THE_VOTERS:
         status = cacr_to_the_voters(narr, term, current, text, today)
     if kind == "active" and (term != current or term_over):
