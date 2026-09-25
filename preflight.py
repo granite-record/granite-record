@@ -2203,6 +2203,519 @@ def _manifest_prefers_aired(build_manifest):
         shutil.rmtree(root, ignore_errors=True)
 
 
+# ======================================================== code: livestreams ==
+
+def _ls_env():
+    """A child environment that can reach no key and thinks it is no runner."""
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("YOUTUBE_API_KEY", "GITHUB_ACTIONS")}
+    env["PYTHONUTF8"] = "1"
+    return env
+
+
+def _ls_fixture(root, livestreams):
+    """A committed index, the Data API's answers for three nights in the shape
+    --record writes them, and a caption source. Every id is a test id."""
+    known = {"video_id": "PFKNOWN0001", "title": "Fiscal Committee (09/04/2026)",
+             "title_parsed": "yes", "parsed_committee": "Fiscal Committee",
+             "parsed_date": "2026-09-04", "date_from": "title",
+             "has_start_time": "yes", "start_eastern": "2026-09-04 12:58:41",
+             "actual_start_utc": "2026-09-04T16:58:41Z",
+             "actual_end_utc": "2026-09-04T18:32:47Z", "duration_iso": "PT1H34M21S",
+             "published_at": "2026-09-05T06:44:31Z"}
+    stale = {"video_id": "PFSTALE0001",
+             "title": "JLCAR Administrative Rules (09/17/2026)",
+             "title_parsed": "yes", "parsed_committee": "JLCAR Administrative Rules",
+             "parsed_date": "2026-09-17", "date_from": "title",
+             "has_start_time": "NO", "start_eastern": "", "actual_start_utc": "",
+             "actual_end_utc": "", "duration_iso": "P0D",
+             "published_at": "2026-08-20T13:16:12Z"}
+    with open(root / "videos_house_2026-07-01_to_2026-12-31.csv", "w",
+              newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=_INDEX_COLS)
+        w.writeheader()
+        w.writerows([known, stale])
+    api = root / "api"
+    api.mkdir()
+    idx = {}
+
+    def put(name, endpoint, params, doc):
+        (api / name).write_text(json.dumps(doc), encoding="utf-8")
+        idx[livestreams.canonical(endpoint, params)] = name
+
+    for ch, cid in livestreams.CHANNELS.items():
+        put(f"ch-{ch}.json", "channels", {"part": "contentDetails", "id": cid},
+            {"items": [{"id": cid, "contentDetails": {
+                "relatedPlaylists": {"uploads": "UU" + ch}}}]})
+
+    def item(vid, title, pub):
+        return {"snippet": {"title": title, "publishedAt": pub},
+                "contentDetails": {"videoId": vid, "videoPublishedAt": pub}}
+
+    pl = {"part": "contentDetails,snippet", "maxResults": 50}
+    put("pl-house-1.json", "playlistItems", {**pl, "playlistId": "UUhouse"},
+        {"nextPageToken": "P2", "items": [
+            item("PFNEW000002", "House Education Policy and Administration "
+                 "(09/25/2026)", "2026-09-24T20:00:00Z"),
+            item("PFNEW000001", "House Ways and Means (09/23/2026)",
+                 "2026-09-24T03:00:00Z"),
+            item("PFKNOWN0001", known["title"], known["published_at"])]})
+    put("pl-house-2.json", "playlistItems",
+        {**pl, "playlistId": "UUhouse", "pageToken": "P2"},
+        {"items": [item("PFSTALE0001", stale["title"], stale["published_at"])]})
+    put("pl-senate-1.json", "playlistItems", {**pl, "playlistId": "UUsenate"},
+        {"items": [item("PFSEN000001", "Senate Session (09/24/2026)",
+                        "2026-09-24T21:00:00Z")]})
+    parts = "snippet,contentDetails,liveStreamingDetails"
+
+    def video(vid, title, pub, lbc, dur, start="", end="", sched=""):
+        live = {k: v for k, v in (("actualStartTime", start), ("actualEndTime", end),
+                                  ("scheduledStartTime", sched)) if v}
+        return {"id": vid, "snippet": {"title": title, "publishedAt": pub,
+                                       "liveBroadcastContent": lbc},
+                "contentDetails": {"duration": dur}, "liveStreamingDetails": live}
+
+    upcoming = video("PFNEW000002", "House Education Policy and Administration "
+                     "(09/25/2026)", "2026-09-24T20:00:00Z", "upcoming", "P0D",
+                     sched="2026-09-25T13:00:00Z")
+    first = [video("PFNEW000001", "House Ways and Means (09/23/2026)",
+                   "2026-09-24T03:00:00Z", "none", "PT2H1M5S",
+                   "2026-09-23T13:58:30Z", "2026-09-23T15:59:35Z"),
+             upcoming,
+             video("PFSEN000001", "Senate Session (09/24/2026)",
+                   "2026-09-24T21:00:00Z", "none", "PT3H0M0S",
+                   "2026-09-24T13:59:00Z", "2026-09-24T16:59:00Z"),
+             video("PFSTALE0001", stale["title"], stale["published_at"], "none",
+                   "PT15M1S", "2026-09-17T12:58:11Z", "2026-09-17T13:13:03Z")]
+    put("videos-1.json", "videos", {"part": parts, "id": ",".join(
+        sorted(v["id"] for v in first))}, {"items": first})
+    later = video("PFNEW000002", upcoming["snippet"]["title"],
+                  "2026-09-24T20:00:00Z", "none", "PT1H0M0S",
+                  "2026-09-25T13:00:05Z", "2026-09-25T14:00:05Z")
+    put("videos-2.json", "videos", {"part": parts, "id": "PFNEW000002"},
+        {"items": [later]})
+    (api / "index.json").write_text(json.dumps(idx), encoding="utf-8")
+    src = root / "src"
+    (src / "PFNEW000001").mkdir(parents=True)
+    (src / "PFNEW000001" / "captions.en.json3").write_text(json.dumps(_json3(
+        ["good morning", "I am opening the hearing on House Bill 1491"])),
+        encoding="utf-8")
+    (src / "PFSEN000001").mkdir()
+    (src / "PFSEN000001" / "ERROR.txt").write_text(
+        "ERROR: [youtube] PFSEN000001: Sign in to confirm you’re not a bot. "
+        "Use --cookies-from-browser or --cookies for the authentication.",
+        encoding="utf-8")
+
+
+def _ls_run(root, *extra):
+    return _run([sys.executable, str(Path("livestreams.py").resolve()),
+                 "--since-state", "--replay", "api", "--captions-from", "src",
+                 "--origin", "runner", *extra],
+                cwd=str(root), env=_ls_env(), capture_output=True, text=True,
+                timeout=120)
+
+
+@check("livestreams", "three nights of new livestreams: indexed, captioned, "
+                      "refused, read, handed over, and nothing committed touched",
+       needs=("livestreams", "build_manifest"))
+def _ls_nights(livestreams, build_manifest):
+    """The whole step on replayed answers, three nights running.
+
+    Night one lists three new recordings and a committed row written before
+    its stream aired, captions one, meets a data centre's bot check on the
+    next and stops there; night two asks YouTube for no captions -- the hold
+    -- and turns the recording that was only scheduled into an aired one; the
+    build's --markers step reads the captioned one and touches nothing else;
+    night three finds the laptop has read it and stops carrying it. No night
+    changes a committed file, and build_manifest takes the aired row over the
+    committed one written before the stream.
+    """
+    if not Path("livestreams.py").exists():
+        return "skip", "livestreams.py not here"
+    root = Path(tempfile.mkdtemp())
+    try:
+        _ls_fixture(root, livestreams)
+        committed = (root / "videos_house_2026-07-01_to_2026-12-31.csv").read_bytes()
+        r = _ls_run(root, "--now", "2026-09-25T06:30:00Z")
+        assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
+        last = r.stdout.strip().splitlines()[-1]
+        assert last.startswith("LIVESTREAMS: "), last
+        st = json.loads((root / "state" / "livestreams.json").read_text(encoding="utf-8"))
+        v = st["videos"]
+        assert v["PFNEW000001"]["captions"] == "captioned", v["PFNEW000001"]
+        assert (root / "work" / "PFNEW000001" / "captions.en.json3").exists()
+        assert v["PFSEN000001"]["captions"] == "deferred", v["PFSEN000001"]
+        assert not (root / "work" / "PFSEN000001").exists(), \
+            "a refused fetch left a folder behind"
+        assert v["PFNEW000002"]["status"] == "upcoming", v["PFNEW000002"]
+        assert v["PFSTALE0001"]["status"] == "finished", v["PFSTALE0001"]
+        ref = st["refusals"]["runner"]
+        assert ref["count"] == 1 and "not a bot" in ref["why"], ref
+        assert st["last_run"]["units"] == 6, \
+            f"{st['last_run']['units']} units, expected 2 + 3 pages + 1"
+        house = list(csv.DictReader(open(root / "videos_house_livestreams.csv",
+                                         encoding="utf-8")))
+        by = {x["video_id"]: x for x in house}
+        assert set(by) == {"PFNEW000001", "PFNEW000002", "PFSTALE0001"}, set(by)
+        assert by["PFNEW000001"]["start_eastern"] == "2026-09-23 09:58:30", \
+            by["PFNEW000001"]
+        assert by["PFNEW000001"]["parsed_committee"] == "Ways and Means"
+        assert by["PFNEW000002"]["duration_iso"] == "P0D"
+        assert by["PFSTALE0001"]["duration_iso"] == "PT15M1S"
+        assert (root / "videos_senate_livestreams.csv").exists()
+
+        r = _ls_run(root, "--now", "2026-09-26T06:30:00Z")
+        assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
+        st = json.loads((root / "state" / "livestreams.json").read_text(encoding="utf-8"))
+        assert st["last_run"]["units"] == 3, st["last_run"]
+        assert st["videos"]["PFNEW000002"]["status"] == "finished"
+        assert st["videos"]["PFNEW000002"]["captions"] == "deferred", \
+            "the second night asked YouTube inside the hold"
+        assert not (root / "work" / "PFNEW000002").exists()
+        house = {x["video_id"]: x for x in csv.DictReader(
+            open(root / "videos_house_livestreams.csv", encoding="utf-8"))}
+        assert house["PFNEW000002"]["duration_iso"] == "PT1H0M0S", house["PFNEW000002"]
+        assert (root / "videos_house_2026-07-01_to_2026-12-31.csv").read_bytes() \
+            == committed, "a committed index was written"
+
+        here = os.getcwd()
+        os.chdir(root)
+        try:
+            import io
+            import contextlib
+            with contextlib.redirect_stdout(io.StringIO()):
+                vids = build_manifest.load_videos(["videos_*.csv"])
+        finally:
+            os.chdir(here)
+        got = {x["video_id"]: x for x in vids}
+        assert got["PFSTALE0001"]["start_eastern"] == "2026-09-17 08:58:11", \
+            "build_manifest kept the row written before the stream aired"
+
+        # build_all's step: segment_markers over this step's recordings alone,
+        # merged into a candidate file that holds another recording already.
+        (root / "data").mkdir()
+        (root / "data" / "bills.json").write_text(json.dumps(
+            {"2025-2026": {"HB1491": {"id": "HB1491", "title": "x"}}}),
+            encoding="utf-8")
+        with open(root / "proceedings.csv", "w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=["term", "bill", "body", "kind",
+                                               "date", "video_id", "source"])
+            w.writeheader()
+            for bill, vid in (("HB1491", "PFNEW000001"), ("HB77", "PFOTHER")):
+                w.writerow({"term": "2025-2026", "bill": bill, "body": "H",
+                            "kind": "public hearing", "date": "2026-09-23",
+                            "video_id": vid, "source": "docket"})
+        other = {"HB77": [{"start": 60.0, "end": None, "how": "number",
+                           "what": "hearing", "said": "x"}]}
+        (root / "candidate_segments.json").write_text(json.dumps(
+            {"PFOTHER": other, "_absent": {"PFOTHER": ["HB88"]}}), encoding="utf-8")
+        env = {k: v for k, v in _ls_env().items() if k != "GRANITE_PROCEEDINGS"}
+
+        def markers():
+            r = _run([sys.executable, str(Path("livestreams.py").resolve()),
+                      "--markers", "--origin", "runner"], cwd=str(root), env=env,
+                     capture_output=True, text=True, timeout=120)
+            assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
+            return json.loads((root / "candidate_segments.json").read_text(
+                encoding="utf-8"))
+
+        laptops = {"PFOTHER": other, "_absent": {"PFOTHER": ["HB88"]}}
+        cs = markers()
+        read = cs.get("PFNEW000001") or {}
+        assert "HB1491" in read, read
+        assert cs.get("PFOTHER") == other and cs["_absent"] == {"PFOTHER": ["HB88"]}, \
+            "--markers changed a recording it was not given"
+        st = json.loads((root / "state" / "livestreams.json").read_text(encoding="utf-8"))
+        n1 = st["videos"]["PFNEW000001"]
+        assert n1.get("carry") and n1["result"]["segs"] == read, n1
+
+        # The next night's machine: no captions, the laptop's own copies of
+        # candidate_segments.json and the caption summary, neither of which
+        # names the new recording. --markers puts back what was read.
+        shutil.rmtree(root / "work" / "PFNEW000001")
+        (root / "candidate_segments.json").write_text(json.dumps(laptops),
+                                                      encoding="utf-8")
+        (root / "caption_spans.json").write_text(json.dumps(
+            {"recordings": {"PFOTHER": {"last": 60.0, "files": {}}}}),
+            encoding="utf-8")
+        cs = markers()
+        assert cs.get("PFNEW000001") == read, "the reading was not put back"
+        assert cs.get("PFOTHER") == other and cs["_absent"] == {"PFOTHER": ["HB88"]}
+        spans = json.loads((root / "caption_spans.json").read_text(encoding="utf-8"))
+        assert spans["recordings"].get("PFOTHER") == {"last": 60.0, "files": {}}
+        assert spans["recordings"].get("PFNEW000001", {}).get("files"), \
+            "the caption summary was not given the new recording"
+
+        # Night three: the laptop has read PFNEW000001 -- its own candidate
+        # file and caption summary both name it -- so nothing more is held.
+        (root / "candidate_segments.json").write_text(json.dumps(
+            dict(laptops, PFNEW000001=read)), encoding="utf-8")
+        (root / "caption_spans.json").write_text(json.dumps({"recordings": {
+            "PFOTHER": {"last": 60.0, "files": {}},
+            "PFNEW000001": {"last": 9.0, "files": {}}}}), encoding="utf-8")
+        r = _ls_run(root, "--now", "2026-09-28T06:30:00Z")
+        assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
+        st = json.loads((root / "state" / "livestreams.json").read_text(encoding="utf-8"))
+        n1 = st["videos"]["PFNEW000001"]
+        assert not n1.get("carry") and n1.get("adopted") and "result" not in n1, n1
+        assert st["last_run"]["units"] == 2, st["last_run"]
+        assert livestreams.carry_list(st) == [
+            "state/livestreams.json", "videos_house_livestreams.csv",
+            "videos_senate_livestreams.csv"], livestreams.carry_list(st)
+        return "ok", ("3 new and 1 pre-air row indexed at 6 units, then 3, then 2; "
+                      "one captioned, read by --markers and put back the next "
+                      "night without its captions, then handed to the laptop; "
+                      "one refused and held; committed index untouched")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("livestreams", "yt-dlp's answers are read for what they mean",
+       needs=("livestreams",))
+def _ls_classify(livestreams):
+    """A refusal stops the night; a missing caption waits; a stream not yet
+    held waits for its broadcast. The messages are yt-dlp's own, from its
+    YouTube extractor, and "Sign in to confirm your age" is a fact about a
+    video, not a refusal of an address."""
+    c = livestreams.classify
+    cases = [
+        ((1, "ERROR: [youtube] x: Sign in to confirm you’re not a bot. Use "
+             "--cookies-from-browser or --cookies for the authentication.",
+          None, None, False), "refused"),
+        ((1, "ERROR: Unable to download video subtitles for 'en': HTTP Error "
+             "429: Too Many Requests", None, None, False), "refused"),
+        ((1, "ERROR: [youtube] x: This content isn't available, try again "
+             "later. The current session has been rate-limited by YouTube",
+          None, None, False), "refused"),
+        ((1, "ERROR: [youtube] x: Sign in to confirm your age", None, None,
+          False), "failed"),
+        ((1, "ERROR: [youtube] x: This live event will begin in 8 days.",
+          None, None, False), "not-aired"),
+        ((1, "ERROR: [youtube] x: Private video. Sign in if you've been "
+             "granted access to this video", None, None, False), "gone"),
+        ((0, "[info] x: There are no subtitles for the requested languages",
+          None, None, False), "none-yet"),
+        ((0, "", None, None, False), "none-yet"),
+        ((-1, "took longer than 300s", None, None, False), "failed"),
+        ((0, "", "captions.en.json3", None, True), "captioned"),
+        ((0, "", "captions.en.json3", None, False), "failed"),
+        ((0, "", None, "captions.en.vtt", False), "failed"),
+    ]
+    bad = [(args[1][:40], want, c(*args)[0]) for args, want in cases
+           if c(*args)[0] != want]
+    assert not bad, bad
+    return "ok", f"{len(cases)} answers read as meant"
+
+
+@check("livestreams", "after a refusal the next night asks nothing, and the "
+                      "wait doubles", needs=("livestreams",))
+def _ls_hold(livestreams):
+    """A refusal is kept per machine: this one's holds the next night
+    entirely, the night after makes one request, and a second refusal in a
+    row doubles the wait. The laptop's own record is untouched by it."""
+    import contextlib
+    import io
+    from datetime import datetime, timedelta, timezone
+    L = livestreams
+    root = Path(tempfile.mkdtemp())
+    quiet = contextlib.redirect_stdout(io.StringIO())
+    quiet.__enter__()
+    try:
+        src = root / "src"
+        for vid in ("A", "B"):
+            (src / vid).mkdir(parents=True)
+            (src / vid / "ERROR.txt").write_text("HTTP Error 429: Too Many "
+                                                 "Requests", encoding="utf-8")
+        import argparse as _ap
+        a = _ap.Namespace(max_captions=20, budget=45, delay=0, timeout=60,
+                          stop_after=3, captions_from=str(src), origin="runner")
+        st = {"videos": {v: {"status": "finished", "captions": "waiting"}
+                         for v in ("A", "B")}}
+        table = {}
+        t0 = datetime(2026, 9, 25, 6, 30, tzinfo=timezone.utc)
+        got, why = L.run_captions(st, ["A", "B"], L.Refusals(table, "runner"),
+                                  t0, a, work=root / "work")
+        assert why and got["deferred"] == 2, (got, why)
+        assert table["runner"]["count"] == 1
+        # The next night: inside the hold, nothing is attempted. The source
+        # would now answer, so an attempt would show as a caption file.
+        for vid in ("A", "B"):
+            (src / vid / "ERROR.txt").unlink()
+            (src / vid / "captions.en.json3").write_text(
+                json.dumps(_json3(["I am opening the hearing on House Bill 1491"])),
+                encoding="utf-8")
+        got, why = L.run_captions(st, ["A", "B"], L.Refusals(table, "runner"),
+                                  t0 + timedelta(hours=24), a, work=root / "work")
+        assert not (root / "work" / "A").exists(), "asked inside the hold"
+        # A refusal on the laptop is its own: the runner's does not hold it.
+        assert not L.Refusals(table, "laptop").held(t0 + timedelta(hours=24))
+        # Past the hold, a probe, refused again: the wait doubles.
+        (src / "A" / "captions.en.json3").unlink()
+        (src / "A" / "ERROR.txt").write_text("HTTP Error 429", encoding="utf-8")
+        got, why = L.run_captions(st, ["A", "B"], L.Refusals(table, "runner"),
+                                  t0 + timedelta(hours=48), a, work=root / "work")
+        assert table["runner"]["count"] == 2 and why, table
+        held = table["runner"]["until"] - (t0 + timedelta(hours=48)).timestamp()
+        assert abs(held - 72 * 3600) < 1, held / 3600
+        assert not (root / "work" / "B").exists(), "went on past a refusal"
+        # And an answer clears it.
+        (src / "A" / "ERROR.txt").unlink()
+        (src / "A" / "captions.en.json3").write_text(
+            json.dumps(_json3(["I am opening the hearing on House Bill 1491"])),
+            encoding="utf-8")
+        got, why = L.run_captions(st, ["A"], L.Refusals(table, "runner"),
+                                  t0 + timedelta(hours=121), a, work=root / "work")
+        assert got["captioned"] == 1 and table["runner"]["count"] == 0, (got, table)
+        return "ok", "held 36h, then one probe, then 72h; cleared by an answer"
+    finally:
+        quiet.__exit__(None, None, None)
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("livestreams", "a row it writes is the row fetch_channel_index writes",
+       needs=("livestreams",))
+def _ls_rows(livestreams):
+    """Every row of every committed index in fetch_channel_index's current
+    twelve-column shape, rebuilt from the fields the API gives, comes back
+    identical -- and the columns are that script's own, read from its source.
+    The older eleven-column files are left out: they predate the corrected
+    daylight-time rule and the bill-title fallback, which is why they differ.
+    """
+    src = Path("fetch_channel_index.py").read_text(encoding="utf-8")
+    m = re.search(r"cols = (\[[^\]]*\])", src)
+    assert m, "no cols list in fetch_channel_index.main"
+    assert ast.literal_eval(m.group(1)) == livestreams.COLS, \
+        "livestreams.COLS is not fetch_channel_index's column list"
+    n, bad = 0, []
+    for f in sorted(Path(".").glob("videos_*.csv")):
+        if f.name.endswith("_livestreams.csv"):
+            continue
+        with open(f, encoding="utf-8", newline="") as fh:
+            rdr = csv.DictReader(fh)
+            if rdr.fieldnames != livestreams.COLS:
+                continue
+            for r in rdr:
+                live = {k: r[c] for k, c in (("actualStartTime", "actual_start_utc"),
+                                             ("actualEndTime", "actual_end_utc"))
+                        if r[c]}
+                mine = livestreams.make_row(
+                    r["video_id"], r["title"], r["published_at"],
+                    {"liveStreamingDetails": live,
+                     "contentDetails": {"duration": r["duration_iso"]}})
+                n += 1
+                if mine != r:
+                    bad.append(f"{f.name}: {r['video_id']}")
+    if not n:
+        return "skip", "no twelve-column videos_*.csv here"
+    assert not bad, f"{len(bad)} of {n} rows differ: " + "; ".join(bad[:3])
+    return "ok", f"{n:,} committed rows rebuilt identically"
+
+
+@check("livestreams", "the state is never started over, and no file it "
+                      "writes holds the key", needs=("livestreams",))
+def _ls_state(livestreams):
+    root = Path(tempfile.mkdtemp())
+    try:
+        _ls_fixture(root, livestreams)
+        (root / "state").mkdir()
+        (root / "state" / "livestreams.json").write_text("{not json",
+                                                          encoding="utf-8")
+        r = _ls_run(root, "--now", "2026-09-25T06:30:00Z")
+        assert r.returncode == 1, r.stdout[-300:]
+        assert (root / "state" / "livestreams.json").read_text(encoding="utf-8") \
+            == "{not json", "an unreadable state was replaced"
+        assert not (root / "videos_house_livestreams.csv").exists()
+        # Its rows here and the state not: a kit that came down short.
+        (root / "state" / "livestreams.json").unlink()
+        (root / "videos_house_livestreams.csv").write_text(
+            ",".join(livestreams.COLS) + "\n", encoding="utf-8")
+        r = _ls_run(root, "--now", "2026-09-25T06:30:00Z")
+        assert r.returncode == 1 and "did not arrive" in r.stdout, r.stdout[-300:]
+        (root / "videos_house_livestreams.csv").unlink()
+        # A run with a key in its environment leaves it in no file. A marker,
+        # not a key's shape: the check above rightly fails on one of those.
+        key = "preflight-sentinel-" + "k" * 21
+        env = dict(_ls_env(), YOUTUBE_API_KEY=key)
+        r = _run([sys.executable, str(Path("livestreams.py").resolve()),
+                  "--since-state", "--replay", "api", "--captions-from", "src",
+                  "--now", "2026-09-25T06:30:00Z"], cwd=str(root), env=env,
+                 capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stdout + r.stderr)[-300:]
+        assert key not in r.stdout + r.stderr
+        leaks = [str(p) for p in root.rglob("*") if p.is_file()
+                 and key.encode() in p.read_bytes()]
+        assert not leaks, leaks
+        # And a recording that would keep an answer carrying the key refuses.
+        api = livestreams.Api(key=key, record=str(root / "rec"))
+        try:
+            api._save("videos?id=x", '{"echo": "' + key + '"}')
+            raise AssertionError("an answer carrying the key was recorded")
+        except livestreams.Broken:
+            pass
+        return "ok", ("an unreadable or missing state stops the step; the key "
+                      "is in no file and no line of output")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("livestreams", "without yt-dlp nothing is asked for and nothing counts "
+                      "against a recording", needs=("livestreams",))
+def _ls_no_ytdlp(livestreams):
+    """A machine set up without yt-dlp would fail every caption request the
+    same way, and three failures hand a recording to the laptop for good. So
+    the step says so once, exits 3 -- not configured -- and leaves every
+    recording waiting, its rows written as usual."""
+    import contextlib
+    import importlib.util
+    import io
+    root = Path(tempfile.mkdtemp())
+    here = os.getcwd()
+    real = importlib.util.find_spec
+    saved = {k: os.environ.pop(k) for k in ("YOUTUBE_API_KEY", "GITHUB_ACTIONS")
+             if k in os.environ}
+    try:
+        _ls_fixture(root, livestreams)
+        os.chdir(root)
+        importlib.util.find_spec = (lambda name, *a, **k:
+                                    None if name == "yt_dlp" else real(name, *a, **k))
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            code = livestreams.main(["--since-state", "--replay", "api",
+                                     "--now", "2026-09-25T06:30:00Z",
+                                     "--origin", "runner"])
+        importlib.util.find_spec = real
+        assert code == 3, (code, out.getvalue()[-300:])
+        assert "yt-dlp is not installed" in out.getvalue()
+        st = json.loads(Path("state/livestreams.json").read_text(encoding="utf-8"))
+        waiting = [v for v, x in st["videos"].items() if x.get("captions") == "waiting"]
+        assert sorted(waiting) == ["PFNEW000001", "PFSEN000001", "PFSTALE0001"], \
+            st["videos"]
+        assert not any(x.get("tries") for x in st["videos"].values())
+        assert Path("videos_house_livestreams.csv").exists(), "the rows were not written"
+        return "ok", "exit 3, three recordings left waiting with no try counted"
+    finally:
+        importlib.util.find_spec = real
+        os.environ.update(saved)
+        os.chdir(here)
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("livestreams", "the nightly's livestreams files are never tracked")
+def _ls_ignored():
+    """GitHub's machine refuses to deploy a tree with a changed tracked file,
+    and livestreams.py writes these there every night."""
+    names = ["videos_house_livestreams.csv", "videos_senate_livestreams.csv",
+             "state/livestreams.json", "state/livestreams.lock"]
+    r = _run(["git", "check-ignore", *names], capture_output=True, text=True)
+    if r.returncode not in (0, 1):
+        return "skip", "git check-ignore would not run"
+    ignored = set((r.stdout or "").split())
+    missing = [n for n in names if n not in ignored]
+    assert not missing, "not ignored: " + ", ".join(missing)
+    t = _run(["git", "ls-files", "--", *names], capture_output=True, text=True)
+    assert not (t.stdout or "").strip(), "tracked: " + t.stdout.strip()
+    return "ok", f"{len(names)} ignored and untracked"
+
+
 # ============================================================ code: front end ==
 
 def page_source(name="bills.html"):
@@ -4771,6 +5284,8 @@ ic_SOURCES = {
     "db/DocumentVersion.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/LegislationText.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/CandH_Reports.psv": "fetch_archive_db.py, which dumps the SQL views",
+    "state/livestreams.json": "livestreams.py --since-state, the nightly's "
+                              "step before build_all",
 }
 
 

@@ -238,3 +238,10 @@ assets/licensed/
 # it in a public repository. HANDOFF.md says what it is; preflight fails if
 # it is ever tracked.
 /CLERK_CORRECTIONS.md
+
+# ---- the nightly's new livestreams (livestreams.py) -----------------------
+# Written on GitHub's machine each night and carried to the next by cloud.py.
+# Never committed: a tracked file changed on that machine stops the deploy,
+# and nobody commits there. The committed videos_*.csv stay the laptop's.
+videos_*_livestreams.csv
+state/livestreams*

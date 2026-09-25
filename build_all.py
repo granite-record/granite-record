@@ -389,6 +389,23 @@ def plan(a):
                   "was opened and closed; cached per recording, so a rerun "
                   "with nothing new takes seconds"),
 
+        # THE NIGHT'S NEW LIVESTREAMS, WHEREVER THEIR CAPTIONS ARE. The step
+        # above reads every caption file on the machine, and on GitHub's
+        # machine -- which holds a night's few, not the laptop's 20 GB -- it
+        # does not run. livestreams.py --since-state fetched these recordings'
+        # captions before this build began, and this reads them and nothing
+        # else, through segment_markers, which merges: every other recording
+        # keeps the answer the laptop's caption job gave it. On the laptop the
+        # step above has read them already, and this finds them in its cache.
+        # Asks nobody anything.
+        Step("boundaries the chair stated on the night's new livestreams",
+             ["livestreams.py", "--markers"],
+             needs=["state/livestreams.json", "proceedings.csv",
+                    "data/bills.json"],
+             produces=["candidate_segments.json"], optional=True,
+             note="segment_markers over the recordings livestreams.py "
+                  "captioned and still holds, and no others"),
+
         # apply_markers.py patches segments.json, which the clustering path
         # produced. segment_markers.py above supersedes it: candidate_segments
         # .json is read directly by build_site_v2 and a stated boundary there
