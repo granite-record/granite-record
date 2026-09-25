@@ -19403,10 +19403,18 @@ def _nightly_runner(NI):
         assert json.loads(NI.CENSUS.read_text(encoding="utf-8"))["census"][
             "bills"] == 100, "a build the gates stopped became the baseline"
 
-        # A night that can be vouched for: baseline, captions compared, no code
-        # changed, and not what production already serves.
+        # A few caption files -- the livestream step's new recordings -- are no
+        # cover for the thousands the check could not read.
         size["bills"] = 100
-        NI.captions_compared = lambda work="work", markers="candidate_segments.json": (1, 1)
+        NI.captions_compared = lambda work="work", markers="candidate_segments.json": (5, 2851)
+        code, _ = night("--runner", "--no-fetch", run_id="103a")
+        assert code == 1 and not verdict()["publishable"], \
+            "five compared recordings stood in for the 2,846 the late-caption check could not read"
+
+        # A night that can be vouched for: baseline, the check covering the
+        # recordings as it does on the laptop (2,850 of 2,851 on 25 September),
+        # no code changed, and not what production already serves.
+        NI.captions_compared = lambda work="work", markers="candidate_segments.json": (2850, 2851)
         code, _ = night("--runner", "--no-fetch", run_id="103")
         v = verdict()
         assert code == 0 and v["publishable"] and v["clean"], v

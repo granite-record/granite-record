@@ -100,10 +100,11 @@ night itself does is here, and what differs on that machine is behind --runner:
                       night cannot go to production
   production          never from the night itself. A build may go only if the
                       gates had a baseline and passed, the late-caption check
-                      compared something (without the caption files it cannot,
-                      and 156 timestamps would go out an hour early), no
-                      tracked code changed on the machine, and graniterecord.org
-                      is not already serving it. Then a separate job behind the
+                      covered the recordings as it does on the laptop (with no
+                      caption file and no summary of one it covers none, and
+                      156 timestamps would go out an hour early), no tracked
+                      code changed on the machine, and graniterecord.org is not
+                      already serving it. Then a separate job behind the
                       "production" environment deploys it, once approved
   deploys             --deploy-to preview|production, workflow steps of their
                       own that alone hold the Pages token; wrangler pinned;
@@ -210,6 +211,14 @@ STUDY_WEEKLY = ("StatStudMembers", "vStatStudTemp")
 # A result this much smaller than the copy it would replace is not swapped in:
 # snapshot_gencourt's rule for the day's files, used for every other fetch.
 SWAP_SHRINK = 0.30
+
+# The late-caption check has to cover the recordings as it does on the laptop,
+# where on 25 September it compared 2,850 of the 2,851 recordings with
+# published times. On GitHub's machine it can compare only what has a caption
+# file there or the laptop's summary of one, and the livestream step's few new
+# caption files are no cover for the rest. More left unchecked than this, or
+# than 1% of them, and the build does not go to production.
+LATE_CAPTION_UNCHECKED = 10
 
 # The live check is retried before a deploy is called failed: on 24 September
 # the laptop's publish said THE DEPLOY DID NOT LAND for a deploy that had,
@@ -837,10 +846,14 @@ def captions_compared(work="work", markers="candidate_segments.json"):
     build_site_v2.withhold_late_captions withholds every time read off a
     caption track that stops well short of its recording -- 156 of them on
     18 recordings when CLOUD_MOVE.md measured it -- and it can only do that by
-    reading where each track stops. With no caption file for any recording it
-    compares nothing, withholds nothing, and prints one line. The same
-    recordings, the same question, asked here so that the night can refuse to
-    send that build to production rather than print a line about it.
+    reading where each track stops. A recording with no caption file is not
+    compared, its times go out as they are, and the build prints one line.
+    The same recordings, the same question, asked here so that the night can
+    refuse to send a build to production that left them unchecked, rather
+    than print a line about it. caption_span.last_cue reads the caption file
+    itself; the laptop's summary of them (caption_spans.json, being written
+    elsewhere) is what will let GitHub's machine pass this, and it has to be
+    read there, through out_of_step, for this to see it.
     """
     import caption_span
     vids = set()
@@ -976,12 +989,14 @@ class Night:
             v["gates"] = "passed"
 
         compared, of = captions_compared()
+        unchecked = of - compared
         v["late_captions"] = {"compared": compared, "recordings": of}
-        if of and not compared:
+        if unchecked > min(LATE_CAPTION_UNCHECKED, of // 100):
             blocking.append(
-                f"the late-caption check compared none of {of:,} recordings: there is no "
-                "caption file, or summary of one, on this machine, so a caption track an "
-                "hour out of step with its recording would be published as it is")
+                f"the late-caption check compared {compared:,} of the {of:,} recordings "
+                f"with published times: {unchecked:,} have no caption file here, nor a "
+                "summary of one, so a caption track an hour out of step with its "
+                "recording would be published as it is")
 
         code, data = tracked_changes()
         v["code_changed"], v["data_rewritten"] = code, data
