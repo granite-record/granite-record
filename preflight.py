@@ -17437,6 +17437,40 @@ def _docket_fetch_stops():
     return "ok", "; ".join(results) + " -- each behaves"
 
 
+@check("build", "every recording's Eastern start is its UTC start on New Hampshire's clock",
+       needs=("fetch_channel_index",))
+def _video_starts_on_the_right_clock(fetch_channel_index):
+    """54 rows of the video lists -- 40 of videos_house_2025-01-01_to_2025-03-31
+    and 14 of videos_senate_2025-01-01_to_2025-06-30, streams of 3-7 March 2025
+    -- carried a start_eastern an hour late, written before the fetcher's
+    daylight-time fix of 5 March 2026 treated the first week of March as
+    daylight time. The build places a recording by that column, so 21
+    "approximate" stations opened their video an hour early, and six choices
+    between two recordings were made against the wrong clock (found 25
+    September 2026). Every row's Eastern start must be its own UTC start through
+    the fetcher's to_eastern_clock, which is the rule the fetcher writes by.
+    """
+    import csv as _csv
+    bad, n = [], 0
+    for p in sorted(Path(".").glob("videos_*.csv")):
+        rows = list(_csv.DictReader(p.open(encoding="utf-8", newline="")))
+        if not rows or "actual_start_utc" not in rows[0] or "start_eastern" not in rows[0]:
+            continue
+        for r in rows:
+            u, e = (r.get("actual_start_utc") or "").strip(), (r.get("start_eastern") or "").strip()
+            if not u or not e:
+                continue
+            n += 1
+            want = fetch_channel_index.to_eastern_clock(u)
+            if want != e:
+                bad.append(f"{p.name} {r.get('video_id')}: {e}, which its UTC start makes {want}")
+    if not n:
+        return "skip", "no video list with both start columns here"
+    assert not bad, (f"{len(bad)} recordings start on the wrong clock: "
+                     + "; ".join(bad[:4]))
+    return "ok", f"{n:,} recordings' Eastern starts agree with their UTC starts"
+
+
 @check("build", "every fetcher that asks gc.nh.gov consults refusal.py first")
 def _every_fetcher_checks_refusal():
     """A refusal is a fact about the address, not about the run that found it.
