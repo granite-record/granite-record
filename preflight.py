@@ -6592,6 +6592,110 @@ def _session_corrected_dates(N, SD):
         shutil.rmtree(root, ignore_errors=True)
 
 
+# HB 1364 and HB 1824 of 2026, as Docket.txt has them: the vote of 11 March on
+# HB 1824, filed under HB 1364 the next afternoon, and HB 1824's own row of it.
+DOCKET_HB1364 = [
+    "2026|3099|3/2/2026 11:09:41 AM|HB1364|H|Majority Committee Report: Inexpedient to "
+    "Legislate  02/18/2026 (Vote 7-5; RC)|3/2/2026 11:09:41 AM",
+    "2026|3099|3/12/2026 3:27:24 PM|HB1364|H|Special Order next order of business (Rep. "
+    "Luneau): MF RC 151-180 03/12/2026  HJ 7|3/13/2026 9:13:30 AM",
+    "2026|3105|3/4/2026 2:31:18 PM|HB1824|H|Minority Committee Report: Ought to Pass|"
+    "3/4/2026 2:31:18 PM",
+    "2026|3105|6/23/2026 9:18:45 AM|HB1824|H|Special Order to next order of business (Rep. "
+    "Damon): MF RC 151-180 03/11/2026  HJ 7  P. 103|6/23/2026 9:19:40 AM",
+]
+
+
+@check("session", "a docket row filed under the wrong bill leaves its history and says whose it is",
+       needs=("narrative", "build_site_v2"))
+def _session_misfiled_row(N, B):
+    """HB 1364 of 2026 carried a roll call that belongs to HB 1824: "Special
+    Order next order of business (Rep. Luneau): MF RC 151-180 03/12/2026 HJ
+    7". The House Journal of 11 March and the roll call put that vote on HB
+    1824, and its history read "the House failed ... on a roll call 151-180"
+    and put it on the House's 12 March sitting. docket_corrections.json's
+    "misfiled" entry takes the row out of HB 1364's history and keeps it, with
+    a note, among the docket's own lines; HB 1824's row of the vote says the
+    docket files it twice. An entry whose row changes is reported and not
+    applied."""
+    import contextlib
+    import io
+    saved = (N.MISFILED, set(N.MOVED), N.CORRECTIONS, N.TERM)
+    root = Path(tempfile.mkdtemp())
+    entry = {"session": "2026", "bill": "HB1364", "body": "H",
+             "source_says": "Special Order next order of business (Rep. Luneau): MF RC "
+                            "151-180 03/12/2026 HJ 7",
+             "belongs_to": "HB1824",
+             "belongs_to_says": "Special Order to next order of business (Rep. Damon): MF "
+                                "RC 151-180 03/11/2026 HJ 7 P. 103",
+             "note": "This vote was not on HB 1364.", "note_there": "Also under HB 1364."}
+    try:
+        def build(lines):
+            (root / "Docket.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+            N.MISFILED, N.CORRECTIONS = [entry], []
+            N.MOVED.clear()
+            out, said = {}, io.StringIO()
+            for b, rows in N.parse_docket(str(root / "Docket.txt")).items():
+                N.TERM = N.P.term_of(rows[0]["session"])
+                out[b] = N.build(b, rows)
+            with contextlib.redirect_stdout(said):
+                N.report_corrections({"2025-2026": out})
+            return out, said.getvalue()
+
+        out, said = build(DOCKET_HB1364)
+        h, t = out["HB1364"], out["HB1824"]
+        assert not any("151-180" in e["raw"] for e in h["events"]) and "151" not in h["narrative"], (
+            f"HB 1364 still tells HB 1824's vote: {h['narrative'][-90:]!r}")
+        away = h.get("misfiled") or []
+        assert len(away) == 1 and away[0]["belongs_to"] == "HB1824" and away[0]["row_note"], (
+            f"the misfiled row was not kept with its note: {away!r}")
+        mine = [e for e in t["events"] if "151-180" in e["raw"]]
+        assert mine and mine[0].get("row_note") == "Also under HB 1364.", (
+            f"HB 1824's own row of the vote has no note: {mine!r}")
+        lines = B.docket_lines(h)
+        assert [e["date"] for e in lines] == sorted(e["date"] for e in lines) and any(
+            e.get("row_note") for e in lines), "the page's docket lines lost the misfiled row"
+        assert "taken off" in said, f"the applied entry was not reported: {said!r}"
+        # And the page draws the note under the line, as it draws a date's.
+        js, stub = Path("app.js"), Path("dom_stub.js")
+        if js.exists() and stub.exists() and shutil.which("node"):
+            row = {"id": "HB1364", "year": 2026, "term": "2025-2026", "title": "",
+                   "status": "Died when the session ended", "kind": "done", "passage": "Hx--x"}
+            d = {**row, "events": [{"date": e["date"], "text": e["raw"],
+                                    **({"row_note": e["row_note"]} if e.get("row_note") else {})}
+                                   for e in lines]}
+            (root / "page.js").write_text(js.read_text(encoding="utf-8"), encoding="utf-8")
+            (root / "stub.js").write_text(stub.read_text(encoding="utf-8"), encoding="utf-8")
+            (root / "d.json").write_text(json.dumps([row, d]), encoding="utf-8")
+            (root / "go.js").write_text("""
+require("./stub.js");
+const fs = require("fs");
+const scope = (0, eval)(fs.readFileSync("./page.js", "utf8")
+  + "; ({renderDetail, detail, dkey, IDX, setFocused:(x)=>{focused=x;}})");
+const [row, d] = JSON.parse(fs.readFileSync("./d.json", "utf8"));
+scope.IDX.push(row);
+scope.detail[scope.dkey(row.id)] = d;
+scope.setFocused(row.id);
+process.stdout.write("\\n@@" + JSON.stringify(scope.renderDetail(row, d)));
+""", encoding="utf-8")
+            r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=90)
+            assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+                "app.js did not draw the docket under node: " + (r.stderr or r.stdout or "")[-300:])
+            assert "This vote was not on HB 1364." in json.loads(r.stdout.rsplit("@@", 1)[1]), (
+                "the page does not draw the misfiled row's note under it")
+        # The General Court re-words the row: the entry stops, and says so.
+        again, said = build([x.replace("(Rep. Luneau)", "(Rep. D. Luneau)") for x in DOCKET_HB1364])
+        assert any("151-180" in e["raw"] for e in again["HB1364"]["events"]) and "NOT applied" in said, (
+            "an entry whose row no longer reads as it says was applied, or not reported")
+        return "ok", ("the vote leaves HB 1364's history and stays on its docket with a note; "
+                      "HB 1824's row says so; a stale entry is reported")
+    finally:
+        N.MISFILED, N.CORRECTIONS, N.TERM = saved[0], saved[2], saved[3]
+        N.MOVED.clear()
+        N.MOVED.update(saved[1])
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("session", "the clerk's as-of date dates a row, but never ahead of what it answers",
        needs=("narrative", "docket_vocab"))
 def _session_as_of_dates(N, V):
@@ -14504,8 +14608,11 @@ def _corrections_still_match():
             cache[path] = got
         return cache[path]
 
+    # A row filed under the wrong bill ("misfiled") is held off it the same
+    # way, and its note on the bill it belongs to needs that bill's own row.
+    moved = N.load_corrections(f, "misfiled")
     stale, checked, absent = [], 0, 0
-    for e in entries:
+    for e in entries + moved:
         session = str(e.get("session"))
         paths = [p for p in (archived.get(N.P.term_of(session)), "Docket.txt")
                  if p and Path(p).exists()]
@@ -14514,17 +14621,20 @@ def _corrections_still_match():
             absent += 1
             continue
         checked += 1
-        want = (str(e["bill"]).upper(), str(e["body"]).upper(),
-                N._squash(e["source_says"]))
-        if not any(want in h for h in held):
-            stale.append(f"{e['bill']} of {session}: "
-                         f"{N._squash(e['source_says'])[:70]!r}")
+        wants = [(str(e["bill"]).upper(), str(e["body"]).upper(),
+                  N._squash(e["source_says"]))]
+        if e.get("belongs_to"):
+            wants.append((str(e["belongs_to"]).upper(), str(e["body"]).upper(),
+                          N._squash(e.get("belongs_to_says"))))
+        for want in wants:
+            if not any(want in h for h in held):
+                stale.append(f"{want[0]} of {session}: {want[2][:70]!r}")
     assert not stale, (
-        f"{len(stale)} correction(s) match no docket row, so the date they "
-        "held back is published again: " + "; ".join(stale[:4]) + ". Re-read "
-        "the row; update source_says, or remove the entry if the General Court "
-        "has fixed the date")
-    return "ok", (f"{checked} of {len(entries)} corrections checked against "
+        f"{len(stale)} correction(s) match no docket row, so the date or the "
+        "row they held back is published again: " + "; ".join(stale[:4]) + ". "
+        "Re-read the row; update source_says (or belongs_to_says), or remove "
+        "the entry if the General Court has fixed it")
+    return "ok", (f"{checked} of {len(entries) + len(moved)} corrections checked against "
                   f"the docket on disk, all still matching"
                   + (f"; {absent} for a term whose docket is not here"
                      if absent else ""))

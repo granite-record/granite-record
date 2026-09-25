@@ -1676,7 +1676,9 @@ ${d._error?`<div class="loaderr"><b>This bill's detail did not
           rel="noopener">${esc(e.cite)}</a>`:esc(e.cite)}</span>`:""}${
           signins(e.testimony)}${
           /* a date put right by hand: the line above still says the other */
-          e.date_note?`<span class="note tldate">${esc(e.date_note)}</span>`:""}</span>
+          e.date_note?`<span class="note tldate">${esc(e.date_note)}</span>`:""}${
+          /* a row the docket files under the wrong bill, and its twin */
+          e.row_note?`<span class="note tldate">${esc(e.row_note)}</span>`:""}</span>
         </li>`).join("")}</ul></details>`:""}
 `;
 }

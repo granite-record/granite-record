@@ -1,11 +1,11 @@
 {
   "_whose": "This file belongs to the person who runs Granite Record, like member_corrections.json and place_corrections.json. Claude drafted the 24 entries below on 24 September 2026 for that person's review: 18 from the phantom-sitting investigation of 23 September, and 6 more where the House Journal and the roll call agree with each other against the docket. narrative.py applies every entry until the person removes it. Read them; the file is yours.",
 
-  "_what": "Dates the General Court's docket states wrongly, corrected by a person, with the evidence for each correction beside it. This file is edited by hand. No generator writes it, and preflight fails if any build_* or fetch_* script opens it for writing.",
+  "_what": "Dates the General Court's docket states wrongly ('dates'), and rows it files under the wrong bill ('misfiled'), corrected by a person, with the evidence for each correction beside it. This file is edited by hand. No generator writes it, and preflight fails if any build_* or fetch_* script opens it for writing.",
 
   "_why": "A floor action's date decides which sitting it belongs to, and a sitting page is built for every date that carries one. A single mistyped date therefore publishes a sitting that never happened -- 'The House, Saturday 19 September 2026' -- and takes the action off the day it did happen. A correction is made only where the record settles it and nothing points the other way: the journal the row cites, the other rows that cite the same journal, the time the row was written, and where one exists the roll call's own timestamp, which comes from the voting system rather than the docket.",
 
-  "_how": "narrative.py is the only reader. It matches an entry on session (the docket's first column), bill, body and the text of the docket row (source_says), with runs of spaces collapsed on both sides; uses corrected_to as the event's date; and keeps the docket's own date beside it as date_as_recorded, with 'note' shown under the docket line on the bill's page. An entry whose row no longer reads as source_says is reported by narrative.py and NOT applied, and preflight fails on it while that term's docket is on disk: it means the General Court has changed the row and this file is now the thing that is stale. narrative.py also warns about any row of the same bill that carries an entry's mistyped date and journal but has no entry of its own.",
+  "_how": "narrative.py is the only reader. It matches an entry on session (the docket's first column), bill, body and the text of the docket row (source_says), with runs of spaces collapsed on both sides; uses corrected_to as the event's date; and keeps the docket's own date beside it as date_as_recorded, with 'note' shown under the docket line on the bill's page. An entry whose row no longer reads as source_says is reported by narrative.py and NOT applied, and preflight fails on it while that term's docket is on disk: it means the General Court has changed the row and this file is now the thing that is stale. narrative.py also warns about any row of the same bill that carries an entry's mistyped date and journal but has no entry of its own. A 'misfiled' entry is matched the same way, on session, bill, body and source_says: narrative.py takes that row out of the bill's history -- its sentence, its journey and the sitting it would put the bill on -- and keeps it in the bill's list of the docket's own lines with 'note' beneath it; belongs_to names the bill the row belongs to, and 'note_there' is shown beneath that bill's own row of the same action (belongs_to_says). A misfiled entry that matches no row is reported and not applied, and preflight fails on it in the same way.",
 
   "_not_for": "Business a chamber did while standing in recess of an earlier sitting (HJ 14 of 2024 prints non-concurrences of 24, 28 and 29 May under the 23 May sitting), dispositions under a joint rule, and database-era rows dated by the moment they were entered. Those are not typing errors and are left for the person to decide; preflight lists them as known doubtful days.",
 
@@ -421,6 +421,30 @@
         "journals/2026/HJ 07 March 11, 2026.txt prints the motion that HB 1061 be Indefinitely Postponed and 'YEAS 188 - NAYS 149'"
       ],
       "note": "The General Court's online docket dates this 12 March 2026, the day the entry was made. The roll call it records was taken on 11 March 2026 and the House Journal for that day prints it, so it is shown on 11 March.",
+      "checked": "2026-09-24"
+    }
+  ],
+
+  "misfiled": [
+    {
+      "session": "2026",
+      "bill": "HB1364",
+      "body": "H",
+      "row_written": "2026-03-12 15:27:24",
+      "source_says": "Special Order next order of business (Rep. Luneau): MF RC 151-180 03/12/2026  HJ 7",
+      "belongs_to": "HB1824",
+      "belongs_to_says": "Special Order to next order of business (Rep. Damon): MF RC 151-180 03/11/2026  HJ 7  P. 103",
+      "why": "Filed under the wrong bill. The vote it records -- Rep. Luneau's motion to make a bill a special order, failing 151-180 -- is HB 1824's in the House Journal and in the roll call. The row was written at 3:27 PM on 12 March among the clerk's entries of the previous day's votes from House Journal 7, and like HB 1061's beside it carries the day it was written. No House Journal of 2026 names HB 1364 after its introduction.",
+      "evidence": [
+        "Docket.txt line 20027: '2026|3099|3/12/2026 3:27:24 PM|HB1364|H|Special Order next order of business (Rep. Luneau): MF RC 151-180 03/12/2026  HJ 7|3/13/2026 9:13:30 AM'",
+        "RollCallSummary.txt line 150: '2026|H|150|3/11/2026 1:42:53 PM|HB1824|151|180|25|36|||Special Order|relative to school district financial distress.' -- the only 2026 House roll call of 151 to 180",
+        "journals/2026/HJ 07 March 11, 2026.txt, pages 102-104: 'Rep. Luneau moved that HB 1824-FN, relative to school district financial distress, be made a Special Order to the next order of business. Rep. Damon requested a roll call; sufficiently seconded. YEAS 151 - NAYS 180 ... and the motion failed.'",
+        "Docket.txt line 24580, HB 1824's own row of the same vote, written 23 June 2026: 'Special Order to next order of business (Rep. Damon): MF RC 151-180 03/11/2026  HJ 7  P. 103'",
+        "Docket.txt lines 20024-20026: HB 1061's three rows from House Journal 7, written at 3:18, 3:19 and 3:24 PM on 12 March, the last dated 03/12/2026 for a roll call of 11 March (corrected in 'dates' above); the HB 1364 row follows at 3:27 PM",
+        "journals/2026: HB 1364 is named in HJ 1 (its introduction) and in no other House Journal of 2026, neither HJ 7 (11 March) nor HJ 8 (12 March); bill_status.json gives its House status as DIED, SESSION ENDED"
+      ],
+      "note": "This vote was not on HB 1364. The House Journal for 11 March 2026 records it as Rep. Luneau's motion to make HB 1824 a special order, which failed 151-180, and the roll call is filed under HB 1824; the General Court's online docket lists it under this bill as well. It is left out of this bill's history.",
+      "note_there": "The General Court's online docket also lists this vote under HB 1364, dated 12 March 2026. The House Journal for 11 March 2026 and the roll call place it on this bill.",
       "checked": "2026-09-24"
     }
   ]

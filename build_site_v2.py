@@ -1062,9 +1062,9 @@ CLOSING = {
     "Died when the session ended": (
         ("session ended", "died when the session", "died on the table"),
         # "THE BILL ITSELF", because a vote on a motion about it is still a
-        # vote. HB 1364, HB 1559, HB 1420, HB 1223 and CACR 19 of 2026 each
-        # met a motion to take it up out of order that failed on a roll call
-        # or a division -- HB 1364's 151-180 -- and then nothing more, and
+        # vote. HB 1559, HB 1420, HB 1223 and CACR 19 of 2026 each met a
+        # motion to take it up out of order that failed on a roll call or a
+        # division -- HB 1559's 156-195 -- and then nothing more, and
         # the page said "No vote was ever taken on it" over the tally. The
         # journey counts decisions on the bill, not procedural motions, so
         # the sentence claims exactly that much.
@@ -5624,6 +5624,17 @@ def vote_note_for(narr, rollcalls):
     return note
 
 
+def docket_lines(narr):
+    """The docket's own lines for the bill's page: its events, and the rows
+    the docket files under it that belong to another bill, by date. Those
+    are not in "events", so nothing that tells the bill's story reads them."""
+    evs = [e for e in (narr or {}).get("events", []) if not e.get("cancelled")]
+    away = [e for e in (narr or {}).get("misfiled", []) if not e.get("cancelled")]
+    if not away:
+        return evs
+    return sorted(evs + away, key=lambda e: e.get("date") or "")
+
+
 PENDING = re.compile(r"(In progress|In committee|Pending|Enrolled\.)", re.I)
 
 # WHAT A next_step() LINE CLAIMS, as the kind of status it would sit under.
@@ -6040,10 +6051,15 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
                                 "other records of the sitting place it on the "
                                 "date shown.")}
                            if e.get("date_as_recorded") else {}),
+                        # A ROW FILED UNDER THE WRONG BILL (docket_corrections
+                        # .json "misfiled") is listed here, with its note, and
+                        # nowhere else on the page; the bill it belongs to
+                        # carries a note on its own row of the same vote.
+                        **({"row_note": e["row_note"]} if e.get("row_note") else {}),
                         **hearing_testimony(
                             e, tdb, testimony.get(bid) if own else None),
                         **_cite(e, sources, (e.get("date") or "")[:4])}
-                       for e in (narr or {}).get("events", []) if not e.get("cancelled")],
+                       for e in docket_lines(narr)],
             # Prefer what the General Court says over what we would infer.
             # Where the docket has settled the bill, the per-chamber fields
             # are describing a superseded state and reading them beside

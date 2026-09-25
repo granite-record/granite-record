@@ -1046,6 +1046,15 @@ CORRECTIONS_FILE = "docket_corrections.json"
 CORRECTIONS = []
 CORRECTED = set()
 SIBLINGS = []
+# AND A ROW FILED UNDER THE WRONG BILL, from the same file's "misfiled" list.
+# HB 1364 of 2026 carries "Special Order next order of business (Rep. Luneau):
+# MF RC 151-180 03/12/2026 HJ 7", which the House Journal of 11 March and the
+# roll call both put on HB 1824. The row is taken out of the bill's history --
+# its sentence, its journey, its sitting -- and kept, with the entry's note,
+# in the list of the docket's own lines, where the clerk still shows it; the
+# bill it belongs to gets a note on its own row of the same vote.
+MISFILED = []
+MOVED = set()
 
 
 def _squash(s):
@@ -1053,14 +1062,34 @@ def _squash(s):
     return re.sub(r"\s+", " ", str(s or "")).strip()
 
 
-def load_corrections(path):
-    """The entries of docket_corrections.json, or [] where there is none."""
+def load_corrections(path, kind="dates"):
+    """The entries of docket_corrections.json, or [] where there is none:
+    its dates, or with kind="misfiled" its rows filed under another bill."""
     p = Path(path) if path else None
     if not p or not p.exists():
         return []
     doc = json.loads(p.read_text(encoding="utf-8"))
-    return [e for e in (doc.get("dates") or []) if isinstance(e, dict)
-            and e.get("source_says") and e.get("corrected_to")]
+    need = "corrected_to" if kind == "dates" else "belongs_to"
+    return [e for e in (doc.get(kind) or []) if isinstance(e, dict)
+            and e.get("source_says") and e.get(need)]
+
+
+def misfiled(r, bill):
+    """(the entry, where r is the row it takes off this bill; or None) and
+    the note for r where it is the belonging bill's own row of that vote."""
+    desc = _squash(r.get("desc"))
+    for i, e in enumerate(MISFILED):
+        if (str(e.get("session")) != str(r.get("session"))
+                or str(e.get("body", "")).upper() != str(r.get("body", "")).upper()):
+            continue
+        if (str(e.get("bill", "")).upper() == bill.upper()
+                and _squash(e["source_says"]) == desc):
+            MOVED.add(i)
+            return e, ""
+        if (str(e.get("belongs_to", "")).upper() == bill.upper()
+                and _squash(e.get("belongs_to_says")) == desc):
+            return None, (e.get("note_there") or "").strip()
+    return None, ""
 
 
 def _iso(mdy):
@@ -1576,7 +1605,7 @@ def build(bill, rows):
     if _VOCAB is not None and _VOCAB.era_for(session) is not None:
         vocab = _VOCAB
         rows = vocab.join_rows(rows, session)
-    evs = []
+    evs, elsewhere = [], []
     for r in rows:
         ev = (vocab.classify(r["desc"], r["created"], r.get("session"))
               if vocab is not None else None) or classify(r["desc"])
@@ -1598,6 +1627,20 @@ def build(bill, rows):
             ev["date"] = fixed
         clamp_year(ev, r.get("session") or session)
         ev["when"] = event_date(ev, r["created"])
+        away, there = misfiled(r, bill) if MISFILED else (None, "")
+        if there:
+            ev["row_note"] = there
+        if away:
+            # Out of the history, and into the bill's list of docket lines
+            # with the note saying whose it is.
+            elsewhere.append({"date": ev["when"].strftime("%Y-%m-%d"),
+                              "type": ev["_type"], "body": ev["body"],
+                              "cancelled": ev["cancelled"], "raw": ev["_raw"],
+                              "cite": ev.get("cite", ""),
+                              "cite_page": ev.get("cite_page", ""),
+                              "belongs_to": away["belongs_to"],
+                              "row_note": (away.get("note") or "").strip()})
+            continue
         # The order it was entered in, for hold_in_order to break a tie by;
         # it takes the key off again.
         ev["_row"] = len(evs)
@@ -1786,6 +1829,9 @@ def build(bill, rows):
                     **({"date_as_recorded": e["date_as_recorded"],
                         "date_note": e.get("date_note", "")}
                        if e.get("date_as_recorded") else {}),
+                    # This bill's own row of a vote the docket also files
+                    # under another bill (docket_corrections.json "misfiled").
+                    **({"row_note": e["row_note"]} if e.get("row_note") else {}),
                     **({**_floor_fields(e),
                         "motion": (e.get("motion") or "").upper(),
                         "vote_kind": (e.get("vote") or "").upper(),
@@ -1824,6 +1870,10 @@ def build(bill, rows):
                        if e["_type"] == "report" else {})}
                    for e in evs],
         "unrecognised": unknown,
+        # Rows the docket files under this bill that belong to another
+        # (docket_corrections.json "misfiled"): shown with the docket's lines,
+        # read by nothing that tells the bill's story.
+        **({"misfiled": elsewhere} if elsewhere else {}),
     }
 
 
@@ -1836,7 +1886,7 @@ def report_corrections(results):
     run's terms are judged: an entry for another term is not this docket's to
     match. Returns (applied, stale) as lists of entries.
     """
-    if not CORRECTIONS:
+    if not CORRECTIONS and not MISFILED:
         return [], []
     mine = [i for i, e in enumerate(CORRECTIONS)
             if str(e.get("bill", "")).upper() in {
@@ -1854,6 +1904,20 @@ def report_corrections(results):
         print(f"  ! docket_corrections.json: {bill} has another row with a "
               f"corrected entry's date and journal and no entry of its own: "
               f"{desc!r}")
+    # The misfiled rows, judged the same way: one that matched no row has
+    # stopped holding a vote off the wrong bill.
+    for i, e in enumerate(MISFILED):
+        if str(e.get("bill", "")).upper() not in {
+                b.upper() for b in results.get(P.term_of(str(e.get("session", ""))), {})}:
+            continue
+        if i in MOVED:
+            print(f"  docket_corrections.json: {e.get('bill')}'s row of "
+                  f"{e.get('belongs_to')} taken off it")
+        else:
+            print(f"  ! docket_corrections.json: {e.get('bill')} of "
+                  f"{e.get('session')} matched no docket row and was NOT "
+                  f"applied; the row no longer reads "
+                  f"{_squash(e.get('source_says'))!r}")
     return hit, stale
 
 
@@ -1870,13 +1934,15 @@ def main():
                     help="sign-in counts, so a public hearing says how many "
                          "signed in and on which side; skipped if not there")
     ap.add_argument("--corrections", default=CORRECTIONS_FILE,
-                    help="docket dates a person has corrected, with the "
-                         "evidence; hand-made, and skipped if not there")
+                    help="docket dates, and rows filed under the wrong bill, "
+                         "a person has corrected, with the evidence; "
+                         "hand-made, and skipped if not there")
     a = ap.parse_args()
 
-    global MEMBERS, TESTIMONY, CORRECTIONS
+    global MEMBERS, TESTIMONY, CORRECTIONS, MISFILED
     MEMBERS = load_members(a.members)
     CORRECTIONS = load_corrections(a.corrections)
+    MISFILED = load_corrections(a.corrections, "misfiled")
     try:
         TESTIMONY = json.loads(Path(a.testimony).read_text(encoding="utf-8"))
     except (OSError, ValueError):
