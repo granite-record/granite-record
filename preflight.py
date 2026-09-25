@@ -10579,10 +10579,11 @@ process.stdout.write(JSON.stringify(out));
 
 @check("build", "the lists of bills the build writes run by number, as bills.html's does",
        needs=("bill_order", "build_committees", "build_site_v2",
-              "build_session_pages", "build_pages"))
-def _bill_lists_by_number(BO, BC, BS, SP, BP):
+              "build_session_pages", "build_pages", "build_indexes"))
+def _bill_lists_by_number(BO, BC, BS, SP, BP, BI):
     """A committee's bills, a member's sponsored bills, a sitting day's consent
-    calendar, a calendar slot, bills.csv and sponsors.csv.
+    calendar, a calendar slot, bills.csv, sponsors.csv and a term's page in
+    /directory.
 
     Each of these sorted the bill number as text, so HB1003 came before HB103
     and SB 16 after SB 133. The audit of 24 September counted 499 committee
@@ -10624,6 +10625,29 @@ def _bill_lists_by_number(BO, BC, BS, SP, BP):
     got = [x.replace(" ", "") for x in _CBN.findall(page)]
     assert got == want, "a calendar slot lists " + ", ".join(got)
 
+    # A term's page in /directory. Its kinds are sections, so the sections run
+    # in KIND_ORDER and any other kind follows alphabetically, and each section
+    # runs by number. It kept an order of its own -- HB, SB, CACR, HCR -- until
+    # 24 September, after every other list had come to share this one.
+    kind = lambda b: re.match(r"[A-Z]+", b).group(0)
+    kinds = list(dict.fromkeys(kind(b) for b in want))
+    heads = ([k for k in BO.KIND_ORDER if k in kinds]
+             + sorted(k for k in kinds if k not in BO.KIND_ORDER))
+    site = Path(tempfile.mkdtemp())
+    try:
+        BI.bills_page(site, "https://graniterecord.org", "2025-2026",
+                      [{"id": b, "year": 2025, "title": "a bill"} for b in mixed], [])
+        page = (site / "directory" / "bills-2025-2026.html").read_text(encoding="utf-8")
+    finally:
+        shutil.rmtree(site, ignore_errors=True)
+    got = re.findall(r'<h2 id="([a-z]+)">', page)
+    assert got == [k.lower() for k in heads], (
+        "the directory heads a term's kinds " + ", ".join(got))
+    got = [b for ul in re.findall(r'<ul class="dirbills">(.*?)</ul>', page, re.S)
+           for b in re.findall(r'<li><a href="[^"]*">([^<]*)</a>', ul)]
+    exp = [b for k in heads for b in want if kind(b) == k]
+    assert got == exp, "the directory lists a term's bills " + ", ".join(got)
+
     # The downloads, in a folder of their own: sponsors() reads
     # text_sponsors.json from where it runs, and the real one is not a fixture.
     here = Path(".").resolve()
@@ -10656,8 +10680,8 @@ def _bill_lists_by_number(BO, BC, BS, SP, BP):
     assert bills_csv == exp, ("bills.csv runs " + ", ".join(
         b for t, b in bills_csv if t == "2025-2026"))
     assert sponsors_csv == want, "sponsors.csv runs " + ", ".join(sponsors_csv)
-    return "ok", ("committee, sponsored, consent, calendar, bills.csv and "
-                  f"sponsors.csv all run {want[3]} before {want[5]}")
+    return "ok", ("committee, sponsored, consent, calendar, directory, bills.csv "
+                  f"and sponsors.csv all run {want[3]} before {want[5]}")
 
 
 @check("frontend", "every week from the first to the last has a page, and the arrows step one week")

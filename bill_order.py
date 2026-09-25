@@ -29,9 +29,9 @@ The id itself comes last, only so that two ids app.js would call equal
 ("HB 5" and "HB5") still come out the same way on every run. app.js's sort is
 stable, so a list already in this order stays in it on the page.
 
-build_indexes.py orders its directory's kind SECTIONS differently (HB, SB,
-CACR, ...) and numbers within each; that is a choice about headings, not this.
-Standard library only; no network.
+build_indexes.py heads its directory's sections by kind in KIND_ORDER too,
+and lists each by this key, so /directory reads in the order the bill search
+and the downloads do. Standard library only; no network.
 """
 import re
 

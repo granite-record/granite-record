@@ -41,10 +41,17 @@ from collections import defaultdict
 from pathlib import Path
 from urllib.parse import quote_plus
 
+import bill_order as BO
 import shell as S
 import structured as LD
 
-KIND_ORDER = ["HB", "SB", "CACR", "HCR", "SCR", "HJR", "SJR", "HR", "SR", "PET"]
+# THE KINDS RUN IN THE SITE'S ORDER, bill_order's: House bills, House
+# resolutions, House concurrent resolutions, CACRs, then the Senate's, then the
+# joint resolutions, and any other kind after those, alphabetically. This page
+# kept an order of its own (HB, SB, CACR, HCR, ...) after bills.html, the
+# committee and member lists and the downloads had all come to share one, so a
+# reader moving from the bill search to the directory found the Senate's bills
+# in second place here and fifth everywhere else. Asked for on 24 September.
 KIND_NAME = {"HB": "House bills", "SB": "Senate bills", "CACR": "Constitutional amendments",
              "HCR": "House concurrent resolutions", "SCR": "Senate concurrent resolutions",
              "HJR": "House joint resolutions", "SJR": "Senate joint resolutions",
@@ -79,10 +86,11 @@ def bills_page(site, base, term, rows, urls):
     groups = defaultdict(list)
     for r in rows:
         groups[kind_of(r["id"])[0]].append(r)
-    order = [k for k in KIND_ORDER if k in groups] + sorted(k for k in groups if k not in KIND_ORDER)
+    order = ([k for k in BO.KIND_ORDER if k in groups]
+             + sorted(k for k in groups if k not in BO.KIND_ORDER))
     body = []
     for k in order:
-        items = sorted(groups[k], key=lambda r: kind_of(r["id"])[1])
+        items = sorted(groups[k], key=lambda r: BO.bill_key(r["id"]))
         body.append(f'<h2 id="{S.E(k.lower())}">{S.E(KIND_NAME.get(k, k))} '
                     f'<span class="dircount">{len(items):,}</span></h2><ul class="dirbills">')
         for r in items:
