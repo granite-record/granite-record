@@ -1699,11 +1699,14 @@ SEATING_JS = """
 # that make it up (SYN and the query groups, the bill order, what a bill
 # number is) between BILLMATCH:BEGIN and BILLMATCH:END; this copies them,
 # unchanged and in order, into site/billmatch.js, inside a function so that
-# none of their names can collide with a page's own, and hands back the four
-# the header uses. find.js loads it only when somebody types, and only on a
-# page that does not already run app.js.
+# none of their names can collide with a page's own, and hands back the five
+# the header uses -- looseness since 25 September, so that the header and
+# /search put a bill that has the word itself above one that only has a
+# longer word it begins, as /bills does. find.js loads it only when somebody
+# types, and only on a page that does not already run app.js.
 BILLMATCH_BEGIN, BILLMATCH_END = "// BILLMATCH:BEGIN", "// BILLMATCH:END"
-BILLMATCH_EXPORTS = ("queryGroups", "groupWeight", "billNumbers", "billKey")
+BILLMATCH_EXPORTS = ("queryGroups", "groupWeight", "billNumbers", "billKey",
+                     "looseness")
 
 
 def bill_matcher_js(app_js):

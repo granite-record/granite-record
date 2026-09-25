@@ -119,15 +119,35 @@ function _frank(r,s,edge){
    when every word typed is a whole word of its name -- "bailey", "glenn
    bailey", "rep. bailey", "litchfield", "education" -- and part of a word
    ("bail", "litch") leaves the bills first with the name under them. This
-   decides only which side of the bills a name falls; among the names, the
-   order is still _frank's. A letter or digit in any alphabet belongs to its
-   word, so "2" is not whole in "Straf 20", and "josé" is whole in José. */
+   decides which side of the bills a name falls; among the names, the same
+   test orders them (_fpart, below), and then _frank. A letter or digit in
+   any alphabet belongs to its word, so "2" is not whole in "Straf 20", and
+   "josé" is whole in José. */
+const _fwords=s=>String(s||"").toLowerCase().split(/\s+/)
+  .map(w=>w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,"")).filter(Boolean);
+const _fisword=(name,w)=>new RegExp("(^|[^\\p{L}\\p{N}])"
+  +w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?![\\p{L}\\p{N}])","u").test(name);
 function _fwhole(r,s){
   const name=_fbare(r[1]).toLowerCase();
-  const words=String(s||"").toLowerCase().split(/\s+/)
-    .map(w=>w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu,"")).filter(Boolean);
-  return words.length>0&&words.every(w=>new RegExp("(^|[^\\p{L}\\p{N}])"
-    +w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"(?![\\p{L}\\p{N}])","u").test(name));
+  const words=_fwords(s);
+  return words.length>0&&words.every(w=>_fisword(name,w));
+}
+
+/* THE WORD ITSELF FIRST, AMONG THE NAMES TOO (the person, 25 September:
+   "have direct word matches be at the top of the best match sorting"). What
+   was typed also finds a name it only begins -- "gun" finds former Rep.
+   Michael Gunski, "bail" Rep. Glenn Bailey -- and that stays, lower down:
+   a name that has every word typed as a whole word of it, by _fwhole's test,
+   comes first. So "hill" lists Hill, Sugar Hill and the members named Hill
+   before Hillsborough and the Hills districts' members, and "sd2" the
+   senator for SD2 before those for SD20 to SD24. A sitting member's name
+   carries their seat, so "merr" lists the Merr districts' members before
+   the town of Merrimack, as "hills 29" always has. This counts the words
+   typed that are not a whole word of the name, and findMatch orders by it
+   before anything else. */
+function _fpart(r,s){
+  const name=_fbare(r[1]).toLowerCase();
+  return _fwords(s).filter(w=>!_fisword(name,w)).length;
 }
 
 // `limit` is the panel's eight by default. /search passes Infinity: it is a
@@ -144,18 +164,20 @@ function findMatch(q,limit){
     if(!words.every(w=>hay.includes(w)))continue;
     const name=_fbare(r[1]).toLowerCase();
     const rank=_frank(r,s,edge);
-    // Match quality decides first, and only then does a member who has left
-    // fall in behind one who has not: that is what "prioritize ... current
-    // legislators before listing former ones" means with a list this long.
-    // A former member whose name begins with the query still outranks a town
-    // that merely mentions it, which is the answer a reader wants.
+    // Match quality decides first -- the words typed as whole words of the
+    // name (_fpart), then where in the name they fall (_frank) -- and only
+    // then does a member who has left fall in behind one who has not: that
+    // is what "prioritize ... current legislators before listing former
+    // ones" means with a list this long. A former member whose name begins
+    // with the query still outranks a town that merely mentions it, which is
+    // the answer a reader wants.
     const gone=r[0]==="former"?1:0;
     // Among former members, the most recent first. r[5] is the year they last
     // sat; negated so one sort direction serves both this and name length.
-    hit.push([rank,gone,gone?-(r[5]||0):0,name.length,r]);
+    hit.push([_fpart(r,s),rank,gone,gone?-(r[5]||0):0,name.length,r]);
   }
-  hit.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]||a[3]-b[3]);
-  return hit.slice(0,limit||8).map(x=>x[4]);
+  hit.sort((a,b)=>a[0]-b[0]||a[1]-b[1]||a[2]-b[2]||a[3]-b[3]||a[4]-b[4]);
+  return hit.slice(0,limit||8).map(x=>x[5]);
 }
 
 /* DID YOU MEAN. Only when nothing at all was found, because that is the only
@@ -286,8 +308,9 @@ function _fprep(rows){
 function _fbillApi(){
   // On bills.html and every record page, app.js is already loaded.
   if(typeof queryGroups==="function"&&typeof groupWeight==="function"
-     &&typeof billNumbers==="function"&&typeof billKey==="function")
-    return {queryGroups,groupWeight,billNumbers,billKey};
+     &&typeof billNumbers==="function"&&typeof billKey==="function"
+     &&typeof looseness==="function")
+    return {queryGroups,groupWeight,billNumbers,billKey,looseness};
   return window.GR_BILLMATCH||null;
 }
 const _fdata=f=>new URL(f,location.origin+"/").href;
@@ -356,10 +379,12 @@ function findBillsLoadAll(){
    n, term, top} once the index is here; {state:"loading"} or
    {state:"failed"} until then; and null for a search with nothing in it to
    match -- "?" on its own, which the bill search reads as every bill. The
-   order is app.js's "best match" (its scoreOf and sortRows): the most of the
-   search in the title, then the sponsor, then the committee, the search's
-   own words in order worth two more, and bill number within each. A search
-   for bill numbers is number order.
+   order is app.js's "best match" (its looseness, scoreOf and sortRows):
+   every word of the search as a word of the title or the sponsor's name
+   before the start of a longer one -- "bail" before "bailiffs" -- then the
+   most of the search in the title, then the sponsor, then the committee, the
+   search's own words in order worth two more, and bill number within each.
+   A search for bill numbers is number order.
 
    `allTerms` counts every term's bills (findBillsLoadAll) where /bills
    would with ?term=all. A bill number is unique only within a term, so
@@ -380,20 +405,22 @@ function findBills(q,limit,allTerms){
   }
   const hit=[];
   for(const b of src.rows){
-    let sc=0;
+    let sc=0,loose=0;
     if(ids){if(!ids.includes(String(b.id).toUpperCase()))continue;}
     else{
       let every=true;
       for(const g of gs){const w=A.groupWeight(b,g);if(!w){every=false;break;}sc+=w;}
       if(!every)continue;
       if(gs.length>1&&b.hayT.includes(words))sc+=2;
+      loose=A.looseness(b,gs);
     }
-    hit.push([sc,A.billKey(b),b]);
+    hit.push([sc,A.billKey(b),b,loose]);
   }
   const newer=(x,y)=>{const a=String(x[2].term||""),b=String(y[2].term||"");
     return a<b?1:a>b?-1:0;};
   const num=(x,y)=>x[1][0]-y[1][0]||x[1][1]-y[1][1];
-  hit.sort(ids?(x,y)=>num(x,y)||newer(x,y):(x,y)=>y[0]-x[0]||newer(x,y)||num(x,y));
+  hit.sort(ids?(x,y)=>num(x,y)||newer(x,y)
+    :(x,y)=>x[3]-y[3]||y[0]-x[0]||newer(x,y)||num(x,y));
   return {state:"ready",n:hit.length,term:FBILLS.term,every:!!allTerms,
           terms:allTerms?FALL.terms:[FBILLS.term],numbers:!!ids,
           top:hit.slice(0,limit==null?3:limit).map(h=>h[2])};

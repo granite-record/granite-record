@@ -3156,6 +3156,359 @@ def _find_bills(BP):
                   "a whole word of what was typed")
 
 
+# THE FIXTURE FOR _best_match_words: twenty-eight real bills, their titles,
+# sponsors and committees as the index carries them, in four terms. Each
+# search below meets some of them by a word of the title or of the sponsor's
+# name -- the word itself, with an ending ("taxes", "taxing", "posting",
+# "post-arrest", "fishing"), a synonym ("firearm" and "pistols" for "gun"),
+# or a sponsor named Post -- and some only by the start of a longer word
+# ("taxable", "taxpayer", "firearm" for "fire", "postpartum", "Gunstock",
+# "bailiffs", "municipalities", "fisheries"); "fish" meets Rep. Fisher's
+# bill, and "municipal" and "fish" some bills only through a committee's
+# name. The order before 25 September -- best score, then the newer term,
+# then the number -- put a longer word above the word itself in every one of
+# these searches, and the town of Hillsborough above Sugar Hill for "hill".
+def _best_match_fixture():
+    def bill(key, sponsor, committees, title, term):
+        bid, year = key.split("/")
+        kind = re.match(r"[A-Z]+", bid).group(0)
+        return {"id": bid, "n": f"{kind} {bid[len(kind):]}", "year": int(year),
+                "title": title, "sponsor": sponsor,
+                "sponsor_label": f"Rep. {sponsor}", "committee": committees[0],
+                "committees": committees, "topic": "Other", "kind": "active",
+                "status": "Introduced", "term": term,
+                "last_action": f"{year}-01-15", "votedays": []}
+    cj, mc = "House Criminal Justice and Public Safety", "House Municipal and County Government"
+    sm = "Senate Election Law and Municipal Affairs"
+    now = [
+        ("HB56/2025", "David Meuse", [cj], "requiring a background check and "
+         "mandatory waiting period during certain firearm transfers."),
+        ("HB57/2025", "David Meuse", [cj, "Senate Judiciary"], "relative to the "
+         "standards applicable to bail in criminal matters."),
+        ("HB84/2025", "Barry Faulkner", [mc], "allowing municipalities to collect "
+         "fees for certain recreational vehicles located on campground properties."),
+        ("HB87/2025", "David Love", [cj, "Senate Energy and Natural Resources"],
+         "prohibiting the posting of land not owned by the poster."),
+        ("HB91/2025", "Charlie St. Clair", [cj, sm], "relative to the presence of a "
+         "fire department at a fireworks display."),
+        ("HB99/2025", "Michael Moffett", [mc, sm], "relative to a waiver from "
+         "property taxes for disabled veterans."),
+        ("HB124/2025", "Arnold Davis", [mc, sm], "enabling a municipal forest "
+         "committee or conservation commission to offer surplus money to the "
+         "municipality for deposit in the municipal unreserved fund balance."),
+        ("HB194/2026", "Lisa Post", [cj, "Senate Children and Family Law"],
+         "relative to the crime of interference with custody and relative to the "
+         "practice of pharmacy and the dispensing of certain medications by "
+         "pharmacists."),
+        ("HB352/2025", "Timothy Horrigan", [cj], "prohibiting possession of a "
+         "firearm at a polling place."),
+        ("HB375/2025", "Dan McGuire", ["House Public Works and Highways"],
+         "allowing municipalities to designate sections of state and local "
+         "highways for all terrain vehicles."),
+        ("HB390/2025", "Stephen Pearson", ["House Transportation", "Senate Transportation"],
+         "relative to adding retired fire apparatus (fire trucks) to antique "
+         "vehicle exemptions."),
+        ("HB402/2025", "David Luneau", ["House Ways and Means"], "relative to "
+         "liability as taxable income of education freedom account payments."),
+        ("HB1227/2026", "James Gruber", [mc], "relative to the calculation of the "
+         "local tax cap."),
+        ("HB1250/2026", "Ross Berry", ["House Labor, Industrial and Rehabilitative "
+         "Services"], "relative to notice, documentation, and job reinstatement "
+         "requirements under leave of absence for childbirth, postpartum, and "
+         "pediatric medical appointments."),
+        ("HB1293/2026", "Bill Bolton", ["House Ways and Means"], "taxing certain "
+         "properties owned by charitable or non-profit organizations."),
+        ("HB1302/2026", "Daniel Popovici-Muller", [cj], "relative to post-arrest "
+         "photograph distribution by law enforcement officers."),
+        ("HB1746/2026", "Matt Sabourin dit Choinière", ["House Judiciary"],
+         "subjecting taxpayer funded investigations to the right-to-know law."),
+        ("HB1781/2026", "Wayne Burton", ["House Education Funding"], "relative to "
+         "child support obligations during postsecondary education."),
+    ]
+    before = [
+        ("HB1414/2024", "Barbara Comtois", [mc], "relative to the Gunstock Area "
+         "Commission and ski resort."),
+        ("HB1424/2024", "James Spillane", ["House Fish and Game and Marine "
+         "Resources", "Senate Energy and Natural Resources"], "relative to "
+         "pistols permitted for taking game."),
+        ("SB248/2024", "Daryl Abbas", [cj, "Senate Judiciary"], "relative to bail "
+         "for a defendant."),
+    ]
+    fg = "House Fish and Game and Marine Resources"
+    earlier = [
+        ("HB126/2017", "Peter Bixby", [fg], "prohibiting hunting on Willand Pond "
+         "in Strafford county."),
+        ("HB190/2017", "Gene Chandler", [fg, "Senate Energy and Natural Resources"],
+         "relative to the wildlife habitat account and the fisheries habitat "
+         "account."),
+        ("HB224/2017", "David Bates", [fg], "repealing the provision for "
+         "nonresident student hunting and fishing licenses."),
+        ("HB467/2017", "Daniel Eaton", [fg], "relative to the duties of the fish "
+         "and game commission."),
+        ("HB515/2017", "Robert Fisher", ["House Science, Technology and Energy"],
+         "relative to options for customers who are in arrears in utility bill "
+         "payments."),
+    ]
+    long_ago = [
+        ("HB275/2009", "Christopher Ahlgren", ["House Judiciary"], "increasing the "
+         "state reimbursement amounts for payment of bailiffs."),
+        ("HB637/2009", "Jordan Ulery", [cj], "relative to bail agents and recovery "
+         "agents."),
+    ]
+    terms = {"2025-2026": now, "2023-2024": before, "2017-2018": earlier,
+             "2009-2010": long_ago}
+    idx = {f"/idx/{t}.json": [bill(*row, t) for row in rows] for t, rows in terms.items()}
+    find = [
+        ["town", "Hill", "Merrimack County", "town/hill", "Merrimack"],
+        ["town", "Hillsborough", "Hillsborough County", "town/hillsborough",
+         "Hillsborough"],
+        ["town", "Sugar Hill", "Grafton County", "town/sugar-hill", "Grafton"],
+        ["legislator", "Rep. Bill Ohm (R - Hills 10)",
+         "House · Hills 10 · Republican", "legislator/bill-ohm-hills-10",
+         "Hillsborough"],
+        ["legislator", "Rep. Gregory Hill (R - Merr 2)",
+         "House · Merr 2 · Republican", "legislator/gregory-hill-merr-2",
+         "Merrimack"],
+        ["former", "Former Rep. Jonathan Hill", "House · Rock 29 · 2001–2002",
+         "legislator/jonathan-hill-rock-29", "R", 2002],
+        ["former", "Former Rep. Michael Gunski", "House · Hills 6 · 2019–2022",
+         "legislator/michael-gunski-hills-6", "Hills R", 2021],
+    ]
+    meta = {"terms": list(terms), "topics": ["Other"],
+            "committees": sorted({c for rows in terms.values() for r in rows for c in r[2]}),
+            "sponsors": [], "votedays": [], "years": [2026, 2025, 2024, 2018, 2017, 2009]}
+    return {"/meta.json": meta, **idx, "/find.json": find}
+
+
+# What each search meets each bill by, read off the titles above, in the
+# order best match must list them: a word of the title or of the sponsor's
+# name; only a longer word of the title; only the sponsor's name with an
+# ending (Rep. Fisher, for "fish"); only a committee's name. Every bill of
+# one kind before any of the next -- and every one of them listed, because a
+# longer word is still a match.
+_BM_WORD = "a word of its title or sponsor's name"
+_BM_LONGER = "only a longer word of its title"
+_BM_ENDING = "only its sponsor's name with an ending"
+_BM_COMMITTEE = "only a committee's name"
+_BEST_MATCH_WORDS = {
+    "tax": [(_BM_WORD, {"HB99/2025", "HB1227/2026", "HB1293/2026"}),
+            (_BM_LONGER, {"HB402/2025", "HB1746/2026"})],
+    "fire": [(_BM_WORD, {"HB91/2025", "HB390/2025"}),
+             (_BM_LONGER, {"HB56/2025", "HB352/2025"})],
+    "post": [(_BM_WORD, {"HB87/2025", "HB194/2026", "HB1302/2026"}),
+             (_BM_LONGER, {"HB1250/2026", "HB1781/2026"})],
+    "municipal": [(_BM_WORD, {"HB124/2025"}),
+                  (_BM_LONGER, {"HB84/2025", "HB375/2025"}),
+                  (_BM_COMMITTEE, {"HB91/2025", "HB99/2025", "HB1227/2026",
+                                   "HB1414/2024"})],
+    "gun": [(_BM_WORD, {"HB56/2025", "HB352/2025", "HB1424/2024"}),
+            (_BM_LONGER, {"HB1414/2024"})],
+    "bail": [(_BM_WORD, {"HB57/2025", "SB248/2024", "HB637/2009"}),
+             (_BM_LONGER, {"HB275/2009"})],
+    "fish": [(_BM_WORD, {"HB224/2017", "HB467/2017"}),
+             (_BM_LONGER, {"HB190/2017"}),
+             (_BM_ENDING, {"HB515/2017"}),
+             (_BM_COMMITTEE, {"HB126/2017", "HB1424/2024"})],
+}
+# And the names /search and the header list: every word typed as a whole
+# word of the name first, a name it only begins after.
+_BEST_MATCH_NAMES = {
+    "hill": ({"Hill", "Sugar Hill", "Rep. Gregory Hill (R - Merr 2)",
+              "Former Rep. Jonathan Hill"},
+             {"Hillsborough", "Rep. Bill Ohm (R - Hills 10)"}),
+    "gun": (set(), {"Former Rep. Michael Gunski"}),
+}
+
+# /bills, typed into: the cards in the order drawn, each with the year its
+# address carries. "all" opens it as /bills?term=all.
+_BEST_MATCH_APP = r"""
+require("./stub.js");
+""" + _FIND_BILLS_FETCH + r"""
+if (MODE === "all") location.search = "?term=all";
+const box = document.querySelector("#q"); box.disabled = true;
+try { (0, eval)(fs.readFileSync("./app.js", "utf8")); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+(async () => {
+  for (let i = 0; i < 400 && box.disabled !== false; i++) await ticks(1);
+  if (box.disabled !== false) {
+    console.log("app.js never finished loading the fixture"); process.exit(1); }
+  const out = {};
+  for (const s of Q) {
+    box.value = s; box.fire("input");
+    const html = document.querySelector("#results").innerHTML;
+    out[s] = [...html.matchAll(
+      /<article class="card[^"]*" data-id="([^"]+)"[\s\S]*?bill\/(\d{4})\//g)]
+      .map(m => m[1] + "/" + m[2]);
+  }
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+# The header panel and /search: find.js with billmatch.js, on a page without
+# app.js. Every bill findBills lists for the current term and for every term,
+# and every name findMatch lists.
+_BEST_MATCH_PANEL = r"""
+require("./stub.js");
+""" + _FIND_BILLS_FETCH + r"""
+const vm = require("vm");
+const NAMES = JSON.parse(fs.readFileSync("./names.json", "utf8"));
+const script = (f) => vm.runInThisContext(fs.readFileSync(f, "utf8"), {filename: f});
+document.head.appendChild = (s) => {
+  if (/\/billmatch\.js$/.test(String(s.src))) {
+    try { script("./billmatch.js"); }
+    catch (e) { console.log("BILLMATCH " + e.message); process.exit(1); }
+    if (s.onload) s.onload();
+  } else if (s.onerror) s.onerror();
+};
+let F;
+try { script("./find.js");
+      F = vm.runInThisContext("({FIND, findBills, findBillsLoadAll, findMatch})"); }
+catch (e) { console.log("LOAD " + e.message); process.exit(1); }
+F.FIND.rows = FIX["/find.json"];
+(async () => {
+  if (!(await F.findBillsLoadAll())) {
+    console.log("the fixture's terms did not load"); process.exit(1); }
+  const out = {panel: {}, search: {}, names: {}};
+  const keys = B => B && B.state === "ready" ? B.top.map(b => b.id + "/" + b.year)
+    : ["no answer: " + JSON.stringify(B)];
+  for (const s of Q) {
+    out.panel[s] = keys(F.findBills(s, Infinity));
+    out.search[s] = keys(F.findBills(s, Infinity, true));
+  }
+  for (const s of NAMES) out.names[s] = F.findMatch(s, Infinity).map(r => r[1]);
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "best match lists a bill with the word itself above one with only a "
+                   "longer word it begins, on /bills, the header and /search, and "
+                   "names the same way", needs=("build_pages",))
+def _best_match_words(BP):
+    """The person, 25 September: a word also finding the longer words it
+    begins is fine -- "bail" finds "bailiff", "gun" finds Gunski -- but
+    "have direct word matches be at the top of the best match sorting".
+
+    Best match sorted by where the words fall (title, then sponsor, then
+    committee) and then by term and number, so on /bills on All terms the
+    2009 bill about bailiffs came fortieth for "bail", above thirty-six bail
+    bills, and the Gunstock Area Commission's came forty-eighth for "gun",
+    above two hundred and forty-eight gun bills. app.js's looseness adds up
+    how far each part of a search falls short of a word of the bill's title
+    or sponsor's name, and best match sorts by it first -- in /bills, and
+    through billmatch.js in the header panel and /search, which must list
+    bills in /bills' order.
+
+    A committee's name stays below a longer word in the title, because "Best
+    match puts the title first" is a rule of its own (app.js, above
+    groupWeight): counted as a direct match, it listed 187 bills whose only
+    link to "municipal" was a committee's name above the 26 titled
+    "municipalities". And a sponsor's name counts only as itself: "post"
+    meets Rep. Lisa Post's bills as a whole word, where "fish" meets Rep.
+    Fisher's only as the matcher's "fish" with an ending, which a name is
+    not, so they follow the titles that say "fisheries".
+
+    The names in the header and on /search follow the same rule: "hill"
+    lists Hill, Sugar Hill and the members named Hill before Hillsborough and
+    a Hills district's member.
+
+    Every bill here is real, copied from the index, and every search here
+    put a longer word above the word itself in the order before this.
+    """
+    if not shutil.which("node"):
+        return "skip", "node is not installed"
+    need = [Path(f) for f in ("app.js", "find.js", "dom_stub.js")]
+    if not all(f.exists() for f in need):
+        return "skip", "app.js, find.js or dom_stub.js not in this directory"
+    app = Path("app.js").read_text(encoding="utf-8")
+    try:
+        matcher = BP.bill_matcher_js(app)
+    except SystemExit as e:
+        raise AssertionError(f"build_pages cannot cut the matcher out of "
+                             f"app.js: {e}")
+    fx = _best_match_fixture()
+    root = Path(tempfile.mkdtemp())
+    try:
+        files = {"stub.js": Path("dom_stub.js").read_text(encoding="utf-8"),
+                 "app.js": app, "billmatch.js": matcher,
+                 "find.js": Path("find.js").read_text(encoding="utf-8"),
+                 "fixture.json": json.dumps(fx),
+                 "queries.json": json.dumps(list(_BEST_MATCH_WORDS)),
+                 "names.json": json.dumps(list(_BEST_MATCH_NAMES)),
+                 "app_side.js": _BEST_MATCH_APP,
+                 "panel_side.js": _BEST_MATCH_PANEL}
+        for name, text in files.items():
+            (root / name).write_text(text, encoding="utf-8")
+
+        def node(*args):
+            r = _run(["node", *args], cwd=root, capture_output=True,
+                     text=True, timeout=90)
+            said = (r.stdout + r.stderr).strip()
+            assert r.returncode == 0 and said, (
+                f"node {' '.join(args)}: "
+                + (said.splitlines() or ["no output"])[-1][:200])
+            return json.loads(said.splitlines()[-1])
+
+        now, every = node("app_side.js", "cur"), node("app_side.js", "all")
+        P = node("panel_side.js")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    current = {f"{b['id']}/{b['year']}" for b in fx["/idx/2025-2026.json"]}
+    lists = [("/bills", now, current), ("the header", P["panel"], current),
+             ("/bills on All terms", every, None), ("/search", P["search"], None)]
+    bad = []
+    for where, got, scope in lists:
+        for q, kinds in _BEST_MATCH_WORDS.items():
+            kinds = [(w, ks if scope is None else ks & scope) for w, ks in kinds]
+            order = got.get(q) or []
+            known = set().union(*(ks for _, ks in kinds))
+            lost = known - set(order)
+            if lost:
+                bad.append(f"{where} lost {sorted(lost)} for {q!r}: a longer word "
+                           "is still a match, lower down")
+                continue
+            stray = [k for k in order if k not in known]
+            if stray:
+                bad.append(f"{where} lists {stray} for {q!r}, which the fixture's "
+                           "table does not account for")
+                continue
+            tier = {k: i for i, (_, ks) in enumerate(kinds) for k in ks}
+            up = [(a, b) for i, a in enumerate(order) for b in order[i + 1:]
+                  if tier[a] > tier[b]]
+            if up:
+                a, b = up[0]
+                bad.append(f"{where} lists {a} ({kinds[tier[a]][0]}) above {b} "
+                           f"({kinds[tier[b]][0]}) for {q!r}, and {len(up) - 1} "
+                           "more pairs the same way round")
+    # Each search pits a word against a longer one, or the check passes by
+    # having nothing to order.
+    thin = [q for q, kinds in _BEST_MATCH_WORDS.items()
+            if not all(any(w == want and ks for w, ks in kinds)
+                       for want in (_BM_WORD, _BM_LONGER))]
+    assert not thin, f"the fixture no longer pits a word against a longer one for {thin}"
+    assert not bad, "best match: " + " | ".join(bad[:3])
+
+    wrong = []
+    for q, (whole, part) in _BEST_MATCH_NAMES.items():
+        order = P["names"].get(q) or []
+        lost = (whole | part) - set(order)
+        if lost:
+            wrong.append(f"{q!r} lost {sorted(lost)}")
+            continue
+        first_part = min((order.index(x) for x in part), default=len(order))
+        late = sorted(x for x in whole if order.index(x) > first_part)
+        if late:
+            wrong.append(f"{q!r} lists {order[first_part]!r}, which only begins "
+                         f"with it, above {late}")
+    assert not wrong, "the names in the header and /search: " + "; ".join(wrong)
+    n = sum(len(v) for k, v in fx.items() if k.startswith("/idx/"))
+    return "ok", (f"{len(_BEST_MATCH_WORDS)} searches over {n} real bills: the word "
+                  "itself, then a longer word, then a committee's name, in /bills, "
+                  "the header, /bills on All terms and /search; 'hill' lists Hill "
+                  "and Sugar Hill before Hillsborough")
+
+
 @check("frontend", "the assets are revalidated, and no page names a version")
 def _asset_headers():
     """What replaced "a page asks for the script it was built against".

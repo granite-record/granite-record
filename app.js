@@ -317,6 +317,46 @@ function groupWeight(b,g){
   }
   return w;
 }
+/* THE WORD ITSELF BEFORE A LONGER WORD IT BEGINS (the person, 25 September:
+   "have direct word matches be at the top of the best match sorting"). The
+   reader's own word matches as the start of a word, so "bail" finds bills
+   about bailiffs, "gun" the Gunstock Area Commission and "tax" "taxpayer
+   funded investigations" -- and they stay found, lower down. A part of the
+   search is met directly where it is a word of the bill's title -- the word
+   itself, with one of altRx's endings ("guns", "taxes"), or one of its
+   synonyms -- or exactly a word of its sponsor's name, since a name is not a
+   word with an ending: "fish" is not Rep. Fisher, nor "mun" Rep. Muns. Each
+   part a bill does not meet that way adds how far short it falls: 1 where
+   the title has only a longer word the part begins, or the sponsor's name
+   only the word with an ending; 2 where only a committee's name has it; 3
+   where a committee's name has only a longer word. Best match orders by the
+   total before anything else, so a bill whose title or sponsor has every
+   word of the search is never listed below one that has only the start of
+   one.
+   A committee's name counts for less than a longer word in the title: that
+   is "Best match puts the title first", above, kept. Counted as direct, the
+   committee put the 187 bills of 2025-2026 whose only link to "municipal"
+   is a committee named for municipal affairs above the 26 whose titles say
+   "municipalities". */
+const RXN={};
+function nameRx(term){
+  return RXN[term]||(RXN[term]=new RegExp("\\b"
+    +term.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\b"));
+}
+function looseness(b,gs){
+  let n=0;
+  for(const g of gs){
+    let d=3;
+    for(const alt of g.alts){
+      const own=typedAlt(g,alt)||alt===g.word;
+      if(altRx(alt).test(b.hayT)||(own&&nameRx(alt).test(b.hayS))){d=0;break;}
+      if(d>1&&(inText(b.hayT,g,alt)||(own&&altRx(alt).test(b.hayS))))d=1;
+      if(d>2&&own&&altRx(alt).test(b.hayC))d=2;
+    }
+    n+=d;
+  }
+  return n;
+}
 // BILLMATCH:END
 // NOTHING FOUND is still an answer with somewhere to go. A search of several
 // parts that no bill has all of says which parts do find bills on their own,
@@ -433,12 +473,17 @@ function sortRows(rows){
                   || (a.status||"").localeCompare(b.status||"")
                   || billKey(a)[1]-billKey(b)[1],
   }[sortBy]||(()=>0);
-  // BEST MATCH: the most of the search in the title first, then the sponsor,
-  // then the committee, and bill number within each.
+  // BEST MATCH: every word of the search as a word of the title or the
+  // sponsor's name before the start of a longer one (looseness), then the
+  // most of the search in the title, then the sponsor, then the committee,
+  // and bill number within each.
   if(sortBy==="best"){
+    const gs=groupsFor(query.trim());
+    const lo=new Map(rows.map(b=>[b,looseness(b,gs)]));
     const sc=new Map(rows.map(b=>[b,scoreOf(b)]));
     const num=(a,b)=>{const x=billKey(a),y=billKey(b);return x[0]-y[0]||x[1]-y[1];};
-    return rows.slice().sort((a,b)=>sc.get(b)-sc.get(a)||newerTerm(a,b)||num(a,b));
+    return rows.slice().sort((a,b)=>lo.get(a)-lo.get(b)||sc.get(b)-sc.get(a)
+      ||newerTerm(a,b)||num(a,b));
   }
   return rows.slice().sort(by);
 }
