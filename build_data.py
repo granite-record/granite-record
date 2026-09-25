@@ -1415,8 +1415,11 @@ def main():
             # An unmapped database code reached the site as a bare digit:
             # 411 ballots read "5" and 156 read "7". See
             # rollcall_parser.vote_word, which is the one place that
-            # decides what a ballot is called.
-            "vote": RP.vote_word(r[6]),
+            # decides what a ballot is called. A declared conflict of
+            # interest reads "No vote recorded" like an empty ballot and is
+            # not one -- the member was in the room -- so rollcall_parser.
+            # ballot flags it, on those few hundred rows only.
+            **RP.ballot(r[6]),
         })
     print(f"member votes: {len(member_votes):,}")
 

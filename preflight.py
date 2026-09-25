@@ -3731,7 +3731,7 @@ require("./stub.js");
 const src = require("fs").readFileSync("./page.js", "utf8");
 let scope;
 try { scope = (0, eval)(src +
-    "; ({render, IDX, renderDetail, serviceLine, attendanceBlock, queryGroups, expand, groupWeight, yearOf, dkey, VERS, VPICK, VMODE, verKey, hasVersionIndex, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
+    "; ({render, IDX, renderDetail, serviceLine, attendanceBlock, recordTerms, getMeta:()=>META, setMeta:(m)=>{META=m;}, queryGroups, expand, groupWeight, yearOf, dkey, VERS, VPICK, VMODE, verKey, hasVersionIndex, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message);
             process.exit(1); }
 scope.IDX.length = 0;
@@ -4148,31 +4148,56 @@ if (scope.serviceLine({service:[{chamber:"H",spans:[[2019,2026]]}]}) !== ""
   console.log("SERVICELINE drew a line for a member of one chamber"); process.exit(1); }
 
 // Attendance, for the term the page shows and for every term together. A
-// rounded 100% beside an absence is a figure contradicting itself; the two
-// absence labels are the Votes tab's, word for word; presiding is named, not
-// counted as missed; and one term draws no total.
+// rounded 100% beside an absence is a figure contradicting itself; presiding
+// and a declared conflict of interest are named, not counted as missed; what
+// was missed is one number, not split into excused and not excused (the
+// person's choice of 24 September); and one term draws no total.
 var att = {"2023-2024": {chambers:"H", days:33, attended:32, roll_calls:300, voted:299,
-                         presided:0, excused:0, not_excused:1, no_vote:0},
+                         presided:0, conflict:0, excused:0, not_excused:1, no_vote:0},
            "2025-2026": {chambers:"H", days:33, attended:28, roll_calls:591, voted:51,
-                         presided:287, excused:146, not_excused:107, no_vote:0}};
+                         presided:287, conflict:0, excused:146, not_excused:107, no_vote:0}};
 var a1 = scope.attendanceBlock(att, "2023-2024").replace(/\\s+/g, " ");
 var a2 = scope.attendanceBlock(att, "2025-2026").replace(/\\s+/g, " ");
+var a3 = scope.attendanceBlock({"2011-2012": {chambers:"H", days:45, attended:45,
+    roll_calls:538, voted:525, presided:0, conflict:2, excused:6, not_excused:5, no_vote:0}},
+    "2011-2012").replace(/\\s+/g, " ");
+var a4 = scope.attendanceBlock({"2011-2012": {chambers:"H", days:45, attended:45,
+    roll_calls:538, voted:400, presided:125, conflict:2, excused:6, not_excused:5, no_vote:0}},
+    "2011-2012").replace(/\\s+/g, " ");
 var aw = [[a1, "<b>Days</b> attended 32 of 33 in 2023&ndash;2024 (97%) &middot; absent 1"],
-          [a1, "voted on 299 of 300 in 2023&ndash;2024 (99%) &middot; missed 1 (Absent, not excused 1)"],
+          [a1, "voted on 299 of 300 in 2023&ndash;2024 (99%) &middot; missed 1</p>"],
           [a1, "<b>All 2 terms</b> attended 60 of 66 days (91%)"],
-          [a2, "voted on 51 and presided over 287 of 591 in 2025&ndash;2026 (57%) &middot; missed 253 "
-               + "(Excused absence 146; Absent, not excused 107)"],
+          [a2, "voted on 51 and presided over 287 of 591 in 2025&ndash;2026 (57%) &middot; missed 253</p>"],
           [a2, "when the House held at least one roll call"],
-          [a2, "voted on or presided over any roll call that day"]];
+          [a2, "voted on or presided over any roll call that day"],
+          [a3, "voted on 525 and declared a conflict of interest on 2 of 538 in 2011&ndash;2012 (98%) "
+               + "&middot; missed 11</p>"],
+          [a3, "voted on or declared a conflict of interest on any roll call that day"],
+          [a4, "voted on 400, presided over 125 and declared a conflict of interest on 2 of 538"],
+          [a4, "voted on, presided over or declared a conflict of interest on any roll call"]];
 for (var ai = 0; ai < aw.length; ai++) {
   if (aw[ai][0].indexOf(aw[ai][1]) < 0) {
     console.log("ATTENDANCE drew " + JSON.stringify(aw[ai][0]) + " without "
                 + JSON.stringify(aw[ai][1])); process.exit(1); } }
+if (/xcused/.test(a1 + a2 + a3)) {
+  console.log("ATTENDANCE split what was missed into excused and not excused: " + a2);
+  process.exit(1); }
 var one = scope.attendanceBlock({"2025-2026": att["2025-2026"]}, "2025-2026");
 if (/All \\d+ terms/.test(one) || scope.attendanceBlock({}, "2025-2026") !== ""
     || scope.attendanceBlock(undefined, "") !== "") {
   console.log("ATTENDANCE drew a total for one term, or a block for a member with no roll calls");
   process.exit(1); }
+// A member whose only ballots of a term were on rules questions has votes
+// with no bill year. Their term comes from the roll call, as the Votes tab
+// files it; without it the page had no term and drew the note with no figures.
+var meta0 = scope.getMeta();
+scope.setMeta({terms: ["2001-2002", "2015-2016"]});
+var rts = scope.recordTerms("member", {sponsored: [], votes: [{d: "1/3/2001", b: null,
+    q: "House Rule 30", v: "Nay", k: "2001-H-2", y: ""}]});
+scope.setMeta(meta0);
+if (rts.join() !== "2001-2002") {
+  console.log("RECORDTERMS gave a member whose one vote was on a rules question the terms "
+              + JSON.stringify(rts) + ", not the term the vote was cast in"); process.exit(1); }
 
 // WHAT A SEARCH IS READ AS, from the cases measured on 14 September: words
 // with no subject do not have to match, a phrase is one idea in the record's
@@ -15824,43 +15849,91 @@ def _member_attendance(build_site_v2):
     ballot is no vote; an arrival by special election is counted from their
     first ballot; and a senator's House years land in their own term.
 
+    And the cases the review of 25 September found the first version wrong on,
+    each a member shown absent from a day they were there or a day that never
+    was: a declared conflict of interest (code 5) was counted an absence, where
+    the journal has the member in the room standing aside; a seat the record
+    went on listing after its holder had gone was counted as absences, 134 of
+    them; a Speaker coded Excused on every roll call of a day on which the
+    record names nobody in the chair was counted absent, where the journal
+    has them presiding; and a roll call misdated between two of one day --
+    10/22/2009 among 10/22/1999 -- made a sitting of its own.
+
     Then build_legislators, because where the figure goes is half the rule: in
     the member's own file, and in no listing -- legislators.json and
     former.json are what the roster, town and committee pages read.
     """
+    from collections import defaultdict
     B = build_site_v2
 
-    def v(mid, year, body, n, day, vote):
+    def v(mid, year, body, n, day, vote, **more):
         return {"member_id": mid, "name": "Example, Ann", "label": "Rep. Ann Example (D - Coos 4)",
                 "party": "D", "year": year, "body": body, "vote_number": str(n), "bill": "HB1",
-                "question": "Ought to Pass", "date": day, "vote": vote}
+                "question": "Ought to Pass", "date": day, "vote": vote, **more}
 
     rows = [
-        # 2023-2024 in the House: three days, one attended in part, one
-        # excused whole, one presided and nothing else.
+        # 2023-2024 in the House: four days, one attended in part, one
+        # excused whole, one presided with a roll call between that recorded
+        # nothing, and one on which a conflict was all they declared.
         v("1", "2023", "H", 1, "1/4/2023", "Yea"),
         v("1", "2023", "H", 2, "1/4/2023", "Not Voting/Excused"),
         v("1", "2023", "H", 3, "2/8/2023", "Not Voting/Excused"),
         v("1", "2023", "H", 4, "2/8/2023", "Not Voting/Not Excused"),
         v("1", "2024", "H", 1, "1/3/2024", "Presiding"),
-        v("1", "2024", "H", 2, "1/3/2024", "Presiding"),
-        v("1", "2024", "H", 3, "1/3/2024", "No vote recorded"),
+        v("1", "2024", "H", 2, "1/3/2024", "No vote recorded"),
+        v("1", "2024", "H", 3, "1/3/2024", "Presiding"),
+        v("1", "2024", "H", 4, "3/7/2024", "No vote recorded", conflict=True),
         # 2025-2026 under a Senate number, joined: two roll calls on one day.
         v("2", "2025", "S", 7, "3/6/2025", "Nay"),
         v("2", "2025", "S", 8, "3/6/2025", "Yea"),
     ]
     got = B.member_attendance(rows)
     assert got == {
-        "2023-2024": {"chambers": "H", "days": 3, "attended": 2, "roll_calls": 7, "voted": 1,
-                      "presided": 2, "excused": 2, "not_excused": 1, "no_vote": 1},
+        "2023-2024": {"chambers": "H", "days": 4, "attended": 3, "roll_calls": 8, "voted": 1,
+                      "presided": 2, "conflict": 1, "excused": 2, "not_excused": 1,
+                      "no_vote": 1},
         "2025-2026": {"chambers": "S", "days": 1, "attended": 1, "roll_calls": 2, "voted": 2,
-                      "presided": 0, "excused": 0, "not_excused": 0, "no_vote": 0},
+                      "presided": 0, "conflict": 0, "excused": 0, "not_excused": 0,
+                      "no_vote": 0},
     }, f"attendance counted {got}"
     # An arrival at a special election has no ballot before they sat, and is
-    # counted from their first: 2 days of 2, not 2 of the term's 3.
-    late = B.member_attendance([r for r in rows[4:7]] + [v("1", "2024", "H", 4, "3/7/2024", "Nay")])
+    # counted from their first: 2 days of 2, not 2 of the term's 4.
+    late = B.member_attendance(rows[4:8])
     assert late["2023-2024"]["days"] == 2 and late["2023-2024"]["attended"] == 2 \
         and late["2023-2024"]["roll_calls"] == 4, f"an arrival was counted as {late}"
+    # Ballots recording nothing that END a term are a seat outliving its
+    # holder, not absences; the excused ballots before them are absences.
+    gone = B.member_attendance(rows[:4] + [v("1", "2023", "H", n, d, "No vote recorded")
+                                           for n, d in ((5, "3/1/2023"), (6, "3/8/2023"))])
+    assert (gone["2023-2024"]["days"], gone["2023-2024"]["roll_calls"],
+            gone["2023-2024"]["no_vote"]) == (2, 4, 0), (
+        f"a run of empty ballots after the member had gone was counted: {gone}")
+
+    # THE WHOLE RECORD'S PART. S is the Speaker, in the chair on three of
+    # 2023's roll calls; D presides once when S is away. 2/8/2023's two roll
+    # calls name nobody in the chair and code S absent on both: S presided.
+    # 3/1/2023 names D, and S's excusal that day stands. Roll call 6 is dated
+    # ten years out between two of 3/1/2023, and roll call 8 a week late
+    # between 3/1 and 3/29: the first is read on 3/1, the second on no day.
+    rec = [("1", "1/4/2023", "S", "Presiding"), ("2", "1/4/2023", "S", "Presiding"),
+           ("3", "2/8/2023", "S", "Not Voting/Excused"),
+           ("4", "2/8/2023", "S", "Not Voting/Not Excused"),
+           ("5", "3/1/2023", "D", "Presiding"), ("5", "3/1/2023", "S", "Not Voting/Excused"),
+           ("6", "3/1/2033", "S", "Not Voting/Excused"),
+           ("7", "3/1/2023", "S", "Not Voting/Excused"),
+           ("8", "4/5/2023", "S", "Yea"), ("9", "3/29/2023", "S", "Presiding")]
+    whole = defaultdict(list)
+    for n, d, who, what in rec:
+        whole[who].append(v(who, "2023", "H", n, d, what))
+    ctx = B.attendance_context(whole)
+    assert ctx["chair"] == {"2023-H-3": "S", "2023-H-4": "S"}, (
+        f"the chair was read into {ctx['chair']}: only a day on which the record names "
+        "nobody in it, and only the member it puts there most")
+    assert (ctx["dates"]["2023-H-6"], ctx["dates"]["2023-H-8"]) == ((2023, 3, 1), (0, 0, 0)), (
+        f"misdated roll calls read as {ctx['dates']['2023-H-6']} and {ctx['dates']['2023-H-8']}")
+    sp = B.member_attendance(whole["S"], ctx)["2023-2024"]
+    assert (sp["days"], sp["attended"], sp["roll_calls"], sp["presided"], sp["excused"]) \
+        == (4, 3, 9, 5, 3), f"the Speaker was counted as {sp}"
 
     root = Path(tempfile.mkdtemp(prefix="gr-attend-"))
     try:
@@ -15868,7 +15941,7 @@ def _member_attendance(build_site_v2):
         legs = {"1": {"id": "1", "last": "Example", "first": "Ann", "name": "Example, Ann",
                       "chamber": "S", "party_code": "D", "party": "D", "district": "1",
                       "county": "Coos"}}
-        by = {"1": rows[:7], "2": rows[7:]}
+        by = {"1": rows[:8], "2": rows[8:]}
         import contextlib
         import io
         with contextlib.redirect_stdout(io.StringIO()):
@@ -15884,8 +15957,30 @@ def _member_attendance(build_site_v2):
                 "figure belongs on the member's own page, not in a column anyone is sorted by")
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    return "ok", ("a part day attended, an excused day absent, a presiding day there, code 7 no vote, an "
-                  "arrival from their first ballot; both chambers in the member's file, none in a listing")
+    return "ok", ("a part day attended, an excused day absent, a presiding or conflict day there, "
+                  "a vacated seat's empty ballots not counted, the chair read where the record names "
+                  "nobody, a misdated roll call on its neighbours' day; both chambers in the member's "
+                  "file, none in a listing")
+
+
+@check("rollcalls", "a declared conflict of interest reaches the member's vote row marked as one",
+       needs=("rollcall_parser",))
+def _ballot_conflict(rollcall_parser):
+    """Code 5 is a declared conflict of interest, and attendance counts the
+    member present for it. The site's word for it is "No vote recorded", which
+    an empty ballot shares, so the flag travels beside the word from the one
+    place that reads the code -- and build_data has to put it on the row, or
+    attendance never sees it and every conflict is an absence again."""
+    RP = rollcall_parser
+    got = {c: RP.ballot(c) for c in ("5", " 5 ", "7", "", "Yea", "Not Voting/Excused")}
+    assert got["5"] == got[" 5 "] == {"vote": RP.NO_VOTE, "conflict": True}, got
+    assert got["7"] == {"vote": RP.NO_VOTE} and got[""] == {"vote": ""} \
+        and got["Yea"] == {"vote": "Yea"}, f"only code 5 is a conflict: {got}"
+    src = Path("build_data.py").read_text(encoding="utf-8")
+    assert "**RP.ballot(r[6])" in src, (
+        "build_data.py no longer puts rollcall_parser.ballot's fields on each member vote "
+        "row, so no conflict reaches attendance")
+    return "ok", "code 5 flagged as a conflict, code 7 and an empty code not; build_data puts it on the row"
 
 
 @check("naming", "a sponsorship is filed under the member its bill page links, and a name is that member only where they sat",
