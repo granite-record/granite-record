@@ -35,7 +35,9 @@ Where names enter the pipeline, so every reader downstream agrees:
 build_data.py for each bill's committees (the cards, the Committee filter,
 meta.json, bills.csv and the committee pages' bill lists all read those), and
 build_proceedings.py for each hearing's (the committee pages' sittings, the
-Hearings tab and proceedings.csv).
+Hearings tab and proceedings.csv). page_code, which says which committee's
+page a name at the time belongs on, is asked by build_committees.py for the
+pages and by build_site_v2.py for the links to them.
 
 WHAT IT MAY DO, AND WHAT IT MAY NOT
 
@@ -58,10 +60,18 @@ THE NAME AT THE TIME, NEVER A LATER ONE. The House's commerce committee was
 Business, Consumer Affairs and Economic Development" in 1995-1996 and
 "Commerce" from 1997; the Senate's was "Executive Departments" until 1992 and
 "Executive Departments and Administration" from 1993. The term decides which,
-and a name is never replaced by the one the committee carried later. That the
-site does not claim a rename is build_committees.listing_groups' rule; this
-file keeps to it, which is why a committee's older name prints as plain text
-rather than as a link to the page its later name has.
+and a name is never replaced by the one the committee carried later.
+
+AN OLDER NAME LINKS, AND STAYS THE OLDER NAME. The person decided on 24
+September that where a bill or a hearing names a committee by a name it has
+since lost, the name is printed as it was and links to the page of the
+committee it was. Which committee that is comes from the General Court's own
+code for it, never from the names looking alike: CODES below, each entry with
+its witness. 1995's Corrections and Criminal Justice is H26, which sits today
+as Criminal Justice and Public Safety; 1995-2008's Commerce is H33, a code the
+General Court has retired, and so a page of its own in the committees page's
+archived list -- not the page of 2009's Commerce and Consumer Affairs, which
+is H43, a different code.
 
 THE EVIDENCE, and how each entry below cites it:
 
@@ -679,6 +689,205 @@ def official(name, chamber, term):
     return raw
 
 
+# ---------------------------------------------------------------------------
+# THE COMMITTEE A NAME AT THE TIME WAS, where that is not the committee the
+# General Court lists today under the same name: (chamber, first year, last
+# year, name, code). `name` is the name as official() writes it for those
+# terms; `code` is the General Court's own code for the committee -- one it
+# lists today under a later name, one it has retired, or None where the
+# record says the committee was NOT today's namesake and does not say which
+# it was.
+#
+# Only the General Court's own filing places a name here. Two witnesses:
+#
+#   STATUS  archive_samples/<year>/<bill>.html, the legacy bill-status page,
+#           which links a bill's committee of referral by its code
+#           (committeedetails.aspx?code=H26) and prints the name that code
+#           carries TODAY -- in capitals where the code is retired. So 1995's
+#           HB 109, whose own text prints "COMMITTEE: Corrections and
+#           Criminal Justice", is filed under H26 and printed "Criminal
+#           Justice and Public Safety".
+#   LIST    archive_bills.json, the General Court's legacy search list of
+#           each term from 1997-1998, which prints beside every bill the name
+#           the code it is filed under carries today: mixed case for a code
+#           still listed, capitals for a retired one. The list names a
+#           bill's LAST committee, so its Finance and its committees of
+#           conference are left out of the counts below.
+#
+# CAPITALS NAME A RETIRED CODE, NOT WHICH ONE. Mixed case is one of today's
+# codes, and today's list has one per name in a chamber. Capitals say only
+# that the code carrying that name is retired, and the General Court has put
+# a name on a second code before: S33 and S50 are both Election Law and
+# Internal Affairs, and 2005-2008's retired Rules and Enrolled Bills is not
+# S45. So LIST carries a run only where the run is unbroken from a term a
+# STATUS page files under the code. A name that stopped and came back is two
+# runs, and the later one could be a new code under the old name: the
+# Senate's Internal Affairs of 1997-2006 and 2011-2012 and the House's Local
+# and Regulated Revenues of 2009-2010 print in capitals as S09 and H21 do,
+# and no page on this disk files a bill of those years under either, so they
+# are None until one does.
+#
+# A name keeps its entry for every term official() gives it, where a witness
+# falls inside that run, and not past a witness that files the name's bills
+# under another code: LIST puts 2009's House "Commerce" bills under H43, so
+# H33's entry ends with 2008. A run no witness reaches is left out. So
+# 1989-1992's House Fish and Game, whose code is on no page on this disk,
+# links nowhere, while 2001-2008's is H08. Nothing here claims why a
+# committee stopped: the records show a code carrying a new name, or a code
+# stopping, and no more.
+CODES = [
+    # ---- renamed, and sitting today under the later name ----
+    # STATUS 1995 HB 109 (see above); RULES 1995 names Corrections and
+    # Criminal Justice, RULES 1997 Criminal Justice and Public Safety, and
+    # neither names another committee on criminal justice.
+    ("H", 1993, 1996, "Corrections and Criminal Justice", "H26"),
+    # LIST: all 10 of the term's bills the list files with a special
+    # committee are filed under H47, "...Pension Plans", as are 2015-2016's.
+    # One code and one subject; the committee was formed again after a term
+    # without it.
+    ("H", 2011, 2012, "Special Committee on Public Employee Pensions Reform", "H47"),
+    # ---- retired: a code the General Court no longer lists ----
+    ("H", 1989, 1994, "Children, Youth and Juvenile Justice", "H02"),  # STATUS 1989
+    ("H", 1989, 1994, "Commerce, Small Business and Consumer Affairs", "H03"),  # STATUS 1992
+    # LIST: 14 of 14 of 1999-2000, filed under FISH AND GAME; the House
+    # Calendar of 2006 (calendars/2006/HC064.txt) speaks of "the Fish and Game
+    # Committee, formerly the Wildlife and Marine Resources Committee".
+    ("H", 1993, 2000, "Wildlife and Marine Resources", "H08"),
+    # STATUS 2005; LIST 54 of 54. Not 2009-2010, though official() writes the
+    # name to 2010: the House's reports of those years are signed "Fish and
+    # Game and Marine Resources", H42, and the two 2009 hearings and one card
+    # still headed "Fish and Game" may be either -- so they link nowhere.
+    ("H", 2001, 2008, "Fish and Game", "H08"),
+    ("H", 1989, 1996, "Public Protection and Veterans Affairs", "H19"),  # STATUS 1989, 1992
+    # STATUS 1995: a Regulated Revenues bill filed under H21, printed "LOCAL
+    # AND REGULATED REVENUES", the name RULES 1997 gives it.
+    ("H", 1989, 1996, "Regulated Revenues", "H21"),
+    ("H", 1997, 1998, "Local and Regulated Revenues", "H21"),
+    # LIST 55 of 55 in capitals, after ten years without the name: H21, or a
+    # new code under its name, and nothing here says which.
+    ("H", 2009, 2010, "Local and Regulated Revenues", None),
+    ("H", 1991, 1994, "Economic Development", "H32"),  # STATUS 1993
+    # STATUS 1995: filed under H33, printed "COMMERCE". Not H43, 2009's
+    # Commerce and Consumer Affairs: LIST files 504 of 504 of 1999-2008's
+    # Commerce bills under the retired COMMERCE and 2009's under H43.
+    ("H", 1995, 1996,
+     "Commerce, Small Business, Consumer Affairs and Economic Development", "H33"),
+    ("H", 1997, 2008, "Commerce", "H33"),             # STATUS 1997, 2002, 2005
+    ("H", 1995, 1998, "Judiciary and Family Law", "H35"),  # STATUS 1995, 1998
+    ("S", 1989, 2004, "Banks", "S01"),                # STATUS 1992; LIST 24
+    ("S", 1989, 2004, "Insurance", "S08"),            # STATUS 1992, 1995; LIST 100
+    ("S", 1989, 1992, "Internal Affairs", "S09"),     # STATUS 1992
+    # LIST 168 and 27, INTERNAL AFFAIRS, after gaps of four years and of
+    # four: S09 or a new code under its name. The Senate's own table
+    # (db/Committees.psv) numbers the codes first used in 2011 with no slot
+    # for S09, which leans against it for 2011-2012 and settles nothing.
+    ("S", 1997, 2006, "Internal Affairs", None),
+    ("S", 2011, 2012, "Internal Affairs", None),
+    ("S", 1989, 2004, "Public Affairs", "S13"),       # STATUS 2002; LIST 165
+    ("S", 1989, 2004, "Public Institutions, Health and Human Services", "S14"),  # STATUS 1989-1998; LIST 116
+    # STATUS 1993: an Economic Development bill filed under S18, printed
+    # "ENERGY AND ECONOMIC DEVELOPMENT".
+    ("S", 1991, 1998, "Economic Development", "S18"),
+    ("S", 1999, 2006, "Energy and Economic Development", "S18"),  # STATUS 2000; LIST 97
+    ("S", 1991, 2004, "Environment", "S19"),          # STATUS 1991, 1992; LIST 86
+    ("S", 2005, 2006, "Banks and Insurance", "S23"),  # STATUS 2005; LIST 51
+    # NOT S50. STATUS 2008 and LIST (46 of 46) file 2007-2008's under S33,
+    # retired; S50 is the committee of the same name formed for 2017-2018.
+    ("S", 2007, 2008, "Election Law and Internal Affairs", "S33"),
+    # NOT S45. LIST files both of 2005-2008's under a retired RULES AND
+    # ENROLLED BILLS, and no page on this disk gives that code, so they link
+    # nowhere rather than to the committee formed later under the name.
+    ("S", 2005, 2008, "Rules and Enrolled Bills", None),
+]
+
+_CODES_BY = {}
+for _ch, _lo, _hi, _nm, _code in CODES:
+    _CODES_BY.setdefault((_ch, _norm(_nm)), []).append((_lo, _hi, _code))
+
+
+def _chamber(chamber):
+    ch = str(chamber or "").strip().upper()[:1]
+    return ch if ch in ("H", "S") else ""
+
+
+def filed(name, chamber, term):
+    """(True, code) where CODES places `name` in that chamber and term -- code
+    None where the record says it was not today's namesake and no more --
+    and (False, None) where CODES says nothing about it."""
+    y = _start(term)
+    for lo, hi, code in _CODES_BY.get((_chamber(chamber), _norm(name)), ()):
+        if _covers(lo, hi, y):
+            return True, code
+    return False, None
+
+
+def page_code(name, chamber, term, today):
+    """The code of the committee page a committee named `name` in that chamber
+    and term belongs on, or None.
+
+    `today` is {(chamber, _norm(name)): code} for the committees the General
+    Court lists now, the map every page has always been found by. CODES is
+    asked first, because it is what says a name meant a different committee
+    in an earlier term than it means today.
+    """
+    said, code = filed(name, chamber, term)
+    if said:
+        return code
+    return today.get((_chamber(chamber), _norm(name)))
+
+
+def retired():
+    """{code: the name it last carried on this record} for every code in
+    CODES that the General Court does not list today -- the committees that
+    get a page of their own in the committees page's archived list. Whether a
+    code is listed today is the caller's to say; this returns every code CODES
+    names, and the names of H26 and H47 are overridden by today's list."""
+    last = {}
+    for ch, lo, hi, nm, code in CODES:
+        if code and (code not in last or hi > last[code][0]):
+            last[code] = (hi, nm)
+    return {c: nm for c, (hi, nm) in last.items()}
+
+
+def codes_problems():
+    """[message] for every CODES entry that is not a name official() writes
+    for that chamber in each of its terms, whose code is of the other
+    chamber, that overlaps another entry for the same name, or that puts a
+    code on a run begun after a gap in that code's runs.
+
+    The gap is the case capitals cannot settle (see CODES): a committee that
+    came back after terms without it may have come back under a new code. A
+    bill-status page filing a bill of the later run under the old code would
+    settle it, and would be the reason to teach this rule an exception."""
+    out = []
+    by_code = {}
+    for ch, lo, hi, nm, code in CODES:
+        if code:
+            by_code.setdefault(code, []).append((lo, hi, nm))
+    for code, spans in sorted(by_code.items()):
+        spans.sort()
+        for (lo, hi, nm), (lo2, hi2, nm2) in zip(spans, spans[1:]):
+            if lo2 > hi + 1:
+                out.append(f"{code}: {nm!r} {lo}-{hi}, then {nm2!r} "
+                           f"{lo2}-{hi2} after a gap -- the later run may be "
+                           "a new code under the old name")
+    for ch, lo, hi, nm, code in CODES:
+        for y in range(lo, hi, 2):
+            if not known(nm, ch, f"{y}-{y + 1}"):
+                out.append(f"{ch} {lo}-{hi} {nm!r}: not a {ch} committee of "
+                           f"{y}-{y + 1} in OFFICIAL")
+                break
+        if code and code[:1].upper() != ch:
+            out.append(f"{ch} {lo}-{hi} {nm!r} -> {code}: the code is the "
+                       "other chamber's")
+    for (ch, nn), runs in _CODES_BY.items():
+        runs = sorted(runs)
+        for (lo, hi, _), (lo2, hi2, _) in zip(runs, runs[1:]):
+            if lo2 <= hi:
+                out.append(f"{ch} {nn!r}: {lo}-{hi} and {lo2}-{hi2} overlap")
+    return out
+
+
 def conflicts():
     """[message] for every alias that would turn a DIFFERENT committee's
     official name into its own, in a term both cover. Empty is the rule; it
@@ -710,13 +919,16 @@ def unplaced():
 
 def main():
     sys.stdout.reconfigure(encoding="utf-8")
-    bad = conflicts() + unplaced()
+    bad = conflicts() + unplaced() + codes_problems()
     for ch, word in (("H", "House"), ("S", "Senate")):
         print(word)
         for c, lo, hi, nm in sorted((r for r in OFFICIAL if r[0] == ch),
                                     key=lambda r: (r[3], r[1])):
-            print(f"  {lo}-{hi}  {nm}")
-    print(f"\n{len(OFFICIAL)} names, {len(ALIASES)} aliases")
+            code = next((cd for c2, lo2, hi2, nm2, cd in CODES
+                         if c2 == ch and nm2 == nm and lo2 <= lo and hi <= hi2), "")
+            print(f"  {lo}-{hi}  {nm}" + (f"  [{code}]" if code else ""))
+    print(f"\n{len(OFFICIAL)} names, {len(ALIASES)} aliases, "
+          f"{len(CODES)} names placed on a code")
     for b in bad:
         print("  PROBLEM: " + b)
     return 1 if bad else 0

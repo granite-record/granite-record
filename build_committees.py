@@ -51,6 +51,7 @@ from pathlib import Path
 
 import proceedings as P
 import bill_order as BO
+import committee_names as CN
 import names
 import shell as S
 import structured as LD
@@ -226,6 +227,51 @@ def years(span):
     return first if first == last else f"{first} to {last}"
 
 
+def runs(terms):
+    """["1997-1998", "2009-2010"] -> "1997 to 1998 and 2009 to 2010": years()
+    of each unbroken run, so a name a committee carried twice is not said to
+    have been carried through the terms between."""
+    out, cur = [], []
+    for t in sorted(terms):
+        if cur and t[:4] != str(int(cur[-1][-4:]) + 1):
+            out.append(cur)
+            cur = []
+        cur.append(t)
+    if cur:
+        out.append(cur)
+    return andlist(years(r) for r in out)
+
+
+def name_on_the_day(page_name, said):
+    """The committee's name as the day's own rows give it.
+
+    `said` is a Counter of the names the day's rows carry. A page is headed
+    with the name the committee has now, or last had, and its record reaches
+    back past a rename: H26's hearings of 1995 were Corrections and Criminal
+    Justice's, and "The Committee on Criminal Justice and Public Safety met on
+    March 2, 1995" puts a name on a sitting that the committee did not carry
+    for two more years. The page's own spelling is kept wherever the two are
+    the same name.
+    """
+    if not said:
+        return page_name
+    top = said.most_common(1)[0][0]
+    return page_name if CN._norm(top) == CN._norm(page_name) else top
+
+
+def former_names(page_name, by_name):
+    """[{"name", "years"}], oldest first, for every name other than the
+    page's own that the committee's bills and sitting days carry. `by_name`
+    is {name: set of terms}. What the page and the listing label a committee
+    with when a reader arrives by a name it no longer has."""
+    out = []
+    for nm, terms in by_name.items():
+        if not terms or CN._norm(nm) == CN._norm(page_name):
+            continue
+        out.append((min(terms), nm, {"name": nm, "years": runs(terms)}))
+    return [x for _, _, x in sorted(out, key=lambda r: (r[0], r[1]))]
+
+
 def listing_groups(index, listed, current_term):
     """The committees page's three lists, from what the record can say.
 
@@ -283,10 +329,14 @@ def bills_in_order(by_term):
 # arrived, it was 656 -- and House Executive Departments and Administration
 # showed no sitting day at all for 1999-2004 -- with nothing in any log to
 # say when it happened. committee_names.official brought it to 112: the
-# committees of their day that no page exists for (House Commerce of
-# 1997-2010, the Senate's Public Affairs and Insurance ...) and a handful of
-# fragments the docket parser leaves. A ceiling a third above that lets a new
-# special committee or two through and stops the build on the next jump.
+# committees of their day that no page existed for (House Commerce of
+# 1997-2008, the Senate's Public Affairs and Insurance ...) and a handful of
+# fragments the docket parser leaves. committee_names.CODES then gave the 17
+# of those whose General Court code is on this disk pages of their own, and
+# it was 95 the next day: House Appropriations, the Senate's Transportation
+# and Interstate Cooperation, its Internal Affairs after 1992, and the rest
+# whose code no page here gives. A ceiling above 112 lets a new special
+# committee or two through and stops the build on the next jump.
 UNMATCHED_CEILING = 150
 
 
@@ -345,6 +395,17 @@ def main():
     web = load("committees.json", {})
     seats = load(data / "committee_members.json", {})
     codes = load(data / "committees.json", {})
+    # THE COMMITTEES THE GENERAL COURT HAS RETIRED. Its committee table holds
+    # the codes it uses now; the codes its own bill-status pages file older
+    # bills under -- H33, 1995-2008's Commerce; S18, the Senate's Economic
+    # Development and then Energy and Economic Development -- are in
+    # committee_names.CODES with their witnesses, and each gets a page here
+    # under the name it last carried. Nothing in data/committees.json is
+    # replaced: H26 and H47 are in CODES for an older name of theirs, and
+    # they keep the name they have today.
+    retired = {c: nm for c, nm in CN.retired().items() if c not in codes}
+    for c, nm in retired.items():
+        codes[c] = {"code": c, "name": nm}
     # Both files, CONCATENATED per bill rather than one shadowing the other.
     # setdefault kept only the first: a bill reported by a House committee and
     # then by a Senate one -- which is most bills that pass a chamber -- lost
@@ -367,27 +428,45 @@ def main():
     # The code carries the chamber: H05 is a House committee, S30 a Senate
     # one, and that is the only place the chamber is stated for a House
     # committee, whose page does not say.
+    #
+    # A retired code is not in this map. It is reached only through
+    # committee_names.CODES, for the names and terms that file there, so
+    # 2017-2018's Election Law and Internal Affairs is still S50's while
+    # 2007-2008's, the retired S33, is S33's.
     by_name = {}
     for code, rec in codes.items():
-        nm = (rec.get("name") or "").strip().lower()
+        nm = (rec.get("name") or "").strip()
         ch = code[:1].upper() if code else ""
-        if nm and ch in ("H", "S"):
-            by_name[(ch, nm)] = code
+        if nm and ch in ("H", "S") and code not in retired:
+            by_name[(ch, CN._norm(nm))] = code
 
-    def code_of(name, chamber):
-        """The committee a name means, in the chamber that named it."""
-        nm = (name or "").strip().lower()
+    def bare(name, chamber):
+        """(chamber, name) with the chamber taken off the front of the name
+        where the search index put it there: "Senate Judiciary"."""
+        nm = (name or "").strip()
         ch = (chamber or "").strip().upper()[:1]
-        if not nm:
-            return None
+        for pre, c in (("house ", "H"), ("senate ", "S")):
+            if nm.lower().startswith(pre):
+                return c, nm[len(pre):]
+        return ch, nm
+
+    def code_of(name, chamber, term=""):
+        """The committee a name means, in the chamber that named it and the
+        term it was named in.
+
+        The term matters because a name has not always meant one committee:
+        committee_names.page_code asks CODES first, where the General Court's
+        own filing says a name meant a different code in an earlier term, and
+        today's list after. The web file and the roster name committees as
+        they are now and pass no term.
+        """
         # The search index writes "Senate Judiciary" and "House Finance";
         # proceedings.csv writes the bare name and carries the chamber in its
         # own column. Both forms end up here.
-        for pre, c in (("house ", "H"), ("senate ", "S")):
-            if nm.startswith(pre):
-                nm, ch = nm[len(pre):], c
-                break
-        return by_name.get((ch, nm))
+        ch, nm = bare(name, chamber)
+        if not nm:
+            return None
+        return CN.page_code(nm, ch, term, by_name)
     # The web file carries the chamber and the leadership.
     lead = {}
     for chamber, rows in (web.items() if isinstance(web, dict) else []):
@@ -477,14 +556,22 @@ def main():
             return st
         return None
     unmatched = collections.Counter()
+    # The names each committee's record carries, as it carried them: the
+    # day's own name for its narrative, and every name for the page's head.
+    day_said = collections.defaultdict(lambda: collections.defaultdict(
+        collections.Counter))
+    names_at = collections.defaultdict(lambda: collections.defaultdict(set))
     for r in P.load():
         cname = (r.get("committee") or "").strip()
         if not cname or not r.get("date"):
             continue
-        code = code_of(cname, r.get("body"))
+        code = code_of(cname, r.get("body"), r.get("term"))
         if not code:
             unmatched[f"{r.get('body') or '?'} {cname}"] += 1
             continue
+        day_said[code][(r.get("term"), r.get("date"))][cname] += 1
+        if r.get("term"):
+            names_at[code][cname].add(r["term"])
         meta = bill_meta.get((r.get("term"), r.get("bill"))) or {}
         st = station_of(meta.get("year", ""), r.get("bill"), r.get("date"),
                         r.get("kind"))
@@ -511,8 +598,10 @@ def main():
                                            if b.get("committee") else [])):
             # The chamber is in the name here -- "Senate Judiciary" -- so
             # code_of takes it from the prefix.
-            code = code_of(nm, "")
+            code = code_of(nm, "", b.get("term"))
             if code:
+                if b.get("term"):
+                    names_at[code][bare(nm, "")[1]].add(b["term"])
                 referred[code][b.get("term")].append({
                     "id": b.get("id"), "n": b.get("n"), "year": b.get("year"),
                     "title": b.get("title", ""), "status": b.get("status", ""),
@@ -604,16 +693,26 @@ def main():
                                           reverse=True):
             items.sort(key=lambda i: (i["start"] if i["start"] is not None
                                       else 1e9))
+            # Under the name the committee had that day, which on H26's page
+            # of 1995 is Corrections and Criminal Justice.
+            said = name_on_the_day(name, day_said[code].get((term, date)))
             sessions.append({
                 "date": date, "term": term,
                 "video_id": next((i["video_id"] for i in items
                                   if i["video_id"]), ""),
-                "narrative": narrate(name, chamber, date, items, reports),
+                "narrative": narrate(said, chamber, date, items, reports),
                 "items": items,
             })
 
+        # THE NAMES IT CARRIED BEFORE, with the years each covers on this
+        # record. A reader who followed "Corrections and Criminal Justice" off
+        # a 1995 bill lands on a page headed Criminal Justice and Public
+        # Safety, and this is what tells them it is the same committee. Only
+        # committee_names.CODES puts a second name on a page.
+        formerly = former_names(name, names_at.get(code, {}))
         rec = {
             "code": code, "name": name, "chamber": chamber,
+            **({"names": formerly} if formerly else {}),
             "chair": info.get("chair", ""), "vice_chair": info.get("vice_chair", ""),
             "clerk": info.get("clerk", ""), "officers": officers,
             "aide": info.get("aide", ""),
@@ -637,9 +736,21 @@ def main():
         # The page, which is bills.html with this committee open. Same shell
         # as a bill's and a member's, from shell.py, so the three cannot drift.
         chamber_word = "Senate" if chamber == "S" else "House"
-        towns = f"{len(rec['members'])} members"
-        desc = (f"The {chamber_word} Committee on {name}. "
-                f"{towns}, {sum(len(v) for v in rec['bills'].values()):,} bills "
+        # A retired committee has no seats to count, and "0 members" in the
+        # line a search result shows would read as a committee nobody sits on
+        # today rather than one that no longer sits.
+        towns = (f"{len(rec['members'])} members, " if code not in retired
+                 else "")
+        span_of[code] = sorted({t for t in rec["bills"] if t}
+                               | {s["term"] for s in sessions if s.get("term")})
+        # And its years beside its name, in the tab and the search result: a
+        # retired code can share its name with a later committee -- S33 and
+        # S50 are both Election Law and Internal Affairs -- and the years are
+        # what tells the two apart before the page is open.
+        when = (f" ({runs(span_of[code])})"
+                if code in retired and span_of[code] else "")
+        desc = (f"The {chamber_word} Committee on {name}{when}. "
+                f"{towns}{sum(len(v) for v in rec['bills'].values()):,} bills "
                 f"referred and {len(sessions):,} sitting days, each with what "
                 "was taken up and when. From the New Hampshire General Court's "
                 "own records.")
@@ -662,8 +773,8 @@ def main():
         path = f"/committee/{code}.html"
         (out / f"{code}.html").write_text(S.page(
             t, path=path, base=a.base,
-            title=f"{name} — {chamber_word} committee | Granite Record",
-            og_title=f"{name} — New Hampshire {chamber_word}",
+            title=f"{name}{when} — {chamber_word} committee | Granite Record",
+            og_title=f"{name}{when} — New Hampshire {chamber_word}",
             og_image="og-committee.png", og_alt="Granite Record: committees and hearings",
             description=desc,
             # The committee's feed, named in its head the way a bill's and a
@@ -684,14 +795,13 @@ def main():
             encoding="utf-8")
         urls.append(a.base + S.canon(path))
         written += 1
-        span_of[code] = sorted({t for t in rec["bills"] if t}
-                               | {s["term"] for s in sessions if s.get("term")})
         index.append({
             "code": code, "name": name, "chamber": chamber,
             "chair": rec["chair"], "n_members": len(members),
             "n_bills": sum(len(v) for v in rec["bills"].values()),
             "n_sessions": len(sessions),
             "terms": sorted(rec["bills"]),
+            **({"formerly": [n["name"] for n in formerly]} if formerly else {}),
         })
 
     (site / "committees.json").write_text(json.dumps(index), encoding="utf-8")
@@ -701,7 +811,11 @@ def main():
     def _card(c, dated=False):
         bits = []
         if dated and c.get("span"):
-            bits.append(years(c["span"]))
+            bits.append(runs(c["span"]))
+        # The earlier name on the card too, so a reader scanning this page for
+        # "Corrections and Criminal Justice" finds where it went.
+        if c.get("formerly"):
+            bits.append("earlier " + S.E("; ".join(c["formerly"])))
         if c["chair"]:
             bits.append(f"Chaired by {S.E(c['chair'])}")
         if c["n_members"]:
@@ -728,7 +842,10 @@ def main():
     for c in archived:
         f = out / f"{c['code']}.json"
         rec = json.loads(f.read_text(encoding="utf-8"))
-        rec["archived"] = {"years": years(c["span"])}
+        # By run, not first to last: H47, the House's special committee on
+        # public employee pensions, sat in 2011-2012 and again in 2015-2016,
+        # and "2011 to 2016" said it sat through the two years between.
+        rec["archived"] = {"years": runs(c["span"])}
         f.write_text(json.dumps(rec), encoding="utf-8")
         # And its page stops naming a feed: shell.committee_followable, which
         # build_feeds asks too, says an archived committee has none.
@@ -794,8 +911,11 @@ def main():
                     "years their bills and sitting days cover. The records "
                     "show when a committee stops appearing, not why&thinsp;&mdash;&thinsp;it may "
                     "have been renamed, divided, merged or ended&thinsp;&mdash;&thinsp;and this "
-                    "page does not guess which. Each keeps its page, so the "
-                    "bills it handled still have somewhere to point.</p>"
+                    "page does not guess which. Where the General Court&rsquo;s "
+                    "own records file one committee&rsquo;s bills under two "
+                    "names, the card gives the earlier one. Each keeps its "
+                    "page, so the bills it handled still have somewhere to "
+                    "point.</p>"
                     '<div class="ctwo">' + "".join(cols) + "</div>")
 
     page_html = S.page(
@@ -850,7 +970,7 @@ def main():
     print(f"  {lead_n} of {written} have a chair on file")
     if unmatched:
         print(f"  {len(unmatched)} committee name(s) in proceedings.csv match "
-              f"nothing in data/committees.json (the ceiling is "
+              f"no committee page, today's or a retired one's (the ceiling is "
               f"{UNMATCHED_CEILING}):")
         for nm, n in unmatched.most_common(6):
             print(f"    {nm!r} on {n:,} rows")

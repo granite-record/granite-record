@@ -77,10 +77,17 @@ t("a name that does not match is refused", cmteUpcoming(H34).map(u => u.bill), [
 // busiest committee in today's upcoming list, reads that committee's own
 // record, and asks that the rows land there and nowhere else.
 const upAll = JSON.parse(fs.readFileSync("site/home.json", "utf8")).upcoming || [];
+//
+// NOT A RETIRED COMMITTEE OF THE SAME NAME. committees.json lists the
+// committees the General Court has retired too, and "Commerce" is H33, the
+// House's of 1995-2008, before it is S37, the Senate's today; nothing is
+// scheduled for a committee that no longer sits, so an archived page is
+// passed over here.
 const codeOf = name => {
   const all = JSON.parse(fs.readFileSync("site/committees.json", "utf8"));
   const hit = (Array.isArray(all) ? all : []).find(
-    c => (c.name || "").toLowerCase() === (name || "").toLowerCase());
+    c => (c.name || "").toLowerCase() === (name || "").toLowerCase()
+      && !(fs.existsSync(`site/committee/${c.code}.json`) && cmte(c.code).archived));
   return hit && hit.code;
 };
 const byName = {};

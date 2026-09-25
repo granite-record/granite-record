@@ -24,6 +24,7 @@ Standard library only.
 
 import argparse
 import caption_span
+import committee_names as CN
 # Where the recordings this site links begin: one constant, which about.html
 # states in words and station_for_proceeding and station_for_floor split on.
 from about_figures import STREAM_START
@@ -474,6 +475,52 @@ def clean_title(s):
 # here; the name itself still prints on the bill, as plain text rather than as
 # a link to a page that was never written.
 NOT_A_COMMITTEE = {"no committee assignment"}
+
+
+def committee_links(index, codes):
+    """meta.json's committee_codes: every committee name a bill carries, to the
+    page it links to.
+
+    `codes` is {"House Finance": "H34"} for the committees the General Court
+    lists today, which is all a name alone can say, and a name can mean more.
+    1995's "House Corrections and Criminal Justice" is H26, sitting today under
+    a later name; 2003's "House Commerce" is H33, a code the General Court has
+    retired, with an archived page of its own; and "Senate Election Law and
+    Internal Affairs" is the retired S33 in 2007-2008 and S50, formed later
+    under the same name, in 2017-2018. committee_names.page_code settles each
+    name in each term from the General Court's own filing; this writes the
+    answer down, and the page prints the name as the bill carries it.
+
+    A name that goes to one page in every term stays a string. One whose page
+    depends on the term becomes {"": the page when no term is given, "<term>":
+    the page in that term, "" for none}, carrying only the terms that differ
+    from the first. The first is today's committee of that name, because the
+    one caller with no term is a member's list of the committees they sit on.
+    """
+    today = {}
+    for full, code in codes.items():
+        word, _, nm = full.partition(" ")
+        today[(word[:1], CN._norm(nm))] = code
+    per = defaultdict(dict)
+    for b in index:
+        t = b.get("term") or ""
+        for full in (b.get("committees")
+                     or ([b["committee"]] if b.get("committee") else [])):
+            word, _, nm = full.partition(" ")
+            if t and word in ("House", "Senate"):
+                per[full][t] = CN.page_code(nm, word[:1], t, today) or ""
+    out = dict(codes)
+    for full, by_term in per.items():
+        base = codes.get(full, "")
+        got = set(by_term.values())
+        if got == {base}:
+            continue
+        if len(got) == 1 and not base:
+            out[full] = got.pop()
+            continue
+        out[full] = {"": base, **{t: c for t, c in sorted(by_term.items())
+                                  if c != base}}
+    return out
 
 
 def bill_prefix(bid):
@@ -2947,6 +2994,42 @@ def hearing_report_for_page(rec, idx, name_part):
     return out, got, miss
 
 
+def report_station(rep, docket_dates):
+    """The station a hearing report stands on when the docket has no Senate
+    hearing of the bill on the date the report gives.
+
+    UNDER THE REPORT'S OWN DATE. 20 of the 1,293 reports of 24 September give
+    a hearing date the docket does not: most a few days after the docket's
+    hearing of the same bill -- SB 42 heard on 21 January 2025 by the docket
+    and on the 23rd by its report -- and three, HB 183, HB 268 and HB 435, for
+    bills the docket gives no Senate hearing at all. They were left off the
+    page. The person decided on 24 September that they are shown, dated as
+    the Senate committee dated them, and neither date is corrected to the
+    other: this site cannot say which is right. The station says it is dated
+    by the report, and names the docket's own hearing dates where it has any,
+    so a reader sees both. Nothing is matched to it, so it offers no
+    recording.
+    """
+    # "Senate Judiciary Committee" as the docket's rows name it, "Judiciary",
+    # so the station's title reads like the other Senate hearings'.
+    cmte = re.sub(r"^\s*Senate\s+|\s+Committee\s*$", "",
+                  rep.get("committee") or "", flags=re.I).strip()
+    heard = rep.get("heard") or ""
+    y = int(heard[:4]) if heard[:4].isdigit() else 0
+    term = f"{y - 1 + y % 2}-{y + y % 2}" if y else ""
+    return {
+        "when": heard, "time": None, "what": "hearing",
+        "committee": CN.official(cmte, "S", term) if cmte else None,
+        "body": "S", "venue": None, "video_id": "", "watch": None,
+        "predicted": None, "start": None,
+        "state": "prestream" if heard < STREAM_START else "novideo",
+        "candidate": None,
+        # What the page reads to say where the date came from.
+        "dated_by": "report",
+        "docket_heard": sorted(docket_dates),
+    }
+
+
 def attach_hearing_reports(stations, reports, bid, idx, name_part, tally,
                            unmatched):
     """Each report onto the station of the hearing it reports.
@@ -2956,20 +3039,29 @@ def attach_hearing_reports(stations, reports, bid, idx, name_part, tally,
     station, because a committee can hear a bill and then an amendment to it
     the same afternoon and file a report of each. A report whose date the
     docket has no Senate hearing for is not pinned to some other sitting: it
-    is counted and named in `unmatched`.
+    is counted and named in `unmatched`, and stands on a station of its own
+    under the date it gives (report_station).
     """
+    heard = [s for s in stations
+             if s.get("body") == "S"
+             and "hearing" in (s.get("what") or "").lower()]
+    docket = {s.get("when") for s in heard}
+    own = {}
     for rep in reports:
-        at = next((s for s in stations
-                   if s.get("body") == "S"
-                   and "hearing" in (s.get("what") or "").lower()
-                   and s.get("when") == rep.get("heard")), None)
+        at = next((s for s in heard if s.get("when") == rep.get("heard")), None)
         if at is None:
             tally["unmatched"] += 1
             unmatched.append(f"{bid} {rep.get('heard')}")
-            continue
+            # One station for the date, which a bill's report and its
+            # amendment's, filed the same afternoon, share.
+            at = own.get(rep.get("heard"))
+            if at is None:
+                at = own[rep.get("heard")] = report_station(rep, docket)
+                stations.append(at)
+        else:
+            tally["matched"] += 1
         page, got, miss = hearing_report_for_page(rep, idx, name_part)
         at.setdefault("reports", []).append(page)
-        tally["matched"] += 1
         tally["members"] += got
         tally["members_unresolved"] += miss
         tally["plain"] += bool(rep.get("fallback"))
@@ -6588,8 +6680,9 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # The Senate committee's own report of the hearing, on the station
         # for that hearing: the same bill, the Senate, a public hearing, the
         # date the report gives. A report whose hearing the docket does not
-        # carry is left off the page and named in the build's output rather
-        # than pinned to some other sitting.
+        # carry is not pinned to some other sitting: it stands under its own
+        # date, says so, and is named in the build's output. Before the sort
+        # below, so it takes its place in the bill's order of events.
         attach_hearing_reports(
             stations, (hearing_reports or {}).get(term, {}).get(bid, []),
             bid, _hr_idx, _hr_name, hr_tally, hr_unmatched)
@@ -6881,10 +6974,13 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
               f"members, {hr_tally['members_unresolved']:,} left as the "
               "report printed them")
         if hr_unmatched:
-            # Named, not just counted: each is a report the site holds and
-            # does not show, and the reason is in the docket for that bill.
+            # Named, not just counted: each is a report whose date the docket
+            # does not carry, shown under that date on a station of its own
+            # (report_station), and the docket for that bill says what it
+            # has instead.
             print(f"  {len(hr_unmatched):,} found no Senate public hearing "
-                  "of that bill on that date in proceedings.csv: "
+                  "of that bill on that date in proceedings.csv, and are "
+                  "shown under the report's own date: "
                   + ", ".join(hr_unmatched))
     return index, years, unnamed, dict(sponsored)
 
@@ -7507,6 +7603,7 @@ def main():
             continue
         if _nm and _ch in ("H", "S"):
             committee_codes[f"{'House' if _ch == 'H' else 'Senate'} {_nm}"] = _code
+    committee_codes = committee_links(index, committee_codes)
     meta = {"years": sorted(years, reverse=True),
             "terms": sorted({b["term"] for b in index if b["term"]}, reverse=True),
             "committees": sorted({b["committee"] for b in index if b["committee"]}),
@@ -7514,7 +7611,9 @@ def main():
             # a link to that committee rather than a dead end -- 3,967
             # mentions across the site, none of them clickable before.
             # Written from data/committees.json, whose codes carry the
-            # chamber, because "Finance" alone names one in each.
+            # chamber, because "Finance" alone names one in each. A name
+            # whose committee depends on the term is an object instead:
+            # committee_links says which, and app.js's cmteLink reads both.
             "committee_codes": committee_codes,
             "topics": sorted({b["topic"] for b in index if b["topic"]}),
             "sponsors": sorted({b["sponsor"] for b in index if b["sponsor"]}),

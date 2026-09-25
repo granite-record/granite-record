@@ -208,10 +208,15 @@ def find_index(site, legs, towns):
     for c in (json.loads(cm.read_text(encoding="utf-8")) if cm.exists() else []):
         if not c.get("code"):
             continue
+        # A name the committee carried before is a word to find it by: a
+        # reader typing "Corrections and Criminal Justice" off a 1995 bill is
+        # looking for H26.
         rows.append(["committee", c.get("name") or c["code"],
                      ("Senate" if str(c.get("chamber", "")).upper().startswith("S")
                       else "House") + " committee",
-                     S.canon(f"committee/{c['code']}.html"), c.get("chair") or ""])
+                     S.canon(f"committee/{c['code']}.html"),
+                     " ".join(x for x in [c.get("chair") or "",
+                                          *(c.get("formerly") or [])] if x)])
     pages = {p.stem for p in (site / "town").glob("*.html")}
     for town, seats in sorted(towns.items()):
         county = (seats[0].get("county") if seats else "") or ""
