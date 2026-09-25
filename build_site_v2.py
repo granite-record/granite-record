@@ -487,9 +487,12 @@ def committee_links(index, codes):
     a later name; 2003's "House Commerce" is H33, a code the General Court has
     retired, with an archived page of its own; and "Senate Election Law and
     Internal Affairs" is the retired S33 in 2007-2008 and S50, formed later
-    under the same name, in 2017-2018. committee_names.page_code settles each
-    name in each term from the General Court's own filing; this writes the
-    answer down, and the page prints the name as the bill carries it.
+    under the same name, in 2017-2018. 1989-1990's "Senate Development,
+    Recreation and Environment" is S03-1989, a page of its own, because the
+    General Court later gave its code, S03, to Appropriations, a different
+    committee. committee_names.page_code settles each name in each term from
+    the General Court's own filing; this writes the answer down, and the page
+    prints the name as the bill carries it.
 
     A name that goes to one page in every term stays a string. One whose page
     depends on the term becomes {"": the page when no term is given, "<term>":

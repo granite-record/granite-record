@@ -3948,6 +3948,36 @@ function emailCommittee(c){
      address on file</span>`:""}</p>`;
 }
 
+// A NUMBER THE GENERAL COURT GAVE TWO COMMITTEES. Its own records file the
+// Senate's Development, Recreation and Environment of 1989-1990 under S03, the
+// code they later gave the Senate's Appropriations, and the person decided on
+// 25 September 2026 that the two are different committees, listed separately
+// (committee_names.GAPS). Each has its own page, and build_committees writes
+// `same_code` into both so that each says so plainly and names the other: a
+// reader who knows the code, or who came from a bill-status page printing
+// APPROPRIATIONS over a 1989 bill, is not left to wonder which is which.
+function sameCode(c){
+  const s=c.same_code||{};
+  const others=(s.others||[]).filter(o=>o.page&&o.name);
+  if(!s.code||!others.length)return "";
+  const word=c.chamber==="S"?"Senate":"House";
+  const them=xs=>joinList(xs.map(o=>`the ${word} Committee on <a href="committee/${
+    esc(o.page)}.html">${esc(o.name)}</a> (${esc(o.years||"")})`),"and");
+  const num=`<b>${esc(s.code)}</b>`;
+  const later=others.filter(o=>o.when==="later"),
+        earlier=others.filter(o=>o.when==="earlier");
+  const said=later.length===others.length
+    ? `The General Court files this committee under the code ${num} in its own
+       records, and later gave the same number to ${them(later)}.`
+    : earlier.length===others.length
+    ? `The General Court&rsquo;s own records also file an earlier committee under
+       the code ${num}: ${them(earlier)}.`
+    : `The General Court files this committee under the code ${num} in its own
+       records, and gave the same number to ${them(others)} as well.`;
+  return `<p class="src">${said} ${others.length===1?"The two are":"They are"}
+    different committees, each with its own page here.</p>`;
+}
+
 function renderCommitteeHead(c){
   const officers=(c.officers||[]).filter(o=>o.name);
   const staff=[["Committee aide",c.aide],["Researcher",c.researcher],
@@ -3969,6 +3999,7 @@ function renderCommitteeHead(c){
         `<b>${esc(n.name)}</b> (${esc(n.years||"")})`).join(" and ")} on this
       record&rsquo;s earlier bills and sittings, which the General Court&rsquo;s
       own records file under this committee.</p>`:""}
+    ${sameCode(c)}
     <div class="cinfo">
       ${dl("cofficers",officers.map(o=>[o.role,
         o.slug?`<a href="legislator/${esc(o.slug)}.html">${esc(o.label||o.name)}</a>`

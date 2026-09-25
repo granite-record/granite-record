@@ -119,8 +119,8 @@ CURRENT_YEARS = {"2025", "2026"}
 # than the Function wrote it, and it is set aside, not shown.
 FIELDS = ("date", "status", "sponsor", "vote", "hearing", "committee", "text",
           "link", "chapter", "veto", "topic", "fiscal", "other")
-RECORD = re.compile(r"^(bill:\d{4}/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3})$")
-PATH = re.compile(r"^/(bill/\d{4}/[a-z]{2,6}\d{1,4}|legislator/[a-z0-9-]{1,80}|committee/[A-Za-z]\d{2,3})$")
+RECORD = re.compile(r"^(bill:\d{4}/[A-Z]{2,6}\d{1,4}|member:\d{1,7}|committee:[A-Za-z]\d{2,3}(?:-\d{4})?)$")
+PATH = re.compile(r"^/(bill/\d{4}/[a-z]{2,6}\d{1,4}|legislator/[a-z0-9-]{1,80}|committee/[A-Za-z]\d{2,3}(?:-\d{4})?)$")
 # The tabs the pages render, and nothing else: a tab is a label, and a
 # free-text tab was 24 letters of a reader's own words outside the quotation.
 TABS = ("", "Summary", "Bill Text", "Votes", "Videos", "Reports", "Sponsors",

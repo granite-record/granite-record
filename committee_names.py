@@ -73,6 +73,15 @@ General Court has retired, and so a page of its own in the committees page's
 archived list -- not the page of 2009's Commerce and Consumer Affairs, which
 is H43, a different code.
 
+A CODE THAT STOPS AND STARTS AGAIN IS THE PERSON'S TO READ. The records show
+the code and not the committee: what came back after a gap may be the same
+committee, a new one under the old name, or an old number given to a new
+committee. The person decided the two such gaps on 25 September (GAPS
+below): the Senate's Internal Affairs of 1989-1992, 1997-2006 and 2011-2012
+is one committee, S09, and S03 is two -- 1989-1990's Development, Recreation
+and Environment, with a page of its own at S03-1989, and 1993-1994's
+Appropriations, which keeps S03's.
+
 THE EVIDENCE, and how each entry below cites it:
 
   TEXT   the bill's own text, saved under legislation/<year>/, which prints
@@ -728,27 +737,31 @@ def official(name, chamber, term):
 # Internal Affairs, and 2005-2008's retired Rules and Enrolled Bills is not
 # S45. So LIST carries a run only where the run is unbroken from a term a
 # STATUS page files under the code. A name that stopped and came back is two
-# runs, and the later one could be a new code under the old name: the
-# Senate's Internal Affairs of 1997-2006 and 2011-2012 and the House's Local
-# and Regulated Revenues of 2009-2010 print in capitals as S09 and H21 do,
-# and they are None. No page on this disk files a bill of 1997-2006 or of
-# 2009-2010 under either code; one now files a bill of 2011-2012 under S09
-# (see that entry), and the run waits on the exception codes_problems would
-# need. The Senate's Wildlife and Recreation also stopped and came back, but
-# its code did not stop: STATUS 1995 files the name it carried in between,
-# Fish and Game/Recreation, under the same S20, so the later run is unbroken
-# in the code and LIST carries it.
+# runs, and the later one could be a new code under the old name, so
+# codes_problems refuses a code on a run begun after a gap unless GAPS
+# below records what a person decided that gap is. The House's Local and
+# Regulated Revenues of 2009-2010 prints in capitals as H21 does, no page on
+# this disk files a bill of 2009-2010 under H21, and nobody has decided it:
+# it is None. The Senate's Internal Affairs of 1997-2006 and 2011-2012 was
+# the same case until STATUS 2011 CACR 14 filed a bill of 2011-2012 under
+# S09, and the person decided that the three runs are one committee (see
+# GAPS). The Senate's Wildlife and Recreation also stopped and came back,
+# but its code did not stop: STATUS 1995 files the name it carried in
+# between, Fish and Game/Recreation, under the same S20, so the later run is
+# unbroken in the code and LIST carries it.
 #
 # A name keeps its entry for every term official() gives it, where a witness
 # falls inside that run, and not past a witness that files the name's bills
 # under another code: LIST puts 2009's House "Commerce" bills under H43, so
 # H33's entry ends with 2008. A run no witness reaches is left out. So
 # 2009-2010's House Fish and Game links nowhere, while 1989-1992's and
-# 2001-2008's are H08. Nor does a page place a name on a code that another
-# committee's name holds, across terms with nothing under it: see the
-# Senate's Development, Recreation and Environment, under S03 below. Nothing
-# here claims why a committee stopped: the records show a code carrying a
-# new name, or a code stopping, and no more.
+# 2001-2008's are H08. A code that carries ANOTHER committee's name after
+# terms with nothing under it -- a number the General Court used twice -- is
+# the same refusal and the same exception: S03 files 1989-1990's
+# Development, Recreation and Environment and 1993-1994's Appropriations,
+# which GAPS records as two committees with a page each. Nothing here claims
+# why a committee stopped: the records show a code carrying a new name, or a
+# code stopping, and no more.
 CODES = [
     # ---- renamed, and sitting today under the later name ----
     # STATUS 1989 HB 36 and HB 244: both texts print "REFERRED TO: State
@@ -822,29 +835,24 @@ CODES = [
     ("H", 2011, 2012, "Redress of Grievances", "H45"),
     ("H", 2011, 2012, "Special Committee on Education Funding Reform", "H46"),
     ("S", 1989, 2004, "Banks", "S01"),                # STATUS 1992; LIST 24
-    # STATUS 1993 SB 30, whose text prints "REFERRED TO: Appropriations".
+    # ONE CODE, TWO COMMITTEES. STATUS 1989 HB 15 and HB 27, which the
+    # Senate's docket refers to "DEV,REC & ENV", file their Senate referral
+    # under S03 and print "APPROPRIATIONS"; so does STATUS 1993 SB 30, whose
+    # text prints "REFERRED TO: Appropriations". Nothing on this disk is filed
+    # under S03 between them. GAPS says they are different committees, so
+    # 1989-1990's 154 bills and 158 hearings have a page of their own,
+    # S03-1989, and do not read as Appropriations' record.
+    ("S", 1989, 1990, "Development, Recreation and Environment", "S03"),
     ("S", 1993, 1994, "Appropriations", "S03"),
-    # NOT 1989-1990's DEVELOPMENT, RECREATION AND ENVIRONMENT, though STATUS
-    # files it under S03 as well: 1989 HB 15 and HB 27, which the Senate's
-    # docket refers to "DEV,REC & ENV", are filed under S03 and printed
-    # "APPROPRIATIONS". One code for two committees four years apart, with
-    # nothing on this disk under S03 between them. Placed on it, 154 bills and
-    # 158 hearings would read as Appropriations' own, and codes_problems
-    # refuses the gap; so the name links nowhere until it is decided how a
-    # code the General Court used twice is shown.
     ("S", 1989, 2004, "Insurance", "S08"),            # STATUS 1992, 1995; LIST 100
+    # ONE COMMITTEE THAT CAME BACK. STATUS 1989 HB 223 and 1992 SB 390 file
+    # Internal Affairs under S09, and STATUS 2011 CACR 14, whose text prints
+    # "COMMITTEE: Internal Affairs", files its Senate referral under S09 too,
+    # after gaps of four years and of four. GAPS records the person's
+    # decision that the three runs are one committee, and its evidence.
     ("S", 1989, 1992, "Internal Affairs", "S09"),     # STATUS 1989, 1992
-    # LIST 168 and 27, INTERNAL AFFAIRS, after gaps of four years and of
-    # four: S09 or a new code under its name. The Senate's own table
-    # (db/Committees.psv) numbers the codes first used in 2011 with no slot
-    # for S09, which leans against it for 2011-2012 and settles nothing.
-    # STATUS 2011 CACR 14, fetched on 25 September for the House's special
-    # committee, files its Senate referral -- the text prints "COMMITTEE:
-    # Internal Affairs" -- under S09: the first page to reach 2011-2012. It
-    # would settle that run, but codes_problems refuses a code on a run begun
-    # after a gap, and the exception its docstring names is not made here.
-    ("S", 1997, 2006, "Internal Affairs", None),
-    ("S", 2011, 2012, "Internal Affairs", None),
+    ("S", 1997, 2006, "Internal Affairs", "S09"),     # LIST 168 of 168
+    ("S", 2011, 2012, "Internal Affairs", "S09"),     # STATUS 2011 CACR 14; LIST 27 of 28
     ("S", 1989, 2004, "Interstate Cooperation", "S11"),  # STATUS 1989 HB 244; LIST 10 of 10
     ("S", 1989, 2004, "Public Affairs", "S13"),       # STATUS 2002; LIST 165
     ("S", 1989, 2004, "Public Institutions, Health and Human Services", "S14"),  # STATUS 1989-1998; LIST 116
@@ -885,9 +893,106 @@ CODES = [
     ("S", 2013, 2014, "Health, Education and Human Services", "S39"),  # STATUS 2013 HB 142; LIST 61
 ]
 
+
+# ---------------------------------------------------------------------------
+# A GAP IN A CODE'S RUNS, AND WHAT THE PERSON DECIDED IT IS: (code, the last
+# year of the runs before the gap, the first year of the run after it,
+# verdict).
+#
+# The records cannot settle a gap. A code that stops and starts again may be
+# one committee that came back, a new committee under the old name, or an
+# old number the General Court gave a new committee -- and a wrong merge
+# shows two committees as one. So codes_problems refuses every gap in a
+# code's runs, and accepts one only where an entry here names exactly its
+# years; it refuses an entry that names a gap CODES does not have, too, so a
+# decision cannot drift onto a gap nobody decided. Each code below was put to
+# the person, who decided both on 25 September 2026 by one rule, in their
+# words: "if the two committees serve substantially different purposes and
+# one isn't just a continuation of another committee with a name change, then
+# they should be listed separately."
+#
+#   SAME       one committee across the gap, on its code's one page.
+#   DIFFERENT  two committees the General Court filed under one code. The one
+#              after the gap keeps the code's page -- it is the committee the
+#              General Court's own pages print the code's name for -- and the
+#              one before it has a page of its own, addressed by the code and
+#              the first year of its run: S03-1989. No General Court code has
+#              a hyphen, so that address can never be one of theirs, and every
+#              address the site had before still shows what it showed.
+SAME, DIFFERENT = "same", "different"
+GAPS = [
+    # A NUMBER USED TWICE. STATUS 1989 HB 15 and HB 27 file the Senate's
+    # Development, Recreation and Environment under S03, printed
+    # "APPROPRIATIONS", and STATUS 1993 SB 30 files the Senate's
+    # Appropriations under it; nothing on this disk is filed under S03 in
+    # 1991-1992. The person, on 25 September: Development, Recreation and
+    # Environment and Appropriations serve different purposes, and neither is
+    # the other under a new name, so each is listed as its own committee.
+    ("S03", 1990, 1993, DIFFERENT),
+    # A COMMITTEE THAT CAME BACK. The Senate's Internal Affairs: STATUS 1989
+    # HB 223 and 1992 SB 390 file it under S09, and STATUS 2011 CACR 14, whose
+    # text prints "COMMITTEE: Internal Affairs", files its Senate referral
+    # under S09 again, after the gaps of 1993-1996 and 2007-2010. LIST prints
+    # INTERNAL AFFAIRS, a retired code's capitals, for 168 of 168 of
+    # 1999-2006's bills and 27 of 28 of 2011-2012's, counted as CODES counts
+    # (the 28th it files with Executive Departments and Administration, the
+    # last committee it names). The person, on 25 September, approved
+    # linking the 1997-2006 and 2011-2012 runs to S09 as the same committee.
+    # Weighed and not decisive: the Senate's own table (db/Committees.psv)
+    # numbers the codes first used in 2011 with no slot for S09.
+    ("S09", 1992, 1997, SAME),
+    ("S09", 2006, 2011, SAME),
+]
+
+
+def _runs(entries):
+    """{code: [(first year, last year, name)], sorted} for the entries that
+    have a code; an entry of None is no code's run."""
+    out = {}
+    for ch, lo, hi, nm, code in entries:
+        if code:
+            out.setdefault(code, []).append((lo, hi, nm))
+    for runs in out.values():
+        runs.sort()
+    return out
+
+
+def _gaps(runs):
+    """[(before, after, i)] for every gap in one code's sorted runs: `before`
+    is the last year any run before the gap reaches, `after` the first year of
+    runs[i], the run that begins after it. By the furthest year reached, not
+    the run just before: a long run that covers a short one leaves no gap."""
+    out, reach = [], None
+    for i, (lo, hi, _nm) in enumerate(runs):
+        if reach is not None and lo > reach + 1:
+            out.append((reach, lo, i))
+        reach = hi if reach is None else max(reach, hi)
+    return out
+
+
+def placed():
+    """[(chamber, first year, last year, name, code, page)], one per CODES
+    entry. `page` is where the committee's page is: its code, except for a
+    committee GAPS says the General Court filed under a code it later gave a
+    DIFFERENT committee, whose page is the code and the first year of its
+    run -- 1989-1990's Development, Recreation and Environment is S03-1989,
+    and S03 stays Appropriations'. None where the code is None."""
+    verdict = {(c, b, a): v for c, b, a, v in GAPS}
+    page = {}
+    for code, runs in _runs(CODES).items():
+        cuts = [i for b, a, i in _gaps(runs) if verdict.get((code, b, a)) == DIFFERENT]
+        starts = [0] + cuts
+        for s, e in zip(starts, cuts + [len(runs)]):
+            key = code if e == len(runs) else f"{code}-{runs[s][0]}"
+            for lo, hi, nm in runs[s:e]:
+                page[(code, lo, hi, nm)] = key
+    return [(ch, lo, hi, nm, code, page.get((code, lo, hi, nm)) if code else None)
+            for ch, lo, hi, nm, code in CODES]
+
+
 _CODES_BY = {}
-for _ch, _lo, _hi, _nm, _code in CODES:
-    _CODES_BY.setdefault((_ch, _norm(_nm)), []).append((_lo, _hi, _code))
+for _ch, _lo, _hi, _nm, _code, _page in placed():
+    _CODES_BY.setdefault((_ch, _norm(_nm)), []).append((_lo, _hi, _code, _page))
 
 
 def _chamber(chamber):
@@ -898,64 +1003,107 @@ def _chamber(chamber):
 def filed(name, chamber, term):
     """(True, code) where CODES places `name` in that chamber and term -- code
     None where the record says it was not today's namesake and no more --
-    and (False, None) where CODES says nothing about it."""
+    and (False, None) where CODES says nothing about it. The code is the
+    General Court's own, as its bill-status pages link it."""
     y = _start(term)
-    for lo, hi, code in _CODES_BY.get((_chamber(chamber), _norm(name)), ()):
+    for lo, hi, code, _page in _CODES_BY.get((_chamber(chamber), _norm(name)), ()):
         if _covers(lo, hi, y):
             return True, code
     return False, None
 
 
-def page_code(name, chamber, term, today):
-    """The code of the committee page a committee named `name` in that chamber
-    and term belongs on, or None.
-
-    `today` is {(chamber, _norm(name)): code} for the committees the General
-    Court lists now, the map every page has always been found by. CODES is
-    asked first, because it is what says a name meant a different committee
-    in an earlier term than it means today.
-    """
+def court_code(name, chamber, term, today):
+    """The General Court's own code for the committee named `name` in that
+    chamber and term -- the code its bill-status pages link -- or None.
+    `today` is as page_code's."""
     said, code = filed(name, chamber, term)
     if said:
         return code
     return today.get((_chamber(chamber), _norm(name)))
 
 
+def page_code(name, chamber, term, today):
+    """The committee page a committee named `name` in that chamber and term
+    belongs on, or None: its code, or for a committee the General Court filed
+    under a code it later gave another (GAPS), the page placed() gives it.
+
+    `today` is {(chamber, _norm(name)): code} for the committees the General
+    Court lists now, the map every page has always been found by. CODES is
+    asked first, because it is what says a name meant a different committee
+    in an earlier term than it means today.
+    """
+    y = _start(term)
+    for lo, hi, _code, page in _CODES_BY.get((_chamber(chamber), _norm(name)), ()):
+        if _covers(lo, hi, y):
+            return page
+    return today.get((_chamber(chamber), _norm(name)))
+
+
 def retired():
-    """{code: the name it last carried on this record} for every code in
-    CODES that the General Court does not list today -- the committees that
-    get a page of their own in the committees page's archived list. Whether a
-    code is listed today is the caller's to say; this returns every code CODES
-    names, and the names of H26 and H47 are overridden by today's list."""
+    """{page: the name it last carried on this record} for every page CODES
+    gives a committee -- the committees that get a page of their own in the
+    committees page's archived list. Whether a code is listed today is the
+    caller's to say; this returns every page, and the names of H26 and H47
+    are overridden by today's list. A code the General Court gave two
+    committees is two pages: S03 is Appropriations', S03-1989 Development,
+    Recreation and Environment's."""
     last = {}
-    for ch, lo, hi, nm, code in CODES:
-        if code and (code not in last or hi > last[code][0]):
-            last[code] = (hi, nm)
-    return {c: nm for c, (hi, nm) in last.items()}
+    for ch, lo, hi, nm, code, page in placed():
+        if page and (page not in last or hi > last[page][0]):
+            last[page] = (hi, nm)
+    return {p: nm for p, (hi, nm) in last.items()}
+
+
+def shared():
+    """{page: (code, [the other pages filed under that code])} for every page
+    of a code the General Court gave more than one committee (GAPS,
+    DIFFERENT): {"S03-1989": ("S03", ["S03"]), "S03": ("S03", ["S03-1989"])}.
+    What each of those pages says about the number it shares."""
+    pages = {}
+    for ch, lo, hi, nm, code, page in placed():
+        if code:
+            pages.setdefault(code, set()).add(page)
+    return {p: (code, sorted(ps - {p}))
+            for code, ps in sorted(pages.items()) if len(ps) > 1 for p in sorted(ps)}
 
 
 def codes_problems():
     """[message] for every CODES entry that is not a name official() writes
     for that chamber in each of its terms, whose code is of the other
     chamber, that overlaps another entry for the same name, or that puts a
-    code on a run begun after a gap in that code's runs.
+    code on a run begun after a gap in that code's runs which GAPS does not
+    decide -- and for every GAPS entry that decides no gap CODES has.
 
     The gap is the case capitals cannot settle (see CODES): a committee that
-    came back after terms without it may have come back under a new code. A
-    bill-status page filing a bill of the later run under the old code would
-    settle it, and would be the reason to teach this rule an exception."""
+    came back after terms without it may have come back under a new code,
+    and a code carrying a new name after terms without it may be an old
+    number given to a different committee. A bill-status page filing the
+    later run under the old code settles the code, not the committee; which
+    committee it is was the person's to decide, and GAPS is where each
+    decision is written down."""
     out = []
-    by_code = {}
-    for ch, lo, hi, nm, code in CODES:
-        if code:
-            by_code.setdefault(code, []).append((lo, hi, nm))
-    for code, spans in sorted(by_code.items()):
-        spans.sort()
-        for (lo, hi, nm), (lo2, hi2, nm2) in zip(spans, spans[1:]):
-            if lo2 > hi + 1:
-                out.append(f"{code}: {nm!r} {lo}-{hi}, then {nm2!r} "
-                           f"{lo2}-{hi2} after a gap -- the later run may be "
-                           "a new code under the old name")
+    verdict = {}
+    for code, before, after, v in GAPS:
+        if v not in (SAME, DIFFERENT):
+            out.append(f"GAPS {code} {before}-{after}: {v!r} is neither SAME nor DIFFERENT")
+        if (code, before, after) in verdict:
+            out.append(f"GAPS {code} {before}-{after}: decided twice")
+        verdict[(code, before, after)] = v
+    decided = set()
+    for code, runs in sorted(_runs(CODES).items()):
+        for before, after, i in _gaps(runs):
+            if (code, before, after) in verdict:
+                decided.add((code, before, after))
+                continue
+            nm = next(n for lo, hi, n in reversed(runs[:i]) if hi == before)
+            lo2, hi2, nm2 = runs[i]
+            out.append(f"{code}: {nm!r} to {before}, then {nm2!r} {lo2}-{hi2} "
+                       "after a gap -- the later run may be a new code under the "
+                       "old name, or the old code a different committee's, and "
+                       "GAPS decides neither")
+    for code, before, after in sorted(set(verdict) - decided):
+        out.append(f"GAPS {code} {before}-{after}: CODES has no such gap in "
+                   f"{code}'s runs, so this decision is about nothing on record")
     for ch, lo, hi, nm, code in CODES:
         for y in range(lo, hi, 2):
             if not known(nm, ch, f"{y}-{y + 1}"):
@@ -965,9 +1113,12 @@ def codes_problems():
         if code and code[:1].upper() != ch:
             out.append(f"{ch} {lo}-{hi} {nm!r} -> {code}: the code is the "
                        "other chamber's")
-    for (ch, nn), runs in _CODES_BY.items():
+    by_name = {}
+    for ch, lo, hi, nm, code in CODES:
+        by_name.setdefault((ch, _norm(nm)), []).append((lo, hi))
+    for (ch, nn), runs in by_name.items():
         runs = sorted(runs)
-        for (lo, hi, _), (lo2, hi2, _) in zip(runs, runs[1:]):
+        for (lo, hi), (lo2, hi2) in zip(runs, runs[1:]):
             if lo2 <= hi:
                 out.append(f"{ch} {nn!r}: {lo}-{hi} and {lo2}-{hi2} overlap")
     return out
@@ -1009,11 +1160,13 @@ def main():
         print(word)
         for c, lo, hi, nm in sorted((r for r in OFFICIAL if r[0] == ch),
                                     key=lambda r: (r[3], r[1])):
-            code = next((cd for c2, lo2, hi2, nm2, cd in CODES
-                         if c2 == ch and nm2 == nm and lo2 <= lo and hi <= hi2), "")
-            print(f"  {lo}-{hi}  {nm}" + (f"  [{code}]" if code else ""))
+            code, page = next(((cd, pg) for c2, lo2, hi2, nm2, cd, pg in placed()
+                               if c2 == ch and nm2 == nm and lo2 <= lo and hi <= hi2),
+                              ("", ""))
+            print(f"  {lo}-{hi}  {nm}" + (f"  [{code}]" if code else "")
+                  + (f"  page {page}" if page and page != code else ""))
     print(f"\n{len(OFFICIAL)} names, {len(ALIASES)} aliases, "
-          f"{len(CODES)} names placed on a code")
+          f"{len(CODES)} names placed on a code, {len(GAPS)} gaps in a code decided")
     for b in bad:
         print("  PROBLEM: " + b)
     return 1 if bad else 0

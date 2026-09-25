@@ -298,6 +298,36 @@ def former_names(page_name, by_name):
     return [x for _, _, x in sorted(out, key=lambda r: (r[0], r[1]))]
 
 
+def shared_pages(shared, span_of, index):
+    """{page: (code, [{"page", "name", "years", "when"}])} for every page
+    written for a code the General Court gave more than one committee.
+
+    `shared` is committee_names.shared(); `span_of` is {page: the sorted
+    terms of its bills and sitting days}; `index` is the rows of
+    committees.json, whose names are the pages' own. Another page is named
+    only where it was written, since a page with no record is nowhere to
+    send a reader. "when" says whether the other's record comes "later" or
+    "earlier" than this one's, which is what the page's sentence turns on,
+    and is "" should the two ever overlap."""
+    name = {c["code"]: c["name"] for c in index}
+    out = {}
+    for page, (code, others) in shared.items():
+        mine = span_of.get(page) or []
+        if page not in name or not mine:
+            continue
+        them = []
+        for o in others:
+            span = span_of.get(o) or []
+            if o not in name or not span:
+                continue
+            them.append({"page": o, "name": name[o], "years": runs(span),
+                         "when": ("later" if span[0] > mine[-1] else
+                                  "earlier" if span[-1] < mine[0] else "")})
+        if them:
+            out[page] = (code, them)
+    return out
+
+
 def listing_groups(index, listed, current_term):
     """The committees page's three lists, from what the record can say.
 
@@ -361,8 +391,11 @@ def bills_in_order(by_term):
 # of those whose General Court code is on this disk pages of their own, and
 # it was 95 the next day: House Appropriations, the Senate's Transportation
 # and Interstate Cooperation, its Internal Affairs after 1992, and the rest
-# whose code no page here gives. A ceiling above 112 lets a new special
-# committee or two through and stops the build on the next jump.
+# whose code no page here gives. The bill-status pages fetched on 25
+# September took it to 73, and the person's two decisions of that day, which
+# placed the Senate's Internal Affairs after 1992 and its Development,
+# Recreation and Environment of 1989-1990, to 71. A ceiling above 112 lets a
+# new special committee or two through and stops the build on the next jump.
 UNMATCHED_CEILING = 150
 
 
@@ -428,7 +461,10 @@ def main():
     # committee_names.CODES with their witnesses, and each gets a page here
     # under the name it last carried. Nothing in data/committees.json is
     # replaced: H26 and H47 are in CODES for an older name of theirs, and
-    # they keep the name they have today.
+    # they keep the name they have today. The keys are pages rather than
+    # codes: a code the General Court gave two committees is a page for each
+    # (committee_names.GAPS), so S03 is Appropriations' and S03-1989 the
+    # Senate's Development, Recreation and Environment of 1989-1990.
     retired = {c: nm for c, nm in CN.retired().items() if c not in codes}
     for c, nm in retired.items():
         codes[c] = {"code": c, "name": nm}
@@ -879,6 +915,21 @@ def main():
         if h.exists():
             h.write_text(h.read_text(encoding="utf-8").replace(
                 "\n" + feed_link(c["code"], c["name"]), ""), encoding="utf-8")
+    # A NUMBER THE GENERAL COURT GAVE TWO COMMITTEES. Its own records file the
+    # Senate's Development, Recreation and Environment of 1989-1990 under S03,
+    # the code they later gave the Senate's Appropriations, and the person
+    # decided on 25 September 2026 that the two are different committees,
+    # listed separately (committee_names.GAPS). So each has its own page, and
+    # each page says plainly that it shares the number and names the other,
+    # with the other's years: a reader who knows the code, or who came from a
+    # bill-status page printing APPROPRIATIONS over a 1989 bill, is told they
+    # are two committees rather than left to guess. Written after the fact,
+    # like `archived`, because the years are the other page's record.
+    for page, (gc, others) in shared_pages(CN.shared(), span_of, index).items():
+        f = out / f"{page}.json"
+        rec = json.loads(f.read_text(encoding="utf-8"))
+        rec["same_code"] = {"code": gc, "others": others}
+        f.write_text(json.dumps(rec), encoding="utf-8")
     body = []
     # THE TWO CHAMBERS SIDE BY SIDE. 25 House committees and 14 Senate ones
     # in one column put the Senate below a screen and a half of scrolling,
