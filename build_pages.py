@@ -482,7 +482,21 @@ def calendar_html(out, today=None, rows=None):
     # week is the Calendar tab's own unit, and the rail is now that week.
     html = ['<section class="cal"><h2>Coming up</h2>']
     body, missing = cal_days(days, meets, titles, years, code, when, esc)
-    html.append(body)
+    # THE WHOLE WEEK, IN A BOX OF ITS OWN HEIGHT. A week in session is forty
+    # sittings -- the week of 26 January 2026 held 43 -- and drawn in full it
+    # ran the left rail to about four times the height of the middle column. It
+    # was asked on 24 September to keep the week and cap the length, with a
+    # way to scroll through the rest, so every card is still here and the
+    # stylesheet gives the box its height (app.css, .calscroll). Nothing is
+    # dropped, so the Calendar tab and this rail still hold the same sittings.
+    #
+    # A BOX THAT SCROLLS IS A STOP ON THE KEYBOARD. Tab lands on it and the
+    # arrow keys and Page Down move it, which is the only way to scroll it
+    # without a pointer. Focusable and nameless, it would be announced as
+    # nothing, so it is a region and its name says what it holds.
+    html.append('<div class="calscroll" role="region" tabindex="0" '
+                'aria-label="Meetings from today to Sunday">'
+                + body + "</div>")
     html.append(more)
     return "".join(html) + cal_notes(up, missing, esc)
 

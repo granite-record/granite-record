@@ -11273,6 +11273,120 @@ def _coming_up_is_this_week():
                   "uncapped, the floor included, next week linked")
 
 
+@check("frontend", "the home page's Coming up keeps the whole week in a box that scrolls")
+def _coming_up_scrolls():
+    """A week in session is forty sittings, and Coming up drew all of them.
+
+    The week of 26 January 2026 held 43, and in full they ran the left rail to
+    about four times the height of the middle column, and put forty cards
+    between a phone's finder and its floor sessions. Asked on 24 September to
+    keep the whole week, cap the length, and let the reader scroll through the
+    rest. The check above holds every sitting of the week to the rail, so the
+    cap cannot come back as a cut in the markup; this holds the other half.
+
+    Every card sits inside one box, with the heading above it and the line to
+    next week below it, where they stay in view. The box is a stop on the
+    keyboard with a role and a name, because a box that scrolls and cannot be
+    focused cannot be scrolled without a pointer. And app.css gives it a
+    height and a scrollbar at every width, not only inside the three-column
+    block; keeps each day's date in view; fades the bottom edge while more
+    follows; and sets nothing -- no overscroll-behavior, no snapping -- that
+    takes the scroll from the reader.
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    from html.parser import HTMLParser
+    import build_pages as BP
+
+    monday = _dt.date(2026, 1, 26)
+    rows = [{"term": "2025-2026", "bill": f"HB{1100 + 10 * d + c}", "body": "H",
+             "kind": "public hearing", "date": (monday + _dt.timedelta(days=d)).isoformat(),
+             "time": f"{9 + c // 3:02d}:00", "committee": f"Committee {c + 1}",
+             "venue": "LOB 302"}
+            for d in range(5) for c in range(9)]
+    tmp = Path(tempfile.mkdtemp(prefix="gr-comingup-box-"))
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            page = BP.calendar_html(tmp, today=monday, rows=rows)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    class Walk(HTMLParser):
+        """Where each part of the rail sits: inside the box or outside it."""
+        VOID = {"br", "hr", "img", "input", "link", "meta", "wbr"}
+
+        def __init__(self):
+            super().__init__()
+            self.stack, self.boxes = [], []
+            self.inside, self.outside = Counter(), Counter()
+
+        def handle_starttag(self, tag, attrs):
+            a = dict(attrs)
+            cls = set((a.get("class") or "").split())
+            within = any("calscroll" in c for _t, c in self.stack)
+            if "calscroll" in cls:
+                self.boxes.append(a)
+            for part in ("calday", "calmeet", "calall", "note"):
+                if part in cls:
+                    (self.inside if within else self.outside)[part] += 1
+            if tag not in self.VOID:
+                self.stack.append((tag, cls))
+
+        def handle_endtag(self, tag):
+            while self.stack and self.stack.pop()[0] != tag:
+                pass
+
+    w = Walk()
+    w.feed(page)
+    assert len(w.boxes) == 1, (
+        f"Coming up has {len(w.boxes)} scrolling boxes, not one: " + page[:200])
+    box = w.boxes[0]
+    assert box.get("tabindex") == "0" and box.get("role") == "region" \
+        and (box.get("aria-label") or "").strip(), (
+            "the Coming up box is not a named region on the keyboard: it carries "
+            f"{box}; it needs tabindex=\"0\", role=\"region\" and an aria-label")
+    assert (w.inside["calmeet"], w.outside["calmeet"]) == (45, 0) \
+        and (w.inside["calday"], w.outside["calday"]) == (5, 0), (
+            f"of a week of 45 sittings on 5 days, the box holds {w.inside['calmeet']} "
+            f"cards on {w.inside['calday']} days and {w.outside['calmeet']} cards sit "
+            "outside it: the whole week belongs inside the box")
+    assert w.outside["calall"] == 1 and w.inside["calall"] == 0 \
+        and w.outside["note"] and not w.inside["note"], (
+            "the line to next week and the note on hearings belong under the box, "
+            "in view, not scrolled away inside it")
+    assert page.index("<h2>Coming up</h2>") < page.index('class="calscroll"'), (
+        "the Coming up heading is not above the box")
+
+    css = re.sub(r"/\*.*?\*/", "", Path("app.css").read_text(encoding="utf-8"), flags=re.S)
+    m = re.search(r":where\(body\.pg\) \.calscroll\{([^}]*)\}", css)
+    assert m, "app.css has no :where(body.pg) .calscroll rule"
+    depth = css[:m.start()].count("{") - css[:m.start()].count("}")
+    assert depth == 0, (
+        "the .calscroll rule sits inside an @media or @supports block, so the "
+        "box stops scrolling at some width; the cap is for desktop and phone alike")
+    assert "max-height" in m.group(1) and "overflow-y:auto" in m.group(1), (
+        f"the Coming up box has no height or no scrollbar: {m.group(1)}")
+    assert ".calscroll{" in BP.pages_region(), (
+        "the .calscroll rule is outside app.css's page region, so style.css, "
+        "which the home page loads, does not carry it")
+    for sel, body in re.findall(r"([^{}]*\.calscroll[^{}]*)\{([^}]*)\}", css):
+        assert "overscroll-behavior" not in body and "scroll-snap" not in body, (
+            f"{sel.strip()} takes the scroll from the reader: {body}")
+    head = re.search(r"\.calscroll \.caldate\{([^}]*)\}", css)
+    assert head and "position:sticky" in head.group(1) and "top:0" in head.group(1), (
+        "a day's date no longer stays at the top of the box while its cards "
+        "scroll, so partway down a busy day the cards belong to no day in sight")
+    fade = re.search(r"\.calscroll::after\{([^}]*)\}", css)
+    assert fade and all(k in fade.group(1) for k in
+                        ("position:sticky", "bottom:0", "pointer-events:none")), (
+        "the Coming up box has lost the sticky fade at its foot that says more "
+        "follows (or it catches the pointer and a card under it cannot be opened)")
+    return "ok", ("45 sittings, all inside one named, focusable box, with the "
+                  "heading above and next week below; capped at every width, "
+                  "dates kept in view, a fade while more follows")
+
+
 @check("build", "every deploy names the production branch, and both name the same one")
 def _deploy_branch():
     """wrangler takes a deploy's branch from git unless told, so a Pages
