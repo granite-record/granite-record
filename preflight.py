@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.256
+# GRANITE_VERSION: 2026-09-04.257
 """
 Run every check that needs no network, and report all of them at once.
 
@@ -21654,6 +21654,47 @@ def _workflows_livestreams():
             found.append(f"{f.name}:{j}")
     assert found, "no workflow runs livestreams.py, which the nightly is meant to"
     return "ok", f"{', '.join(found)}: before the night, fetch nights only, outcome to --close, yt-dlp pinned"
+
+
+@check("workflows", "the built site reaches the publish job through the private bucket, never as "
+       "a GitHub artifact")
+def _workflows_site_handoff():
+    """The night builds the site, and the publish job, which waits for the
+    person's approval on another machine, deploys it. A GitHub artifact or
+    cache of a public repository can be downloaded by anyone signed in to
+    GitHub, and the built site carries the licensed logo, which is kept out of
+    the repository and its licence. So no workflow uses either, and the site
+    goes through the private bucket as one archive: cloud.py site-up in the
+    job that builds it, site-down in the job that deploys production, both
+    named by the run's own id so that a night can only ever publish the site
+    it built."""
+    files = _workflows()
+    if not files:
+        return "skip", "no .github/workflows here"
+    up, down = [], []
+    for f in files:
+        text = f.read_text(encoding="utf-8")
+        code = "\n".join(_wf_code(text.splitlines()))
+        m = re.search(r"uses:\s*actions/(upload-artifact|download-artifact|cache)@", code)
+        assert not m, (f"{f.name} uses actions/{m.group(1)}, which anyone signed in to GitHub "
+                       "can download from a public repository")
+        for j, jl in _wf_jobs(text).items():
+            body = "\n".join(_wf_code(jl))
+            for verb, into in (("site-up", up), ("site-down", down)):
+                if f"cloud.py {verb}" not in body:
+                    continue
+                assert re.search(rf"python cloud\.py {verb} --run \$env:RUN_ID\s*$", body, re.M) \
+                    and "RUN_ID: ${{ github.run_id }}" in body, (
+                        f"{f.name}: job {j} runs cloud.py {verb} under a name that is not "
+                        "the run's own id")
+                into.append(f"{f.name}:{j}")
+            if f"cloud.py site-down" in body:
+                assert "--deploy-to production" in body, \
+                    f"{f.name}: job {j} takes a night's site down and does not deploy production"
+    assert up and down, (f"the site is sent by {up or 'no job'} and taken down by "
+                         f"{down or 'no job'}; the publish job would have nothing to deploy")
+    return "ok", (f"sent by {', '.join(up)} and taken down by {', '.join(down)} under the run's "
+                  "id; no artifact or cache in any workflow")
 
 
 @check("data", "the nightly is still running, and its last report pull worked")

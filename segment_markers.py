@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.37
+# GRANITE_VERSION: 2026-09-05.38
 """
 Segment a recording on what the chair says, not on where bill numbers cluster.
 

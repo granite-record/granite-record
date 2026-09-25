@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-09.6
+# GRANITE_VERSION: 2026-09-09.7
 """
 One refusal stops the fetch lane, not just the run that was refused.
 

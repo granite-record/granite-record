@@ -206,21 +206,24 @@ jobs:
           python nightly.py --runner --deploy-to preview
           exit $LASTEXITCODE
 
-      - name: Pack the site for the publish job
+      # The publish job runs on another machine and needs this night's site.
+      # Not as a GitHub artifact: a public repository's artifacts can be
+      # downloaded by anyone signed in to GitHub, and the built site carries
+      # the licensed logo. It goes to the private bucket as one archive,
+      # nights/<run>/site.tar.gz, which the bucket's lifecycle rule deletes
+      # after three days.
+      - name: Send the site to the private bucket for the publish job
         id: pack
         if: success() && steps.night.outputs.publishable == 'true' && env.DRY_RUN == 'false'
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          RUN_ID: ${{ github.run_id }}
         run: |
-          & "$env:SystemRoot\System32\tar.exe" -cf site.tar -C site .
+          python cloud.py site-up --run $env:RUN_ID
           exit $LASTEXITCODE
-
-      - name: Hand the site to the publish job
-        if: steps.pack.outcome == 'success'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
-        with:
-          name: site-${{ github.run_id }}
-          path: site.tar
-          retention-days: 3
-          if-no-files-found: error
 
       - name: Send what changed, and the logs, back to R2
         id: kitup
@@ -323,15 +326,15 @@ jobs:
           python cloud.py state-down
           exit $LASTEXITCODE
 
-      - name: Tonight's site, from the night job
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16  # v4.1.8
-        with:
-          name: site-${{ github.run_id }}
-
-      - name: Unpack it
+      - name: Tonight's site, from the private bucket
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          RUN_ID: ${{ github.run_id }}
         run: |
-          New-Item -ItemType Directory -Force site | Out-Null
-          & "$env:SystemRoot\System32\tar.exe" -xf site.tar -C site
+          python cloud.py site-down --run $env:RUN_ID
           exit $LASTEXITCODE
 
       - name: Deploy to production

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-10.1
+# GRANITE_VERSION: 2026-09-10.2
 """
 Whether a recording's captions reach the end of the recording.
 

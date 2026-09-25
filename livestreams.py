@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-25.1
+# GRANITE_VERSION: 2026-09-25.2
 """
 New livestreams, every night: the recordings the House and Senate channels
 finished since the last run, indexed and captioned, and left where the build
