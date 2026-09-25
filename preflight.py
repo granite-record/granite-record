@@ -15157,6 +15157,15 @@ def _reports_between(build_site_v2):
         got = B.committee_reports([], narr, {}, "", "Judiciary")[2]
         if [g["text"] for g in got] != [want]:
             bad.append(f"{bid}: {[g['text'] for g in got]}")
+    # Withdrawn or unvoted in a clause of its own before the recommittal is
+    # another motion, and the recommittal carried; in its own clause it is
+    # the recommittal's.
+    for raw, want in (("Inexpedient to Legislate [not voted on]; Sen. Boyce moved to Recommit, "
+                       "MA, VV; SJ 5, Pg.53", True),
+                      ("REP FLANAGAN WITHDREW OTP/AM MOTION; RE-REFERRED TO CON & STAT,", True),
+                      ("REP BUCKLEY WITHDREW RECOMMIT MOTION; ADOPTED VV", False)):
+        if B._again_carried(raw) is not want:
+            bad.append(f"{raw[:40]!r} read {B._again_carried(raw)}")
     assert not bad, "; ".join(bad)
     return "ok", "a withdrawn, unvoted, failed or outcome-less motion gives way to the one that carried"
 

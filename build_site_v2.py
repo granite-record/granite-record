@@ -2557,7 +2557,13 @@ def _again_carried(raw):
     where it says neither."""
     m = REPORT_AGAIN.search(raw or "")
     rest = (raw or "")[m.start():] if m else (raw or "")
-    if re.search(r"withdr[ae]w|not\s+voted\s+on", raw or "", re.I):
+    # Withdrawn or not voted on in the clause that sends it back, not in one
+    # before it: "Ought to Pass [not voted on]; Sen. Prescott Moved Recommit,
+    # MA, VV" (SB 10 of 2001) and "REP FLANAGAN WITHDREW OTP/AM MOTION;
+    # RE-REFERRED TO CON & STAT" (HB 303 of 1991) are recommittals that
+    # carried. "REP BUCKLEY WITHDREW RECOMMIT MOTION" is still withdrawn.
+    clause = (raw or "")[(raw or "").rfind(";", 0, m.start()) + 1:] if m else (raw or "")
+    if re.search(r"withdr[ae]w|not\s+voted\s+on", clause, re.I):
         return False
     if re.search(r"\b(?:MF|ML)\b|\bfail|\blost\b", rest):
         return False
