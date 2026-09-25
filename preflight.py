@@ -21424,6 +21424,18 @@ def _town_council_read(T):
                    "Role: City Councilor, Ward 5"],
          [("Dennis Shanahan", "Mayor"), ("April Richer", "Ward 1"),
           ("Richard L. Robison, Jr.", "Ward 5")]),
+        # Each seat ABOVE its holder, the next seat straight under the name.
+        # Read as Keene's "seat under the name", every alderman moved one
+        # ward on, Ward 12's became at-large, and the last was dropped
+        # (fetched 25 September 2026, before anything was published).
+        ("Manchester", ["Aldermen", "Aldermen Email List", "Ward  1 Alderman",
+                        "Bryce Kaw-uh", "Ward  2 Alderman", "Dan Goonan",
+                        "Ward 12 Alderman", "Kelly Thomas", "At-Large Alderman",
+                        "Dan O'Neil", "At-Large Alderman", "June Trisciani",
+                        "Mayor and Aldermen Related Links", "Committees"],
+         [("Bryce Kaw-uh", "Ward 1"), ("Dan Goonan", "Ward 2"),
+          ("Kelly Thomas", "Ward 12"), ("Dan O'Neil", "At large"),
+          ("June Trisciani", "At large")]),
     ]
     bad = []
     got = {}

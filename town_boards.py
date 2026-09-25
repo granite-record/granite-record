@@ -1202,6 +1202,22 @@ def read_council(lines):
             continue
         name = _named(ln)
         if name:
+            # MANCHESTER SAYS EACH SEAT ABOVE ITS HOLDER: "Ward 1 Alderman" /
+            # "Bryce Kaw-uh" / "Ward 2 Alderman" / "Dan Goonan". The seat under
+            # a name is then the NEXT member's, and read as this one's it moved
+            # every alderman a ward on. So where the name sits under one
+            # person's seat and the line below names a different seat, the one
+            # above is this name's. Keene's "Ward 1" / "Jacob R. Favolise" /
+            # "Councilor Ward 1 - 2026 to 2027" names the same seat both
+            # times, and still takes the fuller line below.
+            above = seat_of(heading, strict=False) if heading and own_seat(heading) \
+                else None
+            below = seat_of(nxt, strict=False) if own_seat(nxt) else None
+            if above and below and above["seat"] and below["seat"] \
+                    and above["seat"] != below["seat"]:
+                add(i, name, heading)
+                heading, i = None, i + 1
+                continue
             if own_seat(nxt):
                 add(i, name, nxt)
                 i += 2

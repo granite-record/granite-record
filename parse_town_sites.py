@@ -202,6 +202,9 @@ NAME = re.compile(
 # "Official Mailing Address:", "Physical Location Address:", "Tax Assessor",
 # "Welfare Support", "Special Meetings". Two capitalised words is the shape of
 # a name and also the shape of half the headings on a town website.
+# Months that are also first names; see looks_like_name.
+GIVEN_MONTHS = {"april", "may", "june"}
+
 NOT_A_NAME = re.compile(
     r"\b(towns?|cit(?:y|ies)|boards?|committees?|commissions?|departments?|"
     r"offices?|halls?|streets?|roads?|avenues?|drives?|schools?|librar(?:y|ies)|"
@@ -348,8 +351,22 @@ def looks_like_name(s):
     if s.rstrip().endswith(":"):
         return False
     s = s.strip(" .,;:")
-    if not (3 < len(s) <= 46) or NOT_A_NAME.search(s):
+    if not (3 < len(s) <= 46):
         return False
+    hit = NOT_A_NAME.search(s)
+    if hit:
+        # APRIL, MAY AND JUNE ARE GIVEN NAMES TOO. The months are here so that
+        # "June 2026" and "March Meeting" are not people, and they took
+        # Manchester's at-large alderman June Trisciani off her own city's
+        # page (25 September 2026), as they had Dover's April Richer. One of
+        # the three, first, before a word that is not itself excluded and in
+        # a line with no digits, is a first name.
+        first = s.split()[0]
+        rest = s[len(first):]
+        if not (first.lower() in GIVEN_MONTHS and hit.start() == 0
+                and hit.end() == len(first) and rest.strip()
+                and not re.search(r"\d", s) and not NOT_A_NAME.search(rest)):
+            return False
     if office_of(s) or ROLE.search(s):
         return False
     # No person's first name is New, Old, Other, Annual or Public -- and each

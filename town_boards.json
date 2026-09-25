@@ -2492,6 +2492,96 @@
    "size_from": "the page states it",
    "source_url": "https://www.dover.nh.gov/government/boards-and-commissions/city-council/index.html"
   },
+  "franklin": {
+   "later": "the page names ['Ben Forge', 'Delaney Carrier', 'Sam Jacobson', 'Thomas Boyce', 'Justine Hoppe', 'Al Warner', 'Glenn Morrill'] where the directory names ['Desiree McLaughlin', 'George Dzujna', 'Leigh Webb', 'Olivia Zink', 'Ted Starkweather', 'Valerie Blake', 'Vincent Ribas']",
+   "members": [
+    {
+     "directory_name": null,
+     "name": "Ben Forge",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Delaney Carrier",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Timothy Johnston",
+     "name": "Timothy Johnston",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Sam Jacobson",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Thomas Boyce",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Susan Hallett-Cook",
+     "name": "Susan Hallett-Cook",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Justine Hoppe",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Al Warner",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Ed Prive",
+     "name": "Ed Prive",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Glenn Morrill",
+     "role": "",
+     "seat": "Mayor",
+     "source_url": null,
+     "term_ends": null
+    }
+   ],
+   "read": 10,
+   "read_on": "2026-09-25T08:53:37-0400",
+   "size": 10,
+   "size_from": "the directory lists 10",
+   "source_url": "https://www.franklinnh.gov/197/City-Council-Mayor"
+  },
   "keene": {
    "later": "a term ending 2029 began at the 2025 election",
    "members": [
@@ -2777,6 +2867,136 @@
    "size": 9,
    "size_from": "the page states it",
    "source_url": "https://lebanonnh.gov/337/City-Council"
+  },
+  "manchester": {
+   "later": "the page names ['Bryce Kaw-uh', 'Dana Dexter', 'Jason Bonilla', 'June Trisciani'] where the directory names ['Anthony Sapienza', 'Chris Morgan', 'Joseph Kelly Levasseur', 'Pat Long']",
+   "members": [
+    {
+     "directory_name": "Jay Ruais",
+     "name": "Jay Ruais",
+     "role": "",
+     "seat": "Mayor",
+     "source_url": "https://www.manchesternh.gov/Departments/City-Clerk/Boards-and-Commissions",
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Bryce Kaw-uh",
+     "role": "",
+     "seat": "Ward 1",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Dan Goonan",
+     "name": "Dan Goonan",
+     "role": "",
+     "seat": "Ward 2",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Dana Dexter",
+     "role": "",
+     "seat": "Ward 3",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Christine Fajardo",
+     "name": "Christine Fajardo",
+     "role": "",
+     "seat": "Ward 4",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Jason Bonilla",
+     "role": "",
+     "seat": "Ward 5",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Crissy Kantor",
+     "name": "Crissy Kantor",
+     "role": "",
+     "seat": "Ward 6",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Ross Terrio",
+     "name": "Ross Terrio",
+     "role": "",
+     "seat": "Ward 7",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Edward Sapienza",
+     "name": "Edward Sapienza",
+     "role": "",
+     "seat": "Ward 8",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Jim Burkush",
+     "name": "Jim Burkush",
+     "role": "",
+     "seat": "Ward 9",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Bill Barry",
+     "name": "Bill Barry",
+     "role": "",
+     "seat": "Ward 10",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Norm Vincent",
+     "name": "Norm Vincent",
+     "role": "",
+     "seat": "Ward 11",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Kelly Thomas",
+     "name": "Kelly Thomas",
+     "role": "",
+     "seat": "Ward 12",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Dan O'Neil",
+     "name": "Dan O'Neil",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "June Trisciani",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    }
+   ],
+   "read": 14,
+   "read_on": "2026-09-25T08:54:13-0400",
+   "size": 14,
+   "size_from": "another of the city's pages states it",
+   "source_url": "https://www.manchesternh.gov/Government/Mayor-and-Aldermen/Aldermen"
   },
   "nashua": {
    "later": "the page names ['Alicia Gregg', 'Amber Morgan', 'James Ravan', 'Paula Johnson', 'Vengerflutta Smith'] where the directory names ['Chris Thibodeau', 'Earnest Jette', 'Gloria Timmons', 'Melbourne Moran Jr.', 'Tyler Gouveia']",

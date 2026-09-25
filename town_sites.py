@@ -186,8 +186,17 @@ def municipalities():
         if not p["named_by"]["nhdot_officials"]["present"]:
             continue                       # the 25 unincorporated places
         urls, seen = [], set()
+        # A CITY'S CLERKS ARE FILED BY WARD. The clerk list has no "franklin",
+        # only "franklin-ward-1" to "-3", so the city's own address in it was
+        # never tried -- and for Franklin it is the live one (franklinnh.gov),
+        # while NHDOT's franklinnh.org resolves and never answers. All twelve
+        # cities with wards are filed this way; the first ward stands for the
+        # city where the city has no line of its own.
+        clerk = clerks.get(key) or next(
+            (v for k, v in sorted(clerks.items())
+             if k.startswith(key + "-ward-") and isinstance(v, dict)), None) or {}
         for raw in ((offs.get(key) or {}).get("website"),
-                    (clerks.get(key) or {}).get("website")):
+                    clerk.get("website")):
             u = normalise(raw)
             if u and u not in seen:
                 seen.add(u)
