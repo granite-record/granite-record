@@ -289,9 +289,11 @@ beside it, so the next reader can tell in a second whether it still holds.
 ## Publishing
 
 `publish.bat` rebuilds from local files, runs `check_site.py`, then **refuses
-to go any further unless this folder is on `master`** -- `--branch` sends the
+to go any further unless this folder is on `main`** -- `--branch` sends the
 deploy to production whatever git says, so a report-triage branch checked out
-here would otherwise become the site. It deploys with
+here would otherwise become the site. (The Pages project's production branch
+is still called `master`, which is the name `--branch` is given; the
+repository's own branch is `main`. `publish.bat` explains the rename.) It deploys with
 `npx wrangler pages deploy` to the Cloudflare Pages project, retrying up to
 four times because the failure it hits is an upload timeout on the fat files
 and Pages assets are content-addressed, so each attempt starts where the last
@@ -310,6 +312,49 @@ is that fault back.
 Deploying is a person's decision. When the person is away from the keyboard
 they have sometimes said so and permitted it; that is per-absence, not
 standing.
+
+## The nightly on GitHub
+
+The nightly is moving off this PC to GitHub Actions, so that the site stays
+current whether or not the PC is on. `.github/workflows/nightly.yml` builds the
+site each night on a Windows machine GitHub lends free to public repositories,
+and deploys production only after the person approves the `production`
+environment. `weekly.yml` takes the committee rosters, the members who have
+left and the study committees early on Monday. Both schedules are commented
+out until the person turns them on; until then each runs only when started by
+hand from the Actions tab.
+
+GitHub's machine starts empty every night. `cloud.py` brings it what git does
+not hold, from the private R2 bucket (`keys.R2_BUCKET` names it), and its
+docstring is the reference:
+
+- `kit/` holds the files the build reads. `cloud_kit.json` lists them and says
+  which machine owns each, because two writers of one file is how the older
+  copy wins. The laptop sends it once with `seed-kit`; each night takes it
+  with `kit-down` and sends back what it changed with `kit-up`.
+- `state/` holds the few small files a night must remember -- the refusal
+  record, the census -- which live under `archive/` on a machine.
+- `nights/<run>/` holds the night's built site, handed to the publish job as
+  one archive. Never as a GitHub artifact: anyone signed in to GitHub can
+  download a public repository's artifacts, and the site carries the licensed
+  logo. `preflight` fails if a workflow uses one.
+- `backup/` is the laptop's copy of everything git does not hold
+  (`cloud.py backup`).
+- `replaced/` holds whatever a command would otherwise have overwritten or
+  removed. `cloud.py` deletes nothing outright; the bucket's lifecycle rules
+  clear `replaced/` and `logs/` after 30 days and `nights/` after three.
+
+Credentials come from `keys.r2()`: repository secrets on GitHub, `secrets.json`
+on the laptop. Nothing else reads them.
+
+**Until the stand-down, the laptop's nightly is still the one.** `python3
+refusal.py --stand-down` writes `archive/runs-in-the-cloud.json`; from then on
+the laptop's nightly, snapshot, publish and the fetchers GitHub owns refuse with
+exit 4 and a sentence saying why. After it, **the refusal that stops a night is
+the bucket's `state/refused.json`**, not this machine's: `refusal.py --clear`
+lifts the local one and says so, and `python3 cloud.py clear-refusal` lifts the
+bucket's. Both are a person's decision, after `netcheck.py`. Each night's full
+log is in the bucket under `logs/<date>/`.
 
 ## What is running
 
