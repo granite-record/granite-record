@@ -573,17 +573,35 @@ SENATE = Path("journals_senate")
 _MONTH_ALT = "|".join(m.capitalize() for m in MONTHS)
 # The sitting's date: at the end of the line that opens it ("The Senate met at
 # 10:00 a.m.      March 20, 2003", 2003), or else in the heading just above
-# it -- "SENATE      May 1, 2014", "JOURNAL 4      February 2, 2006", or
+# it -- "SENATE      May 1, 2014", "JOURNAL 21      June 7, 2007", or
 # "March 27, 2003" alone. JUST above: a floor amendment prints its own date on
 # a line alone ("Sen. Hennessey, Dist 5 / February 22, 2018 / 2018-0827s"),
-# and with the JOURNAL line unread, 2 February 2006 took a date from the
-# business 2,241 characters above it. The heading is never more than 538
-# characters above the sitting's first line, 2003 to 2026.
+# and with the JOURNAL line unread, the sitting of 9 February 2006 took a date
+# from the business 2,241 characters above it. The heading is never more than
+# 538 characters above the sitting's first line, 2003 to 2026.
 S_DATE = re.compile(rf"(?P<mon>{_MONTH_ALT})\s+(?P<day>\d{{1,2}}),?\s*(?P<yr>\d{{4}})")
 S_DATELINE = re.compile(
     rf"^[ \t]*(?:SENATE[ \t]+|JOURNAL\s*\d+[A-Z]?[ \t]+)?(?:{_MONTH_ALT})[ \t]+"
     rf"\d{{1,2}},?[ \t]*\d{{4}}[ \t]*$", re.M)
 S_HEAD_REACH = 1200
+# A HEADING CAN BE MISPRINTED, and one is. Senate Journal 4 of 2006 heads its
+# sitting "JOURNAL 4      February 2, 2006", but that sitting is 9 February:
+# the issue's masthead reads "COMMENCEMENT - FEBRUARY 9, 2006 SESSION", every
+# page of it is headed "SENATE JOURNAL 9 FEBRUARY 2006", and Senator Kenney,
+# excused as it opens, is recorded excused on all three roll calls of
+# 9 February. So where the heading above a sitting that MET disagrees with the
+# running head of the page after it, and the masthead agrees with the running
+# head, the two are believed over the one. Neither alone is: SJ 9 of 2005
+# prints 2004 in every running head, and a sitting that reconvened is headed
+# by the day it resumed while its pages keep the day it began. Across the
+# 460 openings on disk, 2003 to 2026, this moves that one.
+_MONTH_UP = "|".join(m.upper() for m in MONTHS)
+S_RUNNING = re.compile(
+    rf"SENATE\s+JOURNAL\s+(?P<day>\d{{1,2}})\s+(?P<mon>{_MONTH_UP})\s+(?P<yr>\d{{4}})")
+S_COMMENCES = re.compile(
+    rf"COMMENCEMENT\s*-\s*(?P<mon>{_MONTH_UP})\s+(?P<day>\d{{1,2}}),?\s*"
+    r"(?P<yr>\d{4})\s+SESSION")
+S_RUNNING_REACH = 3000
 S_START = re.compile(
     r"^[ \t]*The\s+Senate\s+(?:met|reconvened|convened|assembled)\b[^\n]*", re.M)
 # What ends the opening: a bill's heading at the start of a line, or a roll
@@ -606,25 +624,36 @@ PART_OF_DAY = re.compile(
     re.I)
 
 
+def _iso(m):
+    return (f"{m.group('yr')}-{MONTHS[m.group('mon').lower()]:02d}-"
+            f"{int(m.group('day')):02d}")
+
+
 def senate_openings(text):
     """[(iso_date, opening)] -- each sitting's opening in one Senate file."""
     out = []
     starts = list(S_START.finditer(text))
+    commences = {_iso(c) for c in S_COMMENCES.finditer(text)}
     for i, s in enumerate(starts):
         end = starts[i + 1].start() if i + 1 < len(starts) else len(text)
         b = S_BUSINESS.search(text, s.end(), end)
         if b:
             end = b.start()
         m = S_DATE.search(s.group(0))
+        headed = False
         if not m:
             above = list(S_DATELINE.finditer(
                 text, max(0, s.start() - S_HEAD_REACH), s.start()))
             m = S_DATE.search(above[-1].group(0)) if above else None
+            headed = True
         if not m:
             continue
-        mo = MONTHS[m.group("mon").lower()]
-        out.append((f"{m.group('yr')}-{mo:02d}-{int(m.group('day')):02d}",
-                    text[s.end():end]))
+        iso = _iso(m)
+        run = S_RUNNING.search(text, s.end(), s.end() + S_RUNNING_REACH)
+        if (headed and run and " met" in s.group(0) and _iso(run) != iso
+                and _iso(run) in commences):
+            iso = _iso(run)
+        out.append((iso, text[s.end():end]))
     return out
 
 

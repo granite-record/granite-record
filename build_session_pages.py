@@ -343,7 +343,7 @@ def absences_html(narrative, body, members, esc):
     THE SENATE NAMES ITS OWN, from the opening of each sitting
     (journal_days.read_senate_day), and only those excused for the day, by
     the person's decision of 24 September 2026. The same caution holds there:
-    of 102 senators so named on a day with roll calls, 2003 to 2026, 101 are
+    of 103 senators so named on a day with roll calls, 2003 to 2026, 102 are
     recorded excused on every one of them, and Senator Carson, excused as
     the Senate opened on 7 May 2026, voted on all seven that afternoon.
     """

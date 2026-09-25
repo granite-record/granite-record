@@ -7007,9 +7007,9 @@ def _vote_category_text(BSP, shell):
 # 23, 2012.txt ("and" after the last comma, and the list again before a roll
 # call); 2024/SJ 08 April 5 2024.txt ("for the moment"); 2024/SJ 09 April 11
 # 2024.txt (a reason given); 2018/SJ005.txt (excused "for the day", after the
-# consent calendar); 2006/SJ 4.txt (the date on the JOURNAL line), below a
-# floor amendment's heading in the shape 2018/SJ005.txt prints one, whose own
-# date line is the trap.
+# consent calendar); 2006/SJ 4.txt (a JOURNAL line misprinting the date, which
+# the masthead and running head correct), below a floor amendment's heading
+# in the shape 2018/SJ005.txt prints one, whose own date line is the trap.
 SENATE_JOURNALS = {
     "2026/SJ 09 April 16, 2026.txt": (
         "SENATE                                                       April 16, 2026\n"
@@ -7071,7 +7071,15 @@ SENATE_JOURNALS = {
         "The question is on the adoption of the Consent Calendar. Adopted.\n\n"
         "Senators Carson and D'Allesandro are excused for the day.\n\n"
         "                                  REGULAR CALENDAR\n"),
+    # Its JOURNAL line is misprinted: the sitting is 9 February, as the
+    # masthead and the running head say, and not the 2nd it is headed.
     "2006/SJ 4.txt": (
+        "                                                   February 9, 2006\n"
+        "                                                   Nos. 3 - 4\n\n"
+        "        SENATE JOURNAL\n\n"
+        " ADJOURNMENT - FEBRUARY 2, 2006 SESSION\n"
+        "COMMENCEMENT - FEBRUARY 9, 2006 SESSION\n"
+        "80                     SENATE JOURNAL 2 FEBRUARY 2006\n\n"
         "Sen. Hennessey, Dist 5\n"
         "January 26, 2006\n"
         "2006-0827s\n\n"
@@ -7080,10 +7088,24 @@ SENATE_JOURNALS = {
         "JOURNAL 4                                              February 2, 2006\n\n"
         "The Senate met at 10:00 a.m.\n\n"
         "A quorum was present.\n\n"
+        "                           SENATE JOURNAL 9 FEBRUARY 2006                    81\n\n"
         "Senator Letourneau led the Pledge of Allegiance.\n\n"
         "Senator Kenney is excused for the day.\n\n"
         "                                    INTRODUCTION OF GUESTS\n"),
 }
+# The other way round: 2005/SJ 9.txt is headed rightly and carries 2004 in
+# every running head, and its masthead agrees with the heading.
+SENATE_2005_SJ9 = (
+    " ADJOURNMENT - MARCH 10, 2005 SESSION\n"
+    "COMMENCEMENT - MARCH 17, 2005 SESSION\n"
+    "110                           SENATE JOURNAL 10 MARCH 2005\n\n"
+    "Adjournment.\n\n"
+    "SENATE\nJOURNAL 9\n\n"
+    "                                                   March 17, 2005\n\n"
+    "The Senate met at 10:00 a.m.\n\n"
+    "A quorum was present.\n\n"
+    "                             SENATE JOURNAL 17 MARCH 2004                 111\n\n"
+    "The Reverend David P. Jones, chaplain to the Senate, offered the prayer.\n")
 
 
 @check("session", "a Senate page names the senators excused for the day, and "
@@ -7101,7 +7123,9 @@ def _senate_excused(J, BSP, shell):
     opening is read. The wrongs this rules out are each real: a mid-day
     excuse named as the day's, a roll call's own excused line, "for the
     moment", "and Merrill" as a name, a date taken from a floor amendment
-    printed above the sitting, and a reason printed on the page.
+    printed above the sitting, a heading's misprinted date believed over the
+    masthead and every running head (Senator Kenney, excused on 9 February
+    2006, was filed under the 2nd), and a reason printed on the page.
     """
     root = Path(tempfile.mkdtemp())
     try:
@@ -7120,12 +7144,15 @@ def _senate_excused(J, BSP, shell):
         want = {"2026-04-16": ["McConkey"], "2003-03-20": ["Prescott"],
                 "2012-05-23": ["Forrester", "Luther", "Larsen", "Merrill"],
                 "2024-04-05": [], "2024-04-11": ["D'Allesandro"],
-                "2018-02-22": [], "2006-02-02": ["Kenney"],
-                "2006-01-26": []}
+                "2018-02-22": [], "2006-02-09": ["Kenney"],
+                "2006-02-02": [], "2006-01-26": []}
         got = {d: names(d) for d in want}
         assert got == want, (
             "the Senate's excused senators are not the opening's: " + "; ".join(
                 f"{d} got {got[d]}, want {want[d]}" for d in want if got[d] != want[d]))
+        dated = [d for d, _ in J.senate_openings(SENATE_2005_SJ9)]
+        assert dated == ["2005-03-17"], (
+            f"a running head's misprinted year redated a sitting: {dated}")
 
         members = BSP.Members(root)
         html = BSP.absences_html(J.read_senate_day("2024-04-11", root / "journals_senate"),
