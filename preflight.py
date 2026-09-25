@@ -4769,6 +4769,18 @@ def _journey_reads(build_site_v2):
         ev("S", "1999-10-22", "Sen. Below Floor Amendment {2166} New Title RC, (15-8) AA, OT3rdg, "
            "MA, VV", "amendment"))[1]],
          [("1999-03-30", "H", "nonconcurred"), ("1999-10-22", "S", "passed")], "HB109 1999")
+    # One made in recess answers the passage the other chamber made again
+    # after reconsidering the first: HB 1409 of 2014.
+    want([x[:3] for x in run(
+        "HB1409", ev("S", "2014-05-15", "Ought to Pass with Amendment 1733s, NT, MA, RC 23-1; "
+                                        "OT3rdg"),
+        ev("H", "2014-05-15", "Rep. Chandler moved to Non-Concur with Senate AM and request C of "
+           "C; MA VV (In recess of 5/15/2014)"),
+        ev("S", "2014-05-16", "Sen. Bradley Moved Reconsideration on Ought to Pass with "
+           "Amendment, MA, VV"),
+        ev("S", "2014-05-16", "Ought to Pass with Amendment 1733s, NT, MA, RC 24-0; OT3rdg"))[1]],
+         [("2014-05-15", "S", "passed"), ("2014-05-16", "S", "passed"),
+          ("", "H", "nonconcurred")], "HB1409 2014")
     # A DECISION RECONSIDERED ON A LATER DAY says so. HB 628 of 1994's Senate
     # refused a conference and, five days later, reconsidered and acceded;
     # SCR 6 of 2006's House killed it 149-147 and a week later reconsidered.

@@ -4240,6 +4240,8 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
                 if got["act"] == "unsigned" and any(s["act"] == "override" for s in steps):
                     continue
             st["_row_day"] = date
+            if re.search(r"\bin\s+recess\b", raw, re.I):
+                st["_recess"] = True
             voted.discard(st["body"])
             moved.pop(st["body"], None)
             if st["act"] == "passed" and (body, date) in pending:
@@ -4347,7 +4349,8 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
             st["text"] += ", reconsidered on " + _j_prose_date(
                 st["reconsidered"], st["reconsidered"][:4] != st["date"][:4])
         for k in ("vote", "amended", "third", "to", "conf", "rule", "adjourned",
-                  "unanswered", "intro_adopt", "short_of", "reconsidered", "recon_third"):
+                  "unanswered", "intro_adopt", "short_of", "reconsidered", "recon_third",
+                  "_recess"):
             st.pop(k, None)
     return intro, steps
 
@@ -4485,8 +4488,14 @@ def _j_in_recess(steps):
     while i < len(out):
         s = out[i]
         other = {"H": "S", "S": "H"}.get(s["body"])
+        # Of the passages that stood: a refusal made in recess answers the
+        # passage the other chamber made again after reconsidering one. HB
+        # 1409 of 2014's "Non-Concur with Senate AM and request C of C; MA VV
+        # (In recess of 5/15/2014)", entered on the 21st, answers the Senate's
+        # passage of 16 May, not the one of the 15th it reconsidered.
         later = [j for j, t in enumerate(out) if t["body"] == other
-                 and t["act"] == "passed" and t["date"]]
+                 and t["act"] == "passed" and t["date"]
+                 and not (s.get("_recess") and t.get("reconsidered"))]
         if (s["act"] in ("concurred", "nonconcurred") and s["date"] and later
                 and all(out[j]["date"] > s["date"] for j in later)
                 and _j_days(out[later[0]]["date"], s["date"]) <= 7 and later[0] > i):
