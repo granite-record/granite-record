@@ -710,19 +710,31 @@ def official(name, chamber, term):
 #   LIST    archive_bills.json, the General Court's legacy search list of
 #           each term from 1997-1998, which prints beside every bill the name
 #           the code it is filed under carries today: mixed case for a code
-#           still listed, capitals for a retired one. A code prints one name,
-#           so bills printed with the same capitals are one committee. The
-#           list names a bill's LAST committee, so its Finance and its
-#           committees of conference are left out of the counts below.
+#           still listed, capitals for a retired one. The list names a
+#           bill's LAST committee, so its Finance and its committees of
+#           conference are left out of the counts below.
+#
+# CAPITALS NAME A RETIRED CODE, NOT WHICH ONE. Mixed case is one of today's
+# codes, and today's list has one per name in a chamber. Capitals say only
+# that the code carrying that name is retired, and the General Court has put
+# a name on a second code before: S33 and S50 are both Election Law and
+# Internal Affairs, and 2005-2008's retired Rules and Enrolled Bills is not
+# S45. So LIST carries a run only where the run is unbroken from a term a
+# STATUS page files under the code. A name that stopped and came back is two
+# runs, and the later one could be a new code under the old name: the
+# Senate's Internal Affairs of 1997-2006 and 2011-2012 and the House's Local
+# and Regulated Revenues of 2009-2010 print in capitals as S09 and H21 do,
+# and no page on this disk files a bill of those years under either, so they
+# are None until one does.
 #
 # A name keeps its entry for every term official() gives it, where a witness
 # falls inside that run, and not past a witness that files the name's bills
 # under another code: LIST puts 2009's House "Commerce" bills under H43, so
-# H33's entry ends with 2008. A name that stopped and came back is two runs,
-# and a run no witness reaches is left out. So 1989-1992's House Fish and
-# Game, whose code is on no page on this disk, links nowhere, while
-# 2001-2008's is H08. Nothing here claims why a committee stopped: the
-# records show a code carrying a new name, or a code stopping, and no more.
+# H33's entry ends with 2008. A run no witness reaches is left out. So
+# 1989-1992's House Fish and Game, whose code is on no page on this disk,
+# links nowhere, while 2001-2008's is H08. Nothing here claims why a
+# committee stopped: the records show a code carrying a new name, or a code
+# stopping, and no more.
 CODES = [
     # ---- renamed, and sitting today under the later name ----
     # STATUS 1995 HB 109 (see above); RULES 1995 names Corrections and
@@ -751,7 +763,9 @@ CODES = [
     # AND REGULATED REVENUES", the name RULES 1997 gives it.
     ("H", 1989, 1996, "Regulated Revenues", "H21"),
     ("H", 1997, 1998, "Local and Regulated Revenues", "H21"),
-    ("H", 2009, 2010, "Local and Regulated Revenues", "H21"),  # LIST 55 of 55
+    # LIST 55 of 55 in capitals, after ten years without the name: H21, or a
+    # new code under its name, and nothing here says which.
+    ("H", 2009, 2010, "Local and Regulated Revenues", None),
     ("H", 1991, 1994, "Economic Development", "H32"),  # STATUS 1993
     # STATUS 1995: filed under H33, printed "COMMERCE". Not H43, 2009's
     # Commerce and Consumer Affairs: LIST files 504 of 504 of 1999-2008's
@@ -763,8 +777,12 @@ CODES = [
     ("S", 1989, 2004, "Banks", "S01"),                # STATUS 1992; LIST 24
     ("S", 1989, 2004, "Insurance", "S08"),            # STATUS 1992, 1995; LIST 100
     ("S", 1989, 1992, "Internal Affairs", "S09"),     # STATUS 1992
-    ("S", 1997, 2006, "Internal Affairs", "S09"),     # LIST 168, INTERNAL AFFAIRS
-    ("S", 2011, 2012, "Internal Affairs", "S09"),     # LIST 27, the same
+    # LIST 168 and 27, INTERNAL AFFAIRS, after gaps of four years and of
+    # four: S09 or a new code under its name. The Senate's own table
+    # (db/Committees.psv) numbers the codes first used in 2011 with no slot
+    # for S09, which leans against it for 2011-2012 and settles nothing.
+    ("S", 1997, 2006, "Internal Affairs", None),
+    ("S", 2011, 2012, "Internal Affairs", None),
     ("S", 1989, 2004, "Public Affairs", "S13"),       # STATUS 2002; LIST 165
     ("S", 1989, 2004, "Public Institutions, Health and Human Services", "S14"),  # STATUS 1989-1998; LIST 116
     # STATUS 1993: an Economic Development bill filed under S18, printed
@@ -834,8 +852,25 @@ def retired():
 def codes_problems():
     """[message] for every CODES entry that is not a name official() writes
     for that chamber in each of its terms, whose code is of the other
-    chamber, or that overlaps another entry for the same name."""
+    chamber, that overlaps another entry for the same name, or that puts a
+    code on a run begun after a gap in that code's runs.
+
+    The gap is the case capitals cannot settle (see CODES): a committee that
+    came back after terms without it may have come back under a new code. A
+    bill-status page filing a bill of the later run under the old code would
+    settle it, and would be the reason to teach this rule an exception."""
     out = []
+    by_code = {}
+    for ch, lo, hi, nm, code in CODES:
+        if code:
+            by_code.setdefault(code, []).append((lo, hi, nm))
+    for code, spans in sorted(by_code.items()):
+        spans.sort()
+        for (lo, hi, nm), (lo2, hi2, nm2) in zip(spans, spans[1:]):
+            if lo2 > hi + 1:
+                out.append(f"{code}: {nm!r} {lo}-{hi}, then {nm2!r} "
+                           f"{lo2}-{hi2} after a gap -- the later run may be "
+                           "a new code under the old name")
     for ch, lo, hi, nm, code in CODES:
         for y in range(lo, hi, 2):
             if not known(nm, ch, f"{y}-{y + 1}"):

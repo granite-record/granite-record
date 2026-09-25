@@ -7549,7 +7549,8 @@ def _committees_archived(BC):
         "archived" if "H57" in got(archived) else "live")
     assert got(live) == ["H07", "H30", "S99"], got(live)
     assert BC.years(["1989-1990", "2023-2024"]) == "1989 to 2024"
-    # By run: the Senate's Internal Affairs did not sit from 1993 to 1996.
+    # By run: a committee's record that stops and starts again is not said
+    # to run through the years between.
     assert BC.runs(["1989-1990", "1991-1992", "1997-1998", "2011-2012"]) == \
         "1989 to 1992, 1997 to 1998 and 2011 to 2012"
     # And the committee's own page says it, since a reader from a search never
@@ -7577,11 +7578,29 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
     S33, and linked by name alone its 77 bills went to S50, formed under the
     same name for 2017-2018 -- two committees shown as one. And 1995-2008's
     House Commerce is H33, not 2009's Commerce and Consumer Affairs, H43.
+
+    The same case is why a retired name that comes back after a gap links
+    nowhere. The search list prints a retired code's name in capitals, which
+    says the code is retired and not which one, and the first version of this
+    table put the Senate's Internal Affairs of 1997-2006 and 2011-2012 on S09
+    and the House's Local and Regulated Revenues of 2009-2010 on H21 on the
+    strength of those capitals alone: 412 bills and 184 sittings on two
+    archived pages, shown as one committee's record across gaps of four and
+    ten years.
     """
     from collections import Counter as C
     CN, BC, B = committee_names, build_committees, build_site_v2
     bad = CN.codes_problems()
     assert not bad, "; ".join(bad[:4])
+    # And codes_problems is what says so, should an entry like those return.
+    CN.CODES.append(("S", 2011, 2012, "Internal Affairs", "S09"))
+    try:
+        back = CN.codes_problems()
+    finally:
+        CN.CODES.pop()
+    assert any(b.startswith("S09:") and "gap" in b for b in back), (
+        "a retired code put on a run begun after a gap is no longer refused: "
+        + "; ".join(back[:3]))
     today = {(ch, CN._norm(nm)): code for ch, nm, code in (
         ("H", "Criminal Justice and Public Safety", "H26"),
         ("H", "Commerce and Consumer Affairs", "H43"),
@@ -7604,7 +7623,14 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
             ("Fish and Game", "H", "1991-1992", None),
             ("Fish and Game", "H", "2005-2006", "H08"),
             ("Economic Development", "S", "1993-1994", "S18"),
-            ("Economic Development", "H", "1993-1994", "H32")):
+            ("Economic Development", "H", "1993-1994", "H32"),
+            # Witnessed by a bill-status page, and unbroken from it.
+            ("Internal Affairs", "S", "1991-1992", "S09"),
+            ("Local and Regulated Revenues", "H", "1997-1998", "H21"),
+            # Back after a gap, and printed in capitals only: no code.
+            ("Internal Affairs", "S", "1999-2000", None),
+            ("Internal Affairs", "S", "2011-2012", None),
+            ("Local and Regulated Revenues", "H", "2009-2010", None)):
         got = CN.page_code(name, ch, term, today)
         assert got == want, f"page_code({name!r}, {ch}, {term!r}) is {got!r}, not {want!r}"
     last = CN.retired()
@@ -7618,7 +7644,9 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
         {"term": "2005-2006", "committees": ["Senate Rules and Enrolled Bills"]},
         {"term": "2007-2008", "committees": ["Senate Election Law and Internal Affairs"]},
         {"term": "2017-2018", "committees": ["Senate Election Law and Internal Affairs"]},
-        {"term": "2023-2024", "committees": ["Senate Rules and Enrolled Bills"]}],
+        {"term": "2023-2024", "committees": ["Senate Rules and Enrolled Bills"]},
+        {"term": "1991-1992", "committees": ["Senate Internal Affairs"]},
+        {"term": "2011-2012", "committees": ["Senate Internal Affairs"]}],
         {"House Criminal Justice and Public Safety": "H26",
          "Senate Election Law and Internal Affairs": "S50",
          "Senate Rules and Enrolled Bills": "S45"})
@@ -7626,7 +7654,8 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
                        ("House Commerce", "H33"),
                        ("House Criminal Justice and Public Safety", "H26"),
                        ("Senate Election Law and Internal Affairs", {"": "S50", "2007-2008": "S33"}),
-                       ("Senate Rules and Enrolled Bills", {"": "S45", "2005-2006": ""})):
+                       ("Senate Rules and Enrolled Bills", {"": "S45", "2005-2006": ""}),
+                       ("Senate Internal Affairs", {"": "", "1991-1992": "S09"})):
         assert links.get(full) == want, f"committee_codes[{full!r}] is {links.get(full)!r}, not {want!r}"
 
     # The committee's own page: the day under the name it had, the page head
@@ -7639,7 +7668,7 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
         "Criminal Justice and Public Safety"
     assert BC.former_names("Local and Regulated Revenues", {
         "Regulated Revenues": {"1989-1990", "1991-1992", "1993-1994", "1995-1996"},
-        "Local and Regulated Revenues": {"1997-1998", "2009-2010"}}) == [
+        "Local and Regulated Revenues": {"1997-1998"}}) == [
         {"name": "Regulated Revenues", "years": "1989 to 1996"}]
     assert BC.runs(["2009-2010", "1997-1998"]) == "1997 to 1998 and 2009 to 2010"
     src = Path(BC.__file__).read_text(encoding="utf-8")
@@ -7670,6 +7699,8 @@ const out = {
   old: scope.cmteLink("House Corrections and Criminal Justice", "1995-1996"),
   s33: scope.cmteLink(E, "2007-2008"), s50: scope.cmteLink(E, "2017-2018"),
   none: scope.cmteLink(E), reb: scope.cmteLink("Senate Rules and Enrolled Bills", "2005-2006"),
+  ia92: scope.cmteLink("Senate Internal Affairs", "1991-1992"),
+  ia12: scope.cmteLink("Senate Internal Affairs", "2011-2012"),
   card: scope.cmeta({term: "2007-2008", committees: [E, "House Commerce"]}),
   head: scope.renderCommitteeHead({code: "H26", name: "Criminal Justice and Public Safety",
     chamber: "H", names: [{name: "Corrections and Criminal Justice", years: "1993 to 1996"}]})};
@@ -7685,6 +7716,9 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
     assert "committee/S33.html" in out["s33"] and "committee/S50.html" in out["s50"] \
         and "committee/S50.html" in out["none"], (out["s33"], out["s50"], out["none"])
     assert "<a" not in out["reb"], "2005's Rules and Enrolled Bills links to S45: " + out["reb"]
+    assert "committee/S09.html" in out["ia92"] and "<a" not in out["ia12"], (
+        "the Senate's Internal Affairs links by name across its gap: "
+        + out["ia92"] + " / " + out["ia12"])
     assert "committee/S33.html" in out["card"] and "committee/H33.html" in out["card"] \
         and "S50" not in out["card"], "a card does not link by its own term: " + out["card"]
     head = re.sub(r"\s+", " ", out["head"])

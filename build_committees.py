@@ -333,10 +333,10 @@ def bills_in_order(by_term):
 # 1997-2008, the Senate's Public Affairs and Insurance ...) and a handful of
 # fragments the docket parser leaves. committee_names.CODES then gave the 17
 # of those whose General Court code is on this disk pages of their own, and
-# it was 93 the same evening: House Appropriations, the Senate's
-# Transportation and Interstate Cooperation, and the rest whose code no page
-# here gives. A ceiling above 112 lets a new special committee or two through
-# and stops the build on the next jump.
+# it was 95 the next day: House Appropriations, the Senate's Transportation
+# and Interstate Cooperation, its Internal Affairs after 1992, and the rest
+# whose code no page here gives. A ceiling above 112 lets a new special
+# committee or two through and stops the build on the next jump.
 UNMATCHED_CEILING = 150
 
 
@@ -836,9 +836,9 @@ def main():
     for c in archived:
         f = out / f"{c['code']}.json"
         rec = json.loads(f.read_text(encoding="utf-8"))
-        # By run, not first to last: the Senate's Internal Affairs sat in
-        # 1989-1992, 1997-2006 and 2011-2012, and "1989 to 2012" said it sat
-        # through the eight years between.
+        # By run, not first to last: H47, the House's special committee on
+        # public employee pensions, sat in 2011-2012 and again in 2015-2016,
+        # and "2011 to 2016" said it sat through the two years between.
         rec["archived"] = {"years": runs(c["span"])}
         f.write_text(json.dumps(rec), encoding="utf-8")
         # And its page stops naming a feed: shell.committee_followable, which
