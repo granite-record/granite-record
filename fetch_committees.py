@@ -182,16 +182,36 @@ def main():
                          "the real thing")
     ap.add_argument("--delay", type=float, default=2.0)
     a = ap.parse_args()
+    # GitHub's weekly job owns committees.json once the laptop has stood down.
+    refusal.stand_down("The committee pages fetch", "GitHub's weekly job takes "
+                       "committees.json on Sunday nights now.")
     refusal.check("The committee membership fetch")
 
     found = {}
+    dropped = 0
     for chamber, url in PAGES:
         print(f"\n{'Senate' if chamber == 'S' else 'House'}: {url}")
         try:
             page = get(url)
         except Exception as e:
             print(f"  could not fetch: {type(e).__name__}: {e}")
+            # ONE READING OF AN ANSWER, the one every other fetcher uses. This
+            # printed a 403 and asked for the next page two seconds later, and
+            # recorded nothing, so the next fetch to start asked again. It runs
+            # unattended in GitHub's weekly job now, which is where walking
+            # through a refusal would go unseen longest.
+            kind = refusal.classify(e)
+            dropped += kind == "dropped"
+            if kind == "refused" or dropped >= 2:
+                refusal.note("fetch_committees", f"{type(e).__name__}: {e}")
+                print("  Refused. Recorded in the refusal file; nothing more is "
+                      "asked, and every fetch now waits for a person.")
+                sys.exit(2)
             continue
+        if refusal.classify(body=page[:4000]) == "refused":
+            refusal.note("fetch_committees", "the firewall's block page, served as 200")
+            print("  The firewall's block page. Recorded; nothing more is asked.")
+            sys.exit(2)
         if a.raw:
             # The House page has come back with 0 committees on it.
             # Guessing at a heading shape is the thing this project does
@@ -239,8 +259,10 @@ def main():
               "right.")
         return
     if not total:
+        # Exit 1, not 0: a fetch that found nothing and said so on one line
+        # looks exactly like one that worked to anything reading its status.
         print(f"\nNOT WRITING {a.out}: nothing was found.")
-        return
+        return 1
     Path(a.out).write_text(json.dumps(found, indent=2), encoding="utf-8")
     print(f"-> {a.out}")
     print("\nA committee name parsed anywhere else can now be checked against "
@@ -249,4 +271,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

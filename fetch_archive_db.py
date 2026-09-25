@@ -63,9 +63,17 @@ import time
 from pathlib import Path
 
 import probe_db as P
+import refusal
 
 OUT = Path("db")
 MANIFEST = OUT / "_manifest.json"
+
+# The views GitHub's workflows take once the laptop has stood down: the study
+# committees' meetings and details every night, their members and bills on
+# Sunday nights. nightly.py names the same four, and preflight holds the two
+# lists together.
+GITHUB_VIEWS = ("StatStudDetails", "StatStudMembers", "StatStudMeetings",
+                "vStatStudTemp")
 
 # (view, database, order-by or "", why). Ordered smallest-first so a run that
 # is going to fail on connection fails in seconds rather than after the
@@ -212,6 +220,17 @@ def main():
         unknown = set(a.only) - {v[0] for v in VIEWS}
         if unknown:
             raise SystemExit(f"not a view here: {', '.join(sorted(unknown))}")
+    # Two writers of one file is how the older copy wins. Once GitHub owns the
+    # study-committee views, a dump on the laptop takes everything else.
+    if not a.list and refusal.stood_down() is not None:
+        theirs = [v[0] for v in todo if v[0] in GITHUB_VIEWS]
+        todo = [v for v in todo if v[0] not in GITHUB_VIEWS]
+        if theirs:
+            print(f"  left to GitHub's workflows, which own them since the "
+                  f"stand-down: {', '.join(theirs)}")
+        if not todo:
+            refusal.stand_down("fetch_archive_db.py for the study-committee views",
+                               "GitHub's nightly and weekly jobs take them now.")
 
     print("=" * 72)
     print("The General Court's public database, onto this disk")

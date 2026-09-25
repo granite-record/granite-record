@@ -32,10 +32,25 @@ Clearing it is a person's decision, deliberately: `python3 refusal.py --clear`,
 after netcheck.py has said what kind of refusal it was. Nothing clears it
 automatically, because "wait a bit and try again" is the behaviour that earns a
 longer block.
+
+ON GITHUB'S MACHINE (25 September 2026) it is the same file. GitHub's
+machines start empty every night, so the record has to outlive the machine:
+`cloud.py state-down` brings R2's state/refused.json down as archive/refused.json
+before the night, and the workflow sends it back with `cloud.py state-up` the
+moment one is on file. Every script reads it where it always has.
+
+THE STAND-DOWN. Once GitHub runs the nightly, the laptop must not run it as
+well: two writers of the same files, and two machines asking the General Court
+for the same things. archive/runs-in-the-cloud.json says the laptop has handed
+it over, and stand_down() is what the nightly, the daily snapshot, publish.bat
+and the fetchers whose files GitHub now owns call to refuse, saying why.
+`python3 refusal.py --stand-down` writes it; deleting it is moving back, a
+person's decision. It never applies on GitHub's own machine.
 """
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
@@ -223,11 +238,69 @@ class hold:
         return False
 
 
+# ---- the stand-down ---------------------------------------------------------
+#
+# The file that says this machine has handed the nightly and publishing to
+# GitHub. It is read here rather than in each script so that "does this run on
+# the laptop any more" has one answer, and so that GitHub's own machine can
+# never be stood down by a copy of the file arriving there by mistake.
+
+STANDDOWN = Path("archive/runs-in-the-cloud.json")
+STOOD_DOWN = 4          # the exit status of a job this machine has handed over
+
+
+def stood_down():
+    """What the stand-down file says, or None when this machine may run it.
+
+    None on GitHub's machine whatever is on disk: GITHUB_ACTIONS is "true"
+    there, and the stand-down is about the laptop.
+    """
+    if os.environ.get("GITHUB_ACTIONS") == "true" or not STANDDOWN.exists():
+        return None
+    try:
+        d = json.loads(STANDDOWN.read_text(encoding="utf-8"))
+    except (ValueError, OSError):
+        d = {}
+    return d if isinstance(d, dict) else {}
+
+
+def stand_down(who, instead=""):
+    """Stop the caller on a machine that has handed its job to GitHub."""
+    d = stood_down()
+    if d is None:
+        return
+    print(f"\n{who} does not run on this machine any more: GitHub runs it, "
+          f"since {d.get('since') or '(no date given)'}. {STANDDOWN} says so.\n"
+          + (f"{instead}\n" if instead else "")
+          + f"Moving it back is deleting {STANDDOWN}: a person's decision, made "
+          "after this machine's copy of the data has been brought up to date "
+          "from R2.\n", file=sys.stderr)
+    sys.exit(STOOD_DOWN)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--clear", action="store_true",
                     help="lift the standing refusal; a person's decision")
+    ap.add_argument("--stand-down", action="store_true",
+                    help="hand the nightly and publishing to GitHub: write "
+                         f"{STANDDOWN}; a person's decision")
     a = ap.parse_args()
+    if a.stand_down:
+        if STANDDOWN.exists():
+            print(f"{STANDDOWN} is already on file: this machine is stood down.")
+            return 0
+        STANDDOWN.parent.mkdir(exist_ok=True)
+        STANDDOWN.write_text(json.dumps({
+            "since": time.strftime("%Y-%m-%dT%H:%M:%S"),
+            "what": "GitHub's workflows run the nightly, the weekly fetches and "
+                    "publishing. This machine keeps the one-off jobs.",
+        }, indent=1), encoding="utf-8")
+        print(f"wrote {STANDDOWN}. The nightly, the daily snapshot, publish and "
+              "the fetchers GitHub owns now refuse here. Deleting it moves back.")
+        return 0
+    if stood_down() is not None:
+        print(f"stood down: {STANDDOWN} hands the nightly and publishing to GitHub.")
     s = standing()
     if a.clear:
         if MARK.exists():

@@ -165,6 +165,12 @@ def main():
         print(f"\n{len(targets())} requests, about {a.delay:g}s apart. Nothing asked.")
         return 0
 
+    # Once GitHub's nightly takes the day's files, this machine does not: two
+    # machines asking for the same fourteen files, and two writers of the
+    # copies the build reads. The lane's daily line meets this every night
+    # until it is taken out of watchers/gc_lane.queue.
+    refusal.stand_down("The daily snapshot", "GitHub's nightly takes the day's "
+                       "files now, and they reach this machine from R2.")
     refusal.check("The daily snapshot")
     with refusal.hold("the daily snapshot") as held:
         return run(a, held)
