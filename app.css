@@ -3256,11 +3256,6 @@ padding:var(--sp-3) var(--sp-4);min-height:40px;width:100%;
 background:var(--surface);border:1px solid var(--rule-2);border-radius:4px}
 .wkfind input:focus-visible{outline:2px solid var(--pine);outline-offset:1px}
 .wkcount{flex:1 0 100%;margin:0;font-size:var(--t-sm);color:var(--ink-2)}
-/* Study and statutory committees on or off. A real checkbox, so the
-   keyboard and a screen reader already know it; the label is the target. */
-.wktoggle{display:inline-flex;align-items:center;gap:var(--sp-3);min-height:40px;
-font-size:var(--t-ui);font-weight:600;color:var(--ink-2);cursor:pointer}
-.wktoggle input{width:18px;height:18px;margin:0;accent-color:var(--pine)}
 .calday[hidden],.calmeet[hidden]{display:none}
 
 /* PUTTING A SITTING IN SOMEBODY'S OWN CALENDAR. Quiet, at the foot of the
@@ -3275,6 +3270,297 @@ color:var(--ink-2)}
 .caladd a{color:var(--pine);text-decoration:none;font-weight:600;
 padding:var(--sp-2) 0;min-height:32px;display:inline-flex;align-items:center}
 .caladd a:hover{text-decoration:underline}
+
+/* THE CALENDAR, AS A CALENDAR (24 September 2026).
+
+   Without script a week's page is the week as a list and .calapp is a block.
+   The script adds .on and the page becomes three regions: the week's heading,
+   the month and the filters down the left, and the schedule. On a desktop the
+   left column is sticky -- one tall grid area, as .lside is, because sticky
+   is clipped to its own area -- and scrolls by itself when the filters come to
+   more than the window. Below 1024px the month and the filters go above the
+   schedule, side by side while both fit and stacked on a phone, and each can
+   be folded. The DOM order is the reading order at every width: heading,
+   month, filters, schedule. Every colour is a token, so both themes hold. */
+.calhead h1{font-size:var(--t-title);line-height:1.2;margin:0 0 var(--sp-3)}
+/* The heading takes focus when the arrow a reader pressed is no longer there
+   ("This week" on this week), so it shows a ring when a keyboard put it there. */
+.calhead h1:focus{outline:none}
+.calhead h1:focus-visible{outline:2px solid var(--pine);outline-offset:4px}
+/* THE CALENDAR'S TABLES STAY TABLES AT EVERY WIDTH. At 720px and below this
+   file makes every table a scrolling block, which is right for a table of
+   votes and wrong here: the month shrank to its content -- 26px days in a
+   336px column, 40% of it empty -- and the week at a glance became a second
+   scroller inside its frame, so its sticky hours stuck to the table and slid
+   off the screen with it. The month has the column's width by design, and
+   the week scrolls in .wkgridwrap, which is what that frame is for. */
+.calapp table{display:table;overflow:visible}
+/* The month's column gives up a little on a small desktop, so a five-day
+   week still fits beside it at 1024px without scrolling: 56 + 5 x 122. */
+.calapp.on{display:grid;grid-template-columns:clamp(260px,25vw,292px) minmax(0,1fr);
+grid-template-areas:"side head" "side main";column-gap:var(--sp-9);align-items:start}
+.calapp.on > .calhead{grid-area:head;min-width:0}
+.calapp.on > .calmain{grid-area:main;min-width:0}
+.calapp.on > .calside{grid-area:side;min-width:0;position:sticky;top:var(--sp-6);
+max-height:calc(100vh - var(--sp-9));overflow-y:auto;overflow-x:hidden;
+padding:var(--sp-1) var(--sp-2) var(--sp-6) var(--sp-1);overscroll-behavior:contain}
+.calside[hidden],.calbar[hidden],.calreset[hidden],.cplist[hidden],.calpeek[hidden]{display:none}
+/* Past the month and the filters, for a keyboard: out of sight until it has
+   focus, like the page's own skip link. */
+.calskip{position:absolute;left:-9999px;top:0}
+.calskip:focus{left:0;z-index:5;background:var(--pine);color:var(--on-pine);
+font-size:var(--t-ui);font-weight:600;padding:var(--sp-3) var(--sp-5);border-radius:var(--r-in)}
+
+/* THE MONTH. Monday first, because the weeks here are ISO weeks and the
+   addresses name them: a selected week is one row, drawn as one band. */
+.calmonth{margin:0 0 var(--sp-7)}
+.cmhead{display:flex;align-items:center;gap:var(--sp-2);margin:0 0 var(--sp-3)}
+.cmtitle{font-size:var(--t-lead);line-height:1.2;margin:0 auto 0 0}
+.cmbtn{display:inline-flex;align-items:center;justify-content:center;min-width:36px;
+min-height:36px;padding:0 var(--sp-4);font-size:var(--t-ui);font-weight:600;line-height:1;
+color:var(--ink);background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-in)}
+#cmprev,#cmnext{font-size:var(--t-lead);padding:0}
+.cmbtn:hover{background:var(--wash)}
+.cmbtn[aria-disabled="true"]{color:var(--ink-2);background:var(--paper);
+border-color:var(--rule-2);cursor:default}
+.cmbtn:focus-visible,.calfold:focus-visible,.cpall:focus-visible,.cpchip:focus-visible,
+.calreset:focus-visible,.calstepb:focus-visible,.wkday:focus-visible{outline:2px solid var(--pine);
+outline-offset:2px}
+.cmgrid{width:calc(100% + 4px);margin:0 -2px;table-layout:fixed;
+border-collapse:separate;border-spacing:2px}
+.cmgrid th{padding:var(--sp-2) 0;font-size:var(--t-sm);font-weight:600;color:var(--ink-2);
+text-align:center}
+.cmgrid td{height:46px;padding:var(--sp-2) 0 0;text-align:center;vertical-align:top;
+border-radius:var(--r-in);cursor:pointer;color:var(--ink);font-variant-numeric:tabular-nums}
+.cmgrid td:hover{background:var(--wash)}
+.cmgrid td:focus-visible{outline:2px solid var(--pine);outline-offset:0}
+/* Pine on the pine of the selected day would be no ring at all. */
+.cmgrid td.cmpick:focus-visible{outline-color:var(--ink);outline-offset:1px}
+.cmn{display:inline-block;min-width:26px;line-height:26px;border-radius:var(--r-pill);
+font-size:var(--t-ui);font-weight:500}
+/* A FEW DOTS, NOT A NUMBER: the kinds on the day, in their colours, and the
+   count in the cell's name for a screen reader. */
+.cmdots{display:flex;justify-content:center;gap:2px;height:6px;margin-top:2px}
+.cmdots i{display:block;width:6px;height:6px;border-radius:50%;background:var(--edge)}
+.cmdots .k-hearing{background:var(--cal-hear)}
+.cmdots .k-meet{background:var(--cal-meet)}
+.cmdots .k-exec{background:var(--cal-exec)}
+.cmdots .k-conf{background:var(--cal-conf)}
+.cmdots .k-floor{background:var(--cal-floor)}
+/* The selected week a band, the selected day solid, today a ring. The band
+   is pine mixed into the page rather than --pine-soft, which on the light
+   page is about 1.0:1 against it -- a band nobody could see. */
+.cmrow.cmsel td{background:color-mix(in srgb,var(--pine) 16%,var(--paper))}
+.cmgrid td.cmpick{background:var(--pine);color:var(--on-pine)}
+.cmgrid td.cmpick .cmdots i{box-shadow:0 0 0 1px var(--surface)}
+.cmnow .cmn{box-shadow:inset 0 0 0 2px var(--pine);font-weight:700}
+.cmnow.cmpick .cmn{box-shadow:inset 0 0 0 2px var(--on-pine)}
+/* PAST DAYS SLIGHTLY GREYED, and still a day a reader may choose. The days
+   of the months either side are fainter again; outside the calendar's range
+   a day is only a number. */
+.cmpast .cmn,.cmout .cmn{color:var(--ink-2);font-weight:400}
+.cmpast .cmdots,.cmout .cmdots{opacity:.6}
+.cmout .cmn{opacity:.75}
+.cmgrid td.cmpick .cmn{color:var(--on-pine);opacity:1}
+.cmgrid td.cmoff{cursor:default;background:none}
+.cmgrid td.cmoff .cmn{opacity:.4}
+
+/* THE FILTERS: who is meeting and what kind of sitting, as two questions. */
+.cfhead{display:flex;align-items:baseline;flex-wrap:wrap;gap:var(--sp-2) var(--sp-4);
+margin:0 0 var(--sp-4);padding-top:var(--sp-5);border-top:1px solid var(--rule)}
+.cfhead h2{font-size:var(--t-lead);line-height:1.2;margin:0 auto 0 0}
+.calside .wkfilter{display:block;margin:0;padding:0}
+.calfs{border:0;margin:0 0 var(--sp-6);padding:0;min-width:0}
+/* A legend outranks the boxes under it: larger, and in the ink. */
+.calfs legend,.calside .wkfind{font-size:var(--t-body);font-weight:600;letter-spacing:0;
+text-transform:none;color:var(--ink);padding:0;margin:0 0 var(--sp-3)}
+.calside .wkfind{display:flex;margin:0 0 var(--sp-6)}
+/* The two combinations the person named, a click each, in the chamber
+   buttons' shape: pressed is filled, as there. */
+.calquick{margin:0 0 var(--sp-6)}
+.calchk{display:flex;align-items:center;gap:var(--sp-4);min-height:32px;padding:var(--sp-1) 0;
+font-size:var(--t-ui);line-height:1.3;color:var(--ink);cursor:pointer}
+.calchk input{flex:none;width:18px;height:18px;margin:0;accent-color:var(--pine)}
+.calchk:has(input:disabled){color:var(--ink-2);cursor:default}
+.calchk i{flex:none;width:8px;height:14px;border-radius:2px;background:var(--edge)}
+.calchk .k-hearing{background:var(--cal-hear)}
+.calchk .k-meet{background:var(--cal-meet)}
+.calchk .k-exec{background:var(--cal-exec)}
+.calchk .k-conf{background:var(--cal-conf)}
+.calhint{margin:var(--sp-2) 0 0;font-size:var(--t-sm);line-height:1.4;color:var(--ink-2)}
+/* Empty, it takes no room; it stays in the page, because the picker's is a
+   live region and one that appears from nothing can go unannounced. */
+.calhint:empty{margin:0}
+/* Committees chosen by name, in the chip every person and committee on this
+   site is drawn in: square-cornered, edged, with a bar down the left. */
+.cpchosen{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin:0 0 var(--sp-4)}
+.cpchosen:empty{display:none}
+.cpchip{display:inline-flex;align-items:center;gap:var(--sp-1);min-height:32px;
+padding:var(--sp-2) var(--sp-4);font-size:var(--t-ui);font-weight:600;text-align:left;
+color:var(--ink);background:var(--surface);border:1px solid var(--edge);
+border-left:3px solid var(--pine);border-radius:var(--r-in)}
+.cpchip:hover{background:var(--wash)}
+/* The box that finds a committee is a step inside its fieldset, so it
+   reads under the legend rather than as a second one. */
+.cpick .wkfind{margin:0 0 var(--sp-2);font-size:var(--t-ui);color:var(--ink-2)}
+.cpall{min-height:32px;padding:var(--sp-2) 0;font-size:var(--t-ui);font-weight:600;
+color:var(--pine);text-decoration:underline;text-underline-offset:2px}
+.cplist{max-height:16rem;overflow-y:auto;margin:var(--sp-3) 0 0;padding:0 var(--sp-4) var(--sp-3);
+background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-in)}
+.cpgroup{margin:var(--sp-5) 0 var(--sp-2);font-size:var(--t-body);font-weight:600;color:var(--ink)}
+.cpopt{align-items:flex-start}
+.cpopt input{margin-top:1px}
+.cpwho{font-size:var(--t-sm);font-weight:400;color:var(--ink-2)}
+
+/* THE VIEW SWITCH, THE COUNT AND THE ONE WAY BACK TO EVERYTHING, above the
+   schedule they act on, with the key to the colours under them. */
+.calbar{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-4) var(--sp-6);
+margin:0 0 var(--sp-5)}
+.calviews{display:inline-flex;flex:none;border:1px solid var(--edge);
+border-radius:var(--r-in);overflow:hidden}
+.calviews button{min-height:40px;padding:var(--sp-3) var(--sp-7);font-size:var(--t-ui);
+font-weight:600;color:var(--ink-2);background:var(--surface);border-left:1px solid var(--rule-2)}
+.calviews button:first-child{border-left:0}
+.calviews button:hover{color:var(--ink);background:var(--wash)}
+.calviews button[aria-pressed="true"]{color:var(--on-pine);background:var(--pine)}
+.calviews button:focus-visible{outline:2px solid var(--ink);outline-offset:-4px}
+.calviews button[aria-pressed="true"]:focus-visible{outline-color:var(--on-pine)}
+.calbar .wkcount{flex:1 1 14rem;margin:0;font-size:var(--t-ui);color:var(--ink-2)}
+.calreset{min-height:40px;padding:var(--sp-3) var(--sp-5);font-size:var(--t-ui);font-weight:600;
+color:var(--pine);background:var(--surface);border:1px solid var(--edge);border-radius:var(--r-in)}
+.calreset:hover{background:var(--wash)}
+.calview{scroll-margin-top:var(--sp-6)}
+.calview:focus{outline:none}
+.calview:focus-visible{outline:2px solid var(--pine);outline-offset:4px}
+.calday{scroll-margin-top:var(--sp-6)}
+/* The day chosen in the grid, marked in the list. */
+.calday.calsel > .caldate{color:var(--pine);border-bottom:2px solid var(--pine)}
+
+/* THE DAY: every entry open, and a step to the day either side. */
+.calstep{display:flex;flex-wrap:wrap;gap:var(--sp-4);margin:0}
+.calstepb{min-height:40px;padding:var(--sp-3) 0;font-size:var(--t-ui);font-weight:600;
+color:var(--pine);text-align:left}
+.calstepb:hover{text-decoration:underline}
+.calstepn{margin-left:auto;text-align:right}
+
+/* THE WEEK AT A GLANCE. Days across, and down the side only the hours
+   something starts in: the record gives a start and never an end, so no
+   block is drawn to a length it does not state. The table keeps legible
+   columns and scrolls inside its own frame when the page is narrower than
+   they are -- a phone scrolls the week, never the page. */
+/* position:relative makes the frame the containing block of what is
+   positioned inside it: the day buttons' visually hidden labels are
+   position:absolute, and with no positioned ancestor they were placed
+   against the page, outside the frame's clip, and on a phone widened the
+   page by 200px. */
+.wkgridwrap{position:relative;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 0 var(--sp-6);
+background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-out)}
+.wkgridwrap:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
+/* A COMMITTEE'S LONGEST WORD FITS ITS COLUMN, or is hyphenated. At 120px
+   with 6px each side of the cell and of the card, a name had 89px, and
+   "Administration" -- on 133 of the calendar's cards in September 2026 --
+   broke after its thirteenth letter with no hyphen: "Administratio / n". So
+   the column is the 122px a five-day week can have beside the month at
+   1024px, and the cell and the card give up 2px a side, which leaves the
+   name 99px. That the word fits in 99px is an estimate from the recheck's
+   screenshot, not a measurement of the font. A longer word -- the Commission
+   on the Interdisciplinary Primary Care Workforce's -- still needs
+   hyphens:auto, which the page's lang="en" lets a browser with its
+   dictionary apply; -webkit- for Safari before 17. */
+.wkgrid{width:100%;min-width:calc(56px + var(--cols,5) * 122px);table-layout:fixed;
+border-collapse:collapse}
+.wkgrid th,.wkgrid td{padding:var(--sp-3) var(--sp-2);vertical-align:top;text-align:left;
+border-bottom:1px solid var(--rule);border-left:1px solid var(--rule)}
+.wkgrid tr > :first-child{border-left:0}
+.wkgrid tbody tr:last-child > *{border-bottom:0}
+.wkgrid thead th{border-bottom:1px solid var(--rule-2)}
+.wkgrid .wkhr{position:sticky;left:0;z-index:1;width:56px;background:var(--surface);
+font-size:var(--t-sm);font-weight:600;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.wkday{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:40px;
+padding:var(--sp-1) var(--sp-2);border-radius:var(--r-in);text-align:left;
+font-size:var(--t-body);font-weight:600;color:var(--pine)}
+.wkday:hover{background:var(--wash)}
+.wkdn{font-size:var(--t-sm);font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+color:var(--ink-2)}
+.wkcol.wkpast .wkday{color:var(--ink-2)}
+.wkcol[aria-current="date"] .wkdd{box-shadow:inset 0 -2px 0 var(--pine)}
+.wkcol.wksel{box-shadow:inset 0 -3px 0 var(--pine)}
+.wknone{padding:var(--sp-7) var(--sp-6);font-size:var(--t-ui);color:var(--ink-2)}
+/* The card, compact in its cell: the committee on a line of its own, then
+   its time and count, then its kinds -- still named in words, as the chips
+   everywhere else name them, and never left to the colour alone -- and the
+   room last, small. A card whose items share one room names it only here,
+   so it stays: the expanded rooms place() writes are meant to be read. */
+.wkgrid .calmeet{margin:0 0 var(--sp-3)}
+.wkgrid .calmeet:last-child{margin-bottom:0}
+.wkgrid .calmeet > summary{gap:var(--sp-1) var(--sp-3);min-height:0;
+padding:var(--sp-3) var(--sp-2) var(--sp-3) calc(var(--sp-2) + 5px)}
+.wkgrid .calmeet > summary .calcmte{flex:1 1 100%;order:0;min-width:0;font-size:var(--t-ui);
+line-height:1.3;overflow-wrap:break-word;-webkit-hyphens:auto;hyphens:auto}
+.wkgrid .calmeet > summary .caltime,
+.wkgrid .calmeet > summary .calcount{order:1;font-size:var(--t-sm)}
+/* A chip may shrink and wrap in a column: the chip's own flex:0 0 auto kept
+   "Full committee work session" at its full width, 59px past its card and
+   over the next day's column. */
+.wkgrid .calmeet > summary .calkind{order:2;font-size:var(--t-xs);white-space:normal;
+flex:0 1 auto;min-width:0;max-width:100%}
+.wkgrid .calmeet > summary .calwhere{order:3;flex:1 1 100%;font-size:var(--t-xs);line-height:1.35}
+/* AND SO MAY ONE INSIDE AN OPENED CARD. The rule above reached the summary
+   only, so opening a card in the week put "Subcommittee work session" or
+   "Full committee work session" on its item lines at full width, up to 74px
+   past the card and over the next day's column. */
+.wkgrid .calbody .calkind{white-space:normal;flex:0 1 auto;min-width:0;max-width:100%}
+.wkgrid .calmeet .caret{display:none}
+.wkgrid .calbody{padding:0 var(--sp-3) var(--sp-3)}
+.wkgrid .calbills li{flex-direction:column;gap:var(--sp-1)}
+.wkgrid .calbills .cbn{flex:none}
+.wkgrid .calmore{flex-direction:column;gap:var(--sp-1)}
+
+/* THE PREVIEW of a day, beside it and never on it. It takes no pointer, so
+   it can never sit between the pointer and the grid. */
+.calpeek{position:fixed;z-index:60;width:280px;max-width:calc(100vw - 16px);
+padding:var(--sp-5) var(--sp-6);font-size:var(--t-ui);line-height:1.35;color:var(--ink);
+background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-out);
+box-shadow:0 6px 20px var(--shadow);pointer-events:none}
+.pkd{margin:0 0 var(--sp-3);font-family:var(--serif);font-size:var(--t-body);font-weight:600}
+.pklist{list-style:none;margin:0;padding:0}
+.pklist li{display:flex;align-items:stretch;gap:var(--sp-3);padding:var(--sp-1) 0}
+.pkbar{flex:none;display:flex;flex-direction:column;width:4px;border-radius:2px;overflow:hidden}
+.pkbar i{flex:1 1 0;background:var(--edge)}
+.pkbar .k-hearing{background:var(--cal-hear)}
+.pkbar .k-meet{background:var(--cal-meet)}
+.pkbar .k-exec{background:var(--cal-exec)}
+.pkbar .k-conf{background:var(--cal-conf)}
+.pkbar .k-floor{background:var(--cal-floor)}
+.pkt{flex:none;min-width:3.2em;font-weight:600;font-variant-numeric:tabular-nums}
+.pkn{min-width:0}
+.pkn em{font-style:normal;color:var(--ink-2)}
+.pkmore{margin:var(--sp-3) 0 0;color:var(--ink-2)}
+
+/* The folds are for a narrow screen, where the month and the filters stand
+   between the reader and the schedule. */
+.calfold{display:none;min-height:36px;padding:var(--sp-2) 0;font-size:var(--t-ui);
+font-weight:600;color:var(--pine);text-decoration:underline;text-underline-offset:2px}
+@media (max-width:1023px){
+  .calapp.on{grid-template-columns:minmax(0,1fr);grid-template-areas:"head" "side" "main"}
+  .calapp.on > .calside{position:relative;max-height:none;overflow:visible;padding:0;
+  display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:0 var(--sp-9);
+  align-items:start;margin:0 0 var(--sp-7)}
+  .calfold{display:inline-flex;align-items:center}
+  .calmonth{margin:0}
+  .cfhead{border-top:0;padding-top:0}
+  /* FOLDED, THE MONTH IS THE SELECTED WEEK: one row of days to tap. */
+  .calside.folded .cmgrid tbody tr:not(.cmsel){display:none}
+  .calside.ffolded .wkfilter{display:none}
+}
+@media (max-width:640px){
+  .calapp.on > .calside{grid-template-columns:minmax(0,1fr)}
+  .calmonth{margin:0 0 var(--sp-6)}
+  .cfhead{border-top:1px solid var(--rule);padding-top:var(--sp-5)}
+  .cmgrid td{height:42px}
+  .calviews{flex:1 1 100%}
+  .calviews button{flex:1 1 0;padding-left:0;padding-right:0}
+}
 
 /* HOW THE DAY BEGAN. One sentence, so it reads as an opening rather than as
    a data field: the hour, the prayer, the Pledge. */
