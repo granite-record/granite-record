@@ -4703,6 +4703,16 @@ def _journey_reads(build_site_v2):
                         "Report RC 17Y-7N, Non Adopt", "other"))[1],
          [("2001-06-26", "S", "conf_rejected", "Rejected the conference report, 17–7")],
          "SB69 2001")
+    # A semicolon in a list of amendments is not the end of the motion: HB
+    # 1636 of 2018's refusal lost its count, and the failed motion before it
+    # read as a refusal too.
+    want(run("HB1636", ev("H", "2018-05-10", "House Non-Concurs with Senate Amendment 1427s; "
+                          "1851s; 1898s; and 1925s and Requests CofC (Rep. Ladd): MF RC 168-173 "
+                          "05/10/2018"),
+             ev("H", "2018-05-10", "House Non-Concurs with Senate Amendment 1427s; 1851s; 1898s; "
+                "and 1925s (Rep. Kurk): MA RC 180-163 05/10/2018"))[1],
+         [("2018-05-10", "H", "nonconcurred", "Refused the Senate's amendment, 180–163")],
+         "HB1636 2018")
     want([x[2] for x in run("HB705",
                             ev("H", "2003-06-24", "Conf Comm Report Defeated RC(159-172)", "other"),
                             ev("H", "2003-06-24", "Rep Mock moved to Reconsider, MA VV"),

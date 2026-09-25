@@ -3270,13 +3270,24 @@ J_OUTCOME_ONLY = re.compile(
     r"(?:adopted|failed|MA|MF|ML|AA|AF|AL)\b", re.I)
 
 
+# "1427s; 1851s; and 1925s", "1807s;1824s;and 1932s", "#1735h; #1843h".
+J_AMEND_LIST = re.compile(r"(?<=\d[hse]);(?=\s*(?:and\s+)?#?(?:\d{4}-)?\d{3,4}[hse]\b)")
+
+
 def _j_segments(raw):
     """The clauses of one docket line. A motion whose outcome the clerk put in
     the next clause is one clause: "Sen. Gray Moved Nonconcur with the House
     Amendment; Requests C of C, MA, VV", "Conference Committee Report #
-    2026-2114c; RC 15Y-8N, Adopted"."""
+    2026-2114c; RC 15Y-8N, Adopted".
+
+    A SEMICOLON IN A LIST OF AMENDMENTS IS NOT THE END OF A CLAUSE. "House
+    Non-Concurs with Senate Amendment 1427s; 1851s; 1898s; and 1925s (Rep.
+    Kurk): MA RC 180-163" (HB 1636 of 2018) left "House Non-Concurs with
+    Senate Amendment 1427s" to stand alone, which read as the House refusing
+    with no count -- and so did the motion before it, which failed."""
     out = []
-    for p in (y.strip() for x in (raw or "").split(";")
+    raw = J_AMEND_LIST.sub(",", raw or "")
+    for p in (y.strip() for x in raw.split(";")
               for y in _j_unsuspend(x.strip()).split(";")):
         if not p:
             continue
