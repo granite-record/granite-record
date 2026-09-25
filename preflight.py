@@ -7548,6 +7548,88 @@ def _session_as_of_dates(N, V):
         N.CORRECTIONS, N.TERM = saved
 
 
+def _docket_rows(lines):
+    """Docket.txt lines as the rows narrative.build() takes."""
+    from datetime import datetime as _dt
+    out = []
+    for x in lines:
+        p = x.split("|")
+        out.append({"lsr": f"{p[0]}-{p[1]}", "session": p[0], "body": p[4],
+                    "desc": p[5], "flags": [],
+                    "created": _dt.strptime(p[2], "%m/%d/%Y %I:%M:%S %p")})
+    return out
+
+
+@check("narrative", "a day in the bill's own term keeps its year, a retained "
+       "bill's introduction included, and the rail says the same day",
+       needs=("narrative", "docket_vocab", "build_site_v2"))
+def _history_term_dates(N, V, B):
+    """A retained bill's session column is its SECOND year, on every row.
+
+    HB 113 of 2005-2006 was introduced on organisation day, 1 December 2004,
+    and retained into 2006, so its rows carry 2006. The rule that brings a
+    clerk's slip back into the bill's session allowed a year either side of
+    that -- 2005 to 2007 -- and "corrected" the introduction to 1 December
+    2006: the history said the bill was introduced eleven months after the
+    House killed it, told the introduction last, and the rail, finding it
+    after the kill, left the Introduced stop undated. Twelve introductions of
+    2005-2006 were entered on that December's days. A day in the term -- from
+    the 1 November before it -- is the row's; a slip outside it is still
+    brought back, and both are real rows.
+    """
+    saved = (N.CORRECTIONS, N.TERM, N.MISFILED)
+    hb113 = [
+        "2006|0168|12/01/2004 12:36:10 PM|HB113|H|Introduced and ref to Crim Just & PSfty;  "
+        "HJ 6, p 83|12/01/2004 12:36:10 PM",
+        "2006|0168|01/05/2005 04:38:24 PM|HB113|H|Hearing   Jan 13   10:00   RM204,LOB"
+        "|01/05/2005 04:38:24 PM",
+        "2006|0168|03/23/2005 10:11:29 AM|HB113|H|Retained in committee|03/23/2005 10:11:29 AM",
+        "2006|0168|10/28/2005 10:39:45 AM|HB113|H|Comm Report for Jan 4, 2006; ITL  (vote "
+        "15-0; CC); HC 2, p 127|10/28/2005 10:39:45 AM",
+        "2006|0168|01/05/2006 09:13:33 AM|HB113|H|ITL [1/4/2006]  MA  HJ 7, pg 367"
+        "|01/05/2006 09:13:33 AM"]
+    # The clerk's slips, still brought back: a row stamped 1927 on a bill of
+    # 1997, and "Enrolled 04/26/2089" on HB 1484 of 2018.
+    hb685 = ["1997|0916|01/29/1927 06:31:47 PM|HB685|H|INTRODUCED AND REF TO CRIM JUST & "
+             "PSFTY; HJ17,P280|01/29/1927 06:31:47 PM"]
+    hb1484 = ["2018|2474|5/1/2018 12:00:00 AM|HB1484|H|Enrolled 04/26/2089|5/1/2018 12:00:00 AM"]
+    try:
+        N.CORRECTIONS, N.MISFILED = [], []
+        # The rule itself, at its edges.
+        assert N.in_term(2004, 12, 1, 2006) and N.in_term(2004, 11, 1, 2005), (
+            "the December before a term's first year is not in the term")
+        assert not N.in_term(2004, 10, 31, 2006) and not N.in_term(2007, 1, 1, 2006), (
+            "a day outside the term was read as in it")
+        assert N.session_keeps(2007, 6, 1, 2006) and not N.session_keeps(2004, 6, 1, 2006), (
+            "the year either side of the session is no longer what it was")
+        N.TERM = "2005-2006"
+        rec = N.build("HB113", _docket_rows(hb113))
+        evs = rec["events"]
+        assert evs[0]["type"] == "introduced" and evs[0]["date"] == "2004-12-01", (
+            "HB 113's introduction on 1 December 2004 is not its first event on "
+            f"that day: {[(e['date'], e['type']) for e in evs]}")
+        assert rec["narrative"].startswith("It was introduced on December 1, 2004"), (
+            f"HB 113's history does not open with its introduction: {rec['narrative'][:120]!r}")
+        assert "2006" not in rec["stages"][0]["text"].split(".")[0], (
+            f"HB 113's introduction still carries 2006: {rec['stages'][0]['text'][:120]!r}")
+        intro, _steps = B.journey(rec, "HB113", [], "", "", "2005-2006")
+        assert intro == "2004-12-01", (
+            f"the rail's Introduced stop for HB 113 reads {intro!r}, not the day "
+            "the history gives it")
+        N.TERM = "1997-1998"
+        e = N.build("HB685", _docket_rows(hb685))["events"][0]
+        assert e["date"] == "1997-01-29", f"a row stamped 1927 kept its year: {e['date']}"
+        N.TERM = "2017-2018"
+        e = N.build("HB1484", _docket_rows(hb1484))["events"][0]
+        assert e["type"] == "enrolled" and e["date"] == "2018-04-26", (
+            f"'Enrolled 04/26/2089' kept its year: {e['type']} {e['date']}")
+        return "ok", ("HB 113 is introduced on 1 December 2004 in its history "
+                      "and on its rail; slips of 1927 and 2089 are still "
+                      "brought back")
+    finally:
+        N.CORRECTIONS, N.TERM, N.MISFILED = saved
+
+
 @check("session", "business done in recess is on its sitting, a joint rule's "
        "weekend is no sitting, and neither leaves a link behind",
        needs=("session_days", "build_session_pages"))

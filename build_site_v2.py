@@ -4641,9 +4641,12 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
              or any(t["act"] in ("passed", "referred", "concurred", "nonconcurred")
                     for t in steps[:i])]
     # An introduction dated after the first decision on the bill is a date
-    # the docket has wrong -- HB 113 of 2005's "Introduced and ref to Crim
-    # Just & PSfty" stands at 1 December 2006, eleven months after the House
-    # killed it -- and the stop goes undated rather than out of order.
+    # something has wrong, and the stop goes undated rather than out of
+    # order. HB 113 of 2005's "Introduced and ref to Crim Just & PSfty" stood
+    # at 1 December 2006, eleven months after the House killed it -- but the
+    # docket says 1 December 2004, and it was narrative.clamp_year that moved
+    # it, reading a retained bill's second-year session as the whole of its
+    # term (narrative.session_keeps).
     first_day = min((s["date"] for s in steps if s["body"] in ("H", "S") and s["date"]),
                     default="")
     if intro and first_day and intro > first_day:
