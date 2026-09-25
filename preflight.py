@@ -10278,6 +10278,84 @@ def _second_referral(docket_parser):
     return "ok", "Finance after 13 March, not before; waivers, interim study and 'Committee' add nothing"
 
 
+@check("narrative", "a House conference notice is read with its time and room, in every wording the House has used",
+       needs=("docket_parser",))
+def _house_conference_notice(docket_parser):
+    """HB 485's conference of 16 June 2025, as the House docket notices it:
+    "Conference Committee Meeting: 06/16/2025 09:30 am LOB 206-208".
+
+    HOUSE_SCHED_RE knew only the bare "Committee of Conference", which the
+    House clerk never writes before a date, so not one House conference
+    notice written with a clock time reached proceedings.csv -- 113 in the
+    current term's docket, 927 across eleven terms -- while the Senate's
+    "Committee of Conference Meeting: 06/16/2025, 12:00 pm, Room 100, SH"
+    did. Every House conference card on the Calendar was its recording
+    alone: untimed, with no room. Every line below is copied from a docket
+    on this disk, not typed, and so are the ones that must stay unread.
+    """
+    dp = docket_parser
+
+    def row(bill, created, desc, body="H"):
+        return {"lsr": "2025-0741", "created": created, "bill": bill, "body": body,
+                "desc": desc, "updated": "", "lineno": 0}
+    rows = [
+        row("HB485", "6/16/2025 12:00:00 AM",
+            "Conference Committee Meeting: 06/16/2025 09:30 am LOB 206-208"),
+        row("HB1", "6/12/2025 12:00:00 AM",
+            "Conference Committee Meeting: 06/12/2025 02:00 pm LOB 210-211"),
+        row("HB26", "6/8/2011 12:00:00 AM",
+            "Conference Committee Meeting: 6/8/2011 9:00 AM LOB 307  ==RECESSED=="),
+        row("HB37", "06/14/2007 02:56:52 PM",
+            "Committee of Conference Meeting: 6/18/07 2:00 PM LOB 207"),
+        row("HB653", "06/21/2007 08:17:24 AM",
+            "Committee of Conference Meeting==RECONVENE==: 6/21/07 9:30 AM LOB 306"),
+        row("HB1488", "05/23/2014 02:08:10 PM",
+            "Conference of Committee Meeting: 5/27/2014; 11:00 AM; LOB 207"),
+        row("HB1405", "05/23/2008 04:05:27 PM",
+            "Committee of Conference Hearing: 05/29/2008 11:30 AM LOB 304"),
+        row("HB170", "06/15/2001 11:12:13 AM",
+            "Conf Comm meeting 6/15/01 1:30 p.m. Rm 202, LOB"),
+        row("HB144", "6/12/2017 12:00:00 AM",
+            "==CANCELLED== Conference Committee Meeting: 06/13/2017 10:00 AM LOB 210-211"),
+        # A conference named and no conference noticed: a report, a change of
+        # conferee, an accession. None of these is a sitting.
+        row("HB485", "6/26/2025 2:09:16 PM",
+            "Conference Committee Report 2025-2766c: Adopted, VV 06/26/2025  HJ 18  P. 18"),
+        row("HB67", "6/16/2025 10:34:27 AM",
+            "Conferee Change: Rep. Wood Replaces Rep. Lane 06/16/2025  HJ 17  P. 24"),
+        row("SB32", "06/09/2015 02:00:34 PM",
+            "House Accedes to Senate Request for Committee of Conference (Rep Hinch): MA VV "
+            "(in recess of 6/3/2015); HJ 44, PG. 1953"),
+        # And the Senate's, which was always read, still is.
+        row("SB14", "6/11/2025 3:39:13 PM",
+            "Committee of Conference Meeting: 06/16/2025, 12:00 pm, Room 100, SH", body="S"),
+    ]
+    got = {}
+    for p in dp.parse_proceedings(rows, dp.build_referral_timeline(rows)):
+        got[(p.bill, p.sched_date)] = (p.kind, p.sched_time, p.venue,
+                                       "CANCELLED" in [str(f).upper() for f in p.flags])
+    C = "committee of conference"
+    want = {
+        ("HB485", "2025-06-16"): (C, "09:30", "LOB 206-208", False),
+        ("HB1", "2025-06-12"): (C, "14:00", "LOB 210-211", False),
+        ("HB26", "2011-06-08"): (C, "09:00", "LOB 307", False),
+        ("HB37", "2007-06-18"): (C, "14:00", "LOB 207", False),
+        ("HB653", "2007-06-21"): (C, "09:30", "LOB 306", False),
+        ("HB1488", "2014-05-27"): (C, "11:00", "LOB 207", False),
+        ("HB1405", "2008-05-29"): (C, "11:30", "LOB 304", False),
+        ("HB170", "2001-06-15"): (C, "13:30", "Rm 202, LOB", False),
+        ("HB144", "2017-06-13"): (C, "10:00", "LOB 210-211", True),
+        ("SB14", "2025-06-16"): (C, "12:00", "SH 100", False),
+    }
+    wrong = {k: (got.get(k, "missing"), v) for k, v in want.items() if got.get(k) != v}
+    assert not wrong, "got, wanted: " + repr(wrong)
+    extra = sorted(set(got) - set(want))
+    assert not extra, f"a line that notices no conference was read as one: {extra}"
+    return "ok", ("HB 485's conference of 16 June 2025 at 09:30 in LOB 206-208, and the "
+                  "House's five other wordings of 2001-2014; reports, conferee changes and "
+                  "accessions stay unread")
+
+
 @check("data", "a committee report line gives up its recommendation and nothing else")
 def _report_rec():
     if not (Path("Docket.txt").exists() and Path("narrative.py").exists()):
