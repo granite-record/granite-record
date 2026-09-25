@@ -3176,6 +3176,9 @@ J_MONTH_DAY = re.compile(r"\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a
 # Adopted [11/30/2011]", entered on 4 January.
 J_CLAUSE_DAY = re.compile(r"(?<!recess of )(?<!recess of\) )(?<!recess )(?<![\d/\[])"
                           r"(\d{1,2})/(\d{1,2})/(\d{4}|\d{2})\W*$", re.I)
+# The Senate's way: the day as a clause of its own at the end of the row,
+# "Conference Committee Report #2024-2290c , Adopted, VV; 06/13/2024".
+J_ROW_DAY = re.compile(r";\s*(\d{1,2})/(\d{1,2})/(\d{4}|\d{2})\s*$")
 # "Introduced ...", "5/3/2001 Introduced and ref to Judiciary", "Introducing
 # and referred to Public Affairs" (SB 12 of 1999), "Sen. Birdsell Moved
 # Introduction; 2/3 necessary, MA, VV" (SCR 1 of 2023).
@@ -4091,6 +4094,25 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
                         got["act"] == "died" and back < 0 and not any(
                             s["body"] == body and s["date"] > day for s in steps))):
                     st["date"] = day
+            # AND A SITTING THE ROW WAS ENTERED AHEAD OF. The Senate's clerk
+            # enters a conference report's adoption before the sitting and
+            # states the sitting after it: "Conference Committee Report
+            # #2024-2290c , Adopted, VV; 06/13/2024", entered on 12 June (HB
+            # 1573 of 2024), is Senate Journal 17 of 13 June, and the Senate
+            # did not sit on the 12th. So were 34 of this term's, dated 29 May
+            # 2026 and 24 June 2025. Up to a fortnight ahead, on a weekday:
+            # "OT3rdg; 03/19/2017" on SB 152 of 2017, entered on the 16th
+            # when the Senate sat, states a Sunday.
+            ahead = [x for x in (said, J_ROW_DAY.search(raw)) if x]
+            if got["act"] not in ("signed", "vetoed", "unsigned") and not e.get("date_as_recorded"):
+                for x in ahead:
+                    day = _j_iso(*x.groups())
+                    if (day and _j_in_term(day, term) and 0 < _j_days(day, date) <= 14
+                            and _date.fromisoformat(day).weekday() < 5):
+                        st["date"] = day
+                        break
+                if ahead:
+                    st["_stated"] = _j_iso(*ahead[-1].groups())
             # And no day outside the term at all: HB 201 of 2020's own row
             # reads "Adjournment 09/16/2021", entered on 9 September 2021,
             # and neither is a day of 2019-2020. Undated, rather than either.
@@ -4128,10 +4150,22 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
     # to Pass, RC 22y - 1n, MA" and then "Sen. Francoeur Floor Amendment
     # {2837}, (New Title), RC 13y - 10n, AA" (SB 336 of 2002), the bill that
     # went to the House amended.
+    # A DECISION ENTERED AFTER THE GOVERNOR ACTED WAS MADE BEFORE: the
+    # Senate's "Conference Committee Report # 2025-2809c; RC 16Y-8N, Adopted;
+    # 06/26/2025" on HB 377 of 2025 was entered on 3 November and read as the
+    # Senate adopting the report three months after the governor signed the
+    # bill. The day its row states, where that is in the term and not after
+    # the governor. Not a vote on the veto, which comes after it.
+    gov = min((s["date"] for s in steps if s["body"] == "G" and s["date"]), default="")
     for st in steps:
         if st["act"] in ("passed", "referred") and (st["body"], st.get("_row_day")) in amended:
             st["amended"] = True
         st.pop("_row_day", None)
+        said = st.pop("_stated", "")
+        if (gov and st["body"] in ("H", "S") and st["date"] > gov and said
+                and st["act"] not in ("override", "sustained")
+                and _j_in_term(said, term) and said <= gov):
+            st["date"] = said
     # The governor's line where the history has none but the chapter's
     # line does: the same evidence, read the same way.
     if law_line and not any(s["body"] == "G" for s in steps):

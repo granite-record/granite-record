@@ -4694,6 +4694,26 @@ def _journey_reads(build_site_v2):
              ev("H", "2022-01-10", "Adopted and read a 3rd time MA VV 01/05/22", "other"))[1],
          [("2022-01-05", "S", "passed", "Passed on a voice vote"),
           ("2022-01-05", "H", "passed", "Passed on a voice vote")], "HB1650 2022")
+    # And the sitting a row was entered ahead of: HB 1573 of 2024's Senate
+    # adopted the report on 13 June (Senate Journal 17), not the 12th, when
+    # it did not sit. Not a weekend: SB 152 of 2017's row states a Sunday.
+    want(run("HB1573", ev("S", "2024-06-12", "Conference Committee Report #2024-2290c , Adopted, "
+                                             "VV; 06/13/2024", "other"), term="2023-2024")[1],
+         [("2024-06-13", "S", "conf_adopted", "Adopted the conference report on a voice vote")],
+         "HB1573 2024")
+    want(run("SB152", ev("S", "2017-03-16", "Ought to Pass with Amendment 2017-0797s, MA, VV; "
+                                            "OT3rdg; 03/19/2017"), term="2017-2018")[1][0][0],
+         "2017-03-16", "SB152 2017")
+    # Nor after the governor acted: HB 377 of 2025's Senate adoption of 26
+    # June was entered on 3 November, three months after the signature.
+    want([x[:3] for x in run(
+        "HB377", ev("H", "2025-06-26", "Conference Committee Report 2025-2809c: Adopted, RC "
+                                       "202-161 06/26/2025", "other"),
+        ev("H", "2025-08-01", "Signed by Governor Ayotte 08/01/2025", "governor"),
+        ev("S", "2025-11-03", "Conference Committee Report # 2025-2809c; RC 16Y-8N, Adopted; "
+                              "06/26/2025", "other"), term="2025-2026")[1]],
+         [("2025-06-26", "H", "conf_adopted"), ("2025-06-26", "S", "conf_adopted"),
+          ("2025-08-01", "G", "signed")], "HB377 2025")
     # THE OPPOSITE OF THE DOCKET. The chair's ruling sustained is no veto.
     want([x[1:3] for x in run("HB1075", ev("H", "1998-05-14", "RULING OF CHR", "amendment"),
                               ev("H", "1998-05-14", "SUSTAINED VV; PASSED WITH AM RC(233-122); "
