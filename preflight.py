@@ -7630,6 +7630,100 @@ def _history_term_dates(N, V, B):
         N.CORRECTIONS, N.TERM, N.MISFILED = saved
 
 
+@check("narrative", "a senator's motion is read as the senator's, never as passage",
+       needs=("narrative", "docket_vocab", "session_days"))
+def _senator_motions(N, V, SD):
+    """The Senate clerk of 1999-2004 names the mover of a question after it,
+    "Senate Accedes to Req for Conference Committee, Sen. McCarley, MA, VV",
+    or before it with the outcome in words, "Senator Johnson Accede to House
+    Request for C of C, Adopted [05/06/04]".
+
+    The first read as a motion called "Sen. McCarley", which the Votes tab
+    and the sitting page printed as the question put. The second read as the
+    House's bare "Adopted", which is passage: 29 accessions and 27
+    nonconcurrences of 2003-2004 said "the Senate voted to pass it", and the
+    sitting pages "On the motion: Ought to Pass ... it carried in this
+    chamber". Real rows, each shape once, and three that must not move.
+    """
+    saved = (N.CORRECTIONS, N.TERM, N.MISFILED)
+    rows = {
+        ("HB1148", "2003-2004"): [
+            "2004|2305|05/13/2004 12:03:30 PM|HB1148|H|House Nonconc with Sen Am req Conf "
+            "Comm, Rep Lawton MA VV;   HJ 39, p 1548|05/13/2004 12:03:30 PM",
+            "2004|2305|05/13/2004 04:46:45 PM|HB1148|S|Senator Johnson Accede to House "
+            "Request for C of C, Adopted [05/06/04]; SJ 15-A, Pg.469|05/13/2004 04:46:45 PM"],
+        ("HB384", "2003-2004"): [
+            "2004|0269|05/06/2004 03:25:13 PM|HB384|S|Senator Peterson Accede to House "
+            "Request for Committee of Conference; Adopted; SJ 15-A, Pg.466"
+            "|05/06/2004 03:25:13 PM"],
+        ("SB61", "2003-2004"): [
+            "2004|0278|05/06/2004 01:47:06 PM|SB61|S|Senator O'Hearn Nonconcur with House Am "
+            "Requests Committee of Conference, Adopted; SJ 15-A, Pg.452|05/06/2004 01:47:06 PM"],
+        ("HB265", "1999-2000"): [
+            "1999|0051|06/29/1999 11:02:48 AM|HB265|S|Senate Accedes to Req for Conference "
+            "Committee, Sen. McCarley, MA, VV|06/29/1999 11:02:48 AM",
+            "1999|0051|07/01/1999 03:40:14 PM|HB265|S|Con Comm Report, Sen McCarley, MA, VV; "
+            "SJ 27, P 758|07/01/1999 03:40:14 PM"],
+        ("HB284", "1999-2000"): [
+            "1999|0077|03/04/1999 02:08:23 PM|HB284|S|Sen. Krueger OTP, MA, VV; OT3rdg, MA, "
+            "VV; SJ 6, P 70|03/04/1999 02:08:23 PM"],
+        # Not to move: a question in words after the name, the House's own
+        # "Adopted" on a resolution, and the Senate's "Sen Am" in a House row.
+        ("HB733", "2003-2004"): [
+            "2003|0006|06/05/2003 10:50:52 PM|HB733|S|Sen. Kenney Accede to House Request For "
+            "Committee of Conference, MA, VV; SJ 19, Pg.662|06/05/2003 10:50:52 PM"],
+        ("HCR3", "2003-2004"): [
+            "2003|0227|01/30/2003 11:59:42 AM|HCR3|H|Adopted;  HJ 12, p221 + 231"
+            "|01/30/2003 11:59:42 AM"],
+        ("HB672", "2001-2002"): [
+            "2002|0851|04/25/2002 12:46:29 PM|HB672|H|Sen Am, MA DIV(187-140);  HJ38, "
+            "p1435-1437|04/25/2002 12:46:29 PM"],
+    }
+    try:
+        N.CORRECTIONS, N.MISFILED = [], []
+        floor = {}
+        for (bill, term), lines in rows.items():
+            N.TERM = term
+            rec = N.build(bill, _docket_rows(lines))
+            floor[bill] = [e for e in rec["events"] if e["type"] == "floor"]
+            floor[bill + " text"] = rec["narrative"]
+
+        def got(bill, i=-1):
+            e = floor[bill][i]
+            return e["action"], e["mover"], e["motion"]
+
+        assert got("HB1148") == ("Accede to House Request for C of C", "Sen. Johnson", "MA"), (
+            f"HB 1148's accession of 2004 reads {got('HB1148')}")
+        assert got("HB384") == ("Accede to House Request for Committee of Conference",
+                                "Sen. Peterson", "MA"), f"HB 384 of 2004 reads {got('HB384')}"
+        assert got("SB61") == ("Nonconcur", "Sen. O'Hearn", "MA"), (
+            f"SB 61 of 2004's nonconcurrence reads {got('SB61')}")
+        for b in ("HB1148", "HB384", "SB61"):
+            assert "voted to pass it" not in floor[b + " text"], (
+                f"{b}'s history still says the Senate passed it: {floor[b + ' text']!r}")
+        assert [got("HB265", i) for i in (0, 1)] == [
+            ("Senate Accedes to Req for Conference Committee", "Sen. McCarley", "MA"),
+            ("Con Comm Report", "Sen. McCarley", "MA")], (
+            f"HB 265 of 1999 reads {[got('HB265', i) for i in (0, 1)]}")
+        assert got("HB284") == ("Ought to Pass", "Sen. Krueger", "MA"), (
+            f"HB 284 of 1999 reads {got('HB284')}")
+        assert got("HB733") == ("Sen. Kenney Accede to House Request For Committee of "
+                                "Conference", "", "MA"), f"HB 733 of 2003 moved: {got('HB733')}"
+        assert got("HCR3") == ("Ought to Pass", "", "MA"), f"HCR 3 of 2003 moved: {got('HCR3')}"
+        assert got("HB672") == ("Sen Am", "", "MA"), f"HB 672 of 2002 moved: {got('HB672')}"
+        # And the sitting page's words for it.
+        it = SD.Item("HB1148", "2003-2004", floor["HB1148"][-1], 0)
+        assert it.action == "Accede to House Request for C of C" and it.mover == "Sen. Johnson", (
+            f"the sitting page's motion is {it.action!r}, moved by {it.mover!r}")
+        assert "carried in this chamber" not in it.outcome_words, (
+            f"the sitting page says an accession carried the bill: {it.outcome_words!r}")
+        return "ok", ("accessions and nonconcurrences of 2004 are the Senate's "
+                      "motions, moved by a senator; the 1999 mover after the "
+                      "question is the mover; three rows that must not move do not")
+    finally:
+        N.CORRECTIONS, N.TERM, N.MISFILED = saved
+
+
 @check("session", "business done in recess is on its sitting, a joint rule's "
        "weekend is no sitting, and neither leaves a link behind",
        needs=("session_days", "build_session_pages"))
