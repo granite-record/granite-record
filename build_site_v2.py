@@ -4180,7 +4180,14 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
             # rail's Senate stop carried. So its day is taken however far
             # back, as long as it is in the term and not before the
             # chamber's last word on the bill (the tabling it died on).
-            said = J_CLAUSE_DAY.search(seg)
+            # AND THE DAY AN INTRODUCTION ROW STATES, which is the day of what
+            # it did on introduction: "Introduced and Adopted, VV; 02/09/2016"
+            # on SR 8 of 2017 is Senate Journal 5 of 9 February 2017, the day
+            # its rail says it was introduced (_j_introduced) -- and it read
+            # as adopted on the 15th, the day the row was entered, six days
+            # after the one motion that did both.
+            said = J_CLAUSE_DAY.search(seg) or (J_INTRO_ROW.search(seg)
+                                                and J_ROW_DAY.search(raw)) or None
             if (said and got["act"] not in ("signed", "vetoed", "unsigned")
                     and not e.get("date_as_recorded")):
                 day = _j_iso(*said.groups())

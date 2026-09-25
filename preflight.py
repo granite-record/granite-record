@@ -4947,6 +4947,11 @@ def _journey_reads(build_site_v2):
              term="2021-2022"),
          ("2021-01-06", [("2021-01-06", "H", "passed", "Adopted on a voice vote")]),
          "HR6 2021")
+    # And the adoption the same row records, where the day is a clause of
+    # its own: SR 8 of 2017, Senate Journal 5 of 9 February 2017.
+    want(run("SR8", ev("S", "2017-02-15", "Introduced and Adopted, VV; 02/09/2016", "other"),
+             term="2017-2018"),
+         ("2017-02-09", [("2017-02-09", "S", "passed", "Adopted on a voice vote")]), "SR8 2017")
     # Not a day after the row, nor one it cannot be: HB 214 of 2019's
     # "Introduced 01/02/2014", entered on 27 December 2018, is no day of 2018.
     want(run("HB214", ev("H", "2018-12-27", "Introduced 01/02/2014 and referred to Legislative "
