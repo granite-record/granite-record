@@ -3262,6 +3262,18 @@ padding:var(--sp-2) 0;min-height:32px;display:inline-flex;align-items:center}
    be folded. The DOM order is the reading order at every width: heading,
    month, filters, schedule. Every colour is a token, so both themes hold. */
 .calhead h1{font-size:var(--t-title);line-height:1.2;margin:0 0 var(--sp-3)}
+/* The heading takes focus when the arrow a reader pressed is no longer there
+   ("This week" on this week), so it shows a ring when a keyboard put it there. */
+.calhead h1:focus{outline:none}
+.calhead h1:focus-visible{outline:2px solid var(--pine);outline-offset:4px}
+/* THE CALENDAR'S TABLES STAY TABLES AT EVERY WIDTH. At 720px and below this
+   file makes every table a scrolling block, which is right for a table of
+   votes and wrong here: the month shrank to its content -- 26px days in a
+   336px column, 40% of it empty -- and the week at a glance became a second
+   scroller inside its frame, so its sticky hours stuck to the table and slid
+   off the screen with it. The month has the column's width by design, and
+   the week scrolls in .wkgridwrap, which is what that frame is for. */
+.calapp table{display:table;overflow:visible}
 /* The month's column gives up a little on a small desktop, so a five-day
    week still fits beside it at 1024px without scrolling: 56 + 5 x 120. */
 .calapp.on{display:grid;grid-template-columns:clamp(260px,25vw,292px) minmax(0,1fr);
@@ -3314,8 +3326,10 @@ font-size:var(--t-ui);font-weight:500}
 .cmdots .k-exec{background:var(--cal-exec)}
 .cmdots .k-conf{background:var(--cal-conf)}
 .cmdots .k-floor{background:var(--cal-floor)}
-/* The selected week a band, the selected day solid, today a ring. */
-.cmrow.cmsel td{background:var(--pine-soft)}
+/* The selected week a band, the selected day solid, today a ring. The band
+   is pine mixed into the page rather than --pine-soft, which on the light
+   page is about 1.0:1 against it -- a band nobody could see. */
+.cmrow.cmsel td{background:color-mix(in srgb,var(--pine) 16%,var(--paper))}
 .cmgrid td.cmpick{background:var(--pine);color:var(--on-pine)}
 .cmgrid td.cmpick .cmdots i{box-shadow:0 0 0 1px var(--surface)}
 .cmnow .cmn{box-shadow:inset 0 0 0 2px var(--pine);font-weight:700}
@@ -3413,7 +3427,12 @@ color:var(--pine);text-align:left}
    block is drawn to a length it does not state. The table keeps legible
    columns and scrolls inside its own frame when the page is narrower than
    they are -- a phone scrolls the week, never the page. */
-.wkgridwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 0 var(--sp-6);
+/* position:relative makes the frame the containing block of what is
+   positioned inside it: the day buttons' visually hidden labels are
+   position:absolute, and with no positioned ancestor they were placed
+   against the page, outside the frame's clip, and on a phone widened the
+   page by 200px. */
+.wkgridwrap{position:relative;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 0 var(--sp-6);
 background:var(--surface);border:1px solid var(--rule-2);border-radius:var(--r-out)}
 .wkgridwrap:focus-visible{outline:2px solid var(--pine);outline-offset:2px}
 .wkgrid{width:100%;min-width:calc(56px + var(--cols,5) * 120px);table-layout:fixed;
@@ -3445,10 +3464,14 @@ color:var(--ink-2)}
 .wkgrid .calmeet > summary{gap:var(--sp-1) var(--sp-3);min-height:0;
 padding:var(--sp-3) var(--sp-3) var(--sp-3) calc(var(--sp-3) + 5px)}
 .wkgrid .calmeet > summary .calcmte{flex:1 1 100%;order:0;min-width:0;font-size:var(--t-ui);
-line-height:1.3;overflow-wrap:anywhere}
+line-height:1.3;overflow-wrap:break-word;hyphens:auto}
 .wkgrid .calmeet > summary .caltime,
 .wkgrid .calmeet > summary .calcount{order:1;font-size:var(--t-sm)}
-.wkgrid .calmeet > summary .calkind{order:2;font-size:var(--t-xs);white-space:normal}
+/* A chip may shrink and wrap in a column: the chip's own flex:0 0 auto kept
+   "Full committee work session" at its full width, 59px past its card and
+   over the next day's column. */
+.wkgrid .calmeet > summary .calkind{order:2;font-size:var(--t-xs);white-space:normal;
+flex:0 1 auto;min-width:0;max-width:100%}
 .wkgrid .calmeet > summary .calwhere{order:3;flex:1 1 100%;font-size:var(--t-xs);line-height:1.35}
 .wkgrid .calmeet .caret{display:none}
 .wkgrid .calbody{padding:0 var(--sp-3) var(--sp-3)}

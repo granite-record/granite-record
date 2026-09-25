@@ -11834,6 +11834,14 @@ def _calendar_layout():
     sides, a scrollbar, the month's column at its narrowest and the gap).
     Every colour is a token, so the dark palette re-grounds all of it; and a
     heading here outranks what it heads.
+
+    Added after the review of 24 September, from what a headless Chrome
+    measured at 360px: the week's frame is positioned, so the hidden labels
+    inside it are clipped by it instead of widening the page; the calendar's
+    tables stay tables under the site's narrow-screen rule that makes every
+    table a scrolling block; a kind chip in a column can shrink and wrap; a
+    committee's name breaks between words first; and the selected week's
+    band is at least 1.2:1 against the page in both themes.
     """
     css = Path("app.css").read_text(encoding="utf-8")
     a = css.find("/* THE CALENDAR, AS A CALENDAR")
@@ -11860,6 +11868,46 @@ def _calendar_layout():
         "a hidden control with a display rule of its own would show without script")
     wrap = _braced(block, ".wkgridwrap{")
     assert "overflow-x:auto" in wrap, "the week at a glance can widen the page"
+    # ITS FRAME CLIPS WHAT IS POSITIONED INSIDE IT. The day buttons carry a
+    # visually hidden label, position:absolute; with no positioned ancestor it
+    # was placed against the page, outside the frame, and at 360px the page
+    # scrolled sideways by 192px in the Week view.
+    assert "position:relative" in wrap, "the week's frame is not the containing block of its hidden labels"
+    # AND THE CALENDAR'S TABLES STAY TABLES. The stylesheet makes every table
+    # a scrolling block at 720px and below; the month then shrank to 26px days
+    # and the week became a scroller inside its frame, its sticky hours
+    # sliding off the screen with it.
+    assert re.search(r"@media \(max-width: ?720px\)\{[^@]*?\btable\{display:block", css), (
+        "the narrow-screen table rule this answers has moved; recheck the calendar against it")
+    keep = re.search(r"\.calapp table\{([^}]*)\}", block)
+    assert keep and "display:table" in keep.group(1) and "overflow:visible" in keep.group(1), (
+        "the month and the week are made scrolling blocks on a phone by the site's table rule")
+    # A chip in a column shrinks and wraps rather than running over the next day.
+    chip = _braced(block, ".wkgrid .calmeet > summary .calkind{")
+    assert "flex:0 1 auto" in chip and "max-width:100%" in chip, (
+        "a kind chip in the week at a glance keeps its full width and spills out of its card")
+    assert "overflow-wrap:anywhere" not in _braced(block, ".wkgrid .calmeet > summary .calcmte{"), (
+        "a committee's name in the week breaks mid-word before it breaks between words")
+    # THE SELECTED WEEK IS A BAND A READER CAN SEE, in both themes: pine mixed
+    # into the page. --pine-soft was about 1.0:1 against the light page.
+    band = re.search(r"\.cmrow\.cmsel td\{background:color-mix\(in srgb,var\(--pine\) (\d+)%,var\(--paper\)\)\}", block)
+    assert band, "the selected week's band is not pine mixed into the page"
+
+    def _tok(name, nth):
+        return re.findall(r"--" + name + r":(#[0-9A-Fa-f]{6})", css)[nth]
+
+    def _lum(hexc):
+        ch = [int(hexc[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+        ch = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in ch]
+        return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2]
+    pct = int(band.group(1)) / 100
+    for theme, nth in (("light", 0), ("dark", 1)):
+        pine, paper = _tok("pine", nth), _tok("paper", nth)
+        mix = "#" + "".join(f"{round(pct * int(pine[i:i + 2], 16) + (1 - pct) * int(paper[i:i + 2], 16)):02X}"
+                            for i in (1, 3, 5))
+        a_, b_ = sorted((_lum(mix), _lum(paper)))
+        ratio = (b_ + 0.05) / (a_ + 0.05)
+        assert ratio >= 1.2, f"the selected week's band is {ratio:.2f}:1 against the {theme} page"
     m = re.search(r"\.wkgrid\{[^}]*min-width:calc\((\d+)px \+ var\(--cols,5\) \* (\d+)px\)", block)
     assert m, "the week's columns have no minimum width"
     need = int(m.group(1)) + 5 * int(m.group(2))
@@ -11871,7 +11919,8 @@ def _calendar_layout():
         assert f"font-size:var({size})" in _braced(block, rule), f"{rule} is not set at {size}"
     assert "font-size:var(--t-ui)" in _braced(block, ".calchk{"), "the boxes are not at the interface size"
     return "ok", (f"month beside the schedule and sticky, above it below 1024px; a week "
-                  f"needs {need}px of the {have}px it has; tokens only")
+                  f"needs {need}px of the {have}px it has, scrolls in its own frame and "
+                  f"keeps its chips; the tables stay tables on a phone; tokens only")
 
 
 @check("frontend", "the home page's Coming up is this week, the week the Calendar tab shows")
