@@ -9957,6 +9957,177 @@ def _legislator_description(BL):
     return "ok", "seat once, places first, wards in number order"
 
 
+# The members for _former_heading: Michael Gunski as former.json carries him,
+# a representative who left in 2021; Jeb Bradley's Senate record joined to his
+# House years, as member_links joins a sitting member's two numbers, so the
+# office he last held is the Senate; a member the record could not name; and
+# Jodi Nelson, who sits.
+_FORMER_HEADING_MEMBERS = {
+    "former": [
+        {"id": "9180", "name": "Gunski, Michael", "chamber": "H", "party": "R",
+         "party_code": "R", "county": "Hillsborough", "county_abbr": "Hills",
+         "district": "6", "district_label": "Hills 6", "display_plain": "Rep. Michael Gunski",
+         "display": "Rep. Michael Gunski (R)", "display_full": "Rep. Michael Gunski (R - Hills 6)",
+         "slug": "michael-gunski-hills-6", "former": True, "towns": [], "email": "",
+         "served": {"first": "1/2/2019", "last": "6/24/2021",
+                    "terms": ["2019-2020", "2021-2022"]}},
+        {"id": "36", "name": "Bradley, Jeb", "chamber": "S", "party": "R",
+         "party_code": "R", "county": "Carroll", "county_abbr": "Carr", "district": "3",
+         "district_label": "SD3", "display_plain": "Sen. Jeb Bradley",
+         "display": "Sen. Jeb Bradley (R)", "display_full": "Sen. Jeb Bradley (R - SD3)",
+         "slug": "jeb-bradley-sd-3", "former": True, "towns": [], "email": "",
+         "served": {"first": "1/28/1999", "last": "10/10/2024"},
+         "member_ids": ["36", "374827"],
+         "service": [{"chamber": "H", "spans": [[1999, 2002]]},
+                     {"chamber": "S", "spans": [[2009, 2024]]}]},
+        {"id": "377204", "name": "Member #377204", "chamber": "H",
+         "display_plain": "Member #377204", "display": "Member #377204",
+         "display_full": "Member #377204", "slug": "member-377204", "former": True,
+         "towns": [], "email": "", "served": {"first": "1/4/2023", "last": "6/1/2023"}},
+    ],
+    "sitting": [
+        {"id": "10440", "name": "Nelson, Jodi", "chamber": "H", "party": "R",
+         "party_code": "R", "county": "Rockingham", "county_abbr": "Rock",
+         "district": "13", "district_label": "Rock 13", "display_plain": "Rep. Jodi Nelson",
+         "display": "Rep. Jodi Nelson (R)", "display_full": "Rep. Jodi Nelson (R - Rock 13)",
+         "slug": "jodi-nelson-rock-13", "towns": ["Derry"], "n_votes": 0,
+         "n_sponsored": 0},
+    ],
+}
+
+# app.js's own drawing of each member's heading, and of the chip every list
+# draws them with.
+_FORMER_HEADING_JS = r"""
+require("./stub.js");
+const fs = require("fs");
+const M = JSON.parse(fs.readFileSync("./members.json", "utf8"));
+const scope = (0, eval)(fs.readFileSync("./app.js", "utf8") + ";({renderMemberHead, pchip})");
+const out = {};
+for (const m of [...M.former, ...M.sitting])
+  out[m.id] = {head: scope.renderMemberHead(m), chip: scope.pchip(m)};
+process.stdout.write("\n@@" + JSON.stringify(out));
+"""
+
+
+@check("build", "a former member's own page is headed \"Former Rep.\" or \"Former Sen.\", "
+                "and nothing else names them so", needs=("build_legislator_pages",))
+def _former_heading(BL):
+    """The person settled it in September: a legislator who has left is
+    written "Former Rep. David Smith" -- the word joining the honorific, in
+    the name itself, never a chip, badge or pill beside it -- in exactly two
+    places, their own page and search results. Search did (find.json); the
+    page's heading read "Rep. Michael Gunski (R - Hills 6)" with "Former
+    member · on record 2019 to 2021" in a line under it.
+
+    So app.js's heading, and the title, link card and no-script heading
+    build_legislator_pages writes, now read "Former Rep. Michael Gunski (R -
+    Hills 6)", and the line under it gives only the years. The honorific is
+    the record's own, the office last held: a senator whose record carries
+    House years is "Former Sen.". A member the record could not name keeps
+    "Member #377204" and the line keeps "Former member". A sitting member is
+    untouched, and so is the chip every roll call, sponsor list and roster
+    draws a member with. Nothing on the page says why anybody left.
+    """
+    here = Path(".").resolve()
+    need = ("build_legislator_pages.py", "bills.html", "app.js", "dom_stub.js")
+    absent = [f for f in need if not (here / f).exists()]
+    if absent:
+        return "skip", "not here: " + ", ".join(absent)
+    M = _FORMER_HEADING_MEMBERS
+    want = {"9180": "Former Rep. Michael Gunski (R - Hills 6)",
+            "36": "Former Sen. Jeb Bradley (R - SD3)",
+            "377204": "Member #377204",
+            "10440": "Rep. Jodi Nelson (R - Rock 13)"}
+    years = {"9180": "2019 to 2021", "36": "1999 to 2024", "377204": "2023"}
+    root = Path(tempfile.mkdtemp(prefix="gr-former-"))
+    try:
+        site = root / "site"
+        site.mkdir()
+        shutil.copy2(here / "bills.html", site / "bills.html")
+        (site / "legislators.json").write_text(json.dumps(M["sitting"]), encoding="utf-8")
+        (site / "former.json").write_text(json.dumps(M["former"]), encoding="utf-8")
+        r = _run([sys.executable, str(here / "build_legislator_pages.py"), "--site", "site",
+                  "--base", "https://x.test"], cwd=root, capture_output=True, text=True,
+                 timeout=120)
+        assert r.returncode == 0, "build_legislator_pages.py: " + (r.stderr or r.stdout).strip()[-200:]
+        pages = {m["id"]: (site / "legislator" / f"{m['slug']}.html").read_text(encoding="utf-8")
+                 for m in M["former"] + M["sitting"]}
+        drawn = None
+        if shutil.which("node"):
+            for f, text in (("app.js", (here / "app.js").read_text(encoding="utf-8")),
+                            ("stub.js", (here / "dom_stub.js").read_text(encoding="utf-8")),
+                            ("members.json", json.dumps(M)), ("go.js", _FORMER_HEADING_JS)):
+                (root / f).write_text(text, encoding="utf-8")
+            r = _run(["node", "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+            assert r.returncode == 0 and "@@" in (r.stdout or ""), (
+                "app.js did not draw the heads under node: " + (r.stderr or r.stdout or "")[-300:])
+            drawn = json.loads(r.stdout.rsplit("@@", 1)[1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+    def between(text, a, b):
+        i = text.find(a)
+        return text[i + len(a):text.find(b, i + len(a))] if i >= 0 else None
+
+    bad = []
+    for mid, name in want.items():
+        page = pages[mid]
+        plain = re.sub(r"^Former ", "", name)
+        got = {"title": between(page, "<title>", "</title>"),
+               "link card": between(page, 'property="og:title" content="', '"'),
+               "no-script heading": between(between(page, "<noscript>", "</noscript>") or "",
+                                            "<h1>", "</h1>")}
+        want_of = {"title": f"{name} | Granite Record", "link card": name,
+                   "no-script heading": name}
+        bad += [f"member {mid}'s {k} reads {got[k]!r}, not {want_of[k]!r}"
+                for k in got if got[k] != want_of[k]]
+        # Nothing else on the built page changes: the search description and
+        # the structured data still name them as the record does.
+        desc = between(page, '<meta name="description" content="', '"') or ""
+        if not desc.startswith(plain):
+            bad.append(f"member {mid}'s search description begins {desc[:60]!r}")
+        ld = between(page, '<script type="application/ld+json">', "</script>") or ""
+        if '"name":"Former ' in ld.replace('": "', '":"'):
+            bad.append(f"member {mid}'s structured data calls them Former in the name")
+        ns = between(page, "<noscript>", "</noscript>") or ""
+        if mid in years:
+            if years[mid] not in ns:
+                bad.append(f"member {mid}'s no-script page lost the years {years[mid]}")
+            if ("Former member" in ns) != (not name.startswith("Former ")):
+                bad.append(f"member {mid}'s no-script line says 'Former member' "
+                           + ("twice over the heading" if name.startswith("Former ")
+                              else "nowhere, and its heading cannot"))
+    assert not bad, "; ".join(bad[:3])
+
+    if drawn is None:
+        return "ok", "the built title, link card and no-script heading (node not here to draw app.js's)"
+    for mid, name in want.items():
+        head = drawn[mid]["head"]
+        h1 = between(head, "<h1>", "</h1>")
+        if h1 != name:
+            bad.append(f"app.js heads member {mid} {h1!r}, not {name!r}")
+        line = re.sub(r"\s+", " ", between(head, '<p class="pformer">', "</p>") or "")
+        if mid in years:
+            if years[mid] not in line:
+                bad.append(f"app.js's line under member {mid}'s heading lost the years: {line!r}")
+            if ("Former member" in line) != (not name.startswith("Former ")):
+                bad.append(f"app.js's line under member {mid}'s heading reads {line!r}")
+        elif 'class="pformer"' in head:
+            bad.append(f"app.js marks sitting member {mid} as former")
+        # The chip is how a roll call, a sponsor list and a roster draw them.
+        chip = drawn[mid]["chip"]
+        if "Former" in chip or re.sub(r"^Former ", "", name) not in chip:
+            bad.append(f"the chip for member {mid} reads {chip!r}")
+        why = re.findall(r"\b(died|deceased|death|resign\w*|retire\w*|defeat\w*|lost)\b",
+                         head, re.I)
+        if why:
+            bad.append(f"member {mid}'s heading says why they left: {why}")
+    assert not bad, "; ".join(bad[:3])
+    return "ok", ("\"Former Rep.\" and \"Former Sen.\" (the office last held) in the heading, "
+                  "title, link card and no-script heading, the years in the line under it; "
+                  "an unnamed member, a sitting member and every chip as they were")
+
+
 @check("frontend", "no page promises a feed for a bill that has none")
 def _feed_promises():
     """On 13 September feeds narrowed to bills still moving, and the home page

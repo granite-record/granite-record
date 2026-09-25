@@ -2260,9 +2260,10 @@ color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
 /* Tabular figures: a seat is a number a reader is matching against a plate. */
 .pseat{font-variant-numeric:tabular-nums}
 .ptowns.note{color:var(--ink-2)}
-/* A former member's page says so once, quietly, near the top. Deliberately
-   not a coloured badge: it is a statement of tenure for a reader who arrived
-   cold, not a flag on the person, and nowhere else on the site marks them. */
+/* A former member's page says so in its heading ("Former Rep."), and gives
+   the years on record here, quietly, near the top. Deliberately not a
+   coloured badge: it is a statement of tenure for a reader who arrived cold,
+   not a flag on the person, and nowhere else on the site marks them. */
 .pformer{font-size:var(--t-ui);color:var(--ink-2);margin:var(--sp-4) 0 0;
   line-height:1.6;border-left:3px solid var(--rule);padding-left:var(--sp-4)}
 .pserv .svc{white-space:nowrap}

@@ -121,17 +121,42 @@ def _served_years(m):
     return a if a == b else f"{a} to {b}"
 
 
+def heading(m):
+    """The member's name as their own page heads it, and as its title and
+    link card give it: "Former Rep. Michael Gunski (R - Hills 6)" for somebody
+    who has left.
+
+    THE WORD JOINS THE HONORIFIC, as the person settled it in September: a
+    legislator who has left is written "Former Rep. David Smith", in the name
+    itself and never as a chip, badge or pill beside it, on their own page and
+    in search results -- and nowhere else, so a roll call, a sponsor list or a
+    committee roster names them exactly as it names a sitting member, and
+    nothing says why they left. The honorific is the record's own, the office
+    they last held under it. A name with no honorific ("Member #377204") is
+    left as it is, and the page's line under it keeps saying "Former member".
+    app.js's formerName heads the page the same way.
+    """
+    who = m.get("display_full") or m.get("display") or m.get("name") or ""
+    return f"Former {who}" if m.get("former") and re.match(r"(Rep|Sen)\. ", who) else who
+
+
 def noscript(m):
     """What a reader without JavaScript is told, and where to go instead."""
-    who = E(m.get("display_full") or m.get("name") or "")
+    who = E(heading(m))
     towns = m.get("towns") or []
     yrs = _served_years(m) if m.get("former") else ""
+    # The heading says "Former" where it can, so the line under it gives only
+    # the years, as the page app.js draws does.
+    titled = heading(m).startswith("Former ")
     return (
         '<noscript><div class="wrap" style="max-width:70ch;padding:26px 20px">'
         f"<h1>{who}</h1>"
-        + (f"<p>Former member of the New Hampshire General Court"
-           f"{E(', ' + yrs) if yrs else ''}. This page is their record; it is "
-           "not a current directory entry.</p>" if m.get("former") else "")
+        + ((f"<p>{E('On record ' + yrs + '. ') if yrs else ''}This page is their "
+            "record in the New Hampshire General Court; it is not a current "
+            "directory entry.</p>" if titled else
+            f"<p>Former member of the New Hampshire General Court"
+            f"{E(', ' + yrs) if yrs else ''}. This page is their record; it is "
+            "not a current directory entry.</p>") if m.get("former") else "")
         + (f"<p>Represents {E(', '.join(towns))}.</p>" if towns else "")
         + "<p>This page draws the record — bills sponsored and every recorded "
           "roll call vote — in the browser, so it needs JavaScript. Everything "
@@ -167,7 +192,8 @@ def main():
     for m in [*legs, *former]:
         slug = m.get("slug") or person_slug(m)
         path = f"/legislator/{slug}.html"
-        who = m.get("display_full") or m.get("display") or m.get("name") or ""
+        # "Former Rep. ..." for a member who has left: heading() says why.
+        who = heading(m)
         mid = str(m.get("id") or "")
         # THE MEMBER'S FEED, WHERE ONE IS WRITTEN: their recorded votes and the
         # bills they sponsored. build_feeds once wrote one for each of the 406

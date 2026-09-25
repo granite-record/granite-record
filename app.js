@@ -3652,11 +3652,25 @@ function servedYears(m){
   return a===b?a:`${a} to ${b}`;
 }
 
+/* "FORMER REP." IN THE NAME ITSELF, as the person settled it in September: a
+   legislator who has left is written "Former Rep. David Smith" -- the word
+   joins the honorific, never a chip, badge or pill beside it -- on their own
+   page and in search results (find.json), and nowhere else. The honorific is
+   the record's own, the office they last held under it. A name the record
+   gives no honorific ("Member #377204") is left as it is, and the line under
+   it keeps saying "Former member". build_legislator_pages.heading() writes
+   the page's title and link card the same way. */
+function formerName(m){
+  const who=m.display_full||m.display||m.name||"";
+  return /^(Rep|Sen)\. /.test(who)?"Former "+who:"";
+}
+
 function renderMemberHead(m){
   const towns = m.towns||[];
   /* FORMER MEMBERS, ON THEIR OWN PAGE AND NOWHERE ELSE. A reader arriving
      cold at a page with a full voting record should not be left thinking the
-     person still holds the seat, so the page says plainly that they do not.
+     person still holds the seat, so the page says plainly that they do not:
+     its heading names them "Former Rep." or "Former Sen." (formerName).
      That is a statement of tenure, and it is different in kind from a badge
      in a list: in a roll call or a sponsor list a former member is drawn
      exactly like a sitting one, same honorific, party and seat.
@@ -3665,18 +3679,22 @@ function renderMemberHead(m){
      start here -- people who served alongside them read this. */
   const former = !!(m.former || window.GR_FORMER);
   const yrs = former ? servedYears(m) : "";
+  const titled = former ? formerName(m) : "";
   return `<div class="phead">
-    <h1>${esc(m.display_full||m.display||m.name||"")}</h1>
+    <h1>${esc(titled||m.display_full||m.display||m.name||"")}</h1>
     <p class="pmeta">${esc(m.chamber==="S"?"State Senate":"House of Representatives")}${
       m.district?` &middot; District ${esc(m.district)}`:""}${
       m.county?` &middot; ${esc(m.county)} County`:""}</p>
-    ${former?`<p class="pformer">Former member${
+    ${former?`<p class="pformer">${
       /* The years are the span of the RECORD -- roll calls here begin in 1999,
          so a member sworn in before that appears from the year the evidence
          starts. "On record" carries that; the person's call was to leave it at
-         one phrase rather than explain it, the case being rare. */
-      yrs?` &middot; on record ${esc(yrs)}`:""}. This page is their record in
-      the General Court; it is not a current directory entry.</p>`:""}
+         one phrase rather than explain it, the case being rare. The heading
+         already says "Former", so the line says it only where the heading
+         could not. */
+      titled?(yrs?`On record ${esc(yrs)}. `:"")
+        :`Former member${yrs?` &middot; on record ${esc(yrs)}`:""}. `}This page is
+      their record in the General Court; it is not a current directory entry.</p>`:""}
     ${serviceLine(m)}
     ${former?"":(towns.length?`<p class="ptowns"><b>Represents</b> ${
       towns.map(t=>esc(t)).join(" &middot; ")}</p>`:
