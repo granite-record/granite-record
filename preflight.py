@@ -6579,6 +6579,20 @@ def _session_as_of_dates(N, V):
         ("HB189", "2001"): [
             "2001|0133|05/09/2001 09:37:36 AM|HB189|S|Special Order To [05/17/01], MA, "
             "VV; SJ 12, Pg.262|05/09/2001 09:37:36 AM"],
+        # AN ENROLMENT DONE IN RECESS is not told before the vote it enrolled:
+        # SB 48 of 2015 was "enrolled" on 9 April, six days before the House
+        # passed it. HB 1110 of 2014's, done in recess after both votes,
+        # keeps the day it names.
+        ("SB48", "2015"): [
+            "2015|0118|04/15/2015 11:02:16 AM|SB48|H|Ought to Pass: MA VV; HJ 34, PG. 1554"
+            "|04/15/2015 11:02:16 AM",
+            "2015|0118|04/29/2015 12:29:48 PM|SB48|S|Enrolled (In recess 4/9/2015); SJ 12"
+            "|04/29/2015 12:29:48 PM"],
+        ("HB1110", "2014"): [
+            "2014|2053|05/08/2014 11:20:14 AM|HB1110|S|Ought to Pass: MA, VV; OT3rdg; SJ 12"
+            "|05/08/2014 11:20:14 AM",
+            "2014|2053|05/22/2014 06:31:24 PM|HB1110|H|Enrolled (In recess of 5/15/2014)"
+            "|05/22/2014 06:31:24 PM"],
         # A DAY'S ROWS IN THE ORDER THEY WERE ENTERED, dated or not: the
         # House defeated HB 705's conference report at 5:07 PM, reconsidered
         # at 5:08 and adopted it at 5:14. The two floor rows are dated at
@@ -6594,7 +6608,7 @@ def _session_as_of_dates(N, V):
     }
     try:
         N.CORRECTIONS = []
-        got, every = {}, {}
+        got, every, dated = {}, {}, {}
         for (bill, session), lines in rows.items():
             recs = []
             for x in lines:
@@ -6605,6 +6619,7 @@ def _session_as_of_dates(N, V):
             N.TERM = N.P.term_of(session)
             evs = N.build(bill, recs)["events"]
             every[bill] = [e["raw"][:24] for e in evs]
+            dated[bill] = [(e["date"], e["raw"][:8]) for e in evs]
             got[bill] = [(e["body"], e["date"], e["raw"][:24])
                          for e in evs if e["type"] in ("floor", "veto_override")]
         assert [x[:20] for x in every["HB705"]] == [
@@ -6626,6 +6641,13 @@ def _session_as_of_dates(N, V):
             f"the House request it answered that morning: {got['HB369']}")
         assert [d for _, d, _ in got["HB189"]] == ["2001-05-09"], (
             f"a special order's date was read as the day it was done: {got['HB189']}")
+        enrolled = dated
+        assert enrolled["SB48"] == [("2015-04-15", "Ought to"), ("2015-04-29", "Enrolled")], (
+            "an enrolment done in recess was told before the House vote it "
+            f"enrolled: {enrolled['SB48']}")
+        assert enrolled["HB1110"][-1] == ("2014-05-15", "Enrolled"), (
+            "an enrolment done in recess after both votes lost the day it "
+            f"names: {enrolled['HB1110']}")
         return "ok", ("'done during' dates a veto vote; a day in recess, an "
                       "answer ahead of its request and a special order's "
                       "target date do not; a day's rows keep the order they "

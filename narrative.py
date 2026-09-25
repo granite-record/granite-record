@@ -1422,6 +1422,50 @@ def describe(ev, body, seen_intro=False):
 
 HELD_IN_ORDER = ("floor", "veto_override", "amendment", "enrolled", "governor")
 
+# "Enrolled (In recess 4/9/2015)", "House Non-Concurs ... (in recess of
+# 6/3/2015)", "Enrolled (in recess of) 06/04/2026": the sitting a chamber was
+# in recess of, which the line's own pattern takes as its date.
+IN_RECESS = re.compile(r"\bin\s+recess(?:\s+of)?\)?\s*(?P<date>\d{1,2}/\d{1,2}/\d{4})", re.I)
+
+
+# What an enrolment follows: the chambers' votes on the bill.
+ENROLMENT_FOLLOWS = ("floor", "veto_override")
+
+
+def in_recess(ev, r, fixed=None):
+    """Mark an enrolment dated by the sitting it was done in recess of, so
+    that hold_in_order puts it back to the day it was entered where that
+    date would tell it before a vote on the bill.
+
+    A DAY IN RECESS IS NOT THE DAY IT WAS DONE, and put an enrolment ahead
+    of the passage it enrolled: SB 48 of 2015's "Enrolled (In recess
+    4/9/2015)" was entered on 29 April and told as enrolled on 9 April, six
+    days before the House passed the bill on the 15th.
+
+    ONLY AN ENROLMENT, and only ahead of a vote. Held in order by every
+    action of the bill, as an as-of date is, 922 bills' in-recess rows moved
+    -- introductions, and the House refusing an amendment on the day it was
+    entered rather than the day it was done, after the Senate's answer to
+    it. An enrolment follows the votes and nothing else, so a vote is the
+    one thing it may not come before. Not where a person corrected the date
+    (`fixed`)."""
+    m = IN_RECESS.search(r.get("desc") or "")
+    created = r.get("created")
+    enrolment = ev.get("_type") == "enrolled" or (
+        ev.get("_type") == "amendment" and re.match(r"\s*enrolled", r.get("desc") or "", re.I))
+    if (not m or not enrolment or fixed or ev.get("_stamp_date") or not ev.get("date")
+            or not isinstance(created, datetime) or created == datetime.min):
+        return ev
+    try:
+        said = datetime.strptime(m.group("date"), "%m/%d/%Y")
+        dated = datetime.strptime(ev["date"], "%m/%d/%Y")
+    except ValueError:
+        return ev
+    if said == dated and created.date() > dated.date():
+        ev["_stamp_date"] = created.strftime("%m/%d/%Y")
+        ev["_stamp_after"] = ENROLMENT_FOLLOWS
+    return ev
+
 
 def hold_in_order(evs):
     """An as-of date (docket_vocab.as_of) may not move an action ahead of one
@@ -1445,13 +1489,16 @@ def hold_in_order(evs):
     back = False
     for ev in evs:
         stamp = ev.get("_stamp_date")
+        # What it may not come before: any action, for an as-of date; a
+        # vote, for an enrolment done in recess (in_recess).
+        after = ev.pop("_stamp_after", HELD_IN_ORDER)
         if not stamp:
             continue
         try:
             entered = datetime.strptime(stamp, "%m/%d/%Y")
         except ValueError:
             continue
-        if any(o is not ev and o.get("_type") in HELD_IN_ORDER
+        if any(o is not ev and o.get("_type") in after
                and not o.get("cancelled") and ev["when"] < o["when"] <= entered
                for o in evs):
             ev["date"], ev["when"] = stamp, entered
@@ -1515,6 +1562,7 @@ def build(bill, rows):
             ev["date_note"] = (entry.get("note") or "").strip()
             ev["date"] = fixed
         clamp_year(ev, r.get("session") or session)
+        in_recess(ev, r, fixed)
         ev["when"] = event_date(ev, r["created"])
         # The order it was entered in, for hold_in_order to break a tie by;
         # it takes the key off again.
