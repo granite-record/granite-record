@@ -3472,6 +3472,72 @@ function serviceLine(m){
     .join(" &middot; ")}</p>`;
 }
 
+/* ATTENDANCE, AS THE PERSON DEFINED IT (23-24 September). Two figures, kept
+   apart: the days the member's chamber held at least one roll call while they
+   held the seat, attended where they voted on any of that day's roll calls;
+   and the roll calls held while they sat, against those they voted on.
+   build_site_v2.member_attendance counts both per term from the ballots, which
+   list every seated member, so an arrival at a special election starts at
+   their first roll call and a departure stops at their last.
+
+   A FIGURE ON THIS PAGE AND NOWHERE ELSE: not a column in any list, not a
+   rank, and not a colour -- ninety per cent is drawn exactly as a hundred is.
+   Presiding is counted as present, as the Votes tab already says it is ("not
+   a missed vote"), and named where it happened. The two absence labels are the
+   ones the Votes tab uses, word for word. No note about part days: the person
+   asked for none. */
+const pctOf=(a,b)=>{
+  // Never a rounded 100 beside an absence, nor a rounded 0 beside a vote.
+  if(!b||!a)return 0;
+  if(a>=b)return 100;
+  return Math.max(1,Math.min(99,Math.round(100*a/b)));
+};
+const OTHER_LABEL=Object.fromEntries(OTHER.map(([st,label])=>[st,label]));
+function attendanceBlock(att,t){
+  const terms=Object.keys(att||{}).sort();
+  if(!terms.length)return "";
+  const num=n=>Number(n||0).toLocaleString();
+  const span=x=>esc(String(x)).replace("-","&ndash;");
+  const sum=k=>terms.reduce((s,x)=>s+(Number(att[x][k])||0),0);
+  // `what` is "in 2025&ndash;2026" under a label that already says days or
+  // roll calls, and the noun itself on the line that totals every term.
+  const days=(r,what)=>`attended ${num(r.attended)} of ${num(r.days)} ${what} (${
+    pctOf(r.attended,r.days)}%)`;
+  const calls=(r,what)=>`${r.presided?`voted on ${num(r.voted)} and presided over ${
+    num(r.presided)}`:`voted on ${num(r.voted)}`} of ${num(r.roll_calls)} ${what} (${
+    pctOf((r.voted||0)+(r.presided||0),r.roll_calls)}%)`;
+  const out=[];
+  const r=att[t];
+  if(r){
+    const missed=(r.roll_calls||0)-(r.voted||0)-(r.presided||0);
+    const why=[["Not Voting/Excused",r.excused],["Not Voting/Not Excused",r.not_excused],
+               ["No vote recorded",r.no_vote]]
+      .filter(([,n])=>n).map(([st,n])=>`${esc(OTHER_LABEL[st]||st)} ${num(n)}`);
+    out.push(`<p><b>Days</b> ${days(r,`in ${span(t)}`)} &middot; absent ${
+      num(r.days-r.attended)}</p>`);
+    out.push(`<p><b>Roll calls</b> ${calls(r,`in ${span(t)}`)} &middot; missed ${
+      num(missed)}${why.length?` (${why.join("; ")})`:""}</p>`);
+  }else if(t){
+    // A term the member sponsored in and has no ballot for. Before 1999 that
+    // is every term, because the record of roll calls starts there.
+    out.push(`<p><b>Attendance</b> no roll call is on record for them in ${span(t)}${
+      parseInt(t,10)<1999?"; the record of roll calls begins in 1999":""}.</p>`);
+  }
+  if(terms.length>1){
+    const tot={days:sum("days"),attended:sum("attended"),roll_calls:sum("roll_calls"),
+               voted:sum("voted"),presided:sum("presided")};
+    out.push(`<p><b>All ${terms.length} terms</b> ${days(tot,"days")} &middot; ${
+      calls(tot,"roll calls")}</p>`);
+  }
+  const chs=new Set(terms.flatMap(x=>String(att[x].chambers||"").split("")).filter(Boolean));
+  const where=chs.size===1?(chs.has("S")?"the Senate":"the House"):"their chamber";
+  const chair=sum("presided")?" or presided over":"";
+  out.push(`<p class="pattnote">A day counts when ${where} held at least one roll
+    call while they held the seat, and is attended if they voted on${chair} any
+    roll call that day. Voice votes record no names, so they are not counted.</p>`);
+  return `<div class="patt">${out.join("")}</div>`;
+}
+
 /* "2013 to 2026", from the first and last roll call the member appears in.
    The record's own answer to when somebody served, and the only one it can
    give: the roster carries no dates. One year where both ends fall in it,
@@ -3724,7 +3790,11 @@ function renderMember(m){
               ["Votes",memberVotes(m).length]];
   const body=[()=>renderMemberBills(m,true),()=>renderMemberBills(m,false),
               ()=>renderMemberVotes(m)][PAGE_TAB]||(()=>"");
-  return renderMemberHead(m) + termControl() + tabStrip(tabs) + pagePane(body());
+  // Attendance under the term control, because the term governs it as it
+  // governs the tabs, and above them, because it is about the member rather
+  // than about any one tab.
+  return renderMemberHead(m) + termControl() + attendanceBlock(m.attendance, pageTerm())
+    + tabStrip(tabs) + pagePane(body());
 }
 
 // ------------------------------------------------------------- committee ---

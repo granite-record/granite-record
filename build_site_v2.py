@@ -1998,6 +1998,76 @@ def former_roster(legs, votes_by_member, links, former_file, current_term):
     return out
 
 
+# What one ballot says about whether the member took part, in the order a
+# roll call is read when two of a member's numbers somehow both hold a ballot
+# on it: a vote cast outranks anything else the other ballot says.
+ATTENDANCE_KIND = {"Yea": "voted", "Nay": "voted", "Presiding": "presided",
+                   "Not Voting/Excused": "excused",
+                   "Not Voting/Not Excused": "not_excused"}
+_ATTENDANCE_RANK = ("voted", "presided", "excused", "not_excused", "no_vote")
+
+
+def member_attendance(votes):
+    """{term: {"chambers", "days", "attended", "roll_calls", "voted", ...}}.
+
+    ATTENDANCE, AS THE PERSON DEFINED IT (23-24 September): a day is a day the
+    member's chamber held at least one roll call while they held the seat, and
+    it counts as attended if they cast a vote on any roll call that day, with
+    no note about part days; beside that, how many of the roll calls held
+    while they sat they voted on.
+
+    WHILE THEY SAT is the ballots themselves. Every roll call from 1999 lists
+    every seated member, whatever they did -- 381 to 400 ballots on a House
+    roll call, 22 to 24 on a Senate one, the gap being vacancies -- and between
+    a member's first and last ballot of a term, 8 of the 6,015 member-terms
+    miss a roll call at all. So a member who arrived at a special election is
+    counted from the roll call they first appear on and one who left stops at
+    their last, with no service dates to model and none to get wrong. The
+    same rows the Votes tab lists: `votes` is every number the member voted
+    under.
+
+    PRESIDING COUNTS AS PRESENT. The Speaker is recorded "Presiding" on most
+    of a term's House roll calls and votes on few; on 98 days Terie Norelli
+    presided and cast no Yea or Nay at all. Reading that as absence would make
+    the person running the chamber its worst attender. The Votes tab already
+    tells a reader a presiding ballot "is not a missed vote", and this agrees
+    with it; the page says "presided over" where it happened.
+
+    "No vote recorded" -- database codes 5 and 7, and an empty code -- is not
+    a vote cast, so it is missed, and named apart from the two absences.
+    """
+    terms = defaultdict(lambda: {"calls": {}, "days": {}, "chambers": set()})
+    for v in votes:
+        t = P.term_of(str(v.get("year") or ""))
+        if not t:
+            continue
+        kind = ATTENDANCE_KIND.get(v.get("vote"), "no_vote")
+        rec = terms[t]
+        key = f'{v.get("year")}-{v.get("body")}-{v.get("vote_number")}'
+        was = rec["calls"].get(key)
+        if was is None or _ATTENDANCE_RANK.index(kind) < _ATTENDANCE_RANK.index(was):
+            rec["calls"][key] = kind
+        if v.get("body") in ("H", "S"):
+            rec["chambers"].add(v["body"])
+        day = vote_date(v.get("date"))
+        # An undated ballot is still a roll call held while they sat; it
+        # cannot say which day, so it is left out of the days rather than
+        # lumped into one invented day with every other undated ballot.
+        if day != (0, 0, 0):
+            rec["days"][day] = (rec["days"].get(day, False)
+                                or kind in ("voted", "presided"))
+    out = {}
+    for t in sorted(terms):
+        rec = terms[t]
+        kinds = Counter(rec["calls"].values())
+        out[t] = {"chambers": "".join(sorted(rec["chambers"])),
+                  "days": len(rec["days"]),
+                  "attended": sum(1 for x in rec["days"].values() if x),
+                  "roll_calls": len(rec["calls"]),
+                  **{k: kinds.get(k, 0) for k in _ATTENDANCE_RANK}}
+    return out
+
+
 def sponsored_in_order(rows):
     """A member's sponsored bills: prime first, then by year, oldest first,
     then by bill number in bills.html's order (bill_order)."""
@@ -2083,6 +2153,11 @@ def build_legislators(out, legs, votes_by_member, towns, unnamed,
                 if joined else {})
         (out / "legislators" / f"{mid}.json").write_text(json.dumps({
             **m, **lab, "counts": dict(counts), **both,
+            # In the member's own file and nowhere else: not in the `row`
+            # above, which is what the legislators page, the town pages and
+            # every other listing read. It is a figure on their own page, not
+            # a column anyone is sorted by.
+            "attendance": member_attendance(mv),
             "n_sponsored": len(mine),
             "n_prime": sum(1 for x in mine if x["prime"]),
             "sponsored": mine,

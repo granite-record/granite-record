@@ -3731,7 +3731,7 @@ require("./stub.js");
 const src = require("fs").readFileSync("./page.js", "utf8");
 let scope;
 try { scope = (0, eval)(src +
-    "; ({render, IDX, renderDetail, serviceLine, queryGroups, expand, groupWeight, yearOf, dkey, VERS, VPICK, VMODE, verKey, hasVersionIndex, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
+    "; ({render, IDX, renderDetail, serviceLine, attendanceBlock, queryGroups, expand, groupWeight, yearOf, dkey, VERS, VPICK, VMODE, verKey, hasVersionIndex, setTerm:(t)=>{term=t;}, setFocused:(x)=>{focused=x;}, getFocused:()=>focused, getQuery:()=>query});"); }
 catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message);
             process.exit(1); }
 scope.IDX.length = 0;
@@ -4146,6 +4146,33 @@ if (both.indexOf("Votes on record") < 0
 if (scope.serviceLine({service:[{chamber:"H",spans:[[2019,2026]]}]}) !== ""
     || scope.serviceLine({}) !== "") {
   console.log("SERVICELINE drew a line for a member of one chamber"); process.exit(1); }
+
+// Attendance, for the term the page shows and for every term together. A
+// rounded 100% beside an absence is a figure contradicting itself; the two
+// absence labels are the Votes tab's, word for word; presiding is named, not
+// counted as missed; and one term draws no total.
+var att = {"2023-2024": {chambers:"H", days:33, attended:32, roll_calls:300, voted:299,
+                         presided:0, excused:0, not_excused:1, no_vote:0},
+           "2025-2026": {chambers:"H", days:33, attended:28, roll_calls:591, voted:51,
+                         presided:287, excused:146, not_excused:107, no_vote:0}};
+var a1 = scope.attendanceBlock(att, "2023-2024").replace(/\\s+/g, " ");
+var a2 = scope.attendanceBlock(att, "2025-2026").replace(/\\s+/g, " ");
+var aw = [[a1, "<b>Days</b> attended 32 of 33 in 2023&ndash;2024 (97%) &middot; absent 1"],
+          [a1, "voted on 299 of 300 in 2023&ndash;2024 (99%) &middot; missed 1 (Absent, not excused 1)"],
+          [a1, "<b>All 2 terms</b> attended 60 of 66 days (91%)"],
+          [a2, "voted on 51 and presided over 287 of 591 in 2025&ndash;2026 (57%) &middot; missed 253 "
+               + "(Excused absence 146; Absent, not excused 107)"],
+          [a2, "when the House held at least one roll call"],
+          [a2, "voted on or presided over any roll call that day"]];
+for (var ai = 0; ai < aw.length; ai++) {
+  if (aw[ai][0].indexOf(aw[ai][1]) < 0) {
+    console.log("ATTENDANCE drew " + JSON.stringify(aw[ai][0]) + " without "
+                + JSON.stringify(aw[ai][1])); process.exit(1); } }
+var one = scope.attendanceBlock({"2025-2026": att["2025-2026"]}, "2025-2026");
+if (/All \\d+ terms/.test(one) || scope.attendanceBlock({}, "2025-2026") !== ""
+    || scope.attendanceBlock(undefined, "") !== "") {
+  console.log("ATTENDANCE drew a total for one term, or a block for a member with no roll calls");
+  process.exit(1); }
 
 // WHAT A SEARCH IS READ AS, from the cases measured on 14 September: words
 // with no subject do not have to match, a phrase is one idea in the record's
@@ -15779,6 +15806,86 @@ def _member_links(member_links, build_site_v2):
     return "ok", ("4 real chamber changers joined, Rep. Patrick Long and Kelleigh Murphy kept apart, and a "
                   "party change, another county and two fitting numbers left for a person; the member "
                   "files carry both chambers newest first")
+
+
+@check("rollcalls", "a member's attendance counts the days and roll calls held while they sat, on their own page only",
+       needs=("build_site_v2",))
+def _member_attendance(build_site_v2):
+    """build_site_v2.member_attendance on the cases the real ballots hold.
+
+    The person's definition (23-24 September): a day is a day the chamber held
+    at least one roll call while the member held the seat, attended if they
+    voted on any of that day's roll calls; and, apart from that, the roll calls
+    they voted on out of those held while they sat. The cases are the ones read
+    off RollCallHistory before this was written: a day voted on once and
+    excused for the rest is attended; a day of excused ballots is not; a
+    Speaker who presided all day and voted on nothing was there (Terie Norelli,
+    98 such days, would otherwise be the House's worst attender); a code 7
+    ballot is no vote; an arrival by special election is counted from their
+    first ballot; and a senator's House years land in their own term.
+
+    Then build_legislators, because where the figure goes is half the rule: in
+    the member's own file, and in no listing -- legislators.json and
+    former.json are what the roster, town and committee pages read.
+    """
+    B = build_site_v2
+
+    def v(mid, year, body, n, day, vote):
+        return {"member_id": mid, "name": "Example, Ann", "label": "Rep. Ann Example (D - Coos 4)",
+                "party": "D", "year": year, "body": body, "vote_number": str(n), "bill": "HB1",
+                "question": "Ought to Pass", "date": day, "vote": vote}
+
+    rows = [
+        # 2023-2024 in the House: three days, one attended in part, one
+        # excused whole, one presided and nothing else.
+        v("1", "2023", "H", 1, "1/4/2023", "Yea"),
+        v("1", "2023", "H", 2, "1/4/2023", "Not Voting/Excused"),
+        v("1", "2023", "H", 3, "2/8/2023", "Not Voting/Excused"),
+        v("1", "2023", "H", 4, "2/8/2023", "Not Voting/Not Excused"),
+        v("1", "2024", "H", 1, "1/3/2024", "Presiding"),
+        v("1", "2024", "H", 2, "1/3/2024", "Presiding"),
+        v("1", "2024", "H", 3, "1/3/2024", "No vote recorded"),
+        # 2025-2026 under a Senate number, joined: two roll calls on one day.
+        v("2", "2025", "S", 7, "3/6/2025", "Nay"),
+        v("2", "2025", "S", 8, "3/6/2025", "Yea"),
+    ]
+    got = B.member_attendance(rows)
+    assert got == {
+        "2023-2024": {"chambers": "H", "days": 3, "attended": 2, "roll_calls": 7, "voted": 1,
+                      "presided": 2, "excused": 2, "not_excused": 1, "no_vote": 1},
+        "2025-2026": {"chambers": "S", "days": 1, "attended": 1, "roll_calls": 2, "voted": 2,
+                      "presided": 0, "excused": 0, "not_excused": 0, "no_vote": 0},
+    }, f"attendance counted {got}"
+    # An arrival at a special election has no ballot before they sat, and is
+    # counted from their first: 2 days of 2, not 2 of the term's 3.
+    late = B.member_attendance([r for r in rows[4:7]] + [v("1", "2024", "H", 4, "3/7/2024", "Nay")])
+    assert late["2023-2024"]["days"] == 2 and late["2023-2024"]["attended"] == 2 \
+        and late["2023-2024"]["roll_calls"] == 4, f"an arrival was counted as {late}"
+
+    root = Path(tempfile.mkdtemp(prefix="gr-attend-"))
+    try:
+        (root / "legislators").mkdir()
+        legs = {"1": {"id": "1", "last": "Example", "first": "Ann", "name": "Example, Ann",
+                      "chamber": "S", "party_code": "D", "party": "D", "district": "1",
+                      "county": "Coos"}}
+        by = {"1": rows[:7], "2": rows[7:]}
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            B.build_legislators(root, legs, by, {}, set(), {}, {}, {"1": ["2"]})
+        own = json.loads((root / "legislators" / "1.json").read_text(encoding="utf-8"))
+        assert own.get("attendance") == got, (
+            "the member's own file does not carry both chambers' attendance: "
+            + str(own.get("attendance")))
+        for f in ("legislators.json", "former.json"):
+            listed = json.loads((root / f).read_text(encoding="utf-8"))
+            assert not any("attendance" in m for m in listed), (
+                f"{f} carries attendance: it is read by every listing of members, and the "
+                "figure belongs on the member's own page, not in a column anyone is sorted by")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", ("a part day attended, an excused day absent, a presiding day there, code 7 no vote, an "
+                  "arrival from their first ballot; both chambers in the member's file, none in a listing")
 
 
 @check("naming", "a sponsorship is filed under the member its bill page links, and a name is that member only where they sat",
