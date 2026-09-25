@@ -3317,6 +3317,10 @@ _BEST_MATCH_NAMES = {
               "Former Rep. Jonathan Hill"},
              {"Hillsborough", "Rep. Bill Ohm (R - Hills 10)"}),
     "gun": (set(), {"Former Rep. Michael Gunski"}),
+    # A seat is read only when a number is typed: "hills 10" is Rep. Ohm's
+    # district, and "hills" alone is the start of a place's name (below).
+    "hills 10": ({"Rep. Bill Ohm (R - Hills 10)"}, set()),
+    "hills": (set(), {"Hillsborough", "Rep. Bill Ohm (R - Hills 10)"}),
 }
 
 # /bills, typed into: the cards in the order drawn, each with the year its
@@ -3501,6 +3505,14 @@ def _best_match_words(BP):
         if late:
             wrong.append(f"{q!r} lists {order[first_part]!r}, which only begins "
                          f"with it, above {late}")
+    # THE TOWN BEFORE THE DISTRICT'S MEMBERS, while a place's name is being
+    # typed. Read as a whole word of every "(R - Hills 10)", "hills" put forty
+    # members above Hillsborough, and "merr" forty above Merrimack, out of the
+    # header's eight rows (25 September).
+    hills = P["names"].get("hills") or []
+    if "Hillsborough" in hills and "Rep. Bill Ohm (R - Hills 10)" in hills and \
+            hills.index("Hillsborough") > hills.index("Rep. Bill Ohm (R - Hills 10)"):
+        wrong.append(f"'hills' lists a Hills district's member above Hillsborough: {hills}")
     assert not wrong, "the names in the header and /search: " + "; ".join(wrong)
     n = sum(len(v) for k, v in fx.items() if k.startswith("/idx/"))
     return "ok", (f"{len(_BEST_MATCH_WORDS)} searches over {n} real bills: the word "

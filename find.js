@@ -146,7 +146,15 @@ function _fwhole(r,s){
    typed that are not a whole word of the name, and findMatch orders by it
    before anything else. */
 function _fpart(r,s){
-  const name=_fbare(r[1]).toLowerCase();
+  let name=_fbare(r[1]).toLowerCase();
+  // THE SEAT COUNTS ONLY WHEN A NUMBER IS TYPED. "(R - Merr 5)" made "merr"
+  // a whole word of every Merrimack County representative, and forty of them
+  // pushed the town of Merrimack out of the header's eight rows while a
+  // reader was still typing its name; "hills", "ches" and "graf" did the same
+  // to Hillsborough, Chester and Grafton. A district is asked for with its
+  // number -- "hills 29", "sd2" -- so a query with a digit still reads the
+  // seat, and one without reads the name alone.
+  if(!/\d/.test(s))name=name.replace(/\s*\([^()]*\)\s*$/,"");
   return _fwords(s).filter(w=>!_fisword(name,w)).length;
 }
 
