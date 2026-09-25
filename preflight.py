@@ -4416,12 +4416,18 @@ const st = {when:"2025-01-14", time:"09:30", what:"hearing", body:"S",
 // The same hearing with no recording matched to it.
 const bare = {when:"2025-01-14", time:"09:30", what:"hearing", body:"S",
   committee:"Election Law and Municipal Affairs", state:"none", reports:[a]};
+// A report dated a day the docket has no Senate hearing on: report_station.
+const dated = {when:"2025-01-30", time:null, what:"hearing", body:"S",
+  committee:"Election Law and Municipal Affairs", state:"novideo",
+  video_id:"", dated_by:"report", docket_heard:["2025-01-14"], reports:[a]};
 let out;
 try {
   out = {one: scope.hearingReport(a), prose: scope.hearingReport(b),
          tab: scope.renderHearings({id:"SB11", n:"SB 11"}, {stations:[st]}),
          novid: scope.renderHearings({id:"SB11", n:"SB 11"},
-                                     {stations:[bare]})};
+                                     {stations:[bare]}),
+         dated: scope.renderHearings({id:"SB11", n:"SB 11"},
+                                     {stations:[dated]})};
 } catch (e) { console.log("RENDER " + e.message); process.exit(1); }
 fs.writeFileSync("./out.json", JSON.stringify(out));
 """, encoding="utf-8")
@@ -4468,9 +4474,18 @@ fs.writeFileSync("./out.json", JSON.stringify(out));
     assert "No recording matched" in novid and 'class="hrep"' in novid and \
         "recording above" not in re.sub(r"\s+", " ", novid), (
         "a report with no recording above it says there is one")
+    # A report under its own date says the date is the report's, gives the
+    # docket's, and does not call itself a recording that failed to match.
+    dated = re.sub(r"\s+", " ", out["dated"])
+    assert "Dated by the committee’s own report" in dated.replace("&rsquo;", "’") \
+        and "records one on 2025-01-14" in dated and 'class="hrep"' in dated \
+        and "No recording matched" not in dated, (
+        "a report under its own date does not say where the date came from: "
+        + dated[:300])
     return "ok", ("closed, sized, attributed; a member in the chip, the "
                   "public as named; prose kept as prose; under the video, "
-                  "and says so only where there is one")
+                  "and says so only where there is one; a report the docket "
+                  "has no hearing for under its own date, saying so")
 
 
 def _journey_bills(B):
@@ -9040,13 +9055,30 @@ def _hearing_report_attach(build_site_v2, senate_hearing_reports):
                 {"body": "S", "what": "floor debate", "when": "2025-01-14"},
                 {"body": "S", "what": "hearing", "when": "2025-01-14"}]
     tally, un = Counter(), []
-    B.attach_hearing_reports(stations, [rec, {**rec, "heard": "2025-01-30"}],
+    # A report dated a day the docket has no Senate hearing on, twice: the
+    # bill's and an amendment's, filed the same afternoon.
+    late = {**rec, "heard": "2025-01-30"}
+    B.attach_hearing_reports(stations, [rec, late, late],
                              "SB11", idx, S.name_part, tally, un)
-    assert [bool(s.get("reports")) for s in stations] == [False, False, True], (
+    assert [bool(s.get("reports")) for s in stations[:3]] == [False, False, True], (
         "the report went on another sitting: "
         + json.dumps([bool(s.get("reports")) for s in stations]))
-    assert un == ["SB11 2025-01-30"] and tally["unmatched"] == 1, (
-        f"a report with no hearing that day was not named: {un}")
+    assert un == ["SB11 2025-01-30"] * 2 and tally["unmatched"] == 2 \
+        and tally["matched"] == 1, (
+        f"a report with no hearing that day was not named: {un}, {dict(tally)}")
+    # 20 REPORTS OF 1,293 WERE ON NO PAGE, their date one the docket does not
+    # carry. The person decided on 24 September that they are shown under the
+    # report's own date. One station for the date, which says where the date
+    # came from and what the docket has instead, and offers no recording.
+    assert len(stations) == 4, f"{len(stations)} stations, not the docket's 3 and one for the report"
+    own = stations[3]
+    assert (own.get("when"), own.get("body"), own.get("dated_by")) == (
+        "2025-01-30", "S", "report"), own
+    assert len(own.get("reports") or []) == 2, "the amendment's report did not share its date's station"
+    assert own.get("docket_heard") == ["2025-01-14"], own.get("docket_heard")
+    assert not own.get("video_id") and own.get("start") is None \
+        and own.get("state") == "novideo", own
+    assert own.get("committee") == "Election Law and Municipal Affairs", own.get("committee")
     page = stations[2]["reports"][0]
     first = page["sections"][0]["speakers"][0]
     assert first.get("member", {}).get("label") == "Senator Gannon", first

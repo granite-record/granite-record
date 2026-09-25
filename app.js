@@ -2081,6 +2081,17 @@ function renderHearings(b,d){
       +`<p class="note" style="margin-top:8px">A voice or division vote leaves no
       timestamp in the record, so there is nothing to point at within the
       sitting. The whole session is here.</p>`;
+    // A HEARING DATED BY THE SENATE COMMITTEE'S OWN REPORT, where the docket
+    // has no Senate hearing of the bill that day (report_station, in
+    // build_site_v2). Shown, as the person decided on 24 September, and saying
+    // where the date comes from: the report's date and the docket's are both
+    // the General Court's, and this site does not say which one is right.
+    else if(s.dated_by==="report")inner=`<div class="vbox"><p><b>Dated by the
+      committee&rsquo;s own report.</b> The docket records no Senate hearing of
+      this bill on this day${(s.docket_heard||[]).length?`; it records one on
+      ${s.docket_heard.map(esc).join(" and ")}`:""}. This is the date the Senate
+      committee&rsquo;s hearing report gives, and the report is below as the
+      Senate filed it. No recording is linked to it.</p></div>`;
     // WHERE THIS SITE'S RECORDINGS BEGIN, not where recording began. The
     // House Calendars of 2013-2019 announce hearings streamed live, and none
     // of those is on either YouTube channel, so "no recording exists" and
