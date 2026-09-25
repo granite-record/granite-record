@@ -741,7 +741,15 @@ def main():
         # today rather than one that no longer sits.
         towns = (f"{len(rec['members'])} members, " if code not in retired
                  else "")
-        desc = (f"The {chamber_word} Committee on {name}. "
+        span_of[code] = sorted({t for t in rec["bills"] if t}
+                               | {s["term"] for s in sessions if s.get("term")})
+        # And its years beside its name, in the tab and the search result: a
+        # retired code can share its name with a later committee -- S33 and
+        # S50 are both Election Law and Internal Affairs -- and the years are
+        # what tells the two apart before the page is open.
+        when = (f" ({runs(span_of[code])})"
+                if code in retired and span_of[code] else "")
+        desc = (f"The {chamber_word} Committee on {name}{when}. "
                 f"{towns}{sum(len(v) for v in rec['bills'].values()):,} bills "
                 f"referred and {len(sessions):,} sitting days, each with what "
                 "was taken up and when. From the New Hampshire General Court's "
@@ -765,8 +773,8 @@ def main():
         path = f"/committee/{code}.html"
         (out / f"{code}.html").write_text(S.page(
             t, path=path, base=a.base,
-            title=f"{name} — {chamber_word} committee | Granite Record",
-            og_title=f"{name} — New Hampshire {chamber_word}",
+            title=f"{name}{when} — {chamber_word} committee | Granite Record",
+            og_title=f"{name}{when} — New Hampshire {chamber_word}",
             og_image="og-committee.png", og_alt="Granite Record: committees and hearings",
             description=desc,
             # The committee's feed, named in its head the way a bill's and a
@@ -787,8 +795,6 @@ def main():
             encoding="utf-8")
         urls.append(a.base + S.canon(path))
         written += 1
-        span_of[code] = sorted({t for t in rec["bills"] if t}
-                               | {s["term"] for s in sessions if s.get("term")})
         index.append({
             "code": code, "name": name, "chamber": chamber,
             "chair": rec["chair"], "n_members": len(members),

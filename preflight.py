@@ -7676,6 +7676,11 @@ def _committee_older_names(committee_names, build_committees, build_site_v2):
     for said in ("CN.retired()", 'code_of(cname, r.get("body"), r.get("term"))',
                  'code_of(nm, "", b.get("term"))', "name_on_the_day(name,"):
         assert said in main_, f"build_committees.main no longer has {said}"
+    # A retired page's tab and search result carry its years, since S33's
+    # name is S50's too.
+    assert 'title=f"{name}{when} — ' in main_ and \
+        "if code in retired and span_of[code]" in main_, (
+        "a retired committee's title no longer carries its years")
 
     # And the page: the name as the bill carries it, to the page of its term.
     ext, stub = Path("app.js"), Path("dom_stub.js")
@@ -15569,13 +15574,17 @@ def _committee_attribution():
     total, bad = 0, []
     for f in sorted(root.glob("*.json")):
         c = json.loads(f.read_text(encoding="utf-8"))
-        # Its own report under any name it had: 1999's reports of what is
-        # now H08, Fish and Game, are signed Wildlife and Marine Resources,
-        # and the page narrates those days under that name.
-        want = {(n or "").strip().lower() for n in
-                [c.get("name")] + [x.get("name") for x in c.get("names") or []]}
         for sess in c.get("sessions", []):
             narr = sess.get("narrative", "")
+            # Its own report under the name it had THAT DAY, which is the name
+            # the day's sentence opens with: 1999's reports of what is now
+            # H08, Fish and Game, are signed Wildlife and Marine Resources,
+            # and the page narrates those days under that name. Any name the
+            # page ever had would let a report under one back a day narrated
+            # under the other.
+            m = re.match(r"(?:The Committee on )?(.+?) "
+                         r"(?:met|is scheduled to meet) on ", narr)
+            want = (m.group(1) if m else c.get("name") or "").strip().lower()
             for it in sess.get("items", []):
                 if it.get("kind") != "executive session":
                     continue
@@ -15585,8 +15594,8 @@ def _committee_attribution():
                     continue
                 total += 1
                 mine = any(
-                    want & {(r.get("committee") or "").strip().lower()
-                            for r in (rec.get("reports") or [])}
+                    want in {(r.get("committee") or "").strip().lower()
+                             for r in (rec.get("reports") or [])}
                     for rec in (reps.get(it.get("term"), {}) or {})
                     .get(it.get("bill"), []) or [])
                 if not mine:
