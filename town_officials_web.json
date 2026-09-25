@@ -1,6 +1,6 @@
 {
  "acworth": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -46,7 +46,7 @@
   ]
  },
  "albany": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -72,7 +72,7 @@
   ]
  },
  "alexandria": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -142,7 +142,7 @@
   ]
  },
  "allenstown": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -239,7 +239,7 @@
   ]
  },
  "alstead": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -248,6 +248,16 @@
     "read_on": "2026-09-20T21:47:44-0400",
     "role": null,
     "source_url": "https://www.alsteadnh.org/select-board",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "David Hogan",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": null,
+    "source_url": "https://www.alsteadnh.org/departments",
     "status": "published",
     "term_expires": null
    },
@@ -263,31 +273,11 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Misty Gratacos",
-    "office": "Board of Selectmen",
-    "read_on": "2026-09-20T21:47:44-0400",
-    "role": null,
-    "source_url": "https://www.alsteadnh.org/select-board",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Sharon Iozzo",
+    "name": "Joel McCarty",
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T21:47:54-0400",
-    "role": "Assistant",
+    "role": null,
     "source_url": "https://www.alsteadnh.org/departments",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Shelley Steuwe",
-    "office": "Board of Selectmen",
-    "read_on": "2026-09-20T21:47:44-0400",
-    "role": "Secretary",
-    "source_url": "https://www.alsteadnh.org/select-board",
     "status": "published",
     "term_expires": null
    },
@@ -297,6 +287,56 @@
     "office": "Highway Agent",
     "read_on": "2026-09-20T21:47:54-0400",
     "role": null,
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Carol Reller",
+    "office": "Library Trustee",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": "Secretary",
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jude Willis",
+    "office": "Library Trustee",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": null,
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Kathy Torrey",
+    "office": "Library Trustee",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": "Vice Chair",
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Matt Saxton",
+    "office": "Library Trustee",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": "Chair",
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Priscilla Sawa",
+    "office": "Library Trustee",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": "Alternate",
     "source_url": "https://www.alsteadnh.org/departments",
     "status": "published",
     "term_expires": null
@@ -323,7 +363,67 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
+    "name": "David Hogan",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": "Ex-Officio",
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "David Konesko",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": "Vice Chair",
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
     "name": "James Gordon",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": null,
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jed West",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": null,
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jeremiah Sund",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": "Alternate",
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Justin Falango",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": "Alternate",
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Kent Carbo",
     "office": "Planning Board",
     "read_on": "2026-09-20T21:47:54-0400",
     "role": "Alternate",
@@ -352,13 +452,33 @@
     "term_expires": null
    },
    {
-    "filled_by": "appointed",
-    "filled_by_source": "the page marks this person appointed",
     "method": "parse_town_sites.py over a saved page",
     "name": "Bobbie Wilson",
     "office": "Supervisor of the Checklist",
     "read_on": "2026-09-20T21:47:54-0400",
     "role": "Chair",
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Erin Heidorn",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": null,
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "filled_by": "appointed",
+    "filled_by_source": "the page marks this person appointed",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Gail Bellows",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": null,
     "source_url": "https://www.alsteadnh.org/departments",
     "status": "published",
     "term_expires": null
@@ -407,8 +527,20 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Matt Saxton",
+    "name": "Susan Norlander",
     "office": "Treasurer",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": null,
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "filled_by": "appointed",
+    "filled_by_source": "the page marks this person appointed",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Glenn Elsesser",
+    "office": "Trustee of Trust Funds",
     "read_on": "2026-09-20T21:47:54-0400",
     "role": "Chair",
     "source_url": "https://www.alsteadnh.org/departments",
@@ -419,10 +551,40 @@
     "filled_by": "appointed",
     "filled_by_source": "the page marks this person appointed",
     "method": "parse_town_sites.py over a saved page",
+    "name": "Joseph Cartwright",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": null,
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
     "name": "Melanie Marsden",
     "office": "Trustee of Trust Funds",
     "read_on": "2026-09-20T21:47:54-0400",
-    "role": "Chair",
+    "role": null,
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Chris Rietmann",
+    "office": "Zoning Board of Adjustment",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": null,
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "David Konesko",
+    "office": "Zoning Board of Adjustment",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": "Alternate",
     "source_url": "https://www.alsteadnh.org/departments",
     "status": "published",
     "term_expires": null
@@ -442,7 +604,37 @@
     "name": "Joe Levesque",
     "office": "Zoning Board of Adjustment",
     "read_on": "2026-09-20T21:47:54-0400",
+    "role": null,
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Joseph Cartwright",
+    "office": "Zoning Board of Adjustment",
+    "read_on": "2026-09-20T21:47:54-0400",
     "role": "Alternate",
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Kevin Clark",
+    "office": "Zoning Board of Adjustment",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": null,
+    "source_url": "https://www.alsteadnh.org/departments",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Max Zurmuhlen",
+    "office": "Zoning Board of Adjustment",
+    "read_on": "2026-09-20T21:47:54-0400",
+    "role": null,
     "source_url": "https://www.alsteadnh.org/departments",
     "status": "published",
     "term_expires": null
@@ -461,7 +653,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 3,
+    "found": 1,
     "link_text": "SELECT BOARD",
     "read_on": "2026-09-20T21:47:44-0400",
     "says_elected": false,
@@ -491,7 +683,7 @@
    },
    {
     "agent": "project",
-    "found": 20,
+    "found": 39,
     "link_text": "DEPARTMENTS",
     "read_on": "2026-09-20T21:47:54-0400",
     "says_elected": false,
@@ -502,13 +694,64 @@
   ]
  },
  "alton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "amherst": {
-  "built": "2026-09-22",
-  "officials": [],
+  "built": "2026-09-24",
+  "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Cynthia Dokmo",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:48:08-0400",
+    "role": "Vice Chair",
+    "source_url": "https://www.amherstnh.gov/board-selectmen",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Danielle Pray",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:48:08-0400",
+    "role": "Chair",
+    "source_url": "https://www.amherstnh.gov/board-selectmen",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "John D'Angelo",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:48:08-0400",
+    "role": null,
+    "source_url": "https://www.amherstnh.gov/board-selectmen",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Pam Coughlin",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:48:08-0400",
+    "role": "Clerk",
+    "source_url": "https://www.amherstnh.gov/board-selectmen",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Tom Grella",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:48:08-0400",
+    "role": null,
+    "source_url": "https://www.amherstnh.gov/board-selectmen",
+    "status": "published",
+    "term_expires": "2029"
+   }
+  ],
   "pages": [
    {
     "agent": "project",
@@ -522,7 +765,7 @@
    },
    {
     "agent": "project",
-    "found": 0,
+    "found": 5,
     "link_text": "Board of Selectmen",
     "read_on": "2026-09-20T21:48:08-0400",
     "says_elected": false,
@@ -553,12 +796,63 @@
   ]
  },
  "andover": {
-  "built": "2026-09-22",
-  "officials": [],
+  "built": "2026-09-24",
+  "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Charles Stewart",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:48:35-0400",
+    "role": null,
+    "source_url": "https://www.andover-nh.gov/1598/Select-Board",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Dana Swenson",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:48:35-0400",
+    "role": "Chair",
+    "source_url": "https://www.andover-nh.gov/1598/Select-Board",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "James Delaney, Sr.",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:48:35-0400",
+    "role": null,
+    "source_url": "https://www.andover-nh.gov/1598/Select-Board",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Les Fenton",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:48:35-0400",
+    "role": "Vice Chair",
+    "source_url": "https://www.andover-nh.gov/1598/Select-Board",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Mark Cowdrey",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:48:35-0400",
+    "role": null,
+    "source_url": "https://www.andover-nh.gov/1598/Select-Board",
+    "status": "published",
+    "term_expires": "2029"
+   }
+  ],
   "pages": [
    {
     "agent": "project",
-    "found": 0,
+    "found": 5,
     "link_text": "1598 Select Board",
     "read_on": "2026-09-20T21:48:35-0400",
     "says_elected": false,
@@ -599,37 +893,17 @@
   ]
  },
  "antrim": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "ashland": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Bonnie Bethune",
-    "office": "Board of Selectmen",
-    "read_on": "2026-09-20T21:48:59-0400",
-    "role": "Secretary",
-    "source_url": "https://ashland.nh.gov/pages/boards-committees",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Jennie Angell",
-    "office": "Board of Selectmen",
-    "read_on": "2026-09-20T21:48:59-0400",
-    "role": "Alternate",
-    "source_url": "https://ashland.nh.gov/pages/boards-committees",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Steve Felton",
-    "office": "Board of Selectmen",
+    "name": "Daivd Toth",
+    "office": "Planning Board",
     "read_on": "2026-09-20T21:48:59-0400",
     "role": null,
     "source_url": "https://ashland.nh.gov/pages/boards-committees",
@@ -644,11 +918,41 @@
     "role": null,
     "source_url": "https://ashland.nh.gov/pages/boards-committees",
     "status": "published",
-    "term_expires": "2029"
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Marissah Gallien",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T21:48:59-0400",
+    "role": null,
+    "source_url": "https://ashland.nh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Michelle Roloff",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T21:48:59-0400",
+    "role": "Alternate",
+    "source_url": "https://ashland.nh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
    },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Ronald Beard",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T21:48:59-0400",
+    "role": null,
+    "source_url": "https://ashland.nh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Steve Felton",
     "office": "Planning Board",
     "read_on": "2026-09-20T21:48:59-0400",
     "role": null,
@@ -690,7 +994,10 @@
   "pages": [
    {
     "agent": "project",
-    "found": 8,
+    "dropped_offices": [
+     "Board of Selectmen (8)"
+    ],
+    "found": 7,
     "link_text": "pages boards committees",
     "read_on": "2026-09-20T21:48:59-0400",
     "says_elected": false,
@@ -711,7 +1018,7 @@
   ]
  },
  "atkinson": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -804,22 +1111,22 @@
   ]
  },
  "auburn": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "barnstead": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "barrington": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "bartlett": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -886,11 +1193,11 @@
   ]
  },
  "bath": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Richard Vance",
+    "name": "Richard Vance, Jr.",
     "office": "Highway Agent",
     "read_on": "2026-09-20T21:50:14-0400",
     "role": null,
@@ -963,7 +1270,7 @@
   ]
  },
  "bedford": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -1009,33 +1316,63 @@
   ]
  },
  "belmont": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Ruth Mooney",
+    "name": "Jon Pike",
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T21:51:10-0400",
     "role": null,
     "source_url": "https://www.belmontnh.org/boards/board-of-selectmen",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2028"
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Winnipesaukee River Basin Program",
-    "office": "Town Clerk",
-    "read_on": "2026-09-20T21:51:23-0400",
+    "name": "Mark Lewandoski",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:51:10-0400",
     "role": null,
-    "source_url": "https://belmontnh.gov/departments/sewer-department/",
+    "source_url": "https://www.belmontnh.org/boards/board-of-selectmen",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Ruth Mooney",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:51:10-0400",
+    "role": "Chairman",
+    "source_url": "https://www.belmontnh.org/boards/board-of-selectmen",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Sharon Ciampi",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:51:10-0400",
+    "role": null,
+    "source_url": "https://www.belmontnh.org/boards/board-of-selectmen",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Travis O\u2019Hara",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:51:10-0400",
+    "role": "Vice Chairman",
+    "source_url": "https://www.belmontnh.org/boards/board-of-selectmen",
+    "status": "published",
+    "term_expires": "2029"
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 1,
+    "found": 5,
     "link_text": "Board of Selectmen",
     "read_on": "2026-09-20T21:51:10-0400",
     "says_elected": false,
@@ -1045,7 +1382,7 @@
    },
    {
     "agent": "project",
-    "found": 1,
+    "found": 5,
     "link_text": "Board of Selectmen",
     "read_on": "2026-09-20T21:51:04-0400",
     "says_elected": false,
@@ -1065,7 +1402,7 @@
    },
    {
     "agent": "project",
-    "found": 1,
+    "found": 0,
     "link_text": "Sewer Department",
     "read_on": "2026-09-20T21:51:23-0400",
     "says_elected": false,
@@ -1076,8 +1413,38 @@
   ]
  },
  "bennington": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "James Cleary",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:51:34-0400",
+    "role": "Chair",
+    "source_url": "https://townofbennington.com/boardofselectmen/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Tony Parisi",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:51:34-0400",
+    "role": null,
+    "source_url": "https://townofbennington.com/boardofselectmen/",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Travis McClure",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:51:34-0400",
+    "role": null,
+    "source_url": "https://townofbennington.com/boardofselectmen/",
+    "status": "published",
+    "term_expires": "2028"
+   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "John Plourde",
@@ -1117,6 +1484,26 @@
     "source_url": "https://townofbennington.com/townofficials/",
     "status": "published",
     "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Shelley Griswold",
+    "office": "Budget Committee",
+    "read_on": "2026-09-20T21:51:29-0400",
+    "role": "Chair",
+    "source_url": "https://townofbennington.com/townofficials/",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Karen Belcher",
+    "office": "Cemetery Trustee",
+    "read_on": "2026-09-20T21:51:29-0400",
+    "role": "Chair",
+    "source_url": "https://townofbennington.com/townofficials/",
+    "status": "published",
+    "term_expires": "2028"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -1162,6 +1549,26 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
+    "name": "David McKenzie",
+    "office": "Library Trustee",
+    "read_on": "2026-09-20T21:51:29-0400",
+    "role": "Alternate",
+    "source_url": "https://townofbennington.com/townofficials/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jill Wilmoth",
+    "office": "Library Trustee",
+    "read_on": "2026-09-20T21:51:29-0400",
+    "role": "Chair",
+    "source_url": "https://townofbennington.com/townofficials/",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
     "name": "Molly Eppig",
     "office": "Library Trustee",
     "read_on": "2026-09-20T21:51:29-0400",
@@ -1172,13 +1579,23 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "John J. Cronin",
+    "name": "John J. Cronin, III",
     "office": "Moderator",
     "read_on": "2026-09-20T21:51:29-0400",
     "role": null,
     "source_url": "https://townofbennington.com/townofficials/",
     "status": "published",
     "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Corey Lawrence",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T21:51:29-0400",
+    "role": "Chairman",
+    "source_url": "https://townofbennington.com/townofficials/",
+    "status": "published",
+    "term_expires": "2025"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -1271,6 +1688,16 @@
     "term_expires": "2032"
    },
    {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Walter Turner",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T21:51:29-0400",
+    "role": "Chair",
+    "source_url": "https://townofbennington.com/townofficials/",
+    "status": "published",
+    "term_expires": "2030"
+   },
+   {
     "filled_by": "appointed",
     "filled_by_source": "the page marks this person appointed",
     "method": "parse_town_sites.py over a saved page",
@@ -1303,6 +1730,16 @@
     "source_url": "https://townofbennington.com/townofficials/",
     "status": "published",
     "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Rhonda Davie",
+    "office": "Treasurer",
+    "read_on": "2026-09-20T21:51:29-0400",
+    "role": "Deputy",
+    "source_url": "https://townofbennington.com/townofficials/",
+    "status": "published",
+    "term_expires": null
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -1399,15 +1836,25 @@
     "source_url": "https://townofbennington.com/townofficials/",
     "status": "published",
     "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Rob Christian",
+    "office": "Zoning Board of Adjustment",
+    "read_on": "2026-09-20T21:51:29-0400",
+    "role": "Vice Chairman",
+    "source_url": "https://townofbennington.com/townofficials/",
+    "status": "published",
+    "term_expires": "2028"
    }
   ],
   "pages": [
    {
     "agent": "project",
     "dropped_offices": [
-     "Board of Selectmen (24)"
+     "Board of Selectmen (22)"
     ],
-    "found": 31,
+    "found": 39,
     "link_text": "Town Officials",
     "read_on": "2026-09-20T21:51:29-0400",
     "says_elected": false,
@@ -1417,7 +1864,7 @@
    },
    {
     "agent": "project",
-    "found": 0,
+    "found": 3,
     "link_text": "Board of Selectmen",
     "read_on": "2026-09-20T21:51:34-0400",
     "says_elected": false,
@@ -1448,7 +1895,7 @@
   ]
  },
  "benton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -1525,18 +1972,38 @@
   ]
  },
  "berlin": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "bethlehem": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "boscawen": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Joshua J. Crawford",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:52:05-0400",
+    "role": null,
+    "source_url": "https://www.boscawennh.gov/1473/Select-Board",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Lorrie J. Carey",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:52:05-0400",
+    "role": null,
+    "source_url": "https://www.boscawennh.gov/1473/Select-Board",
+    "status": "published",
+    "term_expires": "2028"
+   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Matthew T. Burdick",
@@ -1545,13 +2012,13 @@
     "role": "Chair",
     "source_url": "https://www.boscawennh.gov/1473/Select-Board",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2027"
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 1,
+    "found": 3,
     "link_text": "1473 Select Board",
     "read_on": "2026-09-20T21:52:05-0400",
     "says_elected": false,
@@ -1592,11 +2059,164 @@
   ]
  },
  "bow": {
-  "built": "2026-09-22",
-  "dropped_offices": [
-   "Board of Selectmen (6 people, 5 seats)"
-  ],
+  "built": "2026-09-24",
   "officials": [
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Angela Brennan",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Christopher Nicolopoulos",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Eleana Colby",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": "Alternate",
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2026"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Ian Flanagan",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Kip McDaniel",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Andrew Mattiace",
+    "office": "Budget Committee",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Ben Davis",
+    "office": "Budget Committee",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Chris Nicolopoulos",
+    "office": "Budget Committee",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jeff Knight",
+    "office": "Budget Committee",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Lisa Franklin",
+    "office": "Budget Committee",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Mike Mayo",
+    "office": "Budget Committee",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2026"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "William Knapp",
+    "office": "Budget Committee",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2026"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Peter Imse",
+    "office": "Moderator",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2026"
+   },
    {
     "filled_by": "elected",
     "filled_by_source": "the page is titled '559 Elected Officials'",
@@ -1620,12 +2240,108 @@
     "source_url": "https://bownh.gov/559/Elected-Officials",
     "status": "published",
     "term_expires": null
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Amy Knepper",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2030"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Beth Titus",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Kathryn Ess",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2026"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Mridula Naik",
+    "office": "Town Clerk/Tax Collector",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Roland Gamelin",
+    "office": "Treasurer",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Catherine Young",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2026"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jonathan Marvin",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "filled_by": "elected",
+    "filled_by_source": "the page is titled '559 Elected Officials'",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Mary Beth Walz",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T21:52:30-0400",
+    "role": null,
+    "source_url": "https://bownh.gov/559/Elected-Officials",
+    "status": "published",
+    "term_expires": "2028"
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 4,
+    "found": 23,
     "link_text": "559 Elected Officials",
     "read_on": "2026-09-20T21:52:30-0400",
     "says_elected": true,
@@ -1666,7 +2382,7 @@
   ]
  },
  "bradford": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -1742,7 +2458,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 4,
+    "found": 2,
     "link_text": "pages boards and committees",
     "read_on": "2026-09-20T21:52:54-0400",
     "says_elected": false,
@@ -1773,12 +2489,12 @@
   ]
  },
  "brentwood": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "bridgewater": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -1885,7 +2601,7 @@
   ]
  },
  "bristol": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -1978,12 +2694,12 @@
   ]
  },
  "brookfield": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "brookline": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -2040,7 +2756,7 @@
   ]
  },
  "campton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -2137,18 +2853,48 @@
   ]
  },
  "canaan": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "candia": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "canterbury": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Beth Blair",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:54:51-0400",
+    "role": null,
+    "source_url": "https://www.canterburynh.gov/boards-committees/board-of-selectmen/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Calvin Todd",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:54:51-0400",
+    "role": null,
+    "source_url": "https://www.canterburynh.gov/boards-committees/board-of-selectmen/",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Scott Doherty",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:54:51-0400",
+    "role": "Chair",
+    "source_url": "https://www.canterburynh.gov/boards-committees/board-of-selectmen/",
+    "status": "published",
+    "term_expires": "2029"
+   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Jessica Scanlon",
@@ -2173,7 +2919,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 0,
+    "found": 3,
     "link_text": "Board of Selectmen",
     "read_on": "2026-09-20T21:54:51-0400",
     "says_elected": false,
@@ -2214,7 +2960,7 @@
   ]
  },
  "carroll": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "filled_by": "appointed",
@@ -2242,11 +2988,11 @@
     "method": "parse_town_sites.py over a saved page",
     "name": "Brian Mycko",
     "office": "Board of Selectmen",
-    "read_on": "2026-09-20T21:55:37-0400",
-    "role": null,
-    "source_url": "https://carrollnh.gov/boards-and-committees/",
+    "read_on": "2026-09-20T21:55:27-0400",
+    "role": "Chairman",
+    "source_url": "https://carrollnh.gov/boards-and-committees/board-of-selectmen/",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2028"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -2269,7 +3015,7 @@
    },
    {
     "agent": "project",
-    "found": 3,
+    "found": 4,
     "link_text": "Select Board",
     "read_on": "2026-09-20T21:55:27-0400",
     "says_elected": false,
@@ -2279,7 +3025,7 @@
    },
    {
     "agent": "project",
-    "found": 5,
+    "found": 4,
     "link_text": "Boards and Committees",
     "read_on": "2026-09-20T21:55:37-0400",
     "says_elected": false,
@@ -2300,7 +3046,7 @@
   ]
  },
  "center-harbor": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -2407,7 +3153,7 @@
   ]
  },
  "charlestown": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -2514,7 +3260,7 @@
   ]
  },
  "chatham": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -2551,8 +3297,18 @@
   ]
  },
  "chester": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Chuck Myette",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:56:55-0400",
+    "role": "Chairman",
+    "source_url": "https://www.chesternh.org/1426/Selectboard",
+    "status": "published",
+    "term_expires": "2028"
+   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Dana Theokas",
@@ -2562,6 +3318,16 @@
     "source_url": "https://www.chesternh.org/1426/Selectboard",
     "status": "published",
     "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "David LaVita",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:56:55-0400",
+    "role": "Vice-Chair",
+    "source_url": "https://www.chesternh.org/1426/Selectboard",
+    "status": "published",
+    "term_expires": "2027"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -2587,7 +3353,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 3,
+    "found": 5,
     "link_text": "1426 Selectboard",
     "read_on": "2026-09-20T21:56:55-0400",
     "says_elected": false,
@@ -2628,12 +3394,63 @@
   ]
  },
  "chesterfield": {
-  "built": "2026-09-22",
-  "officials": [],
+  "built": "2026-09-24",
+  "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Brad Roscoe",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:57:20-0400",
+    "role": null,
+    "source_url": "https://www.chesterfield.nh.gov/191/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Fran Shippee",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:57:20-0400",
+    "role": null,
+    "source_url": "https://www.chesterfield.nh.gov/191/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Gary Winn",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:57:20-0400",
+    "role": null,
+    "source_url": "https://www.chesterfield.nh.gov/191/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Mary Ewell",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:57:20-0400",
+    "role": null,
+    "source_url": "https://www.chesterfield.nh.gov/191/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Michelle Hilger",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:57:20-0400",
+    "role": null,
+    "source_url": "https://www.chesterfield.nh.gov/191/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2028"
+   }
+  ],
   "pages": [
    {
     "agent": "project",
-    "found": 0,
+    "found": 5,
     "link_text": "191 Board of Selectmen",
     "read_on": "2026-09-20T21:57:20-0400",
     "says_elected": false,
@@ -2674,7 +3491,7 @@
   ]
  },
  "chichester": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -2682,6 +3499,16 @@
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T21:57:45-0400",
     "role": null,
+    "source_url": "https://www.chichesternh.org/1283/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jeremy Letendre",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:57:45-0400",
+    "role": "Chairman",
     "source_url": "https://www.chichesternh.org/1283/Board-of-Selectmen",
     "status": "published",
     "term_expires": null
@@ -2700,7 +3527,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 2,
+    "found": 3,
     "link_text": "1283 Board of Selectmen",
     "read_on": "2026-09-20T21:57:45-0400",
     "says_elected": false,
@@ -2741,23 +3568,12 @@
   ]
  },
  "claremont": {
-  "built": "2026-09-22",
-  "officials": [
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "RERC Community Action Plan",
-    "office": "City Council",
-    "read_on": "2026-09-20T21:58:11-0400",
-    "role": null,
-    "source_url": "https://www.claremontnh.com/index.php?section=city-council",
-    "status": "published",
-    "term_expires": null
-   }
-  ],
+  "built": "2026-09-24",
+  "officials": [],
   "pages": [
    {
     "agent": "project",
-    "found": 1,
+    "found": 0,
     "link_text": "City Council",
     "read_on": "2026-09-20T21:58:11-0400",
     "says_elected": false,
@@ -2777,7 +3593,7 @@
    },
    {
     "agent": "project",
-    "found": 1,
+    "found": 0,
     "link_text": "city council",
     "read_on": "2026-09-20T21:58:16-0400",
     "says_elected": false,
@@ -2798,12 +3614,12 @@
   ]
  },
  "clarksville": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "colebrook": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -2849,7 +3665,7 @@
   ]
  },
  "columbia": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -2942,7 +3758,7 @@
   ]
  },
  "concord": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -2999,23 +3815,33 @@
   ]
  },
  "conway": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "cornish": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "croydon": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "dalton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Eric Moore",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:59:51-0400",
+    "role": null,
+    "source_url": "https://townofdaltonnh.gov/select-board/",
+    "status": "published",
+    "term_expires": "2027"
+   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Jo Beth Dudley",
@@ -3025,12 +3851,52 @@
     "source_url": "https://townofdaltonnh.gov/select-board/",
     "status": "published",
     "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Warren Green",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T21:59:51-0400",
+    "role": null,
+    "source_url": "https://townofdaltonnh.gov/select-board/",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Cathleen Fountain",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T22:00:01-0400",
+    "role": null,
+    "source_url": "https://townofdaltonnh.gov/supervisors-of-the-checklist/",
+    "status": "published",
+    "term_expires": "2032"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Christina Fintonis",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T22:00:01-0400",
+    "role": null,
+    "source_url": "https://townofdaltonnh.gov/supervisors-of-the-checklist/",
+    "status": "published",
+    "term_expires": "2030"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Gordon Jobe",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T22:00:01-0400",
+    "role": null,
+    "source_url": "https://townofdaltonnh.gov/supervisors-of-the-checklist/",
+    "status": "published",
+    "term_expires": "2028"
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 1,
+    "found": 3,
     "link_text": "Select Board",
     "read_on": "2026-09-20T21:59:51-0400",
     "says_elected": false,
@@ -3050,7 +3916,7 @@
    },
    {
     "agent": "project",
-    "found": 0,
+    "found": 3,
     "link_text": "Supervisors of the Checklist",
     "read_on": "2026-09-20T22:00:01-0400",
     "says_elected": false,
@@ -3067,8 +3933,18 @@
   ]
  },
  "danbury": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Edward Esty",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:00:20-0400",
+    "role": null,
+    "source_url": "https://www.townofdanburynh.com/government/committees/",
+    "status": "published",
+    "term_expires": null
+   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Frances Bliss",
@@ -3092,6 +3968,16 @@
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Jessica Hatch",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:00:20-0400",
+    "role": null,
+    "source_url": "https://www.townofdanburynh.com/government/committees/",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Kristen McKenna",
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:00:20-0400",
     "role": null,
@@ -3153,6 +4039,36 @@
     "method": "parse_town_sites.py over a saved page",
     "name": "Michael Barnett",
     "office": "Library Trustee",
+    "read_on": "2026-09-20T22:00:20-0400",
+    "role": null,
+    "source_url": "https://www.townofdanburynh.com/government/committees/",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Gary Donahue",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T22:00:20-0400",
+    "role": null,
+    "source_url": "https://www.townofdanburynh.com/government/committees/",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "John Taylor",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T22:00:20-0400",
+    "role": null,
+    "source_url": "https://www.townofdanburynh.com/government/committees/",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Katelyn Setterland",
+    "office": "Planning Board",
     "read_on": "2026-09-20T22:00:20-0400",
     "role": null,
     "source_url": "https://www.townofdanburynh.com/government/committees/",
@@ -3263,7 +4179,7 @@
    },
    {
     "agent": "project",
-    "found": 14,
+    "found": 19,
     "link_text": "Boards and Committees",
     "read_on": "2026-09-20T22:00:20-0400",
     "says_elected": false,
@@ -3294,22 +4210,53 @@
   ]
  },
  "danville": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "deerfield": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "deering": {
-  "built": "2026-09-22",
-  "officials": [],
+  "built": "2026-09-24",
+  "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Charles Wood",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:00:40-0400",
+    "role": null,
+    "source_url": "https://www.deering.nh.us/342/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Michelle Johnson",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:00:40-0400",
+    "role": "Chairman",
+    "source_url": "https://www.deering.nh.us/342/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Roy Watson",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:00:40-0400",
+    "role": "Vice-Chairman",
+    "source_url": "https://www.deering.nh.us/342/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2027"
+   }
+  ],
   "pages": [
    {
     "agent": "project",
-    "found": 0,
+    "found": 3,
     "link_text": "342 Board of Selectmen",
     "read_on": "2026-09-20T22:00:40-0400",
     "says_elected": false,
@@ -3350,12 +4297,12 @@
   ]
  },
  "derry": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "dorchester": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -3381,7 +4328,7 @@
   ]
  },
  "dover": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -3391,23 +4338,13 @@
     "role": null,
     "source_url": "https://www.dover.nh.gov/government/boards-and-commissions/city-council/index.html",
     "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Current Members",
-    "office": "City Council",
-    "read_on": "2026-09-20T22:01:20-0400",
-    "role": null,
-    "source_url": "https://www.dover.nh.gov/government/boards-and-commissions/city-council/index.html",
-    "status": "published",
-    "term_expires": "2028"
+    "term_expires": "2026"
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 2,
+    "found": 1,
     "link_text": "City Council \u00bb",
     "read_on": "2026-09-20T22:01:20-0400",
     "says_elected": false,
@@ -3448,7 +4385,7 @@
   ]
  },
  "dublin": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -3525,7 +4462,7 @@
   ]
  },
  "dummer": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -3562,17 +4499,17 @@
   ]
  },
  "dunbarton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "durham": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "east-kingston": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -3583,6 +4520,16 @@
     "source_url": "https://www.eknh.org/1209/Board-of-Selectmen",
     "status": "published",
     "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Joseph Cacciatore",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:02:25-0400",
+    "role": "Chairman",
+    "source_url": "https://www.eknh.org/1209/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2029"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -3598,7 +4545,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 2,
+    "found": 3,
     "link_text": "1209 Board of Selectmen",
     "read_on": "2026-09-20T22:02:25-0400",
     "says_elected": false,
@@ -3639,7 +4586,7 @@
   ]
  },
  "easton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -3665,12 +4612,12 @@
   ]
  },
  "eaton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "effingham": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -3727,22 +4674,22 @@
   ]
  },
  "ellsworth": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "enfield": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "epping": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "epsom": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -3799,17 +4746,17 @@
   ]
  },
  "errol": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "exeter": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "farmington": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -3817,6 +4764,26 @@
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:03:55-0400",
     "role": null,
+    "source_url": "https://www.farmington.nh.us/1368/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Charlie King",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:03:55-0400",
+    "role": "Chairman",
+    "source_url": "https://www.farmington.nh.us/1368/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Douglas Staples",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:03:55-0400",
+    "role": "Vice Chairman",
     "source_url": "https://www.farmington.nh.us/1368/Board-of-Selectmen",
     "status": "published",
     "term_expires": "2027"
@@ -3845,7 +4812,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 3,
+    "found": 5,
     "link_text": "1368 Board of Selectmen",
     "read_on": "2026-09-20T22:03:55-0400",
     "says_elected": false,
@@ -3886,33 +4853,53 @@
   ]
  },
  "fitzwilliam": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "francestown": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "franconia": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Capital Improvements",
-    "office": "Planning Board",
+    "name": "Dan Walker",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:04:22-0400",
+    "role": "Chair",
+    "source_url": "http://www.franconianh.org/board-of-selectmen.html",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Eric Meth",
+    "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:04:22-0400",
     "role": null,
     "source_url": "http://www.franconianh.org/board-of-selectmen.html",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Eugene Leeds",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:04:22-0400",
+    "role": null,
+    "source_url": "http://www.franconianh.org/board-of-selectmen.html",
+    "status": "published",
+    "term_expires": "2029"
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 1,
+    "found": 3,
     "link_text": "Board of Selectmen",
     "read_on": "2026-09-20T22:04:22-0400",
     "says_elected": false,
@@ -3922,7 +4909,7 @@
    },
    {
     "agent": "project",
-    "found": 1,
+    "found": 3,
     "link_text": "board of selectmen.html",
     "read_on": "2026-09-20T22:04:30-0400",
     "says_elected": false,
@@ -3932,7 +4919,7 @@
    },
    {
     "agent": "project",
-    "found": 1,
+    "found": 0,
     "link_text": "Town Clerk/Tax",
     "read_on": "2026-09-20T22:04:37-0400",
     "says_elected": false,
@@ -3942,7 +4929,7 @@
    },
    {
     "agent": "project",
-    "found": 1,
+    "found": 0,
     "link_text": "Supervisors of the Checklist",
     "read_on": "2026-09-20T22:04:41-0400",
     "says_elected": false,
@@ -3953,22 +4940,42 @@
   ]
  },
  "franklin": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "freedom": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Les Babb",
+    "name": "Alan G. Fall",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:04:56-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/freedom-board-of-selectmens-office/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Allan G. Fall",
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:04:53-0400",
     "role": null,
     "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Gary R. Williams",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2028"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -3982,13 +4989,33 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Stacy Bolduc",
-    "office": "Board of Selectmen",
-    "read_on": "2026-09-20T22:04:56-0400",
+    "name": "Alan Fall",
+    "office": "Cemetery Trustee",
+    "read_on": "2026-09-20T22:04:53-0400",
     "role": null,
-    "source_url": "https://townoffreedomnh.gov/freedom-board-of-selectmens-office/",
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2026"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Fred Watson",
+    "office": "Cemetery Trustee",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Joyce Watson",
+    "office": "Cemetery Trustee",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2027"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -4002,10 +5029,50 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
+    "name": "Anne Pierce",
+    "office": "Library Trustee",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Luane Genest",
+    "office": "Library Trustee",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Maureen Elliott",
+    "office": "Library Trustee",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
     "name": "Paul Mathieu",
     "office": "Library Trustee",
     "read_on": "2026-09-20T22:04:53-0400",
     "role": "Chair",
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2026"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Robin Waters",
+    "office": "Library Trustee",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
     "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
     "status": "published",
     "term_expires": "2026"
@@ -4019,6 +5086,56 @@
     "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
     "status": "published",
     "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Brian Taylor",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": "Alternate",
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Darwin Moulton",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "James Guido",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jane Davidson",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Les Babb",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": null
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -4042,6 +5159,26 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
+    "name": "Robert Rafferty",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Sara Butterfield",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": "Alternate",
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
     "name": "Carol Stansell",
     "office": "Supervisor of the Checklist",
     "read_on": "2026-09-20T22:04:53-0400",
@@ -4049,6 +5186,26 @@
     "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
     "status": "published",
     "term_expires": "2030"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Maureen Brooks",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Patricia McCoy",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2031"
    },
    {
     "filled_by": "appointed",
@@ -4076,6 +5233,16 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
+    "name": "A. Elizabeth \u201cLibby\u201d Priebe",
+    "office": "Town Clerk",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": "Clerk",
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
     "name": "Joyce Watson",
     "office": "Treasurer",
     "read_on": "2026-09-20T22:04:53-0400",
@@ -4086,6 +5253,16 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
+    "name": "M. Jayne Britton",
+    "office": "Treasurer",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
     "name": "Miranda Sandahl",
     "office": "Treasurer",
     "read_on": "2026-09-20T22:05:01-0400",
@@ -4093,12 +5270,42 @@
     "source_url": "https://townoffreedomnh.gov/departments/",
     "status": "published",
     "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Janet Myers",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Patricia McCoy",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Paul Olzerowicz",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T22:04:53-0400",
+    "role": null,
+    "source_url": "https://townoffreedomnh.gov/town-officials-directory/",
+    "status": "published",
+    "term_expires": "2026"
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 11,
+    "found": 33,
     "link_text": "Town Officials Directory",
     "read_on": "2026-09-20T22:04:53-0400",
     "says_elected": false,
@@ -4108,7 +5315,7 @@
    },
    {
     "agent": "project",
-    "found": 2,
+    "found": 3,
     "link_text": "Board of Selectmen",
     "read_on": "2026-09-20T22:04:56-0400",
     "says_elected": false,
@@ -4139,7 +5346,7 @@
   ]
  },
  "fremont": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -4153,6 +5360,26 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
+    "name": "Gene Cordes",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:05:20-0400",
+    "role": "Chair",
+    "source_url": "https://www.fremont.nh.gov/1498/Select-Board",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jon Benson",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:05:20-0400",
+    "role": null,
+    "source_url": "https://www.fremont.nh.gov/1498/Select-Board",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
     "name": "Kathy Clement",
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:05:20-0400",
@@ -4160,6 +5387,16 @@
     "source_url": "https://www.fremont.nh.gov/1498/Select-Board",
     "status": "published",
     "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Roger A. Barham",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:05:20-0400",
+    "role": null,
+    "source_url": "https://www.fremont.nh.gov/1498/Select-Board",
+    "status": "published",
+    "term_expires": "2028"
    }
   ],
   "pages": [
@@ -4175,7 +5412,7 @@
    },
    {
     "agent": "project",
-    "found": 2,
+    "found": 5,
     "link_text": "1498 Select Board",
     "read_on": "2026-09-20T22:05:20-0400",
     "says_elected": false,
@@ -4206,12 +5443,12 @@
   ]
  },
  "gilford": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "gilmanton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "filled_by": "appointed",
@@ -4290,7 +5527,7 @@
   ]
  },
  "gilsum": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -4311,16 +5548,6 @@
     "source_url": "https://gilsum-nh.gov/board-of-selectmen/",
     "status": "published",
     "term_expires": "2028"
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Hailey Hrabovsky",
-    "office": "Board of Selectmen",
-    "read_on": "2026-09-20T22:06:16-0400",
-    "role": "Assistant",
-    "source_url": "https://gilsum-nh.gov/board-of-selectmen/",
-    "status": "published",
-    "term_expires": null
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -4370,7 +5597,7 @@
    },
    {
     "agent": "project",
-    "found": 5,
+    "found": 3,
     "link_text": "Select Board",
     "read_on": "2026-09-20T22:06:16-0400",
     "says_elected": false,
@@ -4390,7 +5617,7 @@
    },
    {
     "agent": "project",
-    "found": 5,
+    "found": 3,
     "link_text": "Assessors Department",
     "read_on": "2026-09-20T22:06:26-0400",
     "says_elected": false,
@@ -4422,6 +5649,16 @@
     "source_url": "https://www.goffstownnh.gov/381/Select-Board",
     "status": "published",
     "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Joshua Douglas",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:06:41-0400",
+    "role": "Vice Chairman",
+    "source_url": "https://www.goffstownnh.gov/381/Select-Board",
+    "status": "published",
+    "term_expires": "2028"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -4457,9 +5694,6 @@
   "pages": [
    {
     "agent": "project",
-    "dropped_offices": [
-     "Moderator (8)"
-    ],
     "found": 1,
     "link_text": "353 Town Officials",
     "read_on": "2026-09-20T22:06:36-0400",
@@ -4470,7 +5704,7 @@
    },
    {
     "agent": "project",
-    "found": 4,
+    "found": 5,
     "link_text": "381 Select Board",
     "read_on": "2026-09-20T22:06:41-0400",
     "says_elected": false,
@@ -4501,7 +5735,7 @@
   ]
  },
  "gorham": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -4517,23 +5751,43 @@
   ]
  },
  "goshen": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Dianne Craig",
+    "name": "Alan Greenhalgh",
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:07:10-0400",
-    "role": "Assistant",
+    "role": null,
     "source_url": "https://goshennh.org/selectmen/",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Derek Tremblay",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:07:10-0400",
+    "role": "Chair",
+    "source_url": "https://goshennh.org/selectmen/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Sebastian Zyzdorf",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:07:10-0400",
+    "role": null,
+    "source_url": "https://goshennh.org/selectmen/",
+    "status": "published",
+    "term_expires": "2028"
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 1,
+    "found": 3,
     "link_text": "Board of Selectmen",
     "read_on": "2026-09-20T22:07:10-0400",
     "says_elected": false,
@@ -4562,17 +5816,17 @@
   ]
  },
  "grafton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "grantham": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "greenfield": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -4593,12 +5847,32 @@
     "source_url": "https://www.greenfield-nh.gov/1194/Selectboard",
     "status": "published",
     "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Thomas Bascom",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:07:35-0400",
+    "role": "Chairman",
+    "source_url": "https://www.greenfield-nh.gov/1194/Selectboard",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Linda Dodge",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T22:07:50-0400",
+    "role": null,
+    "source_url": "https://www.greenfield-nh.gov/1229/Election-Officials",
+    "status": "published",
+    "term_expires": null
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 2,
+    "found": 3,
     "link_text": "1194 Selectboard",
     "read_on": "2026-09-20T22:07:35-0400",
     "says_elected": false,
@@ -4624,7 +5898,7 @@
    },
    {
     "agent": "project",
-    "found": 0,
+    "found": 1,
     "link_text": "1229 Election Officials",
     "read_on": "2026-09-20T22:07:50-0400",
     "says_elected": false,
@@ -4635,8 +5909,18 @@
   ]
  },
  "greenland": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Heather Droesch",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:08:00-0400",
+    "role": null,
+    "source_url": "https://www.greenland.nh.gov/1466/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2028"
+   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Laura Malloy",
@@ -4645,33 +5929,43 @@
     "role": "Chairman",
     "source_url": "https://www.greenland.nh.gov/1466/Board-of-Selectmen",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2029"
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Heather Droesch",
-    "office": "Planning Board",
+    "name": "Paul Stanley",
+    "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:08:00-0400",
-    "role": null,
+    "role": "Vice Chairman",
     "source_url": "https://www.greenland.nh.gov/1466/Board-of-Selectmen",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2029"
    },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Stephan Toth",
-    "office": "Planning Board",
+    "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:08:00-0400",
     "role": "Alternate",
     "source_url": "https://www.greenland.nh.gov/1466/Board-of-Selectmen",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Zack Pike",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:08:00-0400",
+    "role": null,
+    "source_url": "https://www.greenland.nh.gov/1466/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2028"
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 3,
+    "found": 5,
     "link_text": "1466 Board of Selectmen",
     "read_on": "2026-09-20T22:08:00-0400",
     "says_elected": false,
@@ -4712,12 +6006,12 @@
   ]
  },
  "greenville": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "groton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -4794,17 +6088,68 @@
   ]
  },
  "hampstead": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "hampton": {
-  "built": "2026-09-22",
-  "officials": [],
+  "built": "2026-09-24",
+  "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Amy Hansen",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:08:50-0400",
+    "role": null,
+    "source_url": "https://www.hamptonnh.gov/282/Select-Board",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Carleigh Beriont",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:08:50-0400",
+    "role": null,
+    "source_url": "https://www.hamptonnh.gov/282/Select-Board",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Chuck Rage",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:08:50-0400",
+    "role": null,
+    "source_url": "https://www.hamptonnh.gov/282/Select-Board",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Donald Bliss",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:08:50-0400",
+    "role": null,
+    "source_url": "https://www.hamptonnh.gov/282/Select-Board",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jeff Grip",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:08:50-0400",
+    "role": "Vice-Chairman",
+    "source_url": "https://www.hamptonnh.gov/282/Select-Board",
+    "status": "published",
+    "term_expires": "2027"
+   }
+  ],
   "pages": [
    {
     "agent": "project",
-    "found": 0,
+    "found": 5,
     "link_text": "282 Select Board",
     "read_on": "2026-09-20T22:08:50-0400",
     "says_elected": false,
@@ -4845,7 +6190,7 @@
   ]
  },
  "hampton-falls": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -4918,7 +6263,7 @@
   ]
  },
  "hancock": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -4995,7 +6340,7 @@
   ]
  },
  "hanover": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -5092,8 +6437,18 @@
   ]
  },
  "harrisville": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Andrea Hodson",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:11:23-0400",
+    "role": null,
+    "source_url": "https://harrisvillenh.org/government/office-of-the-selectboard/",
+    "status": "published",
+    "term_expires": "2028"
+   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Andrew Maneval",
@@ -5103,6 +6458,26 @@
     "source_url": "https://harrisvillenh.org/government/office-of-the-selectboard/",
     "status": "published",
     "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Kathleen Scott",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:11:23-0400",
+    "role": null,
+    "source_url": "https://harrisvillenh.org/government/office-of-the-selectboard/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Kathy Scott",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:14:10-0400",
+    "role": null,
+    "source_url": "https://harrisvillenh.org/emergency-contacts/staff-elected-officials/",
+    "status": "published",
+    "term_expires": "2027"
    },
    {
     "filled_by": "appointed",
@@ -5115,6 +6490,28 @@
     "source_url": "https://harrisvillenh.org/government/committees/",
     "status": "published",
     "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Nancylee Greiner",
+    "office": "Cemetery Trustee",
+    "read_on": "2026-09-20T22:12:19-0400",
+    "role": null,
+    "source_url": "https://harrisvillenh.org/government/committees/",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "filled_by": "appointed",
+    "filled_by_source": "the page marks this person appointed",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Patricia Colony",
+    "office": "Cemetery Trustee",
+    "read_on": "2026-09-20T22:12:19-0400",
+    "role": null,
+    "source_url": "https://harrisvillenh.org/government/committees/",
+    "status": "published",
+    "term_expires": "2028"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -5158,6 +6555,16 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
+    "name": "Karen Coteleso",
+    "office": "Library Trustee",
+    "read_on": "2026-09-20T22:12:19-0400",
+    "role": null,
+    "source_url": "https://harrisvillenh.org/government/committees/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
     "name": "Michael Price",
     "office": "Library Trustee",
     "read_on": "2026-09-20T22:12:19-0400",
@@ -5165,6 +6572,26 @@
     "source_url": "https://harrisvillenh.org/government/committees/",
     "status": "published",
     "term_expires": "2026"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Sarah Kendall",
+    "office": "Library Trustee",
+    "read_on": "2026-09-20T22:12:19-0400",
+    "role": null,
+    "source_url": "https://harrisvillenh.org/government/committees/",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Robert Bryan Kingsbury",
+    "office": "Moderator",
+    "read_on": "2026-09-20T22:14:10-0400",
+    "role": null,
+    "source_url": "https://harrisvillenh.org/emergency-contacts/staff-elected-officials/",
+    "status": "published",
+    "term_expires": "2028"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -5178,23 +6605,23 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Karen Castelli",
-    "office": "Tax Collector",
-    "read_on": "2026-09-20T22:14:10-0400",
+    "name": "Beth Healy",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T22:12:19-0400",
     "role": null,
-    "source_url": "https://harrisvillenh.org/emergency-contacts/staff-elected-officials/",
+    "source_url": "https://harrisvillenh.org/government/committees/",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2026"
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Neil Sandford",
-    "office": "Tax Collector",
-    "read_on": "2026-09-20T22:14:10-0400",
-    "role": "Deputy",
-    "source_url": "https://harrisvillenh.org/emergency-contacts/staff-elected-officials/",
+    "name": "Denise Croteau",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T22:12:19-0400",
+    "role": null,
+    "source_url": "https://harrisvillenh.org/government/committees/",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2028"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -5228,19 +6655,59 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Charles Sorenson",
+    "name": "Anne R. Havill",
+    "office": "Treasurer",
+    "read_on": "2026-09-20T22:14:10-0400",
+    "role": null,
+    "source_url": "https://harrisvillenh.org/emergency-contacts/staff-elected-officials/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Charles Sorenson, Jr.",
     "office": "Trustee of Trust Funds",
     "read_on": "2026-09-20T22:12:19-0400",
     "role": "Chair",
     "source_url": "https://harrisvillenh.org/government/committees/",
     "status": "published",
     "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "R. Dean Ogelby",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T22:12:19-0400",
+    "role": null,
+    "source_url": "https://harrisvillenh.org/government/committees/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Ranae O\u2019Neil",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T22:12:19-0400",
+    "role": null,
+    "source_url": "https://harrisvillenh.org/government/committees/",
+    "status": "published",
+    "term_expires": "2026"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Ranae S. O\u2019Neil",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T22:14:10-0400",
+    "role": null,
+    "source_url": "https://harrisvillenh.org/emergency-contacts/staff-elected-officials/",
+    "status": "published",
+    "term_expires": "2029"
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 1,
+    "found": 3,
     "link_text": "Select Board",
     "read_on": "2026-09-20T22:11:23-0400",
     "says_elected": false,
@@ -5250,7 +6717,7 @@
    },
    {
     "agent": "project",
-    "found": 7,
+    "found": 14,
     "link_text": "Other Boards & Committees",
     "read_on": "2026-09-20T22:12:19-0400",
     "says_elected": false,
@@ -5270,7 +6737,10 @@
    },
    {
     "agent": "project",
-    "found": 10,
+    "dropped_offices": [
+     "Tax Collector (6)"
+    ],
+    "found": 15,
     "link_text": "Town Departments",
     "read_on": "2026-09-20T22:14:10-0400",
     "says_elected": false,
@@ -5281,17 +6751,17 @@
   ]
  },
  "hart-s-location": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "haverhill": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "hebron": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -5368,12 +6838,12 @@
   ]
  },
  "henniker": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "hill": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -5430,22 +6900,73 @@
   ]
  },
  "hillsborough": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "hinsdale": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "holderness": {
-  "built": "2026-09-22",
-  "officials": [],
+  "built": "2026-09-24",
+  "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Campbell Lovett",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:15:10-0400",
+    "role": null,
+    "source_url": "https://www.holderness-nh.gov/1339/Select-Board",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jill White",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:15:10-0400",
+    "role": "Chair",
+    "source_url": "https://www.holderness-nh.gov/1339/Select-Board",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Kelly Schwaner",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:15:10-0400",
+    "role": "Vice Chair",
+    "source_url": "https://www.holderness-nh.gov/1339/Select-Board",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Peter Francesco",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:15:10-0400",
+    "role": null,
+    "source_url": "https://www.holderness-nh.gov/1339/Select-Board",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Sam Brickley",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:15:10-0400",
+    "role": null,
+    "source_url": "https://www.holderness-nh.gov/1339/Select-Board",
+    "status": "published",
+    "term_expires": null
+   }
+  ],
   "pages": [
    {
     "agent": "project",
-    "found": 0,
+    "found": 5,
     "link_text": "1339 Select Board",
     "read_on": "2026-09-20T22:15:10-0400",
     "says_elected": false,
@@ -5482,7 +7003,7 @@
   ]
  },
  "hollis": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -5579,7 +7100,7 @@
   ]
  },
  "hooksett": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -5625,26 +7146,46 @@
   ]
  },
  "hopkinton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "hudson": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "jackson": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "jaffrey": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
+    "name": "Andrew Lawn",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:16:30-0400",
+    "role": null,
+    "source_url": "https://www.townofjaffrey.com/558/Select-Board",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
     "name": "Charlie Turcotte",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:16:30-0400",
+    "role": "Chairman",
+    "source_url": "https://www.townofjaffrey.com/558/Select-Board",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Franklin W. Sterling, Jr.",
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:16:30-0400",
     "role": null,
@@ -5656,7 +7197,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 1,
+    "found": 3,
     "link_text": "558 Select Board",
     "read_on": "2026-09-20T22:16:30-0400",
     "says_elected": false,
@@ -5693,7 +7234,7 @@
   ]
  },
  "jefferson": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -5820,7 +7361,7 @@
   ]
  },
  "keene": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -5866,7 +7407,7 @@
   ]
  },
  "kensington": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -5943,13 +7484,24 @@
   ]
  },
  "kingston": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "laconia": {
-  "built": "2026-09-22",
-  "officials": [],
+  "built": "2026-09-24",
+  "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Robert Soucy",
+    "office": "City Council",
+    "read_on": "2026-09-20T22:18:15-0400",
+    "role": "Chair",
+    "source_url": "https://www.laconianh.gov/529/City-Council-Committees",
+    "status": "published",
+    "term_expires": null
+   }
+  ],
   "pages": [
    {
     "agent": "project",
@@ -5976,7 +7528,7 @@
    },
    {
     "agent": "project",
-    "found": 0,
+    "found": 1,
     "link_text": "529 City Council Committees",
     "read_on": "2026-09-20T22:18:15-0400",
     "says_elected": false,
@@ -6037,12 +7589,12 @@
   ]
  },
  "lancaster": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "landaff": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -6070,8 +7622,28 @@
   ]
  },
  "langdon": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Devin Gallagher",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:18:50-0400",
+    "role": "Chair",
+    "source_url": "https://www.langdonnh.org/207/Selectboard",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Katie Gallagher",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:18:50-0400",
+    "role": null,
+    "source_url": "https://www.langdonnh.org/207/Selectboard",
+    "status": "published",
+    "term_expires": null
+   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Nate Chaffee",
@@ -6086,7 +7658,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 1,
+    "found": 3,
     "link_text": "207 Selectboard",
     "read_on": "2026-09-20T22:18:50-0400",
     "says_elected": false,
@@ -6127,7 +7699,7 @@
   ]
  },
  "lebanon": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -6224,17 +7796,48 @@
   ]
  },
  "lee": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "lempster": {
-  "built": "2026-09-22",
-  "officials": [],
+  "built": "2026-09-24",
+  "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Daryl Simino",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:19:41-0400",
+    "role": null,
+    "source_url": "https://lempsternh.org/boards-committees/board-of-selectmen/",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Everett Thurber",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:19:41-0400",
+    "role": null,
+    "source_url": "https://lempsternh.org/boards-committees/board-of-selectmen/",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Mark Lightner",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:19:41-0400",
+    "role": "Chair",
+    "source_url": "https://lempsternh.org/boards-committees/board-of-selectmen/",
+    "status": "published",
+    "term_expires": "2027"
+   }
+  ],
   "pages": [
    {
     "agent": "project",
-    "found": 0,
+    "found": 3,
     "link_text": "Board of Selectmen",
     "read_on": "2026-09-20T22:19:41-0400",
     "says_elected": false,
@@ -6275,7 +7878,7 @@
   ]
  },
  "lincoln": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -6286,6 +7889,16 @@
     "source_url": "https://www.lincolnnh.gov/1749/Board-of-Selectmen",
     "status": "published",
     "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "O.J. Robinson",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:20:05-0400",
+    "role": "Chairman",
+    "source_url": "https://www.lincolnnh.gov/1749/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2026"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -6301,7 +7914,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 2,
+    "found": 3,
     "link_text": "1749 Board of Selectmen",
     "read_on": "2026-09-20T22:20:05-0400",
     "says_elected": false,
@@ -6342,13 +7955,43 @@
   ]
  },
  "lisbon": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "litchfield": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Dianne Plansky",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:20:35-0400",
+    "role": null,
+    "source_url": "https://litchfieldnh.gov/203/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "F. Robert Leary",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:20:35-0400",
+    "role": null,
+    "source_url": "https://litchfieldnh.gov/203/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "G. Stephen Gannon",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:20:35-0400",
+    "role": null,
+    "source_url": "https://litchfieldnh.gov/203/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2029"
+   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "John Brunelle",
@@ -6383,7 +8026,7 @@
    },
    {
     "agent": "project",
-    "found": 2,
+    "found": 5,
     "link_text": "203 Board of Selectmen",
     "read_on": "2026-09-20T22:20:35-0400",
     "says_elected": false,
@@ -6414,12 +8057,63 @@
   ]
  },
  "littleton": {
-  "built": "2026-09-22",
-  "officials": [],
+  "built": "2026-09-24",
+  "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "David Harkless",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:20:55-0400",
+    "role": null,
+    "source_url": "https://www.townoflittleton.org/1296/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Ed Cherian",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:20:55-0400",
+    "role": null,
+    "source_url": "https://www.townoflittleton.org/1296/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Kerri Harrington",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:20:55-0400",
+    "role": "Chair",
+    "source_url": "https://www.townoflittleton.org/1296/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Paul Lehmann",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:20:55-0400",
+    "role": "Vice Chair",
+    "source_url": "https://www.townoflittleton.org/1296/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Taylor Caswell",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:20:55-0400",
+    "role": null,
+    "source_url": "https://www.townoflittleton.org/1296/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2029"
+   }
+  ],
   "pages": [
    {
     "agent": "project",
-    "found": 0,
+    "found": 5,
     "link_text": "1296 Board of Selectmen",
     "read_on": "2026-09-20T22:20:55-0400",
     "says_elected": false,
@@ -6460,7 +8154,7 @@
   ]
  },
  "londonderry": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -6506,7 +8200,7 @@
   ]
  },
  "loudon": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -6583,12 +8277,12 @@
   ]
  },
  "lyman": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "lyme": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -6665,7 +8359,7 @@
   ]
  },
  "lyndeborough": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -6892,12 +8586,12 @@
    {
     "agent": "project",
     "dropped_offices": [
-     "Board of Selectmen (17)",
+     "Board of Selectmen (15)",
      "Cemetery Trustee (9)",
-     "Library Trustee (20)",
-     "Treasurer (5)"
+     "Library Trustee (18)",
+     "Treasurer (4)"
     ],
-    "found": 23,
+    "found": 22,
     "link_text": "pages boards committees departments",
     "read_on": "2026-09-20T22:22:30-0400",
     "says_elected": false,
@@ -6918,12 +8612,12 @@
   ]
  },
  "madbury": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "madison": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -6969,7 +8663,7 @@
   ]
  },
  "manchester": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -7212,7 +8906,7 @@
   ]
  },
  "marlborough": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -7279,17 +8973,17 @@
   ]
  },
  "marlow": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "mason": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "meredith": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -7335,17 +9029,67 @@
   ]
  },
  "merrimack": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "middleton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Kelly Tivnan",
     "office": "Auditor",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": null,
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Bonnie Gagnon",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": "Vice Chair",
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jonathan Sindorf",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": null,
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Michael Green",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": null,
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Roxanne Tufts-Keegan",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": "Chair",
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Timothy Cremmen",
+    "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:24:25-0400",
     "role": null,
     "source_url": "https://middletonnh.gov/pages/boards-committees",
@@ -7368,6 +9112,26 @@
     "office": "Budget Committee",
     "read_on": "2026-09-20T22:24:25-0400",
     "role": "Chair",
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Christine Maynard",
+    "office": "Budget Committee",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": null,
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Danielle Snow-LeClair",
+    "office": "Budget Committee",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": null,
     "source_url": "https://middletonnh.gov/pages/boards-committees",
     "status": "published",
     "term_expires": null
@@ -7414,10 +9178,40 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
+    "name": "Matthew Dugger",
+    "office": "Budget Committee",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": null,
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
     "name": "Patti Sindorf",
     "office": "Budget Committee",
     "read_on": "2026-09-20T22:24:25-0400",
     "role": "Chair",
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Sierra Pawnell",
+    "office": "Budget Committee",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": null,
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Tracy Donovan-Laviolette",
+    "office": "Budget Committee",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": null,
     "source_url": "https://middletonnh.gov/pages/boards-committees",
     "status": "published",
     "term_expires": null
@@ -7468,6 +9262,16 @@
     "office": "Planning Board",
     "read_on": "2026-09-20T22:24:25-0400",
     "role": null,
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Janet Kalar",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": "Alternate",
     "source_url": "https://middletonnh.gov/pages/boards-committees",
     "status": "published",
     "term_expires": null
@@ -7534,20 +9338,30 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Sue Dooley",
+    "name": "Ron Stock",
     "office": "Planning Board",
     "read_on": "2026-09-20T22:24:25-0400",
-    "role": "Vice Chair",
+    "role": null,
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Roxanne Tufts-Keegan",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": "Ex-Officio",
     "source_url": "https://middletonnh.gov/pages/boards-committees",
     "status": "published",
     "term_expires": null
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Sierra Pawnell",
-    "office": "School Board",
+    "name": "Sue Dooley",
+    "office": "Planning Board",
     "read_on": "2026-09-20T22:24:25-0400",
-    "role": null,
+    "role": "Vice Chair",
     "source_url": "https://middletonnh.gov/pages/boards-committees",
     "status": "published",
     "term_expires": null
@@ -7576,6 +9390,36 @@
     "method": "parse_town_sites.py over a saved page",
     "name": "Janet Kalar",
     "office": "Treasurer",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": null,
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Christine Maynard",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": null,
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Janet Kalar",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T22:24:25-0400",
+    "role": null,
+    "source_url": "https://middletonnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "John Mullen",
+    "office": "Trustee of Trust Funds",
     "read_on": "2026-09-20T22:24:25-0400",
     "role": null,
     "source_url": "https://middletonnh.gov/pages/boards-committees",
@@ -7636,10 +9480,7 @@
   "pages": [
    {
     "agent": "project",
-    "dropped_offices": [
-     "Board of Selectmen (6)"
-    ],
-    "found": 27,
+    "found": 41,
     "link_text": "pages boards committees",
     "read_on": "2026-09-20T22:24:25-0400",
     "says_elected": false,
@@ -7649,10 +9490,7 @@
    },
    {
     "agent": "project",
-    "dropped_offices": [
-     "Board of Selectmen (6)"
-    ],
-    "found": 3,
+    "found": 8,
     "link_text": "pages departments",
     "read_on": "2026-09-20T22:24:30-0400",
     "says_elected": false,
@@ -7663,7 +9501,7 @@
   ]
  },
  "milan": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -7681,16 +9519,6 @@
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:24:40-0400",
     "role": null,
-    "source_url": "https://www.townofmilan.com/government",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Lynn Dube",
-    "office": "Board of Selectmen",
-    "read_on": "2026-09-20T22:24:40-0400",
-    "role": "Assistant",
     "source_url": "https://www.townofmilan.com/government",
     "status": "published",
     "term_expires": null
@@ -7779,7 +9607,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 12,
+    "found": 10,
     "link_text": "Government",
     "read_on": "2026-09-20T22:24:40-0400",
     "says_elected": false,
@@ -7790,7 +9618,7 @@
   ]
  },
  "milford": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -7836,12 +9664,12 @@
   ]
  },
  "milton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "monroe": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -7853,12 +9681,12 @@
   ]
  },
  "mont-vernon": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "moultonborough": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -7903,7 +9731,7 @@
   ]
  },
  "nashua": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -8003,12 +9831,12 @@
   ]
  },
  "nelson": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "new-boston": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -8017,16 +9845,6 @@
     "read_on": "2026-09-20T22:26:20-0400",
     "role": "Ex-Officio",
     "source_url": "https://www.newbostonnh.gov/pages/departments",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Cadet Program",
-    "office": "Fire Ward",
-    "read_on": "2026-09-20T22:26:25-0400",
-    "role": null,
-    "source_url": "https://www.newbostonnh.gov/pages/fire-department",
     "status": "published",
     "term_expires": null
    },
@@ -8075,10 +9893,10 @@
     "name": "Peter Hogan",
     "office": "Planning Board",
     "read_on": "2026-09-20T22:26:15-0400",
-    "role": null,
+    "role": "Secretary",
     "source_url": "https://www.newbostonnh.gov/pages/boards-and-committees",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2027"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -8129,6 +9947,36 @@
     "source_url": "https://www.newbostonnh.gov/pages/boards-and-committees",
     "status": "published",
     "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jennifer M. Allocca",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T22:26:15-0400",
+    "role": "Secretary",
+    "source_url": "https://www.newbostonnh.gov/pages/boards-and-committees",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "R. Frederick Hayes",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T22:26:15-0400",
+    "role": null,
+    "source_url": "https://www.newbostonnh.gov/pages/boards-and-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Wendy Lambert",
+    "office": "Trustee of Trust Funds",
+    "read_on": "2026-09-20T22:26:15-0400",
+    "role": "Chair",
+    "source_url": "https://www.newbostonnh.gov/pages/boards-and-committees",
+    "status": "published",
+    "term_expires": null
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -8185,11 +10033,11 @@
    {
     "agent": "project",
     "dropped_offices": [
-     "Board of Selectmen (21)",
-     "Cemetery Trustee (13)",
+     "Board of Selectmen (10)",
+     "Cemetery Trustee (10)",
      "Fire Ward (16)"
     ],
-    "found": 13,
+    "found": 15,
     "link_text": "pages boards and committees",
     "read_on": "2026-09-20T22:26:15-0400",
     "says_elected": false,
@@ -8199,7 +10047,7 @@
    },
    {
     "agent": "project",
-    "found": 2,
+    "found": 1,
     "link_text": "pages fire department",
     "read_on": "2026-09-20T22:26:25-0400",
     "says_elected": false,
@@ -8230,23 +10078,13 @@
   ]
  },
  "new-castle": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "new-durham": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Health Officer",
-    "office": "Fire Ward",
-    "read_on": "2026-09-20T22:26:50-0400",
-    "role": null,
-    "source_url": "https://newdurhamnh.gov/pages/departments",
-    "status": "published",
-    "term_expires": "2028"
-   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Mission Statement",
@@ -8291,7 +10129,7 @@
    },
    {
     "agent": "project",
-    "found": 1,
+    "found": 0,
     "link_text": "pages departments",
     "read_on": "2026-09-20T22:26:50-0400",
     "says_elected": false,
@@ -8302,7 +10140,7 @@
   ]
  },
  "new-hampton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -8348,7 +10186,7 @@
   ]
  },
  "new-ipswich": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -8357,6 +10195,36 @@
     "read_on": "2026-09-20T22:27:30-0400",
     "role": null,
     "source_url": "https://www.newipswichnh.gov/pages/boards-committees",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Debster Desantis",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T22:27:40-0400",
+    "role": null,
+    "source_url": "https://www.newipswichnh.gov/pages/town-clerk",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Robert Turner",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T22:27:40-0400",
+    "role": null,
+    "source_url": "https://www.newipswichnh.gov/pages/town-clerk",
+    "status": "published",
+    "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Susan White",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T22:27:40-0400",
+    "role": null,
+    "source_url": "https://www.newipswichnh.gov/pages/town-clerk",
     "status": "published",
     "term_expires": null
    },
@@ -8397,7 +10265,7 @@
     "dropped_offices": [
      "Moderator (4)"
     ],
-    "found": 0,
+    "found": 3,
     "link_text": "pages town clerk",
     "read_on": "2026-09-20T22:27:40-0400",
     "says_elected": false,
@@ -8408,17 +10276,17 @@
   ]
  },
  "new-london": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "newbury": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "newfields": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -8515,8 +10383,18 @@
   ]
  },
  "newington": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Bob Blonigen",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:28:15-0400",
+    "role": "Chair",
+    "source_url": "https://www.newingtonnh.gov/1307/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2027"
+   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Brandon Arsenault",
@@ -8541,7 +10419,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 2,
+    "found": 3,
     "link_text": "1307 Board of Selectmen",
     "read_on": "2026-09-20T22:28:15-0400",
     "says_elected": false,
@@ -8582,7 +10460,7 @@
   ]
  },
  "newmarket": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -8628,12 +10506,63 @@
   ]
  },
  "newport": {
-  "built": "2026-09-22",
-  "officials": [],
+  "built": "2026-09-24",
+  "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Benjamin S Bartlett",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:29:10-0400",
+    "role": null,
+    "source_url": "https://www.newportnh.gov/1231/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "James C. Burroughs",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:29:10-0400",
+    "role": null,
+    "source_url": "https://www.newportnh.gov/1231/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jeffrey F. Kessler",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:29:10-0400",
+    "role": "Vice Chairman",
+    "source_url": "https://www.newportnh.gov/1231/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jeffrey S North",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:29:10-0400",
+    "role": null,
+    "source_url": "https://www.newportnh.gov/1231/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Rachel E Dilger",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:29:10-0400",
+    "role": "Chairman",
+    "source_url": "https://www.newportnh.gov/1231/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2027"
+   }
+  ],
   "pages": [
    {
     "agent": "project",
-    "found": 0,
+    "found": 5,
     "link_text": "1231 Board of Selectmen",
     "read_on": "2026-09-20T22:29:10-0400",
     "says_elected": false,
@@ -8674,7 +10603,7 @@
   ]
  },
  "newton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -8720,17 +10649,17 @@
   ]
  },
  "north-hampton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "northfield": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "northumberland": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -8776,17 +10705,17 @@
   ]
  },
  "northwood": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "nottingham": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "orange": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -8804,18 +10733,8 @@
   ]
  },
  "orford": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Armand Girouard",
-    "office": "Board of Selectmen",
-    "read_on": "2026-09-20T22:30:40-0400",
-    "role": "Assistant",
-    "source_url": "https://orfordnh.us/departments/selectboard/",
-    "status": "published",
-    "term_expires": null
-   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Jim Hook",
@@ -8830,7 +10749,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 1,
+    "found": 0,
     "link_text": "Selectboard",
     "read_on": "2026-09-20T22:30:40-0400",
     "says_elected": false,
@@ -8871,28 +10790,68 @@
   ]
  },
  "ossipee": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "pelham": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Jason Croteau",
+    "name": "Brett Gagnon",
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:31:06-0400",
     "role": null,
     "source_url": "https://www.pelhamweb.com/181/Board-of-Selectmen",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Charlene Takesian",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:31:06-0400",
+    "role": "Vice Chair",
+    "source_url": "https://www.pelhamweb.com/181/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Danielle Masse Quinn",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:31:06-0400",
+    "role": null,
+    "source_url": "https://www.pelhamweb.com/181/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jaie Bergeron",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:31:06-0400",
+    "role": null,
+    "source_url": "https://www.pelhamweb.com/181/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jason Croteau",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:31:06-0400",
+    "role": "Chair",
+    "source_url": "https://www.pelhamweb.com/181/Board-of-Selectmen",
+    "status": "published",
+    "term_expires": "2028"
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 1,
+    "found": 5,
     "link_text": "181 Board of Selectmen",
     "read_on": "2026-09-20T22:31:06-0400",
     "says_elected": false,
@@ -8929,12 +10888,12 @@
   ]
  },
  "pembroke": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "peterborough": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -8991,32 +10950,32 @@
   ]
  },
  "piermont": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "pittsburg": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "pittsfield": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "plainfield": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "plaistow": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "plymouth": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -9372,7 +11331,7 @@
   ]
  },
  "randolph": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -9419,7 +11378,7 @@
   ]
  },
  "raymond": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -9506,7 +11465,7 @@
   ]
  },
  "richmond": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
@@ -9588,17 +11547,28 @@
   ]
  },
  "rochester": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "rollinsford": {
-  "built": "2026-09-22",
-  "officials": [],
+  "built": "2026-09-24",
+  "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Denise Knowles",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:33:46-0400",
+    "role": "Vice Chair",
+    "source_url": "https://rollinsford.nh.us/boards-committees/select-board/",
+    "status": "published",
+    "term_expires": "2026"
+   }
+  ],
   "pages": [
    {
     "agent": "project",
-    "found": 0,
+    "found": 1,
     "link_text": "Select Board",
     "read_on": "2026-09-20T22:33:46-0400",
     "says_elected": false,
@@ -9639,22 +11609,22 @@
   ]
  },
  "roxbury": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "rumney": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "rye": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "salem": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -9700,7 +11670,7 @@
   ]
  },
  "salisbury": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -9797,7 +11767,7 @@
   ]
  },
  "sanbornton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -9843,7 +11813,7 @@
   ]
  },
  "sandown": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -9936,28 +11906,8 @@
   ]
  },
  "sandwich": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Health Officer",
-    "office": "Board of Selectmen",
-    "read_on": "2026-09-20T22:35:55-0400",
-    "role": null,
-    "source_url": "https://sandwichnh.org/departments/index.php",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Compliance Officer",
-    "office": "Cemetery Trustee",
-    "read_on": "2026-09-20T22:35:55-0400",
-    "role": null,
-    "source_url": "https://sandwichnh.org/departments/index.php",
-    "status": "published",
-    "term_expires": null
-   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Police Sergeant",
@@ -9992,7 +11942,7 @@
    },
    {
     "agent": "project",
-    "found": 4,
+    "found": 2,
     "link_text": "Departments",
     "read_on": "2026-09-20T22:35:55-0400",
     "says_elected": false,
@@ -10023,37 +11973,37 @@
   ]
  },
  "seabrook": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "SEABROOK BEACH VILLAGE DISTRICT",
+    "name": "Aboul Khan",
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:36:15-0400",
-    "role": null,
+    "role": "Clerk",
     "source_url": "https://seabrooknh.info/boards-and-committees/selectmen/",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Harold F. Eaton",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:36:15-0400",
+    "role": "Vice Chair",
+    "source_url": "https://seabrooknh.info/boards-and-committees/selectmen/",
+    "status": "published",
+    "term_expires": "2029"
    },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Theresa Kyle",
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:36:15-0400",
-    "role": null,
+    "role": "Chair",
     "source_url": "https://seabrooknh.info/boards-and-committees/selectmen/",
     "status": "published",
     "term_expires": "2027"
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Upcoming Events",
-    "office": "Zoning Board of Adjustment",
-    "read_on": "2026-09-20T22:36:26-0400",
-    "role": null,
-    "source_url": "https://seabrooknh.info/boards-and-committees/",
-    "status": "published",
-    "term_expires": null
    }
   ],
   "pages": [
@@ -10065,7 +12015,7 @@
    },
    {
     "agent": "project",
-    "found": 2,
+    "found": 3,
     "link_text": "Board of Selectmen",
     "read_on": "2026-09-20T22:36:15-0400",
     "says_elected": false,
@@ -10075,7 +12025,7 @@
    },
    {
     "agent": "project",
-    "found": 1,
+    "found": 0,
     "link_text": "Boards & Committees",
     "read_on": "2026-09-20T22:36:26-0400",
     "says_elected": false,
@@ -10096,12 +12046,12 @@
   ]
  },
  "sharon": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "shelburne": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -10138,12 +12088,12 @@
   ]
  },
  "somersworth": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "south-hampton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -10180,12 +12130,12 @@
   ]
  },
  "springfield": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "stark": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -10223,12 +12173,12 @@
   ]
  },
  "stewartstown": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "stoddard": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -10305,17 +12255,37 @@
   ]
  },
  "strafford": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Ellen White",
+    "name": "Brian Monahan",
     "office": "Board of Selectmen",
-    "read_on": "2026-09-20T22:38:16-0400",
+    "read_on": "2026-09-20T22:38:01-0400",
     "role": null,
-    "source_url": "https://strafford.nh.gov/town-offices-directory/",
+    "source_url": "https://strafford.nh.gov/board-of-selectmen/",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Lynn Sweet",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:38:01-0400",
+    "role": "Chair",
+    "source_url": "https://strafford.nh.gov/board-of-selectmen/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "R Stephen Leighton",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:38:01-0400",
+    "role": null,
+    "source_url": "https://strafford.nh.gov/board-of-selectmen/",
+    "status": "published",
+    "term_expires": "2029"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -10326,22 +12296,12 @@
     "source_url": "https://strafford.nh.gov/town-offices-directory/",
     "status": "published",
     "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Master Plan SubC",
-    "office": "Zoning Board of Adjustment",
-    "read_on": "2026-09-20T22:38:16-0400",
-    "role": null,
-    "source_url": "https://strafford.nh.gov/town-offices-directory/",
-    "status": "published",
-    "term_expires": null
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 0,
+    "found": 3,
     "link_text": "Board of Selectmen",
     "read_on": "2026-09-20T22:38:01-0400",
     "says_elected": false,
@@ -10374,7 +12334,7 @@
    },
    {
     "agent": "project",
-    "found": 3,
+    "found": 1,
     "link_text": "Town Office Directory",
     "read_on": "2026-09-20T22:38:16-0400",
     "says_elected": false,
@@ -10385,23 +12345,33 @@
   ]
  },
  "stratford": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Ron Scott",
+    "name": "Ron Scott, Jr",
     "office": "Fire Ward",
     "read_on": "2026-09-20T22:40:11-0400",
     "role": null,
     "source_url": "https://stratfordnh.gov/fire-chief--fire-warden",
     "status": "published",
     "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Wendy McMann",
+    "office": "Treasurer",
+    "read_on": "2026-09-20T22:39:16-0400",
+    "role": null,
+    "source_url": "https://stratfordnh.gov/administration-selectboard/",
+    "status": "published",
+    "term_expires": "2028"
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 0,
+    "found": 1,
     "link_text": "Administration / Selectboard",
     "read_on": "2026-09-20T22:39:16-0400",
     "says_elected": false,
@@ -10438,7 +12408,7 @@
   ]
  },
  "stratham": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -10506,7 +12476,7 @@
    },
    {
     "agent": "project",
-    "found": 2,
+    "found": 1,
     "link_text": "Boards & Committees",
     "read_on": "2026-09-20T22:40:34-0400",
     "says_elected": false,
@@ -10517,7 +12487,7 @@
   ]
  },
  "sugar-hill": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -10561,16 +12531,6 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Upcoming Events",
-    "office": "Board of Selectmen",
-    "read_on": "2026-09-20T22:40:49-0400",
-    "role": null,
-    "source_url": "https://www.sugarhillnh.org/boards-and-committees/board-of-selectmen/selectmens-office/",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
     "name": "Crapo Building",
     "office": "Town Clerk/Tax Collector",
     "read_on": "2026-09-20T22:40:44-0400",
@@ -10593,7 +12553,7 @@
    },
    {
     "agent": "project",
-    "found": 3,
+    "found": 2,
     "link_text": "Select Board Office",
     "read_on": "2026-09-20T22:40:49-0400",
     "says_elected": false,
@@ -10610,18 +12570,28 @@
   ]
  },
  "sullivan": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "sunapee": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "surry": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Jay Croteau III",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:41:09-0400",
+    "role": "Chair",
+    "source_url": "https://surry.nh.gov/board-of-selectmen/",
+    "status": "published",
+    "term_expires": "2029"
+   },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Picture Credits",
@@ -10631,12 +12601,32 @@
     "source_url": "https://surry.nh.gov/about-this-site/",
     "status": "published",
     "term_expires": null
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Ron Profaizer",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:41:09-0400",
+    "role": "Vice-Chair",
+    "source_url": "https://surry.nh.gov/board-of-selectmen/",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Steve Goldsmith",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:41:09-0400",
+    "role": null,
+    "source_url": "https://surry.nh.gov/board-of-selectmen/",
+    "status": "published",
+    "term_expires": "2028"
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 0,
+    "found": 3,
     "link_text": "Select Board Overview",
     "read_on": "2026-09-20T22:41:09-0400",
     "says_elected": false,
@@ -10675,17 +12665,68 @@
   ]
  },
  "sutton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "swanzey": {
-  "built": "2026-09-22",
-  "officials": [],
+  "built": "2026-09-24",
+  "officials": [
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Alan Gross",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:41:34-0400",
+    "role": null,
+    "source_url": "https://www.swanzeynh.gov/government/boards___committees___commissions/board_of_selectmen.php",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "James Tempesta",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:41:34-0400",
+    "role": "Chairman",
+    "source_url": "https://www.swanzeynh.gov/government/boards___committees___commissions/board_of_selectmen.php",
+    "status": "published",
+    "term_expires": "2027"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "James Ward",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:41:34-0400",
+    "role": "Secretary",
+    "source_url": "https://www.swanzeynh.gov/government/boards___committees___commissions/board_of_selectmen.php",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Mark LaBelle",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:41:34-0400",
+    "role": "Vice Chairman",
+    "source_url": "https://www.swanzeynh.gov/government/boards___committees___commissions/board_of_selectmen.php",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "W. William Hutwelker, III",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:41:34-0400",
+    "role": null,
+    "source_url": "https://www.swanzeynh.gov/government/boards___committees___commissions/board_of_selectmen.php",
+    "status": "published",
+    "term_expires": "2029"
+   }
+  ],
   "pages": [
    {
     "agent": "project",
-    "found": 0,
+    "found": 5,
     "link_text": "Board of Selectmen",
     "read_on": "2026-09-20T22:41:34-0400",
     "says_elected": false,
@@ -10726,7 +12767,7 @@
   ]
  },
  "tamworth": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -10772,7 +12813,7 @@
   ]
  },
  "temple": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -10803,22 +12844,12 @@
     "source_url": "https://www.templenh.gov/258/Select-Board",
     "status": "published",
     "term_expires": "2027"
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Leala Kullgren",
-    "office": "Board of Selectmen",
-    "read_on": "2026-09-20T22:42:24-0400",
-    "role": "Assistant",
-    "source_url": "https://www.templenh.gov/258/Select-Board",
-    "status": "published",
-    "term_expires": null
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "found": 4,
+    "found": 3,
     "link_text": "258 Select Board",
     "read_on": "2026-09-20T22:42:24-0400",
     "says_elected": false,
@@ -10859,27 +12890,27 @@
   ]
  },
  "thornton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "tilton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "troy": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "tuftonboro": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "unity": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -10962,7 +12993,7 @@
   ]
  },
  "wakefield": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": [
    {
@@ -11000,12 +13031,12 @@
   ]
  },
  "walpole": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "warner": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -11102,7 +13133,7 @@
   ]
  },
  "warren": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -11179,22 +13210,22 @@
   ]
  },
  "washington": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "waterville-valley": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "weare": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "webster": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -11251,7 +13282,7 @@
   ]
  },
  "wentworth": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -11295,7 +13326,7 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Rick Ducheneau",
+    "name": "Rick Ducheneau, Sr.",
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:44:59-0400",
     "role": null,
@@ -11335,16 +13366,6 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Health Officer",
-    "office": "Fire Ward",
-    "read_on": "2026-09-20T22:44:59-0400",
-    "role": null,
-    "source_url": "https://www.wentworth-nh.org/town-officials",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
     "name": "Jeffry Ames",
     "office": "Fire Ward",
     "read_on": "2026-09-20T22:44:59-0400",
@@ -11356,16 +13377,6 @@
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Stephen Welch",
-    "office": "Fire Ward",
-    "read_on": "2026-09-20T22:44:59-0400",
-    "role": null,
-    "source_url": "https://www.wentworth-nh.org/town-officials",
-    "status": "published",
-    "term_expires": null
-   },
-   {
-    "method": "parse_town_sites.py over a saved page",
-    "name": "Tasmin Scott",
     "office": "Fire Ward",
     "read_on": "2026-09-20T22:44:59-0400",
     "role": null,
@@ -11468,13 +13479,25 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Omer C. Ahern",
+    "name": "Omer C. Ahern, Jr.",
     "office": "Planning Board",
     "read_on": "2026-09-20T22:44:59-0400",
     "role": null,
     "source_url": "https://www.wentworth-nh.org/town-officials",
     "status": "published",
     "term_expires": "2025"
+   },
+   {
+    "filled_by": "appointed",
+    "filled_by_source": "the page marks this person appointed",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Palmer Koelb",
+    "office": "Planning Board",
+    "read_on": "2026-09-20T22:44:59-0400",
+    "role": null,
+    "source_url": "https://www.wentworth-nh.org/town-officials",
+    "status": "published",
+    "term_expires": null
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -11538,6 +13561,39 @@
    },
    {
     "method": "parse_town_sites.py over a saved page",
+    "name": "Deborah Vlk",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T22:44:59-0400",
+    "role": "Chairperson",
+    "source_url": "https://www.wentworth-nh.org/town-officials",
+    "status": "published",
+    "term_expires": "2030"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Linda Franz",
+    "note": "the page marks this person as having left",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T22:44:59-0400",
+    "role": null,
+    "source_url": "https://www.wentworth-nh.org/town-officials",
+    "status": "published",
+    "term_expires": "2024"
+   },
+   {
+    "filled_by": "appointed",
+    "filled_by_source": "the page marks this person appointed",
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Ramandeep Davis",
+    "office": "Supervisor of the Checklist",
+    "read_on": "2026-09-20T22:44:59-0400",
+    "role": null,
+    "source_url": "https://www.wentworth-nh.org/town-officials",
+    "status": "published",
+    "term_expires": "2025"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
     "name": "Darlene Oaks",
     "office": "Town Clerk",
     "read_on": "2026-09-20T22:44:59-0400",
@@ -11570,30 +13626,37 @@
     "method": "parse_town_sites.py over a saved page",
     "name": "Deborah Vlk",
     "office": "Treasurer",
-    "read_on": "2026-09-20T22:45:04-0400",
+    "read_on": "2026-09-20T22:44:59-0400",
     "role": null,
-    "source_url": "https://www.wentworth-nh.org/select-board",
+    "source_url": "https://www.wentworth-nh.org/town-officials",
     "status": "published",
-    "term_expires": "2028"
+    "term_expires": "2025"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Dona M. Springham",
+    "office": "Treasurer",
+    "read_on": "2026-09-20T22:44:59-0400",
+    "role": null,
+    "source_url": "https://www.wentworth-nh.org/town-officials",
+    "status": "published",
+    "term_expires": "2026"
    },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Linda Franz",
     "office": "Treasurer",
-    "read_on": "2026-09-20T22:45:04-0400",
-    "role": null,
-    "source_url": "https://www.wentworth-nh.org/select-board",
+    "read_on": "2026-09-20T22:44:59-0400",
+    "role": "Deputy",
+    "source_url": "https://www.wentworth-nh.org/town-officials",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2025"
    }
   ],
   "pages": [
    {
     "agent": "project",
-    "dropped_offices": [
-     "Treasurer (4)"
-    ],
-    "found": 32,
+    "found": 36,
     "link_text": "Town Officials",
     "read_on": "2026-09-20T22:44:59-0400",
     "says_elected": false,
@@ -11620,12 +13683,12 @@
   ]
  },
  "westmoreland": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "whitefield": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -11662,12 +13725,12 @@
   ]
  },
  "wilmot": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "wilton": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -11688,6 +13751,16 @@
     "source_url": "https://www.wiltonnh.gov/government/boards_and_committees/select_board",
     "status": "published",
     "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Thomas C. Schultz",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:46:10-0400",
+    "role": "Chair",
+    "source_url": "https://www.wiltonnh.gov/government/boards_and_committees/select_board",
+    "status": "published",
+    "term_expires": "2027"
    },
    {
     "method": "parse_town_sites.py over a saved page",
@@ -11733,7 +13806,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 2,
+    "found": 3,
     "link_text": "Select Board",
     "read_on": "2026-09-20T22:46:10-0400",
     "says_elected": false,
@@ -11770,7 +13843,7 @@
   ]
  },
  "winchester": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
@@ -11867,24 +13940,54 @@
   ]
  },
  "windham": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [
    {
     "method": "parse_town_sites.py over a saved page",
-    "name": "Current Members",
+    "name": "Bruce Breton",
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:46:59-0400",
     "role": null,
     "source_url": "https://windhamnh.gov/258/Select-Board",
     "status": "published",
-    "term_expires": null
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Heath Partington",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:46:59-0400",
+    "role": "Vice-Chair",
+    "source_url": "https://windhamnh.gov/258/Select-Board",
+    "status": "published",
+    "term_expires": "2028"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Michelle Stith",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:46:59-0400",
+    "role": null,
+    "source_url": "https://windhamnh.gov/258/Select-Board",
+    "status": "published",
+    "term_expires": "2029"
+   },
+   {
+    "method": "parse_town_sites.py over a saved page",
+    "name": "Roger Hohenberger",
+    "office": "Board of Selectmen",
+    "read_on": "2026-09-20T22:46:59-0400",
+    "role": null,
+    "source_url": "https://windhamnh.gov/258/Select-Board",
+    "status": "published",
+    "term_expires": "2027"
    },
    {
     "method": "parse_town_sites.py over a saved page",
     "name": "Ross McLeod",
     "office": "Board of Selectmen",
     "read_on": "2026-09-20T22:46:59-0400",
-    "role": null,
+    "role": "Chairman",
     "source_url": "https://windhamnh.gov/258/Select-Board",
     "status": "published",
     "term_expires": "2027"
@@ -11963,7 +14066,7 @@
   "pages": [
    {
     "agent": "project",
-    "found": 2,
+    "found": 5,
     "link_text": "258 Select Board",
     "read_on": "2026-09-20T22:46:59-0400",
     "says_elected": false,
@@ -12004,17 +14107,17 @@
   ]
  },
  "windsor": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "wolfeboro": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  },
  "woodstock": {
-  "built": "2026-09-22",
+  "built": "2026-09-24",
   "officials": [],
   "pages": []
  }

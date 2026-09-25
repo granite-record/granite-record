@@ -183,10 +183,17 @@ def term_year(text):
 # A written personal name. Two to four capitalised words, allowing an
 # initial, a hyphen, an apostrophe, a quoted nickname and a suffix. Anchored
 # at both ends, because a name is the whole of what it is.
+#
+# OR ONE OR TWO INITIALS AND THEN A NAME. Lincoln's chairman is "O.J.
+# Robinson" and two of Litchfield's five are "F. Robert Leary" and "G.
+# Stephen Gannon"; a name had to open with a word of two letters or more, so
+# each was not a person and the line after them ended the run.
+_WORD = r"[A-Z][A-Za-z'’‘-]+"
+_MORE = (r"(?:\s+(?:[A-Z]\.?|[\"“][A-Za-z]+[\"”]|" + _WORD
+         + r"|[A-Z][a-z]?[A-Z][A-Za-z'-]*))")
 NAME = re.compile(
-    r"^[A-Z][A-Za-z'’‘-]+"
-    r"(?:\s+(?:[A-Z]\.?|[\"“][A-Za-z]+[\"”]|"
-    r"[A-Z][A-Za-z'’‘-]+|[A-Z][a-z]?[A-Z][A-Za-z'-]*)){1,3}"
+    r"^(?:" + _WORD + _MORE + r"{1,3}"
+    r"|(?:[A-Z]\.\s?|[A-Z]\s){1,2}" + _WORD + _MORE + r"{0,2})"
     r"(?:,?\s+(?:Jr\.?|Sr\.?|I{2,3}|IV|V))?$")
 
 # Words that disqualify a line from being a person, however capitalised it is.
@@ -238,6 +245,12 @@ NOT_A_NAME = re.compile(
     r"councils?|societ(?:y|ies)|associations?|foundations?|"
     r"commissioners?|council(?:l)?ors?|alderm[ae]n|selectm[ae]n|"
     r"treasurers?|auditors?|constables?|assistants?|directors?|"
+    # Headings that follow a roster, and a body that is not a person.
+    # Once a member's card no longer ends the list (CARD_LINE), the line
+    # after the last card is what does: Windham's "Membership Details",
+    # Seabrook's "Upcoming Events" and "SEABROOK BEACH VILLAGE DISTRICT".
+    r"membership|details|upcoming|events?|districts?|village|rsa|"
+    r"plans?|programs?|improvements?|officers?|"
     r"read more|click|home|search|menu|login|copyright|rights reserved)\b",
     re.I)
 
@@ -377,12 +390,30 @@ def name_and_office(line):
     return None
 
 
+# "Jr." and its kind, when a comma has cut it off the name it ends.
+SUFFIX_PART = re.compile(r"^(?:Jr|Sr|I{2,3}|IV)\.?$")
+# A term written straight after the name, with nothing between: Harrisville
+# writes "Andrea Hodson Term expires 2028", Litchfield "Dianne Plansky,
+# Member Term expires March 2028".
+TERM_TAIL = re.compile(r"\s+term\b.*$", re.I)
+
+
 def split_person(line):
-    """'Arnold D. Scheller, Chairperson, 2026' -> name, role, term, notes."""
-    parts = [p.strip() for p in re.split(r"[,•|]| - ", line) if p.strip()]
+    """'Arnold D. Scheller, Chairperson, 2026' -> name, role, term, notes.
+
+    An en dash separates as a spaced hyphen does: Dalton writes "Eric Moore
+    – Term expires March 2027", and the whole line was tested as a name. So
+    does a bracket: Andover writes "Dana Swenson (Chair) (2027)"."""
+    parts = [p.strip() for p in re.split(r"[,•|]| [-–—] |\s+(?=\()", line)
+             if p.strip()]
+    if parts:
+        parts[0] = TERM_TAIL.sub("", parts[0])
     if not parts or not looks_like_name(parts[0]):
         return None
     name = parts[0].strip(" .")
+    # "Franklin W. Sterling, Jr." is one name, as the page wrote it.
+    if len(parts) > 1 and SUFFIX_PART.match(parts[1]):
+        name = f"{name}, {parts.pop(1)}"
     rest = " , ".join(parts[1:])
     role = None
     m = ROLE.search(rest)
@@ -397,8 +428,56 @@ def split_person(line):
             "left": bool(RESIGNED.search(rest))}
 
 
-def from_tables(text):
-    """(office, person) out of any table with a name column."""
+# One "Name - Role" of several on a line.
+_PAIR = re.compile(r"^(?P<name>[^,–-]+?)\s+[-–]\s+(?P<role>.+)$")
+
+
+def several_people(line):
+    """Every (part, person) on a line that names more than one, or [].
+
+    Alstead's departments page gives its whole select board on one line:
+    "Joe Levesque - Chair, Joel McCarty - Full Member, David Hogan - Full
+    Member". Read as one person, the chair was the board. A line is taken
+    this way only when two or more of its comma-separated parts are each a
+    name, a dash and a role; a part with no name ("Chair", after "Glenn
+    Elsesser - Appointed Member") belongs to the person before it.
+    """
+    people = []
+    for part in (p.strip() for p in line.split(",")):
+        m = _PAIR.match(part)
+        if m and looks_like_name(m.group("name").strip()):
+            p = split_person(m.group("name").strip() + " , " + m.group("role"))
+            if p:
+                people.append((part, p))
+                continue
+        m = ROLE.search(part)
+        if people and m and not people[-1][1].get("role"):
+            people[-1][1]["role"] = re.sub(r"\s+", " ", m.group(0)).strip().title()
+    return people if len(people) >= 2 else []
+
+
+def page_office(url):
+    """The office a page is the page OF, read off its address's last
+    segment: ".../1368/Board-of-Selectmen" is the select board's page, and
+    ".../departments" is nobody's. On a body's own page a line such as
+    "Charlie King, Chairman" names a member of that body even where no
+    heading is in force (Farmington heads its board "Staff Contacts")."""
+    path = re.sub(r"^https?://[^/]+", "", url or "").rstrip("/")
+    seg = path.split("/")[-1] if path else ""
+    seg = re.sub(r"\.(php|html?|aspx?)$", "", seg)
+    return office_of(re.sub(r"[-_]+", " ", seg)) if seg else None
+
+
+def from_tables(text, own=None):
+    """(office, person) out of any table with a name column.
+
+    `own` is the office whose page this is (see page_office). A row whose
+    title is only a place on the board -- "Chuck Myette | Chairman | 2028" --
+    names no office, and was dropped: Chester, Chichester, Greenfield,
+    Newington and Wilton each lost their chair that way, and every one of
+    them is a table on the select board's own page. On that page, with no
+    section heading in the table to say otherwise, the row is the board's.
+    """
     out = []
     for tab in re.findall(r"(?is)<table.*?</table>", text):
         rows = []
@@ -413,15 +492,31 @@ def from_tables(text):
             joined = " ".join(cells)
             # A one-cell row, or a row with no name in it, is a section header.
             named = [c for c in cells if looks_like_name(c)]
-            if not named:
+            # A cell may be a name and a role together: Strafford's chair is
+            # "Lynn Sweet - Chair", Swanzey's "James Tempesta, Chairman", and
+            # read as a header the row was nobody's.
+            lead = None if named else next(
+                ((c, q) for c in cells for q in [split_person(c)]
+                 if q and q.get("role")), None)
+            if not named and not lead:
                 o = office_of(joined)
                 if o:
                     section = o
                 continue
-            name = named[0]
-            others = " , ".join(c for c in cells if c != name)
-            office = office_of(others) or section
-            if not office:
+            if lead:
+                name = lead[1]["name"]
+                others = " , ".join([lead[0].replace(name, "", 1)]
+                                    + [c for c in cells if c is not lead[0]])
+            else:
+                name = named[0]
+                others = " , ".join(c for c in cells if c != name)
+            office = office_of(others)
+            if office and REPRESENTS.search(others) and (section or own):
+                office = None               # see REPRESENTS
+            office = office or section
+            if not office and own and MEMBER_ROLE.search(others):
+                office = own
+            if not office or is_staff(office, others):
                 continue
             p = split_person(name + (" , " + others if others else ""))
             if p:
@@ -432,15 +527,110 @@ def from_tables(text):
 # A CivicPlus page puts the term on its own line under each person, and
 # heads the roster with a bare "Members" after a paragraph about the body.
 # Both look like the end of a run and neither is.
-TERM_LINE = re.compile(r"^\s*(term|appointed|elected)\s*(expire[sd]?|ends?|"
-                       r"through|until)?\s*[:\-]?\s*(20\d\d|\d{1,2}/\d{1,2}/\d{2,4})",
-                       re.I)
+#
+# THE TERM IS WRITTEN A DOZEN WAYS, and every way this did not know ended
+# the run at the first member: "Term Expires: March 2027" (Boscawen,
+# Greenland), "Term Expiration: 2027" (Belmont), "Term Ending: 2028" and
+# "Term Exp. 2029" (Pelham), "Term-2027" (Seabrook). So anything short and
+# without a digit may stand between the word and the year.
+TERM_TEXT = re.compile(r"\b(term|appointed|elected)\b[^\d\n]{0,24}"
+                       r"(20\d\d|\d{1,2}/\d{1,2}/\d{2,4})", re.I)
+TERM_LINE = re.compile(r"^\s*" + TERM_TEXT.pattern, re.I)
+# The term column of a table read as lines, under a "Term Expires" heading:
+# "2027", "March 2027", "Expires 2027" (Strafford, Swanzey, Hampton). Only
+# inside a run and straight under a person: Strafford's page goes on to list
+# its minutes by year, "2026", "2025", "2024", and a stray year is nobody's
+# term.
+BARE_TERM = re.compile(r"^\s*(?:(?:term\s+)?expires?\s*:?\s*)?"
+                       r"(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|"
+                       r"dec)[a-z]*\.?\s+)?20\d\d\s*$", re.I)
+
+# The header row of a table read as lines: Hampton's select board is "Name"
+# / "Email" / "Term Expires" and then the five of them, and the header ended
+# the run before the first.
+TABLE_HEAD = re.compile(
+    r"^\s*(?:name|title|position|e-?mail(?:\s+address)?|phone|"
+    r"term(?:\s+(?:expires|expiration|ends))?|title\s*/\s*term\s+expires)"
+    r"\s*:?\s*$", re.I)
 MEMBERS_LINE = re.compile(
     r"^\s*(board\s+|committee\s+|commission\s+|current\s+|elected\s+)?"
     r"members(hip)?\s*[:\-]?\s*$", re.I)
 
+# WHAT ELSE A CARD SAYS UNDER A MEMBER'S NAME, and none of it ends the run.
+# Jaffrey writes each selectman as a card -- the name, "Chairman", "Email
+# Charles Turcotte", "Phone: 603-532-7880 Ext. 100", "More Information" --
+# and the first line of the first card that was not a name or an office
+# ended the run, so one of three was read. Pelham's cards say "Contact
+# Jason Croteau", Seabrook's "Read Bio" and "×", Freedom's "Town Of
+# Freedom", Belmont's "Elected". Each is a way of reaching the person above
+# or a word about how they were chosen; none is a person, and none is the
+# end of the list.
+CARD_LINE = re.compile(
+    r"^\s*(?:(?:phone|tel|cell|work|home|fax|office|p|c|f)\s*[:.#]?\s*[\(\d]"
+    r"|\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}\b"
+    r"|(?:e-?mail|contact|send\s+(?:an\s+)?e-?mail)\b"
+    r"|\S+@\S+\s*$|\[email[\s\xa0]protected\]"
+    r"|(?:read|view)\s+(?:bio|more|profile)\s*$|more\s+information\s*$"
+    r"|[×x]\s*$|elected\s*$|appointed\s*$"
+    r"|(?:the\s+)?(?:town|city)\s+of\s+[A-Z][\w'’.-]*(?:\s+[A-Z][\w'’.-]*){0,2}\s*$)",
+    re.I)
 
-def from_headings(lines):
+# A LINE THAT IS ONLY A MEMBER'S PLACE ON THE BOARD, under their name:
+# "Chairman", "Vice-Chair", "Board Member", "Selectmen (2029)", "Chair
+# (2027)", "Member (Chair)". Belmont and Pelham put it on the line below the
+# name, and it belongs to the person above -- not to the list, not to the
+# next name, and not an end to either.
+SEAT_LINE = re.compile(
+    r"^\s*(?:(?:select\s*board|board|selectboard|full|sb)\s+)?"
+    r"(?P<role>(?:vice[\s-]?)?chair(?:man|woman|person)?|member|"
+    r"selectm[ae]n|selectwoman|selectperson|clerk|secretary)"
+    r"\s*(?:\(\s*(?P<paren>(?:vice[\s-]?)?chair\w*|20\d\d)\s*\))?\s*$", re.I)
+
+# THE PEOPLE WHO WORK FOR A GOVERNING BODY ARE NOT ON IT. Alstead lists its
+# board and then "Misty Gratacos - Select Board Office Administrator",
+# "Sharon Iozzo - Assistant Select Board Office Administrator" and "Shelley
+# Steuwe - Select Board Recording Secretary": each line names the select
+# board, and read as members they made six, and a board of six is over the
+# cap, so the whole board was dropped. Only for the bodies that govern,
+# where a staff post is never a seat; an assistant moderator or a deputy
+# town clerk is an office of its own.
+GOVERNING = {"Board of Selectmen", "Town Council", "City Council",
+             "Board of Aldermen"}
+BODY_STAFF = re.compile(
+    r"\b(administrat(?:or|ive|ion)|assistant(?!\s+mayor)|"
+    r"recording\s+secretary|office\s+manager|coordinator|bookkeeper|"
+    r"executive\s+(?:assistant|secretary)|(?:town|city)\s+manager|staff)\b",
+    re.I)
+
+# Roles that make somebody a member of the body whose page this is, when the
+# page names no office beside them: "Charlie King, Chairman" on Farmington's
+# Board of Selectmen page, under a CivicPlus "Staff Contacts" heading. Not
+# "clerk" or "secretary", which on these pages are as often staff -- unless
+# a term year stands with it: Amherst's "Pam Coughlin | Clerk (2028)" is
+# the board's clerk, elected until 2028, and no staff post has a term.
+MEMBER_ROLE = re.compile(r"\b((?:vice[\s-]?)?chair(?:man|woman|person)?|"
+                         r"member|selectm[ae]n|selectwoman|selectperson)\b|"
+                         r"\b(?:clerk|secretary)\b\W{0,3}(?:\(\s*)?20\d\d\b",
+                         re.I)
+
+# A SEAT HELD FOR THE BODY ON ANOTHER BODY. Greenland's select board page
+# lists "Stephan Toth, Planning Board Alternate Rep" under Board of
+# Selectmen: he is a selectman, and the Planning Board is where he
+# represents the board. The office on the line is where the person is
+# sent, not what they are, so it does not take them out of the heading's
+# body -- and on a planning board's page, "Jane Doe, Selectmen's Rep" is a
+# member of the planning board for the same reason.
+REPRESENTS = re.compile(r"\b(rep\.?|representative|liaison)\s*$|"
+                        r"\b(rep\.?|representative|liaison)\s*[,(]", re.I)
+
+
+def is_staff(office, text):
+    """Whether a line names a staff post of a governing body: see
+    BODY_STAFF."""
+    return office in GOVERNING and bool(BODY_STAFF.search(text or ""))
+
+
+def from_headings(lines, own=None):
     """(office, person) where an office heads a run of people.
 
     ATKINSON IS THE SHAPE THIS HAD TO LEARN. CivicPlus writes
@@ -464,41 +654,121 @@ def from_headings(lines):
     Neither weakens the guard that matters. A run still cannot cross a line
     it cannot account for, and reopening only ever restores an office the
     page has already named.
+
+    WHAT A MEMBER'S CARD SAYS IS NOT THE END OF THE LIST EITHER. Twenty-three
+    towns' own pages list their whole board and were read as listing part
+    of it -- Belmont one of five, Pelham one of five, Seabrook one of three --
+    because the line under the first name was "Chairman", "Phone: ...",
+    "Term Expiration: 2027" or "Read Bio". Those lines now belong to the
+    person above them (CARD_LINE, SEAT_LINE, TERM_LINE), and the rule that
+    ends a run at a line it cannot account for is unchanged for every other
+    line. `own` is the office whose page this is (page_office): on it, a
+    line that gives only a place on the board -- "Charlie King, Chairman" --
+    is that board's even where no heading is in force, and on no other page.
     """
     out = []
     office = None
     last_office = None
     run = 0
+    # A place on the board written ABOVE the first name, not below it, means
+    # the page puts titles over names; below that, a title is not the
+    # person above's, and it is not guessed which name it belongs to.
+    title_first = False
     for line in lines:
-        if office is None and last_office and MEMBERS_LINE.match(line):
-            office, run = last_office, 0
+        if MEMBERS_LINE.match(line):
+            # "Members" under the heading goes on with it (East Kingston);
+            # after a heading's run has ended it reopens the last office.
+            if office is None and (last_office or own):
+                office, run, title_first = last_office or own, 0, False
             continue
-        if out and TERM_LINE.match(line):
+        if out and (TERM_LINE.match(line)
+                    or office and run and BARE_TERM.match(line)):
             t = term_year(line)
             if t and not out[-1][1].get("term_expires"):
                 out[-1][1]["term_expires"] = t
             if APPOINTED.search(line):
                 out[-1][1]["appointed"] = True
             continue
+        if office and (TABLE_HEAD.match(line)
+                       or run and CARD_LINE.match(line)):
+            continue
+        seat = SEAT_LINE.match(line) if office else None
+        if seat:
+            if run and not title_first:
+                p = out[-1][1]
+                role = (seat.group("paren") or "").strip()
+                role = role if not role.isdigit() and role else seat.group("role")
+                if ROLE.fullmatch(role.strip()) and not p.get("role"):
+                    p["role"] = re.sub(r"\s+", " ", role).strip().title()
+                if seat.group("paren") and seat.group("paren").isdigit() \
+                        and not p.get("term_expires"):
+                    p["term_expires"] = seat.group("paren")
+            elif not run:
+                title_first = True
+            continue
+        many = several_people(line)
+        if many:
+            for part, p in many:
+                o = office_of(part)
+                if o and REPRESENTS.search(part) and office:
+                    o = None
+                if (o or office) and not is_staff(o or office, part):
+                    out.append((o or office, p))
+                    run += 1
+            continue
         # A line that is a name AND an office is a person, not a heading, and
         # it is checked first because it looks exactly like a heading.
         pair = name_and_office(line)
         if pair:
-            out.append(pair)
+            if office and (pair[0] == office or REPRESENTS.search(line)):
+                # The heading's own office on the line, or a seat held for
+                # the heading's body elsewhere: the run goes on.
+                if not is_staff(office, line):
+                    out.append((office, pair[1]))
+                    run += 1
+                continue
+            if not is_staff(pair[0], line):
+                out.append(pair)
             office, run = None, 0
             continue
         o = office_of(line)
         # A heading is an office named by a SHORT line that is not a person.
         if o and not looks_like_name(re.split(r"[,|]", line)[0].strip()):
-            office, last_office, run = o, o, 0
+            # "Selectmen's Office Staff" names the select board, and heads
+            # the people who work for it, not on it.
+            if re.search(r"\bstaff\b", line, re.I):
+                office = None
+                continue
+            office, last_office, run, title_first = o, o, 0, False
             continue
         if office is None:
+            # A roster line, not a sentence: the role within a few words of
+            # the name. Jaffrey quotes "RSA Title III, 41:8, states: Every
+            # town ... shall choose ... one selectman", and a statute is not
+            # a member of the board.
+            p = split_person(line) if own else None
+            rest = line.replace(p["name"], " ", 1) if p else ""
+            rest = TERM_TEXT.sub("", rest)
+            if p and len(rest) <= 30 and MEMBER_ROLE.search(rest) \
+                    and not office_of(line) and not is_staff(own, line):
+                out.append((own, p))
+                # And the list goes on from here, as it would under a
+                # "Members": Goshen names its chair "Derek Tremblay (March
+                # 2027) – Chair" and its other two with a term and nothing
+                # else.
+                office, run, title_first = own, 1, False
             continue
         p = split_person(line)
         if p:
             # An office named on the same line as the person wins over the
-            # heading above: "Deborah Ziemba, Town Clerk/Tax Collector, 2027".
-            out.append((office_of(line) or office, p))
+            # heading above: "Deborah Ziemba, Town Clerk/Tax Collector, 2027"
+            # -- unless it is where the person represents the heading's body.
+            o = office_of(line)
+            if o and o != office and REPRESENTS.search(line):
+                o = None
+            if is_staff(o or office, line):
+                continue
+            out.append((o or office, p))
             run += 1
             if run >= SEAT_MAX:
                 office = None
@@ -543,9 +813,24 @@ def read_town(key, keep_noisy=False):
         if not p.exists():
             continue
         text = p.read_text(encoding="utf-8", errors="replace")
-        pairs = from_tables(content_of(text))
+        own = page_office(v.get("url"))
+        pairs = from_tables(content_of(text), own)
         if len(pairs) < 2:
-            pairs = from_headings(flatten(text))
+            pairs = from_headings(flatten(text), own)
+        # ONE PERSON NAMED TWICE ON A PAGE IS ONE SEAT. Seabrook's card
+        # prints each selectman's name above the "Read Bio" link and again
+        # inside the bio, so three selectmen came to six and the office was
+        # over its cap. Merged before the cap is counted, keeping whatever
+        # either mention said.
+        merged = {}
+        for o, q in pairs:
+            k = (o, q["name"].lower())
+            if k in merged:
+                merged[k].update({f: x for f, x in q.items()
+                                  if x and not merged[k].get(f)})
+            else:
+                merged[k] = q
+        pairs = [(o, q) for (o, _n), q in merged.items()]
         rec = {"url": v.get("url"), "link_text": link,
                "read_on": v.get("read_on"), "agent": v.get("agent"),
                "sha256": v.get("sha256"), "found": len(pairs)}

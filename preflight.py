@@ -16898,14 +16898,19 @@ def _town_officials_sane():
                   f"and none beyond its office's seats")
 
 
-@check("files", "a town's own select board is published only whole, current and from one page")
+@check("files", "a town's own select board or city council is published current, from one page, and labelled when partial")
 def _town_boards_sane():
-    """town_boards.json is what puts a town's own select board on its page in
-    place of NHDOT's September 2025 directory -- Lyme's page named a chair
-    who is no longer on the board. A board goes in only where the town's own
-    page lists all of it and was current when read, and that is a property
-    of the file, so it is checked on the file whatever town_boards.py
-    becomes.
+    """town_boards.json is what puts a town's own select board, and a city's
+    own mayor and council, on its page in place of NHDOT's September 2025
+    directory -- Lyme's page named a chair who is no longer on the board,
+    and Dover's a mayor who left office in January. A body goes in only where
+    its own page was current when read, and that is a property of the file,
+    so it is checked on the file whatever town_boards.py becomes.
+
+    WHOLE OR MARKED PARTIAL (the person, 24 September 2026). A board of three
+    or five published whole has that many members and a source for the
+    number. One that lists fewer is marked partial: with fewer members than
+    a size that has a source, or with no size at all, never with more.
 
     The words below are deliberately NOT town_boards.py's screen: a check
     built from the screen's own vocabulary can only agree with it.
@@ -16916,17 +16921,58 @@ def _town_boards_sane():
     T = imp("town_boards")
     if T is None:
         return "skip", "town_boards.py does not import"
-    boards = json.loads(p.read_text(encoding="utf-8")).get("boards") or {}
+    data = json.loads(p.read_text(encoding="utf-8"))
+    boards = data.get("boards") or {}
+    councils = data.get("councils") or {}
     dotf = Path("town_officials.json")
     dot = json.loads(dotf.read_text(encoding="utf-8")) if dotf.exists() else {}
     bad, n = [], 0
+    for key, b in sorted(councils.items()):
+        ms = b.get("members") or []
+        n += len(ms)
+        if key not in T.CITIES:
+            bad.append(f"{key}: a council is published for a place that is "
+                       "not one of the thirteen cities")
+        # A mayor read off another of the city's pages is shown but may not
+        # be counted in the council's size (Nashua's aldermen are fifteen
+        # without him), so a whole council is its size with or without them.
+        on_page = [m for m in ms if not m.get("source_url")
+                   or m["source_url"] == b.get("source_url")]
+        size = b.get("size")
+        if not b.get("partial") and size not in (len(on_page), len(ms)):
+            bad.append(f"{key}: {len(ms)} members published whole for a "
+                       f"council of {size}")
+        if b.get("partial") and size and len(on_page) >= size:
+            bad.append(f"{key}: marked partial with {len(on_page)} of {size}")
+        if size and not b.get("size_from"):
+            bad.append(f"{key}: the council's size {size} has no source")
+        for f in ("source_url", "read_on"):
+            if not b.get(f):
+                bad.append(f"{key}: the council has no {f}")
+        if not b.get("later"):
+            bad.append(f"{key}: nothing on the city's page is later than "
+                       "the directory")
+        for m in ms:
+            if len((m.get("name") or "").split()) < 2 or re.search(
+                    r"\b(ward|large|council\w*|mayor|alder\w*|board|city|"
+                    r"minutes|agenda|meeting|contact|email|staff)\b",
+                    m.get("name") or "", re.I):
+                bad.append(f"{key}: {m.get('name')!r} is published as a "
+                           "councillor")
     for key, b in sorted(boards.items()):
         ms = b.get("members") or []
         n += len(ms)
-        if b.get("size") not in (3, 5) or len(ms) != b.get("size"):
-            bad.append(f"{key}: {len(ms)} members published for a board of "
-                       f"{b.get('size')}; only a whole board of three or five is")
-        for f in ("source_url", "read_on", "size_from"):
+        size = b.get("size")
+        if not b.get("partial") and (size not in (3, 5) or len(ms) != size):
+            bad.append(f"{key}: {len(ms)} members published whole for a board "
+                       f"of {size}; a whole board is three or five")
+        if b.get("partial") and (size not in (3, 5, None)
+                                 or (size and len(ms) >= size) or not ms):
+            bad.append(f"{key}: {len(ms)} members marked partial for a board "
+                       f"of {size}")
+        if size and not b.get("size_from"):
+            bad.append(f"{key}: the board's size {size} has no source")
+        for f in ("source_url", "read_on"):
             if not b.get(f):
                 bad.append(f"{key}: the board has no {f}")
         if not re.match(r"https?://", b.get("source_url") or ""):
@@ -16973,9 +17019,22 @@ def _town_boards_sane():
             bad.append(f"{key}: the directory's own board with no term or "
                        "date after the March 2026 meeting is published as "
                        "the town's current board")
+    # A name the page wrote wholly in capitals is published with a spelling
+    # in normal case beside it (the person, 24 September 2026): Kensington's
+    # "IAN O'REILLY" is Ian O'Reilly.
+    for key, b in sorted((boards | councils).items()):
+        for m in b.get("members") or []:
+            name = m.get("name") or ""
+            if name == name.upper() and re.search(r"[A-Z]{2}", name) and (
+                    not m.get("display") or m["display"] == m["display"].upper()
+                    or m["display"].lower() != name.lower()):
+                bad.append(f"{key}: {name!r} is written in capitals and has "
+                           f"no spelling in normal case ({m.get('display')!r})")
     assert not bad, "\n  ".join(bad[:20])
-    return "ok", (f"{len(boards)} towns' own boards, {n} selectmen, every one "
-                  "whole, current when read and from one page")
+    partial = sum(1 for b in (boards | councils).values() if b.get("partial"))
+    return "ok", (f"{len(boards)} towns' own boards and {len(councils)} cities' "
+                  f"councils, {n} people, current when read and from one page; "
+                  f"{partial} marked partial")
 
 
 @check("build", "a town page links an e-mail address and nothing else, and never beside the wrong person",
@@ -17205,33 +17264,50 @@ def _town_note_website(B):
     return "ok", "website named on 2 fixture pages that link one, not on 2 that do not"
 
 
-@check("build", "a town's own page gives its select board only whole, current and screened",
+@check("build", "a town's own page gives its select board current and screened, and a part of it labelled",
        needs=("town_boards", "parse_town_sites"))
 def _town_boards_decide(T, P):
-    """The person's rule of 24 September 2026, run on the layouts it was
+    """The person's rules of 24 September 2026, run on the layouts they were
     written from.
 
     Every town page showed NHDOT's directory of September 2025, and at least
     68 towns' own pages list a selectman it still shows. A town's own dated
-    roster wins -- but only a WHOLE one that was CURRENT when read, and only
-    names that survive the screen. Each fixture below is a real page's
-    layout, cut down, and each outcome is one the rule exists for:
+    roster wins where it was CURRENT when read, and only names that survive
+    the screen. A page that lists PART of the board is shown too, marked
+    partial -- but only a part the page gives, never a part this failed to
+    read. Each fixture below is a real page's layout, cut down, and each
+    outcome is one the rule exists for:
 
       Lyme       the whole board, read off the town's page: published
       Wentworth  headed "For the year ending December 2024": not
       a term that ran out at the 2026 meeting, read in September: not
-      Goffstown  four of five, and "2024 through 2027" read as 2027: not
+      Goffstown  a phone line between a member and their term, and "2024
+                 through 2027" read as 2027: all five
       Hancock    report titles below the roster are not the page's date
       Temple     "Contact Leala Kullgren" is not a selectman
       Milan      "Lynn Dube, Administrative Assistant" is not a selectman
       Carroll    "(resigned 4/21/2026)" is not a selectman
-      Campton    five names, a directory of four and no size stated: not
+      Campton    five names, a directory of four and no size stated:
+                 published, partial, with no size
       Bow        "a five member Board of Selectmen" is the size to meet
       Columbia   the directory's own three, no date and no term: not -- its
                  minutes swear in a selectman the page never added
       Winchester the directory's own five, with a term ending 2029: published
       two pages  a name on another of the town's pages the first lacks: not
       a list of committees is not the board's page
+      Belmont    each name with "Chairman", "Elected" and a term on the lines
+                 under it: all five, where one was read
+      Alstead    the whole board on one line, and its staff after: three
+      Greenland  "Planning Board Alternate Rep" is a selectman sent there
+      Harrisville  minutes that name the board above the roster
+      Farmington a CivicPlus "Staff Contacts" heading over the board, on the
+                 board's own page
+      Littleton  five on the page where the directory had three: partial,
+                 with no size, because the directory's count is not one
+      a part     two of a stated three, the third nowhere on the page:
+                 published, "2 of 3"
+      two gaps   a name the page gives that this did not read -- one the
+                 directory knows, one it does not: not published as partial
 
     These run through parse_town_sites.from_headings, so a parser change
     that stops reading a layout shows here as a board that stopped being
@@ -17249,8 +17325,10 @@ def _town_boards_decide(T, P):
         for url, ls in pages.items():
             lines[url] = ls
             page = {"url": url, "read_on": read, "link_text": ""}
-            found += [(o, p, page) for o, p in P.from_headings(ls)]
-        return T.decide("x", found, d, lambda u: lines.get(u, []))
+            found += [(o, p, page)
+                      for o, p in P.from_headings(ls, P.page_office(url))]
+        return T.decide("x", found, d, lambda u: lines.get(u, []),
+                        list(pages.values()))
 
     cases = [
         ("Lyme", "own", ["Ben Kilham", "David Kahn", "Michael Hinsely"], town(
@@ -17272,12 +17350,18 @@ def _town_boards_decide(T, P):
                 "Select Board", "Ann Aldous, Chair, Term expires 2026",
                 "Bea Brandt, Term expires 2027", "Cal Carver, Term expires 2028"]},
             dot("Ann Aldous", "Bea Brandt", "Cal Carver"))),
-        ("Goffstown", "directory", None, town(
+        ("Goffstown", "own", ["Jim Craig", "Joshua Douglas", "Allison DeCesere",
+                              "Mark T. Lemay", "Richard Manzo"], town(
             {"https://goffstown.test/381/Select-Board": [
-                "Select Board", "Jim Craig, Chairman", "Term: 2024 through 2027",
-                "Allison DeCesere, Selectman", "Term: 2026 through 2029",
-                "Mark T. Lemay, Selectman", "Term: 2024 through 2027",
-                "Richard Manzo, Selectman", "Term: 2025 through 2028"]},
+                "Select Board", "Committee Members", "Jim Craig, Chairman",
+                "Phone: 603-361-4253", "Term: 2024 through 2027",
+                "Joshua Douglas, Vice Chairman", "Term: 2025 through 2028",
+                "Allison DeCesere, Selectwoman", "Phone: 603-759-5334",
+                "Term: 2026 through 2029", "Mark T. Lemay, Selectman",
+                "Phone: 603-305-0507", "Term: 2024 through 2027",
+                "Richard Manzo, Selectman", "Phone: 603-289-5929",
+                "Term: 2025 through 2028", "Staff Liason", "Derek Horne",
+                "Town Administrator"]},
             dot("Peter Georgantas", "Jim Craig", "Joshua Douglas", "Mark Lemay",
                 "Richard Manzo"))),
         ("Hancock", "own", ["Virginia Smith", "Peter Webster",
@@ -17307,7 +17391,8 @@ def _town_boards_decide(T, P):
                 "Aaron Foti, 2027 - Selectman (appointed 5/5/2026)",
                 "Jules Marquis, 2029 - Selectman (resigned 4/21/2026)"]},
             dot("John Greer", "Bonnie Moroney", "Jules Marquis"))),
-        ("Campton", "directory", None, town(
+        ("Campton", "own", ["Sharon Davis", "Mort Donahue", "Karl Kelly",
+                            "Sherrill Howard", "Jade Hartsgrove"], town(
             {"https://campton.test/board_of_selectmen.php": [
                 "Board of Selectmen", "Sharon Davis - Chair",
                 "Mort Donahue - Vice Chair", "Karl Kelly - Selectman",
@@ -17357,6 +17442,107 @@ def _town_boards_decide(T, P):
                 "Board of Selectmen", "Ann Aldous, Chair", "Bea Brandt",
                 "Cal Carver"]},
             dot("Ann Aldous", "Bea Brandt", "Cal Carver"))),
+        ("Belmont", "own", ["Ruth Mooney", "Travis O’Hara", "Jon Pike",
+                            "Mark Lewandoski", "Sharon Ciampi"], town(
+            {"https://belmont.test/boards/board-of-selectmen/": [
+                "Belmont Board of Selectmen", "Send Email", "Board Members",
+                "Ruth Mooney", "Chairman", "Elected", "Term Expiration: 2027",
+                "Travis O’Hara", "Vice Chairman", "Elected",
+                "Term Expiration: 2029", "Jon Pike", "Board Member", "Elected",
+                "Term Expiration: 2028", "Mark Lewandoski", "Board Member",
+                "Elected", "Term Expiration: 2029", "Sharon Ciampi",
+                "Board Member", "Elected", "Term Expiration: 2027",
+                "Member vacancies are filled by election by the voters in "
+                "March as terms expire."]},
+            dot("Ruth Mooney", "Claude Patten, Jr", "Jon Pike", "Sharon Ciampi",
+                "Travis O'Hara"))),
+        ("Alstead", "own", ["Joe Levesque", "Joel McCarty", "David Hogan"], town(
+            {"https://alstead.test/departments": [
+                "Select Board Office",
+                "Joe Levesque - Chair, Joel McCarty - Full Member, David "
+                "Hogan - Full Member",
+                "Misty Gratacos - Select Board Office Administrator, Work "
+                "(603) 835-2986",
+                "Select Board Meetings: Every Tuesday, 5:00 p.m, at the Town "
+                "Hall."]},
+            dot("Joel McCarty", "Gordon Kemp", "Matt Saxton"))),
+        ("Greenland", "own", ["Laura Malloy", "Paul Stanley", "Stephan Toth",
+                              "Heather Droesch", "Zack Pike"], town(
+            {"https://greenland.test/1466/Board-of-Selectmen": [
+                "Board of Selectmen", "Laura Malloy, Chairman",
+                "Term Expires: March 2029", "Paul Stanley, Vice Chairman",
+                "Term Expires: March 2029",
+                "Stephan Toth, Planning Board Alternate Rep",
+                "Term Expires: March 2027", "Heather Droesch, Planning Board Rep",
+                "Term Expires: March 2028", "Zack Pike, Member",
+                "Term Expires: March 2028", "Overview"]},
+            dot("Laura Malloy", "Heather Droesch", "Paul Stanley", "Stephan Toth",
+                "Zach Pike"))),
+        ("Harrisville", "own", ["Andrew Maneval", "Kathleen Scott",
+                                "Andrea Hodson"], town(
+            {"https://harrisville.test/government/office-of-the-selectboard/": [
+                "Select Board Tuesday, September 8, 2026 Meeting Minutes Select "
+                "Board: Andrew Maneval, Andrea Hodson, Kathy Scott Recording "
+                "Secretary: Mary Ann Noyer", "Read More", "Select Board",
+                "Andrew Maneval, Chair (2029)", "Kathleen Scott (2027)",
+                "Andrea Hodson (2028)",
+                "Administrative Assistant – Mary Ann Noyer"]},
+            dot("Andrew Maneval", "Andrea Hodson", "Kathleen Scott"))),
+        ("Farmington", "own", ["Charlie King", "Douglas Staples", "John Scruton",
+                               "Ann Titus", "Jason Chapman"], town(
+            {"https://farmington.test/1368/Board-of-Selectmen": [
+                "Board of Selectmen", "Meetings", "Staff Contacts",
+                "Charlie King, Chairman", "Term Expires: 2028",
+                "Douglas Staples, Vice Chairman", "Term Expires: 2027",
+                "John Scruton, Selectman", "Term Expires: 2028",
+                "Ann Titus, Selectman", "Term Expires: 2027",
+                "Jason Chapman, Selectman", "Term Expires: 2029", "Overview"]},
+            dot("Gerry Vachon", "Ann Titus", "Charlie King", "Douglas Staples",
+                "Jason Chapman"))),
+        ("Littleton", "own", ["David Harkless", "Kerri Harrington",
+                              "Paul Lehmann", "Taylor Caswell", "Ed Cherian"],
+         town({"https://littleton.test/1296/Board-of-Selectmen": [
+             "Board of Selectmen", "Board Members",
+             "David Harkless, Member (2027)", "Kerri Harrington, Chair (2027)",
+             "Paul Lehmann, Vice Chair (2028)", "Taylor Caswell, Member (2029)",
+             "Ed Cherian, Member (2029)"]},
+            dot("Linda Macneil", "Kerri Harrington", "Roger Emerson"))),
+        ("a part", "own", ["Ann Aldous", "Bea Brandt"], town(
+            {"https://part.test/select-board": [
+                "Select Board", "The Select Board is a three member board.",
+                "Ann Aldous, Chair (2029)", "Bea Brandt (2028)", "Overview"]},
+            dot("Cal Carver", "Bea Brandt", "Dee Dunmore"))),
+        ("a gap the directory knows", "directory", None, town(
+            {"https://gap.test/select-board": [
+                "Select Board", "Ann Aldous, Chair (2029)", "Bea Brandt (2028)",
+                "Photo: the board at Town Meeting", "Cal Carver (2027)"]},
+            dot("Ann Aldous", "Bea Brandt", "Cal Carver"))),
+        ("a gap it does not", "directory", None, town(
+            {"https://gap2.test/select-board": [
+                "Select Board", "Ann Aldous, Chair (2029)", "Bea Brandt (2028)",
+                "Photo: the board at Town Meeting", "Cal Carver (2027)"]},
+            dot("Ann Aldous", "Bea Brandt", "Zed Zimmer"))),
+        # A table read as lines: its header row, then each member's name,
+        # an "Email" link and the year the term ends.
+        ("Hampton", "own", ["Carleigh Beriont", "Chuck Rage", "Amy Hansen",
+                            "Jeff Grip", "Donald Bliss"], town(
+            {"https://hampton.test/282/Select-Board": [
+                "Select Board", "Name", "Email", "Term Expires",
+                "Carleigh Beriont, C hairwoman", "Email Carleigh Beriont",
+                "2027", "Chuck Rage", "Email Chuck Rage", "2029", "Amy Hansen",
+                "Email Amy Hansen", "2028", "Jeff Grip, Vice-chairman",
+                "Email Jeff Grip", "2027", "Donald Bliss", "Email Donald Bliss",
+                "2029"]},
+            dot("Rusty Bridle", "Amy Hansen", "Carleigh Beriont", "Charles Rage",
+                "Jeffery Grip"))),
+        # Two of the directory's three, undated and without terms: a part
+        # of the board lacks somebody by being a part, so the missing name
+        # is no evidence the page is newer than the directory.
+        ("a stale part", "directory", None, town(
+            {"https://stale.test/select-board": [
+                "Select Board", "The Select Board is a three member board.",
+                "Ann Aldous, Chair", "Bea Brandt, Member", "Overview"]},
+            dot("Ann Aldous", "Bea Brandt", "Cal Carver"))),
     ]
     bad = []
     for label, want, names, got in cases:
@@ -17370,10 +17556,50 @@ def _town_boards_decide(T, P):
     # happens to catch the fixture too.
     why = {label: got["why"] for label, _, _, got in cases}
     for label, words in (("two pages", "another of the town's pages"),
-                         ("Columbia", "the directory's own board")):
+                         ("Columbia", "the directory's own board"),
+                         ("a gap the directory knows", "did not read"),
+                         ("a gap it does not", "did not read"),
+                         ("a stale part", "the directory's own board")):
         if words not in why[label]:
             bad.append(f"{label} is kept off its roster for another reason: "
                        f"{why[label]!r}")
+    # Partial where the page gives part, with the size's source or none;
+    # whole everywhere else.
+    got = {label: g for label, _, _, g in cases}
+    for label, size in (("a part", 3), ("Campton", None), ("Littleton", None)):
+        g = got[label]
+        if not g.get("partial") or g.get("size") != size:
+            bad.append(f"{label}: partial={g.get('partial')} size="
+                       f"{g.get('size')}, not partial with size {size}")
+    for label in ("Lyme", "Goffstown", "Belmont", "Greenland", "Farmington"):
+        if got[label].get("partial"):
+            bad.append(f"{label}: a whole board is marked partial")
+    belmont = (got["Belmont"].get("members") or []) + [{}, {}]
+    if (belmont[0].get("role"), belmont[1].get("directory_name")) != \
+            ("Chairman", "Travis O'Hara"):
+        bad.append("Belmont's chair is not read off the line under her name, "
+                   "or O’Hara is not the directory's O'Hara: "
+                   f"{belmont[0].get('role')!r}, {belmont[1].get('directory_name')!r}")
+    v, why_ = T.screen(T.BOARD, {"name": "Andrew Lawn"},
+                       {"url": "https://jaffrey.test/558/Select-Board"},
+                       ["Andrew Lawn", "Selectman"])
+    if v != "keep":
+        bad.append(f"Jaffrey's selectman Andrew Lawn is screened off: {why_}")
+    # The people who work for a board are not on it, and not counted
+    # against its seats: Alstead's three staff lines each name the select
+    # board, and read as members they made six, over the cap of five, and the
+    # whole board was dropped.
+    staff = P.from_headings([
+        "Select Board Office",
+        "Joe Levesque - Chair, Joel McCarty - Full Member, David Hogan - Full "
+        "Member",
+        "Misty Gratacos - Select Board Office Administrator, Work (603) "
+        "835-2986",
+        "Sharon Iozzo - Assistant Select Board Office Administrator",
+        "Shelley Steuwe - Select Board Recording Secretary"])
+    names = [q["name"] for o, q in staff if o == T.BOARD]
+    if names != ["Joe Levesque", "Joel McCarty", "David Hogan"]:
+        bad.append(f"Alstead's select board reads as {names}")
     lyme = cases[0][3]
     if [m.get("directory_name") for m in lyme.get("members") or []] != \
             ["Ben Kilham", "David Kahn", None]:
@@ -17392,13 +17618,177 @@ def _town_boards_decide(T, P):
                         {"url": "https://s.test/select-board"}, [name])
         if v != "reject":
             bad.append(f"{name!r} passes the screen as a selectman")
-    if T.display_name("IAN O'REILLY") != "Ian O'Reilly" or \
-            T.display_name("TOM MCDONALD") != "TOM MCDONALD":
-        bad.append("a name written in capitals is recased wrongly, or recased "
-                   "where its case cannot be known")
+    # A NAME WRITTEN WHOLLY IN CAPITALS IS SET IN NORMAL CASE (the person, 24
+    # September 2026), carefully. Where no rule knows the case -- MacDonald
+    # or Macdonald -- a spelling on disk decides, and failing that it is
+    # cased the ordinary way and reported as a guess.
+    guessed = []
+    for raw, want, known in (
+            ("IAN O'REILLY", "Ian O'Reilly", None),
+            ("TOM MCDONALD", "Tom McDonald", None),
+            ("MARY SMITH-JONES", "Mary Smith-Jones", None),
+            ("JOHN SMITH JR.", "John Smith Jr.", None),
+            ('ROBERT "BUBBA" ELLIS', 'Robert "Bubba" Ellis', None),
+            ("W. WILLIAM HUTWELKER III", "W. William Hutwelker III", None),
+            ("O.J. ROBINSON", "O.J. Robinson", None),
+            ("JANE MACDONALD", "Jane MacDonald", {"MACDONALD": "MacDonald"}),
+            ("JANE MACDONALD", "Jane Macdonald", None),
+            ("Sara Hamilton", "Sara Hamilton", None),
+            ("James Bailey III", "James Bailey III", None)):
+        got_ = T.display_name(raw, known, guessed)
+        if got_ != want:
+            bad.append(f"{raw!r} is set as {got_!r}, not {want!r}")
+    if guessed != ["MACDONALD"]:
+        bad.append(f"the cases guessed are {guessed}, not the one Macdonald "
+                   "no list on disk settled")
     assert not bad, "\n  ".join(bad)
     return "ok", (f"{len(cases)} layouts decided as the rule says, terms read to "
-                  "their end, three non-names screened out")
+                  "their end, non-names screened out, capitals recased")
+
+
+@check("build", "a city's own page gives its mayor and council, each in the seat the page names",
+       needs=("town_boards",))
+def _town_council_read(T):
+    """The cities follow the towns' rule (the person, 24 September 2026), and
+    a council page is laid out differently from a select board's: a seat
+    under the name, over it, on the same line, or -- Dover -- the first name,
+    the surname and the role on three lines. Every city held an election
+    after the directory's September 2025 edition, and the city's own page
+    already named a different mayor in Dover and Laconia.
+
+    Each layout below is a real city's page, cut down; each must give its
+    members in the seats the page names, and nobody else on the page: not
+    Nashua's Legislative Affairs Manager, not Portsmouth's school board or
+    its ward registrars, and not the ward in "Councilor, Ward I", which has
+    the shape of a name.
+    """
+    read = "2026-09-20T22:22:15-0400"
+    layouts = [
+        ("Concord", ["Members", "Mayor", "Byron Champlin", "Ward Councilors",
+                     "Brent Todd, Ward One", "Michele Horne, Ward Two",
+                     "Mark Davie, Ward Four", "At-Large Councilors",
+                     "Nathan Fennessy", "Amanda Grady Sexton",
+                     "Government Websites by CivicPlus®"],
+         [("Byron Champlin", "Mayor"), ("Brent Todd", "Ward 1"),
+          ("Michele Horne", "Ward 2"), ("Mark Davie", "Ward 4"),
+          ("Nathan Fennessy", "At large"), ("Amanda Grady Sexton", "At large")]),
+        ("Claremont", ["Dale Girard", "Mayor", "(603) 558-0860", "Contact Dale",
+                       "(dgirard@council.claremontnh.com)", "×", "Submit",
+                       "A copy of this message will be sent to your email "
+                       "address.", "Andrew O'Hearne", "Councilor, Ward I",
+                       "William Limoges", "Councilor, At Large",
+                       "Click here to contact everyone on the City Council at "
+                       "once."],
+         [("Dale Girard", "Mayor"), ("Andrew O'Hearne", "Ward 1"),
+          ("William Limoges", "At large")]),
+        ("Laconia", ["Councilors", "Mayor - Mike Bordes", "Jon Hildreth, Ward 1",
+                     "Mike Conant , Ward 6", "Overview"],
+         [("Mike Bordes", "Mayor"), ("Jon Hildreth", "Ward 1"),
+          ("Mike Conant", "Ward 6")]),
+        ("Lebanon", ["Mayor Douglas Whittlesey",
+                     "Assistant Mayor Devin R. Wilkie",
+                     "Councilor Kellen Appleton", "Home", "City Councilors",
+                     "Douglas Whittlesey", "Mayor, Ward 1 (Term Expires: 3/27)",
+                     "Kellen Appleton",
+                     "Councilor, At-Large (Term Expires: 3/28)"],
+         [("Douglas Whittlesey", "Mayor"), ("Devin R. Wilkie", "Assistant mayor"),
+          ("Kellen Appleton", "At large")]),
+        ("Keene", ["Ward 1", "Jacob R. Favolise",
+                   "Councilor Ward 1 – 2026 to 2027", "603-338-8880",
+                   "jfavolise@keenenh.gov",
+                   "Member: Municipal Services, Facilities and Infrastructure "
+                   "Committee", "Ward 5", "Philip M. Jones",
+                   "Councilor Ward Five – 2026 to 2029", "At-Large",
+                   "Bettina A. Chadbourne", "Councilor At Large – 2026 to 2027",
+                   "For locations of the City wards, please view the City Ward "
+                   "Map."],
+         [("Jacob R. Favolise", "Ward 1"), ("Philip M. Jones", "Ward 5"),
+          ("Bettina A. Chadbourne", "At large")]),
+        ("Nashua", ["DIRECTORY:", "Lori Wilshire", "Alderman-At-Large President",
+                    "Email", "Phone: 603-809-4203", "More Information",
+                    "Ward 1 - James Ravan", "Alderman - Ward 1", "Email",
+                    "Donna L. Graham", "Legislative Affairs Manager", "Email"],
+         [("Lori Wilshire", "At large"), ("James Ravan", "Ward 1")]),
+        ("Portsmouth", ["CITY COUNCIL (City Charter, Art. IV, Sec. 4.1 - Elected "
+                        "at large, 2 Year Terms)", "Deaglan McEachern", "Mayor",
+                        "Portsmouth, NH 03801", "2026-2027", "Kate Cook",
+                        "Councilor", "Portsmouth, NH 03801", "2026-2027",
+                        "SCHOOL BOARD (City Charter, Art. VI, Sec. 6.3-a, 4 Year "
+                        "Terms)", "Byron Matto", "School Board Member",
+                        "Ward 1", "Penny Reynolds", "Registrar"],
+         [("Deaglan McEachern", "Mayor"), ("Kate Cook", "")]),
+        ("Dover", ["Current Members", "Dennis", "Shanahan", "Role: Mayor",
+                   "Term Begin: 1/5/2026", "Term End: 1/3/2028", "hideThis",
+                   "April", "Richer", "Role: City Councilor, Ward 1",
+                   "Term End: 1/3/2028", "Richard L.", "Robison, Jr.",
+                   "Role: City Councilor, Ward 5"],
+         [("Dennis Shanahan", "Mayor"), ("April Richer", "Ward 1"),
+          ("Richard L. Robison, Jr.", "Ward 5")]),
+    ]
+    bad = []
+    got = {}
+    for city, lines, want in layouts:
+        got[city] = T.read_council(lines)
+        have = [(m["name"], m["seat"]) for m in got[city]]
+        if have != want:
+            bad.append(f"{city}: reads {have}, not {want}")
+    if [m.get("role") for m in got["Nashua"]][:1] != ["President"]:
+        bad.append("Nashua's president of the board of aldermen lost the office")
+    if [m.get("term_expires") for m in got["Dover"]][:1] != ["2028"] or \
+            [m.get("term_expires") for m in got["Keene"]] != ["2027", "2029", "2027"]:
+        bad.append("a council term is read off its start, or not read: "
+                   f"{[m.get('term_expires') for m in got['Dover'] + got['Keene']]}")
+    for text, want in (
+            ("The Keene City Council consists of 16 members: Two in each of "
+             "the five wards, plus five at-large members, and the Mayor as the "
+             "Chair.", (16, True)),
+            ("The City Council consists of nine (9) councilors elected at large "
+             "for terms of two (2) years.", (9, False)),
+            ("A nine-member City Council is elected for two-year terms.",
+             (9, False)),
+            ("All of the powers of the city shall be vested in a Council of nine "
+             "Councilors, one Councilor from each ward, two Councilors at Large, "
+             "and one Councilor to serve as Mayor.", (9, True)),
+            ("The Board of Aldermen consists of 9 ward aldermen elected for a "
+             "term of 2 years at every municipal election and 6 at-large "
+             "aldermen elected for a term of 4 years, 3 of which are elected "
+             "at each municipal election.", (15, False))):
+        if T.stated_council_size([text]) != want:
+            bad.append(f"{text[:48]!r}... states {T.stated_council_size([text])}, "
+                       f"not {want}")
+    # The rule, on Keene: sixteen, the mayor named on another of the city's
+    # pages and counted because the council's own sentence counts him; and a
+    # page naming the directory's council unchanged, with nothing later on
+    # it, is not published.
+    dot = {"officials": [{"position": "Mayor", "name": "Jay Kahn"}]
+           + [{"position": f"City Councilor, Ward {w}", "name": n}
+              for w, n in ((1, "Jacob Favolise"), (5, "Philip Jones"),
+                           (5, "Thomas Powers"))]}
+    council = ["The Keene City Council consists of 4 members, and the Mayor "
+               "as the Chair.", "Ward 1", "Jacob R. Favolise",
+               "Councilor Ward 1 – 2026 to 2027", "Ward 5", "Philip M. Jones",
+               "Councilor Ward Five – 2026 to 2029", "Molly V. Ellis",
+               "Councilor Ward Five – 2026 to 2029", "The end."]
+    v = T.decide_council("keene", [
+        {"url": "https://keene.test/my-city-government/city-council/",
+         "read_on": read, "lines": council},
+        {"url": "https://keene.test/my-city-government/", "read_on": read,
+         "lines": ["Mayor:", "Mayor Jay Kahn"]}], dot)
+    if v["case"] != "own" or v.get("partial") or \
+            [m["name"] for m in v["members"]][:1] != ["Jay Kahn"] or \
+            v["members"][0].get("source_url") != "https://keene.test/my-city-government/":
+        bad.append(f"Keene's own council and its mayor from another page are "
+                   f"not published whole: {v['case']} {v['why']}")
+    same = T.decide_council("x", [
+        {"url": "https://x.test/city-council", "read_on": read,
+         "lines": ["Mayor", "Jay Kahn", "Jacob Favolise, Ward 1",
+                   "Philip Jones, Ward 5", "Thomas Powers, Ward 5"]}], dot)
+    if same["case"] != "directory" or "own council" not in same["why"]:
+        bad.append(f"the directory's own council, unchanged and undated, is "
+                   f"published: {same['case']} {same['why']}")
+    assert not bad, "\n  ".join(bad)
+    return "ok", (f"{len(layouts)} cities' layouts read seat by seat, five "
+                  "statements of a council's size, and the rule on two pages")
 
 
 @check("build", "a town page draws its own board where it has one, and the directory's without its chair",
@@ -17479,9 +17869,69 @@ def _town_board_drawn(B):
                    "town elections")
     if "Town Councilor" not in seats or "City Councilor, District 6" not in seats:
         bad.append(f"a councillor's seat went with the officer label: {seats}")
+
+    # A PART OF THE BOARD, LABELLED (the person, 24 September 2026): "3 of
+    # 5 members listed" beside the heading and the size's source under the
+    # names; where no source gives the size, "5 members listed" and a
+    # sentence saying so. Not the directory's board in its place.
+    def with_board(key, b):
+        o = {"_offices": {key: {"officials": dot}}, "_boards": {key: b}}
+        return _html.unescape(B.build(key.title(), "0", {"0": {}}, {}, [], o,
+                                      "https://x.test", tmpl))
+    part = dict(board, partial=True, size=5, size_from="the page states it")
+    chester = with_board("chester", part)
+    if "3 of 5 members listed" not in chester or \
+            "has 5 seats, as its own page says" not in chester:
+        bad.append("a board listing 3 of its 5 seats is not labelled so, or "
+                   "does not say where the 5 comes from")
+    if "Judith Brotman" in chester:
+        bad.append("the directory's board is drawn beside a partial list")
+    nosize = with_board("campton", dict(board, partial=True, size=None,
+                                        size_from=""))
+    if "3 members listed" not in nosize or "No source on file gives the size" \
+            not in nosize or " of None" in nosize:
+        bad.append("a list whose board's size no source gives is not labelled "
+                   "without a number")
+    if "members listed" in lyme:
+        bad.append("a whole board carries a partial list's label")
+
+    # A CITY'S MAYOR AND COUNCIL, ITS OWN. Dover's directory row names Robert
+    # Carrier as mayor; the city's page, Dennis Shanahan since January.
+    dover_dot = [
+        {"position": "Mayor", "name": "Robert Carrier", "phone": "",
+         "email": "rcarrier@dover.test"},
+        {"position": "Town Councilor, Ward 1", "name": "April Richer",
+         "phone": "603-555-0101", "email": "aricher@dover.test"},
+        {"position": "Road Agent", "name": "JOHN MCDONALD", "phone": "",
+         "email": ""}]
+    council = {"source_url": "https://www.dover.test/city-council/index.html",
+               "read_on": "2026-09-20T22:01:20-0400", "size": 2,
+               "size_from": "the page states it", "later": "x", "members": [
+                   {"name": "Dennis Shanahan", "seat": "Mayor", "role": "",
+                    "term_ends": "2028", "directory_name": None},
+                   {"name": "April Richer", "seat": "Ward 1", "role": "",
+                    "term_ends": "2028", "directory_name": "April Richer"}]}
+    dover = _html.unescape(B.build("Dover", "0", {"0": {}}, {}, [], {
+        "_offices": {"dover": {"officials": dover_dot}},
+        "_councils": {"dover": council}}, "https://x.test", tmpl))
+    if "Robert Carrier" in dover or "Dennis Shanahan" not in dover:
+        bad.append("Dover's page names the directory's mayor, not its own")
+    if "listed the mayor and council when this site read it on 20 September " \
+            "2026" not in dover or "Dover’s own website" not in dover:
+        bad.append("Dover's own council does not say where it was read, and "
+                   "when, or the sources line does not credit the city")
+    dseats = re.findall(r'<span class="offseat">([^<]*)</span>', dover)
+    if "Mayor" not in dseats or "Ward 1" not in dseats:
+        bad.append(f"the council's seats are not the city page's: {dseats}")
+    if "tel:+16035550101" not in dover:
+        bad.append("April Richer lost the phone the directory gives her")
+    if "John McDonald" not in dover or "JOHN MCDONALD" in dover:
+        bad.append("a directory name written in capitals is not set in normal "
+                   "case")
     assert not bad, "\n  ".join(bad)
     return "ok", ("the town's own board drawn with its source and date, the "
-                  "directory's without its chair, contacts kept with their owner")
+                  "directory's without its chair, contacts kept with their "
+                  "owner; a partial list labelled, a city's own council drawn")
 
 
 @check("build", "a town page is tabs: each tab opens a panel with something in it, by click and by address",
