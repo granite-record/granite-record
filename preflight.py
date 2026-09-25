@@ -15309,9 +15309,9 @@ def _calendar_in_a_dom():
     It opens the tab on the reader's today, which is not the build's; selects
     a day in the next week and wants the address, the heading, the list and
     one step of history to follow, and Back to undo it; switches to the week
-    and the day; turns the study committees off, presses Public hearings
-    only, picks one committee and a chamber, and puts it all back with one
-    control; redraws with focus on a card and wants focus back on that card;
+    and the day; ticks and unticks the boxes above the schedule, picks one
+    committee and a chamber, and puts it all back with one control; redraws
+    with focus on a card and wants focus back on that card;
     walks the grid with the arrow keys and Page Down into the next month;
     and rests the pointer on a day for 499 and then 501 milliseconds, moves
     to the next day, presses Escape, leaves the grid, tabs to a day and taps
@@ -15337,6 +15337,21 @@ def _calendar_in_a_dom():
     the click; and a week whose month file fails is named wherever the page
     names a week -- heading, title, canonical link, citation -- with a panel
     that says which week it could not load and links it.
+
+    Rewritten for the person's requests of 25 September 2026. The boxes in
+    the kinds' colours are the filter, Study Committee starts unticked and
+    is remembered in this browser, and a committee asked for by name shows
+    whatever that box says. Moving about the calendar keeps the reader on
+    /calendar with the state in the query -- a week, a day only where it is
+    not the one the week opens on, a view only where it is not the list,
+    filters only where a new reader's differ -- pushing a step of history
+    for a week, a day or a view and replacing it for a filter; and this
+    opens such an address sent to somebody, reloads one in the same
+    browser, goes Back to a week's own page from the first move off it,
+    opens a link in the hash form written until that day and wants it
+    written into the query, keeps the file's own name where the page was
+    reached by it, and keeps the day the Day view is reading when a filter
+    changes the day its week opens on. Every time it prints reads 9:00 AM.
     """
     node = _cal_node()
     if not node:
