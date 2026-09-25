@@ -1333,9 +1333,39 @@ def classify(narr, rcs, prefix=""):
         return "law", "Signed into law"
     if "vetoed" in text:
         return "veto", "Vetoed"
-    carried = " | ".join((e.get("action") or "").lower() for e in evs
-                         if e.get("type") == "floor"
-                         and (e.get("motion") or "").upper() == "MA")
+    # A DISPOSAL THE CHAMBER RECONSIDERED IS NOT ONE. HB 323 of 2005 read
+    # "Killed": the House adopted Inexpedient to Legislate on 23 March, 164-153,
+    # and on 30 March reconsidered it, 153-150, voted the kill down and passed
+    # the bill, which went on to die in a committee of conference. Reading
+    # "inexpedient to legislate" anywhere among the carried motions counted a
+    # kill the House had undone. So a carried disposal is dropped where the
+    # same chamber later carried a motion to reconsider AND then passed the
+    # bill, and what followed decides. Both are needed: HB 1267 of 2012's
+    # "Special Order (Reconsideration Motion)" only scheduled a motion that
+    # then failed, and HB 666 of 1997 reconsidered its kill and killed the
+    # bill again in a row the parser reads in two halves.
+    fl = [e for e in evs if e.get("type") == "floor"
+          and (e.get("motion") or "").upper() == "MA"]
+    fl = [e for _i, e in sorted(enumerate(fl),
+                                key=lambda x: (x[1].get("date") or "", x[0]))]
+
+    def undone(i, e):
+        a = (e.get("action") or "").lower()
+        if not re.search(r"inexpedient to legislate|interim study|refer for study"
+                         r"|indefinitely postpone", a):
+            return False
+        body = e.get("body") or ""
+        for j in range(i + 1, len(fl)):
+            x = (fl[j].get("action") or "").lower()
+            if (fl[j].get("body") or "") != body or not re.search(r"\breconsider", x) \
+                    or re.match(r"\s*special order", x):
+                continue
+            return any((y.get("body") or "") == body and re.search(
+                r"ought to pass|\botp\b|\bpassed\b", (y.get("action") or ""), re.I)
+                for y in fl[j + 1:])
+        return False
+    carried = " | ".join((e.get("action") or "").lower()
+                         for i, e in enumerate(fl) if not undone(i, e))
     if "inexpedient to legislate" in carried:
         return "done", "Killed"
     if re.search(r"interim study|refer for study", carried):

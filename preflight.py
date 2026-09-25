@@ -1096,6 +1096,58 @@ def _conferees_could_not_agree(build_site_v2):
                   "an agreed or replaced report keeps its label")
 
 
+@check("status", "a kill the chamber reconsidered and then passed the bill over is not a kill",
+       needs=("build_site_v2",))
+def _reconsidered_kill(build_site_v2):
+    """HB 323 of 2005 read "Killed". The House adopted Inexpedient to
+    Legislate on 23 March 2005, 164-153; on 30 March it reconsidered, 153-150,
+    voted the kill down and passed the bill, which the Senate passed and a
+    committee of conference never signed a report on. classify() read
+    "inexpedient to legislate" anywhere among the motions carried, so the
+    kill the House had undone was the answer (approved to fix, 25 September).
+
+    It still reads a kill that stood: HB 1267 of 2012, where a SPECIAL ORDER
+    for a reconsideration carried and the reconsideration itself then failed;
+    and HB 666 of 1997, reconsidered and killed again in a row the parser reads
+    in two halves. Every row below is the bill's own, from its docket.
+    """
+    B = build_site_v2
+    hb323 = _nar(
+        _ev("H", "ITL MA RC(164-153)", "floor", "MA", "Inexpedient to Legislate",
+            date="2005-03-23"),
+        _ev("H", "Rep Norelli moved to Reconsider, MA RC(153-150); ITL ML DIV(149-151); "
+                 "Rep Kurk Fl Am{0867}, AA", "floor", "MA", "Reconsider", date="2005-03-30"),
+        _ev("H", "DIV(182-116); Passed with Am VV", "floor", "MA",
+            "Ought to Pass with Amendment", date="2005-03-30"))
+    hb1267 = _nar(
+        _ev("H", "Inexpedient to Legislate: MA VV", "floor", "MA", "Inexpedient to Legislate",
+            date="2012-03-15"),
+        _ev("H", "Special Order (Reconsideration Motion) to Next Session Day (Rep Jasper): MA VV",
+            "floor", "MA",
+            "Special Order (Reconsideration Motion) to Next Session Day (Rep Jasper)",
+            date="2012-03-21"),
+        _ev("H", "Reconsideration (Rep DeLemus): MF DIV 103-233", "floor", "MF",
+            "Reconsideration (Rep DeLemus)", date="2012-03-28"))
+    hb666 = _nar(
+        _ev("H", "ITL REPORT ADOPTED VV; HJ33,P798", "floor", "MA", "Inexpedient to Legislate",
+            date="1997-03-05"),
+        _ev("H", "REP GIBBONS MOVED TO RECONSIDER, MA DIV(213-116); ITL REPORT", "floor", "MA",
+            "Reconsider", date="1997-03-05"),
+        _ev("H", "ADOPTED RC(233-114); HJ33,P798-800", "floor", "MA", "Adopt",
+            date="1997-03-05"))
+    got = {bid: B.classify(n, [], "HB") for bid, n in
+           (("HB323", hb323), ("HB1267", hb1267), ("HB666", hb666))}
+    bad = []
+    if got["HB323"] == ("done", "Killed"):
+        bad.append("HB 323 of 2005 is 'Killed' by a kill the House reconsidered and passed it over")
+    for bid in ("HB1267", "HB666"):
+        if got[bid] != ("done", "Killed"):
+            bad.append(f"{bid}'s kill stood and it reads {got[bid]}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("HB 323 of 2005 is not killed by the kill it was reconsidered out of; "
+                  "HB 1267 of 2012 and HB 666 of 1997, whose kills stood, are")
+
+
 @check("status", "conferees who never signed a report end the bill too, and a report signed late does not",
        needs=("build_site_v2",))
 def _conferees_never_signed(build_site_v2):
