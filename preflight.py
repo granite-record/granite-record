@@ -1060,6 +1060,11 @@ def _conferees_could_not_agree(build_site_v2):
         said = [s["text"] for s in steps if s["act"] == "conf_adopted"]
         if not said or any("could not agree" not in t for t in said):
             bad.append(f"{bid}: How it got here reads {said!r}")
+        # Never "...could not agree on a voice vote": it reads as though the
+        # voice vote were what they could not agree on.
+        if any(t.rstrip().endswith("could not agree on a voice vote") for t in said):
+            bad.append(f"{bid}: How it got here reads {said!r}, which puts the vote "
+                       "after 'could not agree'")
         rail = B.passage(n.get("stages"), d.kind, d.status, bid, {"H", "S"}, ["H", "S"])
         why = B.journey_disagrees(steps, d.kind, d.status, rail, bid)
         if why:

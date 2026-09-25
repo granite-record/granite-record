@@ -4699,9 +4699,18 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
         # "UNABLE TO AGREE", reads as the conferees having settled it.
         if (st["act"] == "conf_adopted" and unable_day is not None
                 and (st.get("date") or "") >= unable_day):
-            st["text"] = st["text"].replace(
-                "Adopted the conference report",
-                "Adopted the conferees' report that they could not agree", 1)
+            # THE VOTE BEFORE THE REPORT. "...the conferees' report that they
+            # could not agree on a voice vote" reads as though the voice vote
+            # were what they could not agree on; a tally after a comma is
+            # read rightly.
+            voice = "Adopted the conference report on a voice vote"
+            if st["text"].startswith(voice):
+                st["text"] = ("Adopted, on a voice vote, the conferees' report that "
+                              "they could not agree" + st["text"][len(voice):])
+            else:
+                st["text"] = st["text"].replace(
+                    "Adopted the conference report",
+                    "Adopted the conferees' report that they could not agree", 1)
         if st.get("reconsidered"):
             st["text"] += ", reconsidered on " + _j_prose_date(
                 st["reconsidered"], st["reconsidered"][:4] != st["date"][:4])
