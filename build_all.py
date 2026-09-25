@@ -516,9 +516,10 @@ def plan(a):
               "--body", "S"],
              needs=["narratives.json", "site/legislators.json"],
              produces=["site/session/S"],
-             note="the record only. The Senate journal carries no unanimous "
-                  "consent, no remarks and no speaker attributions at all, so "
-                  "a Senate page says so rather than showing an empty section"),
+             note="the record, and the senators the journal excused for the "
+                  "day. The Senate journal carries no unanimous consent, no "
+                  "remarks and no speaker attributions at all, so a Senate "
+                  "page says so rather than showing an empty section"),
 
         Step("a page for every day the House sat",
              ["build_session_pages.py", "--site", "site", "--base", a.base],

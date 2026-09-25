@@ -6682,6 +6682,152 @@ def _vote_category_text(BSP, shell):
         shutil.rmtree(root, ignore_errors=True)
 
 
+# Senate sittings as the Senate Journal prints them, cut down to the lines that
+# matter: journals_senate/2026/SJ 09 April 16, 2026.txt (the day's excused
+# senator, the roll call's own excused line, and one excused partway through);
+# 2003/SJ 9.txt (the date on the line the sitting opens with); 2012/SJ 15 May
+# 23, 2012.txt ("and" after the last comma, and the list again before a roll
+# call); 2024/SJ 08 April 5 2024.txt ("for the moment"); 2024/SJ 09 April 11
+# 2024.txt (a reason given); 2018/SJ005.txt (excused "for the day", after the
+# consent calendar); 2006/SJ 4.txt (the date on the JOURNAL line), below a
+# floor amendment's heading in the shape 2018/SJ005.txt prints one, whose own
+# date line is the trap.
+SENATE_JOURNALS = {
+    "2026/SJ 09 April 16, 2026.txt": (
+        "SENATE                                                       April 16, 2026\n"
+        "JOURNAL 9\n\n"
+        "The Senate reconvened at 9:00 a.m., a quorum being present.\n\n"
+        "The Reverend Mark Warren, Chaplain to the Senate, offered the following prayer:\n\n"
+        "Senator Watters led the Pledge of Allegiance.\n\n"
+        "Senator McConkey is excused.\n\n"
+        "                                         INTRODUCTION OF PAGES\n"
+        "(The Chair recognized Senator Pearl.)\n\n"
+        "HB 1215, relative to supporting the preferred method of communication of an "
+        "individual with a\ncommunication disability.\n\n"
+        "The following Senators voted Yes: Rochefort, Lang, Gray, Innis, Ward.\n\n"
+        "The following Senators were excused: McConkey.\n\n"
+        "Roll Call, Yeas: 15 - Nays: 8. Adopted, bill ordered to Third Reading.\n\n"
+        "Senator Watters is excused.\n"),
+    "2003/SJ 9.txt": (
+        "SENATE\nJOURNAL 9\n\n"
+        "The Senate met at 10:00 a.m.                                "
+        "              March 20, 2003\n\n"
+        "A quorum was present.\n\n"
+        "Senator Roberge led the Pledge of Allegiance.\n\n"
+        "Senator Prescott is excused for the day.\n\n"
+        "                                     INTRODUCTION OF GUESTS\n"),
+    "2012/SJ 15 May 23, 2012.txt": (
+        "SENATE                                                  May 23, 2012\n"
+        "JOURNAL 15\n\n"
+        "The Senate reconvened at 11 a.m., a quorum being present.\n\n"
+        "Sen. Boutin led the Pledge of Allegiance.\n\n"
+        "Sens. Forrester, Luther, Larsen, and Merrill are excused.\n"
+        "597  SENATE JOURNAL 23 MAY 2012\n\n"
+        "SB 372-FN-L, establishing an education tax credit.\n"
+        "Sen. Forsythe moves concurrence.\n"
+        "A roll call was requested by Sen. Houde, seconded by Sen. D'Allesandro.\n"
+        "Sens. Forrester, Luther, Larsen, and Merrill are excused.\n"),
+    "2024/SJ 08 April 5 2024.txt": (
+        "SENATE                                                        April 5, 2024\n"
+        "JOURNAL 8\n\n"
+        "The Senate reconvened at 10:00 a.m., a quorum being present.\n\n"
+        "Senator Gendreau led the Pledge of Allegiance.\n\n"
+        "Senator Ricciardi is excused for the moment.\n\n"
+        "                                          MOTION OF RECONSIDERATION\n"),
+    "2024/SJ 09 April 11 2024.txt": (
+        "SENATE                                                        April 11, 2024\n"
+        "JOURNAL 9\n\n"
+        "The Senate reconvened at 10:00 a.m., a quorum being present.\n\n"
+        "Senator Lang led the Pledge of Allegiance.\n\n"
+        "                                           INTRODUCTION OF GUESTS\n"
+        "I don't know if he's still there. And Ken Chamberlain.\n\n"
+        "Senator D'Allesandro is excused due to medical necessity.\n\n"
+        "                                             CONSENT CALENDAR\n"),
+    "2018/SJ005.txt": (
+        "                              February 22, 2018\n\n"
+        "The Senate reconvened at 10:00 a.m., a quorum being present.\n\n"
+        "Senator Hennessey led the Pledge of Allegiance.\n\n"
+        "                             INTRODUCTION OF GUESTS\n\n"
+        "SB 524-FN, relative to head injury policies for the community college\n"
+        "system of New Hampshire and the university system of New Hampshire.\n\n"
+        "The question is on the adoption of the Consent Calendar. Adopted.\n\n"
+        "Senators Carson and D'Allesandro are excused for the day.\n\n"
+        "                                  REGULAR CALENDAR\n"),
+    "2006/SJ 4.txt": (
+        "Sen. Hennessey, Dist 5\n"
+        "January 26, 2006\n"
+        "2006-0827s\n\n"
+        "Adjournment.\n\n"
+        "SENATE\n\n"
+        "JOURNAL 4                                              February 2, 2006\n\n"
+        "The Senate met at 10:00 a.m.\n\n"
+        "A quorum was present.\n\n"
+        "Senator Letourneau led the Pledge of Allegiance.\n\n"
+        "Senator Kenney is excused for the day.\n\n"
+        "                                    INTRODUCTION OF GUESTS\n"),
+}
+
+
+@check("session", "a Senate page names the senators excused for the day, and "
+       "only those, and never why", needs=("journal_days", "build_session_pages", "shell"))
+def _senate_excused(J, BSP, shell):
+    """Senate sitting pages named nobody as excused; the House's have for a
+    fortnight. The person asked on 24 September 2026 for the Senate's to
+    match -- the members excused for the day, and not those excused for part
+    of it, since a senator excused for the day sometimes comes back once the
+    obligation is done.
+
+    The Senate Journal has no LEAVES OF ABSENCE heading. It names the day's
+    excused senators as each sitting opens, and the same sentence later in the
+    day is a senator leaving partway or excused from one vote, so only the
+    opening is read. The wrongs this rules out are each real: a mid-day
+    excuse named as the day's, a roll call's own excused line, "for the
+    moment", "and Merrill" as a name, a date taken from a floor amendment
+    printed above the sitting, and a reason printed on the page.
+    """
+    root = Path(tempfile.mkdtemp())
+    try:
+        for rel, text in SENATE_JOURNALS.items():
+            f = root / "journals_senate" / rel
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(text, encoding="utf-8")
+        # A day's debate printed a second time is not read again.
+        (root / "journals_senate" / "2026" / "SJ 09 - Verbatim.txt").write_text(
+            SENATE_JOURNALS["2026/SJ 09 April 16, 2026.txt"].replace(
+                "McConkey is excused.", "Gray is excused."), encoding="utf-8")
+
+        def names(date):
+            got = J.read_senate_day(date, root / "journals_senate")
+            return [n for g in got["absences"] for n in g["names"]]
+        want = {"2026-04-16": ["McConkey"], "2003-03-20": ["Prescott"],
+                "2012-05-23": ["Forrester", "Luther", "Larsen", "Merrill"],
+                "2024-04-05": [], "2024-04-11": ["D'Allesandro"],
+                "2018-02-22": [], "2006-02-02": ["Kenney"],
+                "2006-01-26": []}
+        got = {d: names(d) for d in want}
+        assert got == want, (
+            "the Senate's excused senators are not the opening's: " + "; ".join(
+                f"{d} got {got[d]}, want {want[d]}" for d in want if got[d] != want[d]))
+
+        members = BSP.Members(root)
+        html = BSP.absences_html(J.read_senate_day("2024-04-11", root / "journals_senate"),
+                                 "S", members, shell.E)
+        text = re.sub(r"<[^>]+>", " ", html)
+        assert "Allesandro" in text and "Sen. " in text and "1 senator " in text, (
+            f"the Senate's excused list is not drawn as a senator: {text[:200]!r}")
+        assert not re.search(r"medical|necessity|illness|business|family", text, re.I), (
+            "a Senate page gives the reason a senator was excused")
+        assert "may still have voted" in text and "does not always agree" in text, (
+            "the Senate's excused note claims more than the ballots allow: Senator "
+            "Carson, excused as the Senate opened on 7 May 2026, voted on all seven "
+            "of its roll calls")
+        return "ok", ("the opening's excused senators on six real sittings; no "
+                      "mid-day, roll call or part-day excuse, no verbatim copy, "
+                      "and no reason on the page")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
 @check("build", "every page names its own address with a slash after the domain")
 def _addresses_have_slash():
     """1,670 pages cited "https://graniterecord.orgsession/H/2026-05-21".

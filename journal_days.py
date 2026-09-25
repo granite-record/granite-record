@@ -14,7 +14,9 @@ HOUSE ONLY, AND THAT IS NOT AN OMISSION. Across all 491 Senate journal files
 ordinary English inside a verbatim speech ("only four people spoke in favor").
 Not one is a structural marker. The Senate journal does not record who spoke on
 which side; the House journal does it 16,129 times. There is nothing here to
-parse for the Senate, so this does not pretend to.
+parse for the Senate, so this does not pretend to. The one exception is the
+Senate's leave list -- who it excused for the day -- which read_senate_day
+reads from each sitting's opening.
 
 WHY THE MOTION COMES FROM THE RECORD AND NOT FROM THIS FILE
 
@@ -535,6 +537,159 @@ def read_day(date, root=HOUSE):
         date, {"date": date, "attributions": [], "debates": [],
                "unanimous_consent": [], "opening": {}, "absences": [],
                "consent": {}, "files": []})
+
+
+# ------------------------------------------------- the Senate's leave list --
+#
+# THE ONE THING THE SENATE JOURNAL GIVES THE PAGE: WHO WAS EXCUSED. It records
+# no speakers (above), but every sitting on disk, 2003 to 2026, opens the same
+# way -- the Senate meets, a quorum is present, the prayer, the Pledge -- and
+# the senators excused for the day are named there, before the first bill:
+#
+#   "Senator Prescott is excused for the day."                      2003
+#   "Sen. Merrill is excused from today's session."                 2010
+#   "Sens. Boutin, Reagan, and Prescott were excused for the day."  2015
+#   "Senators Avard, Carson and Ricciardi are excused."             2026
+#
+# There is no LEAVES OF ABSENCE heading to find, so the opening is bounded by
+# what ends it: the first bill or roll call, or the next sitting.
+#
+# ONLY THE OPENING, BECAUSE THE SAME SENTENCE MEANS SOMETHING ELSE LATER. Past
+# the first bill it is a senator leaving partway, or excused from one vote:
+# "Senators Carson and D'Allesandro are excused for the day." after the
+# consent calendar of 22 February 2018; "Sen. Houde is excused." before each
+# of seven roll calls of 7 March 2012; and from 2017 every roll call prints
+# "The following Senators were excused: ...". The person decided on
+# 24 September 2026 that a page names the members excused for the day and not
+# those excused for part of it, so an opening excuse that names part of the
+# day -- "for the afternoon", "for the morning", "for the moment" -- is left
+# out too.
+#
+# NAMES ONLY, AS FOR THE HOUSE. The Senate seldom gives a reason, and where it
+# does -- "is excused due to medical necessity", 11 April 2024 -- it is health
+# information about a named person; nothing here keeps it.
+SENATE = Path("journals_senate")
+
+_MONTH_ALT = "|".join(m.capitalize() for m in MONTHS)
+# The sitting's date: at the end of the line that opens it ("The Senate met at
+# 10:00 a.m.      March 20, 2003", 2003), or else in the heading just above
+# it -- "SENATE      May 1, 2014", "JOURNAL 4      February 2, 2006", or
+# "March 27, 2003" alone. JUST above: a floor amendment prints its own date on
+# a line alone ("Sen. Hennessey, Dist 5 / February 22, 2018 / 2018-0827s"),
+# and with the JOURNAL line unread, 2 February 2006 took a date from the
+# business 2,241 characters above it. The heading is never more than 538
+# characters above the sitting's first line, 2003 to 2026.
+S_DATE = re.compile(rf"(?P<mon>{_MONTH_ALT})\s+(?P<day>\d{{1,2}}),?\s*(?P<yr>\d{{4}})")
+S_DATELINE = re.compile(
+    rf"^[ \t]*(?:SENATE[ \t]+|JOURNAL\s*\d+[A-Z]?[ \t]+)?(?:{_MONTH_ALT})[ \t]+"
+    rf"\d{{1,2}},?[ \t]*\d{{4}}[ \t]*$", re.M)
+S_HEAD_REACH = 1200
+S_START = re.compile(
+    r"^[ \t]*The\s+Senate\s+(?:met|reconvened|convened|assembled)\b[^\n]*", re.M)
+# What ends the opening: a bill's heading at the start of a line, or a roll
+# call ("The following Senators voted Yes:", "Yeas: 12 - Nays: 9").
+S_BUSINESS = re.compile(
+    r"^[ \t]*(?:(?:HB|SB|CACR|HCR|SCR|SR|HR|HJR|SJR)\s?\d+\b|"
+    r"The\s+following\s+Senators\s+voted|(?:Roll\s+Call,\s+)?Yeas:)", re.M)
+# CASE-SENSITIVE, like LEAVE_LINE and for its reason: a name is capitalised
+# and "is excused" is not, and under re.I the names ran on into the verb.
+_SEN = r"(?:Sen(?:ator)?s?\.?\s+)?"
+_SLIST = (_SEN + _NAME + r"(?:\s*,\s*" + _SEN + _NAME + r")*"
+          r"(?:\s*,?\s+and\s+" + _SEN + _NAME + r")?")
+S_EXCUSED = re.compile(
+    r"\b(?:The\s+following\s+Senators\s+(?:are|were)\s+excused(?P<t1>[^:.]{0,40}):"
+    r"\s*(?P<l1>" + _SLIST + r")"
+    r"|(?:Senators?|Sens?\.)\s+(?P<l2>" + _SLIST + r")\s+(?:is|are|was|were)\s+"
+    r"excused(?P<t2>[^.]{0,60}))\s*\.")
+PART_OF_DAY = re.compile(
+    r"\b(?:morning|afternoon|evening|moment|votes?|voting|balance|rest|remainder)\b",
+    re.I)
+
+
+def senate_openings(text):
+    """[(iso_date, opening)] -- each sitting's opening in one Senate file."""
+    out = []
+    starts = list(S_START.finditer(text))
+    for i, s in enumerate(starts):
+        end = starts[i + 1].start() if i + 1 < len(starts) else len(text)
+        b = S_BUSINESS.search(text, s.end(), end)
+        if b:
+            end = b.start()
+        m = S_DATE.search(s.group(0))
+        if not m:
+            above = list(S_DATELINE.finditer(
+                text, max(0, s.start() - S_HEAD_REACH), s.start()))
+            m = S_DATE.search(above[-1].group(0)) if above else None
+        if not m:
+            continue
+        mo = MONTHS[m.group("mon").lower()]
+        out.append((f"{m.group('yr')}-{mo:02d}-{int(m.group('day')):02d}",
+                    text[s.end():end]))
+    return out
+
+
+def senate_absences(opening):
+    """[name] -- the senators excused for the day in one sitting's opening."""
+    out = []
+    for g in S_EXCUSED.finditer(joined(opening)):
+        if PART_OF_DAY.search((g.group("t1") if g.group("l1") else g.group("t2")) or ""):
+            continue
+        for nm in _names(g.group("l1") or g.group("l2")):
+            # "Forrester, Luther, Larsen, and Merrill": the comma is split
+            # on first, which leaves the "and" on the last name.
+            nm = re.sub(r"^(?:and\s+)?(?:Sen(?:ator)?s?\.?\s+)?", "", nm).strip()
+            if nm and nm not in out:
+                out.append(nm)
+    return out
+
+
+def read_senate_year(year, root=SENATE):
+    """{date: [name]} -- every Senate sitting's leave list in one folder.
+
+    "Verbatim" files are a day's debate printed a second time, and are
+    skipped; a day printed twice otherwise (a long and a short version of
+    27 June 2007) gives the same names twice, which are kept once.
+    """
+    key = ("S", str(root), str(year))
+    if key in _YEARS:
+        return _YEARS[key]
+    out = {}
+    d = Path(root) / str(year)
+    if d.exists():
+        for f in sorted(d.glob("*.txt")):
+            if "erbatim" in f.name:
+                continue
+            try:
+                text = f.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            text = text.replace("\r\n", "\n").replace("\r", "\n")
+            for iso, opening in senate_openings(text):
+                got = out.setdefault(iso, [])
+                for nm in senate_absences(opening):
+                    if nm not in got:
+                        got.append(nm)
+    _YEARS[key] = out
+    return out
+
+
+def read_senate_day(date, root=SENATE):
+    """{"absences": [{"names": [...]}]} for one Senate sitting -- the shape
+    read_day gives the House, so the page draws both the same way.
+
+    A December organization day opens the next year's journal
+    (journals_senate/2025/SJ 01 December 4, 2024 Organization Day.txt), so
+    both folders are read.
+    """
+    names = []
+    for year in dict.fromkeys((date[:4], str(int(date[:4]) + 1)
+                               if date[5:7] == "12" else date[:4])):
+        for nm in read_senate_year(year, root).get(date, []):
+            if nm not in names:
+                names.append(nm)
+    return {"date": date, "attributions": [], "debates": [],
+            "unanimous_consent": [], "opening": {},
+            "absences": [{"names": names}] if names else [], "consent": {}}
 
 
 def main():

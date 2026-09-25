@@ -17,11 +17,11 @@ Then the debates the House voted to print in its permanent journal, and last
 the remarks made under unanimous consent, which belong to no bill and are part
 of the record all the same.
 
-HOUSE ONLY, AND ON PURPOSE. Across all 491 Senate journal files "spoke in
-favor" occurs four times and "spoke against" twice, and every one is ordinary
-English inside a speech rather than a marker. The Senate journal does not
-record who spoke on which side. Senate days are a separate job, not half of
-this one.
+WHO SPOKE IS HOUSE ONLY, AND ON PURPOSE. Across all 491 Senate journal files
+"spoke in favor" occurs four times and "spoke against" twice, and every one is
+ordinary English inside a speech rather than a marker. The Senate journal does
+not record who spoke on which side. A Senate page carries the record and the
+senators the journal excused for the day, which is all its journal adds.
 
 THE MOTION IS THE HEADING, NEVER A FOOTNOTE
 
@@ -150,6 +150,12 @@ class Members:
         hit = self.by_full.get((body, n.lower()))
         if hit:
             return hit
+        # A surname of two words is the whole name: the Senate Journal's
+        # "Senator Fuller Clark" and "Senator Perkins Kwoka", whose last word
+        # alone is someone else's surname or no one's.
+        cand = self.by_last.get((body, n.lower()), [])
+        if len(cand) == 1:
+            return cand[0]
         parts = n.split()
         if parts:
             cand = self.by_last.get((body, parts[-1].lower()), [])
@@ -333,6 +339,13 @@ def absences_html(narrative, body, members, esc):
     recorded excused on roll calls 133 to 172 and voting on 173 to 188. The
     two records also disagree the other way: Rep. William Dolan, on leave on
     7 January 2026, is recorded "not excused" on all 31 roll calls that day.
+
+    THE SENATE NAMES ITS OWN, from the opening of each sitting
+    (journal_days.read_senate_day), and only those excused for the day, by
+    the person's decision of 24 September 2026. The same caution holds there:
+    of 102 senators so named on a day with roll calls, 2003 to 2026, 101 are
+    recorded excused on every one of them, and Senator Carson, excused as
+    the Senate opened on 7 May 2026, voted on all seven that afternoon.
     """
     rows = narrative.get("absences") or []
     if not rows:
@@ -347,13 +360,17 @@ def absences_html(narrative, body, members, esc):
     if not names:
         return ""
     n = len(names)
+    if body == "S":
+        who = f'{n} senator{"" if n == 1 else "s"} as excused by the Senate'
+        one = "A senator excused for the day may still have voted on part of it"
+    else:
+        who = (f'{n} member{"" if n == 1 else "s"} as having leave of the '
+               f"{CHAMBER[body]}")
+        one = "A member on leave may still have voted on part of the day"
     return ('<section class="sday"><h2>Excused for the day</h2>'
-            f'<p class="note">The journal records {n} member'
-            f'{"" if n == 1 else "s"} as having leave of the {CHAMBER[body]} '
-            "for the day, that is, permission to be away. A member on leave "
-            "may still have voted on part of the day, and the roll call "
-            "record does not always agree with the journal about who was "
-            "excused.</p>"
+            f'<p class="note">The journal records {who} for the day, that is, '
+            f"permission to be away. {one}, and the roll call record does not "
+            "always agree with the journal about who was excused.</p>"
             '<p class="sspoke sabs">'
             + ", ".join(member_html(body, nm, members, esc) for nm in names)
             + "</p></section>")
@@ -606,8 +623,8 @@ def main():
     ap.add_argument("--site", default="site")
     ap.add_argument("--base", default="https://graniterecord.org")
     ap.add_argument("--body", default="H",
-                    help="H or S. A Senate page carries the record only: its "
-                         "journal records no speakers")
+                    help="H or S. A Senate page carries the record and who was "
+                         "excused: its journal records no speakers")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--prune", action="store_true",
                     help=f"remove more than {PRUNE_CEILING} pages of sittings "
@@ -637,23 +654,32 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     urls, wrote, with_narr, linked, unlinked = [], 0, 0, 0, 0
+    excused = 0
     order = mine[: a.limit] if a.limit else mine
     import queue_links as B2  # not build_site_v2: see queue_links.py
     journal_keys, jlinked = B2.journal_keys_from_queue(), 0
     for n, key in enumerate(order):
         day = days[key]
         date = day.date
-        # THE SENATE JOURNAL IS NOT READ, and that is not an oversight. Across
+        # THE SENATE JOURNAL IS READ FOR ONE THING: WHO WAS EXCUSED. Across
         # all 491 Senate files there are no UNANIMOUS CONSENT sections, no
         # REMARKS, no PERSONAL PRIVILEGE, and "spoke in favor" appears in three
         # files as ordinary English inside a speech. The Senate journal does
-        # not record who spoke on which side, so there is nothing here to
-        # parse and the page says so instead of showing an empty section.
+        # not record who spoke on which side, so there is nothing of that to
+        # parse and the page says so instead of showing an empty section. It
+        # does name the senators excused for the day, as each sitting opens,
+        # and read_senate_day returns those in the shape the House's come in.
         blank = {"attributions": [], "debates": [], "unanimous_consent": []}
-        narrative = (blank if (body != "H" or date < JOURNAL_FROM)
-                     else journal_days.read_day(date))
+        if body == "S":
+            narrative = journal_days.read_senate_day(date)
+        elif date < JOURNAL_FROM:
+            narrative = blank
+        else:
+            narrative = journal_days.read_day(date)
         if narrative.get("attributions") or narrative.get("debates"):
             with_narr += 1
+        if any(r.get("names") for r in narrative.get("absences") or []):
+            excused += 1
 
         for at in (narrative.get("attributions") or []):
             for nm in at["names"]:
@@ -727,6 +753,9 @@ def main():
           "from 2025 in archive/queue.csv)")
     print(f"    {with_narr:,} carry a journal narrative "
           f"(the journal starts {JOURNAL_FROM[:4]})")
+    # Printed so that none at all, which is what a moved journal folder or a
+    # changed opening looks like, cannot pass as a quiet chamber.
+    print(f"    {excused:,} name the members the journal excused for the day")
     named = linked + unlinked
     if named:
         # A WRONG LINK IS WORSE THAN NO LINK, so this number is meant to be
