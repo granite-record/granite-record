@@ -80,9 +80,10 @@ project:
 | `pypdf` | PDF page handling |
 | `PIL` (Pillow) | `build_brand.py` (icons, logos and link-card images) |
 | `faster_whisper` | `transcribe_and_align.py` (transcribing a recording that has no captions) |
+| `boto3` | `cloud.py` (the nightly's kit and the backup in the project's R2 bucket; `--local-bucket` needs nothing) |
 
-Please keep them lazy. Tidying them to the top of the file turns six optional
-packages into six hard requirements.
+Please keep them lazy. Tidying them to the top of the file turns seven optional
+packages into seven hard requirements.
 
 ## How work is done here
 

@@ -61,6 +61,39 @@ def get(name, what=""):
     return v
 
 
+R2 = ("R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY")
+R2_BUCKET = "granite-record-backup"
+
+
+def r2():
+    """The R2 bucket cloud.py uses: {"account", "key_id", "secret", "bucket"}.
+
+    On GitHub's machine these are environment variables, filled from the
+    repository's secrets; on the laptop they may sit in secrets.json under the
+    same four names (R2_BUCKET is optional). If any of the three credentials
+    is in the environment, the environment is the only source -- one bucket's
+    key is never paired with another's account. An error names what is
+    missing and never prints a value.
+    """
+    import os
+    env = any(os.environ.get(n) for n in R2)
+    src = dict(os.environ) if env else (_load() if PATH.exists() else {})
+
+    def one(name):
+        v = str(src.get(name) or "").strip()
+        return "" if v.startswith("your ") else v
+    missing = [n for n in R2 if not one(n)]
+    if missing:
+        where = ("the environment" if env else
+                 f"{PATH.name}" if PATH.exists() else
+                 f"the environment, and there is no {PATH.name}")
+        raise SystemExit(f"No usable {', '.join(missing)} in {where}. On the "
+                         f"laptop put them in {PATH.name} (see {EXAMPLE}); on "
+                         "GitHub they are the repository's secrets.")
+    return {"account": one(R2[0]), "key_id": one(R2[1]), "secret": one(R2[2]),
+            "bucket": one("R2_BUCKET") or R2_BUCKET}
+
+
 def youtube():
     return get("youtube_api_key",
                "Get one at console.cloud.google.com, enable YouTube Data "

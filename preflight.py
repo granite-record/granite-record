@@ -2340,7 +2340,7 @@ def _ls_nights(livestreams, build_manifest):
         assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
         last = r.stdout.strip().splitlines()[-1]
         assert last.startswith("LIVESTREAMS: "), last
-        st = json.loads((root / "state" / "livestreams.json").read_text(encoding="utf-8"))
+        st = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
         v = st["videos"]
         assert v["PFNEW000001"]["captions"] == "captioned", v["PFNEW000001"]
         assert (root / "work" / "PFNEW000001" / "captions.en.json3").exists()
@@ -2366,7 +2366,7 @@ def _ls_nights(livestreams, build_manifest):
 
         r = _ls_run(root, "--now", "2026-09-26T06:30:00Z")
         assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
-        st = json.loads((root / "state" / "livestreams.json").read_text(encoding="utf-8"))
+        st = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
         assert st["last_run"]["units"] == 3, st["last_run"]
         assert st["videos"]["PFNEW000002"]["status"] == "finished"
         assert st["videos"]["PFNEW000002"]["captions"] == "deferred", \
@@ -2425,7 +2425,7 @@ def _ls_nights(livestreams, build_manifest):
         assert "HB1491" in read, read
         assert cs.get("PFOTHER") == other and cs["_absent"] == {"PFOTHER": ["HB88"]}, \
             "--markers changed a recording it was not given"
-        st = json.loads((root / "state" / "livestreams.json").read_text(encoding="utf-8"))
+        st = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
         n1 = st["videos"]["PFNEW000001"]
         assert n1.get("carry") and n1["result"]["segs"] == read, n1
 
@@ -2455,12 +2455,12 @@ def _ls_nights(livestreams, build_manifest):
             "PFNEW000001": {"last": 9.0, "files": {}}}}), encoding="utf-8")
         r = _ls_run(root, "--now", "2026-09-28T06:30:00Z")
         assert r.returncode == 0, (r.stdout + r.stderr)[-400:]
-        st = json.loads((root / "state" / "livestreams.json").read_text(encoding="utf-8"))
+        st = json.loads((root / "archive" / "livestreams.json").read_text(encoding="utf-8"))
         n1 = st["videos"]["PFNEW000001"]
         assert not n1.get("carry") and n1.get("adopted") and "result" not in n1, n1
         assert st["last_run"]["units"] == 2, st["last_run"]
         assert livestreams.carry_list(st) == [
-            "state/livestreams.json", "videos_house_livestreams.csv",
+            "archive/livestreams.json", "videos_house_livestreams.csv",
             "videos_senate_livestreams.csv"], livestreams.carry_list(st)
         return "ok", ("3 new and 1 pre-air row indexed at 6 units, then 3, then 2; "
                       "one captioned, read by --markers and put back the next "
@@ -2617,16 +2617,16 @@ def _ls_state(livestreams):
     root = Path(tempfile.mkdtemp())
     try:
         _ls_fixture(root, livestreams)
-        (root / "state").mkdir()
-        (root / "state" / "livestreams.json").write_text("{not json",
+        (root / "archive").mkdir(exist_ok=True)
+        (root / "archive" / "livestreams.json").write_text("{not json",
                                                           encoding="utf-8")
         r = _ls_run(root, "--now", "2026-09-25T06:30:00Z")
         assert r.returncode == 1, r.stdout[-300:]
-        assert (root / "state" / "livestreams.json").read_text(encoding="utf-8") \
+        assert (root / "archive" / "livestreams.json").read_text(encoding="utf-8") \
             == "{not json", "an unreadable state was replaced"
         assert not (root / "videos_house_livestreams.csv").exists()
         # Its rows here and the state not: a kit that came down short.
-        (root / "state" / "livestreams.json").unlink()
+        (root / "archive" / "livestreams.json").unlink()
         (root / "videos_house_livestreams.csv").write_text(
             ",".join(livestreams.COLS) + "\n", encoding="utf-8")
         r = _ls_run(root, "--now", "2026-09-25T06:30:00Z")
@@ -2685,7 +2685,7 @@ def _ls_no_ytdlp(livestreams):
         importlib.util.find_spec = real
         assert code == 3, (code, out.getvalue()[-300:])
         assert "yt-dlp is not installed" in out.getvalue()
-        st = json.loads(Path("state/livestreams.json").read_text(encoding="utf-8"))
+        st = json.loads(Path("archive/livestreams.json").read_text(encoding="utf-8"))
         waiting = [v for v, x in st["videos"].items() if x.get("captions") == "waiting"]
         assert sorted(waiting) == ["PFNEW000001", "PFSEN000001", "PFSTALE0001"], \
             st["videos"]
@@ -2704,7 +2704,7 @@ def _ls_ignored():
     """GitHub's machine refuses to deploy a tree with a changed tracked file,
     and livestreams.py writes these there every night."""
     names = ["videos_house_livestreams.csv", "videos_senate_livestreams.csv",
-             "state/livestreams.json", "state/livestreams.lock"]
+             "archive/livestreams.json", "archive/livestreams.lock"]
     r = _run(["git", "check-ignore", *names], capture_output=True, text=True)
     if r.returncode not in (0, 1):
         return "skip", "git check-ignore would not run"
@@ -5284,7 +5284,7 @@ ic_SOURCES = {
     "db/DocumentVersion.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/LegislationText.psv": "fetch_archive_db.py, which dumps the SQL views",
     "db/CandH_Reports.psv": "fetch_archive_db.py, which dumps the SQL views",
-    "state/livestreams.json": "livestreams.py --since-state, the nightly's "
+    "archive/livestreams.json": "livestreams.py --since-state, the nightly's "
                               "step before build_all",
 }
 
@@ -12128,6 +12128,819 @@ def _late_captions_fixture():
                       "the build names what it withheld")
     finally:
         shutil.rmtree(root, ignore_errors=True)
+
+
+def _json3_cues(cues):
+    """YouTube's json3 as yt-dlp writes it: a window spanning the track, then
+    one event per cue, indented a field to a line."""
+    ev = [{"tStartMs": 0, "dDurationMs": cues[-1][0] + 4000, "id": 1,
+           "wpWinPosId": 1, "wsWinStyleId": 1}]
+    ev += [{"tStartMs": t, "dDurationMs": 4000, "wWinId": 1,
+            "segs": [{"utf8": s}]} for t, s in cues]
+    return json.dumps({"wireMagic": "pb3", "events": ev}, indent=2)
+
+
+@check("build", "without the caption files, their summary withholds the same times")
+def _caption_summary_fixture():
+    """The nightly's machine is given caption_spans.json and none of the 20 GB
+    of caption files. On the laptop 156 times on 13 recordings are withheld
+    because their tracks run an hour late, and before the summary a build
+    without the files compared nothing and withheld nothing -- 89 stated and
+    67 clustered starts, most an hour early, under one printed line.
+
+    So the fixture of the check above has its summary written by
+    caption_span.py --write and then its caption files taken away: VID4 must
+    still lose its times, VID1 keep them, and the build say the summary
+    answered. A recording with times and no entry must lose them as well -- a
+    summary that fell behind costs a "start not identified", never a start an
+    hour early -- and a summary that will not read must stop the build rather
+    than be passed over.
+    """
+    here = Path(".").resolve()
+    if not ((here / "build_site_v2.py").exists()
+            and (here / "caption_span.py").exists()):
+        return "skip", "build_site_v2.py or caption_span.py not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-spans-"))
+    try:
+        _site_fixture(root)
+        (root / "work" / "VID4" / "captions.en.json3").write_text(_json3_cues([
+            (300000, "will open the executive session on House Bill 1442"),
+            (1196000, "we are adjourned")]), encoding="utf-8")
+        (root / "work" / "VID1" / "captions.en.json3").write_text(_json3_cues([
+            (150000, "I am opening the hearing on House Bill 1442"),
+            (892000, "thank you all")]), encoding="utf-8")
+        with open(root / "videos_house_fixture.csv", "w", newline="",
+                  encoding="utf-8") as fh:
+            wr = csv.writer(fh)
+            wr.writerow(["video_id", "title", "duration_iso"])
+            wr.writerow(["VID1", "House Commerce", "PT15M30S"])
+            wr.writerow(["VID4", "House Commerce", "PT2H"])
+        r = _run([sys.executable, str(here / "caption_span.py"), "--write"],
+                 cwd=root, capture_output=True, text=True, timeout=120)
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
+        summary = root / "caption_spans.json"
+        doc = json.loads(summary.read_text(encoding="utf-8"))
+        assert {"VID1", "VID4"} <= set(doc["recordings"]), (
+            f"caption_span.py --write summarised {sorted(doc['recordings'])}, "
+            "not both recordings with captions")
+        for v in ("VID1", "VID4"):
+            (root / "work" / v / "captions.en.json3").unlink()
+        # And a second --write where the captions are not must keep what the
+        # first one read, not replace it with nothing.
+        r = _run([sys.executable, str(here / "caption_span.py"), "--write"],
+                 cwd=root, capture_output=True, text=True, timeout=120)
+        again = json.loads(summary.read_text(encoding="utf-8"))["recordings"]
+        assert again == doc["recordings"], (
+            "caption_span.py --write on a machine without the captions changed "
+            "the entries made where they were")
+
+        def build():
+            r = _run([sys.executable, str(here / "build_site_v2.py"),
+                      "--data", "data", "--out", "site", "--segments", "work"],
+                     cwd=root, capture_output=True, text=True, timeout=180)
+            if r.returncode != 0:
+                return r, {}
+            rec = json.loads((root / "site" / "bills" / "2026" / "HB1442.json")
+                             .read_text(encoding="utf-8"))
+            return r, {s.get("video_id"): s for s in rec.get("stations") or []}
+
+        r, by = build()
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
+        late, kept = by.get("VID4") or {}, by.get("VID1") or {}
+        assert late.get("start") is None and late.get("state") == "approximate", (
+            "with only the summary, VID4 -- whose captions stop 100 minutes short "
+            f"-- still reads {late.get('state')} at {late.get('start')}")
+        assert kept.get("start") is not None, (
+            "with only the summary, VID1 lost the start its in-step track gives it")
+        assert "answered by caption_spans.json" in r.stdout, (
+            "the build did not say the summary answered for the missing captions")
+
+        doc["recordings"].pop("VID1")
+        summary.write_text(json.dumps(doc), encoding="utf-8")
+        r, by = build()
+        assert r.returncode == 0, (r.stderr or r.stdout).strip()[-200:]
+        assert (by.get("VID1") or {}).get("start") is None, (
+            "VID1 has times, no caption file and no entry in the summary, and its "
+            "start was published unchecked")
+        assert "neither a caption file" in r.stdout and "VID1" in r.stdout, (
+            "the build withheld a recording the summary does not know without "
+            "saying so")
+
+        summary.write_text("{", encoding="utf-8")
+        r, _ = build()
+        assert r.returncode != 0 and "caption_spans.json" in (r.stderr + r.stdout), (
+            "a caption summary that will not read was passed over and the build "
+            "went on as though nothing needed checking")
+        # And one that knows almost none of the recordings is the wrong one,
+        # not one that fell behind: forty recordings, an empty summary.
+        import build_site_v2 as B
+        empty = root / "empty_spans.json"
+        empty.write_text('{"recordings": {}}', encoding="utf-8")
+        forty = {f"V{i:03d}": [{"located": True}] for i in range(40)}
+        try:
+            B.withhold_late_captions(forty, {}, str(root / "work"), str(empty))
+            raise AssertionError("an empty caption summary withdrew every time "
+                                 "and the build went on")
+        except SystemExit as e:
+            assert "wrong summary or an empty one" in str(e), str(e)
+        return "ok", ("with the caption files gone, the summary withholds VID4 and "
+                      "keeps VID1; a recording it does not know loses its times; "
+                      "one that will not read, or knows almost nothing, stops the "
+                      "build; --write keeps what it cannot see")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("pipeline", "a build from the nightly's kit stops if last night's outputs did not arrive",
+       needs=("build_all",))
+def _carried_outputs(BA):
+    """text_sponsors.json, missing, stops nothing: build_data labels 174,588
+    ballots with the seat today's roster holds and exits 0, and the site
+    publishes a wrong seat on every one. Six more outputs are read before
+    they are rewritten the same way (build_all.CARRIED), and the nightly's
+    machine has each only if its kit brought it.
+
+    So: in a folder cloud.py kit-down filled -- its record is there -- a
+    build with one missing stops before its first step and names it, and
+    --dry-run says it would; with them all there it does not stop; and on a
+    laptop's folder it names what is missing and goes on, which is how a
+    first build anywhere can happen. One that is there and will not parse
+    stops a build anywhere: the step that reads it would take it for empty.
+    And where the captions are elsewhere, the chair's boundaries are not
+    re-read from nothing: the step is skipped, and the log says why.
+    """
+    here = Path(".").resolve()
+    root = Path(tempfile.mkdtemp(prefix="gr-carried-"))
+
+    def run(*args, env=None):
+        return _run([sys.executable, str(here / "build_all.py"), *args],
+                    cwd=root, capture_output=True, text=True, timeout=120,
+                    env=dict({"GITHUB_ACTIONS": ""}, **(env or {})))
+    try:
+        (root / "archive" / "cloud").mkdir(parents=True)
+        (root / BA.KIT_RECORD).write_text("{}", encoding="utf-8")
+        for p, _, _ in BA.CARRIED[1:]:
+            (root / p).write_text('{"recordings": {}}' if p == "caption_spans.json"
+                                  else "{}", encoding="utf-8")
+        first = BA.CARRIED[0][0]
+        r = run("--local", "--dry-run")
+        assert r.returncode == 0 and "WOULD STOP" in r.stdout \
+            and f"MISSING: no {first}" in r.stdout, (
+                f"a dry run from the kit without {first} did not say it would "
+                "stop: " + r.stdout[-300:])
+        r = run("--local")
+        assert r.returncode == 1 and "STOPPED" in r.stdout, (
+            f"a build from the kit without {first} did not stop (exit "
+            f"{r.returncode})")
+        assert not (root / "site").exists() and not (root / ".build.lock").exists(), \
+            "the build stopped for a missing output only after it had started"
+        (root / first).write_text("{}", encoding="utf-8")
+        r = run("--local", "--dry-run")
+        assert "STOP" not in r.stdout and "MISSING" not in r.stdout, (
+            "with every carried output here the kit build still objects: "
+            + r.stdout[-300:])
+        # Not from the kit: named, and the build goes on.
+        (root / BA.KIT_RECORD).unlink()
+        (root / first).unlink()
+        (root / "legislation").mkdir()
+        r = run("--local", "--dry-run")
+        assert "WOULD STOP" not in r.stdout and f"WARNING: no {first}" in r.stdout, (
+            f"a laptop's folder without {first} either stopped or said nothing")
+        r = run("--local", "--dry-run", env={"GITHUB_ACTIONS": "true"})
+        assert "WOULD STOP" in r.stdout, (
+            "on GitHub's machine a missing carried output did not stop the build")
+        # One that will not parse stops a build anywhere: segment_markers,
+        # reading a few recordings, would take it for empty and write back
+        # only those few.
+        (root / first).write_text("{}", encoding="utf-8")
+        (root / "candidate_segments.json").write_text('{"VID1": {', encoding="utf-8")
+        r = run("--local", "--dry-run")
+        assert "UNREADABLE: candidate_segments.json" in r.stdout \
+            and "WOULD STOP" in r.stdout, (
+                "a candidate_segments.json that will not parse did not stop the "
+                "build: " + r.stdout[-300:])
+        (root / "candidate_segments.json").write_text("{}", encoding="utf-8")
+        # Captions elsewhere: the summary names a recording whose caption
+        # file is not on this machine.
+        (root / "work" / "VID9").mkdir(parents=True)
+        (root / "caption_spans.json").write_text(json.dumps({"recordings": {
+            "VID9": {"last": 60.0, "files": {"captions.en.json3": [10, 0]}}}}),
+            encoding="utf-8")
+        r = run("--local", "--dry-run")
+        assert "skipping 'boundaries the chair stated'" in r.stdout \
+            and "python3 segment_markers.py" not in r.stdout, (
+                "with the captions elsewhere, the chair's boundaries would be "
+                "read again from nothing")
+        (root / "work" / "VID9" / "captions.en.json3").write_text(
+            _json3_cues([(1000, "hello")]), encoding="utf-8")
+        r = run("--local", "--dry-run")
+        assert "python3 segment_markers.py" in r.stdout, (
+            "with every caption file here, the chair's boundaries were skipped")
+        return "ok", (f"{len(BA.CARRIED)} carried outputs: a kit build without "
+                      "one stops before its first step, a laptop's names it and "
+                      "goes on, and the markers step runs only where the "
+                      "captions are")
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+@check("cloud", "the kit names what the build reads, and nothing private or a reader's",
+       needs=("cloud", "build_all"))
+def _cloud_kit(CL, BA):
+    """cloud_kit.json is the list of what the nightly's empty machine is given.
+    It drifts the way every list here has: a step that starts reading a new
+    file builds a different site there and passes all its own checks. And it
+    is the one list whose mistakes leave the laptop -- a key, the Clerks'
+    list, a reader's words -- so what it must never hold is checked too.
+
+      - every output a build reads before rewriting it (build_all.CARRIED),
+        and every input a --local step declares from outside the repository
+        (ic_SOURCES), is in the kit; so are the caption summary and the logo
+        the build lays over the clipart
+      - nothing in the kit or the state is tracked by git, and every literal
+        path in either is gitignored, so kit-down never writes over the
+        checkout and no generated file is one `git add` from being published
+      - neither holds a credential, reports/, CLERK_CORRECTIONS.md, captions,
+        audio, brand/licensed/ or the built site -- bar the one file of it a
+        build reads before it rewrites it, which it does carry
+      - small state lives under archive/ on a machine, state/ in the bucket
+      - "never" names the credentials and the reader reports; the backup
+        leaves out logs/ and never the Clerks' list, brand/licensed/ or the
+        What-changed reports
+      - one file, one owner
+    """
+    kit = CL.load_kit(".")
+    entries = kit["kit"]
+
+    def in_kit(rel):
+        return any(CL.entry_matches(e, rel) for e in entries)
+
+    state_paths = {s["path"] for s in kit.get("state", [])}
+
+    def names(rel):
+        # A literal path, a directory the kit reaches into, or a state file.
+        return in_kit(rel) or rel in state_paths or any(
+            g.startswith(rel.rstrip("/") + "/")
+            for e in entries for g in e.get("globs", []))
+    bad = [p for p, _, _ in BA.CARRIED if not in_kit(p)]
+    assert not bad, f"build_all.CARRIED names outputs the kit does not carry: {bad}"
+    # From outside the repository: not the site, and not what a build step
+    # writes without declaring it.
+    ext = [k for k, v in ic_SOURCES.items()
+           if not k.startswith("site/") and "does not declare it" not in v]
+    bad = [k for k in ext if not names(k)]
+    assert not bad, ("a --local step needs these from outside the repository and "
+                     f"neither the kit nor the state brings them: {bad}")
+    # SMALL STATE LIVES UNDER archive/ on a machine, and under state/ only in
+    # the bucket: one convention, so a file is never looked for in two places.
+    stray = sorted(p for p in state_paths if not p.startswith(("archive/", "reports/.cursor-")))
+    assert not stray, f"state kept outside archive/ on the machine: {stray}"
+    # The one file of last night's site a build reads before rewriting it --
+    # a build from the kit alone showed it on 25 September -- and nothing else
+    # of site/, which is rebuilt every night.
+    LAST_SITE = {"site/committees.json"}
+    for must in ("caption_spans.json", "candidate_segments.json",
+                 "assets/licensed/lockup.png", *sorted(LAST_SITE)):
+        assert in_kit(must), f"the kit does not carry {must}"
+
+    samples = [p for e in entries for p in e.get("paths", [])]
+    samples += [re.sub(r"\*+", "x", g).replace("?", "x") for e in entries
+                for g in e.get("globs", [])]
+    states = [s["path"] for s in kit.get("state", [])]
+    forbidden = ["reports/", "CLERK_CORRECTIONS.md", "secrets.json", ".env",
+                 ".dev.vars", "site/", "logs/", "brand/licensed/", ".git/",
+                 ".claude/"]
+    allowed = LAST_SITE | {"reports/.cursor-production"}
+    for p in samples + states:
+        for f in forbidden:
+            if (p == f or p.startswith(f)) and p not in allowed:
+                raise AssertionError(f"{p} is in the kit or the state, and "
+                                     f"{f} must never be")
+        assert not re.search(r"(?:captions|transcript)[^/]*\.json3?$|\.wav$|\.pem$|\.key$|\.pdf$",
+                             p, re.I), f"{p} is in the kit: captions, audio, keys and PDFs are not"
+    never = [CL.glob_re(g) for g in kit["never"]["globs"]]
+    for want in ("secrets.json", ".dev.vars", ".env", "x/y.pem",
+                 "reports/issues-production-2026-09-25.jsonl",
+                 "reports/triage-production-2026-09-25.md"):
+        assert any(rx.match(want) for rx in never), f"'never' does not hold back {want}"
+    leave = [CL.glob_re(g) for grp in kit["backup"]["leave_out"] for g in grp["globs"]]
+    for keep in ("CLERK_CORRECTIONS.md", "brand/licensed/drawing.png",
+                 "assets/licensed/og.png", "reports/gc-changes-2026-09-25.md",
+                 "reports/.cursor-production", "work/VID/captions.en.json3",
+                 "legislation/2026/HB1.html"):
+        assert not any(rx.match(keep) for rx in leave + never), (
+            f"the backup leaves out {keep}, which it is for")
+    for out in ("logs/nightly-2026-09-25.log", "site/index.json", ".git/HEAD",
+                "archive/cloud/hashes.json", "__pycache__/x.pyc"):
+        assert any(rx.match(out) for rx in leave), f"the backup sends {out}"
+
+    owners = {}
+    for e in entries:
+        for p in e.get("paths", []):
+            assert owners.setdefault(p, e["owner"]) == e["owner"], f"{p} has two owners"
+    said = (f"{len(entries)} entries: every carried output and outside input is in "
+            f"it, {len(states)} state files, nothing private or a reader's; the "
+            "backup keeps the Clerks' list and not the logs")
+    try:
+        listed = _run(["git", "ls-files"], capture_output=True, text=True, timeout=60)
+        # NUL-separated: a text pipe on Windows turns \n into \r\n, and git
+        # reads the \r as part of the name.
+        ignored = _run(["git", "check-ignore", "--no-index", "--stdin", "-z"],
+                       input="\0".join(samples + states) + "\0",
+                       capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError) as e:
+        return "ok", said + f"; git would not answer ({e}), so what it tracks was not asked"
+    if listed.returncode != 0 or ignored.returncode not in (0, 1):
+        return "ok", said + "; not a git checkout, so what git tracks was not asked"
+    both = sorted(set(samples + states) & set(listed.stdout.split("\n")))
+    assert not both, f"the kit or the state names files git tracks: {both}"
+    unignored = sorted(set(samples + states) - set(ignored.stdout.split("\0")))
+    assert not unignored, ("the kit or the state names files .gitignore does not "
+                           f"keep out, one `git add .` from the repository: {unignored}")
+    return "ok", said + "; none of it tracked, and all of it gitignored"
+
+
+def _cloud_fixture(root, kit_src):
+    """A working folder for cloud.py: a small kit, with the real 'never' and
+    'backup' rules, and a file of each kind they sort."""
+    kit = {"kit": [
+        {"what": "day", "owner": "night", "paths": ["Docket.txt"]},
+        {"what": "outputs", "owner": "night", "paths": ["narratives.json"],
+         "globs": ["nh-archive/**"]},
+        {"what": "pages", "owner": "laptop", "globs": ["legislation/**"]}],
+        "state": [{"path": "archive/census.json", "key": "census.json", "what": "x"},
+                  {"path": "archive/refused.json", "key": "refused.json", "what": "x"}],
+        "logs": {"globs": ["logs/*"]},
+        "backup": kit_src["backup"], "never": kit_src["never"]}
+    files = {"Docket.txt": "docket 1\n", "narratives.json": "{}",
+             "nh-archive/snapshots/2026-09-24/a.gz": "a",
+             "legislation/2026/HB1.html": "<p>one</p>",
+             "legislation/2026/HB2.html": "<p>two</p>",
+             "archive/census.json": '{"census": {}}',
+             "secrets.json": '{"R2_SECRET_ACCESS_KEY": "not a real one"}',
+             "reports/issues-production-2026-09-25.jsonl": "a reader's words\n",
+             "reports/triage-production-2026-09-25.md": "a reader's words\n",
+             "reports/gc-changes-2026-09-25.md": "what changed\n",
+             "CLERK_CORRECTIONS.md": "the list\n",
+             "brand/licensed/drawing.png": "png",
+             "logs/nightly-2026-09-25.log": "log\n",
+             "site/index.json": "[]", "tracked.py": "x = 1\n"}
+    for rel, body in files.items():
+        p = root.joinpath(*rel.split("/"))
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(body, encoding="utf-8")
+    (root / "cloud_kit.json").write_text(json.dumps(kit), encoding="utf-8")
+
+
+def _cloud_call(CL, *argv):
+    import contextlib
+    import io
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        code = CL.main(list(argv))
+    return code, out.getvalue() + err.getvalue()
+
+
+def _bucket_keys(bucket):
+    return {p.relative_to(bucket).as_posix() for p in bucket.rglob("*")
+            if p.is_file() and ".meta" not in p.relative_to(bucket).parts}
+
+
+@check("cloud", "cloud.py sends, fetches and backs up without losing anything",
+       needs=("cloud",))
+def _cloud_round_trip(CL):
+    """Every command against a folder standing in for the bucket.
+
+    The laptop seeds the kit; an empty machine takes it down, byte for byte
+    and date for date; the night changes a file of its own, one of the
+    laptop's and adds one, and kit-up sends only the night's, keeping the
+    copy it replaces. A second machine whose copy changed underneath it is
+    refused rather than allowed to overwrite. The backup sends what git does
+    not hold and nothing credential, reader-written, logged or built; a
+    changed file and a deleted one both leave their last copy in replaced/;
+    a deletion past the share a tidy-up reaches sends and moves nothing. And
+    across all of it, no object is ever gone without a copy in replaced/.
+    """
+    real = json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8"))
+    tmp = Path(tempfile.mkdtemp(prefix="gr-cloud-"))
+    try:
+        root, bucket = tmp / "laptop", tmp / "bucket"
+        root.mkdir()
+        _cloud_fixture(root, real)
+        B = ["--local-bucket", str(bucket)]
+        seen = set()
+
+        def call(*argv):
+            code, out = _cloud_call(CL, *argv, *B)
+            seen.update(k for k in _bucket_keys(bucket) if not k.startswith("replaced/")) \
+                if bucket.exists() else None
+            return code, out
+
+        code, out = _cloud_call(CL, "kit-list", "--sizes", "--root", str(root))
+        assert code == 0 and "kit: 5 files" in out and "legislation/2026/HB1.html" in out, \
+            out[-300:]
+        code, out = call("seed-kit", "--dry-run", "--root", str(root))
+        assert code == 0 and "nothing sent" in out, out[-300:]
+        assert not (bucket / "kit").exists(), "--dry-run sent something"
+        code, out = call("seed-kit", "--root", str(root))
+        assert code == 0, out[-300:]
+        man = json.loads((bucket / "state" / "kit-manifest.json").read_text(encoding="utf-8"))
+        assert man["count"] == 5, f"the kit manifest records {man['count']} files, not 5"
+        code, out = call("seed-kit", "--root", str(root))
+        assert code == 0 and "sent 0 files" in out, "a second seed sent unchanged files"
+        code, out = call("state-up", "--root", str(root))
+        assert code == 0 and (bucket / "state/census.json").exists(), out[-300:]
+        (root / "archive/census.json").write_text('{"census": {"bills": 0}}', encoding="utf-8")
+        code, out = call("state-up", "--root", str(root))
+        assert code == 0 and "sent 1" in out, out[-300:]
+        assert any(p.is_file() for p in bucket.glob("replaced/*/state/census.json*")), \
+            "state-up overwrote state/census.json without keeping the old one"
+
+        night = tmp / "night"
+        night.mkdir()
+        shutil.copy(root / "cloud_kit.json", night / "cloud_kit.json")
+        # As the workflow does it: the state first, then the kit.
+        assert call("state-down", "--root", str(night))[0] == 0
+        code, out = call("kit-down", "--root", str(night))
+        assert code == 0, out[-300:]
+        for rel in man["files"]:
+            a_, b_ = root.joinpath(*rel.split("/")), night.joinpath(*rel.split("/"))
+            assert a_.read_bytes() == b_.read_bytes(), f"{rel} came down different"
+            assert a_.stat().st_mtime_ns == b_.stat().st_mtime_ns, f"{rel} lost its date"
+        (night / "Docket.txt").write_text("docket 2\n", encoding="utf-8")
+        (night / "legislation/2026/HB1.html").write_text("<p>ONE</p>", encoding="utf-8")
+        (night / "nh-archive/snapshots/2026-09-25").mkdir(parents=True)
+        (night / "nh-archive/snapshots/2026-09-25/b.gz").write_text("b", encoding="utf-8")
+        (night / "logs").mkdir()
+        (night / "logs/nightly-x.log").write_text("the night\n", encoding="utf-8")
+        (night / "archive/census.json").write_text('{"census": {"bills": 1}}', encoding="utf-8")
+        code, out = call("kit-up", "--dry-run", "--root", str(night))
+        assert code == 0 and (bucket / "kit/Docket.txt").read_text() == "docket 1\n", \
+            "kit-up --dry-run sent something"
+        code, out = call("kit-up", "--root", str(night))
+        assert code == 0, out[-300:]
+        assert (bucket / "kit/Docket.txt").read_text() == "docket 2\n", "the night's change did not go"
+        assert (bucket / "kit/nh-archive/snapshots/2026-09-25/b.gz").exists(), "the night's new file did not go"
+        assert (bucket / "kit/legislation/2026/HB1.html").read_text() == "<p>one</p>", \
+            "kit-up sent a file the laptop owns"
+        day = json.loads((night / CL.KIT_RECORD).read_text(encoding="utf-8"))["date"]
+        assert (bucket / f"replaced/{day}/kit/Docket.txt").read_text() == "docket 1\n", \
+            "the copy kit-up replaced is not in replaced/"
+        assert (bucket / f"logs/{day}/nightly-x.log").exists(), "the night's log did not go"
+        assert (bucket / "state/census.json").read_text() == '{"census": {"bills": 1}}'
+        code, out = call("kit-up", "--root", str(night))
+        assert code == 0 and "sent 0 files" in out, "kit-up run twice sent its files twice"
+
+        other = tmp / "other"
+        other.mkdir()
+        shutil.copy(root / "cloud_kit.json", other / "cloud_kit.json")
+        assert call("kit-down", "--root", str(other))[0] == 0
+        (night / "Docket.txt").write_text("docket 3\n", encoding="utf-8")
+        assert call("kit-up", "--root", str(night))[0] == 0
+        (other / "Docket.txt").write_text("docket 3b\n", encoding="utf-8")
+        code, out = call("kit-up", "--root", str(other))
+        assert code == 1 and "two writers" in out, "a stale machine overwrote a newer kit file"
+        assert (bucket / "kit/Docket.txt").read_text() == "docket 3\n"
+        assert (bucket / f"replaced/{day}/kit-conflict/Docket.txt").read_text() == "docket 3b\n", \
+            "the refused copy was not kept"
+
+        try:
+            ok = _run(["git", "init", "-q", str(root)], capture_output=True, timeout=60)
+            ok = ok.returncode == 0 and _run(
+                ["git", "-C", str(root), "add", "tracked.py", "cloud_kit.json"],
+                capture_output=True, timeout=60).returncode == 0
+        except (OSError, subprocess.SubprocessError):
+            ok = False
+        if not ok:
+            return "ok", "kit round trip passed; git is not here for the backup's half"
+        code, out = call("backup", "--root", str(root))
+        assert code == 0, out[-300:]
+        got = {k[len("backup/"):] for k in _bucket_keys(bucket) if k.startswith("backup/")}
+        want = {"Docket.txt", "narratives.json", "nh-archive/snapshots/2026-09-24/a.gz",
+                "legislation/2026/HB1.html", "legislation/2026/HB2.html",
+                "archive/census.json", "reports/gc-changes-2026-09-25.md",
+                "CLERK_CORRECTIONS.md", "brand/licensed/drawing.png"}
+        assert got == want, (f"the backup sent {sorted(got - want)} and left out "
+                             f"{sorted(want - got)}")
+        (root / "legislation/2026/HB2.html").write_text("<p>TWO</p>", encoding="utf-8")
+        (root / "reports/gc-changes-2026-09-25.md").unlink()
+        code, out = call("backup", "--root", str(root))
+        assert code == 0, out[-300:]
+        today = f"{__import__('datetime').datetime.now():%Y-%m-%d}"
+        assert (bucket / f"replaced/{today}/backup/legislation/2026/HB2.html").read_text() \
+            == "<p>two</p>", "a changed file's last copy is not in replaced/"
+        assert (bucket / f"replaced/{today}/backup/reports/gc-changes-2026-09-25.md").exists() \
+            and not (bucket / "backup/reports/gc-changes-2026-09-25.md").exists(), \
+            "a deleted file was not moved to replaced/"
+        for rel in ("CLERK_CORRECTIONS.md", "brand/licensed/drawing.png", "Docket.txt"):
+            (root / rel).unlink()
+        code, out = call("backup", "--root", str(root))
+        assert code == 1 and "Nothing was sent or moved" in out, \
+            "three of eight files gone at once was taken for a tidy-up"
+        assert (bucket / "backup/CLERK_CORRECTIONS.md").exists()
+
+        lost = []
+        for k in sorted(seen):
+            if (bucket / k).exists():
+                continue
+            if not any(p.is_file() for p in bucket.glob(f"replaced/*/{k}*")):
+                lost.append(k)
+        assert not lost, f"gone from the bucket with no copy in replaced/: {lost}"
+
+        fresh = tmp / "fresh"
+        fresh.mkdir()
+        shutil.copy(root / "cloud_kit.json", fresh / "cloud_kit.json")
+        (fresh / "archive").mkdir()
+        (fresh / "archive/refused.json").write_text('{"where": "here"}', encoding="utf-8")
+        code, out = call("state-down", "--root", str(fresh))
+        assert code == 0 and (fresh / "archive/census.json").exists(), out[-300:]
+        assert (fresh / "archive/refused.json").exists(), \
+            "state-down removed a refusal the bucket does not hold"
+        return "ok", ("seed, down, up and backup against a folder bucket: byte and "
+                      "date exact, owners respected, a stale writer refused, nothing "
+                      "private or a reader's sent, and nothing gone without a copy "
+                      "in replaced/")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+@check("cloud", "state has one writer, a cleared refusal stays cleared, and the "
+                "night's site travels as one file", needs=("cloud",))
+def _cloud_state_and_site(CL):
+    """Both machines hold the state files, so a copy taken down last night is
+    not news: sent back, it would put last night's census over tonight's. Here
+    the laptop's stale census is left alone, a census changed on both machines
+    is a failure with neither lost, and a refusal lifted from the bucket by
+    clear-refusal is not sent back by the machine that still holds it -- after
+    the move the bucket's copy is the one that stops a night, so refusal.py
+    --clear alone would leave every night stopped.
+
+    And the built site reaches the publish job as ONE archive in the private
+    bucket rather than as a GitHub artifact, which any signed-in user could
+    download from a public repository with the licensed logo in it, or as
+    55,000 billed writes: every file back, byte for byte, into an empty folder
+    and never over one that is not.
+    """
+    real = json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8"))
+    tmp = Path(tempfile.mkdtemp(prefix="gr-state-"))
+    try:
+        bucket = tmp / "bucket"
+        laptop, night, other = tmp / "laptop", tmp / "night", tmp / "other"
+        for d in (laptop, night, other):
+            d.mkdir()
+            _cloud_fixture(d, real)
+        B = ["--local-bucket", str(bucket)]
+
+        def call(root, *argv):
+            return _cloud_call(CL, *argv, "--root", str(root), *B)
+
+        def census(root, n):
+            (root / "archive/census.json").write_text(
+                json.dumps({"census": {"bills": n}}), encoding="utf-8")
+
+        def remote(key):
+            f = bucket / "state" / key
+            return f.read_text(encoding="utf-8") if f.exists() else None
+        census(laptop, 1)
+        (night / "archive/census.json").unlink()
+        (other / "archive/census.json").unlink()
+        assert call(laptop, "state-up")[0] == 0 and '"bills": 1' in remote("census.json")
+        assert call(night, "state-down")[0] == 0
+        census(night, 2)
+        code, out = call(night, "state-up")
+        assert code == 0 and '"bills": 2' in remote("census.json"), out[-300:]
+        code, out = call(laptop, "state-up")
+        assert code == 0 and '"bills": 2' in remote("census.json"), (
+            "the laptop's copy of last night's census went back over tonight's")
+        assert "newer" in out, out[-300:]
+        assert call(laptop, "state-down")[0] == 0
+        assert '"bills": 2' in (laptop / "archive/census.json").read_text(encoding="utf-8")
+        census(night, 3)
+        census(laptop, 4)
+        assert call(night, "state-up")[0] == 0
+        code, out = call(laptop, "state-up")
+        assert code == 1 and '"bills": 3' in remote("census.json"), (
+            "a census changed on both machines was not refused: " + out[-200:])
+        kept = list(bucket.glob("replaced/*/state-conflict/census.json"))
+        assert kept and '"bills": 4' in kept[0].read_text(encoding="utf-8"), \
+            "the refused census was not kept"
+
+        (night / "archive/refused.json").write_text('{"where": "docket"}', encoding="utf-8")
+        assert call(night, "state-up")[0] == 0 and remote("refused.json")
+        assert call(other, "state-down")[0] == 0 and (other / "archive/refused.json").exists()
+        code, out = call(other, "clear-refusal")
+        assert code == 0 and remote("refused.json") is None, out[-300:]
+        assert list(bucket.glob("replaced/*/state/refused.json*")), \
+            "clear-refusal deleted the record instead of moving it to replaced/"
+        assert "refusal.py --clear" in out, "clear-refusal did not say this machine still holds one"
+        code, out = call(other, "state-up")
+        assert code == 0 and remote("refused.json") is None, (
+            "the refusal a person cleared from the bucket was sent back to it")
+
+        site = night / "site"
+        (site / "bill" / "2026").mkdir(parents=True)
+        (site / "bill" / "2026" / "hb1.html").write_text("<p>HB 1</p>", encoding="utf-8")
+        (site / "assets").mkdir()
+        (site / "assets" / "lockup.png").write_bytes(b"\x89PNG\r\n\x1a\n" + bytes(range(256)))
+        code, out = call(night, "site-up", "--run", "4242")
+        assert code == 0 and (bucket / "nights/4242/site.tar.gz").is_file(), out[-300:]
+        assert len([p for p in (bucket / "nights").rglob("*") if p.is_file()]) == 2, \
+            "the site did not go up as one archive and its note"
+        publish = tmp / "publish"
+        publish.mkdir()
+        shutil.copy(night / "cloud_kit.json", publish / "cloud_kit.json")
+        code, out = call(publish, "site-down", "--run", "4242")
+        assert code == 0, out[-300:]
+        want = {p.relative_to(site).as_posix(): p.read_bytes()
+                for p in site.rglob("*") if p.is_file()}
+        got = {p.relative_to(publish / "site").as_posix(): p.read_bytes()
+               for p in (publish / "site").rglob("*") if p.is_file()}
+        assert got == want, "the site came back different"
+        code, out = call(publish, "site-down", "--run", "4242")
+        assert code == 1 and "not empty" in out, "site-down unpacked over a site already there"
+        assert call(night, "site-up", "--run", "4242")[0] == 0
+        assert list(bucket.glob("replaced/*/nights/4242/site.tar.gz*")), \
+            "a second site-up for one run overwrote the first"
+        assert call(night, "site-up", "--run", "../x")[0] == 1
+        return "ok", ("a stale census is left, one changed on both machines is refused "
+                      "and kept, a cleared refusal is not sent back, and the site goes "
+                      "up and comes down as one archive, byte for byte")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def _fake_s3():
+    """boto3 and botocore as far as cloud.R2Bucket uses them, holding objects
+    in a dict, with the argument names the real client takes -- so a call
+    spelt wrong here fails as it would against R2, and nothing leaves the
+    machine."""
+    import types
+    store, made = {}, {}
+
+    class ClientError(Exception):
+        def __init__(self, error_response, operation_name):
+            super().__init__(f"{operation_name}: {error_response}")
+            self.response = error_response
+
+    def gone(op):
+        return ClientError({"Error": {"Code": "NoSuchKey" if op == "GetObject" else "404"},
+                            "ResponseMetadata": {"HTTPStatusCode": 404}}, op)
+
+    class Body:
+        def __init__(self, b):
+            self.b = b
+
+        def read(self):
+            return self.b
+
+    class Paginator:
+        def __init__(self, name):
+            assert name == "list_objects_v2", name
+
+        def paginate(self, *, Bucket, Prefix=""):
+            keys = sorted(k for b, k in store if b == Bucket and k.startswith(Prefix))
+            if not keys:
+                yield {"KeyCount": 0}
+            for i in range(0, len(keys), 2):
+                yield {"Contents": [{"Key": k, "Size": len(store[(Bucket, k)][0])}
+                                    for k in keys[i:i + 2]]}
+
+    class Client:
+        def get_paginator(self, name):
+            return Paginator(name)
+
+        def head_object(self, *, Bucket, Key):
+            if (Bucket, Key) not in store:
+                raise gone("HeadObject")
+            data, meta = store[(Bucket, Key)]
+            return {"ContentLength": len(data), "Metadata": dict(meta)}
+
+        def upload_file(self, Filename, Bucket, Key, ExtraArgs=None, Callback=None,
+                        Config=None):
+            meta = (ExtraArgs or {}).get("Metadata") or {}
+            assert all(isinstance(v, str) and v.isascii() for v in meta.values()), meta
+            store[(Bucket, Key)] = (Path(Filename).read_bytes(),
+                                    {k.lower(): v for k, v in meta.items()})
+
+        def download_file(self, Bucket, Key, Filename, ExtraArgs=None, Callback=None,
+                          Config=None):
+            if (Bucket, Key) not in store:
+                raise gone("HeadObject")
+            Path(Filename).write_bytes(store[(Bucket, Key)][0])
+
+        def copy(self, CopySource, Bucket, Key, ExtraArgs=None, Callback=None,
+                 SourceClient=None, Config=None):
+            src = (CopySource["Bucket"], CopySource["Key"])
+            if src not in store:
+                raise gone("HeadObject")
+            store[(Bucket, Key)] = store[src]
+
+        def delete_object(self, *, Bucket, Key):
+            store.pop((Bucket, Key), None)
+            return {}
+
+        def get_object(self, *, Bucket, Key):
+            if (Bucket, Key) not in store:
+                raise gone("GetObject")
+            return {"Body": Body(store[(Bucket, Key)][0])}
+
+        def put_object(self, *, Bucket, Key, Body, Metadata=None):
+            store[(Bucket, Key)] = (bytes(Body), dict(Metadata or {}))
+            return {}
+
+    def client(service_name, *, endpoint_url, aws_access_key_id,
+               aws_secret_access_key, region_name, config):
+        made.update(service=service_name, endpoint=endpoint_url, region=region_name)
+        return Client()
+
+    class TransferConfig:
+        def __init__(self, multipart_threshold=8 * 1024 * 1024, max_concurrency=10,
+                     multipart_chunksize=8 * 1024 * 1024, num_download_attempts=5,
+                     max_io_queue=100, io_chunksize=256 * 1024, use_threads=True,
+                     max_bandwidth=None):
+            pass
+
+    class Config:
+        KNOWN = {"region_name", "signature_version", "user_agent", "connect_timeout",
+                 "read_timeout", "retries", "max_pool_connections",
+                 "request_checksum_calculation", "response_checksum_validation"}
+
+        def __init__(self, **kw):
+            unknown = set(kw) - self.KNOWN
+            if unknown:
+                raise TypeError(f"Got unexpected keyword argument(s): {unknown}")
+
+    mods = {n: types.ModuleType(n) for n in
+            ("boto3", "boto3.s3", "boto3.s3.transfer", "botocore",
+             "botocore.config", "botocore.exceptions")}
+    mods["boto3"].client = client
+    mods["boto3.s3.transfer"].TransferConfig = TransferConfig
+    mods["botocore.config"].Config = Config
+    mods["botocore.exceptions"].ClientError = ClientError
+    return mods, store, made
+
+
+@check("cloud", "the R2 adapter makes the calls boto3 takes", needs=("cloud",))
+def _cloud_r2_adapter(CL):
+    """The folder bucket above tests the logic; R2 is reached through
+    R2Bucket, which no check could run without asking a server. So boto3 is
+    stood in for, with the real client's argument names, and one seed, one
+    kit-down and one kit-up go through the adapter: the endpoint is the
+    account's R2 address, a missing object reads as missing rather than as a
+    failure, listings are read across pages, and metadata goes up as text.
+    And the account and key never reach a printed line: GitHub's logs of a
+    public repository are public, and an S3 error names its endpoint.
+    """
+    mods, store, made = _fake_s3()
+    saved_mods = {n: sys.modules.get(n) for n in mods}
+    saved_open = CL.open_bucket
+    tmp = Path(tempfile.mkdtemp(prefix="gr-r2-"))
+    try:
+        sys.modules.update(mods)
+        bucket = CL.R2Bucket({"account": "acct0123456789", "key_id": "keyid0123456789",
+                              "secret": "secret0123456789",
+                              "bucket": "granite-record-backup"}, 4)
+        assert made == {"service": "s3",
+                        "endpoint": "https://acct0123456789.r2.cloudflarestorage.com",
+                        "region": "auto"}, made
+        said = CL.scrub(f"Could not connect to the endpoint URL: {made['endpoint']} "
+                        "with keyid0123456789 and secret0123456789")
+        assert not any(v in said for v in ("acct0123456789", "keyid0123456789",
+                                           "secret0123456789")), said
+        assert bucket.get_bytes("state/none.json") is None and bucket.head("kit/none") is None
+        CL.open_bucket = lambda a, preview=False: bucket
+        root = tmp / "laptop"
+        root.mkdir()
+        _cloud_fixture(root, json.loads(Path(CL.KIT_FILE).read_text(encoding="utf-8")))
+        code, out = _cloud_call(CL, "seed-kit", "--root", str(root))
+        assert code == 0, out[-300:]
+        keys = {k for _, k in store}
+        assert "kit/Docket.txt" in keys and "state/kit-manifest.json" in keys, sorted(keys)
+        assert store[("granite-record-backup", "kit/Docket.txt")][1].get("sha256"), \
+            "no sha256 went up with the object"
+        night = tmp / "night"
+        night.mkdir()
+        shutil.copy(root / "cloud_kit.json", night / "cloud_kit.json")
+        code, out = _cloud_call(CL, "kit-down", "--root", str(night))
+        assert code == 0 and (night / "Docket.txt").read_text() == "docket 1\n", out[-300:]
+        (night / "Docket.txt").write_text("docket 2\n", encoding="utf-8")
+        code, out = _cloud_call(CL, "kit-up", "--root", str(night))
+        assert code == 0, out[-300:]
+        assert store[("granite-record-backup", "kit/Docket.txt")][0] == \
+            (night / "Docket.txt").read_bytes(), "the night's change did not go up"
+        assert any(k.startswith("replaced/") and k.endswith("kit/Docket.txt")
+                   for _, k in store), "the replaced copy did not go through the adapter"
+        return "ok", ("seed-kit, kit-down and kit-up through R2Bucket against a "
+                      "stand-in for boto3: endpoint, pages, metadata and missing "
+                      "objects as the real client has them")
+    finally:
+        CL.open_bucket = saved_open
+        for n, m in saved_mods.items():
+            if m is None:
+                sys.modules.pop(n, None)
+            else:
+                sys.modules[n] = m
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 # ================================================================ data checks ==
@@ -22349,6 +23162,37 @@ def _late_captions_site():
                   "publishes a time read off their captions"
                   + (f"; {len(undated)} have no published length to compare"
                      if undated else ""))
+
+
+@check("data", "the caption summary the nightly reads agrees with the captions here")
+def _caption_summary_data():
+    """caption_spans.json is what the nightly's machine has in place of the
+    caption files: where each recording's captions stop, as read here. If it
+    falls behind them -- a caption job that did not rewrite it, a track
+    fetched again -- the nightly withholds or publishes differently from the
+    laptop, and nothing there could tell. So where both are on one disk they
+    must agree recording by recording and name the same recordings late.
+    `python3 caption_span.py --write` brings it up to date, and so does any
+    build, whose markers step writes it.
+    """
+    try:
+        import caption_span as CS
+    except ImportError:
+        return "skip", "caption_span.py will not import"
+    if not Path("work").is_dir():
+        return "skip", "no work/ here to compare it with"
+    if not Path(CS.SUMMARY).exists():
+        return "skip", (f"no {CS.SUMMARY} yet; the next build's markers step "
+                        "writes it, or caption_span.py --write")
+    bad = CS.check_summary()
+    assert not bad, (
+        f"{CS.SUMMARY} disagrees with the captions under work/ in {len(bad):,} "
+        "place(s), e.g. " + "; ".join(f"{v} {w}"[:120] for v, w in bad[:2])
+        + ". The nightly would check something other than what is here: "
+          "python3 caption_span.py --write")
+    return "ok", (f"{len(CS.load_summary() or {}):,} recordings summarised, each "
+                  "agreeing with its caption files, and the same ones late "
+                  "read either way")
 
 
 @check("data", "a committee is credited only with its own recommendations")

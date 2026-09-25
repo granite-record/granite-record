@@ -305,9 +305,17 @@ def main():
     if a.clear:
         if MARK.exists():
             MARK.unlink()
-            print("refusal cleared. Fetches may run again.")
+            print("refusal cleared here. Fetches on this machine may run again.")
         else:
-            print("there was no refusal on record.")
+            print("there was no refusal on record here.")
+        # THE NIGHTLY'S COPY IS THE BUCKET'S. GitHub's machine starts empty and
+        # takes its refusal record from R2's state/refused.json, so clearing
+        # this file leaves that one stopping every night until it is lifted
+        # too -- and cloud.py, which talks to the bucket, is what lifts it.
+        if stood_down() is not None:
+            print("The nightly runs on GitHub and takes its refusal record from the "
+                  "bucket's state/refused.json. Lift that one too: "
+                  "python3 cloud.py clear-refusal")
         return 0
     if not s:
         print("no refusal in force." if not MARK.exists() else
