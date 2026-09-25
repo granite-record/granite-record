@@ -11177,6 +11177,11 @@ def _calendar_chambers():
         r("2025-06-16", "SB14", "S", "committee of conference", "", ""),
         r("2025-06-16", "HB2", "H", "committee of conference", "", ""),
         r("2025-06-16", "HB1", "H", "committee of conference", "", ""),
+        # One House conference in the floor index twice and nowhere timed, as
+        # HB 1709's on 26 May 2026 is: a video of five bills' conferences
+        # and one of its own. Its card listed the bill twice, "2 bills".
+        r("2025-06-17", "HB1709", "H", "committee of conference", "", ""),
+        r("2025-06-17", "HB1709", "H", "committee of conference", "", ""),
         # Senate Judiciary sat that day too, on a House bill.
         r("2025-06-16", "HB400", "S", "public hearing", "10:00", "Judiciary", "SH 100"),
         # A statutory committee: the database copy's row has no chamber and
@@ -11202,6 +11207,11 @@ def _calendar_chambers():
         f"SB 14's conference card holds {june[want[2]]}: its notice and its "
         "recording are one sitting, listed once, at the notice's time")
     assert len(june[want[0]]) == 2, "the statutory committee was split by the docket row's chamber"
+    twice = weeks["2025-W25"]["2025-06-17"]
+    assert list(twice) == [M("2025-06-17", "", BP.CONFERENCE, "HB1709")] \
+        and len(twice[list(twice)[0]]) == 1, (
+            f"HB 1709's conference, recorded twice and timed nowhere, is {dict(twice)}: "
+            "one sitting, listed once")
 
     tmp = Path(tempfile.mkdtemp(prefix="gr-chambers-"))
     try:
@@ -11248,7 +11258,8 @@ def _calendar_chambers():
         assert sj.get("link") == "S10" and sj.get("bills") == "HB400" and sj.get("kinds") == "hearing", (
             f"Senate Judiciary on 16 June is {sj}")
         conf = {n: c for n, c in c25.items() if n.startswith(BP.CONFERENCE)}
-        assert sorted(conf) == ["Committee of conference on HB 1", "Committee of conference on HB 2",
+        assert sorted(conf) == ["Committee of conference on HB 1", "Committee of conference on HB 1709",
+                                "Committee of conference on HB 2",
                                 "Committee of conference on SB 14"], sorted(c25)
         for n, c in conf.items():
             assert c["body"] == "H S" and c.get("pick") == BP.CONFERENCE and not c["link"] \
@@ -11259,6 +11270,10 @@ def _calendar_chambers():
         sb14 = conf["Committee of conference on SB 14"]
         assert sb14.get("time") == "12:00" and sb14.get("venue") == "SH 100" \
             and "(2 bills)" not in sb14["html"], f"SB 14's conference card: {sb14}"
+        hb1709 = conf["Committee of conference on HB 1709"]
+        assert '<span class="calcount">1 bill</span>' in hb1709["html"] \
+            and "2 bills" not in hb1709["html"], (
+                f"HB 1709's conference card counts its two recordings as two bills: {hb1709['html']}")
         joint = [n for c_ in (c03, c05, c25) for n, c in c_.items()
                  if " " in c["body"] and not n.startswith(BP.CONFERENCE)]
         assert not joint, f"cards drawn for both chambers that are not a conference: {joint}"
@@ -11338,7 +11353,8 @@ async function open(page,pathname,hash){
      && (W.Q(".cpwho",co[0])||{textContent:""}).textContent==="House and Senate",
      "the committees of conference are not one entry, said to be both chambers': "+co.map(l=>l.textContent));
   const J=await open("calendar/2025-W25.html","/calendar/2025-W25","#d=2025-06-16&c=Committee+of+conference");
-  ok(J.keys().join()==="Committee of conference on SB 14,Committee of conference on HB 1,Committee of conference on HB 2",
+  ok(J.keys().join()==="Committee of conference on SB 14,Committee of conference on HB 1,Committee of conference on HB 2,"
+     +"Committee of conference on HB 1709",
      "picking the committees of conference shows "+J.keys());
   const S=await open("calendar/2025-W25.html","/calendar/2025-W25","#d=2025-06-16&c=Senate+Judiciary");
   ok(S.keys().join()==="Senate Judiciary", "picking Senate Judiciary on 16 June shows "+S.keys());
