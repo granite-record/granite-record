@@ -16250,6 +16250,106 @@ def _learn_statutes_in_force():
                   f"{len(LEARN_STATUTE_CLAIMS)} anchored claims say what their sections say")
 
 
+@check("data", "the register of probate paragraph is reread once the November 2026 vote is in")
+def _probate_after_the_vote():
+    """A REMINDER, and a failing check is the one kind that gets read.
+
+    County government's "Register of probate" paragraph ends on a vote still
+    to come: CACR 13 (2026), which would strike the office out of the
+    constitution, is on the ballot of the general election of 3 November
+    2026, and the page says it goes to the voters then. From the next day that
+    sentence is wrong in its tense whatever the result, and wrong in substance
+    if two thirds said yes. CACR 13's own page takes the result from the
+    docket when the docket records it; this paragraph is written by hand, so
+    no build will correct it. A person has to, and asked on 24 September to
+    be reminded.
+
+    A note in a document is read by whoever goes looking for it. preflight is
+    the first thing every session runs (CLAUDE.md, "Do this first"), so a
+    check that starts failing on 4 November is read by the first session after
+    the vote, and its message says what to change and on which line. It
+    passes again once civics.REGISTER_OF_PROBATE_REVIEWED holds the date of
+    that review: on or after 4 November, because a review before the result
+    is not the one this asks for, and not after today, because a date in the
+    future is a way to silence it early.
+
+    A data check and not a code one, on purpose, for the reason
+    _learn_statutes_in_force gives above: nightly.py gates itself on
+    `preflight --code`, and an election result is a reason to reread a page,
+    not a reason to stop the night's build. It needs nothing on disk.
+
+    The rule is run on fixed days before it is run on the clock, so a
+    reminder that could never fire fails now rather than passing quietly
+    through the day it was written for.
+    """
+    import datetime as _dt
+    try:
+        import civics
+    except Exception as e:                      # noqa: BLE001
+        return "skip", f"civics.py did not import ({e})"
+    vote = _dt.date(2026, 11, 3)
+    due = vote + _dt.timedelta(days=1)
+    on = f"{vote.day} {vote:%B %Y}"
+    src = Path("civics.py").read_text(encoding="utf-8").splitlines()
+
+    def at(text):
+        n = next((i for i, s in enumerate(src, 1) if text in s), None)
+        return f" (civics.py line {n})" if n else ""
+
+    def rule(today, reviewed):
+        """None while the paragraph needs nothing, or what to do about it."""
+        if reviewed:
+            try:
+                when = _dt.date.fromisoformat(reviewed)
+            except ValueError:
+                return (f"REGISTER_OF_PROBATE_REVIEWED{at('REGISTER_OF_PROBATE_REVIEWED =')} "
+                        f"is {reviewed!r}, which is not a date: write the day the "
+                        "register of probate paragraph was reread, as \"2026-11-05\"")
+            if when > today:
+                return (f"REGISTER_OF_PROBATE_REVIEWED is {when}, after today: it "
+                        "records a review that has happened, not one planned")
+            if when >= due:
+                return None
+        if today < due:
+            return None
+        return (
+            "the register of probate paragraph on learn/county-government still "
+            f"says CACR 13 (2026) goes to the voters, and the vote was on {on}. "
+            "In civics.py's BODY_COUNTY, rewrite the paragraph beginning "
+            f"\"Register of probate:\"{at('<p><b>Register of probate:</b>')} to say "
+            "what the voters decided -- an amendment needs two thirds of those "
+            "voting on it -- and, if it passed, the sentence \"Five county "
+            f"officers are elected\"{at('Five county officers are elected')}, which "
+            "counts the register among them. Then set REGISTER_OF_PROBATE_REVIEWED"
+            f"{at('REGISTER_OF_PROBATE_REVIEWED =')} to the date of the review."
+            + (f" It holds {reviewed!r}, which is before {due.day} November and "
+               "so before the result." if reviewed else ""))
+
+    for day, reviewed, fires in ((vote, "", False), (due, "", True),
+                                 (due, due.isoformat(), False),
+                                 (due + _dt.timedelta(days=90), "2026-11-02", True),
+                                 (due, "2026-11-05", True), (due, "soon", True)):
+        got = rule(day, reviewed)
+        assert (got is not None) == fires, (
+            f"on {day} with the review dated {reviewed!r}, the reminder "
+            + ("stays quiet, and should fire" if fires else f"fires ({got[:80]}), and should not"))
+    assert "Register of probate:" in (rule(due, "") or ""), (
+        "the reminder no longer names the paragraph it is for")
+
+    reviewed = getattr(civics, "REGISTER_OF_PROBATE_REVIEWED", None)
+    assert isinstance(reviewed, str), (
+        "civics.py has no REGISTER_OF_PROBATE_REVIEWED string, which is how the "
+        "register of probate paragraph is marked as reread after the November "
+        "2026 vote")
+    today = _dt.date.today()
+    msg = rule(today, reviewed)
+    assert msg is None, msg
+    if reviewed:
+        return "ok", f"reread on {reviewed}, after the vote of {on}"
+    return "ok", (f"the vote is on {on}; this fails from {due.day} November until "
+                  f"the paragraph is reread, {(due - today).days} days from now")
+
+
 @check("data", "a committee's members are the ones on it today, not every seat the table still holds")
 def _committee_rosters_current():
     """Staff reading the site on 15 September found wrong committee rosters.

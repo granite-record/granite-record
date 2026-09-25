@@ -1148,6 +1148,23 @@ them assume you already know all of this."""
 # rather than a guessed one. preflight holds each corrected claim to its
 # section, in both directions.
 # ---------------------------------------------------------------------------
+
+# THE REGISTER OF PROBATE PARAGRAPH ENDS ON A VOTE STILL TO COME. CACR 13
+# (2026) would strike the office out of the constitution, and it is on the
+# ballot of the general election of 3 November 2026; the paragraph below that
+# begins "Register of probate:" says so in the future tense, and the "Five
+# county officers" sentence above it counts the register among the offices on
+# the ballot. CACR 13's own page will say how the vote went once the docket
+# records it, as it recorded the referendums of 1992 and 1998; these two
+# sentences are written by hand, and no build will change them.
+#
+# Once the result is in, rewrite the paragraph to say what the voters decided
+# -- an amendment needs two thirds of those voting on it -- and, if it passed,
+# the county officers sentence too; then set this to the date of that review,
+# as "2026-11-05". preflight's full run fails from 4 November 2026 until this
+# holds a date on or after that day, which is the reminder.
+REGISTER_OF_PROBATE_REVIEWED = ""
+
 BODY_COUNTY = """
 <p>New Hampshire has ten counties: Belknap, Carroll, Cheshire, Coos, Grafton,
 Hillsborough, Merrimack, Rockingham, Strafford and Sullivan. Each is a unit of
