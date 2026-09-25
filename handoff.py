@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.6
+# GRANITE_VERSION: 2026-09-05.7
 """
 Write STATE.md from what is actually on disk.
 

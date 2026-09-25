@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-05.11
+# GRANITE_VERSION: 2026-09-05.12
 """
 Join the docket to the video index. Produces a verification manifest with the
 video ID and predicted offset already filled in, so the manual pass is only
