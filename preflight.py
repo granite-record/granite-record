@@ -4842,8 +4842,30 @@ def _journey_reads(build_site_v2):
                             ev("H", "1989-04-25", "REP FLANAGAN RECONSIDER MA VV; REP FLANAGAN SUB "
                                "OTP/AM MA VV"))[1]][:1],
          ["Sent back to committee, reconsidered on 25 Apr"], "HB462 1989")
-    # A referral after a passage the chamber reconsidered is not that
-    # passage's (HB 1331 of 1990).
+    # A THIRD READING RECONSIDERED AND READ AGAIN THAT DAY is the passage it
+    # was: HB 1282 of 2012 kept its 180-133 and no "reconsidered". HB 1659,
+    # divided out of that third reading and sent to a second committee, was
+    # not passed by the vote on the bills that remained. And a referral after
+    # a passage the chamber reconsidered is not that passage's (HB 1331 of
+    # 1990).
+    want(run("HB1282", ev("H", "2012-03-14", "Ought to Pass (Rep L.Ober): MA RC 180-133"),
+             ev("H", "2012-03-15", "Reconsider Third Reading Motion of March 14 (Reps Jasper and "
+                "Norelli): MA VV"),
+             ev("H", "2012-03-15", "Third Reading: MA VV"))[1],
+         [("2012-03-14", "H", "passed", "Passed, 180–133")], "HB1282 2012")
+    want(run("HB1659", ev("H", "2012-03-14", "Ought to Pass with Amendment #0089h: MA RC 189-151"),
+             ev("H", "2012-03-15", "Reconsider Third Reading Motion of March 14 (Reps Jasper and "
+                "Norelli): MA VV"),
+             ev("H", "2012-03-15", "Divide Third Reading Motion to Remove HB1659 (Reps Jasper and "
+                "Norelli): Speaker Ordered", "other"),
+             ev("H", "2012-03-15", "Remaining Bills to Third Reading (Reps Jasper and Norelli): "
+                "MA VV"),
+             ev("H", "2012-03-15", "HB1659 Referred to Criminal Justice and Public Safety: Without "
+                "Objection", "other"),
+             ev("H", "2012-03-28", "Ought to Pass with Amendment #1482h: MA RC 185-138"))[1],
+         [("2012-03-14", "H", "passed", "Passed with an amendment, 189–151, reconsidered on "
+           "15 Mar"),
+          ("2012-03-28", "H", "passed", "Passed with an amendment, 185–138")], "HB1659 2012")
     want(run("HB1331", ev("S", "1990-03-29", "PASSED/ADOPTED"),
              ev("S", "1990-04-03", "MOTION OF RECONSIDERATION/ADOPTED", "other"),
              ev("S", "1990-04-03", "REFERRED TO FINANCE (RULE 24)", "rereferred"))[1],

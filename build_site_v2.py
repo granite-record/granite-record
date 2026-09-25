@@ -3212,6 +3212,14 @@ J_UNSIGNED = re.compile(r"law\s+without\s+(?:the\s+)?(?:governor'?s\s+)?signatur
                         r"without\s+(?:the\s+)?signature\s+of\s+the\s+governor", re.I)
 J_OTHER_BILL = re.compile(r"\b(?:HB|SB|HCR|SCR|HJR|SJR|CACR)\s*(\d+)", re.I)
 J_WAIVED = re.compile(r"\bwaiv\w*\b[^;]*\breferral|\breferral\b[^;]*\bwaiv", re.I)
+# A MOTION DIVIDED TO TAKE THIS BILL OUT OF IT, and the vote on the bills
+# left in it. The House reconsidered its third reading of 14 March 2012 to
+# take HB 1659 out, "Divide Third Reading Motion to Remove HB1659: Speaker
+# Ordered", then "Remaining Bills to Third Reading: MA VV", and sent HB 1659
+# to a second committee -- and the second row, filed under HB 1659 as the
+# first was, read as the House passing it.
+J_DIVIDED_OUT = re.compile(r"\bdivide\w*\b[^;]*?\bremov\w*\b", re.I)
+J_REMAINING = re.compile(r"^\s*remaining\s+bills\b", re.I)
 # Where a governor's line starts saying when the law takes effect.
 J_EFF_ANY = re.compile(r"\beff(?:ective|\.|:|-)?(?![a-z])|\btake\s+effect", re.I)
 # A LAW WITH MORE THAN ONE EFFECTIVE DATE HAS NO ONE DATE TO STATE. "eff. I.
@@ -3991,6 +3999,10 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
     # referral it waives (SB 482 of 2026), or days after it.
     waived = {((e.get("body") or "")[:1].upper(), e.get("date") or "")
               for e in evs if J_WAIVED.search(e.get("raw") or "")}
+    divided = {((e.get("body") or "")[:1].upper(), e.get("date") or "")
+               for e in evs if J_DIVIDED_OUT.search(e.get("raw") or "")
+               and any(re.sub(r"\s+", "", m.group(0)).upper() == bid
+                       for m in J_OTHER_BILL.finditer(e.get("raw") or ""))}
     # What a reconsideration naming nothing is of (_j_reconsidered): a vote
     # the chamber took since its last decision, on any day; and, on the day
     # of the reconsideration, a motion it took up with no vote written beside
@@ -4046,6 +4058,8 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
         if failed >= 0 and (not rc or failed < rc.start()):
             moved[body] = date
         for seg in _j_segments(raw):
+            if J_REMAINING.match(seg) and (body, date) in divided:
+                continue
             if J_WAIVED.search(seg):
                 last = next((s for s in reversed(steps) if s["body"] == body), None)
                 if last and last["act"] == "referred":
@@ -4333,7 +4347,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
             st["text"] += ", reconsidered on " + _j_prose_date(
                 st["reconsidered"], st["reconsidered"][:4] != st["date"][:4])
         for k in ("vote", "amended", "third", "to", "conf", "rule", "adjourned",
-                  "unanswered", "intro_adopt", "short_of", "reconsidered"):
+                  "unanswered", "intro_adopt", "short_of", "reconsidered", "recon_third"):
             st.pop(k, None)
     return intro, steps
 
@@ -4423,7 +4437,10 @@ def _j_reconsidered(steps, body, date, seg, last=True):
     something up ahead of it: "Sen. Squires Concur with House
     Amendment{4347}; Sen. Squires Motion Reconsideration, MA,VV" (SB 326 of
     2000) is the Senate going back on that day's concurrence, which it then
-    refused, and not on its passage of March."""
+    refused, and not on its passage of March.
+
+    One that names the third reading alone, where the chamber reads the bill
+    a third time again that day, is marked `recon_third` for _j_settle."""
     rc = J_RECONSIDER.search(seg or "")
     if not rc or J_RECON_NOT.search(seg[:rc.start()]):
         return
@@ -4443,6 +4460,8 @@ def _j_reconsidered(steps, body, date, seg, last=True):
     elif not last or _j_act(seg[:rc.start()]) or _j_has_outcome(seg[:rc.start()]):
         return
     mine[-1]["reconsidered"] = date
+    if J_THIRD.search(named) and not re.search(r"\bpass|\bOTP|ought", named, re.I):
+        mine[-1]["recon_third"] = True
 
 
 def _j_in_recess(steps):
@@ -4579,10 +4598,24 @@ def _j_settle(steps):
         # Unless that passage was reconsidered: HB 1462 of 2002 passed the
         # Senate on 16 April, was reconsidered on the 18th, and "OT3rdg, MA,
         # VV" that day is it passing again.
+        # BUT NOT WHERE ONLY ITS THIRD READING WAS, AND WAS READ AGAIN THAT
+        # DAY. The House reconsidered its third reading of 14 March 2012 to
+        # take one bill out of it, and read the other fourteen a third time
+        # again: "Reconsider Third Reading Motion of March 14: MA VV", then
+        # "Third Reading: MA VV". HB 1282's passage, 180-133 on the 14th,
+        # read "reconsidered on 15 Mar", as if that vote had been undone, and
+        # the rail showed the voice vote of the repeated reading in its
+        # place. The reading again is the passage it was, as a third reading
+        # on a later day always is.
         if st.get("third") and st["act"] == "passed":
             mine = [s for s in out if s["body"] == st["body"]]
-            if mine and mine[-1]["act"] == "passed" and not mine[-1].get("reconsidered"):
-                continue
+            if mine and mine[-1]["act"] == "passed":
+                last = mine[-1]
+                if last.get("recon_third") and last.get("reconsidered") == st["date"]:
+                    last.pop("reconsidered")
+                    last.pop("recon_third")
+                if not last.get("reconsidered"):
+                    continue
         out.append(st)
     # A motion to table the clerk gave no vote for stands only as the
     # chamber's last word.
