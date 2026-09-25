@@ -23,7 +23,7 @@ import seating
 import json
 import re
 import shutil
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict, defaultdict, namedtuple
 from pathlib import Path
 
 # The palette is app.css's, read at build time rather than copied. The copy
@@ -310,6 +310,15 @@ MEET_LEGEND = (("k-hearing", "Public hearing"),
                ("k-floor", "Floor session"))
 
 
+# What a calendar card is keyed on; see meeting_key. A named tuple so the
+# code reading one says which part it means: `key.chamber` is "H", "S" or ""
+# (a study committee, a conference), and `key.bill` is empty except on a
+# committee of conference, which is one bill's.
+Meet = namedtuple("Meet", "date chamber name bill")
+CHAMBER_WORD = {"H": "House", "S": "Senate"}
+CONFERENCE = "Committee of conference"
+
+
 def meeting_key(u):
     """What makes one meeting out of a handful of `upcoming` bill rows.
 
@@ -353,9 +362,116 @@ def meeting_key(u):
     on the line it belongs to -- with the entry naming it once when every item
     shares it.
 
-    So the key is the day and the committee, and nothing else.
+    So the key is the day and the committee, and nothing else -- where "the
+    committee" is a committee in full, which for most of them means its
+    chamber as well as its name.
+
+    THE CHAMBER, BECAUSE A NAME IS NOT A COMMITTEE. Both chambers have a
+    Finance, a Judiciary, a Ways and Means, a Transportation, an Executive
+    Departments and Administration and a Children and Family Law. Keyed on
+    the name alone, the two sitting on one day became one card: 28 January
+    2025's "Finance" held House Finance's work session on HB 519 in LOB
+    210-211 and Senate Finance's hearings on SB 64, 113, 114 and 117 in SH
+    103, under one name and one link -- and 50 cards on the calendar were
+    two chambers' committees drawn as one. So a chamber's committee is keyed
+    on (chamber, name), and the card names its chamber.
+
+    A study or statutory committee has no chamber: the database copy's row
+    carries none, and the docket's row for a bill that set one up carries
+    the BILL's chamber, which must not split the one meeting into two.
+
+    A COMMITTEE OF CONFERENCE IS ONE BILL'S, AND BOTH CHAMBERS'. House Rule
+    50, as the House Calendar prints it each June: "The House and Senate
+    Conferees on a bill shall meet jointly but vote separately while in
+    conference", and the first-named conferee of the bill's own chamber sets
+    the time and place. Each bill has its own conferees, its own notice on
+    its own docket -- "Conference Committee Meeting: 06/16/2025 09:30 am LOB
+    206-208" on HB 485, 02:00 pm on HB 273 -- and its own report. So a
+    conference is keyed on the bill, with no chamber and whatever name the
+    row carries: one card per bill's conference per day. The Senate docket's
+    notice names no committee -- "Committee of Conference Meeting:
+    06/16/2025, 12:00 pm, Room 100, SH" on SB 14 -- yet the row came to carry
+    the bill's Senate committee, and keyed on that name SB 14's conference
+    was drawn as a sitting of Senate Judiciary, linked to that committee's
+    page, and a second time from its recording. Per day would be one card for every conference in
+    the building, which is the mistake above made across a whole corridor:
+    the docket noticed 33 for 26 May 2026, each at its own time, in nine
+    rooms.
     """
-    return (u.get("date") or "", u.get("committee") or "")
+    date = u.get("date") or ""
+    what = (u.get("what") or u.get("kind") or "").strip().lower()
+    if what == "committee of conference":
+        return Meet(date, "", CONFERENCE, (u.get("bill") or "").strip().upper())
+    name = u.get("committee") or ""
+    if u.get("study") or what in ("study committee", "statutory committee"):
+        return Meet(date, "", name, "")
+    return Meet(date, (u.get("body") or "").strip().upper(), name, "")
+
+
+def is_conference(key):
+    return key.name == CONFERENCE
+
+
+def card_name(key):
+    """What a card calls its committee: "House Judiciary", "Senate Finance",
+    "Committee of conference on HB 2", "Commission on Aging".
+
+    THE CHAMBER IS SAID, on every chamber's committee and not only on the
+    names both chambers use: a card reading "Commerce" beside one reading
+    "Senate Finance" would leave a reader to guess whose Commerce it is. It
+    is how the General Court's own schedule titles them -- "House Ways and
+    Means : GP, Room 234". The floor and the sittings whose committee the
+    docket did not record already say it, and are not told twice.
+    """
+    if is_conference(key):
+        num = re.sub(r"^([A-Z]+)(\d)", r"\1 \2", key.bill)
+        return f"{CONFERENCE} on {num}" if num else CONFERENCE
+    word = CHAMBER_WORD.get(key.chamber)
+    first = (key.name.split() or [""])[0]
+    if word and first not in CHAMBER_WORD.values():
+        return f"{word} {key.name}"
+    return key.name
+
+
+def pick_name(key):
+    """The committee as the Calendar page's picker lists it: the card's own
+    name, except that every committee of conference is one entry. A reader
+    who asks for the conferences wants them all, not a list of eighty bills."""
+    return CONFERENCE if is_conference(key) else card_name(key)
+
+
+def card_bodies(key, rows):
+    """The chambers a card is filtered under. A committee of conference is
+    both chambers' by rule, whichever of them called it; anything else is the
+    chambers its rows record."""
+    if is_conference(key):
+        return ["H", "S"]
+    return sorted({(r.get("body") or "").strip().upper()
+                   for r in rows if (r.get("body") or "").strip()})
+
+
+def committee_codes(site):
+    """{(chamber, lower-cased name): code} out of site/committees.json, for
+    a card's link to its committee's page.
+
+    ON THE CHAMBER AS WELL AS THE NAME. Keyed on the name alone, the second
+    of two committees of one name overwrote the first, so every House
+    Finance, Judiciary, Ways and Means, Transportation, Executive
+    Departments and Administration and Children and Family Law card linked
+    to the Senate committee's page -- 168 cards, House Judiciary of 15
+    January 2025 among them, sent to committee/S10.
+    """
+    code = {}
+    cf = Path(site) / "committees.json"
+    if cf.exists():
+        try:
+            for c in json.loads(cf.read_text(encoding="utf-8")):
+                if c.get("name") and c.get("code"):
+                    code[((c.get("chamber") or "").strip().upper(),
+                          c["name"].strip().lower())] = c["code"]
+        except (ValueError, OSError):
+            pass
+    return code
 
 
 # THE FORTNIGHT'S MEETING COUNT IS OFF THE STATUS BOX, at the person's
@@ -450,16 +566,8 @@ def calendar_html(out, today=None, rows=None):
         except (ValueError, OSError):
             continue
 
-    # --- committee name -> its own page -------------------------------------
-    code = {}
-    cf = out / "committees.json"
-    if cf.exists():
-        try:
-            for c in json.loads(cf.read_text(encoding="utf-8")):
-                if c.get("name") and c.get("code"):
-                    code[c["name"].strip().lower()] = c["code"]
-        except (ValueError, OSError):
-            pass
+    # --- a chamber's committee -> its own page -----------------------------
+    code = committee_codes(out)
 
     def when(d):
         """Tue 15 Sep, and how far off it is -- the part a reader acts on."""
@@ -621,7 +729,11 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             html.append('<p class="calempty">No meetings scheduled.</p></div>')
             continue
         for key in keys:
-            _d, cmte = key
+            # THE NAME THE CARD PRINTS, with its chamber: two committees of
+            # one name on one day are two cards now, and each has to say
+            # which it is. The key's own name is the committee's, for the
+            # links and the questions asked about it below.
+            _d, cmte = key.date, card_name(key)
             rows = meets[key]
             # THE DAY'S ITEMS, IN ORDER. One entry can hold a hearing, a work
             # session and an executive session, so the body is a little
@@ -666,8 +778,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # than the page shipping a second copy of the week as JSON. A
             # reader with no script still gets every card, which is the whole
             # week and the correct answer to no filter at all.
-            bodies = sorted({(r.get("body") or "").strip().upper()
-                             for r in rows if (r.get("body") or "").strip()})
+            bodies = card_bodies(key, rows)
             bills_attr = " ".join(sorted({(r.get("bill") or "").strip().upper()
                                           for r in rows if r.get("bill")}))
             # THE MIXED COLOUR. One segment per kind the day holds, stacked
@@ -687,7 +798,11 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             html.append('<details class="calmeet"'
                         f' data-body="{esc(" ".join(bodies))}"'
                         f' data-cmte="{esc(cmte.lower())}"'
-                        f' data-bills="{esc(bills_attr)}"'
+                        # THE PICKER'S NAME, where it is not the card's own:
+                        # the committees of conference are one entry there.
+                        + (f' data-pick="{esc(pick_name(key))}"'
+                           if pick_name(key) != cmte else "")
+                        + f' data-bills="{esc(bills_attr)}"'
                         f' data-date="{esc(_d)}"'
                         + (f' data-time="{esc(slots[0])}"' if slots else "")
                         + (f' data-last="{esc(slots[-1])}"' if slots else "")
@@ -698,7 +813,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                         # sitting it is, and the kinds its bar is drawn in
                         # (hearing, meet, exec, conf, floor, other). The same
                         # colours as the bar, because they are the bar.
-                        + f' data-who="{esc(meeting_who(cmte, rows))}"'
+                        + f' data-who="{esc(meeting_who(key.name, rows))}"'
                         + f' data-kinds="{esc(" ".join(b[2:] for b in bars))}"'
                         + "><summary>")
             html.append('<span class="calmix" aria-hidden="true">'
@@ -782,7 +897,7 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
             # is the set of pages actually on disk, so the caller that built
             # them decides, rather than this guessing from the name.
             floor = {"house floor": "H",
-                     "senate floor": "S"}.get(cmte.strip().lower())
+                     "senate floor": "S"}.get(key.name.strip().lower())
             if floor and sessions is not None and (floor, _d) not in sessions:
                 floor = None
             elif floor and sessions is None:
@@ -797,12 +912,14 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                                       f'{esc(w)} (PDF)</a>' for w, u in got)
                             + "</p>")
             # A study committee that shares a name with a standing one is not
-            # that committee, so its card does not borrow the page.
-            cc = None if study else code.get(cmte.strip().lower())
+            # that committee, so its card does not borrow the page; and a
+            # chamber's committee takes its OWN chamber's page, which the
+            # name alone does not say.
+            cc = None if study else code.get((key.chamber, key.name.strip().lower()))
             if floor:
                 html.append('<p class="calmore">'
                             f'<a href="session/{floor}/{esc(_d)}.html">'
-                            f'What the {esc(cmte[:-6].strip())} did that day'
+                            f'What the {esc(key.name[:-6].strip())} did that day'
                             "</a></p>")
             elif cc:
                 html.append('<p class="calmore">'

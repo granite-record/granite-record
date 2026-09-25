@@ -51,9 +51,11 @@ committees that sat around them.
 
 ONE ENTRY PER COMMITTEE PER DAY, which is meeting_key's rule and not this
 file's: a committee that holds a hearing in the morning and an executive
-session after it has had one working day. The card carries a chip per kind and
-a divided colour bar, and its body lists the day's items in order with the time
-and room each was set for.
+session after it has had one working day. A committee is its chamber as well
+as its name -- House Finance and Senate Finance on one day are two entries,
+each linking its own page -- and a committee of conference is one bill's. The
+card carries a chip per kind and a divided colour bar, and its body lists the
+day's items in order with the time and room each was set for.
 
 STUDY AND STATUTORY COMMITTEES. proceedings.csv is keyed on bills, so on its
 own this showed bill business only, while the General Court's schedule also
@@ -74,6 +76,7 @@ import re
 from collections import Counter, OrderedDict, defaultdict
 from pathlib import Path
 
+import bill_order as BO
 import build_pages as BP
 import proceedings
 import shell as S
@@ -102,7 +105,8 @@ MONTH = ("January February March April May June July August September "
 # is better than a confident wrong name.
 FLOOR = {"H": "House floor", "S": "Senate floor"}
 FLOOR_KINDS = ("floor debate",)
-CONFERENCE = "Committee of conference"
+# build_pages.meeting_key's, which keys a conference on its bill.
+CONFERENCE = BP.CONFERENCE
 
 
 def floor_name(kind, body):
@@ -513,8 +517,11 @@ WEEK_JS = r"""
   function parseCard(html){
     var tag=(CARD_TAG.exec(html)||[""])[0],
         name=/<span class="calcmte">([^<]*)<\/span>/.exec(html);
+    // pick: the committee as the picker lists it -- the card's own name, or
+    // "Committee of conference" for every bill's conference.
+    var nm=name?unesc(name[1]):"";
     return {html:html, date:attr(tag,"data-date")||"",
-            name:name?unesc(name[1]):"", cmte:attr(tag,"data-cmte")||"",
+            name:nm, pick:attr(tag,"data-pick")||nm, cmte:attr(tag,"data-cmte")||"",
             body:attr(tag,"data-body")||"", bills:words(attr(tag,"data-bills")),
             time:attr(tag,"data-time")||"", last:attr(tag,"data-last")||"",
             venue:attr(tag,"data-venue")||"",
@@ -544,7 +551,7 @@ WEEK_JS = r"""
   // boxes; an entry holding several kinds matches when any of them is ticked
   // and is shown whole; the floor answers to "who" alone.
   function matches(e,f){
-    if(f.picks.length ? f.picks.indexOf(e.name)<0 : f.who.indexOf(e.who)<0) return false;
+    if(f.picks.length ? f.picks.indexOf(e.pick)<0 : f.who.indexOf(e.who)<0) return false;
     if(e.who!=="floor" && e.kinds.length && !e.kinds.some(function(k){
         return f.what.indexOf(WHAT_OF[k]||"work")>=0; })) return false;
     if(f.body && e.body.indexOf(f.body)<0) return false;
@@ -1141,9 +1148,13 @@ WEEK_JS = r"""
     cplist.innerHTML=rows.map(function(c){
       var g=c[1]!==last?'<p class="cpgroup">'+esc(GROUP[c[1]]||"")+'</p>':"";
       last=c[1];
+      // The chamber is said once: in the name, where the name carries it
+      // ("House Judiciary"), or beside it where it does not -- the
+      // committees of conference, which are both chambers'.
+      var ch=CHAMBER[c[2]]||"", said=ch&&c[0].indexOf(ch+" ")===0;
       return g+'<label class="calchk cpopt"><input type="checkbox" value="'+esc(c[0])+'"'
         +(S.picks.indexOf(c[0])>=0?" checked":"")+'><span>'+esc(c[0])
-        +(CHAMBER[c[2]]?' <span class="cpwho">'+CHAMBER[c[2]]+'</span>':"")+'</span></label>';
+        +(ch&&!said?' <span class="cpwho">'+ch+'</span>':"")+'</span></label>';
     }).join("")||'<p class="calhint">No committee on the calendar has that in its name.</p>';
     cpstat.textContent=q?plural(rows.length,"committee")+" match.":"";
   }
@@ -1537,15 +1548,8 @@ def collect(site, study_rows=()):
                     titles[b["id"]] = b.get("title") or ""
                     years[b["id"]] = b.get("year")
 
-    code = {}
-    cf = site / "committees.json"
-    if cf.exists():
-        try:
-            for c in json.loads(cf.read_text(encoding="utf-8")):
-                if c.get("name") and c.get("code"):
-                    code[c["name"].strip().lower()] = c["code"]
-        except (ValueError, OSError):
-            pass
+    # By chamber and name: build_pages.committee_codes says why.
+    code = BP.committee_codes(site)
 
     return (weeks_from(list(proceedings.load()) + list(study_rows)),
             titles, years, code)
@@ -1604,6 +1608,14 @@ def weeks_from(rows, names=None):
     for days in weeks.values():
         for day in days.values():
             for key, rs in day.items():
+                # AND A CONFERENCE'S RECORDING IS THE MEETING ITS NOTICE SET.
+                # The floor index knows a conference from its video, which
+                # gives no time; the docket's notice gives the time and room.
+                # Where the bill's card has both, the untimed row is the same
+                # sitting again, and listed it would count the bill twice.
+                if BP.is_conference(key) and any(x["time"] for x in rs):
+                    rs[:] = [x for x in rs if x["time"]]
+                    continue
                 src = [x for x in rs if x.get("study") and x["what"] != "cancelled"]
                 if len(src) != 1:
                     continue
@@ -1704,7 +1716,7 @@ def doc_links(weeks, cal_urls, notices, journal_keys, sittings):
         for date, day in days.items():
             for key, rows in day.items():
                 links = []
-                body = floors.get(key[1])
+                body = floors.get(key.name)
                 if body:
                     url = B2.journal_url(date, sittings.get((body, date)), journal_keys)
                     if url:
@@ -1716,7 +1728,7 @@ def doc_links(weeks, cal_urls, notices, journal_keys, sittings):
                     keys = []
                     for r in rows:
                         k = (by_bill.get((date, (r.get("bill") or "").upper()))
-                             if r.get("bill") else by_name.get((date, _words(key[1]))))
+                             if r.get("bill") else by_name.get((date, _words(key.name))))
                         if k and k in cal_urls and k not in keys:
                             keys.append(k)
                     for k in sorted(keys, key=lambda x: (x.split()[2], x.split()[0],
@@ -1739,8 +1751,11 @@ def in_order(day):
     One ordering for the week page and the home rail, so the two list a day's
     committees the same way round.
     """
+    # Then by the committee's name, its chamber and a conference's bill, so
+    # House Finance and Senate Finance at one hour, or two conferences, come
+    # the same way round every time.
     return sorted(day, key=lambda k: (min((r["time"] or "~") for r in day[k]),
-                                      k[1]))
+                                      k.name, k.chamber, BO.bill_key(k.bill)))
 
 
 def sitting_pages(site):
@@ -2126,15 +2141,16 @@ def month_files(site, weeks, order, titles, years, code, today,
 
     # EVERY COMMITTEE ON THE CALENDAR, for the picker: its name as the cards
     # print it, whose it is, and its chamber or chambers. Read once, and only
-    # when a reader goes looking for a committee.
+    # when a reader goes looking for a committee. House Judiciary and Senate
+    # Judiciary are two entries, because they are two cards; the committees
+    # of conference are one, under build_pages.pick_name.
     agg = {}
     for k in order:
         for _date, day in (weeks.get(k) or {}).items():
-            for (_d, name), rows in day.items():
-                a = agg.setdefault(name, [Counter(), set()])
-                a[0][BP.meeting_who(name, rows)] += 1
-                a[1].update((r.get("body") or "").strip().upper() for r in rows
-                            if (r.get("body") or "").strip())
+            for key, rows in day.items():
+                a = agg.setdefault(BP.pick_name(key), [Counter(), set()])
+                a[0][BP.meeting_who(key.name, rows)] += 1
+                a[1].update(BP.card_bodies(key, rows))
     rank = {"standing": 0, "study": 1, "floor": 2}
     names = sorted(([n, c.most_common(1)[0][0], " ".join(sorted(b))]
                     for n, (c, b) in agg.items()),

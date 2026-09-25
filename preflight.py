@@ -10616,11 +10616,11 @@ def _bill_lists_by_number(BO, BC, BS, SP, BP):
     assert "SB 28, SB 29, SB 285 were taken off" in page, \
         "the bills taken off a consent calendar are not named by number"
 
-    key = ("2026-01-13", "Commerce")
+    key = BP.Meet("2026-01-13", "H", "Commerce", "")
     slot = [{"bill": b, "time": "10:00", "what": "public hearing",
              "venue": "LOB 302", "body": "H"} for b in mixed]
-    page, _missing = BP.cal_days({key[0]: [key]}, {key: slot}, {}, {},
-                                 {"commerce": "H43"}, lambda d: (d, ""), _h.escape)
+    page, _missing = BP.cal_days({key.date: [key]}, {key: slot}, {}, {},
+                                 {("H", "commerce"): "H43"}, lambda d: (d, ""), _h.escape)
     got = [x.replace(" ", "") for x in _CBN.findall(page)]
     assert got == want, "a calendar slot lists " + ", ".join(got)
 
@@ -10953,10 +10953,13 @@ def _calendar_study_committees():
                   "committee": "", "venue": ""}
         weeks = BC.weeks_from([docket] + rows, names=names)
         day = weeks["2026-W36"]["2026-09-02"]
-        assert list(day) == [("2026-09-02", long)], (
+        # No chamber in the key: the docket's row carries the BILL's chamber
+        # and the database copy's none, and keyed on either they were two.
+        one = BC.BP.Meet("2026-09-02", "", long, "")
+        assert list(day) == [one], (
             f"HB 1763's study committee on 2 September is {list(day)}, not one "
             "card under the committee's own name")
-        assert {(r["time"], r["venue"]) for r in day[("2026-09-02", long)]} == {
+        assert {(r["time"], r["venue"]) for r in day[one]} == {
             ("10:00", "GP Room 230")}, "the docket's row did not take its meeting's time and room"
 
         note = ("Study and statutory committee meetings come from the General "
@@ -11104,14 +11107,15 @@ def _calendar_document_links():
         cal_urls = B2.calendar_keys_from_queue(str(q))
         docs, n_cal, n_jnl = BC.doc_links(weeks, cal_urls, notices, jk,
                                           {("H", "2026-08-19"): "HJ 16"})
-        assert docs.get(("2026-09-24", "Commerce")) == [
+        assert docs.get(BP.Meet("2026-09-24", "H", "Commerce", "")) == [
             ("House Calendar 32", V + "calendars%5C2026%5CHC%2032.pdf")], docs
-        assert docs.get(("2026-09-25", "Solid Waste Working Group")) == [
+        assert docs.get(BP.Meet("2026-09-25", "", "Solid Waste Working Group", "")) == [
             ("House Calendar 29", V + "calendars%5C2026%5CHC%2029.pdf")], docs
-        assert docs.get(("2026-08-19", "House floor"), [("", "")])[0][0] == "House Journal 16", docs
+        assert docs.get(BP.Meet("2026-08-19", "H", "House floor", ""),
+                        [("", "")])[0][0] == "House Journal 16", docs
         assert (n_cal, n_jnl) == (2, 1), (n_cal, n_jnl)
-        key = ("2026-09-24", "Commerce")
-        page, _m = BP.cal_days({key[0]: [key]}, {key: weeks["2026-W39"][key[0]][key]},
+        key = BP.Meet("2026-09-24", "H", "Commerce", "")
+        page, _m = BP.cal_days({key.date: [key]}, {key: weeks["2026-W39"][key.date][key]},
                                {}, {}, {}, lambda d: (d, ""), _h.escape, docs=docs)
         assert f'href="{_h.escape(V)}calendars%5C2026%5CHC%2032.pdf" rel="noopener">' \
                "House Calendar 32 (PDF)</a>" in page, "the card does not draw its notice's link"
@@ -11119,6 +11123,230 @@ def _calendar_document_links():
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("the first notice linked, journals found by number with their "
                   "own date agreeing, and the link drawn on the card")
+
+
+@check("frontend", "a House and a Senate committee of one name are two cards, each linking its own page, and a committee of conference is one bill's")
+def _calendar_chambers():
+    """Fifty calendar cards were two chambers' committees drawn as one.
+
+    build_pages.meeting_key grouped a day's rows on the committee's name
+    alone, and six names belong to both chambers. So 28 January 2025's
+    "Finance" card held House Finance's 11:00 work session on HB 519 in LOB
+    210-211 and Senate Finance's hearings on SB 64, 113, 114 and 117 in SH
+    103, and the calendar carried 50 such cards, data-body "H S". The link to
+    the committee's page was keyed the same way, so the second committee of
+    a name overwrote the first: 168 single-chamber cards -- House Judiciary
+    on 15 January 2025 among them -- linked to the Senate committee's page.
+    The Calendar page's picker listed "Judiciary" once, and picking it showed
+    both. Found by two reviewers on 25 September 2026, and live on the home
+    page's Coming up, which shares the helpers.
+
+    A committee of conference was keyed the same way and wrong the other way
+    round: one "Committee of conference" card a day held every bill's
+    conference in the building, while the Senate docket's notice of SB 14's
+    conference, which names no committee, reached the calendar under Senate
+    Judiciary's name and link. House Rule 50 says the conferees on a bill
+    meet jointly, and each bill's conference is noticed on its own docket at
+    its own time, so it is one card per bill per day, both chambers'.
+
+    This draws those days from rows written here and holds the grouping, the
+    names, the chambers, the links, the picker's list, the home rail and --
+    in node, where it is on PATH -- the page script's picker to it.
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_calendar as BC
+    import build_pages as BP
+    here = Path(".").resolve()
+    if not (here / "bills.html").exists():
+        return "skip", "bills.html is not here"
+    M = BP.Meet
+
+    def r(d, bill, body, kind, time, cmte, venue=""):
+        return {"term": "2025-2026", "bill": bill, "body": body, "kind": kind,
+                "date": d, "time": time, "committee": cmte, "venue": venue}
+    rows = [
+        r("2025-01-28", "HB519", "H", "work session", "11:00", "Finance", "LOB 210-211"),
+        r("2025-01-28", "SB64", "S", "public hearing", "13:15", "Finance", "SH 103"),
+        r("2025-01-28", "SB113", "S", "public hearing", "13:30", "Finance", "SH 103"),
+        r("2025-01-15", "HB88", "H", "public hearing", "13:00", "Judiciary", "LOB 206-208"),
+        # SB 14's conference from the Senate docket, carrying Senate
+        # Judiciary's name, and from its recording with no name or time.
+        r("2025-06-16", "SB14", "S", "committee of conference", "12:00", "Judiciary", "SH 100"),
+        r("2025-06-16", "SB14", "S", "committee of conference", "", ""),
+        r("2025-06-16", "HB2", "H", "committee of conference", "", ""),
+        r("2025-06-16", "HB1", "H", "committee of conference", "", ""),
+        # Senate Judiciary sat that day too, on a House bill.
+        r("2025-06-16", "HB400", "S", "public hearing", "10:00", "Judiciary", "SH 100"),
+        # A statutory committee: the database copy's row has no chamber and
+        # the docket's carries the bill's. One committee, one card.
+        {"study": True, "bill": "", "kind": "statutory committee", "date": "2025-06-16",
+         "time": "09:00", "committee": "Commission on Aging", "venue": "GP 230",
+         "note": "Regular meeting.", "body": ""},
+        r("2025-06-16", "HB1763", "H", "study committee", "", "Commission on Aging"),
+    ]
+    weeks = BC.weeks_from(rows, names={})
+    jan = BC.in_order(weeks["2025-W05"]["2025-01-28"])
+    assert jan == [M("2025-01-28", "H", "Finance", ""), M("2025-01-28", "S", "Finance", "")], (
+        f"House and Senate Finance on 28 January are keyed {jan}")
+    june = weeks["2025-W25"]["2025-06-16"]
+    order = BC.in_order(june)
+    want = [M("2025-06-16", "", "Commission on Aging", ""), M("2025-06-16", "S", "Judiciary", ""),
+            M("2025-06-16", "", BP.CONFERENCE, "SB14"), M("2025-06-16", "", BP.CONFERENCE, "HB1"),
+            M("2025-06-16", "", BP.CONFERENCE, "HB2")]
+    assert order == want, f"16 June is keyed {order}"
+    assert {x["bill"] for x in june[want[1]]} == {"HB400"}, (
+        "SB 14's conference was drawn as a sitting of Senate Judiciary")
+    assert [(x["time"], x["venue"]) for x in june[want[2]]] == [("12:00", "SH 100")], (
+        f"SB 14's conference card holds {june[want[2]]}: its notice and its "
+        "recording are one sitting, listed once, at the notice's time")
+    assert len(june[want[0]]) == 2, "the statutory committee was split by the docket row's chamber"
+
+    tmp = Path(tempfile.mkdtemp(prefix="gr-chambers-"))
+    try:
+        site = tmp / "site"
+        site.mkdir()
+        shutil.copy(here / "bills.html", site / "bills.html")
+        (site / "committees.json").write_text(json.dumps([
+            {"code": "H34", "name": "Finance", "chamber": "H"},
+            {"code": "S07", "name": "Finance", "chamber": "S"},
+            {"code": "H10", "name": "Judiciary", "chamber": "H"},
+            {"code": "S10", "name": "Judiciary", "chamber": "S"}]), encoding="utf-8")
+        code = BP.committee_codes(site)
+        assert code == {("H", "finance"): "H34", ("S", "finance"): "S07",
+                        ("H", "judiciary"): "H10", ("S", "judiciary"): "S10"}, code
+        today = _dt.date(2025, 1, 28)
+        BC.every_week(weeks, today)
+        wk = sorted(weeks)
+        with contextlib.redirect_stdout(io.StringIO()):
+            for i, k in enumerate(wk):
+                BC.week_page(site, "https://graniterecord.org", k, weeks, wk, i,
+                             {}, {}, code, [], today, set())
+            BC.month_files(site, weeks, wk, {}, {}, code, today)
+
+        def cards(page):
+            t = (site / page).read_text(encoding="utf-8")
+            t = t[t.index('<div class="calview" id="calview">'):t.index('<nav class="wknav wkfoot"')]
+            out = {}
+            for m in re.finditer(r'<details class="calmeet"([^>]*)>(.*?)</details>', t, re.S):
+                a = dict(re.findall(r' data-([a-z]+)="([^"]*)"', m.group(1)))
+                name = re.search(r'<span class="calcmte">([^<]*)</span>', m.group(2)).group(1)
+                link = re.search(r'href="committee/([A-Za-z0-9]+)\.html#day-', m.group(2))
+                out[name] = dict(a, link=link.group(1) if link else "",
+                                 items=len(re.findall(r'<a class="cbn"', m.group(2))), html=m.group(2))
+            return out
+        c05, c03, c25 = cards("calendar.html"), cards("calendar/2025-W03.html"), cards("calendar/2025-W25.html")
+        got = {n: (c["body"], c["link"], c["bills"]) for n, c in c05.items()}
+        assert got == {"House Finance": ("H", "H34", "HB519"),
+                       "Senate Finance": ("S", "S07", "SB113 SB64")}, (
+            f"28 January 2025 draws {got}: two committees, each under its own "
+            "chamber's name and linking its own chamber's page")
+        assert (c03.get("House Judiciary") or {}).get("link") == "H10", (
+            f"House Judiciary on 15 January links {c03}, not committee/H10")
+        sj = c25.get("Senate Judiciary") or {}
+        assert sj.get("link") == "S10" and sj.get("bills") == "HB400" and sj.get("kinds") == "hearing", (
+            f"Senate Judiciary on 16 June is {sj}")
+        conf = {n: c for n, c in c25.items() if n.startswith(BP.CONFERENCE)}
+        assert sorted(conf) == ["Committee of conference on HB 1", "Committee of conference on HB 2",
+                                "Committee of conference on SB 14"], sorted(c25)
+        for n, c in conf.items():
+            assert c["body"] == "H S" and c.get("pick") == BP.CONFERENCE and not c["link"] \
+                and c["items"] == 1 and c["who"] == "standing", (
+                    f"{n}: data-body {c['body']!r}, data-pick {c.get('pick')!r}, link "
+                    f"{c['link']!r}, {c['items']} bills listed -- a conference is both "
+                    "chambers', one bill's, and no committee's page")
+        sb14 = conf["Committee of conference on SB 14"]
+        assert sb14.get("time") == "12:00" and sb14.get("venue") == "SH 100" \
+            and "(2 bills)" not in sb14["html"], f"SB 14's conference card: {sb14}"
+        joint = [n for c_ in (c03, c05, c25) for n, c in c_.items()
+                 if " " in c["body"] and not n.startswith(BP.CONFERENCE)]
+        assert not joint, f"cards drawn for both chambers that are not a conference: {joint}"
+        assert "Commission on Aging" in c25 and "pick" not in c25["Commission on Aging"], sorted(c25)
+
+        names = json.loads((site / "calendar" / "data" / "committees.json").read_text(encoding="utf-8"))
+        for n in (["House Finance", "standing", "H"], ["Senate Finance", "standing", "S"],
+                  ["House Judiciary", "standing", "H"], ["Senate Judiciary", "standing", "S"],
+                  ["Committee of conference", "standing", "H S"]):
+            assert n in names, f"the picker's list has no {n}: {names}"
+        bare = [n for n in names if n[0] in ("Finance", "Judiciary")
+                or n[0].startswith(BP.CONFERENCE + " on")]
+        assert not bare, f"the picker lists {bare}, which name no one committee"
+
+        # The home page's Coming up, drawn by the same helpers.
+        for day, want_rail in ((_dt.date(2025, 1, 28), {"house finance": "H34", "senate finance": "S07"}),
+                               (_dt.date(2025, 6, 16), {"senate judiciary": "S10"})):
+            with contextlib.redirect_stdout(io.StringIO()):
+                page = BP.calendar_html(site, today=day, rows=rows)
+            rail = {m.group(1): (re.search(r'href="committee/([A-Za-z0-9]+)\.html', m.group(2)) or [None, ""])[1]
+                    for m in re.finditer(r'<details class="calmeet"[^>]*? data-cmte="([^"]*)"[^>]*>(.*?)</details>',
+                                         page, re.S)}
+            for k, v in want_rail.items():
+                assert rail.get(k) == v, f"Coming up on {day}: {rail}"
+            assert not any(k in rail for k in ("finance", "judiciary")), (
+                f"Coming up on {day} still draws a committee without its chamber: {rail}")
+
+        node = _cal_node()
+        if not node:
+            return "ok", ("two Finances and two Judiciaries kept apart, each linking its own "
+                          "page; conferences one a bill; node not on PATH, so the picker was not run")
+        (tmp / "minidom.js").write_text(_CAL_DOM, encoding="utf-8")
+        (tmp / "drive.js").write_text(_CAL_CHAMBER_DRIVE, encoding="utf-8")
+        rr = _run([node, str(tmp / "drive.js"), str(site)], capture_output=True, text=True, timeout=120)
+        out = (rr.stdout or "") + (rr.stderr or "")
+        assert rr.returncode == 0 and out.strip().endswith("OK"), out.strip()[-1500:]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("House and Senate Finance on 28 January 2025 are two cards linking H34 and "
+                  "S07; House Judiciary links H10; SB 14's conference is one card, both "
+                  "chambers', and not Senate Judiciary's; the picker lists each and picks one")
+
+
+# The page's own picker, for _calendar_chambers, on _CAL_DOM.
+_CAL_CHAMBER_DRIVE = r"""const {makeWorld}=require("./minidom.js");
+const fs=require("fs"), vm=require("vm"), path=require("path");
+const SITE=process.argv[2], fails=[];
+const ok=(c,m)=>{ if(!c) fails.push(m); };
+async function open(page,pathname,hash){
+  const text=fs.readFileSync(path.join(SITE,page),"utf8");
+  const a=text.indexOf('<div id="results">'), s=text.indexOf("<script>",a), e=text.indexOf("</script>",s);
+  const W=makeWorld({today:[2025,1,28], path:pathname, hash:hash||"",
+    files:(url)=>{ const f=path.join(SITE,url.replace(/^\//,"")); return fs.existsSync(f)?fs.readFileSync(f,"utf8"):null; }});
+  W.doc.body.innerHTML=text.slice(a,s);
+  vm.runInContext(text.slice(s+8,e),vm.createContext(Object.assign({console},W.G)));
+  await W.settle(); W.advance(700); await W.settle();
+  W.$=(id)=>W.doc.getElementById(id); W.Q=(q,r)=>(r||W.doc).querySelector(q); W.QA=(q,r)=>(r||W.doc).querySelectorAll(q);
+  W.keys=()=>W.QA(".calmeet",W.$("calview")).map(m=>W.Q(".calcmte",m).textContent);
+  W.find=async(v)=>{ const f=W.$("cpfind"); f.dispatchEvent(W.ev("focus",{bubbles:false})); await W.settle();
+    f.value=v; f.dispatchEvent(W.ev("input")); await W.settle(); return W.QA("label.cpopt",W.$("cplist")); };
+  return W;
+}
+(async()=>{
+  const W=await open("calendar.html","/calendar");
+  ok(W.keys().join()==="House Finance,Senate Finance", "28 January 2025 lists "+W.keys());
+  const fin=await W.find("finance");
+  ok(fin.map(l=>W.Q("input",l).value).join()==="House Finance,Senate Finance",
+     "the picker finds "+fin.map(l=>W.Q("input",l).value)+" for Finance, not each chamber's");
+  ok(fin.every(l=>!W.Q(".cpwho",l)), "a committee whose name says its chamber is labelled with it again");
+  const h=fin.map(l=>W.Q("input",l)).find(i=>i.value==="House Finance");
+  if(h){ h.checked=true; h.dispatchEvent(W.ev("change")); await W.settle(); }
+  ok(W.keys().join()==="House Finance" && /c=House\+Finance/.test(W.G.location.hash),
+     "picking House Finance shows "+W.keys()+" at "+W.G.location.hash);
+  if(h){ h.checked=false; h.dispatchEvent(W.ev("change")); await W.settle(); }
+  const co=await W.find("conference");
+  ok(co.length===1 && W.Q("input",co[0]).value==="Committee of conference"
+     && (W.Q(".cpwho",co[0])||{textContent:""}).textContent==="House and Senate",
+     "the committees of conference are not one entry, said to be both chambers': "+co.map(l=>l.textContent));
+  const J=await open("calendar/2025-W25.html","/calendar/2025-W25","#d=2025-06-16&c=Committee+of+conference");
+  ok(J.keys().join()==="Committee of conference on SB 14,Committee of conference on HB 1,Committee of conference on HB 2",
+     "picking the committees of conference shows "+J.keys());
+  const S=await open("calendar/2025-W25.html","/calendar/2025-W25","#d=2025-06-16&c=Senate+Judiciary");
+  ok(S.keys().join()==="Senate Judiciary", "picking Senate Judiciary on 16 June shows "+S.keys());
+  if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
+  console.log("the picker lists House and Senate Finance apart, picks one, and holds the conferences as one");
+  console.log("OK");
+})().catch(e=>{ console.log(fails.join("\n")); console.log("THREW "+e.stack); process.exit(2); });
+"""
 
 
 # THE CALENDAR PAGE'S FIXTURE, for the four checks below: three weeks of March
@@ -11253,9 +11481,9 @@ def _calendar_page_shape():
         who_of = {re.search(r'data-cmte="([^"]*)"', c).group(1): (
             re.search(r'data-who="([^"]*)"', c).group(1),
             re.search(r'data-kinds="([^"]*)"', c).group(1)) for c in cards}
-        assert who_of["judiciary"] == ("standing", "hearing exec"), who_of["judiciary"]
+        assert who_of["house judiciary"] == ("standing", "hearing exec"), who_of
         assert who_of["house floor"] == ("floor", "floor"), who_of["house floor"]
-        assert who_of["committee of conference"] == ("standing", "conf"), who_of
+        assert who_of["committee of conference on hb 3"] == ("standing", "conf"), who_of
         assert who_of["commission on aging"][0] == "study", who_of
         # The script the page carries.
         js = re.search(r"<script>(\(function\(\)\{.*?)</script>", t, re.S)
@@ -11307,8 +11535,9 @@ def _calendar_page_shape():
             assert wk and wk["label"] == h1, f"{k}: the month file calls the week {wk}, the page {h1!r}"
             assert wk["lead"] == lead, f"{k}: the month file's lead is not the page's"
         names = json.loads((data / "committees.json").read_text(encoding="utf-8"))
-        assert ["Judiciary", "standing", "H"] in names and ["Finance", "standing", "S"] in names \
-            and ["Commission on Aging", "study", ""] in names and ["House floor", "floor", "H"] in names, names
+        assert ["House Judiciary", "standing", "H"] in names and ["Senate Finance", "standing", "S"] in names \
+            and ["Commission on Aging", "study", ""] in names and ["House floor", "floor", "H"] in names \
+            and ["Committee of conference", "standing", "H S"] in names, names
         # Writers merge what they own: a month file this run did not write goes.
         (data / "1999-01.json").write_text("{}", encoding="utf-8")
         import contextlib
@@ -11382,28 +11611,31 @@ const F=(o)=>Object.assign(C.defaults(),o);
 const names=(f)=>all.filter(e=>C.matches(e,f)).map(e=>e.name).sort();
 const count=(f)=>C.countLine(C.tally(all,f),"this week");
 ok(all.length===7, "the week of 9 March parses to "+all.length+" cards");
-const jud=all.find(e=>e.name==="Judiciary");
+const jud=all.find(e=>e.name==="House Judiciary");
 ok(jud && jud.kinds.join()==="hearing,exec" && jud.who==="standing" && jud.body==="H" && jud.bills.join()==="HB1 HB2".split(" ").join(),
-   "Judiciary's card reads as "+JSON.stringify(jud&&{k:jud.kinds,w:jud.who,b:jud.body,bills:jud.bills}));
+   "House Judiciary's card reads as "+JSON.stringify(jud&&{k:jud.kinds,w:jud.who,b:jud.body,bills:jud.bills}));
 // the combinations
 ok(count(F({}))==="6 sittings this week.", "unfiltered: "+count(F({})));
-ok(names(F({who:["standing","floor"]})).join()==="Commerce,Committee of conference,Finance,House floor,Judiciary",
+ok(names(F({who:["standing","floor"]})).join()==="Committee of conference on HB 3,House Commerce,House Judiciary,House floor,Senate Finance",
    "study off keeps "+names(F({who:["standing","floor"]})));
 ok(count(F({who:["standing","floor"]}))==="5 of 6 sittings shown.", "study off counts "+count(F({who:["standing","floor"]})));
-ok(names(F({what:["hearing"]})).join()==="Finance,House floor,Judiciary",
+ok(names(F({what:["hearing"]})).join()==="House Judiciary,House floor,Senate Finance",
    "the hearing box alone keeps "+names(F({what:["hearing"]}))+" -- the floor answers to who, not what");
 const q=C.QUICK.hearing;
-ok(names(F({who:q.who,what:q.what})).join()==="Finance,Judiciary", "Public hearings only keeps "+names(F({who:q.who,what:q.what})));
+ok(names(F({who:q.who,what:q.what})).join()==="House Judiciary,Senate Finance", "Public hearings only keeps "+names(F({who:q.who,what:q.what})));
 ok(C.quickOf(F({who:q.who,what:q.what}))==="hearing" && C.quickOf(F({}))==="" && C.quickOf(F({who:["standing"]}))==="standing",
    "the quick choices are not recognised from the boxes");
-ok(names(F({who:["standing"],what:["hearing"]})).join()==="Finance,Judiciary", "standing plus hearings keeps "+names(F({who:["standing"],what:["hearing"]})));
+ok(names(F({who:["standing"],what:["hearing"]})).join()==="House Judiciary,Senate Finance", "standing plus hearings keeps "+names(F({who:["standing"],what:["hearing"]})));
 ok(names(F({who:[],picks:["Commission on Aging"]})).join()==="Commission on Aging,Commission on Aging",
    "a picked committee is shown whatever the who boxes say: "+names(F({who:[],picks:["Commission on Aging"]})));
 ok(count(F({picks:["Commission on Aging"]}))==="1 of 6 sittings shown.", "a cancelled meeting is counted: "+count(F({picks:["Commission on Aging"]})));
-ok(names(F({body:"S",picks:["Judiciary"]})).length===0 && names(F({body:"H",picks:["Judiciary"]})).join()==="Judiciary",
+ok(names(F({body:"S",picks:["House Judiciary"]})).length===0 && names(F({body:"H",picks:["House Judiciary"]})).join()==="House Judiciary",
    "a chamber plus a committee");
-ok(count(F({body:"S",picks:["Judiciary"]}))==="None of the 6 sittings this week match.", count(F({body:"S",picks:["Judiciary"]})));
-ok(names(F({q:"hb 4"})).join()==="Commerce" && names(F({q:"judic"})).join()==="Judiciary", "the bill and committee search");
+ok(count(F({body:"S",picks:["House Judiciary"]}))==="None of the 6 sittings this week match.", count(F({body:"S",picks:["House Judiciary"]})));
+ok(names(F({q:"hb 4"})).join()==="House Commerce" && names(F({q:"judic"})).join()==="House Judiciary", "the bill and committee search");
+// A committee of conference is picked as one committee, whichever bill's.
+ok(names(F({who:[],picks:["Committee of conference"]})).join()==="Committee of conference on HB 3",
+   "the committees of conference are not picked under one name: "+names(F({who:[],picks:["Committee of conference"]})));
 ok(C.countLine({total:1,shown:0,seen:0},"this week")==="The one sitting this week does not match.", "one sitting, none shown");
 ok(C.countLine(C.tally(days["2026-03-11"].cards,F({})),"on "+C.dayWords("2026-03-11"))==="2 sittings on Wednesday 11 March.",
    "the Day view's count: "+C.countLine(C.tally(days["2026-03-11"].cards,F({})),"on "+C.dayWords("2026-03-11")));
@@ -11421,7 +11653,7 @@ const rows=C.weekRows(cols,by);
 ok(cols.length===6 && cols[5]==="2026-03-14", "the week's columns: "+cols);
 ok(rows.map(x=>x.h).join()==="09,10,", "the week's rows: "+rows.map(x=>x.h));
 ok([].concat(...rows.map(x=>[].concat(...x.cells))).length===7, "a card is missing from the week at a glance");
-ok(rows[2].cells[2].map(e=>e.name).join()==="Committee of conference,House floor", "the untimed row holds the floor and the conference");
+ok(rows[2].cells[2].map(e=>e.name).join()==="Committee of conference on HB 3,House floor", "the untimed row holds the floor and the conference");
 // the grid
 const g=C.gridHtml({view:"2026-03",sel:"2026-03-10",focus:"2026-03-10",today:"2026-03-11",
   first:"2026-03-02",last:"2026-04-05",days,f:F({})});
@@ -11732,7 +11964,7 @@ function world(page,pathname,o){
   ok(W.G.location.pathname==="/calendar/2026-W12" && W.G.location.hash==="#d=2026-03-18", "the address: "+W.G.location.pathname+W.G.location.hash);
   ok(W.G.history.length===h0+1, "choosing a day is not one step of history");
   ok(Q(".calhead h1").textContent==="The week of 16–22 March 2026", "the heading: "+Q(".calhead h1").textContent);
-  ok(W.keys().join()==="2026-03-18|Judiciary,2026-03-18|Finance", "the week of 16 March lists "+W.keys());
+  ok(W.keys().join()==="2026-03-18|House Judiciary,2026-03-18|Senate Finance", "the week of 16 March lists "+W.keys());
   ok((Q(".calday.calsel",$("calview"))||{getAttribute:()=>null}).getAttribute("data-d")==="2026-03-18", "the list does not mark the day chosen");
   ok(QA(".calhead .wknav a").map(a=>a.getAttribute("href")).join()==="/calendar,/calendar,/calendar/2026-W13",
      "the arrows: "+QA(".calhead .wknav a").map(a=>a.getAttribute("href")));
@@ -11775,7 +12007,7 @@ function world(page,pathname,o){
   ok(W.keys().sort().join()===statik.slice().sort().join(), "the week at a glance does not hold the week's cards");
   ok(/v=week/.test(W.G.location.hash), "the address does not say Week");
   W.view("day").click(); await W.settle();
-  ok(QA(".calday",$("calview")).length===1 && W.keys().join()==="2026-03-11|Committee of conference,2026-03-11|House floor"
+  ok(QA(".calday",$("calview")).length===1 && W.keys().join()==="2026-03-11|Committee of conference on HB 3,2026-03-11|House floor"
      && QA(".calmeet",$("calview")).every(m=>m.open), "the Day view is not 11 March's two entries, open: "+W.keys());
   ok($("wkcount").textContent==="2 sittings on Wednesday 11 March.", "the day's count: "+$("wkcount").textContent);
   W.view("list").click(); await W.settle();
@@ -11787,20 +12019,20 @@ function world(page,pathname,o){
   ok(!$("calreset").hidden, "no way back to everything");
   const qh=Q('[data-quick="hearing"]',$("wkfilter"));
   qh.click(); await W.settle();
-  ok(qh.getAttribute("aria-pressed")==="true" && W.keys().sort().join()==="2026-03-10|Finance,2026-03-10|Judiciary", "Public hearings only lists "+W.keys());
+  ok(qh.getAttribute("aria-pressed")==="true" && W.keys().sort().join()==="2026-03-10|House Judiciary,2026-03-10|Senate Finance", "Public hearings only lists "+W.keys());
   ok(QA('input[name="what"]',$("wkfilter")).filter(i=>i.checked).map(i=>i.value).join()==="hearing", "the boxes do not say what the quick choice did");
   ok(QA(".cmdots i",$("cmgrid")).every(i=>/k-hearing|k-exec/.test(i.className)), "the grid's dots do not follow the filters");
   qh.click(); await W.settle();
   $("cpfind").dispatchEvent(W.ev("focus",{bubbles:false})); await W.settle();
   $("cpfind").value="jud"; $("cpfind").dispatchEvent(W.ev("input")); await W.settle();
-  const box=QA("input",$("cplist")).find(i=>i.value==="Judiciary");
-  ok(box && QA("input",$("cplist")).length===1, "the picker does not find Judiciary alone: "+QA("input",$("cplist")).map(i=>i.value));
+  const box=QA("input",$("cplist")).find(i=>i.value==="House Judiciary");
+  ok(box && QA("input",$("cplist")).length===1, "the picker does not find House Judiciary alone: "+QA("input",$("cplist")).map(i=>i.value));
   if(box){ box.checked=true; box.dispatchEvent(W.ev("change")); await W.settle(); }
-  ok(W.keys().join()==="2026-03-10|Judiciary", "one committee lists "+W.keys());
+  ok(W.keys().join()==="2026-03-10|House Judiciary", "one committee lists "+W.keys());
   ok(QA('input[name="who"]',$("wkfilter")).every(i=>i.disabled) && !$("whohint").hidden, "the who boxes do not stand aside for a chosen committee");
-  ok(/c=Judiciary/.test(W.G.location.hash) && QA(".cpchip",$("cpchosen")).length===1, "the chosen committee is not in the address, or not a chip");
+  ok(/c=House\+Judiciary/.test(W.G.location.hash) && QA(".cpchip",$("cpchosen")).length===1, "the chosen committee is not in the address, or not a chip");
   Q('[data-body="S"]',$("wkfilter")).click(); await W.settle();
-  ok(!W.keys().length && $("wkcount").textContent==="None of the 6 sittings this week match.", "the Senate's Judiciary: "+$("wkcount").textContent);
+  ok(!W.keys().length && $("wkcount").textContent==="None of the 6 sittings this week match.", "House Judiciary under the Senate: "+$("wkcount").textContent);
   $("calreset").click(); await W.settle();
   ok(W.keys().join()===statik.join() && $("calreset").hidden && W.store.get("gr.calendar.study")==="1"
      && W.G.location.hash==="#d=2026-03-11", "Show everything does not put everything back: "+W.G.location.hash);
@@ -11835,7 +12067,7 @@ function world(page,pathname,o){
   D.activeElement.dispatchEvent(W.ev("keydown",{key:"PageDown"})); await W.settle(); W.advance(700); await W.settle();
   ok($("cmtitle").textContent==="April 2026" && D.activeElement.getAttribute("data-d")==="2026-04-05", "Page Down: "+$("cmtitle").textContent+" "+D.activeElement.getAttribute("data-d"));
   D.activeElement.dispatchEvent(W.ev("keydown",{key:"Enter"})); await W.settle(); W.advance(700); await W.settle();
-  ok(W.sel()==="2026-04-05" && W.keys().join()==="2026-04-01|Education", "Enter does not select 5 April's week: "+W.keys());
+  ok(W.sel()==="2026-04-05" && W.keys().join()==="2026-04-01|House Education", "Enter does not select 5 April's week: "+W.keys());
   ok(D.activeElement.getAttribute("data-d")==="2026-04-05", "Enter took focus out of the grid");
   ok($("cmnext").getAttribute("aria-disabled")==="true", "the month after the calendar's last is offered");
   // ---- the preview ----
@@ -11880,7 +12112,7 @@ function world(page,pathname,o){
   const W2=world("calendar.html","/calendar",{today:[2026,3,18]});
   await W2.run();
   ok(W2.sel()==="2026-03-18" && W2.Q(".calhead h1").textContent==="The week of 16–22 March 2026"
-     && W2.keys().join()==="2026-03-18|Judiciary,2026-03-18|Finance", "a reader a week after the build is not shown their own week: "+W2.sel());
+     && W2.keys().join()==="2026-03-18|House Judiciary,2026-03-18|Senate Finance", "a reader a week after the build is not shown their own week: "+W2.sel());
   ok(W2.Q('td[aria-current="date"]',W2.$("cmgrid")).getAttribute("data-d")==="2026-03-18", "today is the build's, not the reader's");
   ok(W2.Q('link[rel="canonical"]').getAttribute("href")==="https://graniterecord.org/calendar/2026-W12"
      && /^“The week of 16–22 March 2026\.” Granite Record, https:\/\/graniterecord\.org\/calendar\/2026-W12\./.test(W2.QA(".pcite dd")[0].textContent),
@@ -11904,7 +12136,7 @@ function world(page,pathname,o){
   await W3.run();
   ok(W3.sel()==="2026-03-03" && W3.view("day").getAttribute("aria-pressed")==="true"
      && W3.QA('input[name="what"]',W3.$("wkfilter")).filter(i=>i.checked).map(i=>i.value).join()==="hearing"
-     && W3.keys().join()==="2026-03-03|Commerce", "a shared address does not open on its day, view and filter");
+     && W3.keys().join()==="2026-03-03|House Commerce", "a shared address does not open on its day, view and filter");
   if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
   console.log("the tab, a dated week, a phone and a shared address: 3 views, 6 filters, Back, the week named in the citation, canonical and skip link, focus on the arrows and after a redraw, 6 keys, the fold and the preview's timings");
   console.log("OK");
@@ -12101,7 +12333,7 @@ def _coming_up_is_this_week():
             # The same sittings the Calendar tab's week holds from today on:
             # read through the same function, so the two cannot differ.
             week = BC.weeks_from(rows).get(BC.week_key(today)) or {}
-            want = {(k[0], k[1].lower()) for d in week if d >= t
+            want = {(k.date, BP.card_name(k).lower()) for d in week if d >= t
                     for k in week[d]}
             got = set(re.findall(
                 r'<details class="calmeet"[^>]*? data-cmte="([^"]*)"[^>]*? '
