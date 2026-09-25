@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-04.123
+# GRANITE_VERSION: 2026-09-04.124
 """
 Build the pages the navigation links to: legislators, town lookup, how it
 works, and about.
