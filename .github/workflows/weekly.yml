@@ -69,13 +69,16 @@ jobs:
         with:
           node-version: "24"
 
-      - name: The Python packages, at the laptop's versions
+      # boto3 is cloud.py's, for R2: any version from 1.36 fits the checksum
+      # setting it makes, and this one is pinned so a night does not take
+      # whatever is newest.
+      - name: The Python packages, at the laptop's versions, and boto3 for R2
         run: |
           python -m pip install --disable-pip-version-check --no-input `
             numpy==2.5.2 openpyxl==3.1.5 et-xmlfile==2.0.0 pdfplumber==0.11.10 `
             pdfminer.six==20260107 pypdfium2==5.13.0 pillow==12.3.0 `
             charset-normalizer==3.5.1 cryptography==50.0.1 cffi==2.1.1 pycparser==3.0 `
-            PyYAML==6.0.3
+            PyYAML==6.0.3 boto3==1.40.0
           exit $LASTEXITCODE
 
       - name: Bring the state files down from R2 (the refusal record, last night's census)
