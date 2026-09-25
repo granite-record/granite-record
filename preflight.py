@@ -12328,7 +12328,13 @@ ok("a variation selector is hidden text",
 const full = { DB: { prepare: sql => ({ bind: () => ({ first: async () => null,
   run: async () => rows.push(sql) }) }) } };
 r = await onRequest({ env: full, request: req("https://graniterecord.org", { ...good, note: "another one" }) });
-ok("a full day stores nothing", r.status === 204 && rows.length === 1);
+// 429, not 204 (24 September 2026): a real report on a day already at its
+// ceiling was answered like a success, and the box thanked the reader for it.
+ok("a full day stores nothing and answers 429", r.status === 429 && rows.length === 1);
+r = await onRequest({ env: full, request: req("https://graniterecord.org", { ...good, website: "x" }) });
+ok("a full day: a honeypot still answers 204", r.status === 204 && rows.length === 1);
+r = await onRequest({ env: full, request: req("https://evil.example", { ...good, note: "from elsewhere" }) });
+ok("a full day: another origin still answers 204", r.status === 204 && rows.length === 1);
 const member = { ...good, record: "member:4412", url: "/legislator/jane-doe-hills-12", tab: "Votes" };
 const assets = page => ({ fetch: async () => new Response(page, { status: 200 }) });
 r = await onRequest({ env: { ...env, ASSETS: assets('<script>window.GR_MEMBER="4412";</script>') },
@@ -12446,7 +12452,8 @@ def _report_function():
     from the site's own origin, after the box has been open three seconds,
     with the honeypot empty. It answers 204 to all of it, so a script learns
     nothing -- except a report that passed every rule and could not be kept,
-    which answers 503 so the box offers the reader the email address. It
+    which answers 503 when storage failed and 429 when the day was already at
+    its ceiling, so the box offers the reader the email address. It
     accepts a report from every address the site builds for a member,
     including a former member's that carries no seat number. And it
     reads nothing that identifies a reader: no IP header, no cookie; the
@@ -12494,7 +12501,7 @@ def _report_function():
         shutil.rmtree(root, ignore_errors=True)
     return "ok", (f"{len(cols)} columns, none about the reader; the host and path sent to and "
                   "the origin, honeypot, dwell, shape and record-page agreement all enforced; "
-                  "204, or 503 for a real report storage could not keep")
+                  "204, or 503 and 429 for a real report storage or a full day could not keep")
 
 
 REPORT_BOX_TEST = r"""
@@ -12536,23 +12543,34 @@ async function send(note) {
   return { st, left: form.elements.note.value };
 }
 const fail = [];
-const offered = x => x.st.innerHTML.includes("mailto:contact@graniterecord.org") &&
-  x.st.innerHTML.includes("could not save it just now") && x.left !== "" &&
+// The project's own address, never a person's, with the reader's words kept
+// and the reason in words a reader can use.
+const offered = (x, why) => x.st.innerHTML.includes("mailto:contact@graniterecord.org") &&
+  x.st.innerHTML.includes(why) && x.left !== "" &&
   !/Thank you/.test(x.st.textContent + x.st.innerHTML);
+const SAVE = "could not save it just now", FULL = "taking no more reports just now";
 let rows = 0;
 const good = { DB: { prepare: () => ({ bind: () => ({ first: async () => 1,
   run: async () => { rows++; } }) }) } };
 const boom = async () => { throw new Error("D1_ERROR"); };
 env = { ASSETS: page };
-if (!offered(await send("No database is bound here."))) fail.push("no database: no email offered");
+if (!offered(await send("No database is bound here."), SAVE)) fail.push("no database: no email offered");
 env = { ASSETS: page, DB: { prepare: () => ({ bind: () => ({ first: async () => 1, run: boom }) }) } };
-if (!offered(await send("The insert throws here."))) fail.push("the insert throws: no email offered");
+if (!offered(await send("The insert throws here."), SAVE)) fail.push("the insert throws: no email offered");
+// The day's ceiling already reached: the count's statement returns no row.
+// Until 24 September this answered 204 and the box said thank you.
+env = { ASSETS: page, DB: { prepare: () => ({ bind: () => ({ first: async () => null,
+  run: async () => { rows++; } }) }) } };
+const full = await send("The day is already at its ceiling.");
+if (!offered(full, FULL) || rows !== 0)
+  fail.push("a full day: no email offered, or a row stored: " +
+            JSON.stringify({ text: full.st.textContent, html: full.st.innerHTML, rows }));
 env = { ASSETS: page, DB: good.DB };
 const ok = await send("The district shown is out of date.");
 if (!(ok.st.textContent.startsWith("Thank you") && ok.left === "" && rows === 1))
   fail.push("a kept report from a former member's page was not thanked and cleared: " +
             JSON.stringify({ text: ok.st.textContent, html: ok.st.innerHTML, rows }));
-if (calls !== 3) fail.push(`the box posted ${calls} times for 3 sends`);
+if (calls !== 4) fail.push(`the box posted ${calls} times for 4 sends`);
 console.log(fail.length ? "FAILED: " + fail.join("; ") : "ALL OK");
 process.exit(fail.length ? 1 : 0);
 """
@@ -12570,6 +12588,11 @@ def _report_box_fallback():
     page with no seat number in its address, into report.js's own onRequest:
     with no database and with a throwing insert the box must offer the email
     address and keep the words; with a working one it must say thank you.
+
+    A day already at its ceiling was the same fault in another place: 204,
+    and thanks, for every report after the five hundredth. It answers 429 now
+    and the box must offer the address for it too, saying the site is taking
+    no more reports rather than that it could not save one.
     """
     fn, app, stub = Path("functions/api/report.js"), Path("app.js"), Path("dom_stub.js")
     absent = [str(p) for p in (fn, app, stub) if not p.exists()]
@@ -12588,8 +12611,9 @@ def _report_box_fallback():
         assert r.returncode == 0 and "ALL OK" in r.stdout, (r.stdout + r.stderr).strip()[-400:]
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    return "ok", ("no database and a failed insert each offer the email address with the "
-                  "words kept; a stored report from /legislator/adam-schroadter is thanked")
+    return "ok", ("no database, a failed insert and a full day each offer the email "
+                  "address with the words kept; a stored report from "
+                  "/legislator/adam-schroadter is thanked")
 
 
 REPORT_GENUINE = [

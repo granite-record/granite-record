@@ -3044,9 +3044,13 @@ document.addEventListener("submit",async e=>{
   try{
     const r=await fetch("/api/report",{method:"POST",signal:ctl.signal,
       headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-    // 503 is the Function's one answer for a report it accepted and could not
-    // keep (functions/api/report.js), so it gets words a reader can use.
+    // 503 and 429 are the Function's two answers for a report it accepted and
+    // could not keep (functions/api/report.js) -- storage down, and the day's
+    // ceiling reached -- so each gets words a reader can use. Where the zone's
+    // rate rule in front of the Function answers 429 as well, the same words
+    // are as true of it. Any other failure still offers the email address.
     if(!r.ok)throw new Error(r.status===503?"the site could not save it just now":
+      r.status===429?"the site is taking no more reports just now":
       `the server answered ${r.status}`);
     form.elements.note.value="";
     st.textContent="Thank you. It will be checked against the record.";
