@@ -115,14 +115,15 @@ jobs:
 
       # boto3 is cloud.py's, for R2: any version from 1.36 fits the checksum
       # setting it makes, and this one is pinned so a night does not take
-      # whatever is newest.
-      - name: The Python packages, at the laptop's versions, and boto3 for R2
+      # whatever is newest. yt-dlp is the livestream step's, for captions, at
+      # the laptop's version; without it that step exits 3, "not set up".
+      - name: The Python packages, at the laptop's versions, with boto3 and yt-dlp
         run: |
           python -m pip install --disable-pip-version-check --no-input `
             numpy==2.5.2 openpyxl==3.1.5 et-xmlfile==2.0.0 pdfplumber==0.11.10 `
             pdfminer.six==20260107 pypdfium2==5.13.0 pillow==12.3.0 `
             charset-normalizer==3.5.1 cryptography==50.0.1 cffi==2.1.1 pycparser==3.0 `
-            PyYAML==6.0.3 boto3==1.40.0
+            PyYAML==6.0.3 boto3==1.40.0 yt-dlp==2026.8.19
           exit $LASTEXITCODE
 
       - name: Bring the state files down from R2 (the refusal record, last night's census)
@@ -147,9 +148,13 @@ jobs:
           python cloud.py kit-down
           exit $LASTEXITCODE
 
-      # YouTube, not the General Court. An error fails the night, at its end,
-      # but does not stop the day's data being taken and built; YouTube having
-      # nothing new is not an error.
+      # YouTube, not the General Court. Before the build, which reads what it
+      # adds; its --markers step runs inside build_all, after the step
+      # --no-captions skips. Exit 0 is success, including "nothing new" and
+      # "captions deferred" (YouTube's bot check). Any other exit -- 3 is "not
+      # set up": no key, a refused key, or no yt-dlp -- fails the night, loudly,
+      # at --close, without stopping the day's General Court files from being
+      # taken and built: those cannot be taken later.
       - name: New livestreams, from YouTube
         id: livestreams
         if: env.FETCH == 'true'
@@ -162,7 +167,11 @@ jobs:
             exit 0
           }
           python livestreams.py --since-state
-          exit $LASTEXITCODE
+          $rc = $LASTEXITCODE
+          if ($rc -eq 3) {
+            Write-Output "livestreams.py exit 3: not set up. The night goes on, and fails at its end."
+          }
+          exit $rc
 
       - name: The night
         id: night

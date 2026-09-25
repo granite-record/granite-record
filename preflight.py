@@ -20098,6 +20098,46 @@ def _workflows_production(NI):
                   f"steps; {len(nights)} jobs share gc-night; wrangler pinned at {NI.WRANGLER}")
 
 
+@check("workflows", "the livestream step runs before the night, only when it fetches, and fails "
+       "the night when it fails")
+def _workflows_livestreams():
+    """livestreams.py asks YouTube, before the build, which reads what it adds.
+    It is allowed to carry on past its own failure, so that a night whose
+    YouTube key is missing still takes the General Court's files, which cannot
+    be taken later -- and so its failure reaches the night only through
+    --close, which is told its outcome. Drop that and a night with no
+    livestreams for a month is green every morning. yt-dlp, which it fetches
+    captions with, is installed pinned, or the step exits 3 every night."""
+    files = _workflows()
+    if not files:
+        return "skip", "no .github/workflows here"
+    found = []
+    for f in files:
+        for j, jl in _wf_jobs(f.read_text(encoding="utf-8")).items():
+            code = _wf_code(jl)
+            steps = _wf_steps(code)
+            at = [k for k, st in enumerate(steps) if any("livestreams.py" in ln for ln in st
+                                                         if "python" in ln)]
+            if not at:
+                continue
+            st = "\n".join(steps[at[0]])
+            sid = re.search(r"^        id:\s*(\S+)", st, re.M)
+            assert sid and re.search(r"^        continue-on-error: true\s*$", st, re.M) and \
+                re.search(r"^        if: env\.FETCH == 'true'\s*$", st, re.M), \
+                f"{f.name}: job {j}'s livestream step lacks an id, continue-on-error, or its fetch-only if"
+            night = [k for k, s in enumerate(steps)
+                     if any("nightly.py @flags" in ln for ln in s)]
+            assert night and at[0] < night[0], f"{f.name}: job {j} runs the livestreams after the night"
+            body = "\n".join(code)
+            assert f"livestreams=${{{{ steps.{sid.group(1)}.outcome }}}}" in body, \
+                f"{f.name}: job {j} does not tell --close the livestream step's outcome"
+            assert re.search(r"\byt-dlp==\d", body), \
+                f"{f.name}: job {j} runs livestreams.py and installs no pinned yt-dlp"
+            found.append(f"{f.name}:{j}")
+    assert found, "no workflow runs livestreams.py, which the nightly is meant to"
+    return "ok", f"{', '.join(found)}: before the night, fetch nights only, outcome to --close, yt-dlp pinned"
+
+
 @check("data", "the nightly is still running, and its last report pull worked")
 def _nightly_logs():
     """The nightly runs from Task Scheduler with nobody watching, so the way to
