@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.2
+# GRANITE_VERSION: 2026-09-07.3
 """
 Who sits on each committee, from the General Court's own database.
 

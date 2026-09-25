@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.1
+# GRANITE_VERSION: 2026-09-07.2
 """
 Members who have left, from the General Court's own database.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-08.5
+# GRANITE_VERSION: 2026-09-08.6
 """
 Every view in the General Court's public database, onto this disk.
 
