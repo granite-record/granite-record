@@ -1524,9 +1524,10 @@ SEATING_JS = """
 </script>
 """
 
-# THE BILL MATCHER, FOR THE HEADER SEARCH. The header's panel and /search show
-# how many of the current term's bills match what was typed, and the number
-# has to be the one /bills?q= then shows -- a panel that promises "All 30
+# THE BILL MATCHER, FOR THE HEADER SEARCH. The header's panel shows how many
+# of the current term's bills match what was typed, and /search how many of
+# every term's, and each number has to be the one /bills?q= then shows (on
+# All terms, for /search's) -- a panel that promises "All 30
 # bills" and opens on 28 is a count the reader stops trusting. So they count
 # with app.js's own matcher rather than a second one. app.js marks the lines
 # that make it up (SYN and the query groups, the bill order, what a bill
@@ -1583,8 +1584,9 @@ def bill_matcher_js(app_js):
 # find.json with the cap off and groups what it finds.
 #
 # It reuses find.js wholesale -- findRows, findMatch, findSuggest, _fmark,
-# _froot, FKIND, and for the bills findBills, findBillsLoad, findBillsAll and
-# findBillRow -- because a second matcher would be a second thing to keep in
+# _froot, _fwhole, FKIND, and for the bills findBills, findBillsLoad,
+# findBillsLoadAll, findBillsAll and findBillRow -- because a second matcher
+# would be a second thing to keep in
 # step with the first, and the panel and the page disagreeing about what
 # matches is the bug a reader would notice fastest. find.js is deferred, so
 # this waits for DOMContentLoaded rather than running as it is parsed.
@@ -1631,15 +1633,38 @@ const row=(r,q)=>`<a href="${esc(_froot(r[3]))}">
 // It does not: it reads a bill's number, title, sponsor and committee.
 const WHAT="The bill search has every term since 1989, with filters for "
   +"committee, sponsor and what became of it.";
-const bills=(q,B)=>{
+const WHAT_ALL="In the bill search, with filters for committee, sponsor and "
+  +"what became of it.";
+/* EVERY TERM'S BILLS (the person, 24 September: "all terms should show up in
+   the full search results"). Until then this page counted the current
+   term's alone, as the header's panel does, so a reader looking for SB 412
+   of 2000 or the bail bills of 2019 was told about 2026's. B is what the page
+   counts: every term's once findBillsLoadAll has them all, and the current
+   term's until then or if it cannot, with the page saying which. C is the
+   current term's, which gets a row of its own under the total, since the
+   bill search opens on it. The rows are dated -- "SB 412 (2000)" -- because
+   across terms a number alone names up to nineteen bills, and for a number
+   every one of them is listed rather than the first five: SB 412 is in
+   fourteen terms, and the 2000 bill is the twelfth of them. */
+const bills=(q,B,C,counting)=>{
   const counted=B&&B.state==="ready";
+  const every=counted&&B.every;
+  const what=every?WHAT_ALL:counting?"Counting the earlier terms&hellip;":WHAT;
+  const none=every?`None in any of the ${B.terms.length} terms.`
+    :counted?`None in the ${esc(B.term)} term.`:"";
+  const now=every&&C&&C.state==="ready"&&C.n&&C.n<B.n
+    ?`<a class="fbills" href="/bills?q=${encodeURIComponent(q)}">
+      <span class="fl1"><span class="fname">${C.n.toLocaleString()} of them in
+        the ${esc(C.term)} term</span></span>
+      <span class="fwhat">The term the bill search opens on.</span></a>`:"";
+  const top=B&&B.top?(B.numbers?B.top:B.top.slice(0,5)):[];
   const body=counted&&B.n
-    ?findBillsAll(B,q,WHAT)+B.top.map(b=>findBillRow(b,q)).join("")
+    ?findBillsAll(B,q,what)+now+top.map(b=>findBillRow(b,q,every)).join("")
     :counted
     ?`<a href="/bills?q=${encodeURIComponent(q)}">
       <span class="fl1"><span class="fname">Search every bill for
         &ldquo;${esc(q)}&rdquo;</span></span>
-      <span class="fwhat">None in the ${esc(B.term)} term. ${WHAT}</span></a>`
+      <span class="fwhat">${none} ${counting?what:WHAT}</span></a>`
     :findBillsAll(B,q,WHAT);
   return `<section class="resgrp"><h2>Bills${counted&&B.n
     ?` <span class="resn">${B.n.toLocaleString()}</span>`:""}</h2>
@@ -1649,7 +1674,7 @@ const bills=(q,B)=>{
 // this site's own pages.
 const AFTER=new Set(["Former senators","Former representatives",
   "Former members","Pages on this site"]);
-let waiting=false;
+let waiting=false,waitingAll=false;
 
 function draw(q){
   const s=(q||"").trim();
@@ -1657,59 +1682,72 @@ function draw(q){
     head.textContent="Search the record";
     lead.textContent="Every sitting legislator and every member who has left, "
       +"every committee, every town and ward, every subject bills are filed "
-      +"under, and this term's bills. The bill search has every term, with "
-      +"filters.";
+      +"under, and every bill since 1989.";
     out.innerHTML="";
     return;
   }
   const rows=findMatch(s,Infinity);
-  const B=findBills(s,5);
-  if(B&&B.state==="loading"&&!waiting){
+  const C=findBills(s,40);
+  const A=findBills(s,40,true);
+  if(C&&C.state==="loading"&&!waiting){
     waiting=true;
     findBillsLoad().then(()=>draw(box.value));
   }
+  if(A&&A.state==="loading"&&!waitingAll){
+    waitingAll=true;
+    findBillsLoadAll().then(()=>draw(box.value));
+  }
+  const B=A&&A.state==="ready"?A:C;
+  // This term's count is on the page while the others are still coming.
+  const counting=!!(A&&A.state==="loading"&&B&&B.state==="ready");
   const nB=B&&B.state==="ready"?B.n:null;
-  const term=nB===null?"":`in the ${B.term} term`;
+  const term=nB===null?"":B.every?`across all ${B.terms.length} terms`
+    :`in the ${B.term} term`;
+  const noBill=nB===null?"":B.every?`no bill in any of the ${B.terms.length} terms`
+    :`no bill ${term}`;
   head.innerHTML=`Results for &ldquo;${esc(s)}&rdquo;`;
   // The answer first. "0 matches on this site, and the bills" is a sentence
   // nobody would write, and "nothing matches" above 30 bills is false.
   const here=rows.length===1?"One match on this site"
     :`${rows.length} matches on this site`;
   const some=nB===1?`One bill ${term}`:`${(nB||0).toLocaleString()} bills ${term}`;
-  lead.textContent=!rows.length
+  lead.textContent=(!rows.length
     ?(nB?`${some} ${nB===1?"matches":"match"}. No legislator, committee, `
         +"town or subject on this site does."
-      :nB===0?"Nothing on this site matches that: no legislator, committee, "
-        +`town or subject, and no bill ${term}.`
+      :nB===0&&!counting?"Nothing on this site matches that: no legislator, "
+        +`committee, town or subject, and ${noBill}.`
+      :nB===0?`No legislator, committee, town or subject on this site matches `
+        +`that, and ${noBill}.`
       :"No legislator, committee, town or subject on this site matches that.")
     :nB?`${here}, and ${some.charAt(0).toLowerCase()+some.slice(1)}.`
-    :nB===0?`${here}, and no bill ${term}.`
-    :`${here}, and the bills.`;
-  // WHERE THE BILLS GO, as in the header's panel: first when no sitting
-  // member, committee, town or subject is named with what was typed, and
-  // otherwise after those and ahead of the members who have left.
-  const low=s.toLowerCase(),edge=_fedge(low);
-  const named=rows.some(r=>r[0]!=="former"&&_frank(r,low,edge)<2);
+    :nB===0?`${here}, and ${noBill}.`
+    :`${here}, and the bills.`)
+    +(counting?" Counting the earlier terms…":"");
+  // WHERE THE BILLS GO, as in the header's panel: first unless a sitting
+  // member, committee, town or subject has every word typed as a whole word
+  // of its name (_fwhole), and then after those and ahead of the members who
+  // have left. "bail" leads with the bail bills; "bailey" with Rep. Bailey.
+  const named=rows.some(r=>r[0]!=="former"&&_fwhole(r,s));
   const left=rows.slice();
-  let html=named?"":bills(s,B),placed=!named;
+  let html=named?"":bills(s,B,C,counting),placed=!named;
   for(const g of GROUPS){
     const mine=[];
     for(let i=left.length-1;i>=0;i--)
       if(g.k(left[i]))mine.unshift(left.splice(i,1)[0]);
     if(!mine.length)continue;
-    if(!placed&&AFTER.has(g.t)){html+=bills(s,B);placed=true;}
+    if(!placed&&AFTER.has(g.t)){html+=bills(s,B,C,counting);placed=true;}
     html+=`<section class="resgrp"><h2>${esc(g.t)}
       <span class="resn">${mine.length}</span></h2>
       <div class="findout resout">${mine.map(r=>row(r,s)).join("")}</div></section>`;
   }
-  if(!placed)html+=bills(s,B);
+  if(!placed)html+=bills(s,B,C,counting);
   // Only when something close exists, and only when no bill matched either:
   // its guesses are names, and "voting" was offered "zoning" over 141 bills.
   // findSuggest measures against every distinct word in the index and returns
   // nothing rather than reaching: there is no Firearms subject in the General
   // Court's own list, so a search for "firarms" offers nothing and says
-  // nothing.
-  if(!rows.length&&!nB&&!(B&&B.state==="loading")){
+  // nothing. Not while the earlier terms are still being counted either.
+  if(!rows.length&&!nB&&!(B&&B.state==="loading")&&!counting){
     const did=findSuggest(s);
     if(did)html=`<p class="note">Did you mean
       <a href="/search?q=${encodeURIComponent(did)}">${esc(did)}</a>?</p>`+html;
@@ -2835,7 +2873,7 @@ today.</p>
     search_body = """<h1 id="reshead">Search the record</h1>
 <p class="lead" id="reslead">Every sitting legislator and every member who has
 left, every committee, every town and ward, every subject bills are filed
-under, and this term's bills. The bill search has every term, with filters.</p>
+under, and every bill since 1989.</p>
 <form class="resfind" action="/search" method="get" role="search">
   <label for="resq" class="sr">A legislator, a committee, a town, a subject or a bill</label>
   <input id="resq" name="q" type="search" autocomplete="off"

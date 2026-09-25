@@ -844,48 +844,8 @@ cursor:pointer;background:var(--film-stub);color:var(--film-stub-ink);font-size:
    and .cpurpose below. Left here as a note because the measurement that led
    to it (18,439px of placeholder) was real and still tempting. */
 
-/* CITE THIS PAGE. Shut by default and quiet: a reader who wants it is looking
-   for it, and a reader who does not should not have four citation formats
-   between the record and the footer. Outside #results, so app.js redrawing a
-   record cannot take it away.
-
-   .pcite, NOT .cite -- one component taking another's name, as .ctitle,
-   .fhead and .chead did. .cite is the docket line's citation ("HJ 7, page
-   55") and carries white-space:nowrap further down; this <details> inherited
-   it, so above 720px every citation ran on one line past its box and opening
-   it made the whole page scroll sideways. */
-.citewrap{max-width:1180px;margin:0 auto;padding:0 var(--sp-8) var(--sp-9)}
-.pcite > summary{display:inline-block;cursor:pointer;font-size:var(--t-ui);
-color:var(--ink-2);padding:var(--sp-3) 0;list-style:none}
-.pcite > summary::-webkit-details-marker{display:none}
-/* A CARET DRAWN, NOT TYPED. This was content:"<U+0083>A " -- a C1
-   control character and a literal letter A, which every page on the site
-   rendered as a little box followed by an A in front of "Cite this
-   page". It is what is left of a glyph that went through a cp1252 round
-   trip; the A is not a fallback, it is debris.
-
-   The rest of the site has never had this problem because .caret is a
-   pair of CSS borders rather than a character: there is nothing in it to
-   mis-encode. This now matches it, down to the rotation on open. */
-.pcite > summary::before{content:"";display:inline-block;
-width:0;height:0;margin-right:var(--sp-3);
-border-left:6px solid currentColor;
-border-top:4.5px solid transparent;border-bottom:4.5px solid transparent;
-transition:transform .12s ease}
-.pcite[open] > summary::before{transform:rotate(90deg)}
-.pcite > summary:hover{color:var(--ink)}
-.citebody{border-top:1px solid var(--rule);padding-top:var(--sp-5);
-max-width:var(--measure)}
-.citenote{font-size:var(--t-ui);color:var(--ink-2);margin:0 0 var(--sp-6)}
-.citeforms{margin:0}
-.citeforms dt{font-size:var(--t-xs);letter-spacing:.06em;text-transform:uppercase;
-color:var(--ink-2);margin-top:var(--sp-5)}
-.citeforms dd{margin:var(--sp-2) 0 0;font-size:var(--t-ui);line-height:1.6;
-/* A citation is copied, so it must be selectable as one run of text and must
-   not be broken across a line in the middle of an address. */
-overflow-wrap:anywhere}
-.citeforms code{font-size:var(--t-sm);line-height:1.7;display:block;
-background:var(--wash);padding:var(--sp-4) var(--sp-5);border-radius:var(--r-in)}
+/* CITE THIS PAGE is drawn with Follow, in the row above a page's heading:
+   see FOLLOW AND CITE, after the member page's head. */
 /* THE NAME GETS THE CONTRAST, NOT THE PARTY.
 
    This was a pill filled with the member's party tint, and the fault it hid
@@ -2315,20 +2275,72 @@ color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
 .patt b{font-size:var(--t-sm);letter-spacing:.05em;text-transform:uppercase;
   color:var(--ink-2);font-weight:600;margin-right:var(--sp-3)}
 .patt .pattnote{color:var(--ink-2)}
-/* FOLLOW, above a record's heading at the right, closed until asked for. The
-   pane opens over the page rather than into it: in the flow it pushed the
-   heading down a pane's height and stretched the button across the column. */
-.followrow{display:flex;justify-content:flex-end;margin:var(--sp-3) 0 -4px}
+/* FOLLOW AND CITE, above a page's heading at the right, closed until asked
+   for. The panes open over the page rather than into it: in the flow Follow's
+   pushed the heading down a pane's height and stretched the button across
+   the column.
+
+   Cite this page joined Follow here on 24 September, from the foot of the
+   page, where it sat below everything a reader scrolls past (the person:
+   "up near the title"). shell.py writes the row, .pageacts, on every page it
+   builds; app.js puts Follow in it on a record's page. .followrow is the row
+   Follow makes for itself on a page from an older build.
+
+   THE PANES HANG FROM THE ROW, not from their own buttons. Each was
+   right-aligned to its button, which is right for the rightmost one and, on
+   a phone, put the pane of the button beside it partly off the left edge of
+   the screen. So the details are not positioned inside the row, and the row
+   is what the pane is measured from.
+
+   .pcite, NOT .cite -- one component taking another's name, as .ctitle,
+   .fhead and .chead did. .cite is the docket line's citation ("HJ 7, page
+   55") and carries white-space:nowrap further down; this <details> inherited
+   it, so above 720px every citation ran on one line past its box and opening
+   it made the whole page scroll sideways. */
+.followrow,.pageacts{display:flex;justify-content:flex-end;flex-wrap:wrap;
+  gap:var(--sp-3);margin:var(--sp-3) 0 -4px}
+.pageacts{position:relative}
 .follow{position:relative}
-.follow summary{cursor:pointer;list-style:none;font-size:var(--t-ui);color:var(--ink-2);
+.pageacts .follow{position:static}
+.follow summary,.pcite > summary{cursor:pointer;list-style:none;font-size:var(--t-ui);color:var(--ink-2);
   display:flex;align-items:center;border:1px solid var(--rule-2);
   border-radius:var(--r-in);padding:var(--sp-2) var(--sp-5)}
-.follow summary::-webkit-details-marker{display:none}
-.follow summary:hover,.follow[open] summary{color:var(--ink);border-color:var(--pine)}
-.followpane{position:absolute;right:0;top:calc(100% + 6px);z-index:20;
+.follow summary::-webkit-details-marker,.pcite > summary::-webkit-details-marker{display:none}
+.follow summary:hover,.follow[open] summary,
+.pcite > summary:hover,.pcite[open] > summary{color:var(--ink);border-color:var(--pine)}
+.followpane,.citebody{position:absolute;right:0;top:calc(100% + 6px);z-index:20;
   width:min(36rem,calc(100vw - 28px));padding:var(--sp-5) var(--sp-5);border:1px solid var(--rule-2);
   border-radius:var(--r-in);background:var(--surface);font-size:var(--t-ui)}
 .followpane p{margin:0 0 var(--sp-4)}
+/* The citations are four forms and a note: taller than a phone's screen
+   once open, so the pane scrolls inside itself rather than running under
+   whatever the page draws below it. */
+.citebody{width:min(42rem,calc(100vw - 28px));max-height:min(80vh,44rem);overflow:auto}
+.citenote{color:var(--ink-2);margin:0 0 var(--sp-5)}
+.citeforms{margin:0}
+.citeforms dt{display:flex;align-items:center;justify-content:space-between;
+  gap:var(--sp-4);font-size:var(--t-xs);letter-spacing:.06em;text-transform:uppercase;
+  color:var(--ink-2);font-weight:600;margin-top:var(--sp-5)}
+.citeforms dt:first-child{margin-top:0}
+.citeforms dd{margin:var(--sp-2) 0 0;line-height:1.6;
+/* A citation is copied, so it must be selectable as one run of text and must
+   not be broken across a line in the middle of an address. */
+overflow-wrap:anywhere}
+/* BibTeX's line breaks are real ones, so that Copy carries them: pre-wrap
+   keeps them and the indent, and still wraps a long title. */
+.citeforms code{font-size:var(--t-sm);line-height:1.7;display:block;white-space:pre-wrap;
+  background:var(--wash);padding:var(--sp-4) var(--sp-5);border-radius:var(--r-in)}
+/* Quiet, like the row's own buttons: a word in a thin outline, the accent on
+   hover. No display value here, so the hidden attribute shell.py writes
+   still hides it until app.js has somewhere to send the click. */
+.citecopy{font:inherit;font-size:var(--t-sm);letter-spacing:0;text-transform:none;
+  font-weight:500;color:var(--ink-2);background:none;cursor:pointer;
+  border:1px solid var(--rule-2);border-radius:var(--r-in);padding:1px var(--sp-4)}
+.citecopy:hover,.citecopy:focus-visible{color:var(--ink);border-color:var(--pine)}
+/* Empty until a copy, and never display:none: a live region taken out of the
+   page is one a screen reader may not be listening to when the words come. */
+.citestate{margin:var(--sp-4) 0 0;color:var(--ink-2)}
+.citestate:empty{margin:0}
 .feedurl{display:flex;flex-wrap:wrap;gap:var(--sp-3) var(--sp-5);align-items:center;margin:0}
 .feedurl input{flex:1 1 16rem;min-width:0;font:inherit;padding:var(--sp-2) var(--sp-4);color:var(--ink);
   background:var(--paper);border:1px solid var(--rule-2);border-radius:var(--r-in)}

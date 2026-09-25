@@ -408,10 +408,19 @@ function facetVals(b,k){
   return [b[k]];
 }
 
+// NEWER TERM FIRST, which changes nothing in a list of one term and orders
+// the list on All terms: by number, two bills of one number (HB 1 is in
+// every term) run newest first; by best match, among bills that match
+// equally well, the newer term's come first and then by number. Without it
+// those came in whichever order the terms' indexes happened to arrive, and
+// /search's list of every term's bills (find.js's findBills, which orders
+// them this way) could not be the same list (24 September).
+const newerTerm=(a,b)=>{const x=String(a.term||""),y=String(b.term||"");
+  return x<y?1:x>y?-1:0;};
 function sortRows(rows){
   const by={
     num:(a,b)=>{const x=billKey(a),y=billKey(b);
-                return x[0]-y[0] || x[1]-y[1];},
+                return x[0]-y[0] || x[1]-y[1] || newerTerm(a,b);},
     recent:(a,b)=>(b.last_action||"").localeCompare(a.last_action||"")
                   || billKey(a)[1]-billKey(b)[1],
     // Bills still moving come first, because those are the ones a reader can
@@ -429,7 +438,7 @@ function sortRows(rows){
   if(sortBy==="best"){
     const sc=new Map(rows.map(b=>[b,scoreOf(b)]));
     const num=(a,b)=>{const x=billKey(a),y=billKey(b);return x[0]-y[0]||x[1]-y[1];};
-    return rows.slice().sort((a,b)=>sc.get(b)-sc.get(a)||num(a,b));
+    return rows.slice().sort((a,b)=>sc.get(b)-sc.get(a)||newerTerm(a,b)||num(a,b));
   }
   return rows.slice().sort(by);
 }
@@ -573,11 +582,23 @@ function wantedTerm(m){
     const y=+mm[1], t=terms.find(x=>{const a=+String(x).slice(0,4);return y===a||y===a+1;});
     if(t)return t;
   }
+  // ...OR THE BILL SEARCH'S ADDRESS NAMES IT: ?term=all, which /search's
+  // "All 412 bills that mention bail" opens on since 24 September, when that
+  // page began counting every term's bills. A term the picker offers is
+  // taken too; anything else is ignored and the search opens as it always
+  // has, on the newest.
+  if(!mm&&!window.GR_STATIC&&!window.GR_MEMBER&&!window.GR_COMMITTEE){
+    const want=new URLSearchParams(location.search).get("term");
+    if(want===ALL_TERMS||terms.includes(want)
+       ||(m.requests&&want===m.requests.term))return want;
+  }
   return terms[0]||"";
 }
-// A term already in IDX is never fetched again.
+// A term already in IDX is never fetched again. All terms is every one of
+// them, which is what the picker's own "All terms" fetches.
 const LOADED=new Set();
 function ensureTerm(t){
+  if(t===ALL_TERMS)return Promise.all(((META&&META.terms)||[]).map(ensureTerm));
   if(!t||LOADED.has(t))return Promise.resolve();
   return need("idx/"+encodeURIComponent(t)+".json").then(rows=>{
     LOADED.add(t);
@@ -2985,6 +3006,12 @@ function mountFollow(kind){
   const div=document.createElement("div");
   div.id="followbox";
   div.className="followrow";
+  // BESIDE "CITE THIS PAGE", in the row shell.py writes above the heading,
+  // where there is one (every page built since 24 September): one row of
+  // quiet controls rather than two stacked. A page from an older build has no
+  // row, and Follow makes its own as it always did.
+  const acts=document.getElementById("pageacts");
+  if(acts)div.className="followin";
   div.innerHTML=`<details class="follow"><summary>Follow</summary>
     <div class="followpane">
       <p><b>By RSS</b>, in any feed reader: ${esc(FOLLOWS[kind]||"what is new here")}.
@@ -2995,7 +3022,8 @@ function mountFollow(kind){
         <button type="button" class="link" data-copyfeed="1">Copy the address</button>
         <a href="${esc(href)}">Open the feed</a></p>
     </div></details>`;
-  res.before(div);
+  if(acts)acts.insertBefore(div,acts.firstChild);
+  else res.before(div);
 }
 document.addEventListener("click",e=>{
   const b=e.target.closest&&e.target.closest("[data-copyfeed]");
@@ -3057,9 +3085,13 @@ document.addEventListener("submit",async e=>{
   try{
     const r=await fetch("/api/report",{method:"POST",signal:ctl.signal,
       headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-    // 503 is the Function's one answer for a report it accepted and could not
-    // keep (functions/api/report.js), so it gets words a reader can use.
+    // 503 and 429 are the Function's two answers for a report it accepted and
+    // could not keep (functions/api/report.js) -- storage down, and the day's
+    // ceiling reached -- so each gets words a reader can use. Where the zone's
+    // rate rule in front of the Function answers 429 as well, the same words
+    // are as true of it. Any other failure still offers the email address.
     if(!r.ok)throw new Error(r.status===503?"the site could not save it just now":
+      r.status===429?"the site is taking no more reports just now":
       `the server answered ${r.status}`);
     form.elements.note.value="";
     st.textContent="Thank you. It will be checked against the record.";
@@ -4968,12 +5000,63 @@ document.addEventListener("keydown",e=>{
 // a true date for the page rather than "Accessed ." -- and a reader who has
 // JavaScript gets the day they actually read it, which is what every one of
 // those four formats means by "accessed".
+//
+// IN ONE FORM, "24 Sept. 2026", whatever language the browser is set to (the
+// person, 24 September). This was toLocaleDateString(undefined, ...), so an
+// English citation read "24 septembre 2026" in a French browser and
+// "September 24, 2026" in an American one. CITE_MONTHS is shell.py's list,
+// and preflight holds the two to one answer for every month.
+const CITE_MONTHS=["Jan.","Feb.","Mar.","Apr.","May","June","July","Aug.",
+  "Sept.","Oct.","Nov.","Dec."];
+function citeDay(d){ return d.getDate()+" "+CITE_MONTHS[d.getMonth()]+" "+d.getFullYear(); }
 (function(){
   var els=document.querySelectorAll(".citeday");
-  if(!els.length)return;
-  var s;
-  try{ s=new Date().toLocaleDateString(undefined,
-        {year:"numeric",month:"long",day:"numeric"}); }
-  catch(e){ return; }
+  var s=citeDay(new Date());
   for(var i=0;i<els.length;i++)els[i].textContent=s;
+  // The Copy buttons are written hidden, so a page read without JavaScript
+  // offers none that does nothing; here they work, so here they show.
+  var bs=document.querySelectorAll("[data-citecopy]");
+  for(var j=0;j<bs.length;j++)bs[j].hidden=false;
 })();
+
+// COPY, beside each form of "Cite this page" (the person, 24 September).
+// writeText is called inside the click itself, which is what lets a browser
+// allow it. Where it is refused or absent the form's text is selected
+// instead, so Ctrl+C does the rest, and either way the result is said in the
+// block's status line for a reader who cannot see the button change.
+document.addEventListener("click",e=>{
+  const b=e.target.closest&&e.target.closest("[data-citecopy]");
+  if(!b)return;
+  const form=document.getElementById(b.getAttribute("data-citecopy"));
+  if(!form)return;
+  const name=b.getAttribute("data-citename")||"";
+  const st=document.getElementById("citestate");
+  const say=m=>{if(st)st.textContent=m;};
+  // A form's text as it reads: BibTeX's line breaks are real ones, and a
+  // no-break space is pasted as a space.
+  const text=String(form.textContent||"").replace(/ /g," ").trim();
+  const done=()=>{
+    b.textContent="Copied";
+    say(`The ${name} citation is copied.`);
+    setTimeout(()=>{b.textContent="Copy";},2000);
+  };
+  const pick=()=>{
+    try{
+      const sel=window.getSelection&&window.getSelection();
+      const r=document.createRange&&document.createRange();
+      if(sel&&r){r.selectNodeContents(form);sel.removeAllRanges();sel.addRange(r);}
+    }catch(_){}
+    say(`The ${name} citation is selected: press Ctrl+C, or Command+C on a Mac, to copy it.`);
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(text).then(done,pick);
+  else pick();
+});
+// ONE PANE OPEN AT A TIME in the row above a heading. Follow's pane and the
+// citation's open over the page from the same corner, so opening one shuts
+// the other rather than stacking one on top of it.
+document.addEventListener("toggle",e=>{
+  const d=e.target;
+  if(!d||!d.open||!d.closest||!d.closest("#pageacts"))return;
+  document.querySelectorAll("#pageacts details[open]").forEach(o=>{if(o!==d)o.open=false;});
+},true);

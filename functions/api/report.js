@@ -17,14 +17,20 @@
  * since 13 September a post sent to any other address, or to any path but
  * /api/report exactly, is refused before its body is read.
  *
- * EVERY ANSWER TO A POST IS 204, BUT ONE. Success, a duplicate, a honeypot, a
- * bad field, a full day: the same empty answer, so a script learns nothing.
- * The exception is a report that passed every rule and then could not be
- * kept -- no database bound, or the database refused the write. That answers
- * 503, because the box offers the email address only on a reply that is not
- * a success, and until 24 September a storage failure was answered 204: the
- * reader was thanked and the report existed only in the Function's log. A
- * 503 tells a sender only that storage is down, which is no help to a script.
+ * EVERY ANSWER TO A POST IS 204, BUT TWO. Success, a duplicate, a honeypot, a
+ * bad field: the same empty answer, so a script learns nothing. The
+ * exceptions are the two reports that passed every rule and then could not be
+ * kept, because the box offers the email address only on a reply that is not
+ * a success:
+ *   - no database bound, or the database refused the write: 503. Until
+ *     24 September a storage failure was answered 204, the reader was thanked,
+ *     and the report existed only in the Function's log.
+ *   - the day's ceiling already reached: 429. It was 204 as well, so on the
+ *     day the ceiling was hit every reader after the five hundredth was
+ *     thanked for a report nobody would see. The person asked on 24 September
+ *     for the email address instead, while doubting the day will ever come.
+ * Neither helps a script: a 503 says storage is down, and a 429 says the day
+ * is full, which a script that filled it already knows.
  *
  * THE READER'S WORDS ARE NOT TRUSTED HERE OR ANYWHERE AFTER. compile_reports.py
  * screens what arrives before any assistant reads it, and reports/TRIAGE.md is
@@ -188,6 +194,9 @@ const NOTHING = () => new Response(null, { status: 204 });
 // A report that passed every rule and could not be kept. Not 204, so the box
 // shows the reader the email address with their words filled in (app.js).
 const NOT_KEPT = () => new Response(null, { status: 503 });
+// A report that passed every rule on a day already at its ceiling. Not 204,
+// for the same reason: the reader is offered the email address, not thanks.
+const FULL_DAY = () => new Response(null, { status: 429 });
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -239,7 +248,7 @@ export async function onRequest(context) {
       "INSERT INTO report_days (day, n) VALUES (?1, 1) " +
       "ON CONFLICT(day) DO UPDATE SET n = n + 1 WHERE n < ?2 RETURNING n")
       .bind(day, DAILY_CEILING).first("n");
-    if (n === null || n === undefined) return NOTHING();
+    if (n === null || n === undefined) return FULL_DAY();
 
     // The day is in the key: the same words tomorrow are a report again, which
     // is what "reported again after being marked fixed" needs to see.

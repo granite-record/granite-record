@@ -2163,8 +2163,9 @@ def _class_collisions():
         "logocredit",
         "out", "note", "src", "count", "caret", "chev",
         # the header search panel: find.js mounts it everywhere, and
-        # build_pages draws the same row on /search
-        "findout", "fkind", "fl1", "fname", "fwhat",
+        # build_pages draws the same row on /search -- the bills' row too,
+        # for the current term's count under every term's (24 September)
+        "findout", "fkind", "fl1", "fname", "fwhat", "fbills",
         # the calendar, drawn on the home page and on its own pages
         "cal", "calbills", "calbody", "calcmte", "calcount", "caldate",
         "calday", "calmeet", "calmix", "calslot", "caltime", "calwhere",
@@ -2255,6 +2256,159 @@ def _cite_one_stop():
     doubled = re.findall(r'\.["”\s]*\.(?!\.)', text.replace("n.d.", "nd"))
     assert not doubled, f"the citation doubles a full stop: {doubled} in {text[-400:]!r}"
     return "ok", f"{len(closes)} endings from the record close with one stop"
+
+
+# app.js on its own, in node: what it writes into a page's .citeday slots in a
+# browser whose language is not English, citeDay for each date shell.py is
+# asked about, and the Copy button with the clipboard working, refusing and
+# absent. Every value the page would read is a stand-in with only the parts
+# the code touches.
+_CITE_APP = r"""
+require("./stub.js");
+const fs = require("fs");
+const on = {};
+document.addEventListener = (t, f) => { (on[t] = on[t] || []).push(f); };
+const SLOTS = [{textContent: "1 January 2000"}, {textContent: "1 January 2000"}];
+const BTNS = [{hidden: true}, {hidden: true}];
+document.querySelectorAll = s => s === ".citeday" ? SLOTS : s === "[data-citecopy]" ? BTNS : [];
+// A browser set to French. A citation that asks the locale says so.
+Date.prototype.toLocaleDateString = () => "24 septembre 2026";
+Date.prototype.toLocaleString = () => "24/09/2026";
+let s;
+try { s = (0, eval)(fs.readFileSync("./app.js", "utf8") + ";({citeDay})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const out = {slots: SLOTS.map(x => x.textContent), shown: BTNS.map(b => !b.hidden),
+  today: s.citeDay(new Date()),
+  days: JSON.parse(fs.readFileSync("./dates.json", "utf8"))
+    .map(([y, m, d]) => s.citeDay(new Date(y, m - 1, d)))};
+const form = {textContent: "@misc{bill-2026-hb1,\n  title = {A bill},\n}\n"};
+const st = {textContent: ""};
+document.getElementById = id => id === "cite-bibtex" ? form : id === "citestate" ? st : null;
+const btn = {textContent: "Copy",
+  getAttribute: a => ({"data-citecopy": "cite-bibtex", "data-citename": "BibTeX"})[a] || null};
+btn.closest = q => q === "[data-citecopy]" ? btn : null;
+const click = async () => {
+  st.textContent = "";
+  for (const f of on.click || []) { try { f({target: btn}); } catch (_) {} }
+  for (let i = 0; i < 5; i++) await new Promise(r => setImmediate(r));
+  return st.textContent;
+};
+let picked = null;
+window.getSelection = () => ({removeAllRanges() {}, addRange(r) { picked = r.node; }});
+document.createRange = () => ({selectNodeContents(n) { this.node = n; }});
+(async () => {
+  let wrote = null;
+  navigator.clipboard = {writeText: async t => { wrote = t; }};
+  out.copied = {said: await click(), wrote, picked: picked === form};
+  navigator.clipboard = {writeText: async () => { throw new Error("NotAllowedError"); }};
+  picked = null;
+  out.refused = {said: await click(), picked: picked === form};
+  delete navigator.clipboard;
+  picked = null;
+  out.absent = {said: await click(), picked: picked === form};
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "Cite this page sits above the heading, gives one form of date, and each form copies")
+def _cite_up_and_copied():
+    """The person, 24 September: move "Cite this page" up near the title and
+    add a Copy button; and one fixed date format in citations, "24 Sept.
+    2026", whatever the browser's language.
+
+    The block sat between the record and the footer, and a citation had to be
+    dragged across with the mouse. app.js filled its date with
+    toLocaleDateString, so one page cited "24 September 2026" in one browser,
+    "September 24, 2026" in another and "24 septembre 2026" in a third, and
+    the build's fallback date came from strftime in the build machine's
+    locale.
+
+    So: shell.page must write the block ABOVE the results slot and nowhere
+    below it, inside the row app.js puts Follow in, with a Copy button per
+    form, each naming a form that exists, hidden until app.js shows it;
+    BibTeX's line breaks must be real ones, since the form's text is what is
+    copied; shell.cite_day and app.js's citeDay must agree on every month in
+    a browser set to French; and the Copy click must hand the form's text to
+    the clipboard and say so, or select it and say that, when the clipboard
+    refuses or is not there.
+    """
+    import datetime as _dt
+    import html as _html
+    try:
+        import shell as S
+    except ImportError:
+        return "skip", "shell.py will not import"
+    if not Path("bills.html").exists():
+        return "skip", "bills.html is not here"
+    page = S.page(S.template(), path="/bill/2026/hb1.html", base="https://graniterecord.org",
+                  title="HB 1 (2026): relative to the state budget. | Granite Record",
+                  description="A bill.")
+    row, slot = page.find('<div class="pageacts" id="pageacts">'), page.find('<div id="results">')
+    assert 0 <= row < slot, (
+        "Cite this page is not in the row above the results slot "
+        f"(row at {row}, slot at {slot})")
+    assert page.count('class="pcite"') == 1 and page.find('class="pcite"') < slot, (
+        "Cite this page is drawn below the record, or twice")
+    assert "citewrap" not in page, "the old block at the foot of the page is still written"
+    block = page[row:slot]
+    forms = re.findall(r'<dt>(\w+)<button type="button" class="citecopy" '
+                       r'data-citecopy="([\w-]+)" data-citename="\w+" '
+                       r'aria-label="Copy the \w+ citation" hidden>Copy</button></dt>'
+                       r'<dd id="([\w-]+)">', block)
+    assert [f[0] for f in forms] == ["MLA", "APA", "Chicago", "BibTeX"] and \
+        all(f[1] == f[2] for f in forms), (
+        f"each form needs a hidden Copy button naming its own text: {forms}")
+    assert 'id="citestate" role="status" aria-live="polite"' in block, (
+        "nothing announces a copy to a reader who cannot see the button change")
+    bib = re.search(r'<dd id="cite-bibtex"><code>(.*?)</code></dd>', block, re.S)
+    assert bib and "<br" not in bib.group(1) and "&nbsp;" not in bib.group(1) \
+        and bib.group(1).count("\n  ") == 4, (
+        "BibTeX's line breaks are markup, so a copy of its text is one line")
+    today = S.cite_day(_dt.date.today())
+    assert f'<span class="citeday">{today}</span>' in block, (
+        f"the fallback date is not the build day in the one form ({today})")
+
+    dates = [(2026, m, 24) for m in range(1, 13)] + [(2027, 1, 1), (2026, 9, 30)]
+    want = [S.cite_day(_dt.date(*d)) for d in dates]
+    assert want[8] == "24 Sept. 2026" and want[4] == "24 May 2026" \
+        and want[-2] == "1 Jan. 2027", f"shell.cite_day writes {want[8]!r}, {want[4]!r}, {want[-2]!r}"
+    node = shutil.which("node")
+    if not node:
+        return "skip", "node is not installed"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "app.js").write_text(Path("app.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(Path("dom_stub.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "dates.json").write_text(json.dumps(dates), encoding="utf-8")
+        (root / "go.js").write_text(_CITE_APP, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        assert r.returncode == 0 and said, (said.splitlines() or ["no output"])[-1][:300]
+        got = json.loads(said.splitlines()[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got["days"] == want, (
+        "app.js and shell.py write a citation's date differently: "
+        + "; ".join(f"{a} / {b}" for a, b in zip(got["days"], want) if a != b))
+    today_js = got["today"]
+    assert got["slots"] == [today_js] * 2 and "septembre" not in today_js \
+        and re.fullmatch(r"\d{1,2} (%s) \d{4}" % "|".join(
+            re.escape(m) for m in S.CITE_MONTHS), today_js), (
+        f"in a French browser the citation's date reads {got['slots']}")
+    assert got["shown"] == [True, True], "app.js does not show the Copy buttons"
+    c = got["copied"]
+    assert c["wrote"] == "@misc{bill-2026-hb1,\n  title = {A bill},\n}" \
+        and c["said"] == "The BibTeX citation is copied." and not c["picked"], (
+        f"Copy with a working clipboard: {c}")
+    for case in ("refused", "absent"):
+        c = got[case]
+        assert c["picked"] and c["said"].startswith("The BibTeX citation is selected"), (
+            f"Copy with the clipboard {case}: {c}")
+    return "ok", (f"above the heading with {len(forms)} Copy buttons; "
+                  f"dates read {want[8]!r} in shell.py and app.js alike, French browser "
+                  "or not; the clipboard copies, or the form is selected and it says so")
 
 
 @check("frontend", "the search panel's way out leads to a page the build writes")
@@ -2351,10 +2505,31 @@ def _find_bills_fixture():
              "insurance plan", "Rick Ladd", "House Executive Departments"),
         bill("HB29", 2026, "relative to the city charter of concord",
              "Alan Smith", "House Municipal and County Government"),
+        # "bail" is a word of these titles and the start of a sitting
+        # member's name, Bailey, who sponsors the third.
+        bill("HB57", 2025, "relative to the standards applicable to bail in "
+             "criminal matters", "Alan Smith", "House Criminal Justice and Public Safety"),
+        bill("SB248", 2026, "relative to bail for a defendant", "Daryl Abbas",
+             "Senate Judiciary"),
+        bill("HB1441", 2026, "relative to snowmobile trail funding", "Glenn Bailey",
+             "House Resources, Recreation and Development"),
     ]
     other = bill("HB103", 2023, "relative to firearms storage", "Alan Smith",
                  "House Criminal Justice and Public Safety")
     other["term"] = "2023-2024"
+    # The term before, in an index of its own, which only /search reads (and
+    # /bills on All terms). Numbers it shares with the current term -- HB 101,
+    # SB 5 -- are the case a bill number in /search is about.
+    older = [bill("HB101", 2023, "relative to firearms in state parks", "Alan Smith",
+                  "House Fish and Game"),
+             bill("SB5", 2023, "relative to consumer protection", "Daryl Abbas",
+                  "Senate Commerce"),
+             bill("HB388", 2024, "relative to bail commissioners", "Rick Ladd",
+                  "House Judiciary"),
+             bill("HB1575", 2024, "relative to fishing licenses", "Glenn Bailey",
+                  "House Fish and Game")]
+    for b in older:
+        b["term"] = "2023-2024"
     find = [
         ["legislator", "Sen. Daryl Abbas (R - SD22)",
          "Senate · SD22 · Republican", "legislator/daryl-abbas-sd-22",
@@ -2362,6 +2537,9 @@ def _find_bills_fixture():
         ["legislator", "Rep. Jodi Nelson (R - Hills 29)",
          "House · Hills 29 · Republican", "legislator/jodi-nelson",
          "Hillsborough"],
+        ["legislator", "Rep. Glenn Bailey (R - Straf 2)",
+         "House · Straf 2 · Republican", "legislator/glenn-bailey-straf-2",
+         "Strafford"],
         ["committee", "Education", "House committee", "committee/H05", ""],
         ["topic", "Education", "Bills on this subject",
          "bills?topic=Education", ""],
@@ -2377,14 +2555,14 @@ def _find_bills_fixture():
             "committees": sorted({b["committee"] for b in term}),
             "sponsors": [], "votedays": [], "years": [2025, 2026]}
     return {"/meta.json": meta, "/idx/2025-2026.json": term + [other],
-            "/find.json": find}
+            "/idx/2023-2024.json": older, "/find.json": find}
 
 
 _FIND_BILLS_QUERIES = [
     "firearms", "guns", "property tax", "school funding", "right to know?",
     "voting", "minimum wage", "nelson", "commerce", "housing", "education",
     "concord", "abbas", "insurance coverage", "HB 0101", "HB101, SB5",
-    "hills 29", "xyzzy"]
+    "hills 29", "xyzzy", "bail", "bailey", "SB 5"]
 
 # Both sides answer fetch from the fixture, by path.
 _FIND_BILLS_FETCH = r"""
@@ -2392,10 +2570,15 @@ const fs = require("fs");
 const FIX = JSON.parse(fs.readFileSync("./fixture.json", "utf8"));
 const Q = JSON.parse(fs.readFileSync("./queries.json", "utf8"));
 const ASKED = [];
-const FAIL_IDX = process.argv[2] === "fail";
+const MODE = process.argv[2] || "";
+const FAIL_IDX = MODE === "fail";
 globalThis.fetch = async (u) => {
   const p = new URL(u).pathname; ASKED.push(p);
-  if ((FAIL_IDX && p.startsWith("/idx/")) || !(p in FIX))
+  // The term before this one never arrives ("slowold") or is not there
+  // ("failold"): what /search says while it counts, and when it cannot.
+  if (MODE === "slowold" && p === "/idx/2023-2024.json") return new Promise(() => {});
+  if ((FAIL_IDX && p.startsWith("/idx/")) || !(p in FIX)
+      || (MODE === "failold" && p === "/idx/2023-2024.json"))
     return {ok: false, status: 404, statusText: "Not Found",
             json: async () => { throw new Error("404"); }};
   return {ok: true, status: 200,
@@ -2410,6 +2593,8 @@ const ticks = async (n) => { for (let i = 0; i < n; i++)
 _FIND_BILLS_APP = r"""
 require("./stub.js");
 """ + _FIND_BILLS_FETCH + r"""
+// "all": opened as /search's every-term link opens it, /bills?term=all.
+if (MODE === "all") location.search = "?term=all";
 const box = document.querySelector("#q"); box.disabled = true;
 let scope;
 try { scope = (0, eval)(fs.readFileSync("./app.js", "utf8")
@@ -2423,10 +2608,16 @@ catch (e) { console.log("LOAD " + e.message); process.exit(1); }
   for (const s of Q) {
     box.value = s; box.fire("input");
     const count = document.querySelector("#count").textContent;
-    const ids = [...document.querySelector("#results").innerHTML.matchAll(
-      /<article class="card[^"]*" data-id="([^"]+)"/g)].map(m => m[1]);
+    const html = document.querySelector("#results").innerHTML;
+    const ids = [...html.matchAll(/<article class="card[^"]*" data-id="([^"]+)"/g)]
+      .map(m => m[1]);
+    // With the year each card links to, since across terms an id is not a bill.
+    const dated = [...html.matchAll(
+      /<article class="card[^"]*" data-id="([^"]+)"[\s\S]*?bill\/(\d{4})\//g)]
+      .map(m => m[1] + "/" + m[2]);
     const m = /^([\d,]+) (?:of|matching)/.exec(count);
-    out.q[s] = {count, n: m ? +m[1].replace(/,/g, "") : null, ids: ids.slice(0, 5)};
+    out.q[s] = {count, n: m ? +m[1].replace(/,/g, "") : null, ids: ids.slice(0, 5),
+                dated: dated.slice(0, 5)};
   }
   console.log(JSON.stringify(out));
 })().catch(e => { console.log("RUN " + e.message); process.exit(1); });
@@ -2456,7 +2647,8 @@ let ready = null;
 document.addEventListener = (t, f) => { if (t === "DOMContentLoaded") ready = f; };
 let F;
 try { script("./find.js");
-      F = vm.runInThisContext("({FIND, FBILLS, findDraw, findBills, findBillsLoad})"); }
+      F = vm.runInThisContext("({FIND, FBILLS, FALL, findDraw, findBills, findBillsLoad," +
+                              " findBillsLoadAll})"); }
 catch (e) { console.log("LOAD " + e.message); process.exit(1); }
 if (typeof queryGroups !== "undefined") {
   console.log("the panel's side has app.js's matcher without loading it");
@@ -2477,17 +2669,26 @@ const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
     res.q[s] = B && B.state === "ready" ? {n: B.n, ids: B.top.map(b => b.id)} : B;
     res.panel[s] = draw(s);
   }
-  if (process.argv[2] !== "fail") {
+  // The header panel never asks for another term's bills: they are /search's.
+  res.askedPanel = ASKED.slice();
+  if (MODE !== "fail") {
     script("./search.js");
     location.search = "?q=firearms";
-    ready(); await ticks(10);
+    ready(); await ticks(20);
     const box = document.getElementById("resq");
     const lead = document.getElementById("reslead");
     const out = document.getElementById("resout");
     res.search = {};
-    for (const s of ["firearms", "abbas", "voting", "xyzzy"]) {
-      if (s !== "firearms") { box.value = s; box.fire("input"); await ticks(3); }
+    for (const s of ["firearms", "abbas", "voting", "xyzzy", "bail", "bailey", "SB 5"]) {
+      if (s !== "firearms") { box.value = s; box.fire("input"); await ticks(20); }
       res.search[s] = {lead: lead.textContent, html: out.innerHTML};
+    }
+    // Every term's count, as /search makes it, for /bills?term=all to match.
+    res.all = {state: F.FALL.rows ? "ready" : F.FALL.failed ? "failed" : "loading", q: {}};
+    if (F.FALL.rows) for (const s of Q) {
+      const B = F.findBills(s, 5, true);
+      res.all.q[s] = B && B.state === "ready"
+        ? {n: B.n, dated: B.top.map(b => b.id + "/" + b.year)} : B;
     }
   }
   console.log(JSON.stringify(res));
@@ -2496,7 +2697,8 @@ const draw = (s) => { F.findDraw(s); return panel.innerHTML; };
 
 
 @check("frontend", "the header search finds the bills /bills finds, and "
-                   "counts them alike", needs=("build_pages",))
+                   "counts them alike; /search counts every term's as /bills "
+                   "on All terms does", needs=("build_pages",))
 def _find_bills(BP):
     """The header's box said "No matching results." to "firearms".
 
@@ -2518,6 +2720,17 @@ def _find_bills(BP):
     over a bill that matches, no "Did you mean" over one either, nothing
     fetched before a word is typed, and the bill search still offered, with
     no count, when the term's index cannot be had.
+
+    TWO DECISIONS OF 24 SEPTEMBER are held here too. A name goes above the
+    bills only when what was typed is a whole word of it, so "bail" leads
+    with the bail bills and Rep. Bailey follows, where "bailey" leads with
+    him. And the panel stays the current term's while /search counts every
+    term's: the fixture's second term is an index of its own, which the panel
+    must never fetch, and /search's count and first three bills (with their
+    years) must match /bills opened on ?term=all, the address its "All N
+    bills" row leads to. With that term's index missing /search falls back to
+    the current term and says only that; while it is still arriving, /search
+    says it is counting.
     """
     if not shutil.which("node"):
         return "skip", "node is not installed"
@@ -2555,8 +2768,11 @@ def _find_bills(BP):
             return json.loads(said.splitlines()[-1])
 
         A = node("app_side.js")
+        AA = node("app_side.js", "all")
         P = node("panel_side.js")
         X = node("panel_side.js", "fail")
+        FO = node("panel_side.js", "failold")
+        SO = node("panel_side.js", "slowold")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -2623,6 +2839,22 @@ def _find_bills(BP):
                    "starts, then the bills")
     if "No matching results." not in pan["xyzzy"] or "/bills?q=" in pan["xyzzy"]:
         bad.append("'xyzzy', which nothing matches, is not told so")
+    # A name goes above the bills only on a whole word (24 September): "bail"
+    # leads with the bail bills and Rep. Bailey follows; "bailey" leads with
+    # him.
+    if first(pan["bail"]) != "/bills?q=bail" or \
+            "/legislator/glenn-bailey-straf-2" not in pan["bail"]:
+        bad.append("'bail' does not lead with the bail bills, with Rep. Bailey "
+                   f"after them (it leads with {first(pan['bail'])!r})")
+    if first(pan["bailey"]) != "/legislator/glenn-bailey-straf-2":
+        bad.append(f"'bailey' leads with {first(pan['bailey'])!r}, not the "
+                   "member whose whole name it is")
+    # A bill number: this term's in the bill search first, and /search, which
+    # has it in every term, last.
+    sb = pan["SB 5"]
+    if first(sb) != "/bills?q=SB%205" or sb.rfind("/search?q=SB%205") <= 0:
+        bad.append("'SB 5' does not offer this term's bill first and every "
+                   "term's under it")
     if "/bills?q=firearms" not in P["loading"] or "No matching" in P["loading"]:
         bad.append("while the bills are fetched the panel does not offer them, "
                    "or says nothing matched")
@@ -2633,26 +2865,86 @@ def _find_bills(BP):
                    "fall back to an uncounted link to the bill search")
     assert not bad, "the header search panel: " + "; ".join(bad[:3])
 
-    # /search says the same.
+    # The panel is this term's; the other term's index is /search's alone.
+    assert "/idx/2023-2024.json" not in P["askedPanel"], (
+        "the header panel fetched an earlier term's index: only /search "
+        "counts every term")
+
+    # /search counts every term (24 September), as /bills?term=all does,
+    # search by search, and lists them newest first.
+    assert AA["term"] == "all" and P["all"]["state"] == "ready", (
+        f"/bills?term=all opened on {AA['term']!r}, and /search's every-term "
+        f"count is {P['all']['state']!r}")
+    off = []
+    for q in _FIND_BILLS_QUERIES:
+        a, p = AA["q"][q], P["all"]["q"][q]
+        if a["n"] is None:
+            off.append(f"{q!r}: /bills?term=all drew no count ({a['count']!r})")
+        elif not p or p.get("n") != a["n"]:
+            off.append(f"{q!r}: /bills?term=all {a['n']}, /search "
+                       f"{p.get('n') if isinstance(p, dict) else p}")
+        elif p["dated"][:3] != a["dated"][:3]:
+            off.append(f"{q!r}: /bills?term=all lists {a['dated'][:3]} first, "
+                       f"/search {p['dated'][:3]}")
+    assert not off, ("/search and /bills on All terms disagree about the bills: "
+                     + "; ".join(off[:4]))
+    na = {q: AA["q"][q]["n"] for q in _FIND_BILLS_QUERIES}
+    assert na["firearms"] > n["firearms"] and na["bail"] > n["bail"] \
+        and AA["q"]["SB 5"]["dated"][:2] == ["SB5/2025", "SB5/2023"], (
+        f"the fixture's earlier term no longer adds to the count: {na}, "
+        f"SB 5 {AA['q']['SB 5']['dated']}")
+
     s = P["search"]
     lead, html = s["firearms"]["lead"], s["firearms"]["html"]
-    assert lead.startswith(f"{n['firearms']} bills in the 2025-2026 term "
+    assert lead.startswith(f"{na['firearms']} bills across all 2 terms "
                            f"match") and "matches that" not in lead, (
         f"/search?q=firearms opens with {lead!r}")
     assert html.find("<h2>Bills") == html.find("<h2>") >= 0 and \
-        f"All {n['firearms']} bills that mention &ldquo;firearms&rdquo;" \
-        in html, (
-        "/search?q=firearms does not lead with the counted bills")
+        f"All {na['firearms']} bills that mention &ldquo;firearms&rdquo;" \
+        in html and 'href="/bills?q=firearms&amp;term=all"' in html, (
+        "/search?q=firearms does not lead with every term's bills, counted, "
+        "and a link to them on All terms")
+    assert re.search(rf"{n['firearms']} of them in\s+the 2025-2026 term", html), (
+        "/search?q=firearms does not say how many of them are this term's")
+    assert "HB 101 (2025)" in html and "HB 101 (2023)" in html, (
+        "/search lists bills of two terms without the year that tells them apart")
     ab = s["abbas"]["html"]
     assert 0 <= ab.find("<h2>Senators") < ab.find("<h2>Bills"), (
         "/search?q=abbas puts the bills above the senator it names")
-    assert s["xyzzy"]["lead"].startswith("Nothing on this site matches"), (
+    assert 0 <= s["bail"]["html"].find("<h2>Bills") \
+        < s["bail"]["html"].find("<h2>Representatives"), (
+        "/search?q=bail puts Rep. Bailey above the bail bills")
+    assert 0 <= s["bailey"]["html"].find("<h2>Representatives") \
+        < s["bailey"]["html"].find("<h2>Bills"), (
+        "/search?q=bailey puts the bills above the member it names")
+    sb5 = s["SB 5"]["html"]
+    assert all(f"SB 5 ({y})" in sb5 for y in (2025, 2023)), (
+        "/search?q=SB 5 does not list the number in every term it is in")
+    assert s["xyzzy"]["lead"].startswith("Nothing on this site matches") \
+        and "any of the 2 terms" in s["xyzzy"]["lead"], (
         f"/search?q=xyzzy opens with {s['xyzzy']['lead']!r}")
     assert "Did you mean" not in s["voting"]["html"], (
         "/search?q=voting guesses at another word over the bills that match")
+
+    # An earlier term that cannot be had: this term's count, and no claim
+    # about every term. One that has not arrived yet: this term's count, and
+    # the page says the rest are still being counted.
+    fl, fh = FO["search"]["firearms"]["lead"], FO["search"]["firearms"]["html"]
+    assert FO["all"]["state"] == "failed" and fl.startswith(
+        f"{n['firearms']} bills in the 2025-2026 term match") \
+        and "term=all" not in fh and "all 2 terms" not in fl + fh, (
+        f"with an earlier term's index missing, /search says {fl!r}")
+    sl, sh = SO["search"]["firearms"]["lead"], SO["search"]["firearms"]["html"]
+    assert SO["all"]["state"] == "loading" and sl.startswith(
+        f"{n['firearms']} bills in the 2025-2026 term match") \
+        and "Counting the earlier terms" in sl and "Counting the earlier terms" in sh \
+        and "Nothing on this site" not in SO["search"]["xyzzy"]["lead"], (
+        f"while an earlier term is on its way, /search says {sl!r}")
     return "ok", (f"{len(_FIND_BILLS_QUERIES)} searches counted alike by "
                   f"/bills and the header (firearms {n['firearms']}, guns "
-                  f"{n['guns']}); bills lead where no name does")
+                  f"{n['guns']}), and by /bills on All terms and /search "
+                  f"(firearms {na['firearms']}); bills lead where no name is "
+                  "a whole word of what was typed")
 
 
 @check("frontend", "the assets are revalidated, and no page names a version")
@@ -11996,10 +12288,11 @@ process.stdout.write(JSON.stringify(out));
 
 @check("build", "the lists of bills the build writes run by number, as bills.html's does",
        needs=("bill_order", "build_committees", "build_site_v2",
-              "build_session_pages", "build_pages"))
-def _bill_lists_by_number(BO, BC, BS, SP, BP):
+              "build_session_pages", "build_pages", "build_indexes"))
+def _bill_lists_by_number(BO, BC, BS, SP, BP, BI):
     """A committee's bills, a member's sponsored bills, a sitting day's consent
-    calendar, a calendar slot, bills.csv and sponsors.csv.
+    calendar, a calendar slot, bills.csv, sponsors.csv and a term's page in
+    /directory.
 
     Each of these sorted the bill number as text, so HB1003 came before HB103
     and SB 16 after SB 133. The audit of 24 September counted 499 committee
@@ -12041,6 +12334,29 @@ def _bill_lists_by_number(BO, BC, BS, SP, BP):
     got = [x.replace(" ", "") for x in _CBN.findall(page)]
     assert got == want, "a calendar slot lists " + ", ".join(got)
 
+    # A term's page in /directory. Its kinds are sections, so the sections run
+    # in KIND_ORDER and any other kind follows alphabetically, and each section
+    # runs by number. It kept an order of its own -- HB, SB, CACR, HCR -- until
+    # 24 September, after every other list had come to share this one.
+    kind = lambda b: re.match(r"[A-Z]+", b).group(0)
+    kinds = list(dict.fromkeys(kind(b) for b in want))
+    heads = ([k for k in BO.KIND_ORDER if k in kinds]
+             + sorted(k for k in kinds if k not in BO.KIND_ORDER))
+    site = Path(tempfile.mkdtemp())
+    try:
+        BI.bills_page(site, "https://graniterecord.org", "2025-2026",
+                      [{"id": b, "year": 2025, "title": "a bill"} for b in mixed], [])
+        page = (site / "directory" / "bills-2025-2026.html").read_text(encoding="utf-8")
+    finally:
+        shutil.rmtree(site, ignore_errors=True)
+    got = re.findall(r'<h2 id="([a-z]+)">', page)
+    assert got == [k.lower() for k in heads], (
+        "the directory heads a term's kinds " + ", ".join(got))
+    got = [b for ul in re.findall(r'<ul class="dirbills">(.*?)</ul>', page, re.S)
+           for b in re.findall(r'<li><a href="[^"]*">([^<]*)</a>', ul)]
+    exp = [b for k in heads for b in want if kind(b) == k]
+    assert got == exp, "the directory lists a term's bills " + ", ".join(got)
+
     # The downloads, in a folder of their own: sponsors() reads
     # text_sponsors.json from where it runs, and the real one is not a fixture.
     here = Path(".").resolve()
@@ -12073,8 +12389,8 @@ def _bill_lists_by_number(BO, BC, BS, SP, BP):
     assert bills_csv == exp, ("bills.csv runs " + ", ".join(
         b for t, b in bills_csv if t == "2025-2026"))
     assert sponsors_csv == want, "sponsors.csv runs " + ", ".join(sponsors_csv)
-    return "ok", ("committee, sponsored, consent, calendar, bills.csv and "
-                  f"sponsors.csv all run {want[3]} before {want[5]}")
+    return "ok", ("committee, sponsored, consent, calendar, directory, bills.csv "
+                  f"and sponsors.csv all run {want[3]} before {want[5]}")
 
 
 @check("frontend", "every week from the first to the last has a page, and the arrows step one week")
@@ -13721,7 +14037,13 @@ ok("a variation selector is hidden text",
 const full = { DB: { prepare: sql => ({ bind: () => ({ first: async () => null,
   run: async () => rows.push(sql) }) }) } };
 r = await onRequest({ env: full, request: req("https://graniterecord.org", { ...good, note: "another one" }) });
-ok("a full day stores nothing", r.status === 204 && rows.length === 1);
+// 429, not 204 (24 September 2026): a real report on a day already at its
+// ceiling was answered like a success, and the box thanked the reader for it.
+ok("a full day stores nothing and answers 429", r.status === 429 && rows.length === 1);
+r = await onRequest({ env: full, request: req("https://graniterecord.org", { ...good, website: "x" }) });
+ok("a full day: a honeypot still answers 204", r.status === 204 && rows.length === 1);
+r = await onRequest({ env: full, request: req("https://evil.example", { ...good, note: "from elsewhere" }) });
+ok("a full day: another origin still answers 204", r.status === 204 && rows.length === 1);
 const member = { ...good, record: "member:4412", url: "/legislator/jane-doe-hills-12", tab: "Votes" };
 const assets = page => ({ fetch: async () => new Response(page, { status: 200 }) });
 r = await onRequest({ env: { ...env, ASSETS: assets('<script>window.GR_MEMBER="4412";</script>') },
@@ -13839,7 +14161,8 @@ def _report_function():
     from the site's own origin, after the box has been open three seconds,
     with the honeypot empty. It answers 204 to all of it, so a script learns
     nothing -- except a report that passed every rule and could not be kept,
-    which answers 503 so the box offers the reader the email address. It
+    which answers 503 when storage failed and 429 when the day was already at
+    its ceiling, so the box offers the reader the email address. It
     accepts a report from every address the site builds for a member,
     including a former member's that carries no seat number. And it
     reads nothing that identifies a reader: no IP header, no cookie; the
@@ -13887,7 +14210,7 @@ def _report_function():
         shutil.rmtree(root, ignore_errors=True)
     return "ok", (f"{len(cols)} columns, none about the reader; the host and path sent to and "
                   "the origin, honeypot, dwell, shape and record-page agreement all enforced; "
-                  "204, or 503 for a real report storage could not keep")
+                  "204, or 503 and 429 for a real report storage or a full day could not keep")
 
 
 REPORT_BOX_TEST = r"""
@@ -13929,23 +14252,34 @@ async function send(note) {
   return { st, left: form.elements.note.value };
 }
 const fail = [];
-const offered = x => x.st.innerHTML.includes("mailto:contact@graniterecord.org") &&
-  x.st.innerHTML.includes("could not save it just now") && x.left !== "" &&
+// The project's own address, never a person's, with the reader's words kept
+// and the reason in words a reader can use.
+const offered = (x, why) => x.st.innerHTML.includes("mailto:contact@graniterecord.org") &&
+  x.st.innerHTML.includes(why) && x.left !== "" &&
   !/Thank you/.test(x.st.textContent + x.st.innerHTML);
+const SAVE = "could not save it just now", FULL = "taking no more reports just now";
 let rows = 0;
 const good = { DB: { prepare: () => ({ bind: () => ({ first: async () => 1,
   run: async () => { rows++; } }) }) } };
 const boom = async () => { throw new Error("D1_ERROR"); };
 env = { ASSETS: page };
-if (!offered(await send("No database is bound here."))) fail.push("no database: no email offered");
+if (!offered(await send("No database is bound here."), SAVE)) fail.push("no database: no email offered");
 env = { ASSETS: page, DB: { prepare: () => ({ bind: () => ({ first: async () => 1, run: boom }) }) } };
-if (!offered(await send("The insert throws here."))) fail.push("the insert throws: no email offered");
+if (!offered(await send("The insert throws here."), SAVE)) fail.push("the insert throws: no email offered");
+// The day's ceiling already reached: the count's statement returns no row.
+// Until 24 September this answered 204 and the box said thank you.
+env = { ASSETS: page, DB: { prepare: () => ({ bind: () => ({ first: async () => null,
+  run: async () => { rows++; } }) }) } };
+const full = await send("The day is already at its ceiling.");
+if (!offered(full, FULL) || rows !== 0)
+  fail.push("a full day: no email offered, or a row stored: " +
+            JSON.stringify({ text: full.st.textContent, html: full.st.innerHTML, rows }));
 env = { ASSETS: page, DB: good.DB };
 const ok = await send("The district shown is out of date.");
 if (!(ok.st.textContent.startsWith("Thank you") && ok.left === "" && rows === 1))
   fail.push("a kept report from a former member's page was not thanked and cleared: " +
             JSON.stringify({ text: ok.st.textContent, html: ok.st.innerHTML, rows }));
-if (calls !== 3) fail.push(`the box posted ${calls} times for 3 sends`);
+if (calls !== 4) fail.push(`the box posted ${calls} times for 4 sends`);
 console.log(fail.length ? "FAILED: " + fail.join("; ") : "ALL OK");
 process.exit(fail.length ? 1 : 0);
 """
@@ -13963,6 +14297,11 @@ def _report_box_fallback():
     page with no seat number in its address, into report.js's own onRequest:
     with no database and with a throwing insert the box must offer the email
     address and keep the words; with a working one it must say thank you.
+
+    A day already at its ceiling was the same fault in another place: 204,
+    and thanks, for every report after the five hundredth. It answers 429 now
+    and the box must offer the address for it too, saying the site is taking
+    no more reports rather than that it could not save one.
     """
     fn, app, stub = Path("functions/api/report.js"), Path("app.js"), Path("dom_stub.js")
     absent = [str(p) for p in (fn, app, stub) if not p.exists()]
@@ -13981,8 +14320,9 @@ def _report_box_fallback():
         assert r.returncode == 0 and "ALL OK" in r.stdout, (r.stdout + r.stderr).strip()[-400:]
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    return "ok", ("no database and a failed insert each offer the email address with the "
-                  "words kept; a stored report from /legislator/adam-schroadter is thanked")
+    return "ok", ("no database, a failed insert and a full day each offer the email "
+                  "address with the words kept; a stored report from "
+                  "/legislator/adam-schroadter is thanked")
 
 
 REPORT_GENUINE = [
