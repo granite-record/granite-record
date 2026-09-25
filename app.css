@@ -4109,6 +4109,65 @@ padding-right:var(--sp-5);width:1%}
   :where(body.pg) .hcols #session,
   :where(body.pg) .hcols .hfind{margin-top:var(--sp-7)}
 }
+/* ---- COMING UP, THE WHOLE WEEK IN A BOX OF ITS OWN HEIGHT -------------
+   A week in session is forty sittings, and drawn in full it ran the left
+   rail far below the middle column and put forty cards between a phone's
+   finder and its floor sessions. Asked on 24 September to cap the length and
+   keep the week: calendar_html still writes every sitting, and this gives
+   the box a height, so the reader scrolls through the rest inside it. A short
+   week never reaches the cap and shows no scrollbar at all.
+
+   AT EVERY WIDTH, which is why this sits outside both blocks above. The cap
+   is under the height of the window, so on a phone there is always page
+   above or below the box to take a swipe that is meant for the page.
+
+   NOTHING TAKES THE SCROLL FROM THE READER. No script, no snapping, and no
+   overscroll-behavior: at either end of the box the next turn of the wheel
+   or swipe moves the page, as it would anywhere else, rather than stopping
+   dead inside the box. */
+:where(body.pg) .calscroll{max-height:min(640px,70vh);overflow-x:hidden;overflow-y:auto}
+/* The heading's 8px margin and the first date's 16px used to collapse into
+   one gap of 16px. A box that scrolls keeps its child's margin inside it, so
+   now they add, and the first date gives back the difference. */
+:where(body.pg) .calscroll > .calday:first-child > .caldate{margin-top:var(--sp-4)}
+/* THE DAY STAYS IN VIEW. A January Tuesday is sixteen sittings, more than
+   the box holds, so partway down one the date that headed it had scrolled
+   away and the cards belonged to no day in sight. Each date holds the top of
+   the box until its own day has gone past, on the page's own colour so the
+   cards pass under it rather than through it. */
+:where(body.pg) .calscroll .caldate{position:sticky;top:0;z-index:1;background:var(--paper)}
+/* AND A SIGN THAT MORE FOLLOWS. A phone draws no scrollbar until the box is
+   moving, and nor does a Mac with a trackpad, so the bottom edge fades the
+   cards into the page. The fade is a sticky last child: while there is more
+   below it holds the bottom of the box over the card it cuts off, and at the
+   end of the week it comes to rest in its own place under the last card,
+   over nothing, where it cannot be seen. So it shows exactly when there is
+   more to reach, and no script has to keep it true. Resting there it is the
+   box's end padding too: the last card of a scrolled week does not sit on
+   the box's bottom edge. The negative margin gives back the card's own.
+
+   One colour, the page's, faded by a mask rather than by a gradient between
+   two colours, which would need a clear copy of --paper in each theme. Where
+   masks are not supported there is no fade rather than a solid bar over the
+   last card, and the scrollbar is the sign. It takes no pointer, so the card
+   under it still opens.
+
+   THE LINE TO NEXT WEEK GIVES UP ITS MARGIN to the fade's resting place,
+   which is already space under the last card. Out of session a week is one
+   or two cards and never scrolls, and with both the line sat 44px under
+   them where it had sat 12px; now it is 32px. */
+@supports ((-webkit-mask-image:linear-gradient(#000,#000)) or (mask-image:linear-gradient(#000,#000))){
+:where(body.pg) .calscroll::after{content:"";display:block;position:sticky;bottom:0;z-index:2;
+  height:var(--sp-9);margin-top:calc(-1 * var(--sp-4));pointer-events:none;background:var(--paper);
+  -webkit-mask-image:linear-gradient(transparent,#000);mask-image:linear-gradient(transparent,#000)}
+:where(body.pg) .calscroll + .calall{margin-top:0}
+}
+/* NEITHER COVERS WHERE THE KEYBOARD IS. Tab moves through the cards and the
+   browser scrolls each one into view; brought to the nearest edge of the
+   box, a card came to rest under the day's date going up and under the fade
+   going down, 0px from either edge in Chrome. The padding is the date's
+   height above and the fade's below, so it stops clear of both. */
+:where(body.pg) .calscroll{scroll-padding:var(--sp-10) 0 var(--sp-9)}
 /* THE FINDER ON THE RIGHT IS A FORM, not a script: method="get" on
    legislators.html produces exactly the ?town= and ?q= those two boxes read,
    so it works with JavaScript off, the browser remembers what was typed, and

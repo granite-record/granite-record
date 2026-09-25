@@ -13006,6 +13006,128 @@ def _coming_up_is_this_week():
                   "uncapped, the floor included, next week linked")
 
 
+@check("frontend", "the home page's Coming up keeps the whole week in a box that scrolls")
+def _coming_up_scrolls():
+    """A week in session is forty sittings, and Coming up drew all of them.
+
+    The week of 26 January 2026 held 43, and in full they ran the left rail to
+    about four times the height of the middle column, and put forty cards
+    between a phone's finder and its floor sessions. Asked on 24 September to
+    keep the whole week, cap the length, and let the reader scroll through the
+    rest. The check above holds every sitting of the week to the rail, so the
+    cap cannot come back as a cut in the markup; this holds the other half.
+
+    Every card sits inside one box, with the heading above it and the line to
+    next week below it, where they stay in view. The box is a stop on the
+    keyboard with a role and a name, because a box that scrolls and cannot be
+    focused cannot be scrolled without a pointer. And app.css gives it a
+    height and a scrollbar at every width, not only inside the three-column
+    block; keeps each day's date in view; fades the bottom edge while more
+    follows; pads the edges a card is scrolled to when the keyboard reaches
+    it, since a card brought to the nearest edge came to rest flush under the
+    date or the fade (Chrome, scrollIntoView to the nearest edge: 0px from
+    either, and 40 and 32 with the padding); and sets nothing -- no
+    overscroll-behavior, no snapping -- that takes the scroll from the reader.
+    """
+    import contextlib
+    import datetime as _dt
+    import io
+    from html.parser import HTMLParser
+    import build_pages as BP
+
+    monday = _dt.date(2026, 1, 26)
+    rows = [{"term": "2025-2026", "bill": f"HB{1100 + 10 * d + c}", "body": "H",
+             "kind": "public hearing", "date": (monday + _dt.timedelta(days=d)).isoformat(),
+             "time": f"{9 + c // 3:02d}:00", "committee": f"Committee {c + 1}",
+             "venue": "LOB 302"}
+            for d in range(5) for c in range(9)]
+    tmp = Path(tempfile.mkdtemp(prefix="gr-comingup-box-"))
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            page = BP.calendar_html(tmp, today=monday, rows=rows)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    class Walk(HTMLParser):
+        """Where each part of the rail sits: inside the box or outside it."""
+        VOID = {"br", "hr", "img", "input", "link", "meta", "wbr"}
+
+        def __init__(self):
+            super().__init__()
+            self.stack, self.boxes = [], []
+            self.inside, self.outside = Counter(), Counter()
+
+        def handle_starttag(self, tag, attrs):
+            a = dict(attrs)
+            cls = set((a.get("class") or "").split())
+            within = any("calscroll" in c for _t, c in self.stack)
+            if "calscroll" in cls:
+                self.boxes.append(a)
+            for part in ("calday", "calmeet", "calall", "note"):
+                if part in cls:
+                    (self.inside if within else self.outside)[part] += 1
+            if tag not in self.VOID:
+                self.stack.append((tag, cls))
+
+        def handle_endtag(self, tag):
+            while self.stack and self.stack.pop()[0] != tag:
+                pass
+
+    w = Walk()
+    w.feed(page)
+    assert len(w.boxes) == 1, (
+        f"Coming up has {len(w.boxes)} scrolling boxes, not one: " + page[:200])
+    box = w.boxes[0]
+    assert box.get("tabindex") == "0" and box.get("role") == "region" \
+        and (box.get("aria-label") or "").strip(), (
+            "the Coming up box is not a named region on the keyboard: it carries "
+            f"{box}; it needs tabindex=\"0\", role=\"region\" and an aria-label")
+    assert (w.inside["calmeet"], w.outside["calmeet"]) == (45, 0) \
+        and (w.inside["calday"], w.outside["calday"]) == (5, 0), (
+            f"of a week of 45 sittings on 5 days, the box holds {w.inside['calmeet']} "
+            f"cards on {w.inside['calday']} days and {w.outside['calmeet']} cards sit "
+            "outside it: the whole week belongs inside the box")
+    assert w.outside["calall"] == 1 and w.inside["calall"] == 0 \
+        and w.outside["note"] and not w.inside["note"], (
+            "the line to next week and the note on hearings belong under the box, "
+            "in view, not scrolled away inside it")
+    assert page.index("<h2>Coming up</h2>") < page.index('class="calscroll"'), (
+        "the Coming up heading is not above the box")
+
+    css = re.sub(r"/\*.*?\*/", "", Path("app.css").read_text(encoding="utf-8"), flags=re.S)
+    m = re.search(r":where\(body\.pg\) \.calscroll\{([^}]*)\}", css)
+    assert m, "app.css has no :where(body.pg) .calscroll rule"
+    depth = css[:m.start()].count("{") - css[:m.start()].count("}")
+    assert depth == 0, (
+        "the .calscroll rule sits inside an @media or @supports block, so the "
+        "box stops scrolling at some width; the cap is for desktop and phone alike")
+    assert "max-height" in m.group(1) and "overflow-y:auto" in m.group(1), (
+        f"the Coming up box has no height or no scrollbar: {m.group(1)}")
+    assert ".calscroll{" in BP.pages_region(), (
+        "the .calscroll rule is outside app.css's page region, so style.css, "
+        "which the home page loads, does not carry it")
+    rules = re.findall(r"([^{}]*\.calscroll[^{}]*)\{([^}]*)\}", css)
+    for sel, body in rules:
+        assert "overscroll-behavior" not in body and "scroll-snap" not in body, (
+            f"{sel.strip()} takes the scroll from the reader: {body}")
+    assert any(sel.strip().endswith(".calscroll") and "scroll-padding:" in body
+               for sel, body in rules), (
+        "the Coming up box has no scroll-padding, so a card reached by Tab comes "
+        "to rest under the day's date or under the fade")
+    head = re.search(r"\.calscroll \.caldate\{([^}]*)\}", css)
+    assert head and "position:sticky" in head.group(1) and "top:0" in head.group(1), (
+        "a day's date no longer stays at the top of the box while its cards "
+        "scroll, so partway down a busy day the cards belong to no day in sight")
+    fade = re.search(r"\.calscroll::after\{([^}]*)\}", css)
+    assert fade and all(k in fade.group(1) for k in
+                        ("position:sticky", "bottom:0", "pointer-events:none")), (
+        "the Coming up box has lost the sticky fade at its foot that says more "
+        "follows (or it catches the pointer and a card under it cannot be opened)")
+    return "ok", ("45 sittings, all inside one named, focusable box, with the "
+                  "heading above and next week below; capped at every width, "
+                  "dates kept in view, a fade while more follows, padded for the keyboard")
+
+
 @check("build", "every deploy names the production branch, and both name the same one")
 def _deploy_branch():
     """wrangler takes a deploy's branch from git unless told, so a Pages
@@ -18214,6 +18336,106 @@ def _learn_statutes_in_force():
     assert not bad, "; ".join(bad[:4]) + (f" (and {len(bad) - 4} more)" if len(bad) > 4 else "")
     return "ok", (f"{len({r for _s, r in cited})} cited sections and chapters in force; "
                   f"{len(LEARN_STATUTE_CLAIMS)} anchored claims say what their sections say")
+
+
+@check("data", "the register of probate paragraph is reread once the November 2026 vote is in")
+def _probate_after_the_vote():
+    """A REMINDER, and a failing check is the one kind that gets read.
+
+    County government's "Register of probate" paragraph ends on a vote still
+    to come: CACR 13 (2026), which would strike the office out of the
+    constitution, is on the ballot of the general election of 3 November
+    2026, and the page says it goes to the voters then. From the next day that
+    sentence is wrong in its tense whatever the result, and wrong in substance
+    if two thirds said yes. CACR 13's own page takes the result from the
+    docket when the docket records it; this paragraph is written by hand, so
+    no build will correct it. A person has to, and asked on 24 September to
+    be reminded.
+
+    A note in a document is read by whoever goes looking for it. preflight is
+    the first thing every session runs (CLAUDE.md, "Do this first"), so a
+    check that starts failing on 4 November is read by the first session after
+    the vote, and its message says what to change and on which line. It
+    passes again once civics.REGISTER_OF_PROBATE_REVIEWED holds the date of
+    that review: on or after 4 November, because a review before the result
+    is not the one this asks for, and not after today, because a date in the
+    future is a way to silence it early.
+
+    A data check and not a code one, on purpose, for the reason
+    _learn_statutes_in_force gives above: nightly.py gates itself on
+    `preflight --code`, and an election result is a reason to reread a page,
+    not a reason to stop the night's build. It needs nothing on disk.
+
+    The rule is run on fixed days before it is run on the clock, so a
+    reminder that could never fire fails now rather than passing quietly
+    through the day it was written for.
+    """
+    import datetime as _dt
+    try:
+        import civics
+    except Exception as e:                      # noqa: BLE001
+        return "skip", f"civics.py did not import ({e})"
+    vote = _dt.date(2026, 11, 3)
+    due = vote + _dt.timedelta(days=1)
+    on = f"{vote.day} {vote:%B %Y}"
+    src = Path("civics.py").read_text(encoding="utf-8").splitlines()
+
+    def at(text):
+        n = next((i for i, s in enumerate(src, 1) if text in s), None)
+        return f" (civics.py line {n})" if n else ""
+
+    def rule(today, reviewed):
+        """None while the paragraph needs nothing, or what to do about it."""
+        if reviewed:
+            try:
+                when = _dt.date.fromisoformat(reviewed)
+            except ValueError:
+                return (f"REGISTER_OF_PROBATE_REVIEWED{at('REGISTER_OF_PROBATE_REVIEWED =')} "
+                        f"is {reviewed!r}, which is not a date: write the day the "
+                        "register of probate paragraph was reread, as \"2026-11-05\"")
+            if when > today:
+                return (f"REGISTER_OF_PROBATE_REVIEWED is {when}, after today: it "
+                        "records a review that has happened, not one planned")
+            if when >= due:
+                return None
+        if today < due:
+            return None
+        return (
+            "the register of probate paragraph on learn/county-government still "
+            f"says CACR 13 (2026) goes to the voters, and the vote was on {on}. "
+            "In civics.py's BODY_COUNTY, rewrite the paragraph beginning "
+            f"\"Register of probate:\"{at('<p><b>Register of probate:</b>')} to say "
+            "what the voters decided -- an amendment needs two thirds of those "
+            "voting on it -- and, if it passed, the sentence \"Five county "
+            f"officers are elected\"{at('Five county officers are elected')}, which "
+            "counts the register among them. Then set REGISTER_OF_PROBATE_REVIEWED"
+            f"{at('REGISTER_OF_PROBATE_REVIEWED =')} to the date of the review."
+            + (f" It holds {reviewed!r}, which is before {due.day} November and "
+               "so before the result." if reviewed else ""))
+
+    for day, reviewed, fires in ((vote, "", False), (due, "", True),
+                                 (due, due.isoformat(), False),
+                                 (due + _dt.timedelta(days=90), "2026-11-02", True),
+                                 (due, "2026-11-05", True), (due, "soon", True)):
+        got = rule(day, reviewed)
+        assert (got is not None) == fires, (
+            f"on {day} with the review dated {reviewed!r}, the reminder "
+            + ("stays quiet, and should fire" if fires else f"fires ({got[:80]}), and should not"))
+    assert "Register of probate:" in (rule(due, "") or ""), (
+        "the reminder no longer names the paragraph it is for")
+
+    reviewed = getattr(civics, "REGISTER_OF_PROBATE_REVIEWED", None)
+    assert isinstance(reviewed, str), (
+        "civics.py has no REGISTER_OF_PROBATE_REVIEWED string, which is how the "
+        "register of probate paragraph is marked as reread after the November "
+        "2026 vote")
+    today = _dt.date.today()
+    msg = rule(today, reviewed)
+    assert msg is None, msg
+    if reviewed:
+        return "ok", f"reread on {reviewed}, after the vote of {on}"
+    return "ok", (f"the vote is on {on}; this fails from {due.day} November until "
+                  f"the paragraph is reread, {(due - today).days} days from now")
 
 
 @check("data", "a committee's members are the ones on it today, not every seat the table still holds")
