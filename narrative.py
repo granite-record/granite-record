@@ -1428,8 +1428,10 @@ HELD_IN_ORDER = ("floor", "veto_override", "amendment", "enrolled", "governor")
 IN_RECESS = re.compile(r"\bin\s+recess(?:\s+of)?\)?\s*(?P<date>\d{1,2}/\d{1,2}/\d{4})", re.I)
 
 
-# What an enrolment follows: the chambers' votes on the bill.
+# What an enrolment follows: the chambers' votes on the bill. And what it
+# comes before: the bill going to the governor, and the governor's action.
 ENROLMENT_FOLLOWS = ("floor", "veto_override")
+ENROLMENT_PRECEDES = ("governor", "unsigned_law")
 
 
 def in_recess(ev, r, fixed=None):
@@ -1448,7 +1450,15 @@ def in_recess(ev, r, fixed=None):
     entered rather than the day it was done, after the Senate's answer to
     it. An enrolment follows the votes and nothing else, so a vote is the
     one thing it may not come before. Not where a person corrected the date
-    (`fixed`)."""
+    (`fixed`).
+
+    NOR AFTER THE GOVERNOR. SB 447 of 2016, Chapter 1 of that year's laws,
+    was "Enrolled (In recess 01/14/2016)", entered on 26 January: the House
+    passed it on the 20th and the governor signed it on the 21st, so the day
+    it was entered told the enrolment five days after the signature. There
+    it takes the day of the last vote before the governor acted, and its
+    place after that vote -- the earliest day it can have been done, and the
+    day the House's own "Enrolled 01/20/2016" states."""
     m = IN_RECESS.search(r.get("desc") or "")
     created = r.get("created")
     enrolment = ev.get("_type") == "enrolled" or (
@@ -1464,6 +1474,7 @@ def in_recess(ev, r, fixed=None):
     if said == dated and created.date() > dated.date():
         ev["_stamp_date"] = created.strftime("%m/%d/%Y")
         ev["_stamp_after"] = ENROLMENT_FOLLOWS
+        ev["_stamp_before"] = ENROLMENT_PRECEDES
     return ev
 
 
@@ -1492,6 +1503,8 @@ def hold_in_order(evs):
         # What it may not come before: any action, for an as-of date; a
         # vote, for an enrolment done in recess (in_recess).
         after = ev.pop("_stamp_after", HELD_IN_ORDER)
+        # And what it may not come after: the governor, for that enrolment.
+        before = ev.pop("_stamp_before", ())
         if not stamp:
             continue
         try:
@@ -1501,8 +1514,25 @@ def hold_in_order(evs):
         if any(o is not ev and o.get("_type") in after
                and not o.get("cancelled") and ev["when"] < o["when"] <= entered
                for o in evs):
-            ev["date"], ev["when"] = stamp, entered
-            back = True
+            gov = [o for o in evs if o is not ev and o.get("_type") in before
+                   and not o.get("cancelled") and ev["when"] < o["when"] <= entered]
+            first = min(gov, key=day_order) if gov else None
+            if first is None or first["when"].date() == entered.date():
+                # The governor acting the day it was entered leaves it that
+                # day, ahead of the governor (HB 273 of 2021, 11 May).
+                ev["date"], ev["when"] = stamp, entered
+                if first is not None:
+                    ev["_row"] = min(ev.get("_row", 0), first.get("_row", 0) - 0.5)
+                back = True
+            else:
+                votes = [o for o in evs if o is not ev and o.get("_type") in after
+                         and not o.get("cancelled") and ev["when"] < o["when"]
+                         and day_order(o) < day_order(first)]
+                if votes:
+                    last = max(votes, key=day_order)
+                    ev["date"] = last["when"].strftime("%m/%d/%Y")
+                    ev["when"], ev["_row"] = last["when"], last.get("_row", 0) + 0.5
+                    back = True
         ev.pop("_stamp_date", None)
     if back:
         evs.sort(key=day_order)

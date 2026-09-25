@@ -6617,6 +6617,24 @@ def _session_as_of_dates(N, V):
             "|05/08/2014 11:20:14 AM",
             "2014|2053|05/22/2014 06:31:24 PM|HB1110|H|Enrolled (In recess of 5/15/2014)"
             "|05/22/2014 06:31:24 PM"],
+        # Nor after the governor it went to: SB 447 of 2016 was entered five
+        # days after the signature, and is told on the day of the House vote
+        # before it. HB 273 of 2021's, entered the day the governor signed,
+        # keeps that day, ahead of the signature.
+        ("SB447", "2016"): [
+            "2016|2955|1/20/2016 12:00:00 AM|SB447|H|Ought to Pass : MA DV 275-71 01/20/2016 "
+            "HJ 8 P. 2|1/20/2016 12:00:00 AM",
+            "2016|2955|1/26/2016 12:00:00 AM|SB447|S|Enrolled (In recess 01/14/2016); SJ 2"
+            "|1/26/2016 12:00:00 AM",
+            "2016|2955|4/20/2016 12:00:00 AM|SB447|S|Signed by the Governor on 01/21/2016; "
+            "Chapter 0001 SJ 3|4/20/2016 12:00:00 AM"],
+        ("HB273", "2021"): [
+            "2021|0110|5/6/2021 12:00:00 AM|HB273|S|Ought to Pass : RC 23Y-0N, MA; OT3rdg; "
+            "05/06/2021; SJ 14|5/6/2021 12:00:00 AM",
+            "2021|0110|5/11/2021 12:00:00 AM|HB273|H|Enrolled (in recess of) 04/09/2021 HJ 7 "
+            "P. 103|5/11/2021 12:00:00 AM",
+            "2021|0110|5/12/2021 12:00:00 AM|HB273|H|Signed by Governor Sununu 05/11/2021; "
+            "Chapter 30; Eff: 05/11/2021|5/12/2021 12:00:00 AM"],
         # A DAY'S ROWS IN THE ORDER THEY WERE ENTERED, dated or not: the
         # House defeated HB 705's conference report at 5:07 PM, reconsidered
         # at 5:08 and adopted it at 5:14. The two floor rows are dated at
@@ -6672,6 +6690,14 @@ def _session_as_of_dates(N, V):
         assert enrolled["HB1110"][-1] == ("2014-05-15", "Enrolled"), (
             "an enrolment done in recess after both votes lost the day it "
             f"names: {enrolled['HB1110']}")
+        assert enrolled["SB447"] == [("2016-01-20", "Ought to"), ("2016-01-20", "Enrolled"),
+                                     ("2016-01-21", "Signed b")], (
+            "an enrolment done in recess was told after the governor signed "
+            f"the bill: {enrolled['SB447']}")
+        assert enrolled["HB273"] == [("2021-05-06", "Ought to"), ("2021-05-11", "Enrolled"),
+                                     ("2021-05-11", "Signed b")], (
+            "an enrolment entered the day the governor signed lost that day or "
+            f"its place ahead of the signature: {enrolled['HB273']}")
         return "ok", ("'done during' dates a veto vote; a day in recess, an "
                       "answer ahead of its request and a special order's "
                       "target date do not; a day's rows keep the order they "
