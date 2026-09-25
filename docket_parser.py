@@ -61,7 +61,32 @@ HOUSE_MER = r"[ap]\s?\.?\s?m\.?"
 
 HOUSE_SCHED_RE = re.compile(
     r"(?P<kind>Public Hearing|Executive Session|Subcommittee Work Session|"
-    r"Full Committee Work Session|Work Session|Committee of Conference)"
+    r"Full Committee Work Session|Work Session|"
+    # THE HOUSE'S CONFERENCE NOTICE, AS THE HOUSE WORDS IT. The pattern knew
+    # the bare "Committee of Conference", which the House clerk has never
+    # written before a date, so of the House's conference notices only the
+    # 1989-2006 shorthand LEGACY_SCHED_RE reads ever arrived: 927 lines across
+    # eleven terms were read by nothing, 113 of them in the current term's
+    # docket, while the Senate's, which SENATE_SCHED_RE reads, all arrived.
+    # Every House conference card on the Calendar was the recording's alone:
+    # untimed and with no room, beside a Senate one carrying both.
+    # Each wording below was read off a real line, and each clerk's years:
+    #   "Conference Committee Meeting: 06/16/2025 09:30 am LOB 206-208"
+    #                                                   HB 485, 2010-2026
+    #   "Committee of Conference Meeting: 6/18/07 2:00 PM LOB 207"
+    #                                                   HB 37, 2007-2014
+    #   "Conference of Committee Meeting: 5/27/2014; 11:00 AM; LOB 207"
+    #                                                   HB 1488, 2014
+    #   "Committee of Conference Hearing: 05/29/2008 11:30 AM LOB 304"
+    #                                                   HB 1405, once
+    #   "Conf Comm meeting 6/15/01 1:30 p.m. Rm 202, LOB"  HB 170, 2001
+    # "Meeting" is required after the short forms, which is what keeps out
+    # "Conference Committee Report 2025-2766c: Adopted" and "Conferee Change";
+    # a date must follow, which keeps out "Accedes to Senate Request for
+    # Committee of Conference (Rep Hinch): MA VV (in recess of 5/12/2016)".
+    r"Committee\s+of\s+Conference(?:\s+(?:Meeting|Hearing))?|"
+    r"Conf(?:erence)?\.?\s*Comm?(?:ittee)?\.?\s+Meeting|"
+    r"Conference\s+of\s+Committee\s+Meeting)"
     # A colon, or a space, or both. "Continued Public Hearing:1/23/2014"
     # writes the colon and no space; "Second Public Hearing 02/14/2024"
     # writes the space and no colon. `\s*:\s*` read neither.
@@ -78,8 +103,13 @@ HOUSE_SCHED_RE = re.compile(
     # its own group so a line that states none -- "02/15/2022 1:45 LOB302-304",
     # one line on this disk -- still gives up its kind, date and room without
     # anybody inventing an am or a pm.
-    r"(?:\s+(?P<time>\d{1,2}:\d{2})(?::\d{2})?"
-    r"(?:\s*(?P<mer>" + HOUSE_MER + r"))?)?"
+    # A SEMICOLON MAY SEPARATE THEM. 46 conference notices of 2013-2014 write
+    # "5/27/2014; 11:00 AM; LOB 207", and without it the time went unread and
+    # the room was cut off at the first semicolon, which house_venue takes for
+    # the start of the clerk's prose. Measured over every docket on this disk,
+    # no House line of any other kind reads differently for it.
+    r"(?:;?\s+(?P<time>\d{1,2}:\d{2})(?::\d{2})?"
+    r"(?:\s*(?P<mer>" + HOUSE_MER + r"))?;?)?"
     # A stated END time: "6:00 PM - 8:00 PM Kennet High School Auditorium".
     r"(?:\s*-\s*\d{1,2}:\d{2}\s*(?:" + HOUSE_MER + r")?)?"
     # Deliberately NOT anchored. What follows is handed to house_venue below,
@@ -1121,6 +1151,12 @@ def parse_proceedings(rows, timeline):
                 if not m:
                     continue
                 kind = m.group("kind").lower()
+                # Every wording of the House's conference notice is the one
+                # kind VIDEO_KINDS names; "conference committee meeting" as
+                # it stands would be dropped at that test below, which looks
+                # exactly like the pattern having failed.
+                if "conf" in kind:
+                    kind = "committee of conference"
                 # house_venue decides where the room ends. The pattern no
                 # longer has to, which is what stopped a Zoom paragraph from
                 # failing the whole line.

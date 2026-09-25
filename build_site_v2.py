@@ -1723,6 +1723,50 @@ def station_for_proceeding(p, bid, segs, marks):
     }
 
 
+def fold_conference_notices(rows):
+    """One bill's floor rows, with a conference's notice folded into its recording.
+
+    A committee of conference that was noticed on a docket and recorded on a
+    channel is two rows of proceedings.csv: the docket's, with the time and
+    the room and no recording, and the floor index's, with the recording and
+    neither. Each became a station, so the bill page drew the one sitting
+    twice on the same day -- once as "No recording matched to this
+    proceeding." at 09:30 in LOB 206-208, and once as the recording with no
+    time -- and HB 1709's of 26 May 2026, which is on two recordings, three
+    times. 61 Senate bill-days were drawn so, SB 108's of 13 June 2025 among
+    them, and reading the House's notices too (docket_parser) made it 159.
+
+    So where a bill has a recorded conference on a day, a notice of a
+    conference that day with no recording is the same sitting: it is dropped,
+    and its time and room go onto the recorded row, which has none of its own.
+    Where there are several notices the earliest time is the one the sitting
+    was called for. A notice no recording covers is left as it is, and draws
+    "No recording matched", which is true. Nothing else is touched: a floor
+    debate is never folded, and neither is a conference on another day.
+    """
+    conf = "committee of conference"
+    recorded = {f.get("date") for f in rows
+                if f.get("kind") == conf and f.get("video_id")}
+    notice = {}
+    for f in rows:
+        if (f.get("kind") == conf and not f.get("video_id")
+                and f.get("date") in recorded):
+            cur = notice.get(f["date"])
+            if cur is None or (f.get("time") or "~") < (cur.get("time") or "~"):
+                notice[f["date"]] = f
+    if not notice:
+        return list(rows)
+    out = []
+    for f in rows:
+        if f.get("kind") != conf or f.get("date") not in notice:
+            out.append(f)
+        elif f.get("video_id"):
+            n = notice[f["date"]]
+            out.append(dict(f, time=f.get("time") or n.get("time") or "",
+                            venue=f.get("venue") or n.get("venue") or ""))
+    return out
+
+
 def station_for_floor(f, bid, marks):
     """One floor appearance as a station.
 
@@ -1755,13 +1799,18 @@ def station_for_floor(f, bid, marks):
             "state": ("prestream" if (f.get("date") or "") < STREAM_START
                       else "novideo"),
             "candidate": None}
+    # A conference's time and room, where fold_conference_notices put its
+    # docket notice's onto the recording. A floor-index row carries neither
+    # of its own, so on every other recorded row these are None as they were.
+    conf_when = (f.get("time") or None, f.get("venue") or None) if (
+        f.get("kind") == "committee of conference") else (None, None)
     if f.get("whole_video"):
         # The title names the bill, so the entire recording is this
         # proceeding. No timestamp to estimate and none needed.
         return {
-            "when": f["date"], "time": None,
+            "when": f["date"], "time": conf_when[0],
             "what": f.get("kind", "committee of conference"),
-            "committee": None, "venue": None,
+            "committee": None, "venue": conf_when[1],
             "video_id": f["video_id"],
             "watch": f"https://www.youtube.com/watch?v={f['video_id']}",
             "predicted": None, "start": 0, "debate_end": None,
@@ -1784,11 +1833,11 @@ def station_for_floor(f, bid, marks):
     # the body that met.
     kind = f.get("kind") or "floor debate"
     st = {
-        "when": f["date"], "time": None,
+        "when": f["date"], "time": conf_when[0],
         "what": kind,
         "committee": ("House" if f.get("body") == "H" else "Senate"
                       ) if kind == "floor debate" else None,
-        "venue": None, "video_id": f["video_id"],
+        "venue": conf_when[1], "video_id": f["video_id"],
         "watch": (f"https://www.youtube.com/watch?v={f['video_id']}"
                   f"&t={max(int(f.get('window_start') or 0) - 60, 0)}s"),
         "predicted": None,
@@ -6827,8 +6876,10 @@ def build_bills(out, bills, narratives, rollcalls, reports, sponsors,
         # Floor debates, stacked with the committee proceedings and sorted by
         # date so a bill's whole journey reads in order: hearing, executive
         # session, floor, then the second chamber.
+        # A conference noticed and recorded is one sitting, not two stations
+        # a day (fold_conference_notices).
         stations += [station_for_floor(f, bid, marks)
-                     for f in floor.get((term, bid), [])]
+                     for f in fold_conference_notices(floor.get((term, bid), []))]
         stations.sort(key=lambda x: (x["when"], x.get("time") or ""))
         # The census, taken after the sort so it counts exactly the list the
         # page receives -- including the floor stations, which is the half of
@@ -7629,9 +7680,17 @@ def main():
         for pr in ps:
             d = pr.get("sched_date", "")
             if today <= d <= soon:
+                # THE CHAMBER, because the name does not say it. A committee
+                # page's Upcoming session (app.js cmteUpcoming) matched a row
+                # on the name and on a bill of its own list, and a bill both
+                # chambers' committees list matches both: House Judiciary's
+                # sitting on SB 519 of 30 September 2026 was on Senate
+                # Judiciary's page, and replayed over 2025-2026, 719 sittings
+                # were on the other chamber's page on 384 days.
                 upcoming.append({"date": d, "time": pr.get("sched_time"),
                                  "bill": bid, "term": term_,
                                  "committee": pr.get("committee"),
+                                 "body": pr.get("body"),
                                  "what": pr.get("proceeding"),
                                  "venue": pr.get("venue")})
     upcoming.sort(key=lambda x: (x["date"], x["time"] or ""))

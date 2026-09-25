@@ -54,6 +54,21 @@ t(`House Finance shows a meeting on ${onlyH[0]}, which is its own`,
 // 2. the same-named committee in the other chamber does not
 t(`Senate Finance does NOT show it`, cmteUpcoming(S07).map(u => u.bill), []);
 
+// 2b. A BILL BOTH COMMITTEES LIST DOES NOT SAY WHOSE SITTING IT IS; the row's
+//     chamber does. `shared` was computed here and never used, and that was
+//     the hole: House Judiciary's executive session on SB 519 of 30 September
+//     2026 was on Senate Judiciary's page, because SB 519 is on both lists.
+if (shared.length) {
+  UPCOMING = [row({bill: shared[0], committee: "Finance", body: "H"})];
+  t(`House Finance's sitting on ${shared[0]}, which both Finance committees list, is House Finance's`,
+    cmteUpcoming(H34).map(u => u.bill), [shared[0]]);
+  t(`and is NOT on Senate Finance's page`, cmteUpcoming(S07).map(u => u.bill), []);
+  UPCOMING = [row({bill: shared[0], committee: "Finance", body: "S"})];
+  t(`Senate Finance's sitting on ${shared[0]} is Senate Finance's`,
+    cmteUpcoming(S07).map(u => u.bill), [shared[0]]);
+  t(`and is NOT on House Finance's page`, cmteUpcoming(H34).map(u => u.bill), []);
+}
+
 // 3. a bill number from an EARLIER term must not vouch for a current meeting.
 //    CACR1 is House Finance's in 2001, 2005 and 2019 and not in 2025-2026.
 UPCOMING = [row({bill: "CACR1", committee: "Finance"})];
@@ -103,6 +118,25 @@ if (code && fs.existsSync(`site/committee/${code}.json`)) {
   const other = [H34, S07, H12].find(x => x.code !== code);
   t("another committee gets none of them",
     cmteUpcoming(other).map(u => u.bill).filter(b => want.includes(b)), []);
+  // And no committee page, of every one built, shows the other chamber's
+  // sitting. The rows say their chamber since 25 September 2026; a row built
+  // before then says none and is not judged here.
+  //
+  // WHETHER EVERY ROW SAYS IT IS NOT ASKED HERE. This file runs under
+  // preflight --code, which nightly.py runs before build_all, and a home.json
+  // built before the builder wrote the chamber would fail it on the one night
+  // that would rebuild it -- so the nightly would stop, and stay stopped, until
+  // a person built by hand. That question is preflight's data check
+  // "every upcoming row on the built site says whose sitting it is", and the
+  // builder's side of it is _upcoming_shape, on a fixture, under --code.
+  const every = fs.readdirSync("site/committee").filter(f => /^[HS]\d+\.json$/.test(f))
+    .map(f => cmte(f.slice(0, -5)));
+  const crossed = [];
+  every.forEach(C => cmteUpcoming(C).forEach(u => {
+    if (u.body && C.chamber && u.body !== C.chamber)
+      crossed.push(`${C.code} ${u.date} ${u.committee} ${u.bill} (${u.body})`);
+  }));
+  t("no committee page shows the other chamber's sitting", crossed, []);
 } else {
   console.log("  [ ok ] nothing is scheduled in the fortnight, so there is "
               + "nothing to route");

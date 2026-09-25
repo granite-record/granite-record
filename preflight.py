@@ -194,8 +194,14 @@ def _upcoming_shape():
         assert not bad, (f"{len(bad)} of {len(up)} upcoming items do not "
                          "name a bill as a string: "
                          + json.dumps(bad[0])[:140])
+        # AND ITS CHAMBER. A committee page's Upcoming session tells House
+        # Judiciary's sitting from Senate Judiciary's by it, because a bill
+        # that crossed is on both committees' lists (_cmte_match_chamber).
+        nobody = [u for u in up if u.get("body") not in ("H", "S")]
+        assert not nobody, (f"{len(nobody)} of {len(up)} upcoming items do not say "
+                            "whose sitting they are: " + json.dumps(nobody[0])[:140])
         return "ok", (f"{len(up)} upcoming on the fixture, each naming a bill "
-                      "as a string -- the shape build_feeds.py needs")
+                      "as a string -- the shape build_feeds.py needs -- and its chamber")
     finally:
         shutil.rmtree(root, ignore_errors=True)
 
@@ -4825,6 +4831,98 @@ def _cmte_match():
     return "ok", f"{n} cases, including both chambers' Finance"
 
 
+@check("frontend", "a committee page's Upcoming session shows its own chamber's sittings, on a bill both chambers list")
+def _cmte_match_chamber():
+    """House Judiciary's executive session on SB 519, 30 September 2026 at
+    10:00 in GP 230, was on Senate Judiciary's page.
+
+    cmteUpcoming matched a scheduled row on the committee's name and on a bill
+    from the committee's own list for the term, and a bill that crosses is on
+    both chambers' lists: SB 519 is Senate Judiciary's and House Judiciary's.
+    home.json's row named no chamber, so nothing else could tell them apart.
+    Replayed over every day of 2025-2026, 719 sittings were shown on the
+    other chamber's page, on 384 days; on the day this was found, three --
+    that one and House Ways and Means' two on SB 542, on Senate Ways and
+    Means's page.
+
+    tests/test_cmte_match.js runs the rule on the built committee records and
+    skips without them; this runs it on two records written here, so it holds
+    under --code. The function is read out of app.js by source text, as that
+    test reads it.
+    """
+    node = shutil.which("node") or shutil.which("node.exe")
+    js = Path("app.js")
+    if not (node and js.exists()):
+        return "skip", "app.js or node is not here"
+    m = re.search(r"function cmteUpcoming\(c\)\{[\s\S]*?\n\}", js.read_text(encoding="utf-8"))
+    assert m, "cmteUpcoming is not in app.js"
+    tmp = Path(tempfile.mkdtemp(prefix="gr-cmteup-"))
+    try:
+        (tmp / "fn.js").write_text(m.group(0), encoding="utf-8")
+        (tmp / "go.js").write_text(r"""
+const fs = require("fs");
+let UPCOMING = null;
+eval(fs.readFileSync("./fn.js", "utf8"));
+const H10 = {code: "H10", name: "Judiciary", chamber: "H",
+             bills: {"2025-2026": [{id: "SB519"}, {id: "HB88"}]}};
+const S10 = {code: "S10", name: "Judiciary", chamber: "S",
+             bills: {"2025-2026": [{id: "SB519"}]}};
+const row = {date: "2026-09-30", time: "10:00", bill: "SB519", term: "2025-2026",
+             committee: "Judiciary", what: "executive session", venue: "GP 230"};
+const out = {};
+UPCOMING = [Object.assign({body: "H"}, row)];
+out.house = cmteUpcoming(H10).map(u => u.bill);
+out.senate = cmteUpcoming(S10).map(u => u.bill);
+UPCOMING = [Object.assign({body: "S"}, row)];
+out.house_of_senate = cmteUpcoming(H10).map(u => u.bill);
+out.senate_of_senate = cmteUpcoming(S10).map(u => u.bill);
+process.stdout.write(JSON.stringify(out));
+""", encoding="utf-8")
+        r = _run([node, "go.js"], cwd=tmp, capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
+        got = json.loads(r.stdout)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+    want = {"house": ["SB519"], "senate": [], "house_of_senate": [], "senate_of_senate": ["SB519"]}
+    assert got == want, (
+        f"House Judiciary's sitting on SB 519 of 30 September 2026 lands as {got}; wanted {want}: "
+        "a bill both chambers' committees list does not say whose sitting it is, and the row's "
+        "chamber does")
+    return "ok", ("House Judiciary's sitting on SB 519 is on House Judiciary's page and not on "
+                  "Senate Judiciary's, which lists SB 519 too")
+
+
+@check("data", "every upcoming row on the built site says whose sitting it is")
+def _upcoming_rows_say_chamber():
+    """site/home.json's upcoming rows, each with the chamber cmteUpcoming
+    tells House Judiciary's sitting from Senate Judiciary's by.
+
+    A DATA CHECK, NOT A FRONTEND ONE, on purpose. It was an assertion in
+    tests/test_cmte_match.js, which _cmte_match runs under --code whenever
+    site/committee is built, and nightly.py gates itself on preflight --code
+    before build_all. Every home.json written before build_site_v2 wrote the
+    chamber -- the live one had 62 rows and none said it -- failed it, so the
+    nightly would have stopped before the one step that writes the chamber,
+    and stayed stopped until a person built by hand: the failure
+    _town_pages_built's docstring records. The builder's side is held under
+    --code by _upcoming_shape, on a fixture. This says whether the built site
+    has caught up, and the fix it names is a rebuild.
+    """
+    hp = Path("site/home.json")
+    if not hp.exists():
+        return "skip", "site/home.json is not built"
+    up = json.loads(hp.read_text(encoding="utf-8")).get("upcoming") or []
+    if not up:
+        return "ok", "nothing is scheduled in the fortnight, so no row to name a chamber"
+    nobody = [u for u in up if u.get("body") not in ("H", "S")]
+    assert not nobody, (
+        f"{len(nobody)} of {len(up)} upcoming rows in site/home.json do not say whose "
+        "sitting they are, so a committee page cannot tell House Judiciary's from "
+        "Senate Judiciary's on a bill both list -- rebuild with build_site_v2.py: "
+        + json.dumps(nobody[0])[:140])
+    return "ok", f"{len(up)} upcoming rows, each naming its chamber"
+
+
 def _strip_js_comments(js):
     js = re.sub(r"/\*.*?\*/", "", js, flags=re.S)
     return "\n".join(re.sub(r"//.*$", "", ln) for ln in js.splitlines())
@@ -5595,6 +5693,88 @@ def _stream_start(build_site_v2, about_figures):
                   + (", the channels' first day" if first else "")
                   + "; no-recording sittings are prestream or novideo, keep their time and room, "
                     "and draw no player")
+
+
+@check("frontend", "a committee of conference noticed and recorded is one station, with the notice's time and room",
+       needs=("build_site_v2",))
+def _conference_folded(build_site_v2):
+    """HB 485's conference of 16 June 2025 was two stations on its page.
+
+    proceedings.csv holds a noticed and recorded conference twice: the
+    docket's row, 09:30 in LOB 206-208 with no recording, and the floor
+    index's, the recording dIumWRhMDrY with no time. station_for_floor drew
+    each, so the page said "No recording matched to this proceeding." over
+    the one sitting it then played -- and HB 1709's of 26 May 2026, which is
+    on two recordings, three times. 61 Senate bill-days were drawn so, SB
+    108's of 13 June 2025 among them, and reading the House's notices made it
+    159. fold_conference_notices folds the notice into the recording.
+
+    The rows are proceedings.csv's own, as build_site_v2 shapes them.
+    """
+    B = build_site_v2
+    fold = getattr(B, "fold_conference_notices", None)
+    assert fold, "build_site_v2 has no fold_conference_notices"
+    C, D = "committee of conference", "floor debate"
+
+    def row(date, kind, vid="", time="", venue="", whole=False, body="H"):
+        return {"date": date, "body": body, "video_id": vid, "motions": [],
+                "tallies": [], "kind": kind, "debate_end": None,
+                "window_start": None, "precise": False, "whole_video": whole,
+                "title": "", "time": time, "venue": venue}
+    cases = {
+        # (bill, its floor rows) -> what its conference stations should be
+        "HB485": [row("2025-06-05", D, "B747DpYcc9E"),
+                  row("2025-06-16", C, time="09:30", venue="LOB 206-208"),
+                  row("2025-06-16", C, "dIumWRhMDrY")],
+        "HB1709": [row("2026-05-14", D, "xkUhsgh3skk"),
+                   row("2026-05-26", C, time="14:45", venue="GP 234"),
+                   row("2026-05-26", C, "Pm-qXemJrHw"),
+                   row("2026-05-26", C, "F590FEiqVoA", whole=True),
+                   row("2026-06-04", D, "l_01QWYdAiw")],
+        "SB108": [row("2025-06-13", C, time="09:00", venue="SH 103", body="S"),
+                  row("2025-06-13", C, "OCmDvpG_NSg", body="S")],
+        # Noticed twice and recorded never: both stay, and say so.
+        "HB1541": [row("2026-05-27", C, time="10:40", venue="GP 228"),
+                   row("2026-05-28", C, time="10:00", venue="GP 228")],
+    }
+    want = {
+        "HB485": [("2025-06-16", "09:30", "LOB 206-208", "dIumWRhMDrY", "floor_dated")],
+        "HB1709": [("2026-05-26", "14:45", "GP 234", "Pm-qXemJrHw", "floor_dated"),
+                   ("2026-05-26", "14:45", "GP 234", "F590FEiqVoA", "whole_video")],
+        "SB108": [("2025-06-13", "09:00", "SH 103", "OCmDvpG_NSg", "floor_dated")],
+        "HB1541": [("2026-05-27", "10:40", "GP 228", "", "novideo"),
+                   ("2026-05-28", "10:00", "GP 228", "", "novideo")],
+    }
+    drawn = {}
+    for bid, rows in cases.items():
+        before = [dict(r) for r in rows]
+        sts = [B.station_for_floor(f, bid, {}) for f in fold(rows)]
+        assert rows == before, f"fold_conference_notices changed {bid}'s rows in place"
+        got = [(s["when"], s.get("time"), s.get("venue"), s.get("video_id") or "", s["state"])
+               for s in sts if s["what"] == C]
+        assert got == want[bid], f"{bid}'s conference stations are {got}; wanted {want[bid]}"
+        # A floor debate is never folded, and takes no time from a notice.
+        deb = [(s["when"], s.get("time"), s.get("venue")) for s in sts if s["what"] == D]
+        assert deb == [(r["date"], None, None) for r in rows if r["kind"] == D], (
+            f"{bid}'s floor debates came out as {deb}")
+        drawn[bid] = sts
+    # THE BUILDER CALLS IT. A fold nothing calls folds nothing.
+    src = Path(B.__file__).read_text(encoding="utf-8")
+    assert re.search(r"station_for_floor\(f, bid, marks\)\s+for f in "
+                     r"fold_conference_notices\(floor\.get\(\(term, bid\)", src), (
+        "build_bills no longer draws its floor stations through fold_conference_notices")
+    # THE PAGE. HB 485's one conference is drawn once, timed, and never as
+    # "No recording matched".
+    html_ = _app_js("scope.renderHearings({id:'HB485', n:'HB 485'}, {stations:"
+                    + json.dumps(drawn["HB485"]) + "})")
+    if html_ is not None:
+        assert "No recording matched" not in html_, (
+            "HB 485's page still says no recording matched its conference of 16 June 2025")
+        assert "2025-06-16 at 09:30 · LOB 206-208" in html_, (
+            "HB 485's conference is not headed with the time and room its notice gives")
+    return "ok", ("HB 485's conference of 16 June 2025 is one station, 09:30 in LOB 206-208, "
+                  "playing its recording; HB 1709's is one per recording and SB 108's one; "
+                  "HB 1541's two notices with no recording stand")
 
 
 @check("frontend", "a Senate hearing report draws closed under its hearing, "
@@ -9768,6 +9948,58 @@ def _committee_tense(BC):
     return "ok", "future days scheduled, past days met"
 
 
+@check("build", "a committee of conference is not a sitting of the committee its bill was referred to",
+       needs=("build_committees",))
+def _committee_not_conference(BC):
+    """House Finance's page would have said it "met on June 12, 2025 for
+    committees of conference on HB 1 and HB 2".
+
+    A conference row of proceedings.csv carries the committee the bill was
+    referred to, because a docket row for the bill did -- the notice itself,
+    "Conference Committee Meeting: 06/12/2025 02:00 pm LOB 210-211", names
+    none. build_committees filed every row with a committee under that
+    committee's page, so reading the House's notices would have put 50
+    conference days on 16 House committees' pages in 2025-2026, days they did
+    not sit; the Senate's notices already did the same, Senate Finance
+    "met on May 22, 2026 for a committee of conference on SB 481-FN-A".
+    build_pages.meeting_key keeps the same rule on the Calendar.
+
+    The rows are proceedings.csv's own.
+    """
+    keep = [
+        {"term": "2025-2026", "bill": "HB1", "body": "H", "kind": "public hearing",
+         "date": "2025-03-12", "time": "14:00", "committee": "Finance",
+         "venue": "SH Reps Hall", "source": "docket"},
+        {"term": "2025-2026", "bill": "SB481", "body": "S", "kind": "hearing",
+         "date": "2026-01-13", "time": "13:20", "committee": "Finance",
+         "venue": "SH 103", "source": "docket"},
+    ]
+    drop = [
+        {"term": "2025-2026", "bill": "HB1", "body": "H", "kind": "committee of conference",
+         "date": "2025-06-12", "time": "14:00", "committee": "Finance",
+         "venue": "LOB 210-211", "source": "docket"},
+        {"term": "2025-2026", "bill": "SB481", "body": "S", "kind": "committee of conference",
+         "date": "2026-05-22", "time": "13:00", "committee": "Finance",
+         "venue": "GP 159", "source": "docket"},
+        # And, as before, a row naming no committee, or no day.
+        {"term": "2025-2026", "bill": "HB1", "body": "H", "kind": "committee of conference",
+         "date": "2025-06-12", "committee": "", "video_id": "aGy5YRZ4rdw"},
+        {"term": "2025-2026", "bill": "HB1", "body": "H", "kind": "public hearing",
+         "date": "", "committee": "Finance"},
+    ]
+    f = getattr(BC, "its_own_sitting", None)
+    assert f, "build_committees has no its_own_sitting"
+    wrong = [r for r in keep if not f(r)] + [r for r in drop if f(r)]
+    assert not wrong, ("filed under a committee's page wrongly, or left off it: "
+                       + "; ".join(f"{r['bill']} {r['kind']} {r['date']}" for r in wrong))
+    src = Path(BC.__file__).read_text(encoding="utf-8")
+    main_ = src[src.index("def main("):]
+    assert re.search(r"for r in P\.load\(\):\s+if not its_own_sitting\(r\):\s+continue",
+                     main_), "build_committees.main no longer files its rows through its_own_sitting"
+    return "ok", ("HB 1's conference of 12 June 2025 is not House Finance's sitting, nor "
+                  "SB 481's of 22 May 2026 Senate Finance's; their hearings are")
+
+
 @check("build", "committee names that reach no page stop the build past a stated ceiling",
        needs=("build_committees",))
 def _committee_unmatched_ceiling(BC):
@@ -11326,6 +11558,84 @@ def _second_referral(docket_parser):
     wrong = {k: (got.get(k, "missing"), v) for k, v in want.items() if got.get(k, "missing") != v}
     assert not wrong, "got, wanted: " + repr(wrong)
     return "ok", "Finance after 13 March, not before; waivers, interim study and 'Committee' add nothing"
+
+
+@check("narrative", "a House conference notice is read with its time and room, in every wording the House has used",
+       needs=("docket_parser",))
+def _house_conference_notice(docket_parser):
+    """HB 485's conference of 16 June 2025, as the House docket notices it:
+    "Conference Committee Meeting: 06/16/2025 09:30 am LOB 206-208".
+
+    HOUSE_SCHED_RE knew only the bare "Committee of Conference", which the
+    House clerk never writes before a date, so not one House conference
+    notice written with a clock time reached proceedings.csv -- 113 in the
+    current term's docket, 927 across eleven terms -- while the Senate's
+    "Committee of Conference Meeting: 06/16/2025, 12:00 pm, Room 100, SH"
+    did. Every House conference card on the Calendar was its recording
+    alone: untimed, with no room. Every line below is copied from a docket
+    on this disk, not typed, and so are the ones that must stay unread.
+    """
+    dp = docket_parser
+
+    def row(bill, created, desc, body="H"):
+        return {"lsr": "2025-0741", "created": created, "bill": bill, "body": body,
+                "desc": desc, "updated": "", "lineno": 0}
+    rows = [
+        row("HB485", "6/16/2025 12:00:00 AM",
+            "Conference Committee Meeting: 06/16/2025 09:30 am LOB 206-208"),
+        row("HB1", "6/12/2025 12:00:00 AM",
+            "Conference Committee Meeting: 06/12/2025 02:00 pm LOB 210-211"),
+        row("HB26", "6/8/2011 12:00:00 AM",
+            "Conference Committee Meeting: 6/8/2011 9:00 AM LOB 307  ==RECESSED=="),
+        row("HB37", "06/14/2007 02:56:52 PM",
+            "Committee of Conference Meeting: 6/18/07 2:00 PM LOB 207"),
+        row("HB653", "06/21/2007 08:17:24 AM",
+            "Committee of Conference Meeting==RECONVENE==: 6/21/07 9:30 AM LOB 306"),
+        row("HB1488", "05/23/2014 02:08:10 PM",
+            "Conference of Committee Meeting: 5/27/2014; 11:00 AM; LOB 207"),
+        row("HB1405", "05/23/2008 04:05:27 PM",
+            "Committee of Conference Hearing: 05/29/2008 11:30 AM LOB 304"),
+        row("HB170", "06/15/2001 11:12:13 AM",
+            "Conf Comm meeting 6/15/01 1:30 p.m. Rm 202, LOB"),
+        row("HB144", "6/12/2017 12:00:00 AM",
+            "==CANCELLED== Conference Committee Meeting: 06/13/2017 10:00 AM LOB 210-211"),
+        # A conference named and no conference noticed: a report, a change of
+        # conferee, an accession. None of these is a sitting.
+        row("HB485", "6/26/2025 2:09:16 PM",
+            "Conference Committee Report 2025-2766c: Adopted, VV 06/26/2025  HJ 18  P. 18"),
+        row("HB67", "6/16/2025 10:34:27 AM",
+            "Conferee Change: Rep. Wood Replaces Rep. Lane 06/16/2025  HJ 17  P. 24"),
+        row("SB32", "06/09/2015 02:00:34 PM",
+            "House Accedes to Senate Request for Committee of Conference (Rep Hinch): MA VV "
+            "(in recess of 6/3/2015); HJ 44, PG. 1953"),
+        # And the Senate's, which was always read, still is.
+        row("SB14", "6/11/2025 3:39:13 PM",
+            "Committee of Conference Meeting: 06/16/2025, 12:00 pm, Room 100, SH", body="S"),
+    ]
+    got = {}
+    for p in dp.parse_proceedings(rows, dp.build_referral_timeline(rows)):
+        got[(p.bill, p.sched_date)] = (p.kind, p.sched_time, p.venue,
+                                       "CANCELLED" in [str(f).upper() for f in p.flags])
+    C = "committee of conference"
+    want = {
+        ("HB485", "2025-06-16"): (C, "09:30", "LOB 206-208", False),
+        ("HB1", "2025-06-12"): (C, "14:00", "LOB 210-211", False),
+        ("HB26", "2011-06-08"): (C, "09:00", "LOB 307", False),
+        ("HB37", "2007-06-18"): (C, "14:00", "LOB 207", False),
+        ("HB653", "2007-06-21"): (C, "09:30", "LOB 306", False),
+        ("HB1488", "2014-05-27"): (C, "11:00", "LOB 207", False),
+        ("HB1405", "2008-05-29"): (C, "11:30", "LOB 304", False),
+        ("HB170", "2001-06-15"): (C, "13:30", "Rm 202, LOB", False),
+        ("HB144", "2017-06-13"): (C, "10:00", "LOB 210-211", True),
+        ("SB14", "2025-06-16"): (C, "12:00", "SH 100", False),
+    }
+    wrong = {k: (got.get(k, "missing"), v) for k, v in want.items() if got.get(k) != v}
+    assert not wrong, "got, wanted: " + repr(wrong)
+    extra = sorted(set(got) - set(want))
+    assert not extra, f"a line that notices no conference was read as one: {extra}"
+    return "ok", ("HB 485's conference of 16 June 2025 at 09:30 in LOB 206-208, and the "
+                  "House's five other wordings of 2001-2014; reports, conferee changes and "
+                  "accessions stay unread")
 
 
 @check("data", "a committee report line gives up its recommendation and nothing else")

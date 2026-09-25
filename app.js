@@ -4108,8 +4108,17 @@ function cmteUpcoming(c){
   Object.entries(c.bills||{}).forEach(([t,rows])=>(rows||[]).forEach(b=>{
     if(b&&b.id)mine.add(t+"\u0000"+String(b.id).toUpperCase());
   }));
+  // AND THE CHAMBER, WHICH THE BILL DOES NOT SETTLE. A bill that crosses is
+  // on both chambers' committees' lists -- SB 519 is Senate Judiciary's and
+  // House Judiciary's -- so name and bill matched House Judiciary's sitting
+  // on it of 30 September 2026 to Senate Judiciary's page too. Replayed over
+  // 2025-2026 that put 719 sittings on the other chamber's page, on 384
+  // days. home.json's row says whose sitting it is; a row written before it
+  // did is left to name and bill, as it was.
+  const ch=String(c.chamber||"").trim().toUpperCase();
   return UPCOMING.filter(u=>
     String(u.committee||"").trim().toLowerCase()===name
+    && (!ch||!u.body||String(u.body).trim().toUpperCase()===ch)
     && mine.has(String(u.term||"")+"\u0000"+String(u.bill||"").toUpperCase()));
 }
 
