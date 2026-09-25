@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-12.5
+// GRANITE_VERSION: 2026-09-12.6
 /*
  * POST /api/report -- a reader says something on a page is wrong.
  *
