@@ -1,4 +1,4 @@
-// GRANITE_VERSION: 2026-09-16.9
+// GRANITE_VERSION: 2026-09-16.10
 /* FIND ANYTHING, FROM THE HEADER (16 September, asked for in these words:
    "a search icon in the header that lets you search for anything including
    legislators, committees, towns, and bills ... searching Litchfield would
