@@ -4129,11 +4129,17 @@ padding-right:var(--sp-5);width:1%}
    two colours, which would need a clear copy of --paper in each theme. Where
    masks are not supported there is no fade rather than a solid bar over the
    last card, and the scrollbar is the sign. It takes no pointer, so the card
-   under it still opens. */
+   under it still opens.
+
+   THE LINE TO NEXT WEEK GIVES UP ITS MARGIN to the fade's resting place,
+   which is already space under the last card. Out of session a week is one
+   or two cards and never scrolls, and with both the line sat 44px under
+   them where it had sat 12px; now it is 32px. */
 @supports ((-webkit-mask-image:linear-gradient(#000,#000)) or (mask-image:linear-gradient(#000,#000))){
 :where(body.pg) .calscroll::after{content:"";display:block;position:sticky;bottom:0;z-index:2;
   height:var(--sp-9);margin-top:calc(-1 * var(--sp-4));pointer-events:none;background:var(--paper);
   -webkit-mask-image:linear-gradient(transparent,#000);mask-image:linear-gradient(transparent,#000)}
+:where(body.pg) .calscroll + .calall{margin-top:0}
 }
 /* NEITHER COVERS WHERE THE KEYBOARD IS. Tab moves through the cards and the
    browser scrolls each one into view; brought to the nearest edge of the
