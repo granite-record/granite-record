@@ -11290,8 +11290,11 @@ def _coming_up_scrolls():
     focused cannot be scrolled without a pointer. And app.css gives it a
     height and a scrollbar at every width, not only inside the three-column
     block; keeps each day's date in view; fades the bottom edge while more
-    follows; and sets nothing -- no overscroll-behavior, no snapping -- that
-    takes the scroll from the reader.
+    follows; pads the edges a card is scrolled to when the keyboard reaches
+    it, since a card brought to the nearest edge came to rest flush under the
+    date or the fade (Chrome, scrollIntoView to the nearest edge: 0px from
+    either, and 40 and 32 with the padding); and sets nothing -- no
+    overscroll-behavior, no snapping -- that takes the scroll from the reader.
     """
     import contextlib
     import datetime as _dt
@@ -11370,9 +11373,14 @@ def _coming_up_scrolls():
     assert ".calscroll{" in BP.pages_region(), (
         "the .calscroll rule is outside app.css's page region, so style.css, "
         "which the home page loads, does not carry it")
-    for sel, body in re.findall(r"([^{}]*\.calscroll[^{}]*)\{([^}]*)\}", css):
+    rules = re.findall(r"([^{}]*\.calscroll[^{}]*)\{([^}]*)\}", css)
+    for sel, body in rules:
         assert "overscroll-behavior" not in body and "scroll-snap" not in body, (
             f"{sel.strip()} takes the scroll from the reader: {body}")
+    assert any(sel.strip().endswith(".calscroll") and "scroll-padding:" in body
+               for sel, body in rules), (
+        "the Coming up box has no scroll-padding, so a card reached by Tab comes "
+        "to rest under the day's date or under the fade")
     head = re.search(r"\.calscroll \.caldate\{([^}]*)\}", css)
     assert head and "position:sticky" in head.group(1) and "top:0" in head.group(1), (
         "a day's date no longer stays at the top of the box while its cards "
@@ -11384,7 +11392,7 @@ def _coming_up_scrolls():
         "follows (or it catches the pointer and a card under it cannot be opened)")
     return "ok", ("45 sittings, all inside one named, focusable box, with the "
                   "heading above and next week below; capped at every width, "
-                  "dates kept in view, a fade while more follows")
+                  "dates kept in view, a fade while more follows, padded for the keyboard")
 
 
 @check("build", "every deploy names the production branch, and both name the same one")

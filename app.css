@@ -4135,6 +4135,12 @@ padding-right:var(--sp-5);width:1%}
   height:var(--sp-9);margin-top:calc(-1 * var(--sp-4));pointer-events:none;background:var(--paper);
   -webkit-mask-image:linear-gradient(transparent,#000);mask-image:linear-gradient(transparent,#000)}
 }
+/* NEITHER COVERS WHERE THE KEYBOARD IS. Tab moves through the cards and the
+   browser scrolls each one into view; brought to the nearest edge of the
+   box, a card came to rest under the day's date going up and under the fade
+   going down, 0px from either edge in Chrome. The padding is the date's
+   height above and the fade's below, so it stops clear of both. */
+:where(body.pg) .calscroll{scroll-padding:var(--sp-10) 0 var(--sp-9)}
 /* THE FINDER ON THE RIGHT IS A FORM, not a script: method="get" on
    legislators.html produces exactly the ?town= and ?q= those two boxes read,
    so it works with JavaScript off, the browser remembers what was typed, and
