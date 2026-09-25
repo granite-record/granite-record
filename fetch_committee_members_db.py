@@ -57,6 +57,7 @@ import sys
 from pathlib import Path
 
 import probe_db
+import refusal
 
 SQL = """
 SELECT cm.CommitteeCode AS code,
@@ -84,6 +85,10 @@ def main():
     ap.add_argument("--out", default="data/committee_members.json")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
+    # The database host, not the web server, so no refusal check -- but once the
+    # laptop has stood down, GitHub's weekly job owns this file.
+    refusal.stand_down("The committee roster fetch", "GitHub's weekly job takes "
+                       "data/committee_members.json on Sunday nights now.")
 
     cs = (f"Server={probe_db.HOST};Database={probe_db.DATABASE};"
           f"User ID={probe_db.USER};Password={probe_db.PASSWORD};"

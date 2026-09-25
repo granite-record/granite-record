@@ -49,6 +49,7 @@ import sys
 from pathlib import Path
 
 import probe_db
+import refusal
 
 # Inactive only. The sitting roster comes from legislators.txt and is richer;
 # this is for the people that file no longer carries.
@@ -87,6 +88,10 @@ def main():
     ap.add_argument("--out", default="former_members.json")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
+    # The database host, not the web server, so no refusal check -- but once the
+    # laptop has stood down, GitHub's weekly job owns this file.
+    refusal.stand_down("The former-members fetch", "GitHub's weekly job takes "
+                       "former_members.json on Sunday nights now.")
 
     base = (f"Database={probe_db.DATABASE};User ID={probe_db.USER};"
             f"Password={probe_db.PASSWORD};Encrypt=False;"

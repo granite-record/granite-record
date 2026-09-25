@@ -106,7 +106,7 @@ class building:
 
 class Step:
     def __init__(self, name, args, needs=(), produces=(), network=False,
-                 optional=False, note="", superseded=False):
+                 optional=False, note="", superseded=False, captions=False):
         self.name, self.args = name, args
         self.needs = [Path(n) for n in needs]
         self.produces = [Path(p) for p in produces]
@@ -117,6 +117,9 @@ class Step:
         # mention density" after the marker path had already found
         # the chair saying it.
         self.superseded = superseded
+        # Reads the caption files under work/, which only the laptop holds:
+        # 20 GB that GitHub's machine is never given. --no-captions skips it.
+        self.captions = captions
 
     def missing(self):
         return [str(n) for n in self.needs if not n.exists()]
@@ -384,7 +387,7 @@ def plan(a):
         Step("boundaries the chair stated",
              ["segment_markers.py", "--all", "--data", "data", "--quiet"],
              needs=["proceedings.csv", "work"], produces=["candidate_segments.json"],
-             optional=True,
+             optional=True, captions=True,
              note="reads every caption file and finds where each proceeding "
                   "was opened and closed; cached per recording, so a rerun "
                   "with nothing new takes seconds"),
@@ -582,6 +585,9 @@ def main():
                     help="also run steps a newer one has replaced")
     ap.add_argument("--local", action="store_true",
                     help="skip every step that touches the network")
+    ap.add_argument("--no-captions", action="store_true",
+                    help="skip the steps that read caption files, on a machine "
+                         "that holds none (GitHub's)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--keep-going", action="store_true",
                     help="carry on past a failed required step")
@@ -632,6 +638,19 @@ def main():
         for s in dropped:
             print(f"  skipping '{s.name}' -- a newer step covers it. "
                   "--with-superseded runs it anyway.")
+    # GITHUB'S MACHINE HAS NO CAPTION FILES, and a step that reads them there
+    # does not fail -- it finds nothing, which is worse. segment_markers keys
+    # its cache on each caption file's size and date, so with none it would
+    # work out every recording again from whatever else it could find, and
+    # published timestamps would change without the comparison against
+    # ground_truth.csv that CLAUDE.md requires first. So the step is skipped,
+    # by name, and candidate_segments.json comes from the laptop's caption job.
+    if a.no_captions:
+        dropped = [s for s in steps if s.captions]
+        steps = [s for s in steps if not s.captions]
+        for s in dropped:
+            print(f"  skipping '{s.name}' -- --no-captions: this machine holds "
+                  "no caption files, so what it made last on the laptop stands")
 
     print(f"{len(steps)} steps, session {a.session}\n")
     if a.dry_run:

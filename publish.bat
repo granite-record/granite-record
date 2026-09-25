@@ -38,6 +38,14 @@ REM branch. Until the rename the two happened to coincide, which is why one
 REM variable did both jobs.
 set REPO_BRANCH=main
 
+REM THE STAND-DOWN. Once GitHub's nightly publishes the site, this machine
+REM does not: archive\runs-in-the-cloud.json says it has handed publishing
+REM over (python3 refusal.py --stand-down writes it). Two machines publishing
+REM means two builds from two copies of the data, and whichever lands last
+REM wins. "publish --check" builds and checks here without deploying, so it
+REM still runs.
+if exist "archive\runs-in-the-cloud.json" if not "%1"=="--check" goto :standdown
+
 if "%1"=="--check" goto :build_local
 if "%1"=="" goto :build_local
 
@@ -131,6 +139,17 @@ echo *** Not published: this folder is on branch "%BRANCH%", not %REPO_BRANCH%. 
 echo A deploy publishes whatever this folder holds. Switch back with
 echo   git checkout %REPO_BRANCH%
 echo and work on other branches in a separate worktree.
+exit /b 1
+
+:standdown
+echo.
+echo *** Not published: GitHub publishes the site now. ***
+echo archive\runs-in-the-cloud.json says this machine has handed the nightly
+echo and publishing to GitHub. To publish a change, push it to main on GitHub
+echo and press "Run workflow" on the nightly in the repository's Actions tab.
+echo "publish --check" still rebuilds and checks here without deploying.
+echo Moving back is deleting that file: a person's decision, made after this
+echo machine's copy of the data has been brought up to date from R2.
 exit /b 1
 
 :failed

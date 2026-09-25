@@ -79,6 +79,9 @@ proceedings.csv
 candidate_segments.json
 _captions_manifest.csv
 
+# ---- nightly.py's scratch folder, for a fetch that must arrive whole -------
+/.night/
+
 # ---- caches, lists and logs ----------------------------------------------
 .segment_cache.json
 missing_captions.txt
