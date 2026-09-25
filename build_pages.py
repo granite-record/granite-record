@@ -559,6 +559,26 @@ def is_cancelled(rows):
                               for r in rows)
 
 
+def meeting_who(cmte, rows):
+    """Who is meeting: "floor", "study" or "standing".
+
+    For the Calendar page's filters, which ask who and what separately. The
+    floor is the House or the Senate sitting as a whole. A study or statutory
+    committee is one the database copy says is one, or one the docket files
+    as a "study committee" sitting -- HB 1763's committee on 2 September 2026
+    reached the calendar through the docket alone. Everything else is a
+    chamber's own committee: the standing committees, a committee of
+    conference drawn from them, and the sittings whose committee the docket
+    did not record.
+    """
+    if (cmte or "").strip().lower() in ("house floor", "senate floor"):
+        return "floor"
+    if any(r.get("study") or (r.get("what") or "").strip().lower()
+           in ("study committee", "statutory committee") for r in rows):
+        return "study"
+    return "standing"
+
+
 def cal_days(days, meets, titles, years, code, when, esc, level=3,
              sessions=None, docs=None):
     """The day blocks and their meeting cards, for any set of days.
@@ -650,17 +670,6 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                              for r in rows if (r.get("body") or "").strip()})
             bills_attr = " ".join(sorted({(r.get("bill") or "").strip().upper()
                                           for r in rows if r.get("bill")}))
-            html.append('<details class="calmeet"'
-                        f' data-body="{esc(" ".join(bodies))}"'
-                        f' data-cmte="{esc(cmte.lower())}"'
-                        f' data-bills="{esc(bills_attr)}"'
-                        f' data-date="{esc(_d)}"'
-                        + (f' data-time="{esc(slots[0])}"' if slots else "")
-                        + (f' data-last="{esc(slots[-1])}"' if slots else "")
-                        + (f' data-venue="{esc(venue)}"' if venue else "")
-                        + (' data-study=""' if study else "")
-                        + (' data-cancelled=""' if cancelled else "")
-                        + "><summary>")
             # THE MIXED COLOUR. One segment per kind the day holds, stacked
             # down the edge of the card, so a committee doing two things reads
             # at a glance as one committee doing two things rather than as two
@@ -675,6 +684,23 @@ def cal_days(days, meets, titles, years, code, when, esc, level=3,
                 cls = MEET_KIND.get(k.strip().lower(), ("", ""))[1] or "k-other"
                 if cls not in bars:
                     bars.append(cls)
+            html.append('<details class="calmeet"'
+                        f' data-body="{esc(" ".join(bodies))}"'
+                        f' data-cmte="{esc(cmte.lower())}"'
+                        f' data-bills="{esc(bills_attr)}"'
+                        f' data-date="{esc(_d)}"'
+                        + (f' data-time="{esc(slots[0])}"' if slots else "")
+                        + (f' data-last="{esc(slots[-1])}"' if slots else "")
+                        + (f' data-venue="{esc(venue)}"' if venue else "")
+                        + (' data-study=""' if study else "")
+                        + (' data-cancelled=""' if cancelled else "")
+                        # WHO AND WHAT, for the Calendar page's filters: whose
+                        # sitting it is, and the kinds its bar is drawn in
+                        # (hearing, meet, exec, conf, floor, other). The same
+                        # colours as the bar, because they are the bar.
+                        + f' data-who="{esc(meeting_who(cmte, rows))}"'
+                        + f' data-kinds="{esc(" ".join(b[2:] for b in bars))}"'
+                        + "><summary>")
             html.append('<span class="calmix" aria-hidden="true">'
                         + "".join(f'<i class="{c}"></i>' for c in bars) + "</span>")
             # THE COMMITTEE FIRST. It is what a reader scans a rail for, and
