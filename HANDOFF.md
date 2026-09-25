@@ -225,6 +225,36 @@ AFTER the row that recorded it is impossible -- and it needs the docket row's
 creation timestamp carried into `narratives.json`, which it currently is not.
 Do not bulk-correct on the journal number alone.
 
+## Errors in the General Court's own record
+
+There is a running list of them, for the person to bring to the House and
+Senate Clerks' offices so each can be fixed at the source as well as here --
+asked for on 24 September. It holds only the General Court's own errors: a
+docket row, a database field, a roll-call file or a journal that the rest of
+the record contradicts. Each entry quotes what the record says and where, what
+the evidence shows, and where that evidence is, so the Clerk's staff can check
+it without redoing the work; evidence that is suggestive but not conclusive
+goes under "To check", with what would settle it.
+
+**The list is not in this repository, and must not be.** It is
+`CLERK_CORRECTIONS.md` at the root of the working folder on the person's PC,
+untracked: the person chose to keep it out of GitHub so that the Clerks' offices
+hear about each error from them first, not from a public repository.
+`.gitignore` names it, and preflight fails if git tracks it or if any commit on
+any ref holds it -- the first version was committed before that answer came,
+and had to be taken back out of its branch. Do not quote its entries in a
+tracked file, this one included. A private link to it (an Artifact) may be
+offered when the person wants to share it with the Clerks' offices.
+
+**Whenever work finds an error in the General Court's own record, add it there
+with its evidence, in the same session.** Rule out our own parser first, by
+re-reading the raw row: HB 113 of 2005's "introduced on December 1, 2006" looks
+like a clerk's slip and is `narrative.clamp_year` moving a row entered on
+12/01/2004 into 2006, the year in the row's session column, because the bill was
+retained into its second year. The list is the assistant's to keep and the
+person's to deliver. A correction the site itself applies is a separate matter
+and goes in `docket_corrections.json`, which is the person's.
+
 ## Keeping the documents true
 
 `STATE.md` is generated -- run `python3 handoff.py`. Never edit it.
