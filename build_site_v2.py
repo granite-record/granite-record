@@ -3065,6 +3065,29 @@ def _j_unsuspend(clause):
     return left
 
 
+def _j_suspension_failed(raw):
+    """Where in a row a vote to suspend the rules failed, or -1.
+
+    _j_unsuspend takes the vote out of the clause, which is right for what
+    the bill's line says and loses that the chamber voted: "REPS GROSS &
+    CHAMBERS MOVED TO SUSP RULES, ML DIV(213-115)" and then "REP KURK MOVED
+    TO RECONSIDER, MA VV" (HB 322 of 1991) is the House taking up again the
+    suspension it had just refused, not its refusal of the Senate's
+    amendment a month before. Not "RULES SUSPENDED", which is the clerk's
+    past tense for one that carried."""
+    for x in re.finditer(r"[^;]+", raw or ""):
+        clause = x.group(0)
+        m = J_SUSPEND.search(clause)
+        if not m or any(y.start() <= m.start() < y.end()
+                        for y in J_SUSPENDED.finditer(clause)):
+            continue
+        rest = J_IF_PASSED.sub(lambda y: " " * len(y.group(0)), clause[m.end():])
+        o = J_SUSP_CODE.search(rest) or J_SUSP_WORD.search(rest)
+        if o and not re.match(r"MA|AA|adopted|carried", o.group(0), re.I):
+            return x.start() + m.start()
+    return -1
+
+
 # The procedural motions whose outcome the clerk can put in the next clause:
 # "Enrolled Bill Amendment{2230}; Adopted", "Sen. Gordon Moved Remove From
 # Table; MA, VV". Not a finished act -- "REP BUCKLEY WITHDREW RECOMMIT
@@ -3968,7 +3991,11 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
     # referral it waives (SB 482 of 2026), or days after it.
     waived = {((e.get("body") or "")[:1].upper(), e.get("date") or "")
               for e in evs if J_WAIVED.search(e.get("raw") or "")}
-    pending, voted = {}, set()
+    # What a reconsideration naming nothing is of (_j_reconsidered): a vote
+    # the chamber took since its last decision, on any day; and, on the day
+    # of the reconsideration, a motion it took up with no vote written beside
+    # it or a suspension of the rules it refused.
+    pending, voted, moved = {}, set(), {}
     for e, raw in _j_rows(evs):
         body = (e.get("body") or "").upper()[:1]
         # THE JOURNAL A ROW CITES NAMES THE CHAMBER THAT ACTED. "PASSED VV;
@@ -4010,6 +4037,14 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
                 and not any(rx.search(raw) for rx in (J_YES_CODE, J_NO_CODE, J_TALLY,
                                                       J_VOICE, J_RC_BARE))):
             continue
+        # A vote to suspend the rules that failed, ahead of any
+        # reconsideration in the row, or after it once the row is read. That
+        # day only: HB 462 of 1989 was sent back to committee on 16 March,
+        # failed to have the joint rules suspended on 13 April, and on 25
+        # April had the rules suspended and reconsidered the recommittal.
+        failed, rc = _j_suspension_failed(raw), J_RECONSIDER.search(raw)
+        if failed >= 0 and (not rc or failed < rc.start()):
+            moved[body] = date
         for seg in _j_segments(raw):
             if J_WAIVED.search(seg):
                 last = next((s for s in reversed(steps) if s["body"] == body), None)
@@ -4059,6 +4094,13 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
                 at = next((i for i in range(len(steps) - 1, -1, -1)
                            if steps[i]["body"] == body), None)
                 last = steps[at] if at is not None else None
+                # Not a passage the chamber has since reconsidered, which the
+                # referral came after: the Senate passed HB 1331 of 1990 on
+                # 29 March, reconsidered it on 3 April and sent it to Finance
+                # that day, and it read "Approved and sent to Finance,
+                # reconsidered on 3 Apr".
+                if last and last.get("reconsidered") and date >= last["reconsidered"]:
+                    continue
                 if (last and last["act"] == "passed" and (body, date) not in waived
                         and 0 <= _j_days(date, last["date"]) <= 30
                         and not any(s["body"] in ("H", "S") for s in steps[at + 1:])):
@@ -4066,13 +4108,20 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
                 elif (body, date) not in waived:
                     pending[(body, date)] = to
                 continue
-            _j_reconsidered(steps, body, date, seg, body not in voted)
+            _j_reconsidered(steps, body, date, seg,
+                            body not in voted and moved.get(body) != date)
             got = _j_decide(seg, bid, rcs, date, body)
-            if got is None or got == "amended":
+            if (got is None or got == "amended") and not J_RECONSIDER.search(seg):
                 # A vote since the chamber's last decision, which a
-                # reconsideration naming nothing is then about.
-                if _j_has_outcome(seg) and not J_RECONSIDER.search(seg):
+                # reconsideration naming nothing is then about -- or a
+                # motion that day with no vote written beside it: "REP
+                # LARSON SUBST ITL; VOTE TAKEN, INCORRECTLY, ON COMM AM; REP D
+                # HALL MOVED TO RECONSIDER, MA VV" (SB 796 of 1994) undid that
+                # day's mistaken vote, not the passage of a month before.
+                if _j_has_outcome(seg):
                     voted.add(body)
+                elif _j_act(seg) or J_AMEND_SUBJ.search(seg):
+                    moved[body] = date
             if got is None:
                 continue
             if got == "amended":
@@ -4178,9 +4227,12 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
                     continue
             st["_row_day"] = date
             voted.discard(st["body"])
+            moved.pop(st["body"], None)
             if st["act"] == "passed" and (body, date) in pending:
                 st["act"], st["to"] = "referred", pending.pop((body, date))
             steps.append(st)
+        if failed >= 0 and rc and failed > rc.start():
+            moved[body] = date
     # AN AMENDMENT ADOPTED THAT DAY AMENDS THAT DAY'S PASSAGE, whether the
     # clerk entered it before the passage or after: "Sen. Fernald Moved Ought
     # to Pass, RC 22y - 1n, MA" and then "Sen. Francoeur Floor Amendment
@@ -4367,7 +4419,11 @@ def _j_reconsidered(steps, body, date, seg, last=True):
     is the decision only where nothing was voted on since (`last`): "REP
     CHAMPAGNE MOVED TO RECONSIDER, MA RC(211-160)" on HR 1 of 1997 is the
     House taking up again an amendment to its rules it had just rejected
-    186-186, not the rules it adopted in December."""
+    186-186, not the rules it adopted in December. Nor where the clause takes
+    something up ahead of it: "Sen. Squires Concur with House
+    Amendment{4347}; Sen. Squires Motion Reconsideration, MA,VV" (SB 326 of
+    2000) is the Senate going back on that day's concurrence, which it then
+    refused, and not on its passage of March."""
     rc = J_RECONSIDER.search(seg or "")
     if not rc or J_RECON_NOT.search(seg[:rc.start()]):
         return
@@ -4384,7 +4440,7 @@ def _j_reconsidered(steps, body, date, seg, last=True):
         acts = next((a for rx, a in J_RECON_NAMES if rx.search(named)), set())
         if mine[-1]["act"] not in acts:
             return
-    elif not last:
+    elif not last or _j_act(seg[:rc.start()]) or _j_has_outcome(seg[:rc.start()]):
         return
     mine[-1]["reconsidered"] = date
 

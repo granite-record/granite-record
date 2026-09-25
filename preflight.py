@@ -4799,6 +4799,55 @@ def _journey_reads(build_site_v2):
                             ev("H", "1997-01-29", "SEC 35(B), AL VV; SEC 45(C), AL RC(186-186); "
                                "REP CHAMPAGNE MOVED TO RECONSIDER, MA RC(211-160)"))[1]],
          ["Adopted with an amendment on a voice vote"], "HR1 1997")
+    # Nor one the chamber took something else up ahead of that day: a
+    # suspension of the rules it refused (HB 322 of 1991), a motion with no
+    # vote beside it (SB 796 of 1994), a concurrence in the same clause (SB
+    # 326 of 2000). Each marked a decision of weeks before as reconsidered.
+    want(run("HB322", ev("S", "1991-05-28", "COMM AM, AA VV; PASSED WITH AM VV; SJ28,P467-468 + 479"),
+             ev("H", "1991-05-29", "HOUSE NONC WITH SEN AM REQ CONF COMM, REP D. SYTEK MA VV; HJ86"),
+             ev("H", "1991-06-27", "REPS GROSS & CHAMBERS MOVED TO SUSP RULES, ML DIV(213-115); "
+                "HJ96, P2092"),
+             ev("H", "1991-06-27", "REP KURK MOVED TO RECONSIDER, MA VV; REPS GROSS & CHAMBERS SUSP"),
+             ev("H", "1991-06-27", "RULES TO CONSIDER, MA DIV(230-105); CONF COMM REPORT ADOPTED VV; "
+                "HJ96,P2092"))[1],
+         [("1991-05-28", "S", "passed", "Passed with an amendment on a voice vote"),
+          ("1991-05-29", "H", "nonconcurred", "Refused the Senate's amendment and asked for a "
+           "committee of conference on a voice vote"),
+          ("1991-06-27", "H", "conf_adopted", "Adopted the conference report on a voice vote")],
+         "HB322 1991")
+    want([x[3] for x in run("SB796", ev("H", "1994-04-14", "COMM AM, AA VV; PASSED WITH AM AND REF "
+                                                           "TO APPROP VV; HJ49,P1592"),
+                            ev("H", "1994-05-11", "REP LARSON SUBST ITL; VOTE TAKEN, INCORRECTLY, "
+                               "ON COMM AM; REP D HALL MOVED TO RECONSIDER, MA VV; REP LARSON SUBST "
+                               "ITL, MA VV; ITL REPORT ADOPTED VV; HJ64,P2054-2055"))[1]],
+         ["Approved with an amendment and sent to Appropriations on a voice vote",
+          "Killed on a voice vote"], "SB796 1994")
+    want([x[3] for x in run("SB326", ev("S", "2000-03-23", "Ought to Pass with Amendment{3829},"
+                                                           "[New Title], AA, VV; OT3rdg, MA, VV"),
+                            ev("S", "2000-05-18", "Sen. Squires Concur with House Amendment{4347}; "
+                               "Sen. Squires Motion Reconsideration, MA,VV"),
+                            ev("S", "2000-05-18", "Sen. Squires Non Concur with House Amt{4347},"
+                               "Request C of C; MA, VV"))[1]],
+         ["Passed with an amendment on a voice vote", "Refused the House's amendment and asked "
+          "for a committee of conference on a voice vote"], "SB326 2000")
+    # But a suspension refused on an earlier day is not what is reconsidered:
+    # HB 462 of 1989's House had its rules suspended on 25 April and
+    # reconsidered the recommittal of 16 March.
+    want([x[3] for x in run("HB462", ev("H", "1989-03-16", "RE-REFERRED TO CON & STAT; HJ47, P1266; "
+                                                           "DUE 11/23/89"),
+                            ev("H", "1989-04-13", "REPS PHELPS & CHAMBERS MOVED SUSP JNT RULES, ML "
+                               "DIV(200-145)"),
+                            ev("H", "1989-04-25", "REPS PALUMBO & CHAMBERS SUSP OF RULES MA VV BY "
+                               "NEC 2/3"),
+                            ev("H", "1989-04-25", "REP FLANAGAN RECONSIDER MA VV; REP FLANAGAN SUB "
+                               "OTP/AM MA VV"))[1]][:1],
+         ["Sent back to committee, reconsidered on 25 Apr"], "HB462 1989")
+    # A referral after a passage the chamber reconsidered is not that
+    # passage's (HB 1331 of 1990).
+    want(run("HB1331", ev("S", "1990-03-29", "PASSED/ADOPTED"),
+             ev("S", "1990-04-03", "MOTION OF RECONSIDERATION/ADOPTED", "other"),
+             ev("S", "1990-04-03", "REFERRED TO FINANCE (RULE 24)", "rereferred"))[1],
+         [("1990-03-29", "S", "passed", "Passed, reconsidered on 3 Apr")], "HB1331 1990")
     # A semicolon in a list of amendments is not the end of the motion: HB
     # 1636 of 2018's refusal lost its count, and the failed motion before it
     # read as a refusal too.
