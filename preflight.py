@@ -19249,6 +19249,842 @@ def _nightly_reports_loud(NI):
                   "the reader reads what nightly.py writes, night by kind. Reader: " + detail)
 
 
+# ---- the nightly on GitHub's machine --------------------------------------------
+#
+# From 25 September 2026 the nightly is meant to run on GitHub Actions
+# (.github/workflows/nightly.yml, reports/cloud/CLOUD_MOVE.md on the laptop).
+# What differs there is nightly.py's --runner; what keeps the laptop from
+# running it too is the stand-down. Everything here is driven in a throwaway
+# folder with every step faked: no network, no fetch, no deploy.
+
+def _runner_site(n_bills):
+    """A built site as small as the census can count."""
+    site = Path("site")
+    site.mkdir(exist_ok=True)
+    (site / "index.json").write_text(json.dumps([{"b": i} for i in range(n_bills)]),
+                                     encoding="utf-8")
+    (site / "legislators.json").write_text(json.dumps([{"l": i} for i in range(40)]),
+                                           encoding="utf-8")
+    (site / "meta.json").write_text(json.dumps({"bills": n_bills}), encoding="utf-8")
+    for d, ext, n in (("bill", "html", 10), ("feed", "xml", 5)):
+        (site / d).mkdir(exist_ok=True)
+        for i in range(n):
+            (site / d / f"{i}.{ext}").write_text("x", encoding="utf-8")
+
+
+def _runner_fake_views(args, cwd, rows=None):
+    """What fetch_archive_db.py leaves in its scratch folder: one .psv per view
+    asked for, and a manifest counting its rows."""
+    views = [args[i + 1] for i, x in enumerate(args) if x == "--only"]
+    db = Path(cwd) / "db"
+    db.mkdir(parents=True, exist_ok=True)
+    man = {}
+    for v in views:
+        n = (rows or {}).get(v, 30)
+        (db / f"{v}.psv").write_text("".join(f"{v}|{i}\n" for i in range(n)), encoding="utf-8")
+        man[v] = {"database": "NHLegislatureDB", "rows": n, "bytes": 1,
+                  "fetched": "2026-09-26T02:20:00"}
+    (db / "_manifest.json").write_text(json.dumps(man), encoding="utf-8")
+
+
+@check("build", "on GitHub's machine the nightly keeps its gates, its refusal record and its "
+       "verdict where cloud.py carries them, pulls no reports, and sends nothing to production it cannot vouch for",
+       needs=("nightly",))
+def _nightly_runner(NI):
+    """nightly.py --runner, the night CLOUD_MOVE.md moves to GitHub, driven through
+    main() in a throwaway folder with every step it runs faked.
+
+    Found by reading, before the first night ran: on a machine that starts
+    empty, the census gates compare with nothing and can never stop a broken
+    build, so last night's counts come from archive/census.json and a night with
+    none sends nothing to production; the late-caption check compares nothing
+    without caption files, and 156 timestamps would go out an hour early, so
+    a build it could not check does not go to production either; the refusal
+    record has to travel to R2's state/, or it is forgotten with the machine; and the
+    reader reports stay on the laptop. Production takes only the build the
+    night judged, from the night that judged it, from main.
+    """
+    import contextlib
+    import io
+    import types
+    from datetime import datetime
+    import caption_span                    # noqa: F401 -- imported here, before the chdir
+    import refusal
+    import snapshot_gencourt               # noqa: F401 -- the same
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-runner-"))
+    saved = (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes,
+             NI.current_branch, NI.upload_and_check, NI.captions_compared, NI.time,
+             sys.argv, refusal.MARK, refusal.LOCK)
+    env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS",
+                "GITHUB_SHA")
+    saved_env = {k: os.environ.get(k) for k in env_keys}
+    calls, size = [], {"bills": 100}
+
+    def fake(args, label, cwd=None):
+        calls.append(list(args))
+        NI.say(f"\n--- {label} ---")
+        NI.say("  a line the step printed", echo=False)
+        name = Path(args[0]).name
+        if name == "build_all.py":
+            _runner_site(size["bills"])
+        elif name == "fetch_archive_db.py":
+            _runner_fake_views(args, cwd)
+        elif name == "gc_changes.py":
+            out = Path(args[args.index("--out") + 1])
+            out.parent.mkdir(exist_ok=True)
+            out.write_text("# changes\n", encoding="utf-8")
+        NI.say("  (0s, exit 0)")
+        return 0
+
+    def night(*argv, run_id="101"):
+        NI.LOG = []
+        del calls[:]
+        os.environ["GITHUB_RUN_ID"] = run_id
+        sys.argv = ["nightly.py", *argv]
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                code = NI.main()
+            except SystemExit as e:
+                code = e.code
+        return code, out.getvalue()
+
+    def verdict():
+        return json.loads(NI.VERDICT.read_text(encoding="utf-8"))
+
+    try:
+        os.chdir(tmp)
+        for k in env_keys:
+            os.environ.pop(k, None)
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        Path("archive").mkdir()
+        # One recording and no caption file: the late-caption check compares none.
+        (Path("work") / "abc123").mkdir(parents=True)
+        (Path("work") / "abc123" / "segments.json").write_text("[]", encoding="utf-8")
+        NI.run = fake
+        NI.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+        NI.live_fingerprint = lambda base, timeout=180: "an-older-build"
+        NI.tracked_changes = lambda: ([], [])
+        today = f"{datetime.now():%Y-%m-%d}"
+
+        # The first dry run: no baseline, and nothing to compare captions with.
+        code, out = night("--runner", "--no-fetch", "--dry-run")
+        v = verdict()
+        assert code == 0, f"a first dry run with nothing wrong in its build exited {code}"
+        assert v["run_id"] == "101" and v["built"] and not v["publishable"], v
+        assert any("census" in b for b in v["blocking"]), \
+            "a night with no census from an earlier one was not kept from production"
+        assert any("late-caption" in b for b in v["blocking"]), \
+            "a build whose late-caption check compared nothing was not kept from production"
+        assert json.loads(NI.CENSUS.read_text(encoding="utf-8"))["census"][
+            "bills"] == 100, "the first night's counts did not become the baseline"
+        build = next(c for c in calls if c[0] == "build_all.py")
+        assert build[:2] == ["build_all.py", "--local"] and "--no-captions" in build, build
+        assert not any(c[0] == "compile_reports.py" for c in calls), \
+            "GitHub's machine pulled the reader reports"
+        log = Path(f"logs/nightly-{today}.log").read_text(encoding="utf-8")
+        assert "a line the step printed" in log, "a step's output did not reach the log file"
+        assert "a line the step printed" not in out, "a step's own output reached GitHub's public log"
+        assert not NIGHTLY_REPORTS_RAN.search(log) and NIGHTLY_STARTED.search(log), \
+            "the runner's log does not read as a nightly's, or claims a reports step"
+        assert Path(f"logs/site-{today}.sha256").read_text(encoding="utf-8").count("\n") == 18, \
+            "the list of every built file, for the comparison with the laptop, is wrong"
+        assert all(str(p).replace("\\", "/").startswith("archive/")
+                   for p in (NI.CENSUS, NI.VERDICT, NI.WEEKLY_VERDICT)), \
+            "what travels between nights is not where cloud.py carries it from"
+
+        # The gates compare with that baseline: half the bills gone stops the
+        # night, and does not become tomorrow's baseline.
+        size["bills"] = 50
+        code, _ = night("--runner", "--no-fetch", "--dry-run", run_id="102")
+        assert code == 1 and verdict()["gates"].startswith("blocked"), \
+            "half the bills vanishing did not stop the night"
+        assert json.loads(NI.CENSUS.read_text(encoding="utf-8"))["census"][
+            "bills"] == 100, "a build the gates stopped became the baseline"
+
+        # A night that can be vouched for: baseline, captions compared, no code
+        # changed, and not what production already serves.
+        size["bills"] = 100
+        NI.captions_compared = lambda work="work", markers="candidate_segments.json": (1, 1)
+        code, _ = night("--runner", "--no-fetch", run_id="103")
+        v = verdict()
+        assert code == 0 and v["publishable"] and v["clean"], v
+        NI.tracked_changes = lambda: (["build_site_v2.py"], [])
+        code, _ = night("--runner", "--no-fetch", run_id="104")
+        assert code == 1 and not verdict()["publishable"], \
+            "a build made with tracked code changed on the machine was sent to production"
+        NI.tracked_changes = lambda: ([], ["veto_messages.json"])
+        NI.live_fingerprint = lambda base, timeout=180: NI.fingerprint(Path("site"))
+        code, _ = night("--runner", "--no-fetch", run_id="105")
+        v = verdict()
+        assert code == 0 and not v["publishable"] and v["data_rewritten"] == ["veto_messages.json"], \
+            "a build production already serves was offered again, or a rewritten data file stopped it"
+        NI.live_fingerprint = lambda base, timeout=180: "an-older-build"
+        code, _ = night("--runner", "--no-fetch", run_id="106")
+        assert code == 0 and verdict()["publishable"], verdict()
+
+        # Production takes this night's build, from this night, from main.
+        sent = []
+        NI.upload_and_check = lambda a, site, target, base: sent.append((target, base)) or True
+        NI.current_branch = lambda: "main"
+        code, _ = night("--runner", "--deploy-to", "production", run_id="105")
+        assert code == 1 and not sent, "an older night's approval deployed after a newer night had run"
+        (Path("site") / "meta.json").write_text("{}", encoding="utf-8")
+        code, _ = night("--runner", "--deploy-to", "production", run_id="106")
+        assert code == 1 and not sent, "a site other than the one the night judged went to production"
+        _runner_site(100)
+        NI.current_branch = lambda: "some-branch"
+        code, _ = night("--runner", "--deploy-to", "production", run_id="106")
+        assert code == 1 and not sent, "production was deployed from a branch other than main"
+        NI.current_branch = lambda: "main"
+        code, _ = night("--runner", "--deploy-to", "production", run_id="106")
+        assert code == 0 and sent == [(NI.PRODUCTION_BRANCH, "https://graniterecord.org")], sent
+        del sent[:]
+        code, _ = night("--runner", "--deploy-to", "preview", run_id="106")
+        assert code == 0 and sent == [(NI.PREVIEW_BRANCH, "https://nightly.graniterecord.pages.dev")] \
+            and NI.PREVIEW_BRANCH != NI.PRODUCTION_BRANCH, sent
+
+        # Fetching: the day's files and the study committees' meetings, whole.
+        Path("db").mkdir(exist_ok=True)
+        code, _ = night("--runner", run_id="107")
+        v = verdict()
+        assert code == 0 and v["fetch"] == "installed", v
+        assert all(r.startswith("installed") for r in v["study_meetings"].values()) and \
+            set(v["study_meetings"]) == set(NI.STUDY_NIGHTLY), v["study_meetings"]
+        assert Path("db/StatStudMeetings.psv").exists() and "StatStudMeetings" in json.loads(
+            Path("db/_manifest.json").read_text(encoding="utf-8")), "the meetings were not swapped in"
+        snap = next(c for c in calls if c[0] == "snapshot_gencourt.py")
+        assert snap[-2:] == ["--into", "."], snap
+
+        # A refusal on file (R2's, brought down by state-down) stops every fetch,
+        # and fails the night so a person hears.
+        Path("archive/refused.json").write_text(
+            '{"at": "2026-09-26T02:21:00", "epoch": 0, "where": "snapshot_gencourt"}',
+            encoding="utf-8")
+        code, _ = night("--runner", run_id="108")
+        log = Path(f"logs/nightly-{today}.log").read_text(encoding="utf-8")
+        assert code == 1 and "FETCH DEFERRED: a refusal is on file" in log and \
+            not any(c[0] == "snapshot_gencourt.py" for c in calls), \
+            "the nightly asked the General Court with a refusal on file"
+        Path("archive/refused.json").unlink()
+
+        # The workflow's last word. A night that never wrote a verdict gets one
+        # that says so, rather than last night's CLEAN; a clean night whose
+        # steps all succeeded stays clean; a step allowed to carry on past its
+        # own failure -- the livestreams -- still makes it NOT CLEAN and fails
+        # the job.
+        code, _ = night("--runner", "--close", "--outcome", "kit-down=failure", run_id="109")
+        v = verdict()
+        assert code == 1 and v["run_id"] == "109" and not v["clean"] and not v["built"], v
+        code, _ = night("--runner", "--no-fetch", run_id="110")
+        assert code == 0 and verdict()["clean"], verdict()
+        code, _ = night("--runner", "--close", "--outcome", "night=success",
+                        "--outcome", "livestreams=skipped", run_id="110")
+        v = verdict()
+        assert code == 0 and v["clean"] and v["built"] and v["steps"]["night"] == "success", v
+        code, _ = night("--runner", "--close", "--outcome", "night=success",
+                        "--outcome", "livestreams=failure", run_id="110")
+        assert code == 1 and not verdict()["clean"], \
+            "a failed step the night was allowed to carry on past left it CLEAN"
+
+        # And none of it is the laptop's.
+        code, _ = night("--dry-run")
+        assert code == 2, "--dry-run without --runner was accepted on the laptop"
+        code, _ = night("--runner", "--deploy")
+        assert code == 2, "--deploy was accepted on GitHub's machine, where production has its own job"
+    finally:
+        os.chdir(here)
+        (NI.run, NI.LOG, NI.QUIET, NI.live_fingerprint, NI.tracked_changes, NI.current_branch,
+         NI.upload_and_check, NI.captions_compared, NI.time, sys.argv, refusal.MARK,
+         refusal.LOCK) = saved
+        for k, val in saved_env.items():
+            if val is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = val
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("gates from archive/census.json, and none is no production; no late-caption "
+                  "check, changed code or an unchanged site is no production; a refusal "
+                  "stops the fetch; no reports; production only this night's build, from main")
+
+
+@check("build", "the weekly fetches replace a file only when it arrived whole", needs=("nightly",))
+def _nightly_weekly(NI):
+    """--runner --weekly takes the committee rosters, the members who have left, the
+    study committees' members and bills, and the committee pages, each into a
+    scratch folder first. fetch_committee_members_db.py replaces its file whole,
+    and fetch_archive_db.py writes straight over db/ and exits 0 when a view
+    fails, so nothing reaches the file the build reads unless it parsed, is
+    not sharply smaller than what it replaces, and -- for a view -- holds the
+    rows the query counted. A published roster is only as whole as this.
+    """
+    import contextlib
+    import io
+    import types
+    from datetime import datetime
+    import refusal
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-weekly-"))
+    saved = (NI.run, NI.LOG, NI.QUIET, NI.time, sys.argv, refusal.MARK, refusal.LOCK)
+    env_keys = ("GITHUB_RUN_ID", "GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY")
+    saved_env = {k: os.environ.get(k) for k in env_keys}
+    how = {"committees": 41, "rows": {}, "refuse": False}
+
+    def member(i, active=True):
+        return {"id": str(i), "name": f"Member {i}", "party_code": "R", "seat_active": active}
+
+    def fake(args, label, cwd=None):
+        NI.say(f"\n--- {label} ---")
+        name, rc = Path(args[0]).name, 0
+        out = Path(args[args.index("--out") + 1]) if "--out" in args else None
+        if name == "fetch_committee_members_db.py":
+            out.write_text(json.dumps({"H01": [member(i) for i in range(1, 11)] + [member(99)],
+                                       "S01": [member(i) for i in range(20, 25)]}), encoding="utf-8")
+        elif name == "fetch_members_db.py":
+            got = json.loads(out.read_text(encoding="utf-8"))
+            got["777"] = {"name": "Newly, Gone", "party": "Democrat"}
+            out.write_text(json.dumps(got), encoding="utf-8")
+        elif name == "fetch_archive_db.py":
+            _runner_fake_views(args, cwd, how["rows"])
+        elif name == "fetch_committees.py":
+            if how["refuse"]:
+                refusal.note("fetch_committees", "HTTPError: HTTP Error 403: Forbidden")
+                rc = 2
+            else:
+                n = how["committees"]
+                out.write_text(json.dumps({"S": [{"code": f"S{i}", "name": f"S {i}", "chair": "A"}
+                                                 for i in range(min(n, 14))],
+                                           "H": [{"code": f"H{i}", "name": f"H {i}", "chair": "B"}
+                                                 for i in range(max(0, n - 14))]}),
+                               encoding="utf-8")
+        NI.say(f"  (0s, exit {rc})")
+        return rc
+
+    def installed():
+        Path("data").mkdir(exist_ok=True)
+        Path("db").mkdir(exist_ok=True)
+        Path("data/committee_members.json").write_text(json.dumps(
+            {"H01": [member(i) for i in range(1, 11)], "S01": [member(i) for i in range(20, 25)]}),
+            encoding="utf-8")
+        Path("former_members.json").write_text(json.dumps({"1": {"name": "Old, One"}}),
+                                               encoding="utf-8")
+        Path("committees.json").write_text(json.dumps(
+            {"S": [{"code": f"S{i}", "name": f"S {i}", "chair": "A"} for i in range(14)],
+             "H": [{"code": f"H{i}", "name": f"H {i}", "chair": "C"} for i in range(27)]}),
+            encoding="utf-8")
+        for v in NI.STUDY_WEEKLY:
+            (Path("db") / f"{v}.psv").write_text("".join(f"{v}|{i}\n" for i in range(30)),
+                                                 encoding="utf-8")
+
+    def week(*extra):
+        NI.LOG = []
+        sys.argv = ["nightly.py", "--runner", "--weekly", *extra]
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+            try:
+                code = NI.main()
+            except SystemExit as e:
+                code = e.code
+        return code, json.loads(NI.WEEKLY_VERDICT.read_text(encoding="utf-8"))
+
+    try:
+        os.chdir(tmp)
+        for k in env_keys:
+            os.environ.pop(k, None)
+        refusal.MARK, refusal.LOCK = tmp / "archive" / "refused.json", tmp / "archive" / ".lock"
+        Path("archive").mkdir()
+        NI.run = fake
+        NI.time = types.SimpleNamespace(sleep=lambda s: None, time=__import__("time").time)
+        installed()
+        code, v = week()
+        assert code == 0 and v["clean"], f"a whole weekly fetch was not taken: {v}"
+        assert len(json.loads(Path("former_members.json").read_text(encoding="utf-8"))) == 2, \
+            "the members who have left were not merged in"
+        report = Path(f"reports/gc-changes-weekly-{datetime.now():%Y-%m-%d}.md").read_text(
+            encoding="utf-8")
+        assert "Member 99" in report and "Newly, Gone" in report and "chair was C, now B" in report, \
+            "the weekly report does not say what changed"
+        assert not Path(".night").exists(), "the scratch folder was left behind"
+
+        # A committee page that came back with one chamber: not swapped in.
+        installed()
+        how["committees"] = 14
+        code, v = week()
+        assert code == 1 and not v["clean"] and v["results"]["committees"].startswith("not taken"), v
+        assert len(json.loads(Path("committees.json").read_text(encoding="utf-8"))["H"]) == 27, \
+            "half the committees replaced the whole list"
+
+        # A study-committee view that came back a tenth of its size: not swapped in.
+        installed()
+        how["committees"], how["rows"] = 41, {"StatStudMembers": 3}
+        code, v = week()
+        assert code == 1 and "not taken" in v["results"]["study StatStudMembers"], v
+        assert (Path("db") / "StatStudMembers.psv").read_text(encoding="utf-8").count("\n") == 30
+
+        # A refusal from the committee pages is recorded and the week is not clean.
+        installed()
+        how["rows"], how["refuse"] = {}, True
+        code, v = week()
+        assert code == 1 and Path("archive/refused.json").exists() and not v["clean"], v
+        code, v = week()
+        assert code == 1 and v["results"] == {"all": v["results"].get("all")} and \
+            str(v["results"]["all"]).startswith("deferred"), "a week asked with a refusal on file"
+    finally:
+        os.chdir(here)
+        NI.run, NI.LOG, NI.QUIET, NI.time, sys.argv, refusal.MARK, refusal.LOCK = saved
+        for k, val in saved_env.items():
+            if val is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = val
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", ("rosters, members who have left, study committees and committee pages each "
+                  "whole or not at all; a shrunken list and a short view kept out; a refusal "
+                  "recorded and honoured; the report names what changed")
+
+
+@check("build", "a laptop that has handed the nightly to GitHub runs none of it, and GitHub's "
+       "own machine is never stood down", needs=("refusal", "nightly", "fetch_archive_db"))
+def _stand_down(R, NI, FA):
+    """archive/runs-in-the-cloud.json, written by `refusal.py --stand-down`, makes the
+    nightly, the daily snapshot, publish.bat and the fetchers whose files
+    GitHub's workflows own refuse on the laptop, each saying why: two machines
+    running one nightly is two writers of every file it makes. It must never
+    apply on GitHub's machine, whatever arrives there. Each script is run far
+    enough to prove it stops, with whatever would ask anybody anything
+    replaced by something that fails the check instead."""
+    import contextlib
+    import io
+    import probe_db
+    here = os.getcwd()
+    tmp = Path(tempfile.mkdtemp(prefix="gr-standdown-"))
+    saved_env = os.environ.get("GITHUB_ACTIONS")
+    saved_argv = sys.argv
+
+    def refuses(fn, argv):
+        sys.argv = argv
+        err = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            try:
+                fn()
+            except SystemExit as e:
+                return e.code, err.getvalue()
+        return None, err.getvalue()
+
+    def asked(*_a, **_k):
+        raise AssertionError("a stood-down script went on to ask for something")
+
+    import fetch_committees as FC
+    import fetch_committee_members_db as FCM
+    import fetch_members_db as FM
+    import snapshot_gencourt as SG
+    saved = (FC.get, SG.run, probe_db.run, probe_db.run_to_file)
+    try:
+        os.chdir(tmp)
+        os.environ.pop("GITHUB_ACTIONS", None)
+        assert R.stood_down() is None and R.stand_down("x") is None, "stood down with no file"
+        Path("archive").mkdir()
+        R.STANDDOWN.write_text('{"since": "2026-09-26T09:00:00"}', encoding="utf-8")
+        code, said = refuses(lambda: R.stand_down("The nightly"), ["x"])
+        assert code == R.STOOD_DOWN == 4 and "2026-09-26" in said and \
+            str(R.STANDDOWN) in said, (code, said)
+        FC.get = SG.run = probe_db.run = probe_db.run_to_file = asked
+        for label, fn, argv in (
+                ("nightly.py", NI.main, ["nightly.py", "--no-fetch"]),
+                ("nightly.py --runner", NI.main, ["nightly.py", "--runner", "--no-fetch"]),
+                ("snapshot_gencourt.py", SG.main, ["snapshot_gencourt.py", "--into", "."]),
+                ("fetch_committees.py", FC.main, ["fetch_committees.py"]),
+                ("fetch_committee_members_db.py", FCM.main, ["fetch_committee_members_db.py"]),
+                ("fetch_members_db.py", FM.main, ["fetch_members_db.py"]),
+                ("fetch_archive_db.py for the study views", FA.main,
+                 ["fetch_archive_db.py", "--only", "StatStudMeetings", "--only", "vStatStudTemp"])):
+            code, said = refuses(fn, argv)
+            assert code == R.STOOD_DOWN, f"{label} did not stand down: {code} {said[-200:]}"
+        assert not Path(".nightly.lock").exists(), "the stood-down nightly took its lock"
+        os.environ["GITHUB_ACTIONS"] = "true"
+        assert R.stood_down() is None and R.stand_down("x") is None, \
+            "GitHub's own machine was stood down by a copy of the file"
+    finally:
+        FC.get, SG.run, probe_db.run, probe_db.run_to_file = saved
+        sys.argv = saved_argv
+        if saved_env is None:
+            os.environ.pop("GITHUB_ACTIONS", None)
+        else:
+            os.environ["GITHUB_ACTIONS"] = saved_env
+        os.chdir(here)
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    assert set(FA.GITHUB_VIEWS) == set(NI.STUDY_NIGHTLY) | set(NI.STUDY_WEEKLY), (
+        "fetch_archive_db.GITHUB_VIEWS and nightly.py's study views disagree about which "
+        "views GitHub owns")
+    bat = Path("publish.bat").read_text(encoding="utf-8", errors="replace")
+    guard = bat.find('if exist "' + str(R.STANDDOWN).replace("/", "\\") + '"')
+    assert guard != -1, "publish.bat does not look for the stand-down file"
+    assert guard < bat.find("python3 build_all.py") and guard < bat.find("call npx wrangler"), \
+        "publish.bat looks for the stand-down file only after it has built or deployed"
+    return "ok", (f"{R.STANDDOWN} stops the nightly, the snapshot, publish.bat and the five "
+                  "fetchers GitHub owns, before any request; never on GitHub's machine")
+
+
+@check("build", "the committee pages fetch stops at a refusal, records it, and says when it found "
+       "nothing", needs=("fetch_committees",))
+def _committees_fetch_stops(FC):
+    """fetch_committees.py printed a 403, asked for the next page two seconds
+    later, recorded nothing, and exited 0 -- and GitHub's weekly job runs it
+    unattended. Now a refusal or the block page ends it with status 2 and a
+    record, and finding nothing is status 1, not a quiet 0."""
+    import contextlib
+    import io
+    import urllib.error
+    import refusal
+    tmp = Path(tempfile.mkdtemp(prefix="gr-cmte-"))
+    saved = (FC.get, refusal.MARK, sys.argv)
+    saved_env = os.environ.get("GITHUB_ACTIONS")
+    os.environ["GITHUB_ACTIONS"] = "true"          # never stood down, whatever this folder holds
+    try:
+        def drive(answers):
+            asked = []
+
+            def get(url):
+                asked.append(url)
+                a = answers[len(asked) - 1]
+                if isinstance(a, BaseException):
+                    raise a
+                return a
+            FC.get = get
+            refusal.MARK = tmp / "refused.json"
+            refusal.MARK.unlink(missing_ok=True)
+            sys.argv = ["fetch_committees.py", "--out", str(tmp / "c.json"), "--delay", "0"]
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                try:
+                    code = FC.main()
+                except SystemExit as e:
+                    code = e.code
+            return code, asked, refusal.MARK.exists()
+
+        code, asked, noted = drive([urllib.error.HTTPError("u", 403, "no", {}, None), "<html></html>"])
+        assert code == 2 and len(asked) == 1 and noted, (code, asked, noted)
+        code, asked, noted = drive(["<h1>Web Page Blocked</h1> Attack ID: 7", "<html></html>"])
+        assert code == 2 and len(asked) == 1 and noted, (code, asked, noted)
+        code, asked, noted = drive(["<html>nothing here</html>", "<html>nor here</html>"])
+        assert code == 1 and len(asked) == 2 and not noted and not (tmp / "c.json").exists(), \
+            (code, asked, noted)
+    finally:
+        FC.get, refusal.MARK, sys.argv = saved
+        if saved_env is None:
+            os.environ.pop("GITHUB_ACTIONS", None)
+        else:
+            os.environ["GITHUB_ACTIONS"] = saved_env
+        shutil.rmtree(tmp, ignore_errors=True)
+    return "ok", "a 403 or the block page ends it with a record; nothing found is exit 1"
+
+
+# ---- the workflows ----------------------------------------------------------------
+#
+# .github/workflows/*.yml run on GitHub, in a public repository, with the
+# keys to R2 and to Cloudflare Pages. Their logs are public. These read them
+# as text, the way they are written -- jobs two spaces in under `jobs:`, a
+# job's keys four, its steps six -- and fail on a file that stops being
+# written that way, because a check that cannot find what it checks has
+# checked nothing.
+
+WORKFLOW_DIR = Path(".github/workflows")
+# The secrets the workflows may name, and nothing else: CLOUD_MOVE.md's list.
+WORKFLOW_SECRETS = {"R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET",
+                    "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID", "YOUTUBE_API_KEY",
+                    "HEALTHCHECKS_URL"}
+
+
+def _workflows():
+    return sorted(WORKFLOW_DIR.glob("*.yml")) + sorted(WORKFLOW_DIR.glob("*.yaml"))
+
+
+def _wf_block(lines, key):
+    """The lines under a top-level `key:`, up to the next top-level key."""
+    out, inside = [], False
+    for ln in lines:
+        if re.match(rf"^{re.escape(key)}:", ln):
+            inside = True
+            out.append(ln)
+            continue
+        if inside and ln and not ln[0].isspace() and not ln.startswith("#"):
+            break
+        if inside:
+            out.append(ln)
+    return out
+
+
+def _wf_jobs(text):
+    """{job: its lines}, for jobs two spaces in under a top-level `jobs:`."""
+    jobs, cur = {}, None
+    for ln in _wf_block(text.splitlines(), "jobs")[1:]:
+        m = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", ln)
+        if m:
+            cur = m.group(1)
+            jobs[cur] = []
+        elif cur is not None:
+            jobs[cur].append(ln)
+    return jobs
+
+
+def _wf_steps(job_lines):
+    """Each step's lines: the items six spaces in under the job's `steps:`."""
+    steps, cur, inside = [], None, False
+    for ln in job_lines:
+        if re.match(r"^    steps:\s*$", ln):
+            inside = True
+            continue
+        if inside and re.match(r"^    \S", ln):
+            inside = False
+        if not inside:
+            continue
+        if ln.startswith("      - "):
+            cur = [ln]
+            steps.append(cur)
+        elif cur is not None:
+            cur.append(ln)
+    return steps
+
+
+def _wf_code(lines):
+    return [ln for ln in lines if not ln.lstrip().startswith("#")]
+
+
+def _wf_environment(job_lines):
+    for i, ln in enumerate(job_lines):
+        m = re.match(r"^    environment:\s*(\S*)\s*$", ln)
+        if m:
+            if m.group(1):
+                return m.group(1).strip("'\"")
+            for nxt in job_lines[i + 1:]:
+                n = re.match(r"^      name:\s*(\S+)", nxt)
+                if n:
+                    return n.group(1).strip("'\"")
+                if re.match(r"^    \S", nxt):
+                    break
+    return ""
+
+
+@check("workflows", "the workflow files parse, pin every action to a commit, and time out")
+def _workflows_parse():
+    """A workflow that does not parse fails on GitHub, at two in the morning, with
+    nobody watching; an action named by a tag runs whatever the tag points at
+    tonight. So each file parses -- with PyYAML where it is installed, and by a
+    careful read of its indentation where it is not -- and every `uses:` names
+    a commit. Every job has a timeout, and the jobs that run nightly.py run on
+    a pinned Windows image: the General Court's database bridge is Windows
+    PowerShell."""
+    files = _workflows()
+    if not files:
+        return "skip", "no .github/workflows here"
+    try:
+        import yaml
+    except ImportError:
+        yaml = None
+    for f in files:
+        text = f.read_text(encoding="utf-8")
+        assert "\t" not in text, f"{f.name} holds a tab, which YAML does not allow for indentation"
+        if yaml is not None:
+            d = yaml.safe_load(text)
+            on = d.get("on", d.get(True)) if isinstance(d, dict) else None   # YAML 1.1 reads `on` as True
+            assert isinstance(d, dict) and isinstance(d.get("jobs"), dict) and d["jobs"] and \
+                isinstance(on, dict) and on, f"{f.name} parses to no triggers or no jobs"
+            for name, job in d["jobs"].items():
+                assert isinstance(job, dict) and job.get("runs-on"), f"{f.name}: job {name} has no runs-on"
+                assert all(isinstance(s, dict) and (("run" in s) != ("uses" in s))
+                           for s in job.get("steps", [])), \
+                    f"{f.name}: a step in {name} has both, or neither, of run and uses"
+        else:
+            for i, ln in enumerate(text.splitlines(), 1):
+                if not ln.strip() or ln.lstrip().startswith("#"):
+                    continue
+                ind = len(ln) - len(ln.lstrip(" "))
+                assert ind % 2 == 0, f"{f.name}:{i} is indented {ind} spaces"
+            assert re.search(r"^on:\s*$", text, re.M) and re.search(r"^jobs:\s*$", text, re.M), \
+                f"{f.name} has no on: or no jobs:"
+        for m in re.finditer(r"^\s*(?:-\s+)?uses:\s*(\S+)", text, re.M):
+            assert re.fullmatch(r"[\w.-]+/[\w.-]+(?:/[\w./-]+)?@[0-9a-f]{40}", m.group(1)), \
+                f"{f.name}: {m.group(1)} is not pinned to a full commit"
+        jobs = _wf_jobs(text)
+        assert jobs, f"{f.name}: no jobs where this check reads them (two spaces in, under jobs:)"
+        for j, jl in jobs.items():
+            code = _wf_code(jl)
+            assert any(re.match(r"^    timeout-minutes:\s*\d+\s*$", ln) for ln in code), \
+                f"{f.name}: job {j} has no timeout-minutes"
+            ro = next((ln.split(":", 1)[1].strip() for ln in code if re.match(r"^    runs-on:", ln)), "")
+            assert ro and "latest" not in ro, f"{f.name}: job {j} runs on {ro or 'nothing'}; pin the image"
+            if any("nightly.py" in ln for ln in code):
+                assert re.fullmatch(r"windows-\d{4}", ro), \
+                    f"{f.name}: job {j} runs nightly.py on {ro}, not a pinned Windows image"
+    return "ok", (f"{len(files)} workflow(s) " + ("parsed by PyYAML" if yaml else
+                  "read by the text check, since PyYAML is not installed")
+                  + "; every action pinned to a commit; every job with a timeout")
+
+
+@check("workflows", "the workflows name only the listed secrets, hand each only to the step that "
+       "uses it, and never print one")
+def _workflows_secrets():
+    """Run logs of a public repository are public. So the workflows name only the
+    secrets CLOUD_MOVE.md lists; each reaches a step only as that step's own
+    environment (never the job's, never an action's input, never interpolated
+    into a script, where a quoting slip prints it); and no line writes out a
+    variable that holds one, or dumps the environment. GitHub masks a secret
+    it knows in its logs; this is for everything that masking does not see."""
+    files = _workflows()
+    if not files:
+        return "skip", "no .github/workflows here"
+    OUT = re.compile(r"\b(echo|printf|print|Write-Output|Write-Host|Write-Information|Out-Host|"
+                     r"Out-File|Add-Content|Set-Content|Tee-Object)\b|>>|"
+                     r"GITHUB_(OUTPUT|ENV|STEP_SUMMARY)", re.I)
+    DUMP = re.compile(r"set\s+-x|Set-PSDebug|printenv|\benv\s*\||"
+                      r"(Get-ChildItem|gci|dir|ls)\s+env:|export\s+-p", re.I)
+    uses = Counter()
+    for f in files:
+        lines = f.read_text(encoding="utf-8").splitlines()
+        code = "\n".join(_wf_code(lines))
+        assert not re.search(r"toJSON\(\s*secrets\s*\)", code, re.I), \
+            f"{f.name} dumps every secret with toJSON(secrets)"
+        assert not re.search(r"secrets\s*\[", code), f"{f.name} reads a secret by a computed name"
+        bound = {"GH_TOKEN", "GITHUB_TOKEN"}
+        for i, ln in enumerate(lines, 1):
+            if ln.lstrip().startswith("#"):
+                continue
+            for m in re.finditer(r"secrets\.([A-Za-z_][A-Za-z0-9_]*)", ln):
+                uses[m.group(1)] += 1
+                assert m.group(1) in WORKFLOW_SECRETS, (
+                    f"{f.name}:{i} names secrets.{m.group(1)}, which is not one of "
+                    f"{', '.join(sorted(WORKFLOW_SECRETS))}")
+                e = re.match(r"^ {10}([A-Z][A-Z0-9_]*): \$\{\{ secrets\.[A-Z0-9_]+ \}\}\s*$", ln)
+                parent = next((p for p in reversed(lines[:i - 1]) if re.match(r"^ {8}\S", p)), "")
+                assert e and parent.strip() == "env:", (
+                    f"{f.name}:{i}: a secret may reach a step only as that step's own env "
+                    "entry, NAME: ${{ secrets.NAME }}")
+                bound.add(e.group(1))
+        for i, ln in enumerate(lines, 1):
+            if ln.lstrip().startswith("#"):
+                continue
+            assert not DUMP.search(ln), f"{f.name}:{i} would print the environment, secrets and all"
+            held = [n for n in bound if re.search(r"(\$env:|\$\{?|%)" + n + r"\b", ln)]
+            assert not (held and OUT.search(ln)), \
+                f"{f.name}:{i} writes out {', '.join(held)}, which holds a secret"
+    assert uses, "no workflow names any secret, which cannot be right for the nightly"
+    return "ok", (f"{sum(uses.values())} uses of {len(uses)} secrets, every one listed, each a "
+                  "step's own env entry, none written out")
+
+
+@check("workflows", "each workflow's token reads the repository and no more, and nothing a "
+       "stranger does can start one")
+def _workflows_permissions():
+    """The token GitHub gives a run can do whatever its permissions say, and a
+    workflow that names none gets the repository's default. So each workflow
+    says `contents: read` at the top and nothing more; a job asks for more only
+    to re-enable its own schedule (`actions: write`, and then it checks out
+    nothing and runs nothing else). And no workflow is started by a pull
+    request, a comment or another workflow: a fork's code must never run with
+    these keys in reach."""
+    files = _workflows()
+    if not files:
+        return "skip", "no .github/workflows here"
+    ALLOWED = {"workflow_dispatch", "schedule"}
+    for f in files:
+        lines = f.read_text(encoding="utf-8").splitlines()
+        on = _wf_block(lines, "on")
+        assert on, f"{f.name} has no top-level on:"
+        started = {m.group(1) for ln in on[1:] if (m := re.match(r"^  ([a-z_]+):", ln))}
+        assert started and started <= ALLOWED, (
+            f"{f.name} is started by {', '.join(sorted(started - ALLOWED)) or 'nothing'}; "
+            "only workflow_dispatch and schedule, never a pull request")
+        top = _wf_block(lines, "permissions")
+        assert top, f"{f.name} sets no top-level permissions, so its token gets the repository's default"
+        grants = [ln.strip() for ln in _wf_code(top[1:]) if ln.strip()]
+        assert grants == ["contents: read"] or top[0].strip() == "permissions: {}", \
+            f"{f.name}'s token asks for {grants or top[0].strip()}; contents: read is all it needs"
+        text = "\n".join(_wf_code(lines))
+        assert not re.search(r"write-all|read-all|id-token", text), \
+            f"{f.name} asks for write-all, read-all or id-token"
+        for j, jl in _wf_jobs("\n".join(lines)).items():
+            for k, ln in enumerate(jl):
+                if not re.match(r"^    permissions:", ln):
+                    continue
+                asks = []
+                for nxt in jl[k + 1:]:
+                    if re.match(r"^      \S", nxt):
+                        asks.append(nxt.strip())
+                    elif nxt.strip() and not nxt.startswith("      "):
+                        break
+                bad = [x for x in asks if x not in ("contents: read", "actions: write")]
+                assert not bad, f"{f.name}: job {j} asks for {', '.join(bad)}"
+                if "actions: write" in asks:
+                    body = "\n".join(_wf_code(jl))
+                    assert "uses:" not in body and "gh api" in body and "/enable" in body \
+                        and "--method PUT" in body, \
+                        f"{f.name}: job {j} holds actions: write and does more than re-enable its schedule"
+    return "ok", (f"{len(files)} workflow(s): contents: read, actions: write only to re-enable a "
+                  "schedule, started only by hand or by the clock")
+
+
+@check("workflows", "production is deployed only by the job behind the production environment, "
+       "after a night that passed, and the nights never overlap", needs=("nightly",))
+def _workflows_production(NI):
+    """The Pages token can publish the site. So it reaches only a step that runs
+    nightly.py --deploy-to, in a job with an environment; production is
+    deployed only by a job in the "production" environment -- where the person
+    is the required reviewer until they decide otherwise -- which needs the
+    night and runs only when the night judged its build publishable. No step
+    runs wrangler itself: nightly.py names the branch and pins the version.
+    Every job that runs a night or the weekly fetches is in the gc-night
+    concurrency group, waiting rather than cancelling, so two never run at
+    once."""
+    files = _workflows()
+    if not files:
+        return "skip", "no .github/workflows here"
+    prod, nights = [], []
+    for f in files:
+        for j, jl in _wf_jobs(f.read_text(encoding="utf-8")).items():
+            code = _wf_code(jl)
+            body = "\n".join(code)
+            env = _wf_environment(code)
+            assert not re.search(r"^\s+[^#\n]*\bwrangler\b", body, re.M), \
+                f"{f.name}: job {j} runs wrangler itself, not through nightly.py"
+            if "--deploy-to production" in body:
+                assert env == "production", \
+                    f"{f.name}: job {j} deploys production outside the production environment"
+                cond = re.search(r"^    if:\s*(.+)$", body, re.M)
+                assert re.search(r"^    needs:\s*\S+", body, re.M) and cond and \
+                    "publishable" in cond.group(1), (
+                        f"{f.name}: job {j} deploys production without needing a night that "
+                        "judged its build publishable")
+                prod.append(f"{f.name}:{j}")
+            for step in _wf_steps(code):
+                st = "\n".join(step)
+                if re.search(r"secrets\.CLOUDFLARE_", st):
+                    assert env and "--deploy-to" in st, (
+                        f"{f.name}: job {j} hands the Pages token to a step that is not a "
+                        "nightly.py --deploy-to in a job with an environment")
+            runs_night = [ln for ln in code if "nightly.py" in ln and "--deploy-to" not in ln
+                          and "--close" not in ln and "python" in ln]
+            if runs_night:
+                nights.append(f"{f.name}:{j}")
+                assert re.search(r"^    concurrency:\s*$", body, re.M) and \
+                    re.search(r"^      group: gc-night\s*$", body, re.M) and \
+                    re.search(r"^      cancel-in-progress: false\s*$", body, re.M), \
+                    f"{f.name}: job {j} runs a night outside the gc-night group, or cancels one"
+    assert prod, "no job deploys production, which cannot be right for the nightly"
+    assert len(nights) >= 2, f"the night and the weekly job are not both found: {nights}"
+    src = Path("nightly.py").read_text(encoding="utf-8")
+    body = src[src.find("def runner_deploy("):src.find("def upload_and_check(")]
+    assert body.find("if branch != REPO_BRANCH:") != -1 and \
+        body.find("if branch != REPO_BRANCH:") < body.find("upload_and_check("), \
+        "runner_deploy sends production without checking the folder is on main"
+    assert "target, base = PRODUCTION_BRANCH, a.base" in body and \
+        "target, base = PREVIEW_BRANCH," in body and NI.PREVIEW_BRANCH != NI.PRODUCTION_BRANCH, \
+        "the preview and production deploys do not name their own branches"
+    assert re.fullmatch(r"wrangler@\d+\.\d+\.\d+", NI.WRANGLER), \
+        f"nightly.py's wrangler is {NI.WRANGLER}, not one pinned version"
+    return "ok", (f"production only from {', '.join(prod)}; the Pages token only in --deploy-to "
+                  f"steps; {len(nights)} jobs share gc-night; wrangler pinned at {NI.WRANGLER}")
+
+
 @check("data", "the nightly is still running, and its last report pull worked")
 def _nightly_logs():
     """The nightly runs from Task Scheduler with nobody watching, so the way to
