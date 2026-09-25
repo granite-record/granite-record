@@ -2972,6 +2972,12 @@ function mountFollow(kind){
   const div=document.createElement("div");
   div.id="followbox";
   div.className="followrow";
+  // BESIDE "CITE THIS PAGE", in the row shell.py writes above the heading,
+  // where there is one (every page built since 24 September): one row of
+  // quiet controls rather than two stacked. A page from an older build has no
+  // row, and Follow makes its own as it always did.
+  const acts=document.getElementById("pageacts");
+  if(acts)div.className="followin";
   div.innerHTML=`<details class="follow"><summary>Follow</summary>
     <div class="followpane">
       <p><b>By RSS</b>, in any feed reader: ${esc(FOLLOWS[kind]||"what is new here")}.
@@ -2982,7 +2988,8 @@ function mountFollow(kind){
         <button type="button" class="link" data-copyfeed="1">Copy the address</button>
         <a href="${esc(href)}">Open the feed</a></p>
     </div></details>`;
-  res.before(div);
+  if(acts)acts.insertBefore(div,acts.firstChild);
+  else res.before(div);
 }
 document.addEventListener("click",e=>{
   const b=e.target.closest&&e.target.closest("[data-copyfeed]");
@@ -4865,12 +4872,63 @@ document.addEventListener("keydown",e=>{
 // a true date for the page rather than "Accessed ." -- and a reader who has
 // JavaScript gets the day they actually read it, which is what every one of
 // those four formats means by "accessed".
+//
+// IN ONE FORM, "24 Sept. 2026", whatever language the browser is set to (the
+// person, 24 September). This was toLocaleDateString(undefined, ...), so an
+// English citation read "24 septembre 2026" in a French browser and
+// "September 24, 2026" in an American one. CITE_MONTHS is shell.py's list,
+// and preflight holds the two to one answer for every month.
+const CITE_MONTHS=["Jan.","Feb.","Mar.","Apr.","May","June","July","Aug.",
+  "Sept.","Oct.","Nov.","Dec."];
+function citeDay(d){ return d.getDate()+" "+CITE_MONTHS[d.getMonth()]+" "+d.getFullYear(); }
 (function(){
   var els=document.querySelectorAll(".citeday");
-  if(!els.length)return;
-  var s;
-  try{ s=new Date().toLocaleDateString(undefined,
-        {year:"numeric",month:"long",day:"numeric"}); }
-  catch(e){ return; }
+  var s=citeDay(new Date());
   for(var i=0;i<els.length;i++)els[i].textContent=s;
+  // The Copy buttons are written hidden, so a page read without JavaScript
+  // offers none that does nothing; here they work, so here they show.
+  var bs=document.querySelectorAll("[data-citecopy]");
+  for(var j=0;j<bs.length;j++)bs[j].hidden=false;
 })();
+
+// COPY, beside each form of "Cite this page" (the person, 24 September).
+// writeText is called inside the click itself, which is what lets a browser
+// allow it. Where it is refused or absent the form's text is selected
+// instead, so Ctrl+C does the rest, and either way the result is said in the
+// block's status line for a reader who cannot see the button change.
+document.addEventListener("click",e=>{
+  const b=e.target.closest&&e.target.closest("[data-citecopy]");
+  if(!b)return;
+  const form=document.getElementById(b.getAttribute("data-citecopy"));
+  if(!form)return;
+  const name=b.getAttribute("data-citename")||"";
+  const st=document.getElementById("citestate");
+  const say=m=>{if(st)st.textContent=m;};
+  // A form's text as it reads: BibTeX's line breaks are real ones, and a
+  // no-break space is pasted as a space.
+  const text=String(form.textContent||"").replace(/ /g," ").trim();
+  const done=()=>{
+    b.textContent="Copied";
+    say(`The ${name} citation is copied.`);
+    setTimeout(()=>{b.textContent="Copy";},2000);
+  };
+  const pick=()=>{
+    try{
+      const sel=window.getSelection&&window.getSelection();
+      const r=document.createRange&&document.createRange();
+      if(sel&&r){r.selectNodeContents(form);sel.removeAllRanges();sel.addRange(r);}
+    }catch(_){}
+    say(`The ${name} citation is selected: press Ctrl+C, or Command+C on a Mac, to copy it.`);
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(text).then(done,pick);
+  else pick();
+});
+// ONE PANE OPEN AT A TIME in the row above a heading. Follow's pane and the
+// citation's open over the page from the same corner, so opening one shuts
+// the other rather than stacking one on top of it.
+document.addEventListener("toggle",e=>{
+  const d=e.target;
+  if(!d||!d.open||!d.closest||!d.closest("#pageacts"))return;
+  document.querySelectorAll("#pageacts details[open]").forEach(o=>{if(o!==d)o.open=false;});
+},true);

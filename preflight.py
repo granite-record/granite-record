@@ -1967,6 +1967,159 @@ def _cite_one_stop():
     return "ok", f"{len(closes)} endings from the record close with one stop"
 
 
+# app.js on its own, in node: what it writes into a page's .citeday slots in a
+# browser whose language is not English, citeDay for each date shell.py is
+# asked about, and the Copy button with the clipboard working, refusing and
+# absent. Every value the page would read is a stand-in with only the parts
+# the code touches.
+_CITE_APP = r"""
+require("./stub.js");
+const fs = require("fs");
+const on = {};
+document.addEventListener = (t, f) => { (on[t] = on[t] || []).push(f); };
+const SLOTS = [{textContent: "1 January 2000"}, {textContent: "1 January 2000"}];
+const BTNS = [{hidden: true}, {hidden: true}];
+document.querySelectorAll = s => s === ".citeday" ? SLOTS : s === "[data-citecopy]" ? BTNS : [];
+// A browser set to French. A citation that asks the locale says so.
+Date.prototype.toLocaleDateString = () => "24 septembre 2026";
+Date.prototype.toLocaleString = () => "24/09/2026";
+let s;
+try { s = (0, eval)(fs.readFileSync("./app.js", "utf8") + ";({citeDay})"); }
+catch (e) { console.log("LOAD " + e.constructor.name + ": " + e.message); process.exit(1); }
+const out = {slots: SLOTS.map(x => x.textContent), shown: BTNS.map(b => !b.hidden),
+  today: s.citeDay(new Date()),
+  days: JSON.parse(fs.readFileSync("./dates.json", "utf8"))
+    .map(([y, m, d]) => s.citeDay(new Date(y, m - 1, d)))};
+const form = {textContent: "@misc{bill-2026-hb1,\n  title = {A bill},\n}\n"};
+const st = {textContent: ""};
+document.getElementById = id => id === "cite-bibtex" ? form : id === "citestate" ? st : null;
+const btn = {textContent: "Copy",
+  getAttribute: a => ({"data-citecopy": "cite-bibtex", "data-citename": "BibTeX"})[a] || null};
+btn.closest = q => q === "[data-citecopy]" ? btn : null;
+const click = async () => {
+  st.textContent = "";
+  for (const f of on.click || []) { try { f({target: btn}); } catch (_) {} }
+  for (let i = 0; i < 5; i++) await new Promise(r => setImmediate(r));
+  return st.textContent;
+};
+let picked = null;
+window.getSelection = () => ({removeAllRanges() {}, addRange(r) { picked = r.node; }});
+document.createRange = () => ({selectNodeContents(n) { this.node = n; }});
+(async () => {
+  let wrote = null;
+  navigator.clipboard = {writeText: async t => { wrote = t; }};
+  out.copied = {said: await click(), wrote, picked: picked === form};
+  navigator.clipboard = {writeText: async () => { throw new Error("NotAllowedError"); }};
+  picked = null;
+  out.refused = {said: await click(), picked: picked === form};
+  delete navigator.clipboard;
+  picked = null;
+  out.absent = {said: await click(), picked: picked === form};
+  console.log(JSON.stringify(out));
+})().catch(e => { console.log("RUN " + e.message); process.exit(1); });
+"""
+
+
+@check("frontend", "Cite this page sits above the heading, gives one form of date, and each form copies")
+def _cite_up_and_copied():
+    """The person, 24 September: move "Cite this page" up near the title and
+    add a Copy button; and one fixed date format in citations, "24 Sept.
+    2026", whatever the browser's language.
+
+    The block sat between the record and the footer, and a citation had to be
+    dragged across with the mouse. app.js filled its date with
+    toLocaleDateString, so one page cited "24 September 2026" in one browser,
+    "September 24, 2026" in another and "24 septembre 2026" in a third, and
+    the build's fallback date came from strftime in the build machine's
+    locale.
+
+    So: shell.page must write the block ABOVE the results slot and nowhere
+    below it, inside the row app.js puts Follow in, with a Copy button per
+    form, each naming a form that exists, hidden until app.js shows it;
+    BibTeX's line breaks must be real ones, since the form's text is what is
+    copied; shell.cite_day and app.js's citeDay must agree on every month in
+    a browser set to French; and the Copy click must hand the form's text to
+    the clipboard and say so, or select it and say that, when the clipboard
+    refuses or is not there.
+    """
+    import datetime as _dt
+    import html as _html
+    try:
+        import shell as S
+    except ImportError:
+        return "skip", "shell.py will not import"
+    if not Path("bills.html").exists():
+        return "skip", "bills.html is not here"
+    page = S.page(S.template(), path="/bill/2026/hb1.html", base="https://graniterecord.org",
+                  title="HB 1 (2026): relative to the state budget. | Granite Record",
+                  description="A bill.")
+    row, slot = page.find('<div class="pageacts" id="pageacts">'), page.find('<div id="results">')
+    assert 0 <= row < slot, (
+        "Cite this page is not in the row above the results slot "
+        f"(row at {row}, slot at {slot})")
+    assert page.count('class="pcite"') == 1 and page.find('class="pcite"') < slot, (
+        "Cite this page is drawn below the record, or twice")
+    assert "citewrap" not in page, "the old block at the foot of the page is still written"
+    block = page[row:slot]
+    forms = re.findall(r'<dt>(\w+)<button type="button" class="citecopy" '
+                       r'data-citecopy="([\w-]+)" data-citename="\w+" '
+                       r'aria-label="Copy the \w+ citation" hidden>Copy</button></dt>'
+                       r'<dd id="([\w-]+)">', block)
+    assert [f[0] for f in forms] == ["MLA", "APA", "Chicago", "BibTeX"] and \
+        all(f[1] == f[2] for f in forms), (
+        f"each form needs a hidden Copy button naming its own text: {forms}")
+    assert 'id="citestate" role="status" aria-live="polite"' in block, (
+        "nothing announces a copy to a reader who cannot see the button change")
+    bib = re.search(r'<dd id="cite-bibtex"><code>(.*?)</code></dd>', block, re.S)
+    assert bib and "<br" not in bib.group(1) and "&nbsp;" not in bib.group(1) \
+        and bib.group(1).count("\n  ") == 4, (
+        "BibTeX's line breaks are markup, so a copy of its text is one line")
+    today = S.cite_day(_dt.date.today())
+    assert f'<span class="citeday">{today}</span>' in block, (
+        f"the fallback date is not the build day in the one form ({today})")
+
+    dates = [(2026, m, 24) for m in range(1, 13)] + [(2027, 1, 1), (2026, 9, 30)]
+    want = [S.cite_day(_dt.date(*d)) for d in dates]
+    assert want[8] == "24 Sept. 2026" and want[4] == "24 May 2026" \
+        and want[-2] == "1 Jan. 2027", f"shell.cite_day writes {want[8]!r}, {want[4]!r}, {want[-2]!r}"
+    node = shutil.which("node")
+    if not node:
+        return "skip", "node is not installed"
+    root = Path(tempfile.mkdtemp())
+    try:
+        (root / "app.js").write_text(Path("app.js").read_text(encoding="utf-8"), encoding="utf-8")
+        (root / "stub.js").write_text(Path("dom_stub.js").read_text(encoding="utf-8"),
+                                      encoding="utf-8")
+        (root / "dates.json").write_text(json.dumps(dates), encoding="utf-8")
+        (root / "go.js").write_text(_CITE_APP, encoding="utf-8")
+        r = _run([node, "go.js"], cwd=root, capture_output=True, text=True, timeout=60)
+        said = (r.stdout + r.stderr).strip()
+        assert r.returncode == 0 and said, (said.splitlines() or ["no output"])[-1][:300]
+        got = json.loads(said.splitlines()[-1])
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    assert got["days"] == want, (
+        "app.js and shell.py write a citation's date differently: "
+        + "; ".join(f"{a} / {b}" for a, b in zip(got["days"], want) if a != b))
+    today_js = got["today"]
+    assert got["slots"] == [today_js] * 2 and "septembre" not in today_js \
+        and re.fullmatch(r"\d{1,2} (%s) \d{4}" % "|".join(
+            re.escape(m) for m in S.CITE_MONTHS), today_js), (
+        f"in a French browser the citation's date reads {got['slots']}")
+    assert got["shown"] == [True, True], "app.js does not show the Copy buttons"
+    c = got["copied"]
+    assert c["wrote"] == "@misc{bill-2026-hb1,\n  title = {A bill},\n}" \
+        and c["said"] == "The BibTeX citation is copied." and not c["picked"], (
+        f"Copy with a working clipboard: {c}")
+    for case in ("refused", "absent"):
+        c = got[case]
+        assert c["picked"] and c["said"].startswith("The BibTeX citation is selected"), (
+            f"Copy with the clipboard {case}: {c}")
+    return "ok", (f"above the heading with {len(forms)} Copy buttons; "
+                  f"dates read {want[8]!r} in shell.py and app.js alike, French browser "
+                  "or not; the clipboard copies, or the form is selected and it says so")
+
+
 @check("frontend", "the search panel's way out leads to a page the build writes")
 def _find_all_results():
     """find.js's last row is on all 49,000 pages, and it points at one page.

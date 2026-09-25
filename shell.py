@@ -90,10 +90,27 @@ def template(site=Path("site")):
 
 BRAND = "Granite Record"
 
+# ONE FORM OF DATE IN A CITATION, whatever language the reader's browser is
+# set to: "24 Sept. 2026", the person's own example (24 September). app.js
+# wrote the reader's date with toLocaleDateString, so the same page cited
+# "24 September 2026" in one browser, "September 24, 2026" in another and
+# "24 septembre 2026" in a third -- inside an English citation. The months
+# are MLA's abbreviations, which is where "Sept." comes from; May, June and
+# July are not shortened. app.js's CITE_MONTHS is the same list, and
+# preflight holds the two to the same answer for every month.
+CITE_MONTHS = ("Jan.", "Feb.", "Mar.", "Apr.", "May", "June", "July", "Aug.",
+               "Sept.", "Oct.", "Nov.", "Dec.")
+
+
+def cite_day(d):
+    """24 Sept. 2026: a citation's date, the same on every machine."""
+    return f"{d.day} {CITE_MONTHS[d.month - 1]} {d.year}"
+
+
 # The day the site was built, as the fallback date in a citation. A file on
 # a CDN cannot know when it is read; app.js puts the reader's own date in
 # where it can, and this is what a reader without JavaScript is given.
-BUILT = datetime.date.today().strftime("%d %B %Y").lstrip("0")
+BUILT = cite_day(datetime.date.today())
 
 # The punctuation a name can end on: full stops, spaces and closing double
 # quotes, in whatever order the source typed them. Not an apostrophe: 1994's
@@ -154,7 +171,19 @@ def cite_block(path, title, base, built=""):
     app.js fills every .citeday with the reader's own date; the build date is
     written in as the fallback so a reader without JavaScript gets something
     true about the page rather than "Accessed ." -- and the note says which
-    date it is, so neither reader is misled.
+    date it is, so neither reader is misled. Both are written by cite_day, in
+    one form whatever the reader's language.
+
+    UP BY THE TITLE, WITH A COPY BUTTON (the person, 24 September). It sat
+    between the record and the footer, below everything a reader scrolls
+    past, and a citation had to be dragged across with the mouse. It is a
+    quiet control in the row above the page's heading now -- the row Follow
+    opens from on a record's page, which app.js puts beside it -- and each
+    form has its own Copy. The buttons are written hidden and app.js shows
+    them, so a page read without JavaScript offers no button that does
+    nothing. The form's text is its <dd>'s text, which is why BibTeX carries
+    real line breaks inside a <code> that keeps them, rather than <br> and
+    &nbsp;, which a copy of the text would lose.
     """
     url = address(base, path)
     # The record's name, without the browser tab's " | Granite Record".
@@ -171,17 +200,22 @@ def cite_block(path, title, base, built=""):
                 f'from {E(url)}'),
         ("Chicago", f'{BRAND}. &ldquo;{E(closed)}&rdquo; Accessed {day}. '
                     f'{E(url)}.'),
-        ("BibTeX", f'<code>@misc{{{E(key)},<br>&nbsp;&nbsp;title = '
-                   f'{{{E(bib)}}},<br>&nbsp;&nbsp;howpublished = {{{BRAND}}},'
-                   f'<br>&nbsp;&nbsp;url = {{{E(url)}}},'
-                   f'<br>&nbsp;&nbsp;note = {{Accessed {day}}}<br>}}</code>'),
+        ("BibTeX", f'<code>@misc{{{E(key)},\n  title = {{{E(bib)}}},\n'
+                   f'  howpublished = {{{BRAND}}},\n  url = {{{E(url)}}},\n'
+                   f'  note = {{Accessed {day}}}\n}}</code>'),
     ]
-    rows = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in forms)
+    # One id per form, so the button names the text it copies; there is one
+    # of these blocks on a page.
+    rows = "".join(
+        f'<dt>{k}<button type="button" class="citecopy" '
+        f'data-citecopy="cite-{k.lower()}" data-citename="{k}" '
+        f'aria-label="Copy the {k} citation" hidden>Copy</button></dt>'
+        f'<dd id="cite-{k.lower()}">{v}</dd>' for k, v in forms)
     # .pcite, NOT .cite. `.cite` is the docket line's citation span in app.js
     # ("HJ 7, page 55"), and app.css gives it white-space:nowrap -- which this
     # <details> inherited, so above 720px every citation ran on one line past
     # its box and opening it made the whole page scroll sideways.
-    return ('<section class="citewrap"><details class="pcite">'
+    return ('<div class="pageacts" id="pageacts"><details class="pcite">'
             '<summary>Cite this page</summary>'
             '<div class="citebody">'
             '<p class="citenote">Granite Record indexes the General '
@@ -190,7 +224,11 @@ def cite_block(path, title, base, built=""):
             'here links to what it is drawn from. The date below is the day '
             'the page was read.</p>'
             f'<dl class="citeforms">{rows}</dl>'
-            '</div></details></section>')
+            # Where a copy is announced: "The MLA citation is copied", or,
+            # where the browser would not copy, that it is selected instead.
+            '<p class="citestate" id="citestate" role="status" '
+            'aria-live="polite"></p>'
+            '</div></details></div>')
 
 
 def canon(path):
@@ -508,8 +546,11 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
     elif data_url:
         block = f'<meta name="gr-data" content="{E(data_url)}">\n'
 
-    # Below the record and above the footer, outside #results so app.js
-    # rewriting the page cannot take it away.
+    # Above the record, by its heading, and outside #results so app.js
+    # rewriting the page cannot take it away. It was below the record and
+    # above the footer until 24 September. Every builder fills the slot by
+    # replacing '<div id="results"></div>' whole, so the block goes in front
+    # of the slot's opening tag and leaves that string as they expect it.
     if cite:
         # NOT `title`, which is the browser tab's version and has already been
         # elided to fit: "prohibiting the use of state funds for new…". Every
@@ -527,11 +568,11 @@ def page(t, *, path, title, description, base, globals=None, noscript="",
         # everything else on the page it gets pasted into someone else's work
         # and outlives the visit. It is the one string here worth carrying
         # separately.
-        out = out.replace('<footer><div class="in">',
-                          cite_block(canonical or path,
-                                     cite_title or og_title or title,
-                                     base, BUILT)
-                          + '<footer><div class="in">', 1)
+        slot = '<div id="results">'
+        assert slot in out, "the template has no results slot for the citation to sit above"
+        out = out.replace(slot, cite_block(canonical or path,
+                                           cite_title or og_title or title,
+                                           base, BUILT) + slot, 1)
 
     out = out.replace(
         NEEDS["script"],
