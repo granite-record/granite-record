@@ -1931,7 +1931,7 @@ def station_for_floor(f, bid, marks):
     return st
 
 
-def withhold_late_captions(segs, marks, work):
+def withhold_late_captions(segs, marks, work, summary=caption_span.SUMMARY):
     """Take every time read off a caption track that is out of step with its
     recording out of both sources, before a station is drawn from either.
 
@@ -1946,12 +1946,39 @@ def withhold_late_captions(segs, marks, work):
     the start was not identified, which is true. The consent calendar goes
     too -- "never named on the recording" is read off the same track, and a
     track that stops short of its recording may simply not reach the bill.
+
+    ON THE NIGHTLY'S MACHINE there are no caption files, and `summary` --
+    caption_spans.json, written where they are -- answers for each recording
+    instead. With a summary in use, a recording that has times and neither a
+    caption file nor an entry is withheld as well: nothing here can say its
+    track is in step, and a summary that fell behind must cost a "start not
+    identified", never a start an hour early.
     """
     vids = set(segs) | {k for k in marks if not k.startswith("_")}
-    late, compared, undated = caption_span.out_of_step(vids, work)
-    said = sum(len(c) for v in late for c in (marks.get(v) or {}).values())
-    placed = sum(1 for v in late for s in (segs.get(v) or []) if s.get("located"))
-    for v in late:
+    spans = caption_span.load_summary(summary)
+    rep = {}
+    late, compared, undated = caption_span.out_of_step(vids, work, spans=spans,
+                                                       report=rep)
+    unknown = rep.get("unsummarised") or []
+    # A caption job that did not rewrite the summary leaves a handful of new
+    # recordings unknown, and withholding them is the right answer. Most of
+    # them unknown is not a summary that fell behind -- it is an empty one, or
+    # another machine's -- and a site with every timestamp withdrawn is a
+    # failed build, not a cautious one.
+    if spans is not None and len(unknown) > max(25, len(vids) // 20):
+        raise SystemExit(
+            f"{summary} knows {rep.get('from_summary', 0):,} of the "
+            f"{len(vids):,} recordings with times, and {len(unknown):,} have "
+            f"neither an entry there nor a caption file under {work}/. That is "
+            "the wrong summary or an empty one. Rewrite it where the captions "
+            "are: python3 caption_span.py --write")
+
+    def read_off(vs):
+        return (sum(len(c) for v in vs for c in (marks.get(v) or {}).values()),
+                sum(1 for v in vs for s in (segs.get(v) or []) if s.get("located")))
+    said, placed = read_off(late)
+    u_said, u_placed = read_off(unknown)
+    for v in list(late) + list(unknown):
         segs.pop(v, None)
         marks.pop(v, None)
         for side in ("_absent", "_sequence"):
@@ -1959,6 +1986,15 @@ def withhold_late_captions(segs, marks, work):
                 marks[side].pop(v, None)
     print(f"caption tracks: {compared:,} recordings compared with the length "
           "YouTube published")
+    if rep.get("from_summary"):
+        print(f"  {rep['from_summary']:,} of them answered by {summary}: no "
+              f"caption file for them under {work}/ on this machine")
+    if unknown:
+        print(f"  {len(unknown):,} have times and neither a caption file under "
+              f"{work}/ nor an entry in {summary}, so nothing here says their "
+              f"captions are in step; their {u_said:,} stated boundaries and "
+              f"{u_placed:,} clustered placements are withheld: "
+              f"{', '.join(unknown[:6])}{' ...' if len(unknown) > 6 else ''}")
     # Nothing compared is not the same as nothing late, and the two print
     # differently.
     if vids and not compared:
@@ -7233,6 +7269,9 @@ def parse_args():
     # it at all -- and then reported the cause as a session-year mismatch,
     # which sent the diagnosis in the wrong direction entirely.
     ap.add_argument("--segments", default="work")
+    ap.add_argument("--caption-spans", default=caption_span.SUMMARY,
+                    help="where each recording's captions stop, for a machine "
+                         "without the caption files (caption_span.py --write)")
     ap.add_argument("--reports", default="committee_reports.json")
     ap.add_argument("--vetoes", default="veto_messages.json",
                     help="governor's veto messages, from extract_vetoes.py; "
@@ -7301,7 +7340,7 @@ def load_transcripts(a, procs, prows):
               f"from {mp2.name}")
     # Both of the above are read off captions, and a caption track can be an
     # hour out of step with its recording.
-    withhold_late_captions(segs, marks, a.segments)
+    withhold_late_captions(segs, marks, a.segments, a.caption_spans)
     # A silent mismatch here looks exactly like poor alignment accuracy: every
     # hearing reads "start time not identified" because the transcripts are for
     # a different set of videos than the manifest now points at.
