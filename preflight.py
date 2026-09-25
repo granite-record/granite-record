@@ -4732,6 +4732,36 @@ def _journey_reads(build_site_v2):
         ev("S", "1999-10-22", "Sen. Below Floor Amendment {2166} New Title RC, (15-8) AA, OT3rdg, "
            "MA, VV", "amendment"))[1]],
          [("1999-03-30", "H", "nonconcurred"), ("1999-10-22", "S", "passed")], "HB109 1999")
+    # A DECISION RECONSIDERED ON A LATER DAY says so. HB 628 of 1994's Senate
+    # refused a conference and, five days later, reconsidered and acceded;
+    # SCR 6 of 2006's House killed it 149-147 and a week later reconsidered.
+    want(run("HB628", ev("S", "1994-05-12", "SEN REFUSED TO ACCEDE TO REQ FOR CONF COMM, SEN "
+                                            "MACDONALD MA VV", "other"),
+             ev("S", "1994-05-17", "SEN MACDONALD MOVED TO RECONSIDER REQ TO ACCEDE, MA VV"),
+             ev("S", "1994-05-17", "SEN ACCEDED TO REQ FOR CONF COMM, SEN MACDONALD MA VV"))[1],
+         [("1994-05-12", "S", "conf_refused", "Refused a committee of conference on a voice "
+           "vote, reconsidered on 17 May")], "HB628 1994")
+    want(run("SCR6", ev("H", "2006-04-12", "ITL, MA, RC (149-147)"),
+             ev("H", "2006-04-19", "(Rep. Graham) Reconsideration, MA, Div (174-160)", "other"),
+             ev("H", "2006-04-19", "ITL, ML, RC (144-190)"),
+             ev("H", "2006-04-19", "Passed with AM {1725h}, MA, RC (198-140)"))[1],
+         [("2006-04-12", "H", "killed", "Killed, 149–147, reconsidered on 19 Apr"),
+          ("2006-04-19", "H", "passed", "Adopted with an amendment, 198–140")], "SCR6 2006")
+    # Not a decision the motion does not name, nor, where it names none, one
+    # the chamber has voted past: HB 1025 of 1992's House reconsidered its
+    # request for a new conference, and HR 1 of 1997's an amendment to its
+    # rules.
+    want([x[3] for x in run("HB1025", ev("H", "1992-05-06", "CONF COMM REPORT ADOPTED VV"),
+                            ev("H", "1992-05-07", "REP GROSS MOVED TO RECONSIDER REQ FOR NEW "
+                               "CONF COMM, MA VV; REP GROSS MOVED TO DISCHARGE CONF COMM & REQ "
+                               "NEW CONF COMM, ML VV"))[1]],
+         ["Adopted the conference report on a voice vote"], "HB1025 1992")
+    want([x[3] for x in run("HR1", ev("H", "1996-12-04", "29(B), AA VV; AM ADOPTED VV; PASSED WITH "
+                                                         "AM VV"),
+                            ev("H", "1997-01-08", "RULES COMM AM<0024>, AA VV", "amendment"),
+                            ev("H", "1997-01-29", "SEC 35(B), AL VV; SEC 45(C), AL RC(186-186); "
+                               "REP CHAMPAGNE MOVED TO RECONSIDER, MA RC(211-160)"))[1]],
+         ["Adopted with an amendment on a voice vote"], "HR1 1997")
     # A semicolon in a list of amendments is not the end of the motion: HB
     # 1636 of 2018's refusal lost its count, and the failed motion before it
     # read as a refusal too.

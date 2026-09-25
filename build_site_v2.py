@@ -3929,7 +3929,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
     # referral it waives (SB 482 of 2026), or days after it.
     waived = {((e.get("body") or "")[:1].upper(), e.get("date") or "")
               for e in evs if J_WAIVED.search(e.get("raw") or "")}
-    pending = {}
+    pending, voted = {}, set()
     for e, raw in _j_rows(evs):
         body = (e.get("body") or "").upper()[:1]
         # THE JOURNAL A ROW CITES NAMES THE CHAMBER THAT ACTED. "PASSED VV;
@@ -4027,7 +4027,13 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
                 elif (body, date) not in waived:
                     pending[(body, date)] = to
                 continue
+            _j_reconsidered(steps, body, date, seg, body not in voted)
             got = _j_decide(seg, bid, rcs, date, body)
+            if got is None or got == "amended":
+                # A vote since the chamber's last decision, which a
+                # reconsideration naming nothing is then about.
+                if _j_has_outcome(seg) and not J_RECONSIDER.search(seg):
+                    voted.add(body)
             if got is None:
                 continue
             if got == "amended":
@@ -4113,6 +4119,7 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
                 if got["act"] == "unsigned" and any(s["act"] == "override" for s in steps):
                     continue
             st["_row_day"] = date
+            voted.discard(st["body"])
             if st["act"] == "passed" and (body, date) in pending:
                 st["act"], st["to"] = "referred", pending.pop((body, date))
             steps.append(st)
@@ -4189,8 +4196,11 @@ def journey(narr, bid, rcs=(), chapter="", law_line="", term=""):
                     "unsigned": ("Became law without signature", "unsigned")}[st["act"]]
             else:
                 st["text"], st["short"] = _j_words(st, bid)
+        if st.get("reconsidered"):
+            st["text"] += ", reconsidered on " + _j_prose_date(
+                st["reconsidered"], st["reconsidered"][:4] != st["date"][:4])
         for k in ("vote", "amended", "third", "to", "conf", "rule", "adjourned",
-                  "unanswered", "intro_adopt", "short_of"):
+                  "unanswered", "intro_adopt", "short_of", "reconsidered"):
             st.pop(k, None)
     return intro, steps
 
@@ -4225,6 +4235,66 @@ def _j_answers_after(steps, bid):
             continue
         out.insert(last, out.pop(i))
     return out
+
+
+# A RECONSIDERATION CARRIED ON A LATER DAY. _j_settle keeps the last of a
+# day's decisions, so a decision reconsidered the same day is gone; one
+# reconsidered days later stood until then, and is said to have been undone:
+# "SEN REFUSED TO ACCEDE TO REQ FOR CONF COMM" on 12 May and "SEN MACDONALD
+# MOVED TO RECONSIDER REQ TO ACCEDE, MA VV" on the 17th (HB 628 of 1994) read
+# as a refusal followed by a conference report, with no word between.
+J_RECONSIDER = re.compile(r"\breconsider\w*", re.I)
+# Not the notice of one, the order of the day it is set for, or its debate.
+J_RECON_NOT = re.compile(r"notice|special\s+order|limit\w*\s+debate", re.I)
+# Where the motion names what it reconsiders, the decision must be that one:
+# "REP GROSS MOVED TO RECONSIDER REQ FOR NEW CONF COMM" (HB 1025 of 1992) is
+# the House's accession to a new conference, which is no line here, and not
+# its adoption of the report the day before.
+J_RECON_NAMES = [
+    (re.compile(r"acced|\breq\w*\.?\s+(?:for|to)\s+(?:a\s+)?(?:new\s+)?(?:conf|c\s?of\s?c)", re.I),
+     {"conf_refused"}),
+    (re.compile(r"non-?\s?conc", re.I), {"nonconcurred"}),
+    (re.compile(r"\bconc", re.I), {"concurred"}),
+    (re.compile(r"conf\w*\.?\s*comm\w*\.?\s*rep|conference\s+report", re.I),
+     {"conf_adopted", "conf_rejected"}),
+    (re.compile(r"third\s+reading|3rd\s+r|\bpass|\bOTP|ought\s+to\s+pass", re.I),
+     {"passed", "referred"}),
+    (re.compile(r"inexpedient|\bITL\b|\bkill", re.I), {"killed"}),
+    (re.compile(r"\btabl", re.I), {"tabled"}),
+    (re.compile(r"interim\s+study", re.I), {"study"})]
+# Where the naming stops: its vote, or the chamber's code for the outcome.
+J_RECON_END = re.compile(r"\b(?:MA|MF|ML|AA|AF|AL|VV)\b|\b(?:RC|DV|DIV|Division)(?![A-Za-z])|"
+                         r"\b(?:adopted|failed|lost|carried)\b", re.I)
+
+
+def _j_reconsidered(steps, body, date, seg, last=True):
+    """Mark the chamber's last decision reconsidered where `seg` is a
+    reconsideration carried on a later day than it -- of that decision.
+
+    One that names nothing reconsiders the last vote the chamber took, which
+    is the decision only where nothing was voted on since (`last`): "REP
+    CHAMPAGNE MOVED TO RECONSIDER, MA RC(211-160)" on HR 1 of 1997 is the
+    House taking up again an amendment to its rules it had just rejected
+    186-186, not the rules it adopted in December."""
+    rc = J_RECONSIDER.search(seg or "")
+    if not rc or J_RECON_NOT.search(seg[:rc.start()]):
+        return
+    o = J_SUSP_CODE.search(seg, rc.end()) or J_SUSP_WORD.search(seg, rc.end())
+    if not o or not re.match(r"MA|AA|adopted|carried", o.group(0), re.I):
+        return
+    mine = [s for s in steps if s["body"] == body]
+    if not mine or not mine[-1]["date"] or not date or mine[-1]["date"] >= date:
+        return
+    end = J_RECON_END.search(seg, rc.end())
+    named = re.sub(r"(?i)\([^)]*\)|\b(?:motion|the|of|to|on|by|its|vote|action|whereby)\b|"
+                   r"[^A-Za-z]+", " ", seg[rc.end():end.start() if end else len(seg)]).strip()
+    if named:
+        acts = next((a for rx, a in J_RECON_NAMES if rx.search(named)), set())
+        if mine[-1]["act"] not in acts:
+            return
+    elif not last:
+        return
+    mine[-1]["reconsidered"] = date
 
 
 def _j_in_recess(steps):
@@ -4269,13 +4339,25 @@ def _j_amended_on(steps):
     Finance, whose report the House passed on 14 May with no amendment of its
     own -- and the rail's House stop read "voice vote", above the Senate
     refusing "the House Amendment" that same day. The passage after the
-    second committee is the passage of the bill as the chamber amended it."""
-    held = set()
+    second committee is the passage of the bill as the chamber amended it --
+    and so is a passage after the chamber reconsidered its first, which
+    undoes the vote and not the amendments adopted before it.
+
+    A day's passages are one passage, amended if any was, as _j_merge folds
+    them: HB 1462 of 2002's "Ought to Pass with Amendment {3485}, RC 13y -
+    11n, AA" and its "OT3rdg, MA, VV" of 16 April, reconsidered on the 18th."""
+    held, day = set(), {}
     for s in steps:
-        if s["act"] == "referred" and s.get("amended"):
-            held.add(s["body"])
-        elif s["act"] == "passed" and s["body"] in held:
-            held.discard(s["body"])
+        b = s["body"]
+        if s["act"] in ("passed", "referred"):
+            if day.get(b) == s["date"]:
+                s["amended"] = True
+            if s.get("amended"):
+                day[b] = s["date"]
+        if s.get("amended") and (s["act"] == "referred" or s.get("reconsidered")):
+            held.add(b)
+        elif s["act"] == "passed" and b in held:
+            held.discard(b)
             s["amended"] = True
     return steps
 
@@ -4287,6 +4369,8 @@ def _j_merge(into, st):
     Necessary Two-Thirds Vote", then "Ought to Pass : MA VV", HB 2023 of
     2022)."""
     into["amended"] = into.get("amended") or st.get("amended")
+    # A reconsideration of the third reading is of the passage it is.
+    into["reconsidered"] = into.get("reconsidered") or st.get("reconsidered")
     if st.get("intro_adopt"):
         return
     if into.pop("intro_adopt", False) or st["vote"][1] is not None or not into["vote"][0]:
@@ -4344,9 +4428,12 @@ def _j_settle(steps):
                 continue
             out[-1] = st
             continue
+        # Unless that passage was reconsidered: HB 1462 of 2002 passed the
+        # Senate on 16 April, was reconsidered on the 18th, and "OT3rdg, MA,
+        # VV" that day is it passing again.
         if st.get("third") and st["act"] == "passed":
             mine = [s for s in out if s["body"] == st["body"]]
-            if mine and mine[-1]["act"] == "passed":
+            if mine and mine[-1]["act"] == "passed" and not mine[-1].get("reconsidered"):
                 continue
         out.append(st)
     # A motion to table the clerk gave no vote for stands only as the
