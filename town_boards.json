@@ -1,6 +1,6 @@
 {
- "_built": "2026-09-24",
- "_what": "Select boards read off towns' own websites, where the page gives the whole board and is current. Written by town_boards.py from town_sites/; read by build_town_pages.py. A town not here is shown from the New Hampshire Department of Transportation's directory.",
+ "_built": "2026-09-25",
+ "_what": "Select boards, and the cities' mayors and councils, read off their own websites where the page is current. A board or council whose page lists fewer than its seats, or whose size no source gives, is marked partial. Written by town_boards.py from town_sites/; read by build_town_pages.py. A town or city not here is shown from the New Hampshire Department of Transportation's directory.",
  "boards": {
   "alexandria": {
    "later": "the page names ['Brian Lewis'] where the directory names ['Chet Caron']",
@@ -24,6 +24,7 @@
      "term_ends": null
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T21:46:59-0400",
    "size": 3,
    "size_from": "the directory lists 3",
@@ -63,10 +64,119 @@
      "term_ends": null
     }
    ],
+   "read": 5,
    "read_on": "2026-09-20T21:47:18-0400",
    "size": 5,
-   "size_from": "the directory lists 5",
+   "size_from": "the page states it",
    "source_url": "https://www.allenstownnh.gov/1297/Board-of-Selectmen"
+  },
+  "alstead": {
+   "later": "the page names ['Joe Levesque', 'David Hogan'] where the directory names ['Gordon Kemp', 'Matt Saxton']",
+   "members": [
+    {
+     "directory_name": null,
+     "name": "Joe Levesque",
+     "role": "Chair",
+     "term_ends": null
+    },
+    {
+     "directory_name": "Joel McCarty",
+     "name": "Joel McCarty",
+     "role": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "David Hogan",
+     "role": null,
+     "term_ends": null
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T21:47:54-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://www.alsteadnh.org/departments"
+  },
+  "amherst": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Tom Grella",
+     "name": "Tom Grella",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": null,
+     "name": "John D'Angelo",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Pam Coughlin",
+     "role": "Clerk",
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Danielle Pray",
+     "role": "Chair",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Cynthia Dokmo",
+     "role": "Vice Chair",
+     "term_ends": "2027"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T21:48:08-0400",
+   "size": 5,
+   "size_from": "the page states it",
+   "source_url": "https://www.amherstnh.gov/board-selectmen"
+  },
+  "andover": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Dana Swenson",
+     "name": "Dana Swenson",
+     "role": "Chair",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "James Delaney, Sr",
+     "name": "James Delaney, Sr.",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Charles Stewart",
+     "name": "Charles Stewart",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Leslie Fenton",
+     "name": "Les Fenton",
+     "role": "Vice Chair",
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Mark Cowdrey",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T21:48:35-0400",
+   "size": 5,
+   "size_from": "the page states it",
+   "source_url": "https://www.andover-nh.gov/1598/Select-Board"
   },
   "atkinson": {
    "later": "a term ending 2029 began at the 2026 meeting",
@@ -102,10 +212,79 @@
      "term_ends": "2029"
     }
    ],
+   "read": 5,
    "read_on": "2026-09-20T21:49:14-0400",
    "size": 5,
    "size_from": "the directory lists 5",
    "source_url": "https://www.town-atkinsonnh.com/334/Board-of-Selectmen"
+  },
+  "belmont": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Ruth Mooney",
+     "name": "Ruth Mooney",
+     "role": "Chairman",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Travis O'Hara",
+     "name": "Travis O’Hara",
+     "role": "Vice Chairman",
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Jon Pike",
+     "name": "Jon Pike",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Mark Lewandoski",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Sharon Ciampi",
+     "name": "Sharon Ciampi",
+     "role": null,
+     "term_ends": "2027"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T21:51:04-0400",
+   "size": 5,
+   "size_from": "the directory lists 5",
+   "source_url": "https://belmontnh.gov/boards/board-of-selectmen/"
+  },
+  "bennington": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "James Cleary",
+     "name": "James Cleary",
+     "role": "Chair",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Travis McClure",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Tony Parisi",
+     "name": "Tony Parisi",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T21:51:34-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://townofbennington.com/boardofselectmen/"
   },
   "benton": {
    "later": "the page names ['Philip Chicoine'] where the directory names ['Kimberli Carpenter']",
@@ -129,10 +308,39 @@
      "term_ends": null
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T21:51:55-0400",
    "size": 3,
    "size_from": "the directory lists 3",
    "source_url": "https://www.tobentonnh.org/page3"
+  },
+  "boscawen": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Matthew Burdick",
+     "name": "Matthew T. Burdick",
+     "role": "Chair",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Lorrie Carey",
+     "name": "Lorrie J. Carey",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Joshua J. Crawford",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T21:52:05-0400",
+   "size": 3,
+   "size_from": "the page states it",
+   "source_url": "https://www.boscawennh.gov/1473/Select-Board"
   },
   "bow": {
    "later": "a term ending 2029 began at the 2026 meeting",
@@ -168,6 +376,7 @@
      "term_ends": "2028"
     }
    ],
+   "read": 5,
    "read_on": "2026-09-20T21:52:35-0400",
    "size": 5,
    "size_from": "the page states it",
@@ -207,10 +416,272 @@
      "term_ends": null
     }
    ],
+   "read": 5,
    "read_on": "2026-09-20T21:53:35-0400",
    "size": 5,
    "size_from": "the page states it",
    "source_url": "https://www.bristolnh.gov/1336/Select-Board"
+  },
+  "campton": {
+   "later": "the page names ['Jade Hartsgrove'] where the directory names []",
+   "members": [
+    {
+     "directory_name": "Sharon Davis",
+     "name": "Sharon Davis",
+     "role": "Chair",
+     "term_ends": null
+    },
+    {
+     "directory_name": "Mort Donahue",
+     "name": "Mort Donahue",
+     "role": "Vice Chair",
+     "term_ends": null
+    },
+    {
+     "directory_name": "Karl Kelly",
+     "name": "Karl Kelly",
+     "role": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Sherrill Howard",
+     "name": "Sherrill Howard",
+     "role": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Jade Hartsgrove",
+     "role": null,
+     "term_ends": null
+    }
+   ],
+   "partial": true,
+   "read": 5,
+   "read_on": "2026-09-20T21:54:25-0400",
+   "size": null,
+   "size_from": "",
+   "source_url": "https://www.camptonnh.org/government/board_of_selectmen.php"
+  },
+  "canterbury": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Scott Doherty",
+     "name": "Scott Doherty",
+     "role": "Chair",
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Beth Blair",
+     "name": "Beth Blair",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Calvin Todd",
+     "role": null,
+     "term_ends": "2028"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T21:54:51-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://www.canterburynh.gov/boards-committees/board-of-selectmen/"
+  },
+  "carroll": {
+   "later": "the page names ['Brian Mycko', 'Aaron Foti'] where the directory names ['John Greer', 'Jules Marquis']",
+   "members": [
+    {
+     "directory_name": null,
+     "name": "Brian Mycko",
+     "role": "Chairman",
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Bonnie Moroney",
+     "name": "Bonnie Moroney",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Aaron Foti",
+     "role": null,
+     "term_ends": "2027"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T21:55:27-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://carrollnh.gov/boards-and-committees/board-of-selectmen/"
+  },
+  "chester": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Chuck Myette",
+     "name": "Chuck Myette",
+     "role": "Chairman",
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "David LaVita",
+     "role": "Vice-Chair",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "James Brown",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Stephen Landau",
+     "name": "Stephen Landau",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Dana Theokas",
+     "name": "Dana Theokas",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T21:56:55-0400",
+   "size": 5,
+   "size_from": "the directory lists 5",
+   "source_url": "https://www.chesternh.org/1426/Selectboard"
+  },
+  "chesterfield": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Fran Shippee",
+     "name": "Fran Shippee",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": null,
+     "name": "Brad Roscoe",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Gary Winn",
+     "name": "Gary Winn",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Mary Ewell",
+     "name": "Mary Ewell",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Michelle Hilger",
+     "name": "Michelle Hilger",
+     "role": null,
+     "term_ends": "2028"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T21:57:20-0400",
+   "size": 5,
+   "size_from": "the directory lists 5",
+   "source_url": "https://www.chesterfield.nh.gov/191/Board-of-Selectmen"
+  },
+  "chichester": {
+   "later": "the page names ['Jeremy Letendre', 'Matthew Stolnis', 'Carrianne Wood'] where the directory names ['Michael Williams', 'Richard Bouchard', 'Stephen MacCleery']",
+   "members": [
+    {
+     "directory_name": null,
+     "name": "Jeremy Letendre",
+     "role": "Chairman",
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Matthew Stolnis",
+     "role": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Carrianne Wood",
+     "role": null,
+     "term_ends": null
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T21:57:45-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://www.chichesternh.org/1283/Board-of-Selectmen"
+  },
+  "dalton": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Jo Beth Dudley",
+     "name": "Jo Beth Dudley",
+     "role": "Chair",
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Eric Moore",
+     "name": "Eric Moore",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Warren Green",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T21:59:51-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://townofdaltonnh.gov/select-board/"
+  },
+  "deering": {
+   "later": "the page names ['Michelle Johnson', 'Charles Wood'] where the directory names ['Jill Smith', 'Steve Diers']",
+   "members": [
+    {
+     "directory_name": null,
+     "name": "Michelle Johnson",
+     "role": "Chairman",
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Roy Watson",
+     "name": "Roy Watson",
+     "role": "Vice-Chairman",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Charles Wood",
+     "role": null,
+     "term_ends": null
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T22:00:40-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://www.deering.nh.us/342/Board-of-Selectmen"
   },
   "dublin": {
    "later": "a term ending 2029 began at the 2026 meeting",
@@ -234,10 +705,163 @@
      "term_ends": "2029"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:01:45-0400",
    "size": 3,
    "size_from": "the directory lists 3",
    "source_url": "https://www.townofdublin.org/222/Select-Board"
+  },
+  "east-kingston": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Joe Cacciatore",
+     "name": "Joseph Cacciatore",
+     "role": "Chairman",
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": null,
+     "name": "Matthew Freeman",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Edward Warren",
+     "role": null,
+     "term_ends": "2028"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T22:02:25-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://www.eknh.org/1209/Board-of-Selectmen"
+  },
+  "farmington": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Charlie King",
+     "name": "Charlie King",
+     "role": "Chairman",
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Douglas Staples",
+     "name": "Douglas Staples",
+     "role": "Vice Chairman",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "John Scruton",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Ann Titus",
+     "name": "Ann Titus",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Jason Chapman",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T22:03:55-0400",
+   "size": 5,
+   "size_from": "the directory lists 5",
+   "source_url": "https://www.farmington.nh.us/1368/Board-of-Selectmen"
+  },
+  "franconia": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Eric Meth",
+     "name": "Eric Meth",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Eugene Leeds",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Dan Walker",
+     "name": "Dan Walker",
+     "role": "Chair",
+     "term_ends": "2027"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T22:04:22-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "http://www.franconianh.org/board-of-selectmen.html"
+  },
+  "freedom": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Leslie Babb",
+     "name": "Leslie R. Babb",
+     "role": "Chairman",
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Gary Williams",
+     "name": "Gary R. Williams",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Allan Fall",
+     "name": "Alan G. Fall",
+     "role": null,
+     "term_ends": "2027"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T22:04:56-0400",
+   "size": 3,
+   "size_from": "the page states it",
+   "source_url": "https://townoffreedomnh.gov/freedom-board-of-selectmens-office/"
+  },
+  "fremont": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Gene Cordes",
+     "name": "Gene Cordes",
+     "role": "Chair",
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Roger Barham",
+     "name": "Roger A. Barham",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Jon Benson",
+     "name": "Jon Benson",
+     "role": null,
+     "term_ends": "2027"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T22:05:20-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://www.fremont.nh.gov/1498/Select-Board"
   },
   "gilmanton": {
    "later": "a term ending 2029 began at the 2026 meeting",
@@ -261,6 +885,7 @@
      "term_ends": "2029"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:05:40-0400",
    "size": 3,
    "size_from": "the directory lists 3",
@@ -288,10 +913,187 @@
      "term_ends": "2029"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:06:16-0400",
    "size": 3,
    "size_from": "the directory lists 3",
    "source_url": "https://gilsum-nh.gov/board-of-selectmen/"
+  },
+  "goffstown": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Jim Craig",
+     "name": "Jim Craig",
+     "role": "Chairman",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Joshua Douglas",
+     "name": "Joshua Douglas",
+     "role": "Vice Chairman",
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Allison DeCesere",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Mark Lemay",
+     "name": "Mark T. Lemay",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Richard Manzo",
+     "name": "Richard Manzo",
+     "role": null,
+     "term_ends": "2028"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T22:06:41-0400",
+   "size": 5,
+   "size_from": "the page states it",
+   "source_url": "https://www.goffstownnh.gov/381/Select-Board"
+  },
+  "goshen": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Derek Tremblay",
+     "name": "Derek Tremblay",
+     "role": "Chair",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Sebastian Zyzdorf",
+     "name": "Sebastian Zyzdorf",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Alan Greenhalgh",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T22:07:10-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://goshennh.org/selectmen/"
+  },
+  "greenfield": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Thomas Bascom",
+     "name": "Thomas Bascom",
+     "role": "Chairman",
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Michael Borden",
+     "name": "Michael Borden",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "George Rainier",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T22:07:35-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://www.greenfield-nh.gov/1194/Selectboard"
+  },
+  "greenland": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Laura Malloy",
+     "name": "Laura Malloy",
+     "role": "Chairman",
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Paul Stanley",
+     "name": "Paul Stanley",
+     "role": "Vice Chairman",
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Stephan Toth",
+     "name": "Stephan Toth",
+     "role": "Alternate",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Heather Droesch",
+     "name": "Heather Droesch",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Zach Pike",
+     "name": "Zack Pike",
+     "role": null,
+     "term_ends": "2028"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T22:08:00-0400",
+   "size": 5,
+   "size_from": "the directory lists 5",
+   "source_url": "https://www.greenland.nh.gov/1466/Board-of-Selectmen"
+  },
+  "hampton": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Carleigh Beriont",
+     "name": "Carleigh Beriont",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Chuck Rage",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Amy Hansen",
+     "name": "Amy Hansen",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Jeffery Grip",
+     "name": "Jeff Grip",
+     "role": "Vice-Chairman",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Donald Bliss",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T22:08:50-0400",
+   "size": 5,
+   "size_from": "the directory lists 5",
+   "source_url": "https://www.hamptonnh.gov/282/Select-Board"
   },
   "hancock": {
    "later": "a term ending 2029 began at the 2026 meeting",
@@ -315,6 +1117,7 @@
      "term_ends": "2027"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:09:40-0400",
    "size": 3,
    "size_from": "the directory lists 3",
@@ -354,10 +1157,39 @@
      "term_ends": null
     }
    ],
+   "read": 5,
    "read_on": "2026-09-20T22:10:10-0400",
    "size": 5,
    "size_from": "the directory lists 5",
    "source_url": "https://hanovernh.org/518/Selectboard"
+  },
+  "harrisville": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Andrew Maneval",
+     "name": "Andrew Maneval",
+     "role": "Chair",
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Kathleen Scott",
+     "name": "Kathleen Scott",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Andrea Hodson",
+     "name": "Andrea Hodson",
+     "role": null,
+     "term_ends": "2028"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T22:11:23-0400",
+   "size": 3,
+   "size_from": "the page states it",
+   "source_url": "https://harrisvillenh.org/government/office-of-the-selectboard/"
   },
   "hebron": {
    "later": "a term ending 2029 began at the 2026 meeting",
@@ -381,10 +1213,51 @@
      "term_ends": "2029"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:14:20-0400",
    "size": 3,
    "size_from": "the directory lists 3",
    "source_url": "https://www.hebronnh.gov/1241/Select-Board"
+  },
+  "holderness": {
+   "later": "the page names ['Campbell Lovett'] where the directory names ['John Laverack']",
+   "members": [
+    {
+     "directory_name": "Sam Brinkley",
+     "name": "Sam Brickley",
+     "role": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Jill White",
+     "name": "Jill White",
+     "role": "Chair",
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Campbell Lovett",
+     "role": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Kelly Schwaner",
+     "name": "Kelly Schwaner",
+     "role": "Vice Chair",
+     "term_ends": null
+    },
+    {
+     "directory_name": "Peter Francesco",
+     "name": "Peter Francesco",
+     "role": null,
+     "term_ends": null
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T22:15:10-0400",
+   "size": 5,
+   "size_from": "the directory lists 5",
+   "source_url": "https://www.holderness-nh.gov/1339/Select-Board"
   },
   "hollis": {
    "later": "a term ending 2029 began at the 2026 meeting",
@@ -420,6 +1293,7 @@
      "term_ends": "2029"
     }
    ],
+   "read": 5,
    "read_on": "2026-09-20T22:15:35-0400",
    "size": 5,
    "size_from": "the directory lists 5",
@@ -447,6 +1321,7 @@
      "term_ends": "2029"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:16:57-0400",
    "size": 3,
    "size_from": "the directory lists 3",
@@ -457,27 +1332,140 @@
    "members": [
     {
      "directory_name": null,
+     "display": "Sara Hamilton",
      "name": "SARA HAMILTON",
      "role": null,
      "term_ends": "2028"
     },
     {
      "directory_name": null,
+     "display": "Tom Balabon",
      "name": "TOM BALABON",
      "role": null,
      "term_ends": "2029"
     },
     {
      "directory_name": null,
+     "display": "Ian O'Reilly",
      "name": "IAN O'REILLY",
      "role": null,
      "term_ends": "2027"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:17:40-0400",
    "size": 3,
    "size_from": "the directory lists 3",
    "source_url": "https://www.kensingtonnh.gov/1259/Board-of-Selectmen"
+  },
+  "lempster": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Mark Lightner",
+     "name": "Mark Lightner",
+     "role": "Chair",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Daryl Simino",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Everett Thurber",
+     "name": "Everett Thurber",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T22:19:41-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://lempsternh.org/boards-committees/board-of-selectmen/"
+  },
+  "litchfield": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "John Brunelle",
+     "name": "John Brunelle",
+     "role": "Chairman",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Steven Perry",
+     "role": "Vice Chairman",
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "F. Robert Leary",
+     "name": "F. Robert Leary",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "G. Stephen Gannon",
+     "name": "G. Stephen Gannon",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": null,
+     "name": "Dianne Plansky",
+     "role": null,
+     "term_ends": "2028"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T22:20:35-0400",
+   "size": 5,
+   "size_from": "the directory lists 5",
+   "source_url": "https://litchfieldnh.gov/203/Board-of-Selectmen"
+  },
+  "littleton": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": null,
+     "name": "David Harkless",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Kerri Harrington",
+     "name": "Kerri Harrington",
+     "role": "Chair",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Paul Lehmann",
+     "role": "Vice Chair",
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Taylor Caswell",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": null,
+     "name": "Ed Cherian",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "partial": true,
+   "read": 5,
+   "read_on": "2026-09-20T22:20:55-0400",
+   "size": null,
+   "size_from": "",
+   "source_url": "https://www.townoflittleton.org/1296/Board-of-Selectmen"
   },
   "loudon": {
    "later": "a term ending 2029 began at the 2026 meeting",
@@ -501,6 +1489,7 @@
      "term_ends": "2029"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:21:50-0400",
    "size": 3,
    "size_from": "the directory lists 3",
@@ -528,10 +1517,51 @@
      "term_ends": "2029"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:22:15-0400",
    "size": 3,
    "size_from": "the page states it",
    "source_url": "https://www.lymenh.gov/pages/select-board"
+  },
+  "middleton": {
+   "later": "the page names ['Jonathan Sindorf', 'Bonnie Gagnon'] where the directory names ['Scott Ferguson', 'Tracy Donovan-Laviolette']",
+   "members": [
+    {
+     "directory_name": "Timothy Cremmen",
+     "name": "Timothy Cremmen",
+     "role": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Jonathan Sindorf",
+     "role": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Michael Green",
+     "name": "Michael Green",
+     "role": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Bonnie Gagnon",
+     "role": "Vice-Chair",
+     "term_ends": null
+    },
+    {
+     "directory_name": "Roxanne Tufts-Keegan",
+     "name": "Roxanne Tufts-Keegan",
+     "role": "Chair",
+     "term_ends": null
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T22:24:30-0400",
+   "size": 5,
+   "size_from": "the directory lists 5",
+   "source_url": "https://middletonnh.gov/pages/departments"
   },
   "milan": {
    "later": "the page names ['Jason Huter', 'Dana Brouillette'] where the directory names ['Randy Fortin', 'Kenneth Lee Dube']",
@@ -555,6 +1585,7 @@
      "term_ends": null
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:24:40-0400",
    "size": 3,
    "size_from": "the directory lists 3",
@@ -582,10 +1613,119 @@
      "term_ends": null
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:27:55-0400",
    "size": 3,
    "size_from": "the directory lists 3",
    "source_url": "https://www.newfieldsnh.gov/234/Select-Board"
+  },
+  "newington": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Chris Wayss",
+     "name": "Chris Wayss",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Bob Blonigen",
+     "name": "Bob Blonigen",
+     "role": "Chair",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Brandon Arsenault",
+     "name": "Brandon Arsenault",
+     "role": null,
+     "term_ends": "2028"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T22:28:15-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://www.newingtonnh.gov/1307/Board-of-Selectmen"
+  },
+  "newport": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": null,
+     "name": "Rachel E Dilger",
+     "role": "Chairman",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Jeffery Kessler",
+     "name": "Jeffrey F. Kessler",
+     "role": "Vice Chairman",
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "James Burroughs",
+     "name": "James C. Burroughs",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Jeffery North",
+     "name": "Jeffrey S North",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": null,
+     "name": "Benjamin S Bartlett",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T22:29:10-0400",
+   "size": 5,
+   "size_from": "the directory lists 5",
+   "source_url": "https://www.newportnh.gov/1231/Board-of-Selectmen"
+  },
+  "pelham": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Jason Croteau",
+     "name": "Jason Croteau",
+     "role": "Chair",
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Charlene Takesian",
+     "name": "Charlene Takesian",
+     "role": "Vice Chair",
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Jaie Bergeron",
+     "name": "Jaie Bergeron",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": null,
+     "name": "Danielle Masse Quinn",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Brett Gagnon",
+     "role": null,
+     "term_ends": "2027"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T22:31:06-0400",
+   "size": 5,
+   "size_from": "the directory lists 5",
+   "source_url": "https://www.pelhamweb.com/181/Board-of-Selectmen"
   },
   "randolph": {
    "later": "a term ending 2029 began at the 2026 meeting",
@@ -609,6 +1749,7 @@
      "term_ends": "2027"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:32:46-0400",
    "size": 3,
    "size_from": "the directory lists 3",
@@ -636,6 +1777,7 @@
      "term_ends": "2027"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:33:20-0400",
    "size": 3,
    "size_from": "the page states it",
@@ -663,6 +1805,7 @@
      "term_ends": "2027"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:34:35-0400",
    "size": 3,
    "size_from": "the directory lists 3",
@@ -702,10 +1845,39 @@
      "term_ends": "2029"
     }
    ],
+   "read": 5,
    "read_on": "2026-09-20T22:35:25-0400",
    "size": 5,
    "size_from": "the directory lists 5",
    "source_url": "https://www.sandown.us/1226/Board-of-Selectmen"
+  },
+  "seabrook": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Theresa Kyle",
+     "name": "Theresa Kyle",
+     "role": "Chair",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Harold Eaton",
+     "name": "Harold F. Eaton",
+     "role": "Vice Chair",
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": null,
+     "name": "Aboul Khan",
+     "role": "Clerk",
+     "term_ends": "2028"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T22:36:15-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://seabrooknh.info/boards-and-committees/selectmen/"
   },
   "stoddard": {
    "later": "a term ending 2029 began at the 2026 meeting",
@@ -729,10 +1901,39 @@
      "term_ends": "2028"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:37:37-0400",
    "size": 3,
    "size_from": "the directory lists 3",
    "source_url": "https://www.stoddardnh.org/1228/Board-of-Selectmen"
+  },
+  "strafford": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Lynn Sweet",
+     "name": "Lynn Sweet",
+     "role": "Chair",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Brian Monahan",
+     "name": "Brian Monahan",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "R. Stephen Leighton",
+     "name": "R Stephen Leighton",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T22:38:01-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://strafford.nh.gov/board-of-selectmen/"
   },
   "stratham": {
    "later": "a term ending 2029 began at the 2026 meeting",
@@ -756,10 +1957,79 @@
      "term_ends": "2029"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:40:19-0400",
    "size": 3,
    "size_from": "the directory lists 3",
    "source_url": "https://www.strathamnh.gov/boards/select_board/index.php"
+  },
+  "surry": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": null,
+     "name": "Jay Croteau III",
+     "role": "Chair",
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Ronald Profaizer",
+     "name": "Ron Profaizer",
+     "role": "Vice-Chair",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Stevens Goldsmith",
+     "name": "Steve Goldsmith",
+     "role": null,
+     "term_ends": "2028"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T22:41:09-0400",
+   "size": 3,
+   "size_from": "the page states it",
+   "source_url": "https://surry.nh.gov/board-of-selectmen/"
+  },
+  "swanzey": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "James Tempesta",
+     "name": "James Tempesta",
+     "role": "Chairman",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Mark LaBelle",
+     "role": "Vice Chairman",
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "James Ward",
+     "role": "Secretary",
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": null,
+     "name": "W. William Hutwelker, III",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": null,
+     "name": "Alan Gross",
+     "role": null,
+     "term_ends": "2027"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T22:41:34-0400",
+   "size": 5,
+   "size_from": "the page states it",
+   "source_url": "https://www.swanzeynh.gov/government/boards___committees___commissions/board_of_selectmen.php"
   },
   "temple": {
    "later": "a term ending 2029 began at the 2026 meeting",
@@ -783,6 +2053,7 @@
      "term_ends": "2029"
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:42:24-0400",
    "size": 3,
    "size_from": "the directory lists 3",
@@ -810,10 +2081,39 @@
      "term_ends": null
     }
    ],
+   "read": 3,
    "read_on": "2026-09-20T22:42:54-0400",
    "size": 3,
    "size_from": "the directory lists 3",
    "source_url": "https://townofunitynh.org/selectmen/"
+  },
+  "wilton": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Tom Schultz",
+     "name": "Thomas C. Schultz",
+     "role": "Chair",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Frank Edelblut",
+     "role": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Kermit Williams",
+     "name": "Kermit R. Williams",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "read": 3,
+   "read_on": "2026-09-20T22:46:10-0400",
+   "size": 3,
+   "size_from": "the directory lists 3",
+   "source_url": "https://www.wiltonnh.gov/government/boards_and_committees/select_board"
   },
   "winchester": {
    "later": "a term ending 2029 began at the 2026 meeting",
@@ -849,116 +2149,863 @@
      "term_ends": "2027"
     }
    ],
+   "read": 5,
    "read_on": "2026-09-20T22:46:34-0400",
    "size": 5,
    "size_from": "the directory lists 5",
    "source_url": "https://www.winchester-nh.gov/1389/Board-of-Selectmen"
+  },
+  "windham": {
+   "later": "a term ending 2029 began at the 2026 meeting",
+   "members": [
+    {
+     "directory_name": "Ross McLeod",
+     "name": "Ross McLeod",
+     "role": "Chairman",
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Heath Partington",
+     "name": "Heath Partington",
+     "role": "Vice-Chair",
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Roger Hohenberger",
+     "name": "Roger Hohenberger",
+     "role": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Bruce Breton",
+     "name": "Bruce Breton",
+     "role": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": null,
+     "name": "Michelle Stith",
+     "role": null,
+     "term_ends": "2029"
+    }
+   ],
+   "read": 5,
+   "read_on": "2026-09-20T22:46:59-0400",
+   "size": 5,
+   "size_from": "the directory lists 5",
+   "source_url": "https://windhamnh.gov/258/Select-Board"
+  }
+ },
+ "councils": {
+  "claremont": {
+   "later": "the page names ['Debora Matteau', 'William Greenrose', 'Christopher Irish', 'Christopher Cogswell'] where the directory names []",
+   "members": [
+    {
+     "directory_name": "Dale Girard",
+     "name": "Dale Girard",
+     "role": "",
+     "seat": "Mayor",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Debora Matteau",
+     "role": "",
+     "seat": "Assistant mayor",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Andrew O'Hearne",
+     "name": "Andrew O'Hearne",
+     "role": "",
+     "seat": "Ward 1",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "William Greenrose",
+     "role": "",
+     "seat": "Ward 2",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Christopher Irish",
+     "role": "",
+     "seat": "Ward 3",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Christopher Cogswell",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Wayne Hemingway",
+     "name": "Wayne Hemingway",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Nicholas Koloski",
+     "name": "Nicholas Koloski",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "William Limoges",
+     "name": "William Limoges",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    }
+   ],
+   "partial": true,
+   "read": 9,
+   "read_on": "2026-09-20T21:58:11-0400",
+   "size": null,
+   "size_from": "",
+   "source_url": "https://www.claremontnh.com/index.php?section=city-council"
+  },
+  "concord": {
+   "later": "the page names ['Mark Davie', 'Aislinn Kalob'] where the directory names ['Karen McNamara', 'Paula McLaughlin']",
+   "members": [
+    {
+     "directory_name": "Byron Champlin",
+     "name": "Byron Champlin",
+     "role": "",
+     "seat": "Mayor",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Brent Todd",
+     "name": "Brent Todd",
+     "role": "",
+     "seat": "Ward 1",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Michele Horne",
+     "name": "Michele Horne",
+     "role": "",
+     "seat": "Ward 2",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Jennifer Kretovic",
+     "name": "Jennifer Kretovic",
+     "role": "",
+     "seat": "Ward 3",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Mark Davie",
+     "role": "",
+     "seat": "Ward 4",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Stacey Brown",
+     "name": "Stacey Brown",
+     "role": "",
+     "seat": "Ward 5",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Aislinn Kalob",
+     "role": "",
+     "seat": "Ward 6",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Jim Schlosser",
+     "name": "Jim Schlosser",
+     "role": "",
+     "seat": "Ward 7",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Ali Sekou",
+     "name": "Ali Sekou",
+     "role": "",
+     "seat": "Ward 8",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Kris Schultz",
+     "name": "Kris Schultz",
+     "role": "",
+     "seat": "Ward 9",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Jeff Foote",
+     "name": "Jeff Foote",
+     "role": "",
+     "seat": "Ward 10",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Nathan Fennessy",
+     "name": "Nathan Fennessy",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Amanda Grady Sexton",
+     "name": "Amanda Grady Sexton",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Fred Keach",
+     "name": "Fred Keach",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Judith Kurtz",
+     "name": "Judith Kurtz",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    }
+   ],
+   "read": 15,
+   "read_on": "2026-09-20T21:59:25-0400",
+   "size": 15,
+   "size_from": "the directory lists 15",
+   "source_url": "https://www.concordnh.gov/282/City-Council"
+  },
+  "dover": {
+   "later": "the page names ['Bret Carmichael', 'Lucas Veitch', 'Timothy Granfield', 'Richard L. Robison, Jr.'] where the directory names ['Robert Carrier', 'Debra Hackett', 'Linnea Nemeth', 'Robert Warach']",
+   "members": [
+    {
+     "directory_name": "Dennis Shanahan",
+     "name": "Dennis Shanahan",
+     "role": "",
+     "seat": "Mayor",
+     "source_url": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Lindsey Williams",
+     "name": "Lindsey Williams",
+     "role": "",
+     "seat": "Deputy mayor, at large",
+     "source_url": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Bret Carmichael",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "April Richer",
+     "name": "April Richer",
+     "role": "",
+     "seat": "Ward 1",
+     "source_url": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Lucas Veitch",
+     "role": "",
+     "seat": "Ward 2",
+     "source_url": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Anthony Retrosi",
+     "name": "Anthony Retrosi",
+     "role": "",
+     "seat": "Ward 3",
+     "source_url": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Timothy Granfield",
+     "role": "",
+     "seat": "Ward 4",
+     "source_url": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Richard L. Robison, Jr.",
+     "role": "",
+     "seat": "Ward 5",
+     "source_url": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Fergus Cullen",
+     "name": "Fergus Cullen",
+     "role": "",
+     "seat": "Ward 6",
+     "source_url": null,
+     "term_ends": "2028"
+    }
+   ],
+   "read": 9,
+   "read_on": "2026-09-20T22:01:20-0400",
+   "size": 9,
+   "size_from": "the page states it",
+   "source_url": "https://www.dover.nh.gov/government/boards-and-commissions/city-council/index.html"
+  },
+  "keene": {
+   "later": "a term ending 2029 began at the 2025 election",
+   "members": [
+    {
+     "directory_name": "Jay Kahn",
+     "name": "Jay Kahn",
+     "role": "",
+     "seat": "Mayor",
+     "source_url": "https://keenenh.gov/my-city-government/",
+     "term_ends": null
+    },
+    {
+     "directory_name": "Jacob Favolise",
+     "name": "Jacob R. Favolise",
+     "role": "",
+     "seat": "Ward 1",
+     "source_url": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Kris Roberts",
+     "name": "Kris E. Roberts",
+     "role": "",
+     "seat": "Ward 1",
+     "source_url": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Robert Williams",
+     "name": "Robert C. Williams",
+     "role": "",
+     "seat": "Ward 2",
+     "source_url": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Edward Haas",
+     "name": "Edward J. Haas",
+     "role": "",
+     "seat": "Ward 2",
+     "source_url": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Bryan Lake",
+     "name": "Bryan J. Lake",
+     "role": "",
+     "seat": "Ward 3",
+     "source_url": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Molly V. Ellis",
+     "role": "",
+     "seat": "Ward 3",
+     "source_url": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Laura Tobin",
+     "name": "Laura E. Tobin",
+     "role": "",
+     "seat": "Ward 4",
+     "source_url": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Catherine Workman",
+     "name": "Catherine I. Workman",
+     "role": "",
+     "seat": "Ward 4",
+     "source_url": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Thomas Powers",
+     "name": "Thomas F. Powers",
+     "role": "",
+     "seat": "Ward 5",
+     "source_url": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Philip Jones",
+     "name": "Philip M. Jones",
+     "role": "",
+     "seat": "Ward 5",
+     "source_url": null,
+     "term_ends": "2029"
+    },
+    {
+     "directory_name": "Bettina Chadbourne",
+     "name": "Bettina A. Chadbourne",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Randy Filiault",
+     "name": "Randy L. Filiault",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Mithcell Greenwald",
+     "name": "Mitchell H. Greenwald",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "MIchele Chalice",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Laura Ruttle-Miller",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": "2027"
+    }
+   ],
+   "read": 16,
+   "read_on": "2026-09-20T22:17:20-0400",
+   "size": 16,
+   "size_from": "the page states it",
+   "source_url": "https://keenenh.gov/my-city-government/city-council/"
+  },
+  "laconia": {
+   "later": "the page names ['Mike Bordes', 'Jon Hildreth', 'Julia Nye', 'Mike Conant'] where the directory names ['Andrew Hosmer', 'Bruce Cheney', 'Steven Bogert', 'Tony Felch']",
+   "members": [
+    {
+     "directory_name": null,
+     "name": "Mike Bordes",
+     "role": "",
+     "seat": "Mayor",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Jon Hildreth",
+     "role": "",
+     "seat": "Ward 1",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Robert Soucy",
+     "name": "Robert Soucy",
+     "role": "",
+     "seat": "Ward 2",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Eric Hoffman",
+     "name": "Eric Hoffman",
+     "role": "",
+     "seat": "Ward 3",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Mark Haynes",
+     "name": "Mark Haynes",
+     "role": "",
+     "seat": "Ward 4",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Julia Nye",
+     "role": "",
+     "seat": "Ward 5",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Mike Conant",
+     "role": "",
+     "seat": "Ward 6",
+     "source_url": null,
+     "term_ends": null
+    }
+   ],
+   "read": 7,
+   "read_on": "2026-09-20T22:18:05-0400",
+   "size": 7,
+   "size_from": "the directory lists 7",
+   "source_url": "https://www.laconianh.gov/522/City-Council"
+  },
+  "lebanon": {
+   "later": "the page names ['Kellen Appleton', 'Eric Cole', 'Andrew Faunce', 'Lori Key'] where the directory names ['Chris Simon', 'Erling Heistad', 'George Sykes', 'Karen Zook']",
+   "members": [
+    {
+     "directory_name": "Doug Whittlesey",
+     "name": "Douglas Whittlesey",
+     "role": "",
+     "seat": "Mayor, Ward 1",
+     "source_url": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": "Devin Wilkie",
+     "name": "Devin R. Wilkie",
+     "role": "",
+     "seat": "Assistant mayor, Ward 2",
+     "source_url": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Kellen Appleton",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Nicole Ford Burley",
+     "name": "Nicole Ford Burley",
+     "role": "",
+     "seat": "Ward 3",
+     "source_url": null,
+     "term_ends": "2027"
+    },
+    {
+     "directory_name": null,
+     "name": "Eric Cole",
+     "role": "",
+     "seat": "Ward 2",
+     "source_url": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Andrew Faunce",
+     "role": "",
+     "seat": "Ward 1",
+     "source_url": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": null,
+     "name": "Lori Key",
+     "role": "",
+     "seat": "Ward 3",
+     "source_url": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Tim McNamara",
+     "name": "Timothy J. McNamara",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": "2028"
+    },
+    {
+     "directory_name": "Laurel Stavis",
+     "name": "Laurel Stavis",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": "2027"
+    }
+   ],
+   "read": 9,
+   "read_on": "2026-09-20T22:19:15-0400",
+   "size": 9,
+   "size_from": "the page states it",
+   "source_url": "https://lebanonnh.gov/337/City-Council"
+  },
+  "nashua": {
+   "later": "the page names ['Alicia Gregg', 'Amber Morgan', 'James Ravan', 'Paula Johnson', 'Vengerflutta Smith'] where the directory names ['Chris Thibodeau', 'Earnest Jette', 'Gloria Timmons', 'Melbourne Moran Jr.', 'Tyler Gouveia']",
+   "members": [
+    {
+     "directory_name": "James Donchess",
+     "name": "Jim Donchess",
+     "role": "",
+     "seat": "Mayor",
+     "source_url": "https://www.nashuanh.gov/804/City-Officials",
+     "term_ends": null
+    },
+    {
+     "directory_name": "Lori Wilshire",
+     "name": "Lori Wilshire",
+     "role": "President",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Ben Clemons",
+     "name": "Ben Clemons",
+     "role": "Vice president",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Michael O'Brien",
+     "name": "Michael B. O'Brien, Sr.",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Shoshanna Kelly",
+     "name": "Shoshanna Kelly",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Alicia Gregg",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Amber Morgan",
+     "role": "",
+     "seat": "At large",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "James Ravan",
+     "role": "",
+     "seat": "Ward 1",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Richard Dowd",
+     "name": "Richard A. Dowd",
+     "role": "",
+     "seat": "Ward 2",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Patricia KLee",
+     "name": "Patricia Klee",
+     "role": "",
+     "seat": "Ward 3",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Thomas Lopez",
+     "name": "Thomas Lopez",
+     "role": "",
+     "seat": "Ward 4",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Paula Johnson",
+     "role": "",
+     "seat": "Ward 5",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Vengerflutta Smith",
+     "role": "",
+     "seat": "Ward 6",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Tim Sennott",
+     "name": "Tim Sennott",
+     "role": "",
+     "seat": "Ward 7",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Derek Thibeault",
+     "name": "Derek Thibeault",
+     "role": "",
+     "seat": "Ward 8",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "John Sullivan",
+     "name": "John Sullivan",
+     "role": "",
+     "seat": "Ward 9",
+     "source_url": null,
+     "term_ends": null
+    }
+   ],
+   "read": 15,
+   "read_on": "2026-09-20T22:25:55-0400",
+   "size": 15,
+   "size_from": "the page states it",
+   "source_url": "https://www.nashuanh.gov/514/Board-of-Aldermen"
+  },
+  "portsmouth": {
+   "later": "the page names ['JoAnna Kelley', 'Michelle Flynn', 'Annie Hopkins'] where the directory names ['Josh Denton', 'Vincent Lombardi']",
+   "members": [
+    {
+     "directory_name": "Deaglan McEachern",
+     "name": "Deaglan McEachern",
+     "role": "",
+     "seat": "Mayor",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "JoAnna Kelley",
+     "role": "",
+     "seat": "Assistant mayor",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Kate Cook",
+     "name": "Kate Cook",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "John Tabor",
+     "name": "John Tabor",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Rich Blalock",
+     "name": "Rich Blalock",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Andrew Bagley",
+     "name": "Andrew Bagley",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": "Beth Moreau",
+     "name": "Beth Moreau",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Michelle Flynn",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    },
+    {
+     "directory_name": null,
+     "name": "Annie Hopkins",
+     "role": "",
+     "seat": "",
+     "source_url": null,
+     "term_ends": null
+    }
+   ],
+   "read": 9,
+   "read_on": "2026-09-20T22:32:25-0400",
+   "size": 9,
+   "size_from": "the page states it",
+   "source_url": "https://www.cityofportsmouth.com/citycouncil"
   }
  },
  "not_used": {
-  "alstead": {
-   "read": 1,
-   "read_on": "2026-09-20T21:47:54-0400",
-   "size": 3,
-   "source_url": "https://www.alsteadnh.org/departments",
-   "why": "1 of 3 members read"
-  },
-  "belmont": {
-   "read": 1,
-   "read_on": "2026-09-20T21:51:04-0400",
-   "size": 5,
-   "source_url": "https://belmontnh.gov/boards/board-of-selectmen/",
-   "why": "1 of 5 members read"
-  },
-  "boscawen": {
-   "read": 1,
-   "read_on": "2026-09-20T21:52:05-0400",
-   "size": 3,
-   "source_url": "https://www.boscawennh.gov/1473/Select-Board",
-   "why": "1 of 3 members read"
-  },
-  "campton": {
-   "read": 5,
-   "read_on": "2026-09-20T21:54:25-0400",
-   "source_url": "https://www.camptonnh.org/government/board_of_selectmen.php",
-   "why": "no board size to check 5 names against (the directory lists 4)"
-  },
-  "carroll": {
-   "read": 2,
-   "read_on": "2026-09-20T21:55:27-0400",
-   "size": 3,
-   "source_url": "https://carrollnh.gov/boards-and-committees/board-of-selectmen/",
-   "why": "2 of 3 members read"
-  },
-  "chester": {
-   "read": 3,
-   "read_on": "2026-09-20T21:56:55-0400",
-   "size": 5,
-   "source_url": "https://www.chesternh.org/1426/Selectboard",
-   "why": "3 of 5 members read"
-  },
-  "chichester": {
-   "read": 2,
-   "read_on": "2026-09-20T21:57:45-0400",
-   "size": 3,
-   "source_url": "https://www.chichesternh.org/1283/Board-of-Selectmen",
-   "why": "2 of 3 members read"
-  },
   "columbia": {
    "read": 3,
    "read_on": "2026-09-20T21:59:00-0400",
    "size": 3,
    "source_url": "https://columbianh.org/selectmen/",
    "why": "the directory's own board, with no date or term on the page to show it changed after the March 2026 meeting"
-  },
-  "dalton": {
-   "read": 1,
-   "read_on": "2026-09-20T21:59:51-0400",
-   "size": 3,
-   "source_url": "https://townofdaltonnh.gov/select-board/",
-   "why": "1 of 3 members read"
-  },
-  "east-kingston": {
-   "read": 2,
-   "read_on": "2026-09-20T22:02:25-0400",
-   "size": 3,
-   "source_url": "https://www.eknh.org/1209/Board-of-Selectmen",
-   "why": "2 of 3 members read"
-  },
-  "farmington": {
-   "read": 3,
-   "read_on": "2026-09-20T22:03:55-0400",
-   "size": 5,
-   "source_url": "https://www.farmington.nh.us/1368/Board-of-Selectmen",
-   "why": "3 of 5 members read"
-  },
-  "freedom": {
-   "read": 1,
-   "read_on": "2026-09-20T22:04:56-0400",
-   "size": 3,
-   "source_url": "https://townoffreedomnh.gov/freedom-board-of-selectmens-office/",
-   "why": "1 of 3 members read"
-  },
-  "goffstown": {
-   "read": 4,
-   "read_on": "2026-09-20T22:06:41-0400",
-   "size": 5,
-   "source_url": "https://www.goffstownnh.gov/381/Select-Board",
-   "why": "4 of 5 members read"
-  },
-  "greenfield": {
-   "read": 2,
-   "read_on": "2026-09-20T22:07:35-0400",
-   "size": 3,
-   "source_url": "https://www.greenfield-nh.gov/1194/Selectboard",
-   "why": "2 of 3 members read"
-  },
-  "greenland": {
-   "read": 1,
-   "read_on": "2026-09-20T22:08:00-0400",
-   "size": 5,
-   "source_url": "https://www.greenland.nh.gov/1466/Board-of-Selectmen",
-   "why": "1 of 5 members read"
   },
   "hampton-falls": {
    "read": 3,
@@ -967,61 +3014,33 @@
    "source_url": "https://www.hamptonfalls.org/262/Board-of-Selectmen",
    "why": "the directory's own board, with no date or term on the page to show it changed after the March 2026 meeting"
   },
-  "harrisville": {
-   "read": 1,
-   "read_on": "2026-09-20T22:14:10-0400",
-   "size": 3,
-   "source_url": "https://harrisvillenh.org/emergency-contacts/staff-elected-officials/",
-   "why": "1 of 3 members read"
-  },
   "jaffrey": {
-   "read": 1,
+   "read": 3,
    "read_on": "2026-09-20T22:16:30-0400",
    "size": 3,
    "source_url": "https://www.townofjaffrey.com/558/Select-Board",
-   "why": "1 of 3 members read"
+   "why": "the directory's own board, with no date or term on the page to show it changed after the March 2026 meeting"
   },
   "langdon": {
-   "read": 1,
+   "read": 3,
    "read_on": "2026-09-20T22:18:50-0400",
    "size": 3,
    "source_url": "https://www.langdonnh.org/207/Selectboard",
-   "why": "1 of 3 members read"
+   "why": "the directory's own board, with no date or term on the page to show it changed after the March 2026 meeting"
   },
   "lincoln": {
-   "read": 2,
+   "read": 3,
    "read_on": "2026-09-20T22:20:05-0400",
    "size": 3,
    "source_url": "https://www.lincolnnh.gov/1749/Board-of-Selectmen",
-   "why": "2 of 3 members read"
+   "why": "a term on the page ended in 2026"
   },
-  "litchfield": {
-   "read": 2,
-   "read_on": "2026-09-20T22:20:35-0400",
-   "size": 5,
-   "source_url": "https://litchfieldnh.gov/203/Board-of-Selectmen",
-   "why": "2 of 5 members read"
-  },
-  "newington": {
-   "read": 2,
-   "read_on": "2026-09-20T22:28:15-0400",
-   "size": 3,
-   "source_url": "https://www.newingtonnh.gov/1307/Board-of-Selectmen",
-   "why": "2 of 3 members read"
-  },
-  "pelham": {
+  "rollinsford": {
    "read": 1,
-   "read_on": "2026-09-20T22:31:06-0400",
-   "size": 5,
-   "source_url": "https://www.pelhamweb.com/181/Board-of-Selectmen",
-   "why": "1 of 5 members read"
-  },
-  "seabrook": {
-   "read": 1,
-   "read_on": "2026-09-20T22:36:15-0400",
+   "read_on": "2026-09-20T22:33:46-0400",
    "size": 3,
-   "source_url": "https://seabrooknh.info/boards-and-committees/selectmen/",
-   "why": "1 of 3 members read"
+   "source_url": "https://rollinsford.nh.us/boards-committees/select-board/",
+   "why": "a term on the page ended in 2026"
   },
   "sugar-hill": {
    "read": 3,
@@ -1036,20 +3055,6 @@
    "size": 3,
    "source_url": "https://www.wentworth-nh.org/town-officials",
    "why": "the page dates itself 2024: 'For the year ending December 2024'"
-  },
-  "wilton": {
-   "read": 2,
-   "read_on": "2026-09-20T22:46:10-0400",
-   "size": 3,
-   "source_url": "https://www.wiltonnh.gov/government/boards_and_committees/select_board",
-   "why": "2 of 3 members read"
-  },
-  "windham": {
-   "read": 1,
-   "read_on": "2026-09-20T22:46:59-0400",
-   "size": 5,
-   "source_url": "https://windhamnh.gov/258/Select-Board",
-   "why": "1 of 5 members read"
   }
  }
 }
