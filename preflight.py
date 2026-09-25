@@ -10742,8 +10742,13 @@ def _calendar_every_weekday():
     missing one. This writes a week with a Wednesday and a Saturday sitting
     and another with only a Wednesday, and wants Monday to Friday on both --
     each empty one marked and saying "No meetings scheduled." -- the Saturday
-    on the first only, no Sunday on either, and the week's filter script
-    leaving the empty days alone.
+    on the first only, no Sunday on either, and the week's script leaving the
+    empty days alone under a filter that matches nothing.
+
+    That last part looked, until 24 September 2026, for ".calday:not(.calnone)"
+    in the old filter's source. The Calendar page's script decides which days
+    its list draws in listDates, from the month files, so it is run instead:
+    the rule it held is the same, and now it is held by what the script does.
     """
     import contextlib
     import datetime as _dt
@@ -10782,9 +10787,28 @@ def _calendar_every_weekday():
                     f"{k}: {d} is {'marked empty' if empty else 'not marked empty'}")
             assert t.count("No meetings scheduled.") == len(dates) - len(busy), (
                 f"{k}: an empty weekday does not say it has no meetings")
-        assert '.calday:not(.calnone)' in BC.WEEK_JS, (
-            "the week's filter hides days with nothing left in them, and would "
-            "hide a day that has no meetings at all")
+        node = shutil.which("node") or shutil.which("node.exe")
+        if node:
+            with contextlib.redirect_stdout(io.StringIO()):
+                BC.month_files(site, weeks, order, {}, {}, {}, today)
+            go = tmp / "days.js"
+            go.write_text("globalThis.document={getElementById:function(){return null;}};\n"
+                          + BC.WEEK_JS + r"""
+const C=globalThis.GRCAL, j=JSON.parse(require("fs").readFileSync(process.argv[2],"utf8")), days={};
+Object.keys(j.days).forEach(d=>days[d]=C.parseDay(j.days[d]));
+const wk=[0,1,2,3,4,5,6].map(i=>C.addDays("2026-01-12",i));
+const none=Object.assign(C.defaults(),{who:[],picks:["nobody"]});
+process.stdout.write(JSON.stringify([C.listDates(wk,days,C.defaults()),C.listDates(wk,days,none)]));
+""", encoding="utf-8")
+            r = _run([node, str(go), str(site / "calendar" / "data" / "2026-01.json")],
+                     capture_output=True, text=True, timeout=60)
+            assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
+            every, empty = json.loads(r.stdout)
+            assert every == want["2026-W03"][0], (
+                f"the script's list of 12-18 January draws {every}, the page {want['2026-W03'][0]}")
+            assert empty == ["2026-01-12", "2026-01-13", "2026-01-15", "2026-01-16"], (
+                "under a filter matching nothing the script's list keeps "
+                f"{empty}: the empty weekdays, and only them, stay")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("Monday to Friday on every week, empty ones saying so; a "
@@ -10971,26 +10995,21 @@ def _calendar_study_committees():
         assert "covering 0" not in lead, f"the lead reads {lead!r}"
         node = shutil.which("node") or shutil.which("node.exe")
         if node:
-            # The week script's own count, run against the two cards: a
-            # small stand-in for the page, enough for the filter to read
-            # its attributes and write its count.
+            # THE SCRIPT'S OWN COUNT over the two cards the page carries, one
+            # that sat and one that was cancelled. It ran the old filter
+            # script against two stand-in elements until 24 September 2026;
+            # the Calendar page's script counts in tally() and countLine(),
+            # off the cards' own attributes, so those run on the page's cards.
             go = tmp / "week.js"
-            go.write_text("""
-function el(a){ return {hidden:false, a:a, hasAttribute:function(k){return k in a;},
-  getAttribute:function(k){return k in a ? a[k] : null;},
-  querySelector:function(){return null;}, querySelectorAll:function(){return [];},
-  addEventListener:function(){}}; }
-var meets=[el({"data-body":"","data-study":"","data-date":"2026-09-22"}),
-           el({"data-body":"","data-study":"","data-date":"2026-09-24","data-cancelled":""})];
-var count={textContent:""}, find={value:"", addEventListener:function(){}};
-var form={hidden:true, querySelectorAll:function(){return [];}, addEventListener:function(){}};
-var byId={wkfilter:form, wkcount:count, wkfind:find};
-global.localStorage={getItem:function(){return null;}, setItem:function(){}};
-global.document={getElementById:function(i){return byId[i]||null;},
-  querySelectorAll:function(s){return s===".calmeet" ? meets : [];}};
-""" + BC.WEEK_JS + "\nprocess.stdout.write(count.textContent);\n", encoding="utf-8")
-            r = _run([node, str(go)], capture_output=True, text=True,
-                     encoding="utf-8", timeout=60)
+            go.write_text("globalThis.document={getElementById:function(){return null;}};\n"
+                          + BC.WEEK_JS + r"""
+const C=globalThis.GRCAL, t=require("fs").readFileSync(process.argv[2],"utf8");
+const view=t.slice(t.indexOf('<div class="calview"'),t.indexOf('<nav class="wknav wkfoot"'));
+const cards=(view.match(new RegExp('<details class="cal'+'meet"[\\s\\S]*?</details>','g'))||[]).map(C.parseCard);
+process.stdout.write(C.countLine(C.tally(cards,C.defaults()),"this week"));
+""", encoding="utf-8")
+            r = _run([node, str(go), str(site / "calendar.html")], capture_output=True,
+                     text=True, encoding="utf-8", timeout=60)
             assert r.returncode == 0, (r.stdout or r.stderr).strip()[-300:]
             assert r.stdout == "1 sitting this week.", (
                 f"the week script counts {r.stdout!r} with one meeting cancelled")
@@ -11100,6 +11119,759 @@ def _calendar_document_links():
         shutil.rmtree(tmp, ignore_errors=True)
     return "ok", ("the first notice linked, journals found by number with their "
                   "own date agreeing, and the link drawn on the card")
+
+
+# THE CALENDAR PAGE'S FIXTURE, for the four checks below: three weeks of March
+# 2026 and one that runs into April, so there are two month files and a week
+# that straddles them. Built for Wednesday 11 March, which is the reader's
+# today in the checks that run the page. The week of 9 March holds a committee
+# doing two things on one day, a Senate committee, the floor, a committee of
+# conference, an executive session, a statutory committee, and a cancelled
+# meeting on a Saturday; Monday the 9th is empty.
+CAL_TODAY = (2026, 3, 11)
+CAL_STUDY_NOTE = ("Study and statutory committee meetings come from the General "
+                  "Court's own database, as copied on 8 September 2026.")
+
+
+def _cal_rows():
+    def r(d, bill, body, kind, time, cmte, venue=""):
+        return {"term": "2025-2026", "bill": bill, "body": body, "kind": kind,
+                "date": d, "time": time, "committee": cmte, "venue": venue}
+    return [
+        r("2026-03-03", "HB10", "H", "public hearing", "10:00", "Commerce", "LOB 302"),
+        r("2026-03-10", "HB1", "H", "public hearing", "10:00", "Judiciary", "LOB 206"),
+        r("2026-03-10", "HB2", "H", "executive session", "13:00", "Judiciary", "LOB 206"),
+        r("2026-03-10", "SB5", "S", "public hearing", "09:00", "Finance", "SH 103"),
+        r("2026-03-11", "HB9", "H", "floor debate", "", ""),
+        r("2026-03-11", "HB3", "H", "committee of conference", "", ""),
+        r("2026-03-12", "HB4", "H", "executive session", "09:30", "Commerce", "LOB 302"),
+        {"study": True, "bill": "", "kind": "statutory committee", "date": "2026-03-13",
+         "time": "10:00", "committee": "Commission on Aging", "venue": "GP 230",
+         "note": "Regular meeting."},
+        {"study": True, "bill": "", "kind": "cancelled", "date": "2026-03-14",
+         "time": "10:00", "committee": "Commission on Aging", "venue": "", "note": ""},
+        r("2026-03-18", "SB6", "S", "executive session", "14:00", "Finance", "SH 103"),
+        r("2026-03-18", "HB7", "H", "subcommittee work session", "09:00", "Judiciary", "LOB 206"),
+        r("2026-04-01", "HB20", "H", "public hearing", "10:00", "Education", "LOB 207"),
+    ]
+
+
+def _cal_fixture(root):
+    """Build the fixture's week pages and month files under root/site."""
+    import contextlib
+    import datetime as _dt
+    import io
+    import build_calendar as BC
+    today = _dt.date(*CAL_TODAY)
+    weeks = BC.weeks_from(_cal_rows(), names={})
+    BC.every_week(weeks, today)
+    order = sorted(weeks)
+    site = root / "site"
+    site.mkdir(parents=True)
+    shutil.copy(Path("bills.html"), site / "bills.html")
+    urls = []
+    with contextlib.redirect_stdout(io.StringIO()):
+        for i, k in enumerate(order):
+            BC.week_page(site, "https://graniterecord.org", k, weeks, order, i,
+                         {}, {}, {}, urls, today, set(), study_note=CAL_STUDY_NOTE)
+        months = BC.month_files(site, weeks, order, {}, {}, {}, today)
+    return site, weeks, order, urls, months
+
+
+def _cal_node():
+    return shutil.which("node") or shutil.which("node.exe")
+
+
+@check("frontend", "the Calendar page is a month, filters and three views over a week that reads whole without script")
+def _calendar_page_shape():
+    """The person's description of 24 September 2026, as markup and files.
+
+    "A calendar on the left side of the page showing the full month ... select
+    days to view the schedule of on the main panel which change their
+    configuration depending on if you have list, week, or day selected ... You
+    should be able to toggle between viewing all meetings including study
+    committees, just standing committee meetings, public hearings, meetings for
+    a specific committee, or any combination of those."
+
+    Two rules keep it honest, and this holds both. THE PAGE IS WHOLE WITHOUT
+    SCRIPT: the week is still the list it was, and every control is emitted
+    hidden, so nobody meets one that does nothing. AND THERE IS ONE RENDERER:
+    a reader who moves to another week is shown cards out of
+    calendar/data/<month>.json, and those are build_pages.cal_days's cards,
+    byte for byte the ones that week's own page carries -- the script arranges
+    them and never draws one. The cards say who is meeting and what kinds of
+    sitting they hold, which is what the grid, the preview and the filters
+    read. The page's copy of the script carries none of the strings the
+    other calendar checks count in a page's text, or it would be counted as
+    a card, a link or an empty day.
+    """
+    import build_calendar as BC
+    if not Path("bills.html").exists():
+        return "skip", "bills.html is not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-calshape-"))
+    try:
+        site, weeks, order, urls, (n_months, n_cards) = _cal_fixture(root)
+        t = (site / "calendar.html").read_text(encoding="utf-8")
+        app = re.search(r'<div class="wkpage calapp" id="calapp"([^>]*)>', t)
+        assert app, "the week's page has no calendar frame"
+        attrs = dict(re.findall(r' data-([a-z]+)="([^"]*)"', app.group(1)))
+        assert attrs == {"week": "2026-W11", "here": "2026-W11",
+                         "first": order[0], "last": order[-1]}, (
+            f"the frame tells the script {attrs}")
+        # Hidden without script, all of it.
+        for frag in ('<div class="calside" id="calside" hidden>',
+                     '<div class="calbar" id="calbar" hidden>',
+                     '<div class="calpeek" id="calpeek" role="tooltip" hidden>',
+                     '<button type="button" class="calreset" id="calreset" hidden>'):
+            assert frag in t, f"not emitted hidden: {frag}"
+        for legend in ("Who is meeting", "Only these committees",
+                       "What kind of committee meeting", "Chamber"):
+            assert f"<legend>{legend}</legend>" in t, f"no fieldset with the legend {legend!r}"
+        who = re.findall(r'<input type="checkbox"(?: id="wkstudy")? checked name="who" value="([a-z]+)"'
+                         r'|<input type="checkbox" name="who" value="([a-z]+)" checked', t)
+        assert sorted(a or b for a, b in who) == ["floor", "standing", "study"], (
+            f"the who boxes are {who}, each on by default")
+        what = re.findall(r'<input type="checkbox" name="what" value="([a-z]+)" checked>', t)
+        assert what == ["hearing", "exec", "work", "conf"], f"the what boxes are {what}"
+        views = re.findall(r'<button type="button" data-view="([a-z]+)" aria-pressed="([a-z]+)">', t)
+        assert views == [("list", "true"), ("week", "false"), ("day", "false")], (
+            f"the view switch is {views}")
+        assert 'id="wkcount" role="status" aria-live="polite"' in t, "the count is not announced politely"
+        assert '<table class="cmgrid" id="cmgrid" role="grid" aria-labelledby="cmtitle">' in t, (
+            "the month is not a grid labelled by its month")
+        # The week, whole, in the page.
+        body = t[t.index('<div class="calview" id="calview">'):t.index('<nav class="wknav wkfoot"')]
+        cards = re.findall(r'<details class="calmeet"[^>]*>', body)
+        assert len(cards) == 7, f"the week of 9 March lists {len(cards)} cards, not 7"
+        who_of = {re.search(r'data-cmte="([^"]*)"', c).group(1): (
+            re.search(r'data-who="([^"]*)"', c).group(1),
+            re.search(r'data-kinds="([^"]*)"', c).group(1)) for c in cards}
+        assert who_of["judiciary"] == ("standing", "hearing exec"), who_of["judiciary"]
+        assert who_of["house floor"] == ("floor", "floor"), who_of["house floor"]
+        assert who_of["committee of conference"] == ("standing", "conf"), who_of
+        assert who_of["commission on aging"][0] == "study", who_of
+        # The script the page carries.
+        js = re.search(r"<script>(\(function\(\)\{.*?)</script>", t, re.S)
+        assert js, "the week's page carries no calendar script"
+        lean = js.group(1)
+        assert not re.search(r"^\s*//", lean, re.M), "the page's copy of the script keeps its comments"
+        for bad in ('<details class="calmeet"', "No meetings scheduled.", 'class="wknext" href=',
+                    'class="wkprev" href=', 'class="wkhere" href='):
+            assert bad not in lean, (f"the page's script spells {bad!r}, which the other "
+                                     "calendar checks count in a page's text")
+        node = _cal_node()
+        if node:
+            f = root / "lean.js"
+            f.write_text(lean, encoding="utf-8")
+            r = _run([node, "--check", str(f)], capture_output=True, text=True)
+            assert r.returncode == 0, "node --check: " + r.stderr.strip()[:200]
+
+        # The month files.
+        data = site / "calendar" / "data"
+        assert sorted(p.name for p in data.iterdir()) == [
+            "2026-03.json", "2026-04.json", "committees.json"], sorted(p.name for p in data.iterdir())
+        assert n_months == 2, n_months
+        m3 = json.loads((data / "2026-03.json").read_text(encoding="utf-8"))
+        m4 = json.loads((data / "2026-04.json").read_text(encoding="utf-8"))
+        days = {**m3["days"], **m4["days"]}
+        want = []
+        d = BC.datetime.date.fromisocalendar(2026, int(order[0][6:]), 1)
+        end = BC.datetime.date.fromisocalendar(2026, int(order[-1][6:]), 7)
+        while d <= end:
+            want.append(d.isoformat())
+            d += BC.datetime.timedelta(days=1)
+        assert sorted(days) == want, "the month files do not hold every day from the first week to the last"
+        assert "No meetings scheduled." in days["2026-03-15"], "an empty Sunday has no words for the Day view"
+        for k in order:
+            page = (site / "calendar" / f"{k}.html") if k != "2026-W11" else (site / "calendar.html")
+            pt = page.read_text(encoding="utf-8")
+            pv = pt[pt.index('<div class="calview" id="calview">'):pt.index('<nav class="wknav wkfoot"')]
+            mon = BC.datetime.date.fromisocalendar(2026, int(k[6:]), 1)
+            dates = [(mon + BC.datetime.timedelta(days=i)).isoformat() for i in range(7)]
+            from_files = [c for x in dates
+                          for c in re.findall(r'<details class="calmeet"[\s\S]*?</details>', days[x])]
+            on_page = re.findall(r'<details class="calmeet"[\s\S]*?</details>', pv)
+            assert from_files == on_page, (f"{k}: the month files' cards are not the week page's "
+                                           f"({len(from_files)} against {len(on_page)})")
+            import html as _h
+            wk = (m3["weeks"].get(k) or m4["weeks"].get(k))
+            h1 = _h.unescape(re.search(r"<h1>The week of ([^<]*)</h1>", pt).group(1))
+            lead = re.search(r'<p class="src">([^<]*)</p>', pt).group(1)
+            assert wk and wk["label"] == h1, f"{k}: the month file calls the week {wk}, the page {h1!r}"
+            assert wk["lead"] == lead, f"{k}: the month file's lead is not the page's"
+        names = json.loads((data / "committees.json").read_text(encoding="utf-8"))
+        assert ["Judiciary", "standing", "H"] in names and ["Finance", "standing", "S"] in names \
+            and ["Commission on Aging", "study", ""] in names and ["House floor", "floor", "H"] in names, names
+        # Writers merge what they own: a month file this run did not write goes.
+        (data / "1999-01.json").write_text("{}", encoding="utf-8")
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            BC.month_files(site, weeks, order, {}, {}, {}, BC.datetime.date(*CAL_TODAY))
+        assert not (data / "1999-01.json").exists(), "a stale month file was left beside the rest"
+        assert all("/calendar/data" not in u for u in urls), "a data file went into the sitemap"
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", (f"frame, fieldsets, view switch and grid emitted hidden; {n_cards} cards "
+                  f"in {n_months} month files, byte for byte the week pages' own")
+
+
+@check("frontend", "the calendar's filters combine, and the list, the week, the day, the grid and the preview agree")
+def _calendar_core():
+    """The script's reasoning, run in node over cards a build wrote.
+
+    Everything the page decides -- which cards a filter keeps, what the count
+    says, which days the list draws, which hours the week has rows for, which
+    dots a day of the month carries and what its name says, what the preview
+    lists, what the address holds -- is a plain function in WEEK_JS's first
+    half. This loads that half against the fixture's month files and holds
+    each to the rule it implements:
+
+      who and what are two questions, combined; a card holding several kinds
+      matches if any does and stays whole; committees picked by name replace
+      the who boxes; the floor answers to who alone; the two quick choices
+      set the boxes; a cancelled meeting is shown and never counted;
+      an empty weekday is drawn under any filter, a busy day the filters
+      emptied is not, and a weekend day only when something shown is on it
+      (this replaces a check that the old script's source said
+      ".calday:not(.calnone)", which the new script has no need to);
+      the week's rows are the hours something starts in, with a row for the
+      sittings the record gives no time; the grid starts on Monday, bands
+      the selected week, marks today and the past, and its dots and names
+      agree with the entries; the preview stops at five and says how many
+      more; and the address round-trips.
+    """
+    node = _cal_node()
+    if not node:
+        return "skip", "node is not on PATH"
+    import build_calendar as BC
+    if not Path("bills.html").exists():
+        return "skip", "bills.html is not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-calcore-"))
+    try:
+        site, _w, _o, _u, _m = _cal_fixture(root)
+        data = site / "calendar" / "data"
+        prog = root / "core.js"
+        prog.write_text("globalThis.document={getElementById:function(){return null;}};\n"
+                        + BC.WEEK_JS + _CAL_CORE_TEST, encoding="utf-8")
+        r = _run([node, str(prog), str(data / "2026-03.json"), str(data / "2026-04.json")],
+                 capture_output=True, text=True, timeout=120)
+        out = (r.stdout or "") + (r.stderr or "")
+        assert r.returncode == 0 and out.strip().endswith("OK"), out.strip()[-1500:]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", out.strip().splitlines()[-2]
+
+
+_CAL_CORE_TEST = r"""
+const C=globalThis.GRCAL, fs=require("fs"), fails=[];
+const ok=(c,m)=>{ if(!c) fails.push(m); };
+const days={};
+process.argv.slice(2).forEach(f=>{ const j=JSON.parse(fs.readFileSync(f,"utf8"));
+  Object.keys(j.days).forEach(d=>days[d]=C.parseDay(j.days[d])); });
+const week=[...Array(7).keys()].map(i=>C.addDays("2026-03-09",i));
+const all=[].concat(...week.map(d=>days[d].cards));
+const F=(o)=>Object.assign(C.defaults(),o);
+const names=(f)=>all.filter(e=>C.matches(e,f)).map(e=>e.name).sort();
+const count=(f)=>C.countLine(C.tally(all,f),"this week");
+ok(all.length===7, "the week of 9 March parses to "+all.length+" cards");
+const jud=all.find(e=>e.name==="Judiciary");
+ok(jud && jud.kinds.join()==="hearing,exec" && jud.who==="standing" && jud.body==="H" && jud.bills.join()==="HB1 HB2".split(" ").join(),
+   "Judiciary's card reads as "+JSON.stringify(jud&&{k:jud.kinds,w:jud.who,b:jud.body,bills:jud.bills}));
+// the combinations
+ok(count(F({}))==="6 sittings this week.", "unfiltered: "+count(F({})));
+ok(names(F({who:["standing","floor"]})).join()==="Commerce,Committee of conference,Finance,House floor,Judiciary",
+   "study off keeps "+names(F({who:["standing","floor"]})));
+ok(count(F({who:["standing","floor"]}))==="5 of 6 sittings shown.", "study off counts "+count(F({who:["standing","floor"]})));
+ok(names(F({what:["hearing"]})).join()==="Finance,House floor,Judiciary",
+   "the hearing box alone keeps "+names(F({what:["hearing"]}))+" -- the floor answers to who, not what");
+const q=C.QUICK.hearing;
+ok(names(F({who:q.who,what:q.what})).join()==="Finance,Judiciary", "Public hearings only keeps "+names(F({who:q.who,what:q.what})));
+ok(C.quickOf(F({who:q.who,what:q.what}))==="hearing" && C.quickOf(F({}))==="" && C.quickOf(F({who:["standing"]}))==="standing",
+   "the quick choices are not recognised from the boxes");
+ok(names(F({who:["standing"],what:["hearing"]})).join()==="Finance,Judiciary", "standing plus hearings keeps "+names(F({who:["standing"],what:["hearing"]})));
+ok(names(F({who:[],picks:["Commission on Aging"]})).join()==="Commission on Aging,Commission on Aging",
+   "a picked committee is shown whatever the who boxes say: "+names(F({who:[],picks:["Commission on Aging"]})));
+ok(count(F({picks:["Commission on Aging"]}))==="1 of 6 sittings shown.", "a cancelled meeting is counted: "+count(F({picks:["Commission on Aging"]})));
+ok(names(F({body:"S",picks:["Judiciary"]})).length===0 && names(F({body:"H",picks:["Judiciary"]})).join()==="Judiciary",
+   "a chamber plus a committee");
+ok(count(F({body:"S",picks:["Judiciary"]}))==="None of the 6 sittings this week match.", count(F({body:"S",picks:["Judiciary"]})));
+ok(names(F({q:"hb 4"})).join()==="Commerce" && names(F({q:"judic"})).join()==="Judiciary", "the bill and committee search");
+ok(C.countLine({total:1,shown:0,seen:0},"this week")==="The one sitting this week does not match.", "one sitting, none shown");
+ok(C.countLine(C.tally(days["2026-03-11"].cards,F({})),"on "+C.dayWords("2026-03-11"))==="2 sittings on Wednesday 11 March.",
+   "the Day view's count: "+C.countLine(C.tally(days["2026-03-11"].cards,F({})),"on "+C.dayWords("2026-03-11")));
+ok(C.narrowed(F({}))===0 && C.narrowed(F({who:["standing"],q:"x"}))===2, "the count of narrowing filters");
+// the list's days
+const none=F({who:[],picks:["Nobody"]});
+ok(C.listDates(week,days,F({})).join()==="2026-03-09,2026-03-10,2026-03-11,2026-03-12,2026-03-13,2026-03-14",
+   "the list draws "+C.listDates(week,days,F({})));
+ok(C.listDates(week,days,none).join()==="2026-03-09", "under a filter matching nothing the list keeps the empty Monday only: "+C.listDates(week,days,none));
+ok(C.listDates(week,days,F({who:["standing","floor"]})).indexOf("2026-03-14")<0, "a Saturday whose one meeting is filtered away is still drawn");
+// the week at a glance
+const cols=C.weekCols(week,days,F({})), by={};
+cols.forEach(d=>by[d]=days[d].cards);
+const rows=C.weekRows(cols,by);
+ok(cols.length===6 && cols[5]==="2026-03-14", "the week's columns: "+cols);
+ok(rows.map(x=>x.h).join()==="09,10,", "the week's rows: "+rows.map(x=>x.h));
+ok([].concat(...rows.map(x=>[].concat(...x.cells))).length===7, "a card is missing from the week at a glance");
+ok(rows[2].cells[2].map(e=>e.name).join()==="Committee of conference,House floor", "the untimed row holds the floor and the conference");
+// the grid
+const g=C.gridHtml({view:"2026-03",sel:"2026-03-10",focus:"2026-03-10",today:"2026-03-11",
+  first:"2026-03-02",last:"2026-04-05",days,f:F({})});
+const tr=g.split("<tr").slice(1);
+ok(/<th scope="col"><span aria-hidden="true">Mo</.test(g), "the grid does not start on Monday");
+ok(tr.length===7 && tr.slice(1).every(r=>(r.match(/role="gridcell"/g)||[]).length===7), "the grid is not rows of seven");
+const band=tr.filter(r=>/^ class="cmrow cmsel"/.test(r));
+ok(band.length===1 && /data-d="2026-03-09"/.test(band[0]) && /data-d="2026-03-15"/.test(band[0]), "the selected week is not one band");
+ok((g.match(/aria-selected="true"/g)||[]).length===1 && /data-d="2026-03-10" tabindex="0" aria-selected="true"/.test(g), "the selected day");
+ok(/data-d="2026-03-11" tabindex="-1" aria-selected="false" aria-current="date"/.test(g), "today is not aria-current=date");
+ok(/class="cmday cmpast" data-d="2026-03-09"/.test(g) && /class="cmday cmpast cmpick" data-d="2026-03-10"/.test(g)
+   && /class="cmday" data-d="2026-03-12"/.test(g), "the past is not greyed, or the future is");
+ok(/data-d="2026-02-23"[^>]*aria-disabled="true"/.test(g), "a day before the calendar's first is offered");
+const cell=(d)=>{ const m=new RegExp('data-d="'+d+'"[^>]*>(.*?)</td>').exec(g); return m&&m[1]; };
+ok(/<i class="k-hearing"><\/i><i class="k-exec"><\/i><\/span><span class="sr">Tuesday 10 March 2026, 2 sittings</.test(cell("2026-03-10")),
+   "10 March in the grid: "+cell("2026-03-10"));
+ok(/cmdots" aria-hidden="true"><\/span><span class="sr">Saturday 14 March 2026, no sittings, 1 cancelled</.test(cell("2026-03-14")),
+   "a cancelled meeting's day: "+cell("2026-03-14"));
+ok(/Monday 9 March 2026, no sittings/.test(cell("2026-03-09")), "an empty day: "+cell("2026-03-09"));
+const g2=C.gridHtml({view:"2026-03",sel:"2026-03-10",focus:"2026-03-10",today:"2026-03-11",first:"2026-03-02",last:"2026-04-05",days,f:F({who:["study"]})});
+ok(!/data-d="2026-03-10"[^>]*><span class="cmn" aria-hidden="true">10<\/span><span class="cmdots" aria-hidden="true"><i/.test(g2), "the grid's dots do not follow the filters");
+// the preview
+const many={head:"",cards:[...Array(7).keys()].map(i=>Object.assign({},jud,{name:"C"+i,time:"0"+(i+1)+":00"}))};
+const p=C.peekHtml("2026-03-10",{days:{"2026-03-10":many},f:F({})},5);
+ok((p.match(/<li>/g)||[]).length===5 && /and 2 more/.test(p), "the preview is not capped at five with the rest counted: "+p);
+ok(/<em>cancelled<\/em>/.test(C.peekHtml("2026-03-14",{days,f:F({})},5)), "the preview does not mark a cancelled meeting");
+ok(/Nothing is scheduled/.test(C.peekHtml("2026-03-09",{days,f:F({})},5)), "an empty day's preview");
+// the address
+const s=F({v:"week",who:["standing"],what:["hearing","exec"],body:"H",picks:["Health, Human Services and Elderly Affairs"],q:"HB 1"});
+const h=C.writeHash(s,"2026-03-10"), back=C.readHash(h);
+ok(back.d==="2026-03-10" && back.v==="week" && back.who.join()==="standing" && back.what.join()==="hearing,exec"
+   && back.body==="H" && back.picks[0]==="Health, Human Services and Elderly Affairs" && back.q==="HB 1", "the address does not round-trip: "+h);
+ok(C.writeHash(F({}),"2026-03-10")==="#d=2026-03-10", "defaults are written into the address: "+C.writeHash(F({}),"2026-03-10"));
+ok(C.readHash("#results")===null, "the skip link's #results reads as a state");
+// dates and keys
+ok(C.weekKey("2026-12-31")==="2026-W53" && C.weekKey("2027-01-03")==="2026-W53" && C.weekKey("2027-01-04")==="2027-W01"
+   && C.weekKey("2025-12-29")==="2026-W01" && C.keyMonday("2026-W01")==="2025-12-29", "ISO weeks across a year's end");
+ok(C.stepKey("2026-03-11","ArrowUp")==="2026-03-04" && C.stepKey("2026-03-11","Home")==="2026-03-09"
+   && C.stepKey("2026-03-11","End")==="2026-03-15" && C.stepKey("2026-01-31","PageDown")==="2026-02-28"
+   && C.stepKey("2026-03-11","PageUp",true)==="2025-03-11", "the grid's keys");
+ok(C.relWord("2026-03-12","2026-03-11")==="tomorrow" && C.relWord("2026-03-25","2026-03-11")==="in 14 days"
+   && C.relWord("2026-03-26","2026-03-11")==="" && C.relWord("2026-03-10","2026-03-11")==="", "the relative day words");
+if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
+console.log("7 cards: 8 combinations, the list's days, the week's rows and columns, the grid's cells and dots, the preview, the address and ISO weeks");
+console.log("OK");
+"""
+
+
+@check("frontend", "the Calendar page works in a DOM: selecting a day, the views, the filters, the address, the keyboard and the preview")
+def _calendar_in_a_dom():
+    """The page's own script, run on the page's own markup.
+
+    dom_stub.js answers every query with a blank element, which is right for
+    loading app.js and useless for a calendar: nothing here can be checked
+    against a DOM that holds nothing. So this carries a small real one --
+    _CAL_DOM parses the markup this site writes, answers the selectors the
+    script uses, captures and bubbles events, moves focus, keeps history and
+    lets the check move the clock by hand -- and runs the copy of the script
+    the fixture's week page carries, on that page's markup, as a reader would
+    meet it.
+
+    It opens the tab on the reader's today, which is not the build's; selects
+    a day in the next week and wants the address, the heading, the list and
+    one step of history to follow, and Back to undo it; switches to the week
+    and the day; turns the study committees off, presses Public hearings
+    only, picks one committee and a chamber, and puts it all back with one
+    control; redraws with focus on a card and wants focus back on that card;
+    walks the grid with the arrow keys and Page Down into the next month;
+    and rests the pointer on a day for 499 and then 501 milliseconds, moves
+    to the next day, presses Escape, leaves the grid, tabs to a day and taps
+    one, wanting the preview to do what the page says it does. An address
+    carrying a day, a view and a filter opens on them.
+    """
+    node = _cal_node()
+    if not node:
+        return "skip", "node is not on PATH"
+    if not Path("bills.html").exists():
+        return "skip", "bills.html is not here"
+    root = Path(tempfile.mkdtemp(prefix="gr-caldom-"))
+    try:
+        site, _w, _o, _u, _m = _cal_fixture(root)
+        (root / "minidom.js").write_text(_CAL_DOM, encoding="utf-8")
+        (root / "drive.js").write_text(_CAL_DRIVE, encoding="utf-8")
+        r = _run([node, str(root / "drive.js"), str(site)], capture_output=True, text=True,
+                 timeout=120)
+        out = (r.stdout or "") + (r.stderr or "")
+        assert r.returncode == 0 and out.strip().endswith("OK"), out.strip()[-1500:]
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+    return "ok", out.strip().splitlines()[-2]
+
+
+# A DOM small enough to read and real enough to run the Calendar page's
+# script: _calendar_in_a_dom's. It parses the markup this site writes,
+# answers the selectors the script uses, captures and bubbles events,
+# moves focus, keeps history and lets the check move the clock by hand.
+_CAL_DOM = r"""// A DOM small enough to read and real enough to run the Calendar page's script:
+// an HTML parser for the markup this site writes, the selectors the script
+// uses, events that capture and bubble, focus, history and a clock the test
+// moves by hand.
+const VOID = new Set(["area","base","br","col","embed","hr","img","input","link","meta","source","track","wbr"]);
+const ENT = {amp:"&",lt:"<",gt:">",quot:'"',apos:"'",nbsp:" ",lsaquo:"‹",rsaquo:"›",
+             hellip:"…",times:"×",rarr:"→",ndash:"–",mdash:"—"};
+function dec(s){ return String(s).replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi,(m,e)=>{
+  if(e[0]==="#") return String.fromCodePoint(e[1]==="x"||e[1]==="X"?parseInt(e.slice(2),16):+e.slice(1));
+  return ENT[e]!==undefined?ENT[e]:m; }); }
+function escT(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function escA(s){ return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;"); }
+
+class Ev { constructor(type,o){ Object.assign(this,{type,bubbles:true,defaultPrevented:false},o||{}); }
+  preventDefault(){ this.defaultPrevented=true; } stopPropagation(){ this._stop=true; } }
+
+class N {
+  constructor(doc){ this.ownerDocument=doc; this.parentNode=null; this.childNodes=[]; this._on={}; }
+  get children(){ return this.childNodes.filter(n=>n.nodeType===1); }
+  appendChild(n){ if(n.parentNode) n.remove(); n.parentNode=this; this.childNodes.push(n); return n; }
+  remove(){ const p=this.parentNode; if(p){ p.childNodes.splice(p.childNodes.indexOf(this),1); this.parentNode=null; } }
+  contains(n){ for(;n;n=n.parentNode) if(n===this) return true; return false; }
+  get textContent(){ return this.nodeType===3?this.data:this.childNodes.map(c=>c.textContent).join(""); }
+  set textContent(v){ if(this.nodeType===3){ this.data=String(v); return; }
+    this.childNodes.forEach(c=>c.parentNode=null); this.childNodes=[];
+    if(String(v)!=="") this.appendChild(new T(this.ownerDocument,String(v))); }
+  addEventListener(t,f,o){ (this._on[t]=this._on[t]||[]).push({f,cap:o===true||!!(o&&o.capture)}); }
+  removeEventListener(t,f){ this._on[t]=(this._on[t]||[]).filter(x=>x.f!==f); }
+  dispatchEvent(ev){
+    ev.target=ev.target||this; const path=[]; for(let n=this;n;n=n.parentNode) path.push(n);
+    if(this.ownerDocument&&path[path.length-1]===this.ownerDocument) path.push(this.ownerDocument.defaultView);
+    for(let i=path.length-1;i>=0&&!ev._stop;i--) (path[i]._on&&path[i]._on[ev.type]||[]).filter(x=>x.cap||i===0).forEach(x=>{ ev.currentTarget=path[i]; x.f.call(path[i],ev); });
+    if(ev.bubbles) for(let i=1;i<path.length&&!ev._stop;i++) (path[i]._on&&path[i]._on[ev.type]||[]).filter(x=>!x.cap).forEach(x=>{ ev.currentTarget=path[i]; x.f.call(path[i],ev); });
+    return !ev.defaultPrevented;
+  }
+}
+class T extends N { constructor(doc,data){ super(doc); this.nodeType=3; this.data=data; } }
+class C extends N { constructor(doc,data){ super(doc); this.nodeType=8; this.data=data; } get textContent(){ return ""; } }
+class E extends N {
+  constructor(doc,tag){ super(doc); this.nodeType=1; this.tagName=tag.toUpperCase(); this.localName=tag.toLowerCase();
+    this.attrs=new Map(); this.style={}; this._checked=null; this._value=null; this._open=null; }
+  getAttribute(k){ return this.attrs.has(k)?this.attrs.get(k):null; }
+  setAttribute(k,v){ this.attrs.set(k,String(v)); }
+  hasAttribute(k){ return this.attrs.has(k); }
+  removeAttribute(k){ this.attrs.delete(k); }
+  get id(){ return this.getAttribute("id")||""; }
+  get className(){ return this.getAttribute("class")||""; } set className(v){ this.setAttribute("class",v); }
+  get classList(){ const e=this; const get=()=>e.className.split(/\s+/).filter(Boolean);
+    const put=(l)=>e.setAttribute("class",l.join(" "));
+    return {contains:c=>get().includes(c), add:(...c)=>put([...new Set([...get(),...c])]),
+      remove:(...c)=>put(get().filter(x=>!c.includes(x))),
+      toggle:(c,f)=>{ const on=f===undefined?!get().includes(c):!!f; on?put([...new Set([...get(),c])]):put(get().filter(x=>x!==c)); return on; }}; }
+  _bool(k){ return this.hasAttribute(k); } _setBool(k,v){ v?this.setAttribute(k,""):this.removeAttribute(k); }
+  get hidden(){ return this._bool("hidden"); } set hidden(v){ this._setBool("hidden",v); }
+  get disabled(){ return this._bool("disabled"); } set disabled(v){ this._setBool("disabled",v); }
+  get open(){ return this._bool("open"); }
+  set open(v){ const was=this.open; this._setBool("open",v);
+    if(was!==!!v){ const d=this.ownerDocument; d._later(()=>this.dispatchEvent(new Ev("toggle",{bubbles:false}))); } }
+  get checked(){ return this._checked===null?this._bool("checked"):this._checked; } set checked(v){ this._checked=!!v; }
+  get value(){ return this._value===null?(this.getAttribute("value")||""):this._value; } set value(v){ this._value=String(v); }
+  get tabIndex(){ const t=this.getAttribute("tabindex"); return t===null?(/^(A|BUTTON|INPUT|SUMMARY)$/.test(this.tagName)?0:-1):+t; }
+  set tabIndex(v){ this.setAttribute("tabindex",v); }
+  get name(){ return this.getAttribute("name")||""; }
+  get offsetWidth(){ return 280; } get offsetHeight(){ return 120; }
+  getBoundingClientRect(){ return {top:100,left:40,right:80,bottom:140,width:40,height:40}; }
+  scrollIntoView(){ this.ownerDocument._scrolled.push(this); }
+  focus(){ const d=this.ownerDocument, was=d.activeElement; if(was===this) return;
+    d.activeElement=this;
+    if(was&&was!==d.body) was.dispatchEvent(new Ev("focusout",{relatedTarget:this}));
+    this.dispatchEvent(new Ev("focusin",{relatedTarget:was})); }
+  blur(){ const d=this.ownerDocument; if(d.activeElement===this){ d.activeElement=d.body; this.dispatchEvent(new Ev("focusout",{relatedTarget:null})); } }
+  click(){ this.dispatchEvent(new Ev("click",{button:0})); }
+  get outerHTML(){ let s="<"+this.localName; for(const [k,v] of this.attrs) s+=" "+k+'="'+escA(v)+'"';
+    s+=">"; if(VOID.has(this.localName)) return s; return s+this.innerHTML+"</"+this.localName+">"; }
+  get innerHTML(){ return this.childNodes.map(c=>c.nodeType===3?(/^(SCRIPT|STYLE)$/.test(this.tagName)?c.data:escT(c.data)):c.nodeType===8?"<!--"+c.data+"-->":c.outerHTML).join(""); }
+  set innerHTML(v){ this.childNodes.forEach(c=>c.parentNode=null); this.childNodes=[];
+    const d=this.ownerDocument; if(d.activeElement&&!d.documentElement.contains(d.activeElement)) d.activeElement=d.body;
+    parseInto(this,String(v),d);
+    if(d.activeElement&&!d.documentElement.contains(d.activeElement)) d.activeElement=d.body; }
+  matches(sel){ return sel.split(",").some(s=>matchComplex(this,s.trim())); }
+  closest(sel){ for(let n=this;n&&n.nodeType===1;n=n.parentNode) if(n.matches(sel)) return n; return null; }
+  querySelectorAll(sel){ const out=[]; const walk=(n)=>{ for(const c of n.childNodes) if(c.nodeType===1){ if(c.matches(sel)) out.push(c); walk(c); } }; walk(this); return out; }
+  querySelector(sel){ return this.querySelectorAll(sel)[0]||null; }
+}
+function parseInto(root,html,doc){
+  const stack=[root]; const re=/<!--([\s\S]*?)-->|<!DOCTYPE[^>]*>|<\/([a-zA-Z0-9]+)\s*>|<([a-zA-Z][a-zA-Z0-9-]*)((?:\s+[^\s=\/>]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?)*)\s*(\/?)>|([^<]+|<)/g;
+  let m;
+  while((m=re.exec(html))){
+    const top=stack[stack.length-1];
+    if(m[1]!==undefined) top.appendChild(new C(doc,m[1]));
+    else if(m[2]){ const t=m[2].toLowerCase(); for(let i=stack.length-1;i>0;i--){ if(stack[i].localName===t){ stack.length=i; break; } } }
+    else if(m[3]){ const el=new E(doc,m[3]); const ar=/([^\s=\/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g; let a;
+      while((a=ar.exec(m[4]||""))) el.attrs.set(a[1].toLowerCase(),dec(a[2]!==undefined?a[2]:a[3]!==undefined?a[3]:a[4]!==undefined?a[4]:""));
+      top.appendChild(el);
+      if(/^(script|style)$/.test(el.localName)){ const end=html.indexOf("</"+el.localName,re.lastIndex); el.appendChild(new T(doc,html.slice(re.lastIndex,end<0?html.length:end))); re.lastIndex=end<0?html.length:html.indexOf(">",end)+1; }
+      else if(!VOID.has(el.localName)&&!m[5]) stack.push(el); }
+    else if(m[6]!==undefined) top.appendChild(new T(doc,dec(m[6])));
+  }
+}
+// Compound selectors joined by descendant spaces: tag, #id, .class, [a], [a="v"].
+function parseCompound(s){ const r={tag:null,id:null,cls:[],attr:[]}; const re=/^([a-zA-Z*][a-zA-Z0-9-]*)|#([\w-]+)|\.([\w-]+)|\[([\w-]+)(?:="([^"]*)")?\]/g; let m, used=0;
+  while((m=re.exec(s))&&m[0]){ used+=m[0].length; if(m[1]) r.tag=m[1].toUpperCase(); else if(m[2]) r.id=m[2]; else if(m[3]) r.cls.push(m[3]); else r.attr.push([m[4],m[5]]); re.lastIndex=used; }
+  if(used!==s.length) throw new Error("minidom: selector not understood: "+s); return r; }
+function matchOne(el,c){ if(c.tag&&c.tag!=="*"&&el.tagName!==c.tag) return false; if(c.id&&el.id!==c.id) return false;
+  const cl=el.className.split(/\s+/); if(c.cls.some(x=>!cl.includes(x))) return false;
+  return c.attr.every(([k,v])=>el.hasAttribute(k)&&(v===undefined||el.getAttribute(k)===v)); }
+function matchComplex(el,sel){ const parts=sel.split(/\s+/).map(parseCompound); if(!matchOne(el,parts[parts.length-1])) return false;
+  let n=el.parentNode; for(let i=parts.length-2;i>=0;i--){ while(n&&n.nodeType===1&&!matchOne(n,parts[i])) n=n.parentNode; if(!n||n.nodeType!==1) return false; n=n.parentNode; } return true; }
+
+function makeWorld(o){
+  const doc=new N(null); doc.nodeType=9; doc.ownerDocument=doc;
+  const html=new E(doc,"html"), body=new E(doc,"body"); doc.appendChild(html); html.appendChild(body);
+  doc.documentElement=html; doc.body=body; doc.activeElement=body; doc.title=""; doc._scrolled=[];
+  let now=o.now||0; const timers=[]; let seq=0; const later=[];
+  doc._later=(f)=>later.push(f);
+  doc.getElementById=(id)=>html.querySelector("#"+id);
+  doc.querySelector=(s)=>html.querySelector(s); doc.querySelectorAll=(s)=>html.querySelectorAll(s);
+  doc.createElement=(t)=>new E(doc,t);
+  const win={document:doc, innerHeight:800, _on:{}, addEventListener:N.prototype.addEventListener,
+    removeEventListener:N.prototype.removeEventListener,
+    matchMedia:(q)=>({matches:!!(o.narrow&&/max-width/.test(q)), addEventListener(){}})};
+  doc.defaultView=win;
+  doc.documentElement.clientWidth=o.width||1440;
+  const loc={pathname:o.path||"/calendar", hash:o.hash||"", search:"", origin:"https://x"};
+  const hist=[{p:loc.pathname,h:loc.hash}];
+  const history={length:1,
+    pushState(_s,_t,url){ const u=new URL(url,"https://x"+loc.pathname); loc.pathname=u.pathname; loc.hash=u.hash; hist.push({p:loc.pathname,h:loc.hash}); this.length=hist.length; },
+    replaceState(_s,_t,url){ const u=new URL(url,"https://x"+loc.pathname); loc.pathname=u.pathname; loc.hash=u.hash; hist[hist.length-1]={p:loc.pathname,h:loc.hash}; },
+    back(){ if(hist.length<2) return; hist.pop(); this.length=hist.length; const t=hist[hist.length-1]; loc.pathname=t.p; loc.hash=t.h;
+      N.prototype.dispatchEvent.call(win,new Ev("popstate",{bubbles:false})); }};
+  const store=new Map();
+  const RealDate=Date;
+  class FixedDate extends RealDate { constructor(...a){ if(a.length) super(...a); else super(o.today[0],o.today[1]-1,o.today[2],12,0,0); }
+    static now(){ return now; } }
+  const G={window:win, document:doc, location:loc, history, localStorage:{getItem:k=>store.has(k)?store.get(k):null, setItem:(k,v)=>store.set(k,String(v)), removeItem:k=>store.delete(k)},
+    setTimeout:(f,ms)=>{ const id=++seq; timers.push({id,at:now+(ms||0),f}); return id; },
+    clearTimeout:(id)=>{ const i=timers.findIndex(t=>t.id===id); if(i>=0) timers.splice(i,1); },
+    fetch:async(url)=>{ const body=o.files(url); return {ok:body!==null,status:body===null?404:200,json:async()=>JSON.parse(body)}; },
+    Date:FixedDate, URLSearchParams, URL, Blob:class{}, innerHeight:800};
+  Object.assign(win,G);
+  return {win, doc, G, store, hist,
+    advance(ms){ const end=now+ms; for(;;){ timers.sort((a,b)=>a.at-b.at||a.id-b.id); const t=timers[0]; if(!t||t.at>end) break; timers.shift(); now=t.at; t.f(); } now=end; },
+    async settle(){ for(let i=0;i<20;i++){ await new Promise(r=>setImmediate(r)); while(later.length) later.shift()(); } },
+    ev:(type,o2)=>new Ev(type,o2)};
+}
+module.exports={makeWorld, parseInto, E, Ev};
+"""
+
+# The reader, for _calendar_in_a_dom.
+_CAL_DRIVE = r"""const {makeWorld}=require("./minidom.js");
+const fs=require("fs"), vm=require("vm"), path=require("path");
+const SITE=process.argv[2], fails=[];
+const ok=(c,m)=>{ if(!c) fails.push(m); };
+function world(page,pathname,o){
+  const text=fs.readFileSync(path.join(SITE,page),"utf8");
+  const a=text.indexOf('<div id="results">'), s=text.indexOf("<script>",a), e=text.indexOf("</script>",s);
+  const W=makeWorld(Object.assign({today:[2026,3,11], path:pathname,
+    files:(url)=>{ const f=path.join(SITE,url.replace(/^\//,"")); return fs.existsSync(f)?fs.readFileSync(f,"utf8"):null; }},o||{}));
+  W.doc.body.innerHTML=text.slice(a,s);
+  W.run=async()=>{ vm.runInContext(text.slice(s+8,e),vm.createContext(Object.assign({console},W.G)));
+    await W.settle(); W.advance(700); await W.settle(); };
+  const D=W.doc;
+  W.$=(id)=>D.getElementById(id); W.Q=(s,r)=>(r||D).querySelector(s); W.QA=(s,r)=>(r||D).querySelectorAll(s);
+  W.keys=()=>W.QA(".calmeet",W.$("calview")).map(m=>m.getAttribute("data-date")+"|"+W.Q(".calcmte",m).textContent);
+  W.sel=()=>{ const g=W.Q('td[aria-selected="true"]',W.$("cmgrid")); return g&&g.getAttribute("data-d"); };
+  W.view=(v)=>W.QA("[data-view]",W.$("calbar")).find(b=>b.getAttribute("data-view")===v);
+  return W;
+}
+(async()=>{
+  // ---- the tab, on the reader's today ----
+  const W=world("calendar.html","/calendar"), D=W.doc, $=W.$, Q=W.Q, QA=W.QA;
+  const statik=W.keys();
+  await W.run();
+  const C=W.win.GRCAL;
+  ok(!$("calside").hidden && !$("calbar").hidden && $("calapp").classList.contains("on"), "the month and the filters did not come up");
+  ok(W.sel()==="2026-03-11", "the tab did not open on the reader's today: "+W.sel());
+  ok((Q('td[aria-current="date"]',$("cmgrid"))||{getAttribute:()=>null}).getAttribute("data-d")==="2026-03-11", "today is not aria-current=date");
+  ok(QA("tr.cmsel td",$("cmgrid")).map(t=>t.getAttribute("data-d")).join()===[0,1,2,3,4,5,6].map(i=>C.addDays("2026-03-09",i)).join(),
+     "the band is not Monday 9 to Sunday 15 March");
+  ok(W.keys().join()===statik.join(), "the list the script draws is not the page's own: "+W.keys());
+  ok($("wkcount").textContent==="6 sittings this week.", "the count reads "+$("wkcount").textContent);
+  ok(QA(".caladd",$("calview")).length===6, "add-to-calendar on "+QA(".caladd",$("calview")).length+" cards, not the 6 that sat");
+  ok($("cmprev").getAttribute("aria-disabled")==="true", "the month before the calendar's first is offered");
+  const c10=Q('td[data-d="2026-03-10"]',$("cmgrid"));
+  ok(QA(".cmdots i",c10).map(i=>i.className).join()==="k-hearing,k-exec", "10 March's dots: "+QA(".cmdots i",c10).map(i=>i.className));
+  ok(QA(".cdrel",$("calview")).map(r=>r.textContent).join()===",,today,tomorrow,in 2 days,in 3 days", "the days' relative words: "+QA(".cdrel",$("calview")).map(r=>r.textContent));
+  // ---- another week, and back ----
+  const h0=W.G.history.length;
+  Q('td[data-d="2026-03-18"]',$("cmgrid")).click(); await W.settle(); W.advance(700); await W.settle();
+  ok(W.G.location.pathname==="/calendar/2026-W12" && W.G.location.hash==="#d=2026-03-18", "the address: "+W.G.location.pathname+W.G.location.hash);
+  ok(W.G.history.length===h0+1, "choosing a day is not one step of history");
+  ok(Q(".calhead h1").textContent==="The week of 16–22 March 2026", "the heading: "+Q(".calhead h1").textContent);
+  ok(W.keys().join()==="2026-03-18|Judiciary,2026-03-18|Finance", "the week of 16 March lists "+W.keys());
+  ok((Q(".calday.calsel",$("calview"))||{getAttribute:()=>null}).getAttribute("data-d")==="2026-03-18", "the list does not mark the day chosen");
+  ok(QA(".calhead .wknav a").map(a=>a.getAttribute("href")).join()==="/calendar,/calendar,/calendar/2026-W13",
+     "the arrows: "+QA(".calhead .wknav a").map(a=>a.getAttribute("href")));
+  W.G.history.back(); await W.settle(); W.advance(700); await W.settle();
+  ok(W.sel()==="2026-03-11" && W.G.location.pathname==="/calendar" && Q(".calhead h1").textContent==="The week of 9–15 March 2026", "Back did not return to 11 March");
+  // ---- the week, the day ----
+  W.view("week").click(); await W.settle();
+  ok(QA("tbody th",$("calview")).map(t=>t.textContent).join()==="09:00,10:00,No time given", "the week's rows: "+QA("tbody th",$("calview")).map(t=>t.textContent));
+  ok(QA("thead th",$("calview")).length===7, "not Monday to Friday and the Saturday that holds a meeting");
+  ok(W.keys().sort().join()===statik.slice().sort().join(), "the week at a glance does not hold the week's cards");
+  ok(/v=week/.test(W.G.location.hash), "the address does not say Week");
+  W.view("day").click(); await W.settle();
+  ok(QA(".calday",$("calview")).length===1 && W.keys().join()==="2026-03-11|Committee of conference,2026-03-11|House floor"
+     && QA(".calmeet",$("calview")).every(m=>m.open), "the Day view is not 11 March's two entries, open: "+W.keys());
+  ok($("wkcount").textContent==="2 sittings on Wednesday 11 March.", "the day's count: "+$("wkcount").textContent);
+  W.view("list").click(); await W.settle();
+  // ---- the filters ----
+  const study=$("wkstudy");
+  study.checked=false; study.dispatchEvent(W.ev("change")); await W.settle();
+  ok(W.store.get("gr.calendar.study")==="0", "turning study committees off is not remembered");
+  ok(!W.keys().some(k=>/Aging/.test(k)) && $("wkcount").textContent==="5 of 6 sittings shown.", "study off: "+$("wkcount").textContent);
+  ok(!$("calreset").hidden, "no way back to everything");
+  const qh=Q('[data-quick="hearing"]',$("wkfilter"));
+  qh.click(); await W.settle();
+  ok(qh.getAttribute("aria-pressed")==="true" && W.keys().sort().join()==="2026-03-10|Finance,2026-03-10|Judiciary", "Public hearings only lists "+W.keys());
+  ok(QA('input[name="what"]',$("wkfilter")).filter(i=>i.checked).map(i=>i.value).join()==="hearing", "the boxes do not say what the quick choice did");
+  ok(QA(".cmdots i",$("cmgrid")).every(i=>/k-hearing|k-exec/.test(i.className)), "the grid's dots do not follow the filters");
+  qh.click(); await W.settle();
+  $("cpfind").dispatchEvent(W.ev("focus",{bubbles:false})); await W.settle();
+  $("cpfind").value="jud"; $("cpfind").dispatchEvent(W.ev("input")); await W.settle();
+  const box=QA("input",$("cplist")).find(i=>i.value==="Judiciary");
+  ok(box && QA("input",$("cplist")).length===1, "the picker does not find Judiciary alone: "+QA("input",$("cplist")).map(i=>i.value));
+  if(box){ box.checked=true; box.dispatchEvent(W.ev("change")); await W.settle(); }
+  ok(W.keys().join()==="2026-03-10|Judiciary", "one committee lists "+W.keys());
+  ok(QA('input[name="who"]',$("wkfilter")).every(i=>i.disabled) && !$("whohint").hidden, "the who boxes do not stand aside for a chosen committee");
+  ok(/c=Judiciary/.test(W.G.location.hash) && QA(".cpchip",$("cpchosen")).length===1, "the chosen committee is not in the address, or not a chip");
+  Q('[data-body="S"]',$("wkfilter")).click(); await W.settle();
+  ok(!W.keys().length && $("wkcount").textContent==="None of the 6 sittings this week match.", "the Senate's Judiciary: "+$("wkcount").textContent);
+  $("calreset").click(); await W.settle();
+  ok(W.keys().join()===statik.join() && $("calreset").hidden && W.store.get("gr.calendar.study")==="1"
+     && W.G.location.hash==="#d=2026-03-11", "Show everything does not put everything back: "+W.G.location.hash);
+  ok(D.activeElement.getAttribute("data-view")==="list", "focus is not on the view switch after Show everything");
+  // ---- a redraw keeps focus on the card that holds it ----
+  const keep=QA(".calmeet",$("calview"))[0], kk=keep.getAttribute("data-date")+"|"+keep.getAttribute("data-cmte");
+  Q("summary",keep).focus();
+  const conf=QA('input[name="what"]',$("wkfilter")).find(i=>i.value==="conf");
+  conf.checked=false; conf.dispatchEvent(W.ev("change")); await W.settle();
+  const f=D.activeElement;
+  ok(f.tagName==="SUMMARY" && f.parentNode!==keep && f.parentNode.getAttribute("data-date")+"|"+f.parentNode.getAttribute("data-cmte")===kk,
+     "focus was lost when the panel was drawn again");
+  conf.checked=true; conf.dispatchEvent(W.ev("change")); await W.settle();
+  // ---- the keyboard ----
+  const t=Q('td[tabindex="0"]',$("cmgrid"));
+  ok(t && t.getAttribute("data-d")==="2026-03-11" && QA('td[tabindex="0"]',$("cmgrid")).length===1, "the grid's one tab stop is not the selected day");
+  t.focus(); t.dispatchEvent(W.ev("keydown",{key:"ArrowRight"})); await W.settle();
+  ok(D.activeElement.getAttribute("data-d")==="2026-03-12", "ArrowRight");
+  D.activeElement.dispatchEvent(W.ev("keydown",{key:"ArrowDown"})); await W.settle();
+  ok(D.activeElement.getAttribute("data-d")==="2026-03-19" && W.sel()==="2026-03-11", "ArrowDown moves focus a week and selects nothing");
+  D.activeElement.dispatchEvent(W.ev("keydown",{key:"PageDown"})); await W.settle(); W.advance(700); await W.settle();
+  ok($("cmtitle").textContent==="April 2026" && D.activeElement.getAttribute("data-d")==="2026-04-05", "Page Down: "+$("cmtitle").textContent+" "+D.activeElement.getAttribute("data-d"));
+  D.activeElement.dispatchEvent(W.ev("keydown",{key:"Enter"})); await W.settle(); W.advance(700); await W.settle();
+  ok(W.sel()==="2026-04-05" && W.keys().join()==="2026-04-01|Education", "Enter does not select 5 April's week: "+W.keys());
+  ok(D.activeElement.getAttribute("data-d")==="2026-04-05", "Enter took focus out of the grid");
+  ok($("cmnext").getAttribute("aria-disabled")==="true", "the month after the calendar's last is offered");
+  // ---- the preview ----
+  D.dispatchEvent(W.ev("keydown",{key:"Escape"})); D.activeElement.blur();
+  const cell=(d)=>Q(`td[data-d="${d}"]`,$("cmgrid"));
+  Q(".cmn",cell("2026-04-01")).dispatchEvent(W.ev("pointerover",{pointerType:"mouse"}));
+  W.advance(499); ok($("calpeek").hidden, "the preview opens before half a second's rest");
+  W.advance(2); ok(!$("calpeek").hidden && /Wednesday 1 April/.test($("calpeek").textContent) && /Education/.test($("calpeek").textContent), "no preview after half a second: "+$("calpeek").textContent);
+  Q(".cmn",cell("2026-04-02")).dispatchEvent(W.ev("pointerover",{pointerType:"mouse"}));
+  ok(!$("calpeek").hidden, "the preview closed on the way to the next day");
+  W.advance(81); ok(/Thursday 2 April/.test($("calpeek").textContent), "the preview does not follow the pointer");
+  D.dispatchEvent(W.ev("keydown",{key:"Escape"})); ok($("calpeek").hidden, "Escape does not put the preview away");
+  Q(".cmn",cell("2026-04-01")).dispatchEvent(W.ev("pointerover",{pointerType:"mouse"})); W.advance(501);
+  ok(!$("calpeek").hidden, "another day does not bring it back");
+  $("cmgrid").dispatchEvent(W.ev("pointerleave",{bubbles:false})); W.advance(200);
+  ok($("calpeek").hidden, "leaving the grid does not close the preview");
+  const tap=cell("2026-04-03");
+  tap.dispatchEvent(W.ev("pointerdown",{pointerType:"touch"})); tap.dispatchEvent(W.ev("pointerover",{pointerType:"touch"}));
+  tap.focus(); tap.click(); await W.settle(); W.advance(900);
+  ok($("calpeek").hidden, "a touch opened a preview");
+  ok(W.sel()==="2026-04-03", "a tap does not select the day");
+  const kf=cell("2026-03-31"); kf.focus(); W.advance(499);
+  ok($("calpeek").hidden, "focus shows the preview sooner than the pointer does");
+  W.advance(2);
+  ok(!$("calpeek").hidden && kf.getAttribute("aria-describedby")==="calpeek", "focus on a day does not show its preview");
+  // ---- the reader's today, not the build's ----
+  const W2=world("calendar.html","/calendar",{today:[2026,3,18]});
+  await W2.run();
+  ok(W2.sel()==="2026-03-18" && W2.Q(".calhead h1").textContent==="The week of 16–22 March 2026"
+     && W2.keys().join()==="2026-03-18|Judiciary,2026-03-18|Finance", "a reader a week after the build is not shown their own week: "+W2.sel());
+  ok(W2.Q('td[aria-current="date"]',W2.$("cmgrid")).getAttribute("data-d")==="2026-03-18", "today is the build's, not the reader's");
+  // ---- an address carrying a day, a view and a filter ----
+  const W3=world("calendar/2026-W10.html","/calendar/2026-W10",{hash:"#d=2026-03-03&v=day&what=hearing"});
+  await W3.run();
+  ok(W3.sel()==="2026-03-03" && W3.view("day").getAttribute("aria-pressed")==="true"
+     && W3.QA('input[name="what"]',W3.$("wkfilter")).filter(i=>i.checked).map(i=>i.value).join()==="hearing"
+     && W3.keys().join()==="2026-03-03|Commerce", "a shared address does not open on its day, view and filter");
+  if(fails.length){ console.log(fails.join("\n")); process.exit(1); }
+  console.log("the tab, a dated week and a shared address: 3 views, 6 filters, Back, focus, 6 keys and the preview's timings");
+  console.log("OK");
+})().catch(e=>{ console.log(fails.join("\n")); console.log("THREW "+e.stack); process.exit(2); });
+"""
+
+
+def _braced(text, head):
+    """The body of the first `head{...}` block in text, braces balanced."""
+    i = text.index(head) + len(head)
+    depth, j = 1, i
+    while depth:
+        depth += {"{": 1, "}": -1}.get(text[j], 0)
+        j += 1
+    return text[i:j - 1]
+
+
+@check("frontend", "the Calendar page lays out as a calendar: the month beside the schedule on a desktop, above it below 1024px, nothing wider than the page")
+def _calendar_layout():
+    """The layout the description asked for, held in the stylesheet.
+
+    On a desktop the month sits in a left column that stays in view while the
+    schedule scrolls -- one tall grid area, because sticky is clipped to its
+    own area -- and below 1024px it goes above the schedule, compact and
+    foldable, with the DOM order the reading order at every width. The week at
+    a glance keeps legible columns and scrolls inside its own frame rather than
+    widening the page: 56px of hours and five 120px days is 656px, which this
+    holds against the narrowest two-column panel (1024px less the shell's
+    sides, a scrollbar, the month's column at its narrowest and the gap).
+    Every colour is a token, so the dark palette re-grounds all of it; and a
+    heading here outranks what it heads.
+    """
+    css = Path("app.css").read_text(encoding="utf-8")
+    a = css.find("/* THE CALENDAR, AS A CALENDAR")
+    assert a >= 0, "app.css has no calendar block"
+    block = css[a:css.index("/* HOW THE DAY BEGAN.", a)]
+    lit = re.findall(r"rgba?\(|hsla?\(|#[0-9a-fA-F]{3,8}\b", block)
+    assert not lit, f"the calendar's rules carry literal colours {lit}; the dark theme cannot reach them"
+    grid = _braced(block, ".calapp.on{")
+    assert "display:grid" in grid and 'grid-template-areas:"side head" "side main"' in grid, (
+        "on a desktop the month is not a column beside the heading and the schedule")
+    side = re.search(r"grid-template-columns:clamp\((\d+)px,[^,]+,(\d+)px\)", grid)
+    assert side, "the month's column has no width"
+    side_min = int(side.group(1))
+    sticky = _braced(block, ".calapp.on > .calside{")
+    assert "position:sticky" in sticky and "overflow-y:auto" in sticky, (
+        "the month does not stay in view while the schedule scrolls")
+    narrow = _braced(block, "@media (max-width:1023px){")
+    assert 'grid-template-areas:"head" "side" "main"' in narrow, "below 1024px the month is not above the schedule"
+    assert ".calside.folded .cmgrid tbody tr:not(.cmsel){display:none}" in narrow, (
+        "a folded month does not keep the selected week")
+    assert ".calfold{display:none" in block and ".calfold{display:inline-flex" in narrow, (
+        "the folds are offered where there is room for the month")
+    assert ".calside[hidden],.calbar[hidden],.calreset[hidden],.cplist[hidden],.calpeek[hidden]{display:none}" in block, (
+        "a hidden control with a display rule of its own would show without script")
+    wrap = _braced(block, ".wkgridwrap{")
+    assert "overflow-x:auto" in wrap, "the week at a glance can widen the page"
+    m = re.search(r"\.wkgrid\{[^}]*min-width:calc\((\d+)px \+ var\(--cols,5\) \* (\d+)px\)", block)
+    assert m, "the week's columns have no minimum width"
+    need = int(m.group(1)) + 5 * int(m.group(2))
+    have = 1024 - 2 * 24 - 15 - side_min - 32 - 2
+    assert need <= have, (f"a five-day week needs {need}px and the panel beside the month "
+                          f"has {have}px at 1024: it would scroll on a desktop")
+    for rule, size in ((".cmtitle{", "--t-lead"), (".cfhead h2{", "--t-lead"),
+                       (".calfs legend,.calside .wkfind{", "--t-body"), (".pkd{", "--t-body")):
+        assert f"font-size:var({size})" in _braced(block, rule), f"{rule} is not set at {size}"
+    assert "font-size:var(--t-ui)" in _braced(block, ".calchk{"), "the boxes are not at the interface size"
+    return "ok", (f"month beside the schedule and sticky, above it below 1024px; a week "
+                  f"needs {need}px of the {have}px it has; tokens only")
 
 
 @check("frontend", "the home page's Coming up is this week, the week the Calendar tab shows")
