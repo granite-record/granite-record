@@ -404,10 +404,19 @@ def in_capitals(name):
 # New Hampshire surnames -- and a particle, which is "de" to one family and
 # "De" to the next. The spelling another list on disk gives decides; failing
 # that the word is set in ordinary case and reported as a guess.
-AMBIGUOUS = re.compile(r"^(?:MAC[A-Z]{3,}|"
-                       r"DE|DI|DU|DA|LA|LE|VAN|VON|DEL|DELLA|DER|DEN)$")
+#
+# A PREFIX RUN INTO THE NAME IS AS AMBIGUOUS AS ONE STANDING ALONE. This
+# matched the particles only on their own, so DIPIETRO, DELUCA and LAFLAMME,
+# which no list on disk spells, were cased the ordinary way and not reported.
+# It matches Dennis and Laura too; known_spellings gives those the one
+# spelling every list agrees on, so what is reported is a word no list has,
+# or one two lists spell two ways.
+AMBIGUOUS = re.compile(r"^(?:MAC[A-Z]{3,}|(?:DE|DI|DU|DA|LA|LE|VAN|VON)[A-Z]*)$")
 # The spellings a list on disk can settle: a capital after one of these.
 INTERCAP = re.compile(r"^(?:Mc|Mac|De|Di|Du|La|Le|Van|Von|Del|Da)[A-Z][a-z]")
+# And the same words spelled plainly -- Leclerc, Macdonald, Deluca -- which
+# are the other half of the question. Not Mc: McDonald is always McDonald.
+PLAIN = re.compile(r"^(?:Mac|De|Di|Du|Da|La|Le|Van|Von)[a-z]+$")
 SUFFIXES = {"JR": "Jr", "SR": "Sr"}
 NUMERALS = {"II", "III", "IV", "V"}
 
@@ -425,11 +434,13 @@ def display_name(name, known=None, guessed=None):
       "JR.", "SR"                 Jr., Sr -- only after the first word
       "II", "III", "IV"           stay in capitals
       "BOB" in quotes             the nickname inside, recased: "Bob"
+      "JR", "TJ" as the first     initials without their stops: JR Smith
       "MACDONALD", "LEBLANC",     no rule knows: the spelling in `known`
-      "VAN", "DE" and the like    (upper -> the one mixed-case spelling on
-                                  disk) decides, else ordinary case; a Mac
-                                  name or a particle cased that way goes
-                                  into `guessed` for a person to check
+      "VAN", "DE" and the like    (upper -> the one spelling on disk)
+                                  decides, else ordinary case; a Mac name,
+                                  a particle or a word opening with one
+                                  cased that way goes into `guessed` for a
+                                  person to check
     A name that is not wholly in capitals is returned as it was written.
     """
     if not in_capitals(name):
@@ -448,6 +459,11 @@ def display_name(name, known=None, guessed=None):
             return lead + SUFFIXES[core] + tail
         # An initial, or initials run together with stops: "J", "O.J".
         if re.fullmatch(r"[A-Z](?:\.[A-Z])*", core):
+            return p
+        # Initials run together without them, as the first word: "JR
+        # SMITH" is J.R. Smith, and was set as "Jr Smith". Two or three
+        # capitals and no vowel are not a word, so not recased.
+        if first and re.fullmatch(r"[B-DF-HJ-NP-TV-XZ]{2,3}", core):
             return p
         if core in known:
             return lead + known[core] + tail
@@ -471,16 +487,24 @@ def display_name(name, known=None, guessed=None):
 
 
 def known_spellings(root=Path(".")):
-    """Every surname and given name spelled with a capital inside it --
-    McDonald, MacCleery, LeBlanc, O'Neil -- in the New Hampshire lists on
-    disk, keyed by the word in capitals, where the lists agree on one
-    spelling. What display_name uses before it guesses."""
+    """Every surname and given name whose case no rule can recover --
+    McDonald, MacCleery, LeBlanc, and Leclerc beside it -- in the New
+    Hampshire lists on disk, keyed by the word in capitals, where the lists
+    agree on one spelling. What display_name uses before it guesses.
+
+    A PLAIN SPELLING IS A SPELLING. Only the ones with a capital inside
+    were collected, so a list's "Leclerc" never counted against another's
+    "LeClerc", and one legislator's spelling decided every LECLERC.
+
+    NOT THE CLERKS. The Secretary of State gives every clerk in capitals
+    and parse_clerks.namecase recased them; its "Leclerc" is that rule's
+    guess, not anybody's spelling."""
     seen = {}
 
     def add(full):
         for w in re.split(r"[\s\-'’\"“”,]+", full or ""):
             w = w.strip(".")
-            if INTERCAP.match(w):
+            if INTERCAP.match(w) or PLAIN.match(w):
                 seen.setdefault(w.upper(), set()).add(w)
 
     def load(name):
@@ -489,8 +513,6 @@ def known_spellings(root=Path(".")):
     for t in load("town_officials.json").values():
         for o in t.get("officials") or []:
             add(o.get("name"))
-    for c in load("town_clerks.json").values():
-        add(c.get("clerk", ""))
     for o in (load("county_officials.json") or {}).get("officers", []):
         add(o.get("name"))
     for v in load("careers.json").values():
@@ -1068,7 +1090,13 @@ def _ends_term(line):
         return None
     if re.search(r"\bterm\b.*\b(end|expir)", line, re.I) or \
             PTS.TERM_RANGE.search(line):
-        return PTS.term_year(line)
+        # A month and a year of two figures: Lebanon's "Term Expires: 3/27"
+        # is March 2027, the city's elections being in March and its terms
+        # two years. A third figure would make it a day, so not this.
+        short = re.search(r"\b(?:end|expir)\w*\s*:?\s*\d{1,2}/(\d\d)\b(?!/)",
+                          line, re.I)
+        return PTS.term_year(line) or (f"20{short.group(1)}" if short
+                                       else None)
     return None
 
 
@@ -1122,6 +1150,12 @@ def read_council(lines):
         # / "Councilor, At-Large (Term Expires: 3/28)" below.
         twin = next((o for o in out if same_person(name, o["name"])), None)
         if twin:
+            # The seat said more fully wins: Lebanon's "Mayor Douglas
+            # Whittlesey" is "Mayor", and lower down "Mayor, Ward 1". Kept
+            # at "Mayor", Lebanon's list had one Ward 1 councillor, and the
+            # city two.
+            if rec["seat"].startswith(twin["seat"]):
+                twin["seat"] = rec["seat"]
             twin.update({k: v for k, v in rec.items()
                          if v and not twin.get(k)})
             return
@@ -1414,8 +1448,11 @@ def build(keys, dot, known=None, guessed=None):
                 if in_capitals(m["name"]):
                     m["display"] = display_name(m["name"], known, guessed)
         return out
+    # `read` is how many of the members the size counts, which is not all
+    # of them where a mayor from another page is shown beside a council
+    # whose size leaves the mayor out: the label says "8 of 15", not 9.
     fields = ("source_url", "read_on", "size", "size_from", "later",
-              "members", "partial")
+              "members", "partial", "read")
     return {
         "_what": ("Select boards, and the cities' mayors and councils, read "
                   "off their own websites where the page is current. A "

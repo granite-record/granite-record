@@ -139,6 +139,9 @@ def person(name):
 
     A name written wholly in capitals is set in normal case (the person, 24
     September 2026), by town_boards.display_name, whichever source gave it.
+    A clerk arrives already recased: the Secretary of State gives every one
+    in capitals, and parse_clerks.namecase set them in normal case when it
+    wrote town_clerks.json.
     """
     if VACANT.match(name or ""):
         return "Vacant"
@@ -410,7 +413,11 @@ def listed_label(body, noun="members"):
     note under the names says why."""
     if not body.get("partial"):
         return ""
-    n = len(body.get("members") or [])
+    # The members the size counts, as town_boards.py counted them: a mayor
+    # read off another page is shown, and is one of Nashua's fifteen
+    # aldermen only if the page's sentence says so. A file written before
+    # that count was kept has every member counted.
+    n = body.get("read") or len(body.get("members") or [])
     size = body.get("size")
     text = f"{n} of {size} {noun} listed" if size else f"{n} {noun} listed"
     return f' <span class="twnseats">{E(text)}</span>'
@@ -1283,8 +1290,13 @@ def main():
         print(f"  select boards: {boards} is not on disk, so every board is "
               "the directory's")
     # NAMES IN CAPITALS, COUNTED: every one a town page prints in normal
-    # case, whichever source gave it. A count that moves is a new edition of
-    # a source to look at.
+    # case, by what recased it. A count that moves is a new edition of a
+    # source to look at.
+    #
+    # THE CLERKS ARE COUNTED AS THE SECRETARY OF STATE GAVE THEM. Every one
+    # is in capitals there, and parse_clerks.namecase recased them before
+    # this reads the file, so counted off the clerk field they were none:
+    # the count read 3, all Kensington's, and missed every clerk.
     caps = [n for n in
             [o.get("name") for v in (off.get("_offices") or {}).values()
              for o in v.get("officials") or []]
@@ -1294,8 +1306,14 @@ def main():
                                        | (off.get("_councils") or {})).values()
                for m in b.get("members") or []]
             if in_capitals(n) and not VACANT.match(n or "")]
-    print(f"  {len(caps)} names given wholly in capitals, set in normal case"
-          + (f": {caps}" if caps else ""))
+    clerk_caps = [v for v in (off.get("_local") or {}).values()
+                  if isinstance(v, dict) and v.get("clerk")
+                  and in_capitals(v.get("clerk_raw"))]
+    print(f"  names given wholly in capitals: {len(caps)} set in normal case "
+          "here, by town_boards.display_name" + (f" {caps}" if caps else "")
+          + f"; {len({v['clerk_raw'] for v in clerk_caps})} clerks in "
+          f"{len(clerk_caps)} rows of the Secretary of State's list, recased "
+          "by parse_clerks.namecase")
     tmpl = S.template(site)
 
     out = site / "town"

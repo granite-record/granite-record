@@ -16942,8 +16942,16 @@ def _town_boards_sane():
         if not b.get("partial") and size not in (len(on_page), len(ms)):
             bad.append(f"{key}: {len(ms)} members published whole for a "
                        f"council of {size}")
-        if b.get("partial") and size and len(on_page) >= size:
-            bad.append(f"{key}: marked partial with {len(on_page)} of {size}")
+        # `read`: the members the size counts, which leaves out a mayor
+        # from another page where the council's sentence does.
+        counted = b.get("read") or len(on_page)
+        if b.get("partial") and size and counted >= size:
+            bad.append(f"{key}: marked partial with {counted} of {size}")
+        if b.get("read") and b["read"] not in (len(on_page), len(ms)):
+            bad.append(f"{key}: {b['read']} counted of {len(ms)} members")
+        if not b.get("read"):
+            bad.append(f"{key}: the council carries no count of the members "
+                       "its size counts, so a partial one's label counts all")
         if size and not b.get("size_from"):
             bad.append(f"{key}: the council's size {size} has no source")
         for f in ("source_url", "read_on"):
@@ -17633,14 +17641,36 @@ def _town_boards_decide(T, P):
             ("O.J. ROBINSON", "O.J. Robinson", None),
             ("JANE MACDONALD", "Jane MacDonald", {"MACDONALD": "MacDonald"}),
             ("JANE MACDONALD", "Jane Macdonald", None),
+            ("JR SMITH", "JR Smith", None),
+            ("ANNA DIPIETRO", "Anna DiPietro", {"DIPIETRO": "DiPietro"}),
+            ("ANNA DIPIETRO", "Anna Dipietro", None),
             ("Sara Hamilton", "Sara Hamilton", None),
             ("James Bailey III", "James Bailey III", None)):
         got_ = T.display_name(raw, known, guessed)
         if got_ != want:
             bad.append(f"{raw!r} is set as {got_!r}, not {want!r}")
-    if guessed != ["MACDONALD"]:
-        bad.append(f"the cases guessed are {guessed}, not the one Macdonald "
-                   "no list on disk settled")
+    if guessed != ["MACDONALD", "DIPIETRO"]:
+        bad.append(f"the cases guessed are {guessed}, not the Macdonald and "
+                   "the Dipietro no list on disk settled")
+    # A plain spelling is a spelling: one list's "Leclerc" and another's
+    # "LeClerc" settle nothing. And the clerks are not read: the Secretary
+    # of State gives them in capitals, so their case is the rule
+    # parse_clerks.namecase applied, not anybody's spelling.
+    root = Path(tempfile.mkdtemp(prefix="gr-spell-"))
+    (root / "careers.json").write_text(json.dumps(
+        {"a": {"name": "Paul LeClerc"}, "b": {"name": "Ann DiPietro"}}),
+        encoding="utf-8")
+    (root / "town_officials.json").write_text(json.dumps(
+        {"x": {"officials": [{"name": "Brian Leclerc"},
+                             {"name": "Tom Macdonald"}]}}), encoding="utf-8")
+    (root / "town_clerks.json").write_text(json.dumps(
+        {"y": {"clerk": "Joe MacHado", "clerk_raw": "JOE MACHADO"}}),
+        encoding="utf-8")
+    ks = T.known_spellings(root)
+    shutil.rmtree(root, ignore_errors=True)
+    if "LECLERC" in ks or ks.get("DIPIETRO") != "DiPietro" or \
+            ks.get("MACDONALD") != "Macdonald" or "MACHADO" in ks:
+        bad.append(f"the spellings on disk are read as {ks}")
     assert not bad, "\n  ".join(bad)
     return "ok", (f"{len(cases)} layouts decided as the rule says, terms read to "
                   "their end, non-names screened out, capitals recased")
@@ -17689,9 +17719,12 @@ def _town_council_read(T):
                      "Assistant Mayor Devin R. Wilkie",
                      "Councilor Kellen Appleton", "Home", "City Councilors",
                      "Douglas Whittlesey", "Mayor, Ward 1 (Term Expires: 3/27)",
+                     "Devin R. Wilkie",
+                     "Assistant Mayor, Ward 2 (Term Expires: 3/27)",
                      "Kellen Appleton",
                      "Councilor, At-Large (Term Expires: 3/28)"],
-         [("Douglas Whittlesey", "Mayor"), ("Devin R. Wilkie", "Assistant mayor"),
+         [("Douglas Whittlesey", "Mayor, Ward 1"),
+          ("Devin R. Wilkie", "Assistant mayor, Ward 2"),
           ("Kellen Appleton", "At large")]),
         ("Keene", ["Ward 1", "Jacob R. Favolise",
                    "Councilor Ward 1 – 2026 to 2027", "603-338-8880",
@@ -17734,10 +17767,15 @@ def _town_council_read(T):
             bad.append(f"{city}: reads {have}, not {want}")
     if [m.get("role") for m in got["Nashua"]][:1] != ["President"]:
         bad.append("Nashua's president of the board of aldermen lost the office")
-    if [m.get("term_expires") for m in got["Dover"]][:1] != ["2028"] or \
-            [m.get("term_expires") for m in got["Keene"]] != ["2027", "2029", "2027"]:
-        bad.append("a council term is read off its start, or not read: "
-                   f"{[m.get('term_expires') for m in got['Dover'] + got['Keene']]}")
+    # Lebanon's mayor is also one of Ward 1's two councillors: the seat the
+    # page says more fully, lower down, is the one kept. And its "Term
+    # Expires: 3/27" is March 2027.
+    terms = {c: [m.get("term_expires") for m in got[c]]
+             for c in ("Dover", "Keene", "Lebanon")}
+    if terms["Dover"][:1] != ["2028"] or \
+            terms["Keene"] != ["2027", "2029", "2027"] or \
+            terms["Lebanon"] != ["2027", "2027", "2028"]:
+        bad.append(f"a council term is read off its start, or not read: {terms}")
     for text, want in (
             ("The Keene City Council consists of 16 members: Two in each of "
              "the five wards, plus five at-large members, and the Mayor as the "
@@ -17779,6 +17817,24 @@ def _town_council_read(T):
             v["members"][0].get("source_url") != "https://keene.test/my-city-government/":
         bad.append(f"Keene's own council and its mayor from another page are "
                    f"not published whole: {v['case']} {v['why']}")
+    # A part of a council whose sentence leaves the mayor out, with the
+    # mayor from another page: he is shown and not counted, so it is 2 of
+    # Nashua's 15 aldermen, not 3.
+    part = T.decide_council("nashua", [
+        {"url": "https://nashua.test/260/Board-of-Aldermen", "read_on": read,
+         "lines": ["The Board of Aldermen consists of 9 ward aldermen and 6 "
+                   "at-large aldermen.", "Lori Wilshire",
+                   "Alderman-At-Large President", "Ward 1 - James Ravan",
+                   "Alderman - Ward 1", "The end."]},
+        {"url": "https://nashua.test/804/City-Officials", "read_on": read,
+         "lines": ["Meet Mayor Jim Donchess"]}],
+        {"officials": [{"position": "Mayor", "name": "Jim Donchess"}]})
+    if part["case"] != "own" or not part.get("partial") or \
+            (part.get("read"), part.get("size"), len(part["members"])) != (2, 15, 3):
+        bad.append("a part of a council, its mayor from another page, is not "
+                   "counted without him: "
+                   f"{part['case']} {part['why']} read {part.get('read')} of "
+                   f"{part.get('size')}")
     same = T.decide_council("x", [
         {"url": "https://x.test/city-council", "read_on": read,
          "lines": ["Mayor", "Jay Kahn", "Jacob Favolise, Ward 1",
@@ -17928,6 +17984,20 @@ def _town_board_drawn(B):
     if "John McDonald" not in dover or "JOHN MCDONALD" in dover:
         bad.append("a directory name written in capitals is not set in normal "
                    "case")
+    # A part of a council, its mayor from another of the city's pages and
+    # not one of the seats its sentence counts: Nashua's fifteen aldermen
+    # leave the mayor out, so two aldermen read are "2 of 15", not "3".
+    part = dict(council, size=15, partial=True, read=2, members=[
+        dict(council["members"][0], source_url="https://www.dover.test/mayor"),
+        council["members"][1],
+        {"name": "Lee Roe", "seat": "Ward 2", "role": "", "term_ends": None,
+         "directory_name": None}])
+    nashua = _html.unescape(B.build("Nashua", "0", {"0": {}}, {}, [], {
+        "_offices": {"nashua": {"officials": dover_dot}},
+        "_councils": {"nashua": part}}, "https://x.test", tmpl))
+    if "2 of 15 members listed" not in nashua or "3 of 15" in nashua:
+        bad.append("a partial council counts the mayor from another page "
+                   "among seats that leave the mayor out")
     assert not bad, "\n  ".join(bad)
     return "ok", ("the town's own board drawn with its source and date, the "
                   "directory's without its chair, contacts kept with their "
