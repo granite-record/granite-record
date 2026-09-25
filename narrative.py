@@ -352,6 +352,63 @@ AMEND_RE = re.compile(
     r"(?:\(?(?:in recess of|In recess)\)?\s*)?"
     r"(?P<date>\d{1,2}/\d{1,2}/\d{4})?", re.I)
 
+# WHAT BECAME OF AN AMENDMENT WHOSE ROW CARRIES NO MOTION THE PATTERN ABOVE
+# READS. A blank motion was written as "was rejected", and it is not one:
+# "Sen. Birdsell Floor Amendment # 2026-0720s; 02/19/2026" is the Senate
+# ANNOUNCING the amendment at 10:23, and "... # 2026-0720s, AA, VV" at 10:26
+# is it carrying, so HB 266 of 2026 read that 0720s was rejected and then
+# adopted. 192 amendment rows of 2007-2026 carry no motion that pattern reads,
+# on 118 bills, and every one of them said "rejected" -- falsely for 150 rows
+# on 97 bills. 61 were announcements another row decides; the rest say what
+# happened in words the pattern does not take -- "Withdraws", "Not Voted On",
+# "Ruled Non-Germane", and codes in another order, "Division 17Y-7N, AA" (SB
+# 212 of 2012, adopted) or "MF RC 157-162" (SB 375 of 2012, rejected) -- or
+# say nothing at all.
+AMEND_SAID = [
+    (re.compile(r"withdr[ae]w", re.I), "withdrawn"),
+    (re.compile(r"not voted on", re.I), "not voted on"),
+    (re.compile(r"non-?germane", re.I), "ruled non-germane"),
+    (re.compile(r"\b(?:AF|AL|MF|ML)\b|\b(?i:fail(?:ed|s)?)\b"), "rejected"),
+    (re.compile(r"\b(?:AA|MA)\b|\b(?i:adopted)\b"), "adopted"),
+]
+# A motion ABOUT the amendment is not its outcome: "Floor Amendment
+# #2014-0025h, Divide Sections 1-8 (Rep. Jasper) MF RC 160-183" is the motion
+# to divide failing, and HB 544 of 2014 then adopted 0025h 186-155.
+AMEND_ABOUT = re.compile(r"\bdivide\b|\btable\b|reconsider|special order", re.I)
+# A vote on some of it: "Committee Amendment #2020-1471s : Sections 7 and 24,
+# RC 12Y-12N, AF" (HB 1166 of 2020), "Remainder of the Amendment".
+AMEND_PART = re.compile(r"\bsections?\b|\blines?\b|remainder|balance of|\baccount\b", re.I)
+AMEND_VOTE = re.compile(r"\b(RC|VV|DV|DIV|Div\.?|Division)(?![\w])", re.I)
+AMEND_TALLY = re.compile(r"\b(\d{1,3})\s*Y?\s*[-–]\s*(\d{1,3})\s*N?\b")
+# The Senate's verb before "Floor Amendment", which the mover pattern takes
+# for a second name: "Sen. Bradley Offered", "Sen. Houde Withdrew".
+MOVER_VERB = re.compile(r"\s+(?:offered|offers|withdr(?:ew|aws|awn))\s*$", re.I)
+
+
+def amendment_outcome(raw):
+    """(said, part, vote kind, yeas, nays) from a row AMEND_RE read no motion
+    on, said being None where the row states no outcome. Quoted amending
+    language is not the row's own words: HB 1623 of 2020's "... Reading as
+    Intended: "Amend RSA 415-J:3, IV-VI, as inserted by section 3 ...", AA,
+    VV" adopted the whole amendment, not a section of it."""
+    raw = re.sub(r'"[^"]*"', " ", raw or "")
+    said = next((w for rx, w in AMEND_SAID if rx.search(raw)), None)
+    if said in ("adopted", "rejected") and AMEND_ABOUT.search(raw):
+        said = None
+    if said not in ("adopted", "rejected"):
+        return said, False, None, None, None
+    vk = AMEND_VOTE.search(raw)
+    tally = AMEND_TALLY.search(raw, vk.end()) if vk else None
+    kind = None
+    if vk:
+        kind = {"RC": "RC", "VV": "VV"}.get(vk.group(1).upper(), "DV")
+    # As text, the way AMEND_RE hands its own tally over: a unanimous
+    # "24Y-0N" has a nay count of "0", which is there, where 0 would not be.
+    return (said, bool(AMEND_PART.search(raw)), kind,
+            tally.group(1) if tally else None,
+            tally.group(2) if tally else None)
+
+
 # "Enrolled Adopted, VV, (In recess 06/26/2025)" / "Enrolled (in recess of) 06/26/2025"
 ENROLLED_RE = re.compile(
     r"^Enrolled\b(?!\s+Bill)\s*(?P<motion>Adopted)?[,;]?\s*(?P<vote>VV|DV|RC)?[,;]?\s*"
@@ -1274,9 +1331,22 @@ def describe(ev, body, seen_intro=False):
         kind = (ev.get("what") or "Amendment").strip()
         num = ev.get("num") or ""
         when = f" on {fdate(ev['date'])}" if ev.get("date") else ""
-        adopted = (ev.get("motion") or "").upper() in ("AA", "ADOPTED")
+        motion = (ev.get("motion") or "").upper()
+        adopted = motion in ("AA", "ADOPTED")
         vk, _ = VOTE_KIND.get((ev.get("vote") or "").upper(), (None, None))
         y, n = ev.get("y"), ev.get("n")
+        # NO MOTION IS NOT A REJECTION. See amendment_outcome().
+        said, part = ("adopted" if adopted
+                      else "rejected" if motion in ("AF", "AL", "FAILED")
+                      else None), False
+        if said is None and "Enrolled Bill" not in kind:
+            said, part, vk2, y2, n2 = amendment_outcome(ev["_raw"])
+            adopted = said == "adopted"
+            if not vk and vk2:
+                vk, _ = VOTE_KIND.get(vk2, (None, None))
+                y, n = y or y2, n or n2
+            if said in (None, "not voted on") and ev.get("_decided_elsewhere"):
+                return None
         how = (f" on a {vk}" if vk else "") + (f" {y}\u2013{n}"
                                                if vk and y and n else "")
         if "Enrolled Bill" in kind:
@@ -1292,14 +1362,26 @@ def describe(ev, body, seen_intro=False):
         # in the sentence too rather than leaving the reader to notice.
         who = ("The committee's amendment" if "committee" in kind.lower()
                else "A floor amendment")
-        by = ""
-        if ev.get("mover"):
-            by = f", offered by {expand_mover(ev['mover'].strip())},"
+        # The Senate's verb is not part of the senator's name: "Sen. Bradley
+        # Offered Floor Amendment" read "offered by Sen. Bradley Offered".
+        mover = MOVER_VERB.sub("", (ev.get("mover") or "").strip())
+        by = f", offered by {expand_mover(mover)}," if mover else ""
+        if said in (None, "not voted on"):
+            # Offered, and nothing on the docket decides it -- or the docket
+            # says in as many words that it was not voted on.
+            verb = "proposed" if said is None else "offered"
+            return ((f"{expand_mover(mover)} {verb} {who[0].lower()}{who[1:]}"
+                     if mover else f"{who} was {verb}").replace(
+                         "amendment", f"amendment ({num})", 1)
+                    + when + ("; the docket records no vote on it." if said is None
+                              else "; it was not voted on."))
+        if part:
+            who = f"Part of {who[0].lower()}{who[1:]}"
         # "changing the text of the bill" was appended to every amendment,
         # including the ones that failed. A rejected amendment changed
         # nothing; saying it did is not a clumsy sentence, it is a false one.
-        return (f"{who} ({num}){by} was {'adopted' if adopted else 'rejected'}"
-                f"{how}{when}"
+        return (f"{who} ({num}){by} was {said}"
+                f"{how if said in ('adopted', 'rejected') else ''}{when}"
                 + (", changing the text of the bill." if adopted else "."))
 
     if t == "veto_override":
@@ -1551,6 +1633,19 @@ def build(bill, rows):
     # happened after it. See the CALENDAR["CC"] note below.
     consent_off = any(e["_type"] == "consent_off" and not e["cancelled"]
                       for e in evs)
+    # An amendment announced on one row and decided on another is told once,
+    # by the row that decides it (amendment_outcome). "Not Voted On" decides
+    # nothing when another row does: SB 535 of 2016's 2016-1160s is "Not
+    # Voted On" and then "AF, VV" the same day.
+    decided = {(e["body"], (e.get("num") or "").strip()) for e in evs
+               if e["_type"] == "amendment" and not e["cancelled"]
+               and (e.get("num") or "").strip()
+               and ((e.get("motion") or "").strip()
+                    or amendment_outcome(e.get("_raw"))[0] not in (None, "not voted on"))}
+    for e in evs:
+        if (e["_type"] == "amendment" and (e.get("num") or "").strip()
+                and (e["body"], (e.get("num") or "").strip()) in decided):
+            e["_decided_elsewhere"] = True
     for ev in evs:
         if ev["cancelled"]:
             continue

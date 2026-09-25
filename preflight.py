@@ -469,6 +469,67 @@ def _amend_stage(narrative):
     return "ok", "bare->floor, committee->committee, enrolled->governor"
 
 
+@check("narrative", "an amendment row that states no rejection is not called rejected",
+       needs=("narrative",))
+def _amend_not_rejected(narrative):
+    """A row with no motion the amendment pattern reads was written "was
+    rejected" -- 192 rows on 118 bills of 2007-2026, falsely for 150. HB 266
+    of 2026 read that 2026-0720s was rejected and then adopted: the first
+    row is the Senate announcing it. The rest are words the pattern does not
+    take. Every line below is a real docket row."""
+    N = narrative
+    from datetime import datetime as _dt
+
+    def one(line, body="S"):
+        ev = N.classify(line)
+        ev["body"] = body
+        return N.describe(ev, body) or ""
+
+    def history(bill, lines):
+        rows = [{"lsr": "", "session": "2026", "body": b, "desc": d,
+                 "created": _dt(2026, 2, 19, 10, i), "flags": []}
+                for i, (b, d) in enumerate(lines)]
+        keep = N.TERM
+        try:
+            N.TERM = "2025-2026"
+            return N.build(bill, rows)["narrative"]
+        finally:
+            N.TERM = keep
+
+    bad = []
+    for line, body, want, never in (
+            ("Sen. Watters Withdraws Floor Amendment #2018-1018s ; 03/15/2018; SJ 8", "S",
+             "was withdrawn", "rejected"),
+            ("Committee Amendment #2020-1471s : Sections 1-6 and Sections 9-24, RC 14Y-10N, AA; "
+             "06/16/2020; SJ 8", "S", "Part of the committee's amendment (2020-1471s) was adopted "
+             "on a roll call 14–10", "rejected"),
+            ("Committee Amendment #2020-1471s : Sections 7 and 24, RC 12Y-12N, AF; 06/16/2020; "
+             "SJ 8", "S", "was rejected on a roll call 12–12", "adopted"),
+            ("Sen. Rosenwald Floor Amendment # 2025-0752s; 03/06/2025;  SJ 6", "S",
+             "the docket records no vote on it", "rejected"),
+            ("Sen. Soucy Floor Amendment #2016-1160s , Not Voted On; 03/24/2016; SJ 10", "S",
+             "it was not voted on", "rejected"),
+            ("Floor Amendment #2014-1812h (Rep. Hoell) MF RC 110-205", "H",
+             "was rejected on a roll call 110–205", "adopted")):
+        got = one(line, body)
+        if want not in got or never in got or "Offered," in got or "Withdraws," in got:
+            bad.append(f"{line[:40]}... -> {got!r}")
+    got = history("HB266", [
+        ("S", "Sen. Birdsell Floor Amendment # 2026-0720s; 02/19/2026;  SJ 4"),
+        ("S", "Chair Ruled Sections of Amendment # 2026-0720s Non-Germane, 02/19/2026;  SJ 4"),
+        ("S", "Sen. Birdsell Floor Amendment # 2026-0720s, AA, VV; 02/19/2026;  SJ 4")])
+    if "rejected" in got or got.count("2026-0720s") != 1:
+        bad.append(f"HB 266: {got!r}")
+    got = history("SB535", [
+        ("S", "Sen. Soucy Floor Amendment #2016-1160s , Not Voted On; 03/24/2016; SJ 10"),
+        ("S", "Sen. Soucy Floor Amendment #2016-1160s , AF, VV; 03/24/2016; SJ 10")])
+    if "not voted on" in got or "rejected on a voice vote" not in got:
+        bad.append(f"SB 535: {got!r}")
+    assert not bad, "; ".join(bad)
+    return "ok", ("an announcement gives way to the row that decides it; withdrawn, not "
+                  "voted on, part of an amendment and codes out of order read as they say")
+
+
 @check("narrative", "veto and enactment sentences render", needs=("narrative",))
 def _veto_sentences(narrative):
     out = []
