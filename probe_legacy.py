@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-06.4
+# GRANITE_VERSION: 2026-09-06.5
 """
 The years the database does not have, from the search the site already offers.
 

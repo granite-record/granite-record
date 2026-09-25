@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# GRANITE_VERSION: 2026-09-07.3
+# GRANITE_VERSION: 2026-09-07.4
 """
 How the General Court's record changes shape as you go back through it.
 
